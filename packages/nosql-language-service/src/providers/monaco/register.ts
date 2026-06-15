@@ -75,13 +75,23 @@ export function registerCosmosDbSql(
         );
     }
 
-    disposables.push(monaco.languages.registerFoldingRangeProvider(langId, new MonacoFoldingRangeProvider(service)));
-    disposables.push(
-        new MonacoMultiQueryDecorator(monaco, service, {
-            languageId: langId,
-            decorationDelay: options.diagnosticDelay,
-        }),
-    );
+    const multiQuery = service.multiQuery;
+
+    if (options.folding ?? multiQuery) {
+        disposables.push(
+            monaco.languages.registerFoldingRangeProvider(langId, new MonacoFoldingRangeProvider(service)),
+        );
+    }
+
+    if (options.multiQueryDecorations ?? multiQuery) {
+        disposables.push(
+            new MonacoMultiQueryDecorator(monaco, service, {
+                languageId: langId,
+                decorationDelay: options.decorationDelay ?? options.diagnosticDelay,
+                highlightActiveBlock: options.highlightActiveBlock,
+            }),
+        );
+    }
 
     return {
         dispose() {

@@ -15,6 +15,7 @@ import {
 } from './NewEmulatorConnectionWizardContext';
 
 export class ExecuteStep extends AzureWizardExecuteStep<NewEmulatorConnectionWizardContext> {
+    public id = 'cosmosDB.newEmulatorConnection.executeStep';
     public priority: number = 100;
 
     public async execute(context: NewEmulatorConnectionWizardContext): Promise<void> {

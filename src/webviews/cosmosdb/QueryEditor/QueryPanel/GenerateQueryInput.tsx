@@ -3,9 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { useTrpcClient } from '@cosmosdb/webview-rpc/react';
 import {
     Button,
     Combobox,
+    MessageBar,
+    MessageBarBody,
     Option,
     createCustomFocusIndicatorStyle,
     makeStyles,
@@ -26,7 +29,6 @@ import {
 import * as l10n from '@vscode/l10n';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { type QueryEditorAppRouter } from '../../../../panels/trpc/appRouter';
-import { useTrpcClient } from '../../../api/trpc/useTrpcClient';
 import { useQueryEditorState, useQueryEditorStateDispatch } from '../state/QueryEditorContext';
 import { usePromptHistory } from './usePromptHistory';
 
@@ -128,7 +130,11 @@ const useStyles = makeStyles({
                 outline: '1px solid var(--vscode-focusBorder)',
                 outlineOffset: '0px',
                 boxShadow: 'none',
-                borderColor: 'transparent',
+                // Griffel rejects the `borderColor` shorthand; expand to longhands.
+                borderTopColor: 'transparent',
+                borderRightColor: 'transparent',
+                borderBottomColor: 'transparent',
+                borderLeftColor: 'transparent',
                 borderRadius: '3px',
             },
             { customizeSelector: (s) => `${s}${s}` },
@@ -212,7 +218,11 @@ const useStyles = makeStyles({
                 outline: '1px solid var(--vscode-focusBorder)',
                 outlineOffset: '1px',
                 boxShadow: 'none !important' as never,
-                borderColor: 'transparent',
+                // Griffel rejects the `borderColor` shorthand; expand to longhands.
+                borderTopColor: 'transparent',
+                borderRightColor: 'transparent',
+                borderBottomColor: 'transparent',
+                borderLeftColor: 'transparent',
                 borderRadius: '6px',
             },
             { customizeSelector: (s) => `${s}${s}${s}` },
@@ -242,7 +252,11 @@ const useStyles = makeStyles({
                 outline: '1px solid var(--vscode-focusBorder)',
                 outlineOffset: '0px',
                 boxShadow: 'none',
-                borderColor: 'transparent',
+                // Griffel rejects the `borderColor` shorthand; expand to longhands.
+                borderTopColor: 'transparent',
+                borderRightColor: 'transparent',
+                borderBottomColor: 'transparent',
+                borderLeftColor: 'transparent',
                 borderRadius: '3px',
             },
             { customizeSelector: (s) => `${s}${s}` },
@@ -347,6 +361,7 @@ export const GenerateQueryInput = () => {
     const [feedbackGiven, setFeedbackGiven] = useState<'up' | 'down' | null>(null);
     const [hadGenerated, setHadGenerated] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null);
 
@@ -482,6 +497,7 @@ export const GenerateQueryInput = () => {
         const hadEnteredPrompt = !!input.trim();
         setConfirmMessage(null);
         setFeedbackGiven(null);
+        setErrorMessage(null);
         setInput('');
         setLineCount(1);
         void trpcClient.queryEditor.closeGenerateInput.mutate({
@@ -499,6 +515,7 @@ export const GenerateQueryInput = () => {
 
         setIsLoading(true);
         setFeedbackGiven(null);
+        setErrorMessage(null);
         try {
             // Get the current query content from the state
             const currentQuery = state.queryValue;
@@ -512,6 +529,12 @@ export const GenerateQueryInput = () => {
 
             setIsLoading(false);
             setConfirmMessage(null);
+
+            // Check if the LLM could not produce a valid query
+            if (result && 'errorMessage' in result && typeof result.errorMessage === 'string') {
+                setErrorMessage(result.errorMessage);
+                return;
+            }
 
             if (result && typeof result.generatedQuery === 'string') {
                 setHadGenerated(true);
@@ -645,6 +668,11 @@ export const GenerateQueryInput = () => {
                         </div>
                     </div>
                 ) : null}
+                {errorMessage && (
+                    <MessageBar intent="error">
+                        <MessageBarBody>{errorMessage}</MessageBarBody>
+                    </MessageBar>
+                )}
                 {!confirmMessage && (
                     <div className={styles.footer}>
                         <div className={styles.modelSection}>
@@ -699,6 +727,7 @@ export const GenerateQueryInput = () => {
                             {state.isSurveyCandidate && (
                                 <div
                                     className={styles.feedbackButtons}
+                                    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
                                     role="group"
                                     aria-label={l10n.t('Rate this response')}
                                 >

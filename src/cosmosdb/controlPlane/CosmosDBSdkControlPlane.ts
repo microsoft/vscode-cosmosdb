@@ -11,6 +11,7 @@ import {
     type CosmosClient,
     type RequestOptions,
 } from '@azure/cosmos';
+import { SchemaService } from '../../services/SchemaService';
 import { type AccountInfo } from '../../tree/cosmosdb/AccountInfo';
 import { type ContainerResource, type DatabaseResource } from '../../tree/cosmosdb/models/CosmosDBTypes';
 import { nonNullProp } from '../../utils/nonNull';
@@ -53,6 +54,7 @@ export class CosmosDBSdkControlPlane implements CosmosDBControlPlane {
         await this.withClient(async (client) => {
             await client.database(databaseId).delete();
         });
+        await SchemaService.getInstance().deleteSchemasForDatabase(this.accountInfo.endpoint, databaseId);
     }
 
     public async listContainers(databaseId: string): Promise<ContainerResource[]> {
@@ -66,6 +68,7 @@ export class CosmosDBSdkControlPlane implements CosmosDBControlPlane {
         databaseId: string,
         definition: ContainerDefinition,
         throughput?: number,
+        maxThroughput?: number,
     ): Promise<ContainerResource> {
         const options: RequestOptions = {};
         if (throughput && throughput !== 0) {
@@ -89,6 +92,10 @@ export class CosmosDBSdkControlPlane implements CosmosDBControlPlane {
             partitionKey: partitionKeyDefinition,
         };
 
+        if (maxThroughput && maxThroughput > 0) {
+            containerDefinition.maxThroughput = maxThroughput;
+        }
+
         return this.withClient(async (client) => {
             const response = await client.database(databaseId).containers.create(containerDefinition, options);
             return nonNullProp(response, 'resource');
@@ -99,6 +106,7 @@ export class CosmosDBSdkControlPlane implements CosmosDBControlPlane {
         await this.withClient(async (client) => {
             await client.database(databaseId).container(containerId).delete();
         });
+        await SchemaService.getInstance().deleteSchemasForContainer(this.accountInfo.endpoint, databaseId, containerId);
     }
 
     public async readDatabaseThroughput(databaseId: string): Promise<ThroughputResource | undefined> {

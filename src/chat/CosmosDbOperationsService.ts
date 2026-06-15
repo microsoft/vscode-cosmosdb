@@ -7,14 +7,12 @@ import { type JSONSchema } from '@cosmosdb/schema-analyzer';
 import { getSchemaFromDocument, updateSchemaWithDocument, type NoSQLDocument } from '@cosmosdb/schema-analyzer/json';
 import { callWithTelemetryAndErrorHandling, parseError } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
-import * as fs from 'fs';
-import * as path from 'path';
 import * as vscode from 'vscode';
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { type SerializedQueryResult } from '../cosmosdb/types/queryResult';
 import { ext } from '../extensionVariables';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
-import { SchemaFileStorage } from '../services/SchemaFileStorage';
+import { SchemaService } from '../services/SchemaService';
 import { extractJsonObject, getSelectedModel } from '../utils/aiUtils';
 import { commentOutQuery, sanitizeSqlComment, stripCodeFences } from '../utils/sanitization';
 import { buildChatMessages, getActiveQueryEditor, getConnectionFromQueryTab, sendChatRequest } from './chatUtils';
@@ -67,6 +65,17 @@ export interface QueryHistoryContext {
     executions: QueryExecutionEntry[];
 }
 
+/**
+ * Error thrown when the LLM explicitly refuses to generate a query
+ * (e.g. the request is not query-related, or asks for unsupported operations).
+ */
+export class QueryGenerationRefusedError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'QueryGenerationRefusedError';
+    }
+}
+
 export interface EditQueryResult {
     type: 'editQuery';
     currentQuery?: string;
@@ -88,8 +97,6 @@ const MAX_QUERY_HISTORY_PER_CONTAINER = 20;
 
 export class CosmosDbOperationsService {
     private static instance: CosmosDbOperationsService;
-    private static extensionPath: string | undefined;
-    private static queryLanguageReference: string | undefined;
 
     /**
      * In-memory storage for query execution history, keyed by "accountId/databaseId/containerId".
@@ -108,47 +115,11 @@ export class CosmosDbOperationsService {
         return `${accountId ?? 'unknown'}/${databaseId}/${containerId}`;
     }
 
-    /**
-     * Initialize the service with the extension context.
-     * This must be called once during extension activation to enable loading of asset files.
-     */
-    public static initialize(context: vscode.ExtensionContext): void {
-        CosmosDbOperationsService.extensionPath = context.extensionPath;
-    }
-
     public static getInstance(): CosmosDbOperationsService {
         if (!CosmosDbOperationsService.instance) {
             CosmosDbOperationsService.instance = new CosmosDbOperationsService();
         }
         return CosmosDbOperationsService.instance;
-    }
-
-    /**
-     * Loads and caches the NoSQL query language reference for LLM context.
-     * The reference is loaded once and cached for subsequent calls.
-     */
-    private static getQueryLanguageReference(): string {
-        if (CosmosDbOperationsService.queryLanguageReference) {
-            return CosmosDbOperationsService.queryLanguageReference;
-        }
-
-        if (!CosmosDbOperationsService.extensionPath) {
-            console.warn('Extension path not initialized. Query language reference will not be available.');
-            return '';
-        }
-
-        try {
-            const referencePath = path.join(
-                CosmosDbOperationsService.extensionPath,
-                'resources',
-                'azurecosmosdb-nosql-query-language.md',
-            );
-            CosmosDbOperationsService.queryLanguageReference = fs.readFileSync(referencePath, 'utf-8');
-            return CosmosDbOperationsService.queryLanguageReference;
-        } catch (error) {
-            console.warn('Failed to load query language reference:', error);
-            return '';
-        }
     }
 
     /**
@@ -332,7 +303,11 @@ export class CosmosDbOperationsService {
         }
 
         // Use the in-memory store instead of iterating through sessions
-        return this.getQueryHistoryForContainer(connection.accountId, connection.databaseId, connection.containerId);
+        return this.getQueryHistoryForContainer(
+            connection?.azureMetadata?.accountId,
+            connection.databaseId,
+            connection.containerId,
+        );
     }
 
     /**
@@ -647,24 +622,31 @@ export class CosmosDbOperationsService {
         additionalContext?: string,
         source?: string,
         operation?: string,
-    ): Promise<EditQueryResult> {
+    ): Promise<EditQueryResult | string> {
         if (!userPrompt || userPrompt.trim() === '') {
             throw new Error(l10n.t('Please provide a description of the query you want to generate.'));
         }
 
-        const llmSuggestion = await this.generateQueryWithLLM(
-            userPrompt,
-            sendCurrentQueryToLLM && currentQuery ? currentQuery : '',
-            {
-                withExplanation: true,
-                onProgress,
-                onConfirm,
-                additionalContext,
-                source,
-                operation,
-                connection,
-            },
-        );
+        let llmSuggestion: { query: string; explanation: string };
+        try {
+            llmSuggestion = await this.generateQueryWithLLM(
+                userPrompt,
+                sendCurrentQueryToLLM && currentQuery ? currentQuery : '',
+                {
+                    withExplanation: true,
+                    onProgress,
+                    onConfirm,
+                    additionalContext,
+                    source,
+                    operation,
+                },
+            );
+        } catch (error) {
+            if (error instanceof QueryGenerationRefusedError) {
+                return l10n.t('❌ Could not generate query: {0}', error.message);
+            }
+            throw error;
+        }
         const suggestion = llmSuggestion.query;
         const llmExplanation = llmSuggestion.explanation;
 
@@ -873,9 +855,6 @@ export class CosmosDbOperationsService {
             throw err;
         });
 
-        // Load query language reference for comprehensive syntax guidance
-        const queryLanguageRef = CosmosDbOperationsService.getQueryLanguageReference();
-
         // If there is a schema already saved in SchemaFileStorage (from the toolbar
         // or a previous sampling run), include it in the initial context so the LLM
         // can use it without needing to call the sampling tool.
@@ -886,14 +865,17 @@ export class CosmosDbOperationsService {
         const historyContext =
             options?.historyContext ??
             (connection
-                ? this.getQueryHistoryForContainer(connection.accountId, connection.databaseId, connection.containerId)
+                ? this.getQueryHistoryForContainer(
+                      connection.azureMetadata?.accountId,
+                      connection.databaseId,
+                      connection.containerId,
+                  )
                 : undefined);
         if (connection) {
             try {
-                const schemaId = SchemaFileStorage.getSchemaIdForConnection(connection);
-                const stored = await SchemaFileStorage.getInstance().readSchema(schemaId);
-                if (stored) {
-                    cachedSchema = stored;
+                const simplified = await SchemaService.getInstance().getSimplifiedSchema(connection);
+                if (simplified) {
+                    cachedSchema = JSON.stringify(simplified.schema);
                 }
             } catch {
                 // Best-effort — proceed without cached schema.
@@ -905,7 +887,6 @@ export class CosmosDbOperationsService {
             userPrompt,
             currentQuery: currentQuery || undefined,
             historyContext,
-            languageReference: queryLanguageRef || undefined,
             additionalContext,
             cachedSchema,
         };
@@ -1125,7 +1106,7 @@ export class CosmosDbOperationsService {
                         // Cache the sampled schema in query history so subsequent
                         // LLM calls won't need to re-sample.
                         this.recordSampledSchema(
-                            connection.accountId,
+                            connection?.azureMetadata?.accountId,
                             connection.databaseId,
                             connection.containerId,
                             result.sampleQuery,
@@ -1234,7 +1215,18 @@ export class CosmosDbOperationsService {
                 });
                 throw new Error(l10n.t('Invalid LLM response: could not parse JSON payload'));
             }
-            const result = JSON.parse(jsonText) as { query: string; explanation: string; comments?: string };
+            const result = JSON.parse(jsonText) as {
+                query: string;
+                explanation: string;
+                comments?: string;
+                error?: string;
+            };
+
+            // If the LLM explicitly signaled an error, throw immediately
+            if (result.error) {
+                throw new QueryGenerationRefusedError(result.error);
+            }
+
             if (!result.query || typeof result.query !== 'string') {
                 void callWithTelemetryAndErrorHandling('cosmosDB.ai.invalidLlmResponse', (ctx) => {
                     ctx.errorHandling.suppressDisplay = true;
@@ -1254,10 +1246,16 @@ export class CosmosDbOperationsService {
             };
         }
 
+        // Plain text path: check if the LLM signaled an error
+        const cleanedResponse = this.cleanupQueryResponse(responseText);
+        if (cleanedResponse.startsWith('ERROR:')) {
+            throw new QueryGenerationRefusedError(cleanedResponse.slice('ERROR:'.length).trim());
+        }
+
         const schemaSamplingComment = schemaSamplingExecuted
             ? `-- ${l10n.t('Schema sampling tool was executed. Cost: {0} RUs', schemaSamplingRUs.toFixed(2))}\n`
             : '';
-        return schemaSamplingComment + this.cleanupQueryResponse(responseText);
+        return schemaSamplingComment + cleanedResponse;
     }
 
     /**

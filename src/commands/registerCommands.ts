@@ -13,10 +13,6 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { CosmosDbChatParticipant } from '../chat';
 import { doubleClickDebounceDelay } from '../constants';
-import {
-    deployLLMInstructionsFiles,
-    removeLLMInstructionsFiles,
-} from '../cosmosdb/commands/deployLLMInstructionsFiles';
 import { ext } from '../extensionVariables';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
 import { copyConnectionString } from './copyConnectionString/copyConnectionString';
@@ -82,7 +78,6 @@ export function registerCommands(): void {
     registerCommandWithTreeNodeUnwrapping('azureDatabases.filterTreeItems', filterTreeItems);
     registerCommandWithTreeNodeUnwrapping('azureDatabases.sortTreeItems', sortTreeItems);
 
-    registerLLMAssetsCommands();
     registerChatButtonCommands();
     registerMigrationCommands();
 }
@@ -135,11 +130,6 @@ export function registerTriggerCommands() {
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteTrigger', cosmosDBDeleteTrigger);
 }
 
-export function registerLLMAssetsCommands() {
-    registerCommand('cosmosDB.ai.deployInstructionFiles', deployLLMInstructionsFiles);
-    registerCommand('cosmosDB.ai.removeInstructionFiles', removeLLMInstructionsFiles);
-}
-
 export function registerChatButtonCommands() {
     // Command to apply the suggested query (update current editor)
     // Note: Chat buttons pass arguments directly, so we use vscode.commands.registerCommand
@@ -166,12 +156,14 @@ export function registerChatButtonCommands() {
 
                 // Find the active query editor tab and update its query
                 const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
-                const activeTab = activeQueryEditors.find(
-                    (tab) =>
-                        tab.getConnection()?.endpoint === connection.endpoint &&
-                        tab.getConnection()?.databaseId === connection.databaseId &&
-                        tab.getConnection()?.containerId === connection.containerId,
-                );
+                const activeTab = activeQueryEditors.find((tab) => {
+                    const tabConnection = tab.getConnection();
+                    return (
+                        tabConnection?.endpoint === connection.endpoint &&
+                        tabConnection?.databaseId === connection.databaseId &&
+                        tabConnection?.containerId === connection.containerId
+                    );
+                });
 
                 if (activeTab && 'updateQuery' in activeTab) {
                     // Update the query in the existing webview

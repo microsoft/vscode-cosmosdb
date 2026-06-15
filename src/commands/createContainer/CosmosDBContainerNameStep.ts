@@ -5,20 +5,17 @@
 
 import { AzureWizardPromptStep, parseError } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
-import { API } from '../../AzureDBExperiences';
 import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../extensionVariables';
 import { type CreateContainerWizardContext } from './CreateContainerWizardContext';
 
 export class CosmosDBContainerNameStep extends AzureWizardPromptStep<CreateContainerWizardContext> {
+    public id = 'cosmosDB.createContainer.nameStep';
     public hideStepCount: boolean = false;
 
     public async prompt(context: CreateContainerWizardContext): Promise<void> {
-        const { databaseId, experience } = context;
-        const prompt =
-            experience.api === API.Core
-                ? l10n.t('Enter a container name for {databaseId}', { databaseId })
-                : l10n.t('Enter a graph name for {databaseId}', { databaseId });
+        const { databaseId } = context;
+        const prompt = l10n.t('Enter a container name for {databaseId}', { databaseId });
         context.containerName = (
             await context.ui.showInputBox({
                 prompt,

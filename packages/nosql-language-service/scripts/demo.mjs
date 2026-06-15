@@ -11,9 +11,7 @@
 // Usage:  node scripts/demo.mjs          (requires prior `pnpm run build`)
 // ---------------------------------------------------------------------------
 
-// eslint-disable-next-line import/no-internal-modules
 import { getCompletions } from '../dist/esm/completion/SqlCompletion.js';
-// eslint-disable-next-line import/no-internal-modules
 import { parse } from '../dist/esm/index.js';
 
 const schema = {

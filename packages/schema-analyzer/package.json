@@ -41,7 +41,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "denque": "^2.1.0"
+    "denque": "~2.1.0"
   },
   "peerDependencies": {
     "mongodb": ">=6.0.0"
@@ -52,9 +52,9 @@
     }
   },
   "devDependencies": {
-    "@types/json-schema": "^7.0.15",
-    "mongodb": "^6.16.0",
-    "vitest": "^4.1.0"
+    "@types/json-schema": "~7.0.15",
+    "mongodb": "~7.3.0",
+    "vitest": "~4.1.0"
   },
   "engines": {
     "node": ">=22"

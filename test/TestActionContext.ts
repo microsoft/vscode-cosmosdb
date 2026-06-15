@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { TestUserInput } from './TestUserInput';
+import { TestUserInput } from './TestUserInput.js';
 
 export interface TestActionContext {
     telemetry: {

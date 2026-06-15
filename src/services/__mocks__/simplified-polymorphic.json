@@ -1,0 +1,3877 @@
+{
+  "properties": {
+    "id": {
+      "x-occurrence": 50,
+      "type": "string",
+      "x-typeOccurrence": 50,
+      "x-dataType": "string"
+    },
+    "_partitionKey": {
+      "x-occurrence": 50,
+      "type": "string",
+      "x-typeOccurrence": 50,
+      "x-dataType": "string"
+    },
+    "status": {
+      "anyOf": [
+        {
+          "type": "number",
+          "x-typeOccurrence": 17,
+          "x-dataType": "number"
+        },
+        {
+          "type": "boolean",
+          "x-typeOccurrence": 6,
+          "x-dataType": "boolean"
+        },
+        {
+          "type": "object",
+          "x-typeOccurrence": 14,
+          "x-dataType": "object",
+          "properties": {
+            "kind": {
+              "x-occurrence": 3,
+              "type": "string",
+              "x-typeOccurrence": 3,
+              "x-dataType": "string"
+            },
+            "label": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "string"
+                },
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 2,
+                  "x-dataType": "number"
+                }
+              ],
+              "x-occurrence": 3
+            }
+          }
+        },
+        {
+          "type": "string",
+          "x-typeOccurrence": 12,
+          "x-dataType": "string"
+        },
+        {
+          "type": "null",
+          "x-typeOccurrence": 1,
+          "x-dataType": "null"
+        }
+      ],
+      "x-occurrence": 50
+    },
+    "createdAt": {
+      "x-occurrence": 50,
+      "type": "string",
+      "x-typeOccurrence": 50,
+      "x-dataType": "string"
+    },
+    "sequence": {
+      "x-occurrence": 50,
+      "type": "number",
+      "x-typeOccurrence": 50,
+      "x-dataType": "number"
+    },
+    "note": {
+      "anyOf": [
+        {
+          "type": "string",
+          "x-typeOccurrence": 14,
+          "x-dataType": "string"
+        },
+        {
+          "type": "number",
+          "x-typeOccurrence": 17,
+          "x-dataType": "number"
+        },
+        {
+          "type": "object",
+          "x-typeOccurrence": 14,
+          "x-dataType": "object",
+          "properties": {
+            "detail": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 2,
+                  "x-dataType": "string"
+                },
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "number"
+                }
+              ],
+              "x-occurrence": 3
+            },
+            "extra": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 2,
+                  "x-dataType": "string"
+                },
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "number"
+                }
+              ],
+              "x-occurrence": 3
+            }
+          }
+        },
+        {
+          "type": "boolean",
+          "x-typeOccurrence": 4,
+          "x-dataType": "boolean"
+        },
+        {
+          "type": "null",
+          "x-typeOccurrence": 1,
+          "x-dataType": "null"
+        }
+      ],
+      "x-occurrence": 50
+    },
+    "metric": {
+      "anyOf": [
+        {
+          "type": "object",
+          "x-typeOccurrence": 19,
+          "x-dataType": "object",
+          "properties": {
+            "amount": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 4,
+                  "x-dataType": "number"
+                },
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "string"
+                }
+              ],
+              "x-occurrence": 5
+            },
+            "mode": {
+              "anyOf": [
+                {
+                  "type": "null",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "null"
+                },
+                {
+                  "type": "boolean",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "boolean"
+                },
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "number"
+                }
+              ],
+              "x-occurrence": 3
+            }
+          }
+        },
+        {
+          "type": "string",
+          "x-typeOccurrence": 16,
+          "x-dataType": "string"
+        },
+        {
+          "type": "number",
+          "x-typeOccurrence": 13,
+          "x-dataType": "number"
+        },
+        {
+          "type": "null",
+          "x-typeOccurrence": 1,
+          "x-dataType": "null"
+        },
+        {
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        }
+      ],
+      "x-occurrence": 50
+    },
+    "history": {
+      "anyOf": [
+        {
+          "type": "number",
+          "x-typeOccurrence": 19,
+          "x-dataType": "number"
+        },
+        {
+          "type": "object",
+          "x-typeOccurrence": 15,
+          "x-dataType": "object",
+          "properties": {
+            "tag": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "boolean"
+                },
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "string"
+                },
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "number"
+                }
+              ],
+              "x-occurrence": 3
+            },
+            "metric": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 2,
+                  "x-dataType": "string"
+                },
+                {
+                  "type": "boolean",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "boolean"
+                }
+              ],
+              "x-occurrence": 3
+            }
+          }
+        },
+        {
+          "type": "boolean",
+          "x-typeOccurrence": 6,
+          "x-dataType": "boolean"
+        },
+        {
+          "type": "string",
+          "x-typeOccurrence": 9,
+          "x-dataType": "string"
+        },
+        {
+          "type": "null",
+          "x-typeOccurrence": 1,
+          "x-dataType": "null"
+        }
+      ],
+      "x-occurrence": 50
+    },
+    "mode": {
+      "anyOf": [
+        {
+          "type": "object",
+          "x-typeOccurrence": 17,
+          "x-dataType": "object",
+          "properties": {
+            "code": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "boolean"
+                },
+                {
+                  "type": "null",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "null"
+                },
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "number"
+                },
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "string"
+                }
+              ],
+              "x-occurrence": 4
+            },
+            "ref": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "number"
+                },
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 3,
+                  "x-dataType": "string"
+                }
+              ],
+              "x-occurrence": 4
+            }
+          }
+        },
+        {
+          "type": "number",
+          "x-typeOccurrence": 16,
+          "x-dataType": "number"
+        },
+        {
+          "type": "null",
+          "x-typeOccurrence": 1,
+          "x-dataType": "null"
+        },
+        {
+          "type": "boolean",
+          "x-typeOccurrence": 6,
+          "x-dataType": "boolean"
+        },
+        {
+          "type": "string",
+          "x-typeOccurrence": 10,
+          "x-dataType": "string"
+        }
+      ],
+      "x-occurrence": 50
+    },
+    "kind": {
+      "anyOf": [
+        {
+          "type": "string",
+          "x-typeOccurrence": 11,
+          "x-dataType": "string"
+        },
+        {
+          "type": "number",
+          "x-typeOccurrence": 15,
+          "x-dataType": "number"
+        },
+        {
+          "type": "boolean",
+          "x-typeOccurrence": 5,
+          "x-dataType": "boolean"
+        },
+        {
+          "type": "object",
+          "x-typeOccurrence": 17,
+          "x-dataType": "object",
+          "properties": {
+            "detail": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 2,
+                  "x-dataType": "string"
+                },
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 2,
+                  "x-dataType": "number"
+                }
+              ],
+              "x-occurrence": 4
+            },
+            "origin": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 2,
+                  "x-dataType": "number"
+                },
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "string"
+                },
+                {
+                  "type": "boolean",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "boolean"
+                }
+              ],
+              "x-occurrence": 4
+            }
+          }
+        },
+        {
+          "type": "null",
+          "x-typeOccurrence": 2,
+          "x-dataType": "null"
+        }
+      ],
+      "x-occurrence": 50
+    },
+    "props": {
+      "anyOf": [
+        {
+          "type": "object",
+          "x-typeOccurrence": 16,
+          "x-dataType": "object",
+          "properties": {
+            "amount": {
+              "x-occurrence": 3,
+              "type": "boolean",
+              "x-typeOccurrence": 3,
+              "x-dataType": "boolean"
+            },
+            "info": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 2,
+                  "x-dataType": "string"
+                },
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "number"
+                }
+              ],
+              "x-occurrence": 3
+            }
+          }
+        },
+        {
+          "type": "string",
+          "x-typeOccurrence": 13,
+          "x-dataType": "string"
+        },
+        {
+          "type": "boolean",
+          "x-typeOccurrence": 3,
+          "x-dataType": "boolean"
+        },
+        {
+          "type": "number",
+          "x-typeOccurrence": 16,
+          "x-dataType": "number"
+        },
+        {
+          "type": "null",
+          "x-typeOccurrence": 2,
+          "x-dataType": "null"
+        }
+      ],
+      "x-occurrence": 50
+    },
+    "attrs": {
+      "anyOf": [
+        {
+          "type": "object",
+          "x-typeOccurrence": 16,
+          "x-dataType": "object",
+          "properties": {
+            "context": {
+              "x-occurrence": 3,
+              "type": "number",
+              "x-typeOccurrence": 3,
+              "x-dataType": "number"
+            },
+            "summary": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 2,
+                  "x-dataType": "string"
+                },
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 2,
+                  "x-dataType": "number"
+                }
+              ],
+              "x-occurrence": 4
+            }
+          }
+        },
+        {
+          "type": "number",
+          "x-typeOccurrence": 16,
+          "x-dataType": "number"
+        },
+        {
+          "type": "boolean",
+          "x-typeOccurrence": 6,
+          "x-dataType": "boolean"
+        },
+        {
+          "type": "string",
+          "x-typeOccurrence": 10,
+          "x-dataType": "string"
+        },
+        {
+          "type": "null",
+          "x-typeOccurrence": 2,
+          "x-dataType": "null"
+        }
+      ],
+      "x-occurrence": 50
+    },
+    "context": {
+      "anyOf": [
+        {
+          "type": "number",
+          "x-typeOccurrence": 15,
+          "x-dataType": "number"
+        },
+        {
+          "type": "object",
+          "x-typeOccurrence": 12,
+          "x-dataType": "object",
+          "properties": {
+            "props": {
+              "x-occurrence": 3,
+              "type": "string",
+              "x-typeOccurrence": 3,
+              "x-dataType": "string"
+            },
+            "payload": {
+              "x-occurrence": 2,
+              "type": "number",
+              "x-typeOccurrence": 2,
+              "x-dataType": "number"
+            }
+          }
+        },
+        {
+          "type": "string",
+          "x-typeOccurrence": 13,
+          "x-dataType": "string"
+        },
+        {
+          "type": "boolean",
+          "x-typeOccurrence": 7,
+          "x-dataType": "boolean"
+        },
+        {
+          "type": "null",
+          "x-typeOccurrence": 2,
+          "x-dataType": "null"
+        }
+      ],
+      "x-occurrence": 49
+    },
+    "code": {
+      "anyOf": [
+        {
+          "type": "boolean",
+          "x-typeOccurrence": 8,
+          "x-dataType": "boolean"
+        },
+        {
+          "type": "string",
+          "x-typeOccurrence": 8,
+          "x-dataType": "string"
+        },
+        {
+          "type": "object",
+          "x-typeOccurrence": 17,
+          "x-dataType": "object",
+          "properties": {
+            "target": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "number"
+                },
+                {
+                  "type": "boolean",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "boolean"
+                },
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "string"
+                }
+              ],
+              "x-occurrence": 3
+            },
+            "context": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                  "x-typeOccurrence": 3,
+                  "x-dataType": "boolean"
+                },
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "number"
+                }
+              ],
+              "x-occurrence": 4
+            }
+          }
+        },
+        {
+          "type": "number",
+          "x-typeOccurrence": 16,
+          "x-dataType": "number"
+        }
+      ],
+      "x-occurrence": 49
+    },
+    "count": {
+      "anyOf": [
+        {
+          "type": "number",
+          "x-typeOccurrence": 19,
+          "x-dataType": "number"
+        },
+        {
+          "type": "string",
+          "x-typeOccurrence": 13,
+          "x-dataType": "string"
+        },
+        {
+          "type": "object",
+          "x-typeOccurrence": 12,
+          "x-dataType": "object",
+          "properties": {
+            "note": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 2,
+                  "x-dataType": "string"
+                },
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "number"
+                }
+              ],
+              "x-occurrence": 3
+            },
+            "code": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                  "x-typeOccurrence": 2,
+                  "x-dataType": "boolean"
+                },
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "number"
+                }
+              ],
+              "x-occurrence": 3
+            }
+          }
+        },
+        {
+          "type": "boolean",
+          "x-typeOccurrence": 2,
+          "x-dataType": "boolean"
+        },
+        {
+          "type": "null",
+          "x-typeOccurrence": 3,
+          "x-dataType": "null"
+        }
+      ],
+      "x-occurrence": 49
+    },
+    "payload": {
+      "anyOf": [
+        {
+          "type": "number",
+          "x-typeOccurrence": 12,
+          "x-dataType": "number"
+        },
+        {
+          "type": "string",
+          "x-typeOccurrence": 14,
+          "x-dataType": "string"
+        },
+        {
+          "type": "object",
+          "x-typeOccurrence": 19,
+          "x-dataType": "object",
+          "properties": {
+            "status": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "string"
+                },
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 2,
+                  "x-dataType": "number"
+                },
+                {
+                  "type": "null",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "null"
+                }
+              ],
+              "x-occurrence": 4
+            },
+            "flag": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "string"
+                },
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 2,
+                  "x-dataType": "number"
+                },
+                {
+                  "type": "boolean",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "boolean"
+                }
+              ],
+              "x-occurrence": 4
+            }
+          }
+        },
+        {
+          "type": "null",
+          "x-typeOccurrence": 3,
+          "x-dataType": "null"
+        },
+        {
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        }
+      ],
+      "x-occurrence": 49
+    },
+    "flag": {
+      "anyOf": [
+        {
+          "type": "object",
+          "x-typeOccurrence": 17,
+          "x-dataType": "object",
+          "properties": {
+            "history": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 2,
+                  "x-dataType": "string"
+                },
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "number"
+                }
+              ],
+              "x-occurrence": 3
+            },
+            "origin": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "string"
+                },
+                {
+                  "type": "boolean",
+                  "x-typeOccurrence": 2,
+                  "x-dataType": "boolean"
+                }
+              ],
+              "x-occurrence": 3
+            }
+          }
+        },
+        {
+          "type": "string",
+          "x-typeOccurrence": 17,
+          "x-dataType": "string"
+        },
+        {
+          "type": "number",
+          "x-typeOccurrence": 9,
+          "x-dataType": "number"
+        },
+        {
+          "type": "null",
+          "x-typeOccurrence": 2,
+          "x-dataType": "null"
+        },
+        {
+          "type": "boolean",
+          "x-typeOccurrence": 4,
+          "x-dataType": "boolean"
+        }
+      ],
+      "x-occurrence": 49
+    },
+    "config": {
+      "anyOf": [
+        {
+          "type": "string",
+          "x-typeOccurrence": 11,
+          "x-dataType": "string"
+        },
+        {
+          "type": "object",
+          "x-typeOccurrence": 20,
+          "x-dataType": "object",
+          "properties": {
+            "value": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "number"
+                },
+                {
+                  "type": "null",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "null"
+                },
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "string"
+                }
+              ],
+              "x-occurrence": 3
+            },
+            "score": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "boolean"
+                },
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 2,
+                  "x-dataType": "number"
+                },
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "string"
+                }
+              ],
+              "x-occurrence": 4
+            }
+          }
+        },
+        {
+          "type": "boolean",
+          "x-typeOccurrence": 3,
+          "x-dataType": "boolean"
+        },
+        {
+          "type": "number",
+          "x-typeOccurrence": 14,
+          "x-dataType": "number"
+        },
+        {
+          "type": "null",
+          "x-typeOccurrence": 1,
+          "x-dataType": "null"
+        }
+      ],
+      "x-occurrence": 49
+    },
+    "extra": {
+      "anyOf": [
+        {
+          "type": "object",
+          "x-typeOccurrence": 16,
+          "x-dataType": "object",
+          "properties": {
+            "summary": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 2,
+                  "x-dataType": "string"
+                },
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 2,
+                  "x-dataType": "number"
+                }
+              ],
+              "x-occurrence": 4
+            },
+            "amount": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "boolean"
+                },
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "number"
+                },
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "string"
+                }
+              ],
+              "x-occurrence": 3
+            }
+          }
+        },
+        {
+          "type": "null",
+          "x-typeOccurrence": 2,
+          "x-dataType": "null"
+        },
+        {
+          "type": "boolean",
+          "x-typeOccurrence": 5,
+          "x-dataType": "boolean"
+        },
+        {
+          "type": "number",
+          "x-typeOccurrence": 13,
+          "x-dataType": "number"
+        },
+        {
+          "type": "string",
+          "x-typeOccurrence": 13,
+          "x-dataType": "string"
+        }
+      ],
+      "x-occurrence": 49
+    },
+    "origin": {
+      "anyOf": [
+        {
+          "type": "number",
+          "x-typeOccurrence": 12,
+          "x-dataType": "number"
+        },
+        {
+          "type": "object",
+          "x-typeOccurrence": 12,
+          "x-dataType": "object",
+          "properties": {
+            "context": {
+              "anyOf": [
+                {
+                  "type": "null",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "null"
+                },
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 3,
+                  "x-dataType": "number"
+                }
+              ],
+              "x-occurrence": 4
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 2,
+                  "x-dataType": "number"
+                },
+                {
+                  "type": "null",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "null"
+                }
+              ],
+              "x-occurrence": 3
+            }
+          }
+        },
+        {
+          "type": "boolean",
+          "x-typeOccurrence": 5,
+          "x-dataType": "boolean"
+        },
+        {
+          "type": "string",
+          "x-typeOccurrence": 16,
+          "x-dataType": "string"
+        },
+        {
+          "type": "null",
+          "x-typeOccurrence": 3,
+          "x-dataType": "null"
+        }
+      ],
+      "x-occurrence": 48
+    },
+    "target": {
+      "anyOf": [
+        {
+          "type": "string",
+          "x-typeOccurrence": 9,
+          "x-dataType": "string"
+        },
+        {
+          "type": "boolean",
+          "x-typeOccurrence": 7,
+          "x-dataType": "boolean"
+        },
+        {
+          "type": "object",
+          "x-typeOccurrence": 15,
+          "x-dataType": "object",
+          "properties": {
+            "extra": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 2,
+                  "x-dataType": "string"
+                },
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "number"
+                }
+              ],
+              "x-occurrence": 3
+            },
+            "note": {
+              "anyOf": [
+                {
+                  "type": "null",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "null"
+                },
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "string"
+                },
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "number"
+                }
+              ],
+              "x-occurrence": 3
+            }
+          }
+        },
+        {
+          "type": "number",
+          "x-typeOccurrence": 16,
+          "x-dataType": "number"
+        },
+        {
+          "type": "null",
+          "x-typeOccurrence": 1,
+          "x-dataType": "null"
+        }
+      ],
+      "x-occurrence": 48
+    },
+    "detail": {
+      "anyOf": [
+        {
+          "type": "null",
+          "x-typeOccurrence": 1,
+          "x-dataType": "null"
+        },
+        {
+          "type": "number",
+          "x-typeOccurrence": 16,
+          "x-dataType": "number"
+        },
+        {
+          "type": "object",
+          "x-typeOccurrence": 17,
+          "x-dataType": "object",
+          "properties": {
+            "history": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 3,
+                  "x-dataType": "string"
+                },
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "number"
+                }
+              ],
+              "x-occurrence": 4
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                  "x-typeOccurrence": 2,
+                  "x-dataType": "boolean"
+                },
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "string"
+                },
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "number"
+                }
+              ],
+              "x-occurrence": 4
+            }
+          }
+        },
+        {
+          "type": "string",
+          "x-typeOccurrence": 8,
+          "x-dataType": "string"
+        },
+        {
+          "type": "boolean",
+          "x-typeOccurrence": 6,
+          "x-dataType": "boolean"
+        }
+      ],
+      "x-occurrence": 48
+    },
+    "info": {
+      "anyOf": [
+        {
+          "type": "object",
+          "x-typeOccurrence": 19,
+          "x-dataType": "object",
+          "properties": {
+            "payload": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "boolean"
+                },
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "string"
+                },
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "number"
+                }
+              ],
+              "x-occurrence": 3
+            },
+            "kind": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 2,
+                  "x-dataType": "number"
+                },
+                {
+                  "type": "null",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "null"
+                },
+                {
+                  "type": "boolean",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "boolean"
+                }
+              ],
+              "x-occurrence": 4
+            }
+          }
+        },
+        {
+          "type": "number",
+          "x-typeOccurrence": 11,
+          "x-dataType": "number"
+        },
+        {
+          "type": "boolean",
+          "x-typeOccurrence": 5,
+          "x-dataType": "boolean"
+        },
+        {
+          "type": "null",
+          "x-typeOccurrence": 2,
+          "x-dataType": "null"
+        },
+        {
+          "type": "string",
+          "x-typeOccurrence": 11,
+          "x-dataType": "string"
+        }
+      ],
+      "x-occurrence": 48
+    },
+    "meta": {
+      "anyOf": [
+        {
+          "type": "number",
+          "x-typeOccurrence": 22,
+          "x-dataType": "number"
+        },
+        {
+          "type": "object",
+          "x-typeOccurrence": 11,
+          "x-dataType": "object",
+          "properties": {
+            "amount": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "number"
+                },
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "string"
+                }
+              ],
+              "x-occurrence": 2
+            },
+            "detail": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "boolean"
+                },
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "number"
+                }
+              ],
+              "x-occurrence": 2
+            }
+          }
+        },
+        {
+          "type": "null",
+          "x-typeOccurrence": 1,
+          "x-dataType": "null"
+        },
+        {
+          "type": "boolean",
+          "x-typeOccurrence": 6,
+          "x-dataType": "boolean"
+        },
+        {
+          "type": "string",
+          "x-typeOccurrence": 8,
+          "x-dataType": "string"
+        }
+      ],
+      "x-occurrence": 48
+    },
+    "source": {
+      "anyOf": [
+        {
+          "type": "string",
+          "x-typeOccurrence": 7,
+          "x-dataType": "string"
+        },
+        {
+          "type": "number",
+          "x-typeOccurrence": 13,
+          "x-dataType": "number"
+        },
+        {
+          "type": "boolean",
+          "x-typeOccurrence": 4,
+          "x-dataType": "boolean"
+        },
+        {
+          "type": "object",
+          "x-typeOccurrence": 23,
+          "x-dataType": "object",
+          "properties": {
+            "extra": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 2,
+                  "x-dataType": "number"
+                },
+                {
+                  "type": "null",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "null"
+                },
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 2,
+                  "x-dataType": "string"
+                }
+              ],
+              "x-occurrence": 5
+            },
+            "label": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "string"
+                },
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 3,
+                  "x-dataType": "number"
+                }
+              ],
+              "x-occurrence": 4
+            }
+          }
+        },
+        {
+          "type": "null",
+          "x-typeOccurrence": 1,
+          "x-dataType": "null"
+        }
+      ],
+      "x-occurrence": 48
+    },
+    "tag": {
+      "anyOf": [
+        {
+          "type": "string",
+          "x-typeOccurrence": 15,
+          "x-dataType": "string"
+        },
+        {
+          "type": "object",
+          "x-typeOccurrence": 14,
+          "x-dataType": "object",
+          "properties": {
+            "extra": {
+              "anyOf": [
+                {
+                  "type": "null",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "null"
+                },
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "number"
+                }
+              ],
+              "x-occurrence": 2
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "type": "null",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "null"
+                },
+                {
+                  "type": "boolean",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "boolean"
+                }
+              ],
+              "x-occurrence": 2
+            }
+          }
+        },
+        {
+          "type": "number",
+          "x-typeOccurrence": 13,
+          "x-dataType": "number"
+        },
+        {
+          "type": "boolean",
+          "x-typeOccurrence": 4,
+          "x-dataType": "boolean"
+        },
+        {
+          "type": "null",
+          "x-typeOccurrence": 2,
+          "x-dataType": "null"
+        }
+      ],
+      "x-occurrence": 48
+    },
+    "value": {
+      "anyOf": [
+        {
+          "type": "string",
+          "x-typeOccurrence": 12,
+          "x-dataType": "string"
+        },
+        {
+          "type": "object",
+          "x-typeOccurrence": 11,
+          "x-dataType": "object",
+          "properties": {
+            "config": {
+              "anyOf": [
+                {
+                  "type": "null",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "null"
+                },
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 2,
+                  "x-dataType": "number"
+                }
+              ],
+              "x-occurrence": 3
+            },
+            "meta": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "string"
+                },
+                {
+                  "type": "null",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "null"
+                }
+              ],
+              "x-occurrence": 2
+            }
+          }
+        },
+        {
+          "type": "boolean",
+          "x-typeOccurrence": 9,
+          "x-dataType": "boolean"
+        },
+        {
+          "type": "number",
+          "x-typeOccurrence": 13,
+          "x-dataType": "number"
+        },
+        {
+          "type": "null",
+          "x-typeOccurrence": 2,
+          "x-dataType": "null"
+        }
+      ],
+      "x-occurrence": 47
+    },
+    "ref": {
+      "anyOf": [
+        {
+          "type": "number",
+          "x-typeOccurrence": 13,
+          "x-dataType": "number"
+        },
+        {
+          "type": "object",
+          "x-typeOccurrence": 17,
+          "x-dataType": "object",
+          "properties": {
+            "config": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 3,
+                  "x-dataType": "string"
+                },
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "number"
+                }
+              ],
+              "x-occurrence": 4
+            },
+            "meta": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 2,
+                  "x-dataType": "string"
+                },
+                {
+                  "type": "null",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "null"
+                },
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "number"
+                }
+              ],
+              "x-occurrence": 4
+            }
+          }
+        },
+        {
+          "type": "string",
+          "x-typeOccurrence": 10,
+          "x-dataType": "string"
+        },
+        {
+          "type": "null",
+          "x-typeOccurrence": 3,
+          "x-dataType": "null"
+        },
+        {
+          "type": "boolean",
+          "x-typeOccurrence": 4,
+          "x-dataType": "boolean"
+        }
+      ],
+      "x-occurrence": 47
+    },
+    "summary": {
+      "anyOf": [
+        {
+          "type": "number",
+          "x-typeOccurrence": 13,
+          "x-dataType": "number"
+        },
+        {
+          "type": "object",
+          "x-typeOccurrence": 18,
+          "x-dataType": "object",
+          "properties": {
+            "summary": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 2,
+                  "x-dataType": "string"
+                },
+                {
+                  "type": "boolean",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "boolean"
+                }
+              ],
+              "x-occurrence": 3
+            },
+            "ref": {
+              "anyOf": [
+                {
+                  "type": "null",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "null"
+                },
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 2,
+                  "x-dataType": "number"
+                },
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "string"
+                }
+              ],
+              "x-occurrence": 4
+            }
+          }
+        },
+        {
+          "type": "string",
+          "x-typeOccurrence": 11,
+          "x-dataType": "string"
+        },
+        {
+          "type": "boolean",
+          "x-typeOccurrence": 3,
+          "x-dataType": "boolean"
+        },
+        {
+          "type": "null",
+          "x-typeOccurrence": 2,
+          "x-dataType": "null"
+        }
+      ],
+      "x-occurrence": 47
+    },
+    "state": {
+      "anyOf": [
+        {
+          "type": "number",
+          "x-typeOccurrence": 18,
+          "x-dataType": "number"
+        },
+        {
+          "type": "object",
+          "x-typeOccurrence": 14,
+          "x-dataType": "object",
+          "properties": {
+            "state": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "string"
+                },
+                {
+                  "type": "boolean",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "boolean"
+                },
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 2,
+                  "x-dataType": "number"
+                }
+              ],
+              "x-occurrence": 4
+            },
+            "source": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "number"
+                },
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "string"
+                }
+              ],
+              "x-occurrence": 2
+            }
+          }
+        },
+        {
+          "type": "boolean",
+          "x-typeOccurrence": 5,
+          "x-dataType": "boolean"
+        },
+        {
+          "type": "string",
+          "x-typeOccurrence": 9,
+          "x-dataType": "string"
+        },
+        {
+          "type": "null",
+          "x-typeOccurrence": 1,
+          "x-dataType": "null"
+        }
+      ],
+      "x-occurrence": 47
+    },
+    "score": {
+      "anyOf": [
+        {
+          "type": "boolean",
+          "x-typeOccurrence": 3,
+          "x-dataType": "boolean"
+        },
+        {
+          "type": "null",
+          "x-typeOccurrence": 4,
+          "x-dataType": "null"
+        },
+        {
+          "type": "number",
+          "x-typeOccurrence": 13,
+          "x-dataType": "number"
+        },
+        {
+          "type": "object",
+          "x-typeOccurrence": 15,
+          "x-dataType": "object",
+          "properties": {
+            "code": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 3,
+                  "x-dataType": "number"
+                },
+                {
+                  "type": "boolean",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "boolean"
+                }
+              ],
+              "x-occurrence": 4
+            },
+            "label": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 2,
+                  "x-dataType": "string"
+                },
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 2,
+                  "x-dataType": "number"
+                }
+              ],
+              "x-occurrence": 4
+            }
+          }
+        },
+        {
+          "type": "string",
+          "x-typeOccurrence": 11,
+          "x-dataType": "string"
+        }
+      ],
+      "x-occurrence": 46
+    },
+    "label": {
+      "anyOf": [
+        {
+          "type": "string",
+          "x-typeOccurrence": 11,
+          "x-dataType": "string"
+        },
+        {
+          "type": "number",
+          "x-typeOccurrence": 12,
+          "x-dataType": "number"
+        },
+        {
+          "type": "object",
+          "x-typeOccurrence": 17,
+          "x-dataType": "object",
+          "properties": {
+            "history": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "number"
+                },
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 2,
+                  "x-dataType": "string"
+                }
+              ],
+              "x-occurrence": 3
+            },
+            "note": {
+              "x-occurrence": 4,
+              "type": "number",
+              "x-typeOccurrence": 4,
+              "x-dataType": "number"
+            }
+          }
+        },
+        {
+          "type": "null",
+          "x-typeOccurrence": 3,
+          "x-dataType": "null"
+        },
+        {
+          "type": "boolean",
+          "x-typeOccurrence": 3,
+          "x-dataType": "boolean"
+        }
+      ],
+      "x-occurrence": 46
+    },
+    "amount": {
+      "anyOf": [
+        {
+          "type": "object",
+          "x-typeOccurrence": 15,
+          "x-dataType": "object",
+          "properties": {
+            "meta": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 3,
+                  "x-dataType": "number"
+                },
+                {
+                  "type": "null",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "null"
+                }
+              ],
+              "x-occurrence": 4
+            },
+            "metric": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "string"
+                },
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "number"
+                },
+                {
+                  "type": "boolean",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "boolean"
+                },
+                {
+                  "type": "null",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "null"
+                }
+              ],
+              "x-occurrence": 4
+            }
+          }
+        },
+        {
+          "type": "number",
+          "x-typeOccurrence": 15,
+          "x-dataType": "number"
+        },
+        {
+          "type": "string",
+          "x-typeOccurrence": 14,
+          "x-dataType": "string"
+        },
+        {
+          "type": "boolean",
+          "x-typeOccurrence": 2,
+          "x-dataType": "boolean"
+        }
+      ],
+      "x-occurrence": 46
+    },
+    "data": {
+      "anyOf": [
+        {
+          "type": "string",
+          "x-typeOccurrence": 10,
+          "x-dataType": "string"
+        },
+        {
+          "type": "boolean",
+          "x-typeOccurrence": 2,
+          "x-dataType": "boolean"
+        },
+        {
+          "type": "number",
+          "x-typeOccurrence": 18,
+          "x-dataType": "number"
+        },
+        {
+          "type": "null",
+          "x-typeOccurrence": 2,
+          "x-dataType": "null"
+        },
+        {
+          "type": "object",
+          "x-typeOccurrence": 14,
+          "x-dataType": "object",
+          "properties": {
+            "label": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "boolean"
+                },
+                {
+                  "type": "string",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "string"
+                }
+              ],
+              "x-occurrence": 2
+            },
+            "config": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "number"
+                },
+                {
+                  "type": "null",
+                  "x-typeOccurrence": 1,
+                  "x-dataType": "null"
+                }
+              ],
+              "x-occurrence": 2
+            }
+          }
+        }
+      ],
+      "x-occurrence": 46
+    },
+    "routeLabel_0_2": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "scoreFlag_0_3": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "traceState_0_4": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "clusterType_0_f": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "tokenState_0_h": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "ratingMarker_0_i": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "tenantStatus_0_j": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "endpointNote_0_k": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "hostNote_0_o": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "pipelineFlag_0_q": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "serviceTotal_0_r": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "laneName_0_s": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "source": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "attrs": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        }
+      }
+    },
+    "variantDesc_0_10": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "experimentRatio_0_11": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "categoryCode_0_13": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "cohortMarker_0_14": {
+      "x-occurrence": 1,
+      "type": "null",
+      "x-typeOccurrence": 1,
+      "x-dataType": "null"
+    },
+    "releaseState_0_15": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "claimMeta_0_16": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "targetData_0_18": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "sliceOrder_0_1j": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "mediumKind_0_1o": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "laneTarget_0_1q": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "groupData_0_1r": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "scoreName_0_1t": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "tagNote_0_24": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "tenantData_0_29": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "subjectTag_0_2a": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "kpiValue_0_2b": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "categoryCode_0_2d": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "orderTotal_0_2e": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "cohortCount_0_2f": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "milestoneDesc_0_2n": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "origin": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "props": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        }
+      }
+    },
+    "sourceInfo_0_2u": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "deviceMax_0_35": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "stepAvg_0_36": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "origin": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "experimentNote_0_3b": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "objectMarker_0_3l": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "history": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        },
+        "summary": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        }
+      }
+    },
+    "notePayload_0_3r": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "userState_0_3s": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "settingType_0_3v": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "code": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        },
+        "context": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "projectMax_0_40": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "planMarker_0_42": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "featureValue_0_43": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "accountAvg_0_44": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "hotfixCount_0_45": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "invoiceRate_0_46": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "itemRatio_0_48": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "topicRef_0_4f": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "releasePayload_0_4g": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "pipelineId_0_4h": {
+      "x-occurrence": 1,
+      "type": "null",
+      "x-typeOccurrence": 1,
+      "x-dataType": "null"
+    },
+    "topicRef_0_4i": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "featureMode_0_4j": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "topicRate_0_4r": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "taskStatus_0_4s": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "attrs": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "attributeFlag_0_4u": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        }
+      }
+    },
+    "teamLabel_0_4w": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "variantHash_0_4x": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "tokenSource_0_4y": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "userSum_0_4z": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "mode": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "amount": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "stepFlag_0_5g": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "attributeData_0_5h": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "groupStatus_0_5i": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "projectMin_0_5j": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "targetStatus_0_5k": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "rankInfo_0_5y": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "clusterTag_0_5z": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "gradeMarker_0_60": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "status": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "clientPct_0_6i": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "recordKey_0_6j": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "paramName_0_6k": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "milestonePct_0_6u": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "topicStatus_0_6v": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "flag": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        },
+        "jobMax_0_6x": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "attributeName_0_7d": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "roleValue_0_7e": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "score": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "summary": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "channelMax_0_7k": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "contextPayload_0_7l": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "kind": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "sampleTarget_0_7o": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "tierData_0_7p": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "originNote_0_7q": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "preferenceMarker_0_7t": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "recordSum_0_7u": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "code": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "logRatio_0_7y": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "cohortIndex_0_7z": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "status": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        },
+        "summary": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "regionAvg_0_86": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "pipelinePayload_0_87": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "objectName_0_88": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "workspaceName_0_8i": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "groupAvg_0_8j": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "sampleData_0_8k": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "gradeCount_0_8m": {
+      "x-occurrence": 1,
+      "type": "null",
+      "x-typeOccurrence": 1,
+      "x-dataType": "null"
+    },
+    "logSum_0_8n": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "laneKind_0_8u": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "roleFlag_0_8v": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "metaCode_0_8w": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "stepRate_0_90": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "snapshotTarget_0_92": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "extra": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        },
+        "history": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "recordLabel_0_9h": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "hostKind_0_9i": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        },
+        "state": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "phaseType_0_9m": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "projectIndex_0_9o": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "queueTotal_0_9p": {
+      "x-occurrence": 1,
+      "type": "null",
+      "x-typeOccurrence": 1,
+      "x-dataType": "null"
+    },
+    "phaseId_0_9q": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "contextKey_0_9r": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "releaseCount_0_9s": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "kpiOrder_0_9x": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "clusterKind_0_a3": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "stepRate_0_ae": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "scoreMarker_0_af": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "tierId_0_ax": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "experimentMax_0_ay": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "flag": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "tag": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "channelState_0_b5": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "metaPct_0_b6": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "metricValue_0_b7": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "roleCount_0_b8": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "entityAvg_0_ba": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "noteData_0_bb": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        },
+        "mode": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "recordDesc_0_bq": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "hostOrder_0_br": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "count": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "userTarget_0_bw": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "featurePct_0_bx": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        },
+        "queueLabel_0_by": {
+          "x-occurrence": 1,
+          "type": "null",
+          "x-typeOccurrence": 1,
+          "x-dataType": "null"
+        }
+      }
+    },
+    "featureNote_0_c2": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "stageType_0_c5": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "variantHash_0_c6": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "endpointHash_0_c8": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "claimState_0_c9": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "destinationPayload_0_ca": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "workspaceHash_0_cb": {
+      "x-occurrence": 1,
+      "type": "null",
+      "x-typeOccurrence": 1,
+      "x-dataType": "null"
+    },
+    "teamId_0_cd": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "gradeMode_0_ce": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        },
+        "status": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "attributeCode_0_cj": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "hostState_0_ck": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "jobMarker_0_cm": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "traceFlag_0_cn": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "paramRate_0_cp": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "kpiHash_0_cq": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "paramName_0_cr": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "levelValue_0_d2": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "serviceLabel_0_d3": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "sliceValue_0_d4": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "targetMin_0_d5": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "frameDesc_0_d6": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "roleType_1_0": {
+      "x-occurrence": 1,
+      "type": "null",
+      "x-typeOccurrence": 1,
+      "x-dataType": "null"
+    },
+    "invoiceMax_1_9": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "sourceStatus_1_a": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "claimMeta_1_b": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "tokenSource_1_e": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "kpiIndex_1_f": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "zoneDesc_1_i": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "metricAvg_1_j": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "levelSource_1_l": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "clientOrder_1_m": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "preferenceData_1_n": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "targetSource_1_o": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "tokenId_1_p": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "readingMeta_1_u": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "logInfo_1_w": {
+      "x-occurrence": 1,
+      "type": "null",
+      "x-typeOccurrence": 1,
+      "x-dataType": "null"
+    },
+    "buildPct_1_10": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "readingRef_1_12": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "rankCount_1_13": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "featureIndex_1_14": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "pipelineLabel_1_15": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "metricSum_1_1e": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "phaseName_1_1f": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "sourceFlag_1_1g": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        }
+      }
+    },
+    "featureTotal_1_1l": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "data": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        },
+        "meta": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "clusterTag_1_1u": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "channelNote_1_20": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "partitionSource_1_21": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "windowRef_1_22": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "projectCount_1_23": {
+          "x-occurrence": 1,
+          "type": "null",
+          "x-typeOccurrence": 1,
+          "x-dataType": "null"
+        }
+      }
+    },
+    "stageStatus_1_25": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "channelTotal_1_26": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "spanTotal_1_27": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "eventId_1_28": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "serviceFlag_1_29": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "attrs": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "recordDesc_1_2b": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "revisionMarker_1_2f": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "partitionInfo_1_2g": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "target": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "windowAvg_1_2i": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "shardTag_1_2q": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "recordInfo_1_2r": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "detailRate_1_2s": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "objectSum_1_2t": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "attributeHash_1_2x": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "stageNote_1_2y": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "tierSource_1_2z": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        },
+        "hotfixName_1_30": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "sampleSum_1_35": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "preferenceId_1_36": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "stepId_1_37": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "value": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "summary": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "mediumStatus_1_3d": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "partitionIndex_1_3e": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "targetRatio_1_3g": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "levelStatus_1_3h": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "detail": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "hotfixHash_1_3k": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "routeTag_1_3m": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "workspaceData_1_3s": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "sliceNote_1_3t": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "kpiStatus_1_3v": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "profileTag_1_44": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "permissionSource_1_45": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "target": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "gradeRef_1_48": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "objectState_1_49": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "context": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "tagKey_1_4f": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "stepCount_1_4i": {
+      "x-occurrence": 1,
+      "type": "null",
+      "x-typeOccurrence": 1,
+      "x-dataType": "null"
+    },
+    "paramTag_1_4q": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "categoryPct_1_50": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "planRef_1_51": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "taskMode_1_53": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "projectAvg_1_54": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "subjectDesc_1_55": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "config": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "experimentCode_1_57": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "itemInfo_1_5i": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "routeDesc_1_5l": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "planDesc_1_5m": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "objectName_1_5n": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "accountId_1_5p": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "queueOrder_1_5q": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "tracePct_1_5r": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        },
+        "regionMode_1_5s": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "variantNote_1_60": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "nodeKey_1_61": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "optionTotal_1_6a": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "sampleId_1_6b": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "targetKind_1_6c": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "metaRate_1_6e": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "configMin_1_6m": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "eventDesc_1_6o": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "payload": {
+          "x-occurrence": 1,
+          "type": "null",
+          "x-typeOccurrence": 1,
+          "x-dataType": "null"
+        },
+        "readingValue_1_6q": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "hotfixValue_1_6t": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "sensorName_1_6w": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "flagName_1_6x": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "label": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "flagHash_1_70": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "versionInfo_1_73": {
+      "x-occurrence": 1,
+      "type": "null",
+      "x-typeOccurrence": 1,
+      "x-dataType": "null"
+    },
+    "projectPct_1_74": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "clusterValue_1_75": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "note": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "invoiceValue_1_7a": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "ref": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "rankPayload_1_7c": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "sensorName_1_7i": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "ratingDesc_1_7j": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "windowTag_1_7r": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "settingTag_1_7s": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "snapshotType_1_7t": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "objectData_1_80": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "eventMeta_1_8s": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "teamSum_1_8u": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "source": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "config": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "configRatio_1_92": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "windowMeta_1_94": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "source": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "label": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "hostId_1_98": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "roleKind_1_99": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "stageState_1_9a": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "accountInfo_1_9o": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "readingInfo_1_9p": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "count": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "targetKind_1_ac": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "metricData_1_aq": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "count": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "metric": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    }
+  }
+}

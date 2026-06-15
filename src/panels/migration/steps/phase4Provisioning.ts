@@ -14,6 +14,7 @@ import {
     type CosmosClient,
     type IndexingPolicy as CosmosIndexingPolicy,
 } from '@azure/cosmos';
+import { type TypedEventSink } from '@cosmosdb/webview-rpc';
 import { VSCodeAzureSubscriptionProvider } from '@microsoft/vscode-azext-azureauth';
 import { getResourceGroupFromId } from '@microsoft/vscode-azext-azureutils';
 import { callWithTelemetryAndErrorHandling, parseError, type IActionContext } from '@microsoft/vscode-azext-utils';
@@ -35,9 +36,9 @@ import {
 } from '../../../cosmosdb/utils/rbacUtils';
 import { ext } from '../../../extensionVariables';
 import { MigrationProjectService, type ProjectJson } from '../../../services/MigrationProjectService';
+import { createCosmosDBManagementClient } from '../../../utils/azureClients';
 import { validateCosmosDBAccountName } from '../../../utils/cosmosDBAccountName';
 import { getConfirmationAsInSettings } from '../../../utils/dialogs/getConfirmation';
-import { type TypedEventSink } from '../../../utils/TypedEventSink';
 import { type MigrationEvent } from '../../trpc/routers/migrationEventsRouter';
 import { getCosmosDbBestPractices } from '../bestPractices';
 import { type CosmosModel, type IndexingPolicy } from '../cosmosModel';
@@ -214,7 +215,6 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
                 throw new Error('ARM client requested without armTarget set.');
             }
             if (!cachedMgmtClient) {
-                const { createCosmosDBManagementClient } = await import('../../../utils/azureClients');
                 cachedMgmtClient = await createCosmosDBManagementClient(context, armTarget.subscription);
             }
             return cachedMgmtClient;
@@ -1161,7 +1161,7 @@ export async function provisionAccount(
 ): Promise<string | undefined> {
     const { project, projectService, channel } = ctx;
 
-    return await callWithTelemetryAndErrorHandling('cosmosDB.migration.phase4.accountProvisioning', async (context) => {
+    return callWithTelemetryAndErrorHandling('cosmosDB.migration.phase4.accountProvisioning', async (context) => {
         if (!project || !projectService) return undefined;
         setMigrationTelemetryContext(context, project, 'provisioning');
         context.errorHandling.suppressDisplay = true;
@@ -1217,7 +1217,6 @@ export async function provisionAccount(
                 ),
             );
 
-            const { createCosmosDBManagementClient } = await import('../../../utils/azureClients');
             const mgmtClient = await createCosmosDBManagementClient(context, subscription);
 
             // Pre-flight: Cosmos DB account names are globally unique. Calling

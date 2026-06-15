@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { PriorityLevel } from '@azure/cosmos';
 import { z } from 'zod';
 import { type QueryExecutionResult } from '../../../cosmosdb/session/QuerySession';
 import { type CosmosDBRecordIdentifier, type SerializedQueryResult } from '../../../cosmosdb/types/queryResult';
@@ -92,6 +93,7 @@ export const SerializedQueryMetricsSchema = z.object({
 export const QueryMetadataSchema = z.object({
     sessionId: z.string().optional(),
     countPerPage: z.number().optional(),
+    priority: z.enum([PriorityLevel.High, PriorityLevel.Low]).optional(),
     timeout: z.number().optional(),
     throughputBucket: z.number().optional(),
 });

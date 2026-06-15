@@ -3,39 +3,31 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
-import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
-import { SERVERLESS_CAPABILITY_NAME, wellKnownEmulatorPassword } from '../../cosmosdb/cosmosdb-shared-constants';
+import { AzureResourceMetadata } from '../../cosmosdb/AzureResourceMetadata';
+import { wellKnownEmulatorPassword } from '../../cosmosdb/cosmosdb-shared-constants';
 import {
     parseCosmosDBConnectionString,
     type ParsedCosmosDBConnectionString,
 } from '../../cosmosdb/cosmosDBConnectionStrings';
 import { type CosmosDBCredential, getCosmosDBCredentials } from '../../cosmosdb/CosmosDBCredential';
-import { createCosmosDBManagementClient } from '../../utils/azureClients';
-import { nonNullProp } from '../../utils/nonNull';
+import { FabricService } from '../../services/FabricService';
+import { type FabricArtifact } from '../fabric/models/FabricArtifact';
 import { type CosmosDBAttachedAccountModel } from '../workspace-view/cosmosdb/CosmosDBAttachedAccountModel';
 import { type CosmosDBAccountModel } from './models/CosmosDBAccountModel';
 
 export interface AccountInfo {
+    /**
+     * Azure metadata, populated only for Azure-signed-in accounts (i.e. accounts discovered via the Azure Resources view).
+     * Required for ARM control-plane operations. Undefined for workspace-attached accounts and for the local emulator.
+     */
+    azureMetadata?: AzureResourceMetadata;
     credentials: CosmosDBCredential[];
     endpoint: string;
     id: string;
     isEmulator: boolean;
     isServerless: boolean;
     name: string;
-    /**
-     * Azure subscription context, populated only for Azure-signed-in accounts
-     * (i.e. accounts discovered via the Azure Resources view). Required for
-     * ARM control-plane operations. Undefined for workspace-attached accounts
-     * and for the local emulator.
-     */
-    subscription?: AzureSubscription;
-    /**
-     * Resource group name for the Cosmos DB account. Populated together with
-     * {@link subscription}.
-     */
-    resourceGroup?: string;
 }
 
 function isCosmosDBAttachedAccountModel(account: unknown): account is CosmosDBAttachedAccountModel {
@@ -54,9 +46,16 @@ function isCosmosDBConnectionString(connectionString: unknown): connectionString
 }
 
 export async function getAccountInfo(
-    accountOrConnectionString: CosmosDBAccountModel | CosmosDBAttachedAccountModel | ParsedCosmosDBConnectionString,
+    accountOrConnectionString:
+        | CosmosDBAccountModel
+        | CosmosDBAttachedAccountModel
+        | ParsedCosmosDBConnectionString
+        | FabricArtifact,
 ): Promise<AccountInfo> | never {
-    if (isCosmosDBAttachedAccountModel(accountOrConnectionString)) {
+    if (FabricService.isArtifact(accountOrConnectionString)) {
+        const artifactConnectionInfo = await FabricService.getArtifactConnectionInfo(accountOrConnectionString);
+        return artifactConnectionInfo.accountInfo;
+    } else if (isCosmosDBAttachedAccountModel(accountOrConnectionString)) {
         return getAccountInfoForAttached(accountOrConnectionString);
     } else if (isCosmosDBConnectionString(accountOrConnectionString)) {
         return getAccountInfoForConnectionString(accountOrConnectionString);
@@ -89,49 +88,28 @@ async function getAccountInfoForConnectionString(
 }
 
 async function getAccountInfoForResource(account: CosmosDBAccountModel): Promise<AccountInfo> | never {
-    const id = nonNullProp(account, 'id');
-    const name = nonNullProp(account, 'name');
-    const resourceGroup = nonNullProp(account, 'resourceGroup');
-
-    const client = await callWithTelemetryAndErrorHandling(
-        'createCosmosDBManagementClient',
-        async (context: IActionContext) => {
-            context.telemetry.suppressIfSuccessful = true;
-            context.errorHandling.forceIncludeInReportIssueCommand = true;
-            context.valuesToMask.push(account.subscription.subscriptionId);
-            return createCosmosDBManagementClient(context, account.subscription);
-        },
-    );
-
-    if (!client) {
+    const azureMetadata = await AzureResourceMetadata.create(account);
+    if (!azureMetadata) {
         throw new Error(l10n.t('Failed to connect to Cosmos DB account'));
     }
 
-    const databaseAccount = await client.databaseAccounts.get(resourceGroup, name);
-    const tenantId = account?.subscription?.tenantId;
     const credentials = await getCosmosDBCredentials({
-        accountName: name,
-        documentEndpoint: nonNullProp(databaseAccount, 'documentEndpoint', `of the database account ${id}`),
+        accountName: azureMetadata.accountName,
+        documentEndpoint: azureMetadata.documentEndpoint,
         isEmulator: false,
-        armClient: client,
-        resourceGroup,
-        databaseAccount,
-        tenantId,
+        tenantId: azureMetadata.subscription.tenantId,
+
+        arm: azureMetadata,
     });
-    const documentEndpoint = nonNullProp(databaseAccount, 'documentEndpoint', `of the database account ${id}`);
-    const isServerless = databaseAccount?.capabilities
-        ? databaseAccount.capabilities.some((cap) => cap.name === SERVERLESS_CAPABILITY_NAME)
-        : false;
 
     return {
+        azureMetadata,
         credentials,
-        endpoint: documentEndpoint,
-        id,
+        endpoint: azureMetadata.documentEndpoint,
+        id: azureMetadata.accountId,
         isEmulator: false,
-        isServerless,
-        name,
-        subscription: account.subscription,
-        resourceGroup,
+        isServerless: azureMetadata.isServerless,
+        name: azureMetadata.accountName,
     };
 }
 

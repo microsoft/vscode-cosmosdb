@@ -6,14 +6,11 @@
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import { describe, expect, it, vi } from 'vitest';
 import { type AccountInfo } from '../../tree/cosmosdb/AccountInfo';
+import { type AzureResourceMetadata } from '../AzureResourceMetadata';
 import { type NoSqlQueryConnection } from '../NoSqlQueryConnection';
 
 class FakeArmControlPlane {
-    constructor(
-        public subscription: AzureSubscription,
-        public resourceGroup: string,
-        public accountName: string,
-    ) {}
+    constructor(public metadata: AzureResourceMetadata) {}
 }
 
 class FakeSdkControlPlane {
@@ -30,6 +27,21 @@ vi.mock('./CosmosDBSdkControlPlane', () => ({
 
 const { getControlPlane, getControlPlaneForConnection } = await import('./index');
 
+const fakeSubscription = {
+    subscriptionId: '00000000-0000-0000-0000-000000000000',
+} as unknown as AzureSubscription;
+
+function makeMetadata(overrides: Partial<AzureResourceMetadata> = {}): AzureResourceMetadata {
+    return {
+        subscription: fakeSubscription,
+        resourceGroup: 'rg-test',
+        accountName: 'test-account',
+        accountId: 'test-account-id',
+        documentEndpoint: 'https://example.documents.azure.com:443/',
+        ...overrides,
+    } as unknown as AzureResourceMetadata;
+}
+
 function makeAccountInfo(overrides: Partial<AccountInfo> = {}): AccountInfo {
     return {
         credentials: [],
@@ -42,59 +54,6 @@ function makeAccountInfo(overrides: Partial<AccountInfo> = {}): AccountInfo {
     };
 }
 
-const fakeSubscription = {
-    subscriptionId: '00000000-0000-0000-0000-000000000000',
-} as unknown as AzureSubscription;
-
-describe('getControlPlane', () => {
-    it('returns ARM control plane for Azure-signed-in account with subscription and resource group', () => {
-        const plane = getControlPlane(
-            makeAccountInfo({
-                subscription: fakeSubscription,
-                resourceGroup: 'rg-test',
-            }),
-        );
-        expect(plane).toBeInstanceOf(FakeArmControlPlane);
-        expect((plane as unknown as FakeArmControlPlane).subscription).toBe(fakeSubscription);
-        expect((plane as unknown as FakeArmControlPlane).resourceGroup).toBe('rg-test');
-        expect((plane as unknown as FakeArmControlPlane).accountName).toBe('test-account');
-    });
-
-    it('returns SDK control plane for the local emulator even with subscription and resource group', () => {
-        const plane = getControlPlane(
-            makeAccountInfo({
-                isEmulator: true,
-                subscription: fakeSubscription,
-                resourceGroup: 'rg-test',
-            }),
-        );
-        expect(plane).toBeInstanceOf(FakeSdkControlPlane);
-    });
-
-    it('returns SDK control plane for workspace-attached account (no subscription)', () => {
-        const plane = getControlPlane(makeAccountInfo());
-        expect(plane).toBeInstanceOf(FakeSdkControlPlane);
-    });
-
-    it('returns SDK control plane when subscription is set but resource group is missing', () => {
-        const plane = getControlPlane(
-            makeAccountInfo({
-                subscription: fakeSubscription,
-            }),
-        );
-        expect(plane).toBeInstanceOf(FakeSdkControlPlane);
-    });
-
-    it('returns SDK control plane when resource group is set but subscription is missing', () => {
-        const plane = getControlPlane(
-            makeAccountInfo({
-                resourceGroup: 'rg-test',
-            }),
-        );
-        expect(plane).toBeInstanceOf(FakeSdkControlPlane);
-    });
-});
-
 function makeConnection(overrides: Partial<NoSqlQueryConnection> = {}): NoSqlQueryConnection {
     return {
         databaseId: 'db1',
@@ -106,65 +65,50 @@ function makeConnection(overrides: Partial<NoSqlQueryConnection> = {}): NoSqlQue
     };
 }
 
-describe('getControlPlaneForConnection', () => {
-    it('returns ARM control plane when connection carries subscription, resource group and account name', () => {
-        const plane = getControlPlaneForConnection(
-            makeConnection({
-                accountName: 'test-account',
-                subscription: fakeSubscription,
-                resourceGroup: 'rg-test',
-            }),
-        );
+describe('getControlPlane', () => {
+    it('returns ARM control plane for Azure-signed-in account with Azure metadata', () => {
+        const meta = makeMetadata();
+        const plane = getControlPlane(makeAccountInfo({ azureMetadata: meta }));
         expect(plane).toBeInstanceOf(FakeArmControlPlane);
-        expect((plane as unknown as FakeArmControlPlane).subscription).toBe(fakeSubscription);
-        expect((plane as unknown as FakeArmControlPlane).resourceGroup).toBe('rg-test');
-        expect((plane as unknown as FakeArmControlPlane).accountName).toBe('test-account');
+        expect((plane as unknown as FakeArmControlPlane).metadata).toBe(meta);
     });
 
-    it('returns SDK control plane for the local emulator even with full Azure context', () => {
+    it('returns SDK control plane for the local emulator even with Azure metadata', () => {
+        const plane = getControlPlane(
+            makeAccountInfo({
+                isEmulator: true,
+                azureMetadata: makeMetadata(),
+            }),
+        );
+        expect(plane).toBeInstanceOf(FakeSdkControlPlane);
+    });
+
+    it('returns SDK control plane for workspace-attached account (no Azure metadata)', () => {
+        const plane = getControlPlane(makeAccountInfo());
+        expect(plane).toBeInstanceOf(FakeSdkControlPlane);
+    });
+});
+
+describe('getControlPlaneForConnection', () => {
+    it('returns ARM control plane when connection carries Azure metadata', () => {
+        const meta = makeMetadata();
+        const plane = getControlPlaneForConnection(makeConnection({ azureMetadata: meta }));
+        expect(plane).toBeInstanceOf(FakeArmControlPlane);
+        expect((plane as unknown as FakeArmControlPlane).metadata).toBe(meta);
+    });
+
+    it('returns SDK control plane for the local emulator even with Azure metadata', () => {
         const plane = getControlPlaneForConnection(
             makeConnection({
                 isEmulator: true,
-                accountName: 'test-account',
-                subscription: fakeSubscription,
-                resourceGroup: 'rg-test',
+                azureMetadata: makeMetadata(),
             }),
         );
         expect(plane).toBeInstanceOf(FakeSdkControlPlane);
     });
 
-    it('returns SDK control plane for workspace-attached connection (no Azure context)', () => {
+    it('returns SDK control plane for workspace-attached connection (no Azure metadata)', () => {
         const plane = getControlPlaneForConnection(makeConnection());
-        expect(plane).toBeInstanceOf(FakeSdkControlPlane);
-    });
-
-    it('returns SDK control plane when account name is missing', () => {
-        const plane = getControlPlaneForConnection(
-            makeConnection({
-                subscription: fakeSubscription,
-                resourceGroup: 'rg-test',
-            }),
-        );
-        expect(plane).toBeInstanceOf(FakeSdkControlPlane);
-    });
-
-    it('returns SDK control plane when subscription is missing', () => {
-        const plane = getControlPlaneForConnection(
-            makeConnection({
-                accountName: 'test-account',
-                resourceGroup: 'rg-test',
-            }),
-        );
-        expect(plane).toBeInstanceOf(FakeSdkControlPlane);
-    });
-
-    it('returns SDK control plane when resource group is missing', () => {
-        const plane = getControlPlaneForConnection(
-            makeConnection({
-                accountName: 'test-account',
-                subscription: fakeSubscription,
-            }),
-        );
         expect(plane).toBeInstanceOf(FakeSdkControlPlane);
     });
 });

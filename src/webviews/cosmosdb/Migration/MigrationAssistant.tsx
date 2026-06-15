@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { useTrpcClient } from '@cosmosdb/webview-rpc/react';
 import {
     Accordion,
     AccordionHeader,
@@ -59,7 +60,6 @@ import { useCallback, useEffect, useMemo, useState, type ReactElement, type Reac
 import { type MigrationAppRouter } from '../../../panels/trpc/appRouter';
 import { sanitizeCosmosDBAccountName, validateCosmosDBAccountName } from '../../../utils/cosmosDBAccountName';
 import { formatTokenCount, partitionModelsByCapability } from '../../../utils/modelUtils';
-import { useTrpcClient } from '../../api/trpc/useTrpcClient';
 import { CosmosDBIcon } from '../../icons/CosmosDBIcon';
 import { BaseContextProvider, type DispatchToastFn } from '../../utils/context/BaseContextProvider';
 import { ErrorBoundary } from '../../utils/ErrorBoundary';
@@ -418,7 +418,7 @@ function FileListExpander({
         const lastSep = relative.lastIndexOf('/');
         if (lastSep < 0) return { dir: '', name: relative };
         // Keep the separator on the name side so it stays visually anchored next to
-        // the file name even when the directory portion ellipsizes (avoids the
+        // the file name even when the directory portion ellipsis (avoids the
         // trailing slash being bidi-reordered inside the RTL dir span).
         return { dir: relative.slice(0, lastSep), name: relative.slice(lastSep) };
     };
@@ -428,7 +428,7 @@ function FileListExpander({
         const cleanName = name.startsWith('/') ? name.slice(1) : name;
         const fullRelative = dir ? `${dir}/${cleanName}` : cleanName;
         // Split the directory so the deepest folder always stays visible next to the file name
-        // while earlier segments ellipsize at the end (effectively a middle ellipsis on the full path).
+        // while earlier segments ellipsis at the end (effectively a middle ellipsis on the full path).
         let dirHead = '';
         let dirTail = '';
         if (dir) {
@@ -588,6 +588,7 @@ function getPhaseIcon(state: PhaseState) {
             break;
     }
     return (
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- composite ARIA img: wraps Fluent SVG icon component which a native <img> cannot contain (no src/children semantics)
         <span role="img" aria-label={label} style={{ display: 'inline-flex' }}>
             {icon}
         </span>
@@ -1679,14 +1680,14 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                                 </Button>
                                             </div>
                                             {state.assessmentProgress && (
-                                                <Text
-                                                    role="status"
-                                                    aria-live="polite"
-                                                    size={200}
-                                                    style={{ color: 'var(--vscode-descriptionForeground)' }}
-                                                >
-                                                    {state.assessmentProgress}
-                                                </Text>
+                                                <output aria-live="polite">
+                                                    <Text
+                                                        size={200}
+                                                        style={{ color: 'var(--vscode-descriptionForeground)' }}
+                                                    >
+                                                        {state.assessmentProgress}
+                                                    </Text>
+                                                </output>
                                             )}
                                         </>
                                     )}
@@ -1955,14 +1956,14 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                                 </Button>
                                             </div>
                                             {state.schemaConversionProgress && (
-                                                <Text
-                                                    role="status"
-                                                    aria-live="polite"
-                                                    size={200}
-                                                    style={{ color: 'var(--vscode-descriptionForeground)' }}
-                                                >
-                                                    {state.schemaConversionProgress}
-                                                </Text>
+                                                <output aria-live="polite">
+                                                    <Text
+                                                        size={200}
+                                                        style={{ color: 'var(--vscode-descriptionForeground)' }}
+                                                    >
+                                                        {state.schemaConversionProgress}
+                                                    </Text>
+                                                </output>
                                             )}
                                         </>
                                     )}
@@ -2313,9 +2314,9 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                                         </Button>
                                                     </div>
                                                     {state.accountProvisioningProgress && (
-                                                        <Text role="status" aria-live="polite" size={200}>
-                                                            {state.accountProvisioningProgress}
-                                                        </Text>
+                                                        <output aria-live="polite">
+                                                            <Text size={200}>{state.accountProvisioningProgress}</Text>
+                                                        </output>
                                                     )}
                                                 </>
                                             ) : (
@@ -2431,9 +2432,9 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                                     </Button>
                                                 </div>
                                                 {state.provisioningProgress && (
-                                                    <Text role="status" aria-live="polite" size={200}>
-                                                        {state.provisioningProgress}
-                                                    </Text>
+                                                    <output aria-live="polite">
+                                                        <Text size={200}>{state.provisioningProgress}</Text>
+                                                    </output>
                                                 )}
                                             </>
                                         )}
@@ -2490,8 +2491,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                                     </Link>
                                                 )}
                                                 {state.provisioningResult.warnings.length > 0 && (
-                                                    <div
-                                                        role="status"
+                                                    <output
                                                         aria-live="polite"
                                                         style={{
                                                             display: 'flex',
@@ -2515,7 +2515,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                                                 {warning}
                                                             </Text>
                                                         ))}
-                                                    </div>
+                                                    </output>
                                                 )}
                                             </div>
                                         )}

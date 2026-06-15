@@ -4,6 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type JSONSchema } from '@cosmosdb/schema-analyzer';
+import { TypedEventSink } from '@cosmosdb/webview-rpc';
+import { setupTrpc } from '@cosmosdb/webview-rpc/server';
 import * as vscode from 'vscode';
 import { getThemedIconPath } from '../constants';
 import { getCosmosDBKeyCredential } from '../cosmosdb/CosmosDBCredential';
@@ -11,8 +13,8 @@ import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { type QuerySession } from '../cosmosdb/session/QuerySession';
 import { type SerializedQueryResult } from '../cosmosdb/types/queryResult';
 import { SchemaFileStorage } from '../services/SchemaFileStorage';
+import { SchemaService } from '../services/SchemaService';
 import { getIsSurveyDisabledGlobally } from '../utils/survey';
-import { TypedEventSink } from '../utils/TypedEventSink';
 import { BaseTab } from './BaseTab';
 import {
     queryEditorAppRouter,
@@ -21,7 +23,6 @@ import {
     type QueryEditorRouterContext,
 } from './trpc/appRouter';
 import { type QueryEditorEvent } from './trpc/routers/queryEditorEventsRouter';
-import { setupTrpc } from './trpc/setupTrpc';
 
 export class QueryEditorTab extends BaseTab {
     public static readonly title = 'Query Editor';
@@ -79,6 +80,25 @@ export class QueryEditorTab extends BaseTab {
             vscode.workspace.onDidChangeConfiguration((e) => {
                 if (e.affectsConfiguration('cosmosDB.queryEditor.generateSchemaBasedOnQueries')) {
                     this.syncSchemaBasedOnQueriesSetting();
+                }
+            }),
+        );
+
+        // Mirror schema mutations into Monaco autocomplete. Any code path
+        // (toolbar action, AI sample tool, query merge, document creation,
+        // cascade delete on container/db drop) flows through SchemaService,
+        // so subscribing here is enough — individual callers must NOT push
+        // schemaUpdated events of their own.
+        this.disposables.push(
+            SchemaService.getInstance().onSchemaChanged((event) => {
+                const c = this.state.connection;
+                if (
+                    c &&
+                    c.endpoint === event.endpoint &&
+                    c.databaseId === event.databaseId &&
+                    c.containerId === event.containerId
+                ) {
+                    void this.sendSchemaToWebview();
                 }
             }),
         );
@@ -186,7 +206,7 @@ export class QueryEditorTab extends BaseTab {
     /**
      * Broadcasts AI features availability change to all open QueryEditorTabs
      */
-    public static async notifyAIFeaturesChanged(isAIFeaturesEnabled: boolean): Promise<void> {
+    public static notifyAIFeaturesChanged(isAIFeaturesEnabled: boolean): void {
         for (const tab of QueryEditorTab.openTabs) {
             tab.eventSink.emit({ type: 'aiFeaturesEnabledChanged', isEnabled: isAIFeaturesEnabled });
         }
@@ -199,7 +219,7 @@ export class QueryEditorTab extends BaseTab {
         this.eventSink.emit({ type: 'queryTextPushed', query });
     }
 
-    public async refreshSurveyFeedbackVisibility(): Promise<void> {
+    public refreshSurveyFeedbackVisibility(): void {
         this.eventSink.emit({
             type: 'isSurveyCandidateChanged',
             isSurveyCandidate: !getIsSurveyDisabledGlobally(),

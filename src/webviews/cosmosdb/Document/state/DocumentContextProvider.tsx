@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type JSONObject, type JSONValue, type PartitionKeyDefinition } from '@azure/cosmos';
-import { type TRPCClient } from '@trpc/client';
+import { type TrpcClient } from '@cosmosdb/webview-rpc/react';
 import * as l10n from '@vscode/l10n';
 import { type DocumentAppRouter } from '../../../api/types';
 import { BaseContextProvider, type DispatchToastFn } from '../../../utils/context/BaseContextProvider';
@@ -16,7 +16,7 @@ export class DocumentContextProvider extends BaseContextProvider<DocumentAppRout
     constructor(
         private readonly dispatch: (action: DispatchAction) => void,
         dispatchToast: DispatchToastFn,
-        trpcClient: TRPCClient<DocumentAppRouter>,
+        trpcClient: TrpcClient<DocumentAppRouter>,
     ) {
         super(dispatchToast, trpcClient);
     }

@@ -3,21 +3,16 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type PartitionKeyDefinition } from '@azure/cosmos';
+import { type PartitionKeyDefinition, type PriorityLevel } from '@azure/cosmos';
 import { parse, parseMultiQueryDocument, stripComments } from '@cosmosdb/nosql-language-service';
 import { type JSONSchema } from '@cosmosdb/schema-analyzer';
-import {
-    getSchemaFromDocument,
-    simplifySchema,
-    updateSchemaWithDocument,
-    type NoSQLDocument,
-} from '@cosmosdb/schema-analyzer/json';
+import { type NoSQLDocument } from '@cosmosdb/schema-analyzer/json';
 import { callWithTelemetryAndErrorHandling, parseError } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as crypto from 'crypto';
 import * as vscode from 'vscode';
 import { z } from 'zod';
-import { CosmosDbOperationsService } from '../../../chat';
+import { CosmosDbOperationsService, QueryGenerationRefusedError } from '../../../chat';
 import { getControlPlaneForConnection } from '../../../cosmosdb/controlPlane';
 import { getNoSqlQueryConnection, type NoSqlQueryConnection } from '../../../cosmosdb/NoSqlQueryConnection';
 import { bulkDeleteDocuments, deleteDocument, isDocumentId } from '../../../cosmosdb/session/DocumentSession';
@@ -25,6 +20,7 @@ import { QuerySession } from '../../../cosmosdb/session/QuerySession';
 import { withClaimsChallengeHandling } from '../../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../../extensionVariables';
 import { SchemaFileStorage } from '../../../services/SchemaFileStorage';
+import { SchemaService } from '../../../services/SchemaService';
 import { StorageNames, StorageService, type StorageItem } from '../../../services/StorageService';
 import { getAvailableModelsInfo, getSelectedModel } from '../../../utils/aiUtils';
 import { queryMetricsToCsv, queryResultToCsv } from '../../../utils/csvConverter';
@@ -51,9 +47,24 @@ import { queryEditorProcedure, queryEditorRouter } from '../trpc';
 const QUERY_HISTORY_SIZE = 10;
 const HISTORY_STORAGE_KEY = 'ms-azuretools.vscode-cosmosdb.history';
 const SELECTED_MODEL_KEY = 'ms-azuretools.vscode-cosmosdb.selectedModel';
-const MAX_SCHEMA_DOCUMENT_LIMIT = 100_000;
-const SCHEMA_SIZE_WARNING_BYTES = 50 * 1024 * 1024; // 50 MB
-const SCHEMA_GENERATION_PAGE_SIZE = 1000;
+// Persists the user-selected Priority Level across panel reopens. Single key
+// scope (per-extension, not per-account / per-container) to mirror cosmos-explorer
+// which stores one LocalStorage entry for all connections.
+const PRIORITY_LEVEL_KEY = 'ms-azuretools.vscode-cosmosdb.priorityLevel';
+const DEFAULT_PRIORITY_LEVEL: PriorityLevel = 'Low' as PriorityLevel;
+
+/**
+ * Read the persisted Priority Level from extension global state, validating it
+ * against the known enum values. Falls back to `Low` (per PRD F3/F4) for unset
+ * or corrupted entries.
+ */
+function readPersistedPriorityLevel(): PriorityLevel {
+    const stored = ext.context.globalState.get<string>(PRIORITY_LEVEL_KEY);
+    if (stored === 'High' || stored === 'Low') {
+        return stored as PriorityLevel;
+    }
+    return DEFAULT_PRIORITY_LEVEL;
+}
 
 type HistoryItem = StorageItem & {
     properties: {
@@ -83,6 +94,7 @@ export const queryEditorRouterDef = queryEditorRouter({
      */
     init: queryEditorProcedure.mutation(async ({ ctx }) => {
         console.debug(`[QueryEditor] init invoked. hasConnection=${!!ctx.state.connection}`);
+
         if (ctx.actionContext) {
             ctx.actionContext.telemetry.suppressIfSuccessful = true;
         }
@@ -216,7 +228,7 @@ export const queryEditorRouterDef = queryEditorRouter({
             }
             const result = await session.run();
             // Merge results into stored schema if setting is enabled and query is SELECT *
-            void mergeQueryResultsIntoSchema(result, ctx.state.connection, ctx.eventSink);
+            void mergeQueryResultsIntoSchema(result, ctx.state.connection);
             void promptAfterActionEventually(
                 ExperienceKind.NoSQL,
                 UsageImpact.High,
@@ -271,7 +283,7 @@ export const queryEditorRouterDef = queryEditorRouter({
                 );
             const result = await session.nextPage();
             // Merge results into stored schema if setting is enabled and query is SELECT *
-            void mergeQueryResultsIntoSchema(result, ctx.state.connection, ctx.eventSink);
+            void mergeQueryResultsIntoSchema(result, ctx.state.connection);
             void promptAfterActionEventually(
                 ExperienceKind.NoSQL,
                 UsageImpact.Medium,
@@ -605,7 +617,7 @@ export const queryEditorRouterDef = queryEditorRouter({
 
     updateSelectedText: queryEditorProcedure
         .input(z.object({ selectedQuery: z.string() }))
-        .mutation(async ({ input, ctx }) => {
+        .mutation(({ input, ctx }) => {
             ctx.state.selectedQuery = input.selectedQuery || undefined;
         }),
 
@@ -680,6 +692,13 @@ export const queryEditorRouterDef = queryEditorRouter({
                     prompt: input.prompt,
                 };
             } catch (error) {
+                if (error instanceof QueryGenerationRefusedError) {
+                    return {
+                        generatedQuery: false as const,
+                        errorMessage: error.message,
+                    };
+                }
+
                 if (token.isCancellationRequested) {
                     void callWithTelemetryAndErrorHandling('cosmosDB.ai.queryGenerationCancelled', (telCtx) => {
                         telCtx.errorHandling.suppressDisplay = true;
@@ -711,7 +730,7 @@ export const queryEditorRouterDef = queryEditorRouter({
 
     closeGenerateInput: queryEditorProcedure
         .input(z.object({ hadEnteredPrompt: z.boolean(), hadExecutedGenerateQuery: z.boolean() }).optional())
-        .mutation(async ({ input, ctx }) => {
+        .mutation(({ input, ctx }) => {
             ext.outputChannel.info(l10n.t('[Generate Query] Generate query input closed by user.'));
             void callWithTelemetryAndErrorHandling('cosmosDB.ai.closeGenerateInput', (telCtx) => {
                 telCtx.errorHandling.suppressDisplay = true;
@@ -745,37 +764,30 @@ export const queryEditorRouterDef = queryEditorRouter({
         };
     }),
 
-    setSelectedModel: queryEditorProcedure.input(z.object({ modelId: z.string() })).mutation(async ({ input }) => {
-        return await callWithTelemetryAndErrorHandling('cosmosDB.ai.modelSelection', async (telCtx) => {
-            telCtx.errorHandling.suppressDisplay = true;
-            telCtx.telemetry.properties.modelId = input.modelId;
+    setSelectedModel: queryEditorProcedure.input(z.object({ modelId: z.string() })).mutation(async ({ input, ctx }) => {
+        if (ctx.actionContext) {
+            ctx.actionContext.errorHandling.suppressDisplay = true;
+            ctx.actionContext.telemetry.properties.modelId = input.modelId;
+        }
 
-            await ext.context.globalState.update(SELECTED_MODEL_KEY, input.modelId);
+        await ext.context.globalState.update(SELECTED_MODEL_KEY, input.modelId);
 
-            const selectedModel = await getSelectedModel({ modelId: input.modelId }).catch(() => undefined);
-            return { modelName: selectedModel?.name ?? 'Copilot' };
-        });
+        const selectedModel = await getSelectedModel({ modelId: input.modelId }).catch(() => undefined);
+        return { modelName: selectedModel?.name ?? 'Copilot' };
     }),
 
     openChatParticipantExplainQuery: queryEditorProcedure
         .input(z.object({ query: z.string().optional() }).optional())
         .mutation(async ({ input }) => {
-            await callWithTelemetryAndErrorHandling('cosmosDB.ai.explainQueryFromButton', async (telCtx) => {
-                telCtx.errorHandling.suppressDisplay = true;
-
-                const query = input?.query?.trim();
-                const chatQuery = query
-                    ? `@cosmosdb /explainQuery\n\`\`\`sql\n${query}\n\`\`\``
-                    : '@cosmosdb /explainQuery';
-                await vscode.commands.executeCommand('workbench.action.chat.open', { query: chatQuery });
-            });
+            const query = input?.query?.trim();
+            const chatQuery = query
+                ? `@cosmosdb /explainQuery\n\`\`\`sql\n${query}\n\`\`\``
+                : '@cosmosdb /explainQuery';
+            await vscode.commands.executeCommand('workbench.action.chat.open', { query: chatQuery });
         }),
 
     openChatParticipantHelp: queryEditorProcedure.mutation(async () => {
-        await callWithTelemetryAndErrorHandling('cosmosDB.ai.helpFromButton', async (telCtx) => {
-            telCtx.errorHandling.suppressDisplay = true;
-            await vscode.commands.executeCommand('workbench.action.chat.open', { query: '@cosmosdb /help' });
-        });
+        await vscode.commands.executeCommand('workbench.action.chat.open', { query: '@cosmosdb /help' });
     }),
 
     saveCSV: queryEditorProcedure
@@ -828,182 +840,17 @@ export const queryEditorRouterDef = queryEditorRouter({
     generateSchema: queryEditorProcedure
         .input(z.object({ limit: z.number().optional() }))
         .mutation(async ({ input, ctx }) => {
-            await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.generateSchema', async (context) => {
-                if (!ctx.state.connection) {
-                    throw new Error(l10n.t('No connection'));
-                }
+            if (!ctx.state.connection) {
+                throw new Error(l10n.t('No connection'));
+            }
 
-                const effectiveLimit =
-                    input.limit === undefined
-                        ? MAX_SCHEMA_DOCUMENT_LIMIT
-                        : Math.min(input.limit, MAX_SCHEMA_DOCUMENT_LIMIT);
+            if (ctx.actionContext && input.limit !== undefined) {
+                ctx.actionContext.telemetry.properties.limit = input.limit.toString();
+            }
 
-                context.telemetry.properties.limit = effectiveLimit.toString();
-
-                const schemaId = SchemaFileStorage.getSchemaIdForConnection(ctx.state.connection);
-                const containerLabel = `${ctx.state.connection.databaseId}/${ctx.state.connection.containerId}`;
-                const limitLabel = input.limit
-                    ? l10n.t('TOP {0}', effectiveLimit)
-                    : l10n.t('ALL (up to {0})', MAX_SCHEMA_DOCUMENT_LIMIT);
-
-                const schemaStorage = SchemaFileStorage.getInstance();
-                const hasExistingSchema = schemaStorage.hasSchema(schemaId);
-
-                const warningParts: string[] = [
-                    l10n.t(
-                        'Generating schema from {0} documents will execute a query against your Azure Cosmos DB container, which consumes Request Units (RUs).',
-                        limitLabel,
-                    ),
-                ];
-
-                if (hasExistingSchema) {
-                    warningParts.push(l10n.t('The previously saved schema for this container will be replaced.'));
-                }
-
-                warningParts.push(l10n.t('Are you sure you want to continue?'));
-
-                const message = warningParts.join('\n');
-
-                const continueItem: vscode.MessageItem = { title: l10n.t('Continue') };
-                const cancelItem: vscode.MessageItem = { title: l10n.t('Cancel'), isCloseAffordance: true };
-                const choice = await vscode.window.showWarningMessage(
-                    message,
-                    { modal: true },
-                    continueItem,
-                    cancelItem,
-                );
-
-                if (choice !== continueItem) {
-                    return;
-                }
-
-                const connection = ctx.state.connection;
-                const query =
-                    effectiveLimit < MAX_SCHEMA_DOCUMENT_LIMIT
-                        ? `SELECT TOP ${effectiveLimit} * FROM c`
-                        : `SELECT * FROM c`;
-
-                const result = await vscode.window.withProgress(
-                    {
-                        location: vscode.ProgressLocation.Notification,
-                        title: l10n.t('Generating schema for {0}', containerLabel),
-                        cancellable: true,
-                    },
-                    async (progress, token) => {
-                        const iterator = await withClaimsChallengeHandling(connection, (client) =>
-                            Promise.resolve(
-                                client
-                                    .database(connection.databaseId)
-                                    .container(connection.containerId)
-                                    .items.query(query, { maxItemCount: SCHEMA_GENERATION_PAGE_SIZE }),
-                            ),
-                        );
-
-                        let schema: JSONSchema = {};
-                        let totalDocCount = 0;
-                        let isFirstDoc = true;
-
-                        while (iterator.hasMoreResults() && totalDocCount < effectiveLimit) {
-                            if (token.isCancellationRequested) {
-                                break;
-                            }
-
-                            const page = await iterator.fetchNext();
-                            const documents = page.resources ?? [];
-
-                            if (documents.length === 0) {
-                                break;
-                            }
-
-                            for (const doc of documents) {
-                                if (totalDocCount >= effectiveLimit) {
-                                    break;
-                                }
-
-                                if (isFirstDoc) {
-                                    schema = getSchemaFromDocument(doc as NoSQLDocument);
-                                    isFirstDoc = false;
-                                } else {
-                                    updateSchemaWithDocument(schema, doc as NoSQLDocument);
-                                }
-                                totalDocCount++;
-                            }
-
-                            const percentage = effectiveLimit
-                                ? Math.round((totalDocCount / effectiveLimit) * 100)
-                                : undefined;
-                            progress.report({
-                                message: l10n.t('{0} documents processed', totalDocCount),
-                                increment:
-                                    percentage !== undefined ? (documents.length / effectiveLimit) * 100 : undefined,
-                            });
-                        }
-
-                        return { schema, totalDocCount, cancelled: token.isCancellationRequested };
-                    },
-                );
-
-                const { schema, totalDocCount, cancelled } = result;
-
-                if (totalDocCount === 0) {
-                    void vscode.window.showInformationMessage(
-                        l10n.t('No documents found in the container. Schema was not generated.'),
-                    );
-                    return;
-                }
-
-                simplifySchema(schema);
-
-                const schemaJson = JSON.stringify(schema);
-                const schemaSizeBytes = Buffer.byteLength(schemaJson, 'utf8');
-
-                if (schemaSizeBytes > SCHEMA_SIZE_WARNING_BYTES) {
-                    const sizeMB = (schemaSizeBytes / (1024 * 1024)).toFixed(1);
-                    const proceed: vscode.MessageItem = { title: l10n.t('Save anyway') };
-                    const discard: vscode.MessageItem = { title: l10n.t('Discard'), isCloseAffordance: true };
-                    const sizeChoice = await vscode.window.showWarningMessage(
-                        l10n.t(
-                            'The generated schema is {0} MB, which is very large and may impact performance. Do you want to save it?',
-                            sizeMB,
-                        ),
-                        { modal: true },
-                        proceed,
-                        discard,
-                    );
-
-                    if (sizeChoice !== proceed) {
-                        return;
-                    }
-                }
-
-                await schemaStorage.saveSchema(
-                    schemaId,
-                    containerLabel,
-                    schemaJson,
-                    new Date().toISOString(),
-                    totalDocCount.toString(),
-                );
-
-                if (cancelled) {
-                    void vscode.window.showInformationMessage(
-                        l10n.t(
-                            'Schema generation was cancelled. Partial schema from {0} documents has been saved for {1}.',
-                            totalDocCount,
-                            containerLabel,
-                        ),
-                    );
-                } else {
-                    void vscode.window.showInformationMessage(
-                        l10n.t('Schema generated from {0} documents and saved for {1}.', totalDocCount, containerLabel),
-                    );
-                }
-
-                // Push updated schema to webview
-                const updatedSchema = await readSchemaForConnection(ctx.state.connection);
-                ctx.eventSink.emit({
-                    type: 'schemaUpdated',
-                    containerSchema: updatedSchema as Record<string, unknown> | null,
-                });
+            await SchemaService.getInstance().generateAndSaveSchema(ctx.state.connection, input.limit, {
+                source: 'manualGenerate',
+                actionContext: ctx.actionContext,
             });
         }),
 
@@ -1014,65 +861,33 @@ export const queryEditorRouterDef = queryEditorRouter({
     }),
 
     showCurrentSchema: queryEditorProcedure.mutation(async ({ ctx }) => {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.showCurrentSchema', async () => {
-            if (!ctx.state.connection) {
-                throw new Error(l10n.t('No connection'));
-            }
+        if (!ctx.state.connection) {
+            throw new Error(l10n.t('No connection'));
+        }
 
-            const schemaId = SchemaFileStorage.getSchemaIdForConnection(ctx.state.connection);
-            const containerLabel = `${ctx.state.connection.databaseId}/${ctx.state.connection.containerId}`;
-            const schemaStorage = SchemaFileStorage.getInstance();
+        const containerLabel = `${ctx.state.connection.databaseId}/${ctx.state.connection.containerId}`;
+        const metadata = SchemaService.getInstance().getMetadata(ctx.state.connection);
 
-            if (!schemaStorage.hasSchema(schemaId)) {
-                void vscode.window.showInformationMessage(
-                    l10n.t('No schema found for {0}. Use the "Generate schema" option to create one.', containerLabel),
-                );
-                return;
-            }
+        if (!metadata) {
+            void vscode.window.showInformationMessage(
+                l10n.t('No schema found for {0}. Use the "Generate schema" option to create one.', containerLabel),
+            );
+            return;
+        }
 
-            const fileUri = schemaStorage.getSchemaFileUri(schemaId);
-            const document = await vscode.workspace.openTextDocument(fileUri);
-            await vscode.window.showTextDocument(document, { preview: true });
-        });
+        const fileUri = SchemaFileStorage.getInstance().getSchemaFileUri(metadata.id);
+        const document = await vscode.workspace.openTextDocument(fileUri);
+        await vscode.window.showTextDocument(document, { preview: true });
     }),
 
     deleteCurrentSchema: queryEditorProcedure.mutation(async ({ ctx }) => {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.deleteCurrentSchema', async () => {
-            if (!ctx.state.connection) {
-                throw new Error(l10n.t('No connection'));
-            }
+        if (!ctx.state.connection) {
+            throw new Error(l10n.t('No connection'));
+        }
 
-            const schemaId = SchemaFileStorage.getSchemaIdForConnection(ctx.state.connection);
-            const containerLabel = `${ctx.state.connection.databaseId}/${ctx.state.connection.containerId}`;
-            const schemaStorage = SchemaFileStorage.getInstance();
-
-            if (!schemaStorage.hasSchema(schemaId)) {
-                void vscode.window.showInformationMessage(l10n.t('No schema found for {0}.', containerLabel));
-                return;
-            }
-
-            const deleteItem: vscode.MessageItem = { title: l10n.t('Delete') };
-            const cancelItem: vscode.MessageItem = { title: l10n.t('Cancel'), isCloseAffordance: true };
-            const choice = await vscode.window.showWarningMessage(
-                l10n.t(
-                    'Are you sure you want to delete the schema for {0}? The schema file will be permanently removed from disk. To get the schema back, you will need to generate it again.',
-                    containerLabel,
-                ),
-                { modal: true },
-                deleteItem,
-                cancelItem,
-            );
-
-            if (choice !== deleteItem) {
-                return;
-            }
-
-            await schemaStorage.deleteSchema(schemaId);
-
-            void vscode.window.showInformationMessage(l10n.t('Schema for {0} has been deleted.', containerLabel));
-
-            // Push null schema to webview
-            ctx.eventSink.emit({ type: 'schemaUpdated', containerSchema: null });
+        await SchemaService.getInstance().deleteSchema(ctx.state.connection, {
+            source: 'manualDelete',
+            actionContext: ctx.actionContext,
         });
     }),
 
@@ -1080,7 +895,7 @@ export const queryEditorRouterDef = queryEditorRouter({
         .input(z.object({ feedbackValue: z.enum(['up', 'down']), component: z.string() }))
         .mutation(({ input, ctx }) => {
             if (ctx.actionContext) {
-                ctx.actionContext.telemetry.properties.feedback = input.feedbackValue;
+                ctx.actionContext.telemetry.properties.feedbackDirection = input.feedbackValue;
                 ctx.actionContext.telemetry.properties.category = input.component;
                 ctx.actionContext.telemetry.properties.isAIGenerated = String(ctx.state.isLastQueryAIGenerated);
             }
@@ -1089,9 +904,47 @@ export const queryEditorRouterDef = queryEditorRouter({
 
     confirmToolInvocationResponse: queryEditorProcedure
         .input(z.object({ confirmed: z.boolean() }))
-        .mutation(async ({ input, ctx }) => {
+        .mutation(({ input, ctx }) => {
             ctx.state.pendingConfirmResolve?.(input.confirmed);
             ctx.state.pendingConfirmResolve = undefined;
+        }),
+
+    /**
+     * Returns query-editor capabilities that depend on the current connection.
+     * Used by the webview to decide whether to show / enable connection-specific
+     * UI such as Priority Level and Throughput Bucket controls.
+     *
+     * - `isEmulator`: true when the current connection points at the local emulator.
+     *   Priority and Throughput options are meaningless against the emulator.
+     * - `isPriorityLevelEnabled`: true when the Cosmos DB account has
+     *   `enablePriorityBasedExecution` set on the ARM resource. Only available
+     *   for Azure-signed-in accounts (where `azureMetadata` is populated);
+     *   workspace-attached / connection-string accounts cannot read ARM and so
+     *   never expose the UI.
+     * - `currentPriorityLevel`: the priority level persisted in extension global
+     *   state, falling back to `Low` for first use or invalid entries (PRD F3/F4).
+     *   The UI uses this to seed the picker on panel open so the user's last
+     *   choice survives reloads (PRD F2 / F10).
+     */
+    getCapabilities: queryEditorProcedure.mutation(({ ctx }) => {
+        const databaseAccount = ctx.state.connection?.azureMetadata?.databaseAccount;
+
+        return {
+            isEmulator: ctx.state.connection?.isEmulator ?? false,
+            isPriorityLevelEnabled: databaseAccount?.enablePriorityBasedExecution ?? false,
+            currentPriorityLevel: readPersistedPriorityLevel(),
+        };
+    }),
+
+    /**
+     * Persists the user-selected Priority Level so it survives panel reopens
+     * and Cosmos DB extension restarts. Mirrors cosmos-explorer's LocalStorage
+     * model: one global value shared across all accounts / containers.
+     */
+    setPriorityLevel: queryEditorProcedure
+        .input(z.object({ priorityLevel: z.enum(['High', 'Low']) }))
+        .mutation(async ({ input }) => {
+            await ext.context.globalState.update(PRIORITY_LEVEL_KEY, input.priorityLevel);
         }),
 });
 
@@ -1176,12 +1029,12 @@ async function persistQueryHistory(ctx: QueryEditorRouterContext, query?: string
 /**
  * When the "Generate schema based on queries" setting is enabled and the query is
  * a SELECT *, merges the fetched documents into the stored schema for the current container.
- * If no schema exists yet, creates one from scratch.
+ * Persistence + size guard + telemetry + webview notification all live in
+ * `SchemaService` — subscribers receive the change via `onSchemaChanged`.
  */
 async function mergeQueryResultsIntoSchema(
     queryResult: { result: { query: string; documents: unknown[] } | null } | undefined,
     connection: NoSqlQueryConnection,
-    eventSink: QueryEditorRouterContext['eventSink'],
 ): Promise<void> {
     if (!queryResult?.result) {
         return;
@@ -1202,58 +1055,23 @@ async function mergeQueryResultsIntoSchema(
         return;
     }
 
-    const schemaId = SchemaFileStorage.getSchemaIdForConnection(connection);
-    const containerLabel = `${connection.databaseId}/${connection.containerId}`;
-    const schemaStorage = SchemaFileStorage.getInstance();
-
-    // Load existing schema or start fresh
-    const existingMetadata = schemaStorage.getMetadata(schemaId);
-    const existingSchemaJson = existingMetadata ? await schemaStorage.readSchema(schemaId) : undefined;
-
-    let schema: JSONSchema;
-    let totalDocCount: number;
-
-    if (existingSchemaJson) {
-        schema = JSON.parse(existingSchemaJson) as JSONSchema;
-        totalDocCount = parseInt(existingMetadata!.documentCount, 10) || 0;
-    } else {
-        schema = {};
-        totalDocCount = 0;
+    try {
+        await SchemaService.getInstance().mergeDocumentsIntoSchema(connection, documents as NoSQLDocument[], {
+            source: 'queryMerge',
+            suppressNotification: true,
+            confirmAll: true,
+            updateFromQueriesEnabled: true,
+        });
+    } catch (error) {
+        ext.outputChannel.warn(
+            l10n.t('[Schema] Failed to merge query results into schema: {0}', parseError(error).message),
+        );
     }
-
-    // Merge each document into the schema
-    for (const doc of documents) {
-        if (totalDocCount === 0 && Object.keys(schema).length === 0) {
-            schema = getSchemaFromDocument(doc as NoSQLDocument);
-        } else {
-            updateSchemaWithDocument(schema, doc as NoSQLDocument);
-        }
-        totalDocCount++;
-    }
-    simplifySchema(schema);
-
-    await schemaStorage.saveSchema(
-        schemaId,
-        containerLabel,
-        JSON.stringify(schema),
-        new Date().toISOString(),
-        totalDocCount.toString(),
-    );
-
-    // Push updated schema to webview
-    const updatedSchema = await readSchemaForConnection(connection);
-    eventSink.emit({
-        type: 'schemaUpdated',
-        containerSchema: updatedSchema as Record<string, unknown> | null,
-    });
 }
 
 /**
  * Read the stored schema for a connection, or return null if none exists.
  */
 async function readSchemaForConnection(connection: NoSqlQueryConnection): Promise<JSONSchema | null> {
-    const schemaId = SchemaFileStorage.getSchemaIdForConnection(connection);
-    const schemaStorage = SchemaFileStorage.getInstance();
-    const schemaJson = await schemaStorage.readSchema(schemaId);
-    return schemaJson ? (JSON.parse(schemaJson) as JSONSchema) : null;
+    return SchemaService.getInstance().readSchema(connection);
 }

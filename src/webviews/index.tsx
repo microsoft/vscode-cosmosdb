@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { type WebviewState, WithWebviewContext } from '@cosmosdb/webview-rpc/react';
 import { AriaLiveAnnouncer, useFocusFinders } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
 import { type l10nJsonFormat } from '@vscode/l10n';
@@ -13,7 +14,6 @@ import { createRoot } from 'react-dom/client';
 import { type WebviewApi } from 'vscode-webview';
 import './index.scss';
 import { DynamicThemeProvider } from './theme/DynamicThemeProvider';
-import { type WebviewState, WithWebviewContext } from './WebviewContext';
 import { WebviewRegistry } from './WebviewRegistry';
 
 export type ViewKey = keyof typeof WebviewRegistry;

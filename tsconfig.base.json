@@ -33,7 +33,11 @@
       "@cosmosdb/nosql-language-service/*": [
         "./packages/nosql-language-service/src/*.ts",
         "./packages/nosql-language-service/src/*/index.ts"
-      ]
+      ],
+      "@cosmosdb/webview-rpc": ["./packages/webview-rpc/src/index.ts"],
+      "@cosmosdb/webview-rpc/server": ["./packages/webview-rpc/src/server/index.ts"],
+      "@cosmosdb/webview-rpc/client": ["./packages/webview-rpc/src/client/index.ts"],
+      "@cosmosdb/webview-rpc/react": ["./packages/webview-rpc/src/react/index.ts"]
     }
   }
 }

@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { setupTrpc } from '@cosmosdb/webview-rpc/server';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { getCosmosDBKeyCredential } from '../cosmosdb/CosmosDBCredential';
@@ -10,7 +11,6 @@ import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { type CosmosDBRecordIdentifier } from '../cosmosdb/types/queryResult';
 import { BaseTab } from './BaseTab';
 import { documentAppRouter, documentCallerFactory, type DocumentRouterContext } from './trpc/appRouter';
-import { setupTrpc } from './trpc/setupTrpc';
 
 type DocumentTabMode = 'add' | 'edit' | 'view';
 

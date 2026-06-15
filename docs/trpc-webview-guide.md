@@ -148,7 +148,7 @@ export const appRouter = router({
 In your panel class:
 
 ```typescript
-import { TypedEventSink } from '../utils/TypedEventSink';
+import { TypedEventSink } from '@cosmosdb/webview-rpc';
 import { setupTrpc } from '../webviews/api/extension-server/setupTrpc';
 
 class MyPanel extends BaseTab {

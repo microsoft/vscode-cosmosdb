@@ -21,7 +21,7 @@ export abstract class CosmosDBItemsResourceItem
     implements TreeElement, TreeElementWithExperience, TreeElementWithContextValue
 {
     public readonly id: string;
-    public readonly contextValue: string = 'treeItem.documents';
+    public readonly contextValue: string = 'treeItem.items';
 
     protected hasMoreChildren: boolean = true;
     protected batchSize: number;
@@ -30,7 +30,7 @@ export abstract class CosmosDBItemsResourceItem
         public readonly model: CosmosDBItemsModel,
         public readonly experience: Experience,
     ) {
-        this.id = `${model.accountInfo.id}/${model.database.id}/${model.container.id}/documents`;
+        this.id = `${model.accountInfo.id}/${model.database.id}/${model.container.id}/items`;
         this.contextValue = createContextValue([this.contextValue, `experience.${this.experience.api}`]);
         this.batchSize = getBatchSizeSetting();
     }

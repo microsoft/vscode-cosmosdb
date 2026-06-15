@@ -5,6 +5,7 @@
 
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
+import { API } from '../../AzureDBExperiences';
 import { type CreateContainerWizardContext } from './CreateContainerWizardContext';
 
 const partitionKeyLearnMoreLink = 'https://learn.microsoft.com/azure/cosmos-db/partitioning-overview';
@@ -63,6 +64,16 @@ export class CosmosDBPartitionKeyStep extends AzureWizardPromptStep<CreateContai
     }
 
     public shouldPrompt(context: CreateContainerWizardContext): boolean {
+        // If experience does NOT support hierarchical partition key
+        if (
+            this.hierarchyStep !== 'first' &&
+            context.experience.api !== API.Core &&
+            context.experience.api !== API.FabricNative &&
+            context.experience.api !== API.FabricMirrored
+        ) {
+            return false;
+        }
+
         if (this.hierarchyStep === 'first' || this.hierarchyStep === 'second') {
             return true;
         }

@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import {
+    type CreateUpdateOptions,
     type CosmosDBManagementClient,
     type SqlContainerCreateUpdateParameters,
     type SqlContainerGetResults,
@@ -81,6 +82,7 @@ export class ArmCosmosDBControlPlane implements CosmosDBControlPlane {
         databaseId: string,
         definition: ContainerDefinition,
         throughput?: number,
+        maxThroughput?: number,
     ): Promise<ContainerResource> {
         const client = await this.getArmClient();
         const containerId = definition.id!;
@@ -92,6 +94,17 @@ export class ArmCosmosDBControlPlane implements CosmosDBControlPlane {
                 : PartitionKeyKind.Hash;
         const version = definition.partitionKey?.version ?? PartitionKeyDefinitionVersion.V2;
 
+        const options: CreateUpdateOptions = {};
+
+        if (throughput && throughput > 0) {
+            options.throughput = throughput;
+        }
+
+        if (maxThroughput && maxThroughput > 0) {
+            options.autoscaleSettings ??= {};
+            options.autoscaleSettings.maxThroughput = maxThroughput;
+        }
+
         const parameters: SqlContainerCreateUpdateParameters = {
             resource: {
                 id: containerId,
@@ -100,15 +113,12 @@ export class ArmCosmosDBControlPlane implements CosmosDBControlPlane {
                     kind,
                     version,
                 },
-                indexingPolicy:
-                    definition.indexingPolicy as SqlContainerCreateUpdateParameters['resource']['indexingPolicy'],
+                indexingPolicy: definition.indexingPolicy,
                 defaultTtl: definition.defaultTtl,
-                uniqueKeyPolicy:
-                    definition.uniqueKeyPolicy as SqlContainerCreateUpdateParameters['resource']['uniqueKeyPolicy'],
-                conflictResolutionPolicy:
-                    definition.conflictResolutionPolicy as SqlContainerCreateUpdateParameters['resource']['conflictResolutionPolicy'],
+                uniqueKeyPolicy: definition.uniqueKeyPolicy,
+                conflictResolutionPolicy: definition.conflictResolutionPolicy,
             },
-            options: throughput && throughput !== 0 ? { throughput } : {},
+            options,
         };
 
         const response = await client.sqlResources.beginCreateUpdateSqlContainerAndWait(

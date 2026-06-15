@@ -3,12 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { TRPCClientError, type TRPCLink } from '@trpc/client';
+import { TRPCClientError, type Operation, type TRPCLink } from '@trpc/client';
 import { type AnyRouter } from '@trpc/server';
 import { observable } from '@trpc/server/observable'; // Their example uses a reference from /server/ and so do we: https://trpc.io/docs/client/links#example
-import { type VsCodeLinkRequestMessage, type VsCodeLinkResponseMessage } from '../../../panels/trpc/vscodeProtocol';
+import { type VsCodeLinkRequestMessage, type VsCodeLinkResponseMessage } from '../shared/vscodeProtocol';
 
-export type { VsCodeLinkRequestMessage, VsCodeLinkResponseMessage } from '../../../panels/trpc/vscodeProtocol';
+export type { VsCodeLinkRequestMessage, VsCodeLinkResponseMessage } from '../shared/vscodeProtocol';
 
 interface VSCodeLinkOptions {
     //   Function to send a message to the server / extension
@@ -94,16 +94,64 @@ function vscodeLink<TRouter extends AnyRouter>(options: VSCodeLinkOptions): TRPC
                 // Register the message handler to receive messages from the server
                 const unsubscribe = onReceive(handleMessage);
 
+                /**
+                 * Abort-signal handling.
+                 *
+                 * tRPC populates `op.signal` when the caller provides `{ signal: AbortSignal }` in
+                 * request options (e.g. `trpcClient.myQuery.query(input, { signal: ac.signal })`).
+                 *
+                 * Note: `op.signal` is a live AbortSignal on the client side — it is NOT serialized
+                 * over postMessage. Instead, when the signal fires, we send an explicit 'abort' message
+                 * to the extension host so it can cancel the server-side operation.
+                 *
+                 * For subscriptions we still use the existing `subscription.stop` cleanup path; the
+                 * abort flow targets queries and mutations, which previously had no cancellation hook.
+                 */
+
+                /**
+                 * `op.signal` is a live `AbortSignal` and is NOT cloneable via the structured-clone
+                 * algorithm used by `postMessage`. Forwarding the op verbatim would throw
+                 * `DataCloneError`. `sendSafe` strips it so the underlying `send()` only ever
+                 * sees serialisable data. The signal itself is handled entirely on the client side
+                 * via the `onAbort` listener below.
+                 */
+                const sendSafe = (message: VsCodeLinkRequestMessage): void => {
+                    const { signal: _sig, ...safeOp } = message.op as Operation<unknown> & { signal?: unknown };
+                    void _sig;
+                    send({ ...message, op: safeOp as VsCodeLinkRequestMessage['op'] });
+                };
+
+                const onAbort = (): void => {
+                    sendSafe({ id: operationId, op: { ...op, type: 'abort' } });
+                    observer.error(TRPCClientError.from(new Error('Aborted')));
+                };
+
+                const opSignal = (op as { signal?: AbortSignal | null }).signal ?? null;
+                if (opSignal) {
+                    if (opSignal.aborted) {
+                        // Signal was already aborted before the operation started — bail out
+                        // without sending the original op, only the abort message.
+                        onAbort();
+                        return () => {
+                            unsubscribe();
+                        };
+                    }
+                    opSignal.addEventListener('abort', onAbort, { once: true });
+                }
+
                 // Send the operation to the server with a unique ID
-                send({ id: operationId, op });
+                sendSafe({ id: operationId, op });
 
                 // Return a cleanup function that is called when the observable is unsubscribed
                 // This is relevant when working with subscriptions.
                 return () => {
                     // If it's a subscription, send a stop message to the server
                     if (op.type === 'subscription') {
-                        send({ id: operationId, op: { ...op, type: 'subscription.stop' } });
+                        sendSafe({ id: operationId, op: { ...op, type: 'subscription.stop' } });
                     }
+                    // Remove the abort listener so a late `ac.abort()` after natural completion
+                    // does not send a stray 'abort' message for an operation that's already done.
+                    opSignal?.removeEventListener('abort', onAbort);
                     // Cleanup the message handler
                     unsubscribe();
                 };

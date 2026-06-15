@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { useTrpcClient } from '@cosmosdb/webview-rpc/react';
 import {
     Button,
     Combobox,
@@ -28,7 +29,6 @@ import {
 import * as l10n from '@vscode/l10n';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { type QueryEditorAppRouter } from '../../../../panels/trpc/appRouter';
-import { useTrpcClient } from '../../../api/trpc/useTrpcClient';
 import { useQueryEditorState, useQueryEditorStateDispatch } from '../state/QueryEditorContext';
 import { usePromptHistory } from './usePromptHistory';
 
@@ -130,7 +130,11 @@ const useStyles = makeStyles({
                 outline: '1px solid var(--vscode-focusBorder)',
                 outlineOffset: '0px',
                 boxShadow: 'none',
-                borderColor: 'transparent',
+                // Griffel rejects the `borderColor` shorthand; expand to longhands.
+                borderTopColor: 'transparent',
+                borderRightColor: 'transparent',
+                borderBottomColor: 'transparent',
+                borderLeftColor: 'transparent',
                 borderRadius: '3px',
             },
             { customizeSelector: (s) => `${s}${s}` },
@@ -214,7 +218,11 @@ const useStyles = makeStyles({
                 outline: '1px solid var(--vscode-focusBorder)',
                 outlineOffset: '1px',
                 boxShadow: 'none !important' as never,
-                borderColor: 'transparent',
+                // Griffel rejects the `borderColor` shorthand; expand to longhands.
+                borderTopColor: 'transparent',
+                borderRightColor: 'transparent',
+                borderBottomColor: 'transparent',
+                borderLeftColor: 'transparent',
                 borderRadius: '6px',
             },
             { customizeSelector: (s) => `${s}${s}${s}` },
@@ -244,7 +252,11 @@ const useStyles = makeStyles({
                 outline: '1px solid var(--vscode-focusBorder)',
                 outlineOffset: '0px',
                 boxShadow: 'none',
-                borderColor: 'transparent',
+                // Griffel rejects the `borderColor` shorthand; expand to longhands.
+                borderTopColor: 'transparent',
+                borderRightColor: 'transparent',
+                borderBottomColor: 'transparent',
+                borderLeftColor: 'transparent',
                 borderRadius: '3px',
             },
             { customizeSelector: (s) => `${s}${s}` },

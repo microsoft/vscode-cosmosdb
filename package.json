@@ -481,16 +481,6 @@
         "title": "%cosmosdb.command.document.import%"
       },
       {
-        "category": "CosmosDB AI",
-        "command": "cosmosDB.ai.deployInstructionFiles",
-        "title": "%cosmosdb.command.ai.deploy_instruction_files%"
-      },
-      {
-        "category": "CosmosDB AI",
-        "command": "cosmosDB.ai.removeInstructionFiles",
-        "title": "%cosmosdb.command.ai.remove_instruction_files%"
-      },
-      {
         "category": "Cosmos DB",
         "command": "cosmosDB.deleteAllSavedSchemas",
         "title": "%cosmosdb.command.schema.delete_all%"
@@ -913,11 +903,6 @@
             "type": "integer",
             "default": 6128,
             "description": "%cosmosdb.configuration.cosmosDB.shell.mcp.port%"
-          },
-          "cosmosDB.manageLLMAssets": {
-            "type": "boolean",
-            "default": true,
-            "markdownDescription": "%cosmosdb.configuration.manage-llm-assets%"
           },
           "cosmosDB.queryEditor.generateSchemaBasedOnQueries": {
             "type": "boolean",

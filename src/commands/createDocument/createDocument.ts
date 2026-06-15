@@ -9,23 +9,41 @@ import * as vscode from 'vscode';
 import { createNoSqlQueryConnection } from '../../cosmosdb/NoSqlQueryConnection';
 import { DocumentTab } from '../../panels/DocumentTab';
 import { type CosmosDBContainerResourceItem } from '../../tree/cosmosdb/CosmosDBContainerResourceItem';
-import { type CosmosDBItemsResourceItem } from '../../tree/cosmosdb/CosmosDBItemsResourceItem';
+import { isFabricTreeElement, type FabricTreeElement } from '../../tree/fabric-resources-view/FabricTreeElement';
+import { isTreeElement, type TreeElement } from '../../tree/TreeElement';
+import { isTreeElementWithContextValue } from '../../tree/TreeElementWithContextValue';
+import { isTreeElementWithExperience } from '../../tree/TreeElementWithExperience';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
 export async function cosmosDBCreateDocument(
     context: IActionContext,
-    node?: CosmosDBContainerResourceItem | CosmosDBItemsResourceItem,
+    node?: TreeElement | FabricTreeElement,
 ): Promise<void> {
-    if (!node) {
-        node = await pickAppResource<CosmosDBContainerResourceItem>(context, {
-            type: [AzExtResourceType.AzureCosmosDb],
-            expectedChildContextValue: ['treeItem.container'],
-        });
+    const element: TreeElement | undefined = isFabricTreeElement(node)
+        ? node?.element
+        : isTreeElement(node)
+          ? node
+          : await pickAppResource<CosmosDBContainerResourceItem>(context, {
+                type: [AzExtResourceType.AzureCosmosDb],
+                expectedChildContextValue: ['treeItem.container'],
+            });
+
+    if (!element) {
+        return undefined;
     }
 
-    if (!node) {
-        return;
+    if (isTreeElementWithExperience(element)) {
+        context.telemetry.properties.experience = element.experience.api;
     }
 
-    DocumentTab.render(createNoSqlQueryConnection(node), 'add', undefined, vscode.ViewColumn.Active);
+    if (
+        !isTreeElementWithContextValue(element) ||
+        (!element.contextValue.includes('treeItem.container') && !element.contextValue.includes('treeItem.items'))
+    ) {
+        return undefined;
+    }
+
+    const containerNode = element as CosmosDBContainerResourceItem;
+
+    DocumentTab.render(createNoSqlQueryConnection(containerNode), 'add', undefined, vscode.ViewColumn.Active);
 }

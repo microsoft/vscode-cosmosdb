@@ -27,7 +27,7 @@ export async function cosmosDBCreateTrigger(
         node = await pickAppResource<CosmosDBContainerResourceItem>(context, {
             type: [AzExtResourceType.AzureCosmosDb],
             expectedChildContextValue: 'treeItem.container',
-            unexpectedContextValue: [/experience[.](table|cassandra|graph)/i], // Only Core supports triggers
+            unexpectedContextValue: [/experience[.](table|cassandra|fabric)/i], // Only Core supports triggers
         });
 
         if (!node) {

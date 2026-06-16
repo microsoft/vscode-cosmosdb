@@ -3,6 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { TypedEventSink } from '@cosmosdb/webview-rpc';
+import { setupTrpc } from '@cosmosdb/webview-rpc/server';
 import { VSCodeAzureSubscriptionProvider } from '@microsoft/vscode-azext-azureauth';
 import {
     LocationListStep,
@@ -35,7 +37,6 @@ import { createCosmosDBManagementClient } from '../utils/azureClients';
 import { sanitizeCosmosDBAccountName } from '../utils/cosmosDBAccountName';
 import { MIGRATION_SELECTED_MODEL_KEY } from '../utils/modelUtils';
 import { pickAppResource, pickWorkspaceResource } from '../utils/pickItem/pickAppResource';
-import { TypedEventSink } from '../utils/TypedEventSink';
 import { BaseTab } from './BaseTab';
 import { getSelectedModel, IS_PHASE4_REQUIRED, isDebugPromptsEnabled } from './migration/helpers/aiHelpers';
 import { emitMigrationEvent, resetCancellationToken } from './migration/helpers/migrationHelpers';
@@ -64,7 +65,6 @@ import { getAccessPatternsTemplateContent } from './migration/templates/accessPa
 import { getVolumetricsTemplateContent } from './migration/templates/volumetricsTemplate';
 import { migrationAppRouter, migrationCallerFactory, type MigrationRouterContext } from './trpc/appRouter';
 import { type MigrationEvent } from './trpc/routers/migrationEventsRouter';
-import { setupTrpc } from './trpc/setupTrpc';
 
 export class MigrationAssistantTab extends BaseTab {
     public static readonly title = 'Cosmos DB Migration Assistant';

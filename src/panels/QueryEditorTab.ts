@@ -4,6 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type JSONSchema } from '@cosmosdb/schema-analyzer';
+import { TypedEventSink } from '@cosmosdb/webview-rpc';
+import { setupTrpc } from '@cosmosdb/webview-rpc/server';
 import * as vscode from 'vscode';
 import { getThemedIconPath } from '../constants';
 import { getCosmosDBKeyCredential } from '../cosmosdb/CosmosDBCredential';
@@ -13,7 +15,6 @@ import { type SerializedQueryResult } from '../cosmosdb/types/queryResult';
 import { SchemaFileStorage } from '../services/SchemaFileStorage';
 import { SchemaService } from '../services/SchemaService';
 import { getIsSurveyDisabledGlobally } from '../utils/survey';
-import { TypedEventSink } from '../utils/TypedEventSink';
 import { BaseTab } from './BaseTab';
 import {
     queryEditorAppRouter,
@@ -22,7 +23,6 @@ import {
     type QueryEditorRouterContext,
 } from './trpc/appRouter';
 import { type QueryEditorEvent } from './trpc/routers/queryEditorEventsRouter';
-import { setupTrpc } from './trpc/setupTrpc';
 
 export class QueryEditorTab extends BaseTab {
     public static readonly title = 'Query Editor';

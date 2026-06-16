@@ -14,6 +14,7 @@ import {
     type CosmosClient,
     type IndexingPolicy as CosmosIndexingPolicy,
 } from '@azure/cosmos';
+import { type TypedEventSink } from '@cosmosdb/webview-rpc';
 import { VSCodeAzureSubscriptionProvider } from '@microsoft/vscode-azext-azureauth';
 import { getResourceGroupFromId } from '@microsoft/vscode-azext-azureutils';
 import { callWithTelemetryAndErrorHandling, parseError, type IActionContext } from '@microsoft/vscode-azext-utils';
@@ -38,7 +39,6 @@ import { MigrationProjectService, type ProjectJson } from '../../../services/Mig
 import { createCosmosDBManagementClient } from '../../../utils/azureClients';
 import { validateCosmosDBAccountName } from '../../../utils/cosmosDBAccountName';
 import { getConfirmationAsInSettings } from '../../../utils/dialogs/getConfirmation';
-import { type TypedEventSink } from '../../../utils/TypedEventSink';
 import { type MigrationEvent } from '../../trpc/routers/migrationEventsRouter';
 import { getCosmosDbBestPractices } from '../bestPractices';
 import { type CosmosModel, type IndexingPolicy } from '../cosmosModel';

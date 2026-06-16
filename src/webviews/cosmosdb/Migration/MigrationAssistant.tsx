@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { useTrpcClient } from '@cosmosdb/webview-rpc/react';
 import {
     Accordion,
     AccordionHeader,
@@ -59,7 +60,6 @@ import { useCallback, useEffect, useMemo, useState, type ReactElement, type Reac
 import { type MigrationAppRouter } from '../../../panels/trpc/appRouter';
 import { sanitizeCosmosDBAccountName, validateCosmosDBAccountName } from '../../../utils/cosmosDBAccountName';
 import { formatTokenCount, partitionModelsByCapability } from '../../../utils/modelUtils';
-import { useTrpcClient } from '../../api/trpc/useTrpcClient';
 import { CosmosDBIcon } from '../../icons/CosmosDBIcon';
 import { BaseContextProvider, type DispatchToastFn } from '../../utils/context/BaseContextProvider';
 import { ErrorBoundary } from '../../utils/ErrorBoundary';

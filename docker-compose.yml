@@ -23,8 +23,8 @@ services:
       cosmosdb-init:
         condition: service_completed_successfully
     ports:
-      - "8081:8081" # Main endpoint for Cosmos DB operations
-      - "1234:1234" # Additional service port
+      - '8081:8081' # Main endpoint for Cosmos DB operations
+      - '1234:1234' # Additional service port
     environment:
       # Available values: https, http, https-insecure
       PROTOCOL: https-insecure

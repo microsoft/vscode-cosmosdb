@@ -24,11 +24,10 @@ export const LearnButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) 
     const dispatcher = useQueryEditorDispatcher();
     const { ref, type } = props;
     const samples = ['SELECT * FROM c', 'SELECT * FROM c ORDER BY c.id', 'SELECT * FROM c OFFSET 0 LIMIT 10'];
-    const cosmosDBAgentKitUrl = 'https://learn.microsoft.com/en-us/azure/cosmos-db/gen-ai/agent-kit';
-    const cosmosDBMcpToolkitUrl =
-        'https://learn.microsoft.com/en-us/azure/cosmos-db/gen-ai/model-context-protocol-toolkit';
-    const cosmosDBShellUrl = 'https://learn.microsoft.com/en-us/azure/cosmos-db/shell/overview';
-    const cosmosDBVsCodeExtensionUrl = 'https://review.microsoft.com/en-us/azure/cosmos-db/vscode-extension/overview';
+    const cosmosDBAgentKitUrl = 'https://learn.microsoft.com/azure/cosmos-db/gen-ai/agent-kit';
+    const cosmosDBMcpToolkitUrl = 'https://learn.microsoft.com/azure/cosmos-db/gen-ai/model-context-protocol-toolkit';
+    const cosmosDBShellUrl = 'https://learn.microsoft.com/azure/cosmos-db/shell/overview';
+    const cosmosDBVsCodeExtensionUrl = 'https://learn.microsoft.com/azure/cosmos-db/vscode-extension/overview';
     const cosmosDBGalleryUrl = 'https://azurecosmosdb.github.io/gallery/';
 
     const insertSampleText = useCallback((sample: string) => void dispatcher.insertText(sample), [dispatcher]);

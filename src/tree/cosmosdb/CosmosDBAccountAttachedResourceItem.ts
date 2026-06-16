@@ -150,7 +150,7 @@ export abstract class CosmosDBAccountAttachedResourceItem
                         if (item === readMoreItem) {
                             void vscode.env.openExternal(
                                 vscode.Uri.parse(
-                                    'https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-develop-emulator?tabs=docker-linux%2Ccsharp&pivots=api-nosql#import-the-emulators-tlsssl-certificate',
+                                    'https://learn.microsoft.com/azure/cosmos-db/how-to-develop-emulator?tabs=docker-linux%2Ccsharp&pivots=api-nosql#import-the-emulators-tlsssl-certificate',
                                 ),
                             );
                         }

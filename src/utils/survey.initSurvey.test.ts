@@ -513,6 +513,7 @@ describe('Survey Initialization', () => {
                 surveyStateRef.isCandidate = undefined;
 
                 // Check if this machine ID would be selected
+                // oxlint-disable-next-line no-await-in-loop -- each iteration mutates shared machineId/survey state and must run sequentially
                 if (await getIsSurveyCandidate()) {
                     candidateCount++;
                 }

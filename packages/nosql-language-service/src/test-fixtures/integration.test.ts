@@ -135,8 +135,9 @@ if (!endpoint) {
         for (const f of negativeIntegrationFixtures) {
             it(`${f.id}: ${f.description}`, async () => {
                 if (f.expectError) {
-                    // Expect the SDK to throw (e.g. UDF not registered)
-                    // oxlint-disable-next-line vitest/no-conditional-expect
+                    // Expect the SDK to throw (e.g. UDF not registered).
+                    // require-to-throw-message: negative fixtures only assert that *some* error is thrown; the SDK message is not stable.
+                    // oxlint-disable-next-line vitest/no-conditional-expect, vitest/require-to-throw-message
                     await expect(runQuery(f.container, f.query)).rejects.toThrow();
                 } else {
                     const items = await runQuery(f.container, f.query);

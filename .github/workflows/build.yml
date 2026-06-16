@@ -1,0 +1,432 @@
+# Build workflow — the fast "build" group as steps in a single job: version validation, install, localization
+# check, external-skills check, lint, prettier, compile (tsc) and packaging (VSIX).
+#
+# Design:
+#   - All these checks are fast, so they live as steps in ONE job (no per-job runner spin-up / dependency
+#     reinstall). The SLOW tests run in their own workflows so they execute IN PARALLEL with this job on
+#     separate runners: unit + integration in test.yml, Playwright in e2e.yml.
+#   - "Run everything, then fail if anything failed": after `npm ci` succeeds, every analyzer step carries
+#     `if: ${{ !cancelled() && steps.install.outcome == 'success' }}`, so a failing analyzer does NOT stop the
+#     others — one run surfaces ALL problems (e.g. both a lint and a localization failure). Any failed step
+#     still marks the whole job red. (`npm ci` is the one hard prerequisite: if it fails, the analyzers are
+#     pointless and are skipped.)
+
+name: Build
+
+permissions:
+  contents: read
+  pull-requests: write
+  # Needed by the summary step's gh api calls (list this run's artifacts).
+  actions: read
+
+on:
+  workflow_dispatch:
+
+  push:
+    branches:
+      - main
+      - rel/*
+      - dev/**
+
+  pull_request:
+    branches:
+      - main
+      - rel/*
+      - dev/**
+
+# Workflow-level concurrency dedupes runs for the SAME branch across DIFFERENT commits (e.g. rapid pushes
+# during a rebase). For pull_request events the group is scoped by PR number + head repo so two forks pushing
+# branches with the same name don't cancel each other.
+concurrency:
+  group: >-
+    build-${{ github.workflow }}-${{
+    github.event_name == 'pull_request' &&
+    format('{0}-{1}', github.event.pull_request.head.repo.full_name, github.event.pull_request.number) ||
+    github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    # A push to a branch with an open PR fires both `push` and `pull_request` events. Cancelling one of them
+    # would leave a failed/cancelled required check on the PR head and block merge, so instead we SKIP the
+    # `pull_request` run for same-repo PRs whose head branch is already covered by this workflow's
+    # `push.branches` filters (only those branches get a `push` run in this repo). Fork PRs and same-repo PRs
+    # from other head branches (e.g. feature/*) still run on `pull_request`.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name != github.repository ||
+      (github.head_ref != 'main' &&
+       !startsWith(github.head_ref, 'rel/') &&
+       !startsWith(github.head_ref, 'dev/'))
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: 📦 Using Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+
+      # Hard prerequisite: if dependencies don't install, every analyzer below is skipped (they all gate on
+      # `steps.install.outcome == 'success'`).
+      - name: ⬇️ Install Dependencies
+        id: install
+        run: npm ci
+
+      - name: ⚖️ Validate Version / Preview Alignment
+        id: validate-version
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        shell: pwsh
+        run: |
+          $packageJson = Get-Content "package.json" -Raw | ConvertFrom-Json
+          $version = $packageJson.version
+          $preview = [bool]$packageJson.preview
+
+          Write-Output "📦 Package version: $version"
+          Write-Output "🏷️ Preview flag: $preview"
+
+          # Validate semantic versioning format
+          if ($version -notmatch '^(\d+)\.(\d+)\.(\d+)$') {
+              Write-Error "❌ Invalid semantic version format: $version"
+              exit 1
+          }
+
+          $minor = [int]$Matches[2]
+          $minorEven = ($minor % 2) -eq 0
+
+          # Check version/preview alignment
+          # Convention: odd minor versions = preview, even minor versions = stable
+          if ($preview -and $minorEven) {
+              Write-Warning ("⚠️ Version/preview misalignment: preview=$preview " +
+                  "but minor version $minor is even (should be odd for preview)")
+              Write-Warning ("Convention: Odd minor versions (e.g., 1.1.x, 1.3.x) should be preview, " +
+                  "even (e.g., 1.0.x, 1.2.x) should be stable")
+          } elseif (-not $preview -and -not $minorEven) {
+              Write-Warning ("⚠️ Version/preview misalignment: preview=$preview " +
+                  "but minor version $minor is odd (should be even for stable)")
+              Write-Warning ("Convention: Odd minor versions (e.g., 1.1.x, 1.3.x) should be preview, " +
+                  "even (e.g., 1.0.x, 1.2.x) should be stable")
+          } else {
+              Write-Output "✅ Version/preview alignment is correct"
+          }
+
+      - name: 🌍 Localize
+        id: l10n
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run l10n:check
+
+      - name: 🔍 Verify External Skills
+        id: skills
+        # Warning-only: this step never fails the workflow. It emits a ::warning:: when the committed skills/
+        # drift from the pinned commit, but committed-skill drift should not block a PR.
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        shell: bash
+        run: |
+          cp -r skills/ skills-backup/
+          npm run fetch-skill
+          # Use --strip-trailing-cr -B -b to ignore line ending, blank line, and whitespace differences
+          if ! diff -rq --strip-trailing-cr -B -b skills/ skills-backup/ > /dev/null 2>&1; then
+              echo "::warning::Committed skills/ does not match the pinned commit in package.json. If you have local skill changes, submit them to the upstream skill repository first, then update the pinned commit in package.json and run 'npm run fetch-skill' to pull the latest version."
+              diff -r --strip-trailing-cr -B -b skills/ skills-backup/ || true
+          else
+              echo "✅ External skills are up to date."
+          fi
+          rm -rf skills/
+          mv skills-backup/ skills/
+
+      - name: 🧹 Lint
+        id: lint
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run lint
+
+      - name: ✨ Prettier
+        id: prettier
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run prettier
+
+      - name: 🔨 Compile
+        id: compile
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run build
+
+      - name: 📦 Package
+        id: package
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run package
+
+      - name: 🔍 Verify VSIX File
+        id: verify-vsix
+        # Only meaningful when packaging produced a VSIX.
+        if: ${{ !cancelled() && steps.package.outcome == 'success' }}
+        shell: pwsh
+        run: |
+          # Find VSIX file
+          $vsixFiles = Get-ChildItem -Path . -Filter *.vsix -File
+
+          if ($vsixFiles.Count -eq 0) {
+              Write-Error "❌ No VSIX file found"
+              exit 1
+          } elseif ($vsixFiles.Count -gt 1) {
+              Write-Error "❌ Multiple VSIX files found: $($vsixFiles.Name -join ', ')"
+              exit 1
+          }
+
+          $vsixFile = $vsixFiles[0]
+          $vsixFileName = $vsixFile.Name
+          $vsixFileSize = [math]::Round($vsixFile.Length / 1MB, 2)
+
+          Write-Output "✅ Found VSIX: $vsixFileName (${vsixFileSize} MB)"
+
+          # Verify filename matches expected pattern
+          $packageJson = Get-Content "package.json" -Raw | ConvertFrom-Json
+          $expectedName = "$($packageJson.name)-$($packageJson.version).vsix"
+
+          if ($vsixFileName -ne $expectedName) {
+              Write-Error "❌ VSIX filename mismatch: expected '$expectedName', got '$vsixFileName'"
+              exit 1
+          }
+
+          Write-Output "✅ VSIX filename is correct: $vsixFileName"
+
+          # Compute a short commit SHA (7 chars) and a filesystem-safe branch slug.
+          # Use head_ref for pull_request events, otherwise ref_name.
+          $rawRef = if ("${{ github.event_name }}" -eq "pull_request") {
+              "${{ github.head_ref }}"
+          } else {
+              "${{ github.ref_name }}"
+          }
+          $branchSlug = ($rawRef -replace '[^A-Za-z0-9._-]', '-').Trim('-')
+          $shortSha = "${{ github.sha }}".Substring(0, 7)
+
+          # Artifact name convention:
+          # - main / rel/* : <name>-<version>-<sha7>
+          # - everything else: <branch-slug>-<version>-<sha7>
+          $isRelease = ($rawRef -eq 'main') -or ($rawRef -like 'rel/*')
+          if ($isRelease) {
+              $artifactName = "$($packageJson.name)-$($packageJson.version)-$shortSha"
+          } else {
+              $artifactName = "$branchSlug-$($packageJson.version)-$shortSha"
+          }
+
+          Write-Output "📛 Artifact name: $artifactName"
+
+          # Expose values as step outputs for downstream steps
+          "vsix_file=$vsixFileName" >> $env:GITHUB_OUTPUT
+          "vsix_size=$vsixFileSize" >> $env:GITHUB_OUTPUT
+          "package_version=$($packageJson.version)" >> $env:GITHUB_OUTPUT
+          "package_preview=$($packageJson.preview)" >> $env:GITHUB_OUTPUT
+          "artifact_name=$artifactName" >> $env:GITHUB_OUTPUT
+
+      - name: 📤 Upload VSIX
+        id: upload-vsix
+        if: ${{ !cancelled() && steps.verify-vsix.outcome == 'success' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.verify-vsix.outputs.artifact_name }}
+          path: ${{ steps.verify-vsix.outputs.vsix_file }}
+          if-no-files-found: error
+          compression-level: 0
+
+      - name: 📊 Generate Job Summary
+        if: always()
+        env:
+          PACKAGE_VERSION: ${{ steps.verify-vsix.outputs.package_version }}
+          PACKAGE_PREVIEW: ${{ steps.verify-vsix.outputs.package_preview }}
+          VSIX_FILE: ${{ steps.verify-vsix.outputs.vsix_file }}
+          VSIX_SIZE: ${{ steps.verify-vsix.outputs.vsix_size }}
+          ARTIFACT_NAME: ${{ steps.verify-vsix.outputs.artifact_name }}
+          ARTIFACT_URL: ${{ steps.upload-vsix.outputs.artifact-url }}
+          GH_TOKEN: ${{ github.token }}
+          VALIDATE_RESULT: ${{ steps.validate-version.outcome }}
+          L10N_RESULT: ${{ steps.l10n.outcome }}
+          SKILLS_RESULT: ${{ steps.skills.outcome }}
+          LINT_RESULT: ${{ steps.lint.outcome }}
+          PRETTIER_RESULT: ${{ steps.prettier.outcome }}
+          COMPILE_RESULT: ${{ steps.compile.outcome }}
+          PACKAGE_RESULT: ${{ steps.package.outcome }}
+          SERVER_URL: ${{ github.server_url }}
+          REPO: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          # For pull_request events `github.sha` is the synthetic PR-merge commit. Use head.sha for PRs
+          # (matches what reviewers see on the PR head); fall back to github.sha for push events.
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        shell: bash
+        run: |
+          # ── Helpers ──────────────────────────────────────────────────
+          # Each CI workflow (build.yml, test.yml, e2e.yml, nosql-language-service.yml) posts and
+          # maintains its OWN PR comment, identified by a stable marker. The shell helpers below are
+          # duplicated across workflows because GitHub Actions has no first-class way to share inline
+          # shell — keep them in sync when editing.
+
+          result_icon() {
+              case "$1" in
+                  success)   echo "✅" ;;
+                  failure)   echo "❌" ;;
+                  cancelled) echo "⚪" ;;
+                  skipped)   echo "⏭️" ;;
+                  *)         echo "❓" ;;
+              esac
+          }
+
+          human_size() {
+              awk -v b="$1" 'BEGIN {
+                  if (b < 1024)            { printf "%d B", b }
+                  else if (b < 1048576)    { printf "%.1f KB", b/1024 }
+                  else if (b < 1073741824) { printf "%.2f MB", b/1048576 }
+                  else                     { printf "%.2f GB", b/1073741824 }
+              }'
+          }
+
+          list_run_artifacts() {
+              local run_id=$1
+              local arts
+              arts=$(gh api --paginate "repos/${REPO}/actions/runs/${run_id}/artifacts" \
+                  --jq '.artifacts[] | "\(.id)\t\(.name)\t\(.size_in_bytes)\t\(.expired)"' 2>/dev/null || true)
+              if [ -z "$arts" ]; then
+                  echo "_None_"
+                  return
+              fi
+              while IFS=$'\t' read -r id name size expired; do
+                  [ -z "$id" ] && continue
+                  local size_h
+                  size_h=$(human_size "$size")
+                  if [ "$expired" = "true" ]; then
+                      printf -- '- ~~%s~~ — %s _(expired)_\n' "$name" "$size_h"
+                  else
+                      printf -- '- [%s](%s/%s/actions/runs/%s/artifacts/%s) — %s\n' \
+                          "$name" "$SERVER_URL" "$REPO" "$run_id" "$id" "$size_h"
+                  fi
+              done <<< "$arts"
+          }
+
+          post_or_update_comment() {
+              local pr=$1
+              local marker=$2
+              local body_file=$3
+
+              local existing_id
+              existing_id=$(gh api --paginate "repos/${REPO}/issues/${pr}/comments" \
+                  --jq ".[] | select(.body | contains(\"${marker}\")) | .id" 2>/dev/null | head -1)
+
+              if [ -n "$existing_id" ]; then
+                  if gh api --method PATCH "repos/${REPO}/issues/comments/${existing_id}" \
+                          --field body=@"${body_file}" >/dev/null 2>&1; then
+                      echo "✅ PR #${pr} comment updated (id ${existing_id})"
+                      return 0
+                  fi
+                  echo "::warning::Failed to PATCH comment ${existing_id}, posting a new one"
+              fi
+
+              if gh pr comment "${pr}" --repo "${REPO}" --body-file "${body_file}" >/dev/null 2>&1; then
+                  echo "✅ PR #${pr} new comment posted"
+                  return 0
+              fi
+
+              echo "::warning::Unable to post PR comment on #${pr} (likely a fork PR with a read-only GITHUB_TOKEN). Skipping."
+              return 0
+          }
+
+          validate_icon=$(result_icon "$VALIDATE_RESULT")
+          l10n_icon=$(result_icon "$L10N_RESULT")
+          skills_icon=$(result_icon "$SKILLS_RESULT")
+          lint_icon=$(result_icon "$LINT_RESULT")
+          prettier_icon=$(result_icon "$PRETTIER_RESULT")
+          compile_icon=$(result_icon "$COMPILE_RESULT")
+          package_icon=$(result_icon "$PACKAGE_RESULT")
+          build_artifacts=$(list_run_artifacts "${GITHUB_RUN_ID}")
+
+          # Commit link
+          short_sha="${SHA:0:7}"
+          commit_link="[${short_sha}](${SERVER_URL}/${REPO}/commit/${SHA})"
+
+          # Resolve PR info: prefer the pull_request event payload, otherwise use `gh pr view` by
+          # branch name (works for push events too).
+          if [ -z "${PR_NUMBER:-}" ] && [ -n "${BRANCH_NAME:-}" ]; then
+              pr_info=$(gh pr view "${BRANCH_NAME}" --repo "${REPO}" \
+                  --json number,title 2>/dev/null) || true
+              if [ -n "$pr_info" ]; then
+                  PR_NUMBER=$(echo "$pr_info" | jq -r '.number // empty')
+                  PR_TITLE=$(echo "$pr_info"  | jq -r '.title  // empty')
+                  echo "ℹ️ Found PR #${PR_NUMBER}: ${PR_TITLE}"
+              else
+                  echo "ℹ️ No open PR found for branch '${BRANCH_NAME}'"
+              fi
+          fi
+
+          # Source section
+          source_section="## 🔗 Source
+          - **Commit:** ${commit_link}"
+          if [ -n "${PR_NUMBER:-}" ]; then
+              source_section="${source_section}
+          - **Pull Request:** [#${PR_NUMBER} ${PR_TITLE}](${SERVER_URL}/${REPO}/pull/${PR_NUMBER})"
+          fi
+
+          # Package Information — only render when packaging produced a VSIX.
+          if [ -n "${PACKAGE_VERSION:-}" ]; then
+              package_section="## 📦 Package Information
+          - **Version:** ${PACKAGE_VERSION}
+          - **Preview:** ${PACKAGE_PREVIEW}
+          - **VSIX File:** ${VSIX_FILE}
+          - **VSIX Size:** ${VSIX_SIZE} MB
+          - **Artifact:** [${ARTIFACT_NAME}.zip](${ARTIFACT_URL})"
+          else
+              package_section="## 📦 Package Information
+          _No VSIX produced — the package step did not succeed (see job results above)._"
+          fi
+
+          # Overall status — green only when every gating step succeeded or was skipped. verify-skills is
+          # warning-only and excluded from pass/fail.
+          all_green=true
+          for r in "$VALIDATE_RESULT" "$L10N_RESULT" "$LINT_RESULT" \
+              "$PRETTIER_RESULT" "$COMPILE_RESULT" "$PACKAGE_RESULT"; do
+              case "$r" in
+                  success|skipped) ;;
+                  *) all_green=false ;;
+              esac
+          done
+          if [ "$all_green" = "true" ]; then
+              overall_status="## ✅ Build Status
+          Compile, analyzers and packaging passed. See sibling comments for unit/integration and E2E results."
+          else
+              overall_status="## ❌ Build Status
+          One or more build checks failed. Every analyzer ran independently — review every ❌ above, not just the first."
+          fi
+
+          # Write summary — also used verbatim as the PR comment body.
+          MARKER="<!-- ci-summary:build -->"
+          cat >> "$GITHUB_STEP_SUMMARY" << SUMMARY_EOF
+          ${MARKER}
+          # 🔨 Build (Compile, Lint, Prettier, l10n, Package)
+
+          ${source_section}
+
+          ## 🧱 Step Results
+          - **Validate Version:** ${validate_icon} ${VALIDATE_RESULT}
+          - **Localization:** ${l10n_icon} ${L10N_RESULT}
+          - **Lint:** ${lint_icon} ${LINT_RESULT}
+          - **Prettier:** ${prettier_icon} ${PRETTIER_RESULT}
+          - **Compile (tsc):** ${compile_icon} ${COMPILE_RESULT}
+          - **Package:** ${package_icon} ${PACKAGE_RESULT}
+          - **External Skills (info):** ${skills_icon} ${SKILLS_RESULT}
+
+          ${package_section}
+
+          ## 📥 Artifacts ([run](${SERVER_URL}/${REPO}/actions/runs/${GITHUB_RUN_ID}))
+          ${build_artifacts}
+
+          ${overall_status}
+          SUMMARY_EOF
+
+          echo "✅ Job summary written to: ${GITHUB_STEP_SUMMARY}"
+
+          if [ -n "${PR_NUMBER:-}" ]; then
+              post_or_update_comment "${PR_NUMBER}" "${MARKER}" "${GITHUB_STEP_SUMMARY}"
+          fi

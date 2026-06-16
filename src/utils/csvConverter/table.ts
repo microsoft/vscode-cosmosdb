@@ -4,31 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type PartitionKeyDefinition } from '@azure/cosmos';
-import { type SerializedQueryResult } from '../cosmosdb/types/queryResult';
-import { SettingsService } from '../services/SettingsService';
-import { indexMetricsToTableItem, queryMetricsToTable, queryResultToTable } from './convertors';
-
-function getCsvSeparator(): string {
-    return SettingsService.getSetting<string>('cosmosDB.csvSeparator') ?? ';';
-}
-
-export const escapeCsvValue = (value: string): string => {
-    return `"${value.replace(/"/g, '""')}"`;
-};
-
-export const queryMetricsToCsv = async (queryResult: SerializedQueryResult | null): Promise<string> => {
-    if (!queryResult) {
-        return '';
-    }
-
-    const stats = await queryMetricsToTable(queryResult);
-
-    stats.push(indexMetricsToTableItem(queryResult));
-
-    const titles = stats.map((item) => escapeCsvValue(item.metric)).join(',');
-    const values = stats.map((item) => escapeCsvValue(item.value.toString())).join(',');
-    return `sep=,\n${titles}\n${values}`;
-};
+import { type SerializedQueryResult } from '../../cosmosdb/types/queryResult';
+import { queryResultToTable } from '../convertors';
+import { escapeCsvValue, getCsvSeparator } from './escape';
 
 export const queryResultToCsv = async (
     queryResult: SerializedQueryResult | null,

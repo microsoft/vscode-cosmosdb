@@ -91,19 +91,30 @@ node scripts/import-seed.mjs --all --endpoint https://localhost:8081
 
 Some fixtures are marked with `knownLimitation` in their definition. These tests **still run** against the emulator but a failure is printed as `console.warn` rather than failing the test. The parser correctly accepts all of these — the limitation is in the emulator only.
 
-| ID     | Query feature      | Reason                                                              |
-| ------ | ------------------ | ------------------------------------------------------------------- |
-| STR-12 | `TRIM()`           | Not implemented in vnext-preview                                    |
-| M-07   | `LOG(0)`           | Produces `-Infinity` → JSON error 4001                              |
-| M-13   | `LOG10(0)`         | Produces `-Infinity` → JSON error 4001                              |
-| SQ-02  | `FIRST()` subquery | Not supported in vnext-preview                                      |
-| UDF-01 | UDF in SELECT      | "Server-side scripts are not supported in this emulator" (HTTP 400) |
-| UDF-02 | UDF in WHERE       | "Server-side scripts are not supported in this emulator" (HTTP 400) |
-| UDF-03 | UDF multiple args  | "Server-side scripts are not supported in this emulator" (HTTP 400) |
+| ID     | Query feature     | Reason                                                              |
+| ------ | ----------------- | ------------------------------------------------------------------- |
+| STR-12 | `TRIM()`          | Not implemented in vnext-preview                                    |
+| M-07   | `LOG(0)`          | Produces `-Infinity` → JSON error 4001                              |
+| M-13   | `LOG10(0)`        | Produces `-Infinity` → JSON error 4001                              |
+| UDF-01 | UDF in SELECT     | "Server-side scripts are not supported in this emulator" (HTTP 400) |
+| UDF-02 | UDF in WHERE      | "Server-side scripts are not supported in this emulator" (HTTP 400) |
+| UDF-03 | UDF multiple args | "Server-side scripts are not supported in this emulator" (HTTP 400) |
 
 > **Note:** The vnext-preview Linux emulator (PGSQL backend) does not support any server-side scripts — UDFs, stored procedures, and triggers all return HTTP 400 with `"Server-side scripts are not supported in this emulator"`. The UDF registration step in `import-seed.mjs` is kept for use against production CosmosDB or a future emulator version.
 
 When Microsoft ships a stable Linux emulator that supports these features, remove the `knownLimitation` field from the corresponding fixture.
+
+---
+
+## Cosmos DB language limitations (not emulator-specific)
+
+These fixtures parse successfully (the native `sql.y` grammar accepts them) but are rejected by **both** the emulator and production Azure Cosmos DB with HTTP 400. They are **not** emulator gaps, so they will not be fixed by a future emulator — the language service flags them statically instead.
+
+| ID            | Query feature            | Reason                                                                                                               |
+| ------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| SQ-05 / SQ-06 | `ORDER BY` in a subquery | Cosmos DB does not support `ORDER BY` inside any subquery (`FIRST`/`LAST`/`ARRAY`/`EXISTS`/`(SELECT …)`/`FROM (…)`). |
+
+> **`ORDER BY` in subqueries:** the scalar subquery expressions `FIRST()`, `LAST()`, and `ARRAY()` work (SQ-01…SQ-04 pass) — but a nested `ORDER BY` inside any subquery is invalid. This was originally mis-reported upstream as "`FIRST()` unsupported" ([Azure/azure-cosmos-db-emulator-docker#311](https://github.com/Azure/azure-cosmos-db-emulator-docker/issues/311)); the actual discriminator is the subquery `ORDER BY`. Top-level `ORDER BY` (O/P series) is fully supported. The grammar permits the construct, so the language service surfaces it as the `ORDER_BY_IN_SUBQUERY` diagnostic (severity Error) — see `src/diagnostics/orderByInSubquery.ts`.
 
 ---
 

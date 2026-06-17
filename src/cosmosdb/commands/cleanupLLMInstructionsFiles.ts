@@ -38,7 +38,7 @@ export async function cleanupLLMInstructionsFiles(): Promise<void> {
 
         if (fileExists) {
             const content = fs.readFileSync(filePath);
-            const actualMd5 = crypto.createHash('md5').update(content).digest('hex').toUpperCase();
+            const actualMd5 = crypto.createHash('md5').update(content).digest('hex').toUpperCase(); // CodeQL [SM04514] md5 checks user edits
             const md5Matched = actualMd5 === EXPECTED_MD5;
             context.telemetry.properties.md5Matched = String(md5Matched);
             ext.outputChannel.info(

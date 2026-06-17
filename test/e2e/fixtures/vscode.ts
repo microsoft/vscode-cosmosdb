@@ -131,6 +131,15 @@ async function disableNativeDialogs(app: ElectronApplication): Promise<void> {
         });
 }
 
+/** Best-effort recursive directory removal that never throws. */
+function removeDirQuietly(dir: string): void {
+    try {
+        rmSync(dir, { recursive: true, force: true });
+    } catch {
+        /* ignore */
+    }
+}
+
 interface VsCodeFixtures {
     vscodeApp: ElectronApplication;
     vscodeWindow: Page;
@@ -170,7 +179,7 @@ export const test = base.extend<object, VsCodeFixtures>({
 
             seedUserSettings(userDataDir);
 
-            const app = await electron.launch({
+            const launchPromise = electron.launch({
                 executablePath: cfg.vscodeExecutablePath,
                 args: [
                     // Disable Electron's internal sandbox so Playwright's CDP attach
@@ -221,6 +230,16 @@ export const test = base.extend<object, VsCodeFixtures>({
                 },
             });
 
+            // `electron.launch` failures (startup crash, missing executable, …)
+            // skip Playwright's fixture teardown, which would leak the POSIX
+            // `userDataDir` under `/tmp` (it lives outside the run-scoped temp
+            // root). Clean both dirs up on early failure before rethrowing.
+            const app = await launchPromise.catch((err: unknown) => {
+                removeDirQuietly(workerDir);
+                removeDirQuietly(userDataDir);
+                throw err;
+            });
+
             await disableNativeDialogs(app);
 
             await use(app);
@@ -240,26 +259,25 @@ export const test = base.extend<object, VsCodeFixtures>({
                 try {
                     execFileSync('pkill', ['-9', '-f', userDataDir]);
                 } catch {
-                    /* no matching processes / pkill unavailable — ignore */
+                    // `pkill` is missing or matched nothing. Fall back to killing
+                    // the launched process directly so teardown can't hang on
+                    // `app.close()` (VS Code keeps helper processes alive).
+                    try {
+                        app.process().kill('SIGKILL');
+                    } catch {
+                        /* already exited */
+                    }
                 }
                 await app.close().catch(() => {
                     /* connection already dropped once the processes were killed */
                 });
             }
             // Best-effort cleanup; on Windows file handles can linger briefly.
-            try {
-                rmSync(workerDir, { recursive: true, force: true });
-            } catch {
-                /* ignore */
-            }
+            removeDirQuietly(workerDir);
             // The POSIX user-data dir lives outside workerDir (short-path
             // workaround above), so remove it separately.
             if (userDataDir !== path.join(workerDir, 'user-data')) {
-                try {
-                    rmSync(userDataDir, { recursive: true, force: true });
-                } catch {
-                    /* ignore */
-                }
+                removeDirQuietly(userDataDir);
             }
         },
         { scope: 'worker' },

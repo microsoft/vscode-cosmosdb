@@ -188,6 +188,9 @@ export default ({ mode }) => {
                 '@cosmosdb/schema-analyzer/json': path.resolve(__dirname, 'packages/schema-analyzer/src/json/index.ts'),
                 '@cosmosdb/schema-analyzer/bson': path.resolve(__dirname, 'packages/schema-analyzer/src/bson/index.ts'),
                 '@cosmosdb/schema-analyzer': path.resolve(__dirname, 'packages/schema-analyzer/src/index.ts'),
+                '@cosmosdb/webview-rpc/server': path.resolve(__dirname, 'packages/webview-rpc/src/server/index.ts'),
+                '@cosmosdb/webview-rpc/client': path.resolve(__dirname, 'packages/webview-rpc/src/client/index.ts'),
+                '@cosmosdb/webview-rpc': path.resolve(__dirname, 'packages/webview-rpc/src/index.ts'),
             },
         },
         define: {

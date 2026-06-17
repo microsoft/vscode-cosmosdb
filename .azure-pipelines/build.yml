@@ -64,7 +64,11 @@ extends:
             suppression:
                 suppressionFile: $(Build.SourcesDirectory)/.config/guardian/.gdnsuppress
             codeql:
-                excludePathPatterns: '**/.vscode-test, dist' # Exclude .vscode-test and dist directories from CodeQL alerting
+                # Exclude .vscode-test and dist directories from CodeQL alerting. The two test-only files also use a
+                # scoped `https.Agent({ rejectUnauthorized: false })` to reach the Cosmos DB emulator's self-signed cert
+                # (js/disabling-certificate-validation); the emulator exposes no reliable cert to trust, and these files
+                # never run in production, so they are excluded rather than weakening the check for shipped code.
+                excludePathPatterns: '**/.vscode-test, dist, test/e2e/setup/emulator.ts, scripts/import-seed.mjs'
                 compiled:
                     ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/main') }}:
                         enabled: true

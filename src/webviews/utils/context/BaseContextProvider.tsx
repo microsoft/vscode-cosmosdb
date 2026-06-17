@@ -3,9 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { type AnyRouter, type TrpcClient } from '@cosmosdb/webview-rpc/react';
 import { Link, Toast, ToastBody, ToastTitle, ToastTrigger, type useToastController } from '@fluentui/react-components';
-import { type TRPCClient } from '@trpc/client';
-import { type AnyRouter } from '@trpc/server';
 import * as l10n from '@vscode/l10n';
 
 export type DispatchToastFn = ReturnType<typeof useToastController>['dispatchToast'];
@@ -37,7 +36,7 @@ interface CommonRoutes {
 export class BaseContextProvider<TRouter extends AnyRouter = AnyRouter> {
     constructor(
         protected readonly dispatchToast: DispatchToastFn,
-        protected readonly trpcClient: TRPCClient<TRouter>,
+        protected readonly trpcClient: TrpcClient<TRouter>,
     ) {
         this.initEventListeners();
         this.init();

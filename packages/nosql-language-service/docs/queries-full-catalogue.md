@@ -253,9 +253,11 @@ Containers: **Products** (flat), **Orders** (nested + arrays), **Events** (spars
 | ID    | Query                                                                                                    |
 | ----- | -------------------------------------------------------------------------------------------------------- |
 | SQ-01 | `SELECT c.id, ARRAY(SELECT VALUE i.name FROM i IN c.items) AS itemNames FROM c`                          |
-| SQ-02 | `SELECT c.id, FIRST(SELECT VALUE i FROM i IN c.items ORDER BY i.unitPrice DESC) AS mostExpensive FROM c` |
+| SQ-02 | `SELECT c.id, FIRST(SELECT VALUE i FROM i IN c.items) AS firstItem FROM c`                               |
 | SQ-03 | `SELECT c.id, LAST(SELECT VALUE i FROM i IN c.items) AS lastItem FROM c`                                 |
 | SQ-04 | `SELECT c.id, (SELECT VALUE COUNT(1) FROM i IN c.items) AS itemCount FROM c`                             |
+| SQ-05 | `SELECT c.id, FIRST(SELECT VALUE i FROM i IN c.items ORDER BY i.unitPrice DESC) AS mostExpensive FROM c` |
+| SQ-06 | `SELECT c.id, LAST(SELECT VALUE i FROM i IN c.items ORDER BY i.unitPrice DESC) AS cheapest FROM c`       |
 
 ---
 

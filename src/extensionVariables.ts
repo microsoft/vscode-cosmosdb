@@ -5,9 +5,11 @@
 
 import { type IAzExtLogOutputChannel, type TreeElementStateManager } from '@microsoft/vscode-azext-utils';
 import { type AzureResourcesExtensionApiWithActivity } from '@microsoft/vscode-azext-utils/activity';
+import { type IFabricExtensionServiceCollection } from '@microsoft/vscode-fabric-api';
 import type * as vscode from 'vscode';
 import { type DatabasesFileSystem } from './DatabasesFileSystem';
 import { type CosmosDBBranchDataProvider } from './tree/azure-resources-view/cosmosdb/CosmosDBBranchDataProvider';
+import { type FabricTreeNodeProvider } from './tree/fabric-resources-view/FabricTreeNodeProvider';
 import { type CosmosDBWorkspaceBranchDataProvider } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceBranchDataProvider';
 import { type CosmosDBWorkspaceItem } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceItem';
 import { type MigrationWorkspaceBranchDataProvider } from './tree/workspace-view/migration/MigrationWorkspaceBranchDataProvider';
@@ -68,6 +70,12 @@ class ExtensionService {
     private readonly _migrationWorkspaceBranchDataProvider = required<MigrationWorkspaceBranchDataProvider>(
         'migrationWorkspaceBranchDataProvider',
     );
+    private readonly _fabricNativeTreeNodeProvider = required<FabricTreeNodeProvider>('fabricNativeTreeNodeProvider');
+    private readonly _fabricMirroredTreeNodeProvider = required<FabricTreeNodeProvider>(
+        'fabricMirroredTreeNodeProvider',
+    );
+
+    // — Mutable fields — might be changed any time ———————————————————————————————
 
     /** Mutable — updated on every workspace tree refresh via onResourceItemRetrieved. */
     cosmosDBWorkspaceBranchDataResource: CosmosDBWorkspaceItem | undefined = undefined;
@@ -75,11 +83,12 @@ class ExtensionService {
     /** Mutable — updated on every workspace tree refresh via onResourceItemRetrieved. */
     migrationWorkspaceBranchDataResource: MigrationWorkspaceItem | undefined = undefined;
 
-    // — Optional fields — getter returns undefined before activate() —————————————
-    private readonly _isBundle = optional<boolean>('isBundle');
-
     /** Mutable — can change at runtime when Copilot is installed/uninstalled. */
     isAIFeaturesEnabled: boolean | undefined = undefined;
+
+    // — Optional fields — getter returns undefined before activate() —————————————
+    private readonly _isBundle = optional<boolean>('isBundle');
+    private readonly _fabricServices = optional<IFabricExtensionServiceCollection>('fabricServices');
 
     // — Getters / setters ————————————————————————————————————————————————————————
     get context() {
@@ -145,6 +154,20 @@ class ExtensionService {
         this._migrationWorkspaceBranchDataProvider.set(v);
     }
 
+    get fabricNativeTreeNodeProvider() {
+        return this._fabricNativeTreeNodeProvider.get();
+    }
+    set fabricNativeTreeNodeProvider(v) {
+        this._fabricNativeTreeNodeProvider.set(v);
+    }
+
+    get fabricMirroredTreeNodeProvider() {
+        return this._fabricMirroredTreeNodeProvider.get();
+    }
+    set fabricMirroredTreeNodeProvider(v) {
+        this._fabricMirroredTreeNodeProvider.set(v);
+    }
+
     // cosmosDBWorkspaceBranchDataResource is a plain mutable field (declared above)
     // migrationWorkspaceBranchDataResource is a plain mutable field (declared above)
 
@@ -153,6 +176,13 @@ class ExtensionService {
     }
     set isBundle(v) {
         this._isBundle.set(v);
+    }
+
+    get fabricServices() {
+        return this._fabricServices.get();
+    }
+    set fabricServices(v) {
+        this._fabricServices.set(v);
     }
 
     // isAIFeaturesEnabled is a plain mutable field (declared above)

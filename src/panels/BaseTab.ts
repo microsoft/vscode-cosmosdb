@@ -20,6 +20,35 @@ export class BaseTab {
 
     protected disposables: vscode.Disposable[] = [];
 
+    /**
+     * Fires once when the tab has been disposed (after the panel is gone
+     * and the disposables chain has been drained, but before the closed
+     * telemetry event is reported).
+     *
+     * Subscribe to react to tab lifecycle from outside the disposables
+     * chain — e.g. a controller holding a `Map<TabId, BaseTab>` that
+     * needs to remove its entry, or a parent that owns resources whose
+     * lifetime is tied to a specific tab instance and which cannot be
+     * routed through `this.disposables` (because they outlive a single
+     * tab, or because they belong to a different ownership graph).
+     *
+     * For everything that *is* tied to the tab's own lifetime, prefer
+     * `this.disposables.push(...)` — it's simpler and runs in the same
+     * pass without a round-trip through the event-emitter.
+     *
+     * The emitter is itself part of `this.disposables`, so subscribers
+     * automatically get unhooked when the tab goes away. There is no
+     * need (and no harm) to dispose the returned subscription manually.
+     */
+    private readonly _onDisposed = new vscode.EventEmitter<void>();
+    public readonly onDisposed: vscode.Event<void> = this._onDisposed.event;
+
+    private _isDisposed = false;
+    /** `true` once {@link dispose} has run (or has been entered). */
+    public get isDisposed(): boolean {
+        return this._isDisposed;
+    }
+
     protected constructor(panel: vscode.WebviewPanel, viewType: string, telemetryProperties?: Record<string, string>) {
         this.id = globalThis.crypto.randomUUID();
         this.start = Date.now();
@@ -27,6 +56,10 @@ export class BaseTab {
 
         this.panel = panel;
         this.viewType = viewType;
+
+        // Ensure the event emitter is torn down with the tab. Listeners
+        // are released automatically by `EventEmitter.dispose()`.
+        this.disposables.push(this._onDisposed);
 
         this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
 
@@ -39,6 +72,17 @@ export class BaseTab {
     }
 
     public dispose(): void {
+        if (this._isDisposed) {
+            return;
+        }
+        this._isDisposed = true;
+
+        // Notify subscribers *before* the disposables chain runs, so that
+        // listeners see a consistent "tab is going away" view of the world.
+        // The emitter itself sits inside `this.disposables` and is torn
+        // down in the loop below.
+        this._onDisposed.fire();
+
         this.panel.dispose();
 
         while (this.disposables.length) {

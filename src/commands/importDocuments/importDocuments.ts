@@ -14,12 +14,16 @@ import { validateDocumentId, validatePartitionKey } from '../../cosmosdb/utils/v
 import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../extensionVariables';
 import { type CosmosDBContainerResourceItem } from '../../tree/cosmosdb/CosmosDBContainerResourceItem';
+import { isFabricTreeElement, type FabricTreeElement } from '../../tree/fabric-resources-view/FabricTreeElement';
+import { isTreeElement, type TreeElement } from '../../tree/TreeElement';
+import { isTreeElementWithContextValue } from '../../tree/TreeElementWithContextValue';
+import { isTreeElementWithExperience } from '../../tree/TreeElementWithExperience';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { getRootPath } from '../../utils/workspacUtils';
 
 export async function importDocuments(
     context: IActionContext,
-    selectedItem: vscode.Uri | CosmosDBContainerResourceItem | undefined,
+    selectedItem: vscode.Uri | TreeElement | FabricTreeElement | undefined,
     uris: vscode.Uri[] | undefined,
 ): Promise<void> {
     if (selectedItem instanceof vscode.Uri) {
@@ -51,24 +55,36 @@ export async function importDocuments(
         ext.outputChannel.show();
     }
 
-    if (!selectedItem) {
-        selectedItem = await pickAppResource<CosmosDBContainerResourceItem>(context, {
-            type: [AzExtResourceType.AzureCosmosDb],
-            expectedChildContextValue: ['treeItem.container'],
-        });
-    }
+    const element: TreeElement | undefined = isFabricTreeElement(selectedItem)
+        ? selectedItem?.element
+        : isTreeElement(selectedItem)
+          ? selectedItem
+          : await pickAppResource<CosmosDBContainerResourceItem>(context, {
+                type: [AzExtResourceType.AzureCosmosDb],
+                expectedChildContextValue: ['treeItem.container'],
+            });
 
-    if (!selectedItem) {
+    if (!element) {
         return undefined;
     }
 
-    context.telemetry.properties.experience = selectedItem.experience.api;
+    if (isTreeElementWithExperience(element)) {
+        context.telemetry.properties.experience = element.experience.api;
+    }
 
-    await ext.state.runWithTemporaryDescription(selectedItem.id, l10n.t('Importing…'), async () => {
-        await importDocumentsWithProgress(selectedItem, uris);
+    if (
+        !isTreeElementWithContextValue(element) ||
+        (!element.contextValue.includes('treeItem.container') && !element.contextValue.includes('treeItem.items'))
+    ) {
+        return undefined;
+    }
+
+    const containerElement = element as CosmosDBContainerResourceItem;
+    await ext.state.runWithTemporaryDescription(containerElement.id, l10n.t('Importing…'), async () => {
+        await importDocumentsWithProgress(containerElement, uris);
     });
 
-    ext.state.notifyChildrenChanged(selectedItem.id);
+    ext.state.notifyChildrenChanged(containerElement.id);
 }
 
 export async function importDocumentsWithProgress(
@@ -79,18 +95,20 @@ export async function importDocumentsWithProgress(
         {
             location: vscode.ProgressLocation.Notification,
             title: l10n.t('Importing documents…'),
+            cancellable: true,
         },
         async (progress) => {
             progress.report({ increment: 0, message: l10n.t('Loading documents…') });
 
             const countUri = uris.length;
             const incrementUri = 50 / (countUri || 1);
+            const multiplierUri = incrementUri !== 0 && incrementUri < 1 ? Math.floor(1 / incrementUri) : 1;
             const documents: unknown[] = [];
             let hasErrors = false;
 
-            for (let i = 0, percent = 0; i < countUri; i++, percent += incrementUri) {
+            for (let i = 0; i < countUri; i++) {
                 progress.report({
-                    increment: Math.floor(percent),
+                    increment: Math.floor(i % multiplierUri === 0 ? incrementUri * multiplierUri : 0),
                     message: l10n.t('Loading document {num} of {countUri}', { num: i + 1, countUri }),
                 });
 
@@ -112,11 +130,14 @@ export async function importDocumentsWithProgress(
 
             const countDocuments = documents.length;
             const incrementDocuments = 50 / (countDocuments || 1);
+            const multiplierDocuments =
+                incrementDocuments !== 0 && incrementDocuments < 1 ? Math.floor(1 / incrementDocuments) : 1;
+
             let count = 0;
 
-            for (let i = 0, percent = 0; i < countDocuments; i++, percent += incrementDocuments) {
+            for (let i = 0; i < countDocuments; i++) {
                 progress.report({
-                    increment: Math.floor(percent),
+                    increment: Math.floor(i % multiplierDocuments === 0 ? incrementDocuments * multiplierDocuments : 0),
                     message: l10n.t('Importing document {num} of {countDocuments}', {
                         num: i + 1,
                         countDocuments,

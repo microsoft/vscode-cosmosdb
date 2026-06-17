@@ -10,20 +10,22 @@ import {
     areCopilotModelsAvailable,
     isAIFeaturesDisabledBySetting,
     isCopilotChatExtensionInstalled,
+    onCopilotAvailabilityChanged,
 } from './copilotUtils';
 
 // Mock the vscode module
 vi.mock('vscode', () => ({
     extensions: {
         getExtension: vi.fn(),
-        onDidChange: vi.fn(),
+        onDidChange: vi.fn(() => ({ dispose: vi.fn() })),
     },
     lm: {
         selectChatModels: vi.fn(),
+        onDidChangeChatModels: vi.fn(() => ({ dispose: vi.fn() })),
     },
     workspace: {
         getConfiguration: vi.fn(),
-        onDidChangeConfiguration: vi.fn(),
+        onDidChangeConfiguration: vi.fn(() => ({ dispose: vi.fn() })),
     },
     Disposable: {
         from: vi.fn((..._disposables) => ({ dispose: vi.fn() })),
@@ -143,6 +145,71 @@ describe('copilotUtils', () => {
             (vscode.lm.selectChatModels as Mock).mockResolvedValue([]);
 
             await expect(areAIFeaturesEnabled()).resolves.toBe(false);
+        });
+    });
+
+    describe('onCopilotAvailabilityChanged', () => {
+        it('registers extension, configuration and model listeners and returns a disposable', () => {
+            (vscode.extensions.getExtension as Mock).mockReturnValue(undefined);
+
+            const disposable = onCopilotAvailabilityChanged(vi.fn());
+
+            expect(vscode.extensions.onDidChange).toHaveBeenCalled();
+            expect(vscode.workspace.onDidChangeConfiguration).toHaveBeenCalled();
+            expect(vscode.lm.onDidChangeChatModels).toHaveBeenCalled();
+            expect(vscode.Disposable.from).toHaveBeenCalled();
+            expect(typeof disposable.dispose).toBe('function');
+        });
+
+        it('invokes the callback with true when the configuration change makes models available', async () => {
+            mockConfigGet.mockReturnValue(false); // not disabled
+            (vscode.lm.selectChatModels as Mock).mockResolvedValue([{ id: 'model1' }]);
+
+            const callback = vi.fn();
+            onCopilotAvailabilityChanged(callback);
+
+            // Grab the configuration listener registered inside onCopilotAvailabilityChanged.
+            const configListener = (vscode.workspace.onDidChangeConfiguration as Mock).mock.calls[0][0] as (e: {
+                affectsConfiguration: (s: string) => boolean;
+            }) => void;
+            configListener({ affectsConfiguration: () => true });
+
+            // Allow the async availability check to settle.
+            await vi.waitFor(() => expect(callback).toHaveBeenCalledWith(true));
+        });
+
+        it('ignores configuration changes that do not affect chat.disableAIFeatures', () => {
+            const callback = vi.fn();
+            onCopilotAvailabilityChanged(callback);
+
+            const configListener = (vscode.workspace.onDidChangeConfiguration as Mock).mock.calls[0][0] as (e: {
+                affectsConfiguration: (s: string) => boolean;
+            }) => void;
+            configListener({ affectsConfiguration: () => false });
+
+            expect(callback).not.toHaveBeenCalled();
+        });
+
+        it('retries when enabling but models are not yet available, then succeeds', async () => {
+            vi.useFakeTimers();
+            try {
+                mockConfigGet.mockReturnValue(false); // not disabled → enabling scenario
+                // First check: no models; subsequent checks: available.
+                (vscode.lm.selectChatModels as Mock).mockResolvedValueOnce([]).mockResolvedValue([{ id: 'model1' }]);
+
+                const callback = vi.fn();
+                onCopilotAvailabilityChanged(callback);
+
+                const modelListener = (vscode.lm.onDidChangeChatModels as Mock).mock.calls[0][0] as () => void;
+                modelListener();
+
+                // Drain the first (failing) availability check, then the scheduled retry.
+                await vi.runAllTimersAsync();
+
+                expect(callback).toHaveBeenCalledWith(true);
+            } finally {
+                vi.useRealTimers();
+            }
         });
     });
 });

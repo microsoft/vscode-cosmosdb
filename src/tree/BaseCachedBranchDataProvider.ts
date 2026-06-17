@@ -19,6 +19,7 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { API } from '../AzureDBExperiences';
 import { ext } from '../extensionVariables';
+import { type FabricArtifact } from './fabric/models/FabricArtifact';
 import { type TreeElement } from './TreeElement';
 import { isTreeElementWithContextValue, TreeElementWithContextValue } from './TreeElementWithContextValue';
 import { isTreeElementWithExperience } from './TreeElementWithExperience';
@@ -49,7 +50,7 @@ import { isTreeElementWithExperience } from './TreeElementWithExperience';
  * @augments vscode.Disposable
  * @implements {BranchDataProvider<T, TreeElement>}
  */
-export abstract class BaseCachedBranchDataProvider<T extends AzureResource | WorkspaceResource>
+export abstract class BaseCachedBranchDataProvider<T extends AzureResource | WorkspaceResource | FabricArtifact>
     extends vscode.Disposable
     implements BranchDataProvider<T, TreeElement>
 {

@@ -53,6 +53,7 @@ export interface CosmosDBControlPlane {
         databaseId: string,
         definition: ContainerDefinition,
         throughput?: number,
+        maxThroughput?: number,
     ): Promise<ContainerResource>;
     deleteContainer(databaseId: string, containerId: string): Promise<void>;
 

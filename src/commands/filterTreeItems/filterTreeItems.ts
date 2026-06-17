@@ -5,22 +5,29 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { ext } from '../../extensionVariables';
+import { isFabricTreeElement, type FabricTreeElement } from '../../tree/fabric-resources-view/FabricTreeElement';
 import { isFilterable } from '../../tree/mixins/Filterable';
-import { type TreeElement } from '../../tree/TreeElement';
+import { isTreeElement, type TreeElement } from '../../tree/TreeElement';
 import { isTreeElementWithExperience } from '../../tree/TreeElementWithExperience';
 
-export async function filterTreeItems(context: IActionContext, node?: TreeElement): Promise<void> {
-    if (!node) {
-        return undefined;
+export async function filterTreeItems(context: IActionContext, node?: TreeElement | FabricTreeElement): Promise<void> {
+    const element: TreeElement | undefined = isFabricTreeElement(node)
+        ? node.element
+        : isTreeElement(node)
+          ? node
+          : undefined;
+
+    if (!element) {
+        return;
     }
 
-    if (isTreeElementWithExperience(node)) {
-        context.telemetry.properties.experience = node.experience.api;
+    if (isTreeElementWithExperience(element)) {
+        context.telemetry.properties.experience = element.experience.api;
     }
 
-    if (isFilterable(node)) {
-        await node.handleFilterCommand();
+    if (isFilterable(element)) {
+        await element.handleFilterCommand();
     }
 
-    return ext.state.notifyChildrenChanged(node.id);
+    return ext.state.notifyChildrenChanged(element.id);
 }

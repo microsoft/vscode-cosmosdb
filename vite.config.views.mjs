@@ -159,6 +159,11 @@ export default ({ mode }) => {
                     __dirname,
                     'packages/nosql-language-service/src/index.ts',
                 ),
+                // NB: only client + shared (no /server — that's vscode/Node-only and the
+                // noExtensionImports plugin would refuse it anyway).
+                '@cosmosdb/webview-rpc/client': path.resolve(__dirname, 'packages/webview-rpc/src/client/index.ts'),
+                '@cosmosdb/webview-rpc/react': path.resolve(__dirname, 'packages/webview-rpc/src/react/index.ts'),
+                '@cosmosdb/webview-rpc': path.resolve(__dirname, 'packages/webview-rpc/src/index.ts'),
             },
         },
         // CSS/SCSS handled natively by Vite (no css-loader/sass-loader needed).

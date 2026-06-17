@@ -1,0 +1,61 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import * as vscode from 'vscode';
+import { getBatchSizeSetting, getRootPath } from './workspacUtils';
+
+vi.mock('../extensionVariables', () => ({
+    ext: { settingsKeys: { batchSize: 'cosmosDB.batchSize' } },
+}));
+
+function setWorkspaceFolders(folders: { fsPath: string }[] | undefined): void {
+    Object.defineProperty(vscode.workspace, 'workspaceFolders', {
+        configurable: true,
+        get: () => folders?.map((f, index) => ({ uri: vscode.Uri.file(f.fsPath), name: f.fsPath, index })),
+    });
+}
+
+describe('getRootPath', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+        setWorkspaceFolders(undefined);
+    });
+
+    it('returns the single folder path in a single-root workspace', () => {
+        setWorkspaceFolders([{ fsPath: '/root' }]);
+        expect(getRootPath()).toBe(vscode.Uri.file('/root').fsPath);
+    });
+
+    it('returns undefined in a multi-root workspace', () => {
+        setWorkspaceFolders([{ fsPath: '/a' }, { fsPath: '/b' }]);
+        expect(getRootPath()).toBeUndefined();
+    });
+
+    it('returns undefined when there are no workspace folders', () => {
+        setWorkspaceFolders(undefined);
+        expect(getRootPath()).toBeUndefined();
+    });
+});
+
+describe('getBatchSizeSetting', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    it('returns the configured batch size', () => {
+        vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
+            get: vi.fn(() => 50),
+        } as unknown as vscode.WorkspaceConfiguration);
+        expect(getBatchSizeSetting()).toBe(50);
+    });
+
+    it('throws when the batch size setting is missing', () => {
+        vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
+            get: vi.fn(() => undefined),
+        } as unknown as vscode.WorkspaceConfiguration);
+        expect(() => getBatchSizeSetting()).toThrow('batchSize');
+    });
+});

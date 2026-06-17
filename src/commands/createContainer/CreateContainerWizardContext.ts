@@ -12,6 +12,7 @@ export interface CreateContainerWizardContext extends IActionContext {
     containerName?: string;
     partitionKey?: PartitionKeyDefinition;
     throughput?: number;
+    maxThroughput?: number;
 
     accountInfo: AccountInfo;
     databaseId: string;

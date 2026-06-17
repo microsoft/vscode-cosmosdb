@@ -39,6 +39,8 @@ export { getCompletions } from './completion/SqlCompletion.js';
 export type { CompletionItem, CompletionItemKind, CompletionRequest, JSONSchema } from './completion/SqlCompletion.js';
 export { detectTypos } from './diagnostics/typoDetection.js';
 export type { TypoWarning } from './diagnostics/typoDetection.js';
+export { detectOrderByInSubquery, ORDER_BY_IN_SUBQUERY_MESSAGE } from './diagnostics/orderByInSubquery.js';
+export type { OrderByInSubqueryError } from './diagnostics/orderByInSubquery.js';
 export * from './errors/SqlError.js';
 export { sqlToString } from './printer/SqlPrinter.js';
 export * from './visitor/SqlVisitor.js';

@@ -5,10 +5,11 @@
 
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
+import { API } from '../../AzureDBExperiences';
 import { type CreateContainerWizardContext } from './CreateContainerWizardContext';
 
 const minThroughput: number = 400;
-const maxThroughput: number = 100000;
+const maxThroughput: number = 100_000;
 const throughputStepSize = 100;
 
 export class CosmosDBThroughputStep extends AzureWizardPromptStep<CreateContainerWizardContext> {
@@ -35,7 +36,18 @@ export class CosmosDBThroughputStep extends AzureWizardPromptStep<CreateContaine
     }
 
     public shouldPrompt(context: CreateContainerWizardContext): boolean {
-        return !context.accountInfo.isServerless;
+        if (context.accountInfo.isServerless) {
+            context.throughput = 0;
+            return false;
+        }
+
+        if (context.experience.api === API.FabricNative) {
+            context.throughput = 0;
+            context.maxThroughput = 5_000;
+            return false;
+        }
+
+        return true;
     }
 
     public validateInput(throughput: string | undefined): string | undefined {

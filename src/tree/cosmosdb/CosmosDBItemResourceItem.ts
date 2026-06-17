@@ -28,7 +28,7 @@ export abstract class CosmosDBItemResourceItem
     implements TreeElement, TreeElementWithExperience, TreeElementWithContextValue
 {
     public readonly id: string;
-    public readonly contextValue: string = 'treeItem.document';
+    public readonly contextValue: string = 'treeItem.item';
     public readonly documentId?: CosmosDBRecordIdentifier;
 
     protected constructor(
@@ -38,7 +38,7 @@ export abstract class CosmosDBItemResourceItem
         this.documentId = getDocumentId(this.model.item, this.model.container.partitionKey);
         const uniqueId = this.generateUniqueId();
         this.id = sanitizeId(
-            `${model.accountInfo.id}/${model.database.id}/${model.container.id}/documents/${uniqueId}`,
+            `${model.accountInfo.id}/${model.database.id}/${model.container.id}/items/${uniqueId}`,
         );
         this.contextValue = TreeElementWithContextValue.createContextValue([
             this.contextValue,

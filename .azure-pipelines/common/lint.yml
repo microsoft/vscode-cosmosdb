@@ -5,6 +5,9 @@ steps:
     command: custom
     customCommand: run lint
 
-- task: ComponentGovernanceComponentDetection@0
-  displayName: 'Component Detection'
-  condition: ne(variables['System.PullRequest.IsFork'], 'True')
+# Temporarily disabled: Component Governance detection is producing Network
+# Isolation blocked-connection noise in this pipeline. Re-enable once policy
+# and tooling behavior are aligned.
+# - task: ComponentGovernanceComponentDetection@0
+#   displayName: 'Component Detection'
+#   condition: ne(variables['System.PullRequest.IsFork'], 'True')

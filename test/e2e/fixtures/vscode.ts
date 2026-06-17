@@ -38,7 +38,8 @@
  * file should declare its own cleanup.
  */
 
-import { _electron as electron, type ElectronApplication, type Page, test as base } from '@playwright/test';
+import { test as base, _electron as electron, type ElectronApplication, type Page } from '@playwright/test';
+import { execFileSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -143,7 +144,16 @@ export const test = base.extend<object, VsCodeFixtures>({
 
             // Worker-scoped temp dirs under the run-scoped temp root.
             const workerDir = mkdtempSync(path.join(isolation.tempRootDir, 'worker-'));
-            const userDataDir = path.join(workerDir, 'user-data');
+            // VS Code creates a Unix domain socket at `<user-data-dir>/<ver>-main.sock`
+            // during startup. POSIX caps socket paths at ~103 chars; the run-scoped
+            // temp root (which can live under a long `TMPDIR`) easily pushes the socket
+            // path past that limit, crashing VS Code's main process with
+            // `listen EINVAL` before any window opens. Keep the user-data dir on a
+            // short base on POSIX so the socket path stays within the limit. Windows
+            // uses named pipes (no filesystem-path limit), so the original location
+            // is fine there.
+            const userDataDir =
+                process.platform === 'win32' ? path.join(workerDir, 'user-data') : mkdtempSync('/tmp/cdbe2e-');
             const workspaceDir = path.join(workerDir, 'workspace');
             mkdirSync(userDataDir, { recursive: true });
 
@@ -215,14 +225,41 @@ export const test = base.extend<object, VsCodeFixtures>({
 
             await use(app);
 
-            await app.close().catch(() => {
-                /* close races with Electron teardown are expected */
-            });
+            // VS Code spawns helper processes (extension host, renderers,
+            // utility) that keep the app alive, so `app.close()` reliably hangs
+            // past the worker-teardown timeout. Every one of those processes
+            // carries this worker's unique `--user-data-dir` in its argv, so a
+            // targeted `pkill -f` tears the whole instance down without touching
+            // other workers. Windows uses named pipes and closes cleanly, so
+            // fall back to `app.close()` there.
+            if (process.platform === 'win32') {
+                await app.close().catch(() => {
+                    /* close races with Electron teardown are expected */
+                });
+            } else {
+                try {
+                    execFileSync('pkill', ['-9', '-f', userDataDir]);
+                } catch {
+                    /* no matching processes / pkill unavailable — ignore */
+                }
+                await app.close().catch(() => {
+                    /* connection already dropped once the processes were killed */
+                });
+            }
             // Best-effort cleanup; on Windows file handles can linger briefly.
             try {
                 rmSync(workerDir, { recursive: true, force: true });
             } catch {
                 /* ignore */
+            }
+            // The POSIX user-data dir lives outside workerDir (short-path
+            // workaround above), so remove it separately.
+            if (userDataDir !== path.join(workerDir, 'user-data')) {
+                try {
+                    rmSync(userDataDir, { recursive: true, force: true });
+                } catch {
+                    /* ignore */
+                }
             }
         },
         { scope: 'worker' },

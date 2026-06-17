@@ -94,8 +94,6 @@ Some fixtures are marked with `knownLimitation` in their definition. These tests
 | ID     | Query feature     | Reason                                                              |
 | ------ | ----------------- | ------------------------------------------------------------------- |
 | STR-12 | `TRIM()`          | Not implemented in vnext-preview                                    |
-| M-07   | `LOG(0)`          | Produces `-Infinity` → JSON error 4001                              |
-| M-13   | `LOG10(0)`        | Produces `-Infinity` → JSON error 4001                              |
 | UDF-01 | UDF in SELECT     | "Server-side scripts are not supported in this emulator" (HTTP 400) |
 | UDF-02 | UDF in WHERE      | "Server-side scripts are not supported in this emulator" (HTTP 400) |
 | UDF-03 | UDF multiple args | "Server-side scripts are not supported in this emulator" (HTTP 400) |
@@ -108,13 +106,17 @@ When Microsoft ships a stable Linux emulator that supports these features, remov
 
 ## Cosmos DB language limitations (not emulator-specific)
 
-These fixtures parse successfully (the native `sql.y` grammar accepts them) but are rejected by **both** the emulator and production Azure Cosmos DB with HTTP 400. They are **not** emulator gaps, so they will not be fixed by a future emulator — the language service flags them statically instead.
+These fixtures parse successfully (the native `sql.y` grammar accepts them) but are rejected by **both** the emulator and production Azure Cosmos DB with HTTP 400. They are **not** emulator gaps, so they will not be fixed by a future emulator — do **not** remove the `knownLimitation` when the emulator stabilizes. Where possible the language service flags them statically.
 
-| ID            | Query feature            | Reason                                                                                                               |
-| ------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| SQ-05 / SQ-06 | `ORDER BY` in a subquery | Cosmos DB does not support `ORDER BY` inside any subquery (`FIRST`/`LAST`/`ARRAY`/`EXISTS`/`(SELECT …)`/`FROM (…)`). |
+| ID            | Query feature            | Reason                                                                                                                      |
+| ------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| SQ-05 / SQ-06 | `ORDER BY` in a subquery | Cosmos DB does not support `ORDER BY` inside any subquery (`FIRST`/`LAST`/`ARRAY`/`EXISTS`/`(SELECT …)`/`FROM (…)`).        |
+| M-07          | `LOG(0)`                 | `LOG(0)` / negative argument → `-Infinity`, which is not valid JSON. Service returns HTTP 400 error 4001. See issue #310.   |
+| M-13          | `LOG10(0)`               | `LOG10(0)` / negative argument → `-Infinity`, which is not valid JSON. Service returns HTTP 400 error 4001. See issue #310. |
 
 > **`ORDER BY` in subqueries:** the scalar subquery expressions `FIRST()`, `LAST()`, and `ARRAY()` work (SQ-01…SQ-04 pass) — but a nested `ORDER BY` inside any subquery is invalid. This was originally mis-reported upstream as "`FIRST()` unsupported" ([Azure/azure-cosmos-db-emulator-docker#311](https://github.com/Azure/azure-cosmos-db-emulator-docker/issues/311)); the actual discriminator is the subquery `ORDER BY`. Top-level `ORDER BY` (O/P series) is fully supported. The grammar permits the construct, so the language service surfaces it as the `ORDER_BY_IN_SUBQUERY` diagnostic (severity Error) — see `src/diagnostics/orderByInSubquery.ts`.
+
+> **`LOG(0)` / `LOG10(0)`:** guard the argument so it is always greater than 0, e.g. `WHERE c.value > 0` or `c.value > 0 ? LOG(c.value) : null`. This is data-dependent (only rows with a 0/negative value fail), so no static diagnostic is emitted — see the LOG/LOG10 hover documentation for details.
 
 ---
 

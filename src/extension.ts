@@ -217,8 +217,6 @@ export async function activateInternal(
                 performance.now() - azureResourcesStartTime;
         }
 
-        vscode.commands.executeCommand('cosmosDB.ai.deployInstructionFiles');
-
         const endTime = performance.now();
         activateContext.telemetry.measurements.endTime = endTime;
         activateContext.telemetry.measurements.totalActivationTime = endTime - startTime;
@@ -283,24 +281,28 @@ function registerFabricProviders(
     context: vscode.ExtensionContext,
     fabricApi: fabric.IFabricExtensionManager,
 ): Promise<void> {
-    ext.fabricNativeTreeNodeProvider = new FabricTreeNodeProvider(context, 'CosmosDBDatabase');
-    ext.fabricMirroredTreeNodeProvider = new FabricTreeNodeProvider(context, 'MirroredDatabase');
+    try {
+        ext.fabricNativeTreeNodeProvider = new FabricTreeNodeProvider(context, 'CosmosDBDatabase');
+        ext.fabricMirroredTreeNodeProvider = new FabricTreeNodeProvider(context, 'MirroredDatabase');
 
-    // Register Fabric providers and commands
-    // Mirrored DB is currently hidden until we have a better story around it
-    const extension: fabric.IFabricExtension & { artifactTypes: FabricArtifactType[] } = {
-        identity: context.extension.id,
-        apiVersion: String(fabric.apiVersion),
-        artifactTypes: ['CosmosDBDatabase' /*, 'MirroredDatabase'*/],
-        treeNodeProviders: [ext.fabricNativeTreeNodeProvider /*, ext.fabricMirroredTreeNodeProvider*/],
-        localProjectTreeNodeProviders: [],
-        artifactHandlers: [
-            ...FabricService.getArtifactHandlers('CosmosDBDatabase'),
-            ...FabricService.getArtifactHandlers('MirroredDatabase'),
-        ],
-    };
+        // Register Fabric providers and commands
+        // Mirrored DB is currently hidden until we have a better story around it
+        const extension: fabric.IFabricExtension & { artifactTypes: FabricArtifactType[] } = {
+            identity: context.extension.id,
+            apiVersion: String(fabric.apiVersion),
+            artifactTypes: ['CosmosDBDatabase' /*, 'MirroredDatabase'*/],
+            treeNodeProviders: [ext.fabricNativeTreeNodeProvider /*, ext.fabricMirroredTreeNodeProvider*/],
+            localProjectTreeNodeProviders: [],
+            artifactHandlers: [
+                ...FabricService.getArtifactHandlers('CosmosDBDatabase'),
+                ...FabricService.getArtifactHandlers('MirroredDatabase'),
+            ],
+        };
 
-    ext.fabricServices = fabricApi.addExtension(extension);
+        ext.fabricServices = fabricApi.addExtension(extension);
+    } catch (e) {
+        console.error('Error registering Fabric providers:', e);
+    }
 
     return Promise.resolve();
 }

@@ -37,9 +37,7 @@ export abstract class CosmosDBItemResourceItem
     ) {
         this.documentId = getDocumentId(this.model.item, this.model.container.partitionKey);
         const uniqueId = this.generateUniqueId();
-        this.id = sanitizeId(
-            `${model.accountInfo.id}/${model.database.id}/${model.container.id}/items/${uniqueId}`,
-        );
+        this.id = sanitizeId(`${model.accountInfo.id}/${model.database.id}/${model.container.id}/items/${uniqueId}`);
         this.contextValue = TreeElementWithContextValue.createContextValue([
             this.contextValue,
             `experience.${this.experience.api}`,

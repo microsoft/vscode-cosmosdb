@@ -43,6 +43,7 @@ import { execFileSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolveCapturePlan, shouldCapture } from '../helpers/captureMode';
 import { ensureE2eIsolationContext } from '../helpers/e2eIsolation';
 import { waitForWorkbenchReady } from '../helpers/workbenchReady';
 import { waitForExtensionsActivated } from '../setup/activation';
@@ -145,7 +146,16 @@ interface VsCodeFixtures {
     vscodeWindow: Page;
 }
 
-export const test = base.extend<object, VsCodeFixtures>({
+interface VsCodeTestFixtures {
+    /**
+     * Auto fixture (no value) that records a self-managed Playwright trace of
+     * the VS Code window for the duration of each test when
+     * `COSMOSDB_E2E_SCREENSHOT` selects a `trace` mode. See the fixture body.
+     */
+    windowTrace: void;
+}
+
+export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
     vscodeApp: [
         async ({}, use) => {
             const cfg = readE2eConfig();
@@ -310,6 +320,69 @@ export const test = base.extend<object, VsCodeFixtures>({
             await use(page);
         },
         { scope: 'worker' },
+    ],
+
+    windowTrace: [
+        async ({ vscodeApp, vscodeWindow }, use, testInfo) => {
+            const { trace } = resolveCapturePlan();
+            // `vscodeWindow` is depended on so the workbench is ready before
+            // tracing starts (and so this auto fixture is ordered after window
+            // setup); skip if it never came up.
+            if (trace === 'off' || vscodeWindow.isClosed()) {
+                await use();
+                return;
+            }
+
+            const context = vscodeApp.context();
+
+            // Own the trace where possible so `screenshots: true` is forced —
+            // that's what produces the filmstrip the runner can't capture for a
+            // manually `_electron.launch`-ed window. `snapshots` is deliberately
+            // OFF: the trace viewer's DOM-snapshot reconstruction can't reproduce
+            // VS Code's canvas-painted shell or its cross-origin webview iframes,
+            // so it renders a misleading, stripped-down approximation. Without
+            // snapshots the viewer falls back to the real screencast frames, and
+            // the trace stays smaller. If the runner already has tracing active
+            // on this context (e.g. on a retry), record this test's slice as a
+            // chunk of that existing session instead.
+            let owns = false;
+            try {
+                await context.tracing.start({ screenshots: true, snapshots: false, sources: true });
+                owns = true;
+            } catch {
+                try {
+                    await context.tracing.startChunk({ title: testInfo.title });
+                } catch {
+                    // Tracing unavailable — run the test without a window trace.
+                    await use();
+                    return;
+                }
+            }
+
+            await use();
+
+            const keep = shouldCapture(trace, testInfo.status !== testInfo.expectedStatus);
+            const file = testInfo.outputPath('vscode-window-trace.zip');
+            try {
+                if (owns) {
+                    await context.tracing.stop(keep ? { path: file } : undefined);
+                } else {
+                    await context.tracing.stopChunk(keep ? { path: file } : undefined);
+                }
+                if (keep) {
+                    // The attachment MUST be named `trace` (with the
+                    // `application/zip` content type): that's the only name the
+                    // Playwright HTML report / UI special-cases into an embedded
+                    // "open trace" link that launches the trace viewer in-page.
+                    // Any other name renders as a plain download, and the OS then
+                    // fails to open the raw zip ("unsupported format").
+                    await testInfo.attach('trace', { path: file, contentType: 'application/zip' });
+                }
+            } catch {
+                // Best-effort — never fail a test on trace capture/teardown.
+            }
+        },
+        { auto: true },
     ],
 });
 

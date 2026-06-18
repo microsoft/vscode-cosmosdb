@@ -24,6 +24,7 @@
  */
 
 import { test, type Frame, type Page } from '@playwright/test';
+import { resolveCapturePlan, shouldCapture } from '../helpers/captureMode';
 
 const COMMAND_PALETTE_SHORTCUT = process.platform === 'darwin' ? 'Meta+Shift+P' : 'Control+Shift+P';
 const QUICK_INPUT_SELECTOR = '.quick-input-widget input';
@@ -113,12 +114,10 @@ export async function getWebviewByPredicate(
  * current test, so it appears in the HTML report and is written under the
  * results dir.
  *
- * Capture is controlled by `COSMOSDB_E2E_SCREENSHOT`, mirroring Playwright's
- * `screenshot` option:
- *   - `on` / `1`             — capture for every test (pass or fail)
- *   - `off` / `0`            — never capture
- *   - `only-on-failure`      — capture only when the test failed
- *   - unset / any other      — same as `only-on-failure` (the default)
+ * Capture is controlled by `COSMOSDB_E2E_SCREENSHOT` (see
+ * `helpers/captureMode.ts` for the full mode table). In short: `on`/`1`
+ * captures every test, `off`/`0` never, and the default captures only on
+ * failure.
  *
  * Why explicit capture? Playwright's declarative `use.screenshot` only covers
  * the browser `page` it manages. Our tests drive a custom Electron window via
@@ -136,10 +135,9 @@ export async function captureWindowScreenshot(page: Page, name = 'vscode-window'
         return;
     }
 
-    const raw = (process.env.COSMOSDB_E2E_SCREENSHOT ?? '').trim().toLowerCase();
-    const mode = raw === 'on' || raw === '1' ? 'on' : raw === 'off' || raw === '0' ? 'off' : 'only-on-failure';
-    const shouldCapture = mode === 'on' || (mode === 'only-on-failure' && info.status !== info.expectedStatus);
-    if (!shouldCapture) return;
+    const { screenshot } = resolveCapturePlan();
+    const failed = info.status !== info.expectedStatus;
+    if (!shouldCapture(screenshot, failed)) return;
 
     try {
         // Wrap the capture in a named `test.step` so the underlying

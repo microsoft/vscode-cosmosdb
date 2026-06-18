@@ -117,9 +117,10 @@ jobs:
         env:
           COSMOSDB_E2E_SKIP_BUILD: '1'
           # When the workflow is dispatched manually with the `trace` input enabled, record a
-          # per-test window trace (and screenshots). Empty on push/PR runs, which falls back to
-          # the default capture mode (screenshot only on failure). See test/e2e/helpers/captureMode.ts.
-          COSMOSDB_E2E_SCREENSHOT: ${{ inputs.trace && 'trace' || '' }}
+          # per-test window trace (and screenshots). The `inputs` context is only populated for
+          # workflow_dispatch, so gate on the event name; push/PR runs resolve to '' and fall back
+          # to the default capture mode (screenshot only on failure). See test/e2e/helpers/captureMode.ts.
+          COSMOSDB_E2E_SCREENSHOT: ${{ (github.event_name == 'workflow_dispatch' && inputs.trace) && 'trace' || '' }}
         run: xvfb-run -a npm run e2e
 
       - name: 📤 Upload Playwright HTML report

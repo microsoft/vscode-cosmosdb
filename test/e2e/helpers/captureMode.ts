@@ -22,9 +22,11 @@
  *     trace-on-failure   → screenshot: only-on-failure, trace: only-on-failure
  *
  * The `trace` modes additionally record a self-managed Playwright trace of the
- * VS Code window — screenshots + DOM snapshots — and attach it per test. Opened
- * in the trace viewer it yields the full filmstrip / timeline ("main watch
- * screen") that the runner can't produce for a manually-launched Electron app.
+ * VS Code window — screencast screenshots only, no DOM snapshots (the snapshot
+ * reconstruction can't reproduce VS Code's canvas shell / cross-origin webviews)
+ * — and attach it per test. Opened in the trace viewer it yields the full
+ * filmstrip / timeline ("main watch screen") that the runner can't produce for
+ * a manually-launched Electron app.
  */
 
 export type CaptureWhen = 'on' | 'off' | 'only-on-failure';

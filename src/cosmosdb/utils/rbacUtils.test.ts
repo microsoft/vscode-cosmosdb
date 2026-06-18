@@ -54,7 +54,7 @@ describe('rbacUtils', () => {
             await showRbacPermissionError('my-account');
 
             expect(showErrorMessage).toHaveBeenCalledTimes(1);
-            const message = showErrorMessage.mock.calls[0][0] as string;
+            const message = showErrorMessage.mock.calls[0][0];
             expect(message).toContain('my-account');
         });
 
@@ -63,7 +63,7 @@ describe('rbacUtils', () => {
 
             await showRbacPermissionError('my-account', 'principal-42');
 
-            const message = showErrorMessage.mock.calls[0][0] as string;
+            const message = showErrorMessage.mock.calls[0][0];
             expect(message).toContain('my-account');
             expect(message).toContain('principal-42');
         });

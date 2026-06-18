@@ -23,7 +23,7 @@
  * the webview to be fully populated (React mounted, expected UI present).
  */
 
-import { type Frame, type Page } from '@playwright/test';
+import { test, type Frame, type Page } from '@playwright/test';
 
 const COMMAND_PALETTE_SHORTCUT = process.platform === 'darwin' ? 'Meta+Shift+P' : 'Control+Shift+P';
 const QUICK_INPUT_SELECTOR = '.quick-input-widget input';
@@ -109,6 +109,55 @@ export async function getWebviewByPredicate(
 }
 
 /**
+ * Captures a screenshot of the whole VS Code window and attaches it to the
+ * current test, so it appears in the HTML report and is written under the
+ * results dir.
+ *
+ * Capture is controlled by `COSMOSDB_E2E_SCREENSHOT`, mirroring Playwright's
+ * `screenshot` option:
+ *   - `on` / `1`             — capture for every test (pass or fail)
+ *   - `off` / `0`            — never capture
+ *   - `only-on-failure`      — capture only when the test failed
+ *   - unset / any other      — same as `only-on-failure` (the default)
+ *
+ * Why explicit capture? Playwright's declarative `use.screenshot` only covers
+ * the browser `page` it manages. Our tests drive a custom Electron window via
+ * `_electron.launch`, which that machinery doesn't touch (no PNG is ever
+ * produced — even on failure), so we capture it ourselves.
+ */
+export async function captureWindowScreenshot(page: Page, name = 'vscode-window'): Promise<void> {
+    if (page.isClosed()) return;
+
+    let info: ReturnType<typeof test.info>;
+    try {
+        info = test.info();
+    } catch {
+        // Not running inside a test (e.g. called from a non-test context).
+        return;
+    }
+
+    const raw = (process.env.COSMOSDB_E2E_SCREENSHOT ?? '').trim().toLowerCase();
+    const mode = raw === 'on' || raw === '1' ? 'on' : raw === 'off' || raw === '0' ? 'off' : 'only-on-failure';
+    const shouldCapture = mode === 'on' || (mode === 'only-on-failure' && info.status !== info.expectedStatus);
+    if (!shouldCapture) return;
+
+    try {
+        // Wrap the capture in a named `test.step` so the underlying
+        // `Page.screenshot` call surfaces as a labeled action in the trace's
+        // Actions list (the main trace/watch screen, not just the Attachments
+        // tab). Selecting that action renders the PNG in the center snapshot
+        // pane. The `path` attachment additionally exposes it in Attachments.
+        await test.step(`📸 ${name}`, async () => {
+            const file = info.outputPath(`${name}.png`);
+            await page.screenshot({ path: file });
+            await info.attach(`${name} (${info.title})`, { path: file, contentType: 'image/png' });
+        });
+    } catch {
+        // Best-effort — never fail a test on screenshot capture.
+    }
+}
+
+/**
  * Close every editor tab via the `workbench.action.revertAndCloseActiveEditor`
  * command. Required between tests when the VS Code instance is shared across
  * a worker (see the worker-scoped `vscodeApp` fixture) — otherwise webview
@@ -116,6 +165,9 @@ export async function getWebviewByPredicate(
  */
 export async function closeAllEditorTabs(page: Page): Promise<void> {
     if (page.isClosed()) return;
+
+    // Capture the final webview state before the tabs are closed (when enabled).
+    await captureWindowScreenshot(page);
 
     try {
         // Dismiss any popover / menu that might intercept the palette shortcut.

@@ -84,6 +84,35 @@
       }
     },
     {
+      "name": "E2E: Webview tests",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/@playwright/test/cli.js",
+      "args": ["test"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "env": {
+        // The webview e2e suite doesn't need the Cosmos DB emulator (no Docker required).
+        "COSMOSDB_E2E_SKIP_EMULATOR": "1"
+        // Screenshots use the Playwright default (only on failure).
+      }
+    },
+    {
+      "name": "E2E: Playwright UI (always screenshots)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/@playwright/test/cli.js",
+      "args": ["test", "--ui"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "env": {
+        // Capture a screenshot after every test (pass or fail), not just on failure.
+        "COSMOSDB_E2E_SCREENSHOT": "on",
+        // The webview e2e suite doesn't need the Cosmos DB emulator (no Docker required).
+        "COSMOSDB_E2E_SKIP_EMULATOR": "1"
+      }
+    },
+    {
       "type": "node",
       "request": "attach",
       "name": "Attach to Extension Host",

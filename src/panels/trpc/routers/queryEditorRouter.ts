@@ -21,6 +21,7 @@ import { withClaimsChallengeHandling } from '../../../cosmosdb/withClaimsChallen
 import { ext } from '../../../extensionVariables';
 import { SchemaFileStorage } from '../../../services/SchemaFileStorage';
 import { SchemaService } from '../../../services/SchemaService';
+import { SettingsService } from '../../../services/SettingsService';
 import { StorageNames, StorageService, type StorageItem } from '../../../services/StorageService';
 import { getAvailableModelsInfo, getSelectedModel } from '../../../utils/aiUtils';
 import { queryMetricsToCsv, queryResultToCsv } from '../../../utils/csvConverter';
@@ -119,8 +120,8 @@ export const queryEditorRouterDef = queryEditorRouter({
 
         const queryHistory = await getQueryHistory(ctx);
 
-        const config = vscode.workspace.getConfiguration('cosmosDB.queryEditor');
-        const isSchemaBasedOnQueries = config.get<boolean>('generateSchemaBasedOnQueries', false);
+        const isSchemaBasedOnQueries =
+            SettingsService.getSetting<boolean>('generateSchemaBasedOnQueries', 'cosmosDB.queryEditor') ?? false;
 
         const containerSchema = ctx.state.connection ? await readSchemaForConnection(ctx.state.connection) : null;
 
@@ -855,9 +856,9 @@ export const queryEditorRouterDef = queryEditorRouter({
         }),
 
     openSchemaSettings: queryEditorProcedure.mutation(async () => {
-        const config = vscode.workspace.getConfiguration('cosmosDB.queryEditor');
-        const current = config.get<boolean>('generateSchemaBasedOnQueries', false);
-        await config.update('generateSchemaBasedOnQueries', !current, vscode.ConfigurationTarget.Global);
+        const current =
+            SettingsService.getSetting<boolean>('generateSchemaBasedOnQueries', 'cosmosDB.queryEditor') ?? false;
+        await SettingsService.updateGlobalSetting('generateSchemaBasedOnQueries', !current, 'cosmosDB.queryEditor');
     }),
 
     showCurrentSchema: queryEditorProcedure.mutation(async ({ ctx }) => {
@@ -1040,8 +1041,8 @@ async function mergeQueryResultsIntoSchema(
         return;
     }
 
-    const config = vscode.workspace.getConfiguration('cosmosDB.queryEditor');
-    const isEnabled = config.get<boolean>('generateSchemaBasedOnQueries', false);
+    const isEnabled =
+        SettingsService.getSetting<boolean>('generateSchemaBasedOnQueries', 'cosmosDB.queryEditor') ?? false;
     if (!isEnabled) {
         return;
     }

@@ -5,6 +5,7 @@
 
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
+import { SettingsService } from '../services/SettingsService';
 import { nonNullValue } from './nonNull';
 
 export function getRootPath(): string | undefined {
@@ -15,6 +16,5 @@ export function getRootPath(): string | undefined {
 }
 
 export function getBatchSizeSetting(): number {
-    const config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration();
-    return nonNullValue(config.get<number>(ext.settingsKeys.batchSize), 'batchSize');
+    return nonNullValue(SettingsService.getSetting<number>(ext.settingsKeys.batchSize), 'batchSize');
 }

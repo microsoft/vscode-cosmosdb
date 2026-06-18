@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
+import { SettingsService } from '../services/SettingsService';
 
 export enum AuthenticationMethod {
     auto = 'auto',
@@ -13,21 +13,21 @@ export enum AuthenticationMethod {
     managedIdentity = 'managedIdentity',
 }
 
+const DEPRECATED_OAUTH_SETTING = 'azureDatabases.useCosmosOAuth';
+
 export function getPreferredAuthenticationMethod(): AuthenticationMethod {
-    const configuration = vscode.workspace.getConfiguration();
     //migrate old setting
-    const deprecatedOauthSetting = configuration.get<boolean>('azureDatabases.useCosmosOAuth');
-    let preferredAuthMethod = configuration.get<AuthenticationMethod>(
-        ext.settingsKeys.cosmosDbAuthentication,
-        AuthenticationMethod.auto,
-    );
+    const deprecatedOauthSetting = SettingsService.getSetting<boolean>(DEPRECATED_OAUTH_SETTING);
+    let preferredAuthMethod =
+        SettingsService.getSetting<AuthenticationMethod>(ext.settingsKeys.cosmosDbAuthentication) ??
+        AuthenticationMethod.auto;
 
     if (deprecatedOauthSetting) {
         if (preferredAuthMethod === AuthenticationMethod.auto) {
             preferredAuthMethod = AuthenticationMethod.entraId;
-            configuration.update(ext.settingsKeys.cosmosDbAuthentication, preferredAuthMethod, true);
+            void SettingsService.updateGlobalSetting(ext.settingsKeys.cosmosDbAuthentication, preferredAuthMethod);
         }
-        configuration.update('azureDatabases.useCosmosOAuth', undefined, true);
+        void SettingsService.updateGlobalSetting<boolean | undefined>(DEPRECATED_OAUTH_SETTING, undefined);
     }
 
     return preferredAuthMethod;

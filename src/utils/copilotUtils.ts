@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
+import { SettingsService } from '../services/SettingsService';
 
 /**
  * GitHub Copilot extension IDs
@@ -19,8 +20,7 @@ const COPILOT_CHAT_EXTENSION_ID = 'GitHub.copilot-chat';
  * @returns true if AI features are disabled by the user, false otherwise
  */
 export function isAIFeaturesDisabledBySetting(): boolean {
-    const config = vscode.workspace.getConfiguration('chat');
-    return config.get<boolean>('disableAIFeatures', false);
+    return SettingsService.getSetting<boolean>('disableAIFeatures', 'chat') ?? false;
 }
 
 /**

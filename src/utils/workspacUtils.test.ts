@@ -3,12 +3,17 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, type Mock, vi } from 'vitest';
 import * as vscode from 'vscode';
+import { SettingsService } from '../services/SettingsService';
 import { getBatchSizeSetting, getRootPath } from './workspacUtils';
 
 vi.mock('../extensionVariables', () => ({
     ext: { settingsKeys: { batchSize: 'cosmosDB.batchSize' } },
+}));
+
+vi.mock('../services/SettingsService', () => ({
+    SettingsService: { getSetting: vi.fn() },
 }));
 
 function setWorkspaceFolders(folders: { fsPath: string }[] | undefined): void {
@@ -46,16 +51,13 @@ describe('getBatchSizeSetting', () => {
     });
 
     it('returns the configured batch size', () => {
-        vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
-            get: vi.fn(() => 50),
-        } as unknown as vscode.WorkspaceConfiguration);
+        (SettingsService.getSetting as Mock).mockReturnValue(50);
         expect(getBatchSizeSetting()).toBe(50);
+        expect(SettingsService.getSetting).toHaveBeenCalledWith('cosmosDB.batchSize');
     });
 
     it('throws when the batch size setting is missing', () => {
-        vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
-            get: vi.fn(() => undefined),
-        } as unknown as vscode.WorkspaceConfiguration);
+        (SettingsService.getSetting as Mock).mockReturnValue(undefined);
         expect(() => getBatchSizeSetting()).toThrow('batchSize');
     });
 });

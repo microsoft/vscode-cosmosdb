@@ -5,6 +5,7 @@
 
 import { type Mock } from 'vitest';
 import * as vscode from 'vscode';
+import { SettingsService } from '../services/SettingsService';
 import {
     areAIFeaturesEnabled,
     areCopilotModelsAvailable,
@@ -32,35 +33,34 @@ vi.mock('vscode', () => ({
     },
 }));
 
-describe('copilotUtils', () => {
-    let mockConfigGet: Mock;
+vi.mock('../services/SettingsService', () => ({
+    SettingsService: { getSetting: vi.fn() },
+}));
 
+describe('copilotUtils', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        mockConfigGet = vi.fn();
-        (vscode.workspace.getConfiguration as Mock).mockReturnValue({
-            get: mockConfigGet,
-        });
+        // Default: AI features not disabled by setting.
+        (SettingsService.getSetting as Mock).mockReturnValue(false);
     });
 
     describe('isAIFeaturesDisabledBySetting', () => {
         it('returns true when chat.disableAIFeatures is enabled', () => {
-            mockConfigGet.mockReturnValue(true);
+            (SettingsService.getSetting as Mock).mockReturnValue(true);
 
             expect(isAIFeaturesDisabledBySetting()).toBe(true);
-            expect(vscode.workspace.getConfiguration).toHaveBeenCalledWith('chat');
-            expect(mockConfigGet).toHaveBeenCalledWith('disableAIFeatures', false);
+            expect(SettingsService.getSetting).toHaveBeenCalledWith('disableAIFeatures', 'chat');
         });
 
         it('returns false when chat.disableAIFeatures is disabled', () => {
-            mockConfigGet.mockReturnValue(false);
+            (SettingsService.getSetting as Mock).mockReturnValue(false);
 
             expect(isAIFeaturesDisabledBySetting()).toBe(false);
         });
 
         it('returns false when chat.disableAIFeatures is not set (uses default value)', () => {
-            // When setting is not explicitly set, VS Code returns the default value (false)
-            mockConfigGet.mockReturnValue(false);
+            // When the setting is not explicitly set, SettingsService returns undefined → defaults to false.
+            (SettingsService.getSetting as Mock).mockReturnValue(undefined);
 
             expect(isAIFeaturesDisabledBySetting()).toBe(false);
         });
@@ -106,7 +106,7 @@ describe('copilotUtils', () => {
 
     describe('areAIFeaturesEnabled', () => {
         it('returns true when setting is not disabled and models are available', async () => {
-            mockConfigGet.mockReturnValue(false); // AI features not disabled
+            (SettingsService.getSetting as Mock).mockReturnValue(false); // AI features not disabled
             (vscode.extensions.getExtension as Mock).mockReturnValue({ id: 'GitHub.copilot-chat' });
             (vscode.lm.selectChatModels as Mock).mockResolvedValue([{ id: 'model1' }]);
 
@@ -116,7 +116,7 @@ describe('copilotUtils', () => {
         it('returns true when models are available even if Chat extension is not detectable', async () => {
             // Copilot may be bundled with VS Code and not detectable via getExtension();
             // model availability alone is sufficient to consider AI features enabled.
-            mockConfigGet.mockReturnValue(false);
+            (SettingsService.getSetting as Mock).mockReturnValue(false);
             (vscode.extensions.getExtension as Mock).mockReturnValue(undefined);
             (vscode.lm.selectChatModels as Mock).mockResolvedValue([{ id: 'model1' }]);
 
@@ -124,7 +124,7 @@ describe('copilotUtils', () => {
         });
 
         it('returns false when AI features are disabled by setting', async () => {
-            mockConfigGet.mockReturnValue(true); // AI features disabled
+            (SettingsService.getSetting as Mock).mockReturnValue(true); // AI features disabled
             (vscode.extensions.getExtension as Mock).mockReturnValue({ id: 'GitHub.copilot-chat' });
             (vscode.lm.selectChatModels as Mock).mockResolvedValue([{ id: 'model1' }]);
 
@@ -132,7 +132,7 @@ describe('copilotUtils', () => {
         });
 
         it('returns false when no models are available', async () => {
-            mockConfigGet.mockReturnValue(false);
+            (SettingsService.getSetting as Mock).mockReturnValue(false);
             (vscode.extensions.getExtension as Mock).mockReturnValue({ id: 'GitHub.copilot-chat' });
             (vscode.lm.selectChatModels as Mock).mockResolvedValue([]);
 
@@ -140,7 +140,7 @@ describe('copilotUtils', () => {
         });
 
         it('returns false when neither extension nor models are available', async () => {
-            mockConfigGet.mockReturnValue(false);
+            (SettingsService.getSetting as Mock).mockReturnValue(false);
             (vscode.extensions.getExtension as Mock).mockReturnValue(undefined);
             (vscode.lm.selectChatModels as Mock).mockResolvedValue([]);
 
@@ -162,7 +162,7 @@ describe('copilotUtils', () => {
         });
 
         it('invokes the callback with true when the configuration change makes models available', async () => {
-            mockConfigGet.mockReturnValue(false); // not disabled
+            (SettingsService.getSetting as Mock).mockReturnValue(false); // not disabled
             (vscode.lm.selectChatModels as Mock).mockResolvedValue([{ id: 'model1' }]);
 
             const callback = vi.fn();
@@ -193,7 +193,7 @@ describe('copilotUtils', () => {
         it('retries when enabling but models are not yet available, then succeeds', async () => {
             vi.useFakeTimers();
             try {
-                mockConfigGet.mockReturnValue(false); // not disabled → enabling scenario
+                (SettingsService.getSetting as Mock).mockReturnValue(false); // not disabled → enabling scenario
                 // First check: no models; subsequent checks: available.
                 (vscode.lm.selectChatModels as Mock).mockResolvedValueOnce([]).mockResolvedValue([{ id: 'model1' }]);
 

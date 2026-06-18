@@ -8,6 +8,7 @@ import * as l10n from '@vscode/l10n';
 import { type BasePromptElementProps, type PromptElementCtor, renderPrompt } from '@vscode/prompt-tsx';
 import * as vscode from 'vscode';
 import { ext } from '../../../extensionVariables';
+import { SettingsService } from '../../../services/SettingsService';
 import { SYSTEM_DEFENSE_RULES } from '../../../utils/aiDefenseRules';
 import {
     extractJsonObject,
@@ -55,7 +56,7 @@ export function getSelectedModel(options?: GetSelectedModelOptions): Promise<vsc
  * Defaults to `false` for production use.
  */
 export function isDebugPromptsEnabled(): boolean {
-    return vscode.workspace.getConfiguration('cosmosDB').get<boolean>('migration.debugPrompts', false);
+    return SettingsService.getSetting<boolean>('migration.debugPrompts', 'cosmosDB') ?? false;
 }
 
 /**

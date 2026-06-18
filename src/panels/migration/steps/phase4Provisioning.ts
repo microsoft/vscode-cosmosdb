@@ -36,6 +36,7 @@ import {
 } from '../../../cosmosdb/utils/rbacUtils';
 import { ext } from '../../../extensionVariables';
 import { MigrationProjectService, type ProjectJson } from '../../../services/MigrationProjectService';
+import { SettingsService } from '../../../services/SettingsService';
 import { createCosmosDBManagementClient } from '../../../utils/azureClients';
 import { validateCosmosDBAccountName } from '../../../utils/cosmosDBAccountName';
 import { getConfirmationAsInSettings } from '../../../utils/dialogs/getConfirmation';
@@ -867,7 +868,7 @@ function resolveTargetConnection(target: NonNullable<ProjectJson['phases']['targ
     let endpoint: string;
 
     if (isEmulator) {
-        const emulatorPort = vscode.workspace.getConfiguration('cosmosDB').get<number>('emulator.port') ?? 8081;
+        const emulatorPort = SettingsService.getSetting<number>('emulator.port', 'cosmosDB') ?? 8081;
         endpoint = `https://localhost:${emulatorPort}`;
     } else {
         endpoint = target.endpoint ?? '';

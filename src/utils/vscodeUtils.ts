@@ -9,6 +9,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { type EditableFileSystemItem } from '../DatabasesFileSystem';
 import { ext } from '../extensionVariables';
+import { SettingsService } from '../services/SettingsService';
 import { type TreeElement } from '../tree/TreeElement';
 import { pathExists } from './fs/pathExists';
 import { getRootPath } from './workspacUtils';
@@ -99,5 +100,5 @@ export function getDocumentTreeItemLabel(document: ItemDefinition): string {
 
 function getDocumentLabelFields(): string[] {
     const settingKey: string = ext.settingsKeys.documentLabelFields;
-    return vscode.workspace.getConfiguration().get(settingKey) || [];
+    return SettingsService.getSetting<string[]>(settingKey) || [];
 }

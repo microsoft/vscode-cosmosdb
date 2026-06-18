@@ -14,6 +14,7 @@ import { type QuerySession } from '../cosmosdb/session/QuerySession';
 import { type SerializedQueryResult } from '../cosmosdb/types/queryResult';
 import { SchemaFileStorage } from '../services/SchemaFileStorage';
 import { SchemaService } from '../services/SchemaService';
+import { SettingsService } from '../services/SettingsService';
 import { getIsSurveyDisabledGlobally } from '../utils/survey';
 import { BaseTab } from './BaseTab';
 import {
@@ -146,8 +147,8 @@ export class QueryEditorTab extends BaseTab {
     }
 
     private syncSchemaBasedOnQueriesSetting(): void {
-        const config = vscode.workspace.getConfiguration('cosmosDB.queryEditor');
-        const isEnabled = config.get<boolean>('generateSchemaBasedOnQueries', false);
+        const isEnabled =
+            SettingsService.getSetting<boolean>('generateSchemaBasedOnQueries', 'cosmosDB.queryEditor') ?? false;
         this.eventSink.emit({ type: 'schemaSettingChanged', isSchemaBasedOnQueries: isEnabled });
     }
 

@@ -3,8 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as vscode from 'vscode';
+import { type Mock } from 'vitest';
+import { SettingsService } from '../services/SettingsService';
 import { dispose, getDocumentTreeItemLabel, getNodeEditorLabel, toDisposable } from './vscodeUtils';
+
+vi.mock('../services/SettingsService', () => ({
+    SettingsService: { getSetting: vi.fn() },
+}));
 
 describe('disposable helpers', () => {
     it('dispose() calls dispose on every item and returns an empty array', () => {
@@ -32,12 +37,7 @@ describe('getNodeEditorLabel', () => {
 
 describe('Document Label Tests', () => {
     beforeAll(() => {
-        vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
-            get: vi.fn().mockReturnValue(['name']),
-            has: vi.fn(),
-            inspect: vi.fn(),
-            update: vi.fn(),
-        });
+        (SettingsService.getSetting as Mock).mockReturnValue(['name']);
     });
 
     it('Non-zero number', () => {

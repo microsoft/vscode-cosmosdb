@@ -235,12 +235,6 @@ jobs:
       - name: 📊 Generate Job Summary
         if: always()
         env:
-          PACKAGE_VERSION: ${{ steps.verify-vsix.outputs.package_version }}
-          PACKAGE_PREVIEW: ${{ steps.verify-vsix.outputs.package_preview }}
-          VSIX_FILE: ${{ steps.verify-vsix.outputs.vsix_file }}
-          VSIX_SIZE: ${{ steps.verify-vsix.outputs.vsix_size }}
-          ARTIFACT_NAME: ${{ steps.verify-vsix.outputs.artifact_name }}
-          ARTIFACT_URL: ${{ steps.upload-vsix.outputs.artifact-url }}
           GH_TOKEN: ${{ github.token }}
           VALIDATE_RESULT: ${{ steps.validate-version.outcome }}
           L10N_RESULT: ${{ steps.l10n.outcome }}
@@ -252,12 +246,8 @@ jobs:
           SERVER_URL: ${{ github.server_url }}
           REPO: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
-          # For pull_request events `github.sha` is the synthetic PR-merge commit. Use head.sha for PRs
-          # (matches what reviewers see on the PR head); fall back to github.sha for push events.
-          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_TITLE: ${{ github.event.pull_request.title }}
         shell: bash
         run: |
           # ── Helpers ──────────────────────────────────────────────────
@@ -343,47 +333,21 @@ jobs:
           package_icon=$(result_icon "$PACKAGE_RESULT")
           build_artifacts=$(list_run_artifacts "${GITHUB_RUN_ID}")
 
-          # Commit link
-          short_sha="${SHA:0:7}"
-          commit_link="[${short_sha}](${SERVER_URL}/${REPO}/commit/${SHA})"
-
-          # Resolve PR info: prefer the pull_request event payload, otherwise use `gh pr view` by
-          # branch name (works for push events too).
+          # Resolve PR number for comment posting: prefer the pull_request event payload, otherwise use
+          # `gh pr view` by branch name (works for push events too).
           if [ -z "${PR_NUMBER:-}" ] && [ -n "${BRANCH_NAME:-}" ]; then
               pr_info=$(gh pr view "${BRANCH_NAME}" --repo "${REPO}" \
-                  --json number,title 2>/dev/null) || true
+                  --json number 2>/dev/null) || true
               if [ -n "$pr_info" ]; then
                   PR_NUMBER=$(echo "$pr_info" | jq -r '.number // empty')
-                  PR_TITLE=$(echo "$pr_info"  | jq -r '.title  // empty')
-                  echo "ℹ️ Found PR #${PR_NUMBER}: ${PR_TITLE}"
+                  echo "ℹ️ Found PR #${PR_NUMBER}"
               else
                   echo "ℹ️ No open PR found for branch '${BRANCH_NAME}'"
               fi
           fi
 
-          # Source section
-          source_section="## 🔗 Source
-          - **Commit:** ${commit_link}"
-          if [ -n "${PR_NUMBER:-}" ]; then
-              source_section="${source_section}
-          - **Pull Request:** [#${PR_NUMBER} ${PR_TITLE}](${SERVER_URL}/${REPO}/pull/${PR_NUMBER})"
-          fi
-
-          # Package Information — only render when packaging produced a VSIX.
-          if [ -n "${PACKAGE_VERSION:-}" ]; then
-              package_section="## 📦 Package Information
-          - **Version:** ${PACKAGE_VERSION}
-          - **Preview:** ${PACKAGE_PREVIEW}
-          - **VSIX File:** ${VSIX_FILE}
-          - **VSIX Size:** ${VSIX_SIZE} MB
-          - **Artifact:** [${ARTIFACT_NAME}.zip](${ARTIFACT_URL})"
-          else
-              package_section="## 📦 Package Information
-          _No VSIX produced — the package step did not succeed (see job results above)._"
-          fi
-
           # Overall status — green only when every gating step succeeded or was skipped. verify-skills is
-          # warning-only and excluded from pass/fail.
+          # warning-only and excluded from pass/fail. Drives the title icon (no separate status section).
           all_green=true
           for r in "$VALIDATE_RESULT" "$L10N_RESULT" "$LINT_RESULT" \
               "$PRETTIER_RESULT" "$COMPILE_RESULT" "$PACKAGE_RESULT"; do
@@ -393,20 +357,16 @@ jobs:
               esac
           done
           if [ "$all_green" = "true" ]; then
-              overall_status="## ✅ Build Status
-          Compile, analyzers and packaging passed. See sibling comments for unit/integration and E2E results."
+              title_icon="✅"
           else
-              overall_status="## ❌ Build Status
-          One or more build checks failed. Every analyzer ran independently — review every ❌ above, not just the first."
+              title_icon="❌"
           fi
 
           # Write summary — also used verbatim as the PR comment body.
           MARKER="<!-- ci-summary:build -->"
           cat >> "$GITHUB_STEP_SUMMARY" << SUMMARY_EOF
           ${MARKER}
-          # 🔨 Build (Compile, Lint, Prettier, l10n, Package)
-
-          ${source_section}
+          # ${title_icon} Build (Compile, Lint, Prettier, l10n, Package)
 
           ## 🧱 Step Results
           - **Validate Version:** ${validate_icon} ${VALIDATE_RESULT}
@@ -417,12 +377,8 @@ jobs:
           - **Package:** ${package_icon} ${PACKAGE_RESULT}
           - **External Skills (info):** ${skills_icon} ${SKILLS_RESULT}
 
-          ${package_section}
-
           ## 📥 Artifacts ([run](${SERVER_URL}/${REPO}/actions/runs/${GITHUB_RUN_ID}))
           ${build_artifacts}
-
-          ${overall_status}
           SUMMARY_EOF
 
           echo "✅ Job summary written to: ${GITHUB_STEP_SUMMARY}"

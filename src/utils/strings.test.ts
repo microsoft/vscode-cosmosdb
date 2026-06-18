@@ -122,5 +122,15 @@ describe('strings', () => {
         it('should not pad when index already fills all digits', () => {
             expect(leftPadIndex(99, 100)).toBe('99');
         });
+
+        it('should handle a single-element collection without padding', () => {
+            expect(leftPadIndex(0, 1)).toBe('0');
+            expect(leftPadIndex(0, [42])).toBe('0');
+        });
+
+        it('should handle an empty collection without throwing', () => {
+            expect(leftPadIndex(0, 0)).toBe('0');
+            expect(leftPadIndex(0, [])).toBe('0');
+        });
     });
 });

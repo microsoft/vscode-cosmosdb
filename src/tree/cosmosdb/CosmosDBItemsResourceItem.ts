@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type ItemDefinition } from '@azure/cosmos';
-import { createContextValue, createGenericElement, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { createGenericElement, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
@@ -13,7 +13,7 @@ import { countExperienceUsageForSurvey } from '../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../utils/surveyTypes';
 import { getBatchSizeSetting } from '../../utils/workspacUtils';
 import { type TreeElement } from '../TreeElement';
-import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
+import { TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../TreeElementWithExperience';
 import { type CosmosDBItemsModel } from './models/CosmosDBItemsModel';
 
@@ -31,7 +31,10 @@ export abstract class CosmosDBItemsResourceItem
         public readonly experience: Experience,
     ) {
         this.id = `${model.accountInfo.id}/${model.database.id}/${model.container.id}/items`;
-        this.contextValue = createContextValue([this.contextValue, `experience.${this.experience.api}`]);
+        this.contextValue = TreeElementWithContextValue.createContextValue([
+            this.contextValue,
+            `experience.${this.experience.api}`,
+        ]);
         this.batchSize = getBatchSizeSetting();
     }
 

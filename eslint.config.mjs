@@ -77,6 +77,54 @@ export default defineConfig([
                     message:
                         'Use \'import * as vscode from "vscode"\' instead. Default import returns undefined in ESM.',
                 },
+                // Steer the small null-check helpers to our isomorphic copies in `src/utils/nonNull`.
+                // The `@microsoft/vscode-azext-utils` barrel imports `vscode` values at runtime, so
+                // importing these from it couples the module to vscode and breaks webview/`packages`
+                // builds. Our local versions depend only on the isomorphic `@vscode/l10n`.
+                // This deny-list is meant to grow over time as more vscode-coupled helpers gain
+                // isomorphic local equivalents.
+                {
+                    selector:
+                        'ImportDeclaration[source.value="@microsoft/vscode-azext-utils"] ImportSpecifier[imported.name="nonNullValue"]',
+                    message:
+                        "Import nonNullValue from 'src/utils/nonNull' instead (isomorphic; avoids coupling to vscode).",
+                },
+                {
+                    selector:
+                        'ImportDeclaration[source.value="@microsoft/vscode-azext-utils"] ImportSpecifier[imported.name="nonNullProp"]',
+                    message:
+                        "Import nonNullProp from 'src/utils/nonNull' instead (isomorphic; avoids coupling to vscode).",
+                },
+                {
+                    selector:
+                        'ImportDeclaration[source.value="@microsoft/vscode-azext-utils"] ImportSpecifier[imported.name="nonNullOrEmptyValue"]',
+                    message:
+                        "Import nonNullOrEmptyValue from 'src/utils/nonNull' instead (isomorphic; avoids coupling to vscode).",
+                },
+                {
+                    selector:
+                        'ImportDeclaration[source.value="@microsoft/vscode-azext-utils"] ImportSpecifier[imported.name="nonNullValueAndProp"]',
+                    message:
+                        "Import nonNullValueAndProp from 'src/utils/nonNull' instead (isomorphic; avoids coupling to vscode).",
+                },
+                {
+                    selector:
+                        'ImportDeclaration[source.value="@microsoft/vscode-azext-utils"] ImportSpecifier[imported.name="openUrl"]',
+                    message:
+                        "Import openUrl from 'src/utils/openUrl' instead (single local source; avoids coupling to vscode-azext-utils).",
+                },
+                {
+                    selector:
+                        'ImportDeclaration[source.value="@microsoft/vscode-azext-utils"] ImportSpecifier[imported.name="randomUtils"]',
+                    message:
+                        'Use the isomorphic Web Crypto API (globalThis.crypto) instead of randomUtils, e.g. crypto.randomUUID() or crypto.getRandomValues(new Uint8Array(n)).',
+                },
+                {
+                    selector:
+                        'ImportDeclaration[source.value="@microsoft/vscode-azext-utils"] ImportSpecifier[imported.name="createContextValue"]',
+                    message:
+                        "Use TreeElementWithContextValue.createContextValue from 'src/tree/TreeElementWithContextValue' instead (local, vscode-free).",
+                },
             ],
         },
     },

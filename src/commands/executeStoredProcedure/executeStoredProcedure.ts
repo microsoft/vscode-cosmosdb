@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type IActionContext, openReadOnlyJson, randomUtils } from '@microsoft/vscode-azext-utils';
+import { type IActionContext, openReadOnlyJson } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
@@ -54,7 +54,7 @@ export async function cosmosDBExecuteStoredProcedure(
 
     try {
         const resultFileName = `${procedureId}-result`;
-        await openReadOnlyJson({ label: resultFileName, fullId: randomUtils.getRandomHexString() }, result);
+        await openReadOnlyJson({ label: resultFileName, fullId: globalThis.crypto.randomUUID() }, result);
     } catch {
         await context.ui.showWarningMessage(l10n.t('Unable to parse execution result'));
     }

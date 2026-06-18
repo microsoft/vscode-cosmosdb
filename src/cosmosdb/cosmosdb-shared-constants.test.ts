@@ -6,7 +6,21 @@
 import { existsSync, readdirSync, readFileSync } from 'fs';
 import path from 'path';
 import { describe, expect, it } from 'vitest';
-import { wellKnownEmulatorPassword } from './cosmosdb-shared-constants';
+import {
+    COSMOS_DB_DATA_CONTRIBUTOR_ROLE_DEFINITION_ID,
+    COSMOS_DB_OPERATOR_ROLE_DEFINITION_ID,
+    wellKnownEmulatorPassword,
+} from './cosmosdb-shared-constants';
+
+describe('built-in role definition IDs', () => {
+    it('exposes the well-known data contributor role id', () => {
+        expect(COSMOS_DB_DATA_CONTRIBUTOR_ROLE_DEFINITION_ID).toBe('00000000-0000-0000-0000-000000000002');
+    });
+
+    it('exposes the well-known operator role id', () => {
+        expect(COSMOS_DB_OPERATOR_ROLE_DEFINITION_ID).toBe('230815da-be43-4aae-9cb4-875f7bd000aa');
+    });
+});
 
 /**
  * Guard against the well-known Cosmos DB emulator key being re-introduced as a

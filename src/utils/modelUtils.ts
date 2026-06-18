@@ -3,6 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { orderBy, partition } from 'es-toolkit';
+
 /**
  * Shared AI model selection utilities used by both the Query Editor and Migration Assistant.
  * This module contains NO vscode imports so it can be used in both extension and webview code.
@@ -66,30 +68,21 @@ const RECOMMENDED_MIN_TOKENS = 50_000;
 /**
  * Partitions models into "recommended" (≥50k max input tokens and not a "-mini" variant)
  * and "others" (everything else).
+ *
+ * Within each group, models are ordered by capacity (highest `maxInputTokens` first),
+ * with ties broken alphabetically by name.
  */
 export function partitionModelsByCapability(models: ModelInfo[]): {
     recommended: ModelInfo[];
     others: ModelInfo[];
 } {
-    const recommended: ModelInfo[] = [];
-    const others: ModelInfo[] = [];
+    const [recommended, others] = partition(
+        models,
+        (model) => model.maxInputTokens >= RECOMMENDED_MIN_TOKENS && !model.name.toLowerCase().includes('mini'),
+    );
 
-    for (const model of models) {
-        const meetsTokenThreshold = model.maxInputTokens >= RECOMMENDED_MIN_TOKENS;
-        const isMini = model.name.toLowerCase().includes('mini');
+    const byTokensThenName = (list: ModelInfo[]): ModelInfo[] =>
+        orderBy(list, [(m) => m.maxInputTokens, (m) => m.name], ['desc', 'asc']);
 
-        if (meetsTokenThreshold && !isMini) {
-            recommended.push(model);
-        } else {
-            others.push(model);
-        }
-    }
-
-    const sortByTokensThenName = (a: ModelInfo, b: ModelInfo) =>
-        b.maxInputTokens - a.maxInputTokens || a.name.localeCompare(b.name);
-
-    recommended.sort(sortByTokensThenName);
-    others.sort(sortByTokensThenName);
-
-    return { recommended, others };
+    return { recommended: byTokensThenName(recommended), others: byTokensThenName(others) };
 }

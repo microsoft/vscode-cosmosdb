@@ -121,7 +121,7 @@ function maxMtimeMs(dir: string): number {
  * In addition to freshness, we verify the bundle is a **production** build.
  * The `vite-watch:ext` dev task rebuilds `dist/main.mjs` in *development* mode
  * on every source save, which makes the bundle newer than `src/` (so it looks
- * "fresh") yet the webviews don't render under the e2e harness. {@link runVitePod}
+ * "fresh") yet the webviews don't render under the e2e harness. {@link runViteProd}
  * stamps the exact `main.mjs` mtime it produced into a marker file; if that
  * marker is missing or no longer matches `main.mjs`, the bundle was rebuilt by
  * something other than our production build and must be rebuilt.
@@ -156,7 +156,7 @@ function isDistStale(extensionDevelopmentPath: string): { stale: boolean; reason
     return { stale: false, reason: '' };
 }
 
-function runVitePod(extensionDevelopmentPath: string): void {
+function runViteProd(extensionDevelopmentPath: string): void {
     console.log('[e2e setup] Running `npm run vite-prod` (this can take ~30–60 s)…');
     const result = spawnSync('npm', ['run', 'vite-prod'], {
         cwd: repoRoot,
@@ -194,7 +194,7 @@ export default async function globalSetup(): Promise<void> {
         const { stale, reason } = isDistStale(extensionDevelopmentPath);
         if (stale) {
             console.log(`[e2e setup] dist/ is stale (${reason}) — rebuilding…`);
-            runVitePod(extensionDevelopmentPath);
+            runViteProd(extensionDevelopmentPath);
         } else {
             console.log('[e2e setup] dist/ is up to date');
         }

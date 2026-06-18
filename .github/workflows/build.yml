@@ -215,11 +215,8 @@ jobs:
 
           Write-Output "📛 Artifact name: $artifactName"
 
-          # Expose values as step outputs for downstream steps
+          # Expose values needed by the upload step.
           "vsix_file=$vsixFileName" >> $env:GITHUB_OUTPUT
-          "vsix_size=$vsixFileSize" >> $env:GITHUB_OUTPUT
-          "package_version=$($packageJson.version)" >> $env:GITHUB_OUTPUT
-          "package_preview=$($packageJson.preview)" >> $env:GITHUB_OUTPUT
           "artifact_name=$artifactName" >> $env:GITHUB_OUTPUT
 
       - name: 📤 Upload VSIX

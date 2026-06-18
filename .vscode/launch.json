@@ -84,6 +84,39 @@
       }
     },
     {
+      "name": "E2E: Webview tests",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/@playwright/test/cli.js",
+      "args": ["test"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "env": {
+        // The webview e2e suite doesn't need the Cosmos DB emulator (no Docker required).
+        "COSMOSDB_E2E_SKIP_EMULATOR": "1"
+        // Screenshots use the Playwright default (only on failure).
+      }
+    },
+    {
+      "name": "E2E: Playwright UI (window trace)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/@playwright/test/cli.js",
+      "args": ["test", "--ui"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "env": {
+        // Record + attach a self-managed trace of the VS Code window per test,
+        // and also capture the per-test screenshot (`trace` implies screenshots
+        // on). Open the "trace" attachment in the report/UI to launch the trace
+        // viewer with the full filmstrip / timeline that the runner can't
+        // capture for a manually-launched Electron window.
+        "COSMOSDB_E2E_SCREENSHOT": "trace",
+        // The webview e2e suite doesn't need the Cosmos DB emulator (no Docker required).
+        "COSMOSDB_E2E_SKIP_EMULATOR": "1"
+      }
+    },
+    {
       "type": "node",
       "request": "attach",
       "name": "Attach to Extension Host",

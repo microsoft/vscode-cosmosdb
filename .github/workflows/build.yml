@@ -298,10 +298,19 @@ jobs:
               local pr=$1
               local marker=$2
               local body_file=$3
+              # When "false", this run produced no real results (every tracked check was skipped, e.g. a
+              # follow-up commit that didn't actually run these checks). In that case we must NOT clobber an
+              # existing comment holding a real success/failure — that would lose the previous state.
+              local meaningful=${4:-true}
 
               local existing_id
               existing_id=$(gh api --paginate "repos/${REPO}/issues/${pr}/comments" \
                   --jq ".[] | select(.body | contains(\"${marker}\")) | .id" 2>/dev/null | head -1)
+
+              if [ "$meaningful" != "true" ] && [ -n "$existing_id" ]; then
+                  echo "ℹ️ All checks skipped — keeping existing PR #${pr} comment ${existing_id} unchanged"
+                  return 0
+              fi
 
               if [ -n "$existing_id" ]; then
                   if gh api --method PATCH "repos/${REPO}/issues/comments/${existing_id}" \
@@ -359,6 +368,16 @@ jobs:
               title_icon="❌"
           fi
 
+          # "Meaningful" run = at least one tracked check actually produced a real result. If every check
+          # was skipped (e.g. a commit that didn't run the build), we won't overwrite an existing PR comment.
+          comment_meaningful=false
+          for r in "$VALIDATE_RESULT" "$L10N_RESULT" "$LINT_RESULT" \
+              "$PRETTIER_RESULT" "$COMPILE_RESULT" "$PACKAGE_RESULT"; do
+              case "$r" in
+                  success|failure) comment_meaningful=true ;;
+              esac
+          done
+
           # Write summary — also used verbatim as the PR comment body.
           MARKER="<!-- ci-summary:build -->"
           cat >> "$GITHUB_STEP_SUMMARY" << SUMMARY_EOF
@@ -381,5 +400,5 @@ jobs:
           echo "✅ Job summary written to: ${GITHUB_STEP_SUMMARY}"
 
           if [ -n "${PR_NUMBER:-}" ]; then
-              post_or_update_comment "${PR_NUMBER}" "${MARKER}" "${GITHUB_STEP_SUMMARY}"
+              post_or_update_comment "${PR_NUMBER}" "${MARKER}" "${GITHUB_STEP_SUMMARY}" "${comment_meaningful}"
           fi

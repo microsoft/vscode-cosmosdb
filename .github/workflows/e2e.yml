@@ -175,12 +175,8 @@ jobs:
           REPO: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           E2E_RESULT: ${{ steps.e2e-tests.outcome }}
-          # Use head.sha for PRs so the displayed SHA matches what reviewers see on the
-          # PR head, not the synthetic merge commit github.sha resolves to for PR events.
-          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_TITLE: ${{ github.event.pull_request.title }}
         shell: bash
         run: |
           result_icon() {
@@ -228,9 +224,17 @@ jobs:
               local pr=$1
               local marker=$2
               local body_file=$3
+              # When "false", this run produced no real results (every tracked check was skipped, e.g. a
+              # follow-up commit that didn't actually run these checks). In that case we must NOT clobber an
+              # existing comment holding a real success/failure — that would lose the previous state.
+              local meaningful=${4:-true}
               local existing_id
               existing_id=$(gh api --paginate "repos/${REPO}/issues/${pr}/comments" \
                   --jq ".[] | select(.body | contains(\"${marker}\")) | .id" 2>/dev/null | head -1)
+              if [ "$meaningful" != "true" ] && [ -n "$existing_id" ]; then
+                  echo "ℹ️ All checks skipped — keeping existing PR #${pr} comment ${existing_id} unchanged"
+                  return 0
+              fi
               if [ -n "$existing_id" ]; then
                   if gh api --method PATCH "repos/${REPO}/issues/comments/${existing_id}" \
                           --field body=@"${body_file}" >/dev/null 2>&1; then
@@ -247,33 +251,22 @@ jobs:
               return 0
           }
 
-          short_sha="${SHA:0:7}"
-          commit_link="[${short_sha}](${SERVER_URL}/${REPO}/commit/${SHA})"
           e2e_icon=$(result_icon "$E2E_RESULT")
           artifacts=$(list_run_artifacts "${GITHUB_RUN_ID}")
 
-          # Resolve PR info for push events (no PR payload) by branch name.
+          # Resolve PR number for push events (no PR payload) by branch name.
           if [ -z "${PR_NUMBER:-}" ] && [ -n "${BRANCH_NAME:-}" ]; then
               pr_info=$(gh pr view "${BRANCH_NAME}" --repo "${REPO}" \
-                  --json number,title 2>/dev/null) || true
+                  --json number 2>/dev/null) || true
               if [ -n "$pr_info" ]; then
                   PR_NUMBER=$(echo "$pr_info" | jq -r '.number // empty')
-                  PR_TITLE=$(echo "$pr_info"  | jq -r '.title  // empty')
               fi
-          fi
-
-          source_section="**Commit:** ${commit_link}"
-          if [ -n "${PR_NUMBER:-}" ]; then
-              source_section="${source_section}
-          **Pull Request:** [#${PR_NUMBER} ${PR_TITLE}](${SERVER_URL}/${REPO}/pull/${PR_NUMBER})"
           fi
 
           MARKER="<!-- ci-summary:e2e -->"
           cat >> "$GITHUB_STEP_SUMMARY" << SUMMARY_EOF
           ${MARKER}
           # 🎭 E2E Tests (Playwright + VS Code)
-
-          ${source_section}
 
           ## 🧪 Result
           - **E2E Tests:** ${e2e_icon} ${E2E_RESULT}
@@ -288,6 +281,12 @@ jobs:
 
           echo "✅ Job summary written to: ${GITHUB_STEP_SUMMARY}"
 
+          # Don't overwrite a prior real result with an all-skipped run.
+          comment_meaningful=false
+          case "$E2E_RESULT" in
+              success|failure) comment_meaningful=true ;;
+          esac
+
           if [ -n "${PR_NUMBER:-}" ]; then
-              post_or_update_comment "${PR_NUMBER}" "${MARKER}" "${GITHUB_STEP_SUMMARY}"
+              post_or_update_comment "${PR_NUMBER}" "${MARKER}" "${GITHUB_STEP_SUMMARY}" "${comment_meaningful}"
           fi

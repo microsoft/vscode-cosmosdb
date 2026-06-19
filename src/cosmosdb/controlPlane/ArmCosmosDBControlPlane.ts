@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import {
+    type CreateUpdateOptions,
     type CosmosDBManagementClient,
     type SqlContainerCreateUpdateParameters,
     type SqlContainerGetResults,
@@ -11,11 +12,10 @@ import {
     type ThroughputSettingsGetResults,
 } from '@azure/arm-cosmosdb';
 import { PartitionKeyDefinitionVersion, PartitionKeyKind, type ContainerDefinition } from '@azure/cosmos';
-import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
-import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
+import { SchemaService } from '../../services/SchemaService';
 import { type ContainerResource, type DatabaseResource } from '../../tree/cosmosdb/models/CosmosDBTypes';
-import { createCosmosDBManagementClient } from '../../utils/azureClients';
+import { type AzureResourceMetadata } from '../AzureResourceMetadata';
 import { type CosmosDBControlPlane, type ThroughputResource } from './CosmosDBControlPlane';
 
 /**
@@ -23,16 +23,25 @@ import { type CosmosDBControlPlane, type ThroughputResource } from './CosmosDBCo
  * (`@azure/arm-cosmosdb`) `sqlResources` operations. Required for accounts
  * configured with native data-plane RBAC where data-plane control operations
  * are rejected by the service. Available only for Azure-signed-in accounts
- * (i.e. an `AccountInfo` with both `subscription` and `resourceGroup`).
+ * (an `AccountInfo`/`NoSqlQueryConnection` that carries an
+ * {@link AzureResourceMetadata}).
  */
 export class ArmCosmosDBControlPlane implements CosmosDBControlPlane {
     private armClientPromise?: Promise<CosmosDBManagementClient>;
 
-    public constructor(
-        private readonly subscription: AzureSubscription,
-        private readonly resourceGroup: string,
-        private readonly accountName: string,
-    ) {}
+    public constructor(private readonly metadata: AzureResourceMetadata) {}
+
+    private get resourceGroup(): string {
+        return this.metadata.resourceGroup;
+    }
+
+    private get accountName(): string {
+        return this.metadata.accountName;
+    }
+
+    private get endpoint(): string {
+        return this.metadata.documentEndpoint;
+    }
 
     public async listDatabases(): Promise<DatabaseResource[]> {
         const client = await this.getArmClient();
@@ -57,6 +66,7 @@ export class ArmCosmosDBControlPlane implements CosmosDBControlPlane {
     public async deleteDatabase(databaseId: string): Promise<void> {
         const client = await this.getArmClient();
         await client.sqlResources.beginDeleteSqlDatabaseAndWait(this.resourceGroup, this.accountName, databaseId);
+        await SchemaService.getInstance().deleteSchemasForDatabase(this.endpoint, databaseId);
     }
 
     public async listContainers(databaseId: string): Promise<ContainerResource[]> {
@@ -72,6 +82,7 @@ export class ArmCosmosDBControlPlane implements CosmosDBControlPlane {
         databaseId: string,
         definition: ContainerDefinition,
         throughput?: number,
+        maxThroughput?: number,
     ): Promise<ContainerResource> {
         const client = await this.getArmClient();
         const containerId = definition.id!;
@@ -83,6 +94,17 @@ export class ArmCosmosDBControlPlane implements CosmosDBControlPlane {
                 : PartitionKeyKind.Hash;
         const version = definition.partitionKey?.version ?? PartitionKeyDefinitionVersion.V2;
 
+        const options: CreateUpdateOptions = {};
+
+        if (throughput && throughput > 0) {
+            options.throughput = throughput;
+        }
+
+        if (maxThroughput && maxThroughput > 0) {
+            options.autoscaleSettings ??= {};
+            options.autoscaleSettings.maxThroughput = maxThroughput;
+        }
+
         const parameters: SqlContainerCreateUpdateParameters = {
             resource: {
                 id: containerId,
@@ -91,15 +113,12 @@ export class ArmCosmosDBControlPlane implements CosmosDBControlPlane {
                     kind,
                     version,
                 },
-                indexingPolicy:
-                    definition.indexingPolicy as SqlContainerCreateUpdateParameters['resource']['indexingPolicy'],
+                indexingPolicy: definition.indexingPolicy,
                 defaultTtl: definition.defaultTtl,
-                uniqueKeyPolicy:
-                    definition.uniqueKeyPolicy as SqlContainerCreateUpdateParameters['resource']['uniqueKeyPolicy'],
-                conflictResolutionPolicy:
-                    definition.conflictResolutionPolicy as SqlContainerCreateUpdateParameters['resource']['conflictResolutionPolicy'],
+                uniqueKeyPolicy: definition.uniqueKeyPolicy,
+                conflictResolutionPolicy: definition.conflictResolutionPolicy,
             },
-            options: throughput && throughput !== 0 ? { throughput } : {},
+            options,
         };
 
         const response = await client.sqlResources.beginCreateUpdateSqlContainerAndWait(
@@ -120,6 +139,7 @@ export class ArmCosmosDBControlPlane implements CosmosDBControlPlane {
             databaseId,
             containerId,
         );
+        await SchemaService.getInstance().deleteSchemasForContainer(this.endpoint, databaseId, containerId);
     }
 
     public async readDatabaseThroughput(databaseId: string): Promise<ThroughputResource | undefined> {
@@ -164,15 +184,7 @@ export class ArmCosmosDBControlPlane implements CosmosDBControlPlane {
     private getArmClient(): Promise<CosmosDBManagementClient> {
         if (!this.armClientPromise) {
             this.armClientPromise = (async () => {
-                const client = await callWithTelemetryAndErrorHandling(
-                    'createCosmosDBManagementClient',
-                    async (context: IActionContext) => {
-                        context.telemetry.suppressIfSuccessful = true;
-                        context.errorHandling.forceIncludeInReportIssueCommand = true;
-                        context.valuesToMask.push(this.subscription.subscriptionId);
-                        return createCosmosDBManagementClient(context, this.subscription);
-                    },
-                );
+                const client = await this.metadata.getClient();
                 if (!client) {
                     throw new Error(l10n.t('Failed to connect to Cosmos DB account'));
                 }

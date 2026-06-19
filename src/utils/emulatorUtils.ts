@@ -3,14 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { callWithTelemetryAndErrorHandling, nonNullValue } from '@microsoft/vscode-azext-utils';
+import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
+import crypto from 'crypto';
 import { getExperienceFromApi, type API } from '../AzureDBExperiences';
 import { wellKnownEmulatorPassword } from '../cosmosdb/cosmosdb-shared-constants';
 import { type ParsedCosmosDBConnectionString } from '../cosmosdb/cosmosDBConnectionStrings';
 import { StorageNames, StorageService, type StorageItem } from '../services/StorageService';
 import { WorkspaceResourceType } from '../tree/workspace-api/SharedWorkspaceResourceProvider';
-import { randomUtils } from './randomUtils';
+import { nonNullValue } from './nonNull';
 
 /**
  * Migrates an emulator item from the raw format where the connection string was part of the id
@@ -100,7 +101,8 @@ export async function migrateRawEmulatorItemToHashed(item: StorageItem): Promise
  */
 export function getEmulatorItemUniqueId(connectionString: string): string {
     const migratedMarker = 'emulator-';
-    return `${migratedMarker}${randomUtils.getPseudononymousStringHash(connectionString, 'hex').substring(0, 24)}`;
+    const randomString = crypto.createHash('sha256').update(connectionString).digest('hex');
+    return `${migratedMarker}${randomString.substring(0, 24)}`;
 }
 
 /**

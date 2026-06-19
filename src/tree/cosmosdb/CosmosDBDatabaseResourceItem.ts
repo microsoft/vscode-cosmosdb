@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { createContextValue, createGenericElement } from '@microsoft/vscode-azext-utils';
+import { createGenericElement } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
@@ -11,7 +11,7 @@ import { getControlPlane } from '../../cosmosdb/controlPlane';
 import { countExperienceUsageForSurvey } from '../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../utils/surveyTypes';
 import { type TreeElement } from '../TreeElement';
-import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
+import { TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../TreeElementWithExperience';
 import { type CosmosDBDatabaseModel } from './models/CosmosDBDatabaseModel';
 import { type ContainerResource } from './models/CosmosDBTypes';
@@ -27,7 +27,10 @@ export abstract class CosmosDBDatabaseResourceItem
         public readonly experience: Experience,
     ) {
         this.id = `${model.accountInfo.id}/${model.database.id}`;
-        this.contextValue = createContextValue([this.contextValue, `experience.${this.experience.api}`]);
+        this.contextValue = TreeElementWithContextValue.createContextValue([
+            this.contextValue,
+            `experience.${this.experience.api}`,
+        ]);
     }
 
     async getChildren(): Promise<TreeElement[]> {

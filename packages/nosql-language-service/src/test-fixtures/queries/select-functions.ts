@@ -179,7 +179,8 @@ export const fixtures: QueryFixture[] = [
         query: 'SELECT LOG(c.price) FROM c',
         container: 'products',
         expectAst: fn('LOG'),
-        knownLimitation: 'LOG(0) produces -Infinity which is not valid JSON (error 4001 in vnext-preview)',
+        knownLimitation:
+            'LOG(0) (or a negative argument) produces -Infinity, which is not valid JSON. Azure Cosmos DB rejects it with HTTP 400 error 4001 on both production and the emulator.',
     },
     {
         id: 'M-08',
@@ -527,7 +528,8 @@ export const fixtures: QueryFixture[] = [
         query: 'SELECT LOG10(c.price) FROM c',
         container: 'products',
         expectAst: fn('LOG10'),
-        knownLimitation: 'LOG10(0) produces -Infinity which is not valid JSON (error 4001 in vnext-preview)',
+        knownLimitation:
+            'LOG10(0) (or a negative argument) produces -Infinity, which is not valid JSON. Azure Cosmos DB rejects it with HTTP 400 error 4001 on both production and the emulator.',
     },
     {
         id: 'M-14',

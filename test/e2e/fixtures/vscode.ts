@@ -38,10 +38,12 @@
  * file should declare its own cleanup.
  */
 
-import { _electron as electron, type ElectronApplication, type Page, test as base } from '@playwright/test';
+import { test as base, _electron as electron, type ElectronApplication, type Page } from '@playwright/test';
+import { execFileSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolveCapturePlan, shouldCapture } from '../helpers/captureMode';
 import { ensureE2eIsolationContext } from '../helpers/e2eIsolation';
 import { waitForWorkbenchReady } from '../helpers/workbenchReady';
 import { waitForExtensionsActivated } from '../setup/activation';
@@ -130,12 +132,30 @@ async function disableNativeDialogs(app: ElectronApplication): Promise<void> {
         });
 }
 
+/** Best-effort recursive directory removal that never throws. */
+function removeDirQuietly(dir: string): void {
+    try {
+        rmSync(dir, { recursive: true, force: true });
+    } catch {
+        /* ignore */
+    }
+}
+
 interface VsCodeFixtures {
     vscodeApp: ElectronApplication;
     vscodeWindow: Page;
 }
 
-export const test = base.extend<object, VsCodeFixtures>({
+interface VsCodeTestFixtures {
+    /**
+     * Auto fixture (no value) that records a self-managed Playwright trace of
+     * the VS Code window for the duration of each test when
+     * `COSMOSDB_E2E_SCREENSHOT` selects a `trace` mode. See the fixture body.
+     */
+    windowTrace: void;
+}
+
+export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
     vscodeApp: [
         async ({}, use) => {
             const cfg = readE2eConfig();
@@ -143,7 +163,16 @@ export const test = base.extend<object, VsCodeFixtures>({
 
             // Worker-scoped temp dirs under the run-scoped temp root.
             const workerDir = mkdtempSync(path.join(isolation.tempRootDir, 'worker-'));
-            const userDataDir = path.join(workerDir, 'user-data');
+            // VS Code creates a Unix domain socket at `<user-data-dir>/<ver>-main.sock`
+            // during startup. POSIX caps socket paths at ~103 chars; the run-scoped
+            // temp root (which can live under a long `TMPDIR`) easily pushes the socket
+            // path past that limit, crashing VS Code's main process with
+            // `listen EINVAL` before any window opens. Keep the user-data dir on a
+            // short base on POSIX so the socket path stays within the limit. Windows
+            // uses named pipes (no filesystem-path limit), so the original location
+            // is fine there.
+            const userDataDir =
+                process.platform === 'win32' ? path.join(workerDir, 'user-data') : mkdtempSync('/tmp/cdbe2e-');
             const workspaceDir = path.join(workerDir, 'workspace');
             mkdirSync(userDataDir, { recursive: true });
 
@@ -160,7 +189,7 @@ export const test = base.extend<object, VsCodeFixtures>({
 
             seedUserSettings(userDataDir);
 
-            const app = await electron.launch({
+            const launchPromise = electron.launch({
                 executablePath: cfg.vscodeExecutablePath,
                 args: [
                     // Disable Electron's internal sandbox so Playwright's CDP attach
@@ -211,18 +240,54 @@ export const test = base.extend<object, VsCodeFixtures>({
                 },
             });
 
+            // `electron.launch` failures (startup crash, missing executable, …)
+            // skip Playwright's fixture teardown, which would leak the POSIX
+            // `userDataDir` under `/tmp` (it lives outside the run-scoped temp
+            // root). Clean both dirs up on early failure before rethrowing.
+            const app = await launchPromise.catch((err: unknown) => {
+                removeDirQuietly(workerDir);
+                removeDirQuietly(userDataDir);
+                throw err;
+            });
+
             await disableNativeDialogs(app);
 
             await use(app);
 
-            await app.close().catch(() => {
-                /* close races with Electron teardown are expected */
-            });
+            // VS Code spawns helper processes (extension host, renderers,
+            // utility) that keep the app alive, so `app.close()` reliably hangs
+            // past the worker-teardown timeout. Every one of those processes
+            // carries this worker's unique `--user-data-dir` in its argv, so a
+            // targeted `pkill -f` tears the whole instance down without touching
+            // other workers. Windows uses named pipes and closes cleanly, so
+            // fall back to `app.close()` there.
+            if (process.platform === 'win32') {
+                await app.close().catch(() => {
+                    /* close races with Electron teardown are expected */
+                });
+            } else {
+                try {
+                    execFileSync('pkill', ['-9', '-f', userDataDir]);
+                } catch {
+                    // `pkill` is missing or matched nothing. Fall back to killing
+                    // the launched process directly so teardown can't hang on
+                    // `app.close()` (VS Code keeps helper processes alive).
+                    try {
+                        app.process().kill('SIGKILL');
+                    } catch {
+                        /* already exited */
+                    }
+                }
+                await app.close().catch(() => {
+                    /* connection already dropped once the processes were killed */
+                });
+            }
             // Best-effort cleanup; on Windows file handles can linger briefly.
-            try {
-                rmSync(workerDir, { recursive: true, force: true });
-            } catch {
-                /* ignore */
+            removeDirQuietly(workerDir);
+            // The POSIX user-data dir lives outside workerDir (short-path
+            // workaround above), so remove it separately.
+            if (userDataDir !== path.join(workerDir, 'user-data')) {
+                removeDirQuietly(userDataDir);
             }
         },
         { scope: 'worker' },
@@ -255,6 +320,69 @@ export const test = base.extend<object, VsCodeFixtures>({
             await use(page);
         },
         { scope: 'worker' },
+    ],
+
+    windowTrace: [
+        async ({ vscodeApp, vscodeWindow }, use, testInfo) => {
+            const { trace } = resolveCapturePlan();
+            // `vscodeWindow` is depended on so the workbench is ready before
+            // tracing starts (and so this auto fixture is ordered after window
+            // setup); skip if it never came up.
+            if (trace === 'off' || vscodeWindow.isClosed()) {
+                await use();
+                return;
+            }
+
+            const context = vscodeApp.context();
+
+            // Own the trace where possible so `screenshots: true` is forced —
+            // that's what produces the filmstrip the runner can't capture for a
+            // manually `_electron.launch`-ed window. `snapshots` is deliberately
+            // OFF: the trace viewer's DOM-snapshot reconstruction can't reproduce
+            // VS Code's canvas-painted shell or its cross-origin webview iframes,
+            // so it renders a misleading, stripped-down approximation. Without
+            // snapshots the viewer falls back to the real screencast frames, and
+            // the trace stays smaller. If the runner already has tracing active
+            // on this context (e.g. on a retry), record this test's slice as a
+            // chunk of that existing session instead.
+            let owns = false;
+            try {
+                await context.tracing.start({ screenshots: true, snapshots: false, sources: true });
+                owns = true;
+            } catch {
+                try {
+                    await context.tracing.startChunk({ title: testInfo.title });
+                } catch {
+                    // Tracing unavailable — run the test without a window trace.
+                    await use();
+                    return;
+                }
+            }
+
+            await use();
+
+            const keep = shouldCapture(trace, testInfo.status !== testInfo.expectedStatus);
+            const file = testInfo.outputPath('vscode-window-trace.zip');
+            try {
+                if (owns) {
+                    await context.tracing.stop(keep ? { path: file } : undefined);
+                } else {
+                    await context.tracing.stopChunk(keep ? { path: file } : undefined);
+                }
+                if (keep) {
+                    // The attachment MUST be named `trace` (with the
+                    // `application/zip` content type): that's the only name the
+                    // Playwright HTML report / UI special-cases into an embedded
+                    // "open trace" link that launches the trace viewer in-page.
+                    // Any other name renders as a plain download, and the OS then
+                    // fails to open the raw zip ("unsupported format").
+                    await testInfo.attach('trace', { path: file, contentType: 'application/zip' });
+                }
+            } catch {
+                // Best-effort — never fail a test on trace capture/teardown.
+            }
+        },
+        { auto: true },
     ],
 });
 

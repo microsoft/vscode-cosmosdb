@@ -14,6 +14,7 @@
 import { type IToken, type TokenType } from 'chevrotain';
 import { getCompletions, type CompletionItem, type JSONSchema } from '../completion/SqlCompletion.js';
 import { detectBetweenAmbiguity } from '../diagnostics/betweenAmbiguity.js';
+import { detectOrderByInSubquery } from '../diagnostics/orderByInSubquery.js';
 import { detectTypos } from '../diagnostics/typoDetection.js';
 import { parse, type ParseResult } from '../index.js';
 import { SqlLexer } from '../lexer/SqlLexer.js';
@@ -24,6 +25,7 @@ import { getFunctionMeta } from './functionSignatures.js';
 import { parseMultiQueryDocument, type MultiQueryDocument, type QueryRegion } from './MultiQueryDocument.js';
 import {
     DiagnosticSeverity,
+    type ActiveBlockRange,
     type Diagnostic,
     type FoldableRegion,
     type HoverInfo,
@@ -148,6 +150,45 @@ export class SqlLanguageService {
         return result;
     }
 
+    /**
+     * Resolve the content range of the active query block for the given
+     * cursor offset, with leading/trailing whitespace stripped.
+     *
+     * Editors use this to highlight the block under the cursor. The
+     * whitespace trim matters because a region's `startOffset` sits
+     * immediately after the previous `;` (on the previous query's line) —
+     * without trimming, the highlight would bleed onto that line and mark
+     * two queries as active.
+     *
+     * Returns `null` when:
+     * - the document has one or zero non-empty regions (nothing to
+     *   distinguish), or
+     * - the cursor is not inside a non-empty region, or
+     * - the active region is whitespace-only.
+     */
+    getActiveBlockOffsets(query: string, cursorOffset: number): ActiveBlockRange | null {
+        const doc = parseMultiQueryDocument(query);
+
+        // Only highlight when there is more than one non-empty region.
+        const nonEmpty = doc.regions.filter((r) => r.text.trim().length > 0);
+        if (nonEmpty.length <= 1) return null;
+
+        const region = doc.regionAtOffset(cursorOffset);
+        if (!region || region.text.trim().length === 0) return null;
+
+        const regionText = region.text;
+        let leading = 0;
+        while (leading < regionText.length && /\s/.test(regionText[leading])) leading++;
+        let trailing = regionText.length;
+        while (trailing > leading && /\s/.test(regionText[trailing - 1])) trailing--;
+
+        const startOffset = region.startOffset + leading;
+        const endOffset = region.startOffset + trailing;
+        if (endOffset <= startOffset) return null;
+
+        return { startOffset, endOffset };
+    }
+
     // ─── Diagnostics ────────────────────────────────────────
 
     /**
@@ -186,7 +227,7 @@ export class SqlLanguageService {
     }
 
     private getSingleQueryDiagnostics(query: string): Diagnostic[] {
-        const { errors } = parse(query);
+        const { ast, errors } = parse(query);
         const diagnostics: Diagnostic[] = errors.map((e) => ({
             range: {
                 startOffset: e.range.start.offset,
@@ -234,6 +275,24 @@ export class SqlLanguageService {
                 message: w.message,
                 severity: DiagnosticSeverity.Warning,
                 code: 'BETWEEN_AMBIGUITY',
+                source: 'cosmosdb-sql',
+            });
+        }
+
+        // Append ORDER BY-in-subquery errors (semantic; backend rejects with HTTP 400)
+        for (const e of detectOrderByInSubquery(ast)) {
+            diagnostics.push({
+                range: {
+                    startOffset: e.range.start.offset,
+                    endOffset: e.range.end.offset,
+                    startLine: e.range.start.line,
+                    startColumn: e.range.start.col,
+                    endLine: e.range.end.line,
+                    endColumn: e.range.end.col,
+                },
+                message: e.message,
+                severity: DiagnosticSeverity.Error,
+                code: 'ORDER_BY_IN_SUBQUERY',
                 source: 'cosmosdb-sql',
             });
         }
@@ -314,6 +373,29 @@ export class SqlLanguageService {
                     message: w.message,
                     severity: DiagnosticSeverity.Warning,
                     code: 'BETWEEN_AMBIGUITY',
+                    source: 'cosmosdb-sql',
+                });
+            }
+
+            // ORDER BY-in-subquery errors for this region
+            for (const e of detectOrderByInSubquery(region.parseResult.ast)) {
+                const docStartOffset = region.startOffset + e.range.start.offset;
+                const docEndOffset = region.startOffset + e.range.end.offset;
+                const { line: startLine, col: startColumn } = offsetToLineCol(query, docStartOffset);
+                const { line: endLine, col: endColumn } = offsetToLineCol(query, docEndOffset);
+
+                diagnostics.push({
+                    range: {
+                        startOffset: docStartOffset,
+                        endOffset: docEndOffset,
+                        startLine,
+                        startColumn,
+                        endLine,
+                        endColumn,
+                    },
+                    message: e.message,
+                    severity: DiagnosticSeverity.Error,
+                    code: 'ORDER_BY_IN_SUBQUERY',
                     source: 'cosmosdb-sql',
                 });
             }

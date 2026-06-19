@@ -3,11 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureWizardPromptStep, openUrl, UserCancelledError } from '@microsoft/vscode-azext-utils';
+import { AzureWizardPromptStep, UserCancelledError } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { API, CoreExperience } from '../../AzureDBExperiences';
 import { SettingsService } from '../../services/SettingsService';
+import { openUrl } from '../../utils/openUrl';
 import {
     NewEmulatorConnectionMode,
     type NewEmulatorConnectionWizardContext,
@@ -45,8 +46,7 @@ export class PromptEmulatorTypeStep extends AzureWizardPromptStep<NewEmulatorCon
                 id: 'learnMore',
                 label: l10n.t('Learn more…'),
                 detail: l10n.t('Learn more about the Azure Cosmos DB (NoSQL) Emulator.'),
-                learnMoreUrl:
-                    'https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-develop-emulator?pivots=api-nosql',
+                learnMoreUrl: 'https://learn.microsoft.com/azure/cosmos-db/how-to-develop-emulator?pivots=api-nosql',
                 alwaysShow: true,
                 group: 'Learn More',
             },

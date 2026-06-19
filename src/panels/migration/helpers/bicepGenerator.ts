@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { COSMOS_DB_DATA_CONTRIBUTOR_ROLE_DEFINITION_ID } from '../../../cosmosdb/utils/rbacUtils';
+import { COSMOS_DB_DATA_CONTRIBUTOR_ROLE_DEFINITION_ID } from '../../../cosmosdb/cosmosdb-shared-constants';
 import { type CosmosContainer, type CosmosModel, type IndexingPolicy } from '../cosmosModel';
 
 /** Default database name when the model does not specify one. */

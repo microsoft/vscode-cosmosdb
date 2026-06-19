@@ -3,12 +3,16 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureWizard, nonNullValue, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { AzureWizard, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
-import { API } from '../../AzureDBExperiences';
 import { type CosmosDBDatabaseResourceItem } from '../../tree/cosmosdb/CosmosDBDatabaseResourceItem';
+import { isFabricTreeElement, type FabricTreeElement } from '../../tree/fabric-resources-view/FabricTreeElement';
+import { isTreeElement, type TreeElement } from '../../tree/TreeElement';
+import { isTreeElementWithContextValue } from '../../tree/TreeElementWithContextValue';
+import { isTreeElementWithExperience } from '../../tree/TreeElementWithExperience';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
+import { nonNullValue } from '../../utils/nonNull';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { CosmosDBContainerNameStep } from './CosmosDBContainerNameStep';
 import { CosmosDBExecuteStep } from './CosmosDBExecuteStep';
@@ -18,44 +22,54 @@ import { type CreateContainerWizardContext } from './CreateContainerWizardContex
 
 export async function cosmosDBCreateContainer(
     context: IActionContext,
-    node?: CosmosDBDatabaseResourceItem,
+    node?: TreeElement | FabricTreeElement,
 ): Promise<void> {
-    if (!node) {
-        node = await pickAppResource<CosmosDBDatabaseResourceItem>(context, {
-            type: AzExtResourceType.AzureCosmosDb,
-            expectedChildContextValue: 'treeItem.database',
-        });
-    }
+    const element: TreeElement | undefined = isFabricTreeElement(node)
+        ? node.element
+        : isTreeElement(node)
+          ? node
+          : // pickAppResource works only with Azure Resources tree
+            await pickAppResource<CosmosDBDatabaseResourceItem>(context, {
+                type: AzExtResourceType.AzureCosmosDb,
+                expectedChildContextValue: 'treeItem.database',
+            });
 
-    if (!node) {
+    if (!element) {
         return undefined;
     }
 
-    context.telemetry.properties.experience = node.experience.api;
+    if (!isTreeElementWithExperience(element)) {
+        throw new Error(l10n.t('The selected item does not have experience information.'));
+    }
 
-    const isCore = node.experience.api === API.Core;
-    const isServerless = node.model?.accountInfo?.isServerless;
+    if (!isTreeElementWithContextValue(element) || !element.contextValue.includes('treeItem.database')) {
+        throw new Error(l10n.t('The selected item is not a Cosmos DB database.'));
+    }
 
-    context.telemetry.properties.isServerless = isServerless?.toString();
-    context.telemetry.properties.isEmulator = node.model?.accountInfo?.isEmulator?.toString();
+    const dbNode = element as CosmosDBDatabaseResourceItem;
+
+    context.telemetry.properties.experience = dbNode.experience.api;
+    context.telemetry.properties.isServerless = dbNode.model.accountInfo.isServerless?.toString();
+    context.telemetry.properties.isEmulator = dbNode.model.accountInfo.isEmulator?.toString();
 
     const wizardContext: CreateContainerWizardContext = {
         ...context,
-        accountInfo: node.model.accountInfo,
-        databaseId: node.model.database.id,
-        experience: node.experience,
-        nodeId: node.id,
-        throughput: isServerless ? 0 : undefined,
+        accountInfo: dbNode.model.accountInfo,
+        databaseId: dbNode.model.database.id,
+        experience: element.experience,
+        nodeId: element.id,
+        throughput: undefined,
+        maxThroughput: undefined,
     };
 
     const wizard = new AzureWizard(wizardContext, {
-        title: isCore ? l10n.t('Create container') : l10n.t('Create graph'),
+        title: l10n.t('Create container'),
         promptSteps: [
             new CosmosDBContainerNameStep(),
             new CosmosDBPartitionKeyStep('first'),
-            isCore ? new CosmosDBPartitionKeyStep('second') : undefined,
-            isCore ? new CosmosDBPartitionKeyStep('third') : undefined,
-            isServerless ? undefined : new CosmosDBThroughputStep(),
+            new CosmosDBPartitionKeyStep('second'),
+            new CosmosDBPartitionKeyStep('third'),
+            new CosmosDBThroughputStep(),
         ].filter((s) => !!s),
         executeSteps: [new CosmosDBExecuteStep()],
         showLoadingPrompt: true,

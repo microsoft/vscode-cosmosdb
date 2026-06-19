@@ -23,18 +23,17 @@ export const fixtures: QueryFixture[] = [
     },
     {
         id: 'SQ-02',
-        description: 'FIRST subquery — most expensive item',
-        query: 'SELECT c.id, FIRST(SELECT VALUE i FROM i IN c.items ORDER BY i.unitPrice DESC) AS mostExpensive FROM c',
+        description: 'FIRST subquery — first item in array',
+        query: 'SELECT c.id, FIRST(SELECT VALUE i FROM i IN c.items) AS firstItem FROM c',
         container: 'orders',
         expectAst: {
             select: {
                 spec: {
                     kind: 'SelectListSpec',
-                    items: [{}, { expression: { kind: 'FirstScalarExpression' }, alias: { value: 'mostExpensive' } }],
+                    items: [{}, { expression: { kind: 'FirstScalarExpression' }, alias: { value: 'firstItem' } }],
                 },
             },
         },
-        knownLimitation: 'FIRST() subquery is not supported in the vnext-preview Linux emulator',
     },
     {
         id: 'SQ-03',
@@ -63,6 +62,48 @@ export const fixtures: QueryFixture[] = [
                 },
             },
         },
+    },
+    {
+        // SQ-05/SQ-06 cover the real restriction: Azure Cosmos DB NoSQL does not
+        // support ORDER BY inside ANY subquery — a language limitation, not an
+        // emulator gap. The scalar subquery itself works (SQ-01..SQ-04 pass); only
+        // the nested ORDER BY is rejected (HTTP 400 on both production and the
+        // emulator). We originally mis-filed this as "FIRST() unsupported"
+        // (Azure/azure-cosmos-db-emulator-docker#311); the discriminator is the
+        // subquery ORDER BY, not the FIRST function — SQ-06 (LAST + ORDER BY)
+        // proves it is symmetric. The parser accepts these (the native sql.y
+        // grammar allows ORDER BY in a subquery), so the limitation is surfaced
+        // statically via the ORDER_BY_IN_SUBQUERY diagnostic instead.
+        id: 'SQ-05',
+        description: 'FIRST subquery with ORDER BY — invalid (ORDER BY not allowed in a subquery)',
+        query: 'SELECT c.id, FIRST(SELECT VALUE i FROM i IN c.items ORDER BY i.unitPrice DESC) AS mostExpensive FROM c',
+        container: 'orders',
+        expectAst: {
+            select: {
+                spec: {
+                    kind: 'SelectListSpec',
+                    items: [{}, { expression: { kind: 'FirstScalarExpression' }, alias: { value: 'mostExpensive' } }],
+                },
+            },
+        },
+        knownLimitation:
+            'ORDER BY inside a subquery is not supported by Azure Cosmos DB NoSQL (rejected with HTTP 400)',
+    },
+    {
+        id: 'SQ-06',
+        description: 'LAST subquery with ORDER BY — invalid (proves the limit is ORDER BY, not FIRST)',
+        query: 'SELECT c.id, LAST(SELECT VALUE i FROM i IN c.items ORDER BY i.unitPrice DESC) AS cheapest FROM c',
+        container: 'orders',
+        expectAst: {
+            select: {
+                spec: {
+                    kind: 'SelectListSpec',
+                    items: [{}, { expression: { kind: 'LastScalarExpression' }, alias: { value: 'cheapest' } }],
+                },
+            },
+        },
+        knownLimitation:
+            'ORDER BY inside a subquery is not supported by Azure Cosmos DB NoSQL (rejected with HTTP 400)',
     },
 
     // ── OP series: operators ────────────────────────────────────────────────

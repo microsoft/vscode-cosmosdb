@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
-import crypto from 'crypto';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { type TreeElement } from '../TreeElement';
@@ -24,7 +23,7 @@ export class CosmosDBAccountUnsupportedResourceItem
         public readonly experience: Experience,
         public readonly reason: string = l10n.t('Unsupported account type'),
     ) {
-        this.id = account.id ?? crypto.randomUUID();
+        this.id = account.id ?? globalThis.crypto.randomUUID();
     }
 
     /**

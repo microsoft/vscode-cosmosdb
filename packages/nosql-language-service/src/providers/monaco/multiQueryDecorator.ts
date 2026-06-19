@@ -198,40 +198,14 @@ export class MonacoMultiQueryDecorator implements Disposable {
         if (!this.activeBlockDecorations) return;
 
         const text = model.getValue();
-        const doc = this.service.parseDocument(text);
-
-        // Only highlight when there is more than one non-empty region
-        const nonEmpty = doc.regions.filter((r) => r.text.trim().length > 0);
-        if (nonEmpty.length <= 1) {
+        const block = this.service.getActiveBlockOffsets(text, cursorOffset);
+        if (!block) {
             this.activeBlockDecorations.clear();
             return;
         }
 
-        const region = this.service.getActiveRegion(text, cursorOffset);
-        if (!region || region.text.trim().length === 0) {
-            this.activeBlockDecorations.clear();
-            return;
-        }
-
-        // Skip leading/trailing whitespace inside the region. The region's
-        // startOffset sits immediately after the previous `;`, which lives on
-        // the same line as the previous query — without this trim, the
-        // highlight would extend onto that line and visually mark *both*
-        // queries as active.
-        const regionText = region.text;
-        let leading = 0;
-        while (leading < regionText.length && /\s/.test(regionText[leading])) leading++;
-        let trailing = regionText.length;
-        while (trailing > leading && /\s/.test(regionText[trailing - 1])) trailing--;
-        const contentStart = region.startOffset + leading;
-        const contentEnd = region.startOffset + trailing;
-        if (contentEnd <= contentStart) {
-            this.activeBlockDecorations.clear();
-            return;
-        }
-
-        const startPos = model.getPositionAt(contentStart);
-        const endPos = model.getPositionAt(contentEnd - 1);
+        const startPos = model.getPositionAt(block.startOffset);
+        const endPos = model.getPositionAt(block.endOffset - 1);
 
         this.activeBlockDecorations.set([
             {

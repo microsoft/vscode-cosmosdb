@@ -3,12 +3,19 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+/// <reference types="vitest/globals" />
+
 import * as vscode from 'vscode';
-import { buildChatMessages } from './chatUtils';
+import { type QueryEditorTab } from '../panels/QueryEditorTab';
+import { buildChatMessages, getActiveQueryEditor, getConnectionFromQueryTab, sendChatRequest } from './chatUtils';
 
 // Prevent transitive require('vscode') from @microsoft/vscode-azext-utils deps
 vi.mock('@microsoft/vscode-azext-utils', () => ({
     callWithTelemetryAndErrorHandling: vi.fn(),
+}));
+
+vi.mock('../utils/aiUtils', () => ({
+    logLlmTokenUsage: vi.fn(),
 }));
 
 // Helper to create mock LanguageModelChatMessage objects
@@ -167,6 +174,141 @@ describe('chatUtils', () => {
             expect(result).toHaveLength(2);
             expect(result[0]).toBe(instruction);
             expect(result[1]).toBe(user);
+        });
+    });
+
+    describe('sendChatRequest', () => {
+        it('should call model.sendRequest with properly built messages', async () => {
+            const { logLlmTokenUsage } = await import('../utils/aiUtils');
+            const instructionMessage = createMockUserMessage('Instruction');
+            const userMessage = createMockUserMessage('User');
+            const mockResponse = { text: 'response' };
+            const mockModel = {
+                sendRequest: vi.fn().mockResolvedValue(mockResponse),
+            } as unknown as vscode.LanguageModelChat;
+            const mockToken = {} as vscode.CancellationToken;
+            const options = {};
+
+            const result = await sendChatRequest(mockModel, instructionMessage, userMessage, options, mockToken);
+
+            expect(logLlmTokenUsage).toHaveBeenCalled();
+            expect(mockModel.sendRequest).toHaveBeenCalledWith([instructionMessage, userMessage], options, mockToken);
+            expect(result).toBe(mockResponse);
+        });
+
+        it('should pass intermediate messages through to buildChatMessages', async () => {
+            const instructionMessage = createMockUserMessage('Instruction');
+            const userMessage = createMockUserMessage('User');
+            const intermediate = [createMockUserMessage('example'), createMockAssistantMessage('response')];
+            const mockResponse = { text: 'response' };
+            const mockModel = {
+                sendRequest: vi.fn().mockResolvedValue(mockResponse),
+            } as unknown as vscode.LanguageModelChat;
+            const mockToken = {} as vscode.CancellationToken;
+
+            await sendChatRequest(mockModel, instructionMessage, userMessage, {}, mockToken, intermediate);
+
+            expect(mockModel.sendRequest).toHaveBeenCalledWith(
+                [instructionMessage, ...intermediate, userMessage],
+                {},
+                mockToken,
+            );
+        });
+
+        it('should pass caller to logLlmTokenUsage', async () => {
+            const { logLlmTokenUsage } = await import('../utils/aiUtils');
+            const instructionMessage = createMockUserMessage('Instruction');
+            const mockModel = {
+                sendRequest: vi.fn().mockResolvedValue({ text: '' }),
+            } as unknown as vscode.LanguageModelChat;
+            const mockToken = {} as vscode.CancellationToken;
+
+            await sendChatRequest(mockModel, instructionMessage, undefined, {}, mockToken, undefined, 'testCaller');
+
+            expect(logLlmTokenUsage).toHaveBeenCalledWith(mockModel, expect.objectContaining({ caller: 'testCaller' }));
+        });
+
+        it('should default caller to unknown when not provided', async () => {
+            const { logLlmTokenUsage } = await import('../utils/aiUtils');
+            const instructionMessage = createMockUserMessage('Instruction');
+            const mockModel = {
+                sendRequest: vi.fn().mockResolvedValue({ text: '' }),
+            } as unknown as vscode.LanguageModelChat;
+            const mockToken = {} as vscode.CancellationToken;
+
+            await sendChatRequest(mockModel, instructionMessage, undefined, {}, mockToken);
+
+            expect(logLlmTokenUsage).toHaveBeenCalledWith(mockModel, expect.objectContaining({ caller: 'unknown' }));
+        });
+    });
+
+    describe('getActiveQueryEditor', () => {
+        function createMockEditor(active: boolean, visible: boolean): QueryEditorTab {
+            return {
+                isActive: () => active,
+                isVisible: () => visible,
+            } as unknown as QueryEditorTab;
+        }
+
+        it('should return the active editor when one exists', () => {
+            const editor1 = createMockEditor(false, false);
+            const editor2 = createMockEditor(true, true);
+            const editor3 = createMockEditor(false, true);
+
+            const result = getActiveQueryEditor([editor1, editor2, editor3]);
+
+            expect(result).toBe(editor2);
+        });
+
+        it('should fall back to visible editor when none is active', () => {
+            const editor1 = createMockEditor(false, false);
+            const editor2 = createMockEditor(false, true);
+            const editor3 = createMockEditor(false, false);
+
+            const result = getActiveQueryEditor([editor1, editor2, editor3]);
+
+            expect(result).toBe(editor2);
+        });
+
+        it('should fall back to first editor when none is active or visible', () => {
+            const editor1 = createMockEditor(false, false);
+            const editor2 = createMockEditor(false, false);
+
+            const result = getActiveQueryEditor([editor1, editor2]);
+
+            expect(result).toBe(editor1);
+        });
+
+        it('should prefer active over visible', () => {
+            const visibleEditor = createMockEditor(false, true);
+            const activeEditor = createMockEditor(true, false);
+
+            const result = getActiveQueryEditor([visibleEditor, activeEditor]);
+
+            expect(result).toBe(activeEditor);
+        });
+    });
+
+    describe('getConnectionFromQueryTab', () => {
+        it('should return the connection from the query tab', () => {
+            const mockConnection = { databaseId: 'db1', containerId: 'c1' };
+            const mockTab = {
+                getConnection: () => mockConnection,
+            } as unknown as QueryEditorTab;
+
+            const result = getConnectionFromQueryTab(mockTab);
+
+            expect(result).toBe(mockConnection);
+        });
+
+        it('should return undefined when tab has no connection', () => {
+            const mockTab = {
+                getConnection: () => undefined,
+            } as unknown as QueryEditorTab;
+
+            const result = getConnectionFromQueryTab(mockTab);
+
+            expect(result).toBeUndefined();
         });
     });
 });

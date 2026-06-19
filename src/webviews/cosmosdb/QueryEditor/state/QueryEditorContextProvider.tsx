@@ -5,7 +5,7 @@
 
 import { type PartitionKeyDefinition, type PriorityLevel } from '@azure/cosmos';
 import { type JSONSchema } from '@cosmosdb/schema-analyzer';
-import { type TRPCClient } from '@trpc/client';
+import { type TrpcClient } from '@cosmosdb/webview-rpc/react';
 import * as l10n from '@vscode/l10n';
 import {
     type CosmosDBRecordIdentifier,
@@ -43,7 +43,7 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
     constructor(
         private readonly dispatch: (action: DispatchAction) => void,
         dispatchToast: DispatchToastFn,
-        trpcClient: TRPCClient<QueryEditorAppRouter>,
+        trpcClient: TrpcClient<QueryEditorAppRouter>,
     ) {
         super(dispatchToast, trpcClient);
     }

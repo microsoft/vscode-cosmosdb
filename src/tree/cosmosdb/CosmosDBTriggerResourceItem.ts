@@ -3,12 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { createContextValue } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { type TreeElement } from '../TreeElement';
-import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
+import { TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../TreeElementWithExperience';
 import { type CosmosDBTriggerModel } from './models/CosmosDBTriggerModel';
 
@@ -23,7 +22,10 @@ export abstract class CosmosDBTriggerResourceItem
         public readonly experience: Experience,
     ) {
         this.id = `${model.accountInfo.id}/${model.database.id}/${model.container.id}/triggers/${model.trigger.id}`;
-        this.contextValue = createContextValue([this.contextValue, `experience.${this.experience.api}`]);
+        this.contextValue = TreeElementWithContextValue.createContextValue([
+            this.contextValue,
+            `experience.${this.experience.api}`,
+        ]);
     }
 
     getTreeItem(): vscode.TreeItem {

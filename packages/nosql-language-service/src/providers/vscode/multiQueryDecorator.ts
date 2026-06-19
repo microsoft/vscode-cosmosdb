@@ -119,36 +119,18 @@ export class VSCodeMultiQueryDecorator implements Disposable {
 
     private updateActiveBlockDecoration(editor: vscodeApi.TextEditor): void {
         const text = editor.document.getText();
-        const doc = this.service.parseDocument(text);
+        const cursorOffset = editor.document.offsetAt(editor.selection.active);
+        const block = this.service.getActiveBlockOffsets(text, cursorOffset);
 
-        // Single-query documents stay untouched — no reserved gutter slot.
-        const nonEmpty = doc.regions.filter((r) => r.text.trim().length > 0);
-        if (nonEmpty.length <= 1) {
+        // No active block to highlight (single-query doc, cursor outside any
+        // region, or whitespace-only region) — clear the reserved gutter slot.
+        if (!block) {
             editor.setDecorations(this.activeBlockDecorationType, []);
             return;
         }
 
-        // Resolve the active block's line range, if any.
-        let activeStartLine = -1;
-        let activeEndLine = -1;
-        const cursorOffset = editor.document.offsetAt(editor.selection.active);
-        const region = this.service.getActiveRegion(text, cursorOffset);
-        if (region && region.text.trim().length > 0) {
-            // Trim whitespace: a region's startOffset sits right after the
-            // previous `;`, so without trimming the bar would extend back onto
-            // the previous query's line.
-            const regionText = region.text;
-            let leading = 0;
-            while (leading < regionText.length && /\s/.test(regionText[leading])) leading++;
-            let trailing = regionText.length;
-            while (trailing > leading && /\s/.test(regionText[trailing - 1])) trailing--;
-            const contentStart = region.startOffset + leading;
-            const contentEnd = region.startOffset + trailing;
-            if (contentEnd > contentStart) {
-                activeStartLine = editor.document.positionAt(contentStart).line;
-                activeEndLine = editor.document.positionAt(contentEnd - 1).line;
-            }
-        }
+        const activeStartLine = editor.document.positionAt(block.startOffset).line;
+        const activeEndLine = editor.document.positionAt(block.endOffset - 1).line;
 
         // Decorate every line to keep the reserved slot stable; only active
         // lines override `backgroundColor` to paint the visible bar.

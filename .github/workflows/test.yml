@@ -1,0 +1,226 @@
+# Tests workflow — unit tests (vitest) and integration tests (VS Code extension host), as sequential steps in
+# a single job.
+#
+# Design:
+#   - This whole workflow runs IN PARALLEL with build.yml (compile/lint/prettier/l10n/package) on a separate
+#     runner, because the tests are the slow part and shouldn't wait on the fast analyzers.
+#   - Within this job the steps are sequential: unit first (fast), then build dist/ + integration (slow). The
+#     integration step uses `if: ${{ !cancelled() }}` so it still runs when unit tests fail — that way one run
+#     reports BOTH buckets instead of hiding the integration result behind a unit failure.
+#   - No Docker/emulator is required: the only integration test is extension activation, which makes no database
+#     connections (see test/extensionActivation.test.ts). E2E (Playwright + Cosmos emulator) lives in e2e.yml.
+
+name: Tests
+
+permissions:
+  contents: read
+  pull-requests: write
+  # Needed by the summary step's gh api calls (list this run's artifacts).
+  actions: read
+  # Needed by the Upload Code Coverage step (actions/upload-code-coverage).
+  code-quality: write
+
+on:
+  workflow_dispatch:
+
+  push:
+    branches:
+      - main
+      - rel/*
+      - dev/**
+
+  pull_request:
+    branches:
+      - main
+      - rel/*
+      - dev/**
+
+concurrency:
+  group: >-
+    test-${{ github.workflow }}-${{
+    github.event_name == 'pull_request' &&
+    format('{0}-{1}', github.event.pull_request.head.repo.full_name, github.event.pull_request.number) ||
+    github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+
+    # Same push+pull_request dedupe trick as build.yml — see the comment there.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name != github.repository ||
+      (github.head_ref != 'main' &&
+       !startsWith(github.head_ref, 'rel/') &&
+       !startsWith(github.head_ref, 'dev/'))
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: 📦 Using Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+
+      - name: ⬇️ Install Dependencies
+        run: npm ci
+
+      - name: 🧪 Unit Tests
+        id: unit-tests
+        run: npm run vitest:coverage
+
+      - name: 📊 Upload Code Coverage
+        # Skip on fork PRs (no token to upload) and when unit tests never ran. `!cancelled()` so coverage from
+        # a passing unit run is still uploaded even though later steps (build/integration) continue.
+        if: >-
+          ${{ !cancelled() && steps.unit-tests.outcome != 'skipped' &&
+          (github.event_name != 'pull_request' ||
+          github.event.pull_request.head.repo.full_name == github.repository) }}
+        uses: actions/upload-code-coverage@v1
+        with:
+          file: coverage/cobertura-coverage.xml
+          language: TypeScript
+          label: code-coverage/vitest
+
+      - name: 📤 Upload Coverage Report
+        id: upload-coverage
+        # Upload the HTML coverage report so it's downloadable from the run. Skip when unit tests never ran.
+        if: ${{ !cancelled() && steps.unit-tests.outcome != 'skipped' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report
+          path: coverage/
+          if-no-files-found: warn
+
+      - name: 🔨 Build extension
+        # `npm test` loads the extension from dist/; build it explicitly so a build failure surfaces as its own
+        # step rather than being buried inside the test runner. `!cancelled()` so we still get here (and run
+        # integration) when unit tests failed.
+        if: ${{ !cancelled() }}
+        run: npm run vite-prod
+
+      - name: 🧪 Integration Tests
+        id: integration-tests
+        # Run even when unit tests failed so a single run reports both buckets. xvfb-run is mandatory on Linux:
+        # VS Code/Electron has no real headless mode and the runner has no display. `-a` picks the next free
+        # display number. Retry up to 3 times to ride out the occasional flaky extension-host startup.
+        if: ${{ !cancelled() }}
+        run: |
+          exit_code=1
+          for i in 1 2 3; do
+              xvfb-run -a npm test
+              exit_code=$?
+              if [ $exit_code -eq 0 ]; then break; fi
+              echo "Attempt $i failed with exit code $exit_code"
+              if [ $i -lt 3 ]; then sleep 15; fi
+          done
+          exit $exit_code
+
+      - name: 📊 Generate Job Summary
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UNIT_TEST_RESULT: ${{ steps.unit-tests.outcome }}
+          INTEGRATION_TEST_RESULT: ${{ steps.integration-tests.outcome }}
+          REPO: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          COVERAGE_URL: ${{ steps.upload-coverage.outputs.artifact-url }}
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        shell: bash
+        run: |
+          # See build.yml for the rationale behind these helpers — duplicated because GitHub Actions has no
+          # first-class way to share inline shell across workflows. Keep them in sync.
+          result_icon() {
+              case "$1" in
+                  success)   echo "✅" ;;
+                  failure)   echo "❌" ;;
+                  cancelled) echo "⚪" ;;
+                  skipped)   echo "⏭️" ;;
+                  *)         echo "❓" ;;
+              esac
+          }
+
+          post_or_update_comment() {
+              local pr=$1
+              local marker=$2
+              local body_file=$3
+              # When "false", this run produced no real results (every tracked check was skipped, e.g. a
+              # follow-up commit that didn't actually run these checks). In that case we must NOT clobber an
+              # existing comment holding a real success/failure — that would lose the previous state.
+              local meaningful=${4:-true}
+
+              local existing_id
+              existing_id=$(gh api --paginate "repos/${REPO}/issues/${pr}/comments" \
+                  --jq ".[] | select(.body | contains(\"${marker}\")) | .id" 2>/dev/null | head -1)
+
+              if [ "$meaningful" != "true" ] && [ -n "$existing_id" ]; then
+                  echo "ℹ️ All checks skipped — keeping existing PR #${pr} comment ${existing_id} unchanged"
+                  return 0
+              fi
+
+              if [ -n "$existing_id" ]; then
+                  if gh api --method PATCH "repos/${REPO}/issues/comments/${existing_id}" \
+                          --field body=@"${body_file}" >/dev/null 2>&1; then
+                      echo "✅ PR #${pr} comment updated (id ${existing_id})"
+                      return 0
+                  fi
+                  echo "::warning::Failed to PATCH comment ${existing_id}, posting a new one"
+              fi
+
+              if gh pr comment "${pr}" --repo "${REPO}" --body-file "${body_file}" >/dev/null 2>&1; then
+                  echo "✅ PR #${pr} new comment posted"
+                  return 0
+              fi
+
+              echo "::warning::Unable to post PR comment on #${pr} (likely a fork PR with a read-only GITHUB_TOKEN). Skipping."
+              return 0
+          }
+
+          unit_icon=$(result_icon "$UNIT_TEST_RESULT")
+          int_icon=$(result_icon "$INTEGRATION_TEST_RESULT")
+
+          # Resolve PR number for push events (no PR payload) by branch name.
+          if [ -z "${PR_NUMBER:-}" ] && [ -n "${BRANCH_NAME:-}" ]; then
+              pr_info=$(gh pr view "${BRANCH_NAME}" --repo "${REPO}" \
+                  --json number 2>/dev/null) || true
+              if [ -n "$pr_info" ]; then
+                  PR_NUMBER=$(echo "$pr_info" | jq -r '.number // empty')
+              fi
+          fi
+
+          coverage_section=""
+          if [ -n "${COVERAGE_URL:-}" ]; then
+              coverage_section="
+
+          ## 📈 Coverage
+          - [Download HTML report](${COVERAGE_URL})"
+          fi
+
+          MARKER="<!-- ci-summary:test -->"
+          cat >> "$GITHUB_STEP_SUMMARY" << SUMMARY_EOF
+          ${MARKER}
+          # 🧪 Tests (Unit + Integration)
+
+          ## 🧪 Results
+          - **Unit Tests (vitest):** ${unit_icon} ${UNIT_TEST_RESULT}
+          - **Integration Tests (extension host):** ${int_icon} ${INTEGRATION_TEST_RESULT}${coverage_section}
+          SUMMARY_EOF
+
+          echo "✅ Job summary written to: ${GITHUB_STEP_SUMMARY}"
+
+          # Don't overwrite a prior real result with an all-skipped run.
+          comment_meaningful=false
+          for r in "$UNIT_TEST_RESULT" "$INTEGRATION_TEST_RESULT"; do
+              case "$r" in
+                  success|failure) comment_meaningful=true ;;
+              esac
+          done
+
+          if [ -n "${PR_NUMBER:-}" ]; then
+              post_or_update_comment "${PR_NUMBER}" "${MARKER}" "${GITHUB_STEP_SUMMARY}" "${comment_meaningful}"
+          fi

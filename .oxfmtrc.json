@@ -24,11 +24,17 @@
   },
   "overrides": [
     {
-      "files": ["*.md", "*.json", "*.jsonc", "*.yml", "*.yaml"],
+      "files": ["*.md", "*.json", "*.jsonc"],
       "options": {
         "tabWidth": 2,
         "trailingComma": "none",
         "singleQuote": false
+      }
+    },
+    {
+      "files": ["*.yml", "*.yaml"],
+      "options": {
+        "tabWidth": 2
       }
     }
   ],
@@ -36,7 +42,6 @@
     ".azure-pipelines",
     ".config",
     ".cosmosdb-data",
-    ".github",
     ".vscode-test",
     "bundle-analysis",
     "coverage",

@@ -23,8 +23,8 @@ services:
   cosmosdb-emulator:
     image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
     ports:
-      - "8082:8081" # Main endpoint (mapped off the default to avoid clashes)
-      - "1235:1234" # Additional service port (mapped off the default)
+      - '8082:8081' # Main endpoint (mapped off the default to avoid clashes)
+      - '1235:1234' # Additional service port (mapped off the default)
     environment:
       PROTOCOL: https-insecure
       NODE_TLS_REJECT_UNAUTHORIZED: 0

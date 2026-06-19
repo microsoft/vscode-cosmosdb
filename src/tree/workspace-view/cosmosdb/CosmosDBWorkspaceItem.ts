@@ -3,18 +3,18 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { createContextValue, nonNullValue } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { API, getExperienceFromApi } from '../../../AzureDBExperiences';
 import { isEmulatorSupported } from '../../../constants';
 import { type StorageItem, StorageNames, StorageService } from '../../../services/StorageService';
+import { nonNullValue } from '../../../utils/nonNull';
 import { CosmosDBAccountUnsupportedResourceItem } from '../../cosmosdb/CosmosDBAccountUnsupportedResourceItem';
 import { makeFilterable } from '../../mixins/Filterable';
 import { makeSortable } from '../../mixins/Sortable';
 import { NoSqlAccountAttachedResourceItem } from '../../nosql/NoSqlAccountAttachedResourceItem';
 import { type TreeElement } from '../../TreeElement';
-import { type TreeElementWithContextValue } from '../../TreeElementWithContextValue';
+import { TreeElementWithContextValue } from '../../TreeElementWithContextValue';
 import { WorkspaceResourceType } from '../../workspace-api/SharedWorkspaceResourceProvider';
 import { CosmosDBAttachAccountResourceItem } from './CosmosDBAttachAccountResourceItem';
 import { type CosmosDBAttachedAccountModel } from './CosmosDBAttachedAccountModel';
@@ -25,7 +25,7 @@ export class CosmosDBWorkspaceItem implements TreeElement, TreeElementWithContex
     public readonly contextValue: string = 'treeItem.accounts';
 
     constructor() {
-        this.contextValue = createContextValue([this.contextValue, `attachedAccounts`]);
+        this.contextValue = TreeElementWithContextValue.createContextValue([this.contextValue, `attachedAccounts`]);
     }
 
     public async getChildren(): Promise<TreeElement[]> {

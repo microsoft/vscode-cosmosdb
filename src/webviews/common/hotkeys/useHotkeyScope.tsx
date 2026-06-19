@@ -5,10 +5,99 @@
 
 import * as l10n from '@vscode/l10n';
 import { isEqual } from 'es-toolkit';
-import { useCallback, useMemo, useRef, type RefCallback } from 'react';
+import { useCallback, useEffect, useMemo, useRef, type RefCallback } from 'react';
 import { useHotkeys, type HotkeyCallback } from 'react-hotkeys-hook';
+import { isMac } from '../../constants';
 import { HotkeyCommandService } from './HotkeyCommandService';
 import { type HotkeyCommand, type HotkeyMapping, type HotkeyScope } from './HotkeyTypes';
+
+/**
+ * Matches a raw `keydown` event against a hotkey key spec (e.g. `'alt+e, ctrl+shift+enter'`).
+ *
+ * Used by the capture-phase Alt handler below, which receives the native event directly (unlike the
+ * react-hotkeys-hook bubble path, which hands us an already-parsed descriptor).
+ */
+const keySpecMatchesEvent = (keySpec: string, event: KeyboardEvent): boolean =>
+    keySpec.split(',').some((combo) => comboMatchesEvent(combo.trim(), event));
+
+const comboMatchesEvent = (combo: string, event: KeyboardEvent): boolean => {
+    if (!combo) {
+        return false;
+    }
+
+    let wantAlt = false;
+    let wantCtrl = false;
+    let wantShift = false;
+    let wantMeta = false;
+    let mainKey: string | undefined;
+
+    for (const raw of combo.split('+')) {
+        const token = raw.trim().toLowerCase();
+        if (!token) {
+            continue;
+        }
+        switch (token) {
+            case 'alt':
+            case 'option':
+                wantAlt = true;
+                break;
+            case 'ctrl':
+            case 'control':
+                wantCtrl = true;
+                break;
+            case 'shift':
+                wantShift = true;
+                break;
+            case 'meta':
+            case 'cmd':
+            case 'command':
+            case 'win':
+                wantMeta = true;
+                break;
+            case 'mod':
+                // 'mod' is Cmd on macOS, Ctrl elsewhere (mirrors react-hotkeys-hook).
+                if (isMac) {
+                    wantMeta = true;
+                } else {
+                    wantCtrl = true;
+                }
+                break;
+            default:
+                mainKey = token;
+        }
+    }
+
+    if (mainKey === undefined) {
+        return false;
+    }
+    if (
+        event.altKey !== wantAlt ||
+        event.shiftKey !== wantShift ||
+        event.ctrlKey !== wantCtrl ||
+        event.metaKey !== wantMeta
+    ) {
+        return false;
+    }
+    return mainKeyMatchesEvent(mainKey, event);
+};
+
+const mainKeyMatchesEvent = (key: string, event: KeyboardEvent): boolean => {
+    if (event.key.toLowerCase() === key) {
+        return true;
+    }
+    // Layout-robust fallback: Alt+<letter> on non-US keyboard layouts can produce a non-Latin
+    // `event.key`, but the physical `event.code` stays KeyX / DigitN. This is exactly what makes
+    // Alt+E / Alt+V behave inconsistently, so we match on the physical code as a fallback.
+    if (key.length === 1) {
+        if (key >= 'a' && key <= 'z') {
+            return event.code === `Key${key.toUpperCase()}`;
+        }
+        if (key >= '0' && key <= '9') {
+            return event.code === `Digit${key}`;
+        }
+    }
+    return false;
+};
 
 /**
  * Tracks the live DOM nodes each scope is bound to. A scope is meant to map to a single subtree;
@@ -138,6 +227,53 @@ export const useHotkeyScope = <Scope extends HotkeyScope, Command extends Hotkey
 
     // Forward the library ref, and warn if the same scope ends up bound to more than one node.
     const boundNodeRef = useRef<HTMLElement | null>(null);
+
+    // Capture-phase handler for Alt-based shortcuts only.
+    //
+    // Why a separate capture listener instead of letting react-hotkeys-hook (bubble) handle these:
+    // VS Code's webview injects a bubble-phase `keydown` listener on the content window that forwards
+    // every keystroke to the host (see resources/.../webview/browser/pre/index.html `handleInnerKeydown`).
+    // The host then turns Alt+<letter> into a window-menu mnemonic — Alt+E opens Edit, Alt+V opens View,
+    // etc. That forwarding races our bubble-phase listener, so Alt shortcuts that collide with a menu
+    // mnemonic are swallowed by the menu before the command can run. Handling them in the capture phase
+    // (which runs before any bubble listener, including VS Code's) lets us claim the event first.
+    //
+    // Scoped to Alt combos on purpose: non-Alt shortcuts (Esc, Shift+Enter, Ctrl+S, …) are left to the
+    // bubble path so we don't change ordering relative to Monaco / the data grid, which own those keys.
+    useEffect(() => {
+        const onKeyDownCapture = (event: KeyboardEvent): void => {
+            if (!event.altKey) {
+                return;
+            }
+
+            // Same containment rule as the library ref scoping: a node-bound scope only fires when the
+            // focused element is the node or one of its descendants. The 'global' scope leaves the ref
+            // unattached (boundNodeRef stays null), so it is always active.
+            const node = boundNodeRef.current;
+            if (node) {
+                const root = node.getRootNode();
+                const active = root instanceof Document || root instanceof ShadowRoot ? root.activeElement : null;
+                if (active !== node && !node.contains(active)) {
+                    return;
+                }
+            }
+
+            const mapping = commandService.registeredHotkeys(scope).find((m) => keySpecMatchesEvent(m.key, event));
+            if (!mapping) {
+                return;
+            }
+
+            // Claim the event before it can reach VS Code's forwarder (see comment above).
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            void commandService.executeCommand(scope, mapping.command, event);
+        };
+
+        document.addEventListener('keydown', onKeyDownCapture, { capture: true });
+        return () => document.removeEventListener('keydown', onKeyDownCapture, { capture: true });
+    }, [scope, commandService]);
+
     return useCallback<RefCallback<HTMLElement>>(
         (el) => {
             hotkeysRef(el);

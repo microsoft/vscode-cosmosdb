@@ -6,13 +6,12 @@
 import { EditRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useMemo } from 'react';
-import { type CosmosDBRecordIdentifier, isCosmosDBRecord } from '../../../../cosmosdb/types/queryResult';
-import { getDocumentId } from '../../../../utils/document';
 import { getShortcutDisplay, useCommandHotkey } from '../../../common/hotkeys';
 import { ToolbarOverflowButton } from '../../../common/ToolbarOverflow/ToolbarOverflowButton';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
 import { type QueryEditorHotkeyCommand, type QueryEditorHotkeyScope, ResultPanelHotkeys } from '../QueryEditorHotkeys';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
+import { getSelectedDocumentIds } from './getSelectedDocumentIds';
 
 export const EditItemButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
     const state = useQueryEditorState();
@@ -20,15 +19,10 @@ export const EditItemButton = (props: ToolbarOverflowItemProps<HTMLButtonElement
 
     const isEditDisabled = !state.isEditMode || state.selectedRows.length === 0 || state.isExecuting;
 
-    const getSelectedDocuments = useCallback(() => {
-        return state.selectedRows
-            .map((rowIndex): CosmosDBRecordIdentifier | undefined => {
-                const document = state.currentQueryResult?.documents[rowIndex];
-                if (!document || !isCosmosDBRecord(document)) return undefined;
-                return getDocumentId(document, state.partitionKey);
-            })
-            .filter((document) => document !== undefined);
-    }, [state]);
+    const getSelectedDocuments = useCallback(
+        () => getSelectedDocumentIds(state.selectedRows, state.currentQueryResult, state.partitionKey),
+        [state],
+    );
 
     const editSelectedItem = useCallback(
         () => dispatcher.openDocuments('edit', getSelectedDocuments()),

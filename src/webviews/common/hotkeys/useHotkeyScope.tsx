@@ -94,7 +94,12 @@ export const useHotkeyScope = <Scope extends HotkeyScope, Command extends Hotkey
             );
 
             if (mapping) {
-                // Pass the event to allow handlers to control propagation
+                // Suppress the browser/OS default for any shortcut we recognize. This is done here,
+                // centrally, rather than in each command handler so it can't be forgotten. It is the
+                // fix for Alt-based shortcuts (Alt+E, Alt+D, ...) where the un-prevented keydown lets
+                // Chromium/Electron move focus to the window menu bar instead of running the command.
+                // Handlers still receive the event and may additionally call stopPropagation().
+                event.preventDefault();
                 void commandService.executeCommand(scope, mapping.command, event);
             }
         },

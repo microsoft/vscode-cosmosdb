@@ -94,12 +94,21 @@ export const useHotkeyScope = <Scope extends HotkeyScope, Command extends Hotkey
             );
 
             if (mapping) {
-                // Suppress the browser/OS default for any shortcut we recognize. This is done here,
-                // centrally, rather than in each command handler so it can't be forgotten. It is the
-                // fix for Alt-based shortcuts (Alt+E, Alt+D, ...) where the un-prevented keydown lets
-                // Chromium/Electron move focus to the window menu bar instead of running the command.
-                // Handlers still receive the event and may additionally call stopPropagation().
+                // The shortcut is "ours", so claim the event completely and stop here.
+                //
+                // - preventDefault(): suppress the browser/OS default. Without it, Alt-based combos
+                //   (Alt+E, Alt+D, ...) let Chromium/Electron move focus to the window menu bar.
+                // - stopPropagation() + stopImmediatePropagation(): keep the keydown from bubbling
+                //   any further. react-hotkeys-hook listens on `document`, and so does VS Code's
+                //   keybinding forwarder; without stopping here the event reaches the host and the
+                //   shortcut is also handled as a VS Code keybinding. The old implementation got this
+                //   implicitly via the library `scopes` option + manual DOM-containment layer; both
+                //   were removed, so we now stop propagation explicitly at this single choke point.
+                //
+                // Done centrally (not per handler) so it can't be forgotten when adding a command.
                 event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
                 void commandService.executeCommand(scope, mapping.command, event);
             }
         },

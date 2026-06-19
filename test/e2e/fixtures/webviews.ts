@@ -106,3 +106,16 @@ export async function attachEmulator(page: Page): Promise<void> {
     // to globalState + secretStorage. Give VS Code a beat to flush.
     await page.waitForTimeout(250);
 }
+
+/**
+ * Forces the extension's AI-features flag on via the
+ * `cosmosDB.e2e.setAIFeaturesEnabled` test-only command. The AI button in the
+ * Query Editor toolbar only renders when AI features are enabled (i.e. Copilot
+ * is available), which isn't the case in a fresh test VS Code. Call this
+ * BEFORE `openQueryEditor` so the panel's initial state reports AI as enabled.
+ */
+export async function setAIFeaturesEnabled(page: Page): Promise<void> {
+    await runCommand(page, 'Cosmos DB: [E2E Test] Enable AI Features');
+    // The command resolves synchronously; give VS Code a beat to apply it.
+    await page.waitForTimeout(250);
+}

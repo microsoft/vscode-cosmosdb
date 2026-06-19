@@ -522,6 +522,11 @@
         "category": "Cosmos DB",
         "command": "cosmosDB.e2e.attachEmulator",
         "title": "[E2E Test] Attach Emulator to Workspace"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.e2e.setAIFeaturesEnabled",
+        "title": "[E2E Test] Enable AI Features"
       }
     ],
     "submenus": [
@@ -817,6 +822,10 @@
         },
         {
           "command": "cosmosDB.e2e.attachEmulator",
+          "when": "cosmosDB.e2eTestMode"
+        },
+        {
+          "command": "cosmosDB.e2e.setAIFeaturesEnabled",
           "when": "cosmosDB.e2eTestMode"
         }
       ]

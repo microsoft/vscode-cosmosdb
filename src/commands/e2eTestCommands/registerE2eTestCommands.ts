@@ -47,9 +47,10 @@ import { API } from '../../AzureDBExperiences';
 import { AuthenticationMethod } from '../../cosmosdb/AuthenticationMethod';
 import { type CosmosDBCredential } from '../../cosmosdb/CosmosDBCredential';
 import { type NoSqlQueryConnection } from '../../cosmosdb/NoSqlQueryConnection';
+import { ext } from '../../extensionVariables';
 import { DocumentTab } from '../../panels/DocumentTab';
 import { QueryEditorTab } from '../../panels/QueryEditorTab';
-import { type StorageItem, StorageNames, StorageService } from '../../services/StorageService';
+import { StorageNames, StorageService, type StorageItem } from '../../services/StorageService';
 import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
 import { getEmulatorItemUniqueId } from '../../utils/emulatorUtils';
 
@@ -187,4 +188,18 @@ export function registerE2eTestCommands(): void {
             await attachEmulatorAccount(env);
         },
     );
+
+    // Forces the AI-features flag on (or off) so specs can assert on the
+    // AI button without depending on a real Copilot/chat installation in the
+    // test VS Code. Setting `ext.isAIFeaturesEnabled` before opening the
+    // Query Editor makes the initial webview state report AI as enabled; the
+    // `notifyAIFeaturesChanged` broadcast also updates any already-open tabs.
+    // Invoked from the palette with no arg → defaults to enabling AI.
+    registerCommand('cosmosDB.e2e.setAIFeaturesEnabled', (context: IActionContext, enabled?: boolean): void => {
+        context.telemetry.properties.isE2eTest = 'true';
+        const isEnabled = enabled ?? true;
+        ext.isAIFeaturesEnabled = isEnabled;
+        context.telemetry.properties.aiFeaturesEnabled = String(isEnabled);
+        QueryEditorTab.notifyAIFeaturesChanged(isEnabled);
+    });
 }

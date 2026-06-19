@@ -539,7 +539,7 @@
   "Invalid input.": "Nieprawidłowe dane wejściowe.",
   "Invalid LLM response: could not parse JSON payload": "Nieprawidłowa odpowiedź LLM: nie można przeanalizować ładunku JSON",
   "Invalid LLM response: missing query": "Nieprawidłowa odpowiedź LLM: brak zapytania",
-  "Invalid name for {currentName}. Value must be 1-265 characters, cannot contain '/', '?', '#', or '\\', and cannot end with a space or any of those characters.": "Invalid name for {currentName}. Value must be 1-265 characters, cannot contain '/', '?', '#', or '\\', and cannot end with a space or any of those characters.",
+  "Invalid name for {currentName}. Value must be 1-265 characters, cannot contain '/', '?', '#', or '\\', and cannot end with a space or any of those characters.": "Nieprawidłowa nazwa elementu {currentName}. Wartość musi mieć od 1 do 265 znaków, nie może zawierać znaków „/”, „?”, „#”, ani „\\” i nie może kończyć się spacją ani żadnym z tych znaków.",
   "Invalid semver \"{0}\".": "Nieprawidłowy element semver „{0}”.",
   "Invalid: {count}": "Nieprawidłowe: {count}",
   "Item content is undefined": "Zawartość elementu jest niezdefiniowana",

@@ -18,30 +18,42 @@
  *   3. Hands `MonacoEnvironment.getWorker` a fresh `new XxxWorker()` for each
  *      label.
  *
- * Why `?worker&inline` and not `?worker&url` + a blob trampoline?
- * --------------------------------------------------------------
- * The previous incarnation of this plugin emitted the worker as a separate
- * chunk (`?worker&url`) and then built a same-origin Blob whose body was
- * `import "<absolute worker url>";`. That works in dev (Vite's CORS-enabled
- * server fulfils the cross-origin module import) but FAILS in a VS Code
- * webview in production:
+ * Worker loading strategy — different in dev vs prod
+ * --------------------------------------------------
+ * The webview document origin is always `vscode-webview://<uuid>`, while the
+ * worker script lives on a DIFFERENT origin in BOTH environments:
+ *   - prod: assets are served from `https://*.vscode-cdn.net` (via `webview.asWebviewUri`);
+ *   - dev:  Vite serves each worker as a separate ES module at the absolute
+ *           dev-server URL `http://localhost:18080/...?worker_file&type=module`.
+ * Constructing `new Worker(<cross-origin url>)` is blocked by the browser in
+ * either case, so neither environment can load the worker by URL directly.
  *
- *   - The webview document origin is `vscode-webview://<uuid>`.
- *   - Asset URLs returned by `webview.asWebviewUri` are on `https://*.vscode-cdn.net`.
- *   - A Blob URL inherits the page origin, so the `import` inside the worker
- *     becomes a cross-origin ESM fetch from `vscode-webview://` → `https://…vscode-cdn.net/…`.
- *     VS Code's webview resource server does NOT serve those assets with the
- *     CORS headers required for a cross-origin module import, so the fetch
- *     hangs/fails silently. Monaco's internal startup timeout (~30s) then
- *     surfaces "Could not create web worker(s). Falling back to loading web
- *     worker code in main thread" plus an opaque `Worker error` event.
+ * PROD → `?worker&inline`.
+ *   Vite inlines the worker script as a base64 blob and emits a wrapper that
+ *   does `new Worker(URL.createObjectURL(new Blob([<decoded script>])))`. The
+ *   Blob carries the actual worker bytes (no `import` of a remote URL), so
+ *   there is nothing cross-origin to fetch. Trade-off: the bundle grows by
+ *   ~870 KB (editor.worker ≈ 260 KB + json.worker ≈ 390 KB, base64-encoded),
+ *   negligible next to monaco-editor's own 3.8 MB chunk.
  *
- * `?worker&inline` sidesteps all of that. Vite emits a small wrapper that
- * does `new Worker(URL.createObjectURL(new Blob([<base64-decoded script>])))`
- * — the Blob carries the actual worker code, not an `import` of a remote URL,
- * so there is nothing cross-origin to fetch. Trade-off: the bundle grows by
- * ~870 KB (editor.worker ≈ 260 KB + json.worker ≈ 390 KB, base64-encoded),
- * which is negligible next to monaco-editor's own 3.8 MB chunk.
+ *   `?worker&inline` only actually inlines during `vite build`. In `vite serve`
+ *   it degrades to a URL worker (`?worker_file&type=module`) on the dev-server
+ *   origin — which the webview cannot construct cross-origin. That is exactly
+ *   the dev failure ("Could not create web worker(s). Falling back to loading
+ *   web worker code in main thread" + `Failed to construct 'Worker' … cannot be
+ *   accessed from origin 'vscode-webview://…'`). Hence the dev path below.
+ *
+ * DEV → `?worker&url` + a same-origin Blob trampoline.
+ *   We import the worker's absolute dev-server URL (`?worker&url`) and wrap it
+ *   in a Blob whose body is `import "<absolute url>";`. The Blob URL inherits
+ *   the webview page origin, so `new Worker(blobUrl, { type: 'module' })` is
+ *   same-origin and constructs fine; the module `import` inside then fetches
+ *   the real worker script from Vite's CORS-enabled dev server (`cors: '*'`,
+ *   and the dev CSP allows `script-src`/`worker-src` from the dev host + blob:).
+ *   This is dev-only — it must NOT be used in prod, where `vscode-webview://`
+ *   → `https://*.vscode-cdn.net` lacks the CORS headers a cross-origin module
+ *   import needs, so the fetch would hang and Monaco would fall back to the
+ *   main thread after a ~30s timeout.
  *
  * Why an injected import, not a transform on MonacoEditor.tsx?
  * -----------------------------------------------------------
@@ -101,13 +113,10 @@ function classNameForLabel(label) {
 /**
  * Module body of `virtual:monaco-env`.
  *
- * Each worker is imported with `?worker&inline`, which gives us a default
- * export that is a Worker **constructor**. Vite has already inlined the
- * worker script as a base64 blob inside the surrounding chunk, so
- * `new XxxWorker()` constructs a same-origin Blob worker with the real
- * script bytes (no `import` of a remote URL is performed at runtime).
+ * @param {boolean} isDev `true` for `vite serve`, `false` for `vite build`.
+ *   See the top-of-file comment for why the strategy differs.
  */
-function buildEnvModule() {
+function buildEnvModule(isDev) {
     /**
      * Language contributions — side-effect imports that register the
      * language's full service (Monarch tokenizer + worker-backed
@@ -124,7 +133,16 @@ function buildEnvModule() {
         .map(({ contribution }) => `import ${JSON.stringify(contribution)};`)
         .join('\n');
 
-    /** Worker constructor imports — `?worker&inline` returns a Worker class. */
+    return isDev ? buildDevEnvModule(contributionImports) : buildProdEnvModule(contributionImports);
+}
+
+/**
+ * PROD: workers imported with `?worker&inline` give a Worker **constructor**
+ * whose script is embedded as a base64 Blob inside the surrounding chunk, so
+ * `new XxxWorker()` constructs a same-origin Blob worker with the real bytes
+ * (no remote `import` at runtime).
+ */
+function buildProdEnvModule(contributionImports) {
     const workerImports = WORKERS.map(
         ({ label, entry }) => `import ${classNameForLabel(label)} from ${JSON.stringify(entry + '?worker&inline')};`,
     ).join('\n');
@@ -134,7 +152,7 @@ function buildEnvModule() {
         .join('\n');
 
     return [
-        '// virtual:monaco-env — generated by vite-plugin-monaco-workers',
+        '// virtual:monaco-env — generated by vite-plugin-monaco-workers (build)',
         contributionImports,
         workerImports,
         '',
@@ -149,11 +167,62 @@ function buildEnvModule() {
 }
 
 /**
+ * DEV: `?worker&inline` does not inline under `vite serve`; it degrades to a
+ * cross-origin URL worker the webview cannot construct. Import each worker's
+ * absolute dev-server URL (`?worker&url`) instead and wrap it in a same-origin
+ * Blob module worker that `import`s the real script. See top-of-file comment.
+ */
+function buildDevEnvModule(contributionImports) {
+    const urlImports = WORKERS.map(
+        ({ label, entry }) => `import ${classNameForLabel(label)}Url from ${JSON.stringify(entry + '?worker&url')};`,
+    ).join('\n');
+
+    const cases = WORKERS.filter((w) => w.label !== 'editorWorkerService')
+        .map(
+            ({ label }) =>
+                `        if (label === ${JSON.stringify(label)}) return makeWorker(${classNameForLabel(label)}Url);`,
+        )
+        .join('\n');
+
+    return [
+        '// virtual:monaco-env — generated by vite-plugin-monaco-workers (dev, blob trampoline)',
+        contributionImports,
+        urlImports,
+        '',
+        'function makeWorker(url) {',
+        '    // The dev server serves the worker at an absolute cross-origin URL',
+        '    // (http://localhost:18080/...). A Blob URL inherits the webview page',
+        '    // origin, so the Worker is constructed same-origin; the module import',
+        '    // inside then fetches the real script from the CORS-enabled dev server.',
+        '    const absolute = new URL(url, import.meta.url).href;',
+        '    const blobUrl = URL.createObjectURL(',
+        "        new Blob([`import ${JSON.stringify(absolute)};`], { type: 'text/javascript' }),",
+        '    );',
+        "    const worker = new Worker(blobUrl, { type: 'module' });",
+        '    // The blob is only needed to bootstrap the worker; the engine keeps it',
+        '    // alive for the running worker, so we can revoke the URL immediately.',
+        '    URL.revokeObjectURL(blobUrl);',
+        '    return worker;',
+        '}',
+        '',
+        'self.MonacoEnvironment = {',
+        '    getWorker(_moduleId, label) {',
+        cases,
+        `        return makeWorker(${classNameForLabel('editorWorkerService')}Url);`,
+        '    },',
+        '};',
+        '',
+    ].join('\n');
+}
+
+/**
  * @returns {import('vite').Plugin}
  */
 export function monacoWorkers() {
     /** Normalised absolute path of the webview entry. */
     let entryId = '';
+    /** `true` under `vite serve`, `false` under `vite build`. */
+    let isDev = false;
 
     return {
         name: 'monaco-workers',
@@ -161,6 +230,7 @@ export function monacoWorkers() {
 
         configResolved(config) {
             entryId = (config.root + '/src/webviews/index.tsx').replace(/\\/g, '/');
+            isDev = config.command === 'serve';
         },
 
         // ── Virtual module: resolves `virtual:monaco-env` ────────────────────────
@@ -171,7 +241,7 @@ export function monacoWorkers() {
 
         load(id) {
             if (id !== RESOLVED_VIRTUAL_ID) return null;
-            return buildEnvModule();
+            return buildEnvModule(isDev);
         },
 
         // ── Inject `import 'virtual:monaco-env';` at the top of the entry ───────

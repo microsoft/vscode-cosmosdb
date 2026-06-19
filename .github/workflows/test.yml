@@ -86,6 +86,16 @@ jobs:
           language: TypeScript
           label: code-coverage/vitest
 
+      - name: 📤 Upload Coverage Report
+        id: upload-coverage
+        # Upload the HTML coverage report so it's downloadable from the run. Skip when unit tests never ran.
+        if: ${{ !cancelled() && steps.unit-tests.outcome != 'skipped' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report
+          path: coverage/
+          if-no-files-found: warn
+
       - name: 🔨 Build extension
         # `npm test` loads the extension from dist/; build it explicitly so a build failure surfaces as its own
         # step rather than being buried inside the test runner. `!cancelled()` so we still get here (and run
@@ -116,14 +126,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           UNIT_TEST_RESULT: ${{ steps.unit-tests.outcome }}
           INTEGRATION_TEST_RESULT: ${{ steps.integration-tests.outcome }}
-          SERVER_URL: ${{ github.server_url }}
           REPO: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
-          # Use head.sha for PRs so the displayed SHA matches the PR head, not the synthetic merge commit.
-          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          COVERAGE_URL: ${{ steps.upload-coverage.outputs.artifact-url }}
           BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_TITLE: ${{ github.event.pull_request.title }}
         shell: bash
         run: |
           # See build.yml for the rationale behind these helpers — duplicated because GitHub Actions has no
@@ -142,10 +149,19 @@ jobs:
               local pr=$1
               local marker=$2
               local body_file=$3
+              # When "false", this run produced no real results (every tracked check was skipped, e.g. a
+              # follow-up commit that didn't actually run these checks). In that case we must NOT clobber an
+              # existing comment holding a real success/failure — that would lose the previous state.
+              local meaningful=${4:-true}
 
               local existing_id
               existing_id=$(gh api --paginate "repos/${REPO}/issues/${pr}/comments" \
                   --jq ".[] | select(.body | contains(\"${marker}\")) | .id" 2>/dev/null | head -1)
+
+              if [ "$meaningful" != "true" ] && [ -n "$existing_id" ]; then
+                  echo "ℹ️ All checks skipped — keeping existing PR #${pr} comment ${existing_id} unchanged"
+                  return 0
+              fi
 
               if [ -n "$existing_id" ]; then
                   if gh api --method PATCH "repos/${REPO}/issues/comments/${existing_id}" \
@@ -168,23 +184,21 @@ jobs:
           unit_icon=$(result_icon "$UNIT_TEST_RESULT")
           int_icon=$(result_icon "$INTEGRATION_TEST_RESULT")
 
-          short_sha="${SHA:0:7}"
-          commit_link="[${short_sha}](${SERVER_URL}/${REPO}/commit/${SHA})"
-
-          # Resolve PR info for push events (no PR payload) by branch name.
+          # Resolve PR number for push events (no PR payload) by branch name.
           if [ -z "${PR_NUMBER:-}" ] && [ -n "${BRANCH_NAME:-}" ]; then
               pr_info=$(gh pr view "${BRANCH_NAME}" --repo "${REPO}" \
-                  --json number,title 2>/dev/null) || true
+                  --json number 2>/dev/null) || true
               if [ -n "$pr_info" ]; then
                   PR_NUMBER=$(echo "$pr_info" | jq -r '.number // empty')
-                  PR_TITLE=$(echo "$pr_info"  | jq -r '.title  // empty')
               fi
           fi
 
-          source_section="**Commit:** ${commit_link}"
-          if [ -n "${PR_NUMBER:-}" ]; then
-              source_section="${source_section}
-          **Pull Request:** [#${PR_NUMBER} ${PR_TITLE}](${SERVER_URL}/${REPO}/pull/${PR_NUMBER})"
+          coverage_section=""
+          if [ -n "${COVERAGE_URL:-}" ]; then
+              coverage_section="
+
+          ## 📈 Coverage
+          - [Download HTML report](${COVERAGE_URL})"
           fi
 
           MARKER="<!-- ci-summary:test -->"
@@ -192,15 +206,21 @@ jobs:
           ${MARKER}
           # 🧪 Tests (Unit + Integration)
 
-          ${source_section}
-
           ## 🧪 Results
           - **Unit Tests (vitest):** ${unit_icon} ${UNIT_TEST_RESULT}
-          - **Integration Tests (extension host):** ${int_icon} ${INTEGRATION_TEST_RESULT}
+          - **Integration Tests (extension host):** ${int_icon} ${INTEGRATION_TEST_RESULT}${coverage_section}
           SUMMARY_EOF
 
           echo "✅ Job summary written to: ${GITHUB_STEP_SUMMARY}"
 
+          # Don't overwrite a prior real result with an all-skipped run.
+          comment_meaningful=false
+          for r in "$UNIT_TEST_RESULT" "$INTEGRATION_TEST_RESULT"; do
+              case "$r" in
+                  success|failure) comment_meaningful=true ;;
+              esac
+          done
+
           if [ -n "${PR_NUMBER:-}" ]; then
-              post_or_update_comment "${PR_NUMBER}" "${MARKER}" "${GITHUB_STEP_SUMMARY}"
+              post_or_update_comment "${PR_NUMBER}" "${MARKER}" "${GITHUB_STEP_SUMMARY}" "${comment_meaningful}"
           fi

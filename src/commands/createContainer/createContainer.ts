@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureWizard, nonNullValue, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { AzureWizard, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import { type CosmosDBDatabaseResourceItem } from '../../tree/cosmosdb/CosmosDBDatabaseResourceItem';
@@ -12,6 +12,7 @@ import { isTreeElement, type TreeElement } from '../../tree/TreeElement';
 import { isTreeElementWithContextValue } from '../../tree/TreeElementWithContextValue';
 import { isTreeElementWithExperience } from '../../tree/TreeElementWithExperience';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
+import { nonNullValue } from '../../utils/nonNull';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { CosmosDBContainerNameStep } from './CosmosDBContainerNameStep';
 import { CosmosDBExecuteStep } from './CosmosDBExecuteStep';

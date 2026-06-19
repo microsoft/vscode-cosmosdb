@@ -10,11 +10,11 @@ import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import { type CosmosDBAccountResourceItem } from '../../tree/cosmosdb/CosmosDBAccountResourceItem';
 import { createActivityContextV2 } from '../../utils/activityUtils';
-import { createCosmosDBClient } from '../../utils/azureClients';
+import { createCosmosDBManagementClient } from '../../utils/azureClients';
 
 export async function deleteCosmosDBAccount(context: IActionContext, node: CosmosDBAccountResourceItem): Promise<void> {
     const activityContext = await createActivityContextV2();
-    const client = await createCosmosDBClient({ ...context, ...activityContext }, node.account.subscription);
+    const client = await createCosmosDBManagementClient({ ...context, ...activityContext }, node.account.subscription);
     const resourceGroup = getResourceGroupFromId(node.account.id);
     const accountName = node.account.name;
 

@@ -24,7 +24,7 @@
 
 import { expect, type Frame, type Page } from '@playwright/test';
 import { startConsoleHealth, type ConsoleHealth } from './consoleHealth';
-import { captureNamedScreenshot } from './webviewHelpers';
+import { captureNamedScreenshot, getWebviewByPredicate } from './webviewHelpers';
 import { openQueryEditor } from './webviews';
 
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -134,6 +134,22 @@ export const RESULT_CONTROLS = {
 
 /** Clipboard / file export formats offered by the Copy and Export split menus. */
 export type ExportFormat = 'CSV' | 'JSON';
+
+/**
+ * Accessible-name substrings of the selection-aware item buttons in the
+ * result tab toolbar (`ResultTabToolbar`). They only render in edit mode (a
+ * `SELECT *`-style query) and are enabled only while at least one row is
+ * selected. Substring matching tolerates the trailing period
+ * (`ensureStopSymbol`) and the `(s)` plural on Delete.
+ */
+export const SELECTION_ACTIONS = {
+    view: 'View selected item',
+    edit: 'Edit selected item',
+    delete: 'Delete selected item',
+} as const;
+
+/** A selection-aware item action whose enablement tracks the row selection. */
+export type SelectionAction = keyof typeof SELECTION_ACTIONS;
 
 export class QueryEditorPage {
     private constructor(
@@ -406,6 +422,73 @@ export class QueryEditorPage {
         await this.viewModeDropdown().click();
         await this.frame.getByRole('option', { name: RESULT_VIEW.options[mode], exact: true }).click();
         await this.activeViewContainer(mode).waitFor({ state: 'visible', timeout: timeoutMs });
+    }
+
+    // ─── Table selection + drill-in (edit-mode `SELECT *` results) ─────────
+
+    /** The active Table-view data grid (react-data-grid). */
+    private tableGrid() {
+        return this.frame.getByRole('grid', { name: 'Query results table' });
+    }
+
+    /** Data rows of the Table view (excludes the header row). */
+    tableRows() {
+        return this.tableGrid().locator('.rdg-row');
+    }
+
+    /** The first data cell of the 0-based table row `index` — the click target. */
+    private tableRowCell(index: number) {
+        return this.tableRows().nth(index).locator('.rdg-cell').first();
+    }
+
+    /** Count of currently selected (highlighted) table rows. */
+    async getSelectedRowCount(): Promise<number> {
+        return this.tableGrid().locator(".rdg-row[aria-selected='true']").count();
+    }
+
+    /** Plain click: selects only row `index` (clears any prior selection). */
+    async selectRow(index: number): Promise<void> {
+        await this.tableRowCell(index).click();
+    }
+
+    /** Ctrl/Cmd+click: toggles row `index` in/out of the current selection. */
+    async ctrlClickRow(index: number): Promise<void> {
+        await this.tableRowCell(index).click({ modifiers: ['ControlOrMeta'] });
+    }
+
+    /** Shift+click: extends the selection from the anchor row to `index`. */
+    async shiftClickRow(index: number): Promise<void> {
+        await this.tableRowCell(index).click({ modifiers: ['Shift'] });
+    }
+
+    /** Double-click: drills into row `index`, opening its Document webview. */
+    async doubleClickRow(index: number): Promise<void> {
+        await this.tableRowCell(index).dblclick();
+    }
+
+    /** Locator for a selection-aware item button (View / Edit / Delete). */
+    selectionActionButton(action: SelectionAction) {
+        return this.resultRegion().getByRole('button', { name: SELECTION_ACTIONS[action] });
+    }
+
+    /**
+     * Waits for the Document webview opened by a row drill-in (double-click or
+     * the View / Edit item buttons) to mount, returning its content frame. The
+     * Document panel is identified by its read-only / editable banner, which the
+     * Query Editor frame never renders, so the predicate also skips this page's
+     * own frame.
+     */
+    async waitForDocumentPanel(timeoutMs: number = DEFAULT_TIMEOUT_MS): Promise<Frame> {
+        return getWebviewByPredicate(
+            this.window,
+            async (frame) => {
+                if (frame === this.frame) {
+                    return false;
+                }
+                return (await frame.getByText(/This item is (read-only|editable)/).count()) > 0;
+            },
+            timeoutMs,
+        );
     }
 
     // ─── Editor text ──────────────────────────────────────────────────────

@@ -130,8 +130,9 @@ test/e2e/
                                       result view modes, result toolbar + Stats,
                                       paging + page-size, table selection +
                                       drill-in, query history, the production
-                                      tree-open path, and the document CRUD
-                                      round-trip
+                                      tree-open path, the document CRUD
+                                      round-trip, run-selected-fragment, and the
+                                      empty-result / invalid-query error paths
 ```
 
 ## Query Editor coverage (`@queryEditor`)

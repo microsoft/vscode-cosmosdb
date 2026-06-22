@@ -112,6 +112,29 @@ export const QUERY_CONTROLS = {
     connection: { toolbarName: QUERY_TOOLBAR.connection, role: 'combobox', menuText: 'Connect to…' },
 } as const satisfies Record<string, ToolbarControl>;
 
+/**
+ * Registry of the result-panel toolbar controls (`ResultPanelToolbarOverflow`).
+ * Same two-faced shape as {@link QUERY_CONTROLS}: an inline toolbar button
+ * (matched by its aria-label substring) or a collapsed overflow-menu entry
+ * (matched by visible text). The result toolbar shares the `Default` aria-label
+ * with the query toolbar, so the page-object scopes these lookups to the
+ * "Result Panel" region.
+ *
+ * Note: `copy` and `export` are split menus — activating either (inline button
+ * or overflow entry) opens a CSV/JSON submenu; pick the format afterwards.
+ */
+export const RESULT_CONTROLS = {
+    reload: { toolbarName: 'Reload query results', role: 'button', menuText: 'Refresh' },
+    firstPage: { toolbarName: 'Go to first page', role: 'button', menuText: 'Go to first page' },
+    prevPage: { toolbarName: 'Go to previous page', role: 'button', menuText: 'Go to previous page' },
+    nextPage: { toolbarName: 'Go to next page', role: 'button', menuText: 'Go to next page' },
+    copy: { toolbarName: 'Copy', role: 'button', menuText: 'Copy to clipboard' },
+    export: { toolbarName: 'Export', role: 'button', menuText: 'Export' },
+} as const satisfies Record<string, ToolbarControl>;
+
+/** Clipboard / file export formats offered by the Copy and Export split menus. */
+export type ExportFormat = 'CSV' | 'JSON';
+
 export class QueryEditorPage {
     private constructor(
         /** The Query Editor webview content frame. */
@@ -383,6 +406,237 @@ export class QueryEditorPage {
         await this.viewModeDropdown().click();
         await this.frame.getByRole('option', { name: RESULT_VIEW.options[mode], exact: true }).click();
         await this.activeViewContainer(mode).waitFor({ state: 'visible', timeout: timeoutMs });
+    }
+
+    // ─── Editor text ──────────────────────────────────────────────────────
+
+    /**
+     * Replaces the Monaco query text. Focuses the editor, selects all, and
+     * types the new query. The caller still triggers execution ({@link run} /
+     * {@link runViaHotkey}); typing alone does not run anything.
+     */
+    async setQueryText(text: string): Promise<void> {
+        await this.frame.locator('.monaco-editor').first().click();
+        await this.frame.locator('textarea.inputarea').first().waitFor({ state: 'attached', timeout: 5_000 });
+        await this.window.keyboard.press('Control+A');
+        await this.window.keyboard.press('Delete');
+        await this.window.keyboard.type(text);
+    }
+
+    // ─── Result toolbar (reload / paging / copy / export) ─────────────────
+
+    /** The Result Panel `section` (role `region`), scoping result-side lookups. */
+    resultRegion() {
+        return this.frame.getByRole('region', { name: 'Result Panel' });
+    }
+
+    /**
+     * The result-panel toolbar. Both the query and result toolbars expose the
+     * `Default` accessible name, so this is scoped to the Result Panel region to
+     * disambiguate from the query toolbar.
+     */
+    resultToolbar() {
+        return this.resultRegion().getByRole('toolbar', { name: 'Default' });
+    }
+
+    /** Inline (toolbar) locator for a result control, scoped to the region. */
+    inlineResultControl(control: ToolbarControl) {
+        return this.resultToolbar()
+            .getByRole(control.role, { name: control.toolbarName, exact: control.exact ?? false })
+            .first();
+    }
+
+    /**
+     * Opens the result toolbar's "More items" overflow menu if it is present.
+     * Toggle-safe (mirrors {@link openOverflowMenu}); returns false when the
+     * result toolbar is not overflowing.
+     */
+    async openResultOverflowMenu(): Promise<boolean> {
+        const more = this.resultToolbar().getByRole('button', { name: QUERY_TOOLBAR.moreItems });
+        if (
+            (await more.count()) === 0 ||
+            !(await more
+                .first()
+                .isVisible()
+                .catch(() => false))
+        ) {
+            return false;
+        }
+        const menu = this.frame.getByRole('menu').first();
+        for (let attempt = 0; attempt < 3; attempt++) {
+            if (await menu.isVisible().catch(() => false)) {
+                return true;
+            }
+            await more.first().click();
+            try {
+                await menu.waitFor({ state: 'visible', timeout: 2_000 });
+                return true;
+            } catch {
+                // Menu didn't open this attempt — retry.
+            }
+        }
+        await menu.waitFor({ state: 'visible', timeout: 3_000 });
+        return true;
+    }
+
+    /**
+     * Activates a result control, looking in the toolbar first and the overflow
+     * menu second. For plain action buttons (Reload / paging) this fires the
+     * action; for the split menus (Copy / Export) it opens their submenu — use
+     * {@link copyResults} / {@link exportResults} for those.
+     */
+    async clickResultControl(control: ToolbarControl): Promise<void> {
+        const inline = this.inlineResultControl(control);
+        if (await inline.isVisible().catch(() => false)) {
+            await inline.click();
+            return;
+        }
+        if (!(await this.openResultOverflowMenu())) {
+            throw new Error(`Result control "${control.toolbarName}" is neither inline nor in the overflow menu.`);
+        }
+        await this.frame.getByRole('menu').first().getByText(control.menuText, { exact: true }).first().click();
+    }
+
+    /** Re-runs the current query via the Reload button. */
+    async reloadResults(): Promise<void> {
+        await this.clickResultControl(RESULT_CONTROLS.reload);
+    }
+
+    /** Navigates result pages (disabled controls are simply no-ops in the UI). */
+    async goToNextPage(): Promise<void> {
+        await this.clickResultControl(RESULT_CONTROLS.nextPage);
+    }
+    async goToPrevPage(): Promise<void> {
+        await this.clickResultControl(RESULT_CONTROLS.prevPage);
+    }
+    async goToFirstPage(): Promise<void> {
+        await this.clickResultControl(RESULT_CONTROLS.firstPage);
+    }
+
+    /**
+     * Reads the status-bar record range (e.g. `0 - 10`) shown in the result
+     * toolbar for the current page. Polls because it briefly shows a timer
+     * while a query is executing.
+     */
+    async getStatusRange(timeoutMs: number = DEFAULT_TIMEOUT_MS): Promise<string> {
+        const range = this.resultToolbar()
+            .getByText(/^\d+\s*-\s*\d+$/)
+            .first();
+        await range.waitFor({ state: 'visible', timeout: timeoutMs });
+        return (await range.innerText()).trim();
+    }
+
+    /**
+     * Opens the Copy split menu (toolbar or overflow) and picks a format,
+     * copying the current page / selection to the clipboard.
+     */
+    async copyResults(format: ExportFormat = 'JSON'): Promise<void> {
+        await this.openResultSplitMenu(RESULT_CONTROLS.copy);
+        await this.frame.getByRole('menuitem', { name: format, exact: true }).first().click();
+    }
+
+    /**
+     * Opens the Export split menu (toolbar or overflow) and picks a format. The
+     * underlying save dialog is stubbed by the fixture, so this is a safe no-op
+     * that only proves the action wires up without error.
+     */
+    async exportResults(format: ExportFormat = 'JSON'): Promise<void> {
+        await this.openResultSplitMenu(RESULT_CONTROLS.export);
+        await this.frame.getByRole('menuitem', { name: format, exact: true }).first().click();
+    }
+
+    /** Opens a Copy/Export split menu so its CSV/JSON items become available. */
+    private async openResultSplitMenu(control: ToolbarControl): Promise<void> {
+        const inline = this.inlineResultControl(control);
+        if (await inline.isVisible().catch(() => false)) {
+            await inline.click();
+            return;
+        }
+        if (!(await this.openResultOverflowMenu())) {
+            throw new Error(`Result control "${control.toolbarName}" is neither inline nor in the overflow menu.`);
+        }
+        await this.frame.getByRole('menu').first().getByText(control.menuText, { exact: true }).first().click();
+    }
+
+    // ─── Result tabs (Result / Stats) ─────────────────────────────────────
+
+    /** Switches to the Stats tab (query metrics + index metrics). */
+    async switchToStatsTab(): Promise<void> {
+        await this.resultRegion().getByRole('tab', { name: 'Stats' }).click();
+    }
+
+    /** Switches back to the Result tab (the data views). */
+    async switchToResultTab(): Promise<void> {
+        await this.resultRegion().getByRole('tab', { name: 'Result' }).click();
+    }
+
+    /**
+     * True once the Stats tab's query-metrics panel is populated. Anchored on
+     * the panel's "Learn more about query metrics" link, whose accessible name
+     * is stable regardless of which metrics the backend returned.
+     */
+    async hasQueryMetrics(timeoutMs: number = DEFAULT_TIMEOUT_MS): Promise<boolean> {
+        return this.resultRegion()
+            .getByRole('link', { name: 'Learn more about query metrics' })
+            .first()
+            .isVisible({ timeout: timeoutMs })
+            .catch(() => false);
+    }
+
+    /**
+     * True when the Stats tab's index-metrics panel is rendered. The panel only
+     * appears when the query result carried a non-empty `indexMetrics` payload.
+     * Anchored on its "Learn more about index metrics" link.
+     */
+    async hasIndexMetrics(timeoutMs: number = DEFAULT_TIMEOUT_MS): Promise<boolean> {
+        return this.resultRegion()
+            .getByRole('link', { name: 'Learn more about index metrics' })
+            .first()
+            .isVisible({ timeout: timeoutMs })
+            .catch(() => false);
+    }
+
+    // ─── Page size (incl. the re-run confirmation modal) ──────────────────
+
+    /** The page-size dropdown (Fluent combobox) in the result toolbar. */
+    pageSizeDropdown() {
+        return this.resultRegion().getByRole('combobox', { name: 'Change page size' });
+    }
+
+    /** Reads the current page-size value shown by the dropdown (e.g. `10`, `All`). */
+    async getPageSizeValue(): Promise<string> {
+        return (await this.pageSizeDropdown().first().innerText()).trim();
+    }
+
+    /**
+     * Selects a page size via the dropdown. `size` is the option label (`10`,
+     * `50`, `100`, `500`, or `All`). Does NOT handle the re-run confirmation
+     * modal that the backend raises when a query has already executed — drive
+     * it via {@link confirmPageSizeModal} / {@link dismissPageSizeModal}.
+     */
+    async setPageSize(size: '10' | '50' | '100' | '500' | 'All'): Promise<void> {
+        const dropdown = this.pageSizeDropdown().first();
+        if (await dropdown.isVisible().catch(() => false)) {
+            await dropdown.click();
+        } else {
+            // Collapsed: open the result overflow menu, then the "Change page
+            // size" submenu, before picking the value.
+            if (!(await this.openResultOverflowMenu())) {
+                throw new Error('Page-size control is neither inline nor in the overflow menu.');
+            }
+            await this.frame.getByRole('menu').first().getByText('Change page size', { exact: true }).first().click();
+        }
+        await this.frame.getByRole('option', { name: size, exact: true }).first().click();
+    }
+
+    /**
+     * Best-effort check that no native page-size confirmation modal is pending.
+     * The confirmation is a native Electron dialog (auto-resolved by the test
+     * dialog stub), so there is no in-DOM modal to assert against — this simply
+     * confirms no stray workbench dialog leaked onto the main window.
+     */
+    pageSizeModal() {
+        return this.window.locator('.monaco-dialog-box');
     }
 
     /**

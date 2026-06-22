@@ -81,6 +81,50 @@ export async function resizeWindow(app: ElectronApplication, width: number, heig
 }
 
 /**
+ * Overrides the native Electron message-box (used by VS Code modal
+ * `showWarningMessage`/`showInformationMessage` prompts when the default
+ * `window.dialogStyle: 'native'` is in effect) so a test can deterministically
+ * "click" a specific button without a real, non-interactable OS dialog.
+ *
+ * `buttonLabelPattern` is a case-insensitive RegExp source matched against the
+ * dialog's button labels; the first matching button's index is returned as the
+ * response (falling back to 0 when nothing matches). Restore the fixture's
+ * default with {@link resetNativeDialogStubs} afterwards (the Electron app is
+ * worker-scoped, so the override otherwise leaks into later tests).
+ */
+export async function stubMessageBoxButton(app: ElectronApplication, buttonLabelPattern: string): Promise<void> {
+    await app.evaluate(({ dialog }, pattern) => {
+        const re = new RegExp(pattern, 'i');
+        // VS Code calls dialog.showMessageBox either as (window, options) or
+        // (options); pick whichever argument carries the `buttons` array.
+        dialog.showMessageBox = ((...args: unknown[]) => {
+            const opts = (args.length > 1 ? args[1] : args[0]) as { buttons?: string[] } | undefined;
+            const buttons = opts?.buttons ?? [];
+            const index = buttons.findIndex((label) => re.test(label));
+            return Promise.resolve({ response: index >= 0 ? index : 0, checkboxChecked: false });
+        }) as typeof dialog.showMessageBox;
+    }, buttonLabelPattern);
+}
+
+/**
+ * Restores the native dialog stubs to the fixture defaults (cancel/decline
+ * everything). Mirrors `disableNativeDialogs` in `vscode.ts`; call this in a
+ * test's cleanup after {@link stubMessageBoxButton}.
+ */
+export async function resetNativeDialogStubs(app: ElectronApplication): Promise<void> {
+    await app
+        .evaluate(({ dialog }) => {
+            dialog.showSaveDialog = () => Promise.resolve({ canceled: true, filePath: '' });
+            dialog.showOpenDialog = () => Promise.resolve({ canceled: true, filePaths: [] });
+            dialog.showMessageBoxSync = () => 1;
+            dialog.showMessageBox = () => Promise.resolve({ response: 1, checkboxChecked: false });
+        })
+        .catch(() => {
+            /* Context may be torn down during teardown — tolerate. */
+        });
+}
+
+/**
  * Closes the auxiliary (secondary) side bar — where a fresh VS Code profile may
  * auto-open the Chat view. Leaving it open steals horizontal space from the
  * editor area and squeezes webviews under test. Best-effort — never throws.

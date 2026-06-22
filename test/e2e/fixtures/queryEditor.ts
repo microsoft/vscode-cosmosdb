@@ -76,6 +76,30 @@ export interface ToolbarControl {
     exact?: boolean;
 }
 
+/** The three result renderers the "Change view mode" dropdown switches between. */
+export type ResultViewMode = 'Tree' | 'JSON' | 'Table';
+
+/**
+ * Names attached to the result-panel "Change view mode" dropdown
+ * (`ChangeViewModeDropdown.tsx`):
+ *
+ *  - `dropdown` — the combobox's accessible name (a Fluent `Tooltip` with
+ *    `relationship="label"` supplies it as the `aria-label`);
+ *  - `options` — the visible label of each `Option` in the open listbox
+ *    (note the trailing "view": `Tree view` / `JSON view` / `Table view`);
+ *  - `valueText` — the short label the closed dropdown shows for the active
+ *    mode (`Tree` / `JSON` / `Table`), used by {@link QueryEditorPage.getActiveViewMode}.
+ */
+export const RESULT_VIEW = {
+    dropdown: 'Change view mode',
+    options: { Tree: 'Tree view', JSON: 'JSON view', Table: 'Table view' },
+    valueText: { Tree: 'Tree', JSON: 'JSON', Table: 'Table' },
+} as const satisfies {
+    dropdown: string;
+    options: Record<ResultViewMode, string>;
+    valueText: Record<ResultViewMode, string>;
+};
+
 /** Registry of the always-present query-toolbar controls. */
 export const QUERY_CONTROLS = {
     run: { toolbarName: QUERY_TOOLBAR.run, role: 'button', menuText: 'Run', exact: true },
@@ -304,6 +328,61 @@ export class QueryEditorPage {
     /** Locator for the connection picker combobox (inline form). */
     connectionPicker() {
         return this.frame.getByRole('combobox', { name: QUERY_TOOLBAR.connection });
+    }
+
+    // ─── Result view modes (Tree / JSON / Table) ──────────────────────────
+
+    /**
+     * Locator for the result-panel "Change view mode" dropdown (a Fluent
+     * `Dropdown`, role `combobox`). It lives in the result toolbar and is
+     * present whenever a result tab is shown.
+     */
+    viewModeDropdown() {
+        return this.frame.getByRole('combobox', { name: RESULT_VIEW.dropdown });
+    }
+
+    /**
+     * Reads the currently active result view mode from the dropdown's value.
+     * The closed dropdown shows the short label (`Tree` / `JSON` / `Table`).
+     */
+    async getActiveViewMode(): Promise<ResultViewMode> {
+        const text = (await this.viewModeDropdown().innerText()).trim();
+        if (text.includes(RESULT_VIEW.valueText.Tree)) {
+            return 'Tree';
+        }
+        if (text.includes(RESULT_VIEW.valueText.JSON)) {
+            return 'JSON';
+        }
+        return 'Table';
+    }
+
+    /**
+     * Locator for the renderer that backs a given view mode. Used to assert the
+     * correct view is actually mounted (not merely selected in the dropdown):
+     *  - Table / Tree are `react-data-grid`s exposing role `grid` with a
+     *    distinct accessible name;
+     *  - JSON is a read-only Monaco editor inside the results display area.
+     */
+    activeViewContainer(mode: ResultViewMode) {
+        switch (mode) {
+            case 'Table':
+                return this.frame.getByRole('grid', { name: 'Query results table' });
+            case 'Tree':
+                return this.frame.getByRole('grid', { name: 'Query results tree' });
+            case 'JSON':
+                return this.frame.locator('.resultsDisplayArea .monaco-editor').first();
+        }
+    }
+
+    /**
+     * Switches the result view via the "Change view mode" dropdown and waits
+     * until the target renderer has mounted. Switching triggers an async
+     * recalculation (brief spinner) before the new view paints.
+     */
+    async setViewMode(mode: ResultViewMode, timeoutMs: number = DEFAULT_TIMEOUT_MS): Promise<void> {
+        await this.viewModeDropdown().click();
+        await this.frame.getByRole('option', { name: RESULT_VIEW.options[mode], exact: true }).click();
+        await this.activeViewContainer(mode).waitFor({ state: 'visible', timeout: timeoutMs });
     }
 
     /**

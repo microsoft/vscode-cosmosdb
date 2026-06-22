@@ -23,7 +23,7 @@
  * the webview to be fully populated (React mounted, expected UI present).
  */
 
-import { test, type Frame, type Page } from '@playwright/test';
+import { test, type ElectronApplication, type Frame, type Page } from '@playwright/test';
 import { resolveCapturePlan, shouldCapture } from '../helpers/captureMode';
 
 const COMMAND_PALETTE_SHORTCUT = process.platform === 'darwin' ? 'Meta+Shift+P' : 'Control+Shift+P';
@@ -31,6 +31,71 @@ const QUICK_INPUT_SELECTOR = '.quick-input-widget input';
 const TAB_SELECTOR = 'div[role="tab"]';
 const WEBVIEW_FRAME_TIMEOUT_MS = 30_000;
 const WEBVIEW_POLL_INTERVAL_MS = 250;
+
+/**
+ * Maximizes (and enlarges) the VS Code window so webview toolbars render all of
+ * their controls inline instead of collapsing into a Fluent UI "More items"
+ * overflow menu. Several Query Editor specs assert on toolbar buttons directly;
+ * a wide, deterministic window removes overflow-driven flakiness. Best-effort —
+ * never throws.
+ */
+export async function maximizeWindow(app: ElectronApplication): Promise<void> {
+    await app
+        .evaluate(({ BrowserWindow }) => {
+            const [win] = BrowserWindow.getAllWindows();
+            if (!win) {
+                return;
+            }
+            win.setBounds({ x: 0, y: 0, width: 1920, height: 1200 });
+            win.maximize();
+        })
+        .catch(() => {
+            /* No window yet / context torn down — callers tolerate this. */
+        });
+}
+
+/**
+ * Resizes the VS Code window to an explicit width/height (un-maximizing first
+ * if needed). Use this to make the editor area — and therefore a webview's
+ * toolbar — narrow enough to force Fluent UI's `Overflow` to collapse controls
+ * into the "More items" menu. Best-effort — never throws.
+ */
+export async function resizeWindow(app: ElectronApplication, width: number, height: number): Promise<void> {
+    await app
+        .evaluate(
+            ({ BrowserWindow }, bounds) => {
+                const [win] = BrowserWindow.getAllWindows();
+                if (!win) {
+                    return;
+                }
+                if (win.isMaximized()) {
+                    win.unmaximize();
+                }
+                win.setBounds({ x: 0, y: 0, width: bounds.width, height: bounds.height });
+            },
+            { width, height },
+        )
+        .catch(() => {
+            /* No window yet / context torn down — callers tolerate this. */
+        });
+}
+
+/**
+ * Closes the auxiliary (secondary) side bar — where a fresh VS Code profile may
+ * auto-open the Chat view. Leaving it open steals horizontal space from the
+ * editor area and squeezes webviews under test. Best-effort — never throws.
+ */
+export async function closeAuxiliaryBar(page: Page): Promise<void> {
+    if (page.isClosed()) {
+        return;
+    }
+    try {
+        await runCommand(page, 'workbench.action.closeAuxiliaryBar');
+    } catch {
+        // The command may be unavailable (older builds) or the bar already
+        // closed — either way there's nothing to clean up.
+    }
+}
 
 /** Frames whose parent is non-null = nested = webview content frames. */
 function getWebviewFrames(page: Page): Frame[] {
@@ -149,6 +214,48 @@ export async function captureWindowScreenshot(page: Page, name = 'vscode-window'
             const file = info.outputPath(`${name}.png`);
             await page.screenshot({ path: file });
             await info.attach(`${name} (${info.title})`, { path: file, contentType: 'image/png' });
+        });
+    } catch {
+        // Best-effort — never fail a test on screenshot capture.
+    }
+}
+
+/**
+ * Captures a screenshot of the whole VS Code window to a file named after the
+ * current test (plus a `label` such as `loaded` / `final`), attaches it to the
+ * HTML report, and writes it under the per-test results directory.
+ *
+ * Unlike {@link captureWindowScreenshot} (which honours the only-on-failure
+ * default), this fires for *every* test so you can eyeball what each test
+ * actually rendered — useful while building out coverage. It is suppressed only
+ * when `COSMOSDB_E2E_SCREENSHOT=off`. Best-effort: never fails a test.
+ */
+export async function captureNamedScreenshot(page: Page, label: string): Promise<void> {
+    if (page.isClosed()) return;
+
+    let info: ReturnType<typeof test.info>;
+    try {
+        info = test.info();
+    } catch {
+        // Not running inside a test (e.g. called from a non-test context).
+        return;
+    }
+
+    if (resolveCapturePlan().screenshot === 'off') return;
+
+    const slug = (value: string, max: number): string =>
+        value
+            .trim()
+            .replace(/[^a-z0-9-_]+/gi, '-')
+            .replace(/(^-+|-+$)/g, '')
+            .toLowerCase()
+            .slice(0, max) || 'shot';
+
+    try {
+        await test.step(`📸 ${label}`, async () => {
+            const file = info.outputPath(`${slug(info.title, 60)}-${slug(label, 20)}.png`);
+            await page.screenshot({ path: file });
+            await info.attach(`${label} (${info.title})`, { path: file, contentType: 'image/png' });
         });
     } catch {
         // Best-effort — never fail a test on screenshot capture.

@@ -47,6 +47,7 @@ import { resolveCapturePlan, shouldCapture } from '../helpers/captureMode';
 import { ensureE2eIsolationContext } from '../helpers/e2eIsolation';
 import { waitForWorkbenchReady } from '../helpers/workbenchReady';
 import { waitForExtensionsActivated } from '../setup/activation';
+import { closeAuxiliaryBar } from './webviewHelpers';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, '..', '..', '..');
@@ -96,8 +97,15 @@ function seedUserSettings(userDataDir: string): void {
         // worker should start with an empty workbench.
         'files.hotExit': 'onExitAndWindowClose',
         // Chat / secondary sidebar can autopopup on fresh installs and steal
-        // 30 % of horizontal space, hiding webview content.
+        // 30 % of horizontal space, hiding webview content. The setting below
+        // is best-effort (auxiliary-bar visibility is mostly persisted UI
+        // state, not a real setting), so we also explicitly close the
+        // auxiliary bar once the workbench is ready — see `closeAuxiliaryBar`
+        // in the `vscodeWindow` fixture.
         'workbench.secondarySideBar.visible': false,
+        // Drop the Chat entry from the title-bar command center so a fresh
+        // profile doesn't surface the chat affordance at all.
+        'chat.commandCenter.enabled': false,
         // Silence "do you trust this folder" — we already pass --disable-workspace-trust.
         'security.workspace.trust.enabled': false,
         // Cosmos DB emulator (linux/vnext-preview) advertises its writable
@@ -116,14 +124,15 @@ function seedUserSettings(userDataDir: string): void {
 
 /**
  * Monkey-patch Electron's main-process `dialog` module so native
- * save / message dialogs never block the test. Untitled SQL editors,
- * unsaved changes on tab close, etc. would otherwise pop an OS dialog
- * that Playwright cannot interact with.
+ * save / open / message dialogs never block the test. Untitled SQL editors,
+ * unsaved changes on tab close, the Query Editor's "Open query" file picker,
+ * etc. would otherwise pop an OS dialog that Playwright cannot interact with.
  */
 async function disableNativeDialogs(app: ElectronApplication): Promise<void> {
     await app
         .evaluate(({ dialog }) => {
             dialog.showSaveDialog = () => Promise.resolve({ canceled: true, filePath: '' });
+            dialog.showOpenDialog = () => Promise.resolve({ canceled: true, filePaths: [] });
             dialog.showMessageBoxSync = () => 1; // Typically "Don't Save"
             dialog.showMessageBox = () => Promise.resolve({ response: 1, checkboxChecked: false });
         })
@@ -316,6 +325,12 @@ export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
             // exactly once even with dozens of specs. See activation.ts for
             // the full rationale.
             await waitForExtensionsActivated(page);
+
+            // A fresh VS Code profile can auto-open the Chat view in the
+            // auxiliary (secondary) side bar, which eats ~30 % of horizontal
+            // space and squeezes the webview under test. Close it once here so
+            // every spec starts with the editor area at full width.
+            await closeAuxiliaryBar(page);
 
             await use(page);
         },

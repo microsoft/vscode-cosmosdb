@@ -6,10 +6,14 @@
 import { TabDesktopMultipleRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useMemo } from 'react';
-import { HotkeyCommandService, useCommandHotkey } from '../../../common/hotkeys';
+import { getShortcutDisplay, useCommandHotkey } from '../../../common/hotkeys';
 import { ToolbarOverflowButton } from '../../../common/ToolbarOverflow/ToolbarOverflowButton';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
-import { type QueryEditorHotkeyCommand, type QueryEditorHotkeyScope } from '../QueryEditorHotkeys';
+import {
+    QueryEditorGlobalHotkeys,
+    type QueryEditorHotkeyCommand,
+    type QueryEditorHotkeyScope,
+} from '../QueryEditorHotkeys';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
 export const DuplicateTabButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
@@ -30,11 +34,7 @@ export const DuplicateTabButton = (props: ToolbarOverflowItemProps<HTMLButtonEle
     );
 
     const duplicateTabHotkeyTooltip = useMemo(
-        () =>
-            HotkeyCommandService.getInstance<QueryEditorHotkeyScope, QueryEditorHotkeyCommand>().getShortcutDisplay(
-                'global',
-                'DuplicateQueryEditor',
-            ),
+        () => getShortcutDisplay(QueryEditorGlobalHotkeys, 'DuplicateQueryEditor'),
         [],
     );
 

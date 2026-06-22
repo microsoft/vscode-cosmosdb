@@ -134,8 +134,8 @@ test/e2e/
                                       round-trip, run-selected-fragment, the
                                       empty-result / invalid-query error paths,
                                       the Duplicate-tab control, the
-                                      column-resize dialog, and the Cancel
-                                      control
+                                      column-resize dialog, the Cancel control,
+                                      and the global keyboard hotkeys
 ```
 
 ## Query Editor coverage (`@queryEditor`)

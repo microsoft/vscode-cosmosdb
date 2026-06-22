@@ -872,6 +872,26 @@ export class QueryEditorPage {
         await this.resultRegion().getByRole('tab', { name: 'Result' }).click();
     }
 
+    /** Locator for the named result tab (`Result` / `Stats`). */
+    resultTab(name: 'Result' | 'Stats') {
+        return this.resultRegion().getByRole('tab', { name, exact: true });
+    }
+
+    /** True when the named result tab is the currently selected one. */
+    async isResultTabSelected(name: 'Result' | 'Stats'): Promise<boolean> {
+        return (await this.resultTab(name).getAttribute('aria-selected')) === 'true';
+    }
+
+    /**
+     * Moves keyboard focus into the result panel (without selecting a data row)
+     * so the webview's document-level hotkey listeners receive subsequent
+     * keystrokes. Clicks the result tablist, which is a focusable, side-effect
+     * free target.
+     */
+    async focusResultPanel(): Promise<void> {
+        await this.resultRegion().getByRole('tablist').first().click();
+    }
+
     /**
      * True once the Stats tab's query-metrics panel is populated. Anchored on
      * the panel's "Learn more about query metrics" link, whose accessible name

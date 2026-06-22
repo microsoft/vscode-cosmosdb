@@ -369,6 +369,64 @@ export class QueryEditorPage {
         return this.frame.getByRole('combobox', { name: QUERY_TOOLBAR.connection });
     }
 
+    // ─── Run history ──────────────────────────────────────────────────────
+
+    /**
+     * The Run split-button's history menu trigger (the dropdown arrow next to
+     * the primary "Run" action). Its accessible name is "Show history of
+     * previous queries" (`RunQueryButton.tsx`). On a wide window it stays inline
+     * in the query toolbar; the history specs maximize to keep it there.
+     */
+    runHistoryTrigger() {
+        return this.frame.getByRole('button', { name: 'Show history of previous queries' });
+    }
+
+    /**
+     * Opens the Run split-button history menu and waits for it to render. The
+     * Fluent popover here does not expose a `role="menu"` container, so this
+     * waits on the first `menuitem` instead.
+     */
+    async openRunHistoryMenu(): Promise<void> {
+        const trigger = this.runHistoryTrigger().first();
+        const anyItem = this.frame.getByRole('menuitem').first();
+        // The Fluent SplitButton menu trigger occasionally swallows the first
+        // click, so retry — but bail out early once an item is visible to avoid
+        // a second click toggling it shut (mirrors {@link openOverflowMenu}).
+        for (let attempt = 0; attempt < 3; attempt++) {
+            if (await anyItem.isVisible().catch(() => false)) {
+                return;
+            }
+            await trigger.click();
+            try {
+                await anyItem.waitFor({ state: 'visible', timeout: 2_000 });
+                return;
+            } catch {
+                // Menu didn't open this attempt — loop and try again.
+            }
+        }
+        await anyItem.waitFor({ state: 'visible', timeout: 3_000 });
+    }
+
+    /**
+     * Visible text of every entry in the open Run history menu. Includes the
+     * disabled "No history" placeholder when the history is empty, plus any
+     * configuration submenu triggers (Throughput Bucket / Priority Level) when
+     * the connection exposes them — neither appears on the emulator.
+     */
+    async getHistoryEntries(): Promise<string[]> {
+        return this.frame.getByRole('menuitem').allInnerTexts();
+    }
+
+    /**
+     * Reads the current Monaco editor text (the rendered query buffer). Monaco
+     * renders inter-token gaps as non-breaking spaces, so they are normalized
+     * back to regular spaces for stable substring assertions.
+     */
+    async getQueryText(): Promise<string> {
+        const rendered = await this.frame.locator('.monaco-editor .view-lines').first().innerText();
+        return rendered.replace(/\u00a0/g, ' ').trim();
+    }
+
     // ─── Result view modes (Tree / JSON / Table) ──────────────────────────
 
     /**

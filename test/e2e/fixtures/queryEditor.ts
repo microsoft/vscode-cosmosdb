@@ -600,6 +600,29 @@ export class QueryEditorPage {
         await this.window.keyboard.type(text);
     }
 
+    /**
+     * Selects the whole of (0-based) editor line `lineIndex`, leaving it as the
+     * active selection. The Query Editor tracks the Monaco selection into
+     * `querySelectedValue`, and Run executes that selection in preference to the
+     * full editor text — so this drives the "run only the selected fragment"
+     * path. Navigates by keyboard (Ctrl+Home + ArrowDown) to avoid fragile
+     * per-line click coordinates; the first `Home` lands on the first
+     * non-whitespace column, so any auto-indent is excluded from the selection.
+     */
+    async selectQueryLine(lineIndex: number): Promise<void> {
+        await this.frame.locator('.monaco-editor').first().click();
+        await this.frame.locator('textarea.inputarea').first().waitFor({ state: 'attached', timeout: 5_000 });
+        await this.window.keyboard.press('Control+Home');
+        for (let i = 0; i < lineIndex; i++) {
+            await this.window.keyboard.press('ArrowDown');
+        }
+        await this.window.keyboard.press('Home');
+        await this.window.keyboard.press('Shift+End');
+        // Let the selection-change event flush into querySelectedValue before the
+        // caller triggers Run.
+        await this.window.waitForTimeout(200);
+    }
+
     // ─── Result toolbar (reload / paging / copy / export) ─────────────────
 
     /** The Result Panel `section` (role `region`), scoping result-side lookups. */

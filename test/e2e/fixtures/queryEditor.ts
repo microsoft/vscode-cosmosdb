@@ -573,6 +573,59 @@ export class QueryEditorPage {
         await this.tableRowCell(index).dblclick();
     }
 
+    // ─── Column resize (Table-view header menu → Resize dialog) ────────────
+
+    /** The Table-view column header cell for the column named `name`. */
+    columnHeader(name: string) {
+        return this.tableGrid().getByRole('columnheader', { name, exact: false });
+    }
+
+    /** Current on-screen width (px) of the named Table-view column header. */
+    async columnWidth(name: string): Promise<number> {
+        const box = await this.columnHeader(name).boundingBox();
+        return box?.width ?? 0;
+    }
+
+    /**
+     * Opens the named Table-view column's "Resize" dialog: hovers the header,
+     * opens the chevron context menu (its button is `aria-hidden` until opened,
+     * so it is targeted by DOM rather than role) and picks "Resize". Returns the
+     * dialog locator so callers can apply or cancel.
+     */
+    async openColumnResizeDialog(name: string) {
+        const header = this.columnHeader(name);
+        await header.scrollIntoViewIfNeeded();
+        await header.hover();
+        await header.locator('button').first().click();
+        await this.frame.getByRole('menuitem', { name: 'Resize.', exact: false }).click();
+        const dialog = this.frame.getByRole('dialog');
+        await dialog.getByText('Resize Column').waitFor({ state: 'visible', timeout: 5_000 });
+        return dialog;
+    }
+
+    /**
+     * Sets an explicit width on the named Table-view column via its header menu:
+     * opens the Resize dialog, types `width` into the "Column Width (px)" field
+     * and applies. The grid re-lays out synchronously once the dialog closes.
+     */
+    async resizeColumn(name: string, width: number): Promise<void> {
+        const dialog = await this.openColumnResizeDialog(name);
+        await dialog.locator('#column-width').fill(String(width));
+        await dialog.getByRole('button', { name: 'Apply', exact: true }).click();
+        await dialog.waitFor({ state: 'hidden', timeout: 5_000 });
+    }
+
+    /**
+     * Opens the named column's Resize dialog, types `width`, then dismisses it
+     * with Cancel — used to prove a cancelled resize leaves the column untouched.
+     */
+    async cancelColumnResize(name: string, width: number): Promise<void> {
+        const dialog = await this.openColumnResizeDialog(name);
+        await dialog.locator('#column-width').fill(String(width));
+        await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+        await dialog.waitFor({ state: 'hidden', timeout: 5_000 });
+    }
+
     /** Locator for a selection-aware item button (View / Edit / Delete). */
     selectionActionButton(action: SelectionAction) {
         return this.resultRegion().getByRole('button', { name: SELECTION_ACTIONS[action] });

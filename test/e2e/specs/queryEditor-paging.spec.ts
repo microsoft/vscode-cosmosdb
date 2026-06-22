@@ -96,6 +96,37 @@ test.describe('queryEditor-paging', { tag: '@queryEditor' }, () => {
         qe.consoleHealth.assertNoConsoleErrors();
     });
 
+    test('navigates pages via Alt+Right / Alt+Left / Alt+Home hotkeys', async () => {
+        const qe = queryEditor!;
+
+        // Same scenario as the button-driven navigation test, but every page
+        // move is issued through the result-panel keyboard shortcuts.
+        await qe.setPageSize('10');
+        await qe.setQueryText(ORDERED_QUERY);
+        await qe.run();
+        await qe.waitForResults('prod-00000');
+        expect(await qe.getStatusRange()).toBe('0 - 10');
+
+        // Alt+Right → next page.
+        await qe.pressResultHotkey('Alt+ArrowRight');
+        await qe.waitForResults('prod-00010');
+        expect(await qe.getStatusRange()).toBe('10 - 20');
+
+        // Alt+Left → previous page.
+        await qe.pressResultHotkey('Alt+ArrowLeft');
+        await qe.waitForResults('prod-00000');
+        expect(await qe.getStatusRange()).toBe('0 - 10');
+
+        // Advance again, then Alt+Home jumps straight back to the first page.
+        await qe.pressResultHotkey('Alt+ArrowRight');
+        await qe.waitForResults('prod-00010');
+        await qe.pressResultHotkey('Alt+Home');
+        await qe.waitForResults('prod-00000');
+        expect(await qe.getStatusRange()).toBe('0 - 10');
+
+        qe.consoleHealth.assertNoConsoleErrors();
+    });
+
     test('confirms a page-size change after a query and re-runs at the new size', async ({ vscodeApp }) => {
         const qe = queryEditor!;
 

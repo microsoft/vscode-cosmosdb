@@ -54,6 +54,11 @@ test.describe('queryEditor-result-toolbar-stats', { tag: '@queryEditor' }, () =>
         await qe.reloadResults();
         await qe.waitForResults(SEEDED_ID);
 
+        // Same refresh via the result-panel hotkey (Ctrl+Shift+R) — focus the
+        // result panel so the resultPanel-scoped listener claims it.
+        await qe.pressResultHotkey('Control+Shift+R');
+        await qe.waitForResults(SEEDED_ID);
+
         qe.consoleHealth.assertNoConsoleErrors();
     });
 
@@ -87,6 +92,22 @@ test.describe('queryEditor-result-toolbar-stats', { tag: '@queryEditor' }, () =>
         // without throwing or logging console errors.
         await qe.copyResults('JSON');
         await qe.exportResults('JSON');
+
+        qe.consoleHealth.assertNoConsoleErrors();
+    });
+
+    test('Copy and Export also fire via the Ctrl+C / Ctrl+S hotkeys', async () => {
+        const qe = queryEditor!;
+
+        await qe.run();
+        await qe.waitForResults(SEEDED_ID);
+
+        // Same actions as the button test, driven by their result-panel-scoped
+        // hotkeys with focus inside the result panel: Ctrl+C copies the current
+        // page, Ctrl+S saves to disk (stubbed dialog). Run on a clean result
+        // panel so no export overlay/menu can intercept the focus click.
+        await qe.pressResultHotkey('Control+C');
+        await qe.pressResultHotkey('Control+S');
 
         qe.consoleHealth.assertNoConsoleErrors();
     });

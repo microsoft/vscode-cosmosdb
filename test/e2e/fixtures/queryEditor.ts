@@ -969,9 +969,34 @@ export class QueryEditorPage {
      * editor as a newline).
      */
     async runViaHotkey(): Promise<void> {
+        await this.focusEditor();
+        await this.window.keyboard.press('F5');
+    }
+
+    /**
+     * Moves keyboard focus into the Monaco editor so the `queryEditor`-scoped
+     * hotkeys (ExecuteQuery, SaveToDisk, OpenQuery, Cancel) reach the webview's
+     * document-level listener bound to the QueryPanel subtree.
+     */
+    async focusEditor(): Promise<void> {
         await this.frame.locator('.monaco-editor').first().click();
         await this.frame.locator('textarea.inputarea').first().waitFor({ state: 'attached', timeout: 5_000 });
-        await this.window.keyboard.press('F5');
+    }
+
+    /** Focuses the editor, then presses an editor-scoped hotkey (e.g. `Control+O`). */
+    async pressEditorHotkey(key: string): Promise<void> {
+        await this.focusEditor();
+        await this.window.keyboard.press(key);
+    }
+
+    /**
+     * Focuses the result panel, then presses a `resultPanel`-scoped hotkey
+     * (paging, Refresh, Copy, Export). Focus lands on the result tablist, which
+     * is inside the ResultPanel subtree the scope is bound to.
+     */
+    async pressResultHotkey(key: string): Promise<void> {
+        await this.focusResultPanel();
+        await this.window.keyboard.press(key);
     }
 
     /**

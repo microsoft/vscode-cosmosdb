@@ -5,7 +5,12 @@
 
 import { QueryEditorPage } from '../fixtures/queryEditor';
 import { expect, test } from '../fixtures/vscode';
-import { captureNamedScreenshot, closeAllEditorTabs, maximizeWindow } from '../fixtures/webviewHelpers';
+import {
+    captureNamedScreenshot,
+    closeActiveEditorTab,
+    closeAllEditorTabs,
+    maximizeWindow,
+} from '../fixtures/webviewHelpers';
 import { attachEmulator } from '../fixtures/webviews';
 
 /**
@@ -98,6 +103,43 @@ test.describe('queryEditor-selection', { tag: '@queryEditor' }, () => {
         await expect(qe.selectionActionButton('view')).toBeEnabled();
         await expect(qe.selectionActionButton('edit')).toBeEnabled();
         await expect(qe.selectionActionButton('delete')).toBeEnabled();
+
+        qe.consoleHealth.assertNoConsoleErrors();
+    });
+
+    test('item hotkeys (Alt+V / Alt+E / Alt+I) open the Document panel', async ({ vscodeWindow }) => {
+        const qe = queryEditor!;
+
+        // These three result-panel hotkeys mirror the View / Edit / New item
+        // buttons. focusResultPanel() before every press is essential: opening a
+        // Document panel moves keyboard focus off the result grid, and Alt+E /
+        // Alt+V would otherwise be swallowed by the host menu-bar mnemonics
+        // (Edit / View) instead of the result-panel-scoped hotkey listener. Each
+        // panel is closed before the next press so the (single) open Document
+        // panel is unambiguous for waitForDocumentPanel.
+
+        // View (Alt+V) → a read-only panel.
+        await qe.focusResultPanel();
+        await qe.selectRow(0);
+        await qe.window.keyboard.press('Alt+V');
+        let panel = await qe.waitForDocumentPanel();
+        await expect(panel.getByText(/This item is read-only/)).toBeVisible();
+        await closeActiveEditorTab(vscodeWindow);
+
+        // Edit (Alt+E) → an editable panel.
+        await qe.focusResultPanel();
+        await qe.selectRow(0);
+        await qe.window.keyboard.press('Alt+E');
+        panel = await qe.waitForDocumentPanel();
+        await expect(panel.getByText(/This item is editable/)).toBeVisible();
+        await closeActiveEditorTab(vscodeWindow);
+
+        // New (Alt+I): no selection required → an add-mode (editable) panel.
+        // Left unsaved, so no document is created.
+        await qe.focusResultPanel();
+        await qe.window.keyboard.press('Alt+I');
+        panel = await qe.waitForDocumentPanel();
+        await expect(panel.getByText(/This item is editable/)).toBeVisible();
 
         qe.consoleHealth.assertNoConsoleErrors();
     });

@@ -77,4 +77,25 @@ test.describe('queryEditor-cancel', { tag: '@queryEditor' }, () => {
 
         qe.consoleHealth.assertNoConsoleErrors();
     });
+
+    test('Esc cancels an in-flight query from the editor', async () => {
+        const qe = queryEditor!;
+
+        await expect(qe.cancelButton()).toBeDisabled();
+
+        await qe.setQueryText(HEAVY_QUERY);
+        await qe.run();
+
+        await expect(qe.cancelButton()).toBeEnabled({ timeout: 15_000 });
+
+        // Cancel via the editor-scoped Esc hotkey instead of the button. Focus
+        // the editor so the QueryPanel listener claims the keystroke.
+        await qe.focusEditor();
+        await qe.window.keyboard.press('Escape');
+
+        await expect(qe.runButton()).toBeEnabled({ timeout: 20_000 });
+        await expect(qe.cancelButton()).toBeDisabled();
+
+        qe.consoleHealth.assertNoConsoleErrors();
+    });
 });

@@ -136,4 +136,43 @@ test.describe('queryEditor-crud', { tag: '@queryEditor' }, () => {
 
         qe.consoleHealth.assertNoConsoleErrors();
     });
+
+    test('deletes a document via the Alt+D hotkey', async ({ vscodeApp, vscodeWindow }) => {
+        const qe = queryEditor!;
+
+        const docId = `e2e-crud-hk-${Date.now()}`;
+        const probe = JSON.stringify(
+            { id: docId, name: 'E2E CRUD hotkey probe', category: 'E2E', _partitionKey: 'e2e-test' },
+            null,
+            2,
+        );
+        const fetchById = `SELECT * FROM c WHERE c.id = '${docId}'`;
+
+        // Add our own disposable probe so the delete never touches seeded data.
+        await qe.addNewItem();
+        const addPanel = await DocumentPanel.attach(await qe.waitForDocumentPanel(), vscodeWindow, vscodeApp);
+        await addPanel.expectEditable();
+        await addPanel.setContent(probe);
+        await addPanel.save();
+        addPanel.dispose();
+        await closeActiveEditorTab(vscodeWindow);
+
+        await qe.setQueryText(fetchById);
+        await qe.run();
+        await qe.waitForResults(docId);
+        await expect.poll(() => qe.tableRows().count()).toBe(1);
+
+        // Delete via the result-panel Alt+D hotkey (same outcome as the Delete
+        // item button), confirming the native modal via the stub.
+        await stubMessageBoxButton(vscodeApp, 'Yes');
+        await qe.selectRow(0);
+        await qe.window.keyboard.press('Alt+D');
+
+        // Re-run: the document is gone, proving the hotkey delete + cleanup.
+        await qe.run();
+        await expect.poll(() => qe.tableRows().count(), { timeout: 15_000 }).toBe(0);
+        await expect(qe.resultRegion().getByText(docId)).toHaveCount(0);
+
+        qe.consoleHealth.assertNoConsoleErrors();
+    });
 });

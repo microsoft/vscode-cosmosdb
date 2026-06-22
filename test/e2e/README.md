@@ -135,7 +135,10 @@ test/e2e/
                                       empty-result / invalid-query error paths,
                                       the Duplicate-tab control, the
                                       column-resize dialog, the Cancel control,
-                                      and the global keyboard hotkeys
+                                      and the keyboard hotkeys (global tab /
+                                      duplicate shortcuts plus each toolbar,
+                                      paging and item shortcut verified in the
+                                      same case as its button action)
 ```
 
 ## Query Editor coverage (`@queryEditor`)
@@ -185,6 +188,15 @@ Conventions every Query Editor spec follows:
   clipboard (`DocumentPanel.setContent` → Electron `clipboard.writeText` + paste)
   because Monaco's auto-closing brackets/indent corrupt typed JSON. The delete
   confirmation is a native modal — stub it with `stubMessageBoxButton(app, 'Yes')`.
+- **keyboard hotkeys** are verified alongside the button actions they mirror, in
+  the same spec/case: editor-scoped shortcuts (Ctrl+O / Ctrl+S) via
+  `pressEditorHotkey`, result-panel-scoped ones (paging, Refresh, Copy/Export,
+  item View/Edit/New/Delete) via `pressResultHotkey` / `focusResultPanel` + key.
+  A hotkey only fires when focus is inside its bound scope, so always focus the
+  editor or result panel first; item shortcuts (Alt+V/E/D) additionally need a
+  selected row, and focusing the result panel before Alt+V/E avoids the host
+  menu-bar mnemonics swallowing them. Global shortcuts (Alt+1/2, Alt+Shift+D)
+  live in `queryEditor-hotkeys.spec.ts`.
 
 ## Cosmos DB emulator
 

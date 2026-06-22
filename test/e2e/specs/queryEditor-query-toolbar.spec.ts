@@ -124,6 +124,19 @@ test.describe('queryEditor-query-toolbar', { tag: '@queryEditor' }, () => {
         qe.consoleHealth.assertNoConsoleErrors();
     });
 
+    test('Open and Save also fire via the Ctrl+O / Ctrl+S hotkeys', async () => {
+        const qe = queryEditor!;
+
+        // Same actions as the button test, driven by their editor-scoped
+        // hotkeys. Ctrl+O (stubbed picker) leaves the Query Editor active, and
+        // Ctrl+S — which may open a save target — is issued last so a tab change
+        // can't strand a follow-up editor interaction.
+        await qe.pressEditorHotkey('Control+O');
+        await qe.pressEditorHotkey('Control+S');
+
+        qe.consoleHealth.assertNoConsoleErrors();
+    });
+
     test('query runs via Run button and via F5 hotkey', async () => {
         const qe = queryEditor!;
 

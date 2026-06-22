@@ -85,7 +85,13 @@ test.describe('queryEditor-tree-open', { tag: '@queryEditor' }, () => {
         await container.click({ button: 'right' });
         const contextMenu = win.locator('.context-view .monaco-menu').first();
         await contextMenu.waitFor({ state: 'visible', timeout: 10_000 });
-        await contextMenu.getByText('Open Query Editor', { exact: true }).click();
+        // VS Code's monaco context menu activates the *focused* item on Enter.
+        // A plain `.click()` on the label is flaky here (the menu item swallows
+        // it without dispatching the command), so hover to focus the row and
+        // press Enter to invoke it.
+        const openItem = contextMenu.getByText('Open Query Editor', { exact: true });
+        await openItem.hover();
+        await win.keyboard.press('Enter');
 
         // The tree action mounts a fully-wired Query Editor webview.
         queryEditor = await QueryEditorPage.fromOpenTab(win);

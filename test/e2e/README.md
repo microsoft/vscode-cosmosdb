@@ -107,12 +107,70 @@ test/e2e/
 │   │                             pushes emulator env vars into the launched
 │   │                             VS Code process
 │   ├── webviewHelpers.ts      — runCommand, getWebviewByPredicate,
-│   │                             closeAllEditorTabs
+│   │                             closeAllEditorTabs, maximize/resizeWindow,
+│   │                             native-dialog stubs (stubMessageBoxButton /
+│   │                             resetNativeDialogStubs), screenshot capture
+│   ├── webviews.ts            — per-panel openers (Query Editor / Document /
+│   │                             Migration) + attachEmulator
+│   ├── queryEditor.ts         — Query Editor page-object (open / run / view
+│   │                             modes / result toolbar / paging / Stats /
+│   │                             selection / drill-in / run history)
+│   ├── consoleHealth.ts       — webview console-error monitor +
+│   │                             CONSOLE_ERROR_ALLOWLIST (kept empty)
 │   └── workspace/             — source-of-truth workspace opened by every
 │                                worker (.nosql samples, .vscode/settings.json)
 └── specs/
-    └── smoke.spec.ts          — opens Migration Assistant, asserts React mount
+    ├── smoke.spec.ts              — opens Migration Assistant, asserts React mount
+    ├── emulator-connected.spec.ts — Query Editor connects + runs the seed query
+    └── queryEditor-*.spec.ts      — Query Editor coverage (tag `@queryEditor`):
+                                      open, query toolbar, toolbar overflow,
+                                      result view modes, result toolbar + Stats,
+                                      paging + page-size, table selection +
+                                      drill-in, query history, and the
+                                      production tree-open path
 ```
+
+## Query Editor coverage (`@queryEditor`)
+
+The bulk of the suite drives the Query Editor webview. Every Query Editor spec
+shares two fixtures:
+
+- **`fixtures/queryEditor.ts`** — the `QueryEditorPage` page-object. It wraps the
+  webview `Frame` with intention-revealing actions (`run`, `setViewMode`,
+  `setPageSize`, `goToNextPage`, `selectRow`, `openRunHistoryMenu`, …) so specs
+  read as user stories. `QueryEditorPage.open(window)` mounts the editor via the
+  `cosmosDB.e2e.openQueryEditor` test command; `QueryEditorPage.fromOpenTab(window)`
+  attaches to an editor opened by some other affordance (used by the tree-open
+  spec).
+- **`fixtures/consoleHealth.ts`** — attaches a console listener to the webview
+  frame at mount. Every spec ends with `qe.consoleHealth.assertNoConsoleErrors()`,
+  failing on any non-allowlisted `console.error` from the panel.
+  `CONSOLE_ERROR_ALLOWLIST` is intentionally **empty** — add an entry only for a
+  real, unavoidable error and document why inline.
+
+Run just this slice while iterating:
+
+```bash
+npx playwright test --grep "@queryEditor"      # all Query Editor specs
+npx playwright test queryEditor-paging         # one file by name substring
+```
+
+Conventions every Query Editor spec follows:
+
+- tag the describe block `{ tag: '@queryEditor' }` and `test.skip` when
+  `COSMOSDB_E2E_SKIP_EMULATOR=1`;
+- `beforeEach`: `maximizeWindow` → `attachEmulator` → `QueryEditorPage.open` →
+  `waitForConnected`;
+- `afterEach`: `captureNamedScreenshot(vscodeWindow, 'final')` → `dispose()` →
+  `closeAllEditorTabs` (plus `resetNativeDialogStubs` / close any Document tab a
+  test opened);
+- the **page-size confirmation** is a _native_ Electron dialog, so drive it with
+  `stubMessageBoxButton(vscodeApp, 'Continue' | 'Close')` and restore with
+  `resetNativeDialogStubs` — never expect a `.monaco-dialog-box`;
+- **`queryEditor-tree-open.spec.ts`** is the only tree-driven spec: it expands the
+  attached emulator in the Cosmos DB Workspaces tree and invokes the production
+  "Open Query Editor" container action. Keep tree navigation out of the other
+  specs (it is slower and more brittle than the command shortcut).
 
 ## Cosmos DB emulator
 

@@ -131,8 +131,9 @@ test/e2e/
                                       paging + page-size, table selection +
                                       drill-in, query history, the production
                                       tree-open path, the document CRUD
-                                      round-trip, run-selected-fragment, and the
-                                      empty-result / invalid-query error paths
+                                      round-trip, run-selected-fragment, the
+                                      empty-result / invalid-query error paths,
+                                      and the Duplicate-tab control
 ```
 
 ## Query Editor coverage (`@queryEditor`)

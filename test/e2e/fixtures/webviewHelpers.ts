@@ -382,3 +382,12 @@ export async function closeActiveEditorTab(page: Page): Promise<void> {
         // Best-effort — never fail a test on cleanup.
     }
 }
+
+/**
+ * Counts the open editor tabs in the workbench. Used to assert that an action
+ * (e.g. the Query Editor "Duplicate" control) actually spawned a new tab.
+ */
+export async function countEditorTabs(page: Page): Promise<number> {
+    if (page.isClosed()) return 0;
+    return page.locator(TAB_SELECTOR).count();
+}

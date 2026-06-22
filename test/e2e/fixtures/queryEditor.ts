@@ -207,8 +207,38 @@ export class QueryEditorPage {
         await captureNamedScreenshot(window, 'loaded');
         return new QueryEditorPage(frame, window, consoleHealth);
     }
+
+    /**
+     * Attaches to a Query Editor webview *other than* `exclude` — the second
+     * tab that {@link duplicateTab} spawns. Finds a content frame that is not
+     * the excluded one, renders the Run button, and has its Monaco editor
+     * mounted, then starts a fresh console-health monitor for it. Caller owns
+     * the returned page-object and should {@link dispose} it.
+     */
+    static async attachOther(window: Page, exclude: Frame): Promise<QueryEditorPage> {
+        const frame = await getWebviewByPredicate(window, async (candidate) => {
+            if (candidate === exclude) {
+                return false;
+            }
+            return (await candidate.getByRole('button', { name: QUERY_TOOLBAR.run, exact: true }).count()) > 0;
+        });
+        const consoleHealth = startConsoleHealth(frame);
+        await expect(frame.locator('#root')).toBeVisible();
+        await frame.locator('.monaco-editor').first().waitFor({ state: 'visible', timeout: DEFAULT_TIMEOUT_MS });
+        return new QueryEditorPage(frame, window, consoleHealth);
+    }
     async run(timeoutMs: number = DEFAULT_TIMEOUT_MS): Promise<void> {
         await this.frame.getByRole('button', { name: 'Run', exact: true }).click({ timeout: timeoutMs });
+    }
+
+    /**
+     * Activates the "Duplicate" toolbar control, which opens a second Query
+     * Editor tab seeded with the current editor text (routing through the
+     * overflow menu when the toolbar has collapsed it). Use
+     * {@link QueryEditorPage.attachOther} to drive the resulting tab.
+     */
+    async duplicateTab(): Promise<void> {
+        await this.clickControl(QUERY_CONTROLS.duplicate);
     }
 
     /**

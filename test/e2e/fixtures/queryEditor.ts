@@ -241,6 +241,25 @@ export class QueryEditorPage {
         await this.clickControl(QUERY_CONTROLS.duplicate);
     }
 
+    /** The query toolbar's Run split-button (primary action). */
+    runButton() {
+        return this.toolbar().getByRole('button', { name: 'Run', exact: true });
+    }
+
+    /**
+     * The query toolbar's Cancel button. It is disabled at rest and enabled only
+     * while a query is executing (`state.isExecuting`), so it doubles as an
+     * observable "a query is in flight" signal.
+     */
+    cancelButton() {
+        return this.toolbar().getByRole('button', { name: QUERY_TOOLBAR.cancel });
+    }
+
+    /** Clicks the Cancel button to abort the in-flight query. */
+    async cancelQuery(): Promise<void> {
+        await this.cancelButton().click();
+    }
+
     /**
      * Waits until a known seeded row id is visible in the results, proving the
      * query round-tripped to the emulator and rendered. Defaults to

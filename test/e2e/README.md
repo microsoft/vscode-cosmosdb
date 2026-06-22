@@ -133,8 +133,9 @@ test/e2e/
                                       tree-open path, the document CRUD
                                       round-trip, run-selected-fragment, the
                                       empty-result / invalid-query error paths,
-                                      the Duplicate-tab control, and the
-                                      column-resize dialog
+                                      the Duplicate-tab control, the
+                                      column-resize dialog, and the Cancel
+                                      control
 ```
 
 ## Query Editor coverage (`@queryEditor`)

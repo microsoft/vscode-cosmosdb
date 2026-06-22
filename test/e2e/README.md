@@ -114,7 +114,10 @@ test/e2e/
 │   │                             Migration) + attachEmulator
 │   ├── queryEditor.ts         — Query Editor page-object (open / run / view
 │   │                             modes / result toolbar / paging / Stats /
-│   │                             selection / drill-in / run history)
+│   │                             selection / drill-in / run history / CRUD)
+│   ├── documentPanel.ts       — Document webview page-object (mode banner,
+│   │                             clipboard-paste content, Save) used by the
+│   │                             CRUD spec
 │   ├── consoleHealth.ts       — webview console-error monitor +
 │   │                             CONSOLE_ERROR_ALLOWLIST (kept empty)
 │   └── workspace/             — source-of-truth workspace opened by every
@@ -126,8 +129,9 @@ test/e2e/
                                       open, query toolbar, toolbar overflow,
                                       result view modes, result toolbar + Stats,
                                       paging + page-size, table selection +
-                                      drill-in, query history, and the
-                                      production tree-open path
+                                      drill-in, query history, the production
+                                      tree-open path, and the document CRUD
+                                      round-trip
 ```
 
 ## Query Editor coverage (`@queryEditor`)
@@ -171,6 +175,12 @@ Conventions every Query Editor spec follows:
   attached emulator in the Cosmos DB Workspaces tree and invokes the production
   "Open Query Editor" container action. Keep tree navigation out of the other
   specs (it is slower and more brittle than the command shortcut).
+- **`queryEditor-crud.spec.ts`** is **self-contained**: it creates its OWN
+  document with a unique id, queries for exactly that document, then deletes it —
+  so it never mutates the shared seed data. Document content is set via the OS
+  clipboard (`DocumentPanel.setContent` → Electron `clipboard.writeText` + paste)
+  because Monaco's auto-closing brackets/indent corrupt typed JSON. The delete
+  confirmation is a native modal — stub it with `stubMessageBoxButton(app, 'Yes')`.
 
 ## Cosmos DB emulator
 

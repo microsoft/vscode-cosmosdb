@@ -548,6 +548,23 @@ export class QueryEditorPage {
         return this.resultRegion().getByRole('button', { name: SELECTION_ACTIONS[action] });
     }
 
+    /** The "Add new item" button — present in edit mode regardless of selection. */
+    newItemButton() {
+        return this.resultRegion().getByRole('button', { name: 'Add new item' });
+    }
+
+    /** Clicks "Add new item", which opens a Document webview in 'add' mode. */
+    async addNewItem(): Promise<void> {
+        await this.newItemButton().click();
+    }
+
+    /** Selects row `index` then invokes its View/Edit/Delete item action. */
+    async invokeSelectionAction(index: number, action: SelectionAction): Promise<void> {
+        await this.selectRow(index);
+        await expect(this.selectionActionButton(action)).toBeEnabled();
+        await this.selectionActionButton(action).click();
+    }
+
     /**
      * Waits for the Document webview opened by a row drill-in (double-click or
      * the View / Edit item buttons) to mount, returning its content frame. The

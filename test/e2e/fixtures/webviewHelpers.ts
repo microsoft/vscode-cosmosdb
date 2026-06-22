@@ -346,3 +346,39 @@ export async function closeAllEditorTabs(page: Page): Promise<void> {
         // Best-effort cleanup — never fail a test on cleanup.
     }
 }
+
+/**
+ * Closes only the *active* editor tab via
+ * `workbench.action.revertAndCloseActiveEditor`, reverting any unsaved changes
+ * so no save prompt blocks the test. Use this to dismiss a Document panel that a
+ * Query Editor drill-in (New / View / Edit item) opened while keeping the Query
+ * Editor tab itself open. Returns once the tab count has dropped (or after a
+ * best-effort timeout).
+ */
+export async function closeActiveEditorTab(page: Page): Promise<void> {
+    if (page.isClosed()) return;
+
+    const before = await page.locator(TAB_SELECTOR).count();
+    if (before === 0) return;
+
+    try {
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(150);
+
+        const input = page.locator(QUICK_INPUT_SELECTOR).first();
+        await page.keyboard.press(COMMAND_PALETTE_SHORTCUT);
+        await input.waitFor({ state: 'visible', timeout: 2_000 });
+        await input.fill('>workbench.action.revertAndCloseActiveEditor');
+        await page.waitForTimeout(150);
+        await page.keyboard.press('Enter');
+
+        // Wait for the tab count to actually drop so callers can rely on the
+        // previous editor regaining focus.
+        for (let attempt = 0; attempt < 20; attempt++) {
+            if ((await page.locator(TAB_SELECTOR).count()) < before) return;
+            await page.waitForTimeout(150);
+        }
+    } catch {
+        // Best-effort — never fail a test on cleanup.
+    }
+}

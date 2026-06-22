@@ -185,9 +185,28 @@ export class QueryEditorPage {
     }
 
     /**
-     * Clicks the primary Run action on the default (or current) query. Does
-     * not wait for results — call {@link waitForResults} / {@link expectRow}.
+     * Attaches to a Query Editor webview that some *other* affordance already
+     * opened — e.g. the production "Open Query Editor" tree action exercised by
+     * the tree-open spec — rather than opening one via the e2e command. Finds
+     * the content frame by its rendered Run button (so it never matches another
+     * panel's frame) and starts the console-health monitor.
      */
+    static async fromOpenTab(window: Page): Promise<QueryEditorPage> {
+        const frame = await getWebviewByPredicate(
+            window,
+            async (candidate) =>
+                (await candidate.getByRole('button', { name: QUERY_TOOLBAR.run, exact: true }).count()) > 0,
+        );
+        const consoleHealth = startConsoleHealth(frame);
+        await expect(frame.locator('#root')).toBeVisible();
+        await expect(frame.getByRole('toolbar').first()).toBeVisible({ timeout: DEFAULT_TIMEOUT_MS });
+        await expect(frame.getByRole('button', { name: QUERY_TOOLBAR.run, exact: true })).toBeVisible({
+            timeout: DEFAULT_TIMEOUT_MS,
+        });
+        await frame.locator('.monaco-editor').first().waitFor({ state: 'visible', timeout: DEFAULT_TIMEOUT_MS });
+        await captureNamedScreenshot(window, 'loaded');
+        return new QueryEditorPage(frame, window, consoleHealth);
+    }
     async run(timeoutMs: number = DEFAULT_TIMEOUT_MS): Promise<void> {
         await this.frame.getByRole('button', { name: 'Run', exact: true }).click({ timeout: timeoutMs });
     }

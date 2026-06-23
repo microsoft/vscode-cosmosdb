@@ -14,7 +14,8 @@
     "src/**/__mocks__/**/*.ts",
     "packages/*/src/**/*.ts",
     "packages/*/src/**/*.test.ts",
-    "vitest.config.ts"
+    "vitest.config.ts",
+    "vitest.setup.ts"
   ],
   "exclude": ["node_modules", ".vscode-test", "out", "dist", "test"]
 }

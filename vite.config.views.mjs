@@ -34,8 +34,9 @@ export default ({ mode }) => {
          */
         base: isDev ? '/' : './',
         /**
-         * Workers ship via `?worker&inline`.
-         * @see [docs/webview-build.md#worker-format](./docs/webview-build.md#worker-format)
+         * Monaco workers: `?worker&inline` in prod (build), same-origin Blob
+         * trampoline over `?worker&url` in dev (serve) — see the monacoWorkers
+         * plugin and docs/webview-build.md#monaco-workers.
          */
         worker: { format: 'es' },
         build: {

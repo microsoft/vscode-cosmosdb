@@ -196,29 +196,48 @@ Vite equivalent of `monaco-editor-webpack-plugin`. For each language it:
 1. Imports the language **contribution** so Monaco knows about the language
    id (without this `language: 'json'` is unknown — plain unhighlighted
    text).
-2. Imports the worker via `?worker&inline`, yielding a `Worker` **constructor**
-   whose script is embedded as a base64 blob in the surrounding chunk.
-3. Wires `MonacoEnvironment.getWorker` to `new XxxWorker()` per label.
+2. Loads the worker with a strategy that depends on dev vs build (see below).
+3. Wires `MonacoEnvironment.getWorker` to return a worker per label.
 
-**Why `?worker&inline` and not `?worker&url` + a Blob trampoline?**
-The previous incarnation emitted the worker as a separate chunk and built a
-same-origin Blob whose body was `import "<absolute worker url>";`. Works in
-dev, but in a VS Code webview production build:
+The worker script is on a **different origin** from the webview document
+(`vscode-webview://<uuid>`) in BOTH environments — `https://*.vscode-cdn.net`
+in prod (via `asWebviewUri`), `http://localhost:18080/…` on the dev server —
+so `new Worker(<cross-origin url>)` is blocked either way. The two
+environments solve this differently.
 
-- Document origin is `vscode-webview://<uuid>`.
-- Worker asset URLs (via `asWebviewUri`) are on `https://*.vscode-cdn.net`.
-- A Blob URL inherits the page origin, so `import` inside the worker becomes
-  a cross-origin ESM fetch from `vscode-webview://` to `https://…vscode-cdn.net/…`.
-  VS Code's webview resource server does **not** serve those assets with the
-  CORS headers required for a cross-origin module import. The fetch
-  hangs/fails silently, Monaco's internal ~30 s startup timeout surfaces
-  "Could not create web worker(s). Falling back to loading web worker code
-  in main thread" plus an opaque `Worker error` event.
-
-`?worker&inline` sidesteps all of that — the Blob carries the actual worker
-script bytes, no remote import. Cost: ~870 KB added to the monaco chunk
+**Prod (`vite build`) → `?worker&inline`.**
+Vite embeds the worker script as a base64 Blob in the surrounding chunk and
+emits `new XxxWorker()` wrappers; the Blob carries the actual bytes, so there
+is no remote `import` to fetch. Cost: ~870 KB added to the monaco chunk
 (editor.worker ≈ 260 KB + json.worker ≈ 390 KB, base64-encoded), negligible
 next to monaco-editor's own 3.8 MB.
+
+Why not `?worker&url` + a Blob trampoline in prod? A Blob URL inherits the
+page origin, so the `import "<asWebviewUri worker url>";` inside the worker
+becomes a cross-origin ESM fetch from `vscode-webview://` to
+`https://…vscode-cdn.net/…`. VS Code's webview resource server does **not**
+serve those assets with the CORS headers a cross-origin module import needs:
+the fetch hangs/fails silently, and Monaco's ~30 s startup timeout surfaces
+"Could not create web worker(s). Falling back to loading web worker code in
+main thread" plus an opaque `Worker error`.
+
+**Dev (`vite serve`) → `?worker&url` + a same-origin Blob trampoline.**
+`?worker&inline` does **not** actually inline under `vite serve`; it degrades
+to a URL worker (`?worker_file&type=module`) on the dev-server origin, which
+the webview cannot construct cross-origin — the same `Failed to construct
+'Worker' … cannot be accessed from origin 'vscode-webview://…'` error. So in
+dev the plugin imports each worker's absolute dev URL (`?worker&url`) and
+wraps it in a Blob whose body is `import "<absolute url>";`. The Blob inherits
+the webview origin (so `new Worker(blobUrl, { type: 'module' })` is
+same-origin and constructs fine); the module `import` inside then fetches the
+real worker from the dev server, which **is** CORS-enabled (`server.cors: '*'`,
+and the dev CSP allows `script-src`/`worker-src` from the dev host + `blob:`).
+This dev path must not be used in prod for the CORS reason above; the plugin
+branches on `config.command === 'serve'`.
+
+> Note: `vite build --mode development` (the `vite-watch:*` / `vite-dev-*`
+> scripts) is still a **build**, so it takes the inline path — only the
+> `vite-serve:views` dev server uses the Blob trampoline.
 
 **Why an injected import, not a transform on `MonacoEditor.tsx`?** Webpack
 injects `MonacoEnvironment` into a runtime chunk that runs _before_ any

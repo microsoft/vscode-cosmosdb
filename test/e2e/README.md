@@ -54,6 +54,10 @@ Use `closeAllEditorTabs(vscodeWindow)` from `fixtures/webviewHelpers.ts`.
 # seeds the test DB, runs Playwright, then tears the emulator down)
 npm run e2e
 
+# Coverage-enabled runs (collect Playwright JS coverage from the VS Code webview)
+npm run e2e:coverage
+npm run e2e:coverage:query-editor
+
 # Author / debug
 npm run e2e:ui         # Playwright's UI mode — step through tests, time-travel
 npm run e2e:debug      # Playwright Inspector — pause + step + REPL at each action
@@ -107,12 +111,110 @@ test/e2e/
 │   │                             pushes emulator env vars into the launched
 │   │                             VS Code process
 │   ├── webviewHelpers.ts      — runCommand, getWebviewByPredicate,
-│   │                             closeAllEditorTabs
+│   │                             closeAllEditorTabs, maximize/resizeWindow,
+│   │                             native-dialog stubs (stubMessageBoxButton /
+│   │                             resetNativeDialogStubs), screenshot capture
+│   ├── webviews.ts            — per-panel openers (Query Editor / Document /
+│   │                             Migration) + attachEmulator
+│   ├── queryEditor.ts         — Query Editor page-object (open / run / view
+│   │                             modes / result toolbar / paging / Stats /
+│   │                             selection / drill-in / run history / CRUD)
+│   ├── documentPanel.ts       — Document webview page-object (mode banner,
+│   │                             clipboard-paste content, Save) used by the
+│   │                             CRUD spec
+│   ├── consoleHealth.ts       — webview console-error monitor +
+│   │                             CONSOLE_ERROR_ALLOWLIST (kept empty)
 │   └── workspace/             — source-of-truth workspace opened by every
 │                                worker (.nosql samples, .vscode/settings.json)
 └── specs/
-    └── smoke.spec.ts          — opens Migration Assistant, asserts React mount
+    ├── smoke.spec.ts              — opens Migration Assistant, asserts React mount
+    ├── emulator-connected.spec.ts — Query Editor connects + runs the seed query
+    └── queryEditor-*.spec.ts      — Query Editor coverage (tag `@queryEditor`):
+                                      open, query toolbar, toolbar overflow,
+                                      result view modes, result toolbar + Stats,
+                                      paging + page-size, table selection +
+                                      drill-in, query history, the production
+                                      tree-open path, the document CRUD
+                                      round-trip, run-selected-fragment, the
+                                      empty-result / invalid-query error paths,
+                                      the Duplicate-tab control, the
+                                      column-resize dialog, the Cancel control,
+                                      and the keyboard hotkeys (global tab /
+                                      duplicate shortcuts plus each toolbar,
+                                      paging and item shortcut verified in the
+                                      same case as its button action)
 ```
+
+## Query Editor coverage (`@queryEditor`)
+
+The bulk of the suite drives the Query Editor webview. Every Query Editor spec
+shares two fixtures, and coverage is now enabled automatically for runs started
+with `npm run e2e:coverage`:
+
+- **`fixtures/queryEditor.ts`** — the `QueryEditorPage` page-object. It wraps the
+  webview `Frame` with intention-revealing actions (`run`, `setViewMode`,
+  `setPageSize`, `goToNextPage`, `selectRow`, `openRunHistoryMenu`, …) so specs
+  read as user stories. `QueryEditorPage.open(window)` mounts the editor via the
+  `cosmosDB.e2e.openQueryEditor` test command; `QueryEditorPage.fromOpenTab(window)`
+  attaches to an editor opened by some other affordance (used by the tree-open
+  spec).
+- **`fixtures/consoleHealth.ts`** — attaches a console listener to the webview
+  frame at mount. Every spec ends with `qe.consoleHealth.assertNoConsoleErrors()`,
+  failing on any non-allowlisted `console.error` from the panel.
+  `CONSOLE_ERROR_ALLOWLIST` is intentionally **empty** — add an entry only for a
+  real, unavoidable error and document why inline.
+- **`fixtures/coverage.ts`** — auto fixture for coverage-enabled runs
+  (`COSMOSDB_E2E_COVERAGE=1`). It collects Playwright's built-in **V8** coverage
+  for the VS Code window (no `nyc`/`istanbul`/`c8` dependency), then projects the
+  executed byte ranges back onto component **source lines** through the webview
+  bundle's source maps. Per test it writes
+  `test/e2e/.results/<run-id>/<test-name>/coverage.json` (per-component
+  `mapped`/`covered` line numbers); `globalTeardown` aggregates every artifact
+  into `test/e2e/.reports/<run-id>/coverage-summary.{json,md}` — a per-component
+  covered/uncovered-line report. Two things make this work and are wired up
+  automatically for coverage runs: `globalSetup` rebuilds `dist/` **unminified +
+  with source maps** (`vite.config.views.mjs` keys off the same env var), and the
+  VS Code window is launched with site isolation disabled so the webview iframe
+  runs in the page renderer where `page.coverage` can see it.
+
+Run just this slice while iterating:
+
+```bash
+npx playwright test --grep "@queryEditor"      # all Query Editor specs
+npx playwright test queryEditor-paging         # one file by name substring
+```
+
+Conventions every Query Editor spec follows:
+
+- tag the describe block `{ tag: '@queryEditor' }` and `test.skip` when
+  `COSMOSDB_E2E_SKIP_EMULATOR=1`;
+- `beforeEach`: `maximizeWindow` → `attachEmulator` → `QueryEditorPage.open` →
+  `waitForConnected`;
+- `afterEach`: `captureNamedScreenshot(vscodeWindow, 'final')` → `dispose()` →
+  `closeAllEditorTabs` (plus `resetNativeDialogStubs` / close any Document tab a
+  test opened);
+- the **page-size confirmation** is a _native_ Electron dialog, so drive it with
+  `stubMessageBoxButton(vscodeApp, 'Continue' | 'Close')` and restore with
+  `resetNativeDialogStubs` — never expect a `.monaco-dialog-box`;
+- **`queryEditor-tree-open.spec.ts`** is the only tree-driven spec: it expands the
+  attached emulator in the Cosmos DB Workspaces tree and invokes the production
+  "Open Query Editor" container action. Keep tree navigation out of the other
+  specs (it is slower and more brittle than the command shortcut).
+- **`queryEditor-crud.spec.ts`** is **self-contained**: it creates its OWN
+  document with a unique id, queries for exactly that document, then deletes it —
+  so it never mutates the shared seed data. Document content is set via the OS
+  clipboard (`DocumentPanel.setContent` → Electron `clipboard.writeText` + paste)
+  because Monaco's auto-closing brackets/indent corrupt typed JSON. The delete
+  confirmation is a native modal — stub it with `stubMessageBoxButton(app, 'Yes')`.
+- **keyboard hotkeys** are verified alongside the button actions they mirror, in
+  the same spec/case: editor-scoped shortcuts (Ctrl+O / Ctrl+S) via
+  `pressEditorHotkey`, result-panel-scoped ones (paging, Refresh, Copy/Export,
+  item View/Edit/New/Delete) via `pressResultHotkey` / `focusResultPanel` + key.
+  A hotkey only fires when focus is inside its bound scope, so always focus the
+  editor or result panel first; item shortcuts (Alt+V/E/D) additionally need a
+  selected row, and focusing the result panel before Alt+V/E avoids the host
+  menu-bar mnemonics swallowing them. Global shortcuts (Alt+1/2, Alt+Shift+D)
+  live in `queryEditor-hotkeys.spec.ts`.
 
 ## Cosmos DB emulator
 

@@ -19,9 +19,9 @@ import {
 import { PlayRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { HotkeyCommandService, useCommandHotkey } from '../../../common/hotkeys';
+import { getShortcutDisplay, useCommandHotkey } from '../../../common/hotkeys';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
-import { type QueryEditorHotkeyCommand, type QueryEditorHotkeyScope } from '../QueryEditorHotkeys';
+import { QueryEditorHotkeys, type QueryEditorHotkeyCommand, type QueryEditorHotkeyScope } from '../QueryEditorHotkeys';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -177,10 +177,7 @@ export const RunQueryButton = (props: ToolbarOverflowItemProps<HTMLButtonElement
     const onRunQueryClick = useCallback(() => void runQuery(), [runQuery]);
 
     const [runQueryHotkeyTooltip, runQueryHotkeyMenu] = useMemo(() => {
-        const title = HotkeyCommandService.getInstance<
-            QueryEditorHotkeyScope,
-            QueryEditorHotkeyCommand
-        >().getShortcutDisplay('queryEditor', 'ExecuteQuery');
+        const title = getShortcutDisplay(QueryEditorHotkeys, 'ExecuteQuery');
         return [title ? ` (${title})` : '', title ?? ''];
     }, []);
 

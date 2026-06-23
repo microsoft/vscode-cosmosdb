@@ -7,10 +7,10 @@ import { EditRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import type React from 'react';
 import { useCallback, useMemo } from 'react';
-import { HotkeyCommandService, useCommandHotkey } from '../../common/hotkeys';
+import { getShortcutDisplay, useCommandHotkey } from '../../common/hotkeys';
 import { ToolbarOverflowButton } from '../../common/ToolbarOverflow/ToolbarOverflowButton';
 import { type ToolbarOverflowItemProps } from '../../common/ToolbarOverflow/ToolbarOverflowItem';
-import { type DocumentHotkeyCommand, type DocumentHotkeyScope } from './DocumentHotkeys';
+import { DocumentGlobalHotkeys, type DocumentHotkeyCommand, type DocumentHotkeyScope } from './DocumentHotkeys';
 import { useDocumentDispatcher, useDocumentState } from './state/DocumentContext';
 
 export const EditButton = function EditButton(props: ToolbarOverflowItemProps<HTMLButtonElement>) {
@@ -20,14 +20,7 @@ export const EditButton = function EditButton(props: ToolbarOverflowItemProps<HT
 
     const isEditDisabled = state.mode !== 'view';
 
-    const hotkey = useMemo(
-        () =>
-            HotkeyCommandService.getInstance<DocumentHotkeyScope, DocumentHotkeyCommand>().getShortcutDisplay(
-                'global',
-                'EditDocument',
-            ),
-        [],
-    );
+    const hotkey = useMemo(() => getShortcutDisplay(DocumentGlobalHotkeys, 'EditDocument'), []);
 
     const onEdit = useCallback(
         async (event?: KeyboardEvent | MouseEvent | React.MouseEvent) => {

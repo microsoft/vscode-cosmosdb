@@ -19,6 +19,7 @@ import { existsSync, rmSync } from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ensureE2eIsolationContext } from '../helpers/e2eIsolation';
+import { aggregateCoverageArtifacts } from './aggregateCoverage';
 import { clearEmulatorOwnership, isEmulatorOwned, isEmulatorSkipped, stopEmulator } from './emulator';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -35,6 +36,8 @@ export default function globalTeardown(): void {
         }
         clearEmulatorOwnership(repoRoot);
     }
+
+    aggregateCoverageArtifacts();
 
     const isolation = ensureE2eIsolationContext();
     if (!existsSync(isolation.tempRootDir)) return;

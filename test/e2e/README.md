@@ -54,6 +54,10 @@ Use `closeAllEditorTabs(vscodeWindow)` from `fixtures/webviewHelpers.ts`.
 # seeds the test DB, runs Playwright, then tears the emulator down)
 npm run e2e
 
+# Coverage-enabled runs (collect Playwright JS coverage from the VS Code webview)
+npm run e2e:coverage
+npm run e2e:coverage:query-editor
+
 # Author / debug
 npm run e2e:ui         # Playwright's UI mode — step through tests, time-travel
 npm run e2e:debug      # Playwright Inspector — pause + step + REPL at each action
@@ -144,7 +148,8 @@ test/e2e/
 ## Query Editor coverage (`@queryEditor`)
 
 The bulk of the suite drives the Query Editor webview. Every Query Editor spec
-shares two fixtures:
+shares two fixtures, and coverage is now enabled automatically for runs started
+with `npm run e2e:coverage`:
 
 - **`fixtures/queryEditor.ts`** — the `QueryEditorPage` page-object. It wraps the
   webview `Frame` with intention-revealing actions (`run`, `setViewMode`,
@@ -158,6 +163,19 @@ shares two fixtures:
   failing on any non-allowlisted `console.error` from the panel.
   `CONSOLE_ERROR_ALLOWLIST` is intentionally **empty** — add an entry only for a
   real, unavoidable error and document why inline.
+- **`fixtures/coverage.ts`** — auto fixture for coverage-enabled runs
+  (`COSMOSDB_E2E_COVERAGE=1`). It collects Playwright's built-in **V8** coverage
+  for the VS Code window (no `nyc`/`istanbul`/`c8` dependency), then projects the
+  executed byte ranges back onto component **source lines** through the webview
+  bundle's source maps. Per test it writes
+  `test/e2e/.results/<run-id>/<test-name>/coverage.json` (per-component
+  `mapped`/`covered` line numbers); `globalTeardown` aggregates every artifact
+  into `test/e2e/.reports/<run-id>/coverage-summary.{json,md}` — a per-component
+  covered/uncovered-line report. Two things make this work and are wired up
+  automatically for coverage runs: `globalSetup` rebuilds `dist/` **unminified +
+  with source maps** (`vite.config.views.mjs` keys off the same env var), and the
+  VS Code window is launched with site isolation disabled so the webview iframe
+  runs in the page renderer where `page.coverage` can see it.
 
 Run just this slice while iterating:
 

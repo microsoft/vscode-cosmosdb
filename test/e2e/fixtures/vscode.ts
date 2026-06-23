@@ -47,6 +47,7 @@ import { resolveCapturePlan, shouldCapture } from '../helpers/captureMode';
 import { ensureE2eIsolationContext } from '../helpers/e2eIsolation';
 import { waitForWorkbenchReady } from '../helpers/workbenchReady';
 import { waitForExtensionsActivated } from '../setup/activation';
+import { isCoverageEnabled, startCoverage, stopAndPersistCoverage } from './coverage';
 import { closeAuxiliaryBar } from './webviewHelpers';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -162,6 +163,11 @@ interface VsCodeTestFixtures {
      * `COSMOSDB_E2E_SCREENSHOT` selects a `trace` mode. See the fixture body.
      */
     windowTrace: void;
+    /**
+     * Auto fixture that captures JS coverage for the VS Code webview window
+     * when `COSMOSDB_E2E_COVERAGE=1` is set.
+     */
+    coverage: void;
 }
 
 export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
@@ -213,6 +219,14 @@ export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
                     // Headless/CI envs without a real GPU surface — avoid GPU init crashes.
                     '--disable-gpu',
                     '--disable-gpu-sandbox',
+                    // Coverage runs only: keep the webview iframe in the page's
+                    // renderer process so Playwright's page-level V8 coverage
+                    // (`page.coverage`) can see its scripts. With site isolation
+                    // on, the webview is an out-of-process iframe and its
+                    // coverage is never reported. No effect on normal runs.
+                    ...(isCoverageEnabled()
+                        ? ['--disable-site-isolation-trials', '--disable-features=IsolateOrigins,site-per-process']
+                        : []),
                     // Force a new window so the launcher doesn't try to attach to a
                     // running instance (which would fail Playwright's CDP attach).
                     '--new-window',
@@ -396,6 +410,17 @@ export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
             } catch {
                 // Best-effort — never fail a test on trace capture/teardown.
             }
+        },
+        { auto: true },
+    ],
+
+    coverage: [
+        async ({ vscodeWindow }, use, testInfo) => {
+            await startCoverage(vscodeWindow);
+
+            await use();
+
+            await stopAndPersistCoverage(vscodeWindow, testInfo);
         },
         { auto: true },
     ],

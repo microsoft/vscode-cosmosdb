@@ -42,12 +42,14 @@ import {
     readdirSync,
     readFileSync,
     realpathSync,
+    rmSync,
     statSync,
     writeFileSync,
     type Dirent,
 } from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isCoverageEnabled } from '../fixtures/coverage';
 import {
     E2E_DATABASE_ID,
     E2E_DEFAULT_CONTAINER_ID,
@@ -71,6 +73,14 @@ const VSCODE_VERSION = 'stable';
  * webview rendering under the harness).
  */
 const PROD_BUILD_MARKER = '.e2e-prod-build';
+
+/**
+ * Sidecar written into `dist/` when the webview bundle was built for coverage
+ * (unminified + source maps, via `COSMOSDB_E2E_COVERAGE=1`). Lets the next run
+ * detect a coverage⇄production mismatch and rebuild so normal runs never ship
+ * the slower coverage bundle and coverage runs always have source maps.
+ */
+const COVERAGE_BUILD_MARKER = '.e2e-coverage-build';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, '..', '..', '..');
@@ -171,11 +181,21 @@ function runViteProd(extensionDevelopmentPath: string): void {
     // (vite-watch:ext) is detected as "not a production build" on the next run.
     const mainMjs = path.join(extensionDevelopmentPath, 'main.mjs');
     writeFileSync(path.join(extensionDevelopmentPath, PROD_BUILD_MARKER), String(statSync(mainMjs).mtimeMs), 'utf-8');
+    // Record whether this was a coverage build (the vite views config keys off
+    // the same env var, so `dist/` and the marker stay in sync).
+    const coverageMarker = path.join(extensionDevelopmentPath, COVERAGE_BUILD_MARKER);
+    if (isCoverageEnabled()) {
+        writeFileSync(coverageMarker, '1', 'utf-8');
+    } else if (existsSync(coverageMarker)) {
+        rmSync(coverageMarker);
+    }
 }
 
 export default async function globalSetup(): Promise<void> {
     // 1. Ensure the extension build is fresh — auto-rebuild if stale.
     const extensionDevelopmentPath = path.resolve(repoRoot, 'dist');
+    const wantCoverageBuild = isCoverageEnabled();
+    const haveCoverageBuild = existsSync(path.join(extensionDevelopmentPath, COVERAGE_BUILD_MARKER));
     if (process.env.COSMOSDB_E2E_SKIP_BUILD === '1') {
         if (!existsSync(path.join(extensionDevelopmentPath, 'main.mjs'))) {
             throw new Error(
@@ -190,10 +210,25 @@ export default async function globalSetup(): Promise<void> {
                     `Webviews can fail to render. Run \`npm run vite-prod\` or drop COSMOSDB_E2E_SKIP_BUILD=1.`,
             );
         }
+        if (wantCoverageBuild !== haveCoverageBuild) {
+            console.warn(
+                `[e2e setup] WARNING: COSMOSDB_E2E_SKIP_BUILD=1 but dist/ is a ${
+                    haveCoverageBuild ? 'coverage' : 'production'
+                } build while a ${wantCoverageBuild ? 'coverage' : 'production'} build was requested. ` +
+                    `Webview coverage may be missing source maps — drop COSMOSDB_E2E_SKIP_BUILD=1 to rebuild.`,
+            );
+        }
     } else {
         const { stale, reason } = isDistStale(extensionDevelopmentPath);
-        if (stale) {
-            console.log(`[e2e setup] dist/ is stale (${reason}) — rebuilding…`);
+        // A coverage⇄production switch also forces a rebuild: coverage builds
+        // are unminified + source-mapped, production builds are minified.
+        if (stale || wantCoverageBuild !== haveCoverageBuild) {
+            const why = stale
+                ? reason
+                : `dist/ is a ${haveCoverageBuild ? 'coverage' : 'production'} build but a ${
+                      wantCoverageBuild ? 'coverage' : 'production'
+                  } build is needed`;
+            console.log(`[e2e setup] Rebuilding dist/ (${why})…`);
             runViteProd(extensionDevelopmentPath);
         } else {
             console.log('[e2e setup] dist/ is up to date');

@@ -5,5 +5,6 @@
 
 export * from './HotkeyCommandService';
 export * from './HotkeyTypes';
+export * from './getShortcutDisplay';
 export * from './useCommandHotkey';
 export * from './useHotkeyScope';

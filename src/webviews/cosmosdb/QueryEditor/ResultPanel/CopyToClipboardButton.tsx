@@ -8,9 +8,9 @@ import { DocumentCopyRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useMemo } from 'react';
 import { queryMetricsToJSON, queryResultToJSON } from '../../../../utils/convertors';
-import { HotkeyCommandService, useCommandHotkey } from '../../../common/hotkeys';
+import { getShortcutDisplay, useCommandHotkey } from '../../../common/hotkeys';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
-import { type QueryEditorHotkeyCommand, type QueryEditorHotkeyScope } from '../QueryEditorHotkeys';
+import { type QueryEditorHotkeyCommand, type QueryEditorHotkeyScope, ResultPanelHotkeys } from '../QueryEditorHotkeys';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
 export const CopyToClipboardButton = (props: ToolbarOverflowItemProps<HTMLButtonElement> & { selectedTab: string }) => {
@@ -55,10 +55,7 @@ export const CopyToClipboardButton = (props: ToolbarOverflowItemProps<HTMLButton
     }, [dispatcher, state, selectedTab, hasSelection]);
 
     const [copyToClipboardHotkeyTooltip, copyToClipboardHotkeyMenu] = useMemo(() => {
-        const title = HotkeyCommandService.getInstance<
-            QueryEditorHotkeyScope,
-            QueryEditorHotkeyCommand
-        >().getShortcutDisplay('resultPanel', 'CopyToClipboard');
+        const title = getShortcutDisplay(ResultPanelHotkeys, 'CopyToClipboard');
         return [title ? ` (${title})` : '', title ?? ''];
     }, []);
 

@@ -6,10 +6,10 @@
 import { ArrowPreviousFilled } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useMemo } from 'react';
-import { HotkeyCommandService, useCommandHotkey } from '../../../common/hotkeys';
+import { getShortcutDisplay, useCommandHotkey } from '../../../common/hotkeys';
 import { ToolbarOverflowButton } from '../../../common/ToolbarOverflow/ToolbarOverflowButton';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
-import { type QueryEditorHotkeyCommand, type QueryEditorHotkeyScope } from '../QueryEditorHotkeys';
+import { type QueryEditorHotkeyCommand, type QueryEditorHotkeyScope, ResultPanelHotkeys } from '../QueryEditorHotkeys';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
 export const GoToFirstPageButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
@@ -20,14 +20,7 @@ export const GoToFirstPageButton = (props: ToolbarOverflowItemProps<HTMLButtonEl
 
     const firstPage = useCallback(() => dispatcher.firstPage(state.currentExecutionId), [dispatcher, state]);
 
-    const hotkey = useMemo(
-        () =>
-            HotkeyCommandService.getInstance<QueryEditorHotkeyScope, QueryEditorHotkeyCommand>().getShortcutDisplay(
-                'resultPanel',
-                'SwitchToFirstPage',
-            ),
-        [],
-    );
+    const hotkey = useMemo(() => getShortcutDisplay(ResultPanelHotkeys, 'SwitchToFirstPage'), []);
     useCommandHotkey<QueryEditorHotkeyScope, QueryEditorHotkeyCommand>('resultPanel', 'SwitchToFirstPage', firstPage, {
         disabled: isDisabled,
     });

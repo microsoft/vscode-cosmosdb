@@ -22,6 +22,10 @@ const __dirname = path.dirname(__filename);
 
 /** Opt-in HTML bundle report. @see [docs/webview-build.md#plugin-bundle-report](./docs/webview-build.md#plugin-bundle-report) */
 const analyze = !!process.env.BUNDLE_ANALYZE;
+// Coverage runs build the webview unminified + with source maps so e2e V8
+// coverage can be projected back onto component source lines. See
+// `test/e2e/fixtures/coverage.ts`.
+const enableCoverage = process.env.COSMOSDB_E2E_COVERAGE === '1';
 
 export default ({ mode }) => {
     const isDev = mode === 'development';
@@ -34,16 +38,17 @@ export default ({ mode }) => {
          */
         base: isDev ? '/' : './',
         /**
-         * Workers ship via `?worker&inline`.
-         * @see [docs/webview-build.md#worker-format](./docs/webview-build.md#worker-format)
+         * Monaco workers: `?worker&inline` in prod (build), same-origin Blob
+         * trampoline over `?worker&url` in dev (serve) — see the monacoWorkers
+         * plugin and docs/webview-build.md#monaco-workers.
          */
         worker: { format: 'es' },
         build: {
             target: 'esnext',
             outDir: 'dist',
             emptyOutDir: false, // Extension build also writes to dist.
-            sourcemap: isDev,
-            minify: !isDev,
+            sourcemap: isDev || enableCoverage,
+            minify: !isDev && !enableCoverage,
             rollupOptions: {
                 input: path.resolve(__dirname, 'src/webviews/index.tsx'),
                 /**

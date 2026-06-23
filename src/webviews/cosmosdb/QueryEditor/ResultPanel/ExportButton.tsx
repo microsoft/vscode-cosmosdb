@@ -8,9 +8,9 @@ import { ArrowDownloadRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useMemo } from 'react';
 import { queryMetricsToJSON, queryResultToJSON } from '../../../../utils/convertors';
-import { HotkeyCommandService, useCommandHotkey } from '../../../common/hotkeys';
+import { getShortcutDisplay, useCommandHotkey } from '../../../common/hotkeys';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
-import { type QueryEditorHotkeyCommand, type QueryEditorHotkeyScope } from '../QueryEditorHotkeys';
+import { type QueryEditorHotkeyCommand, type QueryEditorHotkeyScope, ResultPanelHotkeys } from '../QueryEditorHotkeys';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
 export const ExportButton = (props: ToolbarOverflowItemProps<HTMLButtonElement> & { selectedTab: string }) => {
@@ -53,10 +53,7 @@ export const ExportButton = (props: ToolbarOverflowItemProps<HTMLButtonElement> 
     }, [dispatcher, state, selectedTab, hasSelection]);
 
     const [exportHotkeyTooltip, exportHotkeyMenu] = useMemo(() => {
-        const title = HotkeyCommandService.getInstance<
-            QueryEditorHotkeyScope,
-            QueryEditorHotkeyCommand
-        >().getShortcutDisplay('resultPanel', 'SaveToDisk');
+        const title = getShortcutDisplay(ResultPanelHotkeys, 'SaveToDisk');
         return [title ? ` (${title})` : '', title ?? ''];
     }, []);
 

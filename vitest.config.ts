@@ -28,7 +28,12 @@ export default defineConfig({
         // Node is the default for the bulk of the suite. React component tests opt into a DOM
         // environment per-file via a `// @vitest-environment jsdom` docblock at the top of the file.
         environment: 'node',
-        include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'packages/*/src/**/*.test.ts', 'packages/*/src/**/*.test.tsx'],
+        include: [
+            'src/**/*.test.ts',
+            'src/**/*.test.tsx',
+            'packages/*/src/**/*.test.ts',
+            'packages/*/src/**/*.test.tsx',
+        ],
         setupFiles: ['./vitest.setup.ts'],
         testTimeout: 15_000,
         coverage: {

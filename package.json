@@ -87,6 +87,7 @@
     "docker-down": "docker compose down",
     "docker-restart": "npm run docker-down && npm run docker-up",
     "e2e": "playwright test",
+    "e2e:coverage": "cross-env COSMOSDB_E2E_COVERAGE=1 playwright test",
     "e2e:ui": "playwright test --ui",
     "e2e:debug": "playwright test --debug",
     "e2e:emulator:up": "docker compose -f docker-compose.e2e.yml -p cosmosdb-e2e up -d --remove-orphans",

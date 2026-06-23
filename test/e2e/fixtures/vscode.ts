@@ -47,6 +47,8 @@ import { resolveCapturePlan, shouldCapture } from '../helpers/captureMode';
 import { ensureE2eIsolationContext } from '../helpers/e2eIsolation';
 import { waitForWorkbenchReady } from '../helpers/workbenchReady';
 import { waitForExtensionsActivated } from '../setup/activation';
+import { isCoverageEnabled, startCoverage, stopAndPersistCoverage } from './coverage';
+import { closeAuxiliaryBar } from './webviewHelpers';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, '..', '..', '..');
@@ -96,8 +98,15 @@ function seedUserSettings(userDataDir: string): void {
         // worker should start with an empty workbench.
         'files.hotExit': 'onExitAndWindowClose',
         // Chat / secondary sidebar can autopopup on fresh installs and steal
-        // 30 % of horizontal space, hiding webview content.
+        // 30 % of horizontal space, hiding webview content. The setting below
+        // is best-effort (auxiliary-bar visibility is mostly persisted UI
+        // state, not a real setting), so we also explicitly close the
+        // auxiliary bar once the workbench is ready — see `closeAuxiliaryBar`
+        // in the `vscodeWindow` fixture.
         'workbench.secondarySideBar.visible': false,
+        // Drop the Chat entry from the title-bar command center so a fresh
+        // profile doesn't surface the chat affordance at all.
+        'chat.commandCenter.enabled': false,
         // Silence "do you trust this folder" — we already pass --disable-workspace-trust.
         'security.workspace.trust.enabled': false,
         // Cosmos DB emulator (linux/vnext-preview) advertises its writable
@@ -116,14 +125,15 @@ function seedUserSettings(userDataDir: string): void {
 
 /**
  * Monkey-patch Electron's main-process `dialog` module so native
- * save / message dialogs never block the test. Untitled SQL editors,
- * unsaved changes on tab close, etc. would otherwise pop an OS dialog
- * that Playwright cannot interact with.
+ * save / open / message dialogs never block the test. Untitled SQL editors,
+ * unsaved changes on tab close, the Query Editor's "Open query" file picker,
+ * etc. would otherwise pop an OS dialog that Playwright cannot interact with.
  */
 async function disableNativeDialogs(app: ElectronApplication): Promise<void> {
     await app
         .evaluate(({ dialog }) => {
             dialog.showSaveDialog = () => Promise.resolve({ canceled: true, filePath: '' });
+            dialog.showOpenDialog = () => Promise.resolve({ canceled: true, filePaths: [] });
             dialog.showMessageBoxSync = () => 1; // Typically "Don't Save"
             dialog.showMessageBox = () => Promise.resolve({ response: 1, checkboxChecked: false });
         })
@@ -153,6 +163,11 @@ interface VsCodeTestFixtures {
      * `COSMOSDB_E2E_SCREENSHOT` selects a `trace` mode. See the fixture body.
      */
     windowTrace: void;
+    /**
+     * Auto fixture that captures JS coverage for the VS Code webview window
+     * when `COSMOSDB_E2E_COVERAGE=1` is set.
+     */
+    coverage: void;
 }
 
 export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
@@ -204,6 +219,14 @@ export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
                     // Headless/CI envs without a real GPU surface — avoid GPU init crashes.
                     '--disable-gpu',
                     '--disable-gpu-sandbox',
+                    // Coverage runs only: keep the webview iframe in the page's
+                    // renderer process so Playwright's page-level V8 coverage
+                    // (`page.coverage`) can see its scripts. With site isolation
+                    // on, the webview is an out-of-process iframe and its
+                    // coverage is never reported. No effect on normal runs.
+                    ...(isCoverageEnabled()
+                        ? ['--disable-site-isolation-trials', '--disable-features=IsolateOrigins,site-per-process']
+                        : []),
                     // Force a new window so the launcher doesn't try to attach to a
                     // running instance (which would fail Playwright's CDP attach).
                     '--new-window',
@@ -317,6 +340,12 @@ export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
             // the full rationale.
             await waitForExtensionsActivated(page);
 
+            // A fresh VS Code profile can auto-open the Chat view in the
+            // auxiliary (secondary) side bar, which eats ~30 % of horizontal
+            // space and squeezes the webview under test. Close it once here so
+            // every spec starts with the editor area at full width.
+            await closeAuxiliaryBar(page);
+
             await use(page);
         },
         { scope: 'worker' },
@@ -381,6 +410,17 @@ export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
             } catch {
                 // Best-effort — never fail a test on trace capture/teardown.
             }
+        },
+        { auto: true },
+    ],
+
+    coverage: [
+        async ({ vscodeWindow }, use, testInfo) => {
+            await startCoverage(vscodeWindow);
+
+            await use();
+
+            await stopAndPersistCoverage(vscodeWindow, testInfo);
         },
         { auto: true },
     ],

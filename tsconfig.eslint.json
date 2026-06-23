@@ -13,7 +13,8 @@
     "packages/*/src/**/*.tsx",
     "packages/*/tests/**/*.ts",
     "test/**/*.ts",
-    "playwright.config.ts"
+    "playwright.config.ts",
+    "vitest.setup.ts"
   ],
   "exclude": ["node_modules", "dist", "out", "**/__mocks__"]
 }

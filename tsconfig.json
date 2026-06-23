@@ -7,5 +7,14 @@
     "typeRoots": ["./types", "./node_modules/@types", "./node_modules"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.json", "main.ts"],
-  "exclude": ["node_modules", ".vscode-test", "out", "dist", "test", "src/**/*.test.ts", "**/__mocks__"]
+  "exclude": [
+    "node_modules",
+    ".vscode-test",
+    "out",
+    "dist",
+    "test",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "**/__mocks__"
+  ]
 }

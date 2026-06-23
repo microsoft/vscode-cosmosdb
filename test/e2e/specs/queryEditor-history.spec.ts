@@ -74,7 +74,7 @@ test.describe('queryEditor-history', { tag: '@queryEditor' }, () => {
         await qe.run();
         await qe.waitForResults('prod-');
         await qe.setQueryText('');
-        expect(await qe.getQueryText()).not.toContain('c.price > 1.5');
+        await expect.poll(() => qe.getQueryText()).not.toContain('c.price > 1.5');
 
         // Pick the history entry from the Run menu → it repopulates the editor.
         await qe.openRunHistoryMenu();

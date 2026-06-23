@@ -889,7 +889,14 @@ export class QueryEditorPage {
      * free target.
      */
     async focusResultPanel(): Promise<void> {
-        await this.resultRegion().getByRole('tablist').first().click();
+        // Closing a Document panel just before this call can briefly tear down
+        // and re-render the result webview, surfacing a transient "context
+        // destroyed"/"target closed" error on the click. Retry until the
+        // tablist is clickable so the focus action rides through that churn.
+        const tablist = this.resultRegion().getByRole('tablist').first();
+        await expect(async () => {
+            await tablist.click({ timeout: 2_000 });
+        }).toPass({ timeout: 15_000 });
     }
 
     /**

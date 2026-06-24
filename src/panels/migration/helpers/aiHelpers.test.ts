@@ -171,7 +171,9 @@ describe('runAgenticLoop (tool calling via mock language model)', () => {
                     : 'SELECT * FROM c',
         });
 
-        const executeToolCall = vi.fn(async (_toolCall: vscode.LanguageModelToolCallPart) => '{"schema":{"id":"string"}}');
+        const executeToolCall = vi.fn(
+            async (_toolCall: vscode.LanguageModelToolCallPart) => '{"schema":{"id":"string"}}',
+        );
 
         const result = await runAgenticLoop(
             model,

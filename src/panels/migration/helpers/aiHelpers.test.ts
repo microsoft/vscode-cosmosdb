@@ -171,7 +171,7 @@ describe('runAgenticLoop (tool calling via mock language model)', () => {
                     : 'SELECT * FROM c',
         });
 
-        const executeToolCall = vi.fn(async () => '{"schema":{"id":"string"}}');
+        const executeToolCall = vi.fn(async (_toolCall: vscode.LanguageModelToolCallPart) => '{"schema":{"id":"string"}}');
 
         const result = await runAgenticLoop(
             model,
@@ -184,7 +184,7 @@ describe('runAgenticLoop (tool calling via mock language model)', () => {
         );
 
         expect(executeToolCall).toHaveBeenCalledTimes(1);
-        const toolCallArg = executeToolCall.mock.calls[0][0] as vscode.LanguageModelToolCallPart;
+        const toolCallArg = executeToolCall.mock.calls[0][0];
         expect(toolCallArg.name).toBe(SAMPLE_TOOL);
         expect(toolCallArg.input).toEqual({ containerId: 'orders' });
         expect(result.text).toBe('SELECT * FROM c');

@@ -25,39 +25,35 @@ vsCodeMock.l10n = {
 // shared `createMockLanguageModel` helper) get working `instanceof` checks and
 // message/part constructors without each test re-shimming them.
 class LanguageModelTextPart {
-    constructor(value) {
-        this.value = value;
-    }
+    constructor(public value: string) {}
 }
 
 class LanguageModelToolCallPart {
-    constructor(callId, name, input) {
-        this.callId = callId;
-        this.name = name;
-        this.input = input;
-    }
+    constructor(
+        public callId: string,
+        public name: string,
+        public input: unknown,
+    ) {}
 }
 
 class LanguageModelToolResultPart {
-    constructor(callId, content) {
-        this.callId = callId;
-        this.content = content;
-    }
+    constructor(
+        public callId: string,
+        public content: unknown,
+    ) {}
 }
 
 const LanguageModelChatMessageRole = { User: 1, Assistant: 2 };
 
 const LanguageModelChatMessage = {
-    User: (content) => ({ role: LanguageModelChatMessageRole.User, content }),
-    Assistant: (content) => ({ role: LanguageModelChatMessageRole.Assistant, content }),
+    User: (content: unknown) => ({ role: LanguageModelChatMessageRole.User, content }),
+    Assistant: (content: unknown) => ({ role: LanguageModelChatMessageRole.Assistant, content }),
 };
 
 class CancellationTokenSource {
-    constructor() {
-        this.token = { isCancellationRequested: false, onCancellationRequested: vi.fn() };
-        this.cancel = vi.fn();
-        this.dispose = vi.fn();
-    }
+    token = { isCancellationRequested: false, onCancellationRequested: vi.fn() };
+    cancel = vi.fn();
+    dispose = vi.fn();
 }
 
 // Only fill gaps — never clobber anything jest-mock-vscode already provides.

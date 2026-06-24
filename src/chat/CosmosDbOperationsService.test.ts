@@ -118,36 +118,10 @@ describe('CosmosDbOperationsService', () => {
         (CosmosDbOperationsService as any).instance = undefined;
         service = CosmosDbOperationsService.getInstance();
 
-        // Ensure vscode.lm exists for tests that need it
-        if (!vscode.lm) {
-            (vscode as any).lm = { tools: [] };
-        } else {
-            (vscode.lm as any).tools = [];
-        }
-
-        // Ensure vscode.LanguageModelChatMessage is available
-        if (!vscode.LanguageModelChatMessage) {
-            (vscode as any).LanguageModelChatMessage = {
-                User: (content: string) => ({ role: 1, content }),
-                Assistant: (content: string | unknown[]) => ({ role: 2, content }),
-            };
-        }
-
-        // Ensure vscode.LanguageModelTextPart is available
-        if (!vscode.LanguageModelTextPart) {
-            (vscode as any).LanguageModelTextPart = class LanguageModelTextPart {
-                constructor(public value: string) {}
-            };
-        }
-
-        // Ensure vscode.CancellationTokenSource is available
-        if (!vscode.CancellationTokenSource) {
-            (vscode as any).CancellationTokenSource = class CancellationTokenSource {
-                token = { isCancellationRequested: false, onCancellationRequested: vi.fn() };
-                cancel = vi.fn();
-                dispose = vi.fn();
-            };
-        }
+        // The vscode.lm namespace and LanguageModel* classes are provided
+        // centrally by src/__mocks__/vscode.ts. Reset the registered tools so
+        // tool state doesn't leak between tests.
+        (vscode.lm as any).tools = [];
     });
 
     describe('getInstance', () => {

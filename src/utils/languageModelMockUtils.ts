@@ -39,7 +39,7 @@ export function setMockRoute(model: vscode.LanguageModelChat, route: string | un
  */
 export type MockResponsePart =
     | { type: 'text'; value: string }
-    | { type: 'toolCall'; name: string; callId?: string; input?: object };
+    | { type: 'toolCall'; name: string; callId?: string; input?: unknown };
 
 /**
  * What a resolver may return for a single request: a plain string (sugar for a
@@ -168,7 +168,7 @@ export function createMockLanguageModel(options: CreateMockLanguageModelOptions)
                         yield new vscode.LanguageModelToolCallPart(
                             part.callId ?? `mock-call-${++mockToolCallSeq}`,
                             part.name,
-                            part.input ?? {},
+                            (part.input ?? {}) as object,
                         );
                     }
                 }

@@ -45,9 +45,17 @@ class LanguageModelToolResultPart {
 
 const LanguageModelChatMessageRole = { User: 1, Assistant: 2 };
 
+// Mirror the real API: string input is normalized to a LanguageModelTextPart[]
+// so consumers that iterate `message.content` as parts behave correctly.
+const toMessageContent = (content: unknown): unknown =>
+    typeof content === 'string' ? [new LanguageModelTextPart(content)] : content;
+
 const LanguageModelChatMessage = {
-    User: (content: unknown) => ({ role: LanguageModelChatMessageRole.User, content }),
-    Assistant: (content: unknown) => ({ role: LanguageModelChatMessageRole.Assistant, content }),
+    User: (content: unknown) => ({ role: LanguageModelChatMessageRole.User, content: toMessageContent(content) }),
+    Assistant: (content: unknown) => ({
+        role: LanguageModelChatMessageRole.Assistant,
+        content: toMessageContent(content),
+    }),
 };
 
 class CancellationTokenSource {

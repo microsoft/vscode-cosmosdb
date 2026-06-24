@@ -19,4 +19,54 @@ vsCodeMock.l10n = {
     t: vi.fn((msg) => msg),
 };
 
+// ─── Language Model API shims ────────────────────────────────────────────────
+// jest-mock-vscode does not provide the `vscode.lm` namespace or the
+// LanguageModel* value classes. Centralize them here so unit tests (and the
+// shared `createMockLanguageModel` helper) get working `instanceof` checks and
+// message/part constructors without each test re-shimming them.
+class LanguageModelTextPart {
+    constructor(value) {
+        this.value = value;
+    }
+}
+
+class LanguageModelToolCallPart {
+    constructor(callId, name, input) {
+        this.callId = callId;
+        this.name = name;
+        this.input = input;
+    }
+}
+
+class LanguageModelToolResultPart {
+    constructor(callId, content) {
+        this.callId = callId;
+        this.content = content;
+    }
+}
+
+const LanguageModelChatMessageRole = { User: 1, Assistant: 2 };
+
+const LanguageModelChatMessage = {
+    User: (content) => ({ role: LanguageModelChatMessageRole.User, content }),
+    Assistant: (content) => ({ role: LanguageModelChatMessageRole.Assistant, content }),
+};
+
+class CancellationTokenSource {
+    constructor() {
+        this.token = { isCancellationRequested: false, onCancellationRequested: vi.fn() };
+        this.cancel = vi.fn();
+        this.dispose = vi.fn();
+    }
+}
+
+// Only fill gaps — never clobber anything jest-mock-vscode already provides.
+vsCodeMock.LanguageModelTextPart ??= LanguageModelTextPart;
+vsCodeMock.LanguageModelToolCallPart ??= LanguageModelToolCallPart;
+vsCodeMock.LanguageModelToolResultPart ??= LanguageModelToolResultPart;
+vsCodeMock.LanguageModelChatMessageRole ??= LanguageModelChatMessageRole;
+vsCodeMock.LanguageModelChatMessage ??= LanguageModelChatMessage;
+vsCodeMock.CancellationTokenSource ??= CancellationTokenSource;
+vsCodeMock.lm ??= { tools: [] };
+
 module.exports = vsCodeMock;

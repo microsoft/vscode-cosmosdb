@@ -63,7 +63,7 @@ describe('createMockLanguageModel', () => {
         const stream = await collect(response.stream);
 
         expect(await collect(response.text)).toEqual(['a', 'b']);
-        expect(stream.map((p) => p.constructor.name)).toEqual([
+        expect(stream.map((p) => (p as object).constructor.name)).toEqual([
             'LanguageModelTextPart',
             'LanguageModelToolCallPart',
             'LanguageModelTextPart',

@@ -51,9 +51,33 @@ const LanguageModelChatMessage = {
 };
 
 class CancellationTokenSource {
-    token = { isCancellationRequested: false, onCancellationRequested: vi.fn() };
-    cancel = vi.fn();
-    dispose = vi.fn();
+    private listeners: Array<(e: unknown) => void> = [];
+    token = {
+        isCancellationRequested: false,
+        onCancellationRequested: (listener: (e: unknown) => void): { dispose: () => void } => {
+            this.listeners.push(listener);
+            return {
+                dispose: () => {
+                    const index = this.listeners.indexOf(listener);
+                    if (index >= 0) {
+                        this.listeners.splice(index, 1);
+                    }
+                },
+            };
+        },
+    };
+    cancel = (): void => {
+        if (this.token.isCancellationRequested) {
+            return;
+        }
+        this.token.isCancellationRequested = true;
+        for (const listener of [...this.listeners]) {
+            listener(undefined);
+        }
+    };
+    dispose = (): void => {
+        this.listeners.length = 0;
+    };
 }
 
 // Only fill gaps — never clobber anything jest-mock-vscode already provides.

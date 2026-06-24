@@ -17,8 +17,11 @@ type MockRouteSetter = (route: string | undefined) => void;
 
 /**
  * Sets the active route id on a mock model produced by
- * {@link createMockLanguageModel}. No-op on real `LanguageModelChat`
- * instances, so callers can invoke it unconditionally before `sendRequest`.
+ * {@link createMockLanguageModel}. The route is **sticky**: it persists across
+ * subsequent `sendRequest` calls until changed (like `vi.fn().mockReturnValue`),
+ * so multi-round flows such as an agentic loop can set it once. Pass `undefined`
+ * to clear it. No-op on real `LanguageModelChat` instances, so callers can
+ * invoke it unconditionally before `sendRequest`.
  */
 export function setMockRoute(model: vscode.LanguageModelChat, route: string | undefined): void {
     const setter = (model as unknown as Record<symbol, unknown>)[MOCK_ROUTE_SETTER];
@@ -63,31 +66,49 @@ export interface CreateMockLanguageModelOptions {
         requestOptions?: vscode.LanguageModelChatRequestOptions;
         token?: vscode.CancellationToken;
         promptText: string;
-        /** Route id set via {@link setMockRoute} just before this request. */
+        /** Most recent route id set via {@link setMockRoute} (sticky until changed). */
         route?: string;
     }) => MockResponse | Promise<MockResponse>;
 }
 
 /**
  * Flattens a `LanguageModelChatMessage[]` into a single searchable string.
- * Handles both string and structured-part content shapes across API versions.
+ * Handles string content, structured parts with a string `value` (e.g.
+ * `LanguageModelTextPart`), and parts whose own `content` is a nested array of
+ * parts (e.g. `LanguageModelToolResultPart`), recursing into them so tool
+ * results contribute to the flattened text.
  */
 export function languageModelMessagesToText(messages: readonly vscode.LanguageModelChatMessage[]): string {
     const parts: string[] = [];
+    const collect = (node: unknown): void => {
+        if (typeof node === 'string') {
+            parts.push(node);
+            return;
+        }
+        if (!node || typeof node !== 'object') {
+            return;
+        }
+        const value = (node as { value?: unknown }).value;
+        if (typeof value === 'string') {
+            parts.push(value);
+        }
+        const nested = (node as { content?: unknown }).content;
+        if (Array.isArray(nested)) {
+            for (const inner of nested) {
+                collect(inner);
+            }
+        } else if (typeof nested === 'string') {
+            parts.push(nested);
+        }
+    };
+
     for (const message of messages) {
         const content: unknown = (message as { content?: unknown }).content;
         if (typeof content === 'string') {
             parts.push(content);
         } else if (Array.isArray(content)) {
             for (const part of content) {
-                if (typeof part === 'string') {
-                    parts.push(part);
-                } else if (part && typeof part === 'object' && 'value' in part) {
-                    const value = (part as { value?: unknown }).value;
-                    if (typeof value === 'string') {
-                        parts.push(value);
-                    }
-                }
+                collect(part);
             }
         }
     }

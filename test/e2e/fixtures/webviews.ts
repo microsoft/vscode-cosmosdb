@@ -119,3 +119,83 @@ export async function setAIFeaturesEnabled(page: Page): Promise<void> {
     // The command resolves synchronously; give VS Code a beat to apply it.
     await page.waitForTimeout(250);
 }
+
+/**
+ * Installs a fixed pair of fake Copilot models via the
+ * `cosmosDB.e2e.setMockLanguageModels` test-only command. With two models
+ * available the Generate Query input renders its model-switcher `Combobox`
+ * (instead of a single-model static label), and selection works without a
+ * real Copilot installation. Call this BEFORE opening the Generate Query
+ * input so the model list is in place when the input fetches it.
+ *
+ * The model names are defined alongside the command in
+ * `src/commands/e2eTestCommands/registerE2eTestCommands.ts`.
+ */
+export async function setMockLanguageModels(page: Page): Promise<void> {
+    await runCommand(page, 'Cosmos DB: [E2E Test] Set Mock Language Models');
+    // The command resolves synchronously; give VS Code a beat to apply it.
+    await page.waitForTimeout(250);
+}
+
+/**
+ * Clears the fake-model override installed by {@link setMockLanguageModels} via
+ * the `cosmosDB.e2e.clearMockLanguageModels` command. Call this in spec teardown
+ * so the mock models don't leak into other specs sharing the worker VS Code.
+ */
+export async function clearMockLanguageModels(page: Page): Promise<void> {
+    await runCommand(page, 'Cosmos DB: [E2E Test] Clear Mock Language Models');
+    // The command resolves synchronously; give VS Code a beat to apply it.
+    await page.waitForTimeout(250);
+}
+
+/**
+ * Forces the survey-candidate flag on via the `cosmosDB.e2e.setSurveyCandidate`
+ * test-only command so the thumbs up/down feedback buttons in the Generate
+ * Query input render regardless of the test VS Code's
+ * `telemetry.feedback.enabled` setting. Call this AFTER opening the Query
+ * Editor (it broadcasts to already-open tabs).
+ */
+export async function setSurveyCandidate(page: Page): Promise<void> {
+    await runCommand(page, 'Cosmos DB: [E2E Test] Set Survey Candidate');
+    // The command resolves synchronously; give VS Code a beat to apply it.
+    await page.waitForTimeout(250);
+}
+
+/**
+ * Installs a mock that makes the `generateQuery` tRPC mutation return a
+ * successful query (`SELECT * FROM c WHERE c.price < 20`) without calling
+ * the real LLM. Call this BEFORE submitting a prompt.
+ */
+export async function setMockGenerateQuerySuccess(page: Page): Promise<void> {
+    await runCommand(page, 'Cosmos DB: [E2E Test] Set Mock Generate Query (Success)');
+    await page.waitForTimeout(250);
+}
+
+/**
+ * Installs a mock that makes the `generateQuery` tRPC mutation return an error
+ * message (simulating a `QueryGenerationRefusedError`) without calling the
+ * real LLM. Call this BEFORE submitting a prompt.
+ */
+export async function setMockGenerateQueryError(page: Page): Promise<void> {
+    await runCommand(page, 'Cosmos DB: [E2E Test] Set Mock Generate Query (Error)');
+    await page.waitForTimeout(250);
+}
+
+/**
+ * Installs a mock that makes the `generateQuery` tRPC mutation emit a
+ * `confirmToolInvocation` event (rendering the Allow/Deny banner) and then
+ * wait for user response. On Allow the mock returns a generated query; on
+ * Deny it returns `{ generatedQuery: false }`. Call this BEFORE submitting.
+ */
+export async function setMockGenerateQueryConfirm(page: Page): Promise<void> {
+    await runCommand(page, 'Cosmos DB: [E2E Test] Set Mock Generate Query (Confirm)');
+    await page.waitForTimeout(250);
+}
+
+/**
+ * Clears any mock generate-query override so it can't leak into other specs.
+ */
+export async function clearMockGenerateQueryResult(page: Page): Promise<void> {
+    await runCommand(page, 'Cosmos DB: [E2E Test] Clear Mock Generate Query Result');
+    await page.waitForTimeout(250);
+}

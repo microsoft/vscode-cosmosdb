@@ -26,6 +26,29 @@ const allow3pModels = false;
 /** Selector used by all model lookups; gated by {@link allow3pModels}. */
 const modelSelector: vscode.LanguageModelChatSelector = allow3pModels ? {} : { vendor: 'copilot' };
 
+// ─── Test-only model override (e2e) ─────────────────────────────────
+
+/**
+ * Test-only override for the Copilot model list. Set **exclusively** by the
+ * `cosmosDB.e2e.setMockLanguageModels` command, which is registered only when
+ * `COSMOSDB_E2E_TEST=1` (see {@link file://./../commands/e2eTestCommands/registerE2eTestCommands.ts}).
+ *
+ * When defined, {@link getAvailableModelsInfo} and {@link getSelectedModel}
+ * return these fixtures instead of calling `vscode.lm.selectChatModels`, so
+ * Playwright specs can exercise the model switcher without a real Copilot
+ * installation in the test VS Code. It stays `undefined` (and therefore inert)
+ * in production because the setter is never wired up outside e2e mode.
+ */
+let e2eModelOverride: readonly AvailableModelDescriptor[] | undefined;
+
+/**
+ * Installs (or, with `undefined`, clears) the {@link e2eModelOverride}.
+ * Intended for e2e test commands only.
+ */
+export function setE2eModelOverride(models: readonly AvailableModelDescriptor[] | undefined): void {
+    e2eModelOverride = models;
+}
+
 // ─── Model selection ────────────────────────────────────────────────
 
 /**
@@ -56,6 +79,21 @@ export interface GetSelectedModelOptions {
  * @throws If no Copilot models are available.
  */
 export async function getSelectedModel(options?: GetSelectedModelOptions): Promise<vscode.LanguageModelChat> {
+    if (e2eModelOverride) {
+        if (e2eModelOverride.length === 0) {
+            throw new Error(l10n.t('No language models available. Please ensure you have access to Copilot.'));
+        }
+        const explicitMock = options?.modelId ? e2eModelOverride.find((m) => m.id === options.modelId) : undefined;
+        const savedMockId = ext.context.globalState.get<string>(options?.stateKey ?? SELECTED_MODEL_KEY);
+        const chosen =
+            explicitMock ??
+            (savedMockId ? e2eModelOverride.find((m) => m.id === savedMockId) : undefined) ??
+            e2eModelOverride[0];
+        // The mock descriptor only carries the fields the webview reads (id /
+        // name); it is never used to issue a real `sendRequest`.
+        return chosen as unknown as vscode.LanguageModelChat;
+    }
+
     const models = await vscode.lm.selectChatModels(modelSelector);
     if (models.length === 0) {
         throw new Error(l10n.t('No language models available. Please ensure you have access to Copilot.'));
@@ -91,6 +129,11 @@ export interface AvailableModelDescriptor {
 export async function getAvailableModelsInfo(
     stateKey: string = SELECTED_MODEL_KEY,
 ): Promise<{ models: AvailableModelDescriptor[]; savedModelId: string | null }> {
+    if (e2eModelOverride) {
+        const savedModelId = ext.context.globalState.get<string>(stateKey) ?? null;
+        return { models: [...e2eModelOverride], savedModelId };
+    }
+
     try {
         const allModels = await vscode.lm.selectChatModels(modelSelector);
         const savedModelId = ext.context.globalState.get<string>(stateKey) ?? null;

@@ -53,6 +53,41 @@ const SELECTED_MODEL_KEY = 'ms-azuretools.vscode-cosmosdb.selectedModel';
 const PRIORITY_LEVEL_KEY = 'ms-azuretools.vscode-cosmosdb.priorityLevel';
 const DEFAULT_PRIORITY_LEVEL: PriorityLevel = 'Low' as PriorityLevel;
 
+// ─── Test-only generate query override (e2e) ────────────────────────
+
+/**
+ * Describes a mock response for the `generateQuery` mutation. Set exclusively
+ * by the `cosmosDB.e2e.setMockGenerateQueryResult` command (registered only
+ * when `COSMOSDB_E2E_TEST=1`).
+ *
+ * - `type: 'success'` — the mutation returns `{ generatedQuery }`.
+ * - `type: 'error'` — the mutation returns `{ generatedQuery: false, errorMessage }`.
+ * - `type: 'confirm'` — the mutation emits a `confirmToolInvocation` event, waits
+ *   for the user to allow/deny, then returns `{ generatedQuery }` on allow or
+ *   `{ generatedQuery: false }` on deny.
+ */
+export type E2eGenerateQueryOverride =
+    | { type: 'success'; generatedQuery: string }
+    | { type: 'error'; errorMessage: string }
+    | { type: 'confirm'; confirmMessage: string; generatedQuery: string };
+
+let e2eGenerateQueryOverride: E2eGenerateQueryOverride | undefined;
+
+/**
+ * Installs (or, with `undefined`, clears) the e2e generate query override.
+ * Intended for e2e test commands only.
+ */
+export function setE2eGenerateQueryOverride(override: E2eGenerateQueryOverride | undefined): void {
+    e2eGenerateQueryOverride = override;
+}
+
+/**
+ * Returns the current override value (for assertions in test commands).
+ */
+export function getE2eGenerateQueryOverride(): E2eGenerateQueryOverride | undefined {
+    return e2eGenerateQueryOverride;
+}
+
 /**
  * Read the persisted Priority Level from extension global state, validating it
  * against the known enum values. Falls back to `Low` (per PRD F3/F4) for unset
@@ -624,6 +659,27 @@ export const queryEditorRouterDef = queryEditorRouter({
     generateQuery: queryEditorProcedure
         .input(z.object({ prompt: z.string(), currentQuery: z.string() }))
         .mutation(async ({ input, ctx }) => {
+            // ─── E2E test override ──────────────────────────────────────
+            if (e2eGenerateQueryOverride) {
+                const override = e2eGenerateQueryOverride;
+                if (override.type === 'error') {
+                    return { generatedQuery: false as const, errorMessage: override.errorMessage };
+                }
+                if (override.type === 'confirm') {
+                    ctx.eventSink.emit({ type: 'confirmToolInvocation', message: override.confirmMessage });
+                    const confirmed = await new Promise<boolean>((resolve) => {
+                        ctx.state.pendingConfirmResolve = resolve;
+                    });
+                    if (confirmed) {
+                        return { generatedQuery: override.generatedQuery };
+                    }
+                    return { generatedQuery: false as const };
+                }
+                // type === 'success'
+                return { generatedQuery: override.generatedQuery };
+            }
+            // ─── End E2E test override ──────────────────────────────────
+
             const isRetry = ctx.state.lastGenerationFailed;
             if (ctx.actionContext) {
                 ctx.actionContext.telemetry.properties.isRetry = String(isRetry);

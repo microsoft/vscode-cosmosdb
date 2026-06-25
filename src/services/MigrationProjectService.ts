@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as crypto from 'crypto';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { type ParsedAccessPattern } from '../panels/migration/helpers/migrationHelpers';
@@ -126,7 +125,7 @@ export class MigrationProjectService {
             version: 1,
             name,
             sourceCode: 'parent',
-            sessionId: crypto.randomUUID(),
+            sessionId: globalThis.crypto.randomUUID(),
             runCounts: {},
             phases: {
                 discovery: {
@@ -187,7 +186,7 @@ export class MigrationProjectService {
             const project = JSON.parse(Buffer.from(data).toString('utf-8')) as ProjectJson;
 
             if (!project.sessionId) {
-                project.sessionId = crypto.randomUUID();
+                project.sessionId = globalThis.crypto.randomUUID();
                 await this.save(project);
             }
 
@@ -223,7 +222,7 @@ export class MigrationProjectService {
 
         // Re-create folder structure with a new sessionId
         const newProject = await this.initialize(project.name);
-        newProject.sessionId = crypto.randomUUID();
+        newProject.sessionId = globalThis.crypto.randomUUID();
         newProject.runCounts = {};
         await this.save(newProject);
         return newProject;

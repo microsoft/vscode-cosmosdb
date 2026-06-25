@@ -6,10 +6,10 @@
 import { SaveRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useMemo } from 'react';
-import { HotkeyCommandService, useCommandHotkey } from '../../../common/hotkeys';
+import { getShortcutDisplay, useCommandHotkey } from '../../../common/hotkeys';
 import { ToolbarOverflowButton } from '../../../common/ToolbarOverflow/ToolbarOverflowButton';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
-import { type QueryEditorHotkeyCommand, type QueryEditorHotkeyScope } from '../QueryEditorHotkeys';
+import { QueryEditorHotkeys, type QueryEditorHotkeyCommand, type QueryEditorHotkeyScope } from '../QueryEditorHotkeys';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
 export const SaveToFileButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
@@ -29,14 +29,7 @@ export const SaveToFileButton = (props: ToolbarOverflowItemProps<HTMLButtonEleme
         [dispatcher, state],
     );
 
-    const saveToFileHotkeyTooltip = useMemo(
-        () =>
-            HotkeyCommandService.getInstance<QueryEditorHotkeyScope, QueryEditorHotkeyCommand>().getShortcutDisplay(
-                'queryEditor',
-                'SaveToDisk',
-            ),
-        [],
-    );
+    const saveToFileHotkeyTooltip = useMemo(() => getShortcutDisplay(QueryEditorHotkeys, 'SaveToDisk'), []);
 
     useCommandHotkey<QueryEditorHotkeyScope, QueryEditorHotkeyCommand>('queryEditor', 'SaveToDisk', saveToFile);
 

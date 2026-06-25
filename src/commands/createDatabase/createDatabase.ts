@@ -3,13 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureWizard, type IActionContext, nonNullValue } from '@microsoft/vscode-azext-utils';
+import { AzureWizard, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import { getAccountInfo } from '../../tree/cosmosdb/AccountInfo';
 import { type CosmosDBAccountAttachedResourceItem } from '../../tree/cosmosdb/CosmosDBAccountAttachedResourceItem';
 import { type CosmosDBAccountResourceItem } from '../../tree/cosmosdb/CosmosDBAccountResourceItem';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
+import { nonNullValue } from '../../utils/nonNull';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { CosmosDBDatabaseNameStep } from './CosmosDBDatabaseNameStep';
 import { CosmosDBExecuteStep } from './CosmosDBExecuteStep';

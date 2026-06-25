@@ -118,14 +118,14 @@ useCommandHotkey<MyHotkeyScope, MyHotkeyCommand>('editorScope', 'SaveAction', ha
 
 ## Displaying Hotkeys in UI
 
-Get the shortcut display text for tooltips or UI elements:
+Get the shortcut display text for tooltips or UI elements with the pure `getShortcutDisplay` helper
+(pass the scope's mapping array):
 
 ```typescript
-import { HotkeyCommandService } from '../../common/hotkeys';
+import { getShortcutDisplay } from '../../common/hotkeys';
 
 const shortcutText = useMemo(() => {
-    const title = HotkeyCommandService.getInstance<MyHotkeyScope, MyHotkeyCommand>()
-        .getShortcutDisplay('global', 'SaveAction');
+    const title = getShortcutDisplay(GlobalHotkeys, 'SaveAction');
     return title ? ` (${title})` : '';
 }, []);
 

@@ -32,7 +32,7 @@ const RESULTS_ROOT_ENV = 'COSMOSDB_E2E_RESULTS_ROOT';
 const REPORTS_ROOT_ENV = 'COSMOSDB_E2E_REPORTS_ROOT';
 
 export interface E2eIsolationContext {
-    /** Short random token unique per invocation (env-overridable). */
+    /** Sortable run token, `YYYYMMDD-HHMMSS-xxxx` by default (env-overridable). */
     readonly runId: string;
     /** Root for everything ephemeral — user-data dirs, workspace dirs, etc. */
     readonly tempRootDir: string;
@@ -56,9 +56,22 @@ function resolveRunId(): string {
         process.env[RUN_ID_ENV] = fromEnv;
         return fromEnv;
     }
-    const generated = randomBytes(4).toString('hex');
+    // Default to a sortable timestamp so `.results` / `.reports` list in
+    // chronological order; a short random suffix keeps two runs started in the
+    // same second from colliding.
+    const generated = `${timestampToken()}-${randomBytes(2).toString('hex')}`;
     process.env[RUN_ID_ENV] = generated;
     return generated;
+}
+
+/** Compact, filesystem- and sort-friendly local timestamp: `YYYYMMDD-HHMMSS`. */
+function timestampToken(): string {
+    const now = new Date();
+    const pad = (value: number): string => String(value).padStart(2, '0');
+    return (
+        `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}` +
+        `-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
+    );
 }
 
 /**

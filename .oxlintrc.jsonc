@@ -321,7 +321,14 @@
       }
     },
     {
-      "files": ["src/**/*.test.ts", "packages/**/*.test.ts", "test/**/*.ts", "**/__mocks__/**/*.ts"],
+      "files": [
+        "src/**/*.test.ts",
+        "src/**/*.test.tsx",
+        "packages/**/*.test.ts",
+        "packages/**/*.test.tsx",
+        "test/**/*.ts",
+        "**/__mocks__/**/*.ts"
+      ],
       "rules": {
         // These files use Vitest, not Jest.
         // vitest plugin in oxlint activates jest built-in rules as "warn" by default —

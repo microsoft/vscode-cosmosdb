@@ -10,11 +10,13 @@
  * effects:
  *
  *   1. Ensures the extension build (`dist/`) is **fresh** relative to the
- *      sources it was produced from. Mtimes of `package.json` + `src/`
- *      are compared against `dist/main.mjs` and `dist/package.json`; if any
- *      source is newer, `npm run vite-prod` is invoked automatically.
- *      Override with `COSMOSDB_E2E_SKIP_BUILD=1` (useful when you're
- *      iterating on tests only).
+ *      sources it was produced from, and is a **production** build. Mtimes of
+ *      `package.json` + `src/` are compared against `dist/main.mjs` and
+ *      `dist/package.json`; a sidecar marker also detects when `dist/` was
+ *      overwritten by the `vite-watch:ext` dev task (a development build that
+ *      doesn't render the webviews). If either check fails, `npm run vite-prod`
+ *      is invoked automatically. Override with `COSMOSDB_E2E_SKIP_BUILD=1`
+ *      (useful when you're iterating on tests only).
  *   2. Downloads/locates a stable VS Code via `@vscode/test-electron`
  *      (cached under `.vscode-test/`).
  *   3. Installs the extension's runtime dependencies (currently just
@@ -40,12 +42,14 @@ import {
     readdirSync,
     readFileSync,
     realpathSync,
+    rmSync,
     statSync,
     writeFileSync,
     type Dirent,
 } from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isCoverageEnabled } from '../fixtures/coverage';
 import {
     E2E_DATABASE_ID,
     E2E_DEFAULT_CONTAINER_ID,
@@ -60,6 +64,23 @@ import {
 
 const REQUIRED_EXTENSIONS = ['ms-azuretools.vscode-azureresourcegroups'];
 const VSCODE_VERSION = 'stable';
+
+/**
+ * Sidecar file written into `dist/` after a successful production build. It
+ * records the built `main.mjs` mtime so the next run can tell whether the
+ * bundle is still the production build we produced or was overwritten by the
+ * `vite-watch:ext` dev task (which builds in development mode and breaks
+ * webview rendering under the harness).
+ */
+const PROD_BUILD_MARKER = '.e2e-prod-build';
+
+/**
+ * Sidecar written into `dist/` when the webview bundle was built for coverage
+ * (unminified + source maps, via `COSMOSDB_E2E_COVERAGE=1`). Lets the next run
+ * detect a coverage⇄production mismatch and rebuild so normal runs never ship
+ * the slower coverage bundle and coverage runs always have source maps.
+ */
+const COVERAGE_BUILD_MARKER = '.e2e-coverage-build';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, '..', '..', '..');
@@ -106,12 +127,32 @@ function maxMtimeMs(dir: string): number {
  * into dist, so a mismatched manifest is the very symptom that prompted us
  * to add this check (VS Code complains about menu items referencing
  * commands that aren't in the stale dist/package.json).
+ *
+ * In addition to freshness, we verify the bundle is a **production** build.
+ * The `vite-watch:ext` dev task rebuilds `dist/main.mjs` in *development* mode
+ * on every source save, which makes the bundle newer than `src/` (so it looks
+ * "fresh") yet the webviews don't render under the e2e harness. {@link runViteProd}
+ * stamps the exact `main.mjs` mtime it produced into a marker file; if that
+ * marker is missing or no longer matches `main.mjs`, the bundle was rebuilt by
+ * something other than our production build and must be rebuilt.
  */
 function isDistStale(extensionDevelopmentPath: string): { stale: boolean; reason: string } {
     const mainMjs = path.join(extensionDevelopmentPath, 'main.mjs');
     const distPkg = path.join(extensionDevelopmentPath, 'package.json');
     if (!existsSync(mainMjs) || !existsSync(distPkg)) {
         return { stale: true, reason: 'dist/ missing' };
+    }
+    // Production-build verification (see doc comment above).
+    const marker = path.join(extensionDevelopmentPath, PROD_BUILD_MARKER);
+    if (!existsSync(marker)) {
+        return { stale: true, reason: 'no production-build marker (dist may be a dev/watch build)' };
+    }
+    const recordedMtime = Number(readFileSync(marker, 'utf-8').trim());
+    if (!Number.isFinite(recordedMtime) || recordedMtime !== statSync(mainMjs).mtimeMs) {
+        return {
+            stale: true,
+            reason: 'dist/main.mjs changed since the last production build (vite-watch dev build?)',
+        };
     }
     const distMin = Math.min(statSync(mainMjs).mtimeMs, statSync(distPkg).mtimeMs);
     const rootPkgMs = statSync(path.resolve(repoRoot, 'package.json')).mtimeMs;
@@ -125,7 +166,7 @@ function isDistStale(extensionDevelopmentPath: string): { stale: boolean; reason
     return { stale: false, reason: '' };
 }
 
-function runVitePod(): void {
+function runViteProd(extensionDevelopmentPath: string): void {
     console.log('[e2e setup] Running `npm run vite-prod` (this can take ~30–60 s)…');
     const result = spawnSync('npm', ['run', 'vite-prod'], {
         cwd: repoRoot,
@@ -136,11 +177,25 @@ function runVitePod(): void {
     if (result.status !== 0) {
         throw new Error(`\`npm run vite-prod\` exited with code ${result.status}`);
     }
+    // Stamp the freshly built `main.mjs` mtime so a later dev-mode rebuild
+    // (vite-watch:ext) is detected as "not a production build" on the next run.
+    const mainMjs = path.join(extensionDevelopmentPath, 'main.mjs');
+    writeFileSync(path.join(extensionDevelopmentPath, PROD_BUILD_MARKER), String(statSync(mainMjs).mtimeMs), 'utf-8');
+    // Record whether this was a coverage build (the vite views config keys off
+    // the same env var, so `dist/` and the marker stay in sync).
+    const coverageMarker = path.join(extensionDevelopmentPath, COVERAGE_BUILD_MARKER);
+    if (isCoverageEnabled()) {
+        writeFileSync(coverageMarker, '1', 'utf-8');
+    } else if (existsSync(coverageMarker)) {
+        rmSync(coverageMarker);
+    }
 }
 
 export default async function globalSetup(): Promise<void> {
     // 1. Ensure the extension build is fresh — auto-rebuild if stale.
     const extensionDevelopmentPath = path.resolve(repoRoot, 'dist');
+    const wantCoverageBuild = isCoverageEnabled();
+    const haveCoverageBuild = existsSync(path.join(extensionDevelopmentPath, COVERAGE_BUILD_MARKER));
     if (process.env.COSMOSDB_E2E_SKIP_BUILD === '1') {
         if (!existsSync(path.join(extensionDevelopmentPath, 'main.mjs'))) {
             throw new Error(
@@ -148,11 +203,33 @@ export default async function globalSetup(): Promise<void> {
             );
         }
         console.log('[e2e setup] COSMOSDB_E2E_SKIP_BUILD=1 — using whatever is in dist/ as-is');
-    } else {
         const { stale, reason } = isDistStale(extensionDevelopmentPath);
         if (stale) {
-            console.log(`[e2e setup] dist/ is stale (${reason}) — rebuilding…`);
-            runVitePod();
+            console.warn(
+                `[e2e setup] WARNING: dist/ may not be a production build (${reason}). ` +
+                    `Webviews can fail to render. Run \`npm run vite-prod\` or drop COSMOSDB_E2E_SKIP_BUILD=1.`,
+            );
+        }
+        if (wantCoverageBuild !== haveCoverageBuild) {
+            console.warn(
+                `[e2e setup] WARNING: COSMOSDB_E2E_SKIP_BUILD=1 but dist/ is a ${
+                    haveCoverageBuild ? 'coverage' : 'production'
+                } build while a ${wantCoverageBuild ? 'coverage' : 'production'} build was requested. ` +
+                    `Webview coverage may be missing source maps — drop COSMOSDB_E2E_SKIP_BUILD=1 to rebuild.`,
+            );
+        }
+    } else {
+        const { stale, reason } = isDistStale(extensionDevelopmentPath);
+        // A coverage⇄production switch also forces a rebuild: coverage builds
+        // are unminified + source-mapped, production builds are minified.
+        if (stale || wantCoverageBuild !== haveCoverageBuild) {
+            const why = stale
+                ? reason
+                : `dist/ is a ${haveCoverageBuild ? 'coverage' : 'production'} build but a ${
+                      wantCoverageBuild ? 'coverage' : 'production'
+                  } build is needed`;
+            console.log(`[e2e setup] Rebuilding dist/ (${why})…`);
+            runViteProd(extensionDevelopmentPath);
         } else {
             console.log('[e2e setup] dist/ is up to date');
         }

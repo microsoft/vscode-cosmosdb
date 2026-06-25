@@ -7,10 +7,10 @@ import { makeStyles, tokens } from '@fluentui/react-components';
 import { StopRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useMemo } from 'react';
-import { HotkeyCommandService, useCommandHotkey } from '../../../common/hotkeys';
+import { getShortcutDisplay, useCommandHotkey } from '../../../common/hotkeys';
 import { ToolbarOverflowButton } from '../../../common/ToolbarOverflow/ToolbarOverflowButton';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
-import { type QueryEditorHotkeyCommand, type QueryEditorHotkeyScope } from '../QueryEditorHotkeys';
+import { QueryEditorHotkeys, type QueryEditorHotkeyCommand, type QueryEditorHotkeyScope } from '../QueryEditorHotkeys';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
 const useClasses = makeStyles({
@@ -38,14 +38,7 @@ export const CancelQueryButton = (props: ToolbarOverflowItemProps<HTMLButtonElem
         [dispatcher, state],
     );
 
-    const cancelQueryHotkeyTooltip = useMemo(
-        () =>
-            HotkeyCommandService.getInstance<QueryEditorHotkeyScope, QueryEditorHotkeyCommand>().getShortcutDisplay(
-                'queryEditor',
-                'Cancel',
-            ),
-        [],
-    );
+    const cancelQueryHotkeyTooltip = useMemo(() => getShortcutDisplay(QueryEditorHotkeys, 'Cancel'), []);
 
     useCommandHotkey<QueryEditorHotkeyScope, QueryEditorHotkeyCommand>('queryEditor', 'Cancel', cancelQuery, {
         disabled: !state.isExecuting,

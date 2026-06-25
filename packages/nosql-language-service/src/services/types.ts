@@ -140,6 +140,22 @@ export interface SeparatorPosition {
     readonly semicolonOffset: number;
 }
 
+/**
+ * Content range of the active query block in a multi-query document,
+ * described by document-level byte offsets with leading/trailing
+ * whitespace stripped.
+ *
+ * Editors convert these offsets to native positions to highlight the
+ * block under the cursor. `endOffset` is exclusive — the last
+ * highlighted character is at `endOffset - 1`.
+ */
+export interface ActiveBlockRange {
+    /** Offset of the first non-whitespace character of the active block. */
+    readonly startOffset: number;
+    /** Offset just past the last non-whitespace character of the active block. */
+    readonly endOffset: number;
+}
+
 // ========================== Language service host =============================
 
 /**

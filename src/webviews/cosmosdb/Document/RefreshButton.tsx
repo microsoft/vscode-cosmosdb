@@ -7,10 +7,10 @@ import { ArrowClockwiseRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import type React from 'react';
 import { useCallback, useMemo } from 'react';
-import { HotkeyCommandService, useCommandHotkey } from '../../common/hotkeys';
+import { getShortcutDisplay, useCommandHotkey } from '../../common/hotkeys';
 import { ToolbarOverflowButton } from '../../common/ToolbarOverflow/ToolbarOverflowButton';
 import { type ToolbarOverflowItemProps } from '../../common/ToolbarOverflow/ToolbarOverflowItem';
-import { type DocumentHotkeyCommand, type DocumentHotkeyScope } from './DocumentHotkeys';
+import { DocumentGlobalHotkeys, type DocumentHotkeyCommand, type DocumentHotkeyScope } from './DocumentHotkeys';
 import { useDocumentDispatcher, useDocumentState } from './state/DocumentContext';
 
 export const RefreshButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
@@ -20,14 +20,7 @@ export const RefreshButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>
 
     const isRefreshDisabled = state.isSaving || state.isRefreshing;
 
-    const hotkey = useMemo(
-        () =>
-            HotkeyCommandService.getInstance<DocumentHotkeyScope, DocumentHotkeyCommand>().getShortcutDisplay(
-                'global',
-                'Refresh',
-            ),
-        [],
-    );
+    const hotkey = useMemo(() => getShortcutDisplay(DocumentGlobalHotkeys, 'Refresh'), []);
 
     const onRefresh = useCallback(
         async (event?: KeyboardEvent | MouseEvent | React.MouseEvent) => {

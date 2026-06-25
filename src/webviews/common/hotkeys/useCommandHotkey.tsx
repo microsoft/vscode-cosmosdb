@@ -41,9 +41,9 @@ export const useCommandHotkey = <Scope extends HotkeyScope, Command extends Hotk
     // Handle enabled state
     useEffect(() => {
         if (options?.disabled === true) {
-            commandService.disableHandler(scope, command, stableWrapper);
+            commandService.disableHandler(stableWrapper);
         } else {
-            commandService.enableHandler(scope, command, stableWrapper);
+            commandService.enableHandler(stableWrapper);
         }
-    }, [commandService, scope, command, stableWrapper, options?.disabled]);
+    }, [commandService, stableWrapper, options?.disabled]);
 };

@@ -3,13 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { createContextValue } from '@microsoft/vscode-azext-utils';
 import { type ResourceBase } from '@microsoft/vscode-azureresources-api';
-import crypto from 'crypto';
 import * as vscode from 'vscode';
 import { type Experience } from '../../../AzureDBExperiences';
 import { type TreeElement } from '../../TreeElement';
-import { type TreeElementWithContextValue } from '../../TreeElementWithContextValue';
+import { TreeElementWithContextValue } from '../../TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../../TreeElementWithExperience';
 
 export abstract class CosmosDBAccountResourceItemBase
@@ -22,8 +20,11 @@ export abstract class CosmosDBAccountResourceItemBase
         public readonly account: ResourceBase,
         public readonly experience: Experience,
     ) {
-        this.id = account.id ?? crypto.randomUUID();
-        this.contextValue = createContextValue([this.contextValue, `experience.${this.experience.api}`]);
+        this.id = account.id ?? globalThis.crypto.randomUUID();
+        this.contextValue = TreeElementWithContextValue.createContextValue([
+            this.contextValue,
+            `experience.${this.experience.api}`,
+        ]);
     }
 
     /**

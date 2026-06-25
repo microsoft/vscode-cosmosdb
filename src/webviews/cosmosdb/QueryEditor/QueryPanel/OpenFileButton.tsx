@@ -6,10 +6,10 @@
 import { FolderOpenRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useMemo } from 'react';
-import { HotkeyCommandService, useCommandHotkey } from '../../../common/hotkeys';
+import { getShortcutDisplay, useCommandHotkey } from '../../../common/hotkeys';
 import { ToolbarOverflowButton } from '../../../common/ToolbarOverflow/ToolbarOverflowButton';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
-import { type QueryEditorHotkeyCommand, type QueryEditorHotkeyScope } from '../QueryEditorHotkeys';
+import { QueryEditorHotkeys, type QueryEditorHotkeyCommand, type QueryEditorHotkeyScope } from '../QueryEditorHotkeys';
 import { useQueryEditorDispatcher } from '../state/QueryEditorContext';
 
 export const OpenFileButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
@@ -28,14 +28,7 @@ export const OpenFileButton = (props: ToolbarOverflowItemProps<HTMLButtonElement
         [dispatcher],
     );
 
-    const openFileHotkeyTooltip = useMemo(
-        () =>
-            HotkeyCommandService.getInstance<QueryEditorHotkeyScope, QueryEditorHotkeyCommand>().getShortcutDisplay(
-                'queryEditor',
-                'OpenQuery',
-            ),
-        [],
-    );
+    const openFileHotkeyTooltip = useMemo(() => getShortcutDisplay(QueryEditorHotkeys, 'OpenQuery'), []);
 
     useCommandHotkey<QueryEditorHotkeyScope, QueryEditorHotkeyCommand>('queryEditor', 'OpenQuery', openFile);
 

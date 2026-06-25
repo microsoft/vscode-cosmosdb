@@ -176,9 +176,11 @@ async function runContainerDesign(
         executeToolCall,
         MAX_SCHEMA_TOOL_ROUNDS,
         token,
-        `Conversion Sub-Step 1 (Container Design: ${domainName})`,
+        'Conversion Sub-Step 1 (Container Design)',
         l10n.t('Could not parse container design response for domain "{name}".', { name: domainName }),
         debugConfig,
+        // Domain name is log-only — it never reaches telemetry.
+        domainName,
     );
     if (roundsExhausted) onExhausted?.();
     return value;
@@ -352,7 +354,7 @@ async function runFastConversion(
     debugConfig?: DebugPromptConfig,
     onExhausted?: () => void,
 ): Promise<FastConversionResult> {
-    const label = `Fast Schema Conversion (${domainName})`;
+    const label = 'Fast Schema Conversion';
     const { messages } = await renderWithDebug(
         Phase3FastConversionPrompt,
         {
@@ -380,6 +382,9 @@ async function runFastConversion(
         undefined,
         { temperature: 0.1 },
         debugConfig,
+        undefined,
+        // Domain name is log-only — it never reaches telemetry.
+        domainName,
     );
     if (roundsExhausted) onExhausted?.();
 
@@ -388,7 +393,7 @@ async function runFastConversion(
         const truncated = text.length > 300 ? text.slice(0, 300) + '…' : text;
         const tail = text.length > 300 ? '…' + text.slice(-200) : '';
         ext.outputChannel.appendLog(
-            `[${label}] Failed to parse fast-conversion response (${text.length} chars). ` +
+            `[${label} (${domainName})] Failed to parse fast-conversion response (${text.length} chars). ` +
                 `Response preview: "${truncated}"${tail ? `\nResponse tail: "${tail}"` : ''}`,
         );
         throw new Error(

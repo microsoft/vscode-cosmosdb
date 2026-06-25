@@ -97,12 +97,8 @@ test.describe('query editor toolbar', () => {
 
     test('Learn button dropdown shows navigable documentation links', async ({ vscodeWindow }) => {
         const webview = await openQueryEditor(vscodeWindow);
-
-        await openToolbarMenu(webview, 'More items');
-
-        const learnMoreButton = webview.getByRole('button', { name: 'Learn more', exact: true }).first();
-        await expect(learnMoreButton).toBeVisible();
-        await learnMoreButton.click();
+        await expect(webview.locator('#root')).toBeVisible();
+        await openToolbarMenu(webview, 'Learn more');
 
         // Documentation entries render as <a role="menuitem"> with an href. We
         // assert they're present and point at real https URLs rather than

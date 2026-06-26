@@ -1020,7 +1020,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                         color="informative"
                         className={styles.previewBadge}
                         tabIndex={0}
-                        aria-label={l10n.t('Preview: features and behavior may change. Use with care.')}
+                        aria-label={l10n.t('Preview')}
                     >
                         <span aria-hidden="true">{l10n.t('Preview')}</span>
                     </Badge>

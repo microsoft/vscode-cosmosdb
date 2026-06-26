@@ -278,6 +278,7 @@ function registerAzureResourcesProviders(_context: vscode.ExtensionContext): api
                 ext.cosmosDBBranchDataProvider,
             );
             ext.sharedWorkspaceResourceProvider = new SharedWorkspaceResourceProvider();
+            _context.subscriptions.push(ext.sharedWorkspaceResourceProvider);
             ext.rgApiV2.resources.registerWorkspaceResourceProvider(ext.sharedWorkspaceResourceProvider);
             ext.rgApiV2.resources.registerWorkspaceResourceBranchDataProvider(
                 WorkspaceResourceType.AttachedAccounts,

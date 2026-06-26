@@ -44,7 +44,7 @@ export enum WorkspaceResourceType {
  * more specialized handling and display of different types of resources
  * within the workspace.
  */
-export class SharedWorkspaceResourceProvider implements WorkspaceResourceProvider {
+export class SharedWorkspaceResourceProvider implements WorkspaceResourceProvider, vscode.Disposable {
     private readonly onDidChangeResourceEmitter = new vscode.EventEmitter<WorkspaceResource | undefined>();
 
     /**
@@ -81,5 +81,9 @@ export class SharedWorkspaceResourceProvider implements WorkspaceResourceProvide
      */
     public refresh(): void {
         this.onDidChangeResourceEmitter.fire(undefined);
+    }
+
+    public dispose(): void {
+        this.onDidChangeResourceEmitter.dispose();
     }
 }

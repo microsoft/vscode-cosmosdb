@@ -53,7 +53,6 @@ export class SharedWorkspaceResourceProvider implements WorkspaceResourceProvide
      */
     public readonly onDidChangeResource = this.onDidChangeResourceEmitter.event;
 
-    // keep signature non-async; return a Thenable (ProviderResult) by returning the helper promise
     getResources(): vscode.ProviderResult<WorkspaceResource[]> {
         const resources: WorkspaceResource[] = [
             {

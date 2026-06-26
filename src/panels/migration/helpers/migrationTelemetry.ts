@@ -177,12 +177,12 @@ export function enrichErrorContext(context: IActionContext, error: unknown): voi
                 }
             }
 
-            // Raw message: issue body only, never telemetry. The Report Issue
-            // flow is user-consented and applies `valuesToMask` to redact
-            // anything the action already marked sensitive.
-            if (cause instanceof Error && cause.message) {
-                context.errorHandling.issueProperties.aiErrorCauseMessage = cause.message;
-            }
+            // Intentionally NOT stored: the raw `cause.message`. `issueProperties`
+            // is not a sanctioned PII channel (the same PII/EUII rules as telemetry
+            // apply), and a model error-cause message is unbounded — it may contain
+            // user/model content that `valuesToMask` cannot reliably cover. The
+            // bounded `aiErrorCauseType` / `aiErrorCauseCode` above are sufficient
+            // diagnostics for maintainers.
         }
     } else {
         context.telemetry.properties.errorCategory = 'infrastructure';

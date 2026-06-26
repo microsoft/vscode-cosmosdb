@@ -831,6 +831,12 @@ export async function runSchemaConversion(
                 const domainNameMatch = domainContent.match(/^# Domain:\s*(.+)$/m);
                 const domainName = domainNameMatch?.[1]?.trim() ?? domainFileName;
 
+                // Domain identifiers are workspace/user-derived. Mask them so they are
+                // redacted from any error message or stack captured by this phase-level
+                // `callWithTelemetryAndErrorHandling` on failure (e.g. the "…for domain
+                // \"X\"" parse errors thrown by container design / fast conversion).
+                context.valuesToMask.push(domainName, domainFileName);
+
                 const domainOutputPath = path.join(domainsPath, domainFileName);
                 await vscode.workspace.fs.createDirectory(vscode.Uri.file(domainOutputPath));
 

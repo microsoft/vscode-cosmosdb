@@ -578,6 +578,14 @@ export async function runAssessment(ctx: Phase2Context): Promise<void> {
 
             // ─── Step 5: Cross-Domain Analysis (AI) ───────────────────────
             context.telemetry.properties.lastStep = 'step5.crossDomainAnalysis';
+
+            // Domain names are workspace/user-derived. Mask the full (post-split) set
+            // so they are redacted from any error message or stack captured by this
+            // phase-level `callWithTelemetryAndErrorHandling` on failure.
+            for (const d of domainsWithTokens) {
+                context.valuesToMask.push(d.name);
+            }
+
             await sendPhaseProgress(
                 channel,
                 'Assessment',

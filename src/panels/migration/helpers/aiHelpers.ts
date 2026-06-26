@@ -605,6 +605,12 @@ export async function runAgenticLoop(
             context.errorHandling.rethrow = true;
             context.errorHandling.suppressDisplay = true;
             context.errorHandling.forceIncludeInReportIssueCommand = true;
+            // `logDetail` may carry user data (e.g. a domain name). Mask it so it is
+            // redacted from any error message or stack this telemetry scope would
+            // capture on an unexpected throw.
+            if (logDetail) {
+                context.valuesToMask.push(logDetail);
+            }
             context.telemetry.properties.phase = label;
             context.telemetry.properties.modelId = model.id;
             context.telemetry.properties.modelFamily = model.family;

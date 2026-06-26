@@ -28,6 +28,7 @@ import { migrationEventsRouterDef, type MigrationEvent } from './routers/migrati
 import { migrationRouterDef } from './routers/migrationRouter';
 import { queryEditorEventsRouterDef, type QueryEditorEvent } from './routers/queryEditorEventsRouter';
 import { queryEditorRouterDef } from './routers/queryEditorRouter';
+import { quickStartRouterDef } from './routers/quickStartRouter';
 import {
     documentCallerFactory,
     documentProcedure,
@@ -288,6 +289,7 @@ export const queryEditorAppRouter = queryEditorRouter({
     // oxlint-disable-next-line typescript/no-unsafe-assignment
     common: buildCommonRouter(queryEditorProcedure, queryEditorRouter),
     queryEditor: queryEditorMergeRouters(queryEditorRouterDef, queryEditorEventsRouterDef),
+    quickStart: quickStartRouterDef,
 });
 
 export type QueryEditorAppRouter = typeof queryEditorAppRouter;

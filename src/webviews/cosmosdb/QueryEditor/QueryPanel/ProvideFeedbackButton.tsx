@@ -24,6 +24,7 @@ export const ProvideFeedbackButton = (props: ToolbarOverflowItemProps<HTMLButton
                         <ToolbarButton
                             ref={ref}
                             aria-label={l10n.t('Provide Feedback')}
+                            data-quickstart="provide-feedback"
                             icon={<EmojiSmileSlightRegular />}
                         />
                     </Tooltip>

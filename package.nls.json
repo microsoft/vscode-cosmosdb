@@ -34,6 +34,7 @@
   "cosmosdb.command.ai.deploy_instruction_files": "Copy LLM instructions to user profile folder",
   "cosmosdb.command.ai.remove_instruction_files": "Remove LLM instructions from user profile folder",
   "cosmosdb.command.schema.delete_all": "Delete All Saved Schemas",
+  "cosmosdb.command.quickStart.reset": "Reset Quick Start Tips (Internal)",
   "cosmosdb.command.migration.open": "New Migration…",
   "cosmosdb.command.migration.openExisting": "Cosmos DB Migration…",
   "cosmosdb.command.migration.remove": "Remove Migration…",
@@ -67,5 +68,6 @@
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "The Client ID of the Managed Identity to use when authenticating with Entra ID using a User-assigned Managed Identity.",
   "cosmosdb.configuration.manage-llm-assets": "Manage LLM assets. Allow the extension to keep LLM-related files updated.",
   "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "When enabled, schema generation also considers query results to infer the container schema.",
+  "cosmosdb.configuration.quickStart.enabled": "When enabled, Quick Start tips are shown in the Query Editor after a major or minor extension update. Disable this to turn off Quick Start tips entirely, including the replay button.",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Experimental) Show token usage estimates in the Migration Assistant UI."
 }

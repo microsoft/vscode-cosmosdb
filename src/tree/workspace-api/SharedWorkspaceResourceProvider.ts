@@ -5,7 +5,8 @@
 
 import { type WorkspaceResource, type WorkspaceResourceProvider } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
-import type * as vscode from 'vscode';
+import * as vscode from 'vscode';
+import { isMigrationFeatureEnabled } from '../../commands/migration/migrationFeatureFlag';
 
 /**
  * Enum representing the types of resources that can be registered in the workspace.
@@ -44,19 +45,41 @@ export enum WorkspaceResourceType {
  * within the workspace.
  */
 export class SharedWorkspaceResourceProvider implements WorkspaceResourceProvider {
+    private readonly onDidChangeResourceEmitter = new vscode.EventEmitter<WorkspaceResource | undefined>();
+
+    /**
+     * Fired when the set of workspace resources changes (e.g. the experimental Cosmos DB
+     * Migration feature is toggled), prompting the Workspace view to re-query {@link getResources}.
+     */
+    public readonly onDidChangeResource = this.onDidChangeResourceEmitter.event;
+
     // keep signature non-async; return a Thenable (ProviderResult) by returning the helper promise
     getResources(): vscode.ProviderResult<WorkspaceResource[]> {
-        return [
+        const resources: WorkspaceResource[] = [
             {
                 resourceType: WorkspaceResourceType.AttachedAccounts,
                 id: 'vscode.cosmosdb.workspace.attachedaccounts',
                 name: l10n.t('Cosmos DB Accounts'),
             },
-            {
+        ];
+
+        // The Cosmos DB Migration (Preview) feature can be turned off via an experimental
+        // setting; when disabled, hide its workspace node entirely.
+        if (isMigrationFeatureEnabled()) {
+            resources.push({
                 resourceType: WorkspaceResourceType.Migrations,
                 id: 'vscode.cosmosdb.workspace.migrations',
                 name: l10n.t('Cosmos DB Migrations'),
-            },
-        ];
+            });
+        }
+
+        return resources;
+    }
+
+    /**
+     * Trigger a refresh of the workspace resources view (re-invokes {@link getResources}).
+     */
+    public refresh(): void {
+        this.onDidChangeResourceEmitter.fire(undefined);
     }
 }

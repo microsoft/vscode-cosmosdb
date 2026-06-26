@@ -23,6 +23,7 @@ import { AzExtResourceType, type AzureSubscription } from '@microsoft/vscode-azu
 import * as l10n from '@vscode/l10n';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { isMigrationFeatureEnabled } from '../commands/migration/migrationFeatureFlag';
 import { getThemedIconPath } from '../constants';
 import { getCosmosDBEntraIdCredential } from '../cosmosdb/CosmosDBCredential';
 import { ext } from '../extensionVariables';
@@ -209,6 +210,9 @@ export class MigrationAssistantTab extends BaseTab {
      * and show an independent non-modal notification per folder that has one.
      */
     public static async promptToReopen(): Promise<void> {
+        // Respect the experimental feature toggle: no auto-reopen prompts when disabled.
+        if (!isMigrationFeatureEnabled()) return;
+
         const workspaceFolders = vscode.workspace.workspaceFolders;
         if (!workspaceFolders || workspaceFolders.length === 0) return;
 

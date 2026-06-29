@@ -34,6 +34,7 @@ import {
     Tooltip,
     type MenuButtonProps,
     type OptionOnSelectData,
+    type SplitButtonProps,
 } from '@fluentui/react-components';
 import {
     AddRegular,
@@ -2653,10 +2654,12 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                         ...triggerProps,
                                         'aria-label': l10n.t('Select migration action'),
                                     }}
-                                    primaryActionButton={{
-                                        onClick: handleStartMigration,
-                                        'data-testid': 'migration-action-button',
-                                    }}
+                                    primaryActionButton={
+                                        {
+                                            onClick: handleStartMigration,
+                                            'data-testid': 'migration-action-button',
+                                        } as SplitButtonProps['primaryActionButton']
+                                    }
                                 >
                                     {state.migrationMode === 'plan'
                                         ? l10n.t('Plan Migration')

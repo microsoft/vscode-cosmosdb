@@ -165,15 +165,3 @@ export async function applyWindowLayout(page: Page, layout: WindowLayout): Promi
         await ensurePartVisibility(page, PARTS[key], desired);
     }
 }
-
-/**
- * Re-enforce the layout last applied to `page` via {@link applyWindowLayout}.
- * No-op when no layout has been recorded for the window. Used right before a
- * screenshot to undo any chrome (e.g. Copilot Chat) that auto-popped mid-test.
- */
-export async function reapplyWindowLayout(page: Page): Promise<void> {
-    const layout = appliedLayouts.get(page);
-    if (layout) {
-        await applyWindowLayout(page, layout);
-    }
-}

@@ -99,14 +99,6 @@ const PARTS: Record<keyof WindowLayout, PartDescriptor> = {
 const VISIBILITY_SETTLE_TIMEOUT_MS = 2_000;
 
 /**
- * Remembers the layout last requested for a given window so it can be
- * re-enforced just before a screenshot — VS Code chrome (notably the Copilot
- * Chat secondary side bar) can auto-pop *after* the pre-test layout pass, and
- * the window screenshot is captured at the end of the test.
- */
-const appliedLayouts = new WeakMap<Page, WindowLayout>();
-
-/**
  * Ensure a single part matches `desired` visibility. No-op when it already
  * does. Best-effort: a missing command or selector never fails the test.
  */
@@ -123,7 +115,13 @@ async function ensurePartVisibility(page: Page, part: PartDescriptor, desired: b
 
     if (current === desired) return;
 
-    await runCommand(page, part.toggleCommandTitle);
+    try {
+        await runCommand(page, part.toggleCommandTitle);
+    } catch {
+        // The command palette / quick input can be transiently unavailable.
+        // A layout tweak must never fail the test (best-effort contract).
+        return;
+    }
 
     // Wait for the part to reach the desired state so callers (and the
     // subsequent screenshot) observe a settled layout. Best-effort: tolerate
@@ -154,8 +152,6 @@ async function ensurePartVisibility(page: Page, part: PartDescriptor, desired: b
  */
 export async function applyWindowLayout(page: Page, layout: WindowLayout): Promise<void> {
     if (page.isClosed()) return;
-
-    appliedLayouts.set(page, { ...appliedLayouts.get(page), ...layout });
 
     for (const key of Object.keys(PARTS) as (keyof WindowLayout)[]) {
         const desired = layout[key];

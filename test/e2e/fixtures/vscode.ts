@@ -109,7 +109,8 @@ function seedUserSettings(userDataDir: string): void {
         // unreachable port. Force the client to stay on whichever endpoint
         // the connection points at. Harmless for production single-region
         // accounts; required for any e2e-vs-emulator scenario.
-        'cosmosDB.enableEndpointDiscovery': false, // The dedicated e2e emulator binds to 8082 (not the default 8081);
+        'cosmosDB.enableEndpointDiscovery': false,
+        // The dedicated e2e emulator binds to 8082 (not the default 8081);
         // the migration provisioning step reads this to target the right port.
         'cosmosDB.emulator.port': E2E_EMULATOR_PORT,
     };
@@ -120,14 +121,16 @@ function seedUserSettings(userDataDir: string): void {
 
 /**
  * Monkey-patch Electron's main-process `dialog` module so native
- * save / message dialogs never block the test. Untitled SQL editors,
- * unsaved changes on tab close, etc. would otherwise pop an OS dialog
- * that Playwright cannot interact with.
+ * save / open / message dialogs never block the test. Untitled SQL editors,
+ * unsaved changes on tab close, file pickers (e.g. the Query Editor Open
+ * action), etc. would otherwise pop an OS dialog that Playwright cannot
+ * interact with.
  */
 async function disableNativeDialogs(app: ElectronApplication): Promise<void> {
     await app
         .evaluate(({ dialog }) => {
             dialog.showSaveDialog = () => Promise.resolve({ canceled: true, filePath: '' });
+            dialog.showOpenDialog = () => Promise.resolve({ canceled: true, filePaths: [] });
             dialog.showMessageBoxSync = () => 1; // Typically "Don't Save"
             dialog.showMessageBox = () => Promise.resolve({ response: 1, checkboxChecked: false });
         })
@@ -164,7 +167,7 @@ interface VsCodeTestFixtures {
      *
      * Keys are tri-state — a key you omit keeps its default; the defaults you
      * don't override stay in effect (the fixture merges them in). Applied
-     * before each test body and re-enforced before each window screenshot.
+     * before each test body.
      */
     layout: WindowLayout;
     /**

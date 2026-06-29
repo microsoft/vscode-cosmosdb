@@ -38,6 +38,14 @@ export function isCopilotChatExtensionInstalled(): boolean {
  * @returns Promise<boolean> true if Copilot models are available, false otherwise
  */
 export async function areCopilotModelsAvailable(): Promise<boolean> {
+    // In e2e migration AI mock mode there is no real Copilot, but the
+    // migration helpers substitute a deterministic fake model. Report
+    // availability as true so `ext.isAIFeaturesEnabled` is set and the
+    // migration phase buttons enable. Gated on the master e2e flag so it can
+    // never affect a normal session.
+    if (process.env.COSMOSDB_E2E_TEST === '1' && process.env.COSMOSDB_E2E_MIGRATION_AI_MOCK === '1') {
+        return true;
+    }
     try {
         const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
         return models.length > 0;

@@ -19,6 +19,17 @@ import { type QuickStartTip } from '../../../../utils/quickStart/quickStartTypes
 export const QUERY_EDITOR_TIP_GROUP = 'editor';
 export const QUERY_EDITOR_RESULTS_TIP_GROUP = 'result';
 
+/**
+ * Version of the Quick Start tip set. This is the single switch that decides
+ * when the tour replays: whenever this value changes — in *either* direction —
+ * the persisted "seen" state is reset and the whole tour plays again from
+ * scratch on the next Query Editor open. Bump it whenever the tips meaningfully
+ * change (new steps, reordering, reworded copy) and you want every user to see
+ * the tour again. It is deliberately decoupled from the extension's
+ * package.json version, so routine releases don't re-trigger onboarding.
+ */
+export const QUICK_START_TIPS_VERSION = 1;
+
 /** All groups a Query Editor tip is allowed to belong to. */
 export const QUERY_EDITOR_TIP_GROUPS: readonly string[] = [QUERY_EDITOR_TIP_GROUP, QUERY_EDITOR_RESULTS_TIP_GROUP];
 

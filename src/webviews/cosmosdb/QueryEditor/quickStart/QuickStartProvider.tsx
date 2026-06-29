@@ -24,6 +24,7 @@ import {
     QUERY_EDITOR_RESULTS_TIP_GROUP,
     QUERY_EDITOR_TIP_GROUP,
     QUICK_START_GROUP_ORDER,
+    QUICK_START_TIPS_VERSION,
 } from './queryEditorTips';
 import { QuickStartEnabledContext } from './quickStartContext';
 import { toFluentPositioning } from './quickStartPositioning';
@@ -150,13 +151,13 @@ interface QuickStartTourProps {
 
 /**
  * Drives the Query Editor Quick Start tour as a staged flow. On a fresh install
- * or a major/minor extension upgrade (when the host says auto-show is allowed),
- * it replays the whole tour from scratch — one group at a time: the ungrouped
- * intro tips and the `editor` group when the editor opens, then the `result`
- * group after the user's first query. Segments are queued and played one at a
- * time, and the whole tour (or a single group) can be replayed on demand. The
- * last-seen version lives in the extension host and is reached through the
- * `quickStart` tRPC router.
+ * or whenever the authored tip-set version changes (when the host says auto-show
+ * is allowed), it replays the whole tour from scratch — one group at a time: the
+ * ungrouped intro tips and the `editor` group when the editor opens, then the
+ * `result` group after the user's first query. Segments are queued and played
+ * one at a time, and the whole tour (or a single group) can be replayed on
+ * demand. The last-seen tip version lives in the extension host and is reached
+ * through the `quickStart` tRPC router.
  */
 const QuickStartTour = ({ startup }: QuickStartTourProps) => {
     useStaticStyles();
@@ -203,9 +204,9 @@ const QuickStartTour = ({ startup }: QuickStartTourProps) => {
     }, []);
 
     // Builds the tips for a single segment (a group, or the ungrouped intro).
-    // The whole tour is replayed from scratch on every major/minor upgrade, so
-    // we never filter by "seen" — the version gate (autoShowAllowed) already
-    // decides whether the auto tour runs at all.
+    // The whole tour is replayed from scratch whenever the tip-set version
+    // changes, so we never filter by "seen" — the version gate (autoShowAllowed)
+    // already decides whether the auto tour runs at all.
     const buildSegmentTips = useCallback((request: SegmentRequest): QuickStartTip[] => {
         return getTipsInSegment(getQueryEditorTips(), request.group);
     }, []);
@@ -351,9 +352,9 @@ const QuickStartTour = ({ startup }: QuickStartTourProps) => {
                     { trigger: tour.trigger, tipId: tip.id, group: tip.group ?? 'ungrouped' },
                     { step: tour.index + 1, totalSteps: tour.tips.length },
                 );
-                // Auto-runs stamp the current version (via markTipsSeen) so the
-                // tour doesn't replay again until the next major/minor upgrade.
-                // Manual replays must not touch persisted state.
+                // Persist auto-seen tips for telemetry/back compat; the tip
+                // version is stamped at startup, so the tour won't replay until
+                // the version changes again. Manual replays don't persist.
                 if (tour.trigger === 'auto') {
                     void trpcClient.quickStart.markTipsSeen.mutate({ ids: [tip.id] }).catch(() => {
                         /* best-effort */
@@ -456,7 +457,9 @@ export const QuickStartProvider = ({ children }: { children: ReactNode }) => {
         let cancelled = false;
         void (async () => {
             try {
-                const state = await trpcClient.quickStart.getStartupState.query();
+                const state = await trpcClient.quickStart.getStartupState.mutate({
+                    tipsVersion: QUICK_START_TIPS_VERSION,
+                });
                 if (!cancelled) {
                     setStartup(state);
                 }

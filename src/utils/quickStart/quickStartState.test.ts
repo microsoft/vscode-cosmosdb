@@ -9,10 +9,10 @@ import {
     getPendingTips,
     getTipsInSegment,
     isGroupComplete,
-    isMajorOrMinorUpgrade,
     markSeen,
     sortTips,
     type TipLike,
+    tipsVersionChanged,
 } from './quickStartState';
 
 const tips: TipLike[] = [
@@ -168,37 +168,20 @@ describe('areAllTipsSeen', () => {
     });
 });
 
-describe('isMajorOrMinorUpgrade', () => {
-    it('allows the tour on a fresh install (no last version)', () => {
-        expect(isMajorOrMinorUpgrade('1.2.3', undefined)).toBe(true);
+describe('tipsVersionChanged', () => {
+    it('shows the tour on a fresh install (no stored version)', () => {
+        expect(tipsVersionChanged(1, undefined)).toBe(true);
     });
 
-    it('does not auto-show for the same version', () => {
-        expect(isMajorOrMinorUpgrade('1.2.3', '1.2.3')).toBe(false);
+    it('does not show when the version is unchanged', () => {
+        expect(tipsVersionChanged(1, 1)).toBe(false);
     });
 
-    it('does not auto-show for a patch bump', () => {
-        expect(isMajorOrMinorUpgrade('1.2.4', '1.2.3')).toBe(false);
+    it('shows when the version was bumped up', () => {
+        expect(tipsVersionChanged(2, 1)).toBe(true);
     });
 
-    it('auto-shows for a minor bump', () => {
-        expect(isMajorOrMinorUpgrade('1.3.0', '1.2.9')).toBe(true);
-    });
-
-    it('auto-shows for a major bump', () => {
-        expect(isMajorOrMinorUpgrade('2.0.0', '1.9.9')).toBe(true);
-    });
-
-    it('does not auto-show on a downgrade', () => {
-        expect(isMajorOrMinorUpgrade('1.2.0', '1.3.0')).toBe(false);
-        expect(isMajorOrMinorUpgrade('1.9.9', '2.0.0')).toBe(false);
-    });
-
-    it('treats an unparseable last version like a fresh install', () => {
-        expect(isMajorOrMinorUpgrade('1.2.3', 'not-a-version')).toBe(true);
-    });
-
-    it('fails closed when the current version is unparseable', () => {
-        expect(isMajorOrMinorUpgrade('not-a-version', '1.2.3')).toBe(false);
+    it('shows when the version was rolled back', () => {
+        expect(tipsVersionChanged(1, 2)).toBe(true);
     });
 });

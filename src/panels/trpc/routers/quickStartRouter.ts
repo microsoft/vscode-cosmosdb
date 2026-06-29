@@ -6,45 +6,43 @@
 import { z } from 'zod';
 import {
     getSeenTipIds,
-    isAutoShowAllowed,
     isQuickStartEnabled,
     markTipsSeen,
+    prepareAutoShow,
 } from '../../../utils/quickStart/quickStartStorage';
 import { queryEditorProcedure, queryEditorRouter } from '../trpc';
 
 // ─── Quick Start Router ─────────────────────────────────────────────────────
 //
 // Exposes the extension-host Quick Start state to the webview. The webview owns
-// the tip registry (content + localization); the extension decides — using the
-// extension version and user settings, both of which only the host can read —
-// whether the automatic tour is allowed to fire, and records the version the
-// tour last ran on. The whole tour replays from scratch on each major/minor
-// upgrade. Keeping this split means new tips can be added purely on the webview
-// side.
+// the tip registry (content, localization, and the tip-set version) and tells
+// the host that version at startup; the host persists which tips were seen and,
+// reading the user setting, decides whether the automatic tour may fire. The
+// whole tour replays from scratch whenever the tip-set version changes (in
+// either direction), independently of the extension's package.json version.
 
 export const quickStartRouterDef = queryEditorRouter({
     /**
-     * One-shot startup state for the webview:
-     *  - `seenTipIds`: tips the user has already seen (kept for telemetry/back
-     *    compat; the staged tour replays in full on each upgrade rather than
-     *    filtering by this).
+     * One-shot startup state for the webview. Takes the current `tipsVersion`
+     * from the registry; if it differs from the recorded one, the host resets
+     * the seen state and stamps the new version *before* returning, so the
+     * whole tour replays once. Returns:
+     *  - `seenTipIds`: tips already seen (kept for telemetry/back compat).
      *  - `enabled`: whether the feature is on at all (gates the replay button).
-     *  - `autoShowAllowed`: whether the automatic tour may fire now (enabled +
-     *    a major/minor version upgrade or a fresh install).
+     *  - `autoShowAllowed`: whether the automatic tour should fire now.
      */
-    getStartupState: queryEditorProcedure.query(() => {
-        return {
-            seenTipIds: getSeenTipIds(),
-            enabled: isQuickStartEnabled(),
-            autoShowAllowed: isAutoShowAllowed(),
-        };
-    }),
+    getStartupState: queryEditorProcedure
+        .input(z.object({ tipsVersion: z.number() }))
+        .mutation(async ({ input }: { input: { tipsVersion: number } }) => {
+            const autoShowAllowed = await prepareAutoShow(input.tipsVersion);
+            return {
+                seenTipIds: getSeenTipIds(),
+                enabled: isQuickStartEnabled(),
+                autoShowAllowed,
+            };
+        }),
 
-    /**
-     * Marks the given tip ids as seen and stamps the current extension version
-     * (so the auto tour won't replay until the next major/minor upgrade).
-     * Returns the updated seen list.
-     */
+    /** Marks the given tip ids as seen and returns the updated seen list. */
     markTipsSeen: queryEditorProcedure
         .input(z.object({ ids: z.array(z.string()) }))
         .mutation(async ({ input }: { input: { ids: string[] } }) => {

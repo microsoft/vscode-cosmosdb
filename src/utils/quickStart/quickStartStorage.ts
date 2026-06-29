@@ -5,7 +5,7 @@
 
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
-import { isMajorOrMinorUpgrade, markSeen } from './quickStartState';
+import { markSeen, tipsVersionChanged } from './quickStartState';
 
 /**
  * Persistence for Quick Start "seen" state, backed by the extension
@@ -24,18 +24,13 @@ const QUICK_START_ENABLED_SETTING = 'enabled';
 export const QuickStartStateKeys = {
     /** `string[]` — ids of tips the user has already seen. */
     SEEN_TIP_IDS: `${GLOBAL_STATE_KEY_PREFIX}/seenTipIds`,
-    /** `string` — extension version recorded the last time tips were marked seen. */
-    LAST_VERSION: `${GLOBAL_STATE_KEY_PREFIX}/lastVersion`,
+    /** `number` — the tip-set version the user last saw the tour on. */
+    TIPS_VERSION: `${GLOBAL_STATE_KEY_PREFIX}/tipsVersion`,
 } as const;
 
-/** The current extension version, as declared in `package.json`. */
-function getCurrentVersion(): string {
-    return (ext.context.extension.packageJSON as { version: string }).version;
-}
-
-/** Returns the extension version recorded the last time tips were marked seen. */
-export function getLastVersion(): string | undefined {
-    return ext.context.globalState.get<string>(QuickStartStateKeys.LAST_VERSION);
+/** Returns the tip-set version recorded the last time the tour ran. */
+export function getStoredTipsVersion(): number | undefined {
+    return ext.context.globalState.get<number>(QuickStartStateKeys.TIPS_VERSION);
 }
 
 /**
@@ -50,12 +45,26 @@ export function isQuickStartEnabled(): boolean {
 }
 
 /**
- * Whether the *automatic* tour is allowed to fire right now: the feature must be
- * enabled and the current version must be a major/minor upgrade over the last
- * version the user saw tips on (or a fresh install). Manual replay ignores this.
+ * Decides whether the *automatic* tour may fire for the given tip-set version,
+ * resetting persisted "seen" state first when the version changed.
+ *
+ * The tip version (owned by the webview registry) is the switch: when it
+ * differs from what we last recorded — in either direction, or on a fresh
+ * install — we wipe the seen ids and stamp the new version, so the whole tour
+ * replays once. The reset happens *before* the show decision, so once stamped
+ * the next open with an unchanged version is a no-op. Returns whether the auto
+ * tour should run now. Manual replay ignores this.
  */
-export function isAutoShowAllowed(): boolean {
-    return isQuickStartEnabled() && isMajorOrMinorUpgrade(getCurrentVersion(), getLastVersion());
+export async function prepareAutoShow(tipsVersion: number): Promise<boolean> {
+    if (!isQuickStartEnabled()) {
+        return false;
+    }
+    if (!tipsVersionChanged(tipsVersion, getStoredTipsVersion())) {
+        return false;
+    }
+    await ext.context.globalState.update(QuickStartStateKeys.SEEN_TIP_IDS, undefined);
+    await ext.context.globalState.update(QuickStartStateKeys.TIPS_VERSION, tipsVersion);
+    return true;
 }
 
 /** Returns the ids of all tips the user has already seen. */
@@ -67,23 +76,22 @@ export function getSeenTipIds(): string[] {
 
 /**
  * Records the given tip ids as seen (de-duplicated via the pure `markSeen`
- * helper) and stamps the current extension version. Returns the updated seen
- * list. Idempotent.
+ * helper). Returns the updated seen list. Idempotent. The tip-set version is
+ * stamped by `prepareAutoShow`, not here.
  */
 export async function markTipsSeen(ids: readonly string[]): Promise<string[]> {
     const updated = markSeen(getSeenTipIds(), ids);
     await ext.context.globalState.update(QuickStartStateKeys.SEEN_TIP_IDS, updated);
-    await ext.context.globalState.update(QuickStartStateKeys.LAST_VERSION, getCurrentVersion());
     return updated;
 }
 
 /**
  * Clears all persisted Quick Start state: the set of seen tip ids and the
- * recorded last version. After a reset, the automatic tour behaves as if on a
- * fresh install (it will play again on the next Query Editor open). Intended for
- * testing the onboarding flow via the internal reset command.
+ * recorded tip-set version. After a reset, the automatic tour behaves as if on
+ * a fresh install (it will play again on the next Query Editor open). Intended
+ * for testing the onboarding flow via the internal reset command.
  */
 export async function resetQuickStartState(): Promise<void> {
     await ext.context.globalState.update(QuickStartStateKeys.SEEN_TIP_IDS, undefined);
-    await ext.context.globalState.update(QuickStartStateKeys.LAST_VERSION, undefined);
+    await ext.context.globalState.update(QuickStartStateKeys.TIPS_VERSION, undefined);
 }

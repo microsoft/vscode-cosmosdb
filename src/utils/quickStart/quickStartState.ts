@@ -10,17 +10,12 @@
  * mechanism. It is the single source of truth for "which tips should the user
  * see next" and is unit-tested in isolation (see `quickStartState.test.ts`).
  *
- * The core requirement it encodes: after an extension update introduces new tip
- * ids, only the unseen tips are returned — the user is never re-shown tips they
- * already dismissed.
- *
- * Version numbers are used only to gate the *automatic* tour (see
- * `isMajorOrMinorUpgrade`): we auto-show on a fresh install or after a
- * major/minor version bump, but never within the same major.minor (the user can
- * still replay manually). Patch updates never auto-trigger the tour.
+ * Whether the *automatic* tour fires is gated on the tip-set version, not the
+ * extension version (see `tipsVersionChanged`): the whole tour replays from
+ * scratch only when the authored tip version changes (in either direction) or
+ * on a fresh install. Routine extension releases never re-trigger it. The user
+ * can still replay manually at any time.
  */
-
-import * as semver from 'semver';
 
 /** Minimal shape the pure logic needs from a tip. */
 export interface TipLike {
@@ -114,33 +109,19 @@ export function areAllTipsSeen(allTips: readonly TipLike[], seenIds: readonly st
 }
 
 /**
- * Decides whether the *automatic* Quick Start tour should be allowed for the
- * transition from `lastVersion` to `currentVersion`, based purely on semver.
+ * Decides whether the *automatic* Quick Start tour should fire, based purely on
+ * the authored tip-set version.
  *
  * Returns true when:
- *  - there is no recorded `lastVersion` (fresh install / first run), or
- *  - the current major is greater than the last major, or
- *  - the major is unchanged and the current minor is greater than the last minor.
+ *  - there is no recorded `storedVersion` (fresh install / first run), or
+ *  - the `currentVersion` differs from `storedVersion` in either direction.
  *
- * Patch-only bumps and downgrades return false (manual replay still works).
- * A strict increase is required, so re-running the same build never re-triggers
- * the tour. Unparseable `currentVersion` returns false (fail closed); an
- * unparseable `lastVersion` is treated like a fresh install (returns true).
+ * A change in either direction re-shows the whole tour: the tip version is the
+ * deliberate switch the authors flip when they want everyone to see the tour
+ * again, so a downgrade/rollback re-triggers it too. The caller is expected to
+ * reset the "seen" state and record `currentVersion` once it returns true, so
+ * the next open with an unchanged version is a no-op.
  */
-export function isMajorOrMinorUpgrade(currentVersion: string, lastVersion: string | undefined): boolean {
-    const current = semver.parse(currentVersion);
-    if (!current) {
-        return false;
-    }
-    if (!lastVersion) {
-        return true;
-    }
-    const last = semver.parse(lastVersion);
-    if (!last) {
-        return true;
-    }
-    if (current.major !== last.major) {
-        return current.major > last.major;
-    }
-    return current.minor > last.minor;
+export function tipsVersionChanged(currentVersion: number, storedVersion: number | undefined): boolean {
+    return storedVersion === undefined || currentVersion !== storedVersion;
 }

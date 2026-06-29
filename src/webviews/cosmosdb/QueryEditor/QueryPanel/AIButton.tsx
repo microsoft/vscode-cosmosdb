@@ -64,7 +64,7 @@ export const AIButton = ({ ref, type }: ToolbarOverflowItemProps<HTMLButtonEleme
         <Menu positioning="below-end">
             <MenuTrigger disableButtonEnhancement>
                 {type === 'button' ? (
-                    <MenuButton ref={ref} appearance="subtle" icon={aiIcon}>
+                    <MenuButton ref={ref} data-quickstart="ai-assist" appearance="subtle" icon={aiIcon}>
                         {l10n.t('AI')}
                     </MenuButton>
                 ) : (

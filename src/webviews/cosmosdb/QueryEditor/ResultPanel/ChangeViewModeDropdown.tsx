@@ -25,6 +25,7 @@ export const ChangeViewModeDropdown = () => {
     return (
         <Tooltip content={l10n.t('Change view mode')} relationship="label" appearance="inverted" withArrow>
             <Dropdown
+                data-quickstart="view-mode"
                 onOptionSelect={(_event, data) => onOptionSelect(data)}
                 style={{ minWidth: '100px', maxWidth: '100px' }}
                 value={

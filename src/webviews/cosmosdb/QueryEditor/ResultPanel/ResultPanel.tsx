@@ -101,7 +101,12 @@ export const ResultPanel = () => {
     return (
         <section className={styles.root} ref={panelRef} tabIndex={-1} aria-label="Result Panel">
             <ActionBar>
-                <TabList selectedValue={selectedTab} onTabSelect={onTabSelect}>
+                <TabList
+                    selectedValue={selectedTab}
+                    onTabSelect={onTabSelect}
+                    data-quickstart="result-tabs"
+                    style={{ width: 'fit-content' }}
+                >
                     <Tab id="Result" value="result__tab">
                         {l10n.t('Result')}
                     </Tab>

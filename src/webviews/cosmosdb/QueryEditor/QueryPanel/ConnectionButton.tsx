@@ -78,7 +78,7 @@ export const ConnectionButton = (props: ToolbarOverflowItemProps<HTMLDivElement>
 
     if (type === 'button') {
         return (
-            <div ref={ref} style={{ paddingLeft: '8px' }}>
+            <div ref={ref} data-quickstart="connection" style={{ paddingLeft: '8px' }}>
                 <Dropdown
                     style={{ minWidth: '100px', maxWidth: '300px' }}
                     aria-label={l10n.t('Connect to…')}

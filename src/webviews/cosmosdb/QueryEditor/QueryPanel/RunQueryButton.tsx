@@ -74,6 +74,7 @@ const SplitButtonTrigger = memo(
             <Tooltip content={l10n.t('Execute query') + tooltipSuffix} relationship="description" appearance="inverted">
                 <SplitButton
                     ref={ref}
+                    data-quickstart="run-query"
                     aria-label={l10n.t('Execute query')}
                     icon={icon}
                     disabled={isDisabled}

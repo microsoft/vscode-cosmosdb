@@ -73,6 +73,7 @@ export const ExportButton = (props: ToolbarOverflowItemProps<HTMLButtonElement> 
                     >
                         <ToolbarButton
                             ref={ref}
+                            data-quickstart="export-results"
                             aria-label={l10n.t('Export')}
                             icon={<ArrowDownloadRegular />}
                             disabled={!state.isConnected}

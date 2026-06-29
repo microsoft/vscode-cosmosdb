@@ -13,6 +13,7 @@ import {
     type QueryEditorHotkeyScope,
 } from './QueryEditorHotkeys';
 import { QueryPanel } from './QueryPanel/QueryPanel';
+import { QuickStartProvider } from './quickStart/QuickStartProvider';
 import { ResultPanel } from './ResultPanel/ResultPanel';
 import { WithQueryEditorContext } from './state/QueryEditorContext';
 
@@ -33,14 +34,16 @@ export const QueryEditor = () => {
     return (
         <div className={styles.root}>
             <WithQueryEditorContext>
-                <Allotment vertical={true} defaultSizes={[30, 70]}>
-                    <Allotment.Pane minSize={100} maxSize={800} preferredSize={'30%'}>
-                        <QueryPanel />
-                    </Allotment.Pane>
-                    <Allotment.Pane preferredSize={'70%'}>
-                        <ResultPanel />
-                    </Allotment.Pane>
-                </Allotment>
+                <QuickStartProvider>
+                    <Allotment vertical={true} defaultSizes={[30, 70]}>
+                        <Allotment.Pane minSize={100} maxSize={800} preferredSize={'30%'}>
+                            <QueryPanel />
+                        </Allotment.Pane>
+                        <Allotment.Pane preferredSize={'70%'}>
+                            <ResultPanel />
+                        </Allotment.Pane>
+                    </Allotment>
+                </QuickStartProvider>
             </WithQueryEditorContext>
         </div>
     );

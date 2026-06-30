@@ -174,7 +174,7 @@ async function detectDomainMappings(
                 },
                 MAX_TOOL_ROUNDS,
                 token,
-                `Assessment Step 6 (Mapping "${domain.name}")`,
+                'Assessment Step 6 (Domain Mapping)',
 
                 (round, textChunk, isLastRound) => {
                     if (!isLastRound) {
@@ -185,6 +185,9 @@ async function detectDomainMappings(
                 },
                 undefined,
                 mkDebug(mappingStepName),
+                // Domain name is log-only — it never reaches telemetry.
+                undefined,
+                domain.name,
             );
 
             const jsonMatch = fullText.match(/\{[^{}]*"isMapped"[^{}]*\}/);
@@ -515,9 +518,11 @@ export async function runAssessment(ctx: Phase2Context): Promise<void> {
                             },
                             model,
                             token,
-                            `Assessment Step 4 (Split "${domain.name}")`,
+                            'Assessment Step 4 (Domain Split)',
                             undefined,
                             mkDebug(sanitizeStepName(`step4-split-domain-${domain.name}`)),
+                            // Domain name is log-only — it never reaches telemetry.
+                            domain.name,
                         );
 
                         if (splitResult.subDomains && Array.isArray(splitResult.subDomains)) {
@@ -573,6 +578,14 @@ export async function runAssessment(ctx: Phase2Context): Promise<void> {
 
             // ─── Step 5: Cross-Domain Analysis (AI) ───────────────────────
             context.telemetry.properties.lastStep = 'step5.crossDomainAnalysis';
+
+            // Domain names are workspace/user-derived. Mask the full (post-split) set
+            // so they are redacted from any error message or stack captured by this
+            // phase-level `callWithTelemetryAndErrorHandling` on failure.
+            for (const d of domainsWithTokens) {
+                context.valuesToMask.push(d.name);
+            }
+
             await sendPhaseProgress(
                 channel,
                 'Assessment',

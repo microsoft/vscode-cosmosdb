@@ -48,10 +48,24 @@ export function setMigrationTelemetryContext(
         context.telemetry.properties.sourceDbType = dbType;
     }
 
-    // Mask only tenantId — other Azure org info is safe to send as plain text
-    const tenantId = project.phases.targetEnvironment?.tenantId;
-    if (tenantId) {
-        context.valuesToMask.push(tenantId);
+    // OII identifiers are emitted as-is under their predefined property names
+    // (`subscriptionId`, `tenantId`, `accountName`), but they should still be
+    // redacted from any error messages emitted alongside the event.
+    const targetEnv = project.phases.targetEnvironment;
+    if (targetEnv?.tenantId) {
+        context.valuesToMask.push(targetEnv.tenantId);
+    }
+    if (targetEnv?.subscriptionId) {
+        context.valuesToMask.push(targetEnv.subscriptionId);
+    }
+    const targetAccountName =
+        targetEnv?.accountName ||
+        (targetEnv?.endpoint ? extractAccountNameFromEndpoint(targetEnv.endpoint) : undefined);
+    if (targetAccountName) {
+        context.valuesToMask.push(targetAccountName);
+    }
+    if (targetEnv?.resourceGroup) {
+        context.valuesToMask.push(targetEnv.resourceGroup);
     }
 
     // Stamp issueProperties so Report Issue always includes basic migration context
@@ -142,10 +156,33 @@ export function enrichErrorContext(context: IActionContext, error: unknown): voi
         context.telemetry.properties.aiErrorCode = error.code;
         context.errorHandling.issueProperties.errorCategory = 'ai';
         context.errorHandling.issueProperties.aiErrorCode = error.code;
-        if (error.code === 'Unknown' && error.cause) {
-            // Only in telemetry — not in issueProperties to avoid leaking model internals
+        if (error.code === 'Unknown' && error.cause !== undefined && error.cause !== null) {
             const cause = error.cause;
-            context.telemetry.properties.aiErrorCause = cause instanceof Error ? cause.message : JSON.stringify(cause);
+
+            // Bounded: constructor name for Errors, typeof for everything else.
+            // Both come from the JS runtime, not from user/model input.
+            context.telemetry.properties.aiErrorCauseType =
+                cause instanceof Error ? cause.constructor.name : typeof cause;
+
+            // Bounded: a short alphanumeric code if the cause exposes one.
+            // The regex enforces the allowlist — anything else is dropped.
+            const rawCode =
+                (cause as { code?: unknown }).code ??
+                (cause as { name?: unknown }).name ??
+                (cause as { status?: unknown }).status;
+            if (typeof rawCode === 'string' || typeof rawCode === 'number') {
+                const code = String(rawCode);
+                if (/^[A-Za-z0-9_.-]{1,64}$/.test(code)) {
+                    context.telemetry.properties.aiErrorCauseCode = code;
+                }
+            }
+
+            // Intentionally NOT stored: the raw `cause.message`. `issueProperties`
+            // is not a sanctioned PII channel (the same PII/EUII rules as telemetry
+            // apply), and a model error-cause message is unbounded — it may contain
+            // user/model content that `valuesToMask` cannot reliably cover. The
+            // bounded `aiErrorCauseType` / `aiErrorCauseCode` above are sufficient
+            // diagnostics for maintainers.
         }
     } else {
         context.telemetry.properties.errorCategory = 'infrastructure';

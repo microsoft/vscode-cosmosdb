@@ -141,8 +141,10 @@ async function attachEmulatorAccount(env: EmulatorEnv): Promise<void> {
 }
 
 /**
- * Recursively copies a seed project directory into `<workspace>/.cosmosdb-migration`,
- * overwriting any existing content so the command is idempotent.
+ * Deletes `<workspace>/.cosmosdb-migration` so each migration spec starts from a
+ * clean slate. The seed copy (when a fresh project is needed) is performed
+ * separately by {@link seedMigrationProject}. Best-effort: a missing folder is
+ * ignored, which keeps the command idempotent.
  */
 async function resetMigrationFolder(workspacePath: string): Promise<void> {
     const target = vscode.Uri.file(path.join(workspacePath, MIGRATION_FOLDER));

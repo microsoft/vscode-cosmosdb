@@ -43,6 +43,17 @@ function createProject(overrides?: Partial<ProjectJson>): ProjectJson {
     } as ProjectJson;
 }
 
+/**
+ * Builds a {@link vscode.LanguageModelError} the type-safe way: the real
+ * constructor is `(message?, options?: ErrorOptions)` with a readonly `code`,
+ * so set the test `code` afterwards via a cast.
+ */
+function lmError(code: string, cause?: unknown): vscode.LanguageModelError {
+    const err = new vscode.LanguageModelError('ai error', cause === undefined ? undefined : { cause });
+    (err as unknown as { code: string }).code = code;
+    return err;
+}
+
 describe('setMigrationTelemetryContext — runIndex baseline', () => {
     it('stamps runIndex 0 on the first run of a phase', () => {
         const ctx = createContext();
@@ -195,7 +206,7 @@ describe('enrichErrorContext', () => {
 
     it('classifies LanguageModelError as ai and records the code', () => {
         const ctx = createContext();
-        enrichErrorContext(ctx as unknown as IActionContext, new vscode.LanguageModelError('blocked', 'Blocked'));
+        enrichErrorContext(ctx as unknown as IActionContext, lmError('Blocked'));
         expect(ctx.telemetry.properties.errorCategory).toBe('ai');
         expect(ctx.telemetry.properties.aiErrorCode).toBe('Blocked');
         expect(ctx.errorHandling.issueProperties.aiErrorCode).toBe('Blocked');
@@ -204,10 +215,7 @@ describe('enrichErrorContext', () => {
     it('records a bounded cause type and code for Unknown AI errors', () => {
         const ctx = createContext();
         const cause = Object.assign(new TypeError('boom'), { code: 'ECONNRESET' });
-        enrichErrorContext(
-            ctx as unknown as IActionContext,
-            new vscode.LanguageModelError('wrapped', 'Unknown', cause),
-        );
+        enrichErrorContext(ctx as unknown as IActionContext, lmError('Unknown', cause));
         expect(ctx.telemetry.properties.aiErrorCauseType).toBe('TypeError');
         expect(ctx.telemetry.properties.aiErrorCauseCode).toBe('ECONNRESET');
     });
@@ -215,10 +223,7 @@ describe('enrichErrorContext', () => {
     it('drops a cause code that contains PII-like characters (allowlist enforced)', () => {
         const ctx = createContext();
         const cause = Object.assign(new Error('x'), { code: '/Users/alice/secret path' });
-        enrichErrorContext(
-            ctx as unknown as IActionContext,
-            new vscode.LanguageModelError('wrapped', 'Unknown', cause),
-        );
+        enrichErrorContext(ctx as unknown as IActionContext, lmError('Unknown', cause));
         // The cause type is bounded and safe...
         expect(ctx.telemetry.properties.aiErrorCauseType).toBe('Error');
         // ...but the unbounded code must be rejected by the regex allowlist.
@@ -228,10 +233,7 @@ describe('enrichErrorContext', () => {
     it('never stores the raw cause message', () => {
         const ctx = createContext();
         const cause = new Error('user@example.com /secret/path');
-        enrichErrorContext(
-            ctx as unknown as IActionContext,
-            new vscode.LanguageModelError('wrapped', 'Unknown', cause),
-        );
+        enrichErrorContext(ctx as unknown as IActionContext, lmError('Unknown', cause));
         const allValues = [
             ...Object.values(ctx.telemetry.properties),
             ...Object.values(ctx.errorHandling.issueProperties),

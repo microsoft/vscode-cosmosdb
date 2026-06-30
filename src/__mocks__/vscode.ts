@@ -99,14 +99,10 @@ class CancellationError extends Error {
 }
 
 class LanguageModelError extends Error {
-    code: string;
-    constructor(message?: string, code = 'Unknown', cause?: unknown) {
-        super(message);
+    code = 'Unknown';
+    constructor(message?: string, options?: ErrorOptions) {
+        super(message, options);
         this.name = 'LanguageModelError';
-        this.code = code;
-        if (cause !== undefined) {
-            (this as { cause?: unknown }).cause = cause;
-        }
     }
 }
 

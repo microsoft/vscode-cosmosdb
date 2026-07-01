@@ -33,6 +33,11 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { CosmosDbChatParticipant, registerSampleDataTool } from './chat';
 import { registerE2eTestCommands } from './commands/e2eTestCommands/registerE2eTestCommands';
+import {
+    affectsMigrationFeatureSetting,
+    isMigrationFeatureEnabled,
+    MIGRATION_ENABLED_CONTEXT_KEY,
+} from './commands/migration/migrationFeatureFlag';
 import { registerCommands } from './commands/registerCommands';
 import { type FabricArtifactType } from './constants';
 import { cleanupLLMInstructionsFiles } from './cosmosdb/commands/cleanupLLMInstructionsFiles';
@@ -80,6 +85,7 @@ export async function activateInternal(
     return callWithTelemetryAndErrorHandling('cosmosDB.activate', async (activateContext: IActionContext) => {
         activateContext.telemetry.properties.isActivationEvent = 'true';
         activateContext.telemetry.measurements.startTime = startTime;
+        activateContext.telemetry.properties.migrationFeatureEnabled = String(isMigrationFeatureEnabled());
 
         // eslint-disable-next-line no-restricted-syntax
         if (vscode.l10n.uri) {
@@ -123,7 +129,9 @@ export async function activateInternal(
 
         registerCommands();
 
-        // Register dev-only quality test command when in debug mode
+        // Mirror the experimental migration feature toggle into a context key so package.json
+        // `when` clauses can show/hide the migration commands. Kept in sync on config change below.
+        void vscode.commands.executeCommand('setContext', MIGRATION_ENABLED_CONTEXT_KEY, isMigrationFeatureEnabled());
         if (context.extensionMode === vscode.ExtensionMode.Development) {
             void vscode.commands.executeCommand('setContext', 'cosmosDB.devMode', true);
             const { registerNl2QueryQualityTestCommand } = await import('./commands/nl2queryQualityTest');
@@ -152,6 +160,19 @@ export async function activateInternal(
 
                 if (event.affectsConfiguration('telemetry.feedback.enabled')) {
                     Array.from(QueryEditorTab.openTabs).forEach((tab) => tab.refreshSurveyFeedbackVisibility());
+                }
+
+                if (affectsMigrationFeatureSetting(event)) {
+                    const migrationEnabled = isMigrationFeatureEnabled();
+                    // Update the context key (toggles command/menu visibility) and refresh the
+                    // workspace tree so the Cosmos DB Migrations node appears/disappears live.
+                    await vscode.commands.executeCommand('setContext', MIGRATION_ENABLED_CONTEXT_KEY, migrationEnabled);
+                    ext.sharedWorkspaceResourceProvider?.refresh();
+                    await callWithTelemetryAndErrorHandling('cosmosDB.migration.featureToggle', (toggleContext) => {
+                        toggleContext.errorHandling.suppressDisplay = true;
+                        toggleContext.errorHandling.rethrow = false;
+                        toggleContext.telemetry.properties.enabled = String(migrationEnabled);
+                    });
                 }
             },
         );
@@ -256,7 +277,9 @@ function registerAzureResourcesProviders(_context: vscode.ExtensionContext): api
                 AzExtResourceType.PostgresqlServersFlexible,
                 ext.cosmosDBBranchDataProvider,
             );
-            ext.rgApiV2.resources.registerWorkspaceResourceProvider(new SharedWorkspaceResourceProvider());
+            ext.sharedWorkspaceResourceProvider = new SharedWorkspaceResourceProvider();
+            _context.subscriptions.push(ext.sharedWorkspaceResourceProvider);
+            ext.rgApiV2.resources.registerWorkspaceResourceProvider(ext.sharedWorkspaceResourceProvider);
             ext.rgApiV2.resources.registerWorkspaceResourceBranchDataProvider(
                 WorkspaceResourceType.AttachedAccounts,
                 ext.cosmosDBWorkspaceBranchDataProvider,

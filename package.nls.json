@@ -67,5 +67,6 @@
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "The Client ID of the Managed Identity to use when authenticating with Entra ID using a User-assigned Managed Identity.",
   "cosmosdb.configuration.manage-llm-assets": "Manage LLM assets. Allow the extension to keep LLM-related files updated.",
   "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "When enabled, schema generation also considers query results to infer the container schema.",
-  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Experimental) Show token usage estimates in the Migration Assistant UI."
+  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Experimental) Show token usage estimates in the Migration Assistant UI.",
+  "cosmosdb.configuration.experimental.migration.enabled": "(Experimental) Enable the Cosmos DB Migration (Preview) feature. When disabled, the Cosmos DB Migrations node and its commands are hidden."
 }

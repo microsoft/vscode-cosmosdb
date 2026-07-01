@@ -772,7 +772,7 @@
         {
           "//": "[Migration] Remove migration",
           "command": "cosmosDB.migration.remove",
-          "when": "view =~ /azureWorkspace/ && viewItem =~ /treeitem[.]migration(?![a-z.\\/])/i",
+          "when": "cosmosDB.migration.enabled && view =~ /azureWorkspace/ && viewItem =~ /treeitem[.]migration(?![a-z.\\/])/i",
           "group": "1@1"
         }
       ],
@@ -783,21 +783,25 @@
         },
         {
           "command": "cosmosDB.migration.openExisting",
-          "when": "explorerResourceIsFolder && resourceFilename == .cosmosdb-migration",
+          "when": "cosmosDB.migration.enabled && explorerResourceIsFolder && resourceFilename == .cosmosdb-migration",
           "group": "navigation"
         },
         {
           "command": "cosmosDB.migration.openExisting",
-          "when": "explorerResourceIsFolder && resourceDirname =~ /\\.cosmosdb-migration$/",
+          "when": "cosmosDB.migration.enabled && explorerResourceIsFolder && resourceDirname =~ /\\.cosmosdb-migration$/",
           "group": "navigation"
         },
         {
           "command": "cosmosDB.migration.openExisting",
-          "when": "resourceFilename == project.json && resourceDirname =~ /\\.cosmosdb-migration$/",
+          "when": "cosmosDB.migration.enabled && resourceFilename == project.json && resourceDirname =~ /\\.cosmosdb-migration$/",
           "group": "navigation"
         }
       ],
       "commandPalette": [
+        {
+          "command": "cosmosDB.migration.open",
+          "when": "cosmosDB.migration.enabled"
+        },
         {
           "command": "azureDatabases.refresh",
           "when": "never"
@@ -947,6 +951,14 @@
             "type": "boolean",
             "default": false,
             "markdownDescription": "%cosmosdb.configuration.experimental.migration.showTokenEstimate%",
+            "tags": [
+              "experimental"
+            ]
+          },
+          "cosmosDB.experimental.migration.enabled": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "%cosmosdb.configuration.experimental.migration.enabled%",
             "tags": [
               "experimental"
             ]

@@ -67,5 +67,6 @@
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "L'identifiant client de l'identité gérée à utiliser lors de l'authentification avec Entra ID à l'aide d'une identité gérée attribuée par l'utilisateur.",
   "cosmosdb.configuration.manage-llm-assets": "Gérer les actifs LLM. Autoriser l'extension à maintenir à jour les fichiers liés au LLM.",
   "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "Lorsqu'elle est activée, la génération de schéma prend également en compte les résultats des requêtes pour déduire le schéma du conteneur.",
-  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Expérimental) Affichez les estimations d’utilisation des jetons dans l’interface utilisateur de l’Assistant Migration."
+  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Expérimental) Affichez les estimations d’utilisation des jetons dans l’interface utilisateur de l’Assistant Migration.",
+  "cosmosdb.configuration.experimental.migration.enabled": "(Experimental) Enable the Cosmos DB Migration (Preview) feature. When disabled, the Cosmos DB Migrations node and its commands are hidden."
 }

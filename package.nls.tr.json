@@ -67,5 +67,6 @@
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "Kullanıcı tarafından atanan Yönetilen Kimlik kullanılarak Entra ID ile kimlik doğrulama yaparken kullanılacak Yönetilen Kimliğin İstemci Kimliği.",
   "cosmosdb.configuration.manage-llm-assets": "LLM varlıklarını yönetin. Uzantının LLM ile ilgili dosyaları güncel tutmasını sağlar.",
   "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "Etkinleştirildiğinde, şema oluşturma kapsayıcı şemasını çıkarsamak için sorgu sonuçlarını da dikkate alır.",
-  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Deneysel) Migration Assistant kullanıcı arabiriminde belirteç kullanım tahminlerini göster."
+  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Deneysel) Migration Assistant kullanıcı arabiriminde belirteç kullanım tahminlerini göster.",
+  "cosmosdb.configuration.experimental.migration.enabled": "(Experimental) Enable the Cosmos DB Migration (Preview) feature. When disabled, the Cosmos DB Migrations node and its commands are hidden."
 }

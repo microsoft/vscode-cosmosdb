@@ -67,5 +67,6 @@
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "사용자가 할당한 관리 ID를 사용하여 Entra ID로 인증할 때 사용할 관리 ID의 클라이언트 ID입니다.",
   "cosmosdb.configuration.manage-llm-assets": "LLM 자산을 관리합니다. 확장에서 LLM 관련 파일을 업데이트된 상태로 유지하도록 허용합니다.",
   "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "이 기능을 활성화하면 스키마 생성에서 쿼리 결과도 고려하여 컨테이너 스키마를 유추합니다.",
-  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(실험적) Migration Assistant UI에 토큰 사용량 예상값을 표시합니다."
+  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(실험적) Migration Assistant UI에 토큰 사용량 예상값을 표시합니다.",
+  "cosmosdb.configuration.experimental.migration.enabled": "(Experimental) Enable the Cosmos DB Migration (Preview) feature. When disabled, the Cosmos DB Migrations node and its commands are hidden."
 }

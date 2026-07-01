@@ -87,6 +87,41 @@ const useStyles = makeStyles({
         gap: '10px',
         boxSizing: 'border-box',
     },
+    previewRail: {
+        // Zero-height sticky rail that carries the floating Preview chip. With no height (only a
+        // negative margin to cancel the column gap) it sits exactly at the panel's top edge and
+        // does not move the panel below it. Stays pinned to the top while the assistant scrolls.
+        position: 'sticky',
+        top: 0,
+        zIndex: 10,
+        alignSelf: 'stretch',
+        height: 0,
+        marginBottom: '-10px',
+        display: 'flex',
+        justifyContent: 'flex-end',
+        pointerEvents: 'none',
+    },
+    previewBadge: {
+        // 8px from the panel's top and right borders (the rail's origin is the panel's top-right).
+        pointerEvents: 'auto',
+        marginTop: '8px',
+        marginRight: '8px',
+        cursor: 'default',
+        height: '32px',
+        paddingLeft: '20px',
+        paddingRight: '20px',
+        borderRadius: '6px',
+        fontWeight: 600,
+        // Lighter background + subtle panel-colored border + shadow so it reads as a floating chip.
+        backgroundColor: 'var(--vscode-editorWidget-background)',
+        color: 'var(--vscode-foreground)',
+        border: '1px solid var(--vscode-panel-border)',
+        boxShadow: '0 2px 8px var(--vscode-widget-shadow)',
+        '&:focus-visible': {
+            outline: '2px solid var(--vscode-focusBorder)',
+            outlineOffset: '1px',
+        },
+    },
     configSection: {
         display: 'flex',
         flexDirection: 'column',
@@ -988,6 +1023,24 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
 
     return (
         <div className={styles.root}>
+            {/* Floating Preview chip — pinned to the panel's top-right corner; stays put on scroll. */}
+            <div className={styles.previewRail}>
+                <Tooltip
+                    content={l10n.t('Preview: features and behavior may change. Use with care.')}
+                    relationship="description"
+                >
+                    <Badge
+                        appearance="outline"
+                        color="informative"
+                        className={styles.previewBadge}
+                        tabIndex={0}
+                        aria-label={l10n.t('Preview')}
+                    >
+                        <span aria-hidden="true">{l10n.t('Preview')}</span>
+                    </Badge>
+                </Tooltip>
+            </div>
+
             {/* Configuration Section */}
             <div className={styles.configSection}>
                 <Text size={400} weight="semibold">

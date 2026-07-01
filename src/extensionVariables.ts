@@ -10,6 +10,7 @@ import type * as vscode from 'vscode';
 import { type DatabasesFileSystem } from './DatabasesFileSystem';
 import { type CosmosDBBranchDataProvider } from './tree/azure-resources-view/cosmosdb/CosmosDBBranchDataProvider';
 import { type FabricTreeNodeProvider } from './tree/fabric-resources-view/FabricTreeNodeProvider';
+import { type SharedWorkspaceResourceProvider } from './tree/workspace-api/SharedWorkspaceResourceProvider';
 import { type CosmosDBWorkspaceBranchDataProvider } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceBranchDataProvider';
 import { type CosmosDBWorkspaceItem } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceItem';
 import { type MigrationWorkspaceBranchDataProvider } from './tree/workspace-view/migration/MigrationWorkspaceBranchDataProvider';
@@ -89,6 +90,9 @@ class ExtensionService {
     // — Optional fields — getter returns undefined before activate() —————————————
     private readonly _isBundle = optional<boolean>('isBundle');
     private readonly _fabricServices = optional<IFabricExtensionServiceCollection>('fabricServices');
+    private readonly _sharedWorkspaceResourceProvider = optional<SharedWorkspaceResourceProvider>(
+        'sharedWorkspaceResourceProvider',
+    );
 
     // — Getters / setters ————————————————————————————————————————————————————————
     get context() {
@@ -183,6 +187,13 @@ class ExtensionService {
     }
     set fabricServices(v) {
         this._fabricServices.set(v);
+    }
+
+    get sharedWorkspaceResourceProvider() {
+        return this._sharedWorkspaceResourceProvider.get();
+    }
+    set sharedWorkspaceResourceProvider(v) {
+        this._sharedWorkspaceResourceProvider.set(v);
     }
 
     // isAIFeaturesEnabled is a plain mutable field (declared above)

@@ -29,10 +29,11 @@ export function setMigrationTelemetryContext(
 
     if (phase) {
         context.telemetry.properties.phase = phase;
-        const runIndex = project.runCounts?.[phase];
-        if (runIndex !== undefined) {
-            context.telemetry.measurements.runIndex = runIndex;
-        }
+        // Stamp a 0-based run index on every phase event so dashboards have a
+        // first-run baseline: 0 = first run, 1 = first re-run, …
+        // `incrementRunCount` bumps `runCounts[phase]` *after* this stamp, so the
+        // current run index is the number of prior runs (`undefined` → 0).
+        context.telemetry.measurements.runIndex = project.runCounts?.[phase] ?? 0;
 
         // Check whether this phase has custom instructions set
         const hasCustomInstructions = getHasCustomInstructions(project, phase);

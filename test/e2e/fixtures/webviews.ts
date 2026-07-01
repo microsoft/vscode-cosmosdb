@@ -188,8 +188,9 @@ export async function setMockGenerateQueryError(page: Page): Promise<void> {
 /**
  * Installs a mock that makes the `generateQuery` tRPC mutation emit a
  * `confirmToolInvocation` event (rendering the Allow/Deny banner) and then
- * wait for user response. On Allow the mock returns a generated query; on
- * Deny it returns `{ generatedQuery: false }`. Call this BEFORE submitting.
+ * wait for user response. Allow and Deny both resume generation and return the
+ * generated query — Deny only skips the schema-sampling step. Call this BEFORE
+ * submitting.
  */
 export async function setMockGenerateQueryConfirm(page: Page): Promise<void> {
     await runCommand(page, 'Cosmos DB: [E2E Test] Set Mock Generate Query (Confirm)');

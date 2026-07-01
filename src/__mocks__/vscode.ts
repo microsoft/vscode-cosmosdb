@@ -43,6 +43,10 @@ class LanguageModelToolResultPart {
     ) {}
 }
 
+class LanguageModelToolResult {
+    constructor(public content: unknown) {}
+}
+
 const LanguageModelChatMessageRole = { User: 1, Assistant: 2 };
 
 // Mirror the real API: string input is normalized to a LanguageModelTextPart[]
@@ -92,6 +96,7 @@ class CancellationTokenSource {
 vsCodeMock.LanguageModelTextPart ??= LanguageModelTextPart;
 vsCodeMock.LanguageModelToolCallPart ??= LanguageModelToolCallPart;
 vsCodeMock.LanguageModelToolResultPart ??= LanguageModelToolResultPart;
+vsCodeMock.LanguageModelToolResult ??= LanguageModelToolResult;
 vsCodeMock.LanguageModelChatMessageRole ??= LanguageModelChatMessageRole;
 vsCodeMock.LanguageModelChatMessage ??= LanguageModelChatMessage;
 vsCodeMock.CancellationTokenSource ??= CancellationTokenSource;

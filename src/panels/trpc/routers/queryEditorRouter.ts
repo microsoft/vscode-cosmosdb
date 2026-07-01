@@ -67,8 +67,9 @@ const DEFAULT_PRIORITY_LEVEL: PriorityLevel = 'Low' as PriorityLevel;
  * confirmation flow remains overridden:
  *
  * - `type: 'confirm'` — the mutation emits a `confirmToolInvocation` event, waits
- *   for the user to allow/deny, then returns `{ generatedQuery }` on allow or
- *   `{ generatedQuery: false }` on deny.
+ *   for the user to allow/deny, then returns `{ generatedQuery }` either way.
+ *   Allow and Deny both resume generation; Deny only skips the schema-sampling
+ *   step, mirroring the real service's agentic loop.
  */
 export type E2eGenerateQueryOverride = { type: 'confirm'; confirmMessage: string; generatedQuery: string };
 
@@ -671,13 +672,14 @@ export const queryEditorRouterDef = queryEditorRouter({
             if (e2eGenerateQueryOverride?.type === 'confirm') {
                 const override = e2eGenerateQueryOverride;
                 ctx.eventSink.emit({ type: 'confirmToolInvocation', message: override.confirmMessage });
-                const confirmed = await new Promise<boolean>((resolve) => {
+                // Wait for the user's Allow/Deny. Both resume generation — Deny
+                // only skips the schema-sampling step — so either way we return
+                // the generated query, mirroring the real service's agentic loop
+                // (see `generateQueryWithLLM`).
+                await new Promise<boolean>((resolve) => {
                     ctx.state.pendingConfirmResolve = resolve;
                 });
-                if (confirmed) {
-                    return { generatedQuery: override.generatedQuery };
-                }
-                return { generatedQuery: false as const };
+                return { generatedQuery: override.generatedQuery };
             }
             // ─── End E2E schema-tool confirm override ───────────────────
 

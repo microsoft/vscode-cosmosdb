@@ -32,7 +32,9 @@ import {
  *   1. Model switcher — with two fake Copilot models injected, the model
  *      `Combobox` lists both and updates the displayed selection when changed.
  *   2. Schema tool    — the Allow/Deny confirmation dialog rendered mid-
- *      generation, and that Allow inserts the query while Deny cancels.
+ *      generation. Allow and Deny behave the same from the UI's perspective:
+ *      both resume generation and insert the query. Deny only skips the schema-
+ *      sampling step (verified in `CosmosDbOperationsService.test.ts`).
  *   3. Generation     — a successful generation inserts the query text into the
  *      editor, and a failed generation surfaces an error MessageBar. Both drive
  *      the real `generateQueryWithLLM` service via a route-aware mock language
@@ -126,9 +128,9 @@ test.describe('generate query input', () => {
         await expect(combobox).toHaveValue(MOCK_MODELS[0]);
 
         await combobox.click();
-        for (const name of MOCK_MODELS) {
-            await expect(webview.getByRole('option', { name, exact: true })).toBeVisible();
-        }
+        await Promise.all(
+            MOCK_MODELS.map((name) => expect(webview.getByRole('option', { name, exact: true })).toBeVisible()),
+        );
 
         await webview.getByRole('option', { name: MOCK_MODELS[1], exact: true }).click();
         await expect(combobox).toHaveValue(MOCK_MODELS[1]);
@@ -156,6 +158,9 @@ test.describe('generate query input', () => {
         await expect(allowButton).toBeVisible();
         await expect(denyButton).toBeVisible();
 
+        // Note: whether Allow actually executes the schema tool is covered by
+        // `CosmosDbOperationsService.test.ts` (this spec asserts only the UI).
+
         // Allowing schema access resumes generation; the query is returned and inserted.
         await allowButton.click();
         await expect(confirmDialog).toBeHidden({ timeout: 10_000 });
@@ -174,7 +179,7 @@ test.describe('generate query input', () => {
         await clearMockGenerateQueryResult(vscodeWindow);
     });
 
-    test('schema tool confirmation dialog Deny cancels generation', async ({ vscodeWindow }) => {
+    test('schema tool confirmation dialog Deny skips sampling but still generates', async ({ vscodeWindow }) => {
         await setMockGenerateQueryConfirm(vscodeWindow);
 
         const webview = await openGenerateInput(vscodeWindow);
@@ -188,10 +193,24 @@ test.describe('generate query input', () => {
         const confirmDialog = webview.locator('[role="alertdialog"]');
         await expect(confirmDialog).toBeVisible({ timeout: 15_000 });
 
-        // Denying schema access ends generation without inserting a query.
+        // Note: whether Deny actually skips the schema tool is covered by
+        // `CosmosDbOperationsService.test.ts` (this spec asserts only the UI).
+
+        // Denying schema access only skips sampling; generation continues and the
+        // query is still returned and inserted (same UI outcome as Allow).
         await confirmDialog.getByRole('button', { name: 'Deny', exact: true }).click();
         await expect(confirmDialog).toBeHidden({ timeout: 10_000 });
-        await expect(webview.locator('text=SELECT * FROM c WHERE c.price < 20')).toHaveCount(0);
+        await expect
+            .poll(
+                () =>
+                    webview
+                        .locator('text=SELECT * FROM c WHERE c.price < 20')
+                        .first()
+                        .isVisible()
+                        .catch(() => false),
+                { timeout: 15_000 },
+            )
+            .toBe(true);
 
         await clearMockGenerateQueryResult(vscodeWindow);
     });

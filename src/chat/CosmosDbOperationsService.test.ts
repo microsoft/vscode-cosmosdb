@@ -861,6 +861,118 @@ describe('CosmosDbOperationsService', () => {
 
             expect(onProgress).toHaveBeenCalledWith(expect.stringContaining('Generating query'));
         });
+
+        it('executes the schema-sampling tool on Allow and returns the generated query', async () => {
+            const { getSelectedModel } = vi.mocked(await import('../utils/aiUtils'));
+            const { stripCodeFences } = vi.mocked(await import('../utils/sanitization'));
+            const { callWithTelemetryAndErrorHandling } = vi.mocked(await import('@microsoft/vscode-azext-utils'));
+            const { sampleAndPersistContainerSchema } = vi.mocked(await import('./sampleDataTool'));
+            const { buildChatMessages } = vi.mocked(await import('./chatUtils'));
+
+            callWithTelemetryAndErrorHandling.mockImplementation(async (_name: string, callback: any) =>
+                callback({ errorHandling: {}, telemetry: { properties: {}, measurements: {} } }),
+            );
+            stripCodeFences.mockImplementation((s: string) => s);
+            // The agentic loop pushes tool-call / tool-result messages onto this array.
+            buildChatMessages.mockReturnValue([] as any);
+            sampleAndPersistContainerSchema.mockResolvedValue({
+                databaseId: 'db',
+                containerId: 'c',
+                sampleQuery: QUERY_SELECT_TOP_10,
+                documentCount: 3,
+                schema: { id: 'string' },
+                requestCharge: 2.5,
+            } as any);
+
+            // Round 1 streams a schema-sampling tool call; round 2 streams the final query.
+            const round1 = (async function* () {
+                yield new vscode.LanguageModelToolCallPart('call-1', 'cosmosdb_sampleContainerSchema', {});
+            })();
+            const round2 = (async function* () {
+                yield new vscode.LanguageModelTextPart(QUERY_SELECT_ACTIVE);
+            })();
+            const sendRequest = vi
+                .fn()
+                .mockResolvedValueOnce({ stream: round1 })
+                .mockResolvedValueOnce({ stream: round2 });
+            getSelectedModel.mockResolvedValue({
+                sendRequest,
+                countTokens: vi.fn().mockResolvedValue(10),
+                name: 'test-model',
+                family: 'test-family',
+                id: 'test-id',
+                maxInputTokens: 4096,
+            } as any);
+
+            const onConfirm = vi.fn().mockResolvedValue(true);
+            const result = await service.generateQueryWithLLM('find active items', '', {
+                connection: { databaseId: 'db', containerId: 'c' } as any,
+                onConfirm,
+            });
+
+            expect(onConfirm).toHaveBeenCalledTimes(1);
+            expect(sampleAndPersistContainerSchema).toHaveBeenCalledTimes(1);
+            // Two rounds: the tool-call round, then the final answer round.
+            expect(sendRequest).toHaveBeenCalledTimes(2);
+            expect(typeof result).toBe('string');
+            expect(result as string).toContain(QUERY_SELECT_ACTIVE);
+            // The schema-sampling comment is prepended only when the tool executed.
+            expect(result as string).toContain('Schema sampling tool was executed');
+        });
+
+        it('skips the schema-sampling tool on Deny but still generates a query', async () => {
+            const { getSelectedModel } = vi.mocked(await import('../utils/aiUtils'));
+            const { stripCodeFences } = vi.mocked(await import('../utils/sanitization'));
+            const { callWithTelemetryAndErrorHandling } = vi.mocked(await import('@microsoft/vscode-azext-utils'));
+            const { sampleAndPersistContainerSchema } = vi.mocked(await import('./sampleDataTool'));
+            const { buildChatMessages } = vi.mocked(await import('./chatUtils'));
+
+            callWithTelemetryAndErrorHandling.mockImplementation(async (_name: string, callback: any) =>
+                callback({ errorHandling: {}, telemetry: { properties: {}, measurements: {} } }),
+            );
+            stripCodeFences.mockImplementation((s: string) => s);
+            // The agentic loop pushes tool-call / tool-result messages onto this array.
+            buildChatMessages.mockReturnValue([] as any);
+            // Mocks aren't auto-cleared between tests — reset the call history so
+            // the "not called" assertion below only counts this test's calls.
+            sampleAndPersistContainerSchema.mockClear();
+
+            // Round 1 streams a schema-sampling tool call; round 2 streams the final query.
+            const round1 = (async function* () {
+                yield new vscode.LanguageModelToolCallPart('call-1', 'cosmosdb_sampleContainerSchema', {});
+            })();
+            const round2 = (async function* () {
+                yield new vscode.LanguageModelTextPart(QUERY_SELECT_ACTIVE);
+            })();
+            const sendRequest = vi
+                .fn()
+                .mockResolvedValueOnce({ stream: round1 })
+                .mockResolvedValueOnce({ stream: round2 });
+            getSelectedModel.mockResolvedValue({
+                sendRequest,
+                countTokens: vi.fn().mockResolvedValue(10),
+                name: 'test-model',
+                family: 'test-family',
+                id: 'test-id',
+                maxInputTokens: 4096,
+            } as any);
+
+            const onConfirm = vi.fn().mockResolvedValue(false);
+            const result = await service.generateQueryWithLLM('find active items', '', {
+                connection: { databaseId: 'db', containerId: 'c' } as any,
+                onConfirm,
+            });
+
+            expect(onConfirm).toHaveBeenCalledTimes(1);
+            // Deny only skips sampling — the tool must not run.
+            expect(sampleAndPersistContainerSchema).not.toHaveBeenCalled();
+            // Generation continues: a second round runs and produces the query.
+            expect(sendRequest).toHaveBeenCalledTimes(2);
+            expect(typeof result).toBe('string');
+            expect(result as string).toContain(QUERY_SELECT_ACTIVE);
+            // No schema-sampling comment because sampling was skipped.
+            expect(result as string).not.toContain('Schema sampling tool was executed');
+        });
     });
 
     describe('simplifySchemaForLLM (via formatQueryHistoryForLLM)', () => {

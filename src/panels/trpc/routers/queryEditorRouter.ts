@@ -53,23 +53,24 @@ const SELECTED_MODEL_KEY = 'ms-azuretools.vscode-cosmosdb.selectedModel';
 const PRIORITY_LEVEL_KEY = 'ms-azuretools.vscode-cosmosdb.priorityLevel';
 const DEFAULT_PRIORITY_LEVEL: PriorityLevel = 'Low' as PriorityLevel;
 
-// ─── Test-only generate query override (e2e) ────────────────────────
+// ─── Test-only generate query confirm override (e2e) ────────────────
 
 /**
- * Describes a mock response for the `generateQuery` mutation. Set exclusively
- * by the `cosmosDB.e2e.setMockGenerateQueryResult` command (registered only
- * when `COSMOSDB_E2E_TEST=1`).
+ * Describes the schema-tool confirmation mock for the `generateQuery` mutation.
+ * Set exclusively by the `cosmosDB.e2e.setMockGenerateQueryConfirm` command
+ * (registered only when `COSMOSDB_E2E_TEST=1`).
  *
- * - `type: 'success'` — the mutation returns `{ generatedQuery }`.
- * - `type: 'error'` — the mutation returns `{ generatedQuery: false, errorMessage }`.
+ * The success and error paths are no longer bypassed here — they run through the
+ * real `generateQueryWithLLM` service driven by a route-aware mock language model
+ * (see `setE2eGenerateQueryRoute` in
+ * `../../../commands/e2eTestCommands/generateQueryMockModel`). Only the
+ * confirmation flow remains overridden:
+ *
  * - `type: 'confirm'` — the mutation emits a `confirmToolInvocation` event, waits
  *   for the user to allow/deny, then returns `{ generatedQuery }` on allow or
  *   `{ generatedQuery: false }` on deny.
  */
-export type E2eGenerateQueryOverride =
-    | { type: 'success'; generatedQuery: string }
-    | { type: 'error'; errorMessage: string }
-    | { type: 'confirm'; confirmMessage: string; generatedQuery: string };
+export type E2eGenerateQueryOverride = { type: 'confirm'; confirmMessage: string; generatedQuery: string };
 
 let e2eGenerateQueryOverride: E2eGenerateQueryOverride | undefined;
 
@@ -659,26 +660,26 @@ export const queryEditorRouterDef = queryEditorRouter({
     generateQuery: queryEditorProcedure
         .input(z.object({ prompt: z.string(), currentQuery: z.string() }))
         .mutation(async ({ input, ctx }) => {
-            // ─── E2E test override ──────────────────────────────────────
-            if (e2eGenerateQueryOverride) {
+            // ─── E2E schema-tool confirm override ───────────────────────
+            // The success and error paths are exercised through the real
+            // `generateQueryWithLLM` service, driven by a route-aware mock model
+            // (see `setE2eGenerateQueryRoute` in
+            // `commands/e2eTestCommands/generateQueryMockModel`). Only the
+            // schema-tool confirmation dialog stays bypassed here, because driving
+            // the real agentic tool loop headlessly would require a live emulator
+            // connection.
+            if (e2eGenerateQueryOverride?.type === 'confirm') {
                 const override = e2eGenerateQueryOverride;
-                if (override.type === 'error') {
-                    return { generatedQuery: false as const, errorMessage: override.errorMessage };
+                ctx.eventSink.emit({ type: 'confirmToolInvocation', message: override.confirmMessage });
+                const confirmed = await new Promise<boolean>((resolve) => {
+                    ctx.state.pendingConfirmResolve = resolve;
+                });
+                if (confirmed) {
+                    return { generatedQuery: override.generatedQuery };
                 }
-                if (override.type === 'confirm') {
-                    ctx.eventSink.emit({ type: 'confirmToolInvocation', message: override.confirmMessage });
-                    const confirmed = await new Promise<boolean>((resolve) => {
-                        ctx.state.pendingConfirmResolve = resolve;
-                    });
-                    if (confirmed) {
-                        return { generatedQuery: override.generatedQuery };
-                    }
-                    return { generatedQuery: false as const };
-                }
-                // type === 'success'
-                return { generatedQuery: override.generatedQuery };
+                return { generatedQuery: false as const };
             }
-            // ─── End E2E test override ──────────────────────────────────
+            // ─── End E2E schema-tool confirm override ───────────────────
 
             const isRetry = ctx.state.lastGenerationFailed;
             if (ctx.actionContext) {

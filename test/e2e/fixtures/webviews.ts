@@ -162,9 +162,11 @@ export async function setSurveyCandidate(page: Page): Promise<void> {
 }
 
 /**
- * Installs a mock that makes the `generateQuery` tRPC mutation return a
- * successful query (`SELECT * FROM c WHERE c.price < 20`) without calling
- * the real LLM. Call this BEFORE submitting a prompt.
+ * Routes the mock language model down its success branch so the `generateQuery`
+ * tRPC mutation runs through the real `generateQueryWithLLM` service and returns
+ * a query (`SELECT * FROM c WHERE c.price < 20`). Requires the mock models to be
+ * installed first (see {@link setMockLanguageModels}). Call this BEFORE
+ * submitting a prompt.
  */
 export async function setMockGenerateQuerySuccess(page: Page): Promise<void> {
     await runCommand(page, 'Cosmos DB: [E2E Test] Set Mock Generate Query (Success)');
@@ -172,9 +174,11 @@ export async function setMockGenerateQuerySuccess(page: Page): Promise<void> {
 }
 
 /**
- * Installs a mock that makes the `generateQuery` tRPC mutation return an error
- * message (simulating a `QueryGenerationRefusedError`) without calling the
- * real LLM. Call this BEFORE submitting a prompt.
+ * Routes the mock language model down its error branch so the real
+ * `generateQueryWithLLM` service parses an `ERROR:`-prefixed response into a
+ * `QueryGenerationRefusedError`, surfacing the error UI path. Requires the mock
+ * models to be installed first (see {@link setMockLanguageModels}). Call this
+ * BEFORE submitting a prompt.
  */
 export async function setMockGenerateQueryError(page: Page): Promise<void> {
     await runCommand(page, 'Cosmos DB: [E2E Test] Set Mock Generate Query (Error)');
@@ -193,7 +197,8 @@ export async function setMockGenerateQueryConfirm(page: Page): Promise<void> {
 }
 
 /**
- * Clears any mock generate-query override so it can't leak into other specs.
+ * Clears the generate-query overrides (both the route-aware mock model selection
+ * and the confirm override) so nothing leaks into other specs.
  */
 export async function clearMockGenerateQueryResult(page: Page): Promise<void> {
     await runCommand(page, 'Cosmos DB: [E2E Test] Clear Mock Generate Query Result');

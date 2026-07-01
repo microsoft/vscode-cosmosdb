@@ -34,7 +34,12 @@ import {
  *   2. Schema tool    — the Allow/Deny confirmation dialog rendered mid-
  *      generation, and that Allow inserts the query while Deny cancels.
  *   3. Generation     — a successful generation inserts the query text into the
- *      editor, and a failed generation surfaces an error MessageBar.
+ *      editor, and a failed generation surfaces an error MessageBar. Both drive
+ *      the real `generateQueryWithLLM` service via a route-aware mock language
+ *      model (see `setE2eGenerateQueryRoute` in
+ *      `src/commands/e2eTestCommands/generateQueryMockModel.ts`): the `success`
+ *      route streams back a query, the `error` route streams back an
+ *      `ERROR:`-prefixed refusal.
  *
  * Mocking the Copilot call
  * ------------------------
@@ -192,6 +197,8 @@ test.describe('generate query input', () => {
     });
 
     test('successful query generation inserts text into editor', async ({ vscodeWindow }) => {
+        // Routes the mock language model down its success branch; the real
+        // `generateQueryWithLLM` service returns the query, which is inserted.
         await setMockGenerateQuerySuccess(vscodeWindow);
 
         const webview = await openGenerateInput(vscodeWindow);
@@ -220,6 +227,9 @@ test.describe('generate query input', () => {
     });
 
     test('error from query generation shows error message bar', async ({ vscodeWindow }) => {
+        // Routes the mock language model down its error branch; the real
+        // `generateQueryWithLLM` service parses the `ERROR:`-prefixed response
+        // into a `QueryGenerationRefusedError`, surfacing the error MessageBar.
         await setMockGenerateQueryError(vscodeWindow);
 
         const webview = await openGenerateInput(vscodeWindow);

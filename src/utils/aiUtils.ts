@@ -14,6 +14,7 @@ import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
+import { createMockLanguageModel, setMockRoute, type CreateMockLanguageModelOptions } from './languageModelMockUtils';
 import { SELECTED_MODEL_KEY } from './modelUtils';
 
 /**
@@ -43,10 +44,96 @@ let e2eModelOverride: readonly AvailableModelDescriptor[] | undefined;
 
 /**
  * Installs (or, with `undefined`, clears) the {@link e2eModelOverride}.
- * Intended for e2e test commands only.
+ * Intended for e2e test commands only. Clearing also drops the cached mock
+ * model instances and resets the mock resolver/route so nothing leaks into a
+ * later run.
  */
 export function setE2eModelOverride(models: readonly AvailableModelDescriptor[] | undefined): void {
     e2eModelOverride = models;
+    if (!models) {
+        e2eMockModelCache.clear();
+        e2eMockResponseResolver = INERT_MOCK_RESOLVER;
+        e2eMockRoute = undefined;
+    }
+}
+
+// ─── Test-only route-aware mock model (e2e) ─────────────────────────
+//
+// Shared plumbing only. A single persistent mock `LanguageModelChat` (per
+// descriptor id) streams back whatever the installed resolver returns for the
+// active sticky route. The concrete route ids and canned responses live with
+// the feature they exercise — e.g. the Generate Query routes in
+// `commands/e2eTestCommands/generateQueryMockModel.ts` — so this module stays
+// feature-agnostic and reusable by the migration assistant, which drives many
+// more routes.
+
+/**
+ * Produces what the e2e mock model streams back for a request. Mirrors
+ * `createMockLanguageModel`'s `resolveResponse`, so it receives the sticky
+ * `route` (see {@link setE2eMockRoute}) alongside the request messages.
+ */
+export type E2eMockResponseResolver = CreateMockLanguageModelOptions['resolveResponse'];
+
+/** Inert default: streams nothing until a feature installs its own resolver. */
+const INERT_MOCK_RESOLVER: E2eMockResponseResolver = () => '';
+
+/** Resolver the mock model delegates to; swapped in per feature under test. */
+let e2eMockResponseResolver: E2eMockResponseResolver = INERT_MOCK_RESOLVER;
+
+/** Active sticky route applied to every mock model instance. */
+let e2eMockRoute: string | undefined;
+
+/**
+ * Persistent, route-aware mock model instances keyed by descriptor id. Caching
+ * is essential: services re-resolve the model via `getSelectedModel({ modelId })`,
+ * so the instance the caller uses must be the same one the route was set on (the
+ * route is sticky *per instance*).
+ */
+const e2eMockModelCache = new Map<string, vscode.LanguageModelChat>();
+
+/**
+ * Installs the resolver the e2e mock model delegates to, or resets it to the
+ * inert default with `undefined`. E2e-only.
+ */
+export function setE2eMockResponseResolver(resolver: E2eMockResponseResolver | undefined): void {
+    e2eMockResponseResolver = resolver ?? INERT_MOCK_RESOLVER;
+}
+
+/**
+ * Selects the sticky route reported to the resolver on the next `sendRequest`,
+ * re-applying it to every cached instance so the choice survives the
+ * `getSelectedModel({ modelId })` re-resolution inside a service. Pass
+ * `undefined` to reset. E2e-only.
+ */
+export function setE2eMockRoute(route: string | undefined): void {
+    e2eMockRoute = route;
+    for (const model of e2eMockModelCache.values()) {
+        setMockRoute(model, route);
+    }
+}
+
+/**
+ * Returns the cached route-aware mock model for a descriptor, creating it on
+ * first use. A freshly created instance inherits the currently active route so a
+ * model built after the route was set (e.g. the second switcher model) starts on
+ * the correct branch.
+ */
+function getOrCreateE2eMockModel(descriptor: AvailableModelDescriptor): vscode.LanguageModelChat {
+    const cached = e2eMockModelCache.get(descriptor.id);
+    if (cached) {
+        return cached;
+    }
+    const model = createMockLanguageModel({
+        id: descriptor.id,
+        name: descriptor.name,
+        vendor: descriptor.vendor,
+        family: descriptor.family,
+        maxInputTokens: descriptor.maxInputTokens,
+        resolveResponse: (args) => e2eMockResponseResolver(args),
+    });
+    setMockRoute(model, e2eMockRoute);
+    e2eMockModelCache.set(descriptor.id, model);
+    return model;
 }
 
 // ─── Model selection ────────────────────────────────────────────────
@@ -89,9 +176,12 @@ export async function getSelectedModel(options?: GetSelectedModelOptions): Promi
             explicitMock ??
             (savedMockId ? e2eModelOverride.find((m) => m.id === savedMockId) : undefined) ??
             e2eModelOverride[0];
-        // The mock descriptor only carries the fields the webview reads (id /
-        // name); it is never used to issue a real `sendRequest`.
-        return chosen as unknown as vscode.LanguageModelChat;
+        // Return the shared, route-aware mock for the chosen descriptor so the
+        // returned model honors `countTokens` / `sendRequest` and streams back a
+        // response driven by the installed resolver + active route (see
+        // `setE2eMockResponseResolver` / `setE2eMockRoute`). Caching keeps the
+        // sticky route intact when a service re-resolves the model by id.
+        return getOrCreateE2eMockModel(chosen);
     }
 
     const models = await vscode.lm.selectChatModels(modelSelector);

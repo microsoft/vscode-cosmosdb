@@ -57,6 +57,7 @@ import { StorageNames, StorageService, type StorageItem } from '../../services/S
 import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
 import { setE2eModelOverride, type AvailableModelDescriptor } from '../../utils/aiUtils';
 import { getEmulatorItemUniqueId } from '../../utils/emulatorUtils';
+import { setE2eGenerateQueryRoute } from './generateQueryMockModel';
 
 const E2E_TEST_ENV_KEY = 'COSMOSDB_E2E_TEST';
 const E2E_TEST_CONTEXT_KEY = 'cosmosDB.e2eTestMode';
@@ -255,24 +256,25 @@ export function registerE2eTestCommands(): void {
     });
 
     // ─── Generate Query mock commands ───────────────────────────────────
-    // Each command installs a specific deterministic response for the
-    // `generateQuery` tRPC mutation, bypassing the real LLM call.
+    // The success and error paths run through the *real* `generateQueryWithLLM`
+    // service, driven by a route-aware mock language model (see
+    // `setE2eGenerateQueryRoute` in `aiUtils`). Each command just selects the
+    // route the mock model follows on its next request. The confirm path stays
+    // bypassed in the router because driving the real schema-tool loop headlessly
+    // would require a live emulator connection.
     // Palette can't pass args, so each fixture gets its own command.
 
-    /** Baked-in mock query returned by the success override. */
+    /** Baked-in mock query returned on the confirm-allow path. */
     const MOCK_GENERATED_QUERY = 'SELECT * FROM c WHERE c.price < 20';
-
-    /** Baked-in error message returned by the error override. */
-    const MOCK_ERROR_MESSAGE = 'I cannot generate a query for that request. Please provide a valid prompt.';
 
     registerCommand('cosmosDB.e2e.setMockGenerateQuerySuccess', (context: IActionContext): void => {
         context.telemetry.properties.isE2eTest = 'true';
-        setE2eGenerateQueryOverride({ type: 'success', generatedQuery: MOCK_GENERATED_QUERY });
+        setE2eGenerateQueryRoute('success');
     });
 
     registerCommand('cosmosDB.e2e.setMockGenerateQueryError', (context: IActionContext): void => {
         context.telemetry.properties.isE2eTest = 'true';
-        setE2eGenerateQueryOverride({ type: 'error', errorMessage: MOCK_ERROR_MESSAGE });
+        setE2eGenerateQueryRoute('error');
     });
 
     // Simulates the LLM deciding to run the schema-sampling tool: emits the
@@ -288,9 +290,11 @@ export function registerE2eTestCommands(): void {
         });
     });
 
-    // Clears the generate-query override so it can't leak into other specs.
+    // Clears the generate-query overrides (both the route-aware mock model
+    // selection and the confirm override) so nothing leaks into other specs.
     registerCommand('cosmosDB.e2e.clearMockGenerateQueryResult', (context: IActionContext): void => {
         context.telemetry.properties.isE2eTest = 'true';
+        setE2eGenerateQueryRoute(undefined);
         setE2eGenerateQueryOverride(undefined);
     });
 }

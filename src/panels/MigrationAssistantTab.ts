@@ -582,6 +582,13 @@ export class MigrationAssistantTab extends BaseTab {
 
             // (Re-)create file watchers using the resolved paths (supports custom folder overrides)
             this.setupFileWatchers();
+
+            // Push git status after projectLoaded: the webview registers its
+            // channel listeners as part of mounting, which can race the early
+            // `checkGitRepository` request and drop the response. Re-emitting
+            // here (once the project has loaded) guarantees the warning /
+            // exclude controls hydrate deterministically.
+            void this.checkGitRepository();
         });
     }
 
@@ -1789,7 +1796,12 @@ export class MigrationAssistantTab extends BaseTab {
             if (gitExtension) {
                 const git = gitExtension.isActive ? gitExtension.exports : await gitExtension.activate();
                 const api = git.getAPI(1);
-                return api.repositories.length > 0;
+                if (api.repositories.length > 0) {
+                    return true;
+                }
+                // Fall through to the filesystem check: the git extension may not
+                // have indexed this folder yet (e.g. a just-initialized repo), but
+                // a `.git` directory still means the workspace is under version control.
             }
         } catch {
             // Fall back to filesystem check

@@ -527,6 +527,16 @@
         "category": "Cosmos DB",
         "command": "cosmosDB.e2e.attachEmulator",
         "title": "[E2E Test] Attach Emulator to Workspace"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.e2e.openMigration",
+        "title": "[E2E Test] Open Seeded Migration Assistant"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.e2e.openMigrationFresh",
+        "title": "[E2E Test] Open Empty Migration Assistant"
       }
     ],
     "submenus": [
@@ -822,6 +832,14 @@
         },
         {
           "command": "cosmosDB.e2e.attachEmulator",
+          "when": "cosmosDB.e2eTestMode"
+        },
+        {
+          "command": "cosmosDB.e2e.openMigration",
+          "when": "cosmosDB.e2eTestMode"
+        },
+        {
+          "command": "cosmosDB.e2e.openMigrationFresh",
           "when": "cosmosDB.e2eTestMode"
         }
       ]

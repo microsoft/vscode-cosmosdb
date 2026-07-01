@@ -42,14 +42,17 @@
  */
 
 import { registerCommand, type IActionContext } from '@microsoft/vscode-azext-utils';
+import * as path from 'path';
 import * as vscode from 'vscode';
 import { API } from '../../AzureDBExperiences';
 import { AuthenticationMethod } from '../../cosmosdb/AuthenticationMethod';
 import { type CosmosDBCredential } from '../../cosmosdb/CosmosDBCredential';
 import { type NoSqlQueryConnection } from '../../cosmosdb/NoSqlQueryConnection';
 import { DocumentTab } from '../../panels/DocumentTab';
+import { MigrationAssistantTab } from '../../panels/MigrationAssistantTab';
 import { QueryEditorTab } from '../../panels/QueryEditorTab';
-import { type StorageItem, StorageNames, StorageService } from '../../services/StorageService';
+import { MIGRATION_FOLDER } from '../../services/MigrationProjectService';
+import { StorageNames, StorageService, type StorageItem } from '../../services/StorageService';
 import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
 import { getEmulatorItemUniqueId } from '../../utils/emulatorUtils';
 
@@ -64,6 +67,11 @@ const ENV_EMULATOR_ENDPOINT = 'COSMOSDB_E2E_EMULATOR_ENDPOINT';
 const ENV_EMULATOR_KEY = 'COSMOSDB_E2E_EMULATOR_KEY';
 const ENV_DATABASE_ID = 'COSMOSDB_E2E_DATABASE_ID';
 const ENV_CONTAINER_ID = 'COSMOSDB_E2E_CONTAINER_ID';
+
+// Absolute path of a fixture directory copied into `<workspace>/.cosmosdb-migration`
+// by `cosmosDB.e2e.openMigration`. Set by the Playwright fixture so the command
+// stays palette-invokable without arguments.
+const ENV_MIGRATION_SEED_DIR = 'COSMOSDB_E2E_MIGRATION_SEED_DIR';
 
 export function isE2eTestModeEnabled(): boolean {
     return process.env[E2E_TEST_ENV_KEY] === '1';
@@ -133,6 +141,70 @@ async function attachEmulatorAccount(env: EmulatorEnv): Promise<void> {
 }
 
 /**
+ * Deletes `<workspace>/.cosmosdb-migration` so each migration spec starts from a
+ * clean slate. The seed copy (when a fresh project is needed) is performed
+ * separately by {@link seedMigrationProject}. Best-effort: a missing folder is
+ * ignored, which keeps the command idempotent.
+ */
+async function resetMigrationFolder(workspacePath: string): Promise<void> {
+    const target = vscode.Uri.file(path.join(workspacePath, MIGRATION_FOLDER));
+    try {
+        await vscode.workspace.fs.delete(target, { recursive: true, useTrash: false });
+    } catch {
+        // Target may not exist yet — ignore.
+    }
+}
+
+/**
+ * Copies a seed project directory into `<workspace>/.cosmosdb-migration` so
+ * specs can drive deterministic "loaded project" and full phase-flow scenarios
+ * without the native file-picker dialogs the production flow uses. The seed
+ * source is read from `COSMOSDB_E2E_MIGRATION_SEED_DIR` (set by the Playwright
+ * fixture) so the command stays palette-invokable (no args required).
+ */
+async function seedMigrationProject(workspacePath: string): Promise<boolean> {
+    const seedFrom = process.env[ENV_MIGRATION_SEED_DIR];
+    if (!seedFrom) return false;
+    const target = vscode.Uri.file(path.join(workspacePath, MIGRATION_FOLDER));
+    await vscode.workspace.fs.copy(vscode.Uri.file(seedFrom), target, { overwrite: true });
+    return true;
+}
+
+function resolveWorkspacePath(): string {
+    const workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (!workspacePath) {
+        throw new Error('cosmosDB.e2e.openMigration requires an open workspace folder.');
+    }
+    return workspacePath;
+}
+
+/**
+ * Stubs the workspace's version-control state for migration specs: when
+ * `present`, creates an empty `.git/` dir (enough for the file-based
+ * `hasGitRepository()` check) so the "exclude from version control" control
+ * renders; when absent, removes it so the missing-VCS warning renders. Always
+ * resets `.gitignore` so the exclude checkbox starts unchecked.
+ */
+async function setGitPresent(workspacePath: string, present: boolean): Promise<void> {
+    const gitDir = vscode.Uri.file(path.join(workspacePath, '.git'));
+    const gitignore = vscode.Uri.file(path.join(workspacePath, '.gitignore'));
+    try {
+        await vscode.workspace.fs.delete(gitignore, { useTrash: false });
+    } catch {
+        // No .gitignore yet — fine.
+    }
+    if (present) {
+        await vscode.workspace.fs.createDirectory(gitDir);
+    } else {
+        try {
+            await vscode.workspace.fs.delete(gitDir, { recursive: true, useTrash: false });
+        } catch {
+            // No .git yet — fine.
+        }
+    }
+}
+
+/**
  * Registers the e2e-test commands and sets the `cosmosDB.e2eTestMode` context
  * key. Safe to call unconditionally — exits early if the env flag is unset.
  *
@@ -144,6 +216,34 @@ export function registerE2eTestCommands(): void {
 
     // The `when` clauses in package.json menus look for this context key.
     void vscode.commands.executeCommand('setContext', E2E_TEST_CONTEXT_KEY, true);
+
+    // Opens the Migration Assistant against a deterministic, pre-seeded project
+    // (consent granted + application analysis populated + schema files present)
+    // so phase-flow specs can drive Discovery → Assessment → Conversion without
+    // the native file pickers. Always resets `.cosmosdb-migration` first so the
+    // command is hermetic regardless of prior-test state.
+    registerCommand('cosmosDB.e2e.openMigration', async (context: IActionContext): Promise<void> => {
+        context.telemetry.properties.isE2eTest = 'true';
+        const workspacePath = resolveWorkspacePath();
+        await resetMigrationFolder(workspacePath);
+        // Version control present is the default scenario: seed a `.git` dir so
+        // the "exclude from version control" control renders, with a clean
+        // .gitignore so the exclude checkbox starts unchecked.
+        await setGitPresent(workspacePath, true);
+        context.telemetry.properties.seeded = String(await seedMigrationProject(workspacePath));
+        MigrationAssistantTab.render(workspacePath);
+    });
+
+    // Opens the Migration Assistant against a fresh, empty project (no consent,
+    // no analysis) so specs can assert the initial disabled-control state.
+    registerCommand('cosmosDB.e2e.openMigrationFresh', async (context: IActionContext): Promise<void> => {
+        context.telemetry.properties.isE2eTest = 'true';
+        const workspacePath = resolveWorkspacePath();
+        await resetMigrationFolder(workspacePath);
+        // No version control: drop `.git` so the missing-VCS warning renders.
+        await setGitPresent(workspacePath, false);
+        MigrationAssistantTab.render(workspacePath);
+    });
 
     registerCommand('cosmosDB.e2e.openQueryEditor', (context: IActionContext, args?: Partial<EmulatorEnv>): void => {
         context.telemetry.properties.isE2eTest = 'true';

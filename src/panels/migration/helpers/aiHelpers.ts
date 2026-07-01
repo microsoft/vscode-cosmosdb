@@ -15,6 +15,7 @@ import {
     getSelectedModel as getSelectedModelShared,
     logLlmTokenUsage,
 } from '../../../utils/aiUtils';
+import { setMockRoute } from '../../../utils/languageModelMockUtils';
 import { MIGRATION_SELECTED_MODEL_KEY } from '../../../utils/modelUtils';
 import {
     type DebugPromptConfig,
@@ -22,6 +23,7 @@ import {
     dumpDebugResponse,
     tryLoadPromptOverride,
 } from './debugPromptHelpers';
+import { createMockMigrationModel, isMigrationAiMockEnabled } from './e2eMigrationAiMock';
 
 export { createMkDebug, dumpDebugResponse } from './debugPromptHelpers';
 /** Re-exported from shared `aiUtils` to avoid churn for existing callers. */
@@ -43,6 +45,11 @@ export { extractJsonObject } from '../../../utils/aiUtils';
  * @returns The resolved language model for the Migration Assistant.
  */
 export function getSelectedModel(options?: GetSelectedModelOptions): Promise<vscode.LanguageModelChat> {
+    // In e2e mock mode, bypass Copilot entirely and return a deterministic
+    // fake model so the full migration pipeline can run offline.
+    if (isMigrationAiMockEnabled()) {
+        return Promise.resolve(createMockMigrationModel());
+    }
     return getSelectedModelShared({
         ...options,
         stateKey: options?.stateKey ?? MIGRATION_SELECTED_MODEL_KEY,
@@ -235,7 +242,7 @@ export async function renderWithDebug<P extends BasePromptElementProps>(
     // Handle debug dump / override BEFORE injecting the defense message so
     // that `{stepName}.prompt.md` stays bound to the phase prompt (index 0
     // of the rendered messages) and dumps don't include the defense rules.
-    if (isDebugPromptsEnabled() && debugConfig) {
+    if (debugConfig?.dumpEnabled) {
         const override = await tryLoadPromptOverride(debugConfig.debugDir, debugConfig.stepName);
         if (override && messages.length > 0) {
             messages[0] = override;
@@ -294,6 +301,7 @@ async function runPromptFromMessages(
     inputTokenCount: number,
     modelOptions?: Record<string, unknown>,
     logDetail?: string,
+    routeId?: string,
 ): Promise<string> {
     // `label` is the telemetry-safe constant (reported as `caller`); `logLabel`
     // adds optional per-iteration detail (e.g. a domain name) for
@@ -305,6 +313,9 @@ async function runPromptFromMessages(
     );
     const startTime = Date.now();
 
+    // Deterministically route the e2e mock to the right canned response.
+    // No-op on real models, so the production path is unaffected.
+    setMockRoute(model, routeId ?? label);
     const response = await model.sendRequest(
         messages,
         { modelOptions: { ...DEFAULT_MODEL_OPTIONS, ...modelOptions } },
@@ -370,9 +381,10 @@ export async function runPrompt<P extends BasePromptElementProps>(
         inputTokenCount,
         modelOptions,
         logDetail,
+        debugConfig?.stepName ?? label,
     );
 
-    if (isDebugPromptsEnabled() && debugConfig) {
+    if (debugConfig?.dumpEnabled) {
         await dumpDebugResponse(debugConfig.debugDir, debugConfig.stepName, fullText, 'md');
     }
 
@@ -418,6 +430,7 @@ export async function runPromptWithJsonResult<T>(
         inputTokenCount,
         { temperature: 0.1 },
         logDetail,
+        debugConfig?.stepName ?? label,
     );
 
     const jsonString = extractJsonObject(fullText);
@@ -436,7 +449,7 @@ export async function runPromptWithJsonResult<T>(
             `keys=[${Object.keys(parsed as Record<string, unknown>).join(', ')}]`,
     );
 
-    if (isDebugPromptsEnabled() && debugConfig) {
+    if (debugConfig?.dumpEnabled) {
         await dumpDebugResponse(debugConfig.debugDir, debugConfig.stepName, JSON.stringify(parsed, null, 2), 'json');
     }
 
@@ -514,7 +527,7 @@ export async function runAgenticLoopWithJsonResult<T>(
             `keys=[${Object.keys(parsed as Record<string, unknown>).join(', ')}]`,
     );
 
-    if (isDebugPromptsEnabled() && debugConfig) {
+    if (debugConfig?.dumpEnabled) {
         await dumpDebugResponse(debugConfig.debugDir, debugConfig.stepName, JSON.stringify(parsed, null, 2), 'json');
     }
 
@@ -647,6 +660,10 @@ export async function runAgenticLoop(
             let cumulativeInputTokens = 0;
             let cumulativeOutputTokens = 0;
             let lastRoundInputTokens = 0;
+
+            // Deterministically route the e2e mock to the right canned response.
+            // No-op on real models, so the production path is unaffected.
+            setMockRoute(model, debugConfig?.stepName ?? label);
 
             for (let round = 0; round < maxRounds; round++) {
                 if (token.isCancellationRequested) return { text: lastRoundText, roundsExhausted: false };
@@ -813,7 +830,7 @@ export async function runAgenticLoop(
             context.telemetry.measurements.totalRounds = totalRounds;
             context.telemetry.measurements.durationMs = loopElapsed;
 
-            if (isDebugPromptsEnabled() && debugConfig && lastRoundText) {
+            if (debugConfig?.dumpEnabled && lastRoundText) {
                 await dumpDebugResponse(debugConfig.debugDir, debugConfig.stepName, lastRoundText, 'md');
             }
 

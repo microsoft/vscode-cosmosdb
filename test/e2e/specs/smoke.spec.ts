@@ -22,6 +22,12 @@ import { openDocument, openMigrationAssistant, openQueryEditor } from '../fixtur
  * round-trips) belongs in dedicated specs that build on these fixtures.
  */
 test.describe('webview smoke', () => {
+    // These tests only care about the webview iframe, so hide all the VS Code
+    // chrome that competes for space in the attached screenshots. The Copilot
+    // Chat secondary side bar and bottom panel are hidden by default; also drop
+    // the primary side bar (Azure tree) here since no test below touches it.
+    test.use({ layout: { primarySideBar: false } });
+
     // Worker-scoped vscodeApp/Window fixtures mean VS Code is reused across
     // tests. Each test must reset editor state itself or panels from one test
     // leak into the next.

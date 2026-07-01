@@ -91,6 +91,16 @@ export interface AvailableModelDescriptor {
 export async function getAvailableModelsInfo(
     stateKey: string = SELECTED_MODEL_KEY,
 ): Promise<{ models: AvailableModelDescriptor[]; savedModelId: string | null }> {
+    // In e2e migration AI mock mode, advertise a single deterministic fake
+    // model so the webview model dropdown is populated. Gated on the master
+    // e2e flag so it can never affect a normal session.
+    if (process.env.COSMOSDB_E2E_TEST === '1' && process.env.COSMOSDB_E2E_MIGRATION_AI_MOCK === '1') {
+        const id = 'e2e-mock-migration-model';
+        return {
+            models: [{ id, name: 'E2E Mock Model', family: 'e2e-mock', vendor: 'copilot', maxInputTokens: 128_000 }],
+            savedModelId: id,
+        };
+    }
     try {
         const allModels = await vscode.lm.selectChatModels(modelSelector);
         const savedModelId = ext.context.globalState.get<string>(stateKey) ?? null;

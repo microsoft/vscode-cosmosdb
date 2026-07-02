@@ -9,9 +9,7 @@
  * The shared, feature-agnostic plumbing (a persistent route-aware mock
  * `LanguageModelChat` returned from `getSelectedModel`) lives in
  * `../../utils/aiUtils`. This module owns only what is specific to the Generate
- * Query flow: the route ids and the canned LLM responses they map to. Keeping it
- * separate leaves `aiUtils` reusable by the migration assistant, which drives
- * many more routes of its own.
+ * Query flow: the route ids and the canned LLM responses they map to.
  *
  * Every route drives the *real* `generateQueryWithLLM` service — nothing is
  * bypassed in the tRPC router. In particular the `'confirm'` route emits a real
@@ -20,7 +18,7 @@
  * the Cancel affordance can be exercised.
  */
 
-import * as vscode from 'vscode';
+import type * as vscode from 'vscode';
 import { SAMPLE_DATA_TOOL_NAME } from '../../chat/sampleDataTool';
 import { type E2eMockResponseResolver, setE2eMockResponseResolver, setE2eMockRoute } from '../../utils/aiUtils';
 import { type MockResponse, type MockResponsePart } from '../../utils/languageModelMockUtils';
@@ -62,56 +60,61 @@ function delay(ms: number, token?: vscode.CancellationToken): Promise<void> {
     });
 }
 
-/**
- * True once the agentic loop has fed a tool result back into the conversation
- * (Allow → sampled schema, or Not now → "declined" note). The `'confirm'` route
- * uses this to emit the schema-sampling tool call on the first round and the
- * final query on the second.
- */
-function messagesContainToolResult(messages: readonly vscode.LanguageModelChatMessage[]): boolean {
-    return messages.some((message) => {
-        const content = (message as { content?: unknown }).content;
-        return Array.isArray(content) && content.some((part) => part instanceof vscode.LanguageModelToolResultPart);
-    });
-}
-
-/** The schema-sampling tool call emitted by the `'confirm'` route's first round. */
+/** The schema-sampling tool call streamed as the `'confirm'` route's first response. */
 const SCHEMA_SAMPLING_TOOL_CALL: MockResponsePart = { type: 'toolCall', name: SAMPLE_DATA_TOOL_NAME, input: {} };
 
 /**
- * Maps the active sticky route (see {@link setE2eMockRoute}) to what the mock
- * streams back. The real `generateQueryWithLLM` service then processes it
- * end-to-end. Async so the `'latency'` route can await a cancellable delay.
+ * One scripted response for a single `sendRequest`: either a static payload or a
+ * function (used when the payload is dynamic — e.g. awaiting a cancellable delay).
  */
-const resolveGenerateQueryResponse: E2eMockResponseResolver = async ({
-    route,
-    messages,
-    token,
-}): Promise<MockResponse> => {
-    if (route === 'error') {
-        return `ERROR: ${MOCK_REFUSAL_MESSAGE}`;
-    }
-    if (route === 'latency') {
-        // Stall so the spec can click Cancel; cancelling the request unblocks us
-        // early and the router then discards the (now stale) result.
-        await delay(LATENCY_MS, token);
-        return MOCK_GENERATED_QUERY;
-    }
-    if (route === 'confirm') {
-        // Round 1: request schema sampling (drives onConfirm → Allow/Not now dialog).
-        // Round 2 (tool result fed back): return the query.
-        return messagesContainToolResult(messages) ? MOCK_GENERATED_QUERY : [SCHEMA_SAMPLING_TOOL_CALL];
-    }
-    // 'success'
-    return MOCK_GENERATED_QUERY;
+type MockStep = MockResponse | E2eMockResponseResolver;
+
+/**
+ * Each route is simply an ordered list of responses. The mock plays them back
+ * one per `sendRequest`, clamping at the last, so multi-round flows fall out
+ * without the mock knowing anything about their intent: `'confirm'` is just a
+ * two-response route (a schema-sampling tool call, then the query) — the mock
+ * neither knows nor cares that those two rounds happen to drive the Allow/Not now
+ * dialog.
+ */
+const ROUTE_RESPONSES: Record<E2eGenerateQueryRoute, readonly MockStep[]> = {
+    success: [MOCK_GENERATED_QUERY],
+    error: [`ERROR: ${MOCK_REFUSAL_MESSAGE}`],
+    confirm: [[SCHEMA_SAMPLING_TOOL_CALL], MOCK_GENERATED_QUERY],
+    latency: [
+        async ({ token }) => {
+            // Stall so the spec can click Cancel; cancelling the request unblocks
+            // us early and the router then discards the (now stale) result.
+            await delay(LATENCY_MS, token);
+            return MOCK_GENERATED_QUERY;
+        },
+    ],
+};
+
+/** Index into the active route's response list; advanced per request, reset on route change. */
+let responseIndex = 0;
+
+/**
+ * Streams the next response for the active sticky route (see
+ * {@link setE2eMockRoute}), advancing through {@link ROUTE_RESPONSES} and clamping
+ * at the last entry. The real `generateQueryWithLLM` service then processes it
+ * end-to-end.
+ */
+const resolveGenerateQueryResponse: E2eMockResponseResolver = (args) => {
+    const responses = (args.route && ROUTE_RESPONSES[args.route as E2eGenerateQueryRoute]) || [''];
+    const step = responses[Math.min(responseIndex, responses.length - 1)];
+    responseIndex++;
+    return typeof step === 'function' ? step(args) : step;
 };
 
 /**
  * Points the shared e2e mock model at the Generate Query resolver and selects
- * the branch it follows on its next `sendRequest`. Passing `undefined` resets
- * both the resolver and the route. E2e-only.
+ * the route it plays back on subsequent `sendRequest`s. Passing `undefined`
+ * resets both the resolver and the route. E2e-only.
  */
 export function setE2eGenerateQueryRoute(route: E2eGenerateQueryRoute | undefined): void {
+    // Restart the response sequence for the new generation.
+    responseIndex = 0;
     setE2eMockResponseResolver(route ? resolveGenerateQueryResponse : undefined);
     setE2eMockRoute(route);
 }

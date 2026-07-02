@@ -13,6 +13,7 @@ import {
     setAIFeaturesEnabled,
     setMockGenerateQueryConfirm,
     setMockGenerateQueryError,
+    setMockGenerateQueryLatency,
     setMockGenerateQuerySuccess,
     setMockLanguageModels,
 } from '../fixtures/webviews';
@@ -31,17 +32,20 @@ import {
  * What we assert:
  *   1. Model switcher — with two fake Copilot models injected, the model
  *      `Combobox` lists both and updates the displayed selection when changed.
- *   2. Schema tool    — the Allow/Deny confirmation dialog rendered mid-
- *      generation. Allow and Deny behave the same from the UI's perspective:
- *      both resume generation and insert the query. Deny only skips the schema-
- *      sampling step (verified in `CosmosDbOperationsService.test.ts`).
+ *   2. Schema tool    — the mock LLM emits a real `cosmosdb_sampleContainerSchema`
+ *      tool call, so the genuine agentic loop renders the Allow/Not now dialog.
+ *      Allow and Not now behave the same from the UI's perspective: both resume
+ *      generation and insert the query; Not now only skips the schema-sampling step
+ *      (verified in `CosmosDbOperationsService.test.ts`). These two tests need a
+ *      live connection (the emulator), since `onConfirm` only fires when connected.
  *   3. Generation     — a successful generation inserts the query text into the
- *      editor, and a failed generation surfaces an error MessageBar. Both drive
- *      the real `generateQueryWithLLM` service via a route-aware mock language
- *      model (see `setE2eGenerateQueryRoute` in
+ *      editor, a failed generation surfaces an error MessageBar, and a slow
+ *      (latency-route) generation can be cancelled mid-flight without inserting.
+ *      All drive the real `generateQueryWithLLM` service via a route-aware mock
+ *      language model (see `setE2eGenerateQueryRoute` in
  *      `src/commands/e2eTestCommands/generateQueryMockModel.ts`): the `success`
- *      route streams back a query, the `error` route streams back an
- *      `ERROR:`-prefixed refusal.
+ *      route streams a query, `error` streams an `ERROR:`-prefixed refusal, and
+ *      `latency` stalls until the request's cancellation token fires.
  *
  * Mocking the Copilot call
  * ------------------------
@@ -137,8 +141,14 @@ test.describe('generate query input', () => {
     });
 
     test('schema tool confirmation dialog appears and Allow inserts the query', async ({ vscodeWindow }) => {
-        // Simulates the LLM deciding to run the schema-sampling tool mid-generation:
-        // the Allow/Deny dialog renders inside the Generate Query input.
+        // The mock LLM emits a real `cosmosdb_sampleContainerSchema` tool call, so
+        // the genuine agentic loop in `generateQueryWithLLM` runs and renders the
+        // Allow/Not now dialog. `onConfirm` only fires when the editor is connected,
+        // so this needs the live emulator.
+        test.skip(
+            process.env.COSMOSDB_E2E_SKIP_EMULATOR === '1',
+            'schema-tool sampling requires a live Cosmos DB connection',
+        );
         await setMockGenerateQueryConfirm(vscodeWindow);
 
         const webview = await openGenerateInput(vscodeWindow);
@@ -149,7 +159,7 @@ test.describe('generate query input', () => {
         const submit = webview.getByRole('button', { name: 'Generate query', exact: true });
         await submit.click();
 
-        // The schema-access confirmation dialog should appear with Allow/Deny.
+        // The schema-access confirmation dialog should appear with Allow/Not now.
         const confirmDialog = webview.locator('[role="alertdialog"]');
         await expect(confirmDialog).toBeVisible({ timeout: 15_000 });
         await expect(confirmDialog).toContainText('sample your container schema');
@@ -180,6 +190,11 @@ test.describe('generate query input', () => {
     });
 
     test('schema tool confirmation dialog Deny skips sampling but still generates', async ({ vscodeWindow }) => {
+        // Same real-tool-call path as the Allow test; needs the live emulator.
+        test.skip(
+            process.env.COSMOSDB_E2E_SKIP_EMULATOR === '1',
+            'schema-tool sampling requires a live Cosmos DB connection',
+        );
         await setMockGenerateQueryConfirm(vscodeWindow);
 
         const webview = await openGenerateInput(vscodeWindow);
@@ -193,10 +208,10 @@ test.describe('generate query input', () => {
         const confirmDialog = webview.locator('[role="alertdialog"]');
         await expect(confirmDialog).toBeVisible({ timeout: 15_000 });
 
-        // Note: whether Deny actually skips the schema tool is covered by
+        // Note: whether "Not now" actually skips the schema tool is covered by
         // `CosmosDbOperationsService.test.ts` (this spec asserts only the UI).
 
-        // Denying schema access only skips sampling; generation continues and the
+        // Choosing "Not now" for schema access only skips sampling; generation continues and the
         // query is still returned and inserted (same UI outcome as Allow).
         await confirmDialog.getByRole('button', { name: 'Not now', exact: true }).click();
         await expect(confirmDialog).toBeHidden({ timeout: 10_000 });
@@ -264,6 +279,34 @@ test.describe('generate query input', () => {
             hasText: 'I cannot generate a query for that request',
         });
         await expect.poll(() => errorBar.isVisible().catch(() => false), { timeout: 15_000 }).toBe(true);
+
+        await clearMockGenerateQueryResult(vscodeWindow);
+    });
+
+    test('cancelling an in-flight generation aborts without inserting a query', async ({ vscodeWindow }) => {
+        // The latency route stalls `sendRequest` until the request's cancellation
+        // token fires, so the Cancel affordance can abort mid-generation. Needs no
+        // connection (no tool call), so it runs in skip-emulator mode too.
+        await setMockGenerateQueryLatency(vscodeWindow);
+
+        const webview = await openGenerateInput(vscodeWindow);
+
+        const textarea = webview.getByRole('textbox', { name: PROMPT_LABEL });
+        await textarea.fill('take your time');
+
+        // Submit — the button flips to a Cancel affordance while generation runs.
+        await webview.getByRole('button', { name: 'Generate query', exact: true }).click();
+
+        const cancelButton = webview.getByRole('button', { name: 'Cancel generation', exact: true });
+        await expect(cancelButton).toBeVisible({ timeout: 15_000 });
+        await cancelButton.click();
+
+        // Generation is aborted: the input returns to its ready state and no query
+        // is inserted into the editor.
+        await expect(webview.getByRole('button', { name: 'Generate query', exact: true })).toBeVisible({
+            timeout: 10_000,
+        });
+        await expect(webview.locator('text=SELECT * FROM c WHERE c.price < 20')).toHaveCount(0);
 
         await clearMockGenerateQueryResult(vscodeWindow);
     });

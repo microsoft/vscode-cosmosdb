@@ -186,11 +186,12 @@ export async function setMockGenerateQueryError(page: Page): Promise<void> {
 }
 
 /**
- * Installs a mock that makes the `generateQuery` tRPC mutation emit a
- * `confirmToolInvocation` event (rendering the Allow/Deny banner) and then
- * wait for user response. Allow and Deny both resume generation and return the
- * generated query — Deny only skips the schema-sampling step. Call this BEFORE
- * submitting.
+ * Routes the mock language model down its schema-tool branch: the first round
+ * streams a `cosmosdb_sampleContainerSchema` tool call, so the real
+ * `generateQueryWithLLM` agentic loop runs and renders the Allow/Not now dialog;
+ * the next round streams the query. Requires a live connection (the emulator),
+ * since `onConfirm` only fires when the editor is connected. Call this BEFORE
+ * submitting a prompt.
  */
 export async function setMockGenerateQueryConfirm(page: Page): Promise<void> {
     await runCommand(page, 'Cosmos DB: [E2E Test] Set Mock Generate Query (Confirm)');
@@ -198,8 +199,18 @@ export async function setMockGenerateQueryConfirm(page: Page): Promise<void> {
 }
 
 /**
- * Clears the generate-query overrides (both the route-aware mock model selection
- * and the confirm override) so nothing leaks into other specs.
+ * Routes the mock language model down its latency branch: `sendRequest` stalls
+ * until the request's cancellation token fires, so a test can click Cancel to
+ * abort an in-flight generation. Needs no connection. Call this BEFORE
+ * submitting a prompt.
+ */
+export async function setMockGenerateQueryLatency(page: Page): Promise<void> {
+    await runCommand(page, 'Cosmos DB: [E2E Test] Set Mock Generate Query (Latency)');
+    await page.waitForTimeout(250);
+}
+
+/**
+ * Clears the generate-query mock route so nothing leaks into other specs.
  */
 export async function clearMockGenerateQueryResult(page: Page): Promise<void> {
     await runCommand(page, 'Cosmos DB: [E2E Test] Clear Mock Generate Query Result');

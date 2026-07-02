@@ -565,6 +565,11 @@
       },
       {
         "category": "Cosmos DB",
+        "command": "cosmosDB.e2e.setMockGenerateQueryLatency",
+        "title": "[E2E Test] Set Mock Generate Query (Latency)"
+      },
+      {
+        "category": "Cosmos DB",
         "command": "cosmosDB.e2e.clearMockGenerateQueryResult",
         "title": "[E2E Test] Clear Mock Generate Query Result"
       }
@@ -890,6 +895,10 @@
         },
         {
           "command": "cosmosDB.e2e.setMockGenerateQueryConfirm",
+          "when": "cosmosDB.e2eTestMode"
+        },
+        {
+          "command": "cosmosDB.e2e.setMockGenerateQueryLatency",
           "when": "cosmosDB.e2eTestMode"
         },
         {

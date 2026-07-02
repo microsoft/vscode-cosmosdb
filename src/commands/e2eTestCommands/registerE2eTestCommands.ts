@@ -42,17 +42,14 @@
  */
 
 import { registerCommand, type IActionContext } from '@microsoft/vscode-azext-utils';
-import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { API } from '../../AzureDBExperiences';
-import { SAMPLE_DATA_CONFIRMATION_MESSAGE } from '../../chat/sampleDataTool';
 import { AuthenticationMethod } from '../../cosmosdb/AuthenticationMethod';
 import { type CosmosDBCredential } from '../../cosmosdb/CosmosDBCredential';
 import { type NoSqlQueryConnection } from '../../cosmosdb/NoSqlQueryConnection';
 import { ext } from '../../extensionVariables';
 import { DocumentTab } from '../../panels/DocumentTab';
 import { QueryEditorTab } from '../../panels/QueryEditorTab';
-import { setE2eGenerateQueryOverride } from '../../panels/trpc/routers/queryEditorRouter';
 import { StorageNames, StorageService, type StorageItem } from '../../services/StorageService';
 import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
 import { setE2eModelOverride, type AvailableModelDescriptor } from '../../utils/aiUtils';
@@ -256,16 +253,16 @@ export function registerE2eTestCommands(): void {
     });
 
     // ─── Generate Query mock commands ───────────────────────────────────
-    // The success and error paths run through the *real* `generateQueryWithLLM`
-    // service, driven by a route-aware mock language model (see
-    // `setE2eGenerateQueryRoute` in `aiUtils`). Each command just selects the
-    // route the mock model follows on its next request. The confirm path stays
-    // bypassed in the router because driving the real schema-tool loop headlessly
-    // would require a live emulator connection.
-    // Palette can't pass args, so each fixture gets its own command.
-
-    /** Baked-in mock query returned on the confirm-allow path. */
-    const MOCK_GENERATED_QUERY = 'SELECT * FROM c WHERE c.price < 20';
+    // Every path runs through the *real* `generateQueryWithLLM` service, driven
+    // by a route-aware mock language model (see `setE2eGenerateQueryRoute` in
+    // `generateQueryMockModel`). Each command selects the route the mock follows
+    // on its next request:
+    //   - success  → streams a query
+    //   - error    → streams an `ERROR:` refusal
+    //   - confirm  → streams a schema-sampling tool call, driving the real
+    //                agentic loop → Allow/Not now dialog, then a query
+    //   - latency  → stalls until cancelled, to exercise Cancel
+    // Palette can't pass args, so each route gets its own command.
 
     registerCommand('cosmosDB.e2e.setMockGenerateQuerySuccess', (context: IActionContext): void => {
         context.telemetry.properties.isE2eTest = 'true';
@@ -277,24 +274,19 @@ export function registerE2eTestCommands(): void {
         setE2eGenerateQueryRoute('error');
     });
 
-    // Simulates the LLM deciding to run the schema-sampling tool: emits the
-    // real confirmation message (the same one `sampleDataTool` shows) so the
-    // Allow/Deny dialog renders inside the Generate Query input. On Allow the
-    // mock returns a query; on Deny it returns `{ generatedQuery: false }`.
     registerCommand('cosmosDB.e2e.setMockGenerateQueryConfirm', (context: IActionContext): void => {
         context.telemetry.properties.isE2eTest = 'true';
-        setE2eGenerateQueryOverride({
-            type: 'confirm',
-            confirmMessage: l10n.t(SAMPLE_DATA_CONFIRMATION_MESSAGE),
-            generatedQuery: MOCK_GENERATED_QUERY,
-        });
+        setE2eGenerateQueryRoute('confirm');
     });
 
-    // Clears the generate-query overrides (both the route-aware mock model
-    // selection and the confirm override) so nothing leaks into other specs.
+    registerCommand('cosmosDB.e2e.setMockGenerateQueryLatency', (context: IActionContext): void => {
+        context.telemetry.properties.isE2eTest = 'true';
+        setE2eGenerateQueryRoute('latency');
+    });
+
+    // Clears the generate-query mock route so it can't leak into other specs.
     registerCommand('cosmosDB.e2e.clearMockGenerateQueryResult', (context: IActionContext): void => {
         context.telemetry.properties.isE2eTest = 'true';
         setE2eGenerateQueryRoute(undefined);
-        setE2eGenerateQueryOverride(undefined);
     });
 }

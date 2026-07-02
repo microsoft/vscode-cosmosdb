@@ -53,43 +53,6 @@ const SELECTED_MODEL_KEY = 'ms-azuretools.vscode-cosmosdb.selectedModel';
 const PRIORITY_LEVEL_KEY = 'ms-azuretools.vscode-cosmosdb.priorityLevel';
 const DEFAULT_PRIORITY_LEVEL: PriorityLevel = 'Low' as PriorityLevel;
 
-// ─── Test-only generate query confirm override (e2e) ────────────────
-
-/**
- * Describes the schema-tool confirmation mock for the `generateQuery` mutation.
- * Set exclusively by the `cosmosDB.e2e.setMockGenerateQueryConfirm` command
- * (registered only when `COSMOSDB_E2E_TEST=1`).
- *
- * The success and error paths are no longer bypassed here — they run through the
- * real `generateQueryWithLLM` service driven by a route-aware mock language model
- * (see `setE2eGenerateQueryRoute` in
- * `../../../commands/e2eTestCommands/generateQueryMockModel`). Only the
- * confirmation flow remains overridden:
- *
- * - `type: 'confirm'` — the mutation emits a `confirmToolInvocation` event, waits
- *   for the user to allow/deny, then returns `{ generatedQuery }` either way.
- *   Allow and Deny both resume generation; Deny only skips the schema-sampling
- *   step, mirroring the real service's agentic loop.
- */
-export type E2eGenerateQueryOverride = { type: 'confirm'; confirmMessage: string; generatedQuery: string };
-
-let e2eGenerateQueryOverride: E2eGenerateQueryOverride | undefined;
-
-/**
- * Installs (or, with `undefined`, clears) the e2e generate query override.
- * Intended for e2e test commands only.
- */
-export function setE2eGenerateQueryOverride(override: E2eGenerateQueryOverride | undefined): void {
-    e2eGenerateQueryOverride = override;
-}
-
-/**
- * Returns the current override value (for assertions in test commands).
- */
-export function getE2eGenerateQueryOverride(): E2eGenerateQueryOverride | undefined {
-    return e2eGenerateQueryOverride;
-}
-
 /**
  * Read the persisted Priority Level from extension global state, validating it
  * against the known enum values. Falls back to `Low` (per PRD F3/F4) for unset
@@ -661,28 +624,6 @@ export const queryEditorRouterDef = queryEditorRouter({
     generateQuery: queryEditorProcedure
         .input(z.object({ prompt: z.string(), currentQuery: z.string() }))
         .mutation(async ({ input, ctx }) => {
-            // ─── E2E schema-tool confirm override ───────────────────────
-            // The success and error paths are exercised through the real
-            // `generateQueryWithLLM` service, driven by a route-aware mock model
-            // (see `setE2eGenerateQueryRoute` in
-            // `commands/e2eTestCommands/generateQueryMockModel`). Only the
-            // schema-tool confirmation dialog stays bypassed here, because driving
-            // the real agentic tool loop headlessly would require a live emulator
-            // connection.
-            if (e2eGenerateQueryOverride?.type === 'confirm') {
-                const override = e2eGenerateQueryOverride;
-                ctx.eventSink.emit({ type: 'confirmToolInvocation', message: override.confirmMessage });
-                // Wait for the user's Allow/Deny. Both resume generation — Deny
-                // only skips the schema-sampling step — so either way we return
-                // the generated query, mirroring the real service's agentic loop
-                // (see `generateQueryWithLLM`).
-                await new Promise<boolean>((resolve) => {
-                    ctx.state.pendingConfirmResolve = resolve;
-                });
-                return { generatedQuery: override.generatedQuery };
-            }
-            // ─── End E2E schema-tool confirm override ───────────────────
-
             const isRetry = ctx.state.lastGenerationFailed;
             if (ctx.actionContext) {
                 ctx.actionContext.telemetry.properties.isRetry = String(isRetry);

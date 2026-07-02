@@ -357,11 +357,11 @@ export function registerE2eTestCommands(): void {
     // by a route-aware mock language model (see `setE2eGenerateQueryRoute` in
     // `generateQueryMockModel`). Each command selects the route the mock follows
     // on its next request:
-    //   - success  → streams a query
-    //   - error    → streams an `ERROR:` refusal
-    //   - confirm  → streams a schema-sampling tool call, driving the real
-    //                agentic loop → Allow/Not now dialog, then a query
-    //   - latency  → stalls until cancelled, to exercise Cancel
+    //   - success       → streams a query
+    //   - error         → streams an `ERROR:` refusal
+    //   - schemaConfirm → streams a schema-sampling tool call, driving the real
+    //                     agentic loop → Allow/Not now dialog, then a query
+    //   - latency       → stalls until cancelled, to exercise Cancel
     // Palette can't pass args, so each route gets its own command.
 
     registerCommand('cosmosDB.e2e.setMockGenerateQuerySuccess', (context: IActionContext): void => {
@@ -374,9 +374,9 @@ export function registerE2eTestCommands(): void {
         setE2eGenerateQueryRoute('error');
     });
 
-    registerCommand('cosmosDB.e2e.setMockGenerateQueryConfirm', (context: IActionContext): void => {
+    registerCommand('cosmosDB.e2e.setMockGenerateQuerySchemaConfirm', (context: IActionContext): void => {
         context.telemetry.properties.isE2eTest = 'true';
-        setE2eGenerateQueryRoute('confirm');
+        setE2eGenerateQueryRoute('schemaConfirm');
     });
 
     registerCommand('cosmosDB.e2e.setMockGenerateQueryLatency', (context: IActionContext): void => {

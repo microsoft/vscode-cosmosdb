@@ -11,9 +11,9 @@ import {
     clearMockLanguageModels,
     openQueryEditor,
     setAIFeaturesEnabled,
-    setMockGenerateQueryConfirm,
     setMockGenerateQueryError,
     setMockGenerateQueryLatency,
+    setMockGenerateQuerySchemaConfirm,
     setMockGenerateQuerySuccess,
     setMockLanguageModels,
 } from '../fixtures/webviews';
@@ -149,7 +149,7 @@ test.describe('generate query input', () => {
             process.env.COSMOSDB_E2E_SKIP_EMULATOR === '1',
             'schema-tool sampling requires a live Cosmos DB connection',
         );
-        await setMockGenerateQueryConfirm(vscodeWindow);
+        await setMockGenerateQuerySchemaConfirm(vscodeWindow);
 
         const webview = await openGenerateInput(vscodeWindow);
 
@@ -195,7 +195,7 @@ test.describe('generate query input', () => {
             process.env.COSMOSDB_E2E_SKIP_EMULATOR === '1',
             'schema-tool sampling requires a live Cosmos DB connection',
         );
-        await setMockGenerateQueryConfirm(vscodeWindow);
+        await setMockGenerateQuerySchemaConfirm(vscodeWindow);
 
         const webview = await openGenerateInput(vscodeWindow);
 

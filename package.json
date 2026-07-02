@@ -560,8 +560,8 @@
       },
       {
         "category": "Cosmos DB",
-        "command": "cosmosDB.e2e.setMockGenerateQueryConfirm",
-        "title": "[E2E Test] Set Mock Generate Query (Confirm)"
+        "command": "cosmosDB.e2e.setMockGenerateQuerySchemaConfirm",
+        "title": "[E2E Test] Set Mock Generate Query (Schema Confirm)"
       },
       {
         "category": "Cosmos DB",
@@ -908,7 +908,7 @@
           "when": "cosmosDB.e2eTestMode"
         },
         {
-          "command": "cosmosDB.e2e.setMockGenerateQueryConfirm",
+          "command": "cosmosDB.e2e.setMockGenerateQuerySchemaConfirm",
           "when": "cosmosDB.e2eTestMode"
         },
         {

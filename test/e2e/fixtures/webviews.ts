@@ -217,8 +217,8 @@ export async function setMockGenerateQueryError(page: Page): Promise<void> {
  * since `onConfirm` only fires when the editor is connected. Call this BEFORE
  * submitting a prompt.
  */
-export async function setMockGenerateQueryConfirm(page: Page): Promise<void> {
-    await runCommand(page, 'Cosmos DB: [E2E Test] Set Mock Generate Query (Confirm)');
+export async function setMockGenerateQuerySchemaConfirm(page: Page): Promise<void> {
+    await runCommand(page, 'Cosmos DB: [E2E Test] Set Mock Generate Query (Schema Confirm)');
     await page.waitForTimeout(250);
 }
 

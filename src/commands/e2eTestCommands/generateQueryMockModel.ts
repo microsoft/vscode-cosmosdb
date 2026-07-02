@@ -12,8 +12,8 @@
  * Query flow: the route ids and the canned LLM responses they map to.
  *
  * Every route drives the *real* `generateQueryWithLLM` service — nothing is
- * bypassed in the tRPC router. In particular the `'confirm'` route emits a real
- * schema-sampling tool call so the genuine agentic loop runs (and shows the
+ * bypassed in the tRPC router. In particular the `'schemaConfirm'` route emits a
+ * real schema-sampling tool call so the genuine agentic loop runs (and shows the
  * Allow/Not now dialog), and `'latency'` stalls until the request is cancelled so
  * the Cancel affordance can be exercised.
  */
@@ -27,16 +27,17 @@ import { type MockResponse, type MockResponsePart } from '../../utils/languageMo
  * Route ids for the Generate Query e2e mock model. Selected via
  * {@link setE2eGenerateQueryRoute} so the *real* `generateQueryWithLLM` flow runs
  * down the matching branch instead of being bypassed:
- *  - `success` — streams a query string.
- *  - `error`   — streams an `ERROR:` refusal (→ `QueryGenerationRefusedError`).
- *  - `confirm` — streams a schema-sampling tool call, driving the real agentic
- *                loop (Allow/Not now dialog), then the query on the next round.
- *  - `latency` — stalls until the request's cancellation token fires, so the
- *                Cancel button can abort an in-flight generation.
+ *  - `success`       — streams a query string.
+ *  - `error`         — streams an `ERROR:` refusal (→ `QueryGenerationRefusedError`).
+ *  - `schemaConfirm` — streams a schema-sampling tool call, driving the real
+ *                      agentic loop (Allow/Not now dialog), then the query on the
+ *                      next round.
+ *  - `latency`       — stalls until the request's cancellation token fires, so the
+ *                      Cancel button can abort an in-flight generation.
  */
-export type E2eGenerateQueryRoute = 'success' | 'error' | 'confirm' | 'latency';
+export type E2eGenerateQueryRoute = 'success' | 'error' | 'schemaConfirm' | 'latency';
 
-/** Query the mock LLM streams back on the `'success'` / `'confirm'` / `'latency'` routes. */
+/** Query the mock LLM streams back on the `'success'` / `'schemaConfirm'` / `'latency'` routes. */
 const MOCK_GENERATED_QUERY = 'SELECT * FROM c WHERE c.price < 20';
 
 /**
@@ -60,7 +61,7 @@ function delay(ms: number, token?: vscode.CancellationToken): Promise<void> {
     });
 }
 
-/** The schema-sampling tool call streamed as the `'confirm'` route's first response. */
+/** The schema-sampling tool call streamed as the `'schemaConfirm'` route's first response. */
 const SCHEMA_SAMPLING_TOOL_CALL: MockResponsePart = { type: 'toolCall', name: SAMPLE_DATA_TOOL_NAME, input: {} };
 
 /**
@@ -72,15 +73,15 @@ type MockStep = MockResponse | E2eMockResponseResolver;
 /**
  * Each route is simply an ordered list of responses. The mock plays them back
  * one per `sendRequest`, clamping at the last, so multi-round flows fall out
- * without the mock knowing anything about their intent: `'confirm'` is just a
- * two-response route (a schema-sampling tool call, then the query) — the mock
+ * without the mock knowing anything about their intent: `'schemaConfirm'` is just
+ * a two-response route (a schema-sampling tool call, then the query) — the mock
  * neither knows nor cares that those two rounds happen to drive the Allow/Not now
  * dialog.
  */
 const ROUTE_RESPONSES: Record<E2eGenerateQueryRoute, readonly MockStep[]> = {
     success: [MOCK_GENERATED_QUERY],
     error: [`ERROR: ${MOCK_REFUSAL_MESSAGE}`],
-    confirm: [[SCHEMA_SAMPLING_TOOL_CALL], MOCK_GENERATED_QUERY],
+    schemaConfirm: [[SCHEMA_SAMPLING_TOOL_CALL], MOCK_GENERATED_QUERY],
     latency: [
         async ({ token }) => {
             // Stall so the spec can click Cancel; cancelling the request unblocks

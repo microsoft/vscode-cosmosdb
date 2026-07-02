@@ -130,3 +130,113 @@ export async function attachEmulator(page: Page): Promise<void> {
     // to globalState + secretStorage. Give VS Code a beat to flush.
     await page.waitForTimeout(250);
 }
+
+/**
+ * Forces the extension's AI-features flag on via the
+ * `cosmosDB.e2e.setAIFeaturesEnabled` test-only command. The AI button in the
+ * Query Editor toolbar only renders when AI features are enabled (i.e. Copilot
+ * is available), which isn't the case in a fresh test VS Code. Call this
+ * BEFORE `openQueryEditor` so the panel's initial state reports AI as enabled.
+ */
+export async function setAIFeaturesEnabled(page: Page): Promise<void> {
+    await runCommand(page, 'Cosmos DB: [E2E Test] Enable AI Features');
+    // The command resolves synchronously; give VS Code a beat to apply it.
+    await page.waitForTimeout(250);
+}
+
+/**
+ * Installs a fixed pair of fake Copilot models via the
+ * `cosmosDB.e2e.setMockLanguageModels` test-only command. With two models
+ * available the Generate Query input renders its model-switcher `Combobox`
+ * (instead of a single-model static label), and selection works without a
+ * real Copilot installation. Call this BEFORE opening the Generate Query
+ * input so the model list is in place when the input fetches it.
+ *
+ * The model names are defined alongside the command in
+ * `src/commands/e2eTestCommands/registerE2eTestCommands.ts`.
+ */
+export async function setMockLanguageModels(page: Page): Promise<void> {
+    await runCommand(page, 'Cosmos DB: [E2E Test] Set Mock Language Models');
+    // The command resolves synchronously; give VS Code a beat to apply it.
+    await page.waitForTimeout(250);
+}
+
+/**
+ * Clears the fake-model override installed by {@link setMockLanguageModels} via
+ * the `cosmosDB.e2e.clearMockLanguageModels` command. Call this in spec teardown
+ * so the mock models don't leak into other specs sharing the worker VS Code.
+ */
+export async function clearMockLanguageModels(page: Page): Promise<void> {
+    await runCommand(page, 'Cosmos DB: [E2E Test] Clear Mock Language Models');
+    // The command resolves synchronously; give VS Code a beat to apply it.
+    await page.waitForTimeout(250);
+}
+
+/**
+ * Forces the survey-candidate flag on via the `cosmosDB.e2e.setSurveyCandidate`
+ * test-only command so the thumbs up/down feedback buttons in the Generate
+ * Query input render regardless of the test VS Code's
+ * `telemetry.feedback.enabled` setting. Call this AFTER opening the Query
+ * Editor (it broadcasts to already-open tabs).
+ */
+export async function setSurveyCandidate(page: Page): Promise<void> {
+    await runCommand(page, 'Cosmos DB: [E2E Test] Set Survey Candidate');
+    // The command resolves synchronously; give VS Code a beat to apply it.
+    await page.waitForTimeout(250);
+}
+
+/**
+ * Routes the mock language model down its success branch so the `generateQuery`
+ * tRPC mutation runs through the real `generateQueryWithLLM` service and returns
+ * a query (`SELECT * FROM c WHERE c.price < 20`). Requires the mock models to be
+ * installed first (see {@link setMockLanguageModels}). Call this BEFORE
+ * submitting a prompt.
+ */
+export async function setMockGenerateQuerySuccess(page: Page): Promise<void> {
+    await runCommand(page, 'Cosmos DB: [E2E Test] Set Mock Generate Query (Success)');
+    await page.waitForTimeout(250);
+}
+
+/**
+ * Routes the mock language model down its error branch so the real
+ * `generateQueryWithLLM` service parses an `ERROR:`-prefixed response into a
+ * `QueryGenerationRefusedError`, surfacing the error UI path. Requires the mock
+ * models to be installed first (see {@link setMockLanguageModels}). Call this
+ * BEFORE submitting a prompt.
+ */
+export async function setMockGenerateQueryError(page: Page): Promise<void> {
+    await runCommand(page, 'Cosmos DB: [E2E Test] Set Mock Generate Query (Error)');
+    await page.waitForTimeout(250);
+}
+
+/**
+ * Routes the mock language model down its schema-tool branch: the first round
+ * streams a `cosmosdb_sampleContainerSchema` tool call, so the real
+ * `generateQueryWithLLM` agentic loop runs and renders the Allow/Not now dialog;
+ * the next round streams the query. Requires a live connection (the emulator),
+ * since `onConfirm` only fires when the editor is connected. Call this BEFORE
+ * submitting a prompt.
+ */
+export async function setMockGenerateQuerySchemaConfirm(page: Page): Promise<void> {
+    await runCommand(page, 'Cosmos DB: [E2E Test] Set Mock Generate Query (Schema Confirm)');
+    await page.waitForTimeout(250);
+}
+
+/**
+ * Routes the mock language model down its latency branch: `sendRequest` stalls
+ * until the request's cancellation token fires, so a test can click Cancel to
+ * abort an in-flight generation. Needs no connection. Call this BEFORE
+ * submitting a prompt.
+ */
+export async function setMockGenerateQueryLatency(page: Page): Promise<void> {
+    await runCommand(page, 'Cosmos DB: [E2E Test] Set Mock Generate Query (Latency)');
+    await page.waitForTimeout(250);
+}
+
+/**
+ * Clears the generate-query mock route so nothing leaks into other specs.
+ */
+export async function clearMockGenerateQueryResult(page: Page): Promise<void> {
+    await runCommand(page, 'Cosmos DB: [E2E Test] Clear Mock Generate Query Result');
+    await page.waitForTimeout(250);
+}

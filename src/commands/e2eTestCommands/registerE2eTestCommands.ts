@@ -48,13 +48,16 @@ import { API } from '../../AzureDBExperiences';
 import { AuthenticationMethod } from '../../cosmosdb/AuthenticationMethod';
 import { type CosmosDBCredential } from '../../cosmosdb/CosmosDBCredential';
 import { type NoSqlQueryConnection } from '../../cosmosdb/NoSqlQueryConnection';
+import { ext } from '../../extensionVariables';
 import { DocumentTab } from '../../panels/DocumentTab';
 import { MigrationAssistantTab } from '../../panels/MigrationAssistantTab';
 import { QueryEditorTab } from '../../panels/QueryEditorTab';
 import { MIGRATION_FOLDER } from '../../services/MigrationProjectService';
 import { StorageNames, StorageService, type StorageItem } from '../../services/StorageService';
 import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
+import { setE2eModelOverride, type AvailableModelDescriptor } from '../../utils/aiUtils';
 import { getEmulatorItemUniqueId } from '../../utils/emulatorUtils';
+import { setE2eGenerateQueryRoute } from './generateQueryMockModel';
 
 const E2E_TEST_ENV_KEY = 'COSMOSDB_E2E_TEST';
 const E2E_TEST_CONTEXT_KEY = 'cosmosDB.e2eTestMode';
@@ -67,6 +70,23 @@ const ENV_EMULATOR_ENDPOINT = 'COSMOSDB_E2E_EMULATOR_ENDPOINT';
 const ENV_EMULATOR_KEY = 'COSMOSDB_E2E_EMULATOR_KEY';
 const ENV_DATABASE_ID = 'COSMOSDB_E2E_DATABASE_ID';
 const ENV_CONTAINER_ID = 'COSMOSDB_E2E_CONTAINER_ID';
+
+/**
+ * Deterministic fake Copilot models used by `cosmosDB.e2e.setMockLanguageModels`.
+ * Two entries (>1) so the Generate Query input renders the model-switcher
+ * `Combobox` rather than the single-model static label. Names are referenced
+ * verbatim by `test/e2e/specs/generate-query-input.spec.ts`.
+ */
+const E2E_MOCK_MODELS: readonly AvailableModelDescriptor[] = [
+    { id: 'e2e-mock-gpt-4o', name: 'Mock GPT-4o', family: 'gpt-4o', vendor: 'copilot', maxInputTokens: 128_000 },
+    {
+        id: 'e2e-mock-gpt-4o-mini',
+        name: 'Mock GPT-4o mini',
+        family: 'gpt-4o-mini',
+        vendor: 'copilot',
+        maxInputTokens: 128_000,
+    },
+];
 
 // Absolute path of a fixture directory copied into `<workspace>/.cosmosdb-migration`
 // by `cosmosDB.e2e.openMigration`. Set by the Playwright fixture so the command
@@ -287,4 +307,86 @@ export function registerE2eTestCommands(): void {
             await attachEmulatorAccount(env);
         },
     );
+
+    // Forces the AI-features flag on (or off) so specs can assert on the
+    // AI button without depending on a real Copilot/chat installation in the
+    // test VS Code. Setting `ext.isAIFeaturesEnabled` before opening the
+    // Query Editor makes the initial webview state report AI as enabled; the
+    // `notifyAIFeaturesChanged` broadcast also updates any already-open tabs.
+    // Invoked from the palette with no arg → defaults to enabling AI.
+    registerCommand('cosmosDB.e2e.setAIFeaturesEnabled', (context: IActionContext, enabled?: boolean): void => {
+        context.telemetry.properties.isE2eTest = 'true';
+        const isEnabled = enabled ?? true;
+        ext.isAIFeaturesEnabled = isEnabled;
+        context.telemetry.properties.aiFeaturesEnabled = String(isEnabled);
+        QueryEditorTab.notifyAIFeaturesChanged(isEnabled);
+    });
+
+    // Installs a fixed pair of fake Copilot models so the Generate Query input's
+    // model switcher renders and behaves without a real Copilot install. The
+    // override bypasses `vscode.lm.selectChatModels` inside `aiUtils`. Invoked
+    // from the palette with no args (palette can't pass arguments), so the
+    // fixtures are baked into the command. Pass `false` to clear the override.
+    registerCommand('cosmosDB.e2e.setMockLanguageModels', (context: IActionContext, enabled?: boolean): void => {
+        context.telemetry.properties.isE2eTest = 'true';
+        const shouldMock = enabled ?? true;
+        setE2eModelOverride(shouldMock ? E2E_MOCK_MODELS : undefined);
+        context.telemetry.measurements.modelCount = shouldMock ? E2E_MOCK_MODELS.length : 0;
+    });
+
+    // Clears the fake-model override so it can't leak into other specs that
+    // share the worker's VS Code instance. Palette can't pass args, so this is
+    // a dedicated no-arg counterpart to `setMockLanguageModels`.
+    registerCommand('cosmosDB.e2e.clearMockLanguageModels', (context: IActionContext): void => {
+        context.telemetry.properties.isE2eTest = 'true';
+        setE2eModelOverride(undefined);
+    });
+
+    // Forces the survey-candidate flag so the thumbs up/down feedback buttons
+    // in the Generate Query input render regardless of the test VS Code's
+    // `telemetry.feedback.enabled` setting. Invoked with no arg → defaults on.
+    registerCommand('cosmosDB.e2e.setSurveyCandidate', (context: IActionContext, isCandidate?: boolean): void => {
+        context.telemetry.properties.isE2eTest = 'true';
+        const value = isCandidate ?? true;
+        context.telemetry.properties.surveyCandidate = String(value);
+        QueryEditorTab.notifySurveyCandidate(value);
+    });
+
+    // ─── Generate Query mock commands ───────────────────────────────────
+    // Every path runs through the *real* `generateQueryWithLLM` service, driven
+    // by a route-aware mock language model (see `setE2eGenerateQueryRoute` in
+    // `generateQueryMockModel`). Each command selects the route the mock follows
+    // on its next request:
+    //   - success       → streams a query
+    //   - error         → streams an `ERROR:` refusal
+    //   - schemaConfirm → streams a schema-sampling tool call, driving the real
+    //                     agentic loop → Allow/Not now dialog, then a query
+    //   - latency       → stalls until cancelled, to exercise Cancel
+    // Palette can't pass args, so each route gets its own command.
+
+    registerCommand('cosmosDB.e2e.setMockGenerateQuerySuccess', (context: IActionContext): void => {
+        context.telemetry.properties.isE2eTest = 'true';
+        setE2eGenerateQueryRoute('success');
+    });
+
+    registerCommand('cosmosDB.e2e.setMockGenerateQueryError', (context: IActionContext): void => {
+        context.telemetry.properties.isE2eTest = 'true';
+        setE2eGenerateQueryRoute('error');
+    });
+
+    registerCommand('cosmosDB.e2e.setMockGenerateQuerySchemaConfirm', (context: IActionContext): void => {
+        context.telemetry.properties.isE2eTest = 'true';
+        setE2eGenerateQueryRoute('schemaConfirm');
+    });
+
+    registerCommand('cosmosDB.e2e.setMockGenerateQueryLatency', (context: IActionContext): void => {
+        context.telemetry.properties.isE2eTest = 'true';
+        setE2eGenerateQueryRoute('latency');
+    });
+
+    // Clears the generate-query mock route so it can't leak into other specs.
+    registerCommand('cosmosDB.e2e.clearMockGenerateQueryResult', (context: IActionContext): void => {
+        context.telemetry.properties.isE2eTest = 'true';
+        setE2eGenerateQueryRoute(undefined);
+    });
 }

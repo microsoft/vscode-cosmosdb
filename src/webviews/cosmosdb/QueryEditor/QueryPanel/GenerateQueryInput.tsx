@@ -663,7 +663,7 @@ export const GenerateQueryInput = () => {
                                 onClick={() => handleConfirmResponse(false)}
                                 aria-describedby="confirm-msg"
                             >
-                                {l10n.t('Deny')}
+                                {l10n.t('Not now')}
                             </Button>
                         </div>
                     </div>

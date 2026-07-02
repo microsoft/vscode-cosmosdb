@@ -1,5 +1,39 @@
 # Change Log
 
+## 0.35.2 (Preview)
+
+### Added
+
+- Added support for the official [Microsoft Fabric extension](https://marketplace.visualstudio.com/items?itemName=fabric.vscode-fabric), letting this extension act as its satellite. Cosmos DB in Fabric commands and experiences (via new tree node providers) now light up directly inside the Fabric workspace view. (#2921)
+- Added **schema generation from queries** in the NoSQL Query Editor, backed by a new `SchemaService` that provides schema simplification, cascade deletion, and telemetry. (#3074, #3079)
+- Added **Priority Level** support in the Query Editor, allowing requests to be issued with a low or high priority. (#3063)
+- Added a NoSQL diagnostic that detects and reports **`ORDER BY` used inside a subquery**, which is not supported. (#3148)
+
+### Fixed
+
+- Simplified the hotkey mechanism and fixed **Edit / View / Delete** actions on selected rows in the results grid. (#3168)
+- Improved error handling when generating a query with **NL2Query**. (#3078)
+- Guarded Fabric provider registration and dropped an abandoned activation call. (#3161)
+- Corrected several **Learn Microsoft** documentation URLs. (#3153, #3162)
+- Fixed the telemetry property name used for feedback direction in the Query Editor. (#3127)
+- Added explicit IDs to wizard steps to prevent mangled telemetry. (#3086)
+
+### Changed
+
+- The **Migration Assistant** is now gated behind a feature flag and clearly labeled as **Preview**. (#3176)
+- Refactored the **Azure Cosmos DB Shell** integration into split modules with centralized constants and added tests. (#3077)
+- Extracted the webview **tRPC** communication layer into dedicated packages. (#3121)
+- Removed the legacy LLM instructions deployment logic. (#3126)
+- Unified the `nosql-language-service` provider APIs and documented their options. (#3114)
+- Aligned the NoSQL query-generation prompt with the language service and removed legacy language-reference injection. (#3072)
+- Enhanced telemetry tracking and data privacy in the migration process, including correlating DDL extractor telemetry with the session and source database and stamping a baseline run index. (#3087, #3182, #3183)
+- Documented the `LOG`/`LOG10` zero-argument limitation in NoSQL. (#3149)
+- Expanded automated testing: migrated tests to **Vitest**, added **Playwright** end-to-end suites (Query Editor, webviews, relational-migration), enabled React component unit tests, and added a reusable Language Model mock and NL2Query quality test runner. (#3136, #3170, #3172, #3174, #3181, #3116, #3146, #3147, #3151)
+- Improved CI reliability by splitting the build and test workflows to run in parallel, tuning CodeQL configuration, and removing disabled workflows. (#3150, #3158, #3160)
+- Made Monaco workers load correctly in the dev server. (#3169)
+- Updated localization.
+- Updated several dependencies to address vulnerabilities.
+
 ## 0.35.0 (Preview)
 
 ### Added

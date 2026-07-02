@@ -154,7 +154,7 @@ test.describe('generate query input', () => {
         await expect(confirmDialog).toBeVisible({ timeout: 15_000 });
         await expect(confirmDialog).toContainText('sample your container schema');
         const allowButton = confirmDialog.getByRole('button', { name: 'Allow', exact: true });
-        const denyButton = confirmDialog.getByRole('button', { name: 'Deny', exact: true });
+        const denyButton = confirmDialog.getByRole('button', { name: 'Not now', exact: true });
         await expect(allowButton).toBeVisible();
         await expect(denyButton).toBeVisible();
 
@@ -198,7 +198,7 @@ test.describe('generate query input', () => {
 
         // Denying schema access only skips sampling; generation continues and the
         // query is still returned and inserted (same UI outcome as Allow).
-        await confirmDialog.getByRole('button', { name: 'Deny', exact: true }).click();
+        await confirmDialog.getByRole('button', { name: 'Not now', exact: true }).click();
         await expect(confirmDialog).toBeHidden({ timeout: 10_000 });
         await expect
             .poll(

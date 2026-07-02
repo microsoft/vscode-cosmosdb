@@ -34,6 +34,7 @@ import {
     Tooltip,
     type MenuButtonProps,
     type OptionOnSelectData,
+    type SplitButtonProps,
 } from '@fluentui/react-components';
 import {
     AddRegular,
@@ -56,7 +57,7 @@ import {
     WarningRegular,
 } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { useCallback, useEffect, useMemo, useState, type ReactElement, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { type MigrationAppRouter } from '../../../panels/trpc/appRouter';
 import { sanitizeCosmosDBAccountName, validateCosmosDBAccountName } from '../../../utils/cosmosDBAccountName';
 import { formatTokenCount, partitionModelsByCapability } from '../../../utils/modelUtils';
@@ -85,6 +86,41 @@ const useStyles = makeStyles({
         paddingBottom: '52px',
         gap: '10px',
         boxSizing: 'border-box',
+    },
+    previewRail: {
+        // Zero-height sticky rail that carries the floating Preview chip. With no height (only a
+        // negative margin to cancel the column gap) it sits exactly at the panel's top edge and
+        // does not move the panel below it. Stays pinned to the top while the assistant scrolls.
+        position: 'sticky',
+        top: 0,
+        zIndex: 10,
+        alignSelf: 'stretch',
+        height: 0,
+        marginBottom: '-10px',
+        display: 'flex',
+        justifyContent: 'flex-end',
+        pointerEvents: 'none',
+    },
+    previewBadge: {
+        // 8px from the panel's top and right borders (the rail's origin is the panel's top-right).
+        pointerEvents: 'auto',
+        marginTop: '8px',
+        marginRight: '8px',
+        cursor: 'default',
+        height: '32px',
+        paddingLeft: '20px',
+        paddingRight: '20px',
+        borderRadius: '6px',
+        fontWeight: 600,
+        // Lighter background + subtle panel-colored border + shadow so it reads as a floating chip.
+        backgroundColor: 'var(--vscode-editorWidget-background)',
+        color: 'var(--vscode-foreground)',
+        border: '1px solid var(--vscode-panel-border)',
+        boxShadow: '0 2px 8px var(--vscode-widget-shadow)',
+        '&:focus-visible': {
+            outline: '2px solid var(--vscode-focusBorder)',
+            outlineOffset: '1px',
+        },
     },
     configSection: {
         display: 'flex',
@@ -896,6 +932,19 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
         },
         [dispatch, sendCommand],
     );
+
+    // Once a code migration plan has been generated on disk, the primary action
+    // shifts from "Plan Migration" to "Start Migration". Fire only on the
+    // false→true transition so the user can still re-select "Plan Migration"
+    // from the SplitButton menu afterwards (e.g. to regenerate the plan).
+    const prevHasCodeMigrationPlan = useRef(state.hasCodeMigrationPlan);
+    useEffect(() => {
+        if (state.hasCodeMigrationPlan && !prevHasCodeMigrationPlan.current && state.migrationMode === 'plan') {
+            handleSetMigrationMode('start');
+        }
+        prevHasCodeMigrationPlan.current = state.hasCodeMigrationPlan;
+    }, [state.hasCodeMigrationPlan, state.migrationMode, handleSetMigrationMode]);
+
     const handleMigrationInstructionsChange = useCallback(
         (_e: unknown, data: { value: string }) => {
             dispatch({ type: 'SET_MIGRATION_INSTRUCTIONS', payload: data.value });
@@ -974,6 +1023,24 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
 
     return (
         <div className={styles.root}>
+            {/* Floating Preview chip — pinned to the panel's top-right corner; stays put on scroll. */}
+            <div className={styles.previewRail}>
+                <Tooltip
+                    content={l10n.t('Preview: features and behavior may change. Use with care.')}
+                    relationship="description"
+                >
+                    <Badge
+                        appearance="outline"
+                        color="informative"
+                        className={styles.previewBadge}
+                        tabIndex={0}
+                        aria-label={l10n.t('Preview')}
+                    >
+                        <span aria-hidden="true">{l10n.t('Preview')}</span>
+                    </Badge>
+                </Tooltip>
+            </div>
+
             {/* Configuration Section */}
             <div className={styles.configSection}>
                 <Text size={400} weight="semibold">
@@ -1018,6 +1085,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
 
                 {state.hasGitRepo === true && state.isInGitignore !== null && (
                     <Checkbox
+                        data-testid="migration-gitignore-exclude"
                         checked={state.isInGitignore === true}
                         onChange={(_e, data) => {
                             if (data.checked === true) {
@@ -1044,6 +1112,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                 {state.availableModels.length > 0 && (
                     <Field label={l10n.t('AI Model')}>
                         <Dropdown
+                            data-testid="migration-model-dropdown"
                             onOptionSelect={handleModelChange}
                             value={selectedModel?.name ?? ''}
                             selectedOptions={state.selectedModelId ? [state.selectedModelId] : []}
@@ -1074,6 +1143,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                 )}
 
                 <Checkbox
+                    data-testid="migration-consent-checkbox"
                     checked={state.consentGiven}
                     onChange={handleConsentChange}
                     label={
@@ -1087,7 +1157,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                 />
 
                 {!state.isAIFeaturesEnabled && (
-                    <Text className={styles.warningText}>
+                    <Text data-testid="migration-ai-disabled-warning" className={styles.warningText}>
                         {l10n.t('AI features are currently unavailable. Please ensure GitHub Copilot is active.')}
                     </Text>
                 )}
@@ -1101,7 +1171,12 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                             'This workspace is not under version control. It is strongly recommended to initialize a Git repository before starting the migration.',
                         )}
                     </Text>
-                    <Button appearance="secondary" size="small" onClick={handleInitGit}>
+                    <Button
+                        data-testid="migration-git-init"
+                        appearance="secondary"
+                        size="small"
+                        onClick={handleInitGit}
+                    >
                         {l10n.t('Initialize Git Repository')}
                     </Button>
                 </div>
@@ -1340,6 +1415,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                 validationState={!state.analysisResult?.projectName?.trim() ? 'error' : 'none'}
                             >
                                 <Input
+                                    data-testid="migration-project-name"
                                     size="small"
                                     value={state.analysisResult?.projectName ?? ''}
                                     onChange={(_e, data) => handleAnalysisFieldChange('projectName', data.value)}
@@ -1364,6 +1440,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                 validationState={!state.analysisResult?.projectType?.trim() ? 'error' : 'none'}
                             >
                                 <Input
+                                    data-testid="migration-project-type"
                                     size="small"
                                     value={state.analysisResult?.projectType ?? ''}
                                     onChange={(_e, data) => handleAnalysisFieldChange('projectType', data.value)}
@@ -1388,6 +1465,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                 validationState={!state.analysisResult?.language?.trim() ? 'error' : 'none'}
                             >
                                 <Input
+                                    data-testid="migration-language"
                                     size="small"
                                     value={state.analysisResult?.language ?? ''}
                                     onChange={(_e, data) => handleAnalysisFieldChange('language', data.value)}
@@ -1413,6 +1491,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                 validationState={!state.analysisResult?.frameworks?.length ? 'error' : 'none'}
                             >
                                 <Input
+                                    data-testid="migration-frameworks"
                                     size="small"
                                     value={state.analysisResult?.frameworks?.join(', ') ?? ''}
                                     onChange={(_e, data) => handleFrameworksChange(data.value)}
@@ -1437,6 +1516,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                 validationState={!state.analysisResult?.databaseType?.trim() ? 'error' : 'none'}
                             >
                                 <Input
+                                    data-testid="migration-database"
                                     size="small"
                                     value={state.analysisResult?.databaseType ?? ''}
                                     onChange={(_e, data) => handleAnalysisFieldChange('databaseType', data.value)}
@@ -1462,6 +1542,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                 validationState={!state.analysisResult?.databaseAccess?.trim() ? 'error' : 'none'}
                             >
                                 <Input
+                                    data-testid="migration-access"
                                     size="small"
                                     value={state.analysisResult?.databaseAccess ?? ''}
                                     onChange={(_e, data) => handleAnalysisFieldChange('databaseAccess', data.value)}
@@ -1497,6 +1578,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                           : '';
                                     const button = (
                                         <Button
+                                            data-testid="migration-auto-detect"
                                             appearance="primary"
                                             size="small"
                                             icon={<SparkleRegular />}
@@ -1536,7 +1618,12 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                         <AccordionHeader icon={getPhaseIcon(phase1State)}>
                             <Text weight="semibold">{l10n.t('Phase 1: Discovery Report')}</Text>
                             {phase1State === 'complete' && (
-                                <Badge appearance="filled" color="success" style={{ marginLeft: '8px' }}>
+                                <Badge
+                                    data-testid="migration-phase1-status-complete"
+                                    appearance="filled"
+                                    color="success"
+                                    style={{ marginLeft: '8px' }}
+                                >
                                     {l10n.t('Complete')}
                                 </Badge>
                             )}
@@ -1564,6 +1651,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                     }
                                 >
                                     <Textarea
+                                        data-testid="migration-discovery-instructions"
                                         value={state.discoveryInstructions ?? ''}
                                         onChange={handleDiscoveryInstructionsChange}
                                         placeholder={l10n.t(
@@ -1587,6 +1675,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                     (state.showTokenEstimate ? (
                                         <div className={styles.buttonRow}>
                                             <Button
+                                                data-testid="migration-run-discovery"
                                                 appearance="primary"
                                                 size="small"
                                                 icon={<SparkleRegular />}
@@ -1604,6 +1693,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                         </div>
                                     ) : (
                                         <Button
+                                            data-testid="migration-run-discovery"
                                             appearance="primary"
                                             size="small"
                                             icon={<SparkleRegular />}
@@ -1624,6 +1714,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
 
                                 {phase1State === 'complete' && (
                                     <Button
+                                        data-testid="migration-view-discovery"
                                         appearance="secondary"
                                         size="small"
                                         icon={<DocumentRegular />}
@@ -1651,7 +1742,12 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                         >
                             <Text weight="semibold">{l10n.t('Phase 2: Domain Assessment')}</Text>
                             {phase2State === 'complete' && (
-                                <Badge appearance="filled" color="success" style={{ marginLeft: '8px' }}>
+                                <Badge
+                                    data-testid="migration-phase2-status-complete"
+                                    appearance="filled"
+                                    color="success"
+                                    style={{ marginLeft: '8px' }}
+                                >
                                     {l10n.t('Complete')}
                                 </Badge>
                             )}
@@ -1711,6 +1807,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                                 }
                                             >
                                                 <Textarea
+                                                    data-testid="migration-assessment-instructions"
                                                     value={state.assessmentInstructions ?? ''}
                                                     onChange={handleAssessmentInstructionsChange}
                                                     placeholder={l10n.t(
@@ -1722,6 +1819,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                             </Field>
 
                                             <Button
+                                                data-testid="migration-run-assessment"
                                                 appearance="primary"
                                                 size="small"
                                                 icon={<SparkleRegular />}
@@ -1754,6 +1852,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                             })}
                                         </Text>
                                         <table
+                                            data-testid="migration-phase2-domains"
                                             style={{
                                                 width: '100%',
                                                 borderCollapse: 'collapse',
@@ -1789,6 +1888,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                                     >
                                                         <td style={{ padding: '4px 6px' }}>
                                                             <Link
+                                                                data-testid="migration-phase2-domain-link"
                                                                 className={styles.fileLink}
                                                                 onClick={() => handlePreviewMarkdown(domain.filePath)}
                                                             >
@@ -1841,6 +1941,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                             </tbody>
                                         </table>
                                         <Button
+                                            data-testid="migration-phase2-summary"
                                             appearance="secondary"
                                             size="small"
                                             icon={<DocumentRegular />}
@@ -1867,7 +1968,12 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                         >
                             <Text weight="semibold">{l10n.t('Phase 3: Schema Conversion')}</Text>
                             {phase3State === 'complete' && (
-                                <Badge appearance="filled" color="success" style={{ marginLeft: '8px' }}>
+                                <Badge
+                                    data-testid="migration-phase3-status-complete"
+                                    appearance="filled"
+                                    color="success"
+                                    style={{ marginLeft: '8px' }}
+                                >
                                     {l10n.t('Complete')}
                                 </Badge>
                             )}
@@ -1932,6 +2038,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                             }
                                         >
                                             <Textarea
+                                                data-testid="migration-conversion-instructions"
                                                 value={state.schemaConversionInstructions ?? ''}
                                                 onChange={handleSchemaConversionInstructionsChange}
                                                 placeholder={l10n.t(
@@ -1970,6 +2077,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
 
                                     {state.schemaConversionState !== 'in-progress' && (
                                         <Button
+                                            data-testid="migration-run-conversion"
                                             appearance="primary"
                                             size="small"
                                             icon={<SparkleRegular />}
@@ -1999,6 +2107,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                             })}
                                         </Text>
                                         <table
+                                            data-testid="migration-phase3-domains"
                                             style={{
                                                 width: '100%',
                                                 borderCollapse: 'collapse',
@@ -2034,6 +2143,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                                     >
                                                         <td style={{ padding: '4px 6px' }}>
                                                             <Link
+                                                                data-testid="migration-phase3-domain-link"
                                                                 className={styles.fileLink}
                                                                 onClick={() =>
                                                                     handlePreviewMarkdown(domain.summaryFilePath)
@@ -2067,6 +2177,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                                             }}
                                                         >
                                                             <Link
+                                                                data-testid="migration-phase3-model-link"
                                                                 className={styles.fileLink}
                                                                 style={{
                                                                     display: 'inline',
@@ -2089,6 +2200,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                             }}
                                         >
                                             <Button
+                                                data-testid="migration-phase3-summary"
                                                 appearance="secondary"
                                                 size="small"
                                                 icon={<DocumentRegular />}
@@ -2099,6 +2211,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                                 {l10n.t('View Schema Conversion Summary')}
                                             </Button>
                                             <Button
+                                                data-testid="migration-phase3-model"
                                                 appearance="secondary"
                                                 size="small"
                                                 icon={<DocumentRegular />}
@@ -2126,7 +2239,12 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                         >
                             <Text weight="semibold">{l10n.t('Phase 4: Target Cosmos DB Environment')}</Text>
                             {phase4State === 'complete' && (
-                                <Badge appearance="filled" color="success" style={{ marginLeft: '8px' }}>
+                                <Badge
+                                    data-testid="migration-phase4-status-complete"
+                                    appearance="filled"
+                                    color="success"
+                                    style={{ marginLeft: '8px' }}
+                                >
                                     {l10n.t('Complete')}
                                 </Badge>
                             )}
@@ -2153,7 +2271,11 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                             onChange={handleTargetTypeChange}
                                             disabled={isPhase4Disabled}
                                         >
-                                            <Radio value="emulator" label={l10n.t('Local Cosmos DB Emulator')} />
+                                            <Radio
+                                                data-testid="migration-target-emulator"
+                                                value="emulator"
+                                                label={l10n.t('Local Cosmos DB Emulator')}
+                                            />
                                             <Radio value="azure" label={l10n.t('Azure Cosmos DB Account')} />
                                             <Radio
                                                 value="provision"
@@ -2362,6 +2484,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                                     <ProgressBar />
                                                 ) : state.targetType === 'provision' ? null : (
                                                     <Button
+                                                        data-testid="migration-test-connection"
                                                         appearance="primary"
                                                         size="small"
                                                         icon={<PlugConnectedRegular />}
@@ -2380,7 +2503,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                 </div>
 
                                 {state.connectionVerified && (
-                                    <Text>
+                                    <Text data-testid="migration-connection-verified">
                                         <CheckmarkCircleFilled style={{ color: 'var(--vscode-testing-iconPassed)' }} />{' '}
                                         {l10n.t('Connection verified successfully.')}
                                     </Text>
@@ -2441,6 +2564,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
 
                                         {state.provisioningState !== 'in-progress' && (
                                             <Button
+                                                data-testid="migration-populate-sample-data"
                                                 appearance="primary"
                                                 size="small"
                                                 icon={<DatabaseRegular />}
@@ -2464,7 +2588,10 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                         )}
 
                                         {state.provisioningResult && (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                            <div
+                                                data-testid="migration-provisioning-summary"
+                                                style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}
+                                            >
                                                 <Text>
                                                     <CheckmarkCircleFilled
                                                         style={{ color: 'var(--vscode-testing-iconPassed)' }}
@@ -2560,7 +2687,10 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                 </Button>
                 <div className={styles.footerRight}>
                     {state.hasCodeMigrationPlan && (
-                        <Link onClick={() => handlePreviewMarkdown(state.codeMigrationPlanPath)}>
+                        <Link
+                            data-testid="migration-view-plan"
+                            onClick={() => handlePreviewMarkdown(state.codeMigrationPlanPath)}
+                        >
                             <DocumentRegular style={{ marginRight: 4, verticalAlign: 'middle' }} />
                             {l10n.t('View Plan')}
                         </Link>
@@ -2577,7 +2707,12 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                         ...triggerProps,
                                         'aria-label': l10n.t('Select migration action'),
                                     }}
-                                    primaryActionButton={{ onClick: handleStartMigration }}
+                                    primaryActionButton={
+                                        {
+                                            onClick: handleStartMigration,
+                                            'data-testid': 'migration-action-button',
+                                        } as SplitButtonProps['primaryActionButton']
+                                    }
                                 >
                                     {state.migrationMode === 'plan'
                                         ? l10n.t('Plan Migration')

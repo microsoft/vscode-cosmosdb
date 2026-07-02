@@ -572,6 +572,16 @@
         "category": "Cosmos DB",
         "command": "cosmosDB.e2e.clearMockGenerateQueryResult",
         "title": "[E2E Test] Clear Mock Generate Query Result"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.e2e.openMigration",
+        "title": "[E2E Test] Open Seeded Migration Assistant"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.e2e.openMigrationFresh",
+        "title": "[E2E Test] Open Empty Migration Assistant"
       }
     ],
     "submenus": [
@@ -807,7 +817,7 @@
         {
           "//": "[Migration] Remove migration",
           "command": "cosmosDB.migration.remove",
-          "when": "view =~ /azureWorkspace/ && viewItem =~ /treeitem[.]migration(?![a-z.\\/])/i",
+          "when": "cosmosDB.migration.enabled && view =~ /azureWorkspace/ && viewItem =~ /treeitem[.]migration(?![a-z.\\/])/i",
           "group": "1@1"
         }
       ],
@@ -818,21 +828,25 @@
         },
         {
           "command": "cosmosDB.migration.openExisting",
-          "when": "explorerResourceIsFolder && resourceFilename == .cosmosdb-migration",
+          "when": "cosmosDB.migration.enabled && explorerResourceIsFolder && resourceFilename == .cosmosdb-migration",
           "group": "navigation"
         },
         {
           "command": "cosmosDB.migration.openExisting",
-          "when": "explorerResourceIsFolder && resourceDirname =~ /\\.cosmosdb-migration$/",
+          "when": "cosmosDB.migration.enabled && explorerResourceIsFolder && resourceDirname =~ /\\.cosmosdb-migration$/",
           "group": "navigation"
         },
         {
           "command": "cosmosDB.migration.openExisting",
-          "when": "resourceFilename == project.json && resourceDirname =~ /\\.cosmosdb-migration$/",
+          "when": "cosmosDB.migration.enabled && resourceFilename == project.json && resourceDirname =~ /\\.cosmosdb-migration$/",
           "group": "navigation"
         }
       ],
       "commandPalette": [
+        {
+          "command": "cosmosDB.migration.open",
+          "when": "cosmosDB.migration.enabled"
+        },
         {
           "command": "azureDatabases.refresh",
           "when": "never"
@@ -903,6 +917,14 @@
         },
         {
           "command": "cosmosDB.e2e.clearMockGenerateQueryResult",
+          "when": "cosmosDB.e2eTestMode"
+        },
+        {
+          "command": "cosmosDB.e2e.openMigration",
+          "when": "cosmosDB.e2eTestMode"
+        },
+        {
+          "command": "cosmosDB.e2e.openMigrationFresh",
           "when": "cosmosDB.e2eTestMode"
         }
       ]
@@ -1010,6 +1032,14 @@
             "type": "boolean",
             "default": false,
             "markdownDescription": "%cosmosdb.configuration.experimental.migration.showTokenEstimate%",
+            "tags": [
+              "experimental"
+            ]
+          },
+          "cosmosDB.experimental.migration.enabled": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "%cosmosdb.configuration.experimental.migration.enabled%",
             "tags": [
               "experimental"
             ]

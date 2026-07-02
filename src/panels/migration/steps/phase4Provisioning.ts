@@ -321,14 +321,8 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
                 const aiModel = await getSelectedModel();
                 const sourceType = model.sourceType ?? 'relational';
 
-                let debugConfig: DebugPromptConfig | undefined;
-                if (isDebugPromptsEnabled()) {
-                    const mkDebug = createMkDebug(
-                        isDebugPromptsEnabled(),
-                        path.join(provisioningPath, 'debug-prompts'),
-                    );
-                    debugConfig = mkDebug('sample-data-generation');
-                }
+                const mkDebug = createMkDebug(isDebugPromptsEnabled(), path.join(provisioningPath, 'debug-prompts'));
+                const debugConfig: DebugPromptConfig = mkDebug('sample-data-generation');
 
                 const { value: generated, roundsExhausted: sampleDataRoundsExhausted } =
                     await runAgenticLoopWithJsonResult<SampleDataResult>(

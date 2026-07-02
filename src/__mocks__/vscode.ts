@@ -92,6 +92,24 @@ class CancellationTokenSource {
     };
 }
 
+// jest-mock-vscode lists these under its NotImplemented set, so provide minimal
+// constructable shims with the shape `instanceof` checks and error classification
+// rely on (`code`, `cause`).
+class CancellationError extends Error {
+    constructor() {
+        super('Canceled');
+        this.name = 'CancellationError';
+    }
+}
+
+class LanguageModelError extends Error {
+    code = 'Unknown';
+    constructor(message?: string, options?: ErrorOptions) {
+        super(message, options);
+        this.name = 'LanguageModelError';
+    }
+}
+
 // Only fill gaps — never clobber anything jest-mock-vscode already provides.
 vsCodeMock.LanguageModelTextPart ??= LanguageModelTextPart;
 vsCodeMock.LanguageModelToolCallPart ??= LanguageModelToolCallPart;
@@ -100,6 +118,8 @@ vsCodeMock.LanguageModelToolResult ??= LanguageModelToolResult;
 vsCodeMock.LanguageModelChatMessageRole ??= LanguageModelChatMessageRole;
 vsCodeMock.LanguageModelChatMessage ??= LanguageModelChatMessage;
 vsCodeMock.CancellationTokenSource ??= CancellationTokenSource;
+vsCodeMock.CancellationError ??= CancellationError;
+vsCodeMock.LanguageModelError ??= LanguageModelError;
 vsCodeMock.lm ??= { tools: [] };
 
 module.exports = vsCodeMock;

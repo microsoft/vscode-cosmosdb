@@ -56,6 +56,30 @@ export async function openMigrationAssistant(page: Page): Promise<Frame> {
 }
 
 /**
+ * Opens the Migration Assistant against a deterministic, pre-seeded project
+ * via the `cosmosDB.e2e.openMigration` test-only command. The seed (consent
+ * granted, application analysis populated, schema files present) lets phase-flow
+ * specs drive Discovery → Assessment → Conversion without the native file
+ * pickers. The migration AI layer is mocked (see
+ * `src/panels/migration/helpers/e2eMigrationAiMock.ts`), so the phases run
+ * offline and deterministically.
+ */
+export async function openMigrationSeeded(page: Page): Promise<Frame> {
+    await runCommand(page, 'Cosmos DB: [E2E Test] Open Seeded Migration Assistant');
+    return getWebviewByPredicate(page, REACT_ROOT_RENDERED);
+}
+
+/**
+ * Opens the Migration Assistant against a fresh, empty project via the
+ * `cosmosDB.e2e.openMigrationFresh` test-only command. Use to assert the
+ * initial disabled-control state (no consent, no analysis).
+ */
+export async function openMigrationFresh(page: Page): Promise<Frame> {
+    await runCommand(page, 'Cosmos DB: [E2E Test] Open Empty Migration Assistant');
+    return getWebviewByPredicate(page, REACT_ROOT_RENDERED);
+}
+
+/**
  * Opens the Query Editor panel and returns its content frame. Uses the
  * `cosmosDB.e2e.openQueryEditor` test-only command, which calls
  * `QueryEditorTab.render(connection)` directly.

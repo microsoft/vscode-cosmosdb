@@ -401,7 +401,7 @@ async function runFastConversion(
         );
     }
 
-    if (isDebugPromptsEnabled() && debugConfig) {
+    if (debugConfig?.dumpEnabled) {
         await dumpDebugResponse(
             debugConfig.debugDir,
             debugConfig.stepName,
@@ -636,7 +636,7 @@ async function runFinalSummary(
         throw new Error(l10n.t('Could not parse final summary response.'));
     }
 
-    if (isDebugPromptsEnabled() && debugConfig) {
+    if (debugConfig?.dumpEnabled) {
         await dumpDebugResponse(
             debugConfig.debugDir,
             debugConfig.stepName,

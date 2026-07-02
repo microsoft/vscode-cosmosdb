@@ -29,10 +29,11 @@ export function setMigrationTelemetryContext(
 
     if (phase) {
         context.telemetry.properties.phase = phase;
-        const runIndex = project.runCounts?.[phase];
-        if (runIndex !== undefined) {
-            context.telemetry.measurements.runIndex = runIndex;
-        }
+        // Stamp a 0-based run index on every phase event so dashboards have a
+        // first-run baseline: 0 = first run, 1 = first re-run, …
+        // `incrementRunCount` bumps `runCounts[phase]` *after* this stamp, so the
+        // current run index is the number of prior runs (`undefined` → 0).
+        context.telemetry.measurements.runIndex = project.runCounts?.[phase] ?? 0;
 
         // Check whether this phase has custom instructions set
         const hasCustomInstructions = getHasCustomInstructions(project, phase);
@@ -208,6 +209,13 @@ export function enrichErrorContext(context: IActionContext, error: unknown): voi
  * event) and accumulates phase-level rollups on the optional phase context for
  * dashboards/alerts that prefer one record per phase.
  *
+ * When a `phaseContext` is supplied, the shared migration dimensions it already
+ * carries (`sessionId`, `phase`, `sourceDbType`, `migrationMode`) are inherited
+ * onto the per-call event so extractor stats can be sliced by source database
+ * type / mode and correlated to a session. Those values are stamped upstream by
+ * {@link setMigrationTelemetryContext} and are all telemetry-safe (an in-memory
+ * session GUID and bounded enums).
+ *
  * No file contents, paths, or names are emitted — only structural counts.
  */
 export function reportDdlExtractorStats(
@@ -217,6 +225,18 @@ export function reportDdlExtractorStats(
     phaseContext?: IActionContext,
 ): void {
     callContext.telemetry.properties.encoding = encoding;
+
+    // Inherit the shared migration dimensions from the surrounding phase so this
+    // per-file event can be grouped by source DB type / mode and joined by session.
+    // Explicit allow-list only — never copy the whole property bag.
+    if (phaseContext) {
+        for (const key of ['sessionId', 'phase', 'sourceDbType', 'migrationMode'] as const) {
+            const value = phaseContext.telemetry.properties[key];
+            if (value !== undefined) {
+                callContext.telemetry.properties[key] = value;
+            }
+        }
+    }
 
     const m = callContext.telemetry.measurements;
     m.inputChars = stats.inputChars;

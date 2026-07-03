@@ -112,8 +112,19 @@ const dispatchResolver: E2eMockResponseResolver = async (args) => {
         await delay(control.delayMs, args.token);
     }
     const catalog = control.feature ? catalogs.get(control.feature) : undefined;
-    const responses = (control.route && catalog?.[control.route]) || [''];
-    const step = responses[Math.min(responseIndex, responses.length - 1)];
+    if (control.feature && !catalog) {
+        throw new Error(
+            `Unknown AI mock feature "${control.feature}". Did you register it with registerAiMockFeature()?`,
+        );
+    }
+
+    const responses = control.route ? catalog?.[control.route] : undefined;
+    if (control.feature && control.route && !responses) {
+        throw new Error(`Unknown AI mock route "${control.route}" for feature "${control.feature}".`);
+    }
+
+    const steps = responses ?? [''];
+    const step = steps[Math.min(responseIndex, steps.length - 1)];
     responseIndex++;
     return typeof step === 'function' ? step(args) : step;
 };

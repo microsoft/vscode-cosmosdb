@@ -67,5 +67,6 @@
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "Id. de cliente de la identidad administrada que se usará al autenticarse con Entra ID mediante una identidad administrada asignada por el usuario.",
   "cosmosdb.configuration.manage-llm-assets": "Administrar activos de LLM. Permite que la extensión mantenga actualizados los archivos relacionados con LLM.",
   "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "Cuando está habilitada, la generación de esquemas también tiene en cuenta los resultados de la consulta para deducir el esquema del contenedor.",
-  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Experimental) Mostrar estimaciones del uso de tokens en la interfaz de usuario de Migration Assistant."
+  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Experimental) Mostrar estimaciones del uso de tokens en la interfaz de usuario de Migration Assistant.",
+  "cosmosdb.configuration.experimental.migration.enabled": "(Experimental) Habilite la característica migración de Cosmos DB (versión preliminar). Cuando se deshabilita, se ocultan el nodo migraciones de Cosmos DB y sus comandos."
 }

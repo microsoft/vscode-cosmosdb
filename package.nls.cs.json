@@ -68,5 +68,5 @@
   "cosmosdb.configuration.manage-llm-assets": "Spravovat prostředky LLM Povolte rozšíření, aby udržovalo soubory související s LLM aktuální.",
   "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "Je-li tato možnost povolena, generování schématu zohledňuje také výsledky dotazů při odvozování schématu kontejneru.",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Experimentální) Zobrazovat v uživatelském rozhraní Pomocníka s migrací odhady využití tokenů",
-  "cosmosdb.configuration.experimental.migration.enabled": "(Experimental) Enable the Cosmos DB Migration (Preview) feature. When disabled, the Cosmos DB Migrations node and its commands are hidden."
+  "cosmosdb.configuration.experimental.migration.enabled": "(Experimentální) Povolte funkci Migrace Cosmos DB (Preview). Pokud je tato možnost zakázaná, uzel Migrace Cosmos DB a jeho příkazy jsou skryté."
 }

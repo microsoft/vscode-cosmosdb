@@ -695,7 +695,7 @@
   "PostgreSQL Single Servers are no longer supported in Cosmos DB extension.": "Cosmos DB 延伸模組不再支援 PostgreSQL 單一伺服器。",
   "Prefer to provision manually? A Bicep template has been generated based on your schema.": "偏好手動佈建嗎?系統已根據您的結構描述產生 Bicep 範本。",
   "Press Alt+Down to open column menu": "按 Alt+向下鍵，以開啟欄位功能表",
-  "Preview": "Preview",
+  "Preview": "預覽",
   "Preview: features and behavior may change. Use with care.": "Preview: features and behavior may change. Use with care.",
   "Previous query:": "先前的查詢:",
   "Priority Level": "優先順序層級",

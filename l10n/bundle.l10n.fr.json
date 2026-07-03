@@ -695,7 +695,7 @@
   "PostgreSQL Single Servers are no longer supported in Cosmos DB extension.": "Les serveurs PostgreSQL Single ne sont plus pris en charge dans l’extension Cosmos DB.",
   "Prefer to provision manually? A Bicep template has been generated based on your schema.": "Vous préférez configurer manuellement ? Un modèle Bicep a été généré en fonction de votre schéma.",
   "Press Alt+Down to open column menu": "Appuyez sur Alt+Flèche du bas pour ouvrir le menu de colonne",
-  "Preview": "Preview",
+  "Preview": "Préversion",
   "Preview: features and behavior may change. Use with care.": "Preview: features and behavior may change. Use with care.",
   "Previous query:": "Requête précédente :",
   "Priority Level": "Niveau de priorité",

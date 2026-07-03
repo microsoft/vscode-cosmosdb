@@ -68,5 +68,5 @@
   "cosmosdb.configuration.manage-llm-assets": "LLM 資産を管理します。拡張機能が LLM 関連ファイルを最新の状態に保つことを許可します。",
   "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "有効にすると、スキーマの生成では、コンテナー スキーマを推論するためのクエリ結果も考慮されます。",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(試験段階) 移行アシスタント UI にトークン使用量の見積もりを表示します。",
-  "cosmosdb.configuration.experimental.migration.enabled": "(Experimental) Enable the Cosmos DB Migration (Preview) feature. When disabled, the Cosmos DB Migrations node and its commands are hidden."
+  "cosmosdb.configuration.experimental.migration.enabled": "(試験段階) Cosmos DB 移行 (プレビュー) 機能を有効にします。無効にすると、Cosmos DB 移行ノードとそのコマンドは非表示になります。"
 }

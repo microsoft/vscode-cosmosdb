@@ -68,5 +68,5 @@
   "cosmosdb.configuration.manage-llm-assets": "Управление ресурсами LLM. Разрешить расширению автоматически обновлять файлы, связанные с LLM.",
   "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "Если включить эту функцию, при генерировании схемы контейнера для вывода схемы также учитываются результаты запроса.",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Экспериментальная функция) Показывать оценки использования токенов в пользовательском интерфейсе помощника по миграции.",
-  "cosmosdb.configuration.experimental.migration.enabled": "(Experimental) Enable the Cosmos DB Migration (Preview) feature. When disabled, the Cosmos DB Migrations node and its commands are hidden."
+  "cosmosdb.configuration.experimental.migration.enabled": "(Экспериментальная функция) Включите функцию миграции Cosmos DB (предварительная версия). Если она отключена, узел миграции Cosmos DB и связанные с ним команды скрыты."
 }

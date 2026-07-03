@@ -68,5 +68,5 @@
   "cosmosdb.configuration.manage-llm-assets": "LLM varlıklarını yönetin. Uzantının LLM ile ilgili dosyaları güncel tutmasını sağlar.",
   "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "Etkinleştirildiğinde, şema oluşturma kapsayıcı şemasını çıkarsamak için sorgu sonuçlarını da dikkate alır.",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Deneysel) Migration Assistant kullanıcı arabiriminde belirteç kullanım tahminlerini göster.",
-  "cosmosdb.configuration.experimental.migration.enabled": "(Experimental) Enable the Cosmos DB Migration (Preview) feature. When disabled, the Cosmos DB Migrations node and its commands are hidden."
+  "cosmosdb.configuration.experimental.migration.enabled": "(Deneysel) Cosmos DB Geçişi (Önizleme) özelliğini etkinleştirin. Devre dışı bırakıldığında, Cosmos DB Geçişleri düğümü ve komutları gizlenir."
 }

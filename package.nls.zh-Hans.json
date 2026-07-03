@@ -68,5 +68,5 @@
   "cosmosdb.configuration.manage-llm-assets": "管理 LLM 资产。允许扩展保持 LLM 相关文件更新。",
   "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "启用后，架构生成还会考虑查询结果来推断容器架构。",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(实验性)在迁移助手 UI 中显示令牌使用情况估计值。",
-  "cosmosdb.configuration.experimental.migration.enabled": "(Experimental) Enable the Cosmos DB Migration (Preview) feature. When disabled, the Cosmos DB Migrations node and its commands are hidden."
+  "cosmosdb.configuration.experimental.migration.enabled": "(实验性)启用 Cosmos DB 迁移(预览)功能。禁用时，将隐藏 Cosmos DB 迁移节点及其命令。"
 }

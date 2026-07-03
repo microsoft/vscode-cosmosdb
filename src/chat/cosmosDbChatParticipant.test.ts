@@ -5,6 +5,7 @@
 
 /// <reference types="vitest/globals" />
 
+import type * as FsModule from 'fs';
 import * as vscode from 'vscode';
 import { CosmosDbChatParticipant } from './cosmosDbChatParticipant';
 
@@ -19,7 +20,7 @@ import { CosmosDbChatParticipant } from './cosmosDbChatParticipant';
 // fake extensionPath has none, so stub `readFileSync` (keeping the rest of `fs`
 // real) to keep it off the FS and out of stderr. Empty content = "no docs".
 vi.mock('fs', async (importOriginal) => {
-    const actual = await importOriginal<typeof import('fs')>();
+    const actual = await importOriginal<typeof FsModule>();
     return { ...actual, readFileSync: vi.fn(() => '') };
 });
 

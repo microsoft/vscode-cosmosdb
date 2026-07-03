@@ -678,7 +678,15 @@ export const queryEditorRouterDef = queryEditorRouter({
                 const finalQuery = `-- ${l10n.t('Generated from: {0}', sanitizedPrompt)}\n${generatedQuery.trim()}\n\n-- ${l10n.t('Previous query:')}\n${sanitizedCurrentQuery}`;
 
                 ctx.state.isLastQueryAIGenerated = true;
-                ctx.state.lastAIGeneratedQuery = finalQuery;
+                // Store the baseline in the SAME normalized form the query will
+                // have when it reaches `createQuerySession`: `prepareQuery`
+                // strips comments and the trailing semicolon before the run, so
+                // comparing against the raw `finalQuery` (which carries the
+                // `-- Generated from:` header and the commented-out previous
+                // query) would report `isQueryModified = true` even when the
+                // user ran the suggestion untouched. Normalize it the same way
+                // here so the comparison is like-for-like.
+                ctx.state.lastAIGeneratedQuery = stripComments(finalQuery).replace(/;\s*$/, '').trim();
 
                 void promptAfterActionEventually(
                     ExperienceKind.NoSQL,

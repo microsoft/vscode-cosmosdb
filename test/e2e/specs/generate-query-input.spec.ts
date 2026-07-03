@@ -164,9 +164,9 @@ test.describe('generate query input', () => {
         await expect(confirmDialog).toBeVisible({ timeout: 15_000 });
         await expect(confirmDialog).toContainText('sample your container schema');
         const allowButton = confirmDialog.getByRole('button', { name: 'Allow', exact: true });
-        const denyButton = confirmDialog.getByRole('button', { name: 'Not now', exact: true });
+        const notNowButton = confirmDialog.getByRole('button', { name: 'Not now', exact: true });
         await expect(allowButton).toBeVisible();
-        await expect(denyButton).toBeVisible();
+        await expect(notNowButton).toBeVisible();
 
         // Note: whether Allow actually executes the schema tool is covered by
         // `CosmosDbOperationsService.test.ts` (this spec asserts only the UI).
@@ -189,7 +189,7 @@ test.describe('generate query input', () => {
         await clearMockGenerateQueryResult(vscodeWindow);
     });
 
-    test('schema tool confirmation dialog Deny skips sampling but still generates', async ({ vscodeWindow }) => {
+    test('schema tool confirmation dialog Not now skips sampling but still generates', async ({ vscodeWindow }) => {
         // Same real-tool-call path as the Allow test; needs the live emulator.
         test.skip(
             process.env.COSMOSDB_E2E_SKIP_EMULATOR === '1',

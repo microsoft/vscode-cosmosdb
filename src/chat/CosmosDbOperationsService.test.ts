@@ -964,7 +964,7 @@ describe('CosmosDbOperationsService', () => {
             });
 
             expect(onConfirm).toHaveBeenCalledTimes(1);
-            // Deny only skips sampling — the tool must not run.
+            // "Not now" only skips sampling — the tool must not run.
             expect(sampleAndPersistContainerSchema).not.toHaveBeenCalled();
             // Generation continues: a second round runs and produces the query.
             expect(sendRequest).toHaveBeenCalledTimes(2);

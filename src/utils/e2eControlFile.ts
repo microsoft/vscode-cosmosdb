@@ -21,11 +21,19 @@ import type * as vscode from 'vscode';
 /** Cancellable sleep — resolves early when the request's cancellation token fires. */
 export function delay(ms: number, token?: vscode.CancellationToken): Promise<void> {
     return new Promise((resolve) => {
-        const timer = setTimeout(resolve, ms);
-        token?.onCancellationRequested(() => {
-            clearTimeout(timer);
+        let timer: ReturnType<typeof setTimeout>;
+        let disposable: { dispose: () => void } | undefined;
+
+        const finish = () => {
+            if (timer) {
+                clearTimeout(timer);
+            }
+            disposable?.dispose();
             resolve();
-        });
+        };
+
+        disposable = token?.onCancellationRequested(finish);
+        timer = setTimeout(finish, ms);
     });
 }
 

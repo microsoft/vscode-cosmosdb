@@ -36,38 +36,60 @@ import { openQueryEditor, setAIFeaturesEnabled } from '../fixtures/webviews';
 const EXPECTED_LEARN_LINK_COUNT = 5;
 
 /**
- * Opens a top-level toolbar button by its accessible name and leaves that
- * button's menu open.
+ * Opens a top-level toolbar trigger and leaves its menu open, transparently
+ * handling the toolbar's responsive collapse.
  *
- * `accessibleName` is the button's accessible name, which can come from
- * `aria-label` rather than visible text. For example, the overflow trigger is
- * exposed as "More items" and the Learn trigger is exposed as "Learn more".
+ * `toolbarName` is the trigger's inline accessible name (which may come from
+ * `aria-label` rather than visible text — e.g. Learn is exposed as "Learn
+ * more"). `overflowText` is the visible label the same control shows once it has
+ * collapsed into the "More items" overflow menu (e.g. "Learn"): submenu triggers
+ * inside that menu are not reliably matched by the `menuitem` role in Fluent, so
+ * the overflow side is matched by visible text — mirroring the page object in
+ * `fixtures/queryEditor.ts`.
  *
- * The toolbar (`role="toolbar"`) renders asynchronously once the initial tRPC
- * state arrives, so we wait for it as a "toolbar ready" sentinel and then
- * poll for the target button before clicking. The poll avoids racing the
- * render while the toolbar is still mounting.
+ * The toolbar (`role="toolbar"`) mounts asynchronously once the initial tRPC
+ * state arrives, and it is width-responsive: the target trigger is either inline
+ * OR under the overflow menu. We wait until one of those has settled, then act —
+ * so we neither race the render nor (as before) silently fall through without
+ * clicking, which would surface later as a confusing locator error on the menu
+ * assertions.
  */
-async function openToolbarMenu(webview: Frame, accessibleName: string): Promise<undefined> {
+async function openToolbarMenu(
+    webview: Frame,
+    { toolbarName, overflowText }: { toolbarName: string; overflowText: string },
+): Promise<undefined> {
     const toolbar = webview.getByRole('toolbar').first();
     await toolbar.waitFor({ state: 'visible', timeout: 30_000 });
 
     // Scope button lookups to the query toolbar so we don't collide with the
     // Result Panel toolbar, which also has its own "More items" overflow
     // button and can trigger strict-mode locator errors.
-    const directButton = toolbar.getByRole('button', { name: accessibleName, exact: true }).first();
+    const directButton = toolbar.getByRole('button', { name: toolbarName, exact: true }).first();
+    const moreItems = toolbar.getByRole('button', { name: 'More items' }).first();
 
-    // Wait until the toolbar button is actually mounted before clicking it.
+    // Wait until the toolbar has settled into one of its two layouts: the
+    // trigger is inline, or it has collapsed and the overflow trigger is present.
     await expect
-        .poll(async () => directButton.isVisible().catch(() => false), {
-            timeout: 30_000,
-        })
+        .poll(
+            async () =>
+                (await directButton.isVisible().catch(() => false)) || (await moreItems.isVisible().catch(() => false)),
+            { timeout: 30_000 },
+        )
         .toBe(true);
 
-    if (await directButton.isVisible()) {
+    // Inline: click the toolbar trigger directly.
+    if (await directButton.isVisible().catch(() => false)) {
         await directButton.click();
         return;
     }
+
+    // Collapsed: open the overflow menu and activate the entry by its visible
+    // text. A missing overflow trigger here fails loudly (via the click's
+    // actionability timeout) rather than leaving the caller with no menu open.
+    await moreItems.click();
+    const overflowMenu = webview.getByRole('menu').first();
+    await overflowMenu.waitFor({ state: 'visible', timeout: 5_000 });
+    await overflowMenu.getByText(overflowText, { exact: true }).first().click();
 }
 
 test.describe('query editor toolbar', () => {
@@ -88,7 +110,7 @@ test.describe('query editor toolbar', () => {
         const webview = await openQueryEditor(vscodeWindow);
         await expect(webview.locator('#root')).toBeVisible();
 
-        await openToolbarMenu(webview, 'AI');
+        await openToolbarMenu(webview, { toolbarName: 'AI', overflowText: 'AI' });
 
         await expect(webview.getByRole('menuitem', { name: 'Generate query', exact: true })).toBeVisible();
         await expect(webview.getByRole('menuitem', { name: 'Explain query', exact: true })).toBeVisible();
@@ -98,7 +120,7 @@ test.describe('query editor toolbar', () => {
     test('Learn button dropdown shows navigable documentation links', async ({ vscodeWindow }) => {
         const webview = await openQueryEditor(vscodeWindow);
         await expect(webview.locator('#root')).toBeVisible();
-        await openToolbarMenu(webview, 'Learn more');
+        await openToolbarMenu(webview, { toolbarName: 'Learn more', overflowText: 'Learn' });
 
         // Documentation entries render as <a role="menuitem"> with an href. We
         // assert they're present and point at real https URLs rather than

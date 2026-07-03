@@ -4,17 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type Frame } from '@playwright/test';
+import { clearAiMock, setGenerateQueryMock } from '../fixtures/aiMock';
 import { expect, test } from '../fixtures/vscode';
 import { closeAllEditorTabs } from '../fixtures/webviewHelpers';
 import {
-    clearMockGenerateQueryResult,
     clearMockLanguageModels,
     openQueryEditor,
     setAIFeaturesEnabled,
-    setMockGenerateQueryError,
-    setMockGenerateQueryLatency,
-    setMockGenerateQuerySchemaConfirm,
-    setMockGenerateQuerySuccess,
     setMockLanguageModels,
 } from '../fixtures/webviews';
 
@@ -40,12 +36,14 @@ import {
  *      live connection (the emulator), since `onConfirm` only fires when connected.
  *   3. Generation     — a successful generation inserts the query text into the
  *      editor, a failed generation surfaces an error MessageBar, and a slow
- *      (latency-route) generation can be cancelled mid-flight without inserting.
- *      All drive the real `generateQueryWithLLM` service via a route-aware mock
- *      language model (see `setE2eGenerateQueryRoute` in
- *      `src/commands/e2eTestCommands/generateQueryMockModel.ts`): the `success`
- *      route streams a query, `error` streams an `ERROR:`-prefixed refusal, and
- *      `latency` stalls until the request's cancellation token fires.
+ *      generation (a `delayMs` latency knob) can be cancelled mid-flight without
+ *      inserting. All drive the real `generateQueryWithLLM` service via a mock
+ *      language model whose responses come from a control file (see
+ *      `setGenerateQueryMock` in `test/e2e/fixtures/aiMock.ts` and the catalogue
+ *      in `src/commands/e2eTestCommands/generateQueryMockModel.ts`): the
+ *      `returnsQuery` route streams a query, `returnsRefusal` streams an
+ *      `ERROR:`-prefixed refusal, and the `delayMs` knob stalls until the
+ *      request's cancellation token fires.
  *
  * Mocking the Copilot call
  * ------------------------
@@ -120,6 +118,8 @@ test.describe('generate query input', () => {
         // Clear the fake-model override so it can't leak into other specs that
         // share the worker VS Code instance (each test re-installs it on setup).
         await clearMockLanguageModels(vscodeWindow);
+        // Remove the AI-mock control file so no route leaks into other specs.
+        clearAiMock();
         await closeAllEditorTabs(vscodeWindow);
     });
 
@@ -149,7 +149,7 @@ test.describe('generate query input', () => {
             process.env.COSMOSDB_E2E_SKIP_EMULATOR === '1',
             'schema-tool sampling requires a live Cosmos DB connection',
         );
-        await setMockGenerateQuerySchemaConfirm(vscodeWindow);
+        setGenerateQueryMock('requestsSchemaSampling');
 
         const webview = await openGenerateInput(vscodeWindow);
 
@@ -186,7 +186,7 @@ test.describe('generate query input', () => {
             )
             .toBe(true);
 
-        await clearMockGenerateQueryResult(vscodeWindow);
+        clearAiMock();
     });
 
     test('schema tool confirmation dialog Not now skips sampling but still generates', async ({ vscodeWindow }) => {
@@ -195,7 +195,7 @@ test.describe('generate query input', () => {
             process.env.COSMOSDB_E2E_SKIP_EMULATOR === '1',
             'schema-tool sampling requires a live Cosmos DB connection',
         );
-        await setMockGenerateQuerySchemaConfirm(vscodeWindow);
+        setGenerateQueryMock('requestsSchemaSampling');
 
         const webview = await openGenerateInput(vscodeWindow);
 
@@ -227,13 +227,13 @@ test.describe('generate query input', () => {
             )
             .toBe(true);
 
-        await clearMockGenerateQueryResult(vscodeWindow);
+        clearAiMock();
     });
 
     test('successful query generation inserts text into editor', async ({ vscodeWindow }) => {
         // Routes the mock language model down its success branch; the real
         // `generateQueryWithLLM` service returns the query, which is inserted.
-        await setMockGenerateQuerySuccess(vscodeWindow);
+        setGenerateQueryMock('returnsQuery');
 
         const webview = await openGenerateInput(vscodeWindow);
 
@@ -257,14 +257,14 @@ test.describe('generate query input', () => {
             )
             .toBe(true);
 
-        await clearMockGenerateQueryResult(vscodeWindow);
+        clearAiMock();
     });
 
     test('error from query generation shows error message bar', async ({ vscodeWindow }) => {
         // Routes the mock language model down its error branch; the real
         // `generateQueryWithLLM` service parses the `ERROR:`-prefixed response
         // into a `QueryGenerationRefusedError`, surfacing the error MessageBar.
-        await setMockGenerateQueryError(vscodeWindow);
+        setGenerateQueryMock('returnsRefusal');
 
         const webview = await openGenerateInput(vscodeWindow);
 
@@ -280,14 +280,15 @@ test.describe('generate query input', () => {
         });
         await expect.poll(() => errorBar.isVisible().catch(() => false), { timeout: 15_000 }).toBe(true);
 
-        await clearMockGenerateQueryResult(vscodeWindow);
+        clearAiMock();
     });
 
     test('cancelling an in-flight generation aborts without inserting a query', async ({ vscodeWindow }) => {
-        // The latency route stalls `sendRequest` until the request's cancellation
-        // token fires, so the Cancel affordance can abort mid-generation. Needs no
-        // connection (no tool call), so it runs in skip-emulator mode too.
-        await setMockGenerateQueryLatency(vscodeWindow);
+        // A `delayMs` latency knob stalls `sendRequest` until the request's
+        // cancellation token fires, so the Cancel affordance can abort mid-
+        // generation. Needs no connection (no tool call), so it runs in
+        // skip-emulator mode too.
+        setGenerateQueryMock('returnsQuery', { delayMs: 3_000 });
 
         const webview = await openGenerateInput(vscodeWindow);
 
@@ -308,6 +309,6 @@ test.describe('generate query input', () => {
         });
         await expect(webview.locator('text=SELECT * FROM c WHERE c.price < 20')).toHaveCount(0);
 
-        await clearMockGenerateQueryResult(vscodeWindow);
+        clearAiMock();
     });
 });

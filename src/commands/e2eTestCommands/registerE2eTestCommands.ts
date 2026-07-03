@@ -57,7 +57,8 @@ import { StorageNames, StorageService, type StorageItem } from '../../services/S
 import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
 import { setE2eModelOverride, type AvailableModelDescriptor } from '../../utils/aiUtils';
 import { getEmulatorItemUniqueId } from '../../utils/emulatorUtils';
-import { setE2eGenerateQueryRoute } from './generateQueryMockModel';
+import { installAiMockDispatcher } from './e2eAiMock';
+import { registerGenerateQueryMock } from './generateQueryMockModel';
 
 const E2E_TEST_ENV_KEY = 'COSMOSDB_E2E_TEST';
 const E2E_TEST_CONTEXT_KEY = 'cosmosDB.e2eTestMode';
@@ -237,6 +238,14 @@ export function registerE2eTestCommands(): void {
     // The `when` clauses in package.json menus look for this context key.
     void vscode.commands.executeCommand('setContext', E2E_TEST_CONTEXT_KEY, true);
 
+    // Wire the control-file AI mock engine: register each feature's response
+    // catalogue and install the shared dispatcher onto the mock model. Tests
+    // select behavior by writing a control file (see `./e2eAiMock`), so no
+    // per-scenario command is needed. Inert until a control file + the mock
+    // model override (`setMockLanguageModels`) are both present.
+    registerGenerateQueryMock();
+    installAiMockDispatcher();
+
     // Opens the Migration Assistant against a deterministic, pre-seeded project
     // (consent granted + application analysis populated + schema files present)
     // so phase-flow specs can drive Discovery → Assessment → Conversion without
@@ -350,43 +359,5 @@ export function registerE2eTestCommands(): void {
         const value = isCandidate ?? true;
         context.telemetry.properties.surveyCandidate = String(value);
         QueryEditorTab.notifySurveyCandidate(value);
-    });
-
-    // ─── Generate Query mock commands ───────────────────────────────────
-    // Every path runs through the *real* `generateQueryWithLLM` service, driven
-    // by a route-aware mock language model (see `setE2eGenerateQueryRoute` in
-    // `generateQueryMockModel`). Each command selects the route the mock follows
-    // on its next request:
-    //   - success       → streams a query
-    //   - error         → streams an `ERROR:` refusal
-    //   - schemaConfirm → streams a schema-sampling tool call, driving the real
-    //                     agentic loop → Allow/Not now dialog, then a query
-    //   - latency       → stalls until cancelled, to exercise Cancel
-    // Palette can't pass args, so each route gets its own command.
-
-    registerCommand('cosmosDB.e2e.setMockGenerateQuerySuccess', (context: IActionContext): void => {
-        context.telemetry.properties.isE2eTest = 'true';
-        setE2eGenerateQueryRoute('success');
-    });
-
-    registerCommand('cosmosDB.e2e.setMockGenerateQueryError', (context: IActionContext): void => {
-        context.telemetry.properties.isE2eTest = 'true';
-        setE2eGenerateQueryRoute('error');
-    });
-
-    registerCommand('cosmosDB.e2e.setMockGenerateQuerySchemaConfirm', (context: IActionContext): void => {
-        context.telemetry.properties.isE2eTest = 'true';
-        setE2eGenerateQueryRoute('schemaConfirm');
-    });
-
-    registerCommand('cosmosDB.e2e.setMockGenerateQueryLatency', (context: IActionContext): void => {
-        context.telemetry.properties.isE2eTest = 'true';
-        setE2eGenerateQueryRoute('latency');
-    });
-
-    // Clears the generate-query mock route so it can't leak into other specs.
-    registerCommand('cosmosDB.e2e.clearMockGenerateQueryResult', (context: IActionContext): void => {
-        context.telemetry.properties.isE2eTest = 'true';
-        setE2eGenerateQueryRoute(undefined);
     });
 }

@@ -915,9 +915,9 @@ describe('CosmosDbOperationsService', () => {
             // Two rounds: the tool-call round, then the final answer round.
             expect(sendRequest).toHaveBeenCalledTimes(2);
             expect(typeof result).toBe('string');
-            expect(result as string).toContain(QUERY_SELECT_ACTIVE);
+            expect(result).toContain(QUERY_SELECT_ACTIVE);
             // The schema-sampling comment is prepended only when the tool executed.
-            expect(result as string).toContain('Schema sampling tool was executed');
+            expect(result).toContain('Schema sampling tool was executed');
         });
 
         it('skips the schema-sampling tool on Deny but still generates a query', async () => {
@@ -969,9 +969,9 @@ describe('CosmosDbOperationsService', () => {
             // Generation continues: a second round runs and produces the query.
             expect(sendRequest).toHaveBeenCalledTimes(2);
             expect(typeof result).toBe('string');
-            expect(result as string).toContain(QUERY_SELECT_ACTIVE);
+            expect(result).toContain(QUERY_SELECT_ACTIVE);
             // No schema-sampling comment because sampling was skipped.
-            expect(result as string).not.toContain('Schema sampling tool was executed');
+            expect(result).not.toContain('Schema sampling tool was executed');
         });
     });
 

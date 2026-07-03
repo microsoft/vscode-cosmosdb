@@ -45,6 +45,8 @@ import { registerCommand, type IActionContext } from '@microsoft/vscode-azext-ut
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { API } from '../../AzureDBExperiences';
+import { getActiveQueryEditor } from '../../chat/chatUtils';
+import { CosmosDbChatParticipant } from '../../chat/cosmosDbChatParticipant';
 import { AuthenticationMethod } from '../../cosmosdb/AuthenticationMethod';
 import { type CosmosDBCredential } from '../../cosmosdb/CosmosDBCredential';
 import { type NoSqlQueryConnection } from '../../cosmosdb/NoSqlQueryConnection';
@@ -225,6 +227,35 @@ async function setGitPresent(workspacePath: string, present: boolean): Promise<v
     }
 }
 
+/** Deterministic query the chat edit-query button e2e commands apply. */
+const E2E_EDIT_QUERY_SUGGESTION = 'SELECT * FROM c WHERE c.e2eEditQuery = true';
+
+/** Fixed id for the seeded pending result — safe because no chat runs in e2e. */
+const E2E_EDIT_QUERY_RESULT_ID = 987654;
+
+/**
+ * Seeds a pending edit-query result (the structure `CosmosDbChatParticipant`
+ * stores for its action buttons) from the active Query Editor's connection, so
+ * the real `cosmosDB.applyQuerySuggestion` / `cosmosDB.openQuerySideBySide`
+ * commands can be exercised without running the chat participant. Returns the
+ * lightweight result id the button commands look up.
+ */
+function seedEditQuerySuggestion(): number {
+    const tabs = Array.from(QueryEditorTab.openTabs);
+    if (tabs.length === 0) {
+        throw new Error('cosmosDB.e2e edit-query seed requires an open Query Editor.');
+    }
+    const connection = getActiveQueryEditor(tabs).getConnection();
+    if (!connection) {
+        throw new Error('cosmosDB.e2e edit-query seed requires a connected Query Editor (run with the e2e emulator).');
+    }
+    CosmosDbChatParticipant.pendingResults.set(E2E_EDIT_QUERY_RESULT_ID, {
+        connection,
+        suggestedQuery: E2E_EDIT_QUERY_SUGGESTION,
+    });
+    return E2E_EDIT_QUERY_RESULT_ID;
+}
+
 /**
  * Registers the e2e-test commands and sets the `cosmosDB.e2eTestMode` context
  * key. Safe to call unconditionally — exits early if the env flag is unset.
@@ -245,6 +276,27 @@ export function registerE2eTestCommands(): void {
     // model override (`setMockLanguageModels`) are both present.
     registerGenerateQueryMock();
     installAiMockDispatcher();
+
+    // ─── Chat participant edit-query button commands ────────────────────
+    // The native Chat view can't be driven headlessly (it needs a real Copilot
+    // model provider), so we test the two edit-query action buttons' *effects*
+    // directly. Each command seeds a pending edit-query result — the exact
+    // structure the chat participant stores — using the active Query Editor's
+    // connection, then invokes the real button command. No chat/LLM involved.
+    registerCommand('cosmosDB.e2e.applyEditQuerySuggestion', async (context: IActionContext): Promise<void> => {
+        context.telemetry.properties.isE2eTest = 'true';
+        const resultId = seedEditQuerySuggestion();
+        await vscode.commands.executeCommand('cosmosDB.applyQuerySuggestion', resultId);
+    });
+
+    registerCommand(
+        'cosmosDB.e2e.openEditQuerySuggestionSideBySide',
+        async (context: IActionContext): Promise<void> => {
+            context.telemetry.properties.isE2eTest = 'true';
+            const resultId = seedEditQuerySuggestion();
+            await vscode.commands.executeCommand('cosmosDB.openQuerySideBySide', resultId);
+        },
+    );
 
     // Opens the Migration Assistant against a deterministic, pre-seeded project
     // (consent granted + application analysis populated + schema files present)

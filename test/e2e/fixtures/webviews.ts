@@ -100,6 +100,29 @@ export async function openQueryEditor(page: Page): Promise<Frame> {
 }
 
 /**
+ * Exercises the chat participant's "Update Query" edit-query button *effect*
+ * without the Chat view: the `cosmosDB.e2e.applyEditQuerySuggestion` command
+ * seeds a pending result from the active Query Editor's connection, then runs
+ * the real `cosmosDB.applyQuerySuggestion` command (which updates the editor).
+ * Requires a connected Query Editor (the emulator). Call AFTER opening one.
+ */
+export async function applyEditQuerySuggestion(page: Page): Promise<void> {
+    await runCommand(page, 'Cosmos DB: [E2E Test] Apply Edit Query Suggestion');
+    await page.waitForTimeout(250);
+}
+
+/**
+ * Exercises the chat participant's "Open Side-by-Side" edit-query button
+ * *effect*: seeds a pending result and runs the real
+ * `cosmosDB.openQuerySideBySide` command, which opens the suggested query in a
+ * new Query Editor tab. Requires a connected Query Editor (the emulator).
+ */
+export async function openEditQuerySuggestionSideBySide(page: Page): Promise<void> {
+    await runCommand(page, 'Cosmos DB: [E2E Test] Open Edit Query Suggestion Side-by-Side');
+    await page.waitForTimeout(250);
+}
+
+/**
  * Opens the Document panel in 'add' mode with a stub connection, returning
  * its content frame. Uses the `cosmosDB.e2e.openDocument` test-only command.
  *

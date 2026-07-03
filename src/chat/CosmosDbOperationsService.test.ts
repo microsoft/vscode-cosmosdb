@@ -862,7 +862,7 @@ describe('CosmosDbOperationsService', () => {
             expect(onProgress).toHaveBeenCalledWith(expect.stringContaining('Generating query'));
         });
 
-        it('executes the schema-sampling tool on Allow and returns the generated query', async () => {
+        it('executes the schema-sampling tool on [Allow] and returns the generated query', async () => {
             const { getSelectedModel } = vi.mocked(await import('../utils/aiUtils'));
             const { stripCodeFences } = vi.mocked(await import('../utils/sanitization'));
             const { callWithTelemetryAndErrorHandling } = vi.mocked(await import('@microsoft/vscode-azext-utils'));
@@ -920,7 +920,7 @@ describe('CosmosDbOperationsService', () => {
             expect(result).toContain('Schema sampling tool was executed');
         });
 
-        it('skips the schema-sampling tool on Deny but still generates a query', async () => {
+        it('skips the schema-sampling tool on [Not now] but still generates a query', async () => {
             const { getSelectedModel } = vi.mocked(await import('../utils/aiUtils'));
             const { stripCodeFences } = vi.mocked(await import('../utils/sanitization'));
             const { callWithTelemetryAndErrorHandling } = vi.mocked(await import('@microsoft/vscode-azext-utils'));

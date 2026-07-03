@@ -67,5 +67,6 @@
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "[nCYPi][นั้Thë Çlïëñt ÏÐ øf thë Mæñægëð Ïðëñtïtÿ tø µsë whëñ æµthëñtïçætïñg wïth Ëñtræ ÏÐ µsïñg æ Üsër-æssïgñëð Mæñægëð Ïðëñtïtÿ.Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂนั้ढूँ]",
   "cosmosdb.configuration.manage-llm-assets": "[L0464][นั้Mæñægë ££M æssëts. Ælløw thë ëxtëñsïøñ tø këëp ££M-rëlætëð fïlës µpðætëð.Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤนั้ढूँ]",
   "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "[Jrwq0][นั้Whëñ ëñæþlëð, sçhëmæ gëñërætïøñ ælsø çøñsïðërs qµërÿ rësµlts tø ïñfër thë çøñtæïñër sçhëmæ.Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्นั้ढूँ]",
-  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "[GNC8J][นั้(Ëxpërïmëñtæl) §høw tøkëñ µsægë ëstïmætës ïñ thë Mïgrætïøñ Æssïstæñt ÜÏ.Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤนั้ढूँ]"
+  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "[GNC8J][นั้(Ëxpërïmëñtæl) §høw tøkëñ µsægë ëstïmætës ïñ thë Mïgrætïøñ Æssïstæñt ÜÏ.Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤนั้ढूँ]",
+  "cosmosdb.configuration.experimental.migration.enabled": "[RmFzz][นั้(Ëxpërïmëñtæl) Ëñæþlë thë Çøsmøs Ðß Mïgrætïøñ (Prëvïëw) fëætµrë. Whëñ ðïsæþlëð, thë Çøsmøs Ðß Mïgrætïøñs ñøðë æñð ïts çømmæñðs ærë hïððëñ.Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृนั้ढूँ]"
 }

@@ -67,5 +67,6 @@
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "Identyfikator klienta tożsamości zarządzanej, który należy wykorzystać podczas uwierzytelniania w usłudze Entra ID przy użyciu tożsamości zarządzanej przypisanej przez użytkownika.",
   "cosmosdb.configuration.manage-llm-assets": "Zarządzaj zasobami modelu LLM. Zezwalaj rozszerzeniu na aktualizowanie plików związanych z modelem LLM.",
   "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "Po włączeniu generowanie schematu uwzględnia również wyniki zapytania w celu wywnioskowania schematu kontenera.",
-  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Eksperymentalne) Pokaż szacowane użycie tokenu w interfejsie użytkownika narzędzia Migration Assistant."
+  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Eksperymentalne) Pokaż szacowane użycie tokenu w interfejsie użytkownika narzędzia Migration Assistant.",
+  "cosmosdb.configuration.experimental.migration.enabled": "(Experimental) Enable the Cosmos DB Migration (Preview) feature. When disabled, the Cosmos DB Migrations node and its commands are hidden."
 }

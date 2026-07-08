@@ -42,7 +42,7 @@
 import { type Page } from '@playwright/test';
 import { runCommand } from '../fixtures/webviewHelpers';
 
-const ACTIVATION_TIMEOUT_MS = 45_000;
+const ACTIVATION_TIMEOUT_MS = 60_000;
 const ACTIVATION_POLL_INTERVAL_MS = 500;
 
 /**

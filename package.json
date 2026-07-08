@@ -530,6 +530,36 @@
       },
       {
         "category": "Cosmos DB",
+        "command": "cosmosDB.e2e.setAIFeaturesEnabled",
+        "title": "[E2E Test] Enable AI Features"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.e2e.setMockLanguageModels",
+        "title": "[E2E Test] Set Mock Language Models"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.e2e.clearMockLanguageModels",
+        "title": "[E2E Test] Clear Mock Language Models"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.e2e.setSurveyCandidate",
+        "title": "[E2E Test] Set Survey Candidate"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.e2e.applyEditQuerySuggestion",
+        "title": "[E2E Test] Apply Edit Query Suggestion"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.e2e.openEditQuerySuggestionSideBySide",
+        "title": "[E2E Test] Open Edit Query Suggestion Side-by-Side"
+      },
+      {
+        "category": "Cosmos DB",
         "command": "cosmosDB.e2e.openMigration",
         "title": "[E2E Test] Open Seeded Migration Assistant"
       },
@@ -836,6 +866,30 @@
         },
         {
           "command": "cosmosDB.e2e.attachEmulator",
+          "when": "cosmosDB.e2eTestMode"
+        },
+        {
+          "command": "cosmosDB.e2e.setAIFeaturesEnabled",
+          "when": "cosmosDB.e2eTestMode"
+        },
+        {
+          "command": "cosmosDB.e2e.setMockLanguageModels",
+          "when": "cosmosDB.e2eTestMode"
+        },
+        {
+          "command": "cosmosDB.e2e.clearMockLanguageModels",
+          "when": "cosmosDB.e2eTestMode"
+        },
+        {
+          "command": "cosmosDB.e2e.setSurveyCandidate",
+          "when": "cosmosDB.e2eTestMode"
+        },
+        {
+          "command": "cosmosDB.e2e.applyEditQuerySuggestion",
+          "when": "cosmosDB.e2eTestMode"
+        },
+        {
+          "command": "cosmosDB.e2e.openEditQuerySuggestionSideBySide",
           "when": "cosmosDB.e2eTestMode"
         },
         {

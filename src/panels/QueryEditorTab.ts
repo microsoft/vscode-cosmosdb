@@ -212,6 +212,18 @@ export class QueryEditorTab extends BaseTab {
         }
     }
 
+    /**
+     * Forces the survey-candidate flag on all open QueryEditorTabs, which
+     * controls whether the thumbs up/down feedback buttons render. Used by the
+     * `cosmosDB.e2e.setSurveyCandidate` test command so specs don't depend on
+     * the ambient `telemetry.feedback.enabled` setting of the test VS Code.
+     */
+    public static notifySurveyCandidate(isSurveyCandidate: boolean): void {
+        for (const tab of QueryEditorTab.openTabs) {
+            tab.eventSink.emit({ type: 'isSurveyCandidateChanged', isSurveyCandidate });
+        }
+    }
+
     public updateQuery(query: string): void {
         this.state.query = query;
         this.state.isLastQueryAIGenerated = true;

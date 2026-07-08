@@ -100,6 +100,29 @@ export async function openQueryEditor(page: Page): Promise<Frame> {
 }
 
 /**
+ * Exercises the chat participant's "Update Query" edit-query button *effect*
+ * without the Chat view: the `cosmosDB.e2e.applyEditQuerySuggestion` command
+ * seeds a pending result from the active Query Editor's connection, then runs
+ * the real `cosmosDB.applyQuerySuggestion` command (which updates the editor).
+ * Requires a connected Query Editor (the emulator). Call AFTER opening one.
+ */
+export async function applyEditQuerySuggestion(page: Page): Promise<void> {
+    await runCommand(page, 'Cosmos DB: [E2E Test] Apply Edit Query Suggestion');
+    await page.waitForTimeout(250);
+}
+
+/**
+ * Exercises the chat participant's "Open Side-by-Side" edit-query button
+ * *effect*: seeds a pending result and runs the real
+ * `cosmosDB.openQuerySideBySide` command, which opens the suggested query in a
+ * new Query Editor tab. Requires a connected Query Editor (the emulator).
+ */
+export async function openEditQuerySuggestionSideBySide(page: Page): Promise<void> {
+    await runCommand(page, 'Cosmos DB: [E2E Test] Open Edit Query Suggestion Side-by-Side');
+    await page.waitForTimeout(250);
+}
+
+/**
  * Opens the Document panel in 'add' mode with a stub connection, returning
  * its content frame. Uses the `cosmosDB.e2e.openDocument` test-only command.
  *
@@ -130,3 +153,64 @@ export async function attachEmulator(page: Page): Promise<void> {
     // to globalState + secretStorage. Give VS Code a beat to flush.
     await page.waitForTimeout(250);
 }
+
+/**
+ * Forces the extension's AI-features flag on via the
+ * `cosmosDB.e2e.setAIFeaturesEnabled` test-only command. The AI button in the
+ * Query Editor toolbar only renders when AI features are enabled (i.e. Copilot
+ * is available), which isn't the case in a fresh test VS Code. Call this
+ * BEFORE `openQueryEditor` so the panel's initial state reports AI as enabled.
+ */
+export async function setAIFeaturesEnabled(page: Page): Promise<void> {
+    await runCommand(page, 'Cosmos DB: [E2E Test] Enable AI Features');
+    // The command resolves synchronously; give VS Code a beat to apply it.
+    await page.waitForTimeout(250);
+}
+
+/**
+ * Installs a fixed pair of fake Copilot models via the
+ * `cosmosDB.e2e.setMockLanguageModels` test-only command. With two models
+ * available the Generate Query input renders its model-switcher `Combobox`
+ * (instead of a single-model static label), and selection works without a
+ * real Copilot installation. Call this BEFORE opening the Generate Query
+ * input so the model list is in place when the input fetches it.
+ *
+ * The model names are defined alongside the command in
+ * `src/commands/e2eTestCommands/registerE2eTestCommands.ts`.
+ */
+export async function setMockLanguageModels(page: Page): Promise<void> {
+    await runCommand(page, 'Cosmos DB: [E2E Test] Set Mock Language Models');
+    // The command resolves synchronously; give VS Code a beat to apply it.
+    await page.waitForTimeout(250);
+}
+
+/**
+ * Clears the fake-model override installed by {@link setMockLanguageModels} via
+ * the `cosmosDB.e2e.clearMockLanguageModels` command. Call this in spec teardown
+ * so the mock models don't leak into other specs sharing the worker VS Code.
+ */
+export async function clearMockLanguageModels(page: Page): Promise<void> {
+    await runCommand(page, 'Cosmos DB: [E2E Test] Clear Mock Language Models');
+    // The command resolves synchronously; give VS Code a beat to apply it.
+    await page.waitForTimeout(250);
+}
+
+/**
+ * Forces the survey-candidate flag on via the `cosmosDB.e2e.setSurveyCandidate`
+ * test-only command so the thumbs up/down feedback buttons in the Generate
+ * Query input render regardless of the test VS Code's
+ * `telemetry.feedback.enabled` setting. Call this AFTER opening the Query
+ * Editor (it broadcasts to already-open tabs).
+ */
+export async function setSurveyCandidate(page: Page): Promise<void> {
+    await runCommand(page, 'Cosmos DB: [E2E Test] Set Survey Candidate');
+    // The command resolves synchronously; give VS Code a beat to apply it.
+    await page.waitForTimeout(250);
+}
+
+/**
+ * Generate Query LLM mocking now lives in the shared control-file fixture
+ * `./aiMock` (`setGenerateQueryMock` / `clearAiMock`), which writes a JSON
+ * control file the extension's mock dispatcher reads per request — no per-scenario
+ * command needed. Install the mock model first with {@link setMockLanguageModels}.
+ */

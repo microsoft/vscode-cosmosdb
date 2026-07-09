@@ -203,9 +203,14 @@ const useStyles = makeStyles({
             },
         },
     },
+    submitSection: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+        flexShrink: 0,
+    },
     button: {
-        padding: '0px',
-        width: '24px',
+        padding: '0px 10px',
         height: '24px',
         flexShrink: 0,
         borderRadius: '6px',
@@ -794,16 +799,20 @@ export const GenerateQueryInput = () => {
                                 </div>
                             )}
                         </div>
-                        <Button
-                            className={styles.button}
-                            icon={isLoading ? <RecordStopFilled /> : <SendFilled />}
-                            onClick={isLoading ? handleCancel : () => void handleSend()}
-                            disabled={!isLoading && !input.trim()}
-                            title={isLoading ? l10n.t('Cancel generation') : l10n.t('Generate query')}
-                            aria-label={isLoading ? l10n.t('Cancel generation') : l10n.t('Generate query')}
-                            appearance={isLoading ? 'transparent' : 'primary'}
-                            size="small"
-                        />
+                        <div className={styles.submitSection}>
+                            <Button
+                                className={styles.button}
+                                icon={isLoading ? <RecordStopFilled /> : <SendFilled />}
+                                onClick={isLoading ? handleCancel : () => void handleSend()}
+                                disabled={!isLoading && !input.trim()}
+                                title={isLoading ? l10n.t('Cancel generation') : l10n.t('Generate query')}
+                                aria-label={isLoading ? l10n.t('Cancel generation') : l10n.t('Generate query')}
+                                appearance={isLoading ? 'transparent' : 'primary'}
+                                size="small"
+                            >
+                                {isLoading ? l10n.t('Cancel') : l10n.t('Generate')}
+                            </Button>
+                        </div>
                     </div>
                 )}
             </div>

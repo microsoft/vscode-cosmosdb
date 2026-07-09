@@ -150,7 +150,10 @@
     "vitest": "~4.1.7"
   },
   "dependencies": {
+    "@azure/arm-advisor": "~3.2.0",
+    "@azure/arm-alertsmanagement": "~1.0.0-beta.1",
     "@azure/arm-cosmosdb": "~16.4.0",
+    "@azure/arm-monitor": "~7.0.0",
     "@azure/arm-postgresql": "~6.1.0",
     "@azure/arm-postgresql-flexible": "~9.0.0",
     "@azure/arm-resources": "~7.0.0",
@@ -172,6 +175,7 @@
     "monaco-editor": "~0.52.2",
     "react-data-grid": "~7.0.0-beta.59",
     "react-hotkeys-hook": "~5.3.2",
+    "recharts": "~3.9.0",
     "semver": "~7.8.0",
     "vscode-languageclient": "~10.0.0",
     "zod": "~4.4.3"
@@ -386,6 +390,11 @@
         "category": "Cosmos DB",
         "command": "cosmosDB.openUnsupportedAccount",
         "title": "%cosmosdb.command.account.unsupported%"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.openAccountOverview",
+        "title": "%cosmosdb.command.account.overview.open%"
       },
       {
         "category": "NoSQL",
@@ -626,22 +635,28 @@
           "group": "1@1"
         },
         {
+          "//": "[Account] Open Account Overview - Azure Resources accounts only (ARM metadata required)",
+          "command": "cosmosDB.openAccountOverview",
+          "when": "view =~ /azure(ResourceGroups|FocusView)/ && viewItem =~ /hasarmmetadata/i",
+          "group": "1@1"
+        },
+        {
           "//": "[Account] Create account database",
           "command": "cosmosDB.createDatabase",
           "when": "view =~ /azure(ResourceGroups|FocusView|Workspace)/ && viewItem =~ /treeitem[.]account(?![a-z.\\/])/i",
-          "group": "1@1"
+          "group": "1@2"
         },
         {
           "//": "[Account] Delete account",
           "command": "cosmosDB.deleteAccount",
           "when": "view =~ /azure(ResourceGroups|FocusView)/ && viewItem =~ /treeitem[.]account(?![a-z.\\/])/i",
-          "group": "1@2"
+          "group": "1@3"
         },
         {
           "//": "[Account] Detach account (workspace only)",
           "command": "cosmosDB.removeConnection",
           "when": "view =~ /azureWorkspace/ && viewItem =~ /treeitem[.]account(?![a-z.\\/])/i",
-          "group": "1@2"
+          "group": "1@3"
         },
         {
           "//": "[Account] CosmosDB Filter tree items",
@@ -1000,6 +1015,71 @@
             "type": "boolean",
             "default": true,
             "description": "%cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries%"
+          },
+          "cosmosDB.accountOverview.health.criticalRuPercent": {
+            "type": "number",
+            "default": 90,
+            "minimum": 0,
+            "maximum": 100,
+            "description": "%cosmosdb.configuration.accountOverview.health.criticalRuPercent%"
+          },
+          "cosmosDB.accountOverview.health.warningRuPercent": {
+            "type": "number",
+            "default": 80,
+            "minimum": 0,
+            "maximum": 100,
+            "description": "%cosmosdb.configuration.accountOverview.health.warningRuPercent%"
+          },
+          "cosmosDB.accountOverview.health.storageGrowthWarningGB": {
+            "type": "number",
+            "default": 10,
+            "minimum": 0,
+            "description": "%cosmosdb.configuration.accountOverview.health.storageGrowthWarningGB%"
+          },
+          "cosmosDB.accountOverview.partition.hotRuSharePercent": {
+            "type": "number",
+            "default": 40,
+            "minimum": 0,
+            "maximum": 100,
+            "description": "%cosmosdb.configuration.accountOverview.partition.hotRuSharePercent%"
+          },
+          "cosmosDB.accountOverview.partition.skewedStorageSharePercent": {
+            "type": "number",
+            "default": 35,
+            "minimum": 0,
+            "maximum": 100,
+            "description": "%cosmosdb.configuration.accountOverview.partition.skewedStorageSharePercent%"
+          },
+          "cosmosDB.accountOverview.partition.topN": {
+            "type": "number",
+            "default": 5,
+            "minimum": 1,
+            "description": "%cosmosdb.configuration.accountOverview.partition.topN%"
+          },
+          "cosmosDB.accountOverview.advisories.throttlingMinMinutes": {
+            "type": "number",
+            "default": 30,
+            "minimum": 1,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.throttlingMinMinutes%"
+          },
+          "cosmosDB.accountOverview.advisories.overProvisioningPeakPercent": {
+            "type": "number",
+            "default": 25,
+            "minimum": 0,
+            "maximum": 100,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.overProvisioningPeakPercent%"
+          },
+          "cosmosDB.accountOverview.advisories.autoscaleCoefficientOfVariation": {
+            "type": "number",
+            "default": 0.5,
+            "minimum": 0,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.autoscaleCoefficientOfVariation%"
+          },
+          "cosmosDB.accountOverview.advisories.indexingUsageRatio": {
+            "type": "number",
+            "default": 0.3,
+            "minimum": 0,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.indexingUsageRatio%"
           },
           "cosmosDB.experimental.migration.showTokenEstimate": {
             "type": "boolean",

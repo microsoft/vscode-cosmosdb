@@ -14,18 +14,26 @@ import { ensureRbacPermissionV2, isRbacException, showRbacPermissionError } from
 import { ext } from '../../extensionVariables';
 import { CosmosDBAccountResourceItemBase } from '../azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
 import { type TreeElement } from '../TreeElement';
+import { TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { getAccountInfo, type AccountInfo } from './AccountInfo';
 import { type CosmosDBAccountModel } from './models/CosmosDBAccountModel';
 import { type DatabaseResource } from './models/CosmosDBTypes';
 
 export abstract class CosmosDBAccountResourceItem extends CosmosDBAccountResourceItemBase {
     declare public readonly account: CosmosDBAccountModel;
+    declare public readonly contextValue: string;
 
     // To prevent the RBAC notification from showing up multiple times
     protected hasShownRbacNotification: boolean = false;
 
     protected constructor(account: CosmosDBAccountModel, experience: Experience) {
         super(account, experience);
+
+        // Marks accounts backed by real Azure ARM metadata (as opposed to workspace/attached
+        // accounts, which share the same base contextValue but have no ARM subscription/resource
+        // group). Menu items that require `AzureResourceMetadata` (e.g. Account Overview) should
+        // gate on this marker instead of the generic `treeItem.account` contextValue.
+        this.contextValue = TreeElementWithContextValue.createContextValue([this.contextValue, 'hasArmMetadata']);
     }
 
     public async getChildren(): Promise<TreeElement[]> {

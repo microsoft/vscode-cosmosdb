@@ -110,7 +110,7 @@ test.describe('query editor toolbar', () => {
         const webview = await openQueryEditor(vscodeWindow);
         await expect(webview.locator('#root')).toBeVisible();
 
-        await openToolbarMenu(webview, { toolbarName: 'AI', overflowText: 'AI' });
+        await openToolbarMenu(webview, { toolbarName: 'AI (Preview)', overflowText: 'AI (Preview)' });
 
         await expect(webview.getByRole('menuitem', { name: 'Generate query', exact: true })).toBeVisible();
         await expect(webview.getByRole('menuitem', { name: 'Explain query', exact: true })).toBeVisible();

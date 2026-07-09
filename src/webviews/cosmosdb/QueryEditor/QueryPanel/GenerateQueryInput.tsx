@@ -5,11 +5,13 @@
 
 import { useTrpcClient } from '@cosmosdb/webview-rpc/react';
 import {
+    Badge,
     Button,
     Combobox,
     MessageBar,
     MessageBarBody,
     Option,
+    Tooltip,
     createCustomFocusIndicatorStyle,
     makeStyles,
     mergeClasses,
@@ -261,6 +263,18 @@ const useStyles = makeStyles({
             },
             { customizeSelector: (s) => `${s}${s}` },
         ) as Record<string, unknown>),
+    },
+    previewBadge: {
+        // Sits just to the left of the close (X) button in the top-right corner.
+        position: 'absolute',
+        top: '4px',
+        right: '24px',
+        zIndex: 1,
+        cursor: 'default',
+        ':focus-visible': {
+            outline: '1px solid var(--vscode-focusBorder)',
+            outlineOffset: '1px',
+        },
     },
     confirmBanner: {
         display: 'flex',
@@ -606,6 +620,20 @@ export const GenerateQueryInput = () => {
         <div ref={containerRef} className={mergeClasses(styles.container, isFocused && styles.containerFocused)}>
             {isLoading && containerSize && <ProgressBorder width={containerSize.width} height={containerSize.height} />}
             <div className={styles.innerContent}>
+                <Tooltip
+                    content={l10n.t('Preview: features and behavior may change. Use with care.')}
+                    relationship="description"
+                >
+                    <Badge
+                        appearance="outline"
+                        color="informative"
+                        className={styles.previewBadge}
+                        tabIndex={0}
+                        aria-label={l10n.t('Preview')}
+                    >
+                        <span aria-hidden="true">{l10n.t('Preview')}</span>
+                    </Badge>
+                </Tooltip>
                 <Button
                     className={styles.closeButton}
                     icon={<Dismiss12Regular />}

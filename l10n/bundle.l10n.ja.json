@@ -448,6 +448,7 @@
   "From TOP 50": "上位 50 から",
   "From TOP 500": "上位 500 から",
   "From Workspace Connections": "ワークスペース接続から",
+  "Generate": "Generate",
   "Generate a comprehensive discovery report using AI analysis of your schema, access patterns, and application details.": "スキーマ、アクセス パターン、およびアプリケーションの詳細を AI で分析して、包括的な検出レポートを生成します。",
   "Generate Discovery Report": "検出レポートを生成する",
   "Generate query": "クエリの生成",

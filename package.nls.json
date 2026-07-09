@@ -69,5 +69,6 @@
   "cosmosdb.configuration.manage-llm-assets": "Manage LLM assets. Allow the extension to keep LLM-related files updated.",
   "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "When enabled, schema generation also considers query results to infer the container schema.",
   "cosmosdb.configuration.quickStart.enabled": "When enabled, Quick Start tips are shown in the Query Editor after a major or minor extension update. Disable this to turn off Quick Start tips entirely, including the replay button.",
-  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Experimental) Show token usage estimates in the Migration Assistant UI."
+  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Experimental) Show token usage estimates in the Migration Assistant UI.",
+  "cosmosdb.configuration.experimental.migration.enabled": "(Experimental) Enable the Cosmos DB Migration (Preview) feature. When disabled, the Cosmos DB Migrations node and its commands are hidden."
 }

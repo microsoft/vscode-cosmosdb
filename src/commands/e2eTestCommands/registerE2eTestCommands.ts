@@ -42,16 +42,25 @@
  */
 
 import { registerCommand, type IActionContext } from '@microsoft/vscode-azext-utils';
+import * as path from 'path';
 import * as vscode from 'vscode';
 import { API } from '../../AzureDBExperiences';
+import { getActiveQueryEditor } from '../../chat/chatUtils';
+import { CosmosDbChatParticipant } from '../../chat/cosmosDbChatParticipant';
 import { AuthenticationMethod } from '../../cosmosdb/AuthenticationMethod';
 import { type CosmosDBCredential } from '../../cosmosdb/CosmosDBCredential';
 import { type NoSqlQueryConnection } from '../../cosmosdb/NoSqlQueryConnection';
+import { ext } from '../../extensionVariables';
 import { DocumentTab } from '../../panels/DocumentTab';
+import { MigrationAssistantTab } from '../../panels/MigrationAssistantTab';
 import { QueryEditorTab } from '../../panels/QueryEditorTab';
-import { type StorageItem, StorageNames, StorageService } from '../../services/StorageService';
+import { MIGRATION_FOLDER } from '../../services/MigrationProjectService';
+import { StorageNames, StorageService, type StorageItem } from '../../services/StorageService';
 import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
+import { setE2eModelOverride, type AvailableModelDescriptor } from '../../utils/aiUtils';
 import { getEmulatorItemUniqueId } from '../../utils/emulatorUtils';
+import { installAiMockDispatcher } from './e2eAiMock';
+import { registerGenerateQueryMock } from './generateQueryMockModel';
 
 const E2E_TEST_ENV_KEY = 'COSMOSDB_E2E_TEST';
 const E2E_TEST_CONTEXT_KEY = 'cosmosDB.e2eTestMode';
@@ -64,6 +73,28 @@ const ENV_EMULATOR_ENDPOINT = 'COSMOSDB_E2E_EMULATOR_ENDPOINT';
 const ENV_EMULATOR_KEY = 'COSMOSDB_E2E_EMULATOR_KEY';
 const ENV_DATABASE_ID = 'COSMOSDB_E2E_DATABASE_ID';
 const ENV_CONTAINER_ID = 'COSMOSDB_E2E_CONTAINER_ID';
+
+/**
+ * Deterministic fake Copilot models used by `cosmosDB.e2e.setMockLanguageModels`.
+ * Two entries (>1) so the Generate Query input renders the model-switcher
+ * `Combobox` rather than the single-model static label. Names are referenced
+ * verbatim by `test/e2e/specs/generate-query-input.spec.ts`.
+ */
+const E2E_MOCK_MODELS: readonly AvailableModelDescriptor[] = [
+    { id: 'e2e-mock-gpt-4o', name: 'Mock GPT-4o', family: 'gpt-4o', vendor: 'copilot', maxInputTokens: 128_000 },
+    {
+        id: 'e2e-mock-gpt-4o-mini',
+        name: 'Mock GPT-4o mini',
+        family: 'gpt-4o-mini',
+        vendor: 'copilot',
+        maxInputTokens: 128_000,
+    },
+];
+
+// Absolute path of a fixture directory copied into `<workspace>/.cosmosdb-migration`
+// by `cosmosDB.e2e.openMigration`. Set by the Playwright fixture so the command
+// stays palette-invokable without arguments.
+const ENV_MIGRATION_SEED_DIR = 'COSMOSDB_E2E_MIGRATION_SEED_DIR';
 
 export function isE2eTestModeEnabled(): boolean {
     return process.env[E2E_TEST_ENV_KEY] === '1';
@@ -133,6 +164,99 @@ async function attachEmulatorAccount(env: EmulatorEnv): Promise<void> {
 }
 
 /**
+ * Deletes `<workspace>/.cosmosdb-migration` so each migration spec starts from a
+ * clean slate. The seed copy (when a fresh project is needed) is performed
+ * separately by {@link seedMigrationProject}. Best-effort: a missing folder is
+ * ignored, which keeps the command idempotent.
+ */
+async function resetMigrationFolder(workspacePath: string): Promise<void> {
+    const target = vscode.Uri.file(path.join(workspacePath, MIGRATION_FOLDER));
+    try {
+        await vscode.workspace.fs.delete(target, { recursive: true, useTrash: false });
+    } catch {
+        // Target may not exist yet — ignore.
+    }
+}
+
+/**
+ * Copies a seed project directory into `<workspace>/.cosmosdb-migration` so
+ * specs can drive deterministic "loaded project" and full phase-flow scenarios
+ * without the native file-picker dialogs the production flow uses. The seed
+ * source is read from `COSMOSDB_E2E_MIGRATION_SEED_DIR` (set by the Playwright
+ * fixture) so the command stays palette-invokable (no args required).
+ */
+async function seedMigrationProject(workspacePath: string): Promise<boolean> {
+    const seedFrom = process.env[ENV_MIGRATION_SEED_DIR];
+    if (!seedFrom) return false;
+    const target = vscode.Uri.file(path.join(workspacePath, MIGRATION_FOLDER));
+    await vscode.workspace.fs.copy(vscode.Uri.file(seedFrom), target, { overwrite: true });
+    return true;
+}
+
+function resolveWorkspacePath(): string {
+    const workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (!workspacePath) {
+        throw new Error('cosmosDB.e2e.openMigration requires an open workspace folder.');
+    }
+    return workspacePath;
+}
+
+/**
+ * Stubs the workspace's version-control state for migration specs: when
+ * `present`, creates an empty `.git/` dir (enough for the file-based
+ * `hasGitRepository()` check) so the "exclude from version control" control
+ * renders; when absent, removes it so the missing-VCS warning renders. Always
+ * resets `.gitignore` so the exclude checkbox starts unchecked.
+ */
+async function setGitPresent(workspacePath: string, present: boolean): Promise<void> {
+    const gitDir = vscode.Uri.file(path.join(workspacePath, '.git'));
+    const gitignore = vscode.Uri.file(path.join(workspacePath, '.gitignore'));
+    try {
+        await vscode.workspace.fs.delete(gitignore, { useTrash: false });
+    } catch {
+        // No .gitignore yet — fine.
+    }
+    if (present) {
+        await vscode.workspace.fs.createDirectory(gitDir);
+    } else {
+        try {
+            await vscode.workspace.fs.delete(gitDir, { recursive: true, useTrash: false });
+        } catch {
+            // No .git yet — fine.
+        }
+    }
+}
+
+/** Deterministic query the chat edit-query button e2e commands apply. */
+const E2E_EDIT_QUERY_SUGGESTION = 'SELECT * FROM c WHERE c.e2eEditQuery = true';
+
+/** Fixed id for the seeded pending result — safe because no chat runs in e2e. */
+const E2E_EDIT_QUERY_RESULT_ID = 987654;
+
+/**
+ * Seeds a pending edit-query result (the structure `CosmosDbChatParticipant`
+ * stores for its action buttons) from the active Query Editor's connection, so
+ * the real `cosmosDB.applyQuerySuggestion` / `cosmosDB.openQuerySideBySide`
+ * commands can be exercised without running the chat participant. Returns the
+ * lightweight result id the button commands look up.
+ */
+function seedEditQuerySuggestion(): number {
+    const tabs = Array.from(QueryEditorTab.openTabs);
+    if (tabs.length === 0) {
+        throw new Error('cosmosDB.e2e edit-query seed requires an open Query Editor.');
+    }
+    const connection = getActiveQueryEditor(tabs).getConnection();
+    if (!connection) {
+        throw new Error('cosmosDB.e2e edit-query seed requires a connected Query Editor (run with the e2e emulator).');
+    }
+    CosmosDbChatParticipant.pendingResults.set(E2E_EDIT_QUERY_RESULT_ID, {
+        connection,
+        suggestedQuery: E2E_EDIT_QUERY_SUGGESTION,
+    });
+    return E2E_EDIT_QUERY_RESULT_ID;
+}
+
+/**
  * Registers the e2e-test commands and sets the `cosmosDB.e2eTestMode` context
  * key. Safe to call unconditionally — exits early if the env flag is unset.
  *
@@ -144,6 +268,63 @@ export function registerE2eTestCommands(): void {
 
     // The `when` clauses in package.json menus look for this context key.
     void vscode.commands.executeCommand('setContext', E2E_TEST_CONTEXT_KEY, true);
+
+    // Wire the control-file AI mock engine: register each feature's response
+    // catalogue and install the shared dispatcher onto the mock model. Tests
+    // select behavior by writing a control file (see `./e2eAiMock`), so no
+    // per-scenario command is needed. Inert until a control file + the mock
+    // model override (`setMockLanguageModels`) are both present.
+    registerGenerateQueryMock();
+    installAiMockDispatcher();
+
+    // ─── Chat participant edit-query button commands ────────────────────
+    // The native Chat view can't be driven headlessly (it needs a real Copilot
+    // model provider), so we test the two edit-query action buttons' *effects*
+    // directly. Each command seeds a pending edit-query result — the exact
+    // structure the chat participant stores — using the active Query Editor's
+    // connection, then invokes the real button command. No chat/LLM involved.
+    registerCommand('cosmosDB.e2e.applyEditQuerySuggestion', async (context: IActionContext): Promise<void> => {
+        context.telemetry.properties.isE2eTest = 'true';
+        const resultId = seedEditQuerySuggestion();
+        await vscode.commands.executeCommand('cosmosDB.applyQuerySuggestion', resultId);
+    });
+
+    registerCommand(
+        'cosmosDB.e2e.openEditQuerySuggestionSideBySide',
+        async (context: IActionContext): Promise<void> => {
+            context.telemetry.properties.isE2eTest = 'true';
+            const resultId = seedEditQuerySuggestion();
+            await vscode.commands.executeCommand('cosmosDB.openQuerySideBySide', resultId);
+        },
+    );
+
+    // Opens the Migration Assistant against a deterministic, pre-seeded project
+    // (consent granted + application analysis populated + schema files present)
+    // so phase-flow specs can drive Discovery → Assessment → Conversion without
+    // the native file pickers. Always resets `.cosmosdb-migration` first so the
+    // command is hermetic regardless of prior-test state.
+    registerCommand('cosmosDB.e2e.openMigration', async (context: IActionContext): Promise<void> => {
+        context.telemetry.properties.isE2eTest = 'true';
+        const workspacePath = resolveWorkspacePath();
+        await resetMigrationFolder(workspacePath);
+        // Version control present is the default scenario: seed a `.git` dir so
+        // the "exclude from version control" control renders, with a clean
+        // .gitignore so the exclude checkbox starts unchecked.
+        await setGitPresent(workspacePath, true);
+        context.telemetry.properties.seeded = String(await seedMigrationProject(workspacePath));
+        MigrationAssistantTab.render(workspacePath);
+    });
+
+    // Opens the Migration Assistant against a fresh, empty project (no consent,
+    // no analysis) so specs can assert the initial disabled-control state.
+    registerCommand('cosmosDB.e2e.openMigrationFresh', async (context: IActionContext): Promise<void> => {
+        context.telemetry.properties.isE2eTest = 'true';
+        const workspacePath = resolveWorkspacePath();
+        await resetMigrationFolder(workspacePath);
+        // No version control: drop `.git` so the missing-VCS warning renders.
+        await setGitPresent(workspacePath, false);
+        MigrationAssistantTab.render(workspacePath);
+    });
 
     registerCommand('cosmosDB.e2e.openQueryEditor', (context: IActionContext, args?: Partial<EmulatorEnv>): void => {
         context.telemetry.properties.isE2eTest = 'true';
@@ -187,4 +368,48 @@ export function registerE2eTestCommands(): void {
             await attachEmulatorAccount(env);
         },
     );
+
+    // Forces the AI-features flag on (or off) so specs can assert on the
+    // AI button without depending on a real Copilot/chat installation in the
+    // test VS Code. Setting `ext.isAIFeaturesEnabled` before opening the
+    // Query Editor makes the initial webview state report AI as enabled; the
+    // `notifyAIFeaturesChanged` broadcast also updates any already-open tabs.
+    // Invoked from the palette with no arg → defaults to enabling AI.
+    registerCommand('cosmosDB.e2e.setAIFeaturesEnabled', (context: IActionContext, enabled?: boolean): void => {
+        context.telemetry.properties.isE2eTest = 'true';
+        const isEnabled = enabled ?? true;
+        ext.isAIFeaturesEnabled = isEnabled;
+        context.telemetry.properties.aiFeaturesEnabled = String(isEnabled);
+        QueryEditorTab.notifyAIFeaturesChanged(isEnabled);
+    });
+
+    // Installs a fixed pair of fake Copilot models so the Generate Query input's
+    // model switcher renders and behaves without a real Copilot install. The
+    // override bypasses `vscode.lm.selectChatModels` inside `aiUtils`. Invoked
+    // from the palette with no args (palette can't pass arguments), so the
+    // fixtures are baked into the command. Pass `false` to clear the override.
+    registerCommand('cosmosDB.e2e.setMockLanguageModels', (context: IActionContext, enabled?: boolean): void => {
+        context.telemetry.properties.isE2eTest = 'true';
+        const shouldMock = enabled ?? true;
+        setE2eModelOverride(shouldMock ? E2E_MOCK_MODELS : undefined);
+        context.telemetry.measurements.modelCount = shouldMock ? E2E_MOCK_MODELS.length : 0;
+    });
+
+    // Clears the fake-model override so it can't leak into other specs that
+    // share the worker's VS Code instance. Palette can't pass args, so this is
+    // a dedicated no-arg counterpart to `setMockLanguageModels`.
+    registerCommand('cosmosDB.e2e.clearMockLanguageModels', (context: IActionContext): void => {
+        context.telemetry.properties.isE2eTest = 'true';
+        setE2eModelOverride(undefined);
+    });
+
+    // Forces the survey-candidate flag so the thumbs up/down feedback buttons
+    // in the Generate Query input render regardless of the test VS Code's
+    // `telemetry.feedback.enabled` setting. Invoked with no arg → defaults on.
+    registerCommand('cosmosDB.e2e.setSurveyCandidate', (context: IActionContext, isCandidate?: boolean): void => {
+        context.telemetry.properties.isE2eTest = 'true';
+        const value = isCandidate ?? true;
+        context.telemetry.properties.surveyCandidate = String(value);
+        QueryEditorTab.notifySurveyCandidate(value);
+    });
 }

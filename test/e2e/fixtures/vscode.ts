@@ -45,10 +45,11 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { resolveCapturePlan, shouldCapture } from '../helpers/captureMode';
 import { ensureE2eIsolationContext } from '../helpers/e2eIsolation';
+import { applyWindowLayout, DEFAULT_LAYOUT, type WindowLayout } from '../helpers/windowLayout';
 import { waitForWorkbenchReady } from '../helpers/workbenchReady';
 import { waitForExtensionsActivated } from '../setup/activation';
+import { E2E_EMULATOR_PORT } from '../setup/emulator';
 import { isCoverageEnabled, startCoverage, stopAndPersistCoverage } from './coverage';
-import { closeAuxiliaryBar } from './webviewHelpers';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, '..', '..', '..');
@@ -98,11 +99,7 @@ function seedUserSettings(userDataDir: string): void {
         // worker should start with an empty workbench.
         'files.hotExit': 'onExitAndWindowClose',
         // Chat / secondary sidebar can autopopup on fresh installs and steal
-        // 30 % of horizontal space, hiding webview content. The setting below
-        // is best-effort (auxiliary-bar visibility is mostly persisted UI
-        // state, not a real setting), so we also explicitly close the
-        // auxiliary bar once the workbench is ready — see `closeAuxiliaryBar`
-        // in the `vscodeWindow` fixture.
+        // 30 % of horizontal space, hiding webview content.
         'workbench.secondarySideBar.visible': false,
         // Drop the Chat entry from the title-bar command center so a fresh
         // profile doesn't surface the chat affordance at all.
@@ -117,6 +114,9 @@ function seedUserSettings(userDataDir: string): void {
         // the connection points at. Harmless for production single-region
         // accounts; required for any e2e-vs-emulator scenario.
         'cosmosDB.enableEndpointDiscovery': false,
+        // The dedicated e2e emulator binds to 8082 (not the default 8081);
+        // the migration provisioning step reads this to target the right port.
+        'cosmosDB.emulator.port': E2E_EMULATOR_PORT,
     };
     const settingsPath = path.join(userDataDir, 'User', 'settings.json');
     mkdirSync(path.dirname(settingsPath), { recursive: true });
@@ -126,8 +126,9 @@ function seedUserSettings(userDataDir: string): void {
 /**
  * Monkey-patch Electron's main-process `dialog` module so native
  * save / open / message dialogs never block the test. Untitled SQL editors,
- * unsaved changes on tab close, the Query Editor's "Open query" file picker,
- * etc. would otherwise pop an OS dialog that Playwright cannot interact with.
+ * unsaved changes on tab close, file pickers (e.g. the Query Editor Open
+ * action), etc. would otherwise pop an OS dialog that Playwright cannot
+ * interact with.
  */
 async function disableNativeDialogs(app: ElectronApplication): Promise<void> {
     await app
@@ -157,6 +158,28 @@ interface VsCodeFixtures {
 }
 
 interface VsCodeTestFixtures {
+    /**
+     * Test-scoped **option** controlling which VS Code chrome parts (primary
+     * side bar, secondary side bar / Copilot Chat, bottom panel) are visible
+     * for the test. Merged over {@link DEFAULT_LAYOUT} by the auto
+     * `windowLayout` fixture (Copilot Chat + bottom panel hidden by default for
+     * clean webview screenshots).
+     *
+     * Override per file / describe / test with `test.use()`:
+     *
+     *     test.use({ layout: { primarySideBar: false } });
+     *
+     * Keys are tri-state — a key you omit keeps its default; the defaults you
+     * don't override stay in effect (the fixture merges them in). Applied
+     * before each test body.
+     */
+    layout: WindowLayout;
+    /**
+     * Auto fixture (no value) that enforces the {@link VsCodeTestFixtures.layout}
+     * option on the shared VS Code window before each test runs. See the
+     * fixture body.
+     */
+    windowLayout: void;
     /**
      * Auto fixture (no value) that records a self-managed Playwright trace of
      * the VS Code window for the duration of each test when
@@ -202,6 +225,29 @@ export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
                 mkdirSync(workspaceDir, { recursive: true });
             }
 
+            // Per-worker scratch dir the migration AI mock reads (control.json)
+            // and writes (capture.jsonl). Created up front so both the worker
+            // (setMockControl) and the extension can see the same location.
+            const migrationCaptureDir = path.join(workerDir, 'migration-capture');
+            mkdirSync(migrationCaptureDir, { recursive: true });
+
+            // Per-worker scratch dir the shared AI mock engine reads (ai-mock.json).
+            // Written by the `aiMock` fixtures and read by the extension's control-
+            // file dispatcher (see `src/commands/e2eTestCommands/e2eAiMock.ts`).
+            const aiMockDir = path.join(workerDir, 'ai-mock');
+            mkdirSync(aiMockDir, { recursive: true });
+
+            // Expose the per-worker workspace + capture dirs to this worker's
+            // process.env. The migration fixtures (readGitignore, gitDirExists,
+            // provisioningArtifact*, setMockControl) read these from the worker,
+            // and the `...process.env` spread below forwards COSMOSDB_E2E_*
+            // straight into the launched extension host (the AI mock reads the
+            // capture dir there). Workers are isolated processes, so this never
+            // leaks across workers.
+            process.env.COSMOSDB_E2E_WORKSPACE_DIR = workspaceDir;
+            process.env.COSMOSDB_E2E_MIGRATION_CAPTURE_DIR = migrationCaptureDir;
+            process.env.COSMOSDB_E2E_AI_MOCK_DIR = aiMockDir;
+
             seedUserSettings(userDataDir);
 
             const launchPromise = electron.launch({
@@ -244,6 +290,15 @@ export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
                     // Without this flag those commands are not registered at all,
                     // so production users running the extension never see them.
                     COSMOSDB_E2E_TEST: '1',
+                    // Replaces the migration assistant's Copilot calls with a
+                    // deterministic offline mock (see
+                    // `src/panels/migration/helpers/e2eMigrationAiMock.ts`) so the
+                    // full migration pipeline can run end-to-end without Copilot.
+                    COSMOSDB_E2E_MIGRATION_AI_MOCK: '1',
+                    // Source directory copied into `<workspace>/.cosmosdb-migration`
+                    // by the `cosmosDB.e2e.openMigration` command so phase-flow
+                    // specs start from a deterministic, pre-seeded project.
+                    COSMOSDB_E2E_MIGRATION_SEED_DIR: path.resolve(here, 'migration-seed'),
                     // Emulator coordinates — read by the `cosmosDB.e2e.*` commands
                     // when building a `NoSqlQueryConnection` so QueryEditor /
                     // Document tabs open against the seeded e2e database. Absent
@@ -340,15 +395,33 @@ export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
             // the full rationale.
             await waitForExtensionsActivated(page);
 
-            // A fresh VS Code profile can auto-open the Chat view in the
-            // auxiliary (secondary) side bar, which eats ~30 % of horizontal
-            // space and squeezes the webview under test. Close it once here so
-            // every spec starts with the editor area at full width.
-            await closeAuxiliaryBar(page);
-
             await use(page);
         },
         { scope: 'worker' },
+    ],
+
+    // Test-scoped option: per-test window-layout overrides, merged over
+    // DEFAULT_LAYOUT by the `windowLayout` fixture. `test.use({ layout })`
+    // *replaces* this value (it doesn't deep-merge), so it defaults to `{}`
+    // and the defaults are applied in the fixture — that keeps a partial
+    // override like `{ primarySideBar: false }` additive over the defaults.
+    layout: [{}, { option: true }],
+
+    windowLayout: [
+        async ({ vscodeWindow, layout }, use) => {
+            // Enforce the requested layout on the shared (worker-scoped) window
+            // before the test body runs, so prior tests can't leak chrome state
+            // (an opened side bar / panel) into this one. Merge over the
+            // defaults so a partial override only changes the parts it names.
+            // Best-effort — the helper never throws on a layout tweak.
+            if (!vscodeWindow.isClosed()) {
+                await applyWindowLayout(vscodeWindow, { ...DEFAULT_LAYOUT, ...layout });
+            }
+            await use();
+        },
+        // `auto` so every test gets the layout without opting in; declared
+        // before `windowTrace` so the window has settled before tracing starts.
+        { auto: true },
     ],
 
     windowTrace: [

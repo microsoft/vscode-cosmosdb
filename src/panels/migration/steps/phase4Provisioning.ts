@@ -190,7 +190,10 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
         context.errorHandling.forceIncludeInReportIssueCommand = true;
         incrementRunCount(project, 'provisioning');
 
-        // Log target environment info
+        // Log target environment info. Only OII identifiers under their
+        // predefined property names are emitted (`accountName`, `subscriptionId`).
+        // The resource group is part of the resource path — do not emit
+        // its parts under separate keys; it stays out of telemetry.
         const targetEnv = project.phases.targetEnvironment;
         if (targetEnv) {
             context.telemetry.properties.targetType = targetEnv.type;
@@ -199,7 +202,6 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
                     targetEnv.accountName ||
                     (targetEnv.endpoint ? extractAccountNameFromEndpoint(targetEnv.endpoint) : undefined);
                 if (acctName) context.telemetry.properties.accountName = acctName;
-                if (targetEnv.resourceGroup) context.telemetry.properties.resourceGroup = targetEnv.resourceGroup;
                 if (targetEnv.subscriptionId) context.telemetry.properties.subscriptionId = targetEnv.subscriptionId;
             }
         }
@@ -319,14 +321,8 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
                 const aiModel = await getSelectedModel();
                 const sourceType = model.sourceType ?? 'relational';
 
-                let debugConfig: DebugPromptConfig | undefined;
-                if (isDebugPromptsEnabled()) {
-                    const mkDebug = createMkDebug(
-                        isDebugPromptsEnabled(),
-                        path.join(provisioningPath, 'debug-prompts'),
-                    );
-                    debugConfig = mkDebug('sample-data-generation');
-                }
+                const mkDebug = createMkDebug(isDebugPromptsEnabled(), path.join(provisioningPath, 'debug-prompts'));
+                const debugConfig: DebugPromptConfig = mkDebug('sample-data-generation');
 
                 const { value: generated, roundsExhausted: sampleDataRoundsExhausted } =
                     await runAgenticLoopWithJsonResult<SampleDataResult>(
@@ -660,7 +656,6 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
 
             // Structural metrics
             context.telemetry.measurements.containersCreated = containersCreated.length;
-            context.telemetry.properties.sampleDataInserted = 'true';
 
             await sendPhaseEvent(channel, 'provisioningCompleted', [
                 {

@@ -14,6 +14,12 @@ export interface DebugPromptConfig {
     debugDir: string;
     /** Kebab-case step name used as filename prefix (e.g. 'step1-analysis'). */
     stepName: string;
+    /**
+     * Whether prompt/response dumps should actually be written to disk.
+     * The config is always produced (so `stepName` is available at runtime for
+     * e.g. deterministic test routing), but dumps are gated on this flag.
+     */
+    dumpEnabled: boolean;
 }
 
 // ─── Serialization ──────────────────────────────────────────────────
@@ -141,7 +147,8 @@ export async function tryLoadPromptOverride(
 
 /**
  * Creates a `mkDebug` helper bound to a specific debug directory.
- * Returns `DebugPromptConfig` when debug prompts are enabled, `undefined` otherwise.
+ * Always returns a {@link DebugPromptConfig} so `stepName` is available at
+ * runtime; the `dumpEnabled` flag reflects whether dumps should be written.
  *
  * Usage:
  * ```ts
@@ -149,11 +156,8 @@ export async function tryLoadPromptOverride(
  * await runPrompt(..., mkDebug('step1-analysis'));
  * ```
  */
-export function createMkDebug(
-    debugEnabled: boolean,
-    debugDir: string,
-): (stepName: string) => DebugPromptConfig | undefined {
-    return (stepName: string) => (debugEnabled ? { debugDir, stepName } : undefined);
+export function createMkDebug(debugEnabled: boolean, debugDir: string): (stepName: string) => DebugPromptConfig {
+    return (stepName: string) => ({ debugDir, stepName, dumpEnabled: debugEnabled });
 }
 
 /**

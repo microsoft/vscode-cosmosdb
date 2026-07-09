@@ -41,6 +41,7 @@ export class MigrationWorkspaceItem implements TreeElement, TreeElementWithConte
             id: this.id,
             contextValue: this.contextValue,
             label: l10n.t('Cosmos DB Migrations'),
+            description: l10n.t('(Preview)'),
             iconPath: new vscode.ThemeIcon('arrow-swap'),
             collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
         };

@@ -103,6 +103,8 @@ test/e2e/
 │                                fixtures/vscode.ts.
 ├── helpers/
 │   ├── e2eIsolation.ts        — runId + run-scoped temp/results/reports dirs
+│   ├── windowLayout.ts        — per-test side-bar / panel visibility control
+│   │                             (the `layout` option + `windowLayout` fixture)
 │   └── workbenchReady.ts      — hardened workbench-readiness wait
 ├── fixtures/
 │   ├── vscode.ts              — worker-scoped vscodeApp + vscodeWindow,
@@ -124,10 +126,18 @@ test/e2e/
 │   │                             CRUD spec
 │   ├── consoleHealth.ts       — webview console-error monitor +
 │   │                             CONSOLE_ERROR_ALLOWLIST (kept empty)
+│   ├── migration.ts           — Migration Assistant page-object + on-disk /
+│   │                             emulator artifact assertion helpers
+│   ├── migration-seed/        — seeded migration project (consent + analysis +
+│   │                             schema DDL) copied into the workspace for the
+│   │                             deterministic phase flow
 │   └── workspace/             — source-of-truth workspace opened by every
 │                                worker (.nosql samples, .vscode/settings.json)
 └── specs/
     ├── smoke.spec.ts              — opens Migration Assistant, asserts React mount
+    ├── migration.spec.ts          — full Migration Assistant flow (phases 1–4
+    │                                 driven against the offline AI mock, plus
+    │                                 on-disk artifact + emulator assertions)
     ├── emulator-connected.spec.ts — Query Editor connects + runs the seed query
     └── queryEditor-*.spec.ts      — Query Editor coverage (tag `@queryEditor`):
                                       open, query toolbar, toolbar overflow,
@@ -294,12 +304,50 @@ pipeline).
    React app mounted" check.
 6. Drive the webview with standard Playwright APIs on the returned `Frame`.
 
+## Controlling window chrome (side bars / panel)
+
+VS Code is reused per worker and the activation handshake opens the Azure side
+bar; on a fresh profile the GitHub Copilot Chat secondary side bar can also
+auto-pop. Both steal horizontal space and clutter the window screenshots we
+attach for webview tests.
+
+Every test gets a **`layout`** option (see `helpers/windowLayout.ts`) that the
+auto `windowLayout` fixture enforces before the test body runs. The default
+hides the Copilot Chat secondary side bar and the bottom panel; the primary
+side bar is left untouched.
+
+```ts
+// Default per test (no opt-in needed):
+//   { secondarySideBar: false, panel: false }
+
+// Override per file / describe / test. Your object is merged over the
+// defaults, so you only restate the parts you want to change — a key you
+// pass wins, a key you omit keeps its default (and parts absent from both
+// are left untouched):
+test.use({ layout: { primarySideBar: false } });           // also hide the tree
+test.use({ layout: { secondarySideBar: true } });          // show Copilot Chat
+test.use({ layout: { primarySideBar: false, panel: false } });
+```
+
+You can also apply a layout inline from within a test (e.g. mid-test):
+
+```ts
+import { applyWindowLayout } from '../helpers/windowLayout';
+
+await applyWindowLayout(vscodeWindow, { panel: true });
+```
+
+The helper diffs against the live workbench DOM and issues a visibility-toggle
+command only when a part isn't already in the desired state, so re-applying the
+same layout is a no-op.
+
 ## Patterns adopted from `vs-code-postgresql`
 
 | Pattern                                                      | Where                                                          | Why                                                                                                                                         |
 | ------------------------------------------------------------ | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | Worker-scoped fixture                                        | `fixtures/vscode.ts`                                           | One VS Code launch per worker → 5–10× faster as the suite grows                                                                             |
 | `settings.json` pre-seeding                                  | `seedUserSettings()` in `fixtures/vscode.ts`                   | Disables sticky tree headers, preview tabs, secondary sidebar — kills several classes of flake before they happen                           |
+| Per-test window layout (`layout` option)                     | `helpers/windowLayout.ts` + `windowLayout` auto fixture        | Hides Copilot Chat / panel by default for clean screenshots; per-test override of which side bars + panel are visible                       |
 | Native dialog auto-dismiss                                   | `disableNativeDialogs()` via `app.evaluate(({ dialog }) => …)` | Save / message dialogs would otherwise block the test forever                                                                               |
 | Multi-step workbench-ready wait                              | `helpers/workbenchReady.ts`                                    | Force-shows all Electron windows, dumps diagnostics + screenshot on failure                                                                 |
 | `getWebviewByPredicate`                                      | `fixtures/webviewHelpers.ts`                                   | Outer webview iframe has no aria-label/title in current VS Code — iterating frames + predicate matching is more robust than selector chains |

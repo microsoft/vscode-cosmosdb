@@ -14,6 +14,7 @@ import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
+import { createMockLanguageModel, type CreateMockLanguageModelOptions } from './languageModelMockUtils';
 import { SELECTED_MODEL_KEY } from './modelUtils';
 
 /**
@@ -25,6 +26,90 @@ const allow3pModels = false;
 
 /** Selector used by all model lookups; gated by {@link allow3pModels}. */
 const modelSelector: vscode.LanguageModelChatSelector = allow3pModels ? {} : { vendor: 'copilot' };
+
+// ─── Test-only model override (e2e) ─────────────────────────────────
+
+/**
+ * Test-only override for the Copilot model list. Set **exclusively** by the
+ * `cosmosDB.e2e.setMockLanguageModels` command, which is registered only when
+ * `COSMOSDB_E2E_TEST=1` (see {@link file://./../commands/e2eTestCommands/registerE2eTestCommands.ts}).
+ *
+ * When defined, {@link getAvailableModelsInfo} and {@link getSelectedModel}
+ * return these fixtures instead of calling `vscode.lm.selectChatModels`, so
+ * Playwright specs can exercise the model switcher without a real Copilot
+ * installation in the test VS Code. It stays `undefined` (and therefore inert)
+ * in production because the setter is never wired up outside e2e mode.
+ */
+let e2eModelOverride: readonly AvailableModelDescriptor[] | undefined;
+
+/**
+ * Installs (or, with `undefined`, clears) the {@link e2eModelOverride}.
+ * Intended for e2e test commands only. Clearing drops the cached mock model
+ * instances; the installed resolver is left in place (it is inert without both
+ * an override and its own control input, so it can't leak into a later run).
+ */
+export function setE2eModelOverride(models: readonly AvailableModelDescriptor[] | undefined): void {
+    e2eModelOverride = models;
+    if (!models) {
+        e2eMockModelCache.clear();
+    }
+}
+
+// ─── Test-only mock model resolver (e2e) ────────────────────────────
+//
+// Shared plumbing only. A single persistent mock `LanguageModelChat` (per
+// descriptor id) streams back whatever the installed resolver returns. The
+// concrete responses live with the feature they exercise, wired up through the
+// control-file engine in `commands/e2eTestCommands/e2eAiMock.ts`, so this module
+// stays feature-agnostic and reusable by the migration assistant.
+
+/**
+ * Produces what the e2e mock model streams back for a request. Mirrors
+ * `createMockLanguageModel`'s `resolveResponse`, so it receives the request
+ * messages, options, and cancellation token.
+ */
+export type E2eMockResponseResolver = CreateMockLanguageModelOptions['resolveResponse'];
+
+/** Inert default: streams nothing until a feature installs its own resolver. */
+const INERT_MOCK_RESOLVER: E2eMockResponseResolver = () => '';
+
+/** Resolver the mock model delegates to; installed by the e2e AI-mock engine. */
+let e2eMockResponseResolver: E2eMockResponseResolver = INERT_MOCK_RESOLVER;
+
+/**
+ * Persistent mock model instances keyed by descriptor id. Caching keeps a stable
+ * instance across the `getSelectedModel({ modelId })` re-resolution inside a
+ * service, so any per-instance state the resolver relies on survives.
+ */
+const e2eMockModelCache = new Map<string, vscode.LanguageModelChat>();
+
+/**
+ * Installs the resolver the e2e mock model delegates to, or resets it to the
+ * inert default with `undefined`. E2e-only.
+ */
+export function setE2eMockResponseResolver(resolver: E2eMockResponseResolver | undefined): void {
+    e2eMockResponseResolver = resolver ?? INERT_MOCK_RESOLVER;
+}
+
+/**
+ * Returns the cached mock model for a descriptor, creating it on first use.
+ */
+function getOrCreateE2eMockModel(descriptor: AvailableModelDescriptor): vscode.LanguageModelChat {
+    const cached = e2eMockModelCache.get(descriptor.id);
+    if (cached) {
+        return cached;
+    }
+    const model = createMockLanguageModel({
+        id: descriptor.id,
+        name: descriptor.name,
+        vendor: descriptor.vendor,
+        family: descriptor.family,
+        maxInputTokens: descriptor.maxInputTokens,
+        resolveResponse: (args) => e2eMockResponseResolver(args),
+    });
+    e2eMockModelCache.set(descriptor.id, model);
+    return model;
+}
 
 // ─── Model selection ────────────────────────────────────────────────
 
@@ -56,6 +141,23 @@ export interface GetSelectedModelOptions {
  * @throws If no Copilot models are available.
  */
 export async function getSelectedModel(options?: GetSelectedModelOptions): Promise<vscode.LanguageModelChat> {
+    if (e2eModelOverride) {
+        if (e2eModelOverride.length === 0) {
+            throw new Error(l10n.t('No language models available. Please ensure you have access to Copilot.'));
+        }
+        const explicitMock = options?.modelId ? e2eModelOverride.find((m) => m.id === options.modelId) : undefined;
+        const savedMockId = ext.context.globalState.get<string>(options?.stateKey ?? SELECTED_MODEL_KEY);
+        const chosen =
+            explicitMock ??
+            (savedMockId ? e2eModelOverride.find((m) => m.id === savedMockId) : undefined) ??
+            e2eModelOverride[0];
+        // Return the shared mock for the chosen descriptor so the returned model
+        // honors `countTokens` / `sendRequest` and streams back whatever the
+        // installed resolver produces (see `setE2eMockResponseResolver` and the
+        // control-file engine in `commands/e2eTestCommands/e2eAiMock.ts`).
+        return getOrCreateE2eMockModel(chosen);
+    }
+
     const models = await vscode.lm.selectChatModels(modelSelector);
     if (models.length === 0) {
         throw new Error(l10n.t('No language models available. Please ensure you have access to Copilot.'));
@@ -91,6 +193,21 @@ export interface AvailableModelDescriptor {
 export async function getAvailableModelsInfo(
     stateKey: string = SELECTED_MODEL_KEY,
 ): Promise<{ models: AvailableModelDescriptor[]; savedModelId: string | null }> {
+    if (e2eModelOverride) {
+        const savedModelId = ext.context.globalState.get<string>(stateKey) ?? null;
+        return { models: [...e2eModelOverride], savedModelId };
+    }
+
+    // In e2e migration AI mock mode, advertise a single deterministic fake
+    // model so the webview model dropdown is populated. Gated on the master
+    // e2e flag so it can never affect a normal session.
+    if (process.env.COSMOSDB_E2E_TEST === '1' && process.env.COSMOSDB_E2E_MIGRATION_AI_MOCK === '1') {
+        const id = 'e2e-mock-migration-model';
+        return {
+            models: [{ id, name: 'E2E Mock Model', family: 'e2e-mock', vendor: 'copilot', maxInputTokens: 128_000 }],
+            savedModelId: id,
+        };
+    }
     try {
         const allModels = await vscode.lm.selectChatModels(modelSelector);
         const savedModelId = ext.context.globalState.get<string>(stateKey) ?? null;

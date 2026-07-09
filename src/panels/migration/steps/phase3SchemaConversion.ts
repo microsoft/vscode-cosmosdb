@@ -176,9 +176,11 @@ async function runContainerDesign(
         executeToolCall,
         MAX_SCHEMA_TOOL_ROUNDS,
         token,
-        `Conversion Sub-Step 1 (Container Design: ${domainName})`,
+        'Conversion Sub-Step 1 (Container Design)',
         l10n.t('Could not parse container design response for domain "{name}".', { name: domainName }),
         debugConfig,
+        // Domain name is log-only — it never reaches telemetry.
+        domainName,
     );
     if (roundsExhausted) onExhausted?.();
     return value;
@@ -352,7 +354,7 @@ async function runFastConversion(
     debugConfig?: DebugPromptConfig,
     onExhausted?: () => void,
 ): Promise<FastConversionResult> {
-    const label = `Fast Schema Conversion (${domainName})`;
+    const label = 'Fast Schema Conversion';
     const { messages } = await renderWithDebug(
         Phase3FastConversionPrompt,
         {
@@ -380,6 +382,9 @@ async function runFastConversion(
         undefined,
         { temperature: 0.1 },
         debugConfig,
+        undefined,
+        // Domain name is log-only — it never reaches telemetry.
+        domainName,
     );
     if (roundsExhausted) onExhausted?.();
 
@@ -388,7 +393,7 @@ async function runFastConversion(
         const truncated = text.length > 300 ? text.slice(0, 300) + '…' : text;
         const tail = text.length > 300 ? '…' + text.slice(-200) : '';
         ext.outputChannel.appendLog(
-            `[${label}] Failed to parse fast-conversion response (${text.length} chars). ` +
+            `[${label} (${domainName})] Failed to parse fast-conversion response (${text.length} chars). ` +
                 `Response preview: "${truncated}"${tail ? `\nResponse tail: "${tail}"` : ''}`,
         );
         throw new Error(
@@ -396,7 +401,7 @@ async function runFastConversion(
         );
     }
 
-    if (isDebugPromptsEnabled() && debugConfig) {
+    if (debugConfig?.dumpEnabled) {
         await dumpDebugResponse(
             debugConfig.debugDir,
             debugConfig.stepName,
@@ -631,7 +636,7 @@ async function runFinalSummary(
         throw new Error(l10n.t('Could not parse final summary response.'));
     }
 
-    if (isDebugPromptsEnabled() && debugConfig) {
+    if (debugConfig?.dumpEnabled) {
         await dumpDebugResponse(
             debugConfig.debugDir,
             debugConfig.stepName,
@@ -826,10 +831,18 @@ export async function runSchemaConversion(
                 const domainNameMatch = domainContent.match(/^# Domain:\s*(.+)$/m);
                 const domainName = domainNameMatch?.[1]?.trim() ?? domainFileName;
 
+                // Domain identifiers are workspace/user-derived. Mask them so they are
+                // redacted from any error message or stack captured by this phase-level
+                // `callWithTelemetryAndErrorHandling` on failure (e.g. the "…for domain
+                // \"X\"" parse errors thrown by container design / fast conversion).
+                context.valuesToMask.push(domainName, domainFileName);
+
                 const domainOutputPath = path.join(domainsPath, domainFileName);
                 await vscode.workspace.fs.createDirectory(vscode.Uri.file(domainOutputPath));
 
-                const domainLabel = `domain${di + 1}of${filteredDomainFiles.length}`;
+                // Track which domain (by index, not name) the most recent step belongs to in telemetry.
+                context.telemetry.measurements.domainIndex = di + 1;
+                context.telemetry.measurements.domainTotal = filteredDomainFiles.length;
                 const progress = (step: string) => `${domainName} (${di + 1}/${filteredDomainFiles.length}): ${step}`;
 
                 const domainDebugDir = path.join(domainOutputPath, 'debug-prompts');
@@ -854,7 +867,7 @@ export async function runSchemaConversion(
                     // ── Thorough mode: 7 sequential sub-steps ────────────
 
                     // ── Sub-step 1: Container Design ─────────────────────────
-                    context.telemetry.properties.lastStep = `${domainLabel}.containerDesign`;
+                    context.telemetry.properties.lastStep = 'containerDesign';
                     await sendPhaseProgress(
                         channel,
                         'SchemaConversion',
@@ -880,7 +893,7 @@ export async function runSchemaConversion(
                     if (token.isCancellationRequested) return;
 
                     // ── Sub-step 2: Partition Key Selection ───────────────────
-                    context.telemetry.properties.lastStep = `${domainLabel}.partitionKey`;
+                    context.telemetry.properties.lastStep = 'partitionKey';
                     await sendPhaseProgress(
                         channel,
                         'SchemaConversion',
@@ -908,7 +921,7 @@ export async function runSchemaConversion(
                     if (token.isCancellationRequested) return;
 
                     // ── Sub-step 3: Embedding Decisions ──────────────────────
-                    context.telemetry.properties.lastStep = `${domainLabel}.embedding`;
+                    context.telemetry.properties.lastStep = 'embedding';
                     await sendPhaseProgress(
                         channel,
                         'SchemaConversion',
@@ -943,7 +956,7 @@ export async function runSchemaConversion(
                     if (token.isCancellationRequested) return;
 
                     // ── Sub-step 4: Access Patterns ──────────────────────────
-                    context.telemetry.properties.lastStep = `${domainLabel}.accessPatterns`;
+                    context.telemetry.properties.lastStep = 'accessPatterns';
                     await sendPhaseProgress(
                         channel,
                         'SchemaConversion',
@@ -986,7 +999,7 @@ export async function runSchemaConversion(
                     if (token.isCancellationRequested) return;
 
                     // ── Sub-step 5: Cross-Partition Analysis ─────────────────
-                    context.telemetry.properties.lastStep = `${domainLabel}.crossPartition`;
+                    context.telemetry.properties.lastStep = 'crossPartition';
                     await sendPhaseProgress(
                         channel,
                         'SchemaConversion',
@@ -1029,7 +1042,7 @@ export async function runSchemaConversion(
                     if (token.isCancellationRequested) return;
 
                     // ── Sub-step 6: Indexing Design ──────────────────────────
-                    context.telemetry.properties.lastStep = `${domainLabel}.indexing`;
+                    context.telemetry.properties.lastStep = 'indexing';
                     await sendPhaseProgress(
                         channel,
                         'SchemaConversion',
@@ -1070,7 +1083,7 @@ export async function runSchemaConversion(
                     if (token.isCancellationRequested) return;
 
                     // ── Sub-step 7: Summary ──────────────────────────────────
-                    context.telemetry.properties.lastStep = `${domainLabel}.summary`;
+                    context.telemetry.properties.lastStep = 'summary';
                     await sendPhaseProgress(
                         channel,
                         'SchemaConversion',
@@ -1111,7 +1124,7 @@ export async function runSchemaConversion(
                     );
                 } else {
                     // ── Fast mode: single-pass conversion ────────────────
-                    context.telemetry.properties.lastStep = `${domainLabel}.fastConversion`;
+                    context.telemetry.properties.lastStep = 'fastConversion';
 
                     await sendPhaseProgress(
                         channel,

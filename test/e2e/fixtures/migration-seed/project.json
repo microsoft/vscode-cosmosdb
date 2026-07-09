@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "name": "E2E Migration",
+  "sourceCode": "parent",
+  "sessionId": "e2e-fixed-session",
+  "consentGiven": true,
+  "migrationMode": "plan",
+  "phases": {
+    "discovery": {
+      "status": "not-started",
+      "applicationAnalysis": {
+        "projectName": "Contoso Sales",
+        "projectType": "Web API",
+        "language": "C#",
+        "frameworks": ["ASP.NET Core", "Entity Framework"],
+        "databaseType": "SQL Server",
+        "databaseAccess": "Entity Framework"
+      }
+    }
+  }
+}

@@ -15,6 +15,7 @@ import {
     getSelectedModel as getSelectedModelShared,
     logLlmTokenUsage,
 } from '../../../utils/aiUtils';
+import { setMockRoute } from '../../../utils/languageModelMockUtils';
 import { MIGRATION_SELECTED_MODEL_KEY } from '../../../utils/modelUtils';
 import {
     type DebugPromptConfig,
@@ -22,6 +23,7 @@ import {
     dumpDebugResponse,
     tryLoadPromptOverride,
 } from './debugPromptHelpers';
+import { createMockMigrationModel, isMigrationAiMockEnabled } from './e2eMigrationAiMock';
 
 export { createMkDebug, dumpDebugResponse } from './debugPromptHelpers';
 /** Re-exported from shared `aiUtils` to avoid churn for existing callers. */
@@ -37,8 +39,17 @@ export { extractJsonObject } from '../../../utils/aiUtils';
  *
  * Accepts the same options as the shared helper; `stateKey` is defaulted
  * to the migration key if the caller doesn't override it.
+ *
+ * @param options - Optional model-selection options forwarded to the shared
+ *   helper; `stateKey` defaults to {@link MIGRATION_SELECTED_MODEL_KEY} when omitted.
+ * @returns The resolved language model for the Migration Assistant.
  */
 export function getSelectedModel(options?: GetSelectedModelOptions): Promise<vscode.LanguageModelChat> {
+    // In e2e mock mode, bypass Copilot entirely and return a deterministic
+    // fake model so the full migration pipeline can run offline.
+    if (isMigrationAiMockEnabled()) {
+        return Promise.resolve(createMockMigrationModel());
+    }
     return getSelectedModelShared({
         ...options,
         stateKey: options?.stateKey ?? MIGRATION_SELECTED_MODEL_KEY,
@@ -111,6 +122,10 @@ const DEFAULT_MODEL_OPTIONS: Record<string, unknown> = { temperature: 0.2 };
  *
  * Callers can override by passing a custom string as `toolSystemMessage` to
  * `runAgenticLoop`, or suppress it entirely by passing `null`.
+ *
+ * @param tools - The tools available in the agentic loop; guidance is emitted
+ *   only for the categories of tools actually present.
+ * @returns The tailored tool-system message string.
  */
 export function buildToolSystemMessage(tools: vscode.LanguageModelChatTool[]): string {
     const toolNames = new Set(tools.map((t) => t.name));
@@ -200,6 +215,12 @@ export { stripMarkdownPreamble } from './markdownUtils';
  * override iteration. The returned `messages` array always starts with the
  * defense message so it reaches the model on every call.
  *
+ * @param PromptClass - The `@vscode/prompt-tsx` prompt element class to render.
+ * @param props - Props passed to the prompt element.
+ * @param model - The language model used for token budgeting and counting.
+ * @param token - Cancellation token for rendering and token counting.
+ * @param debugConfig - Optional debug-prompt dump/override configuration; only
+ *   honoured when {@link isDebugPromptsEnabled} returns `true`.
  * @returns The rendered (possibly overridden) messages and their token count.
  */
 export async function renderWithDebug<P extends BasePromptElementProps>(
@@ -221,7 +242,7 @@ export async function renderWithDebug<P extends BasePromptElementProps>(
     // Handle debug dump / override BEFORE injecting the defense message so
     // that `{stepName}.prompt.md` stays bound to the phase prompt (index 0
     // of the rendered messages) and dumps don't include the defense rules.
-    if (isDebugPromptsEnabled() && debugConfig) {
+    if (debugConfig?.dumpEnabled) {
         const override = await tryLoadPromptOverride(debugConfig.debugDir, debugConfig.stepName);
         if (override && messages.length > 0) {
             messages[0] = override;
@@ -259,6 +280,18 @@ export async function renderWithDebug<P extends BasePromptElementProps>(
  * Sends pre-built messages to the model, streams the response, and logs
  * a single consolidated token-usage line combining input/output counts
  * with budget utilization.
+ *
+ * @param messages - The fully-rendered chat messages to send to the model.
+ * @param model - The language model to send the request to.
+ * @param token - Cancellation token; throws `CancellationError` if cancelled mid-stream.
+ * @param label - Telemetry-safe identifier for this step. MUST be a constant — it is
+ *   reported verbatim as the `caller` dimension of the `cosmosDB.ai.llmRequest` event,
+ *   so it must never contain user data (domain / file / project names).
+ * @param inputTokenCount - Pre-computed input token count (from {@link renderWithDebug}).
+ * @param modelOptions - Optional per-request overrides merged over {@link DEFAULT_MODEL_OPTIONS}.
+ * @param logDetail - Optional per-iteration detail (e.g. a domain name) appended to
+ *   output-channel log lines only. NEVER sent to telemetry, so it is safe for user data.
+ * @returns The complete response text.
  */
 async function runPromptFromMessages(
     messages: vscode.LanguageModelChatMessage[],
@@ -267,13 +300,22 @@ async function runPromptFromMessages(
     label: string,
     inputTokenCount: number,
     modelOptions?: Record<string, unknown>,
+    logDetail?: string,
+    routeId?: string,
 ): Promise<string> {
+    // `label` is the telemetry-safe constant (reported as `caller`); `logLabel`
+    // adds optional per-iteration detail (e.g. a domain name) for
+    // output-channel logs only — it can never reach telemetry.
+    const logLabel = logDetail ? `${label}: ${logDetail}` : label;
     ext.outputChannel.debug(
-        `[Migration] ${label}: sending ${messages.length} messages to model="${model.name}" (${model.family}), ` +
+        `[Migration] ${logLabel}: sending ${messages.length} messages to model="${model.name}" (${model.family}), ` +
             `inputTokenCount=${inputTokenCount}`,
     );
     const startTime = Date.now();
 
+    // Deterministically route the e2e mock to the right canned response.
+    // No-op on real models, so the production path is unaffected.
+    setMockRoute(model, routeId ?? label);
     const response = await model.sendRequest(
         messages,
         { modelOptions: { ...DEFAULT_MODEL_OPTIONS, ...modelOptions } },
@@ -287,15 +329,17 @@ async function runPromptFromMessages(
 
     const elapsed = Date.now() - startTime;
     ext.outputChannel.debug(
-        `[Migration] ${label}: response received in ${elapsed}ms, ` + `responseLength=${fullText.length} chars`,
+        `[Migration] ${logLabel}: response received in ${elapsed}ms, ` + `responseLength=${fullText.length} chars`,
     );
 
     await logLlmTokenUsage(model, {
+        // Telemetry-safe: only the constant `label` is reported as `caller`;
+        // any per-iteration detail stays in the local `logLabel` below.
         caller: `migration.${label}`,
         inputTokenCount,
         responseText: fullText,
         token,
-        logLabel: `Migration / ${label}`,
+        logLabel: `Migration / ${logLabel}`,
     });
 
     return fullText;
@@ -305,6 +349,16 @@ async function runPromptFromMessages(
  * Renders a prompt with `@vscode/prompt-tsx`, sends it to the model, streams
  * the full response text, and logs token usage.
  *
+ * @param PromptClass - The `@vscode/prompt-tsx` prompt element class to render.
+ * @param props - Props passed to the prompt element.
+ * @param model - The language model to send the request to.
+ * @param token - Cancellation token for the render + request.
+ * @param label - Telemetry-safe constant identifier for this step (reported as the
+ *   `caller` telemetry dimension); must not contain user data.
+ * @param modelOptions - Optional per-request overrides merged over {@link DEFAULT_MODEL_OPTIONS}.
+ * @param debugConfig - Optional debug-prompt dump/override configuration.
+ * @param logDetail - Optional per-iteration detail (e.g. a domain name) added to
+ *   output-channel logs only; never sent to telemetry.
  * @returns The complete response text.
  */
 export async function runPrompt<P extends BasePromptElementProps>(
@@ -315,12 +369,22 @@ export async function runPrompt<P extends BasePromptElementProps>(
     label: string,
     modelOptions?: Record<string, unknown>,
     debugConfig?: DebugPromptConfig,
+    logDetail?: string,
 ): Promise<string> {
     const { messages, inputTokenCount } = await renderWithDebug(PromptClass, props, model, token, debugConfig);
 
-    const fullText = await runPromptFromMessages(messages, model, token, label, inputTokenCount, modelOptions);
+    const fullText = await runPromptFromMessages(
+        messages,
+        model,
+        token,
+        label,
+        inputTokenCount,
+        modelOptions,
+        logDetail,
+        debugConfig?.stepName ?? label,
+    );
 
-    if (isDebugPromptsEnabled() && debugConfig) {
+    if (debugConfig?.dumpEnabled) {
         await dumpDebugResponse(debugConfig.debugDir, debugConfig.stepName, fullText, 'md');
     }
 
@@ -331,6 +395,17 @@ export async function runPrompt<P extends BasePromptElementProps>(
  * Renders a prompt, sends it to the model, extracts a JSON object from
  * the response, and returns the parsed result.
  *
+ * @param PromptClass - The `@vscode/prompt-tsx` prompt element class to render.
+ * @param props - Props passed to the prompt element.
+ * @param model - The language model to send the request to.
+ * @param token - Cancellation token for the render + request.
+ * @param label - Telemetry-safe constant identifier for this step (reported as the
+ *   `caller` telemetry dimension); must not contain user data.
+ * @param errorMessage - Optional message for the thrown error when JSON extraction fails.
+ * @param debugConfig - Optional debug-prompt dump/override configuration.
+ * @param logDetail - Optional per-iteration detail (e.g. a domain name) added to
+ *   output-channel logs only; never sent to telemetry.
+ * @returns The parsed JSON result.
  * @throws If no JSON object is found in the response.
  */
 export async function runPromptWithJsonResult<T>(
@@ -342,16 +417,27 @@ export async function runPromptWithJsonResult<T>(
     label: string,
     errorMessage?: string,
     debugConfig?: DebugPromptConfig,
+    logDetail?: string,
 ): Promise<T> {
+    const logLabel = logDetail ? `${label}: ${logDetail}` : label;
     const { messages, inputTokenCount } = await renderWithDebug(PromptClass, props, model, token, debugConfig);
 
-    const fullText = await runPromptFromMessages(messages, model, token, label, inputTokenCount, { temperature: 0.1 });
+    const fullText = await runPromptFromMessages(
+        messages,
+        model,
+        token,
+        label,
+        inputTokenCount,
+        { temperature: 0.1 },
+        logDetail,
+        debugConfig?.stepName ?? label,
+    );
 
     const jsonString = extractJsonObject(fullText);
     if (!jsonString) {
         const truncated = fullText.length > 300 ? fullText.slice(0, 300) + '…' : fullText;
         ext.outputChannel.appendLog(
-            `[${label}] Failed to extract JSON from AI response (${fullText.length} chars). ` +
+            `[${logLabel}] Failed to extract JSON from AI response (${fullText.length} chars). ` +
                 `Response preview: "${truncated}"`,
         );
         throw new Error(errorMessage ?? l10n.t('Could not parse AI response.'));
@@ -359,11 +445,11 @@ export async function runPromptWithJsonResult<T>(
 
     const parsed = JSON.parse(jsonString) as T;
     ext.outputChannel.debug(
-        `[Migration] ${label}: JSON extracted successfully, ` +
+        `[Migration] ${logLabel}: JSON extracted successfully, ` +
             `keys=[${Object.keys(parsed as Record<string, unknown>).join(', ')}]`,
     );
 
-    if (isDebugPromptsEnabled() && debugConfig) {
+    if (debugConfig?.dumpEnabled) {
         await dumpDebugResponse(debugConfig.debugDir, debugConfig.stepName, JSON.stringify(parsed, null, 2), 'json');
     }
 
@@ -376,6 +462,19 @@ export async function runPromptWithJsonResult<T>(
  * Combines `runAgenticLoop` (tool calling) with JSON extraction. Uses
  * temperature 0.1 for deterministic structured output.
  *
+ * @param PromptClass - The `@vscode/prompt-tsx` prompt element class to render.
+ * @param props - Props passed to the prompt element.
+ * @param model - The language model to drive the agentic loop.
+ * @param tools - Tools exposed to the model during the loop.
+ * @param executeToolCall - Callback that executes a tool call and returns its textual result.
+ * @param maxRounds - Maximum number of tool-calling rounds before the loop is forced to stop.
+ * @param token - Cancellation token for the loop.
+ * @param label - Telemetry-safe constant identifier for this step (reported as the
+ *   `phase` telemetry dimension); must not contain user data.
+ * @param errorMessage - Optional message for the thrown error when JSON extraction fails.
+ * @param debugConfig - Optional debug-prompt dump/override configuration.
+ * @param logDetail - Optional per-iteration detail (e.g. a domain name) added to
+ *   output-channel logs only; never sent to telemetry.
  * @returns The parsed JSON result together with the exhaustion flag so
  *   callers can surface an "incomplete" signal.
  * @throws If no JSON object is found in the final response.
@@ -392,7 +491,9 @@ export async function runAgenticLoopWithJsonResult<T>(
     label: string,
     errorMessage?: string,
     debugConfig?: DebugPromptConfig,
+    logDetail?: string,
 ): Promise<{ value: T; roundsExhausted: boolean }> {
+    const logLabel = logDetail ? `${label}: ${logDetail}` : label;
     const { messages } = await renderWithDebug(PromptClass, props, model, token, debugConfig);
 
     const { text: fullText, roundsExhausted } = await runAgenticLoop(
@@ -406,13 +507,15 @@ export async function runAgenticLoopWithJsonResult<T>(
         undefined,
         { temperature: 0.1 },
         debugConfig,
+        undefined,
+        logDetail,
     );
 
     const jsonString = extractJsonObject(fullText);
     if (!jsonString) {
         const truncated = fullText.length > 300 ? fullText.slice(0, 300) + '…' : fullText;
         ext.outputChannel.appendLog(
-            `[${label}] Failed to extract JSON from AI response (${fullText.length} chars). ` +
+            `[${logLabel}] Failed to extract JSON from AI response (${fullText.length} chars). ` +
                 `Response preview: "${truncated}"`,
         );
         throw new Error(errorMessage ?? l10n.t('Could not parse AI response.'));
@@ -420,11 +523,11 @@ export async function runAgenticLoopWithJsonResult<T>(
 
     const parsed = JSON.parse(jsonString) as T;
     ext.outputChannel.debug(
-        `[Migration] ${label}: JSON extracted successfully (agentic), ` +
+        `[Migration] ${logLabel}: JSON extracted successfully (agentic), ` +
             `keys=[${Object.keys(parsed as Record<string, unknown>).join(', ')}]`,
     );
 
-    if (isDebugPromptsEnabled() && debugConfig) {
+    if (debugConfig?.dumpEnabled) {
         await dumpDebugResponse(debugConfig.debugDir, debugConfig.stepName, JSON.stringify(parsed, null, 2), 'json');
     }
 
@@ -463,6 +566,25 @@ export type AgenticLoopResult = {
  * based on the actual tools provided. Pass a custom string to override it, or
  * `null` to suppress it entirely.
  *
+ * @param model - The language model to drive the agentic loop.
+ * @param messages - The initial conversation messages (mutated in place as rounds progress).
+ * @param tools - Tools exposed to the model during the loop.
+ * @param executeToolCall - Callback that executes a tool call and returns its textual result.
+ * @param maxRounds - Maximum number of tool-calling rounds before the loop stops (exhaustion).
+ * @param token - Cancellation token; the loop exits cleanly when cancellation is requested.
+ * @param label - Telemetry-safe identifier for this step. MUST be a constant — it is the
+ *   ONLY value written to telemetry (the `phase` dimension on the `agenticLoopCompleted`
+ *   and `agenticLoopExhausted` events, plus Report Issue metadata), so it must never
+ *   contain user data (domain / file / project names).
+ * @param onRound - Optional per-round callback receiving the round index, the streamed
+ *   text chunk, and an `isLastRound` flag (`true` when the model produced no tool calls).
+ * @param modelOptions - Optional per-request overrides merged over {@link DEFAULT_MODEL_OPTIONS}.
+ * @param debugConfig - Optional debug-prompt dump/override configuration.
+ * @param toolSystemMessage - Optional override for the auto-generated tool-system message;
+ *   pass `null` to suppress it entirely. Defaults to {@link buildToolSystemMessage}.
+ * @param logDetail - Optional per-iteration detail (e.g. a domain name) woven into
+ *   output-channel logs and the local warning toast only. It can NEVER reach telemetry,
+ *   so it is the safe place to surface user data.
  * @returns An {@link AgenticLoopResult} with the final-round text and an
  *   exhaustion flag so callers can propagate the signal beyond the toast.
  */
@@ -478,7 +600,15 @@ export async function runAgenticLoop(
     modelOptions?: Record<string, unknown>,
     debugConfig?: DebugPromptConfig,
     toolSystemMessage?: string | null,
+    logDetail?: string,
 ): Promise<AgenticLoopResult> {
+    // Telemetry safety by construction: `label` is the ONLY identifier that
+    // reaches telemetry (as `phase`), so it must always be a stable constant.
+    // Per-iteration user data (e.g. a domain name) is passed separately as
+    // `logDetail`, which is wired exclusively into output-channel logs and the
+    // local warning toast — it can never reach telemetry. `logLabel` is the
+    // human-readable composite used for those local logs only.
+    const logLabel = logDetail ? `${label}: ${logDetail}` : label;
     // Wrap the entire loop in telemetry so errors, duration, and token usage
     // are always captured — even on unexpected throws. `rethrow` ensures the
     // error still propagates to the calling phase handler.
@@ -488,6 +618,12 @@ export async function runAgenticLoop(
             context.errorHandling.rethrow = true;
             context.errorHandling.suppressDisplay = true;
             context.errorHandling.forceIncludeInReportIssueCommand = true;
+            // `logDetail` may carry user data (e.g. a domain name). Mask it so it is
+            // redacted from any error message or stack this telemetry scope would
+            // capture on an unexpected throw.
+            if (logDetail) {
+                context.valuesToMask.push(logDetail);
+            }
             context.telemetry.properties.phase = label;
             context.telemetry.properties.modelId = model.id;
             context.telemetry.properties.modelFamily = model.family;
@@ -499,7 +635,7 @@ export async function runAgenticLoop(
             context.errorHandling.issueProperties.modelFamily = model.family;
 
             ext.outputChannel.debug(
-                `[Migration] ${label}: agentic loop starting — model="${model.name}" (${model.family}), ` +
+                `[Migration] ${logLabel}: agentic loop starting — model="${model.name}" (${model.family}), ` +
                     `tools=[${tools.map((t) => t.name).join(', ')}], maxRounds=${maxRounds}, ` +
                     `initialMessages=${messages.length}`,
             );
@@ -525,6 +661,10 @@ export async function runAgenticLoop(
             let cumulativeOutputTokens = 0;
             let lastRoundInputTokens = 0;
 
+            // Deterministically route the e2e mock to the right canned response.
+            // No-op on real models, so the production path is unaffected.
+            setMockRoute(model, debugConfig?.stepName ?? label);
+
             for (let round = 0; round < maxRounds; round++) {
                 if (token.isCancellationRequested) return { text: lastRoundText, roundsExhausted: false };
                 totalRounds = round + 1;
@@ -543,7 +683,7 @@ export async function runAgenticLoop(
                 }
 
                 ext.outputChannel.debug(
-                    `[Migration] ${label}: round ${round + 1}/${maxRounds} — ` +
+                    `[Migration] ${logLabel}: round ${round + 1}/${maxRounds} — ` +
                         `messages=${messages.length}, inputTokens=${lastRoundInputTokens}`,
                 );
 
@@ -579,7 +719,7 @@ export async function runAgenticLoop(
                 const roundElapsed = Date.now() - roundStartTime;
 
                 ext.outputChannel.debug(
-                    `[Migration] ${label}: round ${round + 1} completed in ${roundElapsed}ms — ` +
+                    `[Migration] ${logLabel}: round ${round + 1} completed in ${roundElapsed}ms — ` +
                         `toolCalls=${toolCalls.length}` +
                         (toolCalls.length > 0 ? ` [${toolCalls.map((tc) => tc.name).join(', ')}]` : '') +
                         `, textLength=${lastRoundText.length}` +
@@ -609,7 +749,7 @@ export async function runAgenticLoop(
                     const result = await executeToolCall(toolCall);
                     const toolElapsed = Date.now() - toolStartTime;
                     ext.outputChannel.debug(
-                        `[${label}] Tool ${toolCall.name} completed in ${toolElapsed}ms, ` +
+                        `[${logLabel}] Tool ${toolCall.name} completed in ${toolElapsed}ms, ` +
                             `resultLength=${result.length} chars`,
                     );
                     toolResults.push(
@@ -624,7 +764,7 @@ export async function runAgenticLoop(
 
             if (!completedNaturally && !token.isCancellationRequested) {
                 ext.outputChannel.appendLog(
-                    `[${label}] Warning: agentic loop exhausted all ${maxRounds} tool-calling rounds ` +
+                    `[${logLabel}] Warning: agentic loop exhausted all ${maxRounds} tool-calling rounds ` +
                         `without the model producing a final response. ` +
                         `The model may need more rounds to complete this task.`,
                 );
@@ -650,7 +790,7 @@ export async function runAgenticLoop(
                     .showWarningMessage(
                         l10n.t(
                             'The AI step "{label}" reached the {maxRounds}-round tool-call limit without finishing. Results may be incomplete.',
-                            { label, maxRounds },
+                            { label: logLabel, maxRounds },
                         ),
                         showOutput,
                     )
@@ -664,7 +804,7 @@ export async function runAgenticLoop(
             // Log cumulative token usage at the end of the agentic loop
             logAgenticTokenUsage(
                 model,
-                `${label} (${totalRounds} rounds)`,
+                `${logLabel} (${totalRounds} rounds)`,
                 cumulativeInputTokens,
                 cumulativeOutputTokens,
                 lastRoundInputTokens,
@@ -672,7 +812,7 @@ export async function runAgenticLoop(
 
             const loopElapsed = Date.now() - loopStartTime;
             ext.outputChannel.debug(
-                `[Migration] ${label}: agentic loop finished — ` +
+                `[Migration] ${logLabel}: agentic loop finished — ` +
                     `rounds=${totalRounds}/${maxRounds}, elapsed=${loopElapsed}ms, ` +
                     `completedNaturally=${String(completedNaturally)}, ` +
                     `responseLength=${lastRoundText.length} chars`,
@@ -690,7 +830,7 @@ export async function runAgenticLoop(
             context.telemetry.measurements.totalRounds = totalRounds;
             context.telemetry.measurements.durationMs = loopElapsed;
 
-            if (isDebugPromptsEnabled() && debugConfig && lastRoundText) {
+            if (debugConfig?.dumpEnabled && lastRoundText) {
                 await dumpDebugResponse(debugConfig.debugDir, debugConfig.stepName, lastRoundText, 'md');
             }
 
@@ -711,6 +851,13 @@ export async function runAgenticLoop(
  * meaning the total input cost is the sum across rounds — not just the final
  * snapshot. The budget percentage uses `lastRoundInputTokens` (the peak/final
  * round) since that reflects how close the context window came to truncation.
+ *
+ * @param model - The language model (provides `maxInputTokens` for the budget %).
+ * @param label - Human-readable label for the log line (already composed with any
+ *   per-iteration detail). Output-channel only — not telemetry.
+ * @param cumulativeInputTokens - Sum of input tokens across all rounds.
+ * @param cumulativeOutputTokens - Sum of output tokens across all rounds.
+ * @param lastRoundInputTokens - Input tokens of the final round, used for the budget %.
  */
 function logAgenticTokenUsage(
     model: vscode.LanguageModelChat,

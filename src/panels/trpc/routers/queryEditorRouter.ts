@@ -17,7 +17,7 @@ import { getControlPlaneForConnection } from '../../../cosmosdb/controlPlane';
 import { getNoSqlQueryConnection, type NoSqlQueryConnection } from '../../../cosmosdb/NoSqlQueryConnection';
 import { bulkDeleteDocuments, deleteDocument, isDocumentId } from '../../../cosmosdb/session/DocumentSession';
 import { QuerySession } from '../../../cosmosdb/session/QuerySession';
-import { supportsThroughputBuckets } from '../../../cosmosdb/throughputBuckets';
+import { getEnabledThroughputBuckets } from '../../../cosmosdb/throughputBuckets';
 import { withClaimsChallengeHandling } from '../../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../../extensionVariables';
 import { SchemaFileStorage } from '../../../services/SchemaFileStorage';
@@ -125,12 +125,12 @@ export const queryEditorRouterDef = queryEditorRouter({
 
         const containerSchema = ctx.state.connection ? await readSchemaForConnection(ctx.state.connection) : null;
 
-        const hasThroughputBuckets = await supportsThroughputBuckets(ctx.state.connection, ctx.actionContext);
+        const throughputBuckets = await getEnabledThroughputBuckets(ctx.state.connection, ctx.actionContext);
 
         return {
             connectionState,
             queryHistory,
-            throughputBuckets: hasThroughputBuckets ? [true, true, true, true, true] : undefined,
+            throughputBuckets,
             initialQuery: ctx.state.query,
             isSurveyCandidate: !getIsSurveyDisabledGlobally(),
             isAIFeaturesEnabled: ext.isAIFeaturesEnabled ?? false,

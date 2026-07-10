@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
+import { FeatureClient } from '@azure/arm-features';
 import { type PostgreSQLManagementClient } from '@azure/arm-postgresql';
 import { type PostgreSQLManagementFlexibleServerClient } from '@azure/arm-postgresql-flexible';
 import { createAzureClient } from '@microsoft/vscode-azext-azureutils';
@@ -66,6 +67,15 @@ export async function createCosmosDBManagementClient(
 ): Promise<CosmosDBManagementClient> {
     const subContext = createSubscriptionContext(subscription);
     return pinCosmosDBApiVersion(createAzureClient([context, subContext], CosmosDBManagementClient));
+}
+
+export async function createFeatureClient(
+    context: IActionContext,
+    subscription: AzureSubscription,
+): Promise<FeatureClient> {
+    context.valuesToMask.push(subscription.subscriptionId);
+    const subContext = createSubscriptionContext(subscription);
+    return createAzureClient([context, subContext], FeatureClient);
 }
 
 export async function createPostgreSQLClient(

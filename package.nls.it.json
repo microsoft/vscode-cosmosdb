@@ -68,5 +68,5 @@
   "cosmosdb.configuration.manage-llm-assets": "Gestire gli asset LLM. Consentire l'estensione per mantenere aggiornati i file correlati a LLM.",
   "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "Se abilitata, la generazione dello schema considera anche i risultati delle query per dedurre lo schema del contenitore.",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Sperimentale) Mostrare le stime di utilizzo dei token nell'interfaccia utente di Migration Assistant.",
-  "cosmosdb.configuration.experimental.migration.enabled": "(Experimental) Enable the Cosmos DB Migration (Preview) feature. When disabled, the Cosmos DB Migrations node and its commands are hidden."
+  "cosmosdb.configuration.experimental.migration.enabled": "(Sperimentale) Abilitare la funzionalità Migrazione di Cosmos DB (anteprima). Quando questa opzione è disabilitata, il nodo Migrazioni di Cosmos DB e i relativi comandi sono nascosti."
 }

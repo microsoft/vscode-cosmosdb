@@ -171,7 +171,7 @@ export const defaultState: QueryEditorState = {
     currentQueryResult: null,
     selectedRows: [],
 
-    throughputBuckets: [true, true, true, true, true],
+    throughputBuckets: undefined,
     selectedThroughputBucket: undefined,
 
     tableViewMode: 'Table',

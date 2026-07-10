@@ -33,7 +33,7 @@ import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 // We pin to the latest GA api-version published in the official REST reference
 // for `Microsoft.DocumentDB/databaseAccounts`:
 // https://learn.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/database-accounts/create-or-update
-const COSMOSDB_ARM_API_VERSION = '2025-10-15';
+export const COSMOSDB_ARM_API_VERSION = '2025-10-15';
 const DOCUMENT_DB_PROVIDER_PATH = '/providers/microsoft.documentdb/';
 
 function pinCosmosDBApiVersion(client: CosmosDBManagementClient): CosmosDBManagementClient {

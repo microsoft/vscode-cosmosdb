@@ -638,7 +638,7 @@
   "No session found for executionId: {executionId}": "executionId에 대한 세션을 찾을 수 없습니다. {executionId}",
   "No subscriptions found": "구독을 찾을 수 없음",
   "No volumetric source files selected. AI will estimate from schema and workspace configuration.": "볼륨 원본 파일을 선택하지 않았습니다. AI가 스키마와 작업 영역 구성에서 추정합니다.",
-  "Not now": "Not now",
+  "Not now": "나중에",
   "Not sure where to start? Open the access-patterns template and fill it in by hand, or use the AI button (sparkle icon) to derive patterns from your workspace code — repositories, query builders, and raw SQL.": "어디서 시작해야 할지 잘 모르시겠나요? 액세스 패턴 템플릿을 열어 직접 입력하거나, AI 단추(반짝임 아이콘)를 사용해 작업 영역 코드(저장소, 쿼리 작성기, 원시 SQL)에서 패턴을 추출하세요.",
   "Number of output documents": "출력 문서 수",
   "Number of round trips": "왕복 횟수",

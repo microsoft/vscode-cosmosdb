@@ -638,7 +638,7 @@
   "No session found for executionId: {executionId}": "Nepodařilo se najít žádnou relaci pro executionId: {executionId}",
   "No subscriptions found": "Nenašla se žádná předplatná",
   "No volumetric source files selected. AI will estimate from schema and workspace configuration.": "Nebyly vybrány žádné volumetrické zdrojové soubory. AI odhadne hodnoty podle konfigurace schématu a pracovního prostoru.",
-  "Not now": "Not now",
+  "Not now": "Teď ne",
   "Not sure where to start? Open the access-patterns template and fill it in by hand, or use the AI button (sparkle icon) to derive patterns from your workspace code — repositories, query builders, and raw SQL.": "Nejste si jisti, kde začít? Otevřete šablonu vzorců přístupu a vyplňte ji ručně nebo použijte tlačítko AI (ikona jiskry) k odvození vzorců přístupu z kódu pracovního prostoru – úložišť, nástrojů pro vytváření dotazů a nezpracovaného SQL.",
   "Number of output documents": "Počet výstupních dokumentů",
   "Number of round trips": "Počet dob odezvy",

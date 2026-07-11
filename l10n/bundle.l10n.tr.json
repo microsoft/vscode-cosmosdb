@@ -638,7 +638,7 @@
   "No session found for executionId: {executionId}": "executionId için oturum bulunamadı: {executionId}",
   "No subscriptions found": "Abonelik bulunamadı",
   "No volumetric source files selected. AI will estimate from schema and workspace configuration.": "Hacimsel kaynak dosyası seçilmedi. Yapay zeka, şema ve çalışma alanı yapılandırmasından tahmin edecek.",
-  "Not now": "Not now",
+  "Not now": "Şimdi değil",
   "Not sure where to start? Open the access-patterns template and fill it in by hand, or use the AI button (sparkle icon) to derive patterns from your workspace code — repositories, query builders, and raw SQL.": "Nereden başlayacağınızdan emin değil misiniz? Erişim desenleri şablonunu açın ve elle doldurun ya da çalışma alanı kodunuzdan, depolar, sorgu oluşturucuları ve ham SQL kullanarak desenler çıkarmak için yapay zeka düğmesini (parıltı simgesi) kullanın.",
   "Number of output documents": "Çıkış belgelerinin sayısı",
   "Number of round trips": "Gidiş dönüş sayısı",

@@ -638,7 +638,7 @@
   "No session found for executionId: {executionId}": "Nenhuma sessão encontrada para executionId: {executionId}",
   "No subscriptions found": "Nenhuma assinatura encontrada",
   "No volumetric source files selected. AI will estimate from schema and workspace configuration.": "Nenhum arquivo de origem volumétrico selecionado. A IA vai estimar com base no esquema e na configuração do workspace.",
-  "Not now": "Not now",
+  "Not now": "Agora não",
   "Not sure where to start? Open the access-patterns template and fill it in by hand, or use the AI button (sparkle icon) to derive patterns from your workspace code — repositories, query builders, and raw SQL.": "Não sabe por onde começar? Abra o modelo de padrões de acesso e preencha-o manualmente ou use o botão de IA (ícone de brilho) para derivar padrões do código do workspace — repositórios, construtores de consulta e SQL bruto.",
   "Number of output documents": "Número de documentos de saída",
   "Number of round trips": "Número de viagens de ida e volta",

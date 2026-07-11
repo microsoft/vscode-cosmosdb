@@ -638,7 +638,7 @@
   "No session found for executionId: {executionId}": "未找到 executionId {executionId} 对应的会话",
   "No subscriptions found": "找不到任何订阅",
   "No volumetric source files selected. AI will estimate from schema and workspace configuration.": "未选择任何数据量源文件。AI 将通过架构和工作区配置估算。",
-  "Not now": "Not now",
+  "Not now": "以后再说",
   "Not sure where to start? Open the access-patterns template and fill it in by hand, or use the AI button (sparkle icon) to derive patterns from your workspace code — repositories, query builders, and raw SQL.": "不确定从何处入手?打开访问模式模板并手动填充，或使用 AI 按钮(火花图标)基于工作区代码(存储库、查询生成器和原始 SQL)派生模式。",
   "Number of output documents": "输出文档数",
   "Number of round trips": "往返次数",

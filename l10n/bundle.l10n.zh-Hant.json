@@ -638,7 +638,7 @@
   "No session found for executionId: {executionId}": "找不到 executionId 的工作階段: {executionId}",
   "No subscriptions found": "找不到訂用帳戶",
   "No volumetric source files selected. AI will estimate from schema and workspace configuration.": "未選取任何容量資訊來源檔案。AI 會根據結構描述和工作區設定進行估算。",
-  "Not now": "Not now",
+  "Not now": "現在不要",
   "Not sure where to start? Open the access-patterns template and fill it in by hand, or use the AI button (sparkle icon) to derive patterns from your workspace code — repositories, query builders, and raw SQL.": "是否不確定要從哪裡開始?開啟存取模式範本並手動填入，或使用 AI 按鈕 (閃爍圖示) 從您的工作區程式碼、存放庫、查詢建構器和原始 SQL 推導出模式。",
   "Number of output documents": "輸出文件數目",
   "Number of round trips": "來回行程次數",

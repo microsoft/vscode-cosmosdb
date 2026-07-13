@@ -5,11 +5,13 @@
 
 import { useTrpcClient } from '@cosmosdb/webview-rpc/react';
 import {
+    Badge,
     Button,
     Combobox,
     MessageBar,
     MessageBarBody,
     Option,
+    Tooltip,
     createCustomFocusIndicatorStyle,
     makeStyles,
     mergeClasses,
@@ -201,9 +203,14 @@ const useStyles = makeStyles({
             },
         },
     },
+    submitSection: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+        flexShrink: 0,
+    },
     button: {
-        padding: '0px',
-        width: '24px',
+        padding: '0px 10px',
         height: '24px',
         flexShrink: 0,
         borderRadius: '6px',
@@ -261,6 +268,18 @@ const useStyles = makeStyles({
             },
             { customizeSelector: (s) => `${s}${s}` },
         ) as Record<string, unknown>),
+    },
+    previewBadge: {
+        // Sits just to the left of the close (X) button in the top-right corner.
+        position: 'absolute',
+        top: '4px',
+        right: '24px',
+        zIndex: 1,
+        cursor: 'default',
+        ':focus-visible': {
+            outline: '1px solid var(--vscode-focusBorder)',
+            outlineOffset: '1px',
+        },
     },
     confirmBanner: {
         display: 'flex',
@@ -606,6 +625,20 @@ export const GenerateQueryInput = () => {
         <div ref={containerRef} className={mergeClasses(styles.container, isFocused && styles.containerFocused)}>
             {isLoading && containerSize && <ProgressBorder width={containerSize.width} height={containerSize.height} />}
             <div className={styles.innerContent}>
+                <Tooltip
+                    content={l10n.t('Preview: features and behavior may change. Use with care.')}
+                    relationship="description"
+                >
+                    <Badge
+                        appearance="outline"
+                        color="informative"
+                        className={styles.previewBadge}
+                        tabIndex={0}
+                        aria-label={l10n.t('Preview: features and behavior may change. Use with care.')}
+                    >
+                        <span aria-hidden="true">{l10n.t('Preview')}</span>
+                    </Badge>
+                </Tooltip>
                 <Button
                     className={styles.closeButton}
                     icon={<Dismiss12Regular />}
@@ -766,16 +799,20 @@ export const GenerateQueryInput = () => {
                                 </div>
                             )}
                         </div>
-                        <Button
-                            className={styles.button}
-                            icon={isLoading ? <RecordStopFilled /> : <SendFilled />}
-                            onClick={isLoading ? handleCancel : () => void handleSend()}
-                            disabled={!isLoading && !input.trim()}
-                            title={isLoading ? l10n.t('Cancel generation') : l10n.t('Generate query')}
-                            aria-label={isLoading ? l10n.t('Cancel generation') : l10n.t('Generate query')}
-                            appearance={isLoading ? 'transparent' : 'primary'}
-                            size="small"
-                        />
+                        <div className={styles.submitSection}>
+                            <Button
+                                className={styles.button}
+                                icon={isLoading ? <RecordStopFilled /> : <SendFilled />}
+                                onClick={isLoading ? handleCancel : () => void handleSend()}
+                                disabled={!isLoading && !input.trim()}
+                                title={isLoading ? l10n.t('Cancel generation') : l10n.t('Generate query')}
+                                aria-label={isLoading ? l10n.t('Cancel generation') : l10n.t('Generate query')}
+                                appearance={isLoading ? 'transparent' : 'primary'}
+                                size="small"
+                            >
+                                {isLoading ? l10n.t('Cancel') : l10n.t('Generate')}
+                            </Button>
+                        </div>
                     </div>
                 )}
             </div>

@@ -17,12 +17,14 @@ import { type BaseRouterContext } from '@cosmosdb/webview-rpc/server';
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { z } from 'zod';
+import { type AzureResourceMetadata } from '../../cosmosdb/AzureResourceMetadata';
 import { type NoSqlQueryConnection } from '../../cosmosdb/NoSqlQueryConnection';
 import { type QuerySession } from '../../cosmosdb/session/QuerySession';
 import { type CosmosDBRecordIdentifier } from '../../cosmosdb/types/queryResult';
 import { type TelemetryContext } from '../../Telemetry';
 import { openSurvey, promptAfterActionEventually } from '../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../utils/surveyTypes';
+import { accountOverviewRouterDef } from './routers/accountOverviewRouter';
 import { documentRouterDef } from './routers/documentRouter';
 import { migrationEventsRouterDef, type MigrationEvent } from './routers/migrationEventsRouter';
 import { migrationRouterDef } from './routers/migrationRouter';
@@ -30,6 +32,9 @@ import { queryEditorEventsRouterDef, type QueryEditorEvent } from './routers/que
 import { queryEditorRouterDef } from './routers/queryEditorRouter';
 import { quickStartRouterDef } from './routers/quickStartRouter';
 import {
+    accountOverviewCallerFactory,
+    accountOverviewProcedure,
+    accountOverviewRouter,
     documentCallerFactory,
     documentProcedure,
     documentRouter,
@@ -122,6 +127,10 @@ export type MigrationRouterContext = CosmosDBRouterContext & {
     panel: vscode.WebviewPanel;
     eventSink: TypedEventSink<MigrationEvent>;
     dispatchCommand: MigrationCommandDispatcher;
+};
+
+export type AccountOverviewRouterContext = CosmosDBRouterContext & {
+    metadata: AzureResourceMetadata;
 };
 
 // ─── Common Procedures (per-instance) ───────────────────────────────────────
@@ -316,3 +325,14 @@ export const migrationAppRouter = migrationRouter({
 
 export type MigrationAppRouter = typeof migrationAppRouter;
 export { migrationCallerFactory };
+
+// ─── Account Overview App Router ────────────────────────────────────────────
+
+export const accountOverviewAppRouter = accountOverviewRouter({
+    // oxlint-disable-next-line typescript/no-unsafe-assignment
+    common: buildCommonRouter(accountOverviewProcedure, accountOverviewRouter),
+    accountOverview: accountOverviewRouterDef,
+});
+
+export type AccountOverviewAppRouter = typeof accountOverviewAppRouter;
+export { accountOverviewCallerFactory };

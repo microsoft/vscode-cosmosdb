@@ -15,6 +15,7 @@ import { type ComponentType } from 'react';
  *   no longer downloads Monaco.
  */
 export const WebviewRegistry = {
+    cosmosDbAccountOverview: () => import('./cosmosdb/AccountOverview/AccountOverview').then((m) => m.AccountOverview),
     cosmosDbDocument: () => import('./cosmosdb/Document/Document').then((m) => m.Document),
     cosmosDbMigration: () => import('./cosmosdb/Migration/MigrationAssistant').then((m) => m.MigrationAssistant),
     cosmosDbQuery: () => import('./cosmosdb/QueryEditor/QueryEditor').then((m) => m.QueryEditor),

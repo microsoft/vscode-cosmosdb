@@ -76,7 +76,7 @@ async function showGenerateQueryInput(webview: Frame): Promise<undefined> {
     const toolbar = webview.getByRole('toolbar').first();
     await toolbar.waitFor({ state: 'visible', timeout: 30_000 });
 
-    const aiButton = toolbar.getByRole('button', { name: 'AI', exact: true }).first();
+    const aiButton = toolbar.getByRole('button', { name: 'AI (Preview)', exact: true }).first();
     await expect.poll(() => aiButton.isVisible().catch(() => false), { timeout: 30_000 }).toBe(true);
     await aiButton.click();
 

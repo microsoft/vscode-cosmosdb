@@ -217,7 +217,9 @@ function createAzureResourceId(
 /**
  * Reveals an Azure resource in the Azure Resource Groups explorer.
  *
- * @param context
+ * @param context - Action context for telemetry; pass `undefined` when calling from a
+ * context that doesn't have one readily available (e.g. a tRPC procedure) — telemetry
+ * property assignment is simply skipped in that case.
  * @param resourceId - The ID of the Azure resource to reveal.
  * @param database - Optional. The name of the database associated with the resource.
  * @param container - Optional. The name of the container associated with the database.
@@ -229,8 +231,8 @@ function createAzureResourceId(
  * 2. Focuses the Azure Resource Groups view in the explorer.
  * 3. Reveals the specified Azure resource in the explorer with selection, focus, and expansion.
  */
-async function revealAzureResourceInExplorer(
-    context: IActionContext,
+export async function revealAzureResourceInExplorer(
+    context: IActionContext | undefined,
     resourceId: ParsedAzureResourceId,
     database?: string,
     container?: string,
@@ -263,9 +265,11 @@ async function revealAzureResourceInExplorer(
         );
     }
 
-    context.telemetry.properties.experience = isTreeElementWithExperience(resource)
-        ? resource.experience.api
-        : 'unknown';
+    if (context) {
+        context.telemetry.properties.experience = isTreeElementWithExperience(resource)
+            ? resource.experience.api
+            : 'unknown';
+    }
 
     // Check if the selected resource is a container if database and container were provided
     if (database && container && !resource.id.endsWith(`/${container}`)) {

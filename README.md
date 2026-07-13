@@ -33,6 +33,29 @@ The Azure Cosmos DB Explorer helps you find, view, and manage your Azure CosmosD
 
 - **Workspace Support**: Attach database accounts to your workspace using connection strings. This is especially useful for teams working with shared resources from various subscriptions.
 
+## Account Overview Dashboard
+
+The Account Overview Dashboard gives you an at-a-glance, read-only view of a Cosmos DB account: inventory, provisioned vs. normalized RU consumption, partition health, active alerts, and recommendations. Open it from an account node in the Explorer.
+
+Every section reads from Azure Resource Manager and Azure Monitor. When a section can't load, it shows an explicit empty state instead of a blank panel:
+
+- **No data** — the account is healthy but has no data for the selected window.
+- **Not supported** — the section doesn't apply to this account's API (for example, inventory metrics are only available for NoSQL (Core) API accounts).
+- **Access required** — your Azure role doesn't grant permission to read the underlying data.
+
+### Required Azure roles
+
+Data is fetched with your Azure credentials, so each section requires the corresponding role assignment. If a role is missing, that section shows an "Access required" empty state naming the role below; the rest of the dashboard continues to work.
+
+| Dashboard section                               | Minimum Azure role              |
+| ----------------------------------------------- | ------------------------------- |
+| Account header, inventory, throughput           | Reader on the Cosmos DB account |
+| RU trends, partition health, derived advisories | Monitoring Reader               |
+| Active alerts                                   | Monitoring Reader               |
+| Advisor recommendations                         | Reader on the subscription      |
+
+Learn more about assigning roles in [Azure role-based access control](https://learn.microsoft.com/azure/role-based-access-control/overview).
+
 ## Query Editor
 
 The Query Editor allows you to write and execute queries across your databases.

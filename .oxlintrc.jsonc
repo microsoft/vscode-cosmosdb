@@ -301,14 +301,22 @@
         "typescript/no-restricted-types": "error",
 
         // Perf — only enabled rules
-        "eslint/no-await-in-loop": "warn",
+        //
+        // Intentionally disabled for now (kept here so the intent is explicit and easy to re-enable):
+        //  - react_perf/* : ~300 warnings, almost all noise. The rules flag inline props (functions,
+        //    arrays, objects, JSX) regardless of whether the child component is memoized, so they cannot
+        //    tell a real perf issue from a harmless one. Real render hotspots are found with the React
+        //    DevTools Profiler and fixed structurally (React.memo at the right boundary), not by this lint.
+        //  - eslint/no-await-in-loop : silenced for now; sequential awaits in loops are often intentional
+        //    here and the rule is too broad to gate on. Revisit case-by-case.
+        "eslint/no-await-in-loop": "off",
         "eslint/no-useless-call": "warn",
         "react/jsx-no-constructed-context-values": "warn",
         "react/no-array-index-key": "warn",
-        "react_perf/jsx-no-jsx-as-prop": "warn",
-        "react_perf/jsx-no-new-array-as-prop": "warn",
-        "react_perf/jsx-no-new-function-as-prop": "warn",
-        "react_perf/jsx-no-new-object-as-prop": "warn",
+        "react_perf/jsx-no-jsx-as-prop": "off",
+        "react_perf/jsx-no-new-array-as-prop": "off",
+        "react_perf/jsx-no-new-function-as-prop": "off",
+        "react_perf/jsx-no-new-object-as-prop": "off",
         "unicorn/prefer-array-find": "warn",
         "unicorn/prefer-array-flat-map": "warn",
         "unicorn/prefer-set-has": "warn"

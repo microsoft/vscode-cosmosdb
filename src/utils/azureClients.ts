@@ -6,6 +6,7 @@
 import { type AdvisorManagementClient } from '@azure/arm-advisor';
 import { type AlertsManagementClient } from '@azure/arm-alertsmanagement';
 import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
+import { type FeatureClient } from '@azure/arm-features';
 import { type MonitorClient } from '@azure/arm-monitor';
 import { type PostgreSQLManagementClient } from '@azure/arm-postgresql';
 import { type PostgreSQLManagementFlexibleServerClient } from '@azure/arm-postgresql-flexible';
@@ -36,7 +37,7 @@ import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 // We pin to the latest GA api-version published in the official REST reference
 // for `Microsoft.DocumentDB/databaseAccounts`:
 // https://learn.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/database-accounts/create-or-update
-const COSMOSDB_ARM_API_VERSION = '2025-10-15';
+export const COSMOSDB_ARM_API_VERSION = '2025-10-15';
 const DOCUMENT_DB_PROVIDER_PATH = '/providers/microsoft.documentdb/';
 
 function pinCosmosDBApiVersion(client: CosmosDBManagementClient): CosmosDBManagementClient {
@@ -70,6 +71,16 @@ export async function createCosmosDBManagementClient(
 ): Promise<CosmosDBManagementClient> {
     const subContext = createSubscriptionContext(subscription);
     return pinCosmosDBApiVersion(createAzureClient([context, subContext], CosmosDBManagementClient));
+}
+
+export async function createFeatureClient(
+    context: IActionContext,
+    subscription: AzureSubscription,
+): Promise<FeatureClient> {
+    context.valuesToMask.push(subscription.subscriptionId);
+    const subContext = createSubscriptionContext(subscription);
+    const { FeatureClient } = await import('@azure/arm-features');
+    return createAzureClient([context, subContext], FeatureClient);
 }
 
 // `@azure/arm-monitor` is dynamically imported so it only enters the lazy chunk loaded when the Account

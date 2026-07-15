@@ -3,9 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { type AdvisorManagementClient } from '@azure/arm-advisor';
+import { type AlertsManagementClient } from '@azure/arm-alertsmanagement';
 import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
+import { type FeatureClient } from '@azure/arm-features';
+import { type MonitorClient } from '@azure/arm-monitor';
 import { type PostgreSQLManagementClient } from '@azure/arm-postgresql';
 import { type PostgreSQLManagementFlexibleServerClient } from '@azure/arm-postgresql-flexible';
+import { type TokenCredential } from '@azure/core-auth';
 import { createAzureClient } from '@microsoft/vscode-azext-azureutils';
 import { createSubscriptionContext, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
@@ -32,7 +37,7 @@ import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 // We pin to the latest GA api-version published in the official REST reference
 // for `Microsoft.DocumentDB/databaseAccounts`:
 // https://learn.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/database-accounts/create-or-update
-const COSMOSDB_ARM_API_VERSION = '2025-10-15';
+export const COSMOSDB_ARM_API_VERSION = '2025-10-15';
 const DOCUMENT_DB_PROVIDER_PATH = '/providers/microsoft.documentdb/';
 
 function pinCosmosDBApiVersion(client: CosmosDBManagementClient): CosmosDBManagementClient {
@@ -66,6 +71,49 @@ export async function createCosmosDBManagementClient(
 ): Promise<CosmosDBManagementClient> {
     const subContext = createSubscriptionContext(subscription);
     return pinCosmosDBApiVersion(createAzureClient([context, subContext], CosmosDBManagementClient));
+}
+
+export async function createFeatureClient(
+    context: IActionContext,
+    subscription: AzureSubscription,
+): Promise<FeatureClient> {
+    context.valuesToMask.push(subscription.subscriptionId);
+    const subContext = createSubscriptionContext(subscription);
+    const { FeatureClient } = await import('@azure/arm-features');
+    return createAzureClient([context, subContext], FeatureClient);
+}
+
+// `@azure/arm-monitor` is dynamically imported so it only enters the lazy chunk loaded when the Account
+// Overview dashboard opens — it must never land on the extension activation hot path.
+export async function createMonitorClient(
+    context: IActionContext,
+    subscription: AzureSubscription,
+): Promise<MonitorClient> {
+    const subContext = createSubscriptionContext(subscription);
+    const { MonitorClient } = await import('@azure/arm-monitor');
+    return createAzureClient([context, subContext], MonitorClient);
+}
+
+// `@azure/arm-advisor` is dynamically imported so it only enters the lazy chunk loaded when the Account Overview
+// dashboard opens (Advisor recommendations). It must never land on the extension activation hot path.
+export async function createAdvisorClient(
+    context: IActionContext,
+    subscription: AzureSubscription,
+): Promise<AdvisorManagementClient> {
+    const subContext = createSubscriptionContext(subscription);
+    const { AdvisorManagementClient } = await import('@azure/arm-advisor');
+    return createAzureClient([context, subContext], AdvisorManagementClient);
+}
+
+// `@azure/arm-alertsmanagement` is dynamically imported for the same reason (Active Alerts).
+// Unlike the classic ARM SDKs, this is a "modular" client whose constructor is `(credential, options)` with no
+// subscriptionId, and whose operations take an explicit ARM `scope` — so it can't be built via `createAzureClient`
+// and is constructed directly with the subscription's credential instead.
+export async function createAlertsManagementClient(subscription: AzureSubscription): Promise<AlertsManagementClient> {
+    const subContext = createSubscriptionContext(subscription);
+    const { AlertsManagementClient } = await import('@azure/arm-alertsmanagement');
+    const endpoint = subscription.environment?.resourceManagerEndpointUrl;
+    return new AlertsManagementClient(subContext.credentials as TokenCredential, endpoint ? { endpoint } : undefined);
 }
 
 export async function createPostgreSQLClient(

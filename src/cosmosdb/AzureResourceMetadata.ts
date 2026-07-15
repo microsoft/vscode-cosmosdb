@@ -3,12 +3,20 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { type AdvisorManagementClient } from '@azure/arm-advisor';
+import { type AlertsManagementClient } from '@azure/arm-alertsmanagement';
 import { type CosmosDBManagementClient, type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
+import { type MonitorClient } from '@azure/arm-monitor';
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import { type CosmosDBAccountModel } from '../tree/cosmosdb/models/CosmosDBAccountModel';
-import { createCosmosDBManagementClient } from '../utils/azureClients';
+import {
+    createAdvisorClient,
+    createAlertsManagementClient,
+    createCosmosDBManagementClient,
+    createMonitorClient,
+} from '../utils/azureClients';
 import { nonNullProp } from '../utils/nonNull';
 import { SERVERLESS_CAPABILITY_NAME } from './cosmosdb-shared-constants';
 
@@ -93,6 +101,48 @@ export class AzureResourceMetadata {
             context.errorHandling.forceIncludeInReportIssueCommand = true;
             context.valuesToMask.push(this.subscription.subscriptionId);
             return createCosmosDBManagementClient(context, this.subscription);
+        });
+    }
+
+    /**
+     * Azure Monitor client for the Account Overview dashboard's metric trends.
+     * Backed by a dynamically-imported `@azure/arm-monitor` so the SDK stays off
+     * the activation hot path.
+     */
+    public getMonitorClient(): Promise<MonitorClient | undefined> {
+        return callWithTelemetryAndErrorHandling('createMonitorClient', async (context: IActionContext) => {
+            context.telemetry.suppressIfSuccessful = true;
+            context.errorHandling.forceIncludeInReportIssueCommand = true;
+            context.valuesToMask.push(this.subscription.subscriptionId);
+            return createMonitorClient(context, this.subscription);
+        });
+    }
+
+    /**
+     * Azure Advisor client for the dashboard's Recommendations rail. Backed by a
+     * dynamically-imported `@azure/arm-advisor` so the SDK stays off the
+     * activation hot path.
+     */
+    public getAdvisorClient(): Promise<AdvisorManagementClient | undefined> {
+        return callWithTelemetryAndErrorHandling('createAdvisorClient', async (context: IActionContext) => {
+            context.telemetry.suppressIfSuccessful = true;
+            context.errorHandling.forceIncludeInReportIssueCommand = true;
+            context.valuesToMask.push(this.subscription.subscriptionId);
+            return createAdvisorClient(context, this.subscription);
+        });
+    }
+
+    /**
+     * Azure Alerts Management client for the dashboard's Active Alerts aside.
+     * Backed by a dynamically-imported `@azure/arm-alertsmanagement` so the SDK
+     * stays off the activation hot path.
+     */
+    public getAlertsClient(): Promise<AlertsManagementClient | undefined> {
+        return callWithTelemetryAndErrorHandling('createAlertsManagementClient', async (context: IActionContext) => {
+            context.telemetry.suppressIfSuccessful = true;
+            context.errorHandling.forceIncludeInReportIssueCommand = true;
+            context.valuesToMask.push(this.subscription.subscriptionId);
+            return createAlertsManagementClient(this.subscription);
         });
     }
 }

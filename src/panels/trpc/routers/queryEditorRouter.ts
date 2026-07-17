@@ -23,6 +23,7 @@ import { getControlPlaneForConnection } from '../../../cosmosdb/controlPlane';
 import { getNoSqlQueryConnection, type NoSqlQueryConnection } from '../../../cosmosdb/NoSqlQueryConnection';
 import { bulkDeleteDocuments, deleteDocument, isDocumentId } from '../../../cosmosdb/session/DocumentSession';
 import { QuerySession } from '../../../cosmosdb/session/QuerySession';
+import { getEnabledThroughputBuckets } from '../../../cosmosdb/throughputBuckets';
 import { withClaimsChallengeHandling } from '../../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../../extensionVariables';
 import { SchemaFileStorage } from '../../../services/SchemaFileStorage';
@@ -130,14 +131,12 @@ export const queryEditorRouterDef = queryEditorRouter({
 
         const containerSchema = ctx.state.connection ? await readSchemaForConnection(ctx.state.connection) : null;
 
-        // Throughput buckets are not supported by the Cosmos DB Emulator —
-        // hide the option entirely when the active connection points at an emulator.
-        const supportsThroughputBuckets = !!ctx.state.connection && !ctx.state.connection.isEmulator;
+        const throughputBuckets = await getEnabledThroughputBuckets(ctx.state.connection, ctx.actionContext);
 
         return {
             connectionState,
             queryHistory,
-            throughputBuckets: supportsThroughputBuckets ? [true, true, true, true, true] : undefined,
+            throughputBuckets,
             initialQuery: ctx.state.query,
             isSurveyCandidate: !getIsSurveyDisabledGlobally(),
             isAIFeaturesEnabled: ext.isAIFeaturesEnabled ?? false,

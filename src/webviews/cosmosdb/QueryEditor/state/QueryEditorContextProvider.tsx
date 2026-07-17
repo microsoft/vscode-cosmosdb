@@ -93,6 +93,52 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
             .catch((error: unknown) => this.handleQueryExecutionError(error));
     }
 
+    /**
+     * Runs `query` in the editor on behalf of the `cosmosdb_executeCurrentQuery` tool. Mirrors the normal
+     * run flow so results render in the grid, then signals the extension (`reportActiveQueryExecuted`)
+     * so the awaiting tool can read PII-free result metadata. Awaits execution so the signal fires
+     * only after the result is available.
+     */
+    private async runActiveQueryFromTool(query: string): Promise<void> {
+        try {
+            const prepared = await this.safeMutate(() => this.trpcClient.queryEditor.prepareQuery.mutate({ query }));
+            if (!prepared?.cleanQuery) return;
+            const cleanQuery = prepared.cleanQuery;
+
+            const historyResult = await this.safeMutate(() =>
+                this.trpcClient.queryEditor.updateQueryHistory.mutate({ query: cleanQuery }),
+            );
+            if (historyResult?.queryHistory) {
+                this.dispatch({ type: 'updateHistory', queryHistory: historyResult.queryHistory });
+            }
+
+            const session = await this.safeMutate(() =>
+                this.trpcClient.queryEditor.createQuerySession.mutate({
+                    query: cleanQuery,
+                    options: DEFAULT_RESULT_VIEW_METADATA,
+                }),
+            );
+            if (!session?.executionId) return;
+
+            this.dispatch({
+                type: 'executionStarted',
+                executionId: session.executionId,
+                startExecutionTime: Date.now(),
+            });
+
+            try {
+                const result = (await this.trpcClient.queryEditor.runQuery.mutate({
+                    executionId: session.executionId,
+                })) as QueryExecutionResponse | undefined;
+                this.handleQueryExecutionResult(result);
+            } catch (error: unknown) {
+                this.handleQueryExecutionError(error);
+            }
+        } finally {
+            void this.safeMutate(() => this.trpcClient.queryEditor.reportActiveQueryExecuted.mutate());
+        }
+    }
+
     public async stopQuery(executionId: string): Promise<void> {
         const result = await this.safeMutate(() => this.trpcClient.queryEditor.stopQuery.mutate({ executionId }));
         if (result) {
@@ -334,6 +380,14 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
         await this.safeMutate(() => this.trpcClient.queryEditor.openChatParticipantHelp.mutate());
     }
 
+    public async generateQueryViaAgent(): Promise<void> {
+        await this.safeMutate(() => this.trpcClient.queryEditor.generateQueryViaAgent.mutate());
+    }
+
+    public async explainQueryViaAgent(): Promise<void> {
+        await this.safeMutate(() => this.trpcClient.queryEditor.explainQueryViaAgent.mutate());
+    }
+
     public async closeGenerateInput(): Promise<void> {
         await this.safeMutate(() => this.trpcClient.queryEditor.closeGenerateInput.mutate());
     }
@@ -418,6 +472,9 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
                     type: 'setContainerSchema',
                     containerSchema: event.containerSchema as JSONSchema | null,
                 });
+                break;
+            case 'runActiveQueryRequested':
+                void this.runActiveQueryFromTool(event.query);
                 break;
         }
     }

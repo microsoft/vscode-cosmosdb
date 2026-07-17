@@ -48,6 +48,8 @@ export class QueryEditorTab extends BaseTab {
             lastGenerationFailed: false,
             generateQueryCancellation: undefined,
             pendingConfirmResolve: undefined,
+            lastGeneratePrompt: undefined,
+            pendingRunResolve: undefined,
         };
 
         this.panel.iconPath = getThemedIconPath('editor.svg') as { light: vscode.Uri; dark: vscode.Uri };
@@ -195,6 +197,10 @@ export class QueryEditorTab extends BaseTab {
         return this.state.selectedQuery;
     };
 
+    public getLastGeneratePrompt = (): string | undefined => {
+        return this.state.lastGeneratePrompt;
+    };
+
     public isActive(): boolean {
         return this.panel.active;
     }
@@ -229,6 +235,29 @@ export class QueryEditorTab extends BaseTab {
         this.state.isLastQueryAIGenerated = true;
         this.state.lastAIGeneratedQuery = query;
         this.eventSink.emit({ type: 'queryTextPushed', query });
+    }
+
+    /**
+     * Asks the webview to run `query` in the Query Editor (so results appear in the grid) and
+     * resolves once the webview reports completion via `reportActiveQueryExecuted`. Used by the
+     * `cosmosdb_executeCurrentQuery` tool, which then reads PII-free result metadata from the session.
+     * Resolves after `timeoutMs` as a safety net so the tool never hangs.
+     */
+    public runActiveQueryInEditor(query: string, timeoutMs = 120_000): Promise<void> {
+        // Abandon any prior pending run so a stale resolver can't fire against this one.
+        this.state.pendingRunResolve?.();
+        return new Promise<void>((resolve) => {
+            const timer = setTimeout(() => {
+                this.state.pendingRunResolve = undefined;
+                resolve();
+            }, timeoutMs);
+            this.state.pendingRunResolve = () => {
+                clearTimeout(timer);
+                this.state.pendingRunResolve = undefined;
+                resolve();
+            };
+            this.eventSink.emit({ type: 'runActiveQueryRequested', query });
+        });
     }
 
     public refreshSurveyFeedbackVisibility(): void {

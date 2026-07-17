@@ -31,7 +31,13 @@ import {
 import * as fabric from '@microsoft/vscode-fabric-api';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
-import { CosmosDbChatParticipant, registerSampleDataTool } from './chat';
+import {
+    CosmosDbChatParticipant,
+    registerApplyQueryToEditorTool,
+    registerExecuteCurrentQueryTool,
+    registerGetQueryEditorContextTool,
+    registerSampleDataTool,
+} from './chat';
 import { registerE2eTestCommands } from './commands/e2eTestCommands/registerE2eTestCommands';
 import {
     affectsMigrationFeatureSetting,
@@ -203,6 +209,9 @@ export async function activateInternal(
 
         // Register language model tools for the chat participant
         registerSampleDataTool(context);
+        registerGetQueryEditorContextTool(context);
+        registerApplyQueryToEditorTool(context);
+        registerExecuteCurrentQueryTool(context);
 
         // Suppress "Report an Issue" button for all errors in favor of the command
         registerErrorHandler((c) => (c.errorHandling.suppressReportIssue = true));

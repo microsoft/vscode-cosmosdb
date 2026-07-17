@@ -37,6 +37,10 @@ export const QueryEditorEventSchema = z.discriminatedUnion('type', [
         type: z.literal('schemaUpdated'),
         containerSchema: z.record(z.string(), z.unknown()).nullable(),
     }),
+    z.object({
+        type: z.literal('runActiveQueryRequested'),
+        query: z.string(),
+    }),
 ]);
 
 export type QueryEditorEvent = z.infer<typeof QueryEditorEventSchema>;

@@ -12,7 +12,13 @@ import * as l10n from '@vscode/l10n';
 import * as crypto from 'crypto';
 import * as vscode from 'vscode';
 import { z } from 'zod';
-import { CosmosDbOperationsService, QueryGenerationRefusedError } from '../../../chat';
+import {
+    APPLY_QUERY_TO_EDITOR_TOOL_NAME,
+    CosmosDbOperationsService,
+    GET_QUERY_EDITOR_CONTEXT_TOOL_NAME,
+    QueryGenerationRefusedError,
+    SAMPLE_DATA_TOOL_NAME,
+} from '../../../chat';
 import { getControlPlaneForConnection } from '../../../cosmosdb/controlPlane';
 import { getNoSqlQueryConnection, type NoSqlQueryConnection } from '../../../cosmosdb/NoSqlQueryConnection';
 import { bulkDeleteDocuments, deleteDocument, isDocumentId } from '../../../cosmosdb/session/DocumentSession';
@@ -621,6 +627,15 @@ export const queryEditorRouterDef = queryEditorRouter({
             ctx.state.selectedQuery = input.selectedQuery || undefined;
         }),
 
+    reportActiveQueryExecuted: queryEditorProcedure.mutation(({ ctx }) => {
+        if (ctx.actionContext) {
+            ctx.actionContext.telemetry.suppressIfSuccessful = true;
+        }
+        // Unblock the cosmosdb_executeCurrentQuery tool, which is awaiting the webview's execution.
+        ctx.state.pendingRunResolve?.();
+        ctx.state.pendingRunResolve = undefined;
+    }),
+
     generateQuery: queryEditorProcedure
         .input(z.object({ prompt: z.string(), currentQuery: z.string() }))
         .mutation(async ({ input, ctx }) => {
@@ -788,6 +803,81 @@ export const queryEditorRouterDef = queryEditorRouter({
 
     openChatParticipantHelp: queryEditorProcedure.mutation(async () => {
         await vscode.commands.executeCommand('workbench.action.chat.open', { query: '@cosmosdb /help' });
+    }),
+
+    generateQueryViaAgent: queryEditorProcedure.mutation(async ({ ctx }) => {
+        if (ctx.actionContext) {
+            ctx.actionContext.errorHandling.suppressDisplay = true;
+        }
+
+        const prompt = await vscode.window.showInputBox({
+            title: l10n.t('Generate Cosmos DB Query'),
+            prompt: l10n.t('Describe the query you want to generate'),
+            placeHolder: l10n.t('e.g. Find all active users created in the last 7 days, sorted by name'),
+            ignoreFocusOut: true,
+        });
+
+        const trimmedPrompt = prompt?.trim();
+        if (!trimmedPrompt) {
+            // User dismissed the input box or entered nothing — nothing to route.
+            return;
+        }
+
+        // Remember the original request so the apply-to-editor tool can cite it in the query
+        // comments ("-- Generated from: …") even if the agent does not pass it back explicitly.
+        ctx.state.lastGeneratePrompt = trimmedPrompt;
+
+        // Route the prompt to the general Copilot agent. The agent orchestrates the flow
+        // using the Cosmos DB language model tools; the extension does not run its own loop.
+        const chatQuery =
+            l10n.t('Generate an Azure Cosmos DB for NoSQL query for the active Query Editor.') +
+            '\n\n' +
+            l10n.t('Request: {0}', trimmedPrompt) +
+            '\n\n' +
+            l10n.t('Steps:') +
+            '\n' +
+            l10n.t(
+                '1. Use {0} to read the current query, history and result metadata.',
+                `#${GET_QUERY_EDITOR_CONTEXT_TOOL_NAME}`,
+            ) +
+            '\n' +
+            l10n.t(
+                '2. If the container schema (property names and types) is not already known from that context, call {0} first and wait for approval. Do not guess property names or casing.',
+                `#${SAMPLE_DATA_TOOL_NAME}`,
+            ) +
+            '\n' +
+            l10n.t('3. Write a single valid Cosmos DB NoSQL query that satisfies the request.') +
+            '\n' +
+            l10n.t(
+                '4. Use {0} to write the final query back to the editor, and pass the original request text as the description so it is cited in the query comments.',
+                `#${APPLY_QUERY_TO_EDITOR_TOOL_NAME}`,
+            );
+
+        await vscode.commands.executeCommand('workbench.action.chat.open', {
+            mode: 'agent',
+            query: chatQuery,
+        });
+    }),
+
+    explainQueryViaAgent: queryEditorProcedure.mutation(async ({ ctx }) => {
+        if (ctx.actionContext) {
+            ctx.actionContext.errorHandling.suppressDisplay = true;
+        }
+
+        // Route to the general Copilot agent; it reads the query to explain from the editor
+        // context tool (the selected query when one is selected, otherwise the current query).
+        const chatQuery =
+            l10n.t('Explain the Azure Cosmos DB for NoSQL query in the active Query Editor.') +
+            '\n\n' +
+            l10n.t(
+                'Use {0} to read the query to explain, and explain its activeQuery (the selected query when one is selected, otherwise the current query).',
+                `#${GET_QUERY_EDITOR_CONTEXT_TOOL_NAME}`,
+            );
+
+        await vscode.commands.executeCommand('workbench.action.chat.open', {
+            mode: 'agent',
+            query: chatQuery,
+        });
     }),
 
     saveCSV: queryEditorProcedure

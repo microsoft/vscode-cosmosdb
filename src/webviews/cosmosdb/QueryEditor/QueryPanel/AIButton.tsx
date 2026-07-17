@@ -20,15 +20,10 @@ import {
 } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
-import {
-    useQueryEditorDispatcher,
-    useQueryEditorState,
-    useQueryEditorStateDispatch,
-} from '../state/QueryEditorContext';
+import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
 export const AIButton = ({ ref, type }: ToolbarOverflowItemProps<HTMLButtonElement>) => {
     const state = useQueryEditorState();
-    const dispatch = useQueryEditorStateDispatch();
     const dispatcher = useQueryEditorDispatcher();
 
     // Don't render if AI features are disabled (Copilot not available)
@@ -37,17 +32,12 @@ export const AIButton = ({ ref, type }: ToolbarOverflowItemProps<HTMLButtonEleme
     }
 
     const handleGenerateClick = () => {
-        if (state.showGenerateInput) {
-            void dispatcher.closeGenerateInput();
-        } else {
-            void dispatcher.reportWebviewEvent('openGenerateInput');
-        }
-        dispatch({ type: 'toggleGenerateInput' });
+        void dispatcher.reportWebviewEvent('openGenerateInput');
+        void dispatcher.generateQueryViaAgent();
     };
 
     const handleExplainClick = () => {
-        const query = state.querySelectedValue || state.queryValue;
-        void dispatcher.openChatParticipantExplainQuery(query);
+        void dispatcher.explainQueryViaAgent();
     };
 
     const handleHelpClick = () => {

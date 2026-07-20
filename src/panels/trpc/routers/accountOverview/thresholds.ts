@@ -68,9 +68,17 @@ export function readAdvisoryThresholds(): DerivedAdvisoryThresholds {
             config.get<number>('advisories.overProvisioningPeakPercent'),
             DEFAULT_ADVISORY_THRESHOLDS.overProvisioningPeakPercent,
         ),
-        autoscaleCoefficientOfVariation: positive(
-            config.get<number>('advisories.autoscaleCoefficientOfVariation'),
-            DEFAULT_ADVISORY_THRESHOLDS.autoscaleCoefficientOfVariation,
+        autoscaleMaxPercent: positive(
+            config.get<number>('advisories.autoscaleMaxPercent'),
+            DEFAULT_ADVISORY_THRESHOLDS.autoscaleMaxPercent,
+        ),
+        autoscaleAvgPercent: positive(
+            config.get<number>('advisories.autoscaleAvgPercent'),
+            DEFAULT_ADVISORY_THRESHOLDS.autoscaleAvgPercent,
+        ),
+        autoscalePeakToAvgRatio: positive(
+            config.get<number>('advisories.autoscalePeakToAvgRatio'),
+            DEFAULT_ADVISORY_THRESHOLDS.autoscalePeakToAvgRatio,
         ),
         indexingUsageRatio: positive(
             config.get<number>('advisories.indexingUsageRatio'),

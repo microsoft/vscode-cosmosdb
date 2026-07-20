@@ -5,7 +5,6 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-    coefficientOfVariation,
     compareAdvisories,
     computeDerivedAdvisories,
     DEFAULT_ADVISORY_THRESHOLDS,
@@ -16,6 +15,8 @@ import {
     evaluateSustainedThrottling,
     fairShareMultiple,
     longestThrottledRunMs,
+    mean,
+    type AutoscaleThresholds,
     type DerivedAdvisoryInputs,
 } from './derivedAdvisories';
 import { type RuTrendPoint } from './ruTrends';
@@ -53,17 +54,13 @@ describe('longestThrottledRunMs', () => {
     });
 });
 
-describe('coefficientOfVariation', () => {
+describe('mean', () => {
     it('is zero for an empty series', () => {
-        expect(coefficientOfVariation([])).toBe(0);
+        expect(mean([])).toBe(0);
     });
 
-    it('is zero for a flat series', () => {
-        expect(coefficientOfVariation([50, 50, 50])).toBe(0);
-    });
-
-    it('grows with dispersion', () => {
-        expect(coefficientOfVariation([10, 90, 10, 90])).toBeGreaterThan(0.5);
+    it('averages the finite values', () => {
+        expect(mean([10, 20, 30])).toBe(20);
     });
 });
 
@@ -143,15 +140,24 @@ describe('evaluateOverProvisioning', () => {
 });
 
 describe('evaluateAutoscaleCandidate', () => {
-    it('fires on high variability with manual throughput', () => {
-        const advisory = evaluateAutoscaleCandidate(0.8, 0.5, true);
+    const dutyCycle: AutoscaleThresholds = { maxPercent: 40, avgPercent: 30, peakToAvgRatio: 5 };
+
+    it('fires on a tall peak over a mostly-idle baseline with manual throughput', () => {
+        // peak 80, avg 10 → 8× burst: real peak, mostly idle, big ratio.
+        const advisory = evaluateAutoscaleCandidate(80, 10, dutyCycle, true);
         expect(advisory?.rule).toBe('AutoscaleCandidate');
+        expect(advisory?.rationale).toContain('80%');
         expect(advisory?.rationale.length).toBeLessThanOrEqual(500);
     });
 
-    it('does not fire at or below the CoV threshold or without manual throughput', () => {
-        expect(evaluateAutoscaleCandidate(0.5, 0.5, true)).toBeUndefined();
-        expect(evaluateAutoscaleCandidate(0.8, 0.5, false)).toBeUndefined();
+    it('does not fire for steady high load (low duty cycle) even with high variance', () => {
+        // Oscillating 40↔60: peak 60, avg 50 → ratio 1.2, well below 5 → autoscale would cost more.
+        expect(evaluateAutoscaleCandidate(60, 50, dutyCycle, true)).toBeUndefined();
+    });
+
+    it('does not fire when the peak is too low to need capacity, or without manual throughput', () => {
+        expect(evaluateAutoscaleCandidate(30, 3, dutyCycle, true)).toBeUndefined();
+        expect(evaluateAutoscaleCandidate(80, 10, dutyCycle, false)).toBeUndefined();
     });
 });
 
@@ -243,12 +249,12 @@ describe('computeDerivedAdvisories', () => {
         expect(computeDerivedAdvisories(baseInputs, DEFAULT_ADVISORY_THRESHOLDS)).toEqual([]);
     });
 
-    it('fires each rule and returns them severity-sorted', () => {
+    it('fires the high-severity + over-provisioning rules and returns them severity-sorted', () => {
         const inputs: DerivedAdvisoryInputs = {
             // Six consecutive throttled 5-min buckets = 30 minutes.
             throttlingPoints: throttledPoints([true, true, true, true, true, true]),
             throttlingBucketMs: 5 * MIN,
-            weeklyRuPercents: [5, 95, 5, 95],
+            weeklyRuPercents: [20, 20, 20, 20],
             weeklyPeakPercent: 20,
             hasManualThroughput: true,
             partitions: [{ databaseId: 'db', containerId: 'orders', topPartitionShare: 80, partitionCount: 5 }],
@@ -267,11 +273,23 @@ describe('computeDerivedAdvisories', () => {
         expect(rules).toContain('HotPartitionRisk');
         expect(rules).toContain('SustainedThrottlingInRegion');
         expect(rules).toContain('OverProvisioning');
-        expect(rules).toContain('AutoscaleCandidate');
         expect(rules).toContain('IndexingCostRisk');
         // High-severity rules sort ahead of Medium/Low.
         expect(advisories[0].severity).toBe('High');
         expect(advisories.every((a) => a.rationale.length <= 500)).toBe(true);
+    });
+
+    it('fires AutoscaleCandidate on a bursty manual profile (mutually exclusive with over-provisioning)', () => {
+        const inputs: DerivedAdvisoryInputs = {
+            ...baseInputs,
+            // Mostly idle at 5% with a single 90% burst → avg ≈ 15.6%, peak 90%, ratio ≈ 5.8×.
+            weeklyRuPercents: [5, 5, 5, 5, 5, 5, 5, 90],
+            weeklyPeakPercent: 90,
+            hasManualThroughput: true,
+        };
+        const rules = computeDerivedAdvisories(inputs, DEFAULT_ADVISORY_THRESHOLDS).map((a) => a.rule);
+        expect(rules).toContain('AutoscaleCandidate');
+        expect(rules).not.toContain('OverProvisioning');
     });
 
     it('gates over/under-provisioning rules on manual throughput', () => {

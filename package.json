@@ -1078,11 +1078,25 @@
             "maximum": 100,
             "description": "%cosmosdb.configuration.accountOverview.advisories.overProvisioningPeakPercent%"
           },
-          "cosmosDB.accountOverview.advisories.autoscaleCoefficientOfVariation": {
+          "cosmosDB.accountOverview.advisories.autoscaleMaxPercent": {
             "type": "number",
-            "default": 0.5,
+            "default": 40,
             "minimum": 0,
-            "description": "%cosmosdb.configuration.accountOverview.advisories.autoscaleCoefficientOfVariation%"
+            "maximum": 100,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.autoscaleMaxPercent%"
+          },
+          "cosmosDB.accountOverview.advisories.autoscaleAvgPercent": {
+            "type": "number",
+            "default": 30,
+            "minimum": 0,
+            "maximum": 100,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.autoscaleAvgPercent%"
+          },
+          "cosmosDB.accountOverview.advisories.autoscalePeakToAvgRatio": {
+            "type": "number",
+            "default": 5,
+            "minimum": 1,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.autoscalePeakToAvgRatio%"
           },
           "cosmosDB.accountOverview.advisories.indexingUsageRatio": {
             "type": "number",

@@ -73,8 +73,12 @@ export interface DerivedAdvisoryThresholds {
     throttlingMinMinutes: number;
     /** 7-day peak RU (%) below which OverProvisioning fires. */
     overProvisioningPeakPercent: number;
-    /** RU coefficient of variation above which AutoscaleCandidate fires. */
-    autoscaleCoefficientOfVariation: number;
+    /** Peak RU (%) a workload must reach for AutoscaleCandidate — below this you should right-size, not autoscale. */
+    autoscaleMaxPercent: number;
+    /** Average RU (%) a workload must stay at or below for AutoscaleCandidate (mostly idle between bursts). */
+    autoscaleAvgPercent: number;
+    /** Peak-to-average RU ratio at or above which AutoscaleCandidate fires (a genuine burst, not steady load). */
+    autoscalePeakToAvgRatio: number;
     /** Index/data storage ratio above which IndexingCostRisk fires. */
     indexingUsageRatio: number;
 }
@@ -83,7 +87,9 @@ export const DEFAULT_ADVISORY_THRESHOLDS: DerivedAdvisoryThresholds = {
     hotPartitionFairShareMultiple: 3,
     throttlingMinMinutes: 30,
     overProvisioningPeakPercent: 25,
-    autoscaleCoefficientOfVariation: 0.5,
+    autoscaleMaxPercent: 40,
+    autoscaleAvgPercent: 30,
+    autoscalePeakToAvgRatio: 5,
     indexingUsageRatio: 0.3,
 };
 
@@ -123,18 +129,13 @@ export function longestThrottledRunMs(points: readonly RuTrendPoint[], bucketMs:
     return longest * Math.max(0, bucketMs);
 }
 
-/** Coefficient of variation (stdDev / mean) of a numeric series; 0 for an empty or zero-mean series. Pure. */
-export function coefficientOfVariation(values: readonly number[]): number {
+/** Arithmetic mean of the finite values in a series; 0 for an empty series. Pure. */
+export function mean(values: readonly number[]): number {
     const clean = values.filter((v) => Number.isFinite(v));
     if (clean.length === 0) {
         return 0;
     }
-    const mean = clean.reduce((sum, v) => sum + v, 0) / clean.length;
-    if (mean === 0) {
-        return 0;
-    }
-    const variance = clean.reduce((sum, v) => sum + (v - mean) ** 2, 0) / clean.length;
-    return Math.sqrt(variance) / mean;
+    return clean.reduce((sum, v) => sum + v, 0) / clean.length;
 }
 
 /**
@@ -256,18 +257,41 @@ export function evaluateOverProvisioning(
     };
 }
 
+/** Duty-cycle thresholds for {@link evaluateAutoscaleCandidate}. */
+export interface AutoscaleThresholds {
+    /** Peak RU (%) the workload must reach — below this, right-size instead of autoscaling. */
+    maxPercent: number;
+    /** Average RU (%) the workload must stay at or below (mostly idle between bursts). */
+    avgPercent: number;
+    /** Peak-to-average ratio at or above which the burst is genuine. */
+    peakToAvgRatio: number;
+}
+
 /**
- * AutoscaleCandidate (best-effort): highly variable RU on manual throughput.
+ * AutoscaleCandidate (best-effort): a manual container whose 7-day RU profile is
+ * a genuine burst — a real peak (`max ≥ maxPercent`) on a mostly-idle baseline
+ * (`avg ≤ avgPercent`) with a large peak-to-average ratio (`≥ peakToAvgRatio`).
+ * This is the duty cycle (average as a fraction of peak) that autoscale
+ * economics turn on, not dispersion around the mean — a workload oscillating
+ * 40↔60% has high variance yet a high duty cycle, so autoscale would cost more.
  * Pure.
  */
 export function evaluateAutoscaleCandidate(
-    cov: number,
-    threshold: number,
+    maxPercent: number | undefined,
+    avgPercent: number | undefined,
+    thresholds: AutoscaleThresholds,
     hasManualThroughput: boolean,
 ): DerivedAdvisory | undefined {
-    if (!hasManualThroughput || cov <= threshold) {
+    if (!hasManualThroughput || maxPercent === undefined || avgPercent === undefined || avgPercent <= 0) {
         return undefined;
     }
+    const peakToAvg = maxPercent / avgPercent;
+    if (maxPercent < thresholds.maxPercent || avgPercent > thresholds.avgPercent || peakToAvg < thresholds.peakToAvgRatio) {
+        return undefined;
+    }
+    const max = Math.round(maxPercent);
+    const avg = Math.round(avgPercent);
+    const ratio = Math.round(peakToAvg * 10) / 10;
     return {
         id: 'AutoscaleCandidate',
         rule: 'AutoscaleCandidate',
@@ -275,16 +299,17 @@ export function evaluateAutoscaleCandidate(
         title: l10n.t('Workload looks like an autoscale candidate'),
         rationale: clampRationale(
             l10n.t(
-                'RU consumption over the last 7 days is highly variable (coefficient of variation {cov}, above the {threshold} threshold) while at least one container uses manual throughput. Spiky traffic on fixed throughput risks throttling at peaks and waste at troughs.',
-                { cov: cov.toFixed(2), threshold: threshold.toFixed(2) },
+                'Over the last 7 days RU consumption peaked at {max}% but averaged just {avg}% — a {ratio}× peak-to-average burst on a mostly-idle baseline, while at least one container uses manual throughput. A tall peak over a low average is exactly the duty cycle where autoscale tracks demand more cheaply than fixed throughput sized for the peak.',
+                { max, avg, ratio },
             ),
         ),
         suggestedAction: l10n.t(
-            'Enable autoscale on the variable containers so provisioned RU/s follows demand between the configured floor and ceiling.',
+            'Enable autoscale on the bursty containers so provisioned RU/s follows demand between the configured floor and ceiling.',
         ),
-        thresholdReference: l10n.t('Threshold: RU variability (stdDev/mean) > {threshold}', {
-            threshold: threshold.toFixed(2),
-        }),
+        thresholdReference: l10n.t(
+            'Threshold: peak ≥ {max}%, average ≤ {avg}%, and peak/average ≥ {ratio}×',
+            { max: thresholds.maxPercent, avg: thresholds.avgPercent, ratio: thresholds.peakToAvgRatio },
+        ),
     };
 }
 
@@ -403,8 +428,13 @@ export function computeDerivedAdvisories(
     }
 
     const autoscale = evaluateAutoscaleCandidate(
-        coefficientOfVariation(inputs.weeklyRuPercents),
-        thresholds.autoscaleCoefficientOfVariation,
+        inputs.weeklyPeakPercent ?? (inputs.weeklyRuPercents.length > 0 ? Math.max(...inputs.weeklyRuPercents) : undefined),
+        inputs.weeklyRuPercents.length > 0 ? mean(inputs.weeklyRuPercents) : undefined,
+        {
+            maxPercent: thresholds.autoscaleMaxPercent,
+            avgPercent: thresholds.autoscaleAvgPercent,
+            peakToAvgRatio: thresholds.autoscalePeakToAvgRatio,
+        },
         inputs.hasManualThroughput,
     );
     if (autoscale) {

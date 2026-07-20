@@ -1099,6 +1099,13 @@
             "minimum": 0,
             "description": "%cosmosdb.configuration.accountOverview.advisories.storageGrowthHorizonDays%"
           },
+          "cosmosDB.accountOverview.advisories.storageSkewBalanceRatio": {
+            "type": "number",
+            "default": 0.7,
+            "minimum": 0,
+            "maximum": 1,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.storageSkewBalanceRatio%"
+          },
           "cosmosDB.accountOverview.advisories.indexingUsageRatio": {
             "type": "number",
             "default": 0.3,

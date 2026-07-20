@@ -79,6 +79,10 @@ export function readAdvisoryThresholds(): DerivedAdvisoryThresholds {
             config.get<number>('advisories.storageGrowthHorizonDays'),
             DEFAULT_ADVISORY_THRESHOLDS.storageGrowthHorizonDays,
         ),
+        storageSkewBalanceRatio: positive(
+            config.get<number>('advisories.storageSkewBalanceRatio'),
+            DEFAULT_ADVISORY_THRESHOLDS.storageSkewBalanceRatio,
+        ),
         indexingUsageRatio: positive(
             config.get<number>('advisories.indexingUsageRatio'),
             DEFAULT_ADVISORY_THRESHOLDS.indexingUsageRatio,

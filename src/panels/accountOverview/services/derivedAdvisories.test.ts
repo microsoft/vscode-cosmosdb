@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import {
     compareAdvisories,
     computeDerivedAdvisories,
+    balanceRatio,
     daysToStorageLimit,
     DEFAULT_ADVISORY_THRESHOLDS,
     evaluateAutoscaleCandidate,
@@ -14,6 +15,7 @@ import {
     evaluateIndexingCostRisk,
     evaluateOverProvisioning,
     evaluateStorageGrowthRisk,
+    evaluateStorageSkewRisk,
     evaluateSustainedThrottling,
     fairShareMultiple,
     mean,
@@ -350,6 +352,65 @@ describe('evaluateStorageGrowthRisk', () => {
             180,
         );
         expect(advisory?.severity).toBe('High');
+    });
+});
+
+describe('balanceRatio', () => {
+    it('is undefined for fewer than two sizes', () => {
+        expect(balanceRatio([5 * GIB])).toBeUndefined();
+    });
+
+    it('is 1 for a perfectly balanced split', () => {
+        expect(balanceRatio([10 * GIB, 10 * GIB, 10 * GIB])).toBe(1);
+    });
+
+    it('is min/max for an imbalanced split', () => {
+        expect(balanceRatio([2 * GIB, 10 * GIB])).toBeCloseTo(0.2, 5);
+    });
+});
+
+describe('evaluateStorageSkewRisk', () => {
+    const container = (partitions: ContainerStorageInput['partitions']): ContainerStorageInput => ({
+        databaseId: 'db',
+        containerId: 'orders',
+        partitions,
+    });
+
+    it('does not fire on a balanced split regardless of size', () => {
+        expect(
+            evaluateStorageSkewRisk(container([storageSeries('0', [30]), storageSeries('1', [30])]), 0.7),
+        ).toBeUndefined();
+    });
+
+    it('does not fire on an imbalanced but immaterial (< 1 GiB busiest) split', () => {
+        // 0.1 GiB vs 0.5 GiB → ratio 0.2 but busiest is tiny.
+        expect(
+            evaluateStorageSkewRisk(container([storageSeries('0', [0.1]), storageSeries('1', [0.5])]), 0.7),
+        ).toBeUndefined();
+    });
+
+    it('fires Low when imbalanced with a material-but-small busiest partition', () => {
+        // 2 GiB vs 10 GiB → ratio 0.2, busiest 10 GiB (< 25 GiB) → Low.
+        const advisory = evaluateStorageSkewRisk(container([storageSeries('0', [2]), storageSeries('1', [10])]), 0.7);
+        expect(advisory?.rule).toBe('StorageSkewRisk');
+        expect(advisory?.severity).toBe('Low');
+        expect(advisory?.scope).toBe(containerKey('db', 'orders'));
+    });
+
+    it('grades severity by the busiest partition proximity to 50 GiB', () => {
+        // busiest 30 GiB (≥ 25) → Medium.
+        const medium = evaluateStorageSkewRisk(container([storageSeries('0', [5]), storageSeries('1', [30])]), 0.7);
+        expect(medium?.severity).toBe('Medium');
+        // busiest 45 GiB (≥ 40) → High.
+        const high = evaluateStorageSkewRisk(container([storageSeries('0', [5]), storageSeries('1', [45])]), 0.7);
+        expect(high?.severity).toBe('High');
+    });
+
+    it('uses the latest size of each partition series', () => {
+        // Both grow but end balanced (20 vs 20) → no skew even though they started uneven.
+        expect(
+            evaluateStorageSkewRisk(container([storageSeries('0', [2, 20]), storageSeries('1', [18, 20])]), 0.7),
+        ).toBeUndefined();
     });
 });
 

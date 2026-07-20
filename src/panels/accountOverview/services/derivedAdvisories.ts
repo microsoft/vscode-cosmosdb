@@ -37,6 +37,7 @@ export type DerivedAdvisoryRule =
     | 'OverProvisioning'
     | 'AutoscaleCandidate'
     | 'StorageGrowthRisk'
+    | 'StorageSkewRisk'
     | 'IndexingCostRisk';
 
 export type DerivedAdvisorySeverity = 'High' | 'Medium' | 'Low';
@@ -90,6 +91,12 @@ export interface DerivedAdvisoryThresholds {
      * grades by how soon (≤ 30 d High, ≤ 90 d Medium, otherwise Low).
      */
     storageGrowthHorizonDays: number;
+    /**
+     * Balance ratio (coolest physical partition size ÷ busiest) below which, when the busiest partition is also
+     * material, StorageSkewRisk fires. 1.0 is perfectly balanced; a low value means one partition holds far more
+     * than its siblings and will hit the split ceiling long before they do.
+     */
+    storageSkewBalanceRatio: number;
     /** Index/data storage ratio above which IndexingCostRisk fires. */
     indexingUsageRatio: number;
 }
@@ -102,6 +109,7 @@ export const DEFAULT_ADVISORY_THRESHOLDS: DerivedAdvisoryThresholds = {
     autoscaleAvgPercent: 30,
     autoscalePeakToAvgRatio: 5,
     storageGrowthHorizonDays: 180,
+    storageSkewBalanceRatio: 0.7,
     indexingUsageRatio: 0.3,
 };
 
@@ -413,6 +421,13 @@ const STORAGE_GROWTH_HIGH_DAYS = 30;
 /** Days-to-limit at or below which StorageGrowthRisk ranks Medium (above it, up to the horizon, Low). */
 const STORAGE_GROWTH_MEDIUM_DAYS = 90;
 
+/** Below this busiest-partition size, storage skew is immaterial (a balanced-but-tiny split is not a concern). */
+const STORAGE_SKEW_MIN_BUSIEST_BYTES = 1 * GIB;
+/** Busiest-partition size (≥ 80% of the 50 GiB ceiling) at or above which StorageSkewRisk ranks High. */
+const STORAGE_SKEW_HIGH_BYTES = 40 * GIB;
+/** Busiest-partition size (≥ 50% of the 50 GiB ceiling) at or above which StorageSkewRisk ranks Medium. */
+const STORAGE_SKEW_MEDIUM_BYTES = 25 * GIB;
+
 /** A physical partition's storage series (oldest → newest) for the growth/skew rules. */
 export type StoragePartitionSeries = PartitionStorageSeries;
 
@@ -548,6 +563,82 @@ export function evaluateStorageGrowthRisk(
         ),
         thresholdReference: l10n.t('Threshold: projected < {horizon} days to the 50 GiB partition ceiling', {
             horizon,
+        }),
+        scope,
+    };
+}
+
+/**
+ * Balance ratio (`min ÷ max`) of a set of physical-partition sizes: 1.0 is
+ * perfectly balanced, values near 0 mean one partition dwarfs its siblings.
+ * Returns `undefined` for fewer than two sizes or a non-positive max (nothing to
+ * compare). Pure.
+ */
+export function balanceRatio(sizesBytes: readonly number[]): number | undefined {
+    const clean = sizesBytes.filter((v) => Number.isFinite(v) && v >= 0);
+    if (clean.length < 2) {
+        return undefined;
+    }
+    const max = Math.max(...clean);
+    const min = Math.min(...clean);
+    if (max <= 0) {
+        return undefined;
+    }
+    return min / max;
+}
+
+/**
+ * StorageSkewRisk (best-effort): physical-partition sizes are imbalanced
+ * (`min/max` below the configured balance ratio) *and* the busiest partition is
+ * material (≥ 1 GiB). Unlike a raw storage-share cutoff — which is
+ * partition-count-dependent and size-blind (a balanced 40 MiB/60 MiB two-way
+ * split trips a 35% share) — the balance ratio only fires on genuine imbalance,
+ * and severity grades by the busiest partition's proximity to the 50 GiB split
+ * ceiling (≥ 80% → High, ≥ 50% → Medium). Balanced-but-large partitions are
+ * healthy: they simply split as they grow. Pure.
+ */
+export function evaluateStorageSkewRisk(
+    input: ContainerStorageInput,
+    balanceThreshold: number,
+): DerivedAdvisory | undefined {
+    if (balanceThreshold <= 0) {
+        return undefined;
+    }
+    const sizes = input.partitions
+        .map((partition) => latestBytes(partition))
+        .filter((bytes): bytes is number => bytes !== undefined);
+    const ratio = balanceRatio(sizes);
+    if (ratio === undefined || ratio >= balanceThreshold) {
+        return undefined;
+    }
+    const busiestBytes = Math.max(...sizes);
+    if (busiestBytes < STORAGE_SKEW_MIN_BUSIEST_BYTES) {
+        return undefined;
+    }
+
+    const severity: DerivedAdvisorySeverity =
+        busiestBytes >= STORAGE_SKEW_HIGH_BYTES ? 'High' : busiestBytes >= STORAGE_SKEW_MEDIUM_BYTES ? 'Medium' : 'Low';
+    const scope = containerKey(input.databaseId, input.containerId);
+    const busiestGiB = Math.round((busiestBytes / GIB) * 10) / 10;
+    const balance = Math.round(ratio * 100) / 100;
+    const threshold = Math.round(balanceThreshold * 100) / 100;
+    const ceilingPercent = Math.round((busiestBytes / PARTITION_STORAGE_LIMIT_BYTES) * 100);
+    return {
+        id: `StorageSkewRisk:${scope}`,
+        rule: 'StorageSkewRisk',
+        severity,
+        title: l10n.t('Uneven physical-partition storage in {container}', { container: input.containerId }),
+        rationale: clampRationale(
+            l10n.t(
+                'Physical-partition storage in "{container}" is uneven — the coolest partition holds only {balance}× the busiest (below the {threshold}× balance floor), and the busiest is at {busiest} GiB, about {ceiling}% of the 50 GiB split ceiling. A single oversized partition hits the split wall long before its balanced siblings, capping the container.',
+                { container: input.containerId, balance, threshold, busiest: busiestGiB, ceiling: ceilingPercent },
+            ),
+        ),
+        suggestedAction: l10n.t(
+            'Review the partition key for a higher-cardinality choice so data spreads evenly, and split or archive the oversized logical keys concentrating storage on one partition.',
+        ),
+        thresholdReference: l10n.t('Threshold: min/max partition size < {threshold}× with busiest ≥ 1 GiB', {
+            threshold,
         }),
         scope,
     };
@@ -691,6 +782,10 @@ export function computeDerivedAdvisories(
         const growth = evaluateStorageGrowthRisk(storage, thresholds.storageGrowthHorizonDays);
         if (growth) {
             advisories.push(growth);
+        }
+        const skew = evaluateStorageSkewRisk(storage, thresholds.storageSkewBalanceRatio);
+        if (skew) {
+            advisories.push(skew);
         }
     }
 

@@ -9,7 +9,6 @@ import * as l10n from '@vscode/l10n';
 import { getSqlInventory, type ThroughputMode } from './inventory';
 import { getInventoryMetrics, type HealthThresholds } from './inventoryMetrics';
 import {
-    DEFAULT_PARTITION_THRESHOLDS,
     getPartitionHealth,
     type PartitionHealthResult,
     type PartitionThresholds,
@@ -64,8 +63,12 @@ export interface DerivedAdvisoriesResult {
 
 /** Thresholds for the derived-advisory rules, sourced from `cosmosDB.accountOverview.*`. */
 export interface DerivedAdvisoryThresholds {
-    /** Top physical-partition RU share (%) that fires HotPartitionRisk (reuses `partition.hotRuSharePercent`). */
-    hotPartitionSharePercent: number;
+    /**
+     * Fair-share multiple (busiest partition's RU share ÷ its even-split baseline `1/partitionCount`) at or above
+     * which HotPartitionRisk fires. Partition-count-independent: 1.0 is a perfectly balanced container, so a value
+     * of 3 flags a partition pulling three times its fair share regardless of how many partitions exist.
+     */
+    hotPartitionFairShareMultiple: number;
     /** Continuous throttling duration (minutes) that fires SustainedThrottlingInRegion. */
     throttlingMinMinutes: number;
     /** 7-day peak RU (%) below which OverProvisioning fires. */
@@ -77,7 +80,7 @@ export interface DerivedAdvisoryThresholds {
 }
 
 export const DEFAULT_ADVISORY_THRESHOLDS: DerivedAdvisoryThresholds = {
-    hotPartitionSharePercent: DEFAULT_PARTITION_THRESHOLDS.hotRuSharePercent,
+    hotPartitionFairShareMultiple: 3,
     throttlingMinMinutes: 30,
     overProvisioningPeakPercent: 25,
     autoscaleCoefficientOfVariation: 0.5,
@@ -135,21 +138,45 @@ export function coefficientOfVariation(values: readonly number[]): number {
 }
 
 /**
- * HotPartitionRisk (P0): the busiest physical partition in a container crosses
- * the configured RU share over the last hour. Pure.
+ * Fair-share multiple of a partition's RU share: its share divided by the
+ * even-split baseline `1/partitionCount`. Equals `share × partitionCount / 100`
+ * (share is a percentage). 1.0 is a perfectly balanced container regardless of
+ * partition count; returns 0 for a single-partition (or empty) container, which
+ * cannot be skewed. Pure.
+ */
+export function fairShareMultiple(topPartitionShare: number, partitionCount: number): number {
+    if (partitionCount < 2 || topPartitionShare <= 0) {
+        return 0;
+    }
+    return (topPartitionShare * partitionCount) / 100;
+}
+
+/**
+ * HotPartitionRisk (P0): the busiest physical partition in a container pulls a
+ * multiple of its even-split fair share (`share ÷ (1/partitionCount)`) at or
+ * above the configured threshold. Unlike a raw share cutoff, this is
+ * partition-count-independent — a balanced two-partition split (50/50, multiple
+ * 1.0) never fires, while one partition at 35% of a 20-partition container
+ * (multiple 7.0) does. Pure.
  */
 export function evaluateHotPartitionRisk(
     databaseId: string,
     containerId: string,
     topPartitionShare: number,
-    thresholdPercent: number,
+    partitionCount: number,
+    multipleThreshold: number,
 ): DerivedAdvisory | undefined {
-    if (thresholdPercent <= 0 || topPartitionShare < thresholdPercent) {
+    if (multipleThreshold <= 0) {
+        return undefined;
+    }
+    const multiple = fairShareMultiple(topPartitionShare, partitionCount);
+    if (multiple < multipleThreshold) {
         return undefined;
     }
     const scope = containerKey(databaseId, containerId);
     const share = Math.round(topPartitionShare);
-    const threshold = Math.round(thresholdPercent);
+    const times = Math.round(multiple * 10) / 10;
+    const threshold = Math.round(multipleThreshold * 10) / 10;
     return {
         id: `HotPartitionRisk:${scope}`,
         rule: 'HotPartitionRisk',
@@ -157,14 +184,14 @@ export function evaluateHotPartitionRisk(
         title: l10n.t('Hot physical partition in {container}', { container: containerId }),
         rationale: clampRationale(
             l10n.t(
-                'The busiest physical partition in "{container}" handled {share}% of request units over the last hour, above the {threshold}% hot-partition threshold. A single hot partition caps effective throughput and can trigger 429s even when the container is provisioned for more.',
-                { container: containerId, share, threshold },
+                'The busiest physical partition in "{container}" handled {share}% of request units over the last hour across {count} physical partitions — {times}× its even-split fair share, at or above the {threshold}× hot-partition threshold. A single hot partition caps effective throughput and can trigger 429s even when the container is provisioned for more.',
+                { container: containerId, share, count: partitionCount, times, threshold },
             ),
         ),
         suggestedAction: l10n.t(
             'Review the partition key for a higher-cardinality choice, or split hot logical keys so traffic spreads evenly across partitions.',
         ),
-        thresholdReference: l10n.t('Threshold: top partition ≥ {threshold}% RU share for ≥ 1h', { threshold }),
+        thresholdReference: l10n.t('Threshold: busiest partition ≥ {threshold}× fair share for ≥ 1h', { threshold }),
         scope,
     };
 }
@@ -329,8 +356,8 @@ export interface DerivedAdvisoryInputs {
     weeklyPeakPercent?: number;
     /** True when at least one container/database uses manual (non-autoscale, non-serverless) throughput. */
     hasManualThroughput: boolean;
-    /** Per-container top physical-partition RU share over the last hour. */
-    partitions: readonly { databaseId: string; containerId: string; topPartitionShare: number }[];
+    /** Per-container top physical-partition RU share (and partition count) over the last hour. */
+    partitions: readonly { databaseId: string; containerId: string; topPartitionShare: number; partitionCount: number }[];
     /** Per-container index/data storage for the indexing-cost rule. */
     indexing: readonly IndexingUsageInput[];
 }
@@ -350,7 +377,8 @@ export function computeDerivedAdvisories(
             partition.databaseId,
             partition.containerId,
             partition.topPartitionShare,
-            thresholds.hotPartitionSharePercent,
+            partition.partitionCount,
+            thresholds.hotPartitionFairShareMultiple,
         );
         if (advisory) {
             advisories.push(advisory);
@@ -471,6 +499,7 @@ export async function collectDerivedAdvisories(params: CollectDerivedAdvisoriesP
             databaseId: result.databaseId,
             containerId: result.containerId,
             topPartitionShare: result.topPartitionShare,
+            partitionCount: result.partitionCount,
         }));
 
     const indexing: IndexingUsageInput[] = rows.map((row) => {

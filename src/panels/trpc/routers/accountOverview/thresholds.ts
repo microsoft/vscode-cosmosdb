@@ -55,10 +55,10 @@ export function readAdvisoryThresholds(): DerivedAdvisoryThresholds {
     const positive = (value: number | undefined, fallback: number): number =>
         value !== undefined && value >= 0 ? value : fallback;
     return {
-        // HotPartitionRisk reuses the hot-partition share so the heatmap and the advisory agree.
-        hotPartitionSharePercent: positive(
-            config.get<number>('partition.hotRuSharePercent'),
-            DEFAULT_ADVISORY_THRESHOLDS.hotPartitionSharePercent,
+        // HotPartitionRisk fires on a fair-share multiple, decoupled from the heatmap's raw-share hot threshold.
+        hotPartitionFairShareMultiple: positive(
+            config.get<number>('advisories.hotPartitionFairShareMultiple'),
+            DEFAULT_ADVISORY_THRESHOLDS.hotPartitionFairShareMultiple,
         ),
         throttlingMinMinutes: positive(
             config.get<number>('advisories.throttlingMinMinutes'),

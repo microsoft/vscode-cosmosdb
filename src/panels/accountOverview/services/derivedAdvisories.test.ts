@@ -14,6 +14,7 @@ import {
     evaluateIndexingCostRisk,
     evaluateOverProvisioning,
     evaluateSustainedThrottling,
+    fairShareMultiple,
     longestThrottledRunMs,
     type DerivedAdvisoryInputs,
 } from './derivedAdvisories';
@@ -66,24 +67,46 @@ describe('coefficientOfVariation', () => {
     });
 });
 
+describe('fairShareMultiple', () => {
+    it('is 1.0 for a balanced two-partition split', () => {
+        expect(fairShareMultiple(50, 2)).toBeCloseTo(1);
+    });
+
+    it('is 7.0 for one partition at 35% of a 20-partition container', () => {
+        expect(fairShareMultiple(35, 20)).toBeCloseTo(7);
+    });
+
+    it('is 0 for a single-partition or empty container', () => {
+        expect(fairShareMultiple(100, 1)).toBe(0);
+        expect(fairShareMultiple(0, 4)).toBe(0);
+    });
+});
+
 describe('evaluateHotPartitionRisk', () => {
-    it('fires above the threshold and names the container and share', () => {
-        const advisory = evaluateHotPartitionRisk('db', 'orders', 55, 40);
+    it('fires above the fair-share multiple and names the container, share, and count', () => {
+        // 60% of 4 partitions = 2.4× fair share, above the 2× threshold used here.
+        const advisory = evaluateHotPartitionRisk('db', 'orders', 60, 4, 2);
         expect(advisory?.rule).toBe('HotPartitionRisk');
         expect(advisory?.severity).toBe('High');
         expect(advisory?.scope).toBe(containerKey('db', 'orders'));
-        expect(advisory?.rationale).toContain('55%');
+        expect(advisory?.rationale).toContain('60%');
         expect(advisory?.rationale).toContain('orders');
         expect(advisory?.rationale.length).toBeLessThanOrEqual(500);
     });
 
-    it('fires at the threshold (matching the heatmap hot flag) but not below it', () => {
-        expect(evaluateHotPartitionRisk('db', 'orders', 40, 40)?.rule).toBe('HotPartitionRisk');
-        expect(evaluateHotPartitionRisk('db', 'orders', 39, 40)).toBeUndefined();
+    it('does not fire for a balanced split regardless of partition count', () => {
+        // 50/50 → multiple 1.0; 25/25/25/25 → multiple 1.0. Both below the default 3× threshold.
+        expect(evaluateHotPartitionRisk('db', 'orders', 50, 2, 3)).toBeUndefined();
+        expect(evaluateHotPartitionRisk('db', 'orders', 25, 4, 3)).toBeUndefined();
+    });
+
+    it('fires on a high-count hotspot a raw-share cutoff would miss', () => {
+        // 35% of 20 partitions = 7× fair share (a raw 40% share cutoff never flags it).
+        expect(evaluateHotPartitionRisk('db', 'orders', 35, 20, 3)?.rule).toBe('HotPartitionRisk');
     });
 
     it('never fires when the threshold is disabled (0)', () => {
-        expect(evaluateHotPartitionRisk('db', 'orders', 100, 0)).toBeUndefined();
+        expect(evaluateHotPartitionRisk('db', 'orders', 100, 5, 0)).toBeUndefined();
     });
 });
 
@@ -194,7 +217,7 @@ describe('evaluateIndexingCostRisk', () => {
 
 describe('compareAdvisories', () => {
     it('orders High before Medium before Low', () => {
-        const high = evaluateHotPartitionRisk('db', 'a', 90, 40)!;
+        const high = evaluateHotPartitionRisk('db', 'a', 90, 4, 3)!;
         const medium = evaluateOverProvisioning(10, 25, true)!;
         const low = evaluateIndexingCostRisk(
             { databaseId: 'db', containerId: 'b', indexUsageBytes: 50, dataUsageBytes: 100, excludedPathCount: 0 },
@@ -228,7 +251,7 @@ describe('computeDerivedAdvisories', () => {
             weeklyRuPercents: [5, 95, 5, 95],
             weeklyPeakPercent: 20,
             hasManualThroughput: true,
-            partitions: [{ databaseId: 'db', containerId: 'orders', topPartitionShare: 60 }],
+            partitions: [{ databaseId: 'db', containerId: 'orders', topPartitionShare: 80, partitionCount: 5 }],
             indexing: [
                 {
                     databaseId: 'db',

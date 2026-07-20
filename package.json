@@ -1059,6 +1059,12 @@
             "minimum": 1,
             "description": "%cosmosdb.configuration.accountOverview.partition.topN%"
           },
+          "cosmosDB.accountOverview.advisories.hotPartitionFairShareMultiple": {
+            "type": "number",
+            "default": 3,
+            "minimum": 0,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.hotPartitionFairShareMultiple%"
+          },
           "cosmosDB.accountOverview.advisories.throttlingMinMinutes": {
             "type": "number",
             "default": 30,

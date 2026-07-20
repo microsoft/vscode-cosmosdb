@@ -7,17 +7,21 @@ import { describe, expect, it } from 'vitest';
 import {
     compareAdvisories,
     computeDerivedAdvisories,
+    daysToStorageLimit,
     DEFAULT_ADVISORY_THRESHOLDS,
     evaluateAutoscaleCandidate,
     evaluateHotPartitionRisk,
     evaluateIndexingCostRisk,
     evaluateOverProvisioning,
+    evaluateStorageGrowthRisk,
     evaluateSustainedThrottling,
     fairShareMultiple,
     mean,
     percentile,
+    storageGrowthSlopeBytesPerDay,
     throttledBucketShare,
     type AutoscaleThresholds,
+    type ContainerStorageInput,
     type DerivedAdvisoryInputs,
 } from './derivedAdvisories';
 import { type RuTrendPoint } from './ruTrends';
@@ -247,6 +251,108 @@ describe('evaluateIndexingCostRisk', () => {
     });
 });
 
+const GIB = 1024 ** 3;
+const DAY = 24 * 60 * 60 * 1000;
+
+/** Builds a physical-partition storage series from per-day sizes in GiB (day 0 → oldest). */
+function storageSeries(partitionId: string, gibPerDay: number[]): ContainerStorageInput['partitions'][number] {
+    return {
+        partitionId,
+        samples: gibPerDay.map((gib, day) => ({ timestamp: day * DAY, bytes: gib * GIB })),
+    };
+}
+
+describe('storageGrowthSlopeBytesPerDay', () => {
+    it('is undefined for fewer than two datapoints', () => {
+        expect(storageGrowthSlopeBytesPerDay([{ timestamp: 0, bytes: GIB }])).toBeUndefined();
+    });
+
+    it('fits a linear trend in bytes/day', () => {
+        const slope = storageGrowthSlopeBytesPerDay([
+            { timestamp: 0, bytes: 10 * GIB },
+            { timestamp: DAY, bytes: 11 * GIB },
+            { timestamp: 2 * DAY, bytes: 12 * GIB },
+        ]);
+        expect(slope).toBeCloseTo(GIB, -6);
+    });
+
+    it('is undefined for a flat series (zero variance in x collapses to no trend)', () => {
+        expect(
+            storageGrowthSlopeBytesPerDay([
+                { timestamp: 0, bytes: 5 * GIB },
+                { timestamp: 0, bytes: 9 * GIB },
+            ]),
+        ).toBeUndefined();
+    });
+});
+
+describe('daysToStorageLimit', () => {
+    it('projects days to the limit at the given slope', () => {
+        expect(daysToStorageLimit(40 * GIB, GIB, 50 * GIB)).toBeCloseTo(10, 5);
+    });
+
+    it('is 0 when already at or over the limit', () => {
+        expect(daysToStorageLimit(50 * GIB, GIB, 50 * GIB)).toBe(0);
+    });
+
+    it('is undefined for a flat or shrinking trajectory', () => {
+        expect(daysToStorageLimit(40 * GIB, 0, 50 * GIB)).toBeUndefined();
+        expect(daysToStorageLimit(40 * GIB, -GIB, 50 * GIB)).toBeUndefined();
+    });
+});
+
+describe('evaluateStorageGrowthRisk', () => {
+    const container = (partitions: ContainerStorageInput['partitions']): ContainerStorageInput => ({
+        databaseId: 'db',
+        containerId: 'orders',
+        partitions,
+    });
+
+    it('fires High when a partition is within 30 days of the 50 GiB ceiling', () => {
+        // 44 GiB now, +1 GiB/day → ~6 days to 50 GiB.
+        const advisory = evaluateStorageGrowthRisk(container([storageSeries('0', [41, 42, 43, 44])]), 180);
+        expect(advisory?.rule).toBe('StorageGrowthRisk');
+        expect(advisory?.severity).toBe('High');
+        expect(advisory?.scope).toBe(containerKey('db', 'orders'));
+    });
+
+    it('grades severity Medium/Low by horizon', () => {
+        // 30 GiB now, +0.5 GiB/day → 40 days to 50 GiB → Medium.
+        const medium = evaluateStorageGrowthRisk(container([storageSeries('0', [28.5, 29, 29.5, 30])]), 180);
+        expect(medium?.severity).toBe('Medium');
+        // 20 GiB now, +0.2 GiB/day → 150 days → Low (within 180-day horizon).
+        const low = evaluateStorageGrowthRisk(container([storageSeries('0', [19.4, 19.6, 19.8, 20])]), 180);
+        expect(low?.severity).toBe('Low');
+    });
+
+    it('does not fire beyond the configured horizon', () => {
+        // 40 days to limit but horizon is 30 → no fire.
+        expect(evaluateStorageGrowthRisk(container([storageSeries('0', [28.5, 29, 29.5, 30])]), 30)).toBeUndefined();
+    });
+
+    it('ignores immaterial (< 1 GiB) partitions', () => {
+        // 0.5 GiB growing fast is still tiny.
+        expect(
+            evaluateStorageGrowthRisk(container([storageSeries('0', [0.1, 0.2, 0.3, 0.5])]), 180),
+        ).toBeUndefined();
+    });
+
+    it('ignores flat/noisy (< 0.1 GiB/day) partitions', () => {
+        // 45 GiB but essentially flat → never projected to reach the wall in a meaningful horizon.
+        expect(
+            evaluateStorageGrowthRisk(container([storageSeries('0', [45, 45, 45, 45])]), 180),
+        ).toBeUndefined();
+    });
+
+    it('reports the soonest-to-fill partition across the container', () => {
+        const advisory = evaluateStorageGrowthRisk(
+            container([storageSeries('slow', [10, 11, 12, 13]), storageSeries('fast', [43, 45, 47, 49])]),
+            180,
+        );
+        expect(advisory?.severity).toBe('High');
+    });
+});
+
 describe('compareAdvisories', () => {
     it('orders High before Medium before Low', () => {
         const high = evaluateHotPartitionRisk('db', 'a', 90, 4, 3)!;
@@ -267,6 +373,7 @@ describe('computeDerivedAdvisories', () => {
         weeklyPeakPercent: 50,
         hasManualThroughput: false,
         partitions: [],
+        storage: [],
         indexing: [],
     };
 
@@ -282,6 +389,7 @@ describe('computeDerivedAdvisories', () => {
             weeklyPeakPercent: 20,
             hasManualThroughput: true,
             partitions: [{ databaseId: 'db', containerId: 'orders', topPartitionShare: 80, partitionCount: 5 }],
+            storage: [],
             indexing: [
                 {
                     databaseId: 'db',

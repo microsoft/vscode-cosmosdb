@@ -10,7 +10,11 @@ import { getSqlInventory, type ThroughputMode } from './inventory';
 import { getInventoryMetrics, type HealthThresholds } from './inventoryMetrics';
 import {
     getPartitionHealth,
+    getPartitionStorageSeries,
     type PartitionHealthResult,
+    type PartitionStorageResult,
+    type PartitionStorageSample,
+    type PartitionStorageSeries,
     type PartitionThresholds,
 } from './partitionHealth';
 import { getRuTrends, type RuTrendPoint } from './ruTrends';
@@ -26,12 +30,13 @@ import { containerKey, type UnavailableReason } from './shared';
 // can be unit-tested against synthetic inputs; `collectDerivedAdvisories` does the
 // fetching and calls `computeDerivedAdvisories`.
 
-/** The five derived-advisory rules this engine implements (P0 + best-effort). */
+/** The derived-advisory rules this engine implements (P0 + best-effort). */
 export type DerivedAdvisoryRule =
     | 'HotPartitionRisk'
     | 'SustainedThrottlingInRegion'
     | 'OverProvisioning'
     | 'AutoscaleCandidate'
+    | 'StorageGrowthRisk'
     | 'IndexingCostRisk';
 
 export type DerivedAdvisorySeverity = 'High' | 'Medium' | 'Low';
@@ -79,6 +84,12 @@ export interface DerivedAdvisoryThresholds {
     autoscaleAvgPercent: number;
     /** Peak-to-average RU ratio at or above which AutoscaleCandidate fires (a genuine burst, not steady load). */
     autoscalePeakToAvgRatio: number;
+    /**
+     * Projected days-to-limit horizon at or below which StorageGrowthRisk fires. A physical partition whose
+     * least-squares storage trajectory reaches the 50 GiB split ceiling within this many days is flagged; severity
+     * grades by how soon (≤ 30 d High, ≤ 90 d Medium, otherwise Low).
+     */
+    storageGrowthHorizonDays: number;
     /** Index/data storage ratio above which IndexingCostRisk fires. */
     indexingUsageRatio: number;
 }
@@ -90,6 +101,7 @@ export const DEFAULT_ADVISORY_THRESHOLDS: DerivedAdvisoryThresholds = {
     autoscaleMaxPercent: 40,
     autoscaleAvgPercent: 30,
     autoscalePeakToAvgRatio: 5,
+    storageGrowthHorizonDays: 180,
     indexingUsageRatio: 0.3,
 };
 
@@ -387,6 +399,160 @@ export function evaluateAutoscaleCandidate(
     };
 }
 
+const GIB = 1024 ** 3;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/** Physical-partition storage split ceiling (50 GiB). Structural constant — the wall StorageGrowthRisk projects to. */
+const PARTITION_STORAGE_LIMIT_BYTES = 50 * GIB;
+/** Below this current size a partition is immaterial and ignored (a tiny partition near the wall is not a concern). */
+const STORAGE_GROWTH_MIN_MATERIAL_BYTES = 1 * GIB;
+/** Below this slope the growth is noise, not a trend — avoids projecting a wall from flat/jittery series. */
+const STORAGE_GROWTH_MIN_SLOPE_BYTES_PER_DAY = 0.1 * GIB;
+/** Days-to-limit at or below which StorageGrowthRisk ranks High. */
+const STORAGE_GROWTH_HIGH_DAYS = 30;
+/** Days-to-limit at or below which StorageGrowthRisk ranks Medium (above it, up to the horizon, Low). */
+const STORAGE_GROWTH_MEDIUM_DAYS = 90;
+
+/** A physical partition's storage series (oldest → newest) for the growth/skew rules. */
+export type StoragePartitionSeries = PartitionStorageSeries;
+
+/** Per-container physical-partition storage series for the StorageGrowthRisk (and StorageSkewRisk) rules. */
+export interface ContainerStorageInput {
+    databaseId: string;
+    containerId: string;
+    partitions: readonly StoragePartitionSeries[];
+}
+
+/** Latest (newest-timestamp) size in bytes of a partition's series, or undefined when it has no samples. Pure. */
+function latestBytes(series: StoragePartitionSeries): number | undefined {
+    let latest: { timestamp: number; bytes: number } | undefined;
+    for (const sample of series.samples) {
+        if (!Number.isFinite(sample.bytes) || !Number.isFinite(sample.timestamp)) {
+            continue;
+        }
+        if (latest === undefined || sample.timestamp >= latest.timestamp) {
+            latest = sample;
+        }
+    }
+    return latest?.bytes;
+}
+
+/**
+ * Least-squares slope of a partition's storage series in bytes/day. Returns
+ * `undefined` when there are fewer than two datapoints at distinct times (no
+ * trend can be fit). Fitting a trajectory — rather than a raw last-minus-first
+ * delta — is robust to a single noisy endpoint. Pure.
+ */
+export function storageGrowthSlopeBytesPerDay(samples: readonly PartitionStorageSample[]): number | undefined {
+    const clean = samples.filter((s) => Number.isFinite(s.timestamp) && Number.isFinite(s.bytes));
+    if (clean.length < 2) {
+        return undefined;
+    }
+    const xsDays = clean.map((s) => s.timestamp / MS_PER_DAY);
+    const ys = clean.map((s) => s.bytes);
+    const meanX = mean(xsDays);
+    const meanY = mean(ys);
+    let numerator = 0;
+    let denominator = 0;
+    for (let i = 0; i < clean.length; i++) {
+        const dx = xsDays[i] - meanX;
+        numerator += dx * (ys[i] - meanY);
+        denominator += dx * dx;
+    }
+    if (denominator === 0) {
+        return undefined;
+    }
+    return numerator / denominator;
+}
+
+/**
+ * Projected days for a partition at `currentBytes` growing at `slopeBytesPerDay`
+ * to reach `limitBytes`. Returns 0 if it is already at/over the limit, and
+ * `undefined` for a flat or shrinking trajectory (it never reaches the wall).
+ * Pure.
+ */
+export function daysToStorageLimit(
+    currentBytes: number,
+    slopeBytesPerDay: number,
+    limitBytes: number,
+): number | undefined {
+    if (!Number.isFinite(slopeBytesPerDay) || slopeBytesPerDay <= 0) {
+        return undefined;
+    }
+    if (currentBytes >= limitBytes) {
+        return 0;
+    }
+    return (limitBytes - currentBytes) / slopeBytesPerDay;
+}
+
+/**
+ * StorageGrowthRisk (best-effort): the soonest-to-fill physical partition in a
+ * container is on a least-squares trajectory to the 50 GiB split ceiling within
+ * the configured horizon. Unlike an absolute bytes-added trigger, this answers
+ * "how soon do you hit the wall" — a 2 TB container adding 10 GiB/week spread over
+ * dozens of partitions is decades away and does not fire, while a 40 GiB partition
+ * growing steadily does. Immaterial (< 1 GiB) and flat/noisy (< 0.1 GiB/day)
+ * partitions are ignored. Severity grades by horizon. Pure.
+ */
+export function evaluateStorageGrowthRisk(
+    input: ContainerStorageInput,
+    horizonDays: number,
+): DerivedAdvisory | undefined {
+    if (horizonDays <= 0) {
+        return undefined;
+    }
+    let soonest: { days: number; currentBytes: number; slopeBytesPerDay: number } | undefined;
+    for (const partition of input.partitions) {
+        const currentBytes = latestBytes(partition);
+        if (currentBytes === undefined || currentBytes < STORAGE_GROWTH_MIN_MATERIAL_BYTES) {
+            continue;
+        }
+        const slopeBytesPerDay = storageGrowthSlopeBytesPerDay(partition.samples);
+        if (slopeBytesPerDay === undefined || slopeBytesPerDay < STORAGE_GROWTH_MIN_SLOPE_BYTES_PER_DAY) {
+            continue;
+        }
+        const days = daysToStorageLimit(currentBytes, slopeBytesPerDay, PARTITION_STORAGE_LIMIT_BYTES);
+        if (days === undefined) {
+            continue;
+        }
+        if (soonest === undefined || days < soonest.days) {
+            soonest = { days, currentBytes, slopeBytesPerDay };
+        }
+    }
+    if (soonest === undefined || soonest.days > horizonDays) {
+        return undefined;
+    }
+
+    const severity: DerivedAdvisorySeverity =
+        soonest.days <= STORAGE_GROWTH_HIGH_DAYS ? 'High' : soonest.days <= STORAGE_GROWTH_MEDIUM_DAYS ? 'Medium' : 'Low';
+    const scope = containerKey(input.databaseId, input.containerId);
+    const days = Math.max(0, Math.round(soonest.days));
+    const currentGiB = Math.round((soonest.currentBytes / GIB) * 10) / 10;
+    const perDayGiB = Math.round((soonest.slopeBytesPerDay / GIB) * 100) / 100;
+    const horizon = Math.round(horizonDays);
+    return {
+        id: `StorageGrowthRisk:${scope}`,
+        rule: 'StorageGrowthRisk',
+        severity,
+        title: l10n.t('Physical partition approaching its storage limit in {container}', {
+            container: input.containerId,
+        }),
+        rationale: clampRationale(
+            l10n.t(
+                'The fastest-growing physical partition in "{container}" is at {current} GiB and growing about {perDay} GiB/day — on that trajectory it reaches the 50 GiB physical-partition split ceiling in roughly {days} days, within the {horizon}-day risk horizon. A partition that hits the wall can throttle or block writes until it splits.',
+                { container: input.containerId, current: currentGiB, perDay: perDayGiB, days, horizon },
+            ),
+        ),
+        suggestedAction: l10n.t(
+            'Confirm the partition key spreads new data across partitions, archive or delete cold data, and ensure large logical keys stay well under the 20 GiB per-key cap so partitions split cleanly.',
+        ),
+        thresholdReference: l10n.t('Threshold: projected < {horizon} days to the 50 GiB partition ceiling', {
+            horizon,
+        }),
+        scope,
+    };
+}
+
 /** Per-container storage inputs for the IndexingCostRisk rule. */
 export interface IndexingUsageInput {
     databaseId: string;
@@ -457,6 +623,8 @@ export interface DerivedAdvisoryInputs {
     manualProvisionedRuTotal?: number;
     /** Per-container top physical-partition RU share (and partition count) over the last hour. */
     partitions: readonly { databaseId: string; containerId: string; topPartitionShare: number; partitionCount: number }[];
+    /** Per-container physical-partition storage series (7d) for the storage-growth and storage-skew rules. */
+    storage: readonly ContainerStorageInput[];
     /** Per-container index/data storage for the indexing-cost rule. */
     indexing: readonly IndexingUsageInput[];
 }
@@ -517,6 +685,13 @@ export function computeDerivedAdvisories(
     );
     if (autoscale) {
         advisories.push(autoscale);
+    }
+
+    for (const storage of inputs.storage) {
+        const growth = evaluateStorageGrowthRisk(storage, thresholds.storageGrowthHorizonDays);
+        if (growth) {
+            advisories.push(growth);
+        }
     }
 
     for (const indexing of inputs.indexing) {
@@ -601,6 +776,14 @@ export async function collectDerivedAdvisories(params: CollectDerivedAdvisoriesP
         ),
     );
 
+    const storageResults = await Promise.all(
+        scanTargets.map((row) =>
+            getPartitionStorageSeries(monitorClient, accountId, '7D', row.databaseId, row.containerId).catch(
+                () => undefined,
+            ),
+        ),
+    );
+
     const partitions = partitionResults
         .filter((result): result is PartitionHealthResult => !!result && result.available)
         .map((result) => ({
@@ -608,6 +791,14 @@ export async function collectDerivedAdvisories(params: CollectDerivedAdvisoriesP
             containerId: result.containerId,
             topPartitionShare: result.topPartitionShare,
             partitionCount: result.partitionCount,
+        }));
+
+    const storage = storageResults
+        .filter((result): result is PartitionStorageResult => !!result && result.available)
+        .map((result) => ({
+            databaseId: result.databaseId,
+            containerId: result.containerId,
+            partitions: result.partitions,
         }));
 
     const indexing: IndexingUsageInput[] = rows.map((row) => {
@@ -637,6 +828,7 @@ export async function collectDerivedAdvisories(params: CollectDerivedAdvisoriesP
             hasManualThroughput: rows.some((row) => MANUAL_THROUGHPUT_MODES.has(row.throughputMode)),
             manualProvisionedRuTotal,
             partitions,
+            storage,
             indexing,
         },
         advisoryThresholds,

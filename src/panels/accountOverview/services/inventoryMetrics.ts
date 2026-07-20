@@ -36,14 +36,11 @@ export interface HealthThresholds {
     criticalRuPercent: number;
     /** Peak normalized RU % at or above which a row Needs Attention. */
     warningRuPercent: number;
-    /** 7-day storage growth (bytes) above which a row Needs Attention. */
-    storageGrowthWarningBytes: number;
 }
 
 export const DEFAULT_HEALTH_THRESHOLDS: HealthThresholds = {
     criticalRuPercent: 90,
     warningRuPercent: 80,
-    storageGrowthWarningBytes: 10 * 1024 * 1024 * 1024,
 };
 
 export interface ContainerMetrics {
@@ -92,20 +89,20 @@ const TRANSITIONAL_PROVISIONING_STATES: ReadonlySet<ProvisioningState> = new Set
 
 /**
  * Derives per-row health from the collected metrics and configured thresholds.
- * Pure so it can be unit-tested against synthetic metrics.
+ * Storage growth no longer feeds row health — absolute bytes-added is
+ * uncorrelated with risk, so proximity to the per-partition limit is surfaced by
+ * the StorageGrowthRisk derived advisory instead. Pure so it can be unit-tested
+ * against synthetic metrics.
  */
 export function deriveRowHealth(
-    metrics: Pick<ContainerMetrics, 'peakRuPercent' | 'storageGrowthBytes' | 'throttled'>,
+    metrics: Pick<ContainerMetrics, 'peakRuPercent' | 'throttled'>,
     thresholds: HealthThresholds,
 ): HealthState {
     const peak = metrics.peakRuPercent;
     if (metrics.throttled || (peak !== undefined && peak >= thresholds.criticalRuPercent)) {
         return 'Critical';
     }
-    if (
-        (peak !== undefined && peak >= thresholds.warningRuPercent) ||
-        (metrics.storageGrowthBytes !== undefined && metrics.storageGrowthBytes > thresholds.storageGrowthWarningBytes)
-    ) {
+    if (peak !== undefined && peak >= thresholds.warningRuPercent) {
         return 'Needs Attention';
     }
     return 'Healthy';

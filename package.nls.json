@@ -70,7 +70,6 @@
   "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "When enabled, schema generation also considers query results to infer the container schema.",
   "cosmosdb.configuration.accountOverview.health.criticalRuPercent": "Account Overview: peak normalized RU consumption (%) at or above which a container is flagged as Critical.",
   "cosmosdb.configuration.accountOverview.health.warningRuPercent": "Account Overview: peak normalized RU consumption (%) at or above which a container is flagged as Needs Attention.",
-  "cosmosdb.configuration.accountOverview.health.storageGrowthWarningGB": "Account Overview: 7-day storage growth (in GB) above which a container is flagged as Needs Attention.",
   "cosmosdb.configuration.accountOverview.partition.hotRuSharePercent": "Account Overview: physical-partition RU share (%) at or above which a partition is flagged as a hot-partition risk.",
   "cosmosdb.configuration.accountOverview.partition.skewedStorageSharePercent": "Account Overview: physical-partition storage share (%) at or above which storage is flagged as skewed.",
   "cosmosdb.configuration.accountOverview.partition.topN": "Account Overview: number of physical partitions to list in the Partition Key Distribution Health ranked list.",
@@ -80,6 +79,7 @@
   "cosmosdb.configuration.accountOverview.advisories.autoscaleMaxPercent": "Account Overview: peak normalized RU consumption (%) a workload must reach for an Autoscale Candidate advisory — below this, right-size the manual throughput instead of enabling autoscale.",
   "cosmosdb.configuration.accountOverview.advisories.autoscaleAvgPercent": "Account Overview: average normalized RU consumption (%) a workload must stay at or below for an Autoscale Candidate advisory (mostly idle between bursts).",
   "cosmosdb.configuration.accountOverview.advisories.autoscalePeakToAvgRatio": "Account Overview: peak-to-average normalized RU ratio at or above which, on manual throughput, an Autoscale Candidate advisory is derived from your telemetry (a genuine burst rather than steady load).",
+  "cosmosdb.configuration.accountOverview.advisories.storageGrowthHorizonDays": "Account Overview: projected days-to-limit horizon at or below which a Storage Growth Risk advisory is derived from your telemetry. A physical partition whose least-squares storage trajectory reaches the 50 GiB split ceiling within this many days is flagged, with severity graded by how soon.",
   "cosmosdb.configuration.accountOverview.advisories.indexingUsageRatio": "Account Overview: index-to-data storage ratio above which, when no index paths are excluded, an Indexing Cost Risk advisory is derived from your telemetry.",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Experimental) Show token usage estimates in the Migration Assistant UI.",
   "cosmosdb.configuration.experimental.migration.enabled": "(Experimental) Enable the Cosmos DB Migration (Preview) feature. When disabled, the Cosmos DB Migrations node and its commands are hidden."

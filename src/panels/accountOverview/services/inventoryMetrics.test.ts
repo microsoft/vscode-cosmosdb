@@ -18,39 +18,23 @@ const thresholds: HealthThresholds = DEFAULT_HEALTH_THRESHOLDS;
 
 describe('deriveRowHealth', () => {
     it('is Healthy when nothing crosses a threshold', () => {
-        expect(deriveRowHealth({ peakRuPercent: 10, storageGrowthBytes: 0, throttled: false }, thresholds)).toBe(
-            'Healthy',
-        );
+        expect(deriveRowHealth({ peakRuPercent: 10, throttled: false }, thresholds)).toBe('Healthy');
     });
 
     it('is Healthy when metrics are missing', () => {
-        expect(
-            deriveRowHealth({ peakRuPercent: undefined, storageGrowthBytes: undefined, throttled: false }, thresholds),
-        ).toBe('Healthy');
+        expect(deriveRowHealth({ peakRuPercent: undefined, throttled: false }, thresholds)).toBe('Healthy');
     });
 
     it('flips to Needs Attention when peak crosses the warning threshold', () => {
-        expect(deriveRowHealth({ peakRuPercent: 80, storageGrowthBytes: 0, throttled: false }, thresholds)).toBe(
-            'Needs Attention',
-        );
-    });
-
-    it('flips to Needs Attention when storage growth exceeds the threshold', () => {
-        expect(deriveRowHealth({ peakRuPercent: 5, storageGrowthBytes: 11 * GB, throttled: false }, thresholds)).toBe(
-            'Needs Attention',
-        );
+        expect(deriveRowHealth({ peakRuPercent: 80, throttled: false }, thresholds)).toBe('Needs Attention');
     });
 
     it('flips to Critical when peak crosses the critical threshold', () => {
-        expect(deriveRowHealth({ peakRuPercent: 90, storageGrowthBytes: 0, throttled: false }, thresholds)).toBe(
-            'Critical',
-        );
+        expect(deriveRowHealth({ peakRuPercent: 90, throttled: false }, thresholds)).toBe('Critical');
     });
 
     it('is Critical when throttled regardless of peak', () => {
-        expect(deriveRowHealth({ peakRuPercent: 1, storageGrowthBytes: 0, throttled: true }, thresholds)).toBe(
-            'Critical',
-        );
+        expect(deriveRowHealth({ peakRuPercent: 1, throttled: true }, thresholds)).toBe('Critical');
     });
 });
 
@@ -93,7 +77,7 @@ describe('getInventoryMetrics', () => {
     it('computes storage, growth, peak, and health per container', async () => {
         // c1: DataUsage 100 → 300 (growth 200), Index 50 → storage 350, peak 95 → Critical
         // c2: peak 85 → Needs Attention
-        // c3: peak 20, storage growth 12 GB → Needs Attention
+        // c3: peak 20, storage growth 12 GB → Healthy (storage growth no longer feeds row health)
         // c4: peak 10, small growth → Healthy
         const client = mockClient({
             DataUsage: {
@@ -161,7 +145,8 @@ describe('getInventoryMetrics', () => {
         expect(c1.health).toBe('Critical');
 
         expect(result.metrics[containerKey('db', 'c2')].health).toBe('Needs Attention');
-        expect(result.metrics[containerKey('db', 'c3')].health).toBe('Needs Attention');
+        expect(result.metrics[containerKey('db', 'c3')].storageGrowthBytes).toBe(12 * GB);
+        expect(result.metrics[containerKey('db', 'c3')].health).toBe('Healthy');
         expect(result.metrics[containerKey('db', 'c4')].health).toBe('Healthy');
 
         // No throttling reported → account health tracks provisioning only.

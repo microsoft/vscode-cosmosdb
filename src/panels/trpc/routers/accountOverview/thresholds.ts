@@ -23,15 +23,10 @@ import {
 /** Reads the per-row health thresholds from `cosmosDB.accountOverview.*`, falling back to defaults. */
 export function readHealthThresholds(): HealthThresholds {
     const config = vscode.workspace.getConfiguration('cosmosDB.accountOverview');
-    const growthGB = config.get<number>('health.storageGrowthWarningGB');
     return {
         criticalRuPercent:
             config.get<number>('health.criticalRuPercent') ?? DEFAULT_HEALTH_THRESHOLDS.criticalRuPercent,
         warningRuPercent: config.get<number>('health.warningRuPercent') ?? DEFAULT_HEALTH_THRESHOLDS.warningRuPercent,
-        storageGrowthWarningBytes:
-            growthGB !== undefined && growthGB >= 0
-                ? growthGB * 1024 * 1024 * 1024
-                : DEFAULT_HEALTH_THRESHOLDS.storageGrowthWarningBytes,
     };
 }
 
@@ -79,6 +74,10 @@ export function readAdvisoryThresholds(): DerivedAdvisoryThresholds {
         autoscalePeakToAvgRatio: positive(
             config.get<number>('advisories.autoscalePeakToAvgRatio'),
             DEFAULT_ADVISORY_THRESHOLDS.autoscalePeakToAvgRatio,
+        ),
+        storageGrowthHorizonDays: positive(
+            config.get<number>('advisories.storageGrowthHorizonDays'),
+            DEFAULT_ADVISORY_THRESHOLDS.storageGrowthHorizonDays,
         ),
         indexingUsageRatio: positive(
             config.get<number>('advisories.indexingUsageRatio'),

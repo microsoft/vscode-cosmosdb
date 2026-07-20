@@ -263,6 +263,90 @@ export async function getPartitionHealth(
     };
 }
 
+/** One `PhysicalPartitionSizeInfo` datapoint for a single physical partition. */
+export interface PartitionStorageSample {
+    /** Epoch milliseconds of the datapoint. */
+    timestamp: number;
+    /** Reported physical-partition size in bytes. */
+    bytes: number;
+}
+
+/** A physical partition's storage size series over the window (oldest → newest). */
+export interface PartitionStorageSeries {
+    /** Raw `PhysicalPartitionId` value. */
+    partitionId: string;
+    samples: PartitionStorageSample[];
+}
+
+export interface PartitionStorageResult {
+    /** False when Azure Monitor exposes no `PhysicalPartitionSizeInfo` series for this API/SKU. */
+    available: boolean;
+    /** When `available` is false, why: `noData` | `unsupported` | `rbac`. */
+    reason?: UnavailableReason;
+    databaseId: string;
+    containerId: string;
+    /** Per-physical-partition storage series over the window. */
+    partitions: PartitionStorageSeries[];
+    /** Epoch milliseconds when the server produced this snapshot. */
+    generatedAt: number;
+}
+
+/**
+ * Fetches the per-physical-partition `PhysicalPartitionSizeInfo` time series for a
+ * single container, in raw bytes. Unlike {@link getPartitionHealth}, this keeps
+ * the full series (not just the latest size) and the absolute byte values, so the
+ * derived-advisory engine can fit a growth trajectory per partition and gauge each
+ * partition's proximity to the 50 GiB split ceiling. Any Monitor failure or empty
+ * dimension resolves to `available: false`.
+ */
+export async function getPartitionStorageSeries(
+    client: MonitorClient,
+    resourceUri: string,
+    timeRange: TimeRange,
+    databaseId: string,
+    containerId: string,
+): Promise<PartitionStorageResult> {
+    const generatedAt = Date.now();
+    const config = RANGE_CONFIG[timeRange];
+    const timespan = `${new Date(generatedAt - config.windowMs).toISOString()}/${new Date(generatedAt).toISOString()}`;
+
+    const empty: PartitionStorageResult = {
+        available: false,
+        databaseId,
+        containerId,
+        partitions: [],
+        generatedAt,
+    };
+
+    let matrix: Map<string, Map<number, number>>;
+    try {
+        matrix = await queryPartitionSplitSeries(
+            client,
+            resourceUri,
+            'PhysicalPartitionSizeInfo',
+            'PhysicalPartitionId',
+            timespan,
+            config.interval,
+            databaseId,
+            containerId,
+        );
+    } catch (error) {
+        return { ...empty, reason: classifyUnavailable(error) };
+    }
+    if (matrix.size === 0) {
+        return { ...empty, reason: 'noData' };
+    }
+
+    const partitions: PartitionStorageSeries[] = [...matrix.entries()].map(([partitionId, series]) => ({
+        partitionId,
+        samples: [...series.entries()]
+            .map(([timestamp, bytes]) => ({ timestamp, bytes }))
+            .sort((a, b) => a.timestamp - b.timestamp),
+    }));
+
+    return { available: true, databaseId, containerId, partitions, generatedAt };
+}
+
 /**
  * Reads a metric's max aggregation for one container, split by a partition
  * dimension (`PartitionKeyRangeId` or `PhysicalPartitionId`), into a

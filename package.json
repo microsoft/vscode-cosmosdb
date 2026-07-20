@@ -1033,12 +1033,6 @@
             "maximum": 100,
             "description": "%cosmosdb.configuration.accountOverview.health.warningRuPercent%"
           },
-          "cosmosDB.accountOverview.health.storageGrowthWarningGB": {
-            "type": "number",
-            "default": 10,
-            "minimum": 0,
-            "description": "%cosmosdb.configuration.accountOverview.health.storageGrowthWarningGB%"
-          },
           "cosmosDB.accountOverview.partition.hotRuSharePercent": {
             "type": "number",
             "default": 40,
@@ -1098,6 +1092,12 @@
             "default": 5,
             "minimum": 1,
             "description": "%cosmosdb.configuration.accountOverview.advisories.autoscalePeakToAvgRatio%"
+          },
+          "cosmosDB.accountOverview.advisories.storageGrowthHorizonDays": {
+            "type": "number",
+            "default": 180,
+            "minimum": 0,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.storageGrowthHorizonDays%"
           },
           "cosmosDB.accountOverview.advisories.indexingUsageRatio": {
             "type": "number",

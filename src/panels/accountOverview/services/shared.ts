@@ -41,11 +41,28 @@ export type HealthState = 'Healthy' | 'Needs Attention' | 'Critical';
 /** Provisioning states ARM reports for a Cosmos DB account. */
 export type ProvisioningState = 'Succeeded' | 'Creating' | 'Updating' | 'Deleting' | 'Failed' | 'Canceled';
 
+/**
+ * ISO-8601 metric time-grains, coarsest-supporting order. Not every Cosmos metric
+ * is emitted at the fine grains a short {@link TimeRange} would otherwise request
+ * (e.g. storage/throughput start at `PT5M`, `ServiceAvailability` only at `PT1H`),
+ * so a provider can declare the finest grain it supports and callers floor to it.
+ */
+export type MetricGranularity = 'PT1M' | 'PT5M' | 'PT15M' | 'PT30M' | 'PT1H' | 'P1D';
+
+const GRANULARITY_MINUTES: Record<MetricGranularity, number> = {
+    PT1M: 1,
+    PT5M: 5,
+    PT15M: 15,
+    PT30M: 30,
+    PT1H: 60,
+    P1D: 1440,
+};
+
 export interface RangeConfig {
     /** Window length in milliseconds. */
     windowMs: number;
     /** ISO-8601 duration for the metric interval (bucket size). */
-    interval: string;
+    interval: MetricGranularity;
     /** Bucket size in milliseconds, used for the sustained-throttling run length. */
     bucketMs: number;
 }
@@ -65,6 +82,23 @@ export function bucketMsForRange(range: TimeRange): number {
     return RANGE_CONFIG[range].bucketMs;
 }
 
+/**
+ * Floors a range's default `interval` to a metric's coarsest supported grain: if
+ * the range asks for a finer grain than the metric emits, the request is bumped up
+ * to `floor` so Azure Monitor returns data instead of an empty/failed series. A
+ * `floor` of `undefined` (metric supports the finest grains) leaves `interval`
+ * unchanged. Pure.
+ */
+export function effectiveInterval(
+    interval: MetricGranularity,
+    floor: MetricGranularity | undefined,
+): MetricGranularity {
+    if (!floor) {
+        return interval;
+    }
+    return GRANULARITY_MINUTES[interval] >= GRANULARITY_MINUTES[floor] ? interval : floor;
+}
+
 /** 429 share above which a bucket counts as throttled. */
 export const THROTTLING_SHARE_THRESHOLD = 0.01;
 /** A throttling run must span at least this long to be reported as sustained. */
@@ -74,20 +108,49 @@ export function isThrottledStatusCode(code: string | undefined): boolean {
     return code === '429' || code?.startsWith('429') === true;
 }
 
+/** The subset of an Azure Monitor datapoint {@link pickPointValue} reads from. */
+export interface MonitorPoint {
+    maximum?: number;
+    average?: number;
+    total?: number;
+}
+
 /**
- * Builds an Azure Monitor `$filter` scoping a Cosmos metric to a single
- * container (and optionally its database), or `undefined` for an account-wide
- * query. Pure.
+ * Azure Monitor aggregation to read for a metric. Each maps to a distinct field on
+ * a datapoint (`Maximum → maximum`, `Average → average`, `Total → total`).
+ */
+export type MetricAggregation = 'Maximum' | 'Average' | 'Total';
+
+/**
+ * Reads the field of an Azure Monitor datapoint that matches the requested
+ * aggregation (`Maximum → maximum`, `Average → average`, `Total → total`).
+ * Returns `undefined` when the point carries no value for that aggregation, so
+ * callers can skip empty buckets. Pure.
+ */
+export function pickPointValue(point: MonitorPoint, aggregation: MetricAggregation): number | undefined {
+    switch (aggregation) {
+        case 'Maximum':
+            return point.maximum;
+        case 'Average':
+            return point.average;
+        case 'Total':
+            return point.total;
+    }
+}
+
+/**
+ * Builds an Azure Monitor `$filter` scoping a Cosmos metric to a single container, to a whole
+ * database (when only `databaseId` is given), or `undefined` for an account-wide query. Pure.
  */
 export function containerFilter(databaseId: string | undefined, containerId: string | undefined): string | undefined {
-    if (!containerId) {
-        return undefined;
+    const clauses: string[] = [];
+    if (containerId) {
+        clauses.push(`CollectionName eq '${containerId}'`);
     }
-    const clauses = [`CollectionName eq '${containerId}'`];
     if (databaseId) {
         clauses.push(`DatabaseName eq '${databaseId}'`);
     }
-    return clauses.join(' and ');
+    return clauses.length > 0 ? clauses.join(' and ') : undefined;
 }
 
 /**

@@ -231,7 +231,7 @@ export const EmptyState = ({ reason, requiredRole }: { reason?: UnavailableReaso
             break;
         case 'noData':
         default:
-            message = l10n.t('Telemetry not yet available — first samples in ~1–3 min.');
+            message = l10n.t('No telemetry for the selected time range.');
             break;
     }
 

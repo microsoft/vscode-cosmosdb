@@ -170,6 +170,7 @@
     "@microsoft/vscode-fabric-api": "~0.35.6",
     "@monaco-editor/react": "~4.7.0",
     "@prantlf/jsonlint": "~17.0.0",
+    "@tanstack/react-virtual": "^3.14.5",
     "@vscode/l10n": "~0.0.18",
     "@vscode/prompt-tsx": "^0.4.0-alpha.8",
     "allotment": "~1.20.4",

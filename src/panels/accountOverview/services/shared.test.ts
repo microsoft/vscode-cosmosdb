@@ -7,10 +7,47 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_HEALTH_THRESHOLDS, getInventoryMetrics, type HealthThresholds } from './inventoryMetrics';
 import { DEFAULT_PARTITION_THRESHOLDS, getPartitionHealth } from './partitionHealth';
 import { getRuTrends } from './ruTrends';
-import { classifyUnavailable } from './shared';
+import { classifyUnavailable, effectiveInterval, pickPointValue } from './shared';
 import { mockClient, throwingClient } from './testFixtures';
 
 const thresholds: HealthThresholds = DEFAULT_HEALTH_THRESHOLDS;
+
+describe('pickPointValue', () => {
+    const point = { maximum: 90, average: 42, total: 1200 };
+
+    it('reads the field matching the aggregation', () => {
+        expect(pickPointValue(point, 'Maximum')).toBe(90);
+        expect(pickPointValue(point, 'Average')).toBe(42);
+        expect(pickPointValue(point, 'Total')).toBe(1200);
+    });
+
+    it('returns undefined when the requested aggregation is absent', () => {
+        expect(pickPointValue({ maximum: 5 }, 'Average')).toBeUndefined();
+        expect(pickPointValue({ average: 5 }, 'Total')).toBeUndefined();
+        expect(pickPointValue({ total: 5 }, 'Maximum')).toBeUndefined();
+    });
+
+    it('preserves zero as a real value rather than treating it as missing', () => {
+        expect(pickPointValue({ total: 0 }, 'Total')).toBe(0);
+    });
+});
+
+describe('effectiveInterval', () => {
+    it('leaves the interval unchanged when the metric has no coarser floor', () => {
+        expect(effectiveInterval('PT1M', undefined)).toBe('PT1M');
+        expect(effectiveInterval('PT1H', undefined)).toBe('PT1H');
+    });
+
+    it('bumps a finer interval up to the metric floor', () => {
+        expect(effectiveInterval('PT1M', 'PT5M')).toBe('PT5M');
+        expect(effectiveInterval('PT5M', 'PT1H')).toBe('PT1H');
+    });
+
+    it('keeps the interval when it is already at or coarser than the floor', () => {
+        expect(effectiveInterval('PT5M', 'PT5M')).toBe('PT5M');
+        expect(effectiveInterval('PT1H', 'PT5M')).toBe('PT1H');
+    });
+});
 
 describe('classifyUnavailable', () => {
     it('maps 403 status codes to rbac', () => {

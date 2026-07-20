@@ -15,21 +15,23 @@ import {
     type HealthState,
     type InventoryContainerRow,
     type InventoryMetricsResult,
+    type MetricKey,
+    type MetricSeriesResult,
     type PartitionDistributionMode,
     type PartitionHealthResult,
     type RecommendationsResult,
-    type RuTrendsResult,
     type TimeRange,
+    type UnavailableReason,
 } from '../../api/types';
 import { AccountHeader, type AccountSummary } from './AccountHeader';
 import { ActiveAlerts } from './ActiveAlerts';
 import { DashboardActionsProvider, DashboardCard, SectionHeader } from './DashboardChrome';
 import { DerivedAdvisories } from './DerivedAdvisories';
 import { InventoryTable } from './InventoryTable';
+import { type ContainerRef, type MetricScope, METRIC_ORDER } from './metrics/descriptors';
+import { MetricsSection } from './metrics/MetricsSection';
 import { PartitionHealth } from './PartitionHealth';
 import { Recommendations } from './Recommendations';
-import { type ContainerRef, RuTrendsChart } from './RuTrendsChart';
-import { SummaryMetrics } from './SummaryMetrics';
 
 const AUTO_REFRESH_INTERVAL_MS = 60_000;
 /** Lightweight inventory metrics poll; staggered from the 60 s trends poll. */
@@ -102,6 +104,8 @@ const useStyles = makeStyles({
 
 type Inventory = {
     supported: boolean;
+    available: boolean;
+    reason?: UnavailableReason;
     rows: InventoryContainerRow[];
 };
 
@@ -112,10 +116,10 @@ export const AccountOverview = () => {
     const [summary, setSummary] = useState<AccountSummary | undefined>(undefined);
     const [inventory, setInventory] = useState<Inventory | undefined>(undefined);
     const [inventoryMetrics, setInventoryMetrics] = useState<InventoryMetricsResult | undefined>(undefined);
-    const [trends, setTrends] = useState<RuTrendsResult | undefined>(undefined);
+    const [trends, setTrends] = useState<Partial<Record<MetricKey, MetricSeriesResult>>>({});
     const [trendsLoading, setTrendsLoading] = useState(true);
     const [timeRange, setTimeRange] = useState<TimeRange>('24H');
-    const [selectedContainer, setSelectedContainer] = useState<ContainerRef | undefined>(undefined);
+    const [selectedContainer, setSelectedContainer] = useState<MetricScope | undefined>(undefined);
     const [partitionMode, setPartitionMode] = useState<PartitionDistributionMode>('ru');
     const [partitionContainer, setPartitionContainer] = useState<ContainerRef | undefined>(undefined);
     const [partitionHealth, setPartitionHealth] = useState<PartitionHealthResult | undefined>(undefined);
@@ -145,19 +149,29 @@ export const AccountOverview = () => {
     }, [trpcClient]);
 
     const fetchTrends = useCallback(
-        (range: TimeRange, container?: ContainerRef) => {
+        async (range: TimeRange, container?: MetricScope) => {
             setTrendsLoading(true);
-            return trpcClient.accountOverview.getRuTrends
-                .query({
-                    timeRange: range,
-                    databaseId: container?.databaseId,
-                    containerId: container?.containerId,
-                })
-                .then((result: RuTrendsResult) => {
-                    setTrends(result);
-                    setLastRefreshedAt(Date.now());
-                })
-                .finally(() => setTrendsLoading(false));
+            try {
+                const entries = await Promise.all(
+                    METRIC_ORDER.map(async (metric) => {
+                        const result = await trpcClient.accountOverview.getMetricSeries.query({
+                            metric,
+                            timeRange: range,
+                            databaseId: container?.databaseId,
+                            containerId: container?.containerId,
+                        });
+                        return [metric, result] as const;
+                    }),
+                );
+                const next: Partial<Record<MetricKey, MetricSeriesResult>> = {};
+                for (const [metric, result] of entries) {
+                    next[metric] = result;
+                }
+                setTrends(next);
+                setLastRefreshedAt(Date.now());
+            } finally {
+                setTrendsLoading(false);
+            }
         },
         [trpcClient],
     );
@@ -232,11 +246,20 @@ export const AccountOverview = () => {
     useEffect(() => {
         let cancelled = false;
         void fetchSummary();
-        void trpcClient.accountOverview.getInventory.query().then((result: Inventory) => {
-            if (!cancelled) {
-                setInventory(result);
-            }
-        });
+        void trpcClient.accountOverview.getInventory
+            .query()
+            .then((result: Inventory) => {
+                if (!cancelled) {
+                    setInventory(result);
+                }
+            })
+            .catch(() => {
+                // A transport-level failure (the router already shapes ARM/RBAC errors) must still
+                // resolve the inventory state, otherwise the whole panel stays on the loading spinner.
+                if (!cancelled) {
+                    setInventory({ supported: true, available: false, reason: 'noData', rows: [] });
+                }
+            });
         return () => {
             cancelled = true;
         };
@@ -260,10 +283,14 @@ export const AccountOverview = () => {
         }
     }, [inventory, partitionContainer]);
 
-    // Keep the partition container synchronized with the inventory/chart selection.
+    // Mirror a container drill-in (from the inventory table's "Show in chart") into the partition
+    // panel. A bare database scope from the metrics dropdown has no container, so it is ignored here.
     useEffect(() => {
-        if (selectedContainer) {
-            setPartitionContainer(selectedContainer);
+        if (selectedContainer?.containerId) {
+            setPartitionContainer({
+                databaseId: selectedContainer.databaseId,
+                containerId: selectedContainer.containerId,
+            });
         }
     }, [selectedContainer]);
 
@@ -425,14 +452,6 @@ export const AccountOverview = () => {
         [trpcClient, reportEvent],
     );
 
-    const handleShowInChart = useCallback(
-        (databaseId: string, containerId: string) => {
-            reportEvent('drillInOpened', { target: 'container' });
-            setSelectedContainer({ databaseId, containerId });
-        },
-        [reportEvent],
-    );
-
     const handleSelectPartitionContainer = useCallback(
         (container: ContainerRef) => {
             reportEvent('drillInOpened', { target: 'partition' });
@@ -492,25 +511,16 @@ export const AccountOverview = () => {
                             />
                         </DashboardCard>
 
-                        <SummaryMetrics rows={inventory.rows} supported={inventory.supported} trends={trends} />
-
-                        <DashboardCard>
-                            <SectionHeader
-                                title={l10n.t('Recent RU Usage Trends')}
-                                description={l10n.t(
-                                    'Consumed throughput versus the provisioned ceiling, with throttling windows highlighted.',
-                                )}
-                            />
-                            <RuTrendsChart
-                                trends={trends}
-                                loading={trendsLoading}
-                                timeRange={timeRange}
-                                onTimeRangeChange={setTimeRange}
-                                containers={containers}
-                                selected={selectedContainer}
-                                onSelectContainer={setSelectedContainer}
-                            />
-                        </DashboardCard>
+                        <MetricsSection
+                            order={METRIC_ORDER}
+                            seriesByMetric={trends}
+                            loading={trendsLoading}
+                            timeRange={timeRange}
+                            onTimeRangeChange={setTimeRange}
+                            containers={containers}
+                            selectedContainer={selectedContainer}
+                            onSelectContainer={setSelectedContainer}
+                        />
 
                         <DashboardCard>
                             <SectionHeader
@@ -522,10 +532,11 @@ export const AccountOverview = () => {
                             <InventoryTable
                                 rows={inventory.rows}
                                 supported={inventory.supported}
+                                available={inventory.available}
+                                reason={inventory.reason}
                                 metrics={inventoryMetrics?.available ? inventoryMetrics.metrics : undefined}
                                 onRevealInTree={handleRevealInTree}
                                 onOpenQueryEditor={handleOpenQueryEditor}
-                                onShowInChart={handleShowInChart}
                             />
                         </DashboardCard>
 

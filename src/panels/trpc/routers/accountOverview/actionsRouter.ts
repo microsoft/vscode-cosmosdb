@@ -121,7 +121,15 @@ export const actionsProcedures = {
             }) => {
                 const { metadata } = ctx;
                 const resourceId = parseAzureResourceId(metadata.accountId);
-                await revealAzureResourceInExplorer(ctx.actionContext, resourceId, input.databaseId, input.containerId);
+                await revealAzureResourceInExplorer(
+                    ctx.actionContext,
+                    resourceId,
+                    input.databaseId,
+                    input.containerId,
+                    {
+                        verifyAndResolve: false,
+                    },
+                );
             },
         ),
 };

@@ -6,7 +6,7 @@
 import { Badge, Button, makeStyles, Text, tokens } from '@fluentui/react-components';
 import { Dismiss16Regular, Sparkle16Regular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { type ReactNode } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { type DerivedAdvisory, type DerivedAdvisorySeverity, type DerivedAdvisoriesResult } from '../../api/types';
 import { EmptyState, Pill, type PillTone, useDashboardActions } from './DashboardChrome';
 
@@ -78,6 +78,17 @@ const useStyles = makeStyles({
         textAlign: 'center',
         color: 'var(--vscode-descriptionForeground)',
     },
+    srOnly: {
+        position: 'absolute',
+        width: '1px',
+        height: '1px',
+        padding: 0,
+        margin: '-1px',
+        overflow: 'hidden',
+        clip: 'rect(0, 0, 0, 0)',
+        whiteSpace: 'nowrap',
+        border: 0,
+    },
 });
 
 function severityLabel(severity: DerivedAdvisorySeverity): string {
@@ -91,7 +102,15 @@ function severityLabel(severity: DerivedAdvisorySeverity): string {
     }
 }
 
-const AdvisoryRow = ({ advisory, onDismiss }: { advisory: DerivedAdvisory; onDismiss: (id: string) => void }) => {
+const AdvisoryRow = ({
+    advisory,
+    onDismiss,
+    buttonRef,
+}: {
+    advisory: DerivedAdvisory;
+    onDismiss: (id: string) => void;
+    buttonRef: (el: HTMLButtonElement | null) => void;
+}) => {
     const styles = useStyles();
     return (
         <div className={styles.item}>
@@ -103,6 +122,7 @@ const AdvisoryRow = ({ advisory, onDismiss }: { advisory: DerivedAdvisory; onDis
                     </Text>
                 </div>
                 <Button
+                    ref={buttonRef}
                     size="small"
                     appearance="subtle"
                     icon={<Dismiss16Regular />}
@@ -131,8 +151,37 @@ export const DerivedAdvisories = ({
     const styles = useStyles();
     const { reportEvent } = useDashboardActions();
 
+    // Focus management for dismissal: keyboard/screen-reader users must not lose their place when a
+    // card is removed from the DOM. We capture the focus target (next card, else previous) before the
+    // dismiss re-render, then re-apply it once the list settles — falling back to the section container
+    // when the last advisory goes away.
+    const rootRef = useRef<HTMLDivElement>(null);
+    const buttonRefs = useRef(new Map<string, HTMLButtonElement | null>());
+    const pendingFocusRef = useRef<{ id: string | null } | null>(null);
+    const [announcement, setAnnouncement] = useState('');
+
+    const visible = (result?.advisories ?? []).filter((advisory) => !dismissedIds.has(advisory.id));
+
+    useEffect(() => {
+        const pending = pendingFocusRef.current;
+        if (!pending) {
+            return;
+        }
+        pendingFocusRef.current = null;
+        if (pending.id) {
+            buttonRefs.current.get(pending.id)?.focus();
+        } else {
+            rootRef.current?.focus();
+        }
+    }, [dismissedIds]);
+
     const handleDismiss = (id: string) => {
         reportEvent('recommendationClicked', { source: 'derived', action: 'dismiss' });
+        const idx = visible.findIndex((advisory) => advisory.id === id);
+        const nextFocus = visible[idx + 1] ?? visible[idx - 1];
+        pendingFocusRef.current = { id: nextFocus ? nextFocus.id : null };
+        const remaining = visible.length - 1;
+        setAnnouncement(l10n.t('Advisory dismissed. {count} remaining.', { count: remaining }));
         onDismiss(id);
     };
 
@@ -141,8 +190,6 @@ export const DerivedAdvisories = ({
             {l10n.t('Derived from your telemetry')}
         </Badge>
     );
-
-    const visible = (result?.advisories ?? []).filter((advisory) => !dismissedIds.has(advisory.id));
 
     let body: ReactNode;
     if (loading && !result) {
@@ -155,14 +202,28 @@ export const DerivedAdvisories = ({
         body = (
             <div className={styles.list}>
                 {visible.map((advisory) => (
-                    <AdvisoryRow key={advisory.id} advisory={advisory} onDismiss={handleDismiss} />
+                    <AdvisoryRow
+                        key={advisory.id}
+                        advisory={advisory}
+                        onDismiss={handleDismiss}
+                        buttonRef={(el) => {
+                            if (el) {
+                                buttonRefs.current.set(advisory.id, el);
+                            } else {
+                                buttonRefs.current.delete(advisory.id);
+                            }
+                        }}
+                    />
                 ))}
             </div>
         );
     }
 
     return (
-        <div className={styles.root}>
+        <div ref={rootRef} className={styles.root} tabIndex={-1}>
+            <output className={styles.srOnly} aria-live="polite">
+                {announcement}
+            </output>
             {provenance}
             {body}
         </div>

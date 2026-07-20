@@ -23,7 +23,7 @@ import {
     type PartitionTile,
 } from '../../api/types';
 import { EmptyState } from './DashboardChrome';
-import { type ContainerRef } from './RuTrendsChart';
+import { type ContainerRef } from './metrics/descriptors';
 
 const NO_CONTAINER = 'none';
 
@@ -165,6 +165,9 @@ const useStyles = makeStyles({
 });
 
 function formatShare(sharePercent: number): string {
+    if (!Number.isFinite(sharePercent)) {
+        return '—';
+    }
     const rounded = sharePercent >= 10 ? Math.round(sharePercent) : Math.round(sharePercent * 10) / 10;
     return `${rounded}%`;
 }
@@ -280,7 +283,7 @@ export const PartitionHealth = ({
                     );
                 })}
             </Dropdown>
-            <div className={styles.modeToggle} aria-label={l10n.t('Partition distribution measure')}>
+            <div className={styles.modeToggle} role="toolbar" aria-label={l10n.t('Partition distribution measure')}>
                 <Button
                     size="small"
                     appearance={mode === 'ru' ? 'primary' : 'subtle'}

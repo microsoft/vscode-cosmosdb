@@ -213,4 +213,61 @@ describe('getInventoryMetrics', () => {
         expect(hot.health).toBe('Critical');
         expect(result.accountHealth).toBe('Critical');
     });
+
+    it('surfaces document count and downsampled sparklines per container', async () => {
+        const client = mockClient({
+            DataUsage: {
+                value: [
+                    {
+                        timeseries: [
+                            {
+                                metadatavalues: dims('db', 'c1'),
+                                data: [
+                                    { timeStamp: iso(base - 2 * minute), maximum: 100 },
+                                    { timeStamp: iso(base - minute), maximum: 200 },
+                                    { timeStamp: iso(base), maximum: 300 },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            },
+            NormalizedRUConsumption: {
+                value: [
+                    {
+                        timeseries: [
+                            {
+                                metadatavalues: dims('db', 'c1'),
+                                data: [
+                                    { timeStamp: iso(base - minute), maximum: 40 },
+                                    { timeStamp: iso(base), maximum: 60 },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            },
+            DocumentCountV2: {
+                value: [
+                    {
+                        timeseries: [
+                            {
+                                metadatavalues: dims('db', 'c1'),
+                                data: [
+                                    { timeStamp: iso(base - minute), maximum: 1200 },
+                                    { timeStamp: iso(base), maximum: 1500 },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            },
+        });
+
+        const result = await getInventoryMetrics(client, '/sub/acct', '24H', 'Succeeded', thresholds);
+        const c1 = result.metrics[containerKey('db', 'c1')];
+        expect(c1.documentCount).toBe(1500);
+        expect(c1.storageSparkline).toEqual([100, 200, 300]);
+        expect(c1.ruSparkline).toEqual([40, 60]);
+    });
 });

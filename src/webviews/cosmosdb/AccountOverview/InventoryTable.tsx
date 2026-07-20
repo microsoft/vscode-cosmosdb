@@ -21,16 +21,21 @@ import {
     TableRow,
     Text,
     tokens,
+    Tooltip,
 } from '@fluentui/react-components';
-import { ArrowClockwise16Regular, DataTrending16Regular, Open16Regular } from '@fluentui/react-icons';
+import { Code16Regular, Open16Regular } from '@fluentui/react-icons';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import * as l10n from '@vscode/l10n';
-import { memo, type ReactNode, useCallback, useMemo, useState } from 'react';
+import { memo, type ReactNode, useCallback, useMemo, useRef, useState } from 'react';
+import { Line, LineChart, ResponsiveContainer } from 'recharts';
 import {
     type ContainerMetrics,
     type HealthState,
     type InventoryContainerRow,
     type ThroughputMode,
+    type UnavailableReason,
 } from '../../api/types';
+import { EmptyState } from './DashboardChrome';
 
 const useStyles = makeStyles({
     root: {
@@ -51,10 +56,23 @@ const useStyles = makeStyles({
     },
     scrollArea: {
         overflowX: 'auto',
+        overflowY: 'auto',
         maxWidth: '100%',
+        maxHeight: '640px',
+        position: 'relative',
+    },
+    stickyHeader: {
+        position: 'sticky',
+        top: 0,
+        zIndex: 1,
+        backgroundColor: 'var(--vscode-editor-background)',
+    },
+    spacerCell: {
+        padding: 0,
+        border: 0,
     },
     table: {
-        minWidth: '900px',
+        minWidth: '1040px',
     },
     emptyState: {
         padding: tokens.spacingVerticalXL,
@@ -63,6 +81,16 @@ const useStyles = makeStyles({
     },
     monospace: {
         fontFamily: 'var(--vscode-editor-font-family)',
+    },
+    sparkline: {
+        width: '96px',
+        height: '24px',
+        '& .recharts-surface:focus': {
+            outline: 'none',
+        },
+        '& .recharts-wrapper:focus': {
+            outline: 'none',
+        },
     },
 });
 
@@ -88,12 +116,59 @@ type SortKey =
     | 'throughputMode'
     | 'throughputRU'
     | 'storageBytes'
+    | 'documentCount'
     | 'peakRuPercent'
     | 'health';
 type SortDirection = 'ascending' | 'descending';
 
 function containerKey(row: InventoryContainerRow): string {
     return `${row.databaseId}/${row.containerId}`;
+}
+
+const SPARK_COLOR = 'var(--vscode-charts-blue, var(--vscode-textLink-foreground))';
+
+/**
+ * A tiny axis-less trend line for an inline table cell. Hidden when there is nothing to draw.
+ * Purely decorative — the cell already shows the scalar value — so it is hidden from assistive tech.
+ */
+const Sparkline = memo(function Sparkline({ values }: { values?: number[] }) {
+    const styles = useStyles();
+    const data = useMemo(() => (values ?? []).map((value, index) => ({ index, value })), [values]);
+    if (data.length < 2) {
+        return null;
+    }
+    return (
+        <div className={styles.sparkline} aria-hidden="true">
+            <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={data} margin={{ top: 2, right: 2, bottom: 2, left: 2 }} accessibilityLayer={false}>
+                    <Line
+                        type="monotone"
+                        dataKey="value"
+                        stroke={SPARK_COLOR}
+                        strokeWidth={1.5}
+                        dot={false}
+                        activeDot={false}
+                        isAnimationActive={false}
+                    />
+                </LineChart>
+            </ResponsiveContainer>
+        </div>
+    );
+});
+
+/** Formats a document count compactly (e.g. 1234 → "1.2K", 5_000_000 → "5M"). */
+function formatCount(value: number): string {
+    if (value < 1000) {
+        return String(Math.round(value));
+    }
+    const units = ['K', 'M', 'B', 'T'];
+    let scaled = value / 1000;
+    let unitIndex = 0;
+    while (scaled >= 1000 && unitIndex < units.length - 1) {
+        scaled /= 1000;
+        unitIndex++;
+    }
+    return `${Math.round(scaled * 10) / 10}${units[unitIndex]}`;
 }
 
 /** Formats a byte count compactly (e.g. 1610612736 → "1.5 GB"). */
@@ -148,9 +223,8 @@ function formatRU(row: InventoryContainerRow): string {
         : l10n.t('{ru} RU/s', { ru: row.throughputRU });
 }
 
-const CHART_ICON = <DataTrending16Regular />;
-const REVEAL_ICON = <ArrowClockwise16Regular />;
-const QUERY_ICON = <Open16Regular />;
+const REVEAL_ICON = <Open16Regular />;
+const QUERY_ICON = <Code16Regular />;
 
 const SortableHeaderCell = memo(function SortableHeaderCell({
     columnKey,
@@ -173,26 +247,26 @@ const SortableHeaderCell = memo(function SortableHeaderCell({
     );
 });
 
+const COLUMN_COUNT = 10;
+
 const InventoryRow = memo(function InventoryRow({
     row,
     metric,
+    dataIndex,
+    measureRef,
     onRevealInTree,
     onOpenQueryEditor,
-    onShowInChart,
 }: {
     row: InventoryContainerRow;
     metric: ContainerMetrics | undefined;
+    dataIndex: number;
+    measureRef: (node: HTMLTableRowElement | null) => void;
     onRevealInTree: (databaseId: string, containerId: string) => void;
     onOpenQueryEditor: (databaseId: string, containerId: string) => void;
-    onShowInChart?: (databaseId: string, containerId: string) => void;
 }) {
     const styles = useStyles();
     const health = HEALTH_BADGE[rowHealth(row, metric)];
 
-    const handleShowInChart = useCallback(
-        () => onShowInChart?.(row.databaseId, row.containerId),
-        [onShowInChart, row.databaseId, row.containerId],
-    );
     const handleReveal = useCallback(
         () => onRevealInTree(row.databaseId, row.containerId),
         [onRevealInTree, row.databaseId, row.containerId],
@@ -203,7 +277,7 @@ const InventoryRow = memo(function InventoryRow({
     );
 
     return (
-        <TableRow>
+        <TableRow ref={measureRef} data-index={dataIndex}>
             <TableCell>
                 <TableCellLayout>{row.containerId}</TableCellLayout>
             </TableCell>
@@ -224,10 +298,10 @@ const InventoryRow = memo(function InventoryRow({
                 })}
             </TableCell>
             <TableCell>
-                {metric?.storageBytes !== undefined ? (
+                {metric?.storageBytes !== undefined && Number.isFinite(metric.storageBytes) ? (
                     <TableCellLayout
                         description={
-                            metric.storageGrowthBytes !== undefined
+                            metric.storageGrowthBytes !== undefined && Number.isFinite(metric.storageGrowthBytes)
                                 ? l10n.t('{delta} / 7 days', {
                                       delta: formatGrowth(metric.storageGrowthBytes),
                                   })
@@ -235,29 +309,51 @@ const InventoryRow = memo(function InventoryRow({
                         }
                     >
                         {formatBytes(metric.storageBytes)}
+                        <Sparkline values={metric.storageSparkline} />
                     </TableCellLayout>
                 ) : (
                     <Text className={styles.monospace}>{'—'}</Text>
                 )}
             </TableCell>
-            <TableCell>{metric?.peakRuPercent !== undefined ? `${Math.round(metric.peakRuPercent)}%` : '—'}</TableCell>
+            <TableCell>
+                {metric?.documentCount !== undefined && Number.isFinite(metric.documentCount)
+                    ? formatCount(metric.documentCount)
+                    : '—'}
+            </TableCell>
+            <TableCell>
+                {metric?.peakRuPercent !== undefined && Number.isFinite(metric.peakRuPercent) ? (
+                    <TableCellLayout>
+                        {`${Math.round(metric.peakRuPercent)}%`}
+                        <Sparkline values={metric.ruSparkline} />
+                    </TableCellLayout>
+                ) : (
+                    '—'
+                )}
+            </TableCell>
             <TableCell>
                 <Badge appearance="tint" color={health.color}>
                     {health.label}
                 </Badge>
             </TableCell>
             <TableCell>
-                {onShowInChart && (
-                    <Button appearance="subtle" size="small" icon={CHART_ICON} onClick={handleShowInChart}>
-                        {l10n.t('Show in chart')}
-                    </Button>
-                )}
-                <Button appearance="subtle" size="small" icon={REVEAL_ICON} onClick={handleReveal}>
-                    {l10n.t('Reveal in tree')}
-                </Button>
-                <Button appearance="subtle" size="small" icon={QUERY_ICON} onClick={handleOpenQuery}>
-                    {l10n.t('Open Query Editor')}
-                </Button>
+                <Tooltip content={l10n.t('Reveal in tree')} relationship="label">
+                    <Button
+                        appearance="subtle"
+                        size="small"
+                        icon={REVEAL_ICON}
+                        aria-label={l10n.t('Reveal in tree')}
+                        onClick={handleReveal}
+                    />
+                </Tooltip>
+                <Tooltip content={l10n.t('Open Query Editor')} relationship="label">
+                    <Button
+                        appearance="subtle"
+                        size="small"
+                        icon={QUERY_ICON}
+                        aria-label={l10n.t('Open Query Editor')}
+                        onClick={handleOpenQuery}
+                    />
+                </Tooltip>
             </TableCell>
         </TableRow>
     );
@@ -266,17 +362,19 @@ const InventoryRow = memo(function InventoryRow({
 export const InventoryTable = ({
     rows,
     supported,
+    available,
+    reason,
     metrics,
     onRevealInTree,
     onOpenQueryEditor,
-    onShowInChart,
 }: {
     rows: InventoryContainerRow[];
     supported: boolean;
+    available: boolean;
+    reason?: UnavailableReason;
     metrics?: Record<string, ContainerMetrics>;
     onRevealInTree: (databaseId: string, containerId: string) => void;
     onOpenQueryEditor: (databaseId: string, containerId: string) => void;
-    onShowInChart?: (databaseId: string, containerId: string) => void;
 }) => {
     const styles = useStyles();
     const [search, setSearch] = useState('');
@@ -316,6 +414,8 @@ export const InventoryTable = ({
                     return factor * ((a.throughputRU ?? -1) - (b.throughputRU ?? -1));
                 case 'storageBytes':
                     return factor * ((metricOf(a)?.storageBytes ?? -1) - (metricOf(b)?.storageBytes ?? -1));
+                case 'documentCount':
+                    return factor * ((metricOf(a)?.documentCount ?? -1) - (metricOf(b)?.documentCount ?? -1));
                 case 'peakRuPercent':
                     return factor * ((metricOf(a)?.peakRuPercent ?? -1) - (metricOf(b)?.peakRuPercent ?? -1));
                 case 'health':
@@ -354,6 +454,24 @@ export const InventoryTable = ({
         (_event: unknown, data: OptionOnSelectData) => setThroughputFilter(data.optionValue ?? 'all'),
         [],
     );
+
+    // Virtualize the row list so an account with thousands of collections renders only the visible
+    // rows (each row mounts two recharts sparklines, so a full render would be prohibitively heavy).
+    const scrollRef = useRef<HTMLDivElement>(null);
+    const rowVirtualizer = useVirtualizer({
+        count: sortedRows.length,
+        getScrollElement: () => scrollRef.current,
+        estimateSize: () => 48,
+        overscan: 12,
+    });
+    const virtualItems = rowVirtualizer.getVirtualItems();
+    const paddingTop = virtualItems.length > 0 ? virtualItems[0].start : 0;
+    const paddingBottom =
+        virtualItems.length > 0 ? rowVirtualizer.getTotalSize() - virtualItems[virtualItems.length - 1].end : 0;
+
+    if (!available) {
+        return <EmptyState reason={reason ?? 'noData'} requiredRole={l10n.t('Reader on the Cosmos DB account')} />;
+    }
 
     if (!supported) {
         return (
@@ -413,9 +531,9 @@ export const InventoryTable = ({
             {sortedRows.length === 0 ? (
                 <Text className={styles.emptyState}>{l10n.t('No containers match the current filters.')}</Text>
             ) : (
-                <div className={styles.scrollArea}>
+                <div className={styles.scrollArea} ref={scrollRef}>
                     <Table className={styles.table} aria-label={l10n.t('Containers')}>
-                        <TableHeader>
+                        <TableHeader className={styles.stickyHeader}>
                             <TableRow>
                                 <SortableHeaderCell
                                     columnKey="containerId"
@@ -452,6 +570,14 @@ export const InventoryTable = ({
                                     {l10n.t('Storage')}
                                 </SortableHeaderCell>
                                 <SortableHeaderCell
+                                    columnKey="documentCount"
+                                    activeSortKey={sortKey}
+                                    sortDirection={sortDirection}
+                                    onSort={toggleSort}
+                                >
+                                    {l10n.t('Documents')}
+                                </SortableHeaderCell>
+                                <SortableHeaderCell
                                     columnKey="peakRuPercent"
                                     activeSortKey={sortKey}
                                     sortDirection={sortDirection}
@@ -471,16 +597,38 @@ export const InventoryTable = ({
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {sortedRows.map((row) => (
-                                <InventoryRow
-                                    key={`${row.databaseId}/${row.containerId}`}
-                                    row={row}
-                                    metric={metrics?.[containerKey(row)]}
-                                    onRevealInTree={onRevealInTree}
-                                    onOpenQueryEditor={onOpenQueryEditor}
-                                    onShowInChart={onShowInChart}
-                                />
-                            ))}
+                            {paddingTop > 0 && (
+                                <tr aria-hidden="true">
+                                    <td
+                                        className={styles.spacerCell}
+                                        colSpan={COLUMN_COUNT}
+                                        style={{ height: paddingTop }}
+                                    />
+                                </tr>
+                            )}
+                            {virtualItems.map((virtualRow) => {
+                                const row = sortedRows[virtualRow.index];
+                                return (
+                                    <InventoryRow
+                                        key={`${row.databaseId}/${row.containerId}`}
+                                        dataIndex={virtualRow.index}
+                                        measureRef={rowVirtualizer.measureElement}
+                                        row={row}
+                                        metric={metrics?.[containerKey(row)]}
+                                        onRevealInTree={onRevealInTree}
+                                        onOpenQueryEditor={onOpenQueryEditor}
+                                    />
+                                );
+                            })}
+                            {paddingBottom > 0 && (
+                                <tr aria-hidden="true">
+                                    <td
+                                        className={styles.spacerCell}
+                                        colSpan={COLUMN_COUNT}
+                                        style={{ height: paddingBottom }}
+                                    />
+                                </tr>
+                            )}
                         </TableBody>
                     </Table>
                 </div>

@@ -8,9 +8,11 @@ import {
     classifyUnavailable,
     containerFilter,
     isThrottledStatusCode,
+    pickPointValue,
     RANGE_CONFIG,
     sustainedTimestamps,
     THROTTLING_SHARE_THRESHOLD,
+    type MetricAggregation,
     type TimeRange,
     type UnavailableReason,
 } from './shared';
@@ -80,10 +82,11 @@ export async function getRuTrends(
 
     let ruBuckets: Map<number, number>;
     try {
-        ruBuckets = await queryMaxSeries(
+        ruBuckets = await querySeries(
             client,
             resourceUri,
             'NormalizedRUConsumption',
+            'Maximum',
             timespan,
             config.interval,
             filter,
@@ -126,18 +129,26 @@ export async function getRuTrends(
     return { ...base, available: true, points, peakPercent };
 }
 
-/** Reads a single metric's max aggregation into a `timestamp → value` map. */
-async function queryMaxSeries(
+/**
+ * Reads a single metric aggregation into a `timestamp → value` map. Generalizes
+ * the former max-only reader: the aggregation selects both the Azure Monitor
+ * `aggregation` parameter and, via {@link pickPointValue}, which datapoint field
+ * to read. Buckets that collide across series are merged by the aggregation's
+ * natural combiner (`Total` sums, everything else takes the max — account/
+ * container-scoped queries return a single series, so collisions are rare).
+ */
+export async function querySeries(
     client: MonitorClient,
     resourceUri: string,
     metricName: string,
+    aggregation: MetricAggregation,
     timespan: string,
     interval: string,
     filter: string | undefined,
 ): Promise<Map<number, number>> {
     const response = await client.metrics.list(resourceUri, {
         metricnames: metricName,
-        aggregation: 'Maximum',
+        aggregation,
         timespan,
         interval,
         filter,
@@ -147,11 +158,17 @@ async function queryMaxSeries(
     for (const metric of response.value ?? []) {
         for (const series of metric.timeseries ?? []) {
             for (const point of series.data ?? []) {
-                if (point.maximum === undefined) {
+                const value = pickPointValue(point, aggregation);
+                if (value === undefined) {
                     continue;
                 }
                 const ts = new Date(point.timeStamp).getTime();
-                buckets.set(ts, Math.max(buckets.get(ts) ?? 0, point.maximum));
+                const prev = buckets.get(ts);
+                if (prev === undefined) {
+                    buckets.set(ts, value);
+                } else {
+                    buckets.set(ts, aggregation === 'Total' ? prev + value : Math.max(prev, value));
+                }
             }
         }
     }
@@ -164,7 +181,7 @@ async function queryMaxSeries(
  * the threshold that form a contiguous run of at least
  * {@link MIN_THROTTLING_DURATION_MS} are reported.
  */
-async function queryThrottlingWindows(
+export async function queryThrottlingWindows(
     client: MonitorClient,
     resourceUri: string,
     timespan: string,

@@ -59,6 +59,12 @@ export interface ContainerMetrics {
     storageGrowthBytes?: number;
     /** `max(NormalizedRUConsumption)` over the selected window (percentage). */
     peakRuPercent?: number;
+    /** Latest `DocumentCountV2` for the container, when reported. */
+    documentCount?: number;
+    /** Downsampled 7-day `DataUsage` series (oldest → newest, in bytes) for the storage sparkline. */
+    storageSparkline?: number[];
+    /** Downsampled `NormalizedRUConsumption` series (oldest → newest, percent) for the RU sparkline. */
+    ruSparkline?: number[];
     /** True when the container saw sustained throttling in the last hour. */
     throttled: boolean;
     health: HealthState;
@@ -156,8 +162,8 @@ export async function getInventoryMetrics(
     let peakRu: Map<string, Map<number, number>>;
     try {
         [dataUsage, peakRu] = await Promise.all([
-            querySplitMaxSeries(client, resourceUri, 'DataUsage', weekTimespan, weekConfig.interval),
-            querySplitMaxSeries(client, resourceUri, 'NormalizedRUConsumption', peakTimespan, peakConfig.interval),
+            querySplitSeries(client, resourceUri, 'DataUsage', weekTimespan, weekConfig.interval),
+            querySplitSeries(client, resourceUri, 'NormalizedRUConsumption', peakTimespan, peakConfig.interval),
         ]);
     } catch (error) {
         return empty(false, false, classifyUnavailable(error));
@@ -170,7 +176,23 @@ export async function getInventoryMetrics(
     // Index storage and throttling are best-effort; missing data must not sink the row.
     let indexUsage = new Map<string, Map<number, number>>();
     try {
-        indexUsage = await querySplitMaxSeries(client, resourceUri, 'IndexUsage', weekTimespan, weekConfig.interval);
+        indexUsage = await querySplitSeries(client, resourceUri, 'IndexUsage', weekTimespan, weekConfig.interval);
+    } catch {
+        // ignore
+    }
+
+    // Document count is best-effort. `DocumentCountV2` is a snapshot gauge (documents currently stored, replicated
+    // per region), so it is read with `Maximum` (the default): `Total` would sum every raw sample inside an interval
+    // bucket (inflating the count as the window grows) and double-count regions. The latest bucket's value is the count.
+    let documentCount = new Map<string, Map<number, number>>();
+    try {
+        documentCount = await querySplitSeries(
+            client,
+            resourceUri,
+            'DocumentCountV2',
+            weekTimespan,
+            weekConfig.interval,
+        );
     } catch {
         // ignore
     }
@@ -188,7 +210,12 @@ export async function getInventoryMetrics(
         // ignore
     }
 
-    const keys = new Set<string>([...dataUsage.keys(), ...peakRu.keys(), ...indexUsage.keys()]);
+    const keys = new Set<string>([
+        ...dataUsage.keys(),
+        ...peakRu.keys(),
+        ...indexUsage.keys(),
+        ...documentCount.keys(),
+    ]);
     const metrics: Record<string, ContainerMetrics> = {};
 
     for (const key of keys) {
@@ -199,6 +226,7 @@ export async function getInventoryMetrics(
         const dataSeries = dataUsage.get(key);
         const indexSeries = indexUsage.get(key);
         const ruSeries = peakRu.get(key);
+        const docSeries = documentCount.get(key);
 
         const latestData = dataSeries ? lastValue(dataSeries) : undefined;
         const latestIndex = indexSeries ? lastValue(indexSeries) : undefined;
@@ -224,6 +252,9 @@ export async function getInventoryMetrics(
             ...partial,
             dataUsageBytes: latestData,
             indexUsageBytes: latestIndex,
+            documentCount: docSeries ? lastValue(docSeries) : undefined,
+            storageSparkline: toSparkline(dataSeries),
+            ruSparkline: toSparkline(ruSeries),
             health: deriveRowHealth(partial, thresholds),
         };
     }
@@ -237,10 +268,13 @@ export async function getInventoryMetrics(
 }
 
 /**
- * Reads a metric's max aggregation split by the `DatabaseName`/`CollectionName`
- * dimensions into a `containerKey → (timestamp → value)` map.
+ * Reads a metric split by the `DatabaseName`/`CollectionName` dimensions into a
+ * `containerKey → (timestamp → value)` map, picking each bucket's `Maximum`. This
+ * suits both storage/RU peaks and snapshot gauges (document count), where the
+ * latest bucket's value is the current reading and colliding regions are folded
+ * with `max` rather than summed (which would double-count replicated data).
  */
-async function querySplitMaxSeries(
+async function querySplitSeries(
     client: MonitorClient,
     resourceUri: string,
     metricName: string,
@@ -264,16 +298,35 @@ async function querySplitMaxSeries(
             }
             const buckets = byContainer.get(key) ?? new Map<number, number>();
             for (const point of series.data ?? []) {
-                if (point.maximum === undefined) {
+                const value = point.maximum;
+                if (value === undefined) {
                     continue;
                 }
                 const ts = new Date(point.timeStamp).getTime();
-                buckets.set(ts, Math.max(buckets.get(ts) ?? 0, point.maximum));
+                const prev = buckets.get(ts);
+                buckets.set(ts, prev === undefined ? value : Math.max(prev, value));
             }
             byContainer.set(key, buckets);
         }
     }
     return byContainer;
+}
+
+/** Downsamples a `timestamp → value` series to at most `maxPoints` values, oldest → newest, for a sparkline. */
+function toSparkline(series: Map<number, number> | undefined, maxPoints = 24): number[] | undefined {
+    if (!series || series.size === 0) {
+        return undefined;
+    }
+    const values = [...series.entries()].sort((a, b) => a[0] - b[0]).map(([, value]) => value);
+    if (values.length <= maxPoints) {
+        return values;
+    }
+    const step = values.length / maxPoints;
+    const out: number[] = [];
+    for (let i = 0; i < maxPoints; i++) {
+        out.push(values[Math.floor(i * step)]);
+    }
+    return out;
 }
 
 /**

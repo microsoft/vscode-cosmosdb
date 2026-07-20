@@ -139,6 +139,29 @@ export function mean(values: readonly number[]): number {
 }
 
 /**
+ * Linear-interpolated percentile (`p` in 0..100) of the finite values in a
+ * series; `undefined` for an empty series. Used to band over-provisioning on a
+ * spike-resistant p99 rather than the raw max, so a single-minute peak cannot
+ * suppress the finding. Pure.
+ */
+export function percentile(values: readonly number[], p: number): number | undefined {
+    const sorted = values.filter((v) => Number.isFinite(v)).sort((a, b) => a - b);
+    if (sorted.length === 0) {
+        return undefined;
+    }
+    if (sorted.length === 1) {
+        return sorted[0];
+    }
+    const rank = (Math.min(100, Math.max(0, p)) / 100) * (sorted.length - 1);
+    const low = Math.floor(rank);
+    const high = Math.ceil(rank);
+    if (low === high) {
+        return sorted[low];
+    }
+    return sorted[low] + (sorted[high] - sorted[low]) * (rank - low);
+}
+
+/**
  * Fair-share multiple of a partition's RU share: its share divided by the
  * even-split baseline `1/partitionCount`. Equals `share × partitionCount / 100`
  * (share is a percentage). 1.0 is a perfectly balanced container regardless of
@@ -225,35 +248,67 @@ export function evaluateSustainedThrottling(longestRunMs: number, minMinutes: nu
     };
 }
 
+/** Estimated wasted RU/s (High) at or above which over-provisioning is material enough to rank High. */
+const OVERPROVISIONING_HIGH_WASTED_RU = 10_000;
+/** Estimated wasted RU/s at or above which over-provisioning ranks Medium (below this, Low). */
+const OVERPROVISIONING_MEDIUM_WASTED_RU = 1_000;
+
 /**
- * OverProvisioning (best-effort): sustained low peak RU on manual throughput
- * over the trailing 7 days. Pure.
+ * OverProvisioning (best-effort): sustained low **p99** RU on manual throughput
+ * over the trailing 7 days. Banding on p99 (rather than the raw max) is
+ * spike-resistant — a single-minute peak can no longer suppress a workload that
+ * sits idle 99.9% of the time. Severity is graded by the estimated wasted RU/s
+ * (provisioned minus what p99 demand needs), so a large absolute waste ranks
+ * ahead of a small one. Pure.
  */
 export function evaluateOverProvisioning(
-    peakPercent: number | undefined,
+    p99Percent: number | undefined,
     thresholdPercent: number,
     hasManualThroughput: boolean,
+    provisionedRuTotal?: number,
 ): DerivedAdvisory | undefined {
-    if (!hasManualThroughput || peakPercent === undefined || peakPercent >= thresholdPercent) {
+    if (!hasManualThroughput || p99Percent === undefined || p99Percent >= thresholdPercent) {
         return undefined;
     }
-    const peak = Math.round(peakPercent);
+    const p99 = Math.round(p99Percent);
     const threshold = Math.round(thresholdPercent);
+
+    const wastedRu =
+        provisionedRuTotal !== undefined && provisionedRuTotal > 0
+            ? Math.round(provisionedRuTotal * (1 - p99Percent / 100))
+            : undefined;
+    let severity: DerivedAdvisorySeverity = 'Medium';
+    if (wastedRu !== undefined) {
+        severity =
+            wastedRu >= OVERPROVISIONING_HIGH_WASTED_RU
+                ? 'High'
+                : wastedRu >= OVERPROVISIONING_MEDIUM_WASTED_RU
+                  ? 'Medium'
+                  : 'Low';
+    }
+
+    const materiality =
+        wastedRu !== undefined
+            ? l10n.t(' That is roughly {wasted} RU/s of provisioned capacity the workload never uses.', {
+                  wasted: wastedRu.toLocaleString(),
+              })
+            : '';
+
     return {
         id: 'OverProvisioning',
         rule: 'OverProvisioning',
-        severity: 'Medium',
+        severity,
         title: l10n.t('Throughput may be over-provisioned'),
         rationale: clampRationale(
             l10n.t(
-                'Peak normalized RU consumption stayed at {peak}% over the last 7 days, below the {threshold}% over-provisioning threshold, while at least one container uses manual throughput. Consistently low utilization means you are paying for capacity the workload never uses.',
-                { peak, threshold },
-            ),
+                '99th-percentile normalized RU consumption stayed at {p99}% over the last 7 days, below the {threshold}% over-provisioning threshold, while at least one container uses manual throughput. Banding on p99 rather than the peak ignores brief spikes that do not reflect steady demand.',
+                { p99, threshold },
+            ) + materiality,
         ),
         suggestedAction: l10n.t(
             'Lower provisioned RU/s to match observed demand, or switch to autoscale so capacity tracks usage automatically.',
         ),
-        thresholdReference: l10n.t('Threshold: 7-day peak < {threshold}% RU', { threshold }),
+        thresholdReference: l10n.t('Threshold: 7-day p99 < {threshold}% RU', { threshold }),
     };
 }
 
@@ -381,6 +436,8 @@ export interface DerivedAdvisoryInputs {
     weeklyPeakPercent?: number;
     /** True when at least one container/database uses manual (non-autoscale, non-serverless) throughput. */
     hasManualThroughput: boolean;
+    /** Total provisioned RU/s across manual-throughput containers, for over-provisioning materiality. */
+    manualProvisionedRuTotal?: number;
     /** Per-container top physical-partition RU share (and partition count) over the last hour. */
     partitions: readonly { databaseId: string; containerId: string; topPartitionShare: number; partitionCount: number }[];
     /** Per-container index/data storage for the indexing-cost rule. */
@@ -419,9 +476,10 @@ export function computeDerivedAdvisories(
     }
 
     const overProvisioning = evaluateOverProvisioning(
-        inputs.weeklyPeakPercent,
+        percentile(inputs.weeklyRuPercents, 99),
         thresholds.overProvisioningPeakPercent,
         inputs.hasManualThroughput,
+        inputs.manualProvisionedRuTotal,
     );
     if (overProvisioning) {
         advisories.push(overProvisioning);
@@ -547,6 +605,10 @@ export async function collectDerivedAdvisories(params: CollectDerivedAdvisoriesP
         .map((point) => point.ruPercent)
         .filter((value): value is number => value !== undefined);
 
+    const manualProvisionedRuTotal = rows
+        .filter((row) => MANUAL_THROUGHPUT_MODES.has(row.throughputMode) && row.throughputRU !== undefined)
+        .reduce<number | undefined>((sum, row) => (sum ?? 0) + (row.throughputRU ?? 0), undefined);
+
     return computeDerivedAdvisories(
         {
             throttlingPoints: dayTrends.points,
@@ -554,6 +616,7 @@ export async function collectDerivedAdvisories(params: CollectDerivedAdvisoriesP
             weeklyRuPercents,
             weeklyPeakPercent: weekTrends.peakPercent,
             hasManualThroughput: rows.some((row) => MANUAL_THROUGHPUT_MODES.has(row.throughputMode)),
+            manualProvisionedRuTotal,
             partitions,
             indexing,
         },

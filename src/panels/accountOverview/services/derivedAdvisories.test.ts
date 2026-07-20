@@ -16,6 +16,7 @@ import {
     fairShareMultiple,
     longestThrottledRunMs,
     mean,
+    percentile,
     type AutoscaleThresholds,
     type DerivedAdvisoryInputs,
 } from './derivedAdvisories';
@@ -61,6 +62,23 @@ describe('mean', () => {
 
     it('averages the finite values', () => {
         expect(mean([10, 20, 30])).toBe(20);
+    });
+});
+
+describe('percentile', () => {
+    it('is undefined for an empty series', () => {
+        expect(percentile([], 99)).toBeUndefined();
+    });
+
+    it('ignores a lone high spike at p99 (spike-resistant)', () => {
+        // 99 threes and one 100: p99 sits at the top of the steady band, not the spike.
+        const values = [...Array<number>(99).fill(3), 100];
+        expect(percentile(values, 99)).toBeLessThan(10);
+    });
+
+    it('returns the max at p100 and the min at p0', () => {
+        expect(percentile([10, 20, 30], 100)).toBe(30);
+        expect(percentile([10, 20, 30], 0)).toBe(10);
     });
 });
 
@@ -122,11 +140,20 @@ describe('evaluateSustainedThrottling', () => {
 });
 
 describe('evaluateOverProvisioning', () => {
-    it('fires on low peak with manual throughput', () => {
+    it('fires on low p99 with manual throughput', () => {
         const advisory = evaluateOverProvisioning(12, 25, true);
         expect(advisory?.rule).toBe('OverProvisioning');
         expect(advisory?.severity).toBe('Medium');
         expect(advisory?.rationale).toContain('12%');
+    });
+
+    it('grades severity by estimated wasted RU/s when provisioned total is known', () => {
+        // 10% p99 of 100,000 provisioned RU/s → ~90,000 wasted → High.
+        expect(evaluateOverProvisioning(10, 25, true, 100_000)?.severity).toBe('High');
+        // 10% p99 of 2,000 provisioned RU/s → ~1,800 wasted → Medium.
+        expect(evaluateOverProvisioning(10, 25, true, 2_000)?.severity).toBe('Medium');
+        // 10% p99 of 500 provisioned RU/s → ~450 wasted → Low.
+        expect(evaluateOverProvisioning(10, 25, true, 500)?.severity).toBe('Low');
     });
 
     it('does not fire without manual throughput', () => {

@@ -1065,11 +1065,12 @@
             "minimum": 0,
             "description": "%cosmosdb.configuration.accountOverview.advisories.hotPartitionFairShareMultiple%"
           },
-          "cosmosDB.accountOverview.advisories.throttlingMinMinutes": {
+          "cosmosDB.accountOverview.advisories.throttledBucketSharePercent": {
             "type": "number",
-            "default": 30,
-            "minimum": 1,
-            "description": "%cosmosdb.configuration.accountOverview.advisories.throttlingMinMinutes%"
+            "default": 5,
+            "minimum": 0,
+            "maximum": 100,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.throttledBucketSharePercent%"
           },
           "cosmosDB.accountOverview.advisories.overProvisioningPeakPercent": {
             "type": "number",

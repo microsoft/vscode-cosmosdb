@@ -14,9 +14,9 @@ import {
     evaluateOverProvisioning,
     evaluateSustainedThrottling,
     fairShareMultiple,
-    longestThrottledRunMs,
     mean,
     percentile,
+    throttledBucketShare,
     type AutoscaleThresholds,
     type DerivedAdvisoryInputs,
 } from './derivedAdvisories';
@@ -33,25 +33,14 @@ function throttledPoints(pattern: boolean[], bucketMs = 5 * MIN): RuTrendPoint[]
     }));
 }
 
-describe('longestThrottledRunMs', () => {
-    it('is zero when nothing is throttled', () => {
-        expect(longestThrottledRunMs(throttledPoints([false, false, false]), 5 * MIN)).toBe(0);
+describe('throttledBucketShare', () => {
+    it('is zero for an empty series', () => {
+        expect(throttledBucketShare([])).toBe(0);
     });
 
-    it('measures the longest continuous run, not the total', () => {
-        // Two separate 2-bucket runs; the longest is 2 buckets = 10 minutes.
-        const points = throttledPoints([true, true, false, true, true, false]);
-        expect(longestThrottledRunMs(points, 5 * MIN)).toBe(2 * 5 * MIN);
-    });
-
-    it('sorts unordered points before scanning', () => {
-        const points: RuTrendPoint[] = [
-            { timestamp: 30 * MIN, throttled: true },
-            { timestamp: 0, throttled: true },
-            { timestamp: 15 * MIN, throttled: true },
-        ];
-        // Reordered: three consecutive throttled buckets.
-        expect(longestThrottledRunMs(points, 5 * MIN)).toBe(3 * 5 * MIN);
+    it('is the fraction of throttled buckets, counting intermittent throttling', () => {
+        // Two separate runs, four throttled of six buckets.
+        expect(throttledBucketShare(throttledPoints([true, true, false, true, true, false]))).toBeCloseTo(4 / 6);
     });
 });
 
@@ -126,16 +115,26 @@ describe('evaluateHotPartitionRisk', () => {
 });
 
 describe('evaluateSustainedThrottling', () => {
-    it('fires when the run meets the configured minutes', () => {
-        const advisory = evaluateSustainedThrottling(30 * MIN, 30);
+    it('fires when the throttled share meets the threshold and grades severity by share', () => {
+        // 30% of intervals throttled → High.
+        const advisory = evaluateSustainedThrottling(0.3, 5, false);
         expect(advisory?.rule).toBe('SustainedThrottlingInRegion');
         expect(advisory?.severity).toBe('High');
-        expect(advisory?.rationale).toContain('30');
+        expect(advisory?.rationale).toContain('30%');
         expect(advisory?.rationale.length).toBeLessThanOrEqual(500);
+        // 6% of intervals throttled → Medium.
+        expect(evaluateSustainedThrottling(0.06, 5, false)?.severity).toBe('Medium');
     });
 
-    it('does not fire below the configured minutes', () => {
-        expect(evaluateSustainedThrottling(25 * MIN, 30)).toBeUndefined();
+    it('splits remediation copy by root cause (add RU vs re-key)', () => {
+        const underProvisioned = evaluateSustainedThrottling(0.3, 5, false);
+        expect(underProvisioned?.suggestedAction).toContain('throughput');
+        const hotPartition = evaluateSustainedThrottling(0.3, 5, true);
+        expect(hotPartition?.suggestedAction).toContain('Re-key');
+    });
+
+    it('does not fire below the configured share', () => {
+        expect(evaluateSustainedThrottling(0.02, 5, false)).toBeUndefined();
     });
 });
 
@@ -264,7 +263,6 @@ describe('compareAdvisories', () => {
 describe('computeDerivedAdvisories', () => {
     const baseInputs: DerivedAdvisoryInputs = {
         throttlingPoints: throttledPoints([false, false, false]),
-        throttlingBucketMs: 5 * MIN,
         weeklyRuPercents: [50, 50, 50],
         weeklyPeakPercent: 50,
         hasManualThroughput: false,
@@ -278,9 +276,8 @@ describe('computeDerivedAdvisories', () => {
 
     it('fires the high-severity + over-provisioning rules and returns them severity-sorted', () => {
         const inputs: DerivedAdvisoryInputs = {
-            // Six consecutive throttled 5-min buckets = 30 minutes.
+            // All six 24h intervals throttled → 100% throttled share.
             throttlingPoints: throttledPoints([true, true, true, true, true, true]),
-            throttlingBucketMs: 5 * MIN,
             weeklyRuPercents: [20, 20, 20, 20],
             weeklyPeakPercent: 20,
             hasManualThroughput: true,

@@ -14,7 +14,7 @@ import {
     type PartitionThresholds,
 } from './partitionHealth';
 import { getRuTrends, type RuTrendPoint } from './ruTrends';
-import { bucketMsForRange, containerKey, MINUTE, type UnavailableReason } from './shared';
+import { containerKey, type UnavailableReason } from './shared';
 
 // ─── Client-side derived advisories ──────────────────────────────────────────────
 //
@@ -69,8 +69,8 @@ export interface DerivedAdvisoryThresholds {
      * of 3 flags a partition pulling three times its fair share regardless of how many partitions exist.
      */
     hotPartitionFairShareMultiple: number;
-    /** Continuous throttling duration (minutes) that fires SustainedThrottlingInRegion. */
-    throttlingMinMinutes: number;
+    /** Share of throttled buckets (%) over the window at or above which SustainedThrottlingInRegion fires. */
+    throttledBucketSharePercent: number;
     /** 7-day peak RU (%) below which OverProvisioning fires. */
     overProvisioningPeakPercent: number;
     /** Peak RU (%) a workload must reach for AutoscaleCandidate — below this you should right-size, not autoscale. */
@@ -85,7 +85,7 @@ export interface DerivedAdvisoryThresholds {
 
 export const DEFAULT_ADVISORY_THRESHOLDS: DerivedAdvisoryThresholds = {
     hotPartitionFairShareMultiple: 3,
-    throttlingMinMinutes: 30,
+    throttledBucketSharePercent: 5,
     overProvisioningPeakPercent: 25,
     autoscaleMaxPercent: 40,
     autoscaleAvgPercent: 30,
@@ -110,23 +110,17 @@ function clampRationale(text: string): string {
 }
 
 /**
- * Longest run of consecutive throttled buckets expressed in milliseconds. Each
- * bucket spans `bucketMs`, so a run of N throttled buckets is `N * bucketMs`.
- * Pure.
+ * Share (0..1) of buckets that qualify as throttled over the window. Unlike the
+ * longest *continuous* run, this counts intermittent throttling too: a
+ * 20-min-on / 10-min-off pattern all day never accumulates a long continuous run
+ * yet has a high throttled share. Returns 0 for an empty series. Pure.
  */
-export function longestThrottledRunMs(points: readonly RuTrendPoint[], bucketMs: number): number {
-    const sorted = [...points].sort((a, b) => a.timestamp - b.timestamp);
-    let longest = 0;
-    let current = 0;
-    for (const point of sorted) {
-        if (point.throttled) {
-            current += 1;
-            longest = Math.max(longest, current);
-        } else {
-            current = 0;
-        }
+export function throttledBucketShare(points: readonly RuTrendPoint[]): number {
+    if (points.length === 0) {
+        return 0;
     }
-    return longest * Math.max(0, bucketMs);
+    const throttled = points.reduce((count, point) => count + (point.throttled ? 1 : 0), 0);
+    return throttled / points.length;
 }
 
 /** Arithmetic mean of the finite values in a series; 0 for an empty series. Pure. */
@@ -221,30 +215,55 @@ export function evaluateHotPartitionRisk(
 }
 
 /**
- * SustainedThrottlingInRegion / UnderProvisioning (P0): requests were throttled
- * (HTTP 429) continuously for at least the configured duration. Pure.
+ * SustainedThrottlingInRegion / UnderProvisioning (P0): a material share of
+ * buckets over the last 24h qualified as throttled (HTTP 429). Keying on the
+ * *share* of throttled buckets rather than the longest *continuous* run catches
+ * chronic intermittent throttling (an on/off pattern that never accumulates a
+ * long unbroken run). The remediation copy is split by root cause: when a hot
+ * partition is also flagged the fix is to re-key (CODA DX-006), otherwise to add
+ * RU/s (CODA DX-005) — adding capacity does not fix a hot partition. Pure.
  */
-export function evaluateSustainedThrottling(longestRunMs: number, minMinutes: number): DerivedAdvisory | undefined {
-    const minMs = minMinutes * MINUTE;
-    if (minMs <= 0 || longestRunMs < minMs) {
+export function evaluateSustainedThrottling(
+    throttledShare: number,
+    fireSharePercent: number,
+    hotPartitionPresent: boolean,
+): DerivedAdvisory | undefined {
+    const sharePercent = throttledShare * 100;
+    if (fireSharePercent <= 0 || sharePercent < fireSharePercent) {
         return undefined;
     }
-    const minutes = Math.round(longestRunMs / MINUTE);
+    const share = Math.round(sharePercent);
+    const threshold = Math.round(fireSharePercent);
+    const severity: DerivedAdvisorySeverity = sharePercent >= 10 ? 'High' : 'Medium';
+
+    const rootCause = hotPartitionPresent
+        ? l10n.t(
+              'A hot partition is also flagged on this account, so the throttling is likely concentrated on one partition rather than a global capacity shortfall — adding RU/s would not help.',
+          )
+        : l10n.t(
+              'With no hot partition flagged, the throttling most likely means the workload is under-provisioned for its peak.',
+          );
+    const action = hotPartitionPresent
+        ? l10n.t(
+              'Re-key the hot container to spread traffic across partitions (adding RU/s will not fix a single hot partition), and smooth bursts with client-side retries and batching.',
+          )
+        : l10n.t(
+              'Increase provisioned throughput (or enable autoscale) to cover the peak, and smooth bursts with client-side retries and batching.',
+          );
+
     return {
         id: 'SustainedThrottlingInRegion',
         rule: 'SustainedThrottlingInRegion',
-        severity: 'High',
+        severity,
         title: l10n.t('Sustained throttling detected'),
         rationale: clampRationale(
             l10n.t(
-                'Requests were throttled (HTTP 429) continuously for about {minutes} minutes in the last 24 hours, at or beyond the {min}-minute sustained-throttling threshold. Prolonged 429s usually mean the workload is under-provisioned for its peak, or traffic concentrates on a single partition.',
-                { minutes, min: minMinutes },
-            ),
+                'Requests were throttled (HTTP 429) in {share}% of monitored intervals over the last 24 hours, at or above the {threshold}% throttled-share threshold. ',
+                { share, threshold },
+            ) + rootCause,
         ),
-        suggestedAction: l10n.t(
-            'Increase provisioned throughput (or enable autoscale) for the affected containers, or smooth traffic with client-side retries and batching.',
-        ),
-        thresholdReference: l10n.t('Threshold: throttling ≥ {min} continuous minutes', { min: minMinutes }),
+        suggestedAction: action,
+        thresholdReference: l10n.t('Threshold: ≥ {threshold}% of 24h intervals throttled', { threshold }),
     };
 }
 
@@ -428,8 +447,6 @@ export function evaluateIndexingCostRisk(
 export interface DerivedAdvisoryInputs {
     /** Account-wide RU trend points for the sustained-throttling rule (typically the last 24h). */
     throttlingPoints: readonly RuTrendPoint[];
-    /** Bucket size (ms) for `throttlingPoints`, used to convert a run of buckets to a duration. */
-    throttlingBucketMs: number;
     /** Account-wide 7-day RU% samples for the over-provisioning + autoscale rules. */
     weeklyRuPercents: readonly number[];
     /** Max of `weeklyRuPercents`, or undefined when no 7-day data is available. */
@@ -454,6 +471,7 @@ export function computeDerivedAdvisories(
 ): DerivedAdvisory[] {
     const advisories: DerivedAdvisory[] = [];
 
+    let hotPartitionPresent = false;
     for (const partition of inputs.partitions) {
         const advisory = evaluateHotPartitionRisk(
             partition.databaseId,
@@ -464,12 +482,14 @@ export function computeDerivedAdvisories(
         );
         if (advisory) {
             advisories.push(advisory);
+            hotPartitionPresent = true;
         }
     }
 
     const throttling = evaluateSustainedThrottling(
-        longestThrottledRunMs(inputs.throttlingPoints, inputs.throttlingBucketMs),
-        thresholds.throttlingMinMinutes,
+        throttledBucketShare(inputs.throttlingPoints),
+        thresholds.throttledBucketSharePercent,
+        hotPartitionPresent,
     );
     if (throttling) {
         advisories.push(throttling);
@@ -612,7 +632,6 @@ export async function collectDerivedAdvisories(params: CollectDerivedAdvisoriesP
     return computeDerivedAdvisories(
         {
             throttlingPoints: dayTrends.points,
-            throttlingBucketMs: bucketMsForRange('24H'),
             weeklyRuPercents,
             weeklyPeakPercent: weekTrends.peakPercent,
             hasManualThroughput: rows.some((row) => MANUAL_THROUGHPUT_MODES.has(row.throughputMode)),

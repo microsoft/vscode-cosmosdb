@@ -60,9 +60,9 @@ export function readAdvisoryThresholds(): DerivedAdvisoryThresholds {
             config.get<number>('advisories.hotPartitionFairShareMultiple'),
             DEFAULT_ADVISORY_THRESHOLDS.hotPartitionFairShareMultiple,
         ),
-        throttlingMinMinutes: positive(
-            config.get<number>('advisories.throttlingMinMinutes'),
-            DEFAULT_ADVISORY_THRESHOLDS.throttlingMinMinutes,
+        throttledBucketSharePercent: positive(
+            config.get<number>('advisories.throttledBucketSharePercent'),
+            DEFAULT_ADVISORY_THRESHOLDS.throttledBucketSharePercent,
         ),
         overProvisioningPeakPercent: positive(
             config.get<number>('advisories.overProvisioningPeakPercent'),

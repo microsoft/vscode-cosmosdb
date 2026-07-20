@@ -334,16 +334,12 @@ describe('evaluateStorageGrowthRisk', () => {
 
     it('ignores immaterial (< 1 GiB) partitions', () => {
         // 0.5 GiB growing fast is still tiny.
-        expect(
-            evaluateStorageGrowthRisk(container([storageSeries('0', [0.1, 0.2, 0.3, 0.5])]), 180),
-        ).toBeUndefined();
+        expect(evaluateStorageGrowthRisk(container([storageSeries('0', [0.1, 0.2, 0.3, 0.5])]), 180)).toBeUndefined();
     });
 
     it('ignores flat/noisy (< 0.1 GiB/day) partitions', () => {
         // 45 GiB but essentially flat → never projected to reach the wall in a meaningful horizon.
-        expect(
-            evaluateStorageGrowthRisk(container([storageSeries('0', [45, 45, 45, 45])]), 180),
-        ).toBeUndefined();
+        expect(evaluateStorageGrowthRisk(container([storageSeries('0', [45, 45, 45, 45])]), 180)).toBeUndefined();
     });
 
     it('reports the soonest-to-fill partition across the container', () => {

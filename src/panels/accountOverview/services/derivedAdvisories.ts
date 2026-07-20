@@ -380,7 +380,11 @@ export function evaluateAutoscaleCandidate(
         return undefined;
     }
     const peakToAvg = maxPercent / avgPercent;
-    if (maxPercent < thresholds.maxPercent || avgPercent > thresholds.avgPercent || peakToAvg < thresholds.peakToAvgRatio) {
+    if (
+        maxPercent < thresholds.maxPercent ||
+        avgPercent > thresholds.avgPercent ||
+        peakToAvg < thresholds.peakToAvgRatio
+    ) {
         return undefined;
     }
     const max = Math.round(maxPercent);
@@ -400,10 +404,11 @@ export function evaluateAutoscaleCandidate(
         suggestedAction: l10n.t(
             'Enable autoscale on the bursty containers so provisioned RU/s follows demand between the configured floor and ceiling.',
         ),
-        thresholdReference: l10n.t(
-            'Threshold: peak ≥ {max}%, average ≤ {avg}%, and peak/average ≥ {ratio}×',
-            { max: thresholds.maxPercent, avg: thresholds.avgPercent, ratio: thresholds.peakToAvgRatio },
-        ),
+        thresholdReference: l10n.t('Threshold: peak ≥ {max}%, average ≤ {avg}%, and peak/average ≥ {ratio}×', {
+            max: thresholds.maxPercent,
+            avg: thresholds.avgPercent,
+            ratio: thresholds.peakToAvgRatio,
+        }),
     };
 }
 
@@ -539,7 +544,11 @@ export function evaluateStorageGrowthRisk(
     }
 
     const severity: DerivedAdvisorySeverity =
-        soonest.days <= STORAGE_GROWTH_HIGH_DAYS ? 'High' : soonest.days <= STORAGE_GROWTH_MEDIUM_DAYS ? 'Medium' : 'Low';
+        soonest.days <= STORAGE_GROWTH_HIGH_DAYS
+            ? 'High'
+            : soonest.days <= STORAGE_GROWTH_MEDIUM_DAYS
+              ? 'Medium'
+              : 'Low';
     const scope = containerKey(input.databaseId, input.containerId);
     const days = Math.max(0, Math.round(soonest.days));
     const currentGiB = Math.round((soonest.currentBytes / GIB) * 10) / 10;
@@ -713,7 +722,12 @@ export interface DerivedAdvisoryInputs {
     /** Total provisioned RU/s across manual-throughput containers, for over-provisioning materiality. */
     manualProvisionedRuTotal?: number;
     /** Per-container top physical-partition RU share (and partition count) over the last hour. */
-    partitions: readonly { databaseId: string; containerId: string; topPartitionShare: number; partitionCount: number }[];
+    partitions: readonly {
+        databaseId: string;
+        containerId: string;
+        topPartitionShare: number;
+        partitionCount: number;
+    }[];
     /** Per-container physical-partition storage series (7d) for the storage-growth and storage-skew rules. */
     storage: readonly ContainerStorageInput[];
     /** Per-container index/data storage for the indexing-cost rule. */
@@ -765,7 +779,8 @@ export function computeDerivedAdvisories(
     }
 
     const autoscale = evaluateAutoscaleCandidate(
-        inputs.weeklyPeakPercent ?? (inputs.weeklyRuPercents.length > 0 ? Math.max(...inputs.weeklyRuPercents) : undefined),
+        inputs.weeklyPeakPercent ??
+            (inputs.weeklyRuPercents.length > 0 ? Math.max(...inputs.weeklyRuPercents) : undefined),
         inputs.weeklyRuPercents.length > 0 ? mean(inputs.weeklyRuPercents) : undefined,
         {
             maxPercent: thresholds.autoscaleMaxPercent,

@@ -56,6 +56,8 @@ Data is fetched with your Azure credentials, so each section requires the corres
 
 Learn more about assigning roles in [Azure role-based access control](https://learn.microsoft.com/azure/role-based-access-control/overview).
 
+For the metrics, detections, and ARM endpoints behind the dashboard, see [`docs/account-overview-dashboard.md`](./docs/account-overview-dashboard.md).
+
 ## Query Editor
 
 The Query Editor allows you to write and execute queries across your databases.

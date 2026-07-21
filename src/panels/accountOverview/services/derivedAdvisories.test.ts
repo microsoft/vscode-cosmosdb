@@ -11,14 +11,17 @@ import {
     daysToStorageLimit,
     DEFAULT_ADVISORY_THRESHOLDS,
     evaluateAutoscaleCandidate,
+    evaluateExpensiveConsistency,
     evaluateHotPartitionRisk,
     evaluateIndexingCostRisk,
+    evaluateMultiRegionWrites,
     evaluateOverProvisioning,
     evaluateStorageGrowthRisk,
     evaluateStorageSkewRisk,
     evaluateUnderProvisioning,
     mean,
     storageGrowthSlopeBytesPerDay,
+    type AccountConfigInput,
     type AutoscaleThresholds,
     type ContainerStorageInput,
     type DerivedAdvisoryInputs,
@@ -474,6 +477,112 @@ describe('computeDerivedAdvisories', () => {
         const rules = computeDerivedAdvisories(inputs, DEFAULT_ADVISORY_THRESHOLDS).map((a) => a.rule);
         expect(rules).not.toContain('OverProvisioning');
         expect(rules).not.toContain('AutoscaleCandidate');
+    });
+});
+
+describe('evaluateExpensiveConsistency', () => {
+    function config(overrides: Partial<AccountConfigInput> = {}): AccountConfigInput {
+        return {
+            accountName: 'orders-prod',
+            regionCount: 2,
+            multiRegionWritesEnabled: false,
+            writeRegionCount: 1,
+            apiKind: 'core',
+            ...overrides,
+        };
+    }
+
+    it('fires Medium on Strong consistency across ≥ 2 regions', () => {
+        const advisory = evaluateExpensiveConsistency(config({ consistencyLevel: 'Strong', regionCount: 3 }));
+        expect(advisory?.rule).toBe('ExpensiveConsistency');
+        expect(advisory?.severity).toBe('Medium');
+    });
+
+    it('fires Low on Bounded Staleness across ≥ 2 regions', () => {
+        const advisory = evaluateExpensiveConsistency(config({ consistencyLevel: 'BoundedStaleness', regionCount: 2 }));
+        expect(advisory?.severity).toBe('Low');
+    });
+
+    it('does not fire on a single region (no cross-region cost)', () => {
+        expect(evaluateExpensiveConsistency(config({ consistencyLevel: 'Strong', regionCount: 1 }))).toBeUndefined();
+    });
+
+    it('does not fire on the Session default', () => {
+        expect(evaluateExpensiveConsistency(config({ consistencyLevel: 'Session', regionCount: 3 }))).toBeUndefined();
+    });
+
+    it('does not fire when the level is unknown', () => {
+        expect(evaluateExpensiveConsistency(config({ consistencyLevel: undefined, regionCount: 3 }))).toBeUndefined();
+    });
+});
+
+describe('evaluateMultiRegionWrites', () => {
+    function config(overrides: Partial<AccountConfigInput> = {}): AccountConfigInput {
+        return {
+            accountName: 'orders-prod',
+            regionCount: 2,
+            multiRegionWritesEnabled: true,
+            writeRegionCount: 2,
+            apiKind: 'core',
+            ...overrides,
+        };
+    }
+
+    it('does not fire when multi-region writes are disabled', () => {
+        expect(evaluateMultiRegionWrites(config({ multiRegionWritesEnabled: false }))).toBeUndefined();
+    });
+
+    it('fires High on a non-SQL API account (wrong-API misconfiguration)', () => {
+        const advisory = evaluateMultiRegionWrites(config({ apiKind: 'mongo' }));
+        expect(advisory?.rule).toBe('MultiRegionWriteAntipattern');
+        expect(advisory?.severity).toBe('High');
+    });
+
+    it('fires Low as a single-write-region tripwire regardless of environment', () => {
+        const advisory = evaluateMultiRegionWrites(config({ writeRegionCount: 1 }));
+        expect(advisory?.severity).toBe('Low');
+    });
+
+    it('treats ≥ 2 write regions in production as legitimate HA (does not fire)', () => {
+        expect(evaluateMultiRegionWrites(config({ accountName: 'orders-prod', writeRegionCount: 2 }))).toBeUndefined();
+    });
+
+    it('fires Medium on a non-production account with ≥ 2 write regions', () => {
+        const advisory = evaluateMultiRegionWrites(config({ accountName: 'orders-dev', writeRegionCount: 2 }));
+        expect(advisory?.severity).toBe('Medium');
+    });
+});
+
+describe('computeDerivedAdvisories with accountConfig', () => {
+    const baseInputs: DerivedAdvisoryInputs = {
+        weeklyRuPercents: [],
+        hasManualThroughput: false,
+        partitions: [],
+        storage: [],
+        indexing: [],
+    };
+
+    it('surfaces both config advisories when they fire', () => {
+        const rules = computeDerivedAdvisories(
+            {
+                ...baseInputs,
+                accountConfig: {
+                    accountName: 'orders-dev',
+                    consistencyLevel: 'Strong',
+                    regionCount: 2,
+                    multiRegionWritesEnabled: true,
+                    writeRegionCount: 2,
+                    apiKind: 'core',
+                },
+            },
+            DEFAULT_ADVISORY_THRESHOLDS,
+        ).map((a) => a.rule);
+        expect(rules).toContain('ExpensiveConsistency');
+        expect(rules).toContain('MultiRegionWriteAntipattern');
+    });
+
+    it('surfaces nothing when accountConfig is absent', () => {
+        expect(computeDerivedAdvisories(baseInputs, DEFAULT_ADVISORY_THRESHOLDS)).toHaveLength(0);
     });
 });
 

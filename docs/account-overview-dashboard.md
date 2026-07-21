@@ -43,34 +43,38 @@ partial, ❌ different signal. Reaching full parity with CODA — both the diver
 not-yet-ported detectors — is a tracked goal (see Phase 9/10 in the plan). All defaults live under
 `cosmosDB.accountOverview.*` and can be tuned without a redeploy.
 
-| #     | Detection            | Trigger (default)                                                                          | Surface                                           | CODA map                 | CODA parity                                 |
-| ----- | -------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------- | ------------------------ | ------------------------------------------- |
-| AO-D1 | Account / row health | peak RU ≥ 80 / 90 %; sustained 429                                                         | Header pill + inventory row badges                | DX-005                   | RU bands ✅ (growth → AO-D9)                |
-| AO-D2 | Hot partition        | busiest physical-partition p99 ≥ 90 % saturation while another < 70 % headroom (7-day)     | Heatmap tile (flagged) **and** Derived Advisories | DX-006                   | ✅ p99 saturation + headroom (DX-006)       |
-| AO-D3 | Storage skew         | coolest ÷ busiest partition size < 0.7, busiest ≥ 1 GiB                                    | Heatmap (storage mode) **and** Derived Advisories | DX-015                   | ✅ balance ratio (DX-015)                   |
-| AO-D4 | Sustained throttling | 429 rate ≥ 1 % with every partition p99 ≥ 90 % (uniform saturation, 7-day)                 | RU-chart bands **and** Derived Advisories         | DX-005 / DX-018          | ✅ 429-rate + uniform saturation (DX-005)   |
-| AO-D5 | Over-provisioning    | 7-day p99 RU < 30 % (manual only), 90 % peak guard, relative-materiality severity          | Derived Advisories                                | DX-001                   | ✅ band + peak guard + materiality (DX-001) |
-| AO-D6 | Autoscale candidate  | peak ≥ 40 %, avg ≤ 30 %, peak/avg ≥ 5 (manual only)                                        | Derived Advisories                                | DX-012                   | ✅ duty cycle (DX-012)                      |
-| AO-D7 | Indexing cost risk   | index/data storage > 0.3, 0 excluded paths                                                 | Derived Advisories                                | — (CODA gap)             | ⚠️ storage proxy; wants write-RU share      |
-| AO-D8 | Advisor + Alerts     | severity / impact from Azure                                                               | Right rail (Active Alerts, Recommendations)       | — (ext-only passthrough) | ✅ passthrough                              |
-| AO-D9 | Rapid storage growth | physical-partition size trajectory reaches 50 GiB within horizon (High ≤ 30 d, Med ≤ 90 d) | Derived Advisories                                | DX-017                   | ✅ least-squares horizon (DX-017)           |
+| #      | Detection                       | Trigger (default)                                                                          | Surface                                           | CODA map                 | CODA parity                                 |
+| ------ | ------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------- | ------------------------ | ------------------------------------------- |
+| AO-D1  | Account / row health            | peak RU ≥ 80 / 90 %; sustained 429                                                         | Header pill + inventory row badges                | DX-005                   | RU bands ✅ (growth → AO-D9)                |
+| AO-D2  | Hot partition                   | busiest physical-partition p99 ≥ 90 % saturation while another < 70 % headroom (7-day)     | Heatmap tile (flagged) **and** Derived Advisories | DX-006                   | ✅ p99 saturation + headroom (DX-006)       |
+| AO-D3  | Storage skew                    | coolest ÷ busiest partition size < 0.7, busiest ≥ 1 GiB                                    | Heatmap (storage mode) **and** Derived Advisories | DX-015                   | ✅ balance ratio (DX-015)                   |
+| AO-D4  | Sustained throttling            | 429 rate ≥ 1 % with every partition p99 ≥ 90 % (uniform saturation, 7-day)                 | RU-chart bands **and** Derived Advisories         | DX-005 / DX-018          | ✅ 429-rate + uniform saturation (DX-005)   |
+| AO-D5  | Over-provisioning               | 7-day p99 RU < 30 % (manual only), 90 % peak guard, relative-materiality severity          | Derived Advisories                                | DX-001                   | ✅ band + peak guard + materiality (DX-001) |
+| AO-D6  | Autoscale candidate             | peak ≥ 40 %, avg ≤ 30 %, peak/avg ≥ 5 (manual only)                                        | Derived Advisories                                | DX-012                   | ✅ duty cycle (DX-012)                      |
+| AO-D7  | Indexing cost risk              | index/data storage > 0.3, 0 excluded paths                                                 | Derived Advisories                                | — (CODA gap)             | ⚠️ storage proxy; wants write-RU share      |
+| AO-D8  | Advisor + Alerts                | severity / impact from Azure                                                               | Right rail (Active Alerts, Recommendations)       | — (ext-only passthrough) | ✅ passthrough                              |
+| AO-D9  | Rapid storage growth            | physical-partition size trajectory reaches 50 GiB within horizon (High ≤ 30 d, Med ≤ 90 d) | Derived Advisories                                | DX-017                   | ✅ least-squares horizon (DX-017)           |
+| AO-D10 | Premium consistency             | Strong / Bounded Staleness across ≥ 2 regions (config fact)                                | Derived Advisories                                | DX-016                   | ✅ config parity (DX-016)                   |
+| AO-D11 | Multi-region writes antipattern | multi-region writes enabled on wrong-API, single write region, or non-prod (config fact)   | Derived Advisories                                | DX-008                   | ✅ config parity (DX-008)                   |
 
 ### Where each detection surfaces
 
 Detections are **not** confined to the right rail. Some render inline in the charts/tables, some only as a
 text advisory, and a few in both places:
 
-| Detection                            | Right rail (Derived Advisories)            | Main column (chart / table)                       |
-| ------------------------------------ | ------------------------------------------ | ------------------------------------------------- |
-| AO-D1 Account / row health           | —                                          | Health pill (header) + per-row badges (inventory) |
-| AO-D2 Hot partition                  | ✅ advisory                                | ✅ flagged tile in the partition heatmap          |
-| AO-D3 Storage skew                   | ✅ advisory                                | ✅ heatmap in storage mode                        |
-| AO-D4 Sustained throttling           | ✅ advisory                                | ✅ shaded bands on the RU trend chart             |
-| AO-D5 Over-provisioning              | ✅ advisory                                | —                                                 |
-| AO-D6 Autoscale candidate            | ✅ advisory                                | —                                                 |
-| AO-D7 Indexing cost risk             | ✅ advisory                                | —                                                 |
-| AO-D8 Advisor + Alerts (passthrough) | ✅ (Active Alerts + Recommendations cards) | —                                                 |
-| AO-D9 Rapid storage growth           | ✅ advisory                                | —                                                 |
+| Detection                              | Right rail (Derived Advisories)            | Main column (chart / table)                       |
+| -------------------------------------- | ------------------------------------------ | ------------------------------------------------- |
+| AO-D1 Account / row health             | —                                          | Health pill (header) + per-row badges (inventory) |
+| AO-D2 Hot partition                    | ✅ advisory                                | ✅ flagged tile in the partition heatmap          |
+| AO-D3 Storage skew                     | ✅ advisory                                | ✅ heatmap in storage mode                        |
+| AO-D4 Sustained throttling             | ✅ advisory                                | ✅ shaded bands on the RU trend chart             |
+| AO-D5 Over-provisioning                | ✅ advisory                                | —                                                 |
+| AO-D6 Autoscale candidate              | ✅ advisory                                | —                                                 |
+| AO-D7 Indexing cost risk               | ✅ advisory                                | —                                                 |
+| AO-D8 Advisor + Alerts (passthrough)   | ✅ (Active Alerts + Recommendations cards) | —                                                 |
+| AO-D9 Rapid storage growth             | ✅ advisory                                | —                                                 |
+| AO-D10 Premium consistency             | ✅ advisory                                | —                                                 |
+| AO-D11 Multi-region writes antipattern | ✅ advisory                                | —                                                 |
 
 **Passthrough vs derived:** the **Active Alerts** and **Recommendations** cards are Azure's own output
 (Azure Monitor fired alerts and Azure Advisor), surfaced verbatim. The **Derived Advisories** card is the

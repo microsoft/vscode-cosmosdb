@@ -43,6 +43,7 @@ export const derivedAdvisoriesProcedures = {
             }
 
             try {
+                const account = metadata.databaseAccount as DatabaseAccountGetResults;
                 const advisories = await collectDerivedAdvisories({
                     monitorClient,
                     cosmosClient,
@@ -53,6 +54,17 @@ export const derivedAdvisoriesProcedures = {
                     healthThresholds: readHealthThresholds(),
                     partitionThresholds: readPartitionThresholds(),
                     advisoryThresholds: readAdvisoryThresholds(),
+                    accountConfig: {
+                        accountName: metadata.accountName,
+                        tags: account.tags,
+                        subscriptionName: metadata.subscription.name,
+                        consistencyLevel: account.consistencyPolicy?.defaultConsistencyLevel,
+                        regionCount: account.locations?.length ?? account.readLocations?.length ?? 0,
+                        multiRegionWritesEnabled: account.enableMultipleWriteLocations ?? false,
+                        writeRegionCount: account.writeLocations?.length ?? 0,
+                        // The derived-advisory engine only runs for the Core (SQL) API (guarded above).
+                        apiKind: 'core',
+                    },
                 });
 
                 return { available: true, advisories, generatedAt: Date.now() };

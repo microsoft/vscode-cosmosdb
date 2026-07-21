@@ -6,6 +6,7 @@
 import { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { type MonitorClient } from '@azure/arm-monitor';
 import * as l10n from '@vscode/l10n';
+import { classifyEnvironment } from './environmentClassifier';
 import { getSqlInventory, type ThroughputMode } from './inventory';
 import { getInventoryMetrics, type HealthThresholds } from './inventoryMetrics';
 import {
@@ -44,7 +45,9 @@ export type DerivedAdvisoryRule =
     | 'AutoscaleCandidate'
     | 'StorageGrowthRisk'
     | 'StorageSkewRisk'
-    | 'IndexingCostRisk';
+    | 'IndexingCostRisk'
+    | 'ExpensiveConsistency'
+    | 'MultiRegionWriteAntipattern';
 
 export type DerivedAdvisorySeverity = 'High' | 'Medium' | 'Low';
 
@@ -744,6 +747,161 @@ export function evaluateIndexingCostRisk(
     };
 }
 
+// ─── Account-scoped configuration advisories (ARM config only) ─────────────────────
+//
+// DX-016 and DX-008 read only the account's ARM configuration — no workload, no metrics — and surface
+// qualitative antipatterns (they explain the consequence and ask the customer to confirm intent; they assert
+// no RU/s or dollar figure). Both are account-scoped, so at most one of each fires per account.
+
+/** Consistency levels stronger than the Session default, normalised to lowercase (no separators). */
+const PREMIUM_CONSISTENCY_LEVELS: ReadonlySet<string> = new Set(['strong', 'boundedstaleness']);
+
+/** Cosmos DB APIs whose drivers cannot use multi-region-write failover, so the flag is always a misconfiguration. */
+const NON_MULTI_WRITE_APIS: ReadonlySet<string> = new Set(['mongo', 'cassandra', 'gremlin', 'table']);
+
+const API_LABEL: Record<string, string> = {
+    mongo: 'MongoDB',
+    cassandra: 'Cassandra',
+    gremlin: 'Gremlin',
+    table: 'Table',
+};
+
+/** Already-known ARM account configuration the config-only advisories (DX-016 / DX-008) read. */
+export interface AccountConfigInput {
+    /** Account name, for environment inference (DX-008). */
+    accountName: string;
+    /** Resource tags, for environment inference (DX-008). */
+    tags?: Record<string, string | undefined>;
+    /** Subscription display name, for environment inference (DX-008). */
+    subscriptionName?: string;
+    /** `defaultConsistencyLevel` from the ARM consistency policy (e.g. `Session`, `Strong`). */
+    consistencyLevel?: string;
+    /** Number of regions enabled for the account. */
+    regionCount: number;
+    /** `enableMultipleWriteLocations` from ARM. */
+    multiRegionWritesEnabled: boolean;
+    /** Number of write regions the account has. */
+    writeRegionCount: number;
+    /**
+     * Canonical API family (`core`, `mongo`, `cassandra`, `gremlin`, `table`). The derived-advisory engine only
+     * runs for `core` accounts, so the wrong-API DX-008 branch is effectively dead here, but it is kept faithful
+     * to CODA so the rule is correct if the engine is ever opened to other APIs.
+     */
+    apiKind: string;
+}
+
+/** Normalises an ARM consistency level (any casing / separators) to the lowercase token used for comparison. */
+function normalizeConsistency(level: string | undefined): string {
+    return (level ?? '').split('.').pop()!.replace(/[_\s]/g, '').trim().toLowerCase();
+}
+
+/**
+ * ExpensiveConsistency (CODA DX-016): the account runs a premium consistency level (Strong or Bounded Staleness)
+ * across two or more regions. Across multiple regions these levels make writes wait on additional regions, raising
+ * write latency and tightening availability; the default Session consistency suits most workloads. On a single
+ * region the cross-region cost does not apply, so it never fires there. Strong is Medium, Bounded Staleness is Low.
+ * Pure.
+ */
+export function evaluateExpensiveConsistency(config: AccountConfigInput): DerivedAdvisory | undefined {
+    const level = normalizeConsistency(config.consistencyLevel);
+    if (!PREMIUM_CONSISTENCY_LEVELS.has(level) || config.regionCount < 2) {
+        return undefined;
+    }
+    const isStrong = level === 'strong';
+    const displayLevel = config.consistencyLevel ?? (isStrong ? 'Strong' : 'Bounded Staleness');
+    return {
+        id: 'ExpensiveConsistency',
+        rule: 'ExpensiveConsistency',
+        severity: isStrong ? 'Medium' : 'Low',
+        title: l10n.t('Premium consistency across regions'),
+        rationale: clampRationale(
+            l10n.t(
+                'This account uses {level} consistency across {regions} regions. Across multiple regions this level raises write latency and tightens availability (Strong makes writes wait on additional regions), and the default Session consistency is sufficient for most workloads.',
+                { level: displayLevel, regions: config.regionCount },
+            ),
+        ),
+        suggestedAction: l10n.t(
+            'Confirm the application genuinely needs this consistency level; if not, relax it to Session (or Bounded Staleness) after validating the application’s tolerance.',
+        ),
+        thresholdReference: l10n.t('Threshold: Strong or Bounded Staleness across ≥ 2 regions'),
+    };
+}
+
+/**
+ * MultiRegionWriteAntipattern (CODA DX-008): multi-region writes are enabled where the RTO=0 write-failover
+ * benefit cannot or need not apply. The wrong-API case (Mongo/Cassandra/Gremlin/Table drivers cannot use the
+ * failover) is highest confidence; a single write region with the flag set is a latent tripwire (no benefit today,
+ * doubled write cost the moment a second write region is added); non-production with ≥ 2 write regions does not
+ * need RTO=0 write failover. Two-or-more write regions in production is legitimate active-active HA and never
+ * fires. Pure.
+ */
+export function evaluateMultiRegionWrites(config: AccountConfigInput): DerivedAdvisory | undefined {
+    if (!config.multiRegionWritesEnabled) {
+        return undefined;
+    }
+
+    const base = { id: 'MultiRegionWriteAntipattern', rule: 'MultiRegionWriteAntipattern' as const };
+    const disableAction = l10n.t('Disable multi-region writes unless the write-failover benefit genuinely applies.');
+
+    // Wrong-API: the failover benefit is impossible regardless of environment — highest confidence.
+    if (NON_MULTI_WRITE_APIS.has(config.apiKind)) {
+        const apiLabel = API_LABEL[config.apiKind];
+        return {
+            ...base,
+            severity: 'High',
+            title: l10n.t('Multi-region writes on a {api} account', { api: apiLabel }),
+            rationale: clampRationale(
+                l10n.t(
+                    'Multi-region writes are enabled on a {api} API account, but the {api} drivers cannot use Cosmos DB’s multi-region-write failover — so the RTO=0 HA benefit never materialises while the account still carries the write-conflict surface (and 2× write cost across any second write region).',
+                    { api: apiLabel },
+                ),
+            ),
+            suggestedAction: disableAction,
+            thresholdReference: l10n.t('Threshold: multi-region writes enabled on a non-SQL API account'),
+        };
+    }
+
+    // Single write region + the flag set = latent tripwire regardless of environment: no benefit today (write
+    // failover needs a second region), and write cost doubles the moment a second write region is added.
+    if (config.writeRegionCount < 2) {
+        return {
+            ...base,
+            severity: 'Low',
+            title: l10n.t('Multi-region writes with a single write region'),
+            rationale: clampRationale(
+                l10n.t(
+                    'Multi-region writes are enabled but the account has a single write region, so the feature delivers no benefit today (RTO=0 write failover needs a second region), while write cost doubles the moment a second write region is added.',
+                ),
+            ),
+            suggestedAction: l10n.t(
+                'Disable multi-region writes to remove the tripwire unless a second write region is imminent and justified.',
+            ),
+            thresholdReference: l10n.t('Threshold: multi-region writes enabled with a single write region'),
+        };
+    }
+
+    // Two or more write regions: legitimate active-active HA in production; only flagged in non-production.
+    const env = classifyEnvironment(config.accountName, config.tags, config.subscriptionName);
+    if (!env.isNonProd) {
+        return undefined;
+    }
+    return {
+        ...base,
+        severity: 'Medium',
+        title: l10n.t('Multi-region writes on a non-production account'),
+        rationale: clampRationale(
+            l10n.t(
+                'Multi-region writes are enabled across {regions} write regions on a non-production account, which does not need RTO=0 write failover. This doubles write cost and adds write-conflict surface for no benefit.',
+                { regions: config.writeRegionCount },
+            ),
+        ),
+        suggestedAction: l10n.t(
+            'Disable multi-region writes (and consider dropping the second write region) on dev/test/stage accounts.',
+        ),
+        thresholdReference: l10n.t('Threshold: multi-region writes across ≥ 2 write regions on a non-prod account'),
+    };
+}
+
 /** Already-fetched telemetry the derived-advisory engine consumes. */
 export interface DerivedAdvisoryInputs {
     /** Account-wide 7-day RU% samples for the over-provisioning + autoscale rules. */
@@ -760,6 +918,8 @@ export interface DerivedAdvisoryInputs {
     storage: readonly ContainerStorageInput[];
     /** Per-container index/data storage for the indexing-cost rule. */
     indexing: readonly IndexingUsageInput[];
+    /** Account-level ARM configuration for the config-only advisories (DX-016 / DX-008); absent when unavailable. */
+    accountConfig?: AccountConfigInput;
 }
 
 /**
@@ -840,6 +1000,17 @@ export function computeDerivedAdvisories(
         }
     }
 
+    if (inputs.accountConfig) {
+        const consistency = evaluateExpensiveConsistency(inputs.accountConfig);
+        if (consistency) {
+            advisories.push(consistency);
+        }
+        const multiRegionWrites = evaluateMultiRegionWrites(inputs.accountConfig);
+        if (multiRegionWrites) {
+            advisories.push(multiRegionWrites);
+        }
+    }
+
     advisories.sort(compareAdvisories);
     return advisories;
 }
@@ -863,6 +1034,8 @@ export interface CollectDerivedAdvisoriesParams {
     healthThresholds: HealthThresholds;
     partitionThresholds: PartitionThresholds;
     advisoryThresholds: DerivedAdvisoryThresholds;
+    /** Account-level ARM configuration for the config-only advisories (DX-016 / DX-008). */
+    accountConfig?: AccountConfigInput;
 }
 
 /**
@@ -882,6 +1055,7 @@ export async function collectDerivedAdvisories(params: CollectDerivedAdvisoriesP
         healthThresholds,
         partitionThresholds,
         advisoryThresholds,
+        accountConfig,
     } = params;
 
     const rows = await getSqlInventory(cosmosClient, resourceGroup, accountName, isServerless);
@@ -987,6 +1161,7 @@ export async function collectDerivedAdvisories(params: CollectDerivedAdvisoriesP
             partitions,
             storage,
             indexing,
+            accountConfig,
         },
         advisoryThresholds,
     );

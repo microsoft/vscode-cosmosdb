@@ -108,5 +108,29 @@ export function readAdvisoryThresholds(): DerivedAdvisoryThresholds {
             config.get<number>('advisories.indexingUsageRatio'),
             DEFAULT_ADVISORY_THRESHOLDS.indexingUsageRatio,
         ),
+        idlePeakRuPerBucket: positive(
+            config.get<number>('advisories.idlePeakRuPerBucket'),
+            DEFAULT_ADVISORY_THRESHOLDS.idlePeakRuPerBucket,
+        ),
+        autoscaleToManualAvgPercent: positive(
+            config.get<number>('advisories.autoscaleToManualAvgPercent'),
+            DEFAULT_ADVISORY_THRESHOLDS.autoscaleToManualAvgPercent,
+        ),
+        autoscaleToManualPeakToAvgRatio: positive(
+            config.get<number>('advisories.autoscaleToManualPeakToAvgRatio'),
+            DEFAULT_ADVISORY_THRESHOLDS.autoscaleToManualPeakToAvgRatio,
+        ),
+        serverlessSporadicRatio: positive(
+            config.get<number>('advisories.serverlessSporadicRatio'),
+            DEFAULT_ADVISORY_THRESHOLDS.serverlessSporadicRatio,
+        ),
+        serverlessPeakFloorRuPerSec: positive(
+            config.get<number>('advisories.serverlessPeakFloorRuPerSec'),
+            DEFAULT_ADVISORY_THRESHOLDS.serverlessPeakFloorRuPerSec,
+        ),
+        serverlessPeakCeilingRuPerSec: positive(
+            config.get<number>('advisories.serverlessPeakCeilingRuPerSec'),
+            DEFAULT_ADVISORY_THRESHOLDS.serverlessPeakCeilingRuPerSec,
+        ),
     };
 }

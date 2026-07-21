@@ -1106,6 +1106,44 @@
             "minimum": 0,
             "description": "%cosmosdb.configuration.accountOverview.advisories.indexingUsageRatio%"
           },
+          "cosmosDB.accountOverview.advisories.idlePeakRuPerBucket": {
+            "type": "number",
+            "default": 50,
+            "minimum": 0,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.idlePeakRuPerBucket%"
+          },
+          "cosmosDB.accountOverview.advisories.autoscaleToManualAvgPercent": {
+            "type": "number",
+            "default": 66,
+            "minimum": 0,
+            "maximum": 100,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.autoscaleToManualAvgPercent%"
+          },
+          "cosmosDB.accountOverview.advisories.autoscaleToManualPeakToAvgRatio": {
+            "type": "number",
+            "default": 1.3,
+            "minimum": 1,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.autoscaleToManualPeakToAvgRatio%"
+          },
+          "cosmosDB.accountOverview.advisories.serverlessSporadicRatio": {
+            "type": "number",
+            "default": 0.1,
+            "minimum": 0,
+            "maximum": 1,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.serverlessSporadicRatio%"
+          },
+          "cosmosDB.accountOverview.advisories.serverlessPeakFloorRuPerSec": {
+            "type": "number",
+            "default": 10,
+            "minimum": 0,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.serverlessPeakFloorRuPerSec%"
+          },
+          "cosmosDB.accountOverview.advisories.serverlessPeakCeilingRuPerSec": {
+            "type": "number",
+            "default": 5000,
+            "minimum": 0,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.serverlessPeakCeilingRuPerSec%"
+          },
           "cosmosDB.experimental.migration.showTokenEstimate": {
             "type": "boolean",
             "default": false,

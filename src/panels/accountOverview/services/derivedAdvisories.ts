@@ -6,6 +6,12 @@
 import { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { type MonitorClient } from '@azure/arm-monitor';
 import * as l10n from '@vscode/l10n';
+import {
+    getAccountConsumedRuShape,
+    getAutoscaleUtilization,
+    getContainerIdlePeaks,
+    getContainerPartitionCounts,
+} from './derivedAdvisoryMetrics';
 import { classifyEnvironment } from './environmentClassifier';
 import { getSqlInventory, type ThroughputMode } from './inventory';
 import { getInventoryMetrics, type HealthThresholds } from './inventoryMetrics';
@@ -47,7 +53,12 @@ export type DerivedAdvisoryRule =
     | 'StorageSkewRisk'
     | 'IndexingCostRisk'
     | 'ExpensiveConsistency'
-    | 'MultiRegionWriteAntipattern';
+    | 'MultiRegionWriteAntipattern'
+    | 'IdleContainer'
+    | 'PartitionMergeCandidate'
+    | 'AutoscaleMaxOverProvisioned'
+    | 'AutoscaleToManualCandidate'
+    | 'ServerlessCandidate';
 
 export type DerivedAdvisorySeverity = 'High' | 'Medium' | 'Low';
 
@@ -114,6 +125,37 @@ export interface DerivedAdvisoryThresholds {
     storageSkewBalanceRatio: number;
     /** Index/data storage ratio above which IndexingCostRisk fires. */
     indexingUsageRatio: number;
+    /**
+     * RU: peak RU consumed in any single bucket (max of `TotalRequestUnits`, Total) at or below which a container
+     * counts as idle (DX-004). A container that never spends more than this near-zero floor in any bucket over the
+     * 30-day window did no real work — its whole reservation (manual) or idle floor (autoscale) is recoverable.
+     */
+    idlePeakRuPerBucket: number;
+    /**
+     * Autoscale utilisation (average % of the configured max) at or above which AutoscaleToManualCandidate (DX-013)
+     * fires — a workload sustained near its max barely uses autoscale's elasticity and is cheaper on manual.
+     */
+    autoscaleToManualAvgPercent: number;
+    /**
+     * Peak-to-average ratio of autoscale utilisation at or below which the load counts as steady (DX-013). Combined
+     * with the average floor, a flat high series (little spikiness) is the autoscale→manual signal.
+     */
+    autoscaleToManualPeakToAvgRatio: number;
+    /**
+     * Account-total average-to-peak RU/s ratio below which ServerlessCandidate (DX-014) fires — a low, sporadic
+     * workload with long idle stretches whose shape suits serverless pay-per-RU billing.
+     */
+    serverlessSporadicRatio: number;
+    /**
+     * RU/s: account-total peak above which ServerlessCandidate (DX-014) considers the workload real enough to
+     * evaluate (below this the account is idle — that is DX-004's decommission case, not serverless).
+     */
+    serverlessPeakFloorRuPerSec: number;
+    /**
+     * RU/s: account-total peak at or below which ServerlessCandidate (DX-014) still fits serverless. Above this
+     * single-partition ceiling the workload is steered away (serverless caps at 5,000 RU/s per physical partition).
+     */
+    serverlessPeakCeilingRuPerSec: number;
 }
 
 export const DEFAULT_ADVISORY_THRESHOLDS: DerivedAdvisoryThresholds = {
@@ -127,6 +169,12 @@ export const DEFAULT_ADVISORY_THRESHOLDS: DerivedAdvisoryThresholds = {
     storageGrowthHorizonDays: 180,
     storageSkewBalanceRatio: 0.7,
     indexingUsageRatio: 0.3,
+    idlePeakRuPerBucket: 50,
+    autoscaleToManualAvgPercent: 66,
+    autoscaleToManualPeakToAvgRatio: 1.3,
+    serverlessSporadicRatio: 0.1,
+    serverlessPeakFloorRuPerSec: 10,
+    serverlessPeakCeilingRuPerSec: 5000,
 };
 
 const ADVISORY_SEVERITY_ORDER: Record<DerivedAdvisorySeverity, number> = { High: 0, Medium: 1, Low: 2 };
@@ -152,6 +200,44 @@ export function mean(values: readonly number[]): number {
         return 0;
     }
     return clean.reduce((sum, v) => sum + v, 0) / clean.length;
+}
+
+// ─── Shared capacity-materiality severity (CODA framework/materiality) ─────────────
+//
+// The cost-oriented rules (DX-001 over-provisioning, DX-004 idle, DX-011 autoscale-max) grade severity by
+// **relative materiality in capacity terms**: a finding's recoverable/wasted RU/s as a percentage of the scope's
+// total provisioned RU/s (the same waste is material against a small account, trivial against a fleet). When the
+// scope total is unknown the model falls back to absolute-RU bands. CODA reports capacity, not cost (ADR-0012).
+
+/** Recoverable RU/s as % of scope provisioned RU/s at or above which severity is High. */
+const MATERIALITY_HIGH_PCT = 5;
+/** Recoverable RU/s as % of scope provisioned RU/s at or above which severity is Medium (below this, Low). */
+const MATERIALITY_MEDIUM_PCT = 1;
+/** Absolute recoverable RU/s at or above which severity is High, used only when the scope total is unknown. */
+const MATERIALITY_ABS_HIGH_RU = 5000;
+/** Absolute recoverable RU/s at or above which severity is Medium, used only when the scope total is unknown. */
+const MATERIALITY_ABS_MEDIUM_RU = 1000;
+
+/**
+ * Maps a finding's RU/s (recoverable for idle, wasted for over-provisioning) to a severity — relative to the
+ * scope's provisioned RU/s when known, else an absolute-RU fallback. Shared so DX-001/DX-004/DX-011 stay
+ * consistent (CODA framework/materiality, ADR-0012). Pure.
+ */
+function capacityMaterialitySeverity(
+    findingRu: number,
+    scopeProvisionedRu: number | undefined,
+): DerivedAdvisorySeverity {
+    if (scopeProvisionedRu !== undefined && scopeProvisionedRu > 0) {
+        const pct = (findingRu / scopeProvisionedRu) * 100;
+        if (pct >= MATERIALITY_HIGH_PCT) {
+            return 'High';
+        }
+        return pct >= MATERIALITY_MEDIUM_PCT ? 'Medium' : 'Low';
+    }
+    if (findingRu >= MATERIALITY_ABS_HIGH_RU) {
+        return 'High';
+    }
+    return findingRu >= MATERIALITY_ABS_MEDIUM_RU ? 'Medium' : 'Low';
 }
 
 /**
@@ -902,6 +988,340 @@ export function evaluateMultiRegionWrites(config: AccountConfigInput): DerivedAd
     };
 }
 
+/** DX-004: when an idle autoscale container is decommissioned, only its idle floor (~10% of max) is recovered. */
+const AUTOSCALE_IDLE_FRACTION = 0.1;
+
+/** Already-fetched idle signal for one container over the 30-day window (DX-004). */
+export interface IdleContainerInput {
+    databaseId: string;
+    containerId: string;
+    /** Peak RU consumed in any single bucket (max of `TotalRequestUnits`, Total). 0 for an all-zero/empty series. */
+    peakRuPerBucket: number;
+    /** Throughput billing mode; only manual (dedicated/shared) and autoscale offers are recoverable. */
+    throughputMode: ThroughputMode;
+    /** The container's configured provisioned RU/s (autoscale max for autoscale). */
+    provisionedRu?: number;
+}
+
+/**
+ * IdleContainer (CODA DX-004): a container that is provisioned but serves ~no traffic — its whole reservation is
+ * pure 24/7 waste. The signal is the **peak RU consumed in any single bucket** (`max(TotalRequestUnits, Total)`)
+ * over a long 30-day window: a container that never spends more than a tiny system floor in *any* bucket did no
+ * real work, so it is idle. This is deliberately spike-aware — a container silent for 29 days that runs one real
+ * batch on day 30 shows a large peak and is correctly not flagged. Unlike the utilisation rules an empty/all-zero
+ * series is the *positive* idle signal (Azure Monitor pads idle windows with zeros), not an abstention.
+ * Mode-aware recoverable capacity: manual idle bills the full provisioned RU/s (all recoverable); autoscale idle
+ * scales to ~10% of its max (that floor is what decommission recovers). Severity is capacity materiality. Pure.
+ */
+export function evaluateIdleContainer(
+    input: IdleContainerInput,
+    maxIdlePeakRu: number,
+    scopeProvisionedRu?: number,
+): DerivedAdvisory | undefined {
+    const isAutoscale = input.throughputMode === 'autoscale';
+    const isManual = MANUAL_THROUGHPUT_MODES.has(input.throughputMode);
+    // Only manual/autoscale containers have a provisioned offer to recover; serverless has none.
+    if ((!isAutoscale && !isManual) || input.provisionedRu === undefined || input.provisionedRu <= 0) {
+        return undefined;
+    }
+    // Consumed real RU in some bucket ⇒ active, not idle — DX-001 right-sizes it instead.
+    if (input.peakRuPerBucket > maxIdlePeakRu) {
+        return undefined;
+    }
+    const recoverableRu = isAutoscale ? AUTOSCALE_IDLE_FRACTION * input.provisionedRu : input.provisionedRu;
+    const severity = capacityMaterialitySeverity(recoverableRu, scopeProvisionedRu);
+    const scope = containerKey(input.databaseId, input.containerId);
+    const peak = Math.round(input.peakRuPerBucket);
+    const recoverable = Math.round(recoverableRu);
+    const provisioned = Math.round(input.provisionedRu);
+    const rationale = isAutoscale
+        ? l10n.t(
+              'Container "{container}" consumed at most {peak} RU in any single bucket over the last 30 days, at or below the {threshold} RU idle floor — it serves ~no traffic. Decommissioning it recovers the autoscale idle floor (~{recoverable} RU/s of its {provisioned} RU/s max).',
+              { container: input.containerId, peak, threshold: Math.round(maxIdlePeakRu), recoverable, provisioned },
+          )
+        : l10n.t(
+              'Container "{container}" consumed at most {peak} RU in any single bucket over the last 30 days, at or below the {threshold} RU idle floor — it serves ~no traffic. Its full {recoverable} RU/s provisioned capacity is recoverable.',
+              { container: input.containerId, peak, threshold: Math.round(maxIdlePeakRu), recoverable },
+          );
+    return {
+        id: `IdleContainer:${scope}`,
+        rule: 'IdleContainer',
+        severity,
+        title: l10n.t('Container looks idle'),
+        rationale: clampRationale(rationale),
+        suggestedAction: l10n.t(
+            'Review "{container}" for decommission, a TTL policy, or archival; confirm it is genuinely unused before removing it.',
+            { container: input.containerId },
+        ),
+        thresholdReference: l10n.t('Threshold: peak ≤ {threshold} RU per bucket over 30 days', {
+            threshold: Math.round(maxIdlePeakRu),
+        }),
+        scope,
+    };
+}
+
+/** DX-009: each physical partition supports up to this many RU/s. */
+const RU_PER_PARTITION = 10_000;
+/** DX-009: each physical partition supports up to this much storage (50 GiB). */
+const BYTES_PER_PARTITION = 50 * GIB;
+
+/** Already-fetched partition-count + storage signal for one container (DX-009). */
+export interface PartitionMergeInput {
+    databaseId: string;
+    containerId: string;
+    /** Actual physical partition count (max of `PhysicalPartitionCount`). 0 ⇒ no reading. */
+    actualPartitions: number;
+    /** The container's configured provisioned RU/s (autoscale max or manual). */
+    provisionedRu?: number;
+    /** Current data storage in bytes (max of `DataUsage`). */
+    dataUsageBytes?: number;
+}
+
+/** The smallest physical-partition count that satisfies both the RU/s and storage needs (CODA DX-009). Pure. */
+function neededPartitions(provisionedRu: number, storageBytes: number): number {
+    const forRu = provisionedRu > 0 ? Math.ceil(provisionedRu / RU_PER_PARTITION) : 1;
+    const forStorage = storageBytes > 0 ? Math.ceil(storageBytes / BYTES_PER_PARTITION) : 1;
+    return Math.max(forRu, forStorage, 1);
+}
+
+/**
+ * PartitionMergeCandidate (CODA DX-009): a container has **more physical partitions than its throughput and
+ * storage need** — typically a leftover from once having been scaled to a high RU/s (or large) and then scaled
+ * back down. Each partition then gets a thin slice of RU/s, so a single hot partition can throttle while the
+ * container as a whole looks under-utilised. `needed = max(ceil(RU / 10,000), ceil(bytes / 50 GiB), 1)`; the
+ * container is over-partitioned when `actual > needed` and `actual ≥ 2` (a single partition is never flagged).
+ * Severity is Medium when actual ≥ 2× needed (the slice is very thin), else Low. Merge is a platform operation.
+ * Pure.
+ */
+export function evaluatePartitionMergeCandidate(input: PartitionMergeInput): DerivedAdvisory | undefined {
+    const actual = input.actualPartitions;
+    // 0 ⇒ no partition reading (insufficient data); 1 ⇒ single partition can never be merged.
+    if (actual <= 1) {
+        return undefined;
+    }
+    const provisionedRu = input.provisionedRu ?? 0;
+    const storageBytes = input.dataUsageBytes ?? 0;
+    const needed = neededPartitions(provisionedRu, storageBytes);
+    if (actual <= needed) {
+        return undefined;
+    }
+    const severity: DerivedAdvisorySeverity = actual >= 2 * needed ? 'Medium' : 'Low';
+    const scope = containerKey(input.databaseId, input.containerId);
+    const ruSlice = provisionedRu > 0 ? Math.round(provisionedRu / actual) : 0;
+    const gib = Math.round((storageBytes / GIB) * 10) / 10;
+    return {
+        id: `PartitionMergeCandidate:${scope}`,
+        rule: 'PartitionMergeCandidate',
+        severity,
+        title: l10n.t('Container may be over-partitioned'),
+        rationale: clampRationale(
+            l10n.t(
+                'Container "{container}" has {actual} physical partitions but its {ru} RU/s and {gib} GiB only need {needed}. Each partition therefore gets just ~{slice} RU/s, so a single hot partition can throttle while the container looks under-utilised. This usually follows scaling RU/s down (or deleting data) after a high-throughput or large period.',
+                { container: input.containerId, actual, ru: Math.round(provisionedRu), gib, needed, slice: ruSlice },
+            ),
+        ),
+        suggestedAction: l10n.t(
+            'Merge the physical partitions (Azure Portal or CLI) to consolidate the RU/s back onto fewer partitions.',
+        ),
+        thresholdReference: l10n.t('Threshold: physical partitions > max(ceil(RU/10,000), ceil(storage/50 GiB), 1)'),
+        scope,
+    };
+}
+
+/** Already-fetched autoscale duty-cycle signal for one container (DX-011 / DX-013). */
+export interface AutoscaleUtilizationInput {
+    databaseId: string;
+    containerId: string;
+    /** Peak of the `AutoscaledRU`-as-%-of-configured-max series over the window (0..100). */
+    peakPercent: number;
+    /** Average of the same series (0..100), for the duty-cycle read. */
+    avgPercent: number;
+    /** Number of samples in the series (0 ⇒ no data). */
+    sampleCount: number;
+    /** The container's configured autoscale max RU/s. */
+    configuredMaxRu?: number;
+}
+
+/**
+ * AutoscaleMaxOverProvisioned (CODA DX-011): for autoscale, `NormalizedRUConsumption` measures against the
+ * *currently-scaled* value, so it cannot tell whether the configured **max** is too high. The correct signal is
+ * `AutoscaledRU` (what autoscale actually provisioned) as a % of the configured max. We band on the **peak** of
+ * that series (autoscale's max must cover legitimate spikes, so lowering it below a real peak would throttle):
+ * the max is over-provisioned when the busiest sample stayed below the moderate band. Autoscale bills the idle
+ * floor (10% of max) even at zero load, so lowering the max only recovers the floor reduction, not the full
+ * headroom. Severity is capacity materiality on that recoverable floor. Pure.
+ */
+export function evaluateAutoscaleMaxOverProvisioned(
+    input: AutoscaleUtilizationInput,
+    bandPercent: number,
+    scopeProvisionedRu?: number,
+): DerivedAdvisory | undefined {
+    if (input.sampleCount === 0 || input.configuredMaxRu === undefined || input.configuredMaxRu <= 0) {
+        return undefined;
+    }
+    const peak = input.peakPercent;
+    // Peak at/above the saturation guard, or at/above the moderate band, means the max is genuinely needed.
+    if (peak >= OVERPROVISIONING_PEAK_GUARD_PCT || peak >= bandPercent) {
+        return undefined;
+    }
+    const max = input.configuredMaxRu;
+    const peakConsumed = (peak / 100) * max;
+    const recommended = Math.min(
+        max,
+        Math.max(OVERPROVISIONING_MIN_RU, Math.ceil(peakConsumed * OVERPROVISIONING_HEADROOM), Math.ceil(peakConsumed)),
+    );
+    const floor = (ru: number): number => Math.max(OVERPROVISIONING_MIN_RU, AUTOSCALE_IDLE_FRACTION * ru);
+    const wastedRu = Math.max(0, Math.round(floor(max) - floor(recommended)));
+    const severity = capacityMaterialitySeverity(wastedRu, scopeProvisionedRu);
+    const scope = containerKey(input.databaseId, input.containerId);
+    const peakPct = Math.round(peak);
+    const recommend = Math.round(recommended);
+    return {
+        id: `AutoscaleMaxOverProvisioned:${scope}`,
+        rule: 'AutoscaleMaxOverProvisioned',
+        severity,
+        title: l10n.t('Autoscale max may be set too high'),
+        rationale: clampRationale(
+            l10n.t(
+                'Autoscale on "{container}" never provisioned more than {peak}% of its {max} RU/s max over the window, below the {band}% band. Autoscale bills a 10% idle floor of the max even at zero load, so an over-high max wastes ~{wasted} RU/s of that floor.',
+                {
+                    container: input.containerId,
+                    peak: peakPct,
+                    max: Math.round(max),
+                    band: Math.round(bandPercent),
+                    wasted: wastedRu,
+                },
+            ),
+        ),
+        suggestedAction: l10n.t(
+            'Lower the autoscale max toward the peak-provisioned level (≈ {recommended} RU/s) so the idle floor tracks real demand while still covering the peak.',
+            { recommended: recommend },
+        ),
+        thresholdReference: l10n.t('Threshold: peak AutoscaledRU < {band}% of the configured max', {
+            band: Math.round(bandPercent),
+        }),
+        scope,
+    };
+}
+
+/**
+ * AutoscaleToManualCandidate (CODA DX-013): an *autoscale* container whose load is **steady-high** — average
+ * sustained near the max with little spikiness. Autoscale carries a per-RU premium over manual, so a workload
+ * that stays high does not benefit from scaling and would be cheaper on manual at a fixed RU/s. Steady ⇔ average
+ * ≥ `avgFloorPercent` of the max AND peak-to-average ≤ `peakToAvgCeiling` (flat, not bursty). Qualitative (a
+ * pricing-mode change, not a capacity recovery), so severity is Medium. Pure.
+ */
+export function evaluateAutoscaleToManualCandidate(
+    input: AutoscaleUtilizationInput,
+    avgFloorPercent: number,
+    peakToAvgCeiling: number,
+): DerivedAdvisory | undefined {
+    if (input.sampleCount === 0 || input.avgPercent <= 0) {
+        return undefined;
+    }
+    const peakToAvg = input.peakPercent / input.avgPercent;
+    if (input.avgPercent < avgFloorPercent || peakToAvg > peakToAvgCeiling) {
+        return undefined;
+    }
+    const scope = containerKey(input.databaseId, input.containerId);
+    const avg = Math.round(input.avgPercent);
+    const peak = Math.round(input.peakPercent);
+    const ratio = Math.round(peakToAvg * 10) / 10;
+    return {
+        id: `AutoscaleToManualCandidate:${scope}`,
+        rule: 'AutoscaleToManualCandidate',
+        severity: 'Medium',
+        title: l10n.t('Autoscale container looks steady — manual may be cheaper'),
+        rationale: clampRationale(
+            l10n.t(
+                'Autoscale on "{container}" averaged {avg}% of its max with a peak of {peak}% — a {ratio}× peak-to-average, so the load is steady and high with little spikiness. Autoscale carries a per-RU premium over manual, and a workload that stays high does not benefit from scaling.',
+                { container: input.containerId, avg, peak, ratio },
+            ),
+        ),
+        suggestedAction: l10n.t(
+            'Consider converting "{container}" to manual throughput at a fixed RU/s near the sustained level to drop the autoscale premium.',
+            { container: input.containerId },
+        ),
+        thresholdReference: l10n.t('Threshold: average ≥ {avg}% of max and peak/average ≤ {ratio}×', {
+            avg: Math.round(avgFloorPercent),
+            ratio: Math.round(peakToAvgCeiling * 10) / 10,
+        }),
+        scope,
+    };
+}
+
+/** DX-014: minimum number of buckets needed to judge the account-total RU shape. */
+const SERVERLESS_MIN_POINTS = 24;
+
+/** Already-computed account-total consumed-RU shape over the 30-day window (DX-014). */
+export interface ServerlessCandidateInput {
+    /** Account-total average consumed RU/s over the window. */
+    avgRuPerSec: number;
+    /** Account-total peak consumed RU/s over the window. */
+    peakRuPerSec: number;
+    /** Number of buckets sampled. */
+    sampleCount: number;
+    /** True when the account already uses serverless capacity mode (guard: never a candidate). */
+    isServerless: boolean;
+}
+
+/** Tunable cutoffs for {@link evaluateServerlessCandidate}. */
+export interface ServerlessCandidateThresholds {
+    /** Average-to-peak RU/s ratio below which the workload is sporadic enough for serverless. */
+    sporadicRatio: number;
+    /** Account-total peak (RU/s) above which the workload is real enough to evaluate serverless (else it is idle). */
+    peakFloorRuPerSec: number;
+    /** Account-total peak (RU/s) at or below which serverless still fits (single-partition ceiling). */
+    peakCeilingRuPerSec: number;
+}
+
+/**
+ * ServerlessCandidate (CODA DX-014): the account's total consumed throughput is **low and sporadic** — a small
+ * peak with long idle stretches (a low average-to-peak ratio). Serverless bills per RU with no provisioned floor,
+ * so it wins for this shape. Candidate ⇔ enough history AND peak in `(peakFloor, peakCeiling]` RU/s AND
+ * average/peak < `sporadicRatio`. An account already on serverless, or one whose peak is below the floor (idle —
+ * that is DX-004) or above the ceiling (too large for serverless), is not a candidate. Migration-class, so
+ * qualitative Low severity. Account-scoped. Pure.
+ */
+export function evaluateServerlessCandidate(
+    input: ServerlessCandidateInput,
+    thresholds: ServerlessCandidateThresholds,
+): DerivedAdvisory | undefined {
+    if (input.isServerless || input.sampleCount < SERVERLESS_MIN_POINTS) {
+        return undefined;
+    }
+    if (input.peakRuPerSec < thresholds.peakFloorRuPerSec || input.peakRuPerSec > thresholds.peakCeilingRuPerSec) {
+        return undefined;
+    }
+    const ratio = input.peakRuPerSec > 0 ? input.avgRuPerSec / input.peakRuPerSec : 0;
+    if (ratio >= thresholds.sporadicRatio) {
+        return undefined;
+    }
+    const peak = Math.round(input.peakRuPerSec);
+    const avg = Math.round(input.avgRuPerSec);
+    const ratioPct = Math.round(ratio * 100);
+    return {
+        id: 'ServerlessCandidate',
+        rule: 'ServerlessCandidate',
+        severity: 'Low',
+        title: l10n.t('Account may suit serverless'),
+        rationale: clampRationale(
+            l10n.t(
+                'Account throughput is low and sporadic — peak {peak} RU/s, average {avg} RU/s (a {ratio}% average-to-peak with long idle stretches). Serverless (pay-per-RU, no provisioned floor) may cost less for this shape.',
+                { peak, avg, ratio: ratioPct },
+            ),
+        ),
+        suggestedAction: l10n.t(
+            'Evaluate serverless: it is migration-class (a new, single-region account, no shared-throughput databases, 5,000 RU/s per-partition cap), so validate those constraints fit before migrating data.',
+        ),
+        thresholdReference: l10n.t('Threshold: peak in ({floor}, {ceiling}] RU/s and average/peak < {ratio}', {
+            floor: Math.round(thresholds.peakFloorRuPerSec),
+            ceiling: Math.round(thresholds.peakCeilingRuPerSec),
+            ratio: thresholds.sporadicRatio,
+        }),
+    };
+}
+
 /** Already-fetched telemetry the derived-advisory engine consumes. */
 export interface DerivedAdvisoryInputs {
     /** Account-wide 7-day RU% samples for the over-provisioning + autoscale rules. */
@@ -918,6 +1338,16 @@ export interface DerivedAdvisoryInputs {
     storage: readonly ContainerStorageInput[];
     /** Per-container index/data storage for the indexing-cost rule. */
     indexing: readonly IndexingUsageInput[];
+    /** Per-container idle signal (peak `TotalRequestUnits` per bucket over 30d) for the idle rule (DX-004). */
+    idleContainers?: readonly IdleContainerInput[];
+    /** Per-container physical-partition count + storage for the partition-merge rule (DX-009). */
+    partitionMerges?: readonly PartitionMergeInput[];
+    /** Per-autoscale-container `AutoscaledRU`-%-of-max duty cycle for the autoscale rules (DX-011 / DX-013). */
+    autoscaleUtilizations?: readonly AutoscaleUtilizationInput[];
+    /** Account-total consumed-RU shape (30d) for the serverless-candidate rule (DX-014); absent when unavailable. */
+    serverless?: ServerlessCandidateInput;
+    /** Total provisioned RU/s across the account, the materiality denominator for the idle/autoscale-max rules. */
+    scopeProvisionedRuTotal?: number;
     /** Account-level ARM configuration for the config-only advisories (DX-016 / DX-008); absent when unavailable. */
     accountConfig?: AccountConfigInput;
 }
@@ -1000,6 +1430,50 @@ export function computeDerivedAdvisories(
         }
     }
 
+    for (const idle of inputs.idleContainers ?? []) {
+        const advisory = evaluateIdleContainer(idle, thresholds.idlePeakRuPerBucket, inputs.scopeProvisionedRuTotal);
+        if (advisory) {
+            advisories.push(advisory);
+        }
+    }
+
+    for (const merge of inputs.partitionMerges ?? []) {
+        const advisory = evaluatePartitionMergeCandidate(merge);
+        if (advisory) {
+            advisories.push(advisory);
+        }
+    }
+
+    for (const util of inputs.autoscaleUtilizations ?? []) {
+        const overMax = evaluateAutoscaleMaxOverProvisioned(
+            util,
+            thresholds.overProvisioningBandPercent,
+            inputs.scopeProvisionedRuTotal,
+        );
+        if (overMax) {
+            advisories.push(overMax);
+        }
+        const toManual = evaluateAutoscaleToManualCandidate(
+            util,
+            thresholds.autoscaleToManualAvgPercent,
+            thresholds.autoscaleToManualPeakToAvgRatio,
+        );
+        if (toManual) {
+            advisories.push(toManual);
+        }
+    }
+
+    if (inputs.serverless) {
+        const serverless = evaluateServerlessCandidate(inputs.serverless, {
+            sporadicRatio: thresholds.serverlessSporadicRatio,
+            peakFloorRuPerSec: thresholds.serverlessPeakFloorRuPerSec,
+            peakCeilingRuPerSec: thresholds.serverlessPeakCeilingRuPerSec,
+        });
+        if (serverless) {
+            advisories.push(serverless);
+        }
+    }
+
     if (inputs.accountConfig) {
         const consistency = evaluateExpensiveConsistency(inputs.accountConfig);
         if (consistency) {
@@ -1060,9 +1534,17 @@ export async function collectDerivedAdvisories(params: CollectDerivedAdvisoriesP
 
     const rows = await getSqlInventory(cosmosClient, resourceGroup, accountName, isServerless);
 
-    const [weekTrends, inventoryMetrics] = await Promise.all([
+    const [weekTrends, inventoryMetrics, idlePeaks, partitionCounts, serverlessShape] = await Promise.all([
         getRuTrends(monitorClient, accountId, '7D', undefined, undefined),
         getInventoryMetrics(monitorClient, accountId, '7D', undefined, healthThresholds),
+        // DX-004: peak consumed RU per bucket over 30 days, per container (empty ⇒ idle, not an error).
+        getContainerIdlePeaks(monitorClient, accountId).catch(() => new Map<string, number>()),
+        // DX-009: actual physical-partition count per container.
+        getContainerPartitionCounts(monitorClient, accountId).catch(() => new Map<string, number>()),
+        // DX-014: account-total consumed-RU shape over 30 days (skipped for accounts already on serverless).
+        isServerless
+            ? Promise.resolve(undefined)
+            : getAccountConsumedRuShape(monitorClient, accountId).catch(() => undefined),
     ]);
 
     // Scan partition health only for the busiest containers (highest 7-day peak RU) to bound ARM reads.
@@ -1099,6 +1581,19 @@ export async function collectDerivedAdvisories(params: CollectDerivedAdvisoriesP
     const storageResults = await Promise.all(
         scanTargets.map((row) =>
             getPartitionStorageSeries(monitorClient, accountId, '7D', row.databaseId, row.containerId).catch(
+                () => undefined,
+            ),
+        ),
+    );
+
+    // DX-011 / DX-013: the AutoscaledRU-%-of-max duty cycle, fetched only for the scanned autoscale containers
+    // (each is a per-container query, so bound it to the same busiest-container set as the partition scans).
+    const autoscaleTargets = scanTargets.filter(
+        (row) => row.throughputMode === 'autoscale' && row.throughputRU !== undefined && row.throughputRU > 0,
+    );
+    const autoscaleResults = await Promise.all(
+        autoscaleTargets.map((row) =>
+            getAutoscaleUtilization(monitorClient, accountId, row.databaseId, row.containerId, row.throughputRU!).catch(
                 () => undefined,
             ),
         ),
@@ -1152,6 +1647,58 @@ export async function collectDerivedAdvisories(params: CollectDerivedAdvisoriesP
         .filter((row) => MANUAL_THROUGHPUT_MODES.has(row.throughputMode) && row.throughputRU !== undefined)
         .reduce<number | undefined>((sum, row) => (sum ?? 0) + (row.throughputRU ?? 0), undefined);
 
+    // DX-004: build an idle input for every container with a recoverable offer (manual or autoscale). A container
+    // absent from the peaks map never emitted RU over the window, which is the idle signal (peak defaults to 0).
+    const idleContainers: IdleContainerInput[] = rows
+        .filter((row) => row.throughputRU !== undefined && row.throughputMode !== 'serverless')
+        .map((row) => ({
+            databaseId: row.databaseId,
+            containerId: row.containerId,
+            peakRuPerBucket: idlePeaks.get(containerKey(row.databaseId, row.containerId)) ?? 0,
+            throughputMode: row.throughputMode,
+            provisionedRu: row.throughputRU,
+        }));
+
+    // DX-009: pair each container's actual physical-partition count with its provisioned RU/s and current storage.
+    const partitionMerges: PartitionMergeInput[] = rows.map((row) => {
+        const metrics = inventoryMetrics.metrics[containerKey(row.databaseId, row.containerId)];
+        return {
+            databaseId: row.databaseId,
+            containerId: row.containerId,
+            actualPartitions: partitionCounts.get(containerKey(row.databaseId, row.containerId)) ?? 0,
+            provisionedRu: row.throughputRU,
+            dataUsageBytes: metrics?.dataUsageBytes,
+        };
+    });
+
+    // DX-011 / DX-013: the fetched autoscale duty cycles, keyed back to their containers' configured max.
+    const autoscaleUtilizations: AutoscaleUtilizationInput[] = [];
+    autoscaleResults.forEach((result, index) => {
+        if (!result) {
+            return;
+        }
+        const row = autoscaleTargets[index];
+        autoscaleUtilizations.push({
+            databaseId: row.databaseId,
+            containerId: row.containerId,
+            peakPercent: result.peakPercent,
+            avgPercent: result.avgPercent,
+            sampleCount: result.sampleCount,
+            configuredMaxRu: row.throughputRU,
+        });
+    });
+
+    // DX-014: account-total consumed-RU shape (absent for serverless accounts or when the fetch failed).
+    const serverless: ServerlessCandidateInput | undefined = serverlessShape
+        ? { ...serverlessShape, isServerless }
+        : undefined;
+
+    // Materiality denominator (DX-004 / DX-011): total provisioned RU/s across the whole account.
+    const scopeProvisionedRuTotal = rows.reduce<number | undefined>(
+        (sum, row) => (row.throughputRU === undefined ? sum : (sum ?? 0) + row.throughputRU),
+        undefined,
+    );
+
     return computeDerivedAdvisories(
         {
             weeklyRuPercents,
@@ -1161,6 +1708,11 @@ export async function collectDerivedAdvisories(params: CollectDerivedAdvisoriesP
             partitions,
             storage,
             indexing,
+            idleContainers,
+            partitionMerges,
+            autoscaleUtilizations,
+            serverless,
+            scopeProvisionedRuTotal,
             accountConfig,
         },
         advisoryThresholds,

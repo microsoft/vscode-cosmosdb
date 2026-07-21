@@ -11,11 +11,16 @@ import {
     daysToStorageLimit,
     DEFAULT_ADVISORY_THRESHOLDS,
     evaluateAutoscaleCandidate,
+    evaluateAutoscaleMaxOverProvisioned,
+    evaluateAutoscaleToManualCandidate,
     evaluateExpensiveConsistency,
     evaluateHotPartitionRisk,
+    evaluateIdleContainer,
     evaluateIndexingCostRisk,
     evaluateMultiRegionWrites,
     evaluateOverProvisioning,
+    evaluatePartitionMergeCandidate,
+    evaluateServerlessCandidate,
     evaluateStorageGrowthRisk,
     evaluateStorageSkewRisk,
     evaluateUnderProvisioning,
@@ -23,9 +28,13 @@ import {
     storageGrowthSlopeBytesPerDay,
     type AccountConfigInput,
     type AutoscaleThresholds,
+    type AutoscaleUtilizationInput,
     type ContainerStorageInput,
     type DerivedAdvisoryInputs,
+    type IdleContainerInput,
+    type PartitionMergeInput,
     type PartitionSaturationInput,
+    type ServerlessCandidateInput,
 } from './derivedAdvisories';
 import { containerKey, percentile } from './shared';
 
@@ -583,6 +592,232 @@ describe('computeDerivedAdvisories with accountConfig', () => {
 
     it('surfaces nothing when accountConfig is absent', () => {
         expect(computeDerivedAdvisories(baseInputs, DEFAULT_ADVISORY_THRESHOLDS)).toHaveLength(0);
+    });
+});
+
+const GIB_TEST = 1024 ** 3;
+
+function idleInput(overrides: Partial<IdleContainerInput> = {}): IdleContainerInput {
+    return {
+        databaseId: 'db',
+        containerId: 'orders',
+        peakRuPerBucket: 10,
+        throughputMode: 'dedicated',
+        provisionedRu: 1_000,
+        ...overrides,
+    };
+}
+
+describe('evaluateIdleContainer', () => {
+    it('fires High for a fully idle manual container (whole reservation recoverable)', () => {
+        const advisory = evaluateIdleContainer(idleInput({ peakRuPerBucket: 5 }), 50, 1_000);
+        expect(advisory).toMatchObject({ rule: 'IdleContainer', severity: 'High', scope: 'db/orders' });
+        expect(advisory?.rationale).toContain('1000 RU/s');
+    });
+
+    it('treats an all-zero series as the idle signal', () => {
+        expect(evaluateIdleContainer(idleInput({ peakRuPerBucket: 0 }), 50, 1_000)).toBeDefined();
+    });
+
+    it('does not fire when the container consumed real RU in some bucket', () => {
+        expect(evaluateIdleContainer(idleInput({ peakRuPerBucket: 500 }), 50, 1_000)).toBeUndefined();
+    });
+
+    it('recovers only the autoscale idle floor (10% of max) for an idle autoscale container', () => {
+        const advisory = evaluateIdleContainer(
+            idleInput({ throughputMode: 'autoscale', provisionedRu: 10_000, peakRuPerBucket: 0 }),
+            50,
+            100_000,
+        );
+        // Recoverable = 10% of 10,000 = 1,000 RU/s = 1% of the 100,000 scope → Medium.
+        expect(advisory).toMatchObject({ rule: 'IdleContainer', severity: 'Medium' });
+        expect(advisory?.rationale).toContain('1000 RU/s');
+    });
+
+    it('skips serverless containers (no recoverable offer)', () => {
+        expect(
+            evaluateIdleContainer(idleInput({ throughputMode: 'serverless', provisionedRu: undefined }), 50),
+        ).toBeUndefined();
+    });
+});
+
+function mergeInput(overrides: Partial<PartitionMergeInput> = {}): PartitionMergeInput {
+    return {
+        databaseId: 'db',
+        containerId: 'orders',
+        actualPartitions: 4,
+        provisionedRu: 10_000,
+        dataUsageBytes: 0,
+        ...overrides,
+    };
+}
+
+describe('evaluatePartitionMergeCandidate', () => {
+    it('fires Medium when actual partitions are at least twice what is needed', () => {
+        // needed = max(ceil(10000/10000)=1, 1, 1) = 1; actual 4 ≥ 2×1.
+        const advisory = evaluatePartitionMergeCandidate(mergeInput({ actualPartitions: 4 }));
+        expect(advisory).toMatchObject({ rule: 'PartitionMergeCandidate', severity: 'Medium', scope: 'db/orders' });
+    });
+
+    it('fires Low when over-partitioned but below twice the need', () => {
+        // needed = ceil(15000/10000) = 2; actual 3 > 2 but < 4.
+        const advisory = evaluatePartitionMergeCandidate(mergeInput({ actualPartitions: 3, provisionedRu: 15_000 }));
+        expect(advisory).toMatchObject({ severity: 'Low' });
+    });
+
+    it('never flags a single partition', () => {
+        expect(evaluatePartitionMergeCandidate(mergeInput({ actualPartitions: 1 }))).toBeUndefined();
+    });
+
+    it('does not fire when the partition count matches the need', () => {
+        // needed = ceil(20000/10000) = 2; actual 2.
+        expect(
+            evaluatePartitionMergeCandidate(mergeInput({ actualPartitions: 2, provisionedRu: 20_000 })),
+        ).toBeUndefined();
+    });
+
+    it('counts storage toward the need', () => {
+        // needed for storage = ceil(120 GiB / 50 GiB) = 3; actual 3 → right-sized.
+        expect(
+            evaluatePartitionMergeCandidate(
+                mergeInput({ actualPartitions: 3, provisionedRu: 1_000, dataUsageBytes: 120 * GIB_TEST }),
+            ),
+        ).toBeUndefined();
+    });
+});
+
+function autoUtil(overrides: Partial<AutoscaleUtilizationInput> = {}): AutoscaleUtilizationInput {
+    return {
+        databaseId: 'db',
+        containerId: 'orders',
+        peakPercent: 10,
+        avgPercent: 5,
+        sampleCount: 100,
+        configuredMaxRu: 10_000,
+        ...overrides,
+    };
+}
+
+describe('evaluateAutoscaleMaxOverProvisioned', () => {
+    it('fires when the peak stayed well below the band (recovers the idle-floor delta)', () => {
+        const advisory = evaluateAutoscaleMaxOverProvisioned(autoUtil({ peakPercent: 10 }), 30, 10_000);
+        expect(advisory).toMatchObject({ rule: 'AutoscaleMaxOverProvisioned', scope: 'db/orders' });
+    });
+
+    it('does not fire when the peak reached the band', () => {
+        expect(evaluateAutoscaleMaxOverProvisioned(autoUtil({ peakPercent: 50 }), 30, 10_000)).toBeUndefined();
+    });
+
+    it('does not fire when the peak saturates the max (genuinely needed)', () => {
+        expect(evaluateAutoscaleMaxOverProvisioned(autoUtil({ peakPercent: 95 }), 30, 10_000)).toBeUndefined();
+    });
+
+    it('abstains without samples or a configured max', () => {
+        expect(evaluateAutoscaleMaxOverProvisioned(autoUtil({ sampleCount: 0 }), 30)).toBeUndefined();
+        expect(evaluateAutoscaleMaxOverProvisioned(autoUtil({ configuredMaxRu: undefined }), 30)).toBeUndefined();
+    });
+});
+
+describe('evaluateAutoscaleToManualCandidate', () => {
+    it('fires Medium for a steady-high autoscale duty cycle', () => {
+        const advisory = evaluateAutoscaleToManualCandidate(autoUtil({ avgPercent: 80, peakPercent: 90 }), 66, 1.3);
+        expect(advisory).toMatchObject({ rule: 'AutoscaleToManualCandidate', severity: 'Medium', scope: 'db/orders' });
+    });
+
+    it('does not fire when the load is bursty (high peak-to-average)', () => {
+        expect(
+            evaluateAutoscaleToManualCandidate(autoUtil({ avgPercent: 80, peakPercent: 200 }), 66, 1.3),
+        ).toBeUndefined();
+    });
+
+    it('does not fire when the average is below the floor', () => {
+        expect(
+            evaluateAutoscaleToManualCandidate(autoUtil({ avgPercent: 40, peakPercent: 45 }), 66, 1.3),
+        ).toBeUndefined();
+    });
+});
+
+function serverlessInput(overrides: Partial<ServerlessCandidateInput> = {}): ServerlessCandidateInput {
+    return { avgRuPerSec: 5, peakRuPerSec: 100, sampleCount: 30, isServerless: false, ...overrides };
+}
+
+const SERVERLESS_THRESHOLDS = {
+    sporadicRatio: DEFAULT_ADVISORY_THRESHOLDS.serverlessSporadicRatio,
+    peakFloorRuPerSec: DEFAULT_ADVISORY_THRESHOLDS.serverlessPeakFloorRuPerSec,
+    peakCeilingRuPerSec: DEFAULT_ADVISORY_THRESHOLDS.serverlessPeakCeilingRuPerSec,
+};
+
+describe('evaluateServerlessCandidate', () => {
+    it('fires Low for a low, sporadic account-total shape', () => {
+        const advisory = evaluateServerlessCandidate(serverlessInput(), SERVERLESS_THRESHOLDS);
+        expect(advisory).toMatchObject({ rule: 'ServerlessCandidate', severity: 'Low' });
+        expect(advisory?.scope).toBeUndefined();
+    });
+
+    it('never recommends serverless to an account already on serverless', () => {
+        expect(
+            evaluateServerlessCandidate(serverlessInput({ isServerless: true }), SERVERLESS_THRESHOLDS),
+        ).toBeUndefined();
+    });
+
+    it('does not fire when the workload is steady (average-to-peak above the ratio)', () => {
+        expect(
+            evaluateServerlessCandidate(serverlessInput({ avgRuPerSec: 50 }), SERVERLESS_THRESHOLDS),
+        ).toBeUndefined();
+    });
+
+    it('treats a near-idle account as decommission (below the floor), not serverless', () => {
+        expect(
+            evaluateServerlessCandidate(serverlessInput({ peakRuPerSec: 5, avgRuPerSec: 0.1 }), SERVERLESS_THRESHOLDS),
+        ).toBeUndefined();
+    });
+
+    it('steers away workloads above the single-partition ceiling', () => {
+        expect(
+            evaluateServerlessCandidate(
+                serverlessInput({ peakRuPerSec: 6_000, avgRuPerSec: 100 }),
+                SERVERLESS_THRESHOLDS,
+            ),
+        ).toBeUndefined();
+    });
+
+    it('abstains without enough history', () => {
+        expect(
+            evaluateServerlessCandidate(serverlessInput({ sampleCount: 10 }), SERVERLESS_THRESHOLDS),
+        ).toBeUndefined();
+    });
+});
+
+describe('computeDerivedAdvisories with Batch 2 metrics inputs', () => {
+    it('surfaces the metrics-based Tier-1 detectors alongside the rest', () => {
+        const rules = computeDerivedAdvisories(
+            {
+                weeklyRuPercents: [],
+                hasManualThroughput: false,
+                partitions: [],
+                storage: [],
+                indexing: [],
+                idleContainers: [idleInput({ peakRuPerBucket: 0 })],
+                partitionMerges: [mergeInput({ actualPartitions: 4 })],
+                autoscaleUtilizations: [autoUtil({ avgPercent: 80, peakPercent: 90 })],
+                serverless: serverlessInput(),
+                scopeProvisionedRuTotal: 1_000,
+            },
+            DEFAULT_ADVISORY_THRESHOLDS,
+        ).map((a) => a.rule);
+        expect(rules).toContain('IdleContainer');
+        expect(rules).toContain('PartitionMergeCandidate');
+        expect(rules).toContain('AutoscaleToManualCandidate');
+        expect(rules).toContain('ServerlessCandidate');
+    });
+
+    it('surfaces nothing from the new inputs when they are absent', () => {
+        expect(
+            computeDerivedAdvisories(
+                { weeklyRuPercents: [], hasManualThroughput: false, partitions: [], storage: [], indexing: [] },
+                DEFAULT_ADVISORY_THRESHOLDS,
+            ),
+        ).toHaveLength(0);
     });
 });
 

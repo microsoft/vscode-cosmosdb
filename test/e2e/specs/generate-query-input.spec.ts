@@ -109,7 +109,11 @@ async function openGenerateInput(page: Parameters<typeof openQueryEditor>[0]): P
     return webview;
 }
 
-test.describe('generate query input', () => {
+// Disabled: the in-editor "Generate query" flow no longer renders the `GenerateQueryInput`
+// webview — the action now routes to the Copilot agent (see the NL2Query-via-agent migration),
+// so this input is dormant and these tests exercise a UI path that is no longer active. Re-enable
+// (or delete) once the component is either revived or removed.
+test.describe.skip('generate query input', () => {
     test.afterEach(async ({ vscodeWindow }) => {
         // A test may end (pass or fail) with the input or a menu/combobox still
         // open. Press Escape to dismiss it before closing tabs.

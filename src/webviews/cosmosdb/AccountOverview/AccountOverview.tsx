@@ -75,7 +75,9 @@ const useStyles = makeStyles({
     },
     layout: {
         display: 'flex',
-        alignItems: 'flex-start',
+        // Stretch the two columns to a common height so the rail can match the taller main column (the rail's own
+        // content never drives the row height because its growable card can shrink — see `advisoriesCard`).
+        alignItems: 'stretch',
         gap: tokens.spacingHorizontalL,
         flexWrap: 'wrap',
     },
@@ -92,7 +94,18 @@ const useStyles = makeStyles({
         gap: tokens.spacingVerticalL,
         flex: '1 1 300px',
         minWidth: 0,
+        // Allow the flex children to shrink below their content size so the growable advisories card can bound
+        // itself and scroll internally instead of stretching the whole panel taller.
+        minHeight: 0,
         maxWidth: '420px',
+    },
+    // The Derived Advisories card fills whatever vertical space is left in the rail after the fixed cards, matching
+    // the main column's height. `flex: 1 1 0` + `minHeight: 0` lets it grow to fill yet shrink to nothing, so its
+    // (potentially long) content never drives the row taller; the list scrolls inside it instead.
+    advisoriesCard: {
+        flex: '1 1 0',
+        minHeight: 0,
+        overflow: 'hidden',
     },
     loading: {
         display: 'flex',
@@ -586,7 +599,7 @@ export const AccountOverview = () => {
                             />
                         </DashboardCard>
 
-                        <DashboardCard>
+                        <DashboardCard className={styles.advisoriesCard}>
                             <SectionHeader
                                 title={l10n.t('Derived Advisories')}
                                 description={l10n.t(

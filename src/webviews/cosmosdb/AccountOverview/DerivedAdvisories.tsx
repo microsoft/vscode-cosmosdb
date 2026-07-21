@@ -21,12 +21,24 @@ const useStyles = makeStyles({
         display: 'flex',
         flexDirection: 'column',
         gap: tokens.spacingVerticalM,
+        // Fill the height the card hands down (the card grows to match the main column) and clip, so the list below
+        // owns the scroll. When the card is not height-constrained (e.g. the rail wraps under the main column on a
+        // narrow viewport), this simply grows to the content height and nothing scrolls.
+        flexGrow: 1,
+        minHeight: 0,
+        overflow: 'hidden',
     },
     provenance: {
         display: 'inline-flex',
         alignItems: 'center',
         gap: '4px',
         alignSelf: 'flex-start',
+        flexShrink: 0,
+    },
+    scrollBody: {
+        flexGrow: 1,
+        minHeight: 0,
+        overflowY: 'auto',
     },
     list: {
         display: 'flex',
@@ -225,7 +237,7 @@ export const DerivedAdvisories = ({
                 {announcement}
             </output>
             {provenance}
-            {body}
+            <div className={styles.scrollBody}>{body}</div>
         </div>
     );
 };

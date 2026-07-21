@@ -19,8 +19,9 @@ export type ContainerRef = { databaseId: string; containerId: string };
 
 /**
  * Scope that drives the metric tiles + trend chart. `undefined` is account-wide; a bare
- * `databaseId` scopes to a whole database (portal parity); a `databaseId` + `containerId` drills
- * into a single container (e.g. from the inventory table's "Show in chart").
+ * `databaseId` scopes to a whole database (portal parity). A `databaseId` + `containerId` pair
+ * scopes to a single container; no UI currently emits that, but the shape is kept for future
+ * container-level drill-in.
  */
 export type MetricScope = { databaseId: string; containerId?: string };
 

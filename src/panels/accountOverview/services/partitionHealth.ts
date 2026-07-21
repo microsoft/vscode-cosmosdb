@@ -8,6 +8,7 @@ import {
     classifyUnavailable,
     DEFAULT_PARTITION_HEADROOM_PCT,
     DEFAULT_PARTITION_SATURATION_PCT,
+    escapeODataLiteral,
     isHotPartition,
     lastValue,
     partitionSaturationStats,
@@ -440,7 +441,7 @@ async function queryPartitionSplitSeries(
     databaseId: string,
     containerId: string,
 ): Promise<Map<string, Map<number, number>>> {
-    const filter = `DatabaseName eq '${databaseId}' and CollectionName eq '${containerId}' and ${dimension} eq '*'`;
+    const filter = `DatabaseName eq '${escapeODataLiteral(databaseId)}' and CollectionName eq '${escapeODataLiteral(containerId)}' and ${dimension} eq '*'`;
     const response = await client.metrics.list(resourceUri, {
         metricnames: metricName,
         aggregation: 'Maximum',

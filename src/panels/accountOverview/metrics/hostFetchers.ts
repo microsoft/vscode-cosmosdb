@@ -9,6 +9,7 @@ import {
     classifyUnavailable,
     containerFilter,
     effectiveInterval,
+    escapeODataLiteral,
     type MetricAggregation,
     type MetricGranularity,
     pickPointValue,
@@ -278,7 +279,7 @@ function documentCountFetcher(): MetricFetcher {
         const filter = scope.containerId
             ? containerFilter(scope.databaseId, scope.containerId)
             : scope.databaseId
-              ? `DatabaseName eq '${scope.databaseId}' and CollectionName eq '*'`
+              ? `DatabaseName eq '${escapeODataLiteral(scope.databaseId)}' and CollectionName eq '*'`
               : `DatabaseName eq '*' and CollectionName eq '*'`;
 
         let response: Awaited<ReturnType<MonitorClient['metrics']['list']>>;

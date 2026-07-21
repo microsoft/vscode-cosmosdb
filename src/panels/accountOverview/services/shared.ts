@@ -158,7 +158,7 @@ export function containerFilter(databaseId: string | undefined, containerId: str
 }
 
 /** Escapes a value for use inside an OData single-quoted string literal (a `'` is doubled to `''`). */
-function escapeODataLiteral(value: string): string {
+export function escapeODataLiteral(value: string): string {
     return value.replace(/'/g, "''");
 }
 

@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type MonitorClient } from '@azure/arm-monitor';
-import { DAY, HOUR, seriesContainerKey } from '../../shared';
+import { DAY, escapeODataLiteral, HOUR, seriesContainerKey } from '../../shared';
 
 // ─── Batch-2 derived-advisory metric fetchers ─────────────────────────────────────
 //
@@ -192,7 +192,7 @@ export async function getAutoscaleUtilization(
     if (!(configuredMaxRu > 0)) {
         return { peakPercent: 0, avgPercent: 0, sampleCount: 0 };
     }
-    const filter = `DatabaseName eq '${databaseId}' and CollectionName eq '${containerId}' and PhysicalPartitionId eq '*'`;
+    const filter = `DatabaseName eq '${escapeODataLiteral(databaseId)}' and CollectionName eq '${escapeODataLiteral(containerId)}' and PhysicalPartitionId eq '*'`;
     const response = await client.metrics.list(resourceUri, {
         metricnames: 'AutoscaledRU',
         aggregation: 'Maximum',

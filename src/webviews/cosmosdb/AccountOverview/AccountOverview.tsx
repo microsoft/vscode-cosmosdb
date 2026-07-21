@@ -6,7 +6,7 @@
 import { useTrpcClient } from '@cosmosdb/webview-rpc/react';
 import { makeStyles, Spinner, tokens } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     type AccountOverviewAppRouter,
     type AlertsResult,
@@ -147,6 +147,8 @@ export const AccountOverview = () => {
     const [dismissedAdvisoryIds, setDismissedAdvisoryIds] = useState<ReadonlySet<string>>(() => new Set());
     const [paused, setPaused] = useState(false);
     const [lastRefreshedAt, setLastRefreshedAt] = useState(() => Date.now());
+    // Monotonic id of the latest in-flight trends request; only that request may commit its result.
+    const trendsRequestSeq = useRef(0);
 
     const reportEvent = useCallback(
         (eventName: string, properties?: Record<string, string>, measurements?: Record<string, number>) => {
@@ -163,6 +165,10 @@ export const AccountOverview = () => {
 
     const fetchTrends = useCallback(
         async (range: TimeRange, container?: MetricScope) => {
+            // Guard against out-of-order responses: range/scope changes and manual refreshes can leave
+            // several requests in flight, and a slower older one must not overwrite a newer result. Only
+            // the most recently issued request is allowed to commit its state.
+            const requestId = ++trendsRequestSeq.current;
             setTrendsLoading(true);
             try {
                 // Load each metric independently: one failing request (transport/transient error) should
@@ -179,6 +185,9 @@ export const AccountOverview = () => {
                         return [metric, result] as const;
                     }),
                 );
+                if (requestId !== trendsRequestSeq.current) {
+                    return;
+                }
                 const next: Partial<Record<MetricKey, MetricSeriesResult>> = {};
                 METRIC_ORDER.forEach((metric, index) => {
                     const outcome = outcomes[index];
@@ -200,7 +209,9 @@ export const AccountOverview = () => {
                 setTrends(next);
                 setLastRefreshedAt(Date.now());
             } finally {
-                setTrendsLoading(false);
+                if (requestId === trendsRequestSeq.current) {
+                    setTrendsLoading(false);
+                }
             }
         },
         [trpcClient],

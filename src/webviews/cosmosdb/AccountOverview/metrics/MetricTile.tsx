@@ -5,7 +5,7 @@
 
 import { makeStyles, mergeClasses, Text, tokens } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
-import { type MetricSeriesResult } from '../../../api/types';
+import { type MetricSeriesResult, type UnavailableReason } from '../../../api/types';
 import { formatMetricValue, METRIC_GROUPS, type MetricViewDescriptor, tileScalar } from './descriptors';
 
 // ─── Metric tile ────────────────────────────────────────────────────────────────
@@ -14,6 +14,21 @@ import { formatMetricValue, METRIC_GROUPS, type MetricViewDescriptor, tileScalar
 // chart is expanded inline below the tile row (see `MetricsSection`). The scalar is
 // derived from the series via the descriptor's tile-pick; an unavailable series
 // renders a muted em dash rather than an error.
+
+/** Distinct, localized caption for an unavailable tile so RBAC/unsupported don't look like empty telemetry. */
+function unavailableCaption(reason: UnavailableReason | undefined): string {
+    switch (reason) {
+        case 'rbac':
+            return l10n.t('No permission');
+        case 'unsupported':
+            return l10n.t('Not supported');
+        case 'logAnalyticsDisabled':
+            return l10n.t('Logs not enabled');
+        case 'noData':
+        default:
+            return l10n.t('No data');
+    }
+}
 
 const useStyles = makeStyles({
     tile: {
@@ -80,7 +95,11 @@ export const MetricTile = ({
     const scalar = series?.available ? tileScalar(descriptor, series.points, series.peak) : undefined;
     const value = series?.available ? formatMetricValue(descriptor.unit, scalar) : '—';
     const caption =
-        loading && !series ? l10n.t('Loading…') : series?.available ? descriptor.seriesLabel : l10n.t('No data');
+        loading && !series
+            ? l10n.t('Loading…')
+            : series?.available
+              ? descriptor.seriesLabel
+              : unavailableCaption(series?.reason);
 
     return (
         <button

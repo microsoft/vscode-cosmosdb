@@ -256,7 +256,7 @@ export function formatMetricValue(unit: MetricUnit, value: number | undefined): 
     }
 }
 
-/** Formats a Y-axis tick for the chart, per the metric's unit (compact, no unit words). */
+/** Formats a Y-axis tick for the chart, per the metric's unit (compact; byte axes keep their size suffix). */
 export function formatAxisTick(unit: MetricUnit, value: number): string {
     switch (unit) {
         case 'percent':

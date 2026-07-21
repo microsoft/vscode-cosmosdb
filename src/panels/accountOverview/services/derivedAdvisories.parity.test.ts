@@ -20,6 +20,7 @@ import {
     DEFAULT_ADVISORY_THRESHOLDS,
     evaluateAutoscaleCandidate,
     evaluateAutoscaleToManualCandidate,
+    evaluateCrossPartitionQuery,
     evaluateExpensiveConsistency,
     evaluateHotPartitionRisk,
     evaluateIdleContainer,
@@ -27,17 +28,24 @@ import {
     evaluateOverProvisioning,
     evaluatePartitionMergeCandidate,
     evaluateServerlessCandidate,
+    evaluateSharedThroughputStarvation,
+    evaluateShardKeyMisalignment,
     evaluateStorageGrowthRisk,
     evaluateStorageSkewRisk,
+    evaluateUncontrolledIngestion,
     evaluateUnderProvisioning,
     type AccountConfigInput,
     type AutoscaleThresholds,
     type AutoscaleUtilizationInput,
+    type CollectionTrafficInput,
     type ContainerStorageInput,
+    type CrossPartitionInput,
     type IdleContainerInput,
     type PartitionMergeInput,
     type PartitionSaturationInput,
+    type QueryShapeInput,
     type ServerlessCandidateInput,
+    type UncontrolledIngestionInput,
 } from './derivedAdvisories';
 
 const GIB = 1024 ** 3;
@@ -778,5 +786,303 @@ describe('CODA parity — DX-008 MultiRegionWriteAntipattern (test_multi_region_
             }),
         );
         expect(v?.severity).toBe('High');
+    });
+});
+
+// ─── DX-002 CrossPartitionQuery (coda/tests/test_cross_partition_query.py) ────────
+
+const CP_THRESHOLDS = {
+    minQueries: DEFAULT_ADVISORY_THRESHOLDS.crossPartitionMinQueries,
+    fanoutThreshold: DEFAULT_ADVISORY_THRESHOLDS.crossPartitionFanoutThreshold,
+    highPct: DEFAULT_ADVISORY_THRESHOLDS.crossPartitionHighPct,
+    medPct: DEFAULT_ADVISORY_THRESHOLDS.crossPartitionMedPct,
+};
+
+function shape(text: string, executions: number, avgFanout: number, maxFanout: number): QueryShapeInput {
+    return { text, executions, avgFanout, maxFanout };
+}
+
+function cpInput(shapes: QueryShapeInput[]): CrossPartitionInput {
+    return { databaseId: 'db', containerId: 'c', shapes };
+}
+
+describe('DX-002 cross-partition query fan-out parity', () => {
+    it('flags High when the dominant share of executions fans out', () => {
+        const v = evaluateCrossPartitionQuery(
+            cpInput([
+                shape('SELECT * FROM c WHERE c.email=@e', 800, 2.0, 2),
+                shape('SELECT * FROM c WHERE c.pk=@p', 200, 1.0, 1),
+            ]),
+            CP_THRESHOLDS,
+        );
+        expect(v?.rule).toBe('CrossPartitionQuery');
+        expect(v?.severity).toBe('High'); // 80% cross
+        expect(v?.scope).toBe('db/c');
+        expect(v?.rationale).toContain('email');
+    });
+
+    it('flags Medium at a moderate cross-partition share', () => {
+        const v = evaluateCrossPartitionQuery(
+            cpInput([
+                shape('SELECT * FROM c WHERE c.email=@e', 150, 2.0, 2),
+                shape('SELECT * FROM c WHERE c.pk=@p', 850, 1.0, 1),
+            ]),
+            CP_THRESHOLDS,
+        );
+        expect(v?.severity).toBe('Medium'); // 15% cross
+    });
+
+    it('does not flag a mostly single-partition workload', () => {
+        const v = evaluateCrossPartitionQuery(
+            cpInput([
+                shape('SELECT * FROM c WHERE c.email=@e', 30, 2.0, 2),
+                shape('SELECT * FROM c WHERE c.pk=@p', 970, 1.0, 1),
+            ]),
+            CP_THRESHOLDS,
+        );
+        expect(v).toBeUndefined(); // 3% < med floor
+    });
+
+    it('does not flag a single-partition container (cannot fan out)', () => {
+        const v = evaluateCrossPartitionQuery(cpInput([shape('SELECT * FROM c', 500, 1.0, 1)]), CP_THRESHOLDS);
+        expect(v).toBeUndefined();
+    });
+
+    it('abstains on insufficient query volume', () => {
+        const v = evaluateCrossPartitionQuery(
+            cpInput([shape('SELECT * FROM c WHERE c.email=@e', 10, 2.0, 2)]),
+            CP_THRESHOLDS,
+        );
+        expect(v).toBeUndefined();
+    });
+});
+
+// ─── DX-007 ShardKeyMisalignment (coda/tests/test_shard_key_misalignment.py) ──────
+
+const SHARD_THRESHOLDS = {
+    structuralPct: DEFAULT_ADVISORY_THRESHOLDS.shardKeyStructuralPct,
+    minPartitions: 2,
+    highPct: DEFAULT_ADVISORY_THRESHOLDS.shardKeyHighPct,
+};
+const CP_FANOUT = DEFAULT_ADVISORY_THRESHOLDS.crossPartitionFanoutThreshold;
+
+function shardRows(crossExec: number, singleExec: number): CrossPartitionInput {
+    return cpInput([
+        shape("SELECT * FROM c WHERE c.p1 != 'str1'", crossExec, 2.0, 2),
+        shape('SELECT * FROM c WHERE c.p1 = @param1', singleExec, 1.0, 1),
+    ]);
+}
+
+describe('DX-007 shard-key misalignment parity', () => {
+    it('flags High when the dominant share fans out (≥ 80%)', () => {
+        const v = evaluateShardKeyMisalignment(shardRows(850, 150), SHARD_THRESHOLDS, CP_FANOUT);
+        expect(v?.rule).toBe('ShardKeyMisalignment');
+        expect(v?.severity).toBe('High');
+        expect(v?.suggestedAction.toLowerCase()).toContain('re-key');
+    });
+
+    it('flags Medium at a moderate-dominant share ([60,80))', () => {
+        const v = evaluateShardKeyMisalignment(shardRows(650, 350), SHARD_THRESHOLDS, CP_FANOUT);
+        expect(v?.severity).toBe('Medium');
+    });
+
+    it('does not flag a per-query-only problem (< structural share)', () => {
+        const v = evaluateShardKeyMisalignment(shardRows(150, 850), SHARD_THRESHOLDS, CP_FANOUT);
+        expect(v).toBeUndefined();
+    });
+
+    it('does not flag a single-partition container', () => {
+        const v = evaluateShardKeyMisalignment(
+            cpInput([shape('SELECT * FROM c', 500, 1.0, 1)]),
+            SHARD_THRESHOLDS,
+            CP_FANOUT,
+        );
+        expect(v).toBeUndefined();
+    });
+
+    it('requires the configured minimum physical partitions', () => {
+        const v = evaluateShardKeyMisalignment(
+            shardRows(850, 150),
+            { ...SHARD_THRESHOLDS, minPartitions: 3 },
+            CP_FANOUT,
+        );
+        expect(v).toBeUndefined(); // container only spans 2 partitions
+    });
+});
+
+// ─── DX-010 UncontrolledIngestion (coda/tests/test_uncontrolled_ingestion.py) ─────
+
+const ING_THRESHOLDS = {
+    writeRuPctFloor: DEFAULT_ADVISORY_THRESHOLDS.ingestionWriteRuPctFloor,
+    throttleRatePct: DEFAULT_ADVISORY_THRESHOLDS.ingestionThrottleRatePct,
+    highPct: DEFAULT_ADVISORY_THRESHOLDS.ingestionHighPct,
+    minRequests: DEFAULT_ADVISORY_THRESHOLDS.ingestionMinRequests,
+};
+
+function ingInput(overrides: Partial<UncontrolledIngestionInput>): UncontrolledIngestionInput {
+    return {
+        databaseId: 'db',
+        containerId: 'c',
+        writeRu: 0,
+        totalRu: 0,
+        totalRequests: 0,
+        throttledRequests: 0,
+        burstFactor: 0,
+        ...overrides,
+    };
+}
+
+describe('DX-010 uncontrolled ingestion parity', () => {
+    it('flags High for write-dominant throttling (≥ 20% 429)', () => {
+        const v = evaluateUncontrolledIngestion(
+            ingInput({
+                writeRu: 950_000,
+                totalRu: 1_000_000,
+                totalRequests: 300_000,
+                throttledRequests: 75_000,
+                burstFactor: 6.0,
+                dominantUserAgent: 'spark-connector',
+            }),
+            ING_THRESHOLDS,
+        );
+        expect(v?.rule).toBe('UncontrolledIngestion');
+        expect(v?.severity).toBe('High'); // 25% throttle
+        expect(v?.suggestedAction.toLowerCase()).toContain('rate control');
+        expect(v?.rationale).toContain('spark-connector');
+    });
+
+    it('flags Medium below the high 429 band', () => {
+        const v = evaluateUncontrolledIngestion(
+            ingInput({
+                writeRu: 900_000,
+                totalRu: 1_000_000,
+                totalRequests: 300_000,
+                throttledRequests: 42_000,
+                burstFactor: 3.0,
+            }),
+            ING_THRESHOLDS,
+        );
+        expect(v?.severity).toBe('Medium'); // 14% throttle
+    });
+
+    it('does not flag a read-dominant workload', () => {
+        const v = evaluateUncontrolledIngestion(
+            ingInput({
+                writeRu: 100_000,
+                totalRu: 1_000_000,
+                totalRequests: 300_000,
+                throttledRequests: 60_000,
+                burstFactor: 2.0,
+            }),
+            ING_THRESHOLDS,
+        );
+        expect(v).toBeUndefined();
+    });
+
+    it('does not flag write-dominant but not throttling', () => {
+        const v = evaluateUncontrolledIngestion(
+            ingInput({
+                writeRu: 950_000,
+                totalRu: 1_000_000,
+                totalRequests: 300_000,
+                throttledRequests: 600,
+                burstFactor: 1.5,
+            }),
+            ING_THRESHOLDS,
+        );
+        expect(v).toBeUndefined();
+    });
+
+    it('abstains on insufficient requests', () => {
+        const v = evaluateUncontrolledIngestion(
+            ingInput({ writeRu: 950, totalRu: 1_000, totalRequests: 200, throttledRequests: 100, burstFactor: 5.0 }),
+            ING_THRESHOLDS,
+        );
+        expect(v).toBeUndefined();
+    });
+});
+
+// ─── DX-003 SharedThroughputStarvation (coda/tests/test_shared_throughput.py) ─────
+
+const SHARED_THRESHOLDS = {
+    minRequests: DEFAULT_ADVISORY_THRESHOLDS.sharedThroughputMinRequests,
+    poolThrottlePct: DEFAULT_ADVISORY_THRESHOLDS.sharedThroughputPoolThrottlePct,
+    dominancePct: DEFAULT_ADVISORY_THRESHOLDS.sharedThroughputDominancePct,
+    victimThrottlePct: DEFAULT_ADVISORY_THRESHOLDS.sharedThroughputVictimThrottlePct,
+    victimSharePct: DEFAULT_ADVISORY_THRESHOLDS.sharedThroughputVictimSharePct,
+};
+
+function coll(
+    containerId: string,
+    requests: number,
+    throttledRequests: number,
+    ruConsumed: number,
+): CollectionTrafficInput {
+    return { containerId, requests, throttledRequests, ruConsumed };
+}
+
+describe('DX-003 shared-throughput starvation parity', () => {
+    it('fires when one collection monopolizes the pool and a sibling is starved', () => {
+        const v = evaluateSharedThroughputStarvation(
+            {
+                databaseId: 'shareddb',
+                sharedRu: 1000,
+                collections: [coll('hot', 10000, 500, 900000), coll('cold', 1000, 300, 50000)],
+            },
+            SHARED_THRESHOLDS,
+        );
+        expect(v?.rule).toBe('SharedThroughputStarvation');
+        expect(v?.severity).toBe('High');
+        expect(v?.scope).toBe('shareddb');
+        expect(v?.rationale).toContain('hot');
+        expect(v?.rationale).toContain('cold');
+    });
+
+    it('does not fire when the pool is not throttling', () => {
+        const v = evaluateSharedThroughputStarvation(
+            {
+                databaseId: 'shareddb',
+                sharedRu: 1000,
+                collections: [coll('a', 10000, 50, 600000), coll('b', 8000, 40, 400000)],
+            },
+            SHARED_THRESHOLDS,
+        );
+        expect(v).toBeUndefined();
+    });
+
+    it('does not fire on balanced throttling (no monopolizer)', () => {
+        const v = evaluateSharedThroughputStarvation(
+            {
+                databaseId: 'shareddb',
+                sharedRu: 1000,
+                collections: [coll('a', 10000, 800, 520000), coll('b', 10000, 700, 480000)],
+            },
+            SHARED_THRESHOLDS,
+        );
+        expect(v).toBeUndefined();
+    });
+
+    it('does not fire when only one collection is active', () => {
+        const v = evaluateSharedThroughputStarvation(
+            {
+                databaseId: 'shareddb',
+                sharedRu: 1000,
+                collections: [coll('solo', 10000, 900, 900000), coll('idle', 5, 0, 10)],
+            },
+            SHARED_THRESHOLDS,
+        );
+        expect(v).toBeUndefined();
+    });
+
+    it('does not fire when the dominant collection has no throttled victim', () => {
+        const v = evaluateSharedThroughputStarvation(
+            {
+                databaseId: 'shareddb',
+                sharedRu: 1000,
+                collections: [coll('hot', 10000, 900, 950000), coll('cold', 1000, 5, 50000)],
+            },
+            SHARED_THRESHOLDS,
+        );
+        expect(v).toBeUndefined();
     });
 });

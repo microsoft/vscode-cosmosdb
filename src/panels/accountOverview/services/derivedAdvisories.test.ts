@@ -827,3 +827,57 @@ describe('percentile (re-exported signal helper)', () => {
         expect(percentile(values, 99)).toBeLessThan(10);
     });
 });
+
+describe('computeDerivedAdvisories Tier-2 wiring', () => {
+    const tier1Base: DerivedAdvisoryInputs = {
+        weeklyRuPercents: [50, 50, 50],
+        weeklyPeakPercent: 50,
+        hasManualThroughput: false,
+        partitions: [],
+        storage: [],
+        indexing: [],
+    };
+
+    it('supersedes the cross-partition advisory with shard-key misalignment on the same container', () => {
+        // 85% of executions fan out → past the structural (60%) threshold, so DX-007 fires and DX-002 is dropped.
+        const rules = computeDerivedAdvisories(
+            {
+                ...tier1Base,
+                crossPartition: [
+                    {
+                        databaseId: 'db',
+                        containerId: 'orders',
+                        shapes: [
+                            { text: 'SELECT * FROM c WHERE c.email=@e', executions: 850, avgFanout: 2, maxFanout: 2 },
+                            { text: 'SELECT * FROM c WHERE c.pk=@p', executions: 150, avgFanout: 1, maxFanout: 1 },
+                        ],
+                    },
+                ],
+            },
+            DEFAULT_ADVISORY_THRESHOLDS,
+        ).filter((a) => a.scope === 'db/orders');
+        expect(rules.map((a) => a.rule)).toEqual(['ShardKeyMisalignment']);
+    });
+
+    it('keeps the cross-partition advisory when the fan-out share is below the structural threshold', () => {
+        // 15% cross → not structural, so DX-002 (Medium) stands and DX-007 does not fire.
+        const rules = computeDerivedAdvisories(
+            {
+                ...tier1Base,
+                crossPartition: [
+                    {
+                        databaseId: 'db',
+                        containerId: 'orders',
+                        shapes: [
+                            { text: 'SELECT * FROM c WHERE c.email=@e', executions: 150, avgFanout: 2, maxFanout: 2 },
+                            { text: 'SELECT * FROM c WHERE c.pk=@p', executions: 850, avgFanout: 1, maxFanout: 1 },
+                        ],
+                    },
+                ],
+            },
+            DEFAULT_ADVISORY_THRESHOLDS,
+        ).filter((a) => a.scope === 'db/orders');
+        expect(rules).toHaveLength(1);
+        expect(rules[0]).toMatchObject({ rule: 'CrossPartitionQuery', severity: 'Medium' });
+    });
+});

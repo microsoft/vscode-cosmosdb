@@ -61,6 +61,10 @@ not-yet-ported detectors — is a tracked goal (see Phase 9/10 in the plan). All
 | AO-D14 | Autoscale max over-provisioned  | peak `AutoscaledRU` < 30 % of the configured max (autoscale only), idle-floor materiality                | Derived Advisories                                | DX-011                   | ✅ peak band + autoscale billing (DX-011)   |
 | AO-D15 | Autoscale → manual candidate    | autoscale avg ≥ 66 % of max and peak/avg ≤ 1.3 (steady-high, autoscale only)                             | Derived Advisories                                | DX-013                   | ✅ duty cycle (DX-013)                      |
 | AO-D16 | Serverless candidate            | account-total peak in (10, 5000] RU/s and avg/peak < 0.10 over 30 days (skipped if serverless)           | Derived Advisories                                | DX-014                   | ✅ low/sporadic shape (DX-014)              |
+| AO-D17 | Cross-partition query fan-out   | ≥ 10 % of query executions fan out (avg ≥ 1.5 partitions), container ≥ 2 partitions, ≥ 50 queries (logs)  | Derived Advisories (Tier-2)                        | DX-002                   | ✅ fan-out share + volume (DX-002)          |
+| AO-D18 | Shard-key misalignment          | ≥ 60 % of executions fan out across ≥ 2 partitions (logs); supersedes AO-D17 on the container             | Derived Advisories (Tier-2)                        | DX-007                   | ✅ structural fan-out (DX-007)              |
+| AO-D19 | Uncontrolled ingestion          | write-RU ≥ 80 % and 429 rate ≥ 10 % over ≥ 1000 requests (logs); burst factor as evidence                | Derived Advisories (Tier-2)                        | DX-010                   | ✅ write-dominance + throttling (DX-010)    |
+| AO-D20 | Shared-throughput starvation    | pool 429 ≥ 5 %, one collection ≥ 60 % of RU, a sibling throttling ≥ 5 % at ≤ 20 % share (logs)            | Derived Advisories (Tier-2)                        | DX-003                   | ✅ 429 + consumption disparity (DX-003)     |
 
 ### Where each detection surfaces
 
@@ -85,10 +89,23 @@ text advisory, and a few in both places:
 | AO-D14 Autoscale max over-provisioned  | ✅ advisory                                | —                                                 |
 | AO-D15 Autoscale → manual candidate    | ✅ advisory                                | —                                                 |
 | AO-D16 Serverless candidate            | ✅ advisory                                | —                                                 |
+| AO-D17 Cross-partition query fan-out   | ✅ advisory (Tier-2 logs)                  | —                                                 |
+| AO-D18 Shard-key misalignment          | ✅ advisory (Tier-2 logs)                  | —                                                 |
+| AO-D19 Uncontrolled ingestion          | ✅ advisory (Tier-2 logs)                  | —                                                 |
+| AO-D20 Shared-throughput starvation    | ✅ advisory (Tier-2 logs)                  | —                                                 |
 
 **Passthrough vs derived:** the **Active Alerts** and **Recommendations** cards are Azure's own output
 (Azure Monitor fired alerts and Azure Advisor), surfaced verbatim. The **Derived Advisories** card is the
 only place our own `§13` rule engine writes to.
+
+**Tier-1 vs Tier-2 (partial coverage):** most advisories (AO-D1..16) are **Tier-1** — computed from Azure
+Monitor metrics + ARM config, always available. AO-D17..20 are **Tier-2**: they query the account's
+`CDB*` diagnostic-log tables via a resource-centric Log Analytics query, so they need **Diagnostic Settings →
+Log Analytics** enabled on the account **and** the **Log Analytics Reader** (or Monitoring Reader) role. When
+Tier-2 is unavailable the Derived Advisories card still renders every Tier-1 advisory and surfaces the gap
+explicitly — an inline, reason-specific notice ("diagnostic settings off" / "missing role" / "no data yet" /
+"transient error") plus a **Partial coverage** pill — rather than a card-level empty state that would hide the
+Tier-1 results.
 
 ## Threshold grounding
 

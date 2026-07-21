@@ -26,6 +26,7 @@ export type {
     DerivedAdvisorySeverity,
     HealthState,
     InventoryMetricsResult,
+    LogsSourceStatus,
     PartitionDistributionMode,
     PartitionHealthResult,
     PartitionIntensityLevel,

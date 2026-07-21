@@ -41,12 +41,16 @@ export const derivedAdvisoriesProcedures = {
             if (!monitorClient || !cosmosClient) {
                 return unavailable('noData');
             }
+            // Tier-2 (Log Analytics) is optional: if the client can't be acquired the collector still ships the
+            // Tier-1 advisories and reports Tier-2 as unavailable via `logSource`.
+            const logsClient = await metadata.getLogsQueryClient();
 
             try {
                 const account = metadata.databaseAccount as DatabaseAccountGetResults;
-                const advisories = await collectDerivedAdvisories({
+                const { advisories, logSource } = await collectDerivedAdvisories({
                     monitorClient,
                     cosmosClient,
+                    logsClient,
                     accountId: metadata.accountId,
                     resourceGroup: metadata.resourceGroup,
                     accountName: metadata.accountName,
@@ -67,7 +71,7 @@ export const derivedAdvisoriesProcedures = {
                     },
                 });
 
-                return { available: true, advisories, generatedAt: Date.now() };
+                return { available: true, advisories, logSource, generatedAt: Date.now() };
             } catch (error) {
                 return unavailable(classifyUnavailable(error));
             }

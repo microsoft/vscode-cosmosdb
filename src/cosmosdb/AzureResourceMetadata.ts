@@ -7,6 +7,7 @@ import { type AdvisorManagementClient } from '@azure/arm-advisor';
 import { type AlertsManagementClient } from '@azure/arm-alertsmanagement';
 import { type CosmosDBManagementClient, type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
 import { type MonitorClient } from '@azure/arm-monitor';
+import { type LogsQueryClient } from '@azure/monitor-query-logs';
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
@@ -15,6 +16,7 @@ import {
     createAdvisorClient,
     createAlertsManagementClient,
     createCosmosDBManagementClient,
+    createLogsQueryClient,
     createMonitorClient,
 } from '../utils/azureClients';
 import { nonNullProp } from '../utils/nonNull';
@@ -115,6 +117,20 @@ export class AzureResourceMetadata {
             context.errorHandling.forceIncludeInReportIssueCommand = true;
             context.valuesToMask.push(this.subscription.subscriptionId);
             return createMonitorClient(context, this.subscription);
+        });
+    }
+
+    /**
+     * Data-plane Log Analytics client for the dashboard's Tier-2 derived advisories (DX-002/003/007/010 over the
+     * `CDB*` diagnostic-log tables). Backed by a dynamically-imported `@azure/monitor-query-logs` so the SDK stays
+     * off the activation hot path.
+     */
+    public getLogsQueryClient(): Promise<LogsQueryClient | undefined> {
+        return callWithTelemetryAndErrorHandling('createLogsQueryClient', async (context: IActionContext) => {
+            context.telemetry.suppressIfSuccessful = true;
+            context.errorHandling.forceIncludeInReportIssueCommand = true;
+            context.valuesToMask.push(this.subscription.subscriptionId);
+            return createLogsQueryClient(context, this.subscription);
         });
     }
 

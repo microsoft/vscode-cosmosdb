@@ -132,5 +132,68 @@ export function readAdvisoryThresholds(): DerivedAdvisoryThresholds {
             config.get<number>('advisories.serverlessPeakCeilingRuPerSec'),
             DEFAULT_ADVISORY_THRESHOLDS.serverlessPeakCeilingRuPerSec,
         ),
+        // Tier-2 (Log Analytics) — CrossPartitionQuery (DX-002) / ShardKeyMisalignment (DX-007).
+        crossPartitionMinQueries: positive(
+            config.get<number>('advisories.crossPartitionMinQueries'),
+            DEFAULT_ADVISORY_THRESHOLDS.crossPartitionMinQueries,
+        ),
+        crossPartitionFanoutThreshold: positive(
+            config.get<number>('advisories.crossPartitionFanoutThreshold'),
+            DEFAULT_ADVISORY_THRESHOLDS.crossPartitionFanoutThreshold,
+        ),
+        crossPartitionHighPct: positive(
+            config.get<number>('advisories.crossPartitionHighPct'),
+            DEFAULT_ADVISORY_THRESHOLDS.crossPartitionHighPct,
+        ),
+        crossPartitionMedPct: positive(
+            config.get<number>('advisories.crossPartitionMedPct'),
+            DEFAULT_ADVISORY_THRESHOLDS.crossPartitionMedPct,
+        ),
+        shardKeyStructuralPct: positive(
+            config.get<number>('advisories.shardKeyStructuralPct'),
+            DEFAULT_ADVISORY_THRESHOLDS.shardKeyStructuralPct,
+        ),
+        shardKeyHighPct: positive(
+            config.get<number>('advisories.shardKeyHighPct'),
+            DEFAULT_ADVISORY_THRESHOLDS.shardKeyHighPct,
+        ),
+        // Tier-2 (Log Analytics) — UncontrolledIngestion (DX-010).
+        ingestionWriteRuPctFloor: positive(
+            config.get<number>('advisories.ingestionWriteRuPctFloor'),
+            DEFAULT_ADVISORY_THRESHOLDS.ingestionWriteRuPctFloor,
+        ),
+        ingestionThrottleRatePct: positive(
+            config.get<number>('advisories.ingestionThrottleRatePct'),
+            DEFAULT_ADVISORY_THRESHOLDS.ingestionThrottleRatePct,
+        ),
+        ingestionHighPct: positive(
+            config.get<number>('advisories.ingestionHighPct'),
+            DEFAULT_ADVISORY_THRESHOLDS.ingestionHighPct,
+        ),
+        ingestionMinRequests: positive(
+            config.get<number>('advisories.ingestionMinRequests'),
+            DEFAULT_ADVISORY_THRESHOLDS.ingestionMinRequests,
+        ),
+        // Tier-2 (Log Analytics) — SharedThroughputStarvation (DX-003).
+        sharedThroughputMinRequests: positive(
+            config.get<number>('advisories.sharedThroughputMinRequests'),
+            DEFAULT_ADVISORY_THRESHOLDS.sharedThroughputMinRequests,
+        ),
+        sharedThroughputPoolThrottlePct: positive(
+            config.get<number>('advisories.sharedThroughputPoolThrottlePct'),
+            DEFAULT_ADVISORY_THRESHOLDS.sharedThroughputPoolThrottlePct,
+        ),
+        sharedThroughputDominancePct: positive(
+            config.get<number>('advisories.sharedThroughputDominancePct'),
+            DEFAULT_ADVISORY_THRESHOLDS.sharedThroughputDominancePct,
+        ),
+        sharedThroughputVictimThrottlePct: positive(
+            config.get<number>('advisories.sharedThroughputVictimThrottlePct'),
+            DEFAULT_ADVISORY_THRESHOLDS.sharedThroughputVictimThrottlePct,
+        ),
+        sharedThroughputVictimSharePct: positive(
+            config.get<number>('advisories.sharedThroughputVictimSharePct'),
+            DEFAULT_ADVISORY_THRESHOLDS.sharedThroughputVictimSharePct,
+        ),
     };
 }

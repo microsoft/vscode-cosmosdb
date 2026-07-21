@@ -15,9 +15,13 @@ export type TimeRange = '1H' | '24H' | '7D';
  * Why an async dashboard section has no data to render. The webview
  * maps each value to a distinct empty-state copy so users can tell an
  * as-yet-empty telemetry pipeline (`noData`) apart from an API/SKU that never
- * emits the metric (`unsupported`) and a missing Azure RBAC role (`rbac`).
+ * emits the metric (`unsupported`), a missing Azure RBAC role (`rbac`), and a
+ * Log Analytics data path whose diagnostic settings were never enabled so the
+ * `CDB*` tables do not exist for the resource (`logAnalyticsDisabled`). The last
+ * is Tier-2-specific: it drives the derived-advisories partial-coverage notice
+ * rather than a whole-section empty-state.
  */
-export type UnavailableReason = 'noData' | 'unsupported' | 'rbac';
+export type UnavailableReason = 'noData' | 'unsupported' | 'rbac' | 'logAnalyticsDisabled';
 
 /**
  * Classifies an Azure SDK error into an {@link UnavailableReason}. A 403 (or the

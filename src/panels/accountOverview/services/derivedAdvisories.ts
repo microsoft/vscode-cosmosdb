@@ -7,6 +7,14 @@ import { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { type MonitorClient } from '@azure/arm-monitor';
 import * as l10n from '@vscode/l10n';
 import {
+    fetchCrossPartitionShapes,
+    fetchSharedThroughputTraffic,
+    fetchUncontrolledIngestion,
+    logWindow,
+    probeCdbLogs,
+    type LogsQueryExecutor,
+} from './derivedAdvisoryLogs';
+import {
     getAccountConsumedRuShape,
     getAutoscaleUtilization,
     getContainerIdlePeaks,
@@ -58,7 +66,11 @@ export type DerivedAdvisoryRule =
     | 'PartitionMergeCandidate'
     | 'AutoscaleMaxOverProvisioned'
     | 'AutoscaleToManualCandidate'
-    | 'ServerlessCandidate';
+    | 'ServerlessCandidate'
+    | 'CrossPartitionQuery'
+    | 'ShardKeyMisalignment'
+    | 'UncontrolledIngestion'
+    | 'SharedThroughputStarvation';
 
 export type DerivedAdvisorySeverity = 'High' | 'Medium' | 'Low';
 
@@ -77,12 +89,31 @@ export interface DerivedAdvisory {
     scope?: string;
 }
 
+/**
+ * Per-tier availability of the Log Analytics ("Tier-2") data path, so the card can render the Tier-1
+ * advisories that *did* run while flagging that the log-based analyzers were skipped. This is the
+ * partial-coverage contract: Tier-2 degrading must never blank the whole card (which always has
+ * Tier-1 metrics + config advisories to show).
+ */
+export interface LogsSourceStatus {
+    /** True when the `CDB*` tables were queryable (diagnostic settings on + Reader RBAC), even if empty. */
+    available: boolean;
+    /** When `available` is false, why the log-based (Tier-2) analyzers were skipped. */
+    reason?: UnavailableReason;
+}
+
 export interface DerivedAdvisoriesResult {
     /** False when none of the underlying telemetry was available to evaluate. */
     available: boolean;
-    /** When `available` is false, why: `noData` | `unsupported` | `rbac`. */
+    /** When `available` is false, why: `noData` | `unsupported` | `rbac` | `logAnalyticsDisabled`. */
     reason?: UnavailableReason;
     advisories: DerivedAdvisory[];
+    /**
+     * Availability of the Log Analytics ("Tier-2") analyzers, present when the section itself is available.
+     * Absent (or `available: true`) means the log-based checks ran; `available: false` drives the card's
+     * partial-coverage notice while the Tier-1 advisories above still render.
+     */
+    logSource?: LogsSourceStatus;
     /** Epoch milliseconds when the server produced this snapshot. */
     generatedAt: number;
 }
@@ -159,6 +190,37 @@ export interface DerivedAdvisoryThresholds {
      * https://learn.microsoft.com/azure/cosmos-db/serverless-performance#request-unit-changes
      */
     serverlessPeakCeilingRuPerSec: number;
+    // ─── Tier-2 (Log Analytics) thresholds ─────────────────────────────────────
+    /** DX-002: minimum query executions in the window below which there is too little traffic to judge fan-out. */
+    crossPartitionMinQueries: number;
+    /** DX-002: a query shape whose average fan-out (distinct partitions per logical query) is at or above this counts as cross-partition. */
+    crossPartitionFanoutThreshold: number;
+    /** DX-002: share (%) of executions fanning out at or above which CrossPartitionQuery is High (else Medium down to the med floor). */
+    crossPartitionHighPct: number;
+    /** DX-002: share (%) of executions fanning out below which CrossPartitionQuery does not fire. */
+    crossPartitionMedPct: number;
+    /** DX-007: share (%) of executions fanning out at or above which the partition *key* is structurally misaligned (re-key), superseding DX-002. */
+    shardKeyStructuralPct: number;
+    /** DX-007: cross-partition share (%) at or above which ShardKeyMisalignment is High (else Medium). */
+    shardKeyHighPct: number;
+    /** DX-010: write-op RU share (%) at or above which the workload is write-dominant. */
+    ingestionWriteRuPctFloor: number;
+    /** DX-010: 429 rate (%) at or above which the container is throttling (paired with write-dominance to fire). */
+    ingestionThrottleRatePct: number;
+    /** DX-010: 429 rate (%) at or above which UncontrolledIngestion is High (else Medium). */
+    ingestionHighPct: number;
+    /** DX-010: minimum data-plane requests in the window below which there is too little traffic to judge. */
+    ingestionMinRequests: number;
+    /** DX-003: a collection with fewer requests than this is inactive for the window and ignored. */
+    sharedThroughputMinRequests: number;
+    /** DX-003: database-wide 429 rate (%) at or above which the shared pool is under pressure. */
+    sharedThroughputPoolThrottlePct: number;
+    /** DX-003: RU share (%) of the pool one collection must consume to count as the monopolizer. */
+    sharedThroughputDominancePct: number;
+    /** DX-003: 429 rate (%) at or above which a low-consumption sibling counts as a starved victim. */
+    sharedThroughputVictimThrottlePct: number;
+    /** DX-003: RU share (%) at or below which a throttled sibling counts as a starved victim (consuming little). */
+    sharedThroughputVictimSharePct: number;
 }
 
 export const DEFAULT_ADVISORY_THRESHOLDS: DerivedAdvisoryThresholds = {
@@ -178,6 +240,23 @@ export const DEFAULT_ADVISORY_THRESHOLDS: DerivedAdvisoryThresholds = {
     serverlessSporadicRatio: 0.1,
     serverlessPeakFloorRuPerSec: 10,
     serverlessPeakCeilingRuPerSec: 5000,
+    // Tier-2 (Log Analytics) — CODA-calibrated (cross_partition_query.py, shard_key_misalignment.py,
+    // uncontrolled_ingestion.py, shared_throughput.py). Internal-guidance defaults, tunable via advisories.*.
+    crossPartitionMinQueries: 50,
+    crossPartitionFanoutThreshold: 1.5,
+    crossPartitionHighPct: 30,
+    crossPartitionMedPct: 10,
+    shardKeyStructuralPct: 60,
+    shardKeyHighPct: 80,
+    ingestionWriteRuPctFloor: 80,
+    ingestionThrottleRatePct: 10,
+    ingestionHighPct: 20,
+    ingestionMinRequests: 1000,
+    sharedThroughputMinRequests: 100,
+    sharedThroughputPoolThrottlePct: 5,
+    sharedThroughputDominancePct: 60,
+    sharedThroughputVictimThrottlePct: 5,
+    sharedThroughputVictimSharePct: 20,
 };
 
 const ADVISORY_SEVERITY_ORDER: Record<DerivedAdvisorySeverity, number> = { High: 0, Medium: 1, Low: 2 };
@@ -1332,6 +1411,328 @@ export function evaluateServerlessCandidate(
     };
 }
 
+// ─── Tier-2 (Log Analytics) evaluators ───────────────────────────────────────────
+//
+// DX-002/003/007/010 are deterministic arithmetic over rows the `CDB*` Kusto tables already contain
+// (query fan-out, write-RU share, per-collection 429/RU disparity). The fetch-and-shape lives in
+// `derivedAdvisoryLogs.ts`; these functions are pure so they can be unit-tested against the same
+// synthetic shapes CODA's own offline detector tests use.
+
+/** One query shape (grouped by anonymized `QueryText`) and its fan-out over the window (CODA DX-002 `QueryShape`). */
+export interface QueryShapeInput {
+    /** Anonymized query text (identifiers → `p1`/`p2`, literals → `str1`), used only as display context. */
+    text: string;
+    /** Number of logical query executions of this shape. */
+    executions: number;
+    /** Average distinct physical partitions touched per execution (`avg(dcount(PartitionKeyRangeId))`). */
+    avgFanout: number;
+    /** Widest fan-out observed for this shape, the container's estimated physical-partition count. */
+    maxFanout: number;
+}
+
+/** Per-container cross-partition / shard-key input (DX-002 / DX-007). */
+export interface CrossPartitionInput {
+    databaseId: string;
+    containerId: string;
+    shapes: readonly QueryShapeInput[];
+}
+
+export interface CrossPartitionThresholds {
+    minQueries: number;
+    fanoutThreshold: number;
+    highPct: number;
+    medPct: number;
+}
+
+/** Folds the per-shape fan-out into total executions, cross-partition share, and the worst (most frequent) shape. Pure. */
+interface CrossPartitionStats {
+    totalQueries: number;
+    containerPartitions: number;
+    crossPartitionPct: number;
+    worst: QueryShapeInput | undefined;
+}
+
+function crossPartitionStats(shapes: readonly QueryShapeInput[], fanoutThreshold: number): CrossPartitionStats {
+    const totalQueries = shapes.reduce((sum, s) => sum + s.executions, 0);
+    const containerPartitions = shapes.reduce((max, s) => Math.max(max, s.maxFanout), 0);
+    const crossShapes = shapes.filter((s) => s.avgFanout >= fanoutThreshold);
+    const crossExec = crossShapes.reduce((sum, s) => sum + s.executions, 0);
+    const crossPartitionPct = totalQueries > 0 ? (100 * crossExec) / totalQueries : 0;
+    const worst = crossShapes.reduce<QueryShapeInput | undefined>(
+        (best, s) => (best === undefined || s.executions > best.executions ? s : best),
+        undefined,
+    );
+    return { totalQueries, containerPartitions, crossPartitionPct, worst };
+}
+
+/** Collapses whitespace and truncates an anonymized query shape for display. Pure. */
+function shortQueryShape(text: string): string {
+    const collapsed = text.split(/\s+/).filter(Boolean).join(' ');
+    return collapsed.length > 200 ? collapsed.slice(0, 200) + '…' : collapsed;
+}
+
+/**
+ * CrossPartitionQuery (CODA DX-002): query shapes that do not filter on the container's partition key fan out
+ * across every physical partition, multiplying RU and latency. Fires when the container has ≥ 2 physical
+ * partitions, there is enough query traffic (`minQueries`), and the share of executions whose shape fans out
+ * (average ≥ `fanoutThreshold` partitions) is at or above `medPct` — High at/above `highPct`, else Medium. The
+ * surfaced text is the service-anonymized shape, so remediation is structural (add the partition key to the
+ * filter). Container-scoped. Pure.
+ */
+export function evaluateCrossPartitionQuery(
+    input: CrossPartitionInput,
+    thresholds: CrossPartitionThresholds,
+): DerivedAdvisory | undefined {
+    const { totalQueries, containerPartitions, crossPartitionPct, worst } = crossPartitionStats(
+        input.shapes,
+        thresholds.fanoutThreshold,
+    );
+    if (totalQueries < thresholds.minQueries || containerPartitions <= 1) {
+        return undefined;
+    }
+    if (crossPartitionPct < thresholds.medPct || worst === undefined) {
+        return undefined;
+    }
+    const severity: DerivedAdvisorySeverity = crossPartitionPct >= thresholds.highPct ? 'High' : 'Medium';
+    const pct = Math.round(crossPartitionPct);
+    const shape = shortQueryShape(worst.text);
+    return {
+        id: `CrossPartitionQuery/${containerKey(input.databaseId, input.containerId)}`,
+        rule: 'CrossPartitionQuery',
+        severity,
+        scope: containerKey(input.databaseId, input.containerId),
+        title: l10n.t('Cross-partition query fan-out in {container}', { container: input.containerId }),
+        rationale: clampRationale(
+            l10n.t(
+                '{pct}% of query executions fan out across partitions (the container has ~{partitions} physical partitions). The most frequent offender averages {fanout} partitions per run. Anonymized shape: {shape}',
+                { pct, partitions: containerPartitions, fanout: worst.avgFanout.toFixed(1), shape },
+            ),
+        ),
+        suggestedAction: l10n.t(
+            'Add the container’s partition key to the query filter (or a composite index) so it targets a single logical partition. For access patterns that inherently filter on a different key, serve them from a secondary index or a change-feed-synced copy. Cross-partition fan-out multiplies RU and latency and does not scale as the container grows.',
+        ),
+        thresholdReference: l10n.t('Threshold: ≥ {pct}% of executions fan out (avg ≥ {fanout} partitions/query)', {
+            pct: thresholds.medPct,
+            fanout: thresholds.fanoutThreshold,
+        }),
+    };
+}
+
+export interface ShardKeyThresholds {
+    structuralPct: number;
+    minPartitions: number;
+    highPct: number;
+}
+
+/**
+ * ShardKeyMisalignment (CODA DX-007): the structural escalation of DX-002. When the *dominant* share of query
+ * executions fans out (≥ `structuralPct`) across ≥ `minPartitions` physical partitions, the problem is the
+ * partition key itself (the data model), not individual queries — the fix is to re-key the container
+ * (migration-class). Reuses DX-002's fan-out signal. When this fires it **supersedes** DX-002 on the same
+ * container (the caller drops the DX-002 advisory). Container-scoped. Pure.
+ */
+export function evaluateShardKeyMisalignment(
+    input: CrossPartitionInput,
+    thresholds: ShardKeyThresholds,
+    crossPartitionFanoutThreshold: number,
+): DerivedAdvisory | undefined {
+    const { containerPartitions, crossPartitionPct } = crossPartitionStats(input.shapes, crossPartitionFanoutThreshold);
+    if (crossPartitionPct < thresholds.structuralPct || containerPartitions < thresholds.minPartitions) {
+        return undefined;
+    }
+    const severity: DerivedAdvisorySeverity = crossPartitionPct >= thresholds.highPct ? 'High' : 'Medium';
+    const pct = Math.round(crossPartitionPct);
+    return {
+        id: `ShardKeyMisalignment/${containerKey(input.databaseId, input.containerId)}`,
+        rule: 'ShardKeyMisalignment',
+        severity,
+        scope: containerKey(input.databaseId, input.containerId),
+        title: l10n.t('Partition key misaligned in {container}', { container: input.containerId }),
+        rationale: clampRationale(
+            l10n.t(
+                '{pct}% of this container’s query executions fan out across ~{partitions} physical partitions — the partition key is structurally misaligned with the workload (the data model, not a single bad query).',
+                { pct, partitions: containerPartitions },
+            ),
+        ),
+        suggestedAction: l10n.t(
+            'Re-key the container so the dominant query filter becomes the partition key. This is migration-class: create a new container with the corrected key, backfill the data, and cut over. Per-query fixes cannot resolve a fundamentally mismatched key, and the cost grows as the container adds partitions.',
+        ),
+        thresholdReference: l10n.t('Threshold: ≥ {pct}% of executions fan out across ≥ {partitions} partitions', {
+            pct: thresholds.structuralPct,
+            partitions: thresholds.minPartitions,
+        }),
+    };
+}
+
+/** Per-container write-dominance + throttling input (CODA DX-010). RU/request totals over the window. */
+export interface UncontrolledIngestionInput {
+    databaseId: string;
+    containerId: string;
+    /** RU consumed by write operations (Create/Upsert/Replace/Delete/Patch/Batch/Execute). */
+    writeRu: number;
+    /** Total RU consumed across all operations. */
+    totalRu: number;
+    /** Total data-plane requests in the window. */
+    totalRequests: number;
+    /** Requests that returned 429. */
+    throttledRequests: number;
+    /** Peak ÷ average per-minute write RU — supporting burstiness evidence (surfaced, not a gate). */
+    burstFactor: number;
+    /** Dominant write-path client `UserAgent`, surfaced as context when present. */
+    dominantUserAgent?: string;
+}
+
+export interface UncontrolledIngestionThresholds {
+    writeRuPctFloor: number;
+    throttleRatePct: number;
+    highPct: number;
+    minRequests: number;
+}
+
+/**
+ * UncontrolledIngestion (CODA DX-010): a write-dominant workload that is throttling — the signature of batch /
+ * bulk / Spark loads outrunning the container's throughput. Fires when there is enough traffic (`minRequests`),
+ * the write-RU share is ≥ `writeRuPctFloor`, AND the 429 rate is ≥ `throttleRatePct` (High at/above `highPct`).
+ * The fix is application-side rate control, complementary to DX-005's "add RU/s". Container-scoped. Pure.
+ */
+export function evaluateUncontrolledIngestion(
+    input: UncontrolledIngestionInput,
+    thresholds: UncontrolledIngestionThresholds,
+): DerivedAdvisory | undefined {
+    if (input.totalRequests < thresholds.minRequests) {
+        return undefined;
+    }
+    const writeRuPct = input.totalRu > 0 ? (100 * input.writeRu) / input.totalRu : 0;
+    const throttleRate = input.totalRequests > 0 ? (100 * input.throttledRequests) / input.totalRequests : 0;
+    if (writeRuPct < thresholds.writeRuPctFloor || throttleRate < thresholds.throttleRatePct) {
+        return undefined;
+    }
+    const severity: DerivedAdvisorySeverity = throttleRate >= thresholds.highPct ? 'High' : 'Medium';
+    const writePct = Math.round(writeRuPct);
+    const throttlePct = Math.round(throttleRate);
+    const client = input.dominantUserAgent
+        ? l10n.t(' Dominant client: {client}.', { client: input.dominantUserAgent })
+        : '';
+    return {
+        id: `UncontrolledIngestion/${containerKey(input.databaseId, input.containerId)}`,
+        rule: 'UncontrolledIngestion',
+        severity,
+        scope: containerKey(input.databaseId, input.containerId),
+        title: l10n.t('Uncontrolled ingestion in {container}', { container: input.containerId }),
+        rationale: clampRationale(
+            l10n.t(
+                'This container is write-dominant ({writePct}% of RU on writes) and throttling at {throttlePct}% (peak-to-average write burst ~{burst}×), the signature of uncontrolled ingestion.',
+                { writePct, throttlePct, burst: input.burstFactor.toFixed(1) },
+            ) + client,
+        ),
+        suggestedAction: l10n.t(
+            'Add application-side rate control rather than only provisioning for the peak: bound ingestion concurrency and honor retry-after on 429; use the SDK throughput-control feature (or the Spark connector) or throughput buckets to cap the batch path; and/or run ingestion under low priority so it yields to app traffic. Raising RU/s is the complementary lever.',
+        ),
+        thresholdReference: l10n.t('Threshold: write-RU ≥ {writePct}% and 429 rate ≥ {throttlePct}%', {
+            writePct: thresholds.writeRuPctFloor,
+            throttlePct: thresholds.throttleRatePct,
+        }),
+    };
+}
+
+/** One collection's data-plane traffic within a shared-throughput database, over the window (CODA DX-003). */
+export interface CollectionTrafficInput {
+    containerId: string;
+    requests: number;
+    throttledRequests: number;
+    ruConsumed: number;
+}
+
+/** Per-shared-database input (CODA DX-003). */
+export interface SharedThroughputInput {
+    databaseId: string;
+    /** Provisioned RU/s shared across the database's collections, surfaced as context. */
+    sharedRu: number;
+    collections: readonly CollectionTrafficInput[];
+}
+
+export interface SharedThroughputThresholds {
+    minRequests: number;
+    poolThrottlePct: number;
+    dominancePct: number;
+    victimThrottlePct: number;
+    victimSharePct: number;
+}
+
+/**
+ * SharedThroughputStarvation (CODA DX-003): in a shared-throughput database one collection monopolizes the
+ * database-level RU pool, starving its siblings — they throttle despite consuming little while the pool is at
+ * its cap. Fires when ≥ 2 collections are active, the pool 429 rate is ≥ `poolThrottlePct`, one collection
+ * consumes ≥ `dominancePct` of the pool RU, and a different collection throttles ≥ `victimThrottlePct` while
+ * consuming ≤ `victimSharePct`. The internal per-collection RU split is not exposed, so this infers starvation
+ * from the 429 + consumption disparity. Database-scoped, High severity. Pure.
+ */
+export function evaluateSharedThroughputStarvation(
+    input: SharedThroughputInput,
+    thresholds: SharedThroughputThresholds,
+): DerivedAdvisory | undefined {
+    const active = input.collections.filter((c) => c.requests >= thresholds.minRequests);
+    if (active.length < 2) {
+        return undefined;
+    }
+    const ruTotal = active.reduce((sum, c) => sum + c.ruConsumed, 0);
+    const reqTotal = active.reduce((sum, c) => sum + c.requests, 0);
+    const thrTotal = active.reduce((sum, c) => sum + c.throttledRequests, 0);
+    const poolRate = reqTotal > 0 ? (100 * thrTotal) / reqTotal : 0;
+    if (poolRate < thresholds.poolThrottlePct || ruTotal <= 0) {
+        return undefined;
+    }
+    const share = (c: CollectionTrafficInput): number => (100 * c.ruConsumed) / ruTotal;
+    const throttleRate = (c: CollectionTrafficInput): number =>
+        c.requests > 0 ? (100 * c.throttledRequests) / c.requests : 0;
+    const monopolizer = active.reduce((top, c) => (share(c) > share(top) ? c : top), active[0]);
+    const monoShare = share(monopolizer);
+    const victims = active.filter(
+        (c) =>
+            c.containerId !== monopolizer.containerId &&
+            throttleRate(c) >= thresholds.victimThrottlePct &&
+            share(c) <= thresholds.victimSharePct,
+    );
+    if (monoShare < thresholds.dominancePct || victims.length === 0) {
+        return undefined;
+    }
+    const victim = victims.reduce((worst, c) => (throttleRate(c) > throttleRate(worst) ? c : worst), victims[0]);
+    return {
+        id: `SharedThroughputStarvation/${input.databaseId}`,
+        rule: 'SharedThroughputStarvation',
+        severity: 'High',
+        scope: input.databaseId,
+        title: l10n.t('Shared-throughput starvation in {database}', { database: input.databaseId }),
+        rationale: clampRationale(
+            l10n.t(
+                'In shared-throughput database {database} ({ru} RU/s across {count} collections), {mono} consumes {monoShare}% of the pool while {victim} throttles at {victimRate}% despite using only {victimShare}% — it is being starved.',
+                {
+                    database: input.databaseId,
+                    ru: Math.round(input.sharedRu),
+                    count: active.length,
+                    mono: monopolizer.containerId,
+                    monoShare: Math.round(monoShare),
+                    victim: victim.containerId,
+                    victimRate: Math.round(throttleRate(victim)),
+                    victimShare: Math.round(share(victim)),
+                },
+            ),
+        ),
+        suggestedAction: l10n.t(
+            'Move the monopolizing collection (or the starved one) to dedicated throughput, or migrate collections off the shared pool. The exact internal RU split per collection is not exposed; this is inferred from the 429 + consumption disparity.',
+        ),
+        thresholdReference: l10n.t(
+            'Threshold: pool 429 ≥ {pool}%, one collection ≥ {dominance}% of RU, a sibling throttling ≥ {victim}% at ≤ {share}% share',
+            {
+                pool: thresholds.poolThrottlePct,
+                dominance: thresholds.dominancePct,
+                victim: thresholds.victimThrottlePct,
+                share: thresholds.victimSharePct,
+            },
+        ),
+    };
+}
+
 /** Already-fetched telemetry the derived-advisory engine consumes. */
 export interface DerivedAdvisoryInputs {
     /** Account-wide 7-day RU% samples for the over-provisioning + autoscale rules. */
@@ -1360,6 +1761,12 @@ export interface DerivedAdvisoryInputs {
     scopeProvisionedRuTotal?: number;
     /** Account-level ARM configuration for the config-only advisories (DX-016 / DX-008); absent when unavailable. */
     accountConfig?: AccountConfigInput;
+    /** Per-container query fan-out shapes (Log Analytics) for the cross-partition + shard-key rules (DX-002 / DX-007). */
+    crossPartition?: readonly CrossPartitionInput[];
+    /** Per-container write-dominance + throttling (Log Analytics) for the uncontrolled-ingestion rule (DX-010). */
+    ingestion?: readonly UncontrolledIngestionInput[];
+    /** Per-shared-database collection traffic (Log Analytics) for the shared-throughput-starvation rule (DX-003). */
+    sharedThroughput?: readonly SharedThroughputInput[];
 }
 
 /**
@@ -1495,6 +1902,60 @@ export function computeDerivedAdvisories(
         }
     }
 
+    // DX-002 / DX-007 (Log Analytics): DX-007 (structural re-key) supersedes DX-002 (per-query fix) on the same
+    // container — when the shard key is misaligned, per-query fixes cannot help — so emit only one per container.
+    for (const input of inputs.crossPartition ?? []) {
+        const shardKey = evaluateShardKeyMisalignment(
+            input,
+            {
+                structuralPct: thresholds.shardKeyStructuralPct,
+                minPartitions: 2,
+                highPct: thresholds.shardKeyHighPct,
+            },
+            thresholds.crossPartitionFanoutThreshold,
+        );
+        if (shardKey) {
+            advisories.push(shardKey);
+            continue;
+        }
+        const crossPartition = evaluateCrossPartitionQuery(input, {
+            minQueries: thresholds.crossPartitionMinQueries,
+            fanoutThreshold: thresholds.crossPartitionFanoutThreshold,
+            highPct: thresholds.crossPartitionHighPct,
+            medPct: thresholds.crossPartitionMedPct,
+        });
+        if (crossPartition) {
+            advisories.push(crossPartition);
+        }
+    }
+
+    // DX-010 (Log Analytics): write-dominant throttling per container.
+    for (const input of inputs.ingestion ?? []) {
+        const advisory = evaluateUncontrolledIngestion(input, {
+            writeRuPctFloor: thresholds.ingestionWriteRuPctFloor,
+            throttleRatePct: thresholds.ingestionThrottleRatePct,
+            highPct: thresholds.ingestionHighPct,
+            minRequests: thresholds.ingestionMinRequests,
+        });
+        if (advisory) {
+            advisories.push(advisory);
+        }
+    }
+
+    // DX-003 (Log Analytics): shared-throughput starvation per shared database.
+    for (const input of inputs.sharedThroughput ?? []) {
+        const advisory = evaluateSharedThroughputStarvation(input, {
+            minRequests: thresholds.sharedThroughputMinRequests,
+            poolThrottlePct: thresholds.sharedThroughputPoolThrottlePct,
+            dominancePct: thresholds.sharedThroughputDominancePct,
+            victimThrottlePct: thresholds.sharedThroughputVictimThrottlePct,
+            victimSharePct: thresholds.sharedThroughputVictimSharePct,
+        });
+        if (advisory) {
+            advisories.push(advisory);
+        }
+    }
+
     advisories.sort(compareAdvisories);
     return advisories;
 }
@@ -1520,6 +1981,18 @@ export interface CollectDerivedAdvisoriesParams {
     advisoryThresholds: DerivedAdvisoryThresholds;
     /** Account-level ARM configuration for the config-only advisories (DX-016 / DX-008). */
     accountConfig?: AccountConfigInput;
+    /**
+     * Data-plane Log Analytics client for the Tier-2 log-based advisories (DX-002/003/007/010). Absent when the
+     * client could not be acquired — the collector then reports Tier-2 as unavailable (`noData`) while still
+     * returning the Tier-1 advisories.
+     */
+    logsClient?: LogsQueryExecutor;
+}
+
+/** What {@link collectDerivedAdvisories} returns: the fired advisories plus the Tier-2 (Log Analytics) coverage status. */
+export interface CollectedDerivedAdvisories {
+    advisories: DerivedAdvisory[];
+    logSource: LogsSourceStatus;
 }
 
 /**
@@ -1528,7 +2001,9 @@ export interface CollectDerivedAdvisoriesParams {
  * the busiest containers — then runs {@link computeDerivedAdvisories}. Any Azure
  * failure propagates so the router can classify it into an empty-state reason.
  */
-export async function collectDerivedAdvisories(params: CollectDerivedAdvisoriesParams): Promise<DerivedAdvisory[]> {
+export async function collectDerivedAdvisories(
+    params: CollectDerivedAdvisoriesParams,
+): Promise<CollectedDerivedAdvisories> {
     const {
         monitorClient,
         cosmosClient,
@@ -1540,6 +2015,7 @@ export async function collectDerivedAdvisories(params: CollectDerivedAdvisoriesP
         partitionThresholds,
         advisoryThresholds,
         accountConfig,
+        logsClient,
     } = params;
 
     const rows = await getSqlInventory(cosmosClient, resourceGroup, accountName, isServerless);
@@ -1709,7 +2185,13 @@ export async function collectDerivedAdvisories(params: CollectDerivedAdvisoriesP
         undefined,
     );
 
-    return computeDerivedAdvisories(
+    // Tier-2 (Log Analytics): DX-002/007 (query fan-out) and DX-010 (write-dominant throttling) for the busiest
+    // scanned containers, and DX-003 (shared-throughput starvation) per shared-throughput database. Bounded to the
+    // same busiest-container set as the ARM scans. Probed once so a single reason-specific partial-coverage notice
+    // is surfaced when logs are unavailable, and Tier-1 still ships.
+    const logs = await collectTier2Logs(logsClient, accountId, scanTargets, rows);
+
+    const advisories = computeDerivedAdvisories(
         {
             weeklyRuPercents,
             weeklyPeakPercent: weekTrends.peakPercent,
@@ -1724,7 +2206,83 @@ export async function collectDerivedAdvisories(params: CollectDerivedAdvisoriesP
             serverless,
             scopeProvisionedRuTotal,
             accountConfig,
+            crossPartition: logs.crossPartition,
+            ingestion: logs.ingestion,
+            sharedThroughput: logs.sharedThroughput,
         },
         advisoryThresholds,
     );
+
+    return { advisories, logSource: logs.logSource };
+}
+
+/** The Tier-2 inputs gathered from Log Analytics plus the coverage status the card surfaces. */
+interface Tier2Logs {
+    crossPartition: CrossPartitionInput[];
+    ingestion: UncontrolledIngestionInput[];
+    sharedThroughput: SharedThroughputInput[];
+    logSource: LogsSourceStatus;
+}
+
+/**
+ * Fetches the Tier-2 (Log Analytics) inputs for the busiest scanned containers and shared-throughput databases,
+ * degrading gracefully: with no client Tier-2 is reported unavailable (`noData`); if the `CDB*` tables are not
+ * queryable the probe classifies why (`logAnalyticsDisabled` / `rbac` / `noData`) and no per-detector queries run.
+ * Individual query failures degrade that detector to empty rather than failing the whole section.
+ */
+async function collectTier2Logs(
+    logsClient: LogsQueryExecutor | undefined,
+    accountId: string,
+    scanTargets: readonly { databaseId: string; containerId: string }[],
+    rows: readonly { databaseId: string; containerId: string; throughputMode: ThroughputMode; throughputRU?: number }[],
+): Promise<Tier2Logs> {
+    const empty = { crossPartition: [], ingestion: [], sharedThroughput: [] };
+    if (!logsClient) {
+        return { ...empty, logSource: { available: false, reason: 'noData' } };
+    }
+
+    const timespan = logWindow();
+    const probe = await probeCdbLogs(logsClient, accountId, timespan);
+    if (!probe.available) {
+        return { ...empty, logSource: { available: false, reason: probe.reason } };
+    }
+
+    // DX-003: one query per shared-throughput database (deduped), using the shared pool's provisioned RU/s.
+    const sharedDatabases = new Map<string, number>();
+    for (const row of rows) {
+        if (row.throughputMode === 'shared' && !sharedDatabases.has(row.databaseId)) {
+            sharedDatabases.set(row.databaseId, row.throughputRU ?? 0);
+        }
+    }
+
+    const [crossPartitionResults, ingestionResults, sharedResults] = await Promise.all([
+        Promise.all(
+            scanTargets.map((row) =>
+                fetchCrossPartitionShapes(logsClient, accountId, row.databaseId, row.containerId, timespan).catch(
+                    () => undefined,
+                ),
+            ),
+        ),
+        Promise.all(
+            scanTargets.map((row) =>
+                fetchUncontrolledIngestion(logsClient, accountId, row.databaseId, row.containerId, timespan).catch(
+                    () => undefined,
+                ),
+            ),
+        ),
+        Promise.all(
+            [...sharedDatabases].map(([databaseId, sharedRu]) =>
+                fetchSharedThroughputTraffic(logsClient, accountId, databaseId, sharedRu, timespan).catch(
+                    () => undefined,
+                ),
+            ),
+        ),
+    ]);
+
+    return {
+        crossPartition: crossPartitionResults.filter((r): r is CrossPartitionInput => r !== undefined),
+        ingestion: ingestionResults.filter((r): r is UncontrolledIngestionInput => r !== undefined),
+        sharedThroughput: sharedResults.filter((r): r is SharedThroughputInput => r !== undefined),
+        logSource: { available: true },
+    };
 }

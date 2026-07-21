@@ -250,6 +250,17 @@ export async function revealAzureResourceInExplorer(
         fullId = `${resourceId.rawId}/${database}/${container}`;
     }
 
+    // The error paths below embed the resource id, database, and container names into thrown error
+    // messages. Those values can reach telemetry/error reporting, so mask them up front when a context
+    // is available (database and container names are user data / EUII).
+    if (context) {
+        for (const value of [resourceId.rawId, database, container]) {
+            if (value) {
+                context.valuesToMask.push(value);
+            }
+        }
+    }
+
     await vscode.commands.executeCommand('azureResourceGroups.focus');
 
     if (!verifyAndResolve) {

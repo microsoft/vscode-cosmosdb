@@ -296,8 +296,9 @@ export const AccountOverview = () => {
         }
     }, [inventory, partitionContainer]);
 
-    // Mirror a container drill-in (from the inventory table's "Show in chart") into the partition
-    // panel. A bare database scope from the metrics dropdown has no container, so it is ignored here.
+    // Mirror a container-scoped selection into the partition panel. The metrics scope dropdown only emits
+    // account/database scope today (no container drill-in is wired), so this effect is currently inert but
+    // kept so a future container-level selection flows through without extra plumbing.
     useEffect(() => {
         if (selectedContainer?.containerId) {
             setPartitionContainer({

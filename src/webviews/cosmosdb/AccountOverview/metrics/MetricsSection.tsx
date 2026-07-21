@@ -30,8 +30,7 @@ import { MetricTile } from './MetricTile';
 // expanded inline. An accordion, never a drawer, so the alerts rail stays adjacent
 // and the inventory table below stays anchored. The scope mirrors the portal:
 // account-wide or a single database (collections are surfaced in the inventory
-// table below, not this dropdown); a container drill-in from that table is still
-// reflected here. A tile is selected on load so a chart is always visible.
+// table below, not this dropdown). A tile is selected on load so a chart is always visible.
 
 const TIME_RANGES: TimeRange[] = ['1H', '24H', '7D'];
 const ACCOUNT_OPTION = 'account';
@@ -152,8 +151,9 @@ export const MetricsSection = ({
     // collections. Derive the unique, sorted database list from the inventory containers.
     const databases = useMemo(() => [...new Set(containers.map((c) => c.databaseId))].sort(), [containers]);
 
-    // A container drill-in (from the table's "Show in chart") highlights its parent database here and
-    // shows the container name; a plain database scope shows the database name; otherwise "Account".
+    // The scope is account-wide or a whole database; the dropdown only emits those two today. A
+    // container-scoped selection would show the container name here, but no container drill-in is
+    // currently wired, so `selectedContainer` always carries just a databaseId.
     const selectedValue = selectedContainer ? selectedContainer.databaseId : ACCOUNT_OPTION;
     const selectedText = selectedContainer
         ? (selectedContainer.containerId ?? selectedContainer.databaseId)
@@ -178,7 +178,7 @@ export const MetricsSection = ({
                             size="small"
                             appearance={range === timeRange ? 'primary' : 'subtle'}
                             aria-pressed={range === timeRange}
-                            aria-label={TIME_RANGE_ARIA[range]}
+                            aria-label={`${TIME_RANGE_ARIA[range]} (${range})`}
                             onClick={() => onTimeRangeChange(range)}
                         >
                             {range}

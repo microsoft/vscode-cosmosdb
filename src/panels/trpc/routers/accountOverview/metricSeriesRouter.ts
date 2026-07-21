@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { z } from 'zod';
-import { type MetricKey, type MetricSeriesResult } from '../../../accountOverview/metrics/contracts';
+import { METRIC_KEYS, type MetricKey, type MetricSeriesResult } from '../../../accountOverview/metrics/contracts';
 import { fetchMetricSeries } from '../../../accountOverview/metrics/hostFetchers';
 import { type TimeRange } from '../../../accountOverview/services';
 import { type AccountOverviewRouterContext } from '../../appRouter';
@@ -18,17 +18,8 @@ import { accountOverviewProcedure } from '../../trpc';
 // so the webview can render an empty-state. All series logic lives behind the
 // metric provider registry — adding a metric needs no new procedure.
 
-const METRIC_KEY_ENUM = z.enum([
-    'normalizedRu',
-    'totalRequests',
-    'totalRequestUnits',
-    'metadataRequests',
-    'serverLatency',
-    'serviceAvailability',
-    'dataIndexUsage',
-    'provisionedThroughput',
-    'documentCount',
-]);
+// Derived from the shared contract so the accepted keys can never drift from `METRIC_KEYS`.
+const METRIC_KEY_ENUM = z.enum(METRIC_KEYS as [MetricKey, ...MetricKey[]]);
 
 export const metricSeriesProcedures = {
     getMetricSeries: accountOverviewProcedure

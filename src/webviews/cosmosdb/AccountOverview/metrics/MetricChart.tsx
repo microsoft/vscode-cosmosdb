@@ -132,7 +132,7 @@ const ChartTooltip = ({ active, payload, descriptor }: ChartTooltipProps) => {
     return (
         <div className={styles.tooltip}>
             <Text weight="semibold">{formatTimestamp(point.timestamp)}</Text>
-            <Text>{`${descriptor.seriesLabel}: ${formatMetricValue(descriptor.unit, point.value)}`}</Text>
+            <Text>{l10n.t('{0}: {1}', descriptor.seriesLabel, formatMetricValue(descriptor.unit, point.value))}</Text>
             {point.throttled && (
                 <Text className={styles.throttleNote}>{l10n.t('Sustained throttling (429s) in this window')}</Text>
             )}
@@ -181,7 +181,7 @@ export const MetricChart = ({
     }
 
     return (
-        <figure className={styles.chartArea} style={{ margin: 0 }} aria-label={descriptor.label}>
+        <figure className={styles.chartArea} style={{ margin: 0 }}>
             <figcaption className={styles.srOnly}>
                 {l10n.t(
                     '{0} over the selected window, peak {1}.',

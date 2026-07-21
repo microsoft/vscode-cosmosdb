@@ -341,7 +341,7 @@ export const DerivedAdvisories = ({
     }
 
     return (
-        <div ref={rootRef} className={styles.root} tabIndex={-1}>
+        <div ref={rootRef} className={styles.root} tabIndex={-1} aria-label={l10n.t('Recommendations')}>
             <output className={styles.srOnly} aria-live="polite">
                 {announcement}
             </output>

@@ -336,7 +336,7 @@ const InventoryRow = memo(function InventoryRow({
                 </Badge>
             </TableCell>
             <TableCell>
-                <Tooltip content={l10n.t('Reveal in tree')} relationship="label">
+                <Tooltip content={l10n.t('Reveal in tree')} relationship="description">
                     <Button
                         appearance="subtle"
                         size="small"
@@ -345,7 +345,7 @@ const InventoryRow = memo(function InventoryRow({
                         onClick={handleReveal}
                     />
                 </Tooltip>
-                <Tooltip content={l10n.t('Open Query Editor')} relationship="label">
+                <Tooltip content={l10n.t('Open Query Editor')} relationship="description">
                     <Button
                         appearance="subtle"
                         size="small"

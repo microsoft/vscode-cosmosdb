@@ -156,12 +156,10 @@
     "@azure/arm-advisor": "~3.2.0",
     "@azure/arm-alertsmanagement": "~1.0.0-beta.1",
     "@azure/arm-cosmosdb": "~16.4.0",
-    "@azure/arm-features": "~3.1.0",
     "@azure/arm-monitor": "~7.0.0",
     "@azure/arm-postgresql": "~6.1.0",
     "@azure/arm-postgresql-flexible": "~9.0.0",
     "@azure/arm-resources": "~7.0.0",
-    "@azure/core-rest-pipeline": "~1.24.0",
     "@azure/cosmos": "~4.9.0",
     "@azure/identity": "~4.13.0",
     "@fluentui/react-components": "~9.74.1",
@@ -201,6 +199,9 @@
       },
       {
         "path": "./skills/cosmosdb-nosql-query-generation/SKILL.md"
+      },
+      {
+        "path": "./skills/cosmosdb-nosql-query-editor/SKILL.md"
       }
     ],
     "x-azResources": {
@@ -252,7 +253,7 @@
       {
         "name": "cosmosdb_getQueryEditorContext",
         "displayName": "Get Query Editor Context",
-        "modelDescription": "Returns the context of the active Cosmos DB Query Editor: the full editor text (currentQuery, which may contain multiple queries), the selected query if any (selectedQuery), the single query to operate on or explain (activeQuery — the selection when present, otherwise the full text), the persisted container schema (if one has already been sampled or inferred), recent query history, and result metadata (row counts, request charge, inferred result schema). Never returns raw document data. Use this to ground query generation or explanation; if it returns a containerSchema, you already know the schema and do not need to sample again.",
+        "modelDescription": "Returns the context of the active Cosmos DB Query Editor: the full editor text (currentQuery, which may contain multiple queries), the selected query if any (selectedQuery), the single query to operate on or explain (activeQuery — the selection when present, otherwise the full text), the Azure coordinates of the connected account (azure: accountName, subscriptionId, subscriptionName, resourceGroup — present only for Azure-signed-in accounts, omitted for workspace-attached accounts and the emulator), the persisted container schema (if one has already been sampled or inferred), recent query history, and result metadata (row counts, request charge, inferred result schema). Never returns raw document data. Use this to ground query generation or explanation; if it returns a containerSchema, you already know the schema and do not need to sample again.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "cosmosdb_getQueryEditorContext"
       },
@@ -285,6 +286,37 @@
         "modelDescription": "Runs the CURRENT query in the active Cosmos DB Query Editor (the selected text if there is a selection, otherwise the full editor content) and shows the results in the editor grid. Use this whenever the user wants to see, show, list, find, count, or return data — writing or applying a query does NOT run it. This tool takes no query parameter; it always runs whatever is currently in the editor, so to run a specific or newly generated query you MUST first call cosmosdb_applyQueryToEditor to make it the current query, then call this tool. Asks the user for confirmation first because it reads data and consumes Request Units (RUs). Returns only PII-free result metadata (row count, request charge, inferred result schema) — never raw documents.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "cosmosdb_executeCurrentQuery"
+      },
+      {
+        "name": "cosmosdb_openQueryEditor",
+        "displayName": "Open Query Editor",
+        "modelDescription": "Opens a Cosmos DB NoSQL Query Editor by starting the connection flow: prompts the user to pick a Cosmos DB container, then opens a Query Editor connected to it. After opening, it also reveals the connected container in the Azure Resources tree (Azure-signed-in accounts only). Use this when there is no active Query Editor / connection yet and the user wants to write, run, or explain a query. The other Query Editor tools (cosmosdb_getQueryEditorContext, cosmosdb_applyQueryToEditor, cosmosdb_executeCurrentQuery) require an active editor, so call this first when none is open. The picker is interactive; the user may cancel it.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "cosmosdb_openQueryEditor"
+      },
+      {
+        "name": "cosmosdb_listOpenConnections",
+        "displayName": "List Open Connections",
+        "modelDescription": "Lists every open Cosmos DB Query Editor and the container each one is connected to (database, container, endpoint, whether it is the emulator, whether it is the active/focused editor, and — for Azure-signed-in accounts — the account name, subscription, and resource group). Use this to discover existing connections and suggest the right container to the user instead of guessing or re-opening a new connection. Optionally set reveal=true to highlight a connection in the Azure Resources tree: it reveals the connection matching databaseId / containerId when both are given, otherwise the active editor's connection. Revealing works only for Azure-signed-in accounts (not workspace-attached accounts or the emulator). Returns PII-free metadata only — never query text or document data.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "cosmosdb_listOpenConnections",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "reveal": {
+              "type": "boolean",
+              "description": "When true, reveal a connection in the Azure Resources tree (the one matching databaseId/containerId when both are given, otherwise the active editor connection)."
+            },
+            "databaseId": {
+              "type": "string",
+              "description": "Database of the connection to reveal in the tree. Use together with containerId."
+            },
+            "containerId": {
+              "type": "string",
+              "description": "Container of the connection to reveal in the tree. Use together with databaseId."
+            }
+          }
+        }
       }
     ],
     "chatParticipants": [

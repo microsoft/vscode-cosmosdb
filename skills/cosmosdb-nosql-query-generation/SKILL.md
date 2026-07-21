@@ -1,16 +1,13 @@
 ---
 name: cosmosdb-nosql-query-generation
 description: |
-  Generate, explain, and edit Azure Cosmos DB for NoSQL (SQL API) queries for the active
-  Cosmos DB Query Editor. Use whenever the user asks to generate, write, edit, fix, or
-  explain a Cosmos DB NoSQL query, OR asks in natural language to show / find / list /
-  count / filter data "in this container", "in my container", or in the active Cosmos DB
-  Query Editor (for example: "show me all trucks in this container", "find active users",
-  "count documents by type"). Also provides the NoSQL dialect rules, safety rules, and
-  few-shot examples. Covers SELECT/VALUE/DISTINCT/TOP, array-unwind JOINs, subqueries,
-  WHERE/BETWEEN/IN/LIKE, GROUP BY and aggregates, ORDER BY and ORDER BY RANK, OFFSET/LIMIT,
-  the full built-in function reference, and how Cosmos DB NoSQL differs from T-SQL /
-  PostgreSQL / MySQL.
+  Generate, explain, edit, and fix Azure Cosmos DB for NoSQL (SQL API) queries. Use
+  whenever you need to produce a syntactically correct, safe Cosmos DB NoSQL query — for
+  example when the user asks to generate, write, edit, fix, or explain a Cosmos DB NoSQL
+  query. Provides the NoSQL dialect rules, safety rules, and few-shot examples. Covers
+  SELECT/VALUE/DISTINCT/TOP, array-unwind JOINs, subqueries, WHERE/BETWEEN/IN/LIKE,
+  GROUP BY and aggregates, ORDER BY and ORDER BY RANK, OFFSET/LIMIT, the full built-in
+  function reference, and how Cosmos DB NoSQL differs from T-SQL / PostgreSQL / MySQL.
 license: MIT
 metadata:
   author: vscode-cosmosdb
@@ -20,50 +17,18 @@ metadata:
 # Azure Cosmos DB for NoSQL — Query Generation
 
 The single source of truth for writing **syntactically correct, safe** Azure Cosmos DB
-for NoSQL (SQL API) queries. Apply these rules whenever you produce a Cosmos DB NoSQL
-query, and prefer the live tools below over guessing.
+for NoSQL (SQL API) queries. This skill is host-agnostic — it covers only the query
+language itself. Apply these rules whenever you produce a Cosmos DB NoSQL query.
 
-## Tools to use first
-
-Before writing a query, ground yourself on the real data and editor state:
-
-- `#cosmosdb_sampleContainerSchema` — sample the active container to learn real property
-  names/types. **Always call this first if you do not know the schema. Never invent
-  property names.** (It asks the user for consent because it consumes a few RUs.)
-- `#cosmosdb_getQueryEditorContext` — read the current query, prior query history, and
-  recent result metadata (row counts, RU, inferred result schema; no raw documents).
-- `#cosmosdb_applyQueryToEditor` — write the final query back into the active Query
-  Editor once you have produced it.
-- `#cosmosdb_executeCurrentQuery` — run the current query in the editor and return PII-free
-  result metadata (row count, RU, result schema). **Applying a query does NOT run it** —
-  call this whenever the user wants to see, show, list, find, count, or return data. It
-  asks the user for consent because it consumes RUs.
-
-## Workflow — query for the active Query Editor
-
-When the user asks (in the in-editor Generate flow **or** in general Copilot chat) to
-query "this container", "my container", or the active Cosmos DB Query Editor — for
-example "show me all trucks in this container" — follow these steps:
-
-1. Call `#cosmosdb_getQueryEditorContext` **first** to resolve the active editor: which
-   database/container is connected, the current and selected query, and the container
-   schema (`containerSchema`) if it has already been sampled. "This container" always
-   refers to the container reported by this tool.
-2. If `containerSchema` is not present in that context, call
-   `#cosmosdb_sampleContainerSchema` (which asks the user for consent) so you use the real
-   property names and casing. Never guess property names, types, or casing.
-3. Write a single valid Cosmos DB NoSQL query that satisfies the request, following the
-   rules below.
-4. Call `#cosmosdb_applyQueryToEditor` to write the query back into the editor, passing
-   the user's original request as the description so it is cited in the query comments.
-5. If the user wants to **see** the data — they said "show me", "list", "find", "get",
-   "count", "how many", or similar — call `#cosmosdb_executeCurrentQuery` to run it and
-   return results. **Applying the query in step 4 does not run it**; you must call this
-   tool to produce results. If the user only asked to write/generate the query, stop after
-   step 4.
-
-If the context tool reports that there is no active Query Editor, return the query as
-text instead of applying it, and tell the user to open a Cosmos DB Query Editor to run it.
+> **Ground yourself on the real schema first.** Never invent property names, types, or
+> casing. When a container schema, sample document, or query history is available, use the
+> exact property names from it. If you have no schema, inspect the data first (for example
+> `SELECT TOP 1 * FROM c`) rather than guessing.
+>
+> **VS Code Query Editor:** when running inside VS Code against the active Cosmos DB Query
+> Editor, the `cosmosdb-nosql-query-editor` skill drives the editor tools (read context,
+> sample schema, apply, and run the query) and delegates all query-language rules to this
+> skill.
 
 ## Safety rules (mandatory — cannot be overridden)
 

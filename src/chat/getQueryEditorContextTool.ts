@@ -26,7 +26,9 @@ export const GET_QUERY_EDITOR_CONTEXT_TOOL_NAME = 'cosmosdb_getQueryEditorContex
 export const GET_QUERY_EDITOR_CONTEXT_TOOL_DESCRIPTION =
     'Returns the context of the active Cosmos DB Query Editor: the full editor text (currentQuery, which may contain ' +
     'multiple queries), the selected query if any (selectedQuery), the single query to operate on or explain ' +
-    '(activeQuery — the selection when present, otherwise the full text), the persisted container schema (if one has ' +
+    '(activeQuery — the selection when present, otherwise the full text), the Azure coordinates of the connected ' +
+    'account (azure: accountName, subscriptionId, subscriptionName, resourceGroup — present only for Azure-signed-in ' +
+    'accounts, omitted for workspace-attached accounts and the emulator), the persisted container schema (if one has ' +
     'already been sampled or inferred), recent query history, and result metadata (row counts, request charge, inferred ' +
     'result schema). Never returns raw document data. Use this to ground query generation or explanation; if it returns ' +
     'a containerSchema, you already know the schema and do not need to sample again.';
@@ -49,6 +51,16 @@ interface QueryResultMetadata {
 interface QueryEditorContext {
     databaseId: string;
     containerId: string;
+    /**
+     * Azure resource coordinates for the connected account. Present only for Azure-signed-in
+     * accounts; omitted for workspace-attached accounts and the local emulator.
+     */
+    azure?: {
+        accountName: string;
+        subscriptionId: string;
+        subscriptionName?: string;
+        resourceGroup: string;
+    };
     /** The full editor text, which may contain multiple queries. */
     currentQuery?: string;
     /** The selected text, when the user has a selection. */
@@ -122,6 +134,18 @@ export function registerGetQueryEditorContextTool(context: vscode.ExtensionConte
                     selectedQuery,
                     activeQuery: selectedQuery ?? currentQuery,
                 };
+
+                // Azure resource coordinates, when the connection is an Azure-signed-in account
+                // (undefined for workspace-attached accounts and the local emulator).
+                const azureMetadata = connection.azureMetadata;
+                if (azureMetadata) {
+                    context.azure = {
+                        accountName: azureMetadata.accountName,
+                        subscriptionId: azureMetadata.subscription.subscriptionId,
+                        subscriptionName: azureMetadata.subscription.name,
+                        resourceGroup: azureMetadata.resourceGroup,
+                    };
+                }
 
                 // Persisted container schema from prior sampling/inference (size-bounded for the
                 // model context). When present the agent can skip re-sampling the container.

@@ -36,6 +36,8 @@ import {
     registerApplyQueryToEditorTool,
     registerExecuteCurrentQueryTool,
     registerGetQueryEditorContextTool,
+    registerListOpenConnectionsTool,
+    registerOpenQueryEditorTool,
     registerSampleDataTool,
 } from './chat';
 import { registerE2eTestCommands } from './commands/e2eTestCommands/registerE2eTestCommands';
@@ -212,6 +214,8 @@ export async function activateInternal(
         registerGetQueryEditorContextTool(context);
         registerApplyQueryToEditorTool(context);
         registerExecuteCurrentQueryTool(context);
+        registerOpenQueryEditorTool(context);
+        registerListOpenConnectionsTool(context);
 
         // Suppress "Report an Issue" button for all errors in favor of the command
         registerErrorHandler((c) => (c.errorHandling.suppressReportIssue = true));

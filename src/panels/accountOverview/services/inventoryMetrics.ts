@@ -318,10 +318,12 @@ function toSparkline(series: Map<number, number> | undefined, maxPoints = 24): n
     if (values.length <= maxPoints) {
         return values;
     }
-    const step = values.length / maxPoints;
+    // Sample across `values.length - 1` so the first and newest points are always kept; a plain
+    // `i * (len / maxPoints)` floor can drop the latest datapoint, hiding the current value.
+    const step = (values.length - 1) / (maxPoints - 1);
     const out: number[] = [];
     for (let i = 0; i < maxPoints; i++) {
-        out.push(values[Math.floor(i * step)]);
+        out.push(values[Math.round(i * step)]);
     }
     return out;
 }

@@ -149,12 +149,17 @@ export function pickPointValue(point: MonitorPoint, aggregation: MetricAggregati
 export function containerFilter(databaseId: string | undefined, containerId: string | undefined): string | undefined {
     const clauses: string[] = [];
     if (containerId) {
-        clauses.push(`CollectionName eq '${containerId}'`);
+        clauses.push(`CollectionName eq '${escapeODataLiteral(containerId)}'`);
     }
     if (databaseId) {
-        clauses.push(`DatabaseName eq '${databaseId}'`);
+        clauses.push(`DatabaseName eq '${escapeODataLiteral(databaseId)}'`);
     }
     return clauses.length > 0 ? clauses.join(' and ') : undefined;
+}
+
+/** Escapes a value for use inside an OData single-quoted string literal (a `'` is doubled to `''`). */
+function escapeODataLiteral(value: string): string {
+    return value.replace(/'/g, "''");
 }
 
 /**

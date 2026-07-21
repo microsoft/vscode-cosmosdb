@@ -14,7 +14,7 @@ import { type MetricKey, type MetricPoint, type MetricUnit } from '../../../api/
 // (drives axis/tooltip formatting), the Y-axis domain, reference lines, and how the
 // series collapses to the tile's scalar. Adding a metric later is one entry here.
 
-/** Account-wide (undefined) or container-scoped selection shared across the dashboard. */
+/** A concrete container reference — a specific `databaseId` + `containerId` pair. */
 export type ContainerRef = { databaseId: string; containerId: string };
 
 /**

@@ -5,27 +5,27 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+    AutoscaleCandidateDetector,
+    AutoscaleMaxOverProvisionedDetector,
+    AutoscaleToManualCandidateDetector,
     balanceRatio,
     compareAdvisories,
     computeDerivedAdvisories,
     daysToStorageLimit,
     DEFAULT_ADVISORY_THRESHOLDS,
-    evaluateAutoscaleCandidate,
-    evaluateAutoscaleMaxOverProvisioned,
-    evaluateAutoscaleToManualCandidate,
-    evaluateExpensiveConsistency,
-    evaluateHotPartitionRisk,
-    evaluateIdleContainer,
-    evaluateIndexingCostRisk,
-    evaluateMultiRegionWrites,
-    evaluateOverProvisioning,
-    evaluatePartitionMergeCandidate,
-    evaluateServerlessCandidate,
-    evaluateStorageGrowthRisk,
-    evaluateStorageSkewRisk,
-    evaluateUnderProvisioning,
+    ExpensiveConsistencyDetector,
+    HotPartitionRiskDetector,
+    IdleContainerDetector,
+    IndexingCostRiskDetector,
     mean,
+    MultiRegionWriteAntipatternDetector,
+    OverProvisioningDetector,
+    PartitionMergeCandidateDetector,
+    ServerlessCandidateDetector,
     storageGrowthSlopeBytesPerDay,
+    StorageGrowthRiskDetector,
+    StorageSkewRiskDetector,
+    UnderProvisioningDetector,
     type AccountConfigInput,
     type AutoscaleThresholds,
     type AutoscaleUtilizationInput,
@@ -35,8 +35,25 @@ import {
     type PartitionMergeInput,
     type PartitionSaturationInput,
     type ServerlessCandidateInput,
-} from './derivedAdvisories';
-import { containerKey, percentile } from './shared';
+} from '.';
+import { containerKey, percentile } from '../shared';
+
+// Detector classes expose the same `evaluate` signature as the old free functions (a bound field delegating to
+// the module-level evaluator), so aliasing keeps every call site below unchanged.
+const evaluateAutoscaleCandidate = new AutoscaleCandidateDetector().evaluate;
+const evaluateAutoscaleMaxOverProvisioned = new AutoscaleMaxOverProvisionedDetector().evaluate;
+const evaluateAutoscaleToManualCandidate = new AutoscaleToManualCandidateDetector().evaluate;
+const evaluateExpensiveConsistency = new ExpensiveConsistencyDetector().evaluate;
+const evaluateHotPartitionRisk = new HotPartitionRiskDetector().evaluate;
+const evaluateIdleContainer = new IdleContainerDetector().evaluate;
+const evaluateIndexingCostRisk = new IndexingCostRiskDetector().evaluate;
+const evaluateMultiRegionWrites = new MultiRegionWriteAntipatternDetector().evaluate;
+const evaluateOverProvisioning = new OverProvisioningDetector().evaluate;
+const evaluatePartitionMergeCandidate = new PartitionMergeCandidateDetector().evaluate;
+const evaluateServerlessCandidate = new ServerlessCandidateDetector().evaluate;
+const evaluateStorageGrowthRisk = new StorageGrowthRiskDetector().evaluate;
+const evaluateStorageSkewRisk = new StorageSkewRiskDetector().evaluate;
+const evaluateUnderProvisioning = new UnderProvisioningDetector().evaluate;
 
 /** Builds a per-container saturation input with sensible defaults for the hot-partition / under-provisioning rules. */
 function partInput(overrides: Partial<PartitionSaturationInput> = {}): PartitionSaturationInput {

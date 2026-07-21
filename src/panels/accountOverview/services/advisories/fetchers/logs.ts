@@ -4,14 +4,14 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type LogsQueryResult, type LogsTable } from '@azure/monitor-query-logs';
+import { classifyUnavailable, DAY, type UnavailableReason } from '../../shared';
 import {
     type CollectionTrafficInput,
     type CrossPartitionInput,
     type QueryShapeInput,
     type SharedThroughputInput,
     type UncontrolledIngestionInput,
-} from './derivedAdvisories';
-import { classifyUnavailable, DAY, type UnavailableReason } from './shared';
+} from '../core/types';
 
 // ─── Tier-2 (Log Analytics) data path ─────────────────────────────────────────────
 //

@@ -5,10 +5,7 @@
 
 import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
 import { API, tryGetExperience } from '../../../../AzureDBExperiences';
-import {
-    collectDerivedAdvisories,
-    type DerivedAdvisoriesResult,
-} from '../../../accountOverview/services/derivedAdvisories';
+import { collectDerivedAdvisories, type DerivedAdvisoriesResult } from '../../../accountOverview/services/advisories';
 import { classifyUnavailable, type UnavailableReason } from '../../../accountOverview/services/shared';
 import { type AccountOverviewRouterContext } from '../../appRouter';
 import { accountOverviewProcedure } from '../../trpc';

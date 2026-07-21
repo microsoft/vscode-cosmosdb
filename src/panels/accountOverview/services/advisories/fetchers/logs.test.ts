@@ -16,7 +16,7 @@ import {
     tableToRecords,
     type LogsQueryExecutor,
     type LogsTimespan,
-} from './derivedAdvisoryLogs';
+} from './logs';
 
 const RESOURCE = '/subscriptions/s/resourceGroups/rg/providers/Microsoft.DocumentDB/databaseAccounts/acct';
 const SPAN: LogsTimespan = logWindow(Date.parse('2024-01-02T00:00:00Z'));

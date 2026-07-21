@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type MonitorClient } from '@azure/arm-monitor';
-import { DAY, HOUR, seriesContainerKey } from './shared';
+import { DAY, HOUR, seriesContainerKey } from '../../shared';
 
 // ─── Batch-2 derived-advisory metric fetchers ─────────────────────────────────────
 //

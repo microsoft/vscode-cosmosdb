@@ -17,23 +17,23 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+    AutoscaleCandidateDetector,
+    AutoscaleToManualCandidateDetector,
+    CrossPartitionQueryDetector,
     DEFAULT_ADVISORY_THRESHOLDS,
-    evaluateAutoscaleCandidate,
-    evaluateAutoscaleToManualCandidate,
-    evaluateCrossPartitionQuery,
-    evaluateExpensiveConsistency,
-    evaluateHotPartitionRisk,
-    evaluateIdleContainer,
-    evaluateMultiRegionWrites,
-    evaluateOverProvisioning,
-    evaluatePartitionMergeCandidate,
-    evaluateServerlessCandidate,
-    evaluateSharedThroughputStarvation,
-    evaluateShardKeyMisalignment,
-    evaluateStorageGrowthRisk,
-    evaluateStorageSkewRisk,
-    evaluateUncontrolledIngestion,
-    evaluateUnderProvisioning,
+    ExpensiveConsistencyDetector,
+    HotPartitionRiskDetector,
+    IdleContainerDetector,
+    MultiRegionWriteAntipatternDetector,
+    OverProvisioningDetector,
+    PartitionMergeCandidateDetector,
+    ServerlessCandidateDetector,
+    ShardKeyMisalignmentDetector,
+    SharedThroughputStarvationDetector,
+    StorageGrowthRiskDetector,
+    StorageSkewRiskDetector,
+    UncontrolledIngestionDetector,
+    UnderProvisioningDetector,
     type AccountConfigInput,
     type AutoscaleThresholds,
     type AutoscaleUtilizationInput,
@@ -46,7 +46,26 @@ import {
     type QueryShapeInput,
     type ServerlessCandidateInput,
     type UncontrolledIngestionInput,
-} from './derivedAdvisories';
+} from '.';
+
+// Detector classes expose the same `evaluate` signature as the old free functions (a bound field delegating to
+// the module-level evaluator), so aliasing keeps every call site below unchanged.
+const evaluateAutoscaleCandidate = new AutoscaleCandidateDetector().evaluate;
+const evaluateAutoscaleToManualCandidate = new AutoscaleToManualCandidateDetector().evaluate;
+const evaluateCrossPartitionQuery = new CrossPartitionQueryDetector().evaluate;
+const evaluateExpensiveConsistency = new ExpensiveConsistencyDetector().evaluate;
+const evaluateHotPartitionRisk = new HotPartitionRiskDetector().evaluate;
+const evaluateIdleContainer = new IdleContainerDetector().evaluate;
+const evaluateMultiRegionWrites = new MultiRegionWriteAntipatternDetector().evaluate;
+const evaluateOverProvisioning = new OverProvisioningDetector().evaluate;
+const evaluatePartitionMergeCandidate = new PartitionMergeCandidateDetector().evaluate;
+const evaluateServerlessCandidate = new ServerlessCandidateDetector().evaluate;
+const evaluateSharedThroughputStarvation = new SharedThroughputStarvationDetector().evaluate;
+const evaluateShardKeyMisalignment = new ShardKeyMisalignmentDetector().evaluate;
+const evaluateStorageGrowthRisk = new StorageGrowthRiskDetector().evaluate;
+const evaluateStorageSkewRisk = new StorageSkewRiskDetector().evaluate;
+const evaluateUncontrolledIngestion = new UncontrolledIngestionDetector().evaluate;
+const evaluateUnderProvisioning = new UnderProvisioningDetector().evaluate;
 
 const GIB = 1024 ** 3;
 const DAY = 24 * 60 * 60 * 1000;

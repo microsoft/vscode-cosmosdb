@@ -90,6 +90,47 @@ text advisory, and a few in both places:
 (Azure Monitor fired alerts and Azure Advisor), surfaced verbatim. The **Derived Advisories** card is the
 only place our own `§13` rule engine writes to.
 
+## Threshold grounding
+
+Every constant the rule engine ships is one of two kinds. A **platform limit** is a hard Azure number the
+detector is _structurally_ correct to use (e.g. a physical partition's 50 GiB ceiling) — these are grounded
+against public Azure documentation below. An **internal-guidance** constant is a heuristic cutoff calibrated
+by CODA's fleet analysis, not a published Azure number; each is exposed under
+`cosmosDB.accountOverview.advisories.*` and should be read as a tunable starting point, not an Azure-sanctioned
+threshold.
+
+### Grounded in public Azure documentation (platform limits)
+
+| Constant (code)                                                          | Default     | Grounding                                                                                                                                                                                                                     |
+| ------------------------------------------------------------------------ | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `RU_PER_PARTITION` (DX-009 needed-partition math; DX-005/006 base)       | 10,000 RU/s | A physical partition serves up to **10,000 RU/s** — [Partitioning](https://learn.microsoft.com/azure/cosmos-db/partitioning#physical-partitions).                                                                             |
+| `BYTES_PER_PARTITION` / `PARTITION_STORAGE_LIMIT_BYTES` (DX-009/015/017) | 50 GiB      | A physical partition stores up to **50 GB** — [Partitioning](https://learn.microsoft.com/azure/cosmos-db/partitioning#physical-partitions).                                                                                   |
+| `AUTOSCALE_IDLE_FRACTION` (DX-011 recoverable idle-floor)                | 0.1         | Autoscale bills between **10% and 100%** of `Tmax` (`0.1*Tmax ≤ T ≤ Tmax`) — [Autoscale](https://learn.microsoft.com/azure/cosmos-db/provision-throughput-autoscale#how-autoscale-throughput-works).                          |
+| `serverlessPeakCeilingRuPerSec` (DX-014 serverless fit ceiling)          | 5,000 RU/s  | A serverless container caps at **5,000 RU/s** — [Serverless performance](https://learn.microsoft.com/azure/cosmos-db/serverless-performance#request-unit-changes).                                                            |
+| `OVERPROVISIONING_MIN_RU` (DX-001 right-size floor)                      | 400 RU/s    | Minimum manual throughput per container is **400 RU/s** — [Provision throughput](https://learn.microsoft.com/azure/cosmos-db/set-throughput).                                                                                 |
+| `autoscaleToManualAvgPercent` (DX-013 break-even)                        | 66 %        | Autoscale saves money only if `Tmax` is used **66% or fewer hours/month**; steadier use is cheaper on manual — [Autoscale](https://learn.microsoft.com/azure/cosmos-db/provision-throughput-autoscale#benefits-of-autoscale). |
+
+### Internal-guidance (CODA fleet-calibrated; tune via settings)
+
+The signals these ride on (e.g. `NormalizedRUConsumption` %, 429 rate) are Azure-published metrics; the
+cutoffs below are CODA guidance, not Azure limits.
+
+| Constant(s)                                                         | Default       | Role                                                                                    |
+| ------------------------------------------------------------------- | ------------- | --------------------------------------------------------------------------------------- |
+| `partitionSaturationPercent` / `partitionHeadroomPercent`           | 90 % / 70 %   | p99 bands separating a saturated partition from one with headroom (DX-005/006).         |
+| `throttleRatePercent`                                               | 1 %           | 429-rate floor above which throttling counts as active (DX-005).                        |
+| `overProvisioningBandPercent` + `OVERPROVISIONING_PEAK_GUARD_PCT`   | 30 % / 90 %   | Idle band + peak-saturation guard (DX-001).                                             |
+| Materiality `MATERIALITY_*` (rel `5 % / 1 %`, abs `5000 / 1000 RU`) | —             | Relative capacity-materiality severity (DX-001/004/011).                                |
+| Under-provisioning severity `20 % / 5 %`                            | —             | 429-rate severity bands (DX-005).                                                       |
+| Autoscale-candidate `40 % / 30 % / 5×`                              | —             | Duty-cycle burst signal (DX-012).                                                       |
+| `storageGrowthHorizonDays` + `30 / 90 d` severity                   | 180 d         | Days-to-50-GiB projection horizon (DX-017).                                             |
+| `storageSkewBalanceRatio` + `1 / 25 / 40 GiB`                       | 0.7           | Partition-balance ratio + materiality (DX-015).                                         |
+| `indexingUsageRatio`                                                | 0.3           | Index/data storage proxy (AO-D7; no CODA detector).                                     |
+| `idlePeakRuPerBucket`                                               | 50 RU         | Near-zero per-bucket floor for idle (DX-004).                                           |
+| `autoscaleToManualPeakToAvgRatio`                                   | 1.3           | Steadiness cap pairing with the 66 % floor (DX-013).                                    |
+| `serverlessSporadicRatio` + `serverlessPeakFloorRuPerSec`           | 0.1 / 10 RU/s | Sporadic-shape ratio + activity floor for serverless fit (DX-014).                      |
+| `ADVISORY_WINDOW_DAYS` / `ADVISORY_INTERVAL`                        | 30 d / `PT1H` | Look-back window + bucketing so periodic (monthly-batch) workloads aren't flagged idle. |
+
 ## Health model
 
 - **Account health** (`Healthy / Needs Attention / Critical`): base state from ARM `provisioningState` plus

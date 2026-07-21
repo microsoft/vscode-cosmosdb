@@ -133,7 +133,9 @@ export interface DerivedAdvisoryThresholds {
     idlePeakRuPerBucket: number;
     /**
      * Autoscale utilisation (average % of the configured max) at or above which AutoscaleToManualCandidate (DX-013)
-     * fires — a workload sustained near its max barely uses autoscale's elasticity and is cheaper on manual.
+     * fires — a workload sustained near its max barely uses autoscale's elasticity and is cheaper on manual. Grounded
+     * in Azure's autoscale break-even: autoscale only saves money if `Tmax` is used 66% or fewer hours per month.
+     * https://learn.microsoft.com/azure/cosmos-db/provision-throughput-autoscale#benefits-of-autoscale
      */
     autoscaleToManualAvgPercent: number;
     /**
@@ -153,7 +155,8 @@ export interface DerivedAdvisoryThresholds {
     serverlessPeakFloorRuPerSec: number;
     /**
      * RU/s: account-total peak at or below which ServerlessCandidate (DX-014) still fits serverless. Above this
-     * single-partition ceiling the workload is steered away (serverless caps at 5,000 RU/s per physical partition).
+     * single-partition ceiling the workload is steered away — a serverless container caps at 5,000 RU/s:
+     * https://learn.microsoft.com/azure/cosmos-db/serverless-performance#request-unit-changes
      */
     serverlessPeakCeilingRuPerSec: number;
 }
@@ -394,7 +397,9 @@ export function evaluateUnderProvisioning(
 const OVERPROVISIONING_PEAK_GUARD_PCT = 90;
 /** Headroom multiplier applied to observed p99 demand when sizing the right-size target (CODA DX-001). */
 const OVERPROVISIONING_HEADROOM = 1.3;
-/** Platform minimum RU/s floor a right-size recommendation never drops below. */
+// Platform minimum RU/s floor a right-size recommendation never drops below — a container's minimum manual
+// throughput is 400 RU/s:
+// https://learn.microsoft.com/azure/cosmos-db/set-throughput
 const OVERPROVISIONING_MIN_RU = 400;
 /** Wasted RU/s as % of scope provisioned RU/s at or above which severity is High. */
 const OVERPROVISIONING_MATERIAL_HIGH_PCT = 5;
@@ -539,7 +544,9 @@ export function evaluateAutoscaleCandidate(
 const GIB = 1024 ** 3;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-/** Physical-partition storage split ceiling (50 GiB). Structural constant — the wall StorageGrowthRisk projects to. */
+// Physical-partition storage split ceiling (50 GiB) — the wall StorageGrowthRisk projects to. Azure platform
+// limit, not a heuristic:
+// https://learn.microsoft.com/azure/cosmos-db/partitioning#physical-partitions
 const PARTITION_STORAGE_LIMIT_BYTES = 50 * GIB;
 /** Below this current size a partition is immaterial and ignored (a tiny partition near the wall is not a concern). */
 const STORAGE_GROWTH_MIN_MATERIAL_BYTES = 1 * GIB;
@@ -988,7 +995,9 @@ export function evaluateMultiRegionWrites(config: AccountConfigInput): DerivedAd
     };
 }
 
-/** DX-004: when an idle autoscale container is decommissioned, only its idle floor (~10% of max) is recovered. */
+// DX-004/011: autoscale bills between 10% and 100% of the configured max (`0.1*Tmax ≤ T ≤ Tmax`), so an idle
+// or over-sized autoscale container only recovers its idle floor, never the full max:
+// https://learn.microsoft.com/azure/cosmos-db/provision-throughput-autoscale#how-autoscale-throughput-works
 const AUTOSCALE_IDLE_FRACTION = 0.1;
 
 /** Already-fetched idle signal for one container over the 30-day window (DX-004). */
@@ -1060,9 +1069,10 @@ export function evaluateIdleContainer(
     };
 }
 
-/** DX-009: each physical partition supports up to this many RU/s. */
+// DX-009: each physical partition serves up to 10,000 RU/s and stores up to 50 GiB. Both are Azure platform
+// limits, so the needed-partition math below is grounded rather than a heuristic:
+// https://learn.microsoft.com/azure/cosmos-db/partitioning#physical-partitions
 const RU_PER_PARTITION = 10_000;
-/** DX-009: each physical partition supports up to this much storage (50 GiB). */
 const BYTES_PER_PARTITION = 50 * GIB;
 
 /** Already-fetched partition-count + storage signal for one container (DX-009). */

@@ -30,16 +30,32 @@ export function readHealthThresholds(): HealthThresholds {
     };
 }
 
-/** Reads the partition-skew thresholds from `cosmosDB.accountOverview.partition.*`, falling back to defaults. */
+/**
+ * Reads the partition-distribution thresholds, falling back to defaults. The RU saturation/headroom marks and the
+ * storage balance ratio are shared with the derived-advisory engine (`advisories.partitionSaturationPercent`,
+ * `advisories.partitionHeadroomPercent`, `advisories.storageSkewBalanceRatio`) so the heatmap and the
+ * HotPartitionRisk / StorageSkewRisk advisories flag the same partitions; only the ranked-list length is
+ * partition-specific (`partition.topN`).
+ */
 export function readPartitionThresholds(): PartitionThresholds {
     const config = vscode.workspace.getConfiguration('cosmosDB.accountOverview');
     const topN = config.get<number>('partition.topN');
+    const saturationPercent = config.get<number>('advisories.partitionSaturationPercent');
+    const headroomPercent = config.get<number>('advisories.partitionHeadroomPercent');
+    const skewBalanceRatio = config.get<number>('advisories.storageSkewBalanceRatio');
     return {
-        hotRuSharePercent:
-            config.get<number>('partition.hotRuSharePercent') ?? DEFAULT_PARTITION_THRESHOLDS.hotRuSharePercent,
-        skewedStorageSharePercent:
-            config.get<number>('partition.skewedStorageSharePercent') ??
-            DEFAULT_PARTITION_THRESHOLDS.skewedStorageSharePercent,
+        saturationPercent:
+            saturationPercent !== undefined && saturationPercent > 0
+                ? saturationPercent
+                : DEFAULT_PARTITION_THRESHOLDS.saturationPercent,
+        headroomPercent:
+            headroomPercent !== undefined && headroomPercent > 0
+                ? headroomPercent
+                : DEFAULT_PARTITION_THRESHOLDS.headroomPercent,
+        skewBalanceRatio:
+            skewBalanceRatio !== undefined && skewBalanceRatio > 0
+                ? skewBalanceRatio
+                : DEFAULT_PARTITION_THRESHOLDS.skewBalanceRatio,
         topN: topN !== undefined && topN >= 1 ? Math.floor(topN) : DEFAULT_PARTITION_THRESHOLDS.topN,
     };
 }
@@ -50,18 +66,23 @@ export function readAdvisoryThresholds(): DerivedAdvisoryThresholds {
     const positive = (value: number | undefined, fallback: number): number =>
         value !== undefined && value >= 0 ? value : fallback;
     return {
-        // HotPartitionRisk fires on a fair-share multiple, decoupled from the heatmap's raw-share hot threshold.
-        hotPartitionFairShareMultiple: positive(
-            config.get<number>('advisories.hotPartitionFairShareMultiple'),
-            DEFAULT_ADVISORY_THRESHOLDS.hotPartitionFairShareMultiple,
+        // HotPartitionRisk (DX-006) and SustainedThrottlingInRegion (DX-005) share the per-partition saturation and
+        // headroom marks with the heatmap so both flag the same partitions.
+        partitionSaturationPercent: positive(
+            config.get<number>('advisories.partitionSaturationPercent'),
+            DEFAULT_ADVISORY_THRESHOLDS.partitionSaturationPercent,
         ),
-        throttledBucketSharePercent: positive(
-            config.get<number>('advisories.throttledBucketSharePercent'),
-            DEFAULT_ADVISORY_THRESHOLDS.throttledBucketSharePercent,
+        partitionHeadroomPercent: positive(
+            config.get<number>('advisories.partitionHeadroomPercent'),
+            DEFAULT_ADVISORY_THRESHOLDS.partitionHeadroomPercent,
         ),
-        overProvisioningPeakPercent: positive(
-            config.get<number>('advisories.overProvisioningPeakPercent'),
-            DEFAULT_ADVISORY_THRESHOLDS.overProvisioningPeakPercent,
+        throttleRatePercent: positive(
+            config.get<number>('advisories.throttleRatePercent'),
+            DEFAULT_ADVISORY_THRESHOLDS.throttleRatePercent,
+        ),
+        overProvisioningBandPercent: positive(
+            config.get<number>('advisories.overProvisioningBandPercent'),
+            DEFAULT_ADVISORY_THRESHOLDS.overProvisioningBandPercent,
         ),
         autoscaleMaxPercent: positive(
             config.get<number>('advisories.autoscaleMaxPercent'),

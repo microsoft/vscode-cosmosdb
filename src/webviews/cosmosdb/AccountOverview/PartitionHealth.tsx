@@ -180,10 +180,11 @@ function rationaleFor(tile: PartitionTile, mode: PartitionDistributionMode): str
     const percent = Math.round(tile.sharePercent);
     if (mode === 'ru') {
         return tile.hot
-            ? l10n.t('Single physical partition consumed {percent}% of RU. Review partition key cardinality.', {
-                  percent,
-              })
-            : l10n.t('Consumes {percent}% of RU across physical partitions.', { percent });
+            ? l10n.t(
+                  'This physical partition ran at {percent}% p99 utilization while a cooler partition still had headroom — load is skewed by the partition key.',
+                  { percent },
+              )
+            : l10n.t('Ran at {percent}% p99 utilization.', { percent });
     }
     return tile.hot
         ? l10n.t('Single physical partition holds {percent}% of storage, indicating skewed distribution.', { percent })
@@ -204,8 +205,8 @@ function tileAriaLabel(tile: PartitionTile, mode: PartitionDistributionMode): st
     const percent = Math.round(tile.sharePercent);
     if (mode === 'ru') {
         return tile.hot
-            ? l10n.t('Physical partition {0}, {1} percent of RU, flagged as hot', label, percent)
-            : l10n.t('Physical partition {0}, {1} percent of RU', label, percent);
+            ? l10n.t('Physical partition {0}, {1} percent p99 utilization, flagged as hot', label, percent)
+            : l10n.t('Physical partition {0}, {1} percent p99 utilization', label, percent);
     }
     return tile.hot
         ? l10n.t('Physical partition {0}, {1} percent of storage, flagged as hot', label, percent)
@@ -218,10 +219,17 @@ const HeatmapTile = ({ tile, mode }: { tile: PartitionTile; mode: PartitionDistr
         <figure
             className={mergeClasses(styles.tile, tile.hot && styles.tileHot)}
             style={{ backgroundColor: LEVEL_FILL[tile.level], margin: 0 }}
-            title={l10n.t('{label}: {share} share', {
-                label: partitionLabel(tile.partitionId),
-                share: formatShare(tile.sharePercent),
-            })}
+            title={
+                mode === 'ru'
+                    ? l10n.t('{label}: {value} p99 utilization', {
+                          label: partitionLabel(tile.partitionId),
+                          value: formatShare(tile.sharePercent),
+                      })
+                    : l10n.t('{label}: {share} share', {
+                          label: partitionLabel(tile.partitionId),
+                          share: formatShare(tile.sharePercent),
+                      })
+            }
         >
             <figcaption className={styles.srOnly}>{tileAriaLabel(tile, mode)}</figcaption>
             <Text className={styles.tileId} aria-hidden="true">
@@ -328,14 +336,33 @@ export const PartitionHealth = ({
         body = (
             <div className={styles.root}>
                 <div className={styles.stats}>
-                    <span>
-                        {l10n.t('Top partition share:')}{' '}
-                        <span className={styles.statValue}>{formatShare(result.topPartitionShare)}</span>
-                    </span>
-                    <span>
-                        {l10n.t('Skew score:')}{' '}
-                        <span className={styles.statValue}>{formatShare(result.skewScore)}</span>
-                    </span>
+                    {mode === 'ru' ? (
+                        <>
+                            <span>
+                                {l10n.t('Busiest partition p99:')}{' '}
+                                <span className={styles.statValue}>
+                                    {formatShare(result.maxSaturationPercent ?? result.topPartitionShare)}
+                                </span>
+                            </span>
+                            <span>
+                                {l10n.t('Coolest partition p99:')}{' '}
+                                <span className={styles.statValue}>
+                                    {formatShare(result.minSaturationPercent ?? 0)}
+                                </span>
+                            </span>
+                        </>
+                    ) : (
+                        <>
+                            <span>
+                                {l10n.t('Top partition share:')}{' '}
+                                <span className={styles.statValue}>{formatShare(result.topPartitionShare)}</span>
+                            </span>
+                            <span>
+                                {l10n.t('Skew score:')}{' '}
+                                <span className={styles.statValue}>{formatShare(result.skewScore)}</span>
+                            </span>
+                        </>
+                    )}
                     <span>
                         {l10n.t('Physical partitions:')}{' '}
                         <span className={styles.statValue}>{result.partitionCount}</span>

@@ -176,6 +176,57 @@ export async function querySeries(
 }
 
 /**
+ * Aggregate 429 throttle rate for a container (or account) over a window:
+ * `sum(429 TotalRequests) / sum(TotalRequests)`, as a percentage, plus the total request count. Unlike
+ * {@link queryThrottlingWindows} (which flags sustained *buckets* for the RU-chart overlay), this is the single
+ * fleet-comparable rate CODA DX-005 / DX-006 key on. Returns `{ ratePercent: 0, totalRequests: 0 }` when the
+ * account/container served no requests in the window. Any Monitor failure propagates to the caller.
+ */
+export async function getThrottleRate(
+    client: MonitorClient,
+    resourceUri: string,
+    timeRange: TimeRange,
+    databaseId: string | undefined,
+    containerId: string | undefined,
+): Promise<{ ratePercent: number; totalRequests: number }> {
+    const config = RANGE_CONFIG[timeRange];
+    const end = Date.now();
+    const start = end - config.windowMs;
+    const timespan = `${new Date(start).toISOString()}/${new Date(end).toISOString()}`;
+    const filter = containerFilter(databaseId, containerId);
+    const statusFilter = filter ? `${filter} and StatusCode eq '*'` : `StatusCode eq '*'`;
+
+    const response = await client.metrics.list(resourceUri, {
+        metricnames: 'TotalRequests',
+        aggregation: 'Total',
+        timespan,
+        interval: config.interval,
+        filter: statusFilter,
+    });
+
+    let total = 0;
+    let throttled = 0;
+    for (const metric of response.value ?? []) {
+        for (const series of metric.timeseries ?? []) {
+            const statusCode = series.metadatavalues?.find((m) => m.name?.value?.toLowerCase() === 'statuscode')?.value;
+            const isThrottle = isThrottledStatusCode(statusCode);
+            for (const point of series.data ?? []) {
+                const count = point.total ?? 0;
+                if (count === 0) {
+                    continue;
+                }
+                total += count;
+                if (isThrottle) {
+                    throttled += count;
+                }
+            }
+        }
+    }
+
+    return { ratePercent: total > 0 ? (100 * throttled) / total : 0, totalRequests: total };
+}
+
+/**
  * Derives sustained-throttling timestamps from `TotalRequests` split by
  * `StatusCode`: per bucket, `429 share = 429 count / total count`. Buckets over
  * the threshold that form a contiguous run of at least

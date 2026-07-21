@@ -11,14 +11,20 @@ import { getInventoryMetrics, type HealthThresholds } from './inventoryMetrics';
 import {
     getPartitionHealth,
     getPartitionStorageSeries,
-    type PartitionHealthResult,
     type PartitionStorageResult,
     type PartitionStorageSample,
     type PartitionStorageSeries,
     type PartitionThresholds,
 } from './partitionHealth';
-import { getRuTrends, type RuTrendPoint } from './ruTrends';
-import { containerKey, type UnavailableReason } from './shared';
+import { getRuTrends, getThrottleRate } from './ruTrends';
+import {
+    containerKey,
+    DEFAULT_PARTITION_HEADROOM_PCT,
+    DEFAULT_PARTITION_SATURATION_PCT,
+    DEFAULT_THROTTLE_RATE_PCT,
+    percentile,
+    type UnavailableReason,
+} from './shared';
 
 // ─── Client-side derived advisories ──────────────────────────────────────────────
 //
@@ -70,15 +76,21 @@ export interface DerivedAdvisoriesResult {
 /** Thresholds for the derived-advisory rules, sourced from `cosmosDB.accountOverview.*`. */
 export interface DerivedAdvisoryThresholds {
     /**
-     * Fair-share multiple (busiest partition's RU share ÷ its even-split baseline `1/partitionCount`) at or above
-     * which HotPartitionRisk fires. Partition-count-independent: 1.0 is a perfectly balanced container, so a value
-     * of 3 flags a partition pulling three times its fair share regardless of how many partitions exist.
+     * RU: a physical partition's p99 (% of provisioned) at or above which it counts as saturated. Drives both the
+     * HotPartitionRisk (DX-006) and SustainedThrottlingInRegion (DX-005) rules — a container is only flagged when a
+     * partition is actually at capacity.
      */
-    hotPartitionFairShareMultiple: number;
-    /** Share of throttled buckets (%) over the window at or above which SustainedThrottlingInRegion fires. */
-    throttledBucketSharePercent: number;
-    /** 7-day peak RU (%) below which OverProvisioning fires. */
-    overProvisioningPeakPercent: number;
+    partitionSaturationPercent: number;
+    /**
+     * RU: a physical partition's p99 below which it still has headroom. A saturated busiest partition *with* a
+     * cooler sibling below this is a hot partition (DX-006, re-key); every partition at/above this is uniform
+     * under-provisioning (DX-005, add RU/s).
+     */
+    partitionHeadroomPercent: number;
+    /** Container 429 rate (`sum(429)/sum(total)`, %) at or above which throttling counts as active. */
+    throttleRatePercent: number;
+    /** 7-day p99 RU (%) below which OverProvisioning fires (CODA DX-001 moderate band). */
+    overProvisioningBandPercent: number;
     /** Peak RU (%) a workload must reach for AutoscaleCandidate — below this you should right-size, not autoscale. */
     autoscaleMaxPercent: number;
     /** Average RU (%) a workload must stay at or below for AutoscaleCandidate (mostly idle between bursts). */
@@ -102,9 +114,10 @@ export interface DerivedAdvisoryThresholds {
 }
 
 export const DEFAULT_ADVISORY_THRESHOLDS: DerivedAdvisoryThresholds = {
-    hotPartitionFairShareMultiple: 3,
-    throttledBucketSharePercent: 5,
-    overProvisioningPeakPercent: 25,
+    partitionSaturationPercent: DEFAULT_PARTITION_SATURATION_PCT,
+    partitionHeadroomPercent: DEFAULT_PARTITION_HEADROOM_PCT,
+    throttleRatePercent: DEFAULT_THROTTLE_RATE_PCT,
+    overProvisioningBandPercent: 30,
     autoscaleMaxPercent: 40,
     autoscaleAvgPercent: 30,
     autoscalePeakToAvgRatio: 5,
@@ -129,20 +142,6 @@ function clampRationale(text: string): string {
     return text.length <= 500 ? text : text.slice(0, 499) + '…';
 }
 
-/**
- * Share (0..1) of buckets that qualify as throttled over the window. Unlike the
- * longest *continuous* run, this counts intermittent throttling too: a
- * 20-min-on / 10-min-off pattern all day never accumulates a long continuous run
- * yet has a high throttled share. Returns 0 for an empty series. Pure.
- */
-export function throttledBucketShare(points: readonly RuTrendPoint[]): number {
-    if (points.length === 0) {
-        return 0;
-    }
-    const throttled = points.reduce((count, point) => count + (point.throttled ? 1 : 0), 0);
-    return throttled / points.length;
-}
-
 /** Arithmetic mean of the finite values in a series; 0 for an empty series. Pure. */
 export function mean(values: readonly number[]): number {
     const clean = values.filter((v) => Number.isFinite(v));
@@ -153,155 +152,178 @@ export function mean(values: readonly number[]): number {
 }
 
 /**
- * Linear-interpolated percentile (`p` in 0..100) of the finite values in a
- * series; `undefined` for an empty series. Used to band over-provisioning on a
- * spike-resistant p99 rather than the raw max, so a single-minute peak cannot
- * suppress the finding. Pure.
+ * Already-fetched per-container saturation picture the hot-partition (DX-006) and under-provisioning (DX-005)
+ * rules consume. `maxP99`/`minP99` are the busiest/coolest physical partition p99 of `NormalizedRUConsumption`
+ * over the window; `throttleRatePercent` is the container's aggregate 429 rate.
  */
-export function percentile(values: readonly number[], p: number): number | undefined {
-    const sorted = values.filter((v) => Number.isFinite(v)).sort((a, b) => a - b);
-    if (sorted.length === 0) {
-        return undefined;
-    }
-    if (sorted.length === 1) {
-        return sorted[0];
-    }
-    const rank = (Math.min(100, Math.max(0, p)) / 100) * (sorted.length - 1);
-    const low = Math.floor(rank);
-    const high = Math.ceil(rank);
-    if (low === high) {
-        return sorted[low];
-    }
-    return sorted[low] + (sorted[high] - sorted[low]) * (rank - low);
+export interface PartitionSaturationInput {
+    databaseId: string;
+    containerId: string;
+    /** Busiest physical partition's p99 utilization (% of provisioned). */
+    maxP99: number;
+    /** Coolest physical partition's p99 utilization (% of provisioned). */
+    minP99: number;
+    partitionCount: number;
+    /** Container 429 rate (`sum(429)/sum(total)`, %). */
+    throttleRatePercent: number;
+    /** Total requests over the window; below the abstain gate the rate is too noisy to judge. */
+    totalRequests: number;
+    /** Throughput mode, so the under-provisioning remediation can say "raise the max" vs "raise RU/s". */
+    throughputMode: ThroughputMode;
+    /** Provisioned RU/s, quoted in the under-provisioning remediation when known. */
+    provisionedRu?: number;
 }
 
 /**
- * Fair-share multiple of a partition's RU share: its share divided by the
- * even-split baseline `1/partitionCount`. Equals `share × partitionCount / 100`
- * (share is a percentage). 1.0 is a perfectly balanced container regardless of
- * partition count; returns 0 for a single-partition (or empty) container, which
- * cannot be skewed. Pure.
- */
-export function fairShareMultiple(topPartitionShare: number, partitionCount: number): number {
-    if (partitionCount < 2 || topPartitionShare <= 0) {
-        return 0;
-    }
-    return (topPartitionShare * partitionCount) / 100;
-}
-
-/**
- * HotPartitionRisk (P0): the busiest physical partition in a container pulls a
- * multiple of its even-split fair share (`share ÷ (1/partitionCount)`) at or
- * above the configured threshold. Unlike a raw share cutoff, this is
- * partition-count-independent — a balanced two-partition split (50/50, multiple
- * 1.0) never fires, while one partition at 35% of a 20-partition container
- * (multiple 7.0) does. Pure.
+ * HotPartitionRisk (DX-006): the busiest physical partition is **saturated** (p99 at or above the saturation
+ * threshold) while at least one other partition still has **headroom** (p99 below the headroom threshold). Unlike a
+ * raw share or fair-share cutoff, this keys off "is some partition pinned at capacity while another is cool" — the
+ * signal that the partition key, not more RU/s, is the fix. A single partition, or uniform saturation (every
+ * partition busy → global under-provisioning, DX-005), never fires here. Severity scales with actual impact: active
+ * throttling (429 rate at or above the threshold) → High, saturated-but-not-throttling → Medium. Pure.
  */
 export function evaluateHotPartitionRisk(
-    databaseId: string,
-    containerId: string,
-    topPartitionShare: number,
-    partitionCount: number,
-    multipleThreshold: number,
+    input: PartitionSaturationInput,
+    saturationPercent: number,
+    headroomPercent: number,
+    throttleThresholdPercent: number,
 ): DerivedAdvisory | undefined {
-    if (multipleThreshold <= 0) {
+    if (input.partitionCount < 2 || input.maxP99 < saturationPercent || input.minP99 >= headroomPercent) {
         return undefined;
     }
-    const multiple = fairShareMultiple(topPartitionShare, partitionCount);
-    if (multiple < multipleThreshold) {
-        return undefined;
-    }
-    const scope = containerKey(databaseId, containerId);
-    const share = Math.round(topPartitionShare);
-    const times = Math.round(multiple * 10) / 10;
-    const threshold = Math.round(multipleThreshold * 10) / 10;
+    const scope = containerKey(input.databaseId, input.containerId);
+    const busiest = Math.round(input.maxP99);
+    const coolest = Math.round(input.minP99);
+    const saturation = Math.round(saturationPercent);
+    const headroom = Math.round(headroomPercent);
+    const throttling = input.throttleRatePercent >= throttleThresholdPercent;
+    const severity: DerivedAdvisorySeverity = throttling ? 'High' : 'Medium';
+
+    const impact = throttling
+        ? l10n.t('The container is already throttling (HTTP 429), so the hot partition is capping real traffic.')
+        : l10n.t(
+              'It is not throttling yet, but the pinned partition cannot borrow the cooler partitions’ capacity as load grows.',
+          );
+
     return {
         id: `HotPartitionRisk:${scope}`,
         rule: 'HotPartitionRisk',
-        severity: 'High',
-        title: l10n.t('Hot physical partition in {container}', { container: containerId }),
+        severity,
+        title: l10n.t('Hot physical partition in {container}', { container: input.containerId }),
         rationale: clampRationale(
             l10n.t(
-                'The busiest physical partition in "{container}" handled {share}% of request units over the last hour across {count} physical partitions — {times}× its even-split fair share, at or above the {threshold}× hot-partition threshold. A single hot partition caps effective throughput and can trigger 429s even when the container is provisioned for more.',
-                { container: containerId, share, count: partitionCount, times, threshold },
-            ),
+                'In "{container}", the busiest of {count} physical partitions ran at {busiest}% p99 utilization (at or above the {saturation}% saturation mark) while the coolest sat at {coolest}% (below the {headroom}% headroom mark). Load is concentrated by the partition key, not a global shortfall. ',
+                { container: input.containerId, count: input.partitionCount, busiest, saturation, coolest, headroom },
+            ) + impact,
         ),
         suggestedAction: l10n.t(
-            'Review the partition key for a higher-cardinality choice, or split hot logical keys so traffic spreads evenly across partitions.',
+            'Redesign the partition key for higher cardinality (avoid hotspots; consider synthetic or hierarchical keys) so traffic spreads across partitions — adding RU/s will not fix a single hot partition.',
         ),
-        thresholdReference: l10n.t('Threshold: busiest partition ≥ {threshold}× fair share for ≥ 1h', { threshold }),
+        thresholdReference: l10n.t('Threshold: busiest partition p99 ≥ {saturation}% while another < {headroom}%', {
+            saturation,
+            headroom,
+        }),
         scope,
     };
 }
 
+/** Container 429 rate (%) at or above which under-provisioning severity is High. */
+const UNDER_PROVISIONING_HIGH_RATE_PCT = 20;
+/** Container 429 rate (%) at or above which under-provisioning severity is Medium (below this, Low). */
+const UNDER_PROVISIONING_MEDIUM_RATE_PCT = 5;
+/** Below this request count the 429 rate is too noisy to judge, so the rule abstains. */
+const UNDER_PROVISIONING_MIN_REQUESTS = 1_000;
+
 /**
- * SustainedThrottlingInRegion / UnderProvisioning (P0): a material share of
- * buckets over the last 24h qualified as throttled (HTTP 429). Keying on the
- * *share* of throttled buckets rather than the longest *continuous* run catches
- * chronic intermittent throttling (an on/off pattern that never accumulates a
- * long unbroken run). The remediation copy is split by root cause: when a hot
- * partition is also flagged the fix is to re-key (CODA DX-006), otherwise to add
- * RU/s (CODA DX-005) — adding capacity does not fix a hot partition. Pure.
+ * SustainedThrottlingInRegion / genuine under-provisioning (DX-005): a container is sustaining 429 throttling
+ * (rate at or above the threshold) **and** at least one partition is saturated, **and** the saturation is
+ * *uniform* — every partition is busy (coolest p99 at or above the headroom mark). Uniform saturation means the
+ * workload simply needs more capacity; the non-uniform (skew) case is left to HotPartitionRisk (DX-006) so the two
+ * never double-report the same throttling. A `min-requests` gate abstains on traffic too low to judge. Severity
+ * grades by the 429 rate. Pure.
  */
-export function evaluateSustainedThrottling(
-    throttledShare: number,
-    fireSharePercent: number,
-    hotPartitionPresent: boolean,
+export function evaluateUnderProvisioning(
+    input: PartitionSaturationInput,
+    saturationPercent: number,
+    headroomPercent: number,
+    throttleThresholdPercent: number,
 ): DerivedAdvisory | undefined {
-    const sharePercent = throttledShare * 100;
-    if (fireSharePercent <= 0 || sharePercent < fireSharePercent) {
+    if (input.totalRequests < UNDER_PROVISIONING_MIN_REQUESTS) {
         return undefined;
     }
-    const share = Math.round(sharePercent);
-    const threshold = Math.round(fireSharePercent);
-    const severity: DerivedAdvisorySeverity = sharePercent >= 10 ? 'High' : 'Medium';
+    const throttling = input.throttleRatePercent >= throttleThresholdPercent;
+    const atCapacity = input.maxP99 >= saturationPercent;
+    const uniform = input.minP99 >= headroomPercent;
+    if (!throttling || !atCapacity || !uniform) {
+        return undefined;
+    }
+    const scope = containerKey(input.databaseId, input.containerId);
+    const rate = Math.round(input.throttleRatePercent * 10) / 10;
+    const busiest = Math.round(input.maxP99);
+    const coolest = Math.round(input.minP99);
+    const severity: DerivedAdvisorySeverity =
+        input.throttleRatePercent >= UNDER_PROVISIONING_HIGH_RATE_PCT
+            ? 'High'
+            : input.throttleRatePercent >= UNDER_PROVISIONING_MEDIUM_RATE_PCT
+              ? 'Medium'
+              : 'Low';
 
-    const rootCause = hotPartitionPresent
-        ? l10n.t(
-              'A hot partition is also flagged on this account, so the throttling is likely concentrated on one partition rather than a global capacity shortfall — adding RU/s would not help.',
-          )
-        : l10n.t(
-              'With no hot partition flagged, the throttling most likely means the workload is under-provisioned for its peak.',
-          );
-    const action = hotPartitionPresent
-        ? l10n.t(
-              'Re-key the hot container to spread traffic across partitions (adding RU/s will not fix a single hot partition), and smooth bursts with client-side retries and batching.',
-          )
-        : l10n.t(
-              'Increase provisioned throughput (or enable autoscale) to cover the peak, and smooth bursts with client-side retries and batching.',
-          );
+    const action =
+        input.throughputMode === 'autoscale'
+            ? input.provisionedRu !== undefined
+                ? l10n.t('Raise the autoscale maximum above {ru} RU/s — it is pinned at the ceiling.', {
+                      ru: Math.round(input.provisionedRu).toLocaleString(),
+                  })
+                : l10n.t('Raise the autoscale maximum — it is pinned at the ceiling.')
+            : input.provisionedRu !== undefined
+              ? l10n.t('Raise provisioned throughput above {ru} RU/s, or convert to autoscale.', {
+                    ru: Math.round(input.provisionedRu).toLocaleString(),
+                })
+              : l10n.t('Raise provisioned throughput, or convert to autoscale.');
 
     return {
-        id: 'SustainedThrottlingInRegion',
+        id: `SustainedThrottlingInRegion:${scope}`,
         rule: 'SustainedThrottlingInRegion',
         severity,
-        title: l10n.t('Sustained throttling detected'),
+        title: l10n.t('Sustained throttling in {container}', { container: input.containerId }),
         rationale: clampRationale(
             l10n.t(
-                'Requests were throttled (HTTP 429) in {share}% of monitored intervals over the last 24 hours, at or above the {threshold}% throttled-share threshold. ',
-                { share, threshold },
-            ) + rootCause,
+                'In "{container}", {rate}% of requests were throttled (HTTP 429) while every physical partition was saturated (busiest p99 {busiest}%, coolest {coolest}%). Because all partitions are at capacity — not just one — this is a genuine capacity shortfall rather than a hot partition.',
+                { container: input.containerId, rate, busiest, coolest },
+            ),
         ),
         suggestedAction: action,
-        thresholdReference: l10n.t('Threshold: ≥ {threshold}% of 24h intervals throttled', { threshold }),
+        thresholdReference: l10n.t('Threshold: 429 rate ≥ {rate}% with every partition p99 ≥ {saturation}%', {
+            rate: Math.round(throttleThresholdPercent),
+            saturation: Math.round(saturationPercent),
+        }),
+        scope,
     };
 }
 
-/** Estimated wasted RU/s (High) at or above which over-provisioning is material enough to rank High. */
-const OVERPROVISIONING_HIGH_WASTED_RU = 10_000;
-/** Estimated wasted RU/s at or above which over-provisioning ranks Medium (below this, Low). */
-const OVERPROVISIONING_MEDIUM_WASTED_RU = 1_000;
+/** Do not flag over-provisioning when the busiest sample reached this % — a recurring batch needs peak capacity. */
+const OVERPROVISIONING_PEAK_GUARD_PCT = 90;
+/** Headroom multiplier applied to observed p99 demand when sizing the right-size target (CODA DX-001). */
+const OVERPROVISIONING_HEADROOM = 1.3;
+/** Platform minimum RU/s floor a right-size recommendation never drops below. */
+const OVERPROVISIONING_MIN_RU = 400;
+/** Wasted RU/s as % of scope provisioned RU/s at or above which severity is High. */
+const OVERPROVISIONING_MATERIAL_HIGH_PCT = 5;
+/** Wasted RU/s as % of scope provisioned RU/s at or above which severity is Medium (below this, Low). */
+const OVERPROVISIONING_MATERIAL_MEDIUM_PCT = 1;
 
 /**
- * OverProvisioning (best-effort): sustained low **p99** RU on manual throughput
- * over the trailing 7 days. Banding on p99 (rather than the raw max) is
- * spike-resistant — a single-minute peak can no longer suppress a workload that
- * sits idle 99.9% of the time. Severity is graded by the estimated wasted RU/s
- * (provisioned minus what p99 demand needs), so a large absolute waste ranks
- * ahead of a small one. Pure.
+ * OverProvisioning (CODA DX-001): sustained low **p99** RU on manual throughput over the trailing 7 days, banded
+ * below the moderate threshold. Two guards keep it from firing on workloads that genuinely need their capacity: the
+ * p99 band ignores brief spikes, and a **peak-saturation guard** suppresses the finding when the busiest sample
+ * saturated capacity (a recurring batch needs that peak). Severity is **relative materiality** — wasted RU/s as a
+ * share of the scope's provisioned RU/s (the same waste is material against a small account but trivial against a
+ * fleet) — falling back to absolute wasted RU/s when the scope total is unknown. The right-size target covers p99
+ * demand plus headroom and never drops below the observed peak, so it can never throttle a real spike. Pure.
  */
 export function evaluateOverProvisioning(
     p99Percent: number | undefined,
+    peakPercent: number | undefined,
     thresholdPercent: number,
     hasManualThroughput: boolean,
     provisionedRuTotal?: number,
@@ -309,19 +331,32 @@ export function evaluateOverProvisioning(
     if (!hasManualThroughput || p99Percent === undefined || p99Percent >= thresholdPercent) {
         return undefined;
     }
+    // Peak-saturation guard: a workload whose busiest sample saturates capacity genuinely needs it at peak.
+    if (peakPercent !== undefined && peakPercent >= OVERPROVISIONING_PEAK_GUARD_PCT) {
+        return undefined;
+    }
     const p99 = Math.round(p99Percent);
     const threshold = Math.round(thresholdPercent);
 
-    const wastedRu =
-        provisionedRuTotal !== undefined && provisionedRuTotal > 0
-            ? Math.round(provisionedRuTotal * (1 - p99Percent / 100))
-            : undefined;
+    let wastedRu: number | undefined;
     let severity: DerivedAdvisorySeverity = 'Medium';
-    if (wastedRu !== undefined) {
+    if (provisionedRuTotal !== undefined && provisionedRuTotal > 0) {
+        const consumedAtP99 = (p99Percent / 100) * provisionedRuTotal;
+        const peakConsumed = ((peakPercent ?? p99Percent) / 100) * provisionedRuTotal;
+        const recommended = Math.min(
+            provisionedRuTotal,
+            Math.max(
+                OVERPROVISIONING_MIN_RU,
+                Math.ceil(consumedAtP99 * OVERPROVISIONING_HEADROOM),
+                Math.ceil(peakConsumed),
+            ),
+        );
+        wastedRu = Math.max(0, Math.round(provisionedRuTotal - recommended));
+        const materialityPct = (wastedRu / provisionedRuTotal) * 100;
         severity =
-            wastedRu >= OVERPROVISIONING_HIGH_WASTED_RU
+            materialityPct >= OVERPROVISIONING_MATERIAL_HIGH_PCT
                 ? 'High'
-                : wastedRu >= OVERPROVISIONING_MEDIUM_WASTED_RU
+                : materialityPct >= OVERPROVISIONING_MATERIAL_MEDIUM_PCT
                   ? 'Medium'
                   : 'Low';
     }
@@ -711,8 +746,6 @@ export function evaluateIndexingCostRisk(
 
 /** Already-fetched telemetry the derived-advisory engine consumes. */
 export interface DerivedAdvisoryInputs {
-    /** Account-wide RU trend points for the sustained-throttling rule (typically the last 24h). */
-    throttlingPoints: readonly RuTrendPoint[];
     /** Account-wide 7-day RU% samples for the over-provisioning + autoscale rules. */
     weeklyRuPercents: readonly number[];
     /** Max of `weeklyRuPercents`, or undefined when no 7-day data is available. */
@@ -721,13 +754,8 @@ export interface DerivedAdvisoryInputs {
     hasManualThroughput: boolean;
     /** Total provisioned RU/s across manual-throughput containers, for over-provisioning materiality. */
     manualProvisionedRuTotal?: number;
-    /** Per-container top physical-partition RU share (and partition count) over the last hour. */
-    partitions: readonly {
-        databaseId: string;
-        containerId: string;
-        topPartitionShare: number;
-        partitionCount: number;
-    }[];
+    /** Per-container physical-partition p99 saturation + 429 rate for the hot-partition and under-provisioning rules. */
+    partitions: readonly PartitionSaturationInput[];
     /** Per-container physical-partition storage series (7d) for the storage-growth and storage-skew rules. */
     storage: readonly ContainerStorageInput[];
     /** Per-container index/data storage for the indexing-cost rule. */
@@ -744,33 +772,34 @@ export function computeDerivedAdvisories(
 ): DerivedAdvisory[] {
     const advisories: DerivedAdvisory[] = [];
 
-    let hotPartitionPresent = false;
     for (const partition of inputs.partitions) {
-        const advisory = evaluateHotPartitionRisk(
-            partition.databaseId,
-            partition.containerId,
-            partition.topPartitionShare,
-            partition.partitionCount,
-            thresholds.hotPartitionFairShareMultiple,
+        const hot = evaluateHotPartitionRisk(
+            partition,
+            thresholds.partitionSaturationPercent,
+            thresholds.partitionHeadroomPercent,
+            thresholds.throttleRatePercent,
         );
-        if (advisory) {
-            advisories.push(advisory);
-            hotPartitionPresent = true;
+        if (hot) {
+            advisories.push(hot);
         }
-    }
-
-    const throttling = evaluateSustainedThrottling(
-        throttledBucketShare(inputs.throttlingPoints),
-        thresholds.throttledBucketSharePercent,
-        hotPartitionPresent,
-    );
-    if (throttling) {
-        advisories.push(throttling);
+        // DX-005 only fires on uniform saturation; the skew case is already covered by HotPartitionRisk above,
+        // so the two never double-report the same throttling.
+        const under = evaluateUnderProvisioning(
+            partition,
+            thresholds.partitionSaturationPercent,
+            thresholds.partitionHeadroomPercent,
+            thresholds.throttleRatePercent,
+        );
+        if (under) {
+            advisories.push(under);
+        }
     }
 
     const overProvisioning = evaluateOverProvisioning(
         percentile(inputs.weeklyRuPercents, 99),
-        thresholds.overProvisioningPeakPercent,
+        inputs.weeklyPeakPercent ??
+            (inputs.weeklyRuPercents.length > 0 ? Math.max(...inputs.weeklyRuPercents) : undefined),
+        thresholds.overProvisioningBandPercent,
         inputs.hasManualThroughput,
         inputs.manualProvisionedRuTotal,
     );
@@ -857,8 +886,7 @@ export async function collectDerivedAdvisories(params: CollectDerivedAdvisoriesP
 
     const rows = await getSqlInventory(cosmosClient, resourceGroup, accountName, isServerless);
 
-    const [dayTrends, weekTrends, inventoryMetrics] = await Promise.all([
-        getRuTrends(monitorClient, accountId, '24H', undefined, undefined),
+    const [weekTrends, inventoryMetrics] = await Promise.all([
         getRuTrends(monitorClient, accountId, '7D', undefined, undefined),
         getInventoryMetrics(monitorClient, accountId, '7D', undefined, healthThresholds),
     ]);
@@ -872,17 +900,25 @@ export async function collectDerivedAdvisories(params: CollectDerivedAdvisoriesP
         )
         .slice(0, MAX_PARTITION_SCAN);
 
+    // DX-006 / DX-005 are present-tense over a 7-day window: per-physical-partition p99 saturation plus the
+    // container's aggregate 429 rate, fetched together for each scanned container.
     const partitionResults = await Promise.all(
         scanTargets.map((row) =>
             getPartitionHealth(
                 monitorClient,
                 accountId,
                 'ru',
-                '1H',
+                '7D',
                 row.databaseId,
                 row.containerId,
                 partitionThresholds,
             ).catch(() => undefined),
+        ),
+    );
+
+    const throttleResults = await Promise.all(
+        scanTargets.map((row) =>
+            getThrottleRate(monitorClient, accountId, '7D', row.databaseId, row.containerId).catch(() => undefined),
         ),
     );
 
@@ -894,14 +930,26 @@ export async function collectDerivedAdvisories(params: CollectDerivedAdvisoriesP
         ),
     );
 
-    const partitions = partitionResults
-        .filter((result): result is PartitionHealthResult => !!result && result.available)
-        .map((result) => ({
+    const rowByKey = new Map(rows.map((row) => [containerKey(row.databaseId, row.containerId), row]));
+    const partitions: PartitionSaturationInput[] = [];
+    partitionResults.forEach((result, index) => {
+        if (!result || !result.available || result.mode !== 'ru') {
+            return;
+        }
+        const row = rowByKey.get(containerKey(result.databaseId, result.containerId));
+        const throttle = throttleResults[index];
+        partitions.push({
             databaseId: result.databaseId,
             containerId: result.containerId,
-            topPartitionShare: result.topPartitionShare,
+            maxP99: result.maxSaturationPercent ?? result.topPartitionShare,
+            minP99: result.minSaturationPercent ?? 0,
             partitionCount: result.partitionCount,
-        }));
+            throttleRatePercent: throttle?.ratePercent ?? 0,
+            totalRequests: throttle?.totalRequests ?? 0,
+            throughputMode: row?.throughputMode ?? 'unknown',
+            provisionedRu: row?.throughputRU,
+        });
+    });
 
     const storage = storageResults
         .filter((result): result is PartitionStorageResult => !!result && result.available)
@@ -932,7 +980,6 @@ export async function collectDerivedAdvisories(params: CollectDerivedAdvisoriesP
 
     return computeDerivedAdvisories(
         {
-            throttlingPoints: dayTrends.points,
             weeklyRuPercents,
             weeklyPeakPercent: weekTrends.peakPercent,
             hasManualThroughput: rows.some((row) => MANUAL_THROUGHPUT_MODES.has(row.throughputMode)),

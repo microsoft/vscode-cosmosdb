@@ -187,6 +187,75 @@ export function containerKey(databaseId: string, containerId: string): string {
     return `${databaseId}/${containerId}`;
 }
 
+// ─── Per-partition p99 saturation signal (CODA DX-005 / DX-006) ──────────────────
+//
+// The hot-partition and under-provisioning rules — and the partition-health heatmap — all key off
+// the same signal: each physical partition's p99 of `NormalizedRUConsumption` (already a % of the
+// partition's provisioned capacity). A container is skewed ("hot partition") when the busiest
+// partition is saturated while another still has headroom; it is uniformly under-provisioned when
+// every partition is saturated. Keeping these constants and the classifier here is the single
+// source of truth the heatmap tiles and the derived advisories both consume, so they stay aligned.
+
+/** A physical partition's p99 at or above this % of its provisioned capacity counts as saturated. */
+export const DEFAULT_PARTITION_SATURATION_PCT = 90;
+/** A physical partition's p99 below this % still has headroom — used to tell skew apart from uniform saturation. */
+export const DEFAULT_PARTITION_HEADROOM_PCT = 70;
+/** Container 429 rate (`sum(429)/sum(total)`, %) at or above which throttling counts as active. */
+export const DEFAULT_THROTTLE_RATE_PCT = 1;
+
+/** Linear-interpolated percentile (`p` in 0..100) of the finite values; `undefined` for an empty series. Pure. */
+export function percentile(values: readonly number[], p: number): number | undefined {
+    const sorted = values.filter((v) => Number.isFinite(v)).sort((a, b) => a - b);
+    if (sorted.length === 0) {
+        return undefined;
+    }
+    if (sorted.length === 1) {
+        return sorted[0];
+    }
+    const rank = (Math.min(100, Math.max(0, p)) / 100) * (sorted.length - 1);
+    const low = Math.floor(rank);
+    const high = Math.ceil(rank);
+    if (low === high) {
+        return sorted[low];
+    }
+    return sorted[low] + (sorted[high] - sorted[low]) * (rank - low);
+}
+
+/** Busiest/coolest/mean p99 across a container's physical partitions. Empty input yields all-zero stats. Pure. */
+export interface PartitionSaturationStats {
+    partitionCount: number;
+    /** Busiest partition's p99 (is anything saturated?). */
+    maxP99: number;
+    /** Coolest partition's p99 (do any partitions still have headroom?). */
+    minP99: number;
+    meanP99: number;
+}
+
+/** Folds per-partition p99 utilizations into busiest/coolest/mean stats for the hot-partition classifier. Pure. */
+export function partitionSaturationStats(p99s: readonly number[]): PartitionSaturationStats {
+    const clean = p99s.filter((v) => Number.isFinite(v));
+    if (clean.length === 0) {
+        return { partitionCount: 0, maxP99: 0, minP99: 0, meanP99: 0 };
+    }
+    return {
+        partitionCount: clean.length,
+        maxP99: Math.max(...clean),
+        minP99: Math.min(...clean),
+        meanP99: clean.reduce((sum, v) => sum + v, 0) / clean.length,
+    };
+}
+
+/**
+ * CODA DX-006 hot-partition signal: the busiest partition is saturated (`maxP99 ≥ saturationPct`) while at least
+ * one other partition still has headroom (`minP99 < headroomPct`). Requires at least two partitions — a single
+ * partition cannot be skewed. Partition-count-independent (it keys off "is some partition saturated while another
+ * is cool", not a ratio that scales with partition count). Uniform saturation (every partition busy) is global
+ * under-provisioning (DX-005), not a hot partition, and returns `false` here. Pure.
+ */
+export function isHotPartition(stats: PartitionSaturationStats, saturationPct: number, headroomPct: number): boolean {
+    return stats.partitionCount >= 2 && stats.maxP99 >= saturationPct && stats.minP99 < headroomPct;
+}
+
 /** Last defined value in a `timestamp → value` map, ordered by timestamp. */
 export function lastValue(series: Map<number, number>): number | undefined {
     let latestTs: number | undefined;

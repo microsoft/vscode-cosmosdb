@@ -5,9 +5,9 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+    balanceRatio,
     compareAdvisories,
     computeDerivedAdvisories,
-    balanceRatio,
     daysToStorageLimit,
     DEFAULT_ADVISORY_THRESHOLDS,
     evaluateAutoscaleCandidate,
@@ -16,39 +16,31 @@ import {
     evaluateOverProvisioning,
     evaluateStorageGrowthRisk,
     evaluateStorageSkewRisk,
-    evaluateSustainedThrottling,
-    fairShareMultiple,
+    evaluateUnderProvisioning,
     mean,
-    percentile,
     storageGrowthSlopeBytesPerDay,
-    throttledBucketShare,
     type AutoscaleThresholds,
     type ContainerStorageInput,
     type DerivedAdvisoryInputs,
+    type PartitionSaturationInput,
 } from './derivedAdvisories';
-import { type RuTrendPoint } from './ruTrends';
-import { containerKey } from './shared';
+import { containerKey, percentile } from './shared';
 
-const MIN = 60 * 1000;
-
-function throttledPoints(pattern: boolean[], bucketMs = 5 * MIN): RuTrendPoint[] {
-    return pattern.map((throttled, index) => ({
-        timestamp: index * bucketMs,
-        ruPercent: throttled ? 100 : 10,
-        throttled,
-    }));
+/** Builds a per-container saturation input with sensible defaults for the hot-partition / under-provisioning rules. */
+function partInput(overrides: Partial<PartitionSaturationInput> = {}): PartitionSaturationInput {
+    return {
+        databaseId: 'db',
+        containerId: 'orders',
+        maxP99: 95,
+        minP99: 30,
+        partitionCount: 4,
+        throttleRatePercent: 0,
+        totalRequests: 5_000,
+        throughputMode: 'dedicated',
+        provisionedRu: 1_000,
+        ...overrides,
+    };
 }
-
-describe('throttledBucketShare', () => {
-    it('is zero for an empty series', () => {
-        expect(throttledBucketShare([])).toBe(0);
-    });
-
-    it('is the fraction of throttled buckets, counting intermittent throttling', () => {
-        // Two separate runs, four throttled of six buckets.
-        expect(throttledBucketShare(throttledPoints([true, true, false, true, true, false]))).toBeCloseTo(4 / 6);
-    });
-});
 
 describe('mean', () => {
     it('is zero for an empty series', () => {
@@ -60,114 +52,98 @@ describe('mean', () => {
     });
 });
 
-describe('percentile', () => {
-    it('is undefined for an empty series', () => {
-        expect(percentile([], 99)).toBeUndefined();
-    });
-
-    it('ignores a lone high spike at p99 (spike-resistant)', () => {
-        // 99 threes and one 100: p99 sits at the top of the steady band, not the spike.
-        const values = [...Array<number>(99).fill(3), 100];
-        expect(percentile(values, 99)).toBeLessThan(10);
-    });
-
-    it('returns the max at p100 and the min at p0', () => {
-        expect(percentile([10, 20, 30], 100)).toBe(30);
-        expect(percentile([10, 20, 30], 0)).toBe(10);
-    });
-});
-
-describe('fairShareMultiple', () => {
-    it('is 1.0 for a balanced two-partition split', () => {
-        expect(fairShareMultiple(50, 2)).toBeCloseTo(1);
-    });
-
-    it('is 7.0 for one partition at 35% of a 20-partition container', () => {
-        expect(fairShareMultiple(35, 20)).toBeCloseTo(7);
-    });
-
-    it('is 0 for a single-partition or empty container', () => {
-        expect(fairShareMultiple(100, 1)).toBe(0);
-        expect(fairShareMultiple(0, 4)).toBe(0);
-    });
-});
-
 describe('evaluateHotPartitionRisk', () => {
-    it('fires above the fair-share multiple and names the container, share, and count', () => {
-        // 60% of 4 partitions = 2.4× fair share, above the 2× threshold used here.
-        const advisory = evaluateHotPartitionRisk('db', 'orders', 60, 4, 2);
+    it('fires Medium when a partition is saturated while another has headroom (not yet throttling)', () => {
+        const advisory = evaluateHotPartitionRisk(partInput(), 90, 70, 1);
         expect(advisory?.rule).toBe('HotPartitionRisk');
-        expect(advisory?.severity).toBe('High');
+        expect(advisory?.severity).toBe('Medium');
         expect(advisory?.scope).toBe(containerKey('db', 'orders'));
-        expect(advisory?.rationale).toContain('60%');
+        expect(advisory?.rationale).toContain('95%');
         expect(advisory?.rationale).toContain('orders');
         expect(advisory?.rationale.length).toBeLessThanOrEqual(500);
     });
 
-    it('does not fire for a balanced split regardless of partition count', () => {
-        // 50/50 → multiple 1.0; 25/25/25/25 → multiple 1.0. Both below the default 3× threshold.
-        expect(evaluateHotPartitionRisk('db', 'orders', 50, 2, 3)).toBeUndefined();
-        expect(evaluateHotPartitionRisk('db', 'orders', 25, 4, 3)).toBeUndefined();
+    it('escalates to High when the container is actively throttling', () => {
+        expect(evaluateHotPartitionRisk(partInput({ throttleRatePercent: 5 }), 90, 70, 1)?.severity).toBe('High');
     });
 
-    it('fires on a high-count hotspot a raw-share cutoff would miss', () => {
-        // 35% of 20 partitions = 7× fair share (a raw 40% share cutoff never flags it).
-        expect(evaluateHotPartitionRisk('db', 'orders', 35, 20, 3)?.rule).toBe('HotPartitionRisk');
+    it('does not fire under uniform saturation (no partition has headroom)', () => {
+        expect(evaluateHotPartitionRisk(partInput({ minP99: 88 }), 90, 70, 1)).toBeUndefined();
     });
 
-    it('never fires when the threshold is disabled (0)', () => {
-        expect(evaluateHotPartitionRisk('db', 'orders', 100, 5, 0)).toBeUndefined();
+    it('does not fire when nothing is saturated', () => {
+        expect(evaluateHotPartitionRisk(partInput({ maxP99: 60 }), 90, 70, 1)).toBeUndefined();
+    });
+
+    it('does not fire for a single-partition container', () => {
+        expect(evaluateHotPartitionRisk(partInput({ partitionCount: 1 }), 90, 70, 1)).toBeUndefined();
     });
 });
 
-describe('evaluateSustainedThrottling', () => {
-    it('fires when the throttled share meets the threshold and grades severity by share', () => {
-        // 30% of intervals throttled → High.
-        const advisory = evaluateSustainedThrottling(0.3, 5, false);
+describe('evaluateUnderProvisioning', () => {
+    it('fires when throttling and every partition is uniformly saturated, grading severity by 429 rate', () => {
+        const advisory = evaluateUnderProvisioning(partInput({ minP99: 80, throttleRatePercent: 25 }), 90, 70, 1);
         expect(advisory?.rule).toBe('SustainedThrottlingInRegion');
         expect(advisory?.severity).toBe('High');
-        expect(advisory?.rationale).toContain('30%');
+        expect(advisory?.scope).toBe(containerKey('db', 'orders'));
+        expect(advisory?.rationale).toContain('orders');
         expect(advisory?.rationale.length).toBeLessThanOrEqual(500);
-        // 6% of intervals throttled → Medium.
-        expect(evaluateSustainedThrottling(0.06, 5, false)?.severity).toBe('Medium');
+        // 8% rate → Medium.
+        expect(evaluateUnderProvisioning(partInput({ minP99: 80, throttleRatePercent: 8 }), 90, 70, 1)?.severity).toBe(
+            'Medium',
+        );
     });
 
-    it('splits remediation copy by root cause (add RU vs re-key)', () => {
-        const underProvisioned = evaluateSustainedThrottling(0.3, 5, false);
-        expect(underProvisioned?.suggestedAction).toContain('throughput');
-        const hotPartition = evaluateSustainedThrottling(0.3, 5, true);
-        expect(hotPartition?.suggestedAction).toContain('Re-key');
+    it('does not fire on the skew (non-uniform) case — that is the hot-partition rule', () => {
+        expect(
+            evaluateUnderProvisioning(partInput({ minP99: 40, throttleRatePercent: 25 }), 90, 70, 1),
+        ).toBeUndefined();
     });
 
-    it('does not fire below the configured share', () => {
-        expect(evaluateSustainedThrottling(0.02, 5, false)).toBeUndefined();
+    it('abstains below the minimum request count', () => {
+        expect(
+            evaluateUnderProvisioning(
+                partInput({ minP99: 80, throttleRatePercent: 25, totalRequests: 500 }),
+                90,
+                70,
+                1,
+            ),
+        ).toBeUndefined();
+    });
+
+    it('does not fire when it is not throttling', () => {
+        expect(evaluateUnderProvisioning(partInput({ minP99: 80, throttleRatePercent: 0 }), 90, 70, 1)).toBeUndefined();
     });
 });
 
 describe('evaluateOverProvisioning', () => {
     it('fires on low p99 with manual throughput', () => {
-        const advisory = evaluateOverProvisioning(12, 25, true);
+        const advisory = evaluateOverProvisioning(12, 12, 30, true);
         expect(advisory?.rule).toBe('OverProvisioning');
         expect(advisory?.severity).toBe('Medium');
         expect(advisory?.rationale).toContain('12%');
     });
 
-    it('grades severity by estimated wasted RU/s when provisioned total is known', () => {
-        // 10% p99 of 100,000 provisioned RU/s → ~90,000 wasted → High.
-        expect(evaluateOverProvisioning(10, 25, true, 100_000)?.severity).toBe('High');
-        // 10% p99 of 2,000 provisioned RU/s → ~1,800 wasted → Medium.
-        expect(evaluateOverProvisioning(10, 25, true, 2_000)?.severity).toBe('Medium');
-        // 10% p99 of 500 provisioned RU/s → ~450 wasted → Low.
-        expect(evaluateOverProvisioning(10, 25, true, 500)?.severity).toBe('Low');
+    it('grades severity by relative materiality when the provisioned total is known', () => {
+        // Big fleet with tiny demand → most capacity wasted → High.
+        expect(evaluateOverProvisioning(10, 10, 30, true, 100_000)?.severity).toBe('High');
+        // Just above the 400 RU/s floor → ~5% wasted → Medium.
+        expect(evaluateOverProvisioning(10, 10, 30, true, 420)?.severity).toBe('Medium');
+        // Barely above the floor → ~0.5% wasted → Low.
+        expect(evaluateOverProvisioning(10, 10, 30, true, 402)?.severity).toBe('Low');
     });
 
     it('does not fire without manual throughput', () => {
-        expect(evaluateOverProvisioning(12, 25, false)).toBeUndefined();
+        expect(evaluateOverProvisioning(12, 12, 30, false)).toBeUndefined();
     });
 
-    it('does not fire at or above the threshold, or with no data', () => {
-        expect(evaluateOverProvisioning(25, 25, true)).toBeUndefined();
-        expect(evaluateOverProvisioning(undefined, 25, true)).toBeUndefined();
+    it('does not fire at or above the band, or with no data', () => {
+        expect(evaluateOverProvisioning(30, 30, 30, true)).toBeUndefined();
+        expect(evaluateOverProvisioning(undefined, undefined, 30, true)).toBeUndefined();
+    });
+
+    it('is suppressed by the peak-saturation guard (a recurring batch needs its peak)', () => {
+        expect(evaluateOverProvisioning(10, 95, 30, true, 100_000)).toBeUndefined();
     });
 });
 
@@ -412,8 +388,8 @@ describe('evaluateStorageSkewRisk', () => {
 
 describe('compareAdvisories', () => {
     it('orders High before Medium before Low', () => {
-        const high = evaluateHotPartitionRisk('db', 'a', 90, 4, 3)!;
-        const medium = evaluateOverProvisioning(10, 25, true)!;
+        const high = evaluateHotPartitionRisk(partInput({ throttleRatePercent: 5 }), 90, 70, 1)!;
+        const medium = evaluateOverProvisioning(10, 10, 30, true)!;
         const low = evaluateIndexingCostRisk(
             { databaseId: 'db', containerId: 'b', indexUsageBytes: 50, dataUsageBytes: 100, excludedPathCount: 0 },
             0.3,
@@ -425,7 +401,6 @@ describe('compareAdvisories', () => {
 
 describe('computeDerivedAdvisories', () => {
     const baseInputs: DerivedAdvisoryInputs = {
-        throttlingPoints: throttledPoints([false, false, false]),
         weeklyRuPercents: [50, 50, 50],
         weeklyPeakPercent: 50,
         hasManualThroughput: false,
@@ -438,14 +413,12 @@ describe('computeDerivedAdvisories', () => {
         expect(computeDerivedAdvisories(baseInputs, DEFAULT_ADVISORY_THRESHOLDS)).toEqual([]);
     });
 
-    it('fires the high-severity + over-provisioning rules and returns them severity-sorted', () => {
+    it('fires the hot-partition + over-provisioning + indexing rules and returns them severity-sorted', () => {
         const inputs: DerivedAdvisoryInputs = {
-            // All six 24h intervals throttled → 100% throttled share.
-            throttlingPoints: throttledPoints([true, true, true, true, true, true]),
             weeklyRuPercents: [20, 20, 20, 20],
             weeklyPeakPercent: 20,
             hasManualThroughput: true,
-            partitions: [{ databaseId: 'db', containerId: 'orders', topPartitionShare: 80, partitionCount: 5 }],
+            partitions: [partInput({ minP99: 30, throttleRatePercent: 5 })],
             storage: [],
             indexing: [
                 {
@@ -460,12 +433,22 @@ describe('computeDerivedAdvisories', () => {
         const advisories = computeDerivedAdvisories(inputs, DEFAULT_ADVISORY_THRESHOLDS);
         const rules = advisories.map((a) => a.rule);
         expect(rules).toContain('HotPartitionRisk');
-        expect(rules).toContain('SustainedThrottlingInRegion');
         expect(rules).toContain('OverProvisioning');
         expect(rules).toContain('IndexingCostRisk');
-        // High-severity rules sort ahead of Medium/Low.
+        // The skewed hot partition must not also raise the uniform-saturation under-provisioning advisory.
+        expect(rules).not.toContain('SustainedThrottlingInRegion');
         expect(advisories[0].severity).toBe('High');
         expect(advisories.every((a) => a.rationale.length <= 500)).toBe(true);
+    });
+
+    it('fires SustainedThrottlingInRegion (not hot partition) on uniform saturation with throttling', () => {
+        const inputs: DerivedAdvisoryInputs = {
+            ...baseInputs,
+            partitions: [partInput({ minP99: 80, throttleRatePercent: 25 })],
+        };
+        const rules = computeDerivedAdvisories(inputs, DEFAULT_ADVISORY_THRESHOLDS).map((a) => a.rule);
+        expect(rules).toContain('SustainedThrottlingInRegion');
+        expect(rules).not.toContain('HotPartitionRisk');
     });
 
     it('fires AutoscaleCandidate on a bursty manual profile (mutually exclusive with over-provisioning)', () => {
@@ -491,5 +474,12 @@ describe('computeDerivedAdvisories', () => {
         const rules = computeDerivedAdvisories(inputs, DEFAULT_ADVISORY_THRESHOLDS).map((a) => a.rule);
         expect(rules).not.toContain('OverProvisioning');
         expect(rules).not.toContain('AutoscaleCandidate');
+    });
+});
+
+describe('percentile (re-exported signal helper)', () => {
+    it('is spike-resistant at p99', () => {
+        const values = [...Array<number>(99).fill(3), 100];
+        expect(percentile(values, 99)).toBeLessThan(10);
     });
 });

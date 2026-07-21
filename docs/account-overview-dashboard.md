@@ -38,20 +38,22 @@ Chart granularity follows the selected time range: `1H` → `PT1M`, `24H` → `P
 ## Detections we compute
 
 Numbered `AO-Dx` for our own reference and mapped to the nearest CODA equivalent (`DX-xxx`). The
-**Correctness** column flags rules whose formula is known to mis-fire or use the wrong signal — fixes are
-tracked as post-MVP work (Phase 9 in the plan). All defaults live under `cosmosDB.accountOverview.*` and can
-be tuned without a redeploy.
+**CODA parity** column records how each rule compares to CODA's authoritative detector: ✅ at parity, 🟡
+partial, ❌ different signal. Reaching full parity with CODA — both the divergent native rules and the
+not-yet-ported detectors — is a tracked goal (see Phase 9/10 in the plan). All defaults live under
+`cosmosDB.accountOverview.*` and can be tuned without a redeploy.
 
-| #     | Detection            | Trigger (default)                                         | Surface                                           | CODA map                 | Correctness            |
-| ----- | -------------------- | --------------------------------------------------------- | ------------------------------------------------- | ------------------------ | ---------------------- |
-| AO-D1 | Account / row health | RU ≥ 80 / 90 %; storage growth > 10 GiB/7d; sustained 429 | Header pill + inventory row badges                | DX-005 / DX-017          | RU bands ✅; growth ❌ |
-| AO-D2 | Hot partition        | top physical-partition RU share ≥ 40 %                    | Heatmap tile (flagged) **and** Derived Advisories | DX-006                   | ❌ share ≠ saturation  |
-| AO-D3 | Storage skew         | top physical-partition storage share ≥ 35 %               | Heatmap (storage mode)                            | DX-015                   | ❌ share-based         |
-| AO-D4 | Sustained throttling | ≥ 30 continuous min of 429 share > 1 %                    | RU-chart bands **and** Derived Advisories         | DX-005 / DX-018          | 🟡 coarse              |
-| AO-D5 | Over-provisioning    | 7-day peak RU < 25 % (manual only)                        | Derived Advisories                                | DX-001                   | 🟡 coarse              |
-| AO-D6 | Autoscale candidate  | CV of 7-day RU > 0.5 (manual only)                        | Derived Advisories                                | DX-012                   | ⚠️ wrong statistic     |
-| AO-D7 | Indexing cost risk   | index/data storage > 0.3, 0 excluded paths                | Derived Advisories                                | — (CODA gap)             | ⚠️ wrong signal        |
-| AO-D8 | Advisor + Alerts     | severity / impact from Azure                              | Right rail (Active Alerts, Recommendations)       | — (ext-only passthrough) | ✅ passthrough         |
+| #     | Detection            | Trigger (default)                                                                          | Surface                                           | CODA map                 | CODA parity                                 |
+| ----- | -------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------- | ------------------------ | ------------------------------------------- |
+| AO-D1 | Account / row health | peak RU ≥ 80 / 90 %; sustained 429                                                         | Header pill + inventory row badges                | DX-005                   | RU bands ✅ (growth → AO-D9)                |
+| AO-D2 | Hot partition        | busiest physical-partition p99 ≥ 90 % saturation while another < 70 % headroom (7-day)     | Heatmap tile (flagged) **and** Derived Advisories | DX-006                   | ✅ p99 saturation + headroom (DX-006)       |
+| AO-D3 | Storage skew         | coolest ÷ busiest partition size < 0.7, busiest ≥ 1 GiB                                    | Heatmap (storage mode) **and** Derived Advisories | DX-015                   | ✅ balance ratio (DX-015)                   |
+| AO-D4 | Sustained throttling | 429 rate ≥ 1 % with every partition p99 ≥ 90 % (uniform saturation, 7-day)                 | RU-chart bands **and** Derived Advisories         | DX-005 / DX-018          | ✅ 429-rate + uniform saturation (DX-005)   |
+| AO-D5 | Over-provisioning    | 7-day p99 RU < 30 % (manual only), 90 % peak guard, relative-materiality severity          | Derived Advisories                                | DX-001                   | ✅ band + peak guard + materiality (DX-001) |
+| AO-D6 | Autoscale candidate  | peak ≥ 40 %, avg ≤ 30 %, peak/avg ≥ 5 (manual only)                                        | Derived Advisories                                | DX-012                   | ✅ duty cycle (DX-012)                      |
+| AO-D7 | Indexing cost risk   | index/data storage > 0.3, 0 excluded paths                                                 | Derived Advisories                                | — (CODA gap)             | ⚠️ storage proxy; wants write-RU share      |
+| AO-D8 | Advisor + Alerts     | severity / impact from Azure                                                               | Right rail (Active Alerts, Recommendations)       | — (ext-only passthrough) | ✅ passthrough                              |
+| AO-D9 | Rapid storage growth | physical-partition size trajectory reaches 50 GiB within horizon (High ≤ 30 d, Med ≤ 90 d) | Derived Advisories                                | DX-017                   | ✅ least-squares horizon (DX-017)           |
 
 ### Where each detection surfaces
 
@@ -62,12 +64,13 @@ text advisory, and a few in both places:
 | ------------------------------------ | ------------------------------------------ | ------------------------------------------------- |
 | AO-D1 Account / row health           | —                                          | Health pill (header) + per-row badges (inventory) |
 | AO-D2 Hot partition                  | ✅ advisory                                | ✅ flagged tile in the partition heatmap          |
-| AO-D3 Storage skew                   | —                                          | ✅ heatmap in storage mode                        |
+| AO-D3 Storage skew                   | ✅ advisory                                | ✅ heatmap in storage mode                        |
 | AO-D4 Sustained throttling           | ✅ advisory                                | ✅ shaded bands on the RU trend chart             |
 | AO-D5 Over-provisioning              | ✅ advisory                                | —                                                 |
 | AO-D6 Autoscale candidate            | ✅ advisory                                | —                                                 |
 | AO-D7 Indexing cost risk             | ✅ advisory                                | —                                                 |
 | AO-D8 Advisor + Alerts (passthrough) | ✅ (Active Alerts + Recommendations cards) | —                                                 |
+| AO-D9 Rapid storage growth           | ✅ advisory                                | —                                                 |
 
 **Passthrough vs derived:** the **Active Alerts** and **Recommendations** cards are Azure's own output
 (Azure Monitor fired alerts and Azure Advisor), surfaced verbatim. The **Derived Advisories** card is the
@@ -79,7 +82,9 @@ only place our own `§13` rule engine writes to.
   sustained throttling, then **escalated** (never downgraded) by fired alerts (Sev0/1 → Critical; Sev2/3 →
   Needs Attention) and high-impact Advisor Performance/Cost recommendations.
 - **Row health** (per database/container): `Critical` on throttling or `peakRuPercent ≥ 90 %`;
-  `Needs Attention` on `peakRuPercent ≥ 80 %` or 7-day storage growth `> 10 GiB`; else `Healthy`.
+  `Needs Attention` on `peakRuPercent ≥ 80 %`; else `Healthy`. Storage growth no longer feeds row health —
+  proximity to the 50 GiB per-partition limit surfaces as the **AO-D9 / `StorageGrowthRisk`** derived
+  advisory instead.
 
 ## Data sources — ARM endpoints
 

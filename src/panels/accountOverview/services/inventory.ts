@@ -157,7 +157,7 @@ export async function getSqlInventory(
 export interface InventoryResult {
     /** False when the ARM walk failed (for example a 403); pairs with {@link reason}. */
     available: boolean;
-    /** When {@link available} is false, why the section could not load: `noData` | `unsupported` | `rbac`. */
+    /** When {@link available} is false, why the section could not load. See {@link UnavailableReason}. */
     reason?: UnavailableReason;
     rows: InventoryContainerRow[];
 }

@@ -165,7 +165,10 @@ export const AccountOverview = () => {
         async (range: TimeRange, container?: MetricScope) => {
             setTrendsLoading(true);
             try {
-                const entries = await Promise.all(
+                // Load each metric independently: one failing request (transport/transient error) should
+                // degrade just that tile to an unavailable placeholder, not reject the whole batch and
+                // leave every tile stale via an unhandled rejection.
+                const outcomes = await Promise.allSettled(
                     METRIC_ORDER.map(async (metric) => {
                         const result = await trpcClient.accountOverview.getMetricSeries.query({
                             metric,
@@ -177,9 +180,23 @@ export const AccountOverview = () => {
                     }),
                 );
                 const next: Partial<Record<MetricKey, MetricSeriesResult>> = {};
-                for (const [metric, result] of entries) {
-                    next[metric] = result;
-                }
+                METRIC_ORDER.forEach((metric, index) => {
+                    const outcome = outcomes[index];
+                    if (outcome.status === 'fulfilled') {
+                        next[outcome.value[0]] = outcome.value[1];
+                    } else {
+                        next[metric] = {
+                            metric,
+                            available: false,
+                            reason: 'noData',
+                            points: [],
+                            timeRange: range,
+                            databaseId: container?.databaseId,
+                            containerId: container?.containerId,
+                            generatedAt: Date.now(),
+                        };
+                    }
+                });
                 setTrends(next);
                 setLastRefreshedAt(Date.now());
             } finally {

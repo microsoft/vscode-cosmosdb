@@ -78,7 +78,7 @@ export interface MetricSeriesResult {
     metric: MetricKey;
     /** False when Azure Monitor returned no usable series for this API/SKU. */
     available: boolean;
-    /** When `available` is false, why: `noData` | `unsupported` | `rbac`. */
+    /** When `available` is false, why. See {@link UnavailableReason}. */
     reason?: UnavailableReason;
     points: MetricPoint[];
     /** Scalar summary for the tile (peak of the series), when any value is present. */

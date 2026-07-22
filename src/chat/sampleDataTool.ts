@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { getSchemaFromDocuments, type NoSQLDocument } from '@cosmosdb/schema-analyzer/json';
-import { parseError } from '@microsoft/vscode-azext-utils';
+import { callWithTelemetryAndErrorHandling, parseError } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { getCosmosClient } from '../cosmosdb/getCosmosClient';
@@ -184,54 +184,82 @@ export function registerSampleDataTool(context: vscode.ExtensionContext): void {
             _options: vscode.LanguageModelToolInvocationOptions<Record<string, never>>,
             token: vscode.CancellationToken,
         ): Promise<vscode.LanguageModelToolResult> {
-            const tab = getActiveTab();
-            const connection = tab ? getConnectionFromQueryTab(tab) : undefined;
-            if (!connection) {
-                ext.outputChannel.warn(l10n.t('[Sample Schema Tool] No active Cosmos DB connection.'));
-                return new vscode.LanguageModelToolResult([
-                    new vscode.LanguageModelTextPart(
-                        l10n.t(
-                            'No active Cosmos DB connection. Please open a query editor and connect to a container first.',
-                        ),
-                    ),
-                ]);
-            }
+            const toolResult = await callWithTelemetryAndErrorHandling(
+                'cosmosDB.ai.tool.sampleContainerSchema',
+                async (actionContext) => {
+                    // The tool returns its own LanguageModelToolResult on every path, so suppress the
+                    // default error UI; `outcome` starts pessimistic and is narrowed as we progress.
+                    actionContext.errorHandling.suppressDisplay = true;
+                    actionContext.telemetry.properties.outcome = 'error';
 
-            if (token.isCancellationRequested) {
-                ext.outputChannel.info(l10n.t('[Sample Schema Tool] Operation cancelled by user.'));
-                return new vscode.LanguageModelToolResult([
-                    new vscode.LanguageModelTextPart(l10n.t('Operation cancelled.')),
-                ]);
-            }
+                    const tab = getActiveTab();
+                    const connection = tab ? getConnectionFromQueryTab(tab) : undefined;
+                    if (!connection) {
+                        actionContext.telemetry.properties.outcome = 'noEditor';
+                        ext.outputChannel.warn(l10n.t('[Sample Schema Tool] No active Cosmos DB connection.'));
+                        return new vscode.LanguageModelToolResult([
+                            new vscode.LanguageModelTextPart(
+                                l10n.t(
+                                    'No active Cosmos DB connection. Please open a query editor and connect to a container first.',
+                                ),
+                            ),
+                        ]);
+                    }
 
-            try {
-                const result = await sampleAndPersistContainerSchema(connection);
-                ext.outputChannel.info(
-                    l10n.t(
-                        '[Sample Schema Tool] Sampled {0} documents from {1}/{2}, cost: {3} RUs',
-                        result.documentCount,
-                        result.databaseId,
-                        result.containerId,
-                        (result.requestCharge ?? 0).toFixed(2),
-                    ),
-                );
+                    if (token.isCancellationRequested) {
+                        actionContext.telemetry.properties.outcome = 'cancelled';
+                        ext.outputChannel.info(l10n.t('[Sample Schema Tool] Operation cancelled by user.'));
+                        return new vscode.LanguageModelToolResult([
+                            new vscode.LanguageModelTextPart(l10n.t('Operation cancelled.')),
+                        ]);
+                    }
 
-                return new vscode.LanguageModelToolResult([
-                    new vscode.LanguageModelTextPart(JSON.stringify(result, null, 2)),
-                ]);
-            } catch (error) {
-                const message = parseError(error).message;
-                ext.outputChannel.error(l10n.t('[Sample Schema Tool] Failed to sample data: {0}', message));
-                const baseMessage = l10n.t(
-                    'Unable to sample the container schema. Query generation will continue without schema information, which may affect accuracy.',
-                );
-                void vscode.window.showErrorMessage(
-                    message ? `${baseMessage} ${l10n.t('Error: {0}', message)}` : baseMessage,
-                );
-                return new vscode.LanguageModelToolResult([
-                    new vscode.LanguageModelTextPart(l10n.t('Failed to sample data: {0}', message)),
-                ]);
-            }
+                    try {
+                        const sample = await sampleAndPersistContainerSchema(connection);
+                        actionContext.telemetry.properties.outcome =
+                            sample.documentCount > 0 ? 'success' : 'noDocuments';
+                        actionContext.telemetry.measurements.documentCount = sample.documentCount;
+                        if (typeof sample.requestCharge === 'number') {
+                            actionContext.telemetry.measurements.requestCharge = sample.requestCharge;
+                        }
+                        actionContext.telemetry.measurements.schemaPropertyCount = Object.keys(
+                            sample.schema ?? {},
+                        ).length;
+                        ext.outputChannel.info(
+                            l10n.t(
+                                '[Sample Schema Tool] Sampled {0} documents from {1}/{2}, cost: {3} RUs',
+                                sample.documentCount,
+                                sample.databaseId,
+                                sample.containerId,
+                                (sample.requestCharge ?? 0).toFixed(2),
+                            ),
+                        );
+
+                        return new vscode.LanguageModelToolResult([
+                            new vscode.LanguageModelTextPart(JSON.stringify(sample, null, 2)),
+                        ]);
+                    } catch (error) {
+                        actionContext.telemetry.properties.outcome = 'error';
+                        const message = parseError(error).message;
+                        actionContext.valuesToMask.push(message);
+                        ext.outputChannel.error(l10n.t('[Sample Schema Tool] Failed to sample data: {0}', message));
+                        const baseMessage = l10n.t(
+                            'Unable to sample the container schema. Query generation will continue without schema information, which may affect accuracy.',
+                        );
+                        void vscode.window.showErrorMessage(
+                            message ? `${baseMessage} ${l10n.t('Error: {0}', message)}` : baseMessage,
+                        );
+                        return new vscode.LanguageModelToolResult([
+                            new vscode.LanguageModelTextPart(l10n.t('Failed to sample data: {0}', message)),
+                        ]);
+                    }
+                },
+            );
+
+            return (
+                toolResult ??
+                new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(l10n.t('Failed to sample data.'))])
+            );
         },
     });
 

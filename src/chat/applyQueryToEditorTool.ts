@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { parseError } from '@microsoft/vscode-azext-utils';
+import { callWithTelemetryAndErrorHandling, parseError } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
@@ -104,56 +104,84 @@ export function registerApplyQueryToEditorTool(context: vscode.ExtensionContext)
             };
         },
 
-        invoke(
+        async invoke(
             options: vscode.LanguageModelToolInvocationOptions<ApplyQueryToEditorInput>,
             _token: vscode.CancellationToken,
-        ): vscode.LanguageModelToolResult {
-            const query = options.input?.query;
-            if (!query || !query.trim()) {
-                return new vscode.LanguageModelToolResult([
-                    new vscode.LanguageModelTextPart(l10n.t('No query was provided to apply to the editor.')),
-                ]);
-            }
+        ): Promise<vscode.LanguageModelToolResult> {
+            const toolResult = await callWithTelemetryAndErrorHandling(
+                'cosmosDB.ai.tool.applyQueryToEditor',
+                async (actionContext) => {
+                    actionContext.errorHandling.suppressDisplay = true;
+                    actionContext.telemetry.properties.outcome = 'error';
 
-            const tab = getActiveTab();
-            const connection = tab ? getConnectionFromQueryTab(tab) : undefined;
-            if (!tab || !connection) {
-                ext.outputChannel.warn(l10n.t('[Apply Query Tool] No active Cosmos DB Query Editor.'));
-                return new vscode.LanguageModelToolResult([
-                    new vscode.LanguageModelTextPart(
-                        l10n.t(
-                            'No active Cosmos DB Query Editor. Please open a query editor and connect to a container first.',
-                        ),
-                    ),
-                ]);
-            }
+                    const query = options.input?.query;
+                    if (!query || !query.trim()) {
+                        actionContext.telemetry.properties.outcome = 'noQuery';
+                        return new vscode.LanguageModelToolResult([
+                            new vscode.LanguageModelTextPart(l10n.t('No query was provided to apply to the editor.')),
+                        ]);
+                    }
 
-            try {
-                const currentQuery = tab.getCurrentQuery() ?? '';
-                // Prefer the request the agent passed; otherwise fall back to the prompt captured by
-                // the in-editor "Generate query" flow so the citation appears reliably "like before".
-                const promptDescription = options.input?.promptDescription?.trim() || tab.getLastGeneratePrompt();
-                const finalQuery = buildFramedQuery(query, currentQuery, promptDescription);
-                tab.updateQuery(finalQuery);
+                    const tab = getActiveTab();
+                    const connection = tab ? getConnectionFromQueryTab(tab) : undefined;
+                    if (!tab || !connection) {
+                        actionContext.telemetry.properties.outcome = 'noEditor';
+                        ext.outputChannel.warn(l10n.t('[Apply Query Tool] No active Cosmos DB Query Editor.'));
+                        return new vscode.LanguageModelToolResult([
+                            new vscode.LanguageModelTextPart(
+                                l10n.t(
+                                    'No active Cosmos DB Query Editor. Please open a query editor and connect to a container first.',
+                                ),
+                            ),
+                        ]);
+                    }
 
-                ext.outputChannel.info(
-                    l10n.t(
-                        '[Apply Query Tool] Applied generated query to {0}/{1}.',
-                        connection.databaseId,
-                        connection.containerId,
-                    ),
-                );
+                    try {
+                        const currentQuery = tab.getCurrentQuery() ?? '';
+                        // Prefer the request the agent passed; otherwise fall back to the prompt captured by
+                        // the in-editor "Generate query" flow so the citation appears reliably "like before".
+                        const promptDescription =
+                            options.input?.promptDescription?.trim() || tab.getLastGeneratePrompt();
+                        const finalQuery = buildFramedQuery(query, currentQuery, promptDescription);
+                        tab.updateQuery(finalQuery);
 
-                return new vscode.LanguageModelToolResult([
-                    new vscode.LanguageModelTextPart(l10n.t('The generated query was written to the Query Editor.')),
-                ]);
-            } catch (error) {
-                const message = parseError(error).message;
-                ext.outputChannel.error(l10n.t('[Apply Query Tool] Failed to apply query: {0}', message));
-                return new vscode.LanguageModelToolResult([
-                    new vscode.LanguageModelTextPart(l10n.t('Failed to apply the query to the editor: {0}', message)),
-                ]);
-            }
+                        actionContext.telemetry.properties.outcome = 'success';
+                        actionContext.telemetry.properties.hasPromptDescription = promptDescription ? 'true' : 'false';
+                        actionContext.telemetry.measurements.queryLength = query.trim().length;
+
+                        ext.outputChannel.info(
+                            l10n.t(
+                                '[Apply Query Tool] Applied generated query to {0}/{1}.',
+                                connection.databaseId,
+                                connection.containerId,
+                            ),
+                        );
+
+                        return new vscode.LanguageModelToolResult([
+                            new vscode.LanguageModelTextPart(
+                                l10n.t('The generated query was written to the Query Editor.'),
+                            ),
+                        ]);
+                    } catch (error) {
+                        actionContext.telemetry.properties.outcome = 'error';
+                        const message = parseError(error).message;
+                        actionContext.valuesToMask.push(message);
+                        ext.outputChannel.error(l10n.t('[Apply Query Tool] Failed to apply query: {0}', message));
+                        return new vscode.LanguageModelToolResult([
+                            new vscode.LanguageModelTextPart(
+                                l10n.t('Failed to apply the query to the editor: {0}', message),
+                            ),
+                        ]);
+                    }
+                },
+            );
+
+            return (
+                toolResult ??
+                new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(l10n.t('Failed to apply the query to the editor.')),
+                ])
+            );
         },
     });
 

@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { getSchemaFromDocuments, type NoSQLDocument } from '@cosmosdb/schema-analyzer/json';
-import { parseError } from '@microsoft/vscode-azext-utils';
+import { callWithTelemetryAndErrorHandling, parseError } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
@@ -84,84 +84,123 @@ export function registerExecuteCurrentQueryTool(context: vscode.ExtensionContext
             _options: vscode.LanguageModelToolInvocationOptions<Record<string, never>>,
             token: vscode.CancellationToken,
         ): Promise<vscode.LanguageModelToolResult> {
-            const tab = getActiveTab();
-            const connection = tab ? getConnectionFromQueryTab(tab) : undefined;
-            if (!tab || !connection) {
-                ext.outputChannel.warn(l10n.t('[Execute Current Query Tool] No active Cosmos DB Query Editor.'));
-                return new vscode.LanguageModelToolResult([
-                    new vscode.LanguageModelTextPart(
-                        l10n.t(
-                            'No active Cosmos DB Query Editor. Please open a query editor and connect to a container first.',
-                        ),
-                    ),
-                ]);
-            }
+            const toolResult = await callWithTelemetryAndErrorHandling(
+                'cosmosDB.ai.tool.executeCurrentQuery',
+                async (actionContext) => {
+                    actionContext.errorHandling.suppressDisplay = true;
+                    actionContext.telemetry.properties.outcome = 'error';
 
-            const activeQuery = getActiveQuery(tab);
-            if (!activeQuery || !activeQuery.trim()) {
-                return new vscode.LanguageModelToolResult([
-                    new vscode.LanguageModelTextPart(
-                        l10n.t('The Query Editor has no query to run. Write a query first, then run it.'),
-                    ),
-                ]);
-            }
+                    const tab = getActiveTab();
+                    const connection = tab ? getConnectionFromQueryTab(tab) : undefined;
+                    if (!tab || !connection) {
+                        actionContext.telemetry.properties.outcome = 'noEditor';
+                        ext.outputChannel.warn(
+                            l10n.t('[Execute Current Query Tool] No active Cosmos DB Query Editor.'),
+                        );
+                        return new vscode.LanguageModelToolResult([
+                            new vscode.LanguageModelTextPart(
+                                l10n.t(
+                                    'No active Cosmos DB Query Editor. Please open a query editor and connect to a container first.',
+                                ),
+                            ),
+                        ]);
+                    }
 
-            if (token.isCancellationRequested) {
-                return new vscode.LanguageModelToolResult([
-                    new vscode.LanguageModelTextPart(l10n.t('Operation cancelled.')),
-                ]);
-            }
+                    const activeQuery = getActiveQuery(tab);
+                    if (!activeQuery || !activeQuery.trim()) {
+                        actionContext.telemetry.properties.outcome = 'noQuery';
+                        return new vscode.LanguageModelToolResult([
+                            new vscode.LanguageModelTextPart(
+                                l10n.t('The Query Editor has no query to run. Write a query first, then run it.'),
+                            ),
+                        ]);
+                    }
 
-            try {
-                // The webview runs the query and renders results in the grid; this resolves once it
-                // reports completion (or after a safety timeout).
-                await tab.runActiveQueryInEditor(activeQuery);
+                    if (token.isCancellationRequested) {
+                        actionContext.telemetry.properties.outcome = 'cancelled';
+                        return new vscode.LanguageModelToolResult([
+                            new vscode.LanguageModelTextPart(l10n.t('Operation cancelled.')),
+                        ]);
+                    }
 
-                const result = tab.getCurrentQueryResults();
-                if (!result) {
-                    return new vscode.LanguageModelToolResult([
-                        new vscode.LanguageModelTextPart(
-                            l10n.t('The query ran in the Query Editor. No result metadata is available.'),
-                        ),
-                    ]);
-                }
+                    try {
+                        // The webview runs the query and renders results in the grid; this resolves once it
+                        // reports completion (or after a safety timeout).
+                        await tab.runActiveQueryInEditor(activeQuery);
 
-                const documents = result.documents ?? [];
-                // PII-free metadata only — never include raw document values.
-                const metadata = {
-                    databaseId: connection.databaseId,
-                    containerId: connection.containerId,
-                    query: result.query,
-                    documentCount: documents.length,
-                    requestCharge: result.requestCharge,
-                    roundTrips: result.roundTrips,
-                    hasMoreResults: result.hasMoreResults,
-                    schema:
-                        documents.length > 0
-                            ? (getSchemaFromDocuments(documents as NoSQLDocument[]) as Record<string, unknown>)
-                            : undefined,
-                };
+                        const queryResult = tab.getCurrentQueryResults();
+                        if (!queryResult) {
+                            actionContext.telemetry.properties.outcome = 'noResult';
+                            return new vscode.LanguageModelToolResult([
+                                new vscode.LanguageModelTextPart(
+                                    l10n.t('The query ran in the Query Editor. No result metadata is available.'),
+                                ),
+                            ]);
+                        }
 
-                ext.outputChannel.info(
-                    l10n.t(
-                        '[Execute Current Query Tool] Ran query on {0}/{1}: {2} rows, cost: {3} RUs',
-                        connection.databaseId,
-                        connection.containerId,
-                        metadata.documentCount,
-                        (result.requestCharge ?? 0).toFixed(2),
-                    ),
-                );
+                        const documents = queryResult.documents ?? [];
+                        // PII-free metadata only — never include raw document values.
+                        const metadata = {
+                            databaseId: connection.databaseId,
+                            containerId: connection.containerId,
+                            query: queryResult.query,
+                            documentCount: documents.length,
+                            requestCharge: queryResult.requestCharge,
+                            roundTrips: queryResult.roundTrips,
+                            hasMoreResults: queryResult.hasMoreResults,
+                            schema:
+                                documents.length > 0
+                                    ? (getSchemaFromDocuments(documents as NoSQLDocument[]) as Record<string, unknown>)
+                                    : undefined,
+                        };
 
-                return new vscode.LanguageModelToolResult([
-                    new vscode.LanguageModelTextPart(JSON.stringify(metadata, null, 2)),
-                ]);
-            } catch (error) {
-                const message = parseError(error).message;
-                ext.outputChannel.error(l10n.t('[Execute Current Query Tool] Failed to run query: {0}', message));
-                return new vscode.LanguageModelToolResult([
-                    new vscode.LanguageModelTextPart(l10n.t('Failed to run the query: {0}', message)),
-                ]);
-            }
+                        actionContext.telemetry.properties.outcome = 'success';
+                        actionContext.telemetry.measurements.documentCount = metadata.documentCount;
+                        if (typeof queryResult.requestCharge === 'number') {
+                            actionContext.telemetry.measurements.requestCharge = queryResult.requestCharge;
+                        }
+                        if (typeof queryResult.roundTrips === 'number') {
+                            actionContext.telemetry.measurements.roundTrips = queryResult.roundTrips;
+                        }
+                        if (metadata.schema) {
+                            actionContext.telemetry.measurements.schemaPropertyCount = Object.keys(
+                                metadata.schema,
+                            ).length;
+                        }
+
+                        ext.outputChannel.info(
+                            l10n.t(
+                                '[Execute Current Query Tool] Ran query on {0}/{1}: {2} rows, cost: {3} RUs',
+                                connection.databaseId,
+                                connection.containerId,
+                                metadata.documentCount,
+                                (queryResult.requestCharge ?? 0).toFixed(2),
+                            ),
+                        );
+
+                        return new vscode.LanguageModelToolResult([
+                            new vscode.LanguageModelTextPart(JSON.stringify(metadata, null, 2)),
+                        ]);
+                    } catch (error) {
+                        actionContext.telemetry.properties.outcome = 'error';
+                        const message = parseError(error).message;
+                        actionContext.valuesToMask.push(message);
+                        ext.outputChannel.error(
+                            l10n.t('[Execute Current Query Tool] Failed to run query: {0}', message),
+                        );
+                        return new vscode.LanguageModelToolResult([
+                            new vscode.LanguageModelTextPart(l10n.t('Failed to run the query: {0}', message)),
+                        ]);
+                    }
+                },
+            );
+
+            return (
+                toolResult ??
+                new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(l10n.t('Failed to run the query.')),
+                ])
+            );
         },
     });
 

@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { getSchemaFromDocuments, type NoSQLDocument } from '@cosmosdb/schema-analyzer/json';
-import { parseError } from '@microsoft/vscode-azext-utils';
+import { callWithTelemetryAndErrorHandling, parseError } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
@@ -108,90 +108,127 @@ export function registerGetQueryEditorContextTool(context: vscode.ExtensionConte
             _options: vscode.LanguageModelToolInvocationOptions<Record<string, never>>,
             _token: vscode.CancellationToken,
         ): Promise<vscode.LanguageModelToolResult> {
-            const tab = getActiveTab();
-            const connection = tab ? getConnectionFromQueryTab(tab) : undefined;
-            if (!tab || !connection) {
-                ext.outputChannel.warn(l10n.t('[Query Editor Context Tool] No active Cosmos DB Query Editor.'));
-                return new vscode.LanguageModelToolResult([
-                    new vscode.LanguageModelTextPart(
-                        l10n.t(
-                            'No active Cosmos DB Query Editor. Please open a query editor and connect to a container first.',
-                        ),
-                    ),
-                ]);
-            }
+            const toolResult = await callWithTelemetryAndErrorHandling(
+                'cosmosDB.ai.tool.getQueryEditorContext',
+                async (actionContext) => {
+                    actionContext.errorHandling.suppressDisplay = true;
+                    actionContext.telemetry.properties.outcome = 'error';
 
-            try {
-                // In a multi-query editor the user's focus is the selected text; fall back to the
-                // full editor content when nothing is selected. `activeQuery` is the one to operate on.
-                const rawSelected = tab.getSelectedQuery();
-                const selectedQuery = rawSelected && rawSelected.trim() ? rawSelected : undefined;
-                const currentQuery = tab.getCurrentQuery();
-                const context: QueryEditorContext = {
-                    databaseId: connection.databaseId,
-                    containerId: connection.containerId,
-                    currentQuery,
-                    selectedQuery,
-                    activeQuery: selectedQuery ?? currentQuery,
-                };
+                    const tab = getActiveTab();
+                    const connection = tab ? getConnectionFromQueryTab(tab) : undefined;
+                    if (!tab || !connection) {
+                        actionContext.telemetry.properties.outcome = 'noEditor';
+                        ext.outputChannel.warn(l10n.t('[Query Editor Context Tool] No active Cosmos DB Query Editor.'));
+                        return new vscode.LanguageModelToolResult([
+                            new vscode.LanguageModelTextPart(
+                                l10n.t(
+                                    'No active Cosmos DB Query Editor. Please open a query editor and connect to a container first.',
+                                ),
+                            ),
+                        ]);
+                    }
 
-                // Azure resource coordinates, when the connection is an Azure-signed-in account
-                // (undefined for workspace-attached accounts and the local emulator).
-                const azureMetadata = connection.azureMetadata;
-                if (azureMetadata) {
-                    context.azure = {
-                        accountName: azureMetadata.accountName,
-                        subscriptionId: azureMetadata.subscription.subscriptionId,
-                        subscriptionName: azureMetadata.subscription.name,
-                        resourceGroup: azureMetadata.resourceGroup,
-                    };
-                }
+                    try {
+                        // In a multi-query editor the user's focus is the selected text; fall back to the
+                        // full editor content when nothing is selected. `activeQuery` is the one to operate on.
+                        const rawSelected = tab.getSelectedQuery();
+                        const selectedQuery = rawSelected && rawSelected.trim() ? rawSelected : undefined;
+                        const currentQuery = tab.getCurrentQuery();
+                        const context: QueryEditorContext = {
+                            databaseId: connection.databaseId,
+                            containerId: connection.containerId,
+                            currentQuery,
+                            selectedQuery,
+                            activeQuery: selectedQuery ?? currentQuery,
+                        };
 
-                // Persisted container schema from prior sampling/inference (size-bounded for the
-                // model context). When present the agent can skip re-sampling the container.
-                const simplified = await SchemaService.getInstance().getSimplifiedSchema(connection);
-                if (simplified) {
-                    context.containerSchema = simplified.schema;
-                }
+                        // Azure resource coordinates, when the connection is an Azure-signed-in account
+                        // (undefined for workspace-attached accounts and the local emulator).
+                        const azureMetadata = connection.azureMetadata;
+                        if (azureMetadata) {
+                            context.azure = {
+                                accountName: azureMetadata.accountName,
+                                subscriptionId: azureMetadata.subscription.subscriptionId,
+                                subscriptionName: azureMetadata.subscription.name,
+                                resourceGroup: azureMetadata.resourceGroup,
+                            };
+                        }
 
-                const currentResult = tab.getCurrentQueryResults();
-                if (currentResult) {
-                    const documents = currentResult.documents ?? [];
-                    context.currentResult = {
-                        query: currentResult.query,
-                        documentCount: documents.length,
-                        requestCharge: currentResult.requestCharge,
-                        roundTrips: currentResult.roundTrips,
-                        hasMoreResults: currentResult.hasMoreResults,
-                        // Structure only — getSchemaFromDocuments never carries raw values.
-                        schema:
-                            documents.length > 0
-                                ? (getSchemaFromDocuments(documents as NoSQLDocument[]) as Record<string, unknown>)
-                                : undefined,
-                    };
-                }
+                        // Persisted container schema from prior sampling/inference (size-bounded for the
+                        // model context). When present the agent can skip re-sampling the container.
+                        const simplified = await SchemaService.getInstance().getSimplifiedSchema(connection);
+                        if (simplified) {
+                            context.containerSchema = simplified.schema;
+                        }
 
-                const history = CosmosDbOperationsService.getInstance().getQueryHistoryContext(tab);
-                if (history && history.executions.length > 0) {
-                    context.queryHistory = history.executions.map((execution) => ({
-                        query: execution.query,
-                        documentCount: execution.documentCount,
-                        requestCharge: execution.requestCharge,
-                        timestamp: execution.timestamp,
-                        schema: execution.simplifiedSchema ?? execution.schema,
-                    }));
-                }
+                        const currentResult = tab.getCurrentQueryResults();
+                        if (currentResult) {
+                            const documents = currentResult.documents ?? [];
+                            context.currentResult = {
+                                query: currentResult.query,
+                                documentCount: documents.length,
+                                requestCharge: currentResult.requestCharge,
+                                roundTrips: currentResult.roundTrips,
+                                hasMoreResults: currentResult.hasMoreResults,
+                                // Structure only — getSchemaFromDocuments never carries raw values.
+                                schema:
+                                    documents.length > 0
+                                        ? (getSchemaFromDocuments(documents as NoSQLDocument[]) as Record<
+                                              string,
+                                              unknown
+                                          >)
+                                        : undefined,
+                            };
+                        }
 
-                return new vscode.LanguageModelToolResult([
-                    new vscode.LanguageModelTextPart(JSON.stringify(context, null, 2)),
-                ]);
-            } catch (error) {
-                const message = parseError(error).message;
-                ext.outputChannel.error(l10n.t('[Query Editor Context Tool] Failed to read context: {0}', message));
-                return new vscode.LanguageModelToolResult([
-                    new vscode.LanguageModelTextPart(l10n.t('Failed to read Query Editor context: {0}', message)),
-                ]);
-            }
+                        const history = CosmosDbOperationsService.getInstance().getQueryHistoryContext(tab);
+                        if (history && history.executions.length > 0) {
+                            context.queryHistory = history.executions.map((execution) => ({
+                                query: execution.query,
+                                documentCount: execution.documentCount,
+                                requestCharge: execution.requestCharge,
+                                timestamp: execution.timestamp,
+                                schema: execution.simplifiedSchema ?? execution.schema,
+                            }));
+                        }
+
+                        actionContext.telemetry.properties.outcome = 'success';
+                        actionContext.telemetry.properties.hasSelection = selectedQuery ? 'true' : 'false';
+                        actionContext.telemetry.properties.hasContainerSchema = context.containerSchema
+                            ? 'true'
+                            : 'false';
+                        actionContext.telemetry.properties.hasResult = context.currentResult ? 'true' : 'false';
+                        if (context.currentResult) {
+                            actionContext.telemetry.measurements.resultDocumentCount =
+                                context.currentResult.documentCount;
+                        }
+                        actionContext.telemetry.measurements.historyCount = context.queryHistory?.length ?? 0;
+
+                        return new vscode.LanguageModelToolResult([
+                            new vscode.LanguageModelTextPart(JSON.stringify(context, null, 2)),
+                        ]);
+                    } catch (error) {
+                        actionContext.telemetry.properties.outcome = 'error';
+                        const message = parseError(error).message;
+                        actionContext.valuesToMask.push(message);
+                        ext.outputChannel.error(
+                            l10n.t('[Query Editor Context Tool] Failed to read context: {0}', message),
+                        );
+                        return new vscode.LanguageModelToolResult([
+                            new vscode.LanguageModelTextPart(
+                                l10n.t('Failed to read Query Editor context: {0}', message),
+                            ),
+                        ]);
+                    }
+                },
+            );
+
+            return (
+                toolResult ??
+                new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(l10n.t('Failed to read Query Editor context.')),
+                ])
+            );
         },
     });
 

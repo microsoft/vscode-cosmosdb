@@ -53,6 +53,73 @@ export function getBrandTokensFromPalette(keyColor: string, options: Options = {
     }, {}) as BrandVariants;
 }
 
+/**
+ * Fluent's neutral ramp (colorNeutralBackground2/3, strokes, …) is a *fixed*
+ * gray produced by `createLightTheme`/`createDarkTheme`. It ignores the active
+ * VS Code color theme, so surfaces painted with it (secondary panels/header
+ * bands, the alternating rows of tables/lists, section separators) drift out of
+ * tune on themes whose editor background is tinted or otherwise far from that gray.
+ *
+ * These overrides remap the neutral surfaces our webviews actually paint with
+ * onto VS Code theme variables so they track the active theme. Each value falls
+ * back through progressively more common surface tokens, because many community
+ * themes leave the ideal one undefined. The VS Code variables are already
+ * theme-appropriate, so the exact same expressions work for both the light and
+ * dark adaptive themes.
+ *
+ * NOTE — neutral tokens still on the fixed Fluent ramp (candidates for a future
+ * pass; see the "theme color coverage" tracking issue):
+ *   - colorNeutralBackground3
+ *   - colorNeutralBackground1Hover/Pressed/Selected
+ *   - colorNeutralForeground3 / Foreground4 / ForegroundDisabled
+ *   - colorNeutralStroke1 / Stroke3 / StrokeAccessible
+ *   - colorSubtleBackground* (toolbar/button hover fills)
+ *   - High-contrast theme kinds bypass this generator entirely and fall back to
+ *     the static Teams themes (see getFluentUiTheme in state/ThemeContext.tsx),
+ *     so none of the VS Code mappings apply there yet.
+ */
+const adaptiveNeutralSurfaces = {
+    // Secondary neutral surface: header bands + odd alternating rows. Prefer VS
+    // Code's own alternating table-row color, then the side bar / editor-widget
+    // backgrounds.
+    colorNeutralBackground2:
+        'var(--vscode-tree-tableOddRowsBackground, var(--vscode-sideBar-background, var(--vscode-editorWidget-background)))',
+    colorNeutralBackground2Hover:
+        'var(--vscode-list-hoverBackground, var(--vscode-sideBar-background, var(--vscode-editorWidget-background)))',
+    colorNeutralBackground2Pressed:
+        'var(--vscode-list-activeSelectionBackground, var(--vscode-list-hoverBackground, var(--vscode-sideBar-background)))',
+    colorNeutralBackground2Selected:
+        'var(--vscode-list-inactiveSelectionBackground, var(--vscode-list-hoverBackground, var(--vscode-sideBar-background)))',
+    // Subtle separators: header band borders, section rules.
+    colorNeutralStroke2: 'var(--vscode-panel-border, var(--vscode-widget-border, var(--vscode-editorWidget-border)))',
+} satisfies Partial<Theme>;
+
+// Opaque skeleton/shimmer stencils. Fluent's defaults are fixed grays on the
+// neutral ramp, so `opaque` skeletons render as a flat gray block that ignores
+// the theme. We can't reuse solid VS Code tokens here: structural surfaces
+// (editor-widget / side-bar background) can be far darker than the card, and
+// hover/selection overlays can resolve to a saturated accent — both overshoot the
+// gentle look we want. Instead we mimic what the `translucent` appearance does and
+// paint faint *alpha overlays* that composite over whatever card sits behind the
+// skeleton, so the block reads as a low-contrast tint of the surface (which
+// already carries the theme hue). The direction follows the theme kind — darken on
+// light, lighten on dark — matching Fluent's own translucent `*Alpha` scale.
+// Stencil1 is the resting base; Stencil2 is the slightly stronger sweep band. Kept
+// low on purpose: the opaque appearance layers a base fill under the animated
+// sweep, so the two compose.
+//
+// (The translucent `*Alpha` variants are left at Fluent's defaults — that path
+// already composites correctly and drives any `appearance="translucent"` skeleton.)
+const lightSkeletonStencils = {
+    colorNeutralStencil1: 'rgba(0, 0, 0, 0.07)',
+    colorNeutralStencil2: 'rgba(0, 0, 0, 0.1)',
+} satisfies Partial<Theme>;
+
+const darkSkeletonStencils = {
+    colorNeutralStencil1: 'rgba(255, 255, 255, 0.07)',
+    colorNeutralStencil2: 'rgba(255, 255, 255, 0.1)',
+} satisfies Partial<Theme>;
+
 // https://react.fluentui.dev/?path=/docs/concepts-developer-theming--page#overriding-existing-tokens
 export const generateAdaptiveLightTheme = (): Theme => {
     const style = getComputedStyle(document.documentElement);
@@ -68,6 +135,15 @@ export const generateAdaptiveLightTheme = (): Theme => {
         colorNeutralForeground1Selected: 'var(--vscode-editor-foreground)',
 
         colorNeutralBackground1: 'var(--vscode-editor-background)',
+
+        // Remap the secondary neutral surfaces onto VS Code theme variables
+        // so header bands, alternating rows and separators track the active
+        // theme instead of Fluent's fixed gray.
+        ...adaptiveNeutralSurfaces,
+
+        // Faint theme-direction alpha stencils so `opaque` skeletons read as a
+        // gentle tint of the card instead of a flat gray block.
+        ...lightSkeletonStencils,
     };
 };
 
@@ -89,6 +165,15 @@ export const generateAdaptiveDarkTheme = (): Theme => {
         colorNeutralForeground2Selected: 'var(--vscode-foreground)',
 
         colorNeutralBackground1: 'var(--vscode-editor-background)',
+
+        // Remap the secondary neutral surfaces onto VS Code theme variables
+        // so header bands, alternating rows and separators track the active
+        // theme instead of Fluent's fixed gray.
+        ...adaptiveNeutralSurfaces,
+
+        // Faint theme-direction alpha stencils so `opaque` skeletons read as a
+        // gentle tint of the card instead of a flat gray block.
+        ...darkSkeletonStencils,
     };
 };
 

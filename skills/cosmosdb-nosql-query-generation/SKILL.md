@@ -294,17 +294,9 @@ SELECT TOP 10 c.id FROM c ORDER BY RANK RRF(FullTextScore(c.body, "cosmos"), Vec
   ```sql
   SELECT k.name AS keyword, COUNT(k) AS occurrence FROM c JOIN k IN c.keywords GROUP BY k.name
   ```
-- "How many distinct movie titles exist?"
-  ```sql
-  SELECT COUNT(1) AS count FROM (SELECT DISTINCT c.title FROM c)
-  ```
 - "How many movies did the production company Eon Productions make?"
   ```sql
   SELECT VALUE COUNT(1) FROM c WHERE EXISTS (SELECT VALUE t FROM t IN c.production_companies WHERE StringEquals(t.name, 'Eon Productions', true))
-  ```
-- "Which products have a description containing the word 'math'?"
-  ```sql
-  SELECT * FROM c WHERE CONTAINS(c.category, 'math', true)
   ```
 - "Find items produced outside of the Americas."
   ```sql

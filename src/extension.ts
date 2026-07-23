@@ -34,6 +34,7 @@ import * as vscode from 'vscode';
 import {
     registerApplyQueryToEditorTool,
     registerExecuteCurrentQueryTool,
+    registerFocusQueryEditorTool,
     registerGetQueryEditorContextTool,
     registerListOpenConnectionsTool,
     registerOpenQueryEditorTool,
@@ -207,6 +208,7 @@ export async function activateInternal(
         registerExecuteCurrentQueryTool(context);
         registerOpenQueryEditorTool(context);
         registerListOpenConnectionsTool(context);
+        registerFocusQueryEditorTool(context);
 
         // Suppress "Report an Issue" button for all errors in favor of the command
         registerErrorHandler((c) => (c.errorHandling.suppressReportIssue = true));

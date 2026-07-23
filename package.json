@@ -298,7 +298,7 @@
       {
         "name": "cosmosdb_listOpenConnections",
         "displayName": "List Open Connections",
-        "modelDescription": "Lists every open Cosmos DB Query Editor and the container each one is connected to (database, container, endpoint, whether it is the emulator, whether it is the active/focused editor, and — for Azure-signed-in accounts — the account name, subscription, and resource group). Use this to discover existing connections and suggest the right container to the user instead of guessing or re-opening a new connection. Optionally set reveal=true to highlight a connection in the Azure Resources tree: it reveals the connection matching databaseId / containerId when both are given, otherwise the active editor's connection. Revealing works only for Azure-signed-in accounts (not workspace-attached accounts or the emulator). Returns PII-free metadata only — never query text or document data.",
+        "modelDescription": "Lists every open Cosmos DB Query Editor and the container each one is connected to (database, container, endpoint, whether it is the emulator, whether it is the active/focused editor, and — for Azure-signed-in accounts — the account name, subscription, and resource group). Use this to discover existing connections and suggest the right container to the user instead of guessing or re-opening a new connection. To make one of these open editors the active one so the other Query Editor tools act on it, use cosmosdb_focusQueryEditor. Optionally set reveal=true to highlight a connection in the Azure Resources tree: it reveals the connection matching databaseId / containerId when both are given, otherwise the active editor's connection. Revealing works only for Azure-signed-in accounts (not workspace-attached accounts or the emulator). Returns PII-free metadata only — never query text or document data.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "cosmosdb_listOpenConnections",
         "inputSchema": {
@@ -317,6 +317,30 @@
               "description": "Container of the connection to reveal in the tree. Use together with databaseId."
             }
           }
+        }
+      },
+      {
+        "name": "cosmosdb_focusQueryEditor",
+        "displayName": "Focus Query Editor",
+        "modelDescription": "Focuses (activates) a specific open Cosmos DB Query Editor when multiple are open, so the other Query Editor tools (cosmosdb_getQueryEditorContext, cosmosdb_applyQueryToEditor, cosmosdb_executeCurrentQuery) operate on it. Identify the target by its databaseId and containerId — get these from cosmosdb_listOpenConnections. Use this after listing connections when the user wants to work with a specific editor other than the currently active one. Does not open new connections; if no open editor is connected to the given container, call cosmosdb_openQueryEditor instead. Returns PII-free metadata only — never query text or document data.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "cosmosdb_focusQueryEditor",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "databaseId": {
+              "type": "string",
+              "description": "Database of the open Query Editor connection to focus. Use together with containerId."
+            },
+            "containerId": {
+              "type": "string",
+              "description": "Container of the open Query Editor connection to focus. Use together with databaseId."
+            }
+          },
+          "required": [
+            "databaseId",
+            "containerId"
+          ]
         }
       }
     ],

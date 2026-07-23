@@ -209,6 +209,15 @@ export class QueryEditorTab extends BaseTab {
     }
 
     /**
+     * Brings this Query Editor tab to the foreground and gives it focus, making it the active
+     * editor. Used by the `cosmosdb_focusQueryEditor` tool so subsequent Query Editor tools
+     * (which target the active editor) operate on this tab.
+     */
+    public reveal(): void {
+        this.panel.reveal();
+    }
+
+    /**
      * Broadcasts AI features availability change to all open QueryEditorTabs
      */
     public static notifyAIFeaturesChanged(isAIFeaturesEnabled: boolean): void {

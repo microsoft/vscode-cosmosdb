@@ -53,10 +53,10 @@ function evaluateUnderProvisioning(
     const action =
         input.throughputMode === 'autoscale'
             ? input.provisionedRu !== undefined
-                ? l10n.t('Raise the autoscale maximum above {ru} RU/s — it is pinned at the ceiling.', {
+                ? l10n.t('Raise the autoscale maximum above {ru} RU/s. It is pinned at the ceiling.', {
                       ru: Math.round(input.provisionedRu).toLocaleString(),
                   })
-                : l10n.t('Raise the autoscale maximum — it is pinned at the ceiling.')
+                : l10n.t('Raise the autoscale maximum. It is pinned at the ceiling.')
             : input.provisionedRu !== undefined
               ? l10n.t('Raise provisioned throughput above {ru} RU/s, or convert to autoscale.', {
                     ru: Math.round(input.provisionedRu).toLocaleString(),
@@ -70,7 +70,7 @@ function evaluateUnderProvisioning(
         title: l10n.t('Sustained throttling in {container}', { container: input.containerId }),
         rationale: clampRationale(
             l10n.t(
-                'In "{container}", {rate}% of requests were throttled (HTTP 429) while every physical partition was saturated (busiest p99 {busiest}%, coolest {coolest}%). Because all partitions are at capacity — not just one — this is a genuine capacity shortfall rather than a hot partition.',
+                'In "{container}", {rate}% of requests were throttled (HTTP 429) while every physical partition was saturated (busiest p99 {busiest}%, coolest {coolest}%). Because all partitions are at capacity, not just one, this is a genuine capacity shortfall rather than a hot partition.',
                 { container: input.containerId, rate, busiest, coolest },
             ),
         ),

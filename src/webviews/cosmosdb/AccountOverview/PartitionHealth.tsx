@@ -181,7 +181,7 @@ function rationaleFor(tile: PartitionTile, mode: PartitionDistributionMode): str
     if (mode === 'ru') {
         return tile.hot
             ? l10n.t(
-                  'This physical partition ran at {percent}% p99 utilization while a cooler partition still had headroom — load is skewed by the partition key.',
+                  'This physical partition ran at {percent}% p99 utilization while a cooler partition still had headroom. Load is skewed by the partition key.',
                   { percent },
               )
             : l10n.t('Ran at {percent}% p99 utilization.', { percent });

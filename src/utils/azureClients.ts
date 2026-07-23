@@ -11,7 +11,7 @@ import { type MonitorClient } from '@azure/arm-monitor';
 import { type PostgreSQLManagementClient } from '@azure/arm-postgresql';
 import { type PostgreSQLManagementFlexibleServerClient } from '@azure/arm-postgresql-flexible';
 import { type TokenCredential } from '@azure/core-auth';
-import { type LogsQueryClient } from '@azure/monitor-query-logs';
+import { type KnownMonitorLogsQueryAudience, type LogsQueryClient } from '@azure/monitor-query-logs';
 import { createAzureClient } from '@microsoft/vscode-azext-azureutils';
 import { createSubscriptionContext, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
@@ -107,8 +107,8 @@ export async function createLogsQueryClient(
 ): Promise<LogsQueryClient> {
     context.valuesToMask.push(subscription.subscriptionId);
     const subContext = createSubscriptionContext(subscription);
-    const { LogsQueryClient } = await import('@azure/monitor-query-logs');
-    const audience = logAnalyticsAudience(subscription.environment?.name);
+    const { LogsQueryClient, KnownMonitorLogsQueryAudience } = await import('@azure/monitor-query-logs');
+    const audience = logAnalyticsAudience(subscription.environment?.name, KnownMonitorLogsQueryAudience);
     return new LogsQueryClient(subContext.credentials as TokenCredential, audience ? { audience } : undefined);
 }
 
@@ -116,13 +116,22 @@ export async function createLogsQueryClient(
  * Maps an Azure environment name to the Log Analytics data-plane audience. Returns `undefined` for the public
  * cloud (the SDK default) and for unknown environments; the sovereign clouds override the Microsoft Entra audience
  * so the token is issued for the correct Log Analytics endpoint.
+ *
+ * The audience values are read from the SDK's own `KnownMonitorLogsQueryAudience` enum rather than hardcoded here,
+ * so if Azure ever changes a sovereign endpoint the mapping tracks the SDK instead of silently drifting. The enum
+ * is passed in (destructured from the same dynamic `@azure/monitor-query-logs` import as `LogsQueryClient`) to keep
+ * the package off the extension activation hot path. Note the SDK intentionally has no Azure Germany entry — that
+ * sovereign cloud was retired — so there is deliberately no case for it.
  */
-function logAnalyticsAudience(environmentName: string | undefined): string | undefined {
+function logAnalyticsAudience(
+    environmentName: string | undefined,
+    audiences: typeof KnownMonitorLogsQueryAudience,
+): string | undefined {
     switch (environmentName) {
         case 'AzureChinaCloud':
-            return 'https://api.loganalytics.azure.cn';
+            return audiences.AzureChina;
         case 'AzureUSGovernment':
-            return 'https://api.loganalytics.us';
+            return audiences.AzureGovernment;
         default:
             return undefined;
     }

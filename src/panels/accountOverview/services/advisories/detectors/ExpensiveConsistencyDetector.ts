@@ -48,7 +48,7 @@ function evaluateExpensiveConsistency(config: AccountConfigInput): DerivedAdviso
             ),
         ),
         suggestedAction: l10n.t(
-            'Confirm the application genuinely needs this consistency level; if not, relax it to Session (or Bounded Staleness) after validating the application’s tolerance.',
+            "Confirm the application genuinely needs this consistency level; if not, relax it to Session (or Bounded Staleness) after validating the application's tolerance.",
         ),
         thresholdReference: l10n.t('Threshold: Strong or Bounded Staleness across ≥ 2 regions'),
     };

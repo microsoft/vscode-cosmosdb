@@ -43,7 +43,7 @@ function evaluateServerlessCandidate(
         title: l10n.t('Account may suit serverless'),
         rationale: clampRationale(
             l10n.t(
-                'Account throughput is low and sporadic — peak {peak} RU/s, average {avg} RU/s (a {ratio}% average-to-peak with long idle stretches). Serverless (pay-per-RU, no provisioned floor) may cost less for this shape.',
+                'Account throughput is low and sporadic: peak {peak} RU/s, average {avg} RU/s (a {ratio}% average-to-peak with long idle stretches). Serverless (pay-per-RU, no provisioned floor) may cost less for this shape.',
                 { peak, avg, ratio: ratioPct },
             ),
         ),

@@ -260,7 +260,7 @@ function ruleMeta(rule: DerivedAdvisoryRule): { name: string; description: strin
             return {
                 name: l10n.t('Hot partitions'),
                 description: l10n.t(
-                    'One physical partition is saturated while its siblings sit idle — traffic is skewed toward a single partition-key range.',
+                    'One physical partition is saturated while its siblings sit idle. Traffic is skewed toward a single partition-key range.',
                 ),
             };
         case 'SustainedThrottlingInRegion':
@@ -309,7 +309,7 @@ function ruleMeta(rule: DerivedAdvisoryRule): { name: string; description: strin
             return {
                 name: l10n.t('Expensive consistency'),
                 description: l10n.t(
-                    'A strong or bounded-staleness consistency level multiplies read RU cost — relax it where the workload allows.',
+                    'A strong or bounded-staleness consistency level multiplies read RU cost. Relax it where the workload allows.',
                 ),
             };
         case 'MultiRegionWriteAntipattern':
@@ -323,7 +323,7 @@ function ruleMeta(rule: DerivedAdvisoryRule): { name: string; description: strin
             return {
                 name: l10n.t('Idle containers'),
                 description: l10n.t(
-                    'Containers are provisioned but serve almost no traffic — their entire reservation is round-the-clock waste.',
+                    'Containers are provisioned but serve almost no traffic. Their entire reservation is round-the-clock waste.',
                 ),
             };
         case 'PartitionMergeCandidate':
@@ -447,14 +447,14 @@ function logCoverageNotice(reason: UnavailableReason | undefined): {
         case 'logAnalyticsDisabled':
             return {
                 body: l10n.t(
-                    'Log-based checks (cross-partition queries, ingestion, shared-throughput) didn’t run because diagnostic settings aren’t exporting logs to a Log Analytics workspace.',
+                    "Log-based checks (cross-partition queries, ingestion, shared-throughput) didn't run because diagnostic settings aren't exporting logs to a Log Analytics workspace.",
                 ),
                 linkLabel: l10n.t('Learn how to enable diagnostic settings'),
                 linkUrl: DIAGNOSTIC_SETTINGS_URL,
             };
         case 'rbac':
             return {
-                body: l10n.t('Log-based checks didn’t run — your role is missing Log Analytics Reader.'),
+                body: l10n.t("Log-based checks didn't run: your role is missing Log Analytics Reader."),
                 linkLabel: l10n.t('Learn more about Azure roles'),
                 linkUrl: RBAC_LEARN_MORE_URL,
             };
@@ -462,7 +462,7 @@ function logCoverageNotice(reason: UnavailableReason | undefined): {
         default:
             return {
                 body: l10n.t(
-                    'Log-based checks didn’t run — there’s no log telemetry in the window yet, or logs were enabled recently.',
+                    "Log-based checks didn't run: there's no log telemetry in the window yet, or logs were enabled recently.",
                 ),
             };
     }
@@ -473,9 +473,7 @@ function groupCountLabel(group: AdvisoryGroup): string {
     if (group.scopeCount === 0) {
         return l10n.t('Account-wide');
     }
-    return group.scopeCount === 1
-        ? l10n.t('1 container affected')
-        : l10n.t('{count} containers affected', { count: group.scopeCount });
+    return group.scopeCount === 1 ? l10n.t('1 container affected') : l10n.t('Some containers affected');
 }
 
 /**

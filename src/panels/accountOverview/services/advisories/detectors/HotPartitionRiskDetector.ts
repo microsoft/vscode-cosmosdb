@@ -37,7 +37,7 @@ function evaluateHotPartitionRisk(
     const impact = throttling
         ? l10n.t('The container is already throttling (HTTP 429), so the hot partition is capping real traffic.')
         : l10n.t(
-              'It is not throttling yet, but the pinned partition cannot borrow the cooler partitions’ capacity as load grows.',
+              'It is not throttling yet, but the pinned partition cannot borrow spare capacity from the other partitions as load grows.',
           );
 
     return {
@@ -52,7 +52,7 @@ function evaluateHotPartitionRisk(
             ) + impact,
         ),
         suggestedAction: l10n.t(
-            'Redesign the partition key for higher cardinality (avoid hotspots; consider synthetic or hierarchical keys) so traffic spreads across partitions — adding RU/s will not fix a single hot partition.',
+            'Redesign the partition key for higher cardinality (avoid hotspots; consider synthetic or hierarchical keys) so traffic spreads across partitions. Adding RU/s will not fix a single hot partition.',
         ),
         thresholdReference: l10n.t('Threshold: busiest partition p99 ≥ {saturation}% while another < {headroom}%', {
             saturation,

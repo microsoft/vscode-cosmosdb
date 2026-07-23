@@ -229,7 +229,7 @@ export const EmptyState = ({ reason, requiredRole }: { reason?: UnavailableReaso
             break;
         case 'rbac':
             message = requiredRole
-                ? l10n.t('Not enough permissions — your role is missing {0}.', requiredRole)
+                ? l10n.t('Not enough permissions: your role is missing {0}.', requiredRole)
                 : l10n.t('Not enough permissions to load this section.');
             break;
         case 'logAnalyticsDisabled':

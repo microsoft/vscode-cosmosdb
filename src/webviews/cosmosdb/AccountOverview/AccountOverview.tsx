@@ -632,7 +632,7 @@ export const AccountOverview = () => {
                             <SectionHeader
                                 title={l10n.t('Derived Advisories')}
                                 description={l10n.t(
-                                    'Advisories computed from this account’s telemetry, not the Azure portal.',
+                                    "Advisories computed from this account's telemetry, not the Azure portal.",
                                 )}
                             />
                             <DerivedAdvisories

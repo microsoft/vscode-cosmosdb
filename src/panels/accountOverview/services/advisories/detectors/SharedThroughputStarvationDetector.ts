@@ -59,7 +59,7 @@ function evaluateSharedThroughputStarvation(
         title: l10n.t('Shared-throughput starvation in {database}', { database: input.databaseId }),
         rationale: clampRationale(
             l10n.t(
-                'In shared-throughput database {database} ({ru} RU/s across {count} collections), {mono} consumes {monoShare}% of the pool while {victim} throttles at {victimRate}% despite using only {victimShare}% — it is being starved.',
+                'In shared-throughput database {database} ({ru} RU/s across {count} collections), {mono} consumes {monoShare}% of the pool while {victim} throttles at {victimRate}% despite using only {victimShare}%. It is being starved.',
                 {
                     database: input.databaseId,
                     ru: Math.round(input.sharedRu),

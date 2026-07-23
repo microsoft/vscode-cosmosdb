@@ -51,11 +51,11 @@ function evaluateIdleContainer(
     const provisioned = Math.round(input.provisionedRu);
     const rationale = isAutoscale
         ? l10n.t(
-              'Container "{container}" consumed at most {peak} RU in any single bucket over the last 30 days, at or below the {threshold} RU idle floor — it serves ~no traffic. Decommissioning it recovers the autoscale idle floor (~{recoverable} RU/s of its {provisioned} RU/s max).',
+              'Container "{container}" consumed at most {peak} RU in any single bucket over the last 30 days, at or below the {threshold} RU idle floor. It serves ~no traffic. Decommissioning it recovers the autoscale idle floor (~{recoverable} RU/s of its {provisioned} RU/s max).',
               { container: input.containerId, peak, threshold: Math.round(maxIdlePeakRu), recoverable, provisioned },
           )
         : l10n.t(
-              'Container "{container}" consumed at most {peak} RU in any single bucket over the last 30 days, at or below the {threshold} RU idle floor — it serves ~no traffic. Its full {recoverable} RU/s provisioned capacity is recoverable.',
+              'Container "{container}" consumed at most {peak} RU in any single bucket over the last 30 days, at or below the {threshold} RU idle floor. It serves ~no traffic. Its full {recoverable} RU/s provisioned capacity is recoverable.',
               { container: input.containerId, peak, threshold: Math.round(maxIdlePeakRu), recoverable },
           );
     return {

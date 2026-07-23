@@ -62,7 +62,7 @@ function evaluateShardKeyMisalignment(
         title: l10n.t('Partition key misaligned in {container}', { container: input.containerId }),
         rationale: clampRationale(
             l10n.t(
-                '{pct}% of this container’s query executions fan out across ~{partitions} physical partitions — the partition key is structurally misaligned with the workload (the data model, not a single bad query).',
+                "{pct}% of this container's query executions fan out across ~{partitions} physical partitions. The partition key is structurally misaligned with the workload (the data model, not a single bad query).",
                 { pct, partitions: containerPartitions },
             ),
         ),

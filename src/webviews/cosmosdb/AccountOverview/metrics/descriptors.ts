@@ -62,12 +62,12 @@ export interface MetricGroupMeta {
 export const METRIC_GROUPS: Record<MetricGroup, MetricGroupMeta> = {
     state: {
         label: l10n.t('State'),
-        description: l10n.t('Reported continuously by the platform — populated even when the account is idle.'),
+        description: l10n.t('Reported continuously by the platform, populated even when the account is idle.'),
         color: 'var(--vscode-charts-blue)',
     },
     activity: {
         label: l10n.t('Activity'),
-        description: l10n.t('Sampled only when requests reach the account — blank while there is no traffic.'),
+        description: l10n.t('Sampled only when requests reach the account, blank while there is no traffic.'),
         color: 'var(--vscode-charts-purple)',
     },
 };

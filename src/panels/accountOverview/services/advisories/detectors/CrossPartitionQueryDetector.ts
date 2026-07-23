@@ -80,7 +80,7 @@ function evaluateCrossPartitionQuery(
             ),
         ),
         suggestedAction: l10n.t(
-            'Add the container’s partition key to the query filter (or a composite index) so it targets a single logical partition. For access patterns that inherently filter on a different key, serve them from a secondary index or a change-feed-synced copy. Cross-partition fan-out multiplies RU and latency and does not scale as the container grows.',
+            "Add the container's partition key to the query filter (or a composite index) so it targets a single logical partition. For access patterns that inherently filter on a different key, serve them from a secondary index or a change-feed-synced copy. Cross-partition fan-out multiplies RU and latency and does not scale as the container grows.",
         ),
         thresholdReference: l10n.t('Threshold: ≥ {pct}% of executions fan out (avg ≥ {fanout} partitions/query)', {
             pct: thresholds.medPct,

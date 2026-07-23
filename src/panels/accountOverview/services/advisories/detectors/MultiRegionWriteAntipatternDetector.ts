@@ -44,7 +44,7 @@ function evaluateMultiRegionWrites(config: AccountConfigInput): DerivedAdvisory 
             title: l10n.t('Multi-region writes on a {api} account', { api: apiLabel }),
             rationale: clampRationale(
                 l10n.t(
-                    'Multi-region writes are enabled on a {api} API account, but the {api} drivers cannot use Cosmos DB’s multi-region-write failover — so the RTO=0 HA benefit never materialises while the account still carries the write-conflict surface (and 2× write cost across any second write region).',
+                    "Multi-region writes are enabled on a {api} API account, but the {api} drivers cannot use Cosmos DB's multi-region-write failover, so the RTO=0 HA benefit never materialises while the account still carries the write-conflict surface (and 2× write cost across any second write region).",
                     { api: apiLabel },
                 ),
             ),

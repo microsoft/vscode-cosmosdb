@@ -3,13 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { containerKey } from '../../shared';
-import { capacityMaterialitySeverity, clampRationale, mean } from './helpers';
 import {
     type DerivedAdvisory,
     type DerivedAdvisoryInputs,
     type DerivedAdvisoryRule,
-    type DerivedAdvisorySeverity,
     type DerivedAdvisoryThresholds,
 } from './types';
 
@@ -31,17 +28,4 @@ export abstract class Detector {
     readonly suppresses: readonly DerivedAdvisoryRule[] = [];
     /** Runs the detector over the full context and returns every advisory it fires. */
     abstract run(ctx: DetectorContext): DerivedAdvisory[];
-
-    protected clampRationale(text: string): string {
-        return clampRationale(text);
-    }
-    protected materialitySeverity(findingRu: number, scopeProvisionedRu: number | undefined): DerivedAdvisorySeverity {
-        return capacityMaterialitySeverity(findingRu, scopeProvisionedRu);
-    }
-    protected mean(values: readonly number[]): number {
-        return mean(values);
-    }
-    protected scope(databaseId: string, containerId: string): string {
-        return containerKey(databaseId, containerId);
-    }
 }

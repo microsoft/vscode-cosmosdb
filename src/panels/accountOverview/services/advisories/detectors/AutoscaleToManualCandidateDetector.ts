@@ -36,10 +36,10 @@ function evaluateAutoscaleToManualCandidate(
         id: `AutoscaleToManualCandidate:${scope}`,
         rule: 'AutoscaleToManualCandidate',
         severity: 'Medium',
-        title: l10n.t('Autoscale container looks steady — manual may be cheaper'),
+        title: l10n.t('Autoscale container looks steady: manual may be cheaper'),
         rationale: clampRationale(
             l10n.t(
-                'Autoscale on "{container}" averaged {avg}% of its max with a peak of {peak}% — a {ratio}× peak-to-average, so the load is steady and high with little spikiness. Autoscale carries a per-RU premium over manual, and a workload that stays high does not benefit from scaling.',
+                'Autoscale on "{container}" averaged {avg}% of its max with a peak of {peak}%, a {ratio}× peak-to-average, so the load is steady and high with little spikiness. Autoscale carries a per-RU premium over manual, and a workload that stays high does not benefit from scaling.',
                 { container: input.containerId, avg, peak, ratio },
             ),
         ),

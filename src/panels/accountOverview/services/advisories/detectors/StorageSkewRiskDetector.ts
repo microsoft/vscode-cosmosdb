@@ -58,7 +58,7 @@ function evaluateStorageSkewRisk(input: ContainerStorageInput, balanceThreshold:
         title: l10n.t('Uneven physical-partition storage in {container}', { container: input.containerId }),
         rationale: clampRationale(
             l10n.t(
-                'Physical-partition storage in "{container}" is uneven — the coolest partition holds only {balance}× the busiest (below the {threshold}× balance floor), and the busiest is at {busiest} GiB, about {ceiling}% of the 50 GiB split ceiling. A single oversized partition hits the split wall long before its balanced siblings, capping the container.',
+                'Physical-partition storage in "{container}" is uneven: the coolest partition holds only {balance}× the busiest (below the {threshold}× balance floor), and the busiest is at {busiest} GiB, about {ceiling}% of the 50 GiB split ceiling. A single oversized partition hits the split wall long before its balanced siblings, capping the container.',
                 { container: input.containerId, balance, threshold, busiest: busiestGiB, ceiling: ceilingPercent },
             ),
         ),

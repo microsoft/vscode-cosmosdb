@@ -44,7 +44,7 @@ function evaluateAutoscaleCandidate(
         title: l10n.t('Workload looks like an autoscale candidate'),
         rationale: clampRationale(
             l10n.t(
-                'Over the last 7 days RU consumption peaked at {max}% but averaged just {avg}% — a {ratio}× peak-to-average burst on a mostly-idle baseline, while at least one container uses manual throughput. A tall peak over a low average is exactly the duty cycle where autoscale tracks demand more cheaply than fixed throughput sized for the peak.',
+                'Over the last 7 days RU consumption peaked at {max}% but averaged just {avg}%, a {ratio}× peak-to-average burst on a mostly-idle baseline, while at least one container uses manual throughput. A tall peak over a low average is exactly the duty cycle where autoscale tracks demand more cheaply than fixed throughput sized for the peak.',
                 { max, avg, ratio },
             ),
         ),

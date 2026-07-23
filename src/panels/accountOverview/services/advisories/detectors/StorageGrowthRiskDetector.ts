@@ -75,7 +75,7 @@ function evaluateStorageGrowthRisk(input: ContainerStorageInput, horizonDays: nu
         }),
         rationale: clampRationale(
             l10n.t(
-                'The fastest-growing physical partition in "{container}" is at {current} GiB and growing about {perDay} GiB/day — on that trajectory it reaches the 50 GiB physical-partition split ceiling in roughly {days} days, within the {horizon}-day risk horizon. A partition that hits the wall can throttle or block writes until it splits.',
+                'The fastest-growing physical partition in "{container}" is at {current} GiB and growing about {perDay} GiB/day. On that trajectory it reaches the 50 GiB physical-partition split ceiling in roughly {days} days, within the {horizon}-day risk horizon. A partition that hits the wall can throttle or block writes until it splits.',
                 { container: input.containerId, current: currentGiB, perDay: perDayGiB, days, horizon },
             ),
         ),

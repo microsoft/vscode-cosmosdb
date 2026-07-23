@@ -223,6 +223,7 @@ function createAzureResourceId(
  * @param resourceId - The ID of the Azure resource to reveal.
  * @param database - Optional. The name of the database associated with the resource.
  * @param container - Optional. The name of the container associated with the database.
+ * @param options
  * @returns A promise that resolves when the resource is revealed in the explorer.
  *
  * @remarks

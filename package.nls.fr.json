@@ -3,6 +3,7 @@
   "cosmosdb.command.account.create.description": "Base de données NoSQL pour vos applications web",
   "cosmosdb.command.account.delete": "Supprimer le compte…",
   "cosmosdb.command.account.unsupported": "Ouvrir un compte non pris en charge",
+  "cosmosdb.command.account.overview.open": "Vue d’ensemble de l’ouverture de compte",
   "cosmosdb.command.connection.add": "Nouvelle connexion…",
   "cosmosdb.command.connection.copy": "Copier la chaîne de connexion",
   "cosmosdb.command.connection.emulator.add": "Nouvelle connexion à l'émulateur…",
@@ -67,6 +68,16 @@
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "L'identifiant client de l'identité gérée à utiliser lors de l'authentification avec Entra ID à l'aide d'une identité gérée attribuée par l'utilisateur.",
   "cosmosdb.configuration.manage-llm-assets": "Gérer les actifs LLM. Autoriser l'extension à maintenir à jour les fichiers liés au LLM.",
   "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "Lorsqu'elle est activée, la génération de schéma prend également en compte les résultats des requêtes pour déduire le schéma du conteneur.",
+  "cosmosdb.configuration.accountOverview.health.criticalRuPercent": "Vue d’ensemble du compte : pic de consommation de RU normalisée ( %) au niveau ou supérieur auquel un conteneur est marqué comme critique.",
+  "cosmosdb.configuration.accountOverview.health.warningRuPercent": "Vue d’ensemble du compte : pic de consommation de RU normalisée ( %) au niveau ou supérieur auquel un conteneur est marqué comme nécessitant une attention.",
+  "cosmosdb.configuration.accountOverview.health.storageGrowthWarningGB": "Vue d’ensemble du compte : croissance du stockage de 7 jours (en Go) au-dessus de laquelle un conteneur est marqué comme nécessitant une attention.",
+  "cosmosdb.configuration.accountOverview.partition.hotRuSharePercent": "Vue d’ensemble du compte : partage RU de partition physique ( %) au niveau ou supérieur auquel une partition est marquée comme un risque de partition à chaud.",
+  "cosmosdb.configuration.accountOverview.partition.skewedStorageSharePercent": "Vue d’ensemble du compte : partage de stockage de partition physique ( %) au ou au-dessus duquel le stockage est marqué comme asymétrique.",
+  "cosmosdb.configuration.accountOverview.partition.topN": "Vue d’ensemble du compte : nombre de partitions physiques à répertorier dans la liste classée Intégrité de la distribution de clé de partition.",
+  "cosmosdb.configuration.accountOverview.advisories.throttlingMinMinutes": "Vue d’ensemble du compte : durée minimale (en minutes) de la limitation continue (HTTP 429) avant qu’un avis de limitation ou de sous-approvisionnement soutenu ne soit dérivé de vos données de télémétrie.",
+  "cosmosdb.configuration.accountOverview.advisories.overProvisioningPeakPercent": "Aperçu du compte : consommation RU normalisée maximale (%) en dessous de laquelle, maintenue pendant 7 jours, un avis de surprovisionnement est dérivé de votre télémétrie.",
+  "cosmosdb.configuration.accountOverview.advisories.autoscaleCoefficientOfVariation": "Aperçu du compte : coefficient de variation (écart type / moyenne) de la consommation RU au-delà duquel, en cas de débit manuel, un avis de candidat à la mise à l’échelle automatique est dérivé de votre télémétrie.",
+  "cosmosdb.configuration.accountOverview.advisories.indexingUsageRatio": "Vue d’ensemble du compte : rapport index/stockage des données au-dessus duquel, lorsqu’aucun chemin d’index n’est exclu, un avis d’indexation des risques de coût est dérivé de vos données de télémétrie.",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Expérimental) Affichez les estimations d’utilisation des jetons dans l’interface utilisateur de l’Assistant Migration.",
-  "cosmosdb.configuration.experimental.migration.enabled": "(Experimental) Enable the Cosmos DB Migration (Preview) feature. When disabled, the Cosmos DB Migrations node and its commands are hidden."
+  "cosmosdb.configuration.experimental.migration.enabled": "(Expérimental) Activer la fonctionnalité Migration Azure Cosmos DB (Préversion). Lorsque vous désactivez cette option, le nœud Migrations Cosmos DB et ses commandes sont masqués."
 }

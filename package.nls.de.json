@@ -35,6 +35,7 @@
   "cosmosdb.command.ai.deploy_instruction_files": "Kopieren von LLM-Anweisungen in den Benutzerprofilordner",
   "cosmosdb.command.ai.remove_instruction_files": "Entfernen von LLM-Anweisungen aus dem Benutzerprofilordner",
   "cosmosdb.command.schema.delete_all": "Alle gespeicherten Schemata löschen",
+  "cosmosdb.command.quickStart.reset": "Reset Quick Start Tips (Internal)",
   "cosmosdb.command.migration.open": "Neue Migration...",
   "cosmosdb.command.migration.openExisting": "Cosmos DB-Migration...",
   "cosmosdb.command.migration.remove": "Migration entfernen…",
@@ -78,6 +79,7 @@
   "cosmosdb.configuration.accountOverview.advisories.overProvisioningPeakPercent": "Kontoübersicht: Spitzenwert des normalisierten RU-Verbrauchs (%) darunter, unterhalb dessen über 7 Tage hinweg eine Empfehlung zur übermäßigen Bereitstellung aus Ihren Telemetriedaten abgeleitet wird.",
   "cosmosdb.configuration.accountOverview.advisories.autoscaleCoefficientOfVariation": "Kontoübersicht: Abweichungskoeffizienten (Standardabweichung/Mittelwert) des RU-Verbrauchs, über dem bei manuellem Durchsatz eine Autoscale Candidate-Empfehlung aus Ihren Telemetriedaten abgeleitet wird.",
   "cosmosdb.configuration.accountOverview.advisories.indexingUsageRatio": "Kontoübersicht: Das Index-zu-Daten-Speicherverhältnis über dem, wenn keine Indexpfade ausgeschlossen werden, eine Empfehlung zum Indizierungskostenrisiko aus Ihren Telemetriedaten abgeleitet wird.",
+  "cosmosdb.configuration.quickStart.enabled": "When enabled, Quick Start tips are shown in the Query Editor after a major or minor extension update. Disable this to turn off Quick Start tips entirely, including the replay button.",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Experimentell) Schätzungen zur Tokennutzung in der Benutzeroberfläche des Migration Assistant anzeigen.",
   "cosmosdb.configuration.experimental.migration.enabled": "(Experimentell) Aktivieren Sie die Funktion „Cosmos DB-Migration“ (Vorschau). Wenn sie deaktiviert ist, werden der Knoten „Cosmos DB-Migrationen“ und die zugehörigen Befehle ausgeblendet."
 }

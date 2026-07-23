@@ -35,6 +35,7 @@
   "cosmosdb.command.ai.deploy_instruction_files": "Zkopírovat pokyny LLM do složky profilu uživatele",
   "cosmosdb.command.ai.remove_instruction_files": "Odebrat pokyny LLM ze složky profilu uživatele",
   "cosmosdb.command.schema.delete_all": "Odstranit všechna uložená schémata",
+  "cosmosdb.command.quickStart.reset": "Reset Quick Start Tips (Internal)",
   "cosmosdb.command.migration.open": "Nová migrace...",
   "cosmosdb.command.migration.openExisting": "Migrace Cosmos DB...",
   "cosmosdb.command.migration.remove": "Odebrat migraci...",
@@ -78,6 +79,7 @@
   "cosmosdb.configuration.accountOverview.advisories.overProvisioningPeakPercent": "Přehled účtu: špičková normalizovaná spotřeba RU (%), pod kterou se při trvání po dobu 7 dnů z telemetrie odvodí upozornění Nadměrné zřízení.",
   "cosmosdb.configuration.accountOverview.advisories.autoscaleCoefficientOfVariation": "Přehled účtu: koeficient variace (směrodatná odchylka / průměr) spotřeby RU, nad kterým se při ruční propustnosti z telemetrie odvodí upozornění Kandidát na automatické škálování.",
   "cosmosdb.configuration.accountOverview.advisories.indexingUsageRatio": "Přehled účtu: poměr úložiště indexů k datům, nad kterým se při nevyloučení žádných cest indexu z telemetrie odvodí upozornění Riziko nákladů na indexování.",
+  "cosmosdb.configuration.quickStart.enabled": "When enabled, Quick Start tips are shown in the Query Editor after a major or minor extension update. Disable this to turn off Quick Start tips entirely, including the replay button.",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Experimentální) Zobrazovat v uživatelském rozhraní Pomocníka s migrací odhady využití tokenů",
   "cosmosdb.configuration.experimental.migration.enabled": "(Experimentální) Povolte funkci Migrace Cosmos DB (Preview). Pokud je tato možnost zakázaná, uzel Migrace Cosmos DB a jeho příkazy jsou skryté."
 }

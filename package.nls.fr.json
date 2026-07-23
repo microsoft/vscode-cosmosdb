@@ -35,6 +35,7 @@
   "cosmosdb.command.ai.deploy_instruction_files": "Copier les instructions LLM dans le dossier de profil utilisateur",
   "cosmosdb.command.ai.remove_instruction_files": "Supprimer les instructions LLM du dossier de profil utilisateur",
   "cosmosdb.command.schema.delete_all": "Supprimer tous les schémas enregistrés",
+  "cosmosdb.command.quickStart.reset": "Reset Quick Start Tips (Internal)",
   "cosmosdb.command.migration.open": "Nouvelle migration...",
   "cosmosdb.command.migration.openExisting": "Migration de Cosmos DB...",
   "cosmosdb.command.migration.remove": "Supprimer la migration...",
@@ -78,6 +79,7 @@
   "cosmosdb.configuration.accountOverview.advisories.overProvisioningPeakPercent": "Aperçu du compte : consommation RU normalisée maximale (%) en dessous de laquelle, maintenue pendant 7 jours, un avis de surprovisionnement est dérivé de votre télémétrie.",
   "cosmosdb.configuration.accountOverview.advisories.autoscaleCoefficientOfVariation": "Aperçu du compte : coefficient de variation (écart type / moyenne) de la consommation RU au-delà duquel, en cas de débit manuel, un avis de candidat à la mise à l’échelle automatique est dérivé de votre télémétrie.",
   "cosmosdb.configuration.accountOverview.advisories.indexingUsageRatio": "Vue d’ensemble du compte : rapport index/stockage des données au-dessus duquel, lorsqu’aucun chemin d’index n’est exclu, un avis d’indexation des risques de coût est dérivé de vos données de télémétrie.",
+  "cosmosdb.configuration.quickStart.enabled": "When enabled, Quick Start tips are shown in the Query Editor after a major or minor extension update. Disable this to turn off Quick Start tips entirely, including the replay button.",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Expérimental) Affichez les estimations d’utilisation des jetons dans l’interface utilisateur de l’Assistant Migration.",
   "cosmosdb.configuration.experimental.migration.enabled": "(Expérimental) Activer la fonctionnalité Migration Azure Cosmos DB (Préversion). Lorsque vous désactivez cette option, le nœud Migrations Cosmos DB et ses commandes sont masqués."
 }

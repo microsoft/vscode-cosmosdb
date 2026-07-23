@@ -35,6 +35,7 @@
   "cosmosdb.command.ai.deploy_instruction_files": "LLM yönergelerini kullanıcı profili klasörüne kopyala",
   "cosmosdb.command.ai.remove_instruction_files": "Kullanıcı profili klasöründen LLM yönergelerini kaldırın",
   "cosmosdb.command.schema.delete_all": "Tüm Kaydedilen Şemaları Sil",
+  "cosmosdb.command.quickStart.reset": "Reset Quick Start Tips (Internal)",
   "cosmosdb.command.migration.open": "Yeni Geçiş…",
   "cosmosdb.command.migration.openExisting": "Cosmos DB Geçişi…",
   "cosmosdb.command.migration.remove": "Geçişi Kaldır…",
@@ -78,6 +79,7 @@
   "cosmosdb.configuration.accountOverview.advisories.overProvisioningPeakPercent": "Hesaba Genel Bakış: en yüksek normalleştirilmiş RU tüketimi (%); 7 gün boyunca bu değerin altında kalındığında, telemetrinizden bir Fazla sağlama bildirimi türetilir.",
   "cosmosdb.configuration.accountOverview.advisories.autoscaleCoefficientOfVariation": "Hesaba Genel Bakış: RU tüketiminin değişim katsayısı (standart sapma / ortalama); bunun üzerine çıkıldığında manuel aktarım hızında telemetrinizden bir Otomatik Ölçeklendirme Adayı bildirimi türetilir.",
   "cosmosdb.configuration.accountOverview.advisories.indexingUsageRatio": "Hesaba Genel Bakış: dizin ile veri depolama alanı oranı; bu değerin üstüne çıkıldığında ve hiçbir dizin yolu dışlanmadığında, telemetrinizden Dizin Oluşturma Maliyeti Riski bildirimi türetilir.",
+  "cosmosdb.configuration.quickStart.enabled": "When enabled, Quick Start tips are shown in the Query Editor after a major or minor extension update. Disable this to turn off Quick Start tips entirely, including the replay button.",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Deneysel) Migration Assistant kullanıcı arabiriminde belirteç kullanım tahminlerini göster.",
   "cosmosdb.configuration.experimental.migration.enabled": "(Deneysel) Cosmos DB Geçişi (Önizleme) özelliğini etkinleştirin. Devre dışı bırakıldığında, Cosmos DB Geçişleri düğümü ve komutları gizlenir."
 }

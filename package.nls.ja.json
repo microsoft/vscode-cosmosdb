@@ -35,6 +35,7 @@
   "cosmosdb.command.ai.deploy_instruction_files": "LLM の指示をユーザー プロファイル フォルダーにコピーする",
   "cosmosdb.command.ai.remove_instruction_files": "LLM の指示をユーザー プロファイル フォルダーから削除する",
   "cosmosdb.command.schema.delete_all": "保存したスキーマをすべて削除する",
+  "cosmosdb.command.quickStart.reset": "Reset Quick Start Tips (Internal)",
   "cosmosdb.command.migration.open": "新規の移行...",
   "cosmosdb.command.migration.openExisting": "Cosmos DB の移行...",
   "cosmosdb.command.migration.remove": "移行の削除...",
@@ -78,6 +79,7 @@
   "cosmosdb.configuration.accountOverview.advisories.overProvisioningPeakPercent": "アカウントの概要: ピーク時の正規化 RU 消費量 (%)。この値を下回り、かつ7日間継続した場合、テレメトリデータからオーバー プロビジョニングに関するアドバイザリが生成されます。",
   "cosmosdb.configuration.accountOverview.advisories.autoscaleCoefficientOfVariation": "アカウントの概要: RU 消費量の変動係数 (標準偏差/平均値) が、この値を超えると、手動スループットにおいて、テレメトリ データから Autoscale Candidate アドバイザリが生成されます。",
   "cosmosdb.configuration.accountOverview.advisories.indexingUsageRatio": "アカウントの概要: インデックス対データ保存比率で、この比率を超えると、インデックス パスが除外されていない場合、テレメトリデータに基づいてインデックス作成コストのリスクに関するアドバイザリが生成されます。",
+  "cosmosdb.configuration.quickStart.enabled": "When enabled, Quick Start tips are shown in the Query Editor after a major or minor extension update. Disable this to turn off Quick Start tips entirely, including the replay button.",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(試験段階) 移行アシスタント UI にトークン使用量の見積もりを表示します。",
   "cosmosdb.configuration.experimental.migration.enabled": "(試験段階) Cosmos DB 移行 (プレビュー) 機能を有効にします。無効にすると、Cosmos DB 移行ノードとそのコマンドは非表示になります。"
 }

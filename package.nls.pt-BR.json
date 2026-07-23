@@ -35,6 +35,7 @@
   "cosmosdb.command.ai.deploy_instruction_files": "Copiar instruções de LLM para a pasta de perfil do usuário",
   "cosmosdb.command.ai.remove_instruction_files": "Remover instruções de LLM da pasta de perfil do usuário",
   "cosmosdb.command.schema.delete_all": "Excluir todos os esquemas salvos",
+  "cosmosdb.command.quickStart.reset": "Reset Quick Start Tips (Internal)",
   "cosmosdb.command.migration.open": "Nova Migração…",
   "cosmosdb.command.migration.openExisting": "Migração do Cosmos DB…",
   "cosmosdb.command.migration.remove": "Remover Migração...",
@@ -78,6 +79,7 @@
   "cosmosdb.configuration.accountOverview.advisories.overProvisioningPeakPercent": "Visão geral da conta: pico de consumo de RU normalizado (%) abaixo do qual, mantido por sete dias, um aviso de provisionamento excessivo é derivado de sua telemetria.",
   "cosmosdb.configuration.accountOverview.advisories.autoscaleCoefficientOfVariation": "Visão geral da conta: coeficiente de variação (desvio padrão/média) do consumo de RU acima do qual, na taxa de transferência manual, um comunicado candidato de dimensionamento automático é derivado de sua telemetria.",
   "cosmosdb.configuration.accountOverview.advisories.indexingUsageRatio": "Visão geral da conta: proporção entre índice e dados, acima da qual, quando nenhum caminho de indexação é excluído, um aviso de Risco de Custo de Indexação é gerado a partir de sua telemetria.",
+  "cosmosdb.configuration.quickStart.enabled": "When enabled, Quick Start tips are shown in the Query Editor after a major or minor extension update. Disable this to turn off Quick Start tips entirely, including the replay button.",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Experimental) Mostrar estimativas de uso de tokens na interface do usuário do Assistente de Migração.",
   "cosmosdb.configuration.experimental.migration.enabled": "(Experimental) Habilite o Cosmos DB migração (Versão prévia). Quando desabilitado, o nó Migrações do Cosmos DB e seus comandos permanecem ocultos."
 }

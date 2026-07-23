@@ -35,6 +35,7 @@
   "cosmosdb.command.ai.deploy_instruction_files": "Kopiuj instrukcje modelu LLM do folderu profilu użytkownika",
   "cosmosdb.command.ai.remove_instruction_files": "Usuń instrukcje modelu LLM z folderu profilu użytkownika",
   "cosmosdb.command.schema.delete_all": "Usuń wszystkie zapisane schematy",
+  "cosmosdb.command.quickStart.reset": "Reset Quick Start Tips (Internal)",
   "cosmosdb.command.migration.open": "Nowa migracja...",
   "cosmosdb.command.migration.openExisting": "Migracja usługi Cosmos DB...",
   "cosmosdb.command.migration.remove": "Usuń migrację...",
@@ -78,6 +79,7 @@
   "cosmosdb.configuration.accountOverview.advisories.overProvisioningPeakPercent": "Omówienie konta: szczytowe znormalizowane użycie jednostek RU (w %), poniżej którego przez 7 dni ostrzeżenie Nadmierna aprowizacja pochodzi z danych telemetrycznych.",
   "cosmosdb.configuration.accountOverview.advisories.autoscaleCoefficientOfVariation": "Omówienie konta: współczynnik odchylenia (odchylenie standardowe /średnia) zużycia jednostek RU, powyżej którego w przypadku ręcznej przepływności ostrzeżenie Kandydat do autoskalowania pochodzi z danych telemetrycznych.",
   "cosmosdb.configuration.accountOverview.advisories.indexingUsageRatio": "Omówienie konta: stosunek magazynu indeksu do danych, powyżej którego, gdy nie są wykluczone żadne ścieżki indeksu, ostrzeżenie Indeksowanie ryzyka kosztów pochodzi z danych telemetrycznych.",
+  "cosmosdb.configuration.quickStart.enabled": "When enabled, Quick Start tips are shown in the Query Editor after a major or minor extension update. Disable this to turn off Quick Start tips entirely, including the replay button.",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Eksperymentalne) Pokaż szacowane użycie tokenu w interfejsie użytkownika narzędzia Migration Assistant.",
   "cosmosdb.configuration.experimental.migration.enabled": "(Eksperymentalne) Włącz funkcję Migracja usługi Cosmos DB (wersja zapoznawcza). Gdy ta funkcja jest wyłączona, węzeł Migracje usługi Cosmos DB i jego polecenia są ukryte."
 }

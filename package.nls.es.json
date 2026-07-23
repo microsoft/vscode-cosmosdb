@@ -35,6 +35,7 @@
   "cosmosdb.command.ai.deploy_instruction_files": "Copiar instrucciones de LLM en la carpeta del perfil de usuario",
   "cosmosdb.command.ai.remove_instruction_files": "Quitar instrucciones LLM de la carpeta del perfil de usuario",
   "cosmosdb.command.schema.delete_all": "Eliminar todos los esquemas guardados",
+  "cosmosdb.command.quickStart.reset": "Reset Quick Start Tips (Internal)",
   "cosmosdb.command.migration.open": "Nueva migración",
   "cosmosdb.command.migration.openExisting": "Migración de Cosmos DB…",
   "cosmosdb.command.migration.remove": "Quitar migración…",
@@ -78,6 +79,7 @@
   "cosmosdb.configuration.accountOverview.advisories.overProvisioningPeakPercent": "Información general de la cuenta: consumo máximo de RU normalizado (%) por debajo del cual, mantenido durante 7 días, se deriva un aviso de sobreaprovisionamiento de la telemetría.",
   "cosmosdb.configuration.accountOverview.advisories.autoscaleCoefficientOfVariation": "Información general de la cuenta: coeficiente de variación (desviación estándar/media) del consumo de RU por encima del cual, en el rendimiento manual, se deriva un aviso de candidato de escalabilidad automática de la telemetría.",
   "cosmosdb.configuration.accountOverview.advisories.indexingUsageRatio": "Información general de la cuenta: relación de almacenamiento de índice a datos por encima de la cual, cuando no se excluye ninguna ruta de acceso de índice, se deriva un aviso de riesgo de costos de indexación de la telemetría.",
+  "cosmosdb.configuration.quickStart.enabled": "When enabled, Quick Start tips are shown in the Query Editor after a major or minor extension update. Disable this to turn off Quick Start tips entirely, including the replay button.",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Experimental) Mostrar estimaciones del uso de tokens en la interfaz de usuario de Migration Assistant.",
   "cosmosdb.configuration.experimental.migration.enabled": "(Experimental) Habilite la característica migración de Cosmos DB (versión preliminar). Cuando se deshabilita, se ocultan el nodo migraciones de Cosmos DB y sus comandos."
 }

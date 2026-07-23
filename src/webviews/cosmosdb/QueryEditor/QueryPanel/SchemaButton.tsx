@@ -62,6 +62,7 @@ export const SchemaButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>)
                     >
                         <ToolbarButton
                             ref={ref}
+                            data-quickstart="view-schema"
                             aria-label={l10n.t('Schema')}
                             icon={<DatabaseRegular />}
                             disabled={false}

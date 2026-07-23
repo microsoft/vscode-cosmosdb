@@ -35,6 +35,7 @@
   "cosmosdb.command.ai.deploy_instruction_files": "将 LLM 指令复制到用户配置文件文件夹",
   "cosmosdb.command.ai.remove_instruction_files": "从用户配置文件文件夹中移除 LLM 指令",
   "cosmosdb.command.schema.delete_all": "删除所有已保存的架构",
+  "cosmosdb.command.quickStart.reset": "Reset Quick Start Tips (Internal)",
   "cosmosdb.command.migration.open": "新迁移...",
   "cosmosdb.command.migration.openExisting": "Cosmos DB 迁移...",
   "cosmosdb.command.migration.remove": "移除迁移...",
@@ -78,6 +79,7 @@
   "cosmosdb.configuration.accountOverview.advisories.overProvisioningPeakPercent": "帐户概述: 峰值规范化 RU 消耗(%)，持续低于该峰值 7 天后根据遥测数据派生过度预配公告。",
   "cosmosdb.configuration.accountOverview.advisories.autoscaleCoefficientOfVariation": "帐户概述: RU 消耗变化(标准偏差/平均值)系数，手动吞吐量模式下，超出该值后将根据遥测数据派生自动缩放候选公告。",
   "cosmosdb.configuration.accountOverview.advisories.indexingUsageRatio": "帐户概述: 索引与数据存储比率，超出该值后，如果未排除任何索引路径，则根据遥测数据派生索引成本风险公告。",
+  "cosmosdb.configuration.quickStart.enabled": "When enabled, Quick Start tips are shown in the Query Editor after a major or minor extension update. Disable this to turn off Quick Start tips entirely, including the replay button.",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(实验性)在迁移助手 UI 中显示令牌使用情况估计值。",
   "cosmosdb.configuration.experimental.migration.enabled": "(实验性)启用 Cosmos DB 迁移(预览)功能。禁用时，将隐藏 Cosmos DB 迁移节点及其命令。"
 }

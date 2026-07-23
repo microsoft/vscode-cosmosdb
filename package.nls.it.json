@@ -35,6 +35,7 @@
   "cosmosdb.command.ai.deploy_instruction_files": "Copia istruzioni LLM nella cartella del profilo utente",
   "cosmosdb.command.ai.remove_instruction_files": "Rimuovi istruzioni LLM dalla cartella del profilo utente",
   "cosmosdb.command.schema.delete_all": "Elimina tutti gli schemi salvati",
+  "cosmosdb.command.quickStart.reset": "Reset Quick Start Tips (Internal)",
   "cosmosdb.command.migration.open": "Nuova migrazione…",
   "cosmosdb.command.migration.openExisting": "Migrazione di Cosmos DB…",
   "cosmosdb.command.migration.remove": "Rimuovi migrazione…",
@@ -78,6 +79,7 @@
   "cosmosdb.configuration.accountOverview.advisories.overProvisioningPeakPercent": "Panoramica dell'account: percentuale massima normalizzata di consumo di UR, al di sotto della quale, se mantenuta per 7 giorni, dai dati di telemetria viene generato un avviso di Provisioning eccessivo.",
   "cosmosdb.configuration.accountOverview.advisories.autoscaleCoefficientOfVariation": "Panoramica dell'account: coefficiente di variazione (deviazione standard/media) del consumo di UR al di sopra del quale, in caso di elaborazione manuale, dai dati di telemetria viene generato un avviso di Candidato per la scalabilità automatica.",
   "cosmosdb.configuration.accountOverview.advisories.indexingUsageRatio": "Panoramica dell'account: rapporto tra indici e spazio di archiviazione dati oltre il quale, qualora non vengano esclusi percorsi di indicizzazione, dai dati di telemetria viene generato un avviso relativo al rischio di costi di indicizzazione.",
+  "cosmosdb.configuration.quickStart.enabled": "When enabled, Quick Start tips are shown in the Query Editor after a major or minor extension update. Disable this to turn off Quick Start tips entirely, including the replay button.",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Sperimentale) Mostrare le stime di utilizzo dei token nell'interfaccia utente di Migration Assistant.",
   "cosmosdb.configuration.experimental.migration.enabled": "(Sperimentale) Abilitare la funzionalità Migrazione di Cosmos DB (anteprima). Quando questa opzione è disabilitata, il nodo Migrazioni di Cosmos DB e i relativi comandi sono nascosti."
 }

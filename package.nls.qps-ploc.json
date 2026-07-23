@@ -35,6 +35,7 @@
   "cosmosdb.command.ai.deploy_instruction_files": "[whonw][นั้Çøpÿ ££M ïñstrµçtïøñs tø µsër prøfïlë følðërẤğ倪İЂҰक्र्तिृまẤğ倪İนั้ढूँ]",
   "cosmosdb.command.ai.remove_instruction_files": "[lsSjs][นั้Rëmøvë ££M ïñstrµçtïøñs frøm µsër prøfïlë følðërẤğ倪İЂҰक्र्तिृまẤğ倪İЂนั้ढूँ]",
   "cosmosdb.command.schema.delete_all": "[aTAhZ][นั้Ðëlëtë Æll §ævëð §çhëmæsẤğ倪İЂҰक्र्นั้ढूँ]",
+  "cosmosdb.command.quickStart.reset": "[W1QOt][นั้Rësët Qµïçk §tært Tïps (Ïñtërñæl)Ấğ倪İЂҰक्र्तिृนั้ढूँ]",
   "cosmosdb.command.migration.open": "[jIpYB][นั้Ñëw Mïgrætïøñ…Ấğ倪İЂҰนั้ढूँ]",
   "cosmosdb.command.migration.openExisting": "[U9MeZ][นั้Çøsmøs Ðß Mïgrætïøñ…Ấğ倪İЂҰक्นั้ढूँ]",
   "cosmosdb.command.migration.remove": "[iKn7G][นั้Rëmøvë Mïgrætïøñ…Ấğ倪İЂҰक्นั้ढूँ]",
@@ -78,6 +79,7 @@
   "cosmosdb.configuration.accountOverview.advisories.overProvisioningPeakPercent": "[KgwIm][นั้Æççøµñt Øvërvïëw: pëæk ñørmælïzëð RÜ çøñsµmptïøñ (%) þëløw whïçh, sµstæïñëð øvër 7 ðæÿs, æñ Øvër-prøvïsïøñïñg æðvïsørÿ ïs ðërïvëð frøm ÿøµr tëlëmëtrÿ.Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İนั้ढूँ]",
   "cosmosdb.configuration.accountOverview.advisories.autoscaleCoefficientOfVariation": "[ZklKW][นั้Æççøµñt Øvërvïëw: çøëffïçïëñt øf værïætïøñ (stæñðærð ðëvïætïøñ / mëæñ) øf RÜ çøñsµmptïøñ æþøvë whïçh, øñ mæñµæl thrøµghpµt, æñ Æµtøsçælë Çæñðïðætë æðvïsørÿ ïs ðërïvëð frøm ÿøµr tëlëmëtrÿ.Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂนั้ढूँ]",
   "cosmosdb.configuration.accountOverview.advisories.indexingUsageRatio": "[aWqpA][นั้Æççøµñt Øvërvïëw: ïñðëx-tø-ðætæ størægë rætïø æþøvë whïçh, whëñ ñø ïñðëx pæths ærë ëxçlµðëð, æñ Ïñðëxïñg Çøst Rïsk æðvïsørÿ ïs ðërïvëð frøm ÿøµr tëlëmëtrÿ.Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰนั้ढूँ]",
+  "cosmosdb.configuration.quickStart.enabled": "[2W6Lo][นั้Whëñ ëñæþlëð, Qµïçk §tært tïps ærë shøwñ ïñ thë Qµërÿ Ëðïtør æftër æ mæjør ør mïñør ëxtëñsïøñ µpðætë. Ðïsæþlë thïs tø tµrñ øff Qµïçk §tært tïps ëñtïrëlÿ, ïñçlµðïñg thë rëplæÿ þµttøñ.Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪นั้ढूँ]",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "[GNC8J][นั้(Ëxpërïmëñtæl) §høw tøkëñ µsægë ëstïmætës ïñ thë Mïgrætïøñ Æssïstæñt ÜÏ.Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤนั้ढूँ]",
   "cosmosdb.configuration.experimental.migration.enabled": "[RmFzz][นั้(Ëxpërïmëñtæl) Ëñæþlë thë Çøsmøs Ðß Mïgrætïøñ (Prëvïëw) fëætµrë. Whëñ ðïsæþlëð, thë Çøsmøs Ðß Mïgrætïøñs ñøðë æñð ïts çømmæñðs ærë hïððëñ.Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृนั้ढूँ]"
 }

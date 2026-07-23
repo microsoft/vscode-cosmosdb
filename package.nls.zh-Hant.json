@@ -35,6 +35,7 @@
   "cosmosdb.command.ai.deploy_instruction_files": "將 LLM 指示複製到使用者設定檔資料夾",
   "cosmosdb.command.ai.remove_instruction_files": "從使用者設定檔資料夾移除 LLM 指示",
   "cosmosdb.command.schema.delete_all": "刪除所有已儲存的結構描述",
+  "cosmosdb.command.quickStart.reset": "Reset Quick Start Tips (Internal)",
   "cosmosdb.command.migration.open": "新移轉...",
   "cosmosdb.command.migration.openExisting": "Cosmos DB 移轉...",
   "cosmosdb.command.migration.remove": "移除移轉...",
@@ -78,6 +79,7 @@
   "cosmosdb.configuration.accountOverview.advisories.overProvisioningPeakPercent": "帳戶概觀: 尖峰標準化 RU 使用量 (%)，若 7 天內持續低於閥值，系統會根據您的遙測資料產生「超額佈建」建議。",
   "cosmosdb.configuration.accountOverview.advisories.autoscaleCoefficientOfVariation": "帳戶概觀: RU 使用量的變異係數 (標準差/平均值)，當此值超過閥值時，系統會根據您的遙測資料，針對手動輸送量產生「自動調整候選項目」建議。",
   "cosmosdb.configuration.accountOverview.advisories.indexingUsageRatio": "帳戶概觀: 索引與資料儲存體比率; 當未排除任何索引路徑時，且超過此閥值時，系統會根據您的遙測資料產生「索引成本風險」建議。",
+  "cosmosdb.configuration.quickStart.enabled": "When enabled, Quick Start tips are shown in the Query Editor after a major or minor extension update. Disable this to turn off Quick Start tips entirely, including the replay button.",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(實驗性) 在 [移轉小幫手] UI 中顯示權杖使用量估計值。",
   "cosmosdb.configuration.experimental.migration.enabled": "(實驗性) 啟用 Cosmos DB 移轉 (預覽) 功能。停用時，系統會隱藏 Cosmos DB 移轉節點及其命令。"
 }

@@ -87,9 +87,9 @@ const adaptiveNeutralSurfaces = {
     colorNeutralBackground2Hover:
         'var(--vscode-list-hoverBackground, var(--vscode-sideBar-background, var(--vscode-editorWidget-background)))',
     colorNeutralBackground2Pressed:
-        'var(--vscode-list-activeSelectionBackground, var(--vscode-list-hoverBackground, var(--vscode-sideBar-background)))',
+        'var(--vscode-list-activeSelectionBackground, var(--vscode-list-hoverBackground, var(--vscode-sideBar-background, var(--vscode-editorWidget-background))))',
     colorNeutralBackground2Selected:
-        'var(--vscode-list-inactiveSelectionBackground, var(--vscode-list-hoverBackground, var(--vscode-sideBar-background)))',
+        'var(--vscode-list-inactiveSelectionBackground, var(--vscode-list-hoverBackground, var(--vscode-sideBar-background, var(--vscode-editorWidget-background))))',
     // Subtle separators: header band borders, section rules.
     colorNeutralStroke2: 'var(--vscode-panel-border, var(--vscode-widget-border, var(--vscode-editorWidget-border)))',
 } satisfies Partial<Theme>;

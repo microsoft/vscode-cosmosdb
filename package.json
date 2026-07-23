@@ -46,7 +46,6 @@
     "onView:vscode-fabric.view.workspace",
     "onUri",
     "onLanguage:nosql",
-    "onChatParticipant:cosmosdb",
     "onLanguageModelTool:cosmosdb_sampleContainerSchema",
     "onLanguageModelTool:cosmosdb_getQueryEditorContext",
     "onLanguageModelTool:cosmosdb_applyQueryToEditor",
@@ -319,48 +318,6 @@
         }
       }
     ],
-    "chatParticipants": [
-      {
-        "id": "cosmosdb",
-        "name": "cosmosdb",
-        "fullName": "Cosmos DB (NoSQL) Assistant",
-        "description": "AI-powered assistant for Azure Cosmos DB (NoSQL) help, best practices, and code examples",
-        "disambiguation": [
-          {
-            "category": "databases",
-            "description": "The user wants help with their NoSQL Cosmos DB database",
-            "examples": [
-              "Optimize my query to improve performance and cost",
-              "Explain my current query",
-              "Help me write a NoSQL query"
-            ]
-          }
-        ],
-        "isSticky": true,
-        "commands": [
-          {
-            "name": "editQuery",
-            "description": "Edit query with LLM suggestions and user confirmation"
-          },
-          {
-            "name": "help",
-            "description": "Show available commands and help"
-          },
-          {
-            "name": "explainQuery",
-            "description": "Explain the current query with AI analysis"
-          },
-          {
-            "name": "generateQuery",
-            "description": "Generate a new query from natural language description"
-          },
-          {
-            "name": "question",
-            "description": "Ask a general question about Azure Cosmos DB"
-          }
-        ]
-      }
-    ],
     "languages": [
       {
         "id": "nosql",
@@ -560,16 +517,6 @@
       },
       {
         "category": "NoSQL",
-        "command": "cosmosDB.applyQuerySuggestion",
-        "title": "Apply Query Suggestion"
-      },
-      {
-        "category": "NoSQL",
-        "command": "cosmosDB.openQuerySideBySide",
-        "title": "Open Query Side-by-Side"
-      },
-      {
-        "category": "NoSQL",
         "command": "cosmosDB.importDocument",
         "title": "%cosmosdb.command.document.import%"
       },
@@ -595,11 +542,6 @@
         "title": "%cosmosdb.command.migration.remove%"
       },
       {
-        "category": "CosmosDB Dev",
-        "command": "cosmosDB.dev.runNl2QueryQualityTest",
-        "title": "Run NL2Query Quality Tests"
-      },
-      {
         "category": "Cosmos DB",
         "command": "cosmosDB.e2e.openQueryEditor",
         "title": "[E2E Test] Open Query Editor"
@@ -621,28 +563,8 @@
       },
       {
         "category": "Cosmos DB",
-        "command": "cosmosDB.e2e.setMockLanguageModels",
-        "title": "[E2E Test] Set Mock Language Models"
-      },
-      {
-        "category": "Cosmos DB",
-        "command": "cosmosDB.e2e.clearMockLanguageModels",
-        "title": "[E2E Test] Clear Mock Language Models"
-      },
-      {
-        "category": "Cosmos DB",
         "command": "cosmosDB.e2e.setSurveyCandidate",
         "title": "[E2E Test] Set Survey Candidate"
-      },
-      {
-        "category": "Cosmos DB",
-        "command": "cosmosDB.e2e.applyEditQuerySuggestion",
-        "title": "[E2E Test] Apply Edit Query Suggestion"
-      },
-      {
-        "category": "Cosmos DB",
-        "command": "cosmosDB.e2e.openEditQuerySuggestionSideBySide",
-        "title": "[E2E Test] Open Edit Query Suggestion Side-by-Side"
       },
       {
         "category": "Cosmos DB",
@@ -945,10 +867,6 @@
           "when": "never"
         },
         {
-          "command": "cosmosDB.dev.runNl2QueryQualityTest",
-          "when": "cosmosDB.devMode"
-        },
-        {
           "command": "cosmosDB.e2e.openQueryEditor",
           "when": "cosmosDB.e2eTestMode"
         },
@@ -965,23 +883,7 @@
           "when": "cosmosDB.e2eTestMode"
         },
         {
-          "command": "cosmosDB.e2e.setMockLanguageModels",
-          "when": "cosmosDB.e2eTestMode"
-        },
-        {
-          "command": "cosmosDB.e2e.clearMockLanguageModels",
-          "when": "cosmosDB.e2eTestMode"
-        },
-        {
           "command": "cosmosDB.e2e.setSurveyCandidate",
-          "when": "cosmosDB.e2eTestMode"
-        },
-        {
-          "command": "cosmosDB.e2e.applyEditQuerySuggestion",
-          "when": "cosmosDB.e2eTestMode"
-        },
-        {
-          "command": "cosmosDB.e2e.openEditQuerySuggestionSideBySide",
           "when": "cosmosDB.e2eTestMode"
         },
         {

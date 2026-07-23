@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 /**
- * Shared VS Code Language Model utilities used by both the Cosmos DB chat participant
- * and the migration assistant. This module imports `vscode` and is only safe to use
+ * Shared VS Code Language Model utilities used by the Query Editor and migration assistant.
+ * This module imports `vscode` and is only safe to use
  * from extension-side code (not webviews). For vscode-free model utilities (types,
  * formatters, global-state keys), see `./modelUtils.ts`.
  */
@@ -30,13 +30,12 @@ const modelSelector: vscode.LanguageModelChatSelector = allow3pModels ? {} : { v
 // ─── Test-only model override (e2e) ─────────────────────────────────
 
 /**
- * Test-only override for the Copilot model list. Set **exclusively** by the
- * `cosmosDB.e2e.setMockLanguageModels` command, which is registered only when
- * `COSMOSDB_E2E_TEST=1` (see {@link file://./../commands/e2eTestCommands/registerE2eTestCommands.ts}).
+ * Test-only override for the Copilot model list. Installed via
+ * {@link setE2eModelOverride} (e2e-only; only wired up when `COSMOSDB_E2E_TEST=1`).
  *
  * When defined, {@link getAvailableModelsInfo} and {@link getSelectedModel}
  * return these fixtures instead of calling `vscode.lm.selectChatModels`, so
- * Playwright specs can exercise the model switcher without a real Copilot
+ * Playwright specs can exercise model selection without a real Copilot
  * installation in the test VS Code. It stays `undefined` (and therefore inert)
  * in production because the setter is never wired up outside e2e mode.
  */
@@ -60,7 +59,7 @@ export function setE2eModelOverride(models: readonly AvailableModelDescriptor[] 
 // Shared plumbing only. A single persistent mock `LanguageModelChat` (per
 // descriptor id) streams back whatever the installed resolver returns. The
 // concrete responses live with the feature they exercise, wired up through the
-// control-file engine in `commands/e2eTestCommands/e2eAiMock.ts`, so this module
+// installed resolver (see {@link setE2eMockResponseResolver}), so this module
 // stays feature-agnostic and reusable by the migration assistant.
 
 /**
@@ -153,8 +152,7 @@ export async function getSelectedModel(options?: GetSelectedModelOptions): Promi
             e2eModelOverride[0];
         // Return the shared mock for the chosen descriptor so the returned model
         // honors `countTokens` / `sendRequest` and streams back whatever the
-        // installed resolver produces (see `setE2eMockResponseResolver` and the
-        // control-file engine in `commands/e2eTestCommands/e2eAiMock.ts`).
+        // installed resolver produces (see `setE2eMockResponseResolver`).
         return getOrCreateE2eMockModel(chosen);
     }
 

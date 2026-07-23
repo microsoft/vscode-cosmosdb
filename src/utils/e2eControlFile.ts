@@ -6,13 +6,11 @@
 /**
  * Small, shared primitives for the file-based e2e AI mocks.
  *
- * The offline mocks (`commands/e2eTestCommands/e2eAiMock.ts` and — eventually —
- * `panels/migration/helpers/e2eMigrationAiMock.ts`) are driven by a per-worker
- * JSON control file the Playwright fixtures write. These helpers centralize the
- * low-level plumbing — a cancellable sleep and best-effort JSON reads — so each
- * mock only owns its own control shape and routing. E2e-only.
- *
- * (Migration still has its own copies today; it can adopt these incrementally.)
+ * The offline migration mock (`panels/migration/helpers/e2eMigrationAiMock.ts`)
+ * is driven by a per-worker JSON control file the Playwright fixtures write.
+ * These helpers centralize the low-level plumbing — a cancellable sleep and
+ * best-effort JSON reads — so each mock only owns its own control shape and
+ * routing. E2e-only.
  */
 
 import { readFileSync, statSync } from 'node:fs';

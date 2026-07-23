@@ -8,6 +8,7 @@ import {
     MenuButton,
     MenuDivider,
     MenuItem,
+    MenuItemLink,
     MenuList,
     MenuPopover,
     MenuTrigger,
@@ -40,9 +41,9 @@ export const AIButton = ({ ref, type }: ToolbarOverflowItemProps<HTMLButtonEleme
         void dispatcher.explainQueryViaAgent();
     };
 
-    const handleHelpClick = () => {
-        void dispatcher.openChatParticipantHelp();
-    };
+    // Natural-language-to-query (NL2Query) documentation.
+    const nl2queryDocUrl =
+        'https://learn.microsoft.com/azure/cosmos-db/vscode-extension/natural-language-to-query-preview';
 
     // Generate query icon
     const generateIcon = <PenSparkle20Regular />;
@@ -76,9 +77,9 @@ export const AIButton = ({ ref, type }: ToolbarOverflowItemProps<HTMLButtonEleme
                         {l10n.t('Explain query')}
                     </MenuItem>
                     <MenuDivider />
-                    <MenuItem icon={<QuestionCircle20Regular />} onClick={handleHelpClick}>
+                    <MenuItemLink icon={<QuestionCircle20Regular />} href={nl2queryDocUrl}>
                         {l10n.t('Help')}
-                    </MenuItem>
+                    </MenuItemLink>
                 </MenuList>
             </MenuPopover>
         </Menu>

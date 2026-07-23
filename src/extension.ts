@@ -32,7 +32,6 @@ import * as fabric from '@microsoft/vscode-fabric-api';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import {
-    CosmosDbChatParticipant,
     registerApplyQueryToEditorTool,
     registerExecuteCurrentQueryTool,
     registerGetQueryEditorContextTool,
@@ -142,8 +141,6 @@ export async function activateInternal(
         void vscode.commands.executeCommand('setContext', MIGRATION_ENABLED_CONTEXT_KEY, isMigrationFeatureEnabled());
         if (context.extensionMode === vscode.ExtensionMode.Development) {
             void vscode.commands.executeCommand('setContext', 'cosmosDB.devMode', true);
-            const { registerNl2QueryQualityTestCommand } = await import('./commands/nl2queryQualityTest');
-            registerNl2QueryQualityTestCommand(context);
         }
 
         // Test-only commands for the Playwright e2e suite. No-op unless the
@@ -185,9 +182,7 @@ export async function activateInternal(
             },
         );
 
-        // Initialize the CosmosDB chat participant
-        // The chat participant is always registered, but will show helpful error messages
-        // if AI features are not available (Copilot not installed, not signed in, or disabled)
+        // Track Copilot availability for the Query Editor and Migration Assistant.
 
         // Register the availability-change listener BEFORE the initial async check.
         // This prevents a race where Copilot finishes initializing (fires
@@ -205,11 +200,7 @@ export async function activateInternal(
 
         ext.isAIFeaturesEnabled = await areAIFeaturesEnabled();
 
-        // Always create the chat participant so users can see why it's not working
-        const chatParticipant = new CosmosDbChatParticipant(context);
-        void chatParticipant; // Acknowledge the variable is intentionally unused after creation
-
-        // Register language model tools for the chat participant
+        // Register language model tools for the query editor AI agent
         registerSampleDataTool(context);
         registerGetQueryEditorContextTool(context);
         registerApplyQueryToEditorTool(context);

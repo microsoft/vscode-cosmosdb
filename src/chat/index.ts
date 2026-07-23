@@ -3,20 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-export { CosmosDbChatParticipant, type PendingEditQueryResult } from './cosmosDbChatParticipant';
 export {
     CosmosDbOperationsService,
-    QueryGenerationRefusedError,
     type QueryExecutionEntry,
     type QueryHistoryContext,
 } from './CosmosDbOperationsService';
-export { OperationParser } from './OperationParser';
-
-// System prompts (fixed, versioned instructions)
-export * from './systemPrompt';
-
-// User payload types and builders (dynamic user content)
-export * from './userPayload';
 
 // Language model tools
 export { APPLY_QUERY_TO_EDITOR_TOOL_NAME, registerApplyQueryToEditorTool } from './applyQueryToEditorTool';

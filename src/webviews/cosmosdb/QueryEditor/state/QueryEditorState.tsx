@@ -77,9 +77,6 @@ export type DispatchAction =
           throughputBuckets?: boolean[];
       }
     | {
-          type: 'toggleGenerateInput';
-      }
-    | {
           type: 'setConnectionList';
           connectionList: Record<string, string[]> | undefined;
       }
@@ -98,10 +95,6 @@ export type DispatchAction =
     | {
           type: 'setCurrentQueryBlock';
           currentQueryBlock: string;
-      }
-    | {
-          type: 'setConfirmToolInvocationMessage';
-          message: string | null;
       }
     | {
           type: 'setPriorityLevel';
@@ -142,9 +135,7 @@ export type QueryEditorState = {
     isSchemaBasedOnQueries: boolean;
     containerSchema: JSONSchema | null; // Schema of the container documents for autocompletion
 
-    showGenerateInput: boolean; // Whether to show the LLM query generation input
     isAIFeaturesEnabled: boolean; // Whether AI features (AI button, etc.) are enabled (Copilot available)
-    confirmToolInvocationMessage: string | null; // Message from server asking user to confirm a tool invocation during LLM generation
 };
 
 export const defaultState: QueryEditorState = {
@@ -179,9 +170,7 @@ export const defaultState: QueryEditorState = {
     isSchemaBasedOnQueries: false,
     containerSchema: null,
 
-    showGenerateInput: false,
     isAIFeaturesEnabled: false, // Default to false, will be updated from extension when Copilot is available
-    confirmToolInvocationMessage: null,
 };
 
 export function dispatch(state: QueryEditorState, action: DispatchAction): QueryEditorState {
@@ -256,8 +245,6 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
             return { ...state, selectedThroughputBucket: action.throughputBucket };
         case 'updateThroughputBuckets':
             return { ...state, throughputBuckets: action.throughputBuckets };
-        case 'toggleGenerateInput':
-            return { ...state, showGenerateInput: !state.showGenerateInput };
         case 'setConnectionList':
             return { ...state, connectionList: action.connectionList };
         case 'setSchemaBasedOnQueries':
@@ -266,8 +253,6 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
             return { ...state, containerSchema: action.containerSchema };
         case 'setAIFeaturesEnabled':
             return { ...state, isAIFeaturesEnabled: action.isAIFeaturesEnabled };
-        case 'setConfirmToolInvocationMessage':
-            return { ...state, confirmToolInvocationMessage: action.message };
         case 'setPriorityLevel':
             return { ...state, priorityLevel: action.priorityLevel };
     }

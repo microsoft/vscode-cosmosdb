@@ -45,9 +45,6 @@ export class QueryEditorTab extends BaseTab {
             query: query ?? QueryEditorTab.DEFAULT_QUERY_VALUE,
             isLastQueryAIGenerated: false,
             lastAIGeneratedQuery: undefined,
-            lastGenerationFailed: false,
-            generateQueryCancellation: undefined,
-            pendingConfirmResolve: undefined,
             lastGeneratePrompt: undefined,
             pendingRunResolve: undefined,
         };
@@ -197,8 +194,10 @@ export class QueryEditorTab extends BaseTab {
         return this.state.selectedQuery;
     };
 
-    public getLastGeneratePrompt = (): string | undefined => {
-        return this.state.lastGeneratePrompt;
+    public takeLastGeneratePrompt = (): string | undefined => {
+        const prompt = this.state.lastGeneratePrompt;
+        this.state.lastGeneratePrompt = undefined;
+        return prompt;
     };
 
     public isActive(): boolean {

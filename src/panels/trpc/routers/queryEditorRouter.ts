@@ -7,16 +7,14 @@ import { type PartitionKeyDefinition, type PriorityLevel } from '@azure/cosmos';
 import { parse, parseMultiQueryDocument, stripComments } from '@cosmosdb/nosql-language-service';
 import { type JSONSchema } from '@cosmosdb/schema-analyzer';
 import { type NoSQLDocument } from '@cosmosdb/schema-analyzer/json';
-import { callWithTelemetryAndErrorHandling, parseError } from '@microsoft/vscode-azext-utils';
+import { parseError } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as crypto from 'crypto';
 import * as vscode from 'vscode';
 import { z } from 'zod';
 import {
     APPLY_QUERY_TO_EDITOR_TOOL_NAME,
-    CosmosDbOperationsService,
     GET_QUERY_EDITOR_CONTEXT_TOOL_NAME,
-    QueryGenerationRefusedError,
     SAMPLE_DATA_TOOL_NAME,
 } from '../../../chat';
 import { getControlPlaneForConnection } from '../../../cosmosdb/controlPlane';
@@ -32,7 +30,6 @@ import { getAvailableModelsInfo, getSelectedModel } from '../../../utils/aiUtils
 import { queryMetricsToCsv, queryResultToCsv } from '../../../utils/csvConverter';
 import { getConfirmationAsInSettings } from '../../../utils/dialogs/getConfirmation';
 import { isSelectStar } from '../../../utils/queryAnalysis';
-import { commentOutQuery, sanitizeSqlComment } from '../../../utils/sanitization';
 import { toStringUniversal } from '../../../utils/strings';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../../utils/surveyTypes';
@@ -636,132 +633,6 @@ export const queryEditorRouterDef = queryEditorRouter({
         ctx.state.pendingRunResolve = undefined;
     }),
 
-    generateQuery: queryEditorProcedure
-        .input(z.object({ prompt: z.string(), currentQuery: z.string() }))
-        .mutation(async ({ input, ctx }) => {
-            const isRetry = ctx.state.lastGenerationFailed;
-            if (ctx.actionContext) {
-                ctx.actionContext.telemetry.properties.isRetry = String(isRetry);
-            }
-            ctx.state.lastGenerationFailed = false;
-
-            ctx.state.generateQueryCancellation?.cancel();
-            ctx.state.generateQueryCancellation?.dispose();
-            ctx.state.generateQueryCancellation = new vscode.CancellationTokenSource();
-            const token = ctx.state.generateQueryCancellation.token;
-
-            try {
-                const model = await getSelectedModel().catch(() => undefined);
-                if (!model) {
-                    throw new Error(l10n.t('No language models available. Please ensure you have access to Copilot.'));
-                }
-
-                if (token.isCancellationRequested) {
-                    void callWithTelemetryAndErrorHandling('cosmosDB.ai.queryGenerationCancelled', (telCtx) => {
-                        telCtx.errorHandling.suppressDisplay = true;
-                        telCtx.telemetry.properties.phase = 'beforeLLM';
-                    });
-                    return { generatedQuery: false as const };
-                }
-
-                const service = CosmosDbOperationsService.getInstance();
-
-                const generatedQuery = await service.generateQueryWithLLM(input.prompt, input.currentQuery, {
-                    modelId: model.id,
-                    cancellationToken: token,
-                    source: 'queryEditor',
-                    operation: 'generateQuery',
-                    connection: ctx.state.connection,
-                    onConfirm: async (message: string) => {
-                        ctx.eventSink.emit({ type: 'confirmToolInvocation', message });
-                        return new Promise<boolean>((resolve) => {
-                            ctx.state.pendingConfirmResolve = resolve;
-                        });
-                    },
-                });
-
-                if (token.isCancellationRequested) {
-                    void callWithTelemetryAndErrorHandling('cosmosDB.ai.queryGenerationCancelled', (telCtx) => {
-                        telCtx.errorHandling.suppressDisplay = true;
-                        telCtx.telemetry.properties.phase = 'afterLLM';
-                    });
-                    return { generatedQuery: false as const };
-                }
-
-                const sanitizedPrompt = sanitizeSqlComment(input.prompt);
-                const sanitizedCurrentQuery = commentOutQuery(input.currentQuery);
-                const finalQuery = `-- ${l10n.t('Generated from: {0}', sanitizedPrompt)}\n${generatedQuery.trim()}\n\n-- ${l10n.t('Previous query:')}\n${sanitizedCurrentQuery}`;
-
-                ctx.state.isLastQueryAIGenerated = true;
-                ctx.state.lastAIGeneratedQuery = finalQuery;
-
-                void promptAfterActionEventually(
-                    ExperienceKind.NoSQL,
-                    UsageImpact.Medium,
-                    'cosmosDB.nosql.queryEditor.generateQuery',
-                );
-
-                return {
-                    generatedQuery: finalQuery,
-                    modelName: model.name,
-                    prompt: input.prompt,
-                };
-            } catch (error) {
-                if (error instanceof QueryGenerationRefusedError) {
-                    return {
-                        generatedQuery: false as const,
-                        errorMessage: error.message,
-                    };
-                }
-
-                if (token.isCancellationRequested) {
-                    void callWithTelemetryAndErrorHandling('cosmosDB.ai.queryGenerationCancelled', (telCtx) => {
-                        telCtx.errorHandling.suppressDisplay = true;
-                        telCtx.telemetry.properties.phase = 'exception';
-                    });
-                    return { generatedQuery: false as const };
-                }
-
-                const errorMessage = parseError(error).message;
-                ctx.state.lastGenerationFailed = true;
-                void vscode.window.showErrorMessage(l10n.t('Failed to generate query: {0}', errorMessage));
-                throw error;
-            }
-        }),
-
-    cancelGenerateQuery: queryEditorProcedure.mutation(({ ctx }) => {
-        ctx.state.pendingConfirmResolve?.(false);
-        ctx.state.pendingConfirmResolve = undefined;
-        if (ctx.state.generateQueryCancellation) {
-            void callWithTelemetryAndErrorHandling('cosmosDB.ai.queryGenerationCancelled', (telCtx) => {
-                telCtx.errorHandling.suppressDisplay = true;
-                telCtx.telemetry.properties.phase = 'userCancel';
-            });
-        }
-        ctx.state.generateQueryCancellation?.cancel();
-        ctx.state.generateQueryCancellation?.dispose();
-        ctx.state.generateQueryCancellation = undefined;
-    }),
-
-    closeGenerateInput: queryEditorProcedure
-        .input(z.object({ hadEnteredPrompt: z.boolean(), hadExecutedGenerateQuery: z.boolean() }).optional())
-        .mutation(({ input, ctx }) => {
-            ext.outputChannel.info(l10n.t('[Generate Query] Generate query input closed by user.'));
-            void callWithTelemetryAndErrorHandling('cosmosDB.ai.closeGenerateInput', (telCtx) => {
-                telCtx.errorHandling.suppressDisplay = true;
-                if (input) {
-                    telCtx.telemetry.properties.hadEnteredPrompt = String(input.hadEnteredPrompt);
-                    telCtx.telemetry.properties.hadExecutedGenerateQuery = String(input.hadExecutedGenerateQuery);
-                }
-            });
-            // Cancel any pending generation
-            ctx.state.pendingConfirmResolve?.(false);
-            ctx.state.pendingConfirmResolve = undefined;
-            ctx.state.generateQueryCancellation?.cancel();
-            ctx.state.generateQueryCancellation?.dispose();
-            ctx.state.generateQueryCancellation = undefined;
-        }),
-
     getSelectedModelName: queryEditorProcedure.query(async () => {
         try {
             const selectedModel = await getSelectedModel();
@@ -789,20 +660,6 @@ export const queryEditorRouterDef = queryEditorRouter({
 
         const selectedModel = await getSelectedModel({ modelId: input.modelId }).catch(() => undefined);
         return { modelName: selectedModel?.name ?? 'Copilot' };
-    }),
-
-    openChatParticipantExplainQuery: queryEditorProcedure
-        .input(z.object({ query: z.string().optional() }).optional())
-        .mutation(async ({ input }) => {
-            const query = input?.query?.trim();
-            const chatQuery = query
-                ? `@cosmosdb /explainQuery\n\`\`\`sql\n${query}\n\`\`\``
-                : '@cosmosdb /explainQuery';
-            await vscode.commands.executeCommand('workbench.action.chat.open', { query: chatQuery });
-        }),
-
-    openChatParticipantHelp: queryEditorProcedure.mutation(async () => {
-        await vscode.commands.executeCommand('workbench.action.chat.open', { query: '@cosmosdb /help' });
     }),
 
     generateQueryViaAgent: queryEditorProcedure.mutation(async ({ ctx }) => {
@@ -990,13 +847,6 @@ export const queryEditorRouterDef = queryEditorRouter({
                 ctx.actionContext.telemetry.properties.isAIGenerated = String(ctx.state.isLastQueryAIGenerated);
             }
             void vscode.window.showInformationMessage(l10n.t('Thanks for your feedback!'));
-        }),
-
-    confirmToolInvocationResponse: queryEditorProcedure
-        .input(z.object({ confirmed: z.boolean() }))
-        .mutation(({ input, ctx }) => {
-            ctx.state.pendingConfirmResolve?.(input.confirmed);
-            ctx.state.pendingConfirmResolve = undefined;
         }),
 
     /**

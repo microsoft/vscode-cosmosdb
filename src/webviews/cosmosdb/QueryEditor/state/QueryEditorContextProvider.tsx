@@ -372,24 +372,12 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
         void this.safeMutate(() => this.trpcClient.queryEditor.setPriorityLevel.mutate({ priorityLevel }));
     }
 
-    public async openChatParticipantExplainQuery(query?: string): Promise<void> {
-        await this.safeMutate(() => this.trpcClient.queryEditor.openChatParticipantExplainQuery.mutate({ query }));
-    }
-
-    public async openChatParticipantHelp(): Promise<void> {
-        await this.safeMutate(() => this.trpcClient.queryEditor.openChatParticipantHelp.mutate());
-    }
-
     public async generateQueryViaAgent(): Promise<void> {
         await this.safeMutate(() => this.trpcClient.queryEditor.generateQueryViaAgent.mutate());
     }
 
     public async explainQueryViaAgent(): Promise<void> {
         await this.safeMutate(() => this.trpcClient.queryEditor.explainQueryViaAgent.mutate());
-    }
-
-    public async closeGenerateInput(): Promise<void> {
-        await this.safeMutate(() => this.trpcClient.queryEditor.closeGenerateInput.mutate());
     }
 
     public dispose() {
@@ -449,9 +437,6 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
 
     private handleQueryEditorEvent(event: QueryEditorEvent): void {
         switch (event.type) {
-            case 'confirmToolInvocation':
-                this.dispatch({ type: 'setConfirmToolInvocationMessage', message: event.message });
-                break;
             case 'aiFeaturesEnabledChanged':
                 this.dispatch({ type: 'setAIFeaturesEnabled', isAIFeaturesEnabled: event.isEnabled });
                 break;

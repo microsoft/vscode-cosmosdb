@@ -50,6 +50,9 @@
     "onLanguageModelTool:cosmosdb_getQueryEditorContext",
     "onLanguageModelTool:cosmosdb_applyQueryToEditor",
     "onLanguageModelTool:cosmosdb_executeCurrentQuery",
+    "onLanguageModelTool:cosmosdb_openQueryEditor",
+    "onLanguageModelTool:cosmosdb_listOpenConnections",
+    "onLanguageModelTool:cosmosdb_focusQueryEditor",
     "workspaceContains:.cosmosdb-migration"
   ],
   "scripts": {

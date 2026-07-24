@@ -14,10 +14,6 @@ import { queryEditorProcedure, queryEditorRouter } from '../trpc';
 
 export const QueryEditorEventSchema = z.discriminatedUnion('type', [
     z.object({
-        type: z.literal('confirmToolInvocation'),
-        message: z.string(),
-    }),
-    z.object({
         type: z.literal('aiFeaturesEnabledChanged'),
         isEnabled: z.boolean(),
     }),
@@ -36,6 +32,10 @@ export const QueryEditorEventSchema = z.discriminatedUnion('type', [
     z.object({
         type: z.literal('schemaUpdated'),
         containerSchema: z.record(z.string(), z.unknown()).nullable(),
+    }),
+    z.object({
+        type: z.literal('runActiveQueryRequested'),
+        query: z.string(),
     }),
 ]);
 

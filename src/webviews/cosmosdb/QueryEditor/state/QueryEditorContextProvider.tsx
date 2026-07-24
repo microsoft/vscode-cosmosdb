@@ -93,6 +93,62 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
             .catch((error: unknown) => this.handleQueryExecutionError(error));
     }
 
+    /**
+     * Runs `query` in the editor on behalf of the `cosmosdb_executeCurrentQuery` tool. Mirrors the normal
+     * run flow so results render in the grid, then signals the extension (`reportActiveQueryExecuted`)
+     * so the awaiting tool can read PII-free result metadata. Awaits execution so the signal fires
+     * only after the result is available.
+     */
+    private async runActiveQueryFromTool(query: string): Promise<void> {
+        // The executionId of the run we actually start. It stays undefined when the run is cancelled
+        // or never starts (e.g. prepareQuery is cancelled, or createQuerySession fails), so the
+        // awaiting tool can tell "ran" from "did not run" and never reads stale results from a
+        // previous session.
+        let executedId: string | undefined;
+        try {
+            const prepared = await this.safeMutate(() => this.trpcClient.queryEditor.prepareQuery.mutate({ query }));
+            if (!prepared?.cleanQuery) return;
+            const cleanQuery = prepared.cleanQuery;
+
+            const historyResult = await this.safeMutate(() =>
+                this.trpcClient.queryEditor.updateQueryHistory.mutate({ query: cleanQuery }),
+            );
+            if (historyResult?.queryHistory) {
+                this.dispatch({ type: 'updateHistory', queryHistory: historyResult.queryHistory });
+            }
+
+            const session = await this.safeMutate(() =>
+                this.trpcClient.queryEditor.createQuerySession.mutate({
+                    query: cleanQuery,
+                    options: DEFAULT_RESULT_VIEW_METADATA,
+                }),
+            );
+            if (!session?.executionId) return;
+            executedId = session.executionId;
+
+            this.dispatch({
+                type: 'executionStarted',
+                executionId: session.executionId,
+                startExecutionTime: Date.now(),
+            });
+
+            try {
+                const result = (await this.trpcClient.queryEditor.runQuery.mutate({
+                    executionId: session.executionId,
+                })) as QueryExecutionResponse | undefined;
+                this.handleQueryExecutionResult(result);
+            } catch (error: unknown) {
+                this.handleQueryExecutionError(error);
+            }
+        } finally {
+            // Signal completion to the tool, passing the executionId only when a run was actually
+            // started so the tool reads results for exactly this run (or none).
+            void this.safeMutate(() =>
+                this.trpcClient.queryEditor.reportActiveQueryExecuted.mutate({ executionId: executedId }),
+            );
+        }
+    }
+
     public async stopQuery(executionId: string): Promise<void> {
         const result = await this.safeMutate(() => this.trpcClient.queryEditor.stopQuery.mutate({ executionId }));
         if (result) {
@@ -326,16 +382,12 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
         void this.safeMutate(() => this.trpcClient.queryEditor.setPriorityLevel.mutate({ priorityLevel }));
     }
 
-    public async openChatParticipantExplainQuery(query?: string): Promise<void> {
-        await this.safeMutate(() => this.trpcClient.queryEditor.openChatParticipantExplainQuery.mutate({ query }));
+    public async generateQueryViaAgent(): Promise<void> {
+        await this.safeMutate(() => this.trpcClient.queryEditor.generateQueryViaAgent.mutate());
     }
 
-    public async openChatParticipantHelp(): Promise<void> {
-        await this.safeMutate(() => this.trpcClient.queryEditor.openChatParticipantHelp.mutate());
-    }
-
-    public async closeGenerateInput(): Promise<void> {
-        await this.safeMutate(() => this.trpcClient.queryEditor.closeGenerateInput.mutate());
+    public async explainQueryViaAgent(): Promise<void> {
+        await this.safeMutate(() => this.trpcClient.queryEditor.explainQueryViaAgent.mutate());
     }
 
     public dispose() {
@@ -395,9 +447,6 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
 
     private handleQueryEditorEvent(event: QueryEditorEvent): void {
         switch (event.type) {
-            case 'confirmToolInvocation':
-                this.dispatch({ type: 'setConfirmToolInvocationMessage', message: event.message });
-                break;
             case 'aiFeaturesEnabledChanged':
                 this.dispatch({ type: 'setAIFeaturesEnabled', isAIFeaturesEnabled: event.isEnabled });
                 break;
@@ -418,6 +467,9 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
                     type: 'setContainerSchema',
                     containerSchema: event.containerSchema as JSONSchema | null,
                 });
+                break;
+            case 'runActiveQueryRequested':
+                void this.runActiveQueryFromTool(event.query);
                 break;
         }
     }

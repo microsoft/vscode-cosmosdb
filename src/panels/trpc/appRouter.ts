@@ -86,9 +86,18 @@ export type QueryEditorMutableState = {
     selectedQuery?: string;
     isLastQueryAIGenerated: boolean;
     lastAIGeneratedQuery?: string;
-    lastGenerationFailed: boolean;
-    generateQueryCancellation?: vscode.CancellationTokenSource;
-    pendingConfirmResolve?: (confirmed: boolean) => void;
+    /**
+     * The natural-language prompt captured by the in-editor "Generate query" flow. Stored so the
+     * `cosmosdb_applyQueryToEditor` tool can cite the original request in the query comments even
+     * when the agent does not pass it explicitly.
+     */
+    lastGeneratePrompt?: string;
+    /**
+     * Resolver for the promise the `cosmosdb_executeCurrentQuery` tool awaits while the webview runs the
+     * active query. The `reportActiveQueryExecuted` procedure calls it once execution finishes, passing
+     * the executionId that actually ran (or `undefined` when the run was cancelled or never started).
+     */
+    pendingRunResolve?: (executionId?: string) => void;
 };
 
 export type QueryEditorRouterContext = CosmosDBRouterContext & {

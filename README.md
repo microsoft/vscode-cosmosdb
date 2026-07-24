@@ -92,11 +92,6 @@ The extension integrates with GitHub Copilot to help you write, edit, and unders
 
 - **Explain Query**: Click the **AI** button and select **Explain query** to get a plain-English explanation of the current query in the editor.
 
-- **`@cosmosdb` Chat Participant**: Use `@cosmosdb` in VS Code Chat (Copilot) with dedicated commands:
-  - `/generateQuery` – Generate a new query from a description.
-  - `/explainQuery` – Explain an existing query.
-  - `/editQuery` – Edit or optimize a query based on instructions.
-
 > **Requires** the [GitHub Copilot](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot) extension and an active Copilot subscription.
 
 For more details, see the [AI Chat documentation](src/chat/README.md).

@@ -10,14 +10,13 @@ import { orderBy, partition } from 'es-toolkit';
  * This module contains NO vscode imports so it can be used in both extension and webview code.
  */
 
-/** Global state key for persisting the selected AI model across sessions (chat / query editor). */
+/** Global state key for persisting the selected Query Editor AI model across sessions. */
 export const SELECTED_MODEL_KEY = 'ms-azuretools.vscode-cosmosdb.selectedModel';
 
 /**
  * Global state key for persisting the Migration Assistant's selected AI model.
  * Kept distinct from {@link SELECTED_MODEL_KEY} so migration workflows (which may
- * require higher-capacity models) don't share state with the chat participant /
- * query editor picker.
+ * require higher-capacity models) don't share state with the Query Editor picker.
  */
 export const MIGRATION_SELECTED_MODEL_KEY = 'ms-azuretools.vscode-cosmosdb.migration.selectedModel';
 

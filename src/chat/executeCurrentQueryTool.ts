@@ -90,9 +90,20 @@ export function registerExecuteCurrentQueryTool(context: vscode.ExtensionContext
                     actionContext.errorHandling.suppressDisplay = true;
                     actionContext.telemetry.properties.outcome = 'error';
 
-                    const tab = getActiveTab();
-                    const connection = tab ? getConnectionFromQueryTab(tab) : undefined;
-                    if (!tab || !connection) {
+const tab = getActiveTab();
+const connection = tab ? getConnectionFromQueryTab(tab) : undefined;
+if (connection) {
+    actionContext.valuesToMask.push(connection.endpoint, connection.databaseId, connection.containerId);
+    const azureMetadata = connection.azureMetadata;
+    if (azureMetadata) {
+        actionContext.valuesToMask.push(
+            azureMetadata.accountName,
+            azureMetadata.subscription.subscriptionId,
+            azureMetadata.resourceGroup,
+            azureMetadata.accountId,
+        );
+    }
+}
                         actionContext.telemetry.properties.outcome = 'noEditor';
                         ext.outputChannel.warn(
                             l10n.t('[Execute Current Query Tool] No active Cosmos DB Query Editor.'),
@@ -129,21 +140,20 @@ export function registerExecuteCurrentQueryTool(context: vscode.ExtensionContext
                         await tab.runActiveQueryInEditor(activeQuery);
 
                         const queryResult = tab.getCurrentQueryResults();
-                        if (!queryResult) {
-                            actionContext.telemetry.properties.outcome = 'noResult';
+                        if (!queryResult || queryResult.query.trim() !== activeQuery.trim()) {
+                            actionContext.telemetry.properties.outcome = !queryResult ? 'noResult' : 'resultMismatch';
                             return new vscode.LanguageModelToolResult([
                                 new vscode.LanguageModelTextPart(
-                                    l10n.t('The query ran in the Query Editor. No result metadata is available.'),
+                                    l10n.t('The query could not be executed in the Query Editor. Please try again.'),
                                 ),
                             ]);
                         }
 
                         const documents = queryResult.documents ?? [];
-                        // PII-free metadata only — never include raw document values.
+                        // Result metadata only — never include raw document values.
                         const metadata = {
                             databaseId: connection.databaseId,
                             containerId: connection.containerId,
-                            query: queryResult.query,
                             documentCount: documents.length,
                             requestCharge: queryResult.requestCharge,
                             roundTrips: queryResult.roundTrips,
@@ -163,9 +173,8 @@ export function registerExecuteCurrentQueryTool(context: vscode.ExtensionContext
                             actionContext.telemetry.measurements.roundTrips = queryResult.roundTrips;
                         }
                         if (metadata.schema) {
-                            actionContext.telemetry.measurements.schemaPropertyCount = Object.keys(
-                                metadata.schema,
-                            ).length;
+                            const properties = (metadata.schema as { properties?: Record<string, unknown> }).properties;
+                            actionContext.telemetry.measurements.schemaPropertyCount = Object.keys(properties ?? metadata.schema).length;
                         }
 
                         ext.outputChannel.info(

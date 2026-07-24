@@ -194,6 +194,9 @@ export function registerSampleDataTool(context: vscode.ExtensionContext): void {
 
                     const tab = getActiveTab();
                     const connection = tab ? getConnectionFromQueryTab(tab) : undefined;
+                    if (connection) {
+                        actionContext.valuesToMask.push(connection.databaseId, connection.containerId);
+                    }
                     if (!connection) {
                         actionContext.telemetry.properties.outcome = 'noEditor';
                         ext.outputChannel.warn(l10n.t('[Sample Schema Tool] No active Cosmos DB connection.'));
@@ -222,9 +225,8 @@ export function registerSampleDataTool(context: vscode.ExtensionContext): void {
                         if (typeof sample.requestCharge === 'number') {
                             actionContext.telemetry.measurements.requestCharge = sample.requestCharge;
                         }
-                        actionContext.telemetry.measurements.schemaPropertyCount = Object.keys(
-                            sample.schema ?? {},
-                        ).length;
+                        const properties = (sample.schema as { properties?: Record<string, unknown> } | undefined)?.properties;
+                        actionContext.telemetry.measurements.schemaPropertyCount = Object.keys(properties ?? sample.schema ?? {}).length;
                         ext.outputChannel.info(
                             l10n.t(
                                 '[Sample Schema Tool] Sampled {0} documents from {1}/{2}, cost: {3} RUs',

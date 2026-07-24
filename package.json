@@ -284,10 +284,10 @@
       {
         "name": "cosmosdb_executeCurrentQuery",
         "displayName": "Execute Current Query",
-        "modelDescription": "Runs the CURRENT query in the active Cosmos DB Query Editor (the selected text if there is a selection, otherwise the full editor content) and shows the results in the editor grid. Use this whenever the user wants to see, show, list, find, count, or return data — writing or applying a query does NOT run it. This tool takes no query parameter; it always runs whatever is currently in the editor, so to run a specific or newly generated query you MUST first call cosmosdb_applyQueryToEditor to make it the current query, then call this tool. Asks the user for confirmation first because it reads data and consumes Request Units (RUs). Returns only PII-free result metadata (row count, request charge, inferred result schema) — never raw documents.",
+        "modelDescription": "Runs the CURRENT query in the active Cosmos DB Query Editor (the selected text if there is a selection, otherwise the full editor content) and shows the results in the editor grid. Use this whenever the user wants to see, show, list, find, count, or return data — writing or applying a query does NOT run it. This tool takes no query parameter; it always runs whatever is currently in the editor, so to run a specific or newly generated query you MUST first call cosmosdb_applyQueryToEditor to make it the current query, then call this tool. Asks the user for confirmation first because it reads data and consumes Request Units (RUs). Returns result metadata (row count, request charge, inferred result schema) — never raw documents.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "cosmosdb_executeCurrentQuery"
-      },
+      }
       {
         "name": "cosmosdb_openQueryEditor",
         "displayName": "Open Query Editor",

@@ -112,7 +112,7 @@ interface ListOpenConnectionsResult {
 /**
  * Builds the PII-free info object for a single tab/connection pair.
  */
-function toConnectionInfo(tab: QueryEditorTab, connection: NoSqlQueryConnection): OpenConnectionInfo {
+export function toConnectionInfo(tab: QueryEditorTab, connection: NoSqlQueryConnection): OpenConnectionInfo {
     const azureMetadata = connection.azureMetadata;
     return {
         databaseId: connection.databaseId,

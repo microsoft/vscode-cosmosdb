@@ -91,6 +91,21 @@ function getActiveTab(): QueryEditorTab | undefined {
 }
 
 /**
+ * Resolves the selection-related queries for the editor context.
+ *
+ * `selectedQuery` is the user's selection only when it has non-whitespace content; `activeQuery` is
+ * the single query the agent should operate on: the selection when present, otherwise the full
+ * editor text. Exported for unit testing; keep free of side effects.
+ */
+export function resolveEditorQueries(
+    currentQuery: string | undefined,
+    rawSelected: string | undefined,
+): { selectedQuery: string | undefined; activeQuery: string | undefined } {
+    const selectedQuery = rawSelected && rawSelected.trim() ? rawSelected : undefined;
+    return { selectedQuery, activeQuery: selectedQuery ?? currentQuery };
+}
+
+/**
  * Registers the cosmosdb_getQueryEditorContext tool with the VS Code Language Model API.
  */
 export function registerGetQueryEditorContextTool(context: vscode.ExtensionContext): void {
@@ -131,15 +146,17 @@ export function registerGetQueryEditorContextTool(context: vscode.ExtensionConte
                     try {
                         // In a multi-query editor the user's focus is the selected text; fall back to the
                         // full editor content when nothing is selected. `activeQuery` is the one to operate on.
-                        const rawSelected = tab.getSelectedQuery();
-                        const selectedQuery = rawSelected && rawSelected.trim() ? rawSelected : undefined;
                         const currentQuery = tab.getCurrentQuery();
+                        const { selectedQuery, activeQuery } = resolveEditorQueries(
+                            currentQuery,
+                            tab.getSelectedQuery(),
+                        );
                         const context: QueryEditorContext = {
                             databaseId: connection.databaseId,
                             containerId: connection.containerId,
                             currentQuery,
                             selectedQuery,
-                            activeQuery: selectedQuery ?? currentQuery,
+                            activeQuery,
                         };
 
                         // Azure resource coordinates, when the connection is an Azure-signed-in account

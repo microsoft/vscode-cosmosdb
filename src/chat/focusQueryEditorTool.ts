@@ -70,6 +70,24 @@ function getOpenConnections(): { tab: QueryEditorTab; connection: NoSqlQueryConn
 }
 
 /**
+ * Selects which open connection to focus for the given database/container.
+ *
+ * Returns every connection matching `databaseId`/`containerId` plus the one that should actually be
+ * focused: a match that is not already the active editor (so "focus" makes a visible change when
+ * several editors share the same container), falling back to the first match. `target` is undefined
+ * when nothing matches. Exported for unit testing; keep free of side effects.
+ */
+export function selectConnectionToFocus<
+    T extends { tab: { isActive(): boolean }; connection: { databaseId: string; containerId: string } },
+>(entries: readonly T[], databaseId: string, containerId: string): { matches: T[]; target: T | undefined } {
+    const matches = entries.filter(
+        (e) => e.connection.databaseId === databaseId && e.connection.containerId === containerId,
+    );
+    const target = matches.find((e) => !e.tab.isActive()) ?? matches[0];
+    return { matches, target };
+}
+
+/**
  * Registers the cosmosdb_focusQueryEditor tool with the VS Code Language Model API.
  */
 export function registerFocusQueryEditorTool(context: vscode.ExtensionContext): void {
@@ -136,9 +154,10 @@ export function registerFocusQueryEditorTool(context: vscode.ExtensionContext): 
                     const matches = entries.filter(
                         (e) => e.connection.databaseId === databaseId && e.connection.containerId === containerId,
                     );
+                    const target = matches.find((e) => !e.tab.isActive()) ?? matches[0];
                     actionContext.telemetry.measurements.matchCount = matches.length;
 
-                    if (matches.length === 0) {
+                    if (!target) {
                         actionContext.telemetry.properties.outcome = 'notFound';
                         return new vscode.LanguageModelToolResult([
                             new vscode.LanguageModelTextPart(
@@ -151,9 +170,6 @@ export function registerFocusQueryEditorTool(context: vscode.ExtensionContext): 
                         ]);
                     }
 
-                    // Prefer a match that is not already the active editor so "focus" makes a visible
-                    // change when several editors share the same container; otherwise take the first match.
-                    const target = matches.find((e) => !e.tab.isActive()) ?? matches[0];
                     target.tab.reveal();
 
                     actionContext.telemetry.properties.outcome = 'success';

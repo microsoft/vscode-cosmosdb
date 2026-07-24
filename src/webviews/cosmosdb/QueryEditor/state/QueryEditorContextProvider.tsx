@@ -135,7 +135,7 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
                 this.handleQueryExecutionError(error);
             }
         } finally {
-            void this.safeMutate(() => this.trpcClient.queryEditor.reportActiveQueryExecuted.mutate());
+            await this.safeMutate(() => this.trpcClient.queryEditor.reportActiveQueryExecuted.mutate());
         }
     }
 

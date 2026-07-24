@@ -92,6 +92,23 @@ export function registerExecuteCurrentQueryTool(context: vscode.ExtensionContext
 
                     const tab = getActiveTab();
                     const connection = tab ? getConnectionFromQueryTab(tab) : undefined;
+                    if (connection) {
+                        actionContext.valuesToMask.push(
+                            connection.endpoint,
+                            connection.databaseId,
+                            connection.containerId,
+                        );
+                        const azureMetadata = connection.azureMetadata;
+                        if (azureMetadata) {
+                            actionContext.valuesToMask.push(
+                                azureMetadata.accountName,
+                                azureMetadata.subscription.subscriptionId,
+                                azureMetadata.resourceGroup,
+                                azureMetadata.accountId,
+                            );
+                        }
+                    }
+
                     if (!tab || !connection) {
                         actionContext.telemetry.properties.outcome = 'noEditor';
                         ext.outputChannel.warn(
@@ -144,17 +161,16 @@ export function registerExecuteCurrentQueryTool(context: vscode.ExtensionContext
                             actionContext.telemetry.properties.outcome = 'noResult';
                             return new vscode.LanguageModelToolResult([
                                 new vscode.LanguageModelTextPart(
-                                    l10n.t('The query ran in the Query Editor. No result metadata is available.'),
+                                    l10n.t('The query could not be executed in the Query Editor. Please try again.'),
                                 ),
                             ]);
                         }
 
                         const documents = queryResult.documents ?? [];
-                        // PII-free metadata only — never include raw document values.
+                        // Result metadata only — never include raw document values.
                         const metadata = {
                             databaseId: connection.databaseId,
                             containerId: connection.containerId,
-                            query: queryResult.query,
                             documentCount: documents.length,
                             requestCharge: queryResult.requestCharge,
                             roundTrips: queryResult.roundTrips,
@@ -174,8 +190,9 @@ export function registerExecuteCurrentQueryTool(context: vscode.ExtensionContext
                             actionContext.telemetry.measurements.roundTrips = queryResult.roundTrips;
                         }
                         if (metadata.schema) {
+                            const properties = (metadata.schema as { properties?: Record<string, unknown> }).properties;
                             actionContext.telemetry.measurements.schemaPropertyCount = Object.keys(
-                                metadata.schema,
+                                properties ?? metadata.schema,
                             ).length;
                         }
 

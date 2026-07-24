@@ -24,7 +24,7 @@ export const LIST_OPEN_CONNECTIONS_TOOL_NAME = 'cosmosdb_listOpenConnections';
  */
 export const LIST_OPEN_CONNECTIONS_TOOL_DESCRIPTION =
     'Lists every open Cosmos DB Query Editor and the container each one is connected to (database, container, ' +
-    'endpoint, whether it is the emulator, whether it is the active/focused editor, and — for Azure-signed-in ' +
+    'whether it is the emulator, whether it is the active/focused editor, and — for Azure-signed-in ' +
     'accounts — the account name, subscription, and resource group). Use this to discover existing connections and ' +
     'suggest the right container to the user instead of guessing or re-opening a new connection. To make one of ' +
     'these open editors the active one so the other Query Editor tools act on it, use cosmosdb_focusQueryEditor. ' +
@@ -81,7 +81,6 @@ export const LIST_OPEN_CONNECTIONS_TOOL_INPUT_SCHEMA = {
 interface OpenConnectionInfo {
     databaseId: string;
     containerId: string;
-    endpoint: string;
     isEmulator: boolean;
     /** True when this is the active (focused) Query Editor. */
     isActive: boolean;
@@ -118,7 +117,6 @@ function toConnectionInfo(tab: QueryEditorTab, connection: NoSqlQueryConnection)
     return {
         databaseId: connection.databaseId,
         containerId: connection.containerId,
-        endpoint: connection.endpoint,
         isEmulator: connection.isEmulator,
         isActive: tab.isActive(),
         isVisible: tab.isVisible(),

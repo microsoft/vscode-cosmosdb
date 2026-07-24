@@ -465,6 +465,11 @@
       },
       {
         "category": "NoSQL",
+        "command": "cosmosDB.installOrUpdateCosmosDBShell",
+        "title": "%cosmosdb.command.cosmos_db_shell.installOrUpdate%"
+      },
+      {
+        "category": "NoSQL",
         "command": "cosmosDB.deleteTrigger",
         "title": "%cosmosdb.command.trigger.delete%"
       },
@@ -1005,8 +1010,14 @@
               "string",
               "null"
             ],
-            "description": "%cosmosdb.configuration.cosmosDB.shell.path%",
+            "markdownDescription": "%cosmosdb.configuration.cosmosDB.shell.path%",
             "default": null
+          },
+          "cosmosDB.shell.recommendation.enabled": {
+            "type": "boolean",
+            "scope": "application",
+            "default": true,
+            "description": "%cosmosdb.configuration.cosmosDB.shell.recommendation.enabled%"
           },
           "cosmosDB.shell.MCP.enabled": {
             "type": "boolean",

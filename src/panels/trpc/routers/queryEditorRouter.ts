@@ -19,6 +19,7 @@ import { bulkDeleteDocuments, deleteDocument, isDocumentId } from '../../../cosm
 import { QuerySession } from '../../../cosmosdb/session/QuerySession';
 import { getEnabledThroughputBuckets } from '../../../cosmosdb/throughputBuckets';
 import { withClaimsChallengeHandling } from '../../../cosmosdb/withClaimsChallengeHandling';
+import { recordCosmosShellEngagementAndMaybeRecommend } from '../../../cosmosDBShell/recommendation/shellRecommendation';
 import { ext } from '../../../extensionVariables';
 import { SchemaFileStorage } from '../../../services/SchemaFileStorage';
 import { SchemaService } from '../../../services/SchemaService';
@@ -233,6 +234,7 @@ export const queryEditorRouterDef = queryEditorRouter({
                 UsageImpact.High,
                 'cosmosDB.nosql.queryEditor.runQuery',
             );
+            void recordCosmosShellEngagementAndMaybeRecommend('runQuery');
             return result;
         }),
 

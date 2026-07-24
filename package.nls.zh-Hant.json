@@ -3,6 +3,7 @@
   "cosmosdb.command.account.create.description": "為您的 Web Apps 使用 NoSQL 資料庫",
   "cosmosdb.command.account.delete": "刪除帳戶...",
   "cosmosdb.command.account.unsupported": "開啟不支援的帳戶",
+  "cosmosdb.command.account.overview.open": "開啟帳戶概觀",
   "cosmosdb.command.connection.add": "新增連線...",
   "cosmosdb.command.connection.copy": "複製連接字串",
   "cosmosdb.command.connection.emulator.add": "新增模擬器連線...",
@@ -67,6 +68,16 @@
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "使用使用者指派的受控識別驗證 Entra ID 時，所使用的受控識別的用戶端識別碼。",
   "cosmosdb.configuration.manage-llm-assets": "管理 LLM 資產。允許延伸模組持續更新 LLM 相關檔案。",
   "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "啟用後，結構描述產生也會考慮查詢結果，以推斷容器結構描述。",
+  "cosmosdb.configuration.accountOverview.health.criticalRuPercent": "帳戶概觀: 尖峰標準化 RU 使用量 (%)，當達到或超過此閥值時，系統會將容器標幟為「危急」。",
+  "cosmosdb.configuration.accountOverview.health.warningRuPercent": "帳戶概觀: 尖峰標準化 RU 使用量 (%)，當達到或超過此閥值時，系統會將容器標幟為「需要注意」。",
+  "cosmosdb.configuration.accountOverview.health.storageGrowthWarningGB": "帳戶概觀: 7 天儲存體增長量 (以 GB 為單位)，當此值超過閥值時，系統會將容器標幟為「需要注意」。",
+  "cosmosdb.configuration.accountOverview.partition.hotRuSharePercent": "帳戶概觀: 實體分割區 RU 佔比 (%)，當此值超過閥值時，系統會將磁碟分割標幟為熱磁碟分割風險。",
+  "cosmosdb.configuration.accountOverview.partition.skewedStorageSharePercent": "帳戶概觀: 實體分割區儲存體佔比 (%)，當此值超過閥值時，系統會將儲存體標幟為偏斜。",
+  "cosmosdb.configuration.accountOverview.partition.topN": "帳戶概觀: 要列入資料分割索引鍵分佈健康情況排名清單中的實體分割區數目。",
+  "cosmosdb.configuration.accountOverview.advisories.throttlingMinMinutes": "帳戶總覽: 在根據您的遙測資料產生「持續節流/佈署不足」建議之前，持續節流 (HTTP 429) 的最短持續時間 (分鐘)。",
+  "cosmosdb.configuration.accountOverview.advisories.overProvisioningPeakPercent": "帳戶概觀: 尖峰標準化 RU 使用量 (%)，若 7 天內持續低於閥值，系統會根據您的遙測資料產生「超額佈建」建議。",
+  "cosmosdb.configuration.accountOverview.advisories.autoscaleCoefficientOfVariation": "帳戶概觀: RU 使用量的變異係數 (標準差/平均值)，當此值超過閥值時，系統會根據您的遙測資料，針對手動輸送量產生「自動調整候選項目」建議。",
+  "cosmosdb.configuration.accountOverview.advisories.indexingUsageRatio": "帳戶概觀: 索引與資料儲存體比率; 當未排除任何索引路徑時，且超過此閥值時，系統會根據您的遙測資料產生「索引成本風險」建議。",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(實驗性) 在 [移轉小幫手] UI 中顯示權杖使用量估計值。",
-  "cosmosdb.configuration.experimental.migration.enabled": "(Experimental) Enable the Cosmos DB Migration (Preview) feature. When disabled, the Cosmos DB Migrations node and its commands are hidden."
+  "cosmosdb.configuration.experimental.migration.enabled": "(實驗性) 啟用 Cosmos DB 移轉 (預覽) 功能。停用時，系統會隱藏 Cosmos DB 移轉節點及其命令。"
 }

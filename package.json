@@ -507,6 +507,11 @@
       },
       {
         "category": "Cosmos DB",
+        "command": "cosmosDB.quickStart.reset",
+        "title": "%cosmosdb.command.quickStart.reset%"
+      },
+      {
+        "category": "Cosmos DB",
         "command": "cosmosDB.migration.open",
         "title": "%cosmosdb.command.migration.open%",
         "icon": "$(add)"
@@ -1245,6 +1250,11 @@
             "minimum": 0,
             "maximum": 100,
             "description": "%cosmosdb.configuration.accountOverview.advisories.sharedThroughputVictimSharePct%"
+          },
+          "cosmosDB.quickStart.enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "%cosmosdb.configuration.quickStart.enabled%"
           },
           "cosmosDB.experimental.migration.showTokenEstimate": {
             "type": "boolean",

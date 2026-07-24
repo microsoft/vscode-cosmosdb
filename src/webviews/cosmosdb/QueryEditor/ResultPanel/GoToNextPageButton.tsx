@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { type ToolbarButtonProps } from '@fluentui/react-components';
 import { ArrowRightFilled } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useMemo } from 'react';
@@ -43,6 +44,7 @@ export const GoToNextPageButton = (props: ToolbarOverflowItemProps<HTMLButtonEle
             showButtonText={false}
             tooltip={l10n.t('Go to next page (Load more)')}
             type={type}
+            toolbarButtonProps={{ 'data-quickstart': 'pagination' } as ToolbarButtonProps}
         />
     );
 };

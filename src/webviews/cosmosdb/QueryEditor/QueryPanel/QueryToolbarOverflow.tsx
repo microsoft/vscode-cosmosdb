@@ -20,6 +20,7 @@ import * as l10n from '@vscode/l10n';
 import { ToolbarOverflowDivider } from '../../../common/ToolbarOverflow/ToolbarOverflowDivider';
 import { ToolbarOverflowMenuDivider } from '../../../common/ToolbarOverflow/ToolbarOverflowMenuDivider';
 import { ToolbarOverflowMenuItem } from '../../../common/ToolbarOverflow/ToolbarOverflowMenuItem';
+import { useQuickStartEnabled } from '../quickStart/quickStartContext';
 import { useQueryEditorState } from '../state/QueryEditorContext';
 import { AIButton } from './AIButton';
 import { CancelQueryButton } from './CancelQueryButton';
@@ -28,6 +29,7 @@ import { DuplicateTabButton } from './DuplicateTabButton';
 import { LearnButton } from './LearnButton';
 import { OpenFileButton } from './OpenFileButton';
 import { ProvideFeedbackButton } from './ProvideFeedbackButton';
+import { QuickStartButton } from './QuickStartButton';
 import { RunQueryButton } from './RunQueryButton';
 import { SaveToFileButton } from './SaveToFileButton';
 import { SchemaButton } from './SchemaButton';
@@ -35,6 +37,7 @@ import { SchemaButton } from './SchemaButton';
 const OverflowMenu = () => {
     const { ref, isOverflowing } = useOverflowMenu<HTMLButtonElement>();
     const state = useQueryEditorState();
+    const quickStartEnabled = useQuickStartEnabled();
 
     if (!isOverflowing) {
         return null;
@@ -80,6 +83,11 @@ const OverflowMenu = () => {
                     <ToolbarOverflowMenuItem id="8">
                         <SchemaButton type={'menuitem'} />
                     </ToolbarOverflowMenuItem>
+                    {quickStartEnabled && (
+                        <ToolbarOverflowMenuItem id="11">
+                            <QuickStartButton type={'menuitem'} />
+                        </ToolbarOverflowMenuItem>
+                    )}
                     {state.isSurveyCandidate && (
                         <ToolbarOverflowMenuItem id="9">
                             <ProvideFeedbackButton type={'menuitem'} />
@@ -97,6 +105,7 @@ const OverflowMenu = () => {
 
 export const QueryToolbarOverflow = (props: Partial<ToolbarProps>) => {
     const state = useQueryEditorState();
+    const quickStartEnabled = useQuickStartEnabled();
     return (
         <Overflow padding={40}>
             <Toolbar aria-label={l10n.t('Default')} size={'small'} {...props}>
@@ -127,6 +136,11 @@ export const QueryToolbarOverflow = (props: Partial<ToolbarProps>) => {
                 <OverflowItem id={'8'} groupId={'2'}>
                     <SchemaButton type={'button'} />
                 </OverflowItem>
+                {quickStartEnabled && (
+                    <OverflowItem id={'11'} groupId={'2'}>
+                        <QuickStartButton type={'button'} />
+                    </OverflowItem>
+                )}
                 {state.isSurveyCandidate && (
                     <OverflowItem id={'9'} groupId={'2'}>
                         <ProvideFeedbackButton type={'button'} />

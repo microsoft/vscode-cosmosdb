@@ -27,8 +27,8 @@ export const EXECUTE_CURRENT_QUERY_TOOL_DESCRIPTION =
     'to see, show, list, find, count, or return data — writing or applying a query does NOT run it. This tool takes ' +
     'no query parameter; it always runs whatever is currently in the editor, so to run a specific or newly generated ' +
     'query you MUST first call cosmosdb_applyQueryToEditor to make it the current query, then call this tool. Asks ' +
-    'the user for confirmation first because it reads data and consumes Request Units (RUs). Returns only PII-free ' +
-    'result metadata (row count, request charge, inferred result schema) — never raw documents.';
+    'the user for confirmation first because it reads data and consumes Request Units (RUs). Returns result ' +
+    'metadata (row count, request charge, inferred result schema) — never raw documents.';
 
 /**
  * Gets the active query editor tab, if available.

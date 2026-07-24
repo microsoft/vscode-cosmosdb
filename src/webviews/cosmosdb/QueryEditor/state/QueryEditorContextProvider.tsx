@@ -100,6 +100,11 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
      * only after the result is available.
      */
     private async runActiveQueryFromTool(query: string): Promise<void> {
+        // The executionId of the run we actually start. It stays undefined when the run is cancelled
+        // or never starts (e.g. prepareQuery is cancelled, or createQuerySession fails), so the
+        // awaiting tool can tell "ran" from "did not run" and never reads stale results from a
+        // previous session.
+        let executedId: string | undefined;
         try {
             const prepared = await this.safeMutate(() => this.trpcClient.queryEditor.prepareQuery.mutate({ query }));
             if (!prepared?.cleanQuery) return;
@@ -119,6 +124,7 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
                 }),
             );
             if (!session?.executionId) return;
+            executedId = session.executionId;
 
             this.dispatch({
                 type: 'executionStarted',
@@ -135,7 +141,11 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
                 this.handleQueryExecutionError(error);
             }
         } finally {
-            void this.safeMutate(() => this.trpcClient.queryEditor.reportActiveQueryExecuted.mutate());
+            // Signal completion to the tool, passing the executionId only when a run was actually
+            // started so the tool reads results for exactly this run (or none).
+            void this.safeMutate(() =>
+                this.trpcClient.queryEditor.reportActiveQueryExecuted.mutate({ executionId: executedId }),
+            );
         }
     }
 

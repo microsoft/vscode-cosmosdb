@@ -124,11 +124,22 @@ export function registerExecuteCurrentQueryTool(context: vscode.ExtensionContext
                     }
 
                     try {
-                        // The webview runs the query and renders results in the grid; this resolves once it
-                        // reports completion (or after a safety timeout).
-                        await tab.runActiveQueryInEditor(activeQuery);
+                        // The webview runs the query and renders results in the grid; this resolves with
+                        // the executionId that actually ran once it reports completion, or `undefined` when
+                        // the run was cancelled / never started / timed out.
+                        const executionId = await tab.runActiveQueryInEditor(activeQuery);
+                        if (!executionId) {
+                            actionContext.telemetry.properties.outcome = 'notExecuted';
+                            return new vscode.LanguageModelToolResult([
+                                new vscode.LanguageModelTextPart(
+                                    l10n.t(
+                                        'The query was not run in the Query Editor. It may have been cancelled or contain errors that need confirmation. Ask the user to confirm, then try again.',
+                                    ),
+                                ),
+                            ]);
+                        }
 
-                        const queryResult = tab.getCurrentQueryResults();
+                        const queryResult = tab.getCurrentQueryResults(executionId);
                         if (!queryResult) {
                             actionContext.telemetry.properties.outcome = 'noResult';
                             return new vscode.LanguageModelToolResult([

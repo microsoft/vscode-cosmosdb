@@ -1105,6 +1105,7 @@
   "The query has syntax errors:": "The query has syntax errors:",
   "The query ran in the Query Editor. No result metadata is available.": "The query ran in the Query Editor. No result metadata is available.",
   "The query text contains multiple statements separated by semicolons.": "The query text contains multiple statements separated by semicolons.",
+  "The query was not run in the Query Editor. It may have been cancelled or contain errors that need confirmation. Ask the user to confirm, then try again.": "The query was not run in the Query Editor. It may have been cancelled or contain errors that need confirmation. Ask the user to confirm, then try again.",
   "The resource name must start with a letter or number, and can only contain a combination of alphanumeric characters, hyphens, and underscores.": "The resource name must start with a letter or number, and can only contain a combination of alphanumeric characters, hyphens, and underscores.",
   "The running Cosmos DB Shell was started without MCP. Please close it and try again.": "The running Cosmos DB Shell was started without MCP. Please close it and try again.",
   "The selected connection has been removed from your workspace.": "The selected connection has been removed from your workspace.",

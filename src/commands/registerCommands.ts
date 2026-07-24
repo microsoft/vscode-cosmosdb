@@ -40,6 +40,7 @@ import { openNoSqlQueryEditor } from './openNoSqlQueryEditor/openNoSqlQueryEdito
 import { cosmosDBOpenStoredProcedure } from './openStoredProcedure/openStoredProcedure';
 import { cosmosDBOpenTrigger } from './openTrigger/openTrigger';
 import { openUnsupportedAccount } from './openUnsupportedAccount/openUnsupportedAccount';
+import { resetQuickStart } from './quickStart/resetQuickStart';
 import { refreshTreeElement } from './refreshTreeElement/refreshTreeElement';
 import { cosmosDBRemoveConnection } from './removeConnection/removeConnection';
 import { sortTreeItems } from './sortTreeItems/sortTreeItems';
@@ -76,6 +77,8 @@ export function registerCommands(): void {
     registerCommandWithTreeNodeUnwrapping('azureDatabases.sortTreeItems', sortTreeItems);
 
     registerMigrationCommands();
+
+    registerCommand('cosmosDB.quickStart.reset', resetQuickStart);
 }
 
 export function registerAccountCommands() {

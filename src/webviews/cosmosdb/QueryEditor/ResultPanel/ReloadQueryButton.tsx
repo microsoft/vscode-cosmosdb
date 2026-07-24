@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { type ToolbarButtonProps } from '@fluentui/react-components';
 import { ArrowClockwiseFilled } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useMemo } from 'react';
@@ -45,6 +46,7 @@ export const ReloadQueryButton = (props: ToolbarOverflowItemProps<HTMLButtonElem
                 showButtonText={false}
                 tooltip={l10n.t('Reload query results')}
                 type={type}
+                toolbarButtonProps={{ 'data-quickstart': 'reload-query' } as ToolbarButtonProps}
             />
         </>
     );

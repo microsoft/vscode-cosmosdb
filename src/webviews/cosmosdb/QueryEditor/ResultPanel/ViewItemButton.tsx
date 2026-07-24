@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { type ToolbarButtonProps } from '@fluentui/react-components';
 import { EyeRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useMemo } from 'react';
@@ -46,6 +47,7 @@ export const ViewItemButton = (props: ToolbarOverflowItemProps<HTMLButtonElement
             showButtonText={false}
             tooltip={l10n.t('View selected item in separate tab')}
             type={props.type}
+            toolbarButtonProps={{ 'data-quickstart': 'view-item' } as ToolbarButtonProps}
         />
     );
 };

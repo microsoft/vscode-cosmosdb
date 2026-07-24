@@ -54,7 +54,7 @@ export const ChangePageSizeDropdown = (props: ToolbarOverflowItemProps<HTMLDivEl
     return (
         <>
             {type === 'button' ? (
-                <div ref={ref} style={{ paddingLeft: '8px' }}>
+                <div ref={ref} data-quickstart="page-size" style={{ paddingLeft: '8px' }}>
                     <Tooltip content={l10n.t('Change page size')} relationship="label" appearance="inverted" withArrow>
                         <Dropdown
                             onOptionSelect={(_event, data) => onOptionSelect(data)}

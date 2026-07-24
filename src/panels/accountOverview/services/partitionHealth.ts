@@ -4,34 +4,69 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type MonitorClient } from '@azure/arm-monitor';
-import { classifyUnavailable, lastValue, RANGE_CONFIG, type TimeRange, type UnavailableReason } from './shared';
+import {
+    classifyUnavailable,
+    DEFAULT_PARTITION_HEADROOM_PCT,
+    DEFAULT_PARTITION_SATURATION_PCT,
+    escapeODataLiteral,
+    isHotPartition,
+    lastValue,
+    partitionSaturationStats,
+    percentile,
+    RANGE_CONFIG,
+    type PartitionSaturationStats,
+    type TimeRange,
+    type UnavailableReason,
+} from './shared';
 
 // ─── Partition key distribution health ────────────────────────────────────────────
 //
 // Physical-partition RU / storage distribution for a single container, feeding
-// both the heatmap grid and the ranked "why this is flagged" list. RU share is
-// derived from `NormalizedRUConsumption` split by `PartitionKeyRangeId`; storage
-// share from `PhysicalPartitionSizeInfo` split by `PhysicalPartitionId`. The portal's skew score
-// is computed client-side per timestamp: `max(consumption_at_T) / sum(consumption_at_T)`. Any
-// Azure Monitor failure or missing dimension degrades to `available: false` so the webview renders
-// the explicit "Partition telemetry unavailable for this API" empty-state rather than surfacing an
-// error. Only physical partitions are exposed publicly; logical-partition heatmaps stay out of scope.
+// both the heatmap grid and the ranked "why this is flagged" list. RU distribution is the
+// per-physical-partition **p99 of `NormalizedRUConsumption`** (split by `PhysicalPartitionId`): a partition is
+// saturated at p99 ≥ 90 %, and the container is a hot-partition case when the busiest partition is saturated while
+// another still has headroom (p99 < 70 %) — the same CODA DX-006 signal the derived HotPartitionRisk advisory uses.
+// Storage share comes from `PhysicalPartitionSizeInfo` split by `PhysicalPartitionId`, flagged on a balance ratio.
+// Any Azure Monitor failure or missing dimension degrades to `available: false` so the webview renders the explicit
+// "Partition telemetry unavailable for this API" empty-state rather than surfacing an error. Only physical
+// partitions are exposed publicly; logical-partition heatmaps stay out of scope.
 
 export type PartitionDistributionMode = 'ru' | 'storage';
 
-/** Partition-skew thresholds, sourced from `cosmosDB.accountOverview.partition.*`. */
+const GIB = 1024 ** 3;
+
+/**
+ * Below this size a physical partition is immaterial and never flagged as storage-skewed — a balanced-but-tiny
+ * split is not a concern. Mirrors the derived StorageSkewRisk rule's materiality gate so the heatmap and the
+ * advisory agree on what counts as skewed storage.
+ */
+const STORAGE_SKEW_MIN_BUSIEST_BYTES = 1 * GIB;
+
+/**
+ * Partition-distribution thresholds. These mirror the derived-advisory engine so the heatmap's hot flags line up
+ * with the HotPartitionRisk / StorageSkewRisk advisories: RU keys on the same p99-saturation signal as CODA DX-006
+ * (busiest partition saturated while another has headroom), storage on the same balance ratio as StorageSkewRisk.
+ * Sourced from `cosmosDB.accountOverview.advisories.*` (with `partition.topN` for the ranked-list length).
+ */
 export interface PartitionThresholds {
-    /** Top physical-partition RU share (%) above which a partition is a hot-partition risk. */
-    hotRuSharePercent: number;
-    /** Top physical-partition storage share (%) above which storage is skewed. */
-    skewedStorageSharePercent: number;
+    /** RU: a physical partition's p99 (% of provisioned) at or above which it is saturated. */
+    saturationPercent: number;
+    /** RU: a physical partition's p99 below which it still has headroom — tells a hot partition apart from uniform saturation. */
+    headroomPercent: number;
+    /**
+     * Storage: balance ratio (coolest physical partition ÷ this partition) below which a partition is flagged as
+     * storage-skewed, provided it is also material (≥ 1 GiB). A perfectly even split is `1.0` and never fires.
+     */
+    skewBalanceRatio: number;
     /** How many partitions the ranked list surfaces. */
     topN: number;
 }
 
 export const DEFAULT_PARTITION_THRESHOLDS: PartitionThresholds = {
-    hotRuSharePercent: 40,
-    skewedStorageSharePercent: 35,
+    // Kept in sync with the derived-advisory saturation/headroom/skew defaults.
+    saturationPercent: DEFAULT_PARTITION_SATURATION_PCT,
+    headroomPercent: DEFAULT_PARTITION_HEADROOM_PCT,
+    skewBalanceRatio: 0.7,
     topN: 5,
 };
 
@@ -41,11 +76,11 @@ export type PartitionIntensityLevel = 1 | 2 | 3 | 4 | 5;
 export interface PartitionTile {
     /** Raw `PartitionKeyRangeId` / `PhysicalPartitionId` value (rendered as `PKR-{id}`). */
     partitionId: string;
-    /** Share of RU (or storage) for this partition over the window, 0..100. */
+    /** RU mode: this partition's p99 saturation (% of provisioned). Storage mode: its share of storage. 0..100. */
     sharePercent: number;
     /** Intensity bucket 1..5 (5 = hot). */
     level: PartitionIntensityLevel;
-    /** True when this partition's share crosses the configured hot threshold. */
+    /** True when this partition is flagged: RU — saturated while the container has headroom elsewhere; storage — skewed. */
     hot: boolean;
 }
 
@@ -57,7 +92,7 @@ export interface PartitionHealthResult {
     mode: PartitionDistributionMode;
     databaseId: string;
     containerId: string;
-    /** All partitions, sorted by descending share; the ranked list slices `topN`. */
+    /** All partitions, sorted by descending share/saturation; the ranked list slices `topN`. */
     tiles: PartitionTile[];
     /**
      * Worst instantaneous skew over the window — `max` over timestamps of
@@ -65,11 +100,15 @@ export interface PartitionHealthResult {
      * per-timestamp series) this mirrors {@link topPartitionShare}.
      */
     skewScore: number;
-    /** Largest single-partition share over the window, 0..100. */
+    /** RU mode: the busiest partition's p99 saturation. Storage mode: the largest single-partition share. 0..100. */
     topPartitionShare: number;
+    /** RU mode only: busiest partition's p99 (% of provisioned), for the DX-006 saturation signal. */
+    maxSaturationPercent?: number;
+    /** RU mode only: coolest partition's p99 (% of provisioned); a low value with a saturated busiest means skew. */
+    minSaturationPercent?: number;
+    /** RU mode only: true when this container is a hot-partition case (busiest saturated, another has headroom). */
+    hotPartition?: boolean;
     partitionCount: number;
-    /** Share (%) at/above which a partition is flagged hot for the active mode. */
-    hotThresholdPercent: number;
     /** How many partitions the ranked list should surface. */
     topN: number;
     /** Epoch milliseconds when the server produced this snapshot. */
@@ -77,40 +116,78 @@ export interface PartitionHealthResult {
 }
 
 /**
- * Buckets a partition's share into one of five intensity levels. A share at or
- * above the hot threshold is level 5 (hot); everything below is spread linearly
- * across levels 1–4 so an even distribution never lights up as hot. Pure.
+ * Buckets a partition's "excess" (how far past the hot boundary it sits, where `1` is exactly at the threshold)
+ * into one of five intensity levels. A hot partition is always level 5 (`--vscode-errorForeground`); everything
+ * below is spread linearly across levels 1–4 so an even distribution never lights up as hot. Pure.
  */
-export function intensityLevel(sharePercent: number, hotThresholdPercent: number): PartitionIntensityLevel {
-    if (hotThresholdPercent > 0 && sharePercent >= hotThresholdPercent) {
+export function levelFromExcess(excess: number, hot: boolean): PartitionIntensityLevel {
+    if (hot) {
         return 5;
     }
-    if (hotThresholdPercent <= 0) {
-        return sharePercent > 0 ? 5 : 1;
+    if (!Number.isFinite(excess) || excess <= 0) {
+        return 1;
     }
-    const ratio = sharePercent / hotThresholdPercent; // 0..1 below the hot line
-    const level = 1 + Math.floor(ratio * 4);
+    const level = 1 + Math.floor(excess * 4);
     return Math.min(4, Math.max(1, level)) as PartitionIntensityLevel;
 }
 
 /**
- * Folds per-partition weights (summed RU consumption or latest storage bytes)
- * into ranked heatmap tiles with shares, intensity levels, and hot flags. Pure
- * so it can be unit-tested against synthetic weights.
+ * Folds latest per-partition storage bytes into ranked heatmap tiles with shares, intensity levels, and hot flags.
+ * A partition is flagged when it is materially larger than the coolest sibling (balance ratio below the configured
+ * floor) — not on a raw share cutoff — matching the derived StorageSkewRisk rule. Pure.
  */
-export function derivePartitionTiles(
+export function deriveStorageTiles(
     weights: Map<string, number>,
-    hotThresholdPercent: number,
+    thresholds: PartitionThresholds,
 ): { tiles: PartitionTile[]; topPartitionShare: number } {
-    const total = [...weights.values()].reduce((sum, v) => sum + Math.max(0, v), 0);
-    const tiles: PartitionTile[] = [...weights.entries()].map(([partitionId, weight]) => {
-        const sharePercent = total > 0 ? (Math.max(0, weight) / total) * 100 : 0;
-        const hot = hotThresholdPercent > 0 && sharePercent >= hotThresholdPercent;
-        return { partitionId, sharePercent, hot, level: intensityLevel(sharePercent, hotThresholdPercent) };
+    const entries = [...weights.entries()];
+    const values = entries.map(([, weight]) => Math.max(0, weight));
+    const total = values.reduce((sum, v) => sum + v, 0);
+    const count = entries.length;
+    const coolest = count > 0 ? Math.min(...values) : 0;
+
+    const tiles: PartitionTile[] = entries.map(([partitionId, weight]) => {
+        const value = Math.max(0, weight);
+        const sharePercent = total > 0 ? (value / total) * 100 : 0;
+        const tileBalance = value > 0 ? coolest / value : 1;
+        const material = value >= STORAGE_SKEW_MIN_BUSIEST_BYTES;
+        const hot =
+            count >= 2 && material && thresholds.skewBalanceRatio > 0 && tileBalance < thresholds.skewBalanceRatio;
+        const excess =
+            thresholds.skewBalanceRatio > 0 && thresholds.skewBalanceRatio < 1
+                ? (1 - tileBalance) / (1 - thresholds.skewBalanceRatio)
+                : 0;
+        return { partitionId, sharePercent, hot, level: levelFromExcess(excess, hot) };
     });
     tiles.sort((a, b) => b.sharePercent - a.sharePercent || a.partitionId.localeCompare(b.partitionId));
     const topPartitionShare = tiles.length > 0 ? tiles[0].sharePercent : 0;
     return { tiles, topPartitionShare };
+}
+
+/**
+ * Folds per-physical-partition p99 utilizations into ranked heatmap tiles plus the container-level saturation
+ * verdict. A partition is flagged hot only when the container as a whole is a hot-partition case (CODA DX-006 —
+ * busiest partition saturated while another still has headroom) *and* this partition is the/one of the saturated
+ * ones; uniform saturation (every partition busy) is global under-provisioning, not skew, and lights no red tiles.
+ * The tile's displayed percent is the partition's own p99 saturation. Pure.
+ */
+export function deriveRuSaturationTiles(
+    p99ByPartition: Map<string, number>,
+    thresholds: PartitionThresholds,
+): { tiles: PartitionTile[]; stats: PartitionSaturationStats; hotPartition: boolean } {
+    const entries = [...p99ByPartition.entries()];
+    const stats = partitionSaturationStats(entries.map(([, p99]) => p99));
+    const hotPartition = isHotPartition(stats, thresholds.saturationPercent, thresholds.headroomPercent);
+
+    const tiles: PartitionTile[] = entries.map(([partitionId, p99]) => {
+        const sharePercent = Number.isFinite(p99) ? Math.max(0, p99) : 0;
+        const saturated = thresholds.saturationPercent > 0 && sharePercent >= thresholds.saturationPercent;
+        const hot = hotPartition && saturated;
+        const excess = thresholds.saturationPercent > 0 ? sharePercent / thresholds.saturationPercent : 0;
+        return { partitionId, sharePercent, hot, level: levelFromExcess(excess, hot) };
+    });
+    tiles.sort((a, b) => b.sharePercent - a.sharePercent || a.partitionId.localeCompare(b.partitionId));
+    return { tiles, stats, hotPartition };
 }
 
 /**
@@ -140,17 +217,16 @@ export function deriveSkewScore(matrix: Map<string, Map<number, number>>): numbe
     return worst * 100;
 }
 
-/** Sums each partition's values across the window into a single weight per partition. */
-function sumMatrix(matrix: Map<string, Map<number, number>>): Map<string, number> {
-    const weights = new Map<string, number>();
+/** Computes each partition's p99 over the window from a `partitionId → (ts → value)` matrix. */
+function p99Matrix(matrix: Map<string, Map<number, number>>): Map<string, number> {
+    const p99s = new Map<string, number>();
     for (const [partitionId, series] of matrix) {
-        let total = 0;
-        for (const value of series.values()) {
-            total += value;
+        const p99 = percentile([...series.values()], 99);
+        if (p99 !== undefined) {
+            p99s.set(partitionId, p99);
         }
-        weights.set(partitionId, total);
     }
-    return weights;
+    return p99s;
 }
 
 /**
@@ -170,7 +246,6 @@ export async function getPartitionHealth(
     const generatedAt = Date.now();
     const config = RANGE_CONFIG[timeRange];
     const timespan = `${new Date(generatedAt - config.windowMs).toISOString()}/${new Date(generatedAt).toISOString()}`;
-    const hotThresholdPercent = mode === 'ru' ? thresholds.hotRuSharePercent : thresholds.skewedStorageSharePercent;
 
     const empty: PartitionHealthResult = {
         available: false,
@@ -181,13 +256,9 @@ export async function getPartitionHealth(
         skewScore: 0,
         topPartitionShare: 0,
         partitionCount: 0,
-        hotThresholdPercent,
         topN: thresholds.topN,
         generatedAt,
     };
-
-    let weights: Map<string, number>;
-    let skewScore: number;
 
     if (mode === 'ru') {
         let matrix: Map<string, Map<number, number>>;
@@ -196,27 +267,6 @@ export async function getPartitionHealth(
                 client,
                 resourceUri,
                 'NormalizedRUConsumption',
-                'PartitionKeyRangeId',
-                timespan,
-                config.interval,
-                databaseId,
-                containerId,
-            );
-        } catch (error) {
-            return { ...empty, reason: classifyUnavailable(error) };
-        }
-        if (matrix.size === 0) {
-            return { ...empty, reason: 'noData' };
-        }
-        weights = sumMatrix(matrix);
-        skewScore = deriveSkewScore(matrix);
-    } else {
-        let matrix: Map<string, Map<number, number>>;
-        try {
-            matrix = await queryPartitionSplitSeries(
-                client,
-                resourceUri,
-                'PhysicalPartitionSizeInfo',
                 'PhysicalPartitionId',
                 timespan,
                 config.interval,
@@ -229,38 +279,151 @@ export async function getPartitionHealth(
         if (matrix.size === 0) {
             return { ...empty, reason: 'noData' };
         }
-        // Storage is effectively static across the window; rank by the latest reported size.
-        weights = new Map<string, number>();
-        for (const [partitionId, series] of matrix) {
-            const latest = lastValue(series);
-            if (latest !== undefined) {
-                weights.set(partitionId, latest);
-            }
-        }
-        if (weights.size === 0) {
-            return { ...empty, reason: 'noData' };
-        }
-        skewScore = 0; // set to top share below, once known
+        const { tiles, stats, hotPartition } = deriveRuSaturationTiles(p99Matrix(matrix), thresholds);
+        return {
+            available: true,
+            mode,
+            databaseId,
+            containerId,
+            tiles,
+            skewScore: deriveSkewScore(matrix),
+            topPartitionShare: stats.maxP99,
+            maxSaturationPercent: stats.maxP99,
+            minSaturationPercent: stats.minP99,
+            hotPartition,
+            partitionCount: tiles.length,
+            topN: thresholds.topN,
+            generatedAt,
+        };
     }
 
-    const { tiles, topPartitionShare } = derivePartitionTiles(weights, hotThresholdPercent);
-    if (mode === 'storage') {
-        skewScore = topPartitionShare;
+    let matrix: Map<string, Map<number, number>>;
+    try {
+        matrix = await queryPartitionSplitSeries(
+            client,
+            resourceUri,
+            'PhysicalPartitionSizeInfo',
+            'PhysicalPartitionId',
+            timespan,
+            config.interval,
+            databaseId,
+            containerId,
+        );
+    } catch (error) {
+        return { ...empty, reason: classifyUnavailable(error) };
+    }
+    if (matrix.size === 0) {
+        return { ...empty, reason: 'noData' };
+    }
+    // Storage is effectively static across the window; rank by the latest reported size.
+    const weights = new Map<string, number>();
+    for (const [partitionId, series] of matrix) {
+        const latest = lastValue(series);
+        if (latest !== undefined) {
+            weights.set(partitionId, latest);
+        }
+    }
+    if (weights.size === 0) {
+        return { ...empty, reason: 'noData' };
     }
 
+    const { tiles, topPartitionShare } = deriveStorageTiles(weights, thresholds);
     return {
         available: true,
         mode,
         databaseId,
         containerId,
         tiles,
-        skewScore,
+        skewScore: topPartitionShare,
         topPartitionShare,
         partitionCount: tiles.length,
-        hotThresholdPercent,
         topN: thresholds.topN,
         generatedAt,
     };
+}
+
+/** One `PhysicalPartitionSizeInfo` datapoint for a single physical partition. */
+export interface PartitionStorageSample {
+    /** Epoch milliseconds of the datapoint. */
+    timestamp: number;
+    /** Reported physical-partition size in bytes. */
+    bytes: number;
+}
+
+/** A physical partition's storage size series over the window (oldest → newest). */
+export interface PartitionStorageSeries {
+    /** Raw `PhysicalPartitionId` value. */
+    partitionId: string;
+    samples: PartitionStorageSample[];
+}
+
+export interface PartitionStorageResult {
+    /** False when Azure Monitor exposes no `PhysicalPartitionSizeInfo` series for this API/SKU. */
+    available: boolean;
+    /** When `available` is false, why: `noData` | `unsupported` | `rbac`. */
+    reason?: UnavailableReason;
+    databaseId: string;
+    containerId: string;
+    /** Per-physical-partition storage series over the window. */
+    partitions: PartitionStorageSeries[];
+    /** Epoch milliseconds when the server produced this snapshot. */
+    generatedAt: number;
+}
+
+/**
+ * Fetches the per-physical-partition `PhysicalPartitionSizeInfo` time series for a
+ * single container, in raw bytes. Unlike {@link getPartitionHealth}, this keeps
+ * the full series (not just the latest size) and the absolute byte values, so the
+ * derived-advisory engine can fit a growth trajectory per partition and gauge each
+ * partition's proximity to the 50 GiB split ceiling. Any Monitor failure or empty
+ * dimension resolves to `available: false`.
+ */
+export async function getPartitionStorageSeries(
+    client: MonitorClient,
+    resourceUri: string,
+    timeRange: TimeRange,
+    databaseId: string,
+    containerId: string,
+): Promise<PartitionStorageResult> {
+    const generatedAt = Date.now();
+    const config = RANGE_CONFIG[timeRange];
+    const timespan = `${new Date(generatedAt - config.windowMs).toISOString()}/${new Date(generatedAt).toISOString()}`;
+
+    const empty: PartitionStorageResult = {
+        available: false,
+        databaseId,
+        containerId,
+        partitions: [],
+        generatedAt,
+    };
+
+    let matrix: Map<string, Map<number, number>>;
+    try {
+        matrix = await queryPartitionSplitSeries(
+            client,
+            resourceUri,
+            'PhysicalPartitionSizeInfo',
+            'PhysicalPartitionId',
+            timespan,
+            config.interval,
+            databaseId,
+            containerId,
+        );
+    } catch (error) {
+        return { ...empty, reason: classifyUnavailable(error) };
+    }
+    if (matrix.size === 0) {
+        return { ...empty, reason: 'noData' };
+    }
+
+    const partitions: PartitionStorageSeries[] = [...matrix.entries()].map(([partitionId, series]) => ({
+        partitionId,
+        samples: [...series.entries()]
+            .map(([timestamp, bytes]) => ({ timestamp, bytes }))
+            .sort((a, b) => a.timestamp - b.timestamp),
+    }));
+
+    return { available: true, databaseId, containerId, partitions, generatedAt };
 }
 
 /**
@@ -278,7 +441,7 @@ async function queryPartitionSplitSeries(
     databaseId: string,
     containerId: string,
 ): Promise<Map<string, Map<number, number>>> {
-    const filter = `DatabaseName eq '${databaseId}' and CollectionName eq '${containerId}' and ${dimension} eq '*'`;
+    const filter = `DatabaseName eq '${escapeODataLiteral(databaseId)}' and CollectionName eq '${escapeODataLiteral(containerId)}' and ${dimension} eq '*'`;
     const response = await client.metrics.list(resourceUri, {
         metricnames: metricName,
         aggregation: 'Maximum',

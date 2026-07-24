@@ -310,3 +310,65 @@ describe('getRecommendations', () => {
         expect(b.recommendations).toHaveLength(0);
     });
 });
+
+// ─── Multi-panel rate-limit smoke test (plan Phase 8) ─────────────────────────────
+//
+// Advisor has no per-resource endpoint, so every open dashboard would otherwise fire its own
+// subscription-wide `recommendations.list()` on each 60 s poll. The subscription-wide batch cache
+// (in-flight promise sharing + short TTL) is meant to collapse those into one ARM read per poll tick,
+// no matter how many dashboards are open in the subscription.
+//
+// Rather than assert an absolute call count (which would have to be re-edited whenever the cadence or
+// TTL changes), this pins the *invariant* the coalescing exists for: extra panels must add zero
+// subscription-wide reads. The "hour" is a virtual clock advanced through the `now` argument — there is
+// no real waiting, so the whole run is instant.
+describe('multi-panel Advisor rate-limit smoke test', () => {
+    const POLL_INTERVAL_MS = 60_000;
+    const ONE_HOUR_MS = 60 * 60_000;
+    const TICKS_PER_HOUR = ONE_HOUR_MS / POLL_INTERVAL_MS;
+
+    const account = (i: number) => `/subscriptions/sub1/providers/Microsoft.DocumentDB/databaseAccounts/acct${i}`;
+
+    beforeEach(() => {
+        __resetAdvisorCache();
+    });
+
+    async function countAdvisorReads(panelCount: number): Promise<number> {
+        __resetAdvisorCache();
+        const { client, calls } = mockAdvisorClient([makeRec(account(0), 'High', 'Performance')]);
+        const start = Date.now();
+        const accounts = Array.from({ length: panelCount }, (_, i) => account(i));
+
+        // Advance a virtual clock one poll interval at a time; every panel polls concurrently on each tick.
+        for (let elapsed = 0; elapsed < ONE_HOUR_MS; elapsed += POLL_INTERVAL_MS) {
+            const now = start + elapsed;
+            await Promise.all(accounts.map((acct) => getRecommendations(client, 'sub1', acct, now)));
+        }
+        return calls();
+    }
+
+    it('adds zero subscription-wide reads per extra panel (5 dashboards cost the same as 1)', async () => {
+        const onePanelReads = await countAdvisorReads(1);
+        const fivePanelReads = await countAdvisorReads(5);
+
+        // The coalescing guarantee, robust to any cadence/TTL change: panel count does not move the budget.
+        expect(fivePanelReads).toBe(onePanelReads);
+    });
+
+    it('never exceeds one subscription-wide read per poll tick over the window', async () => {
+        const reads = await countAdvisorReads(5);
+        expect(reads).toBeGreaterThan(0);
+        expect(reads).toBeLessThanOrEqual(TICKS_PER_HOUR);
+    });
+
+    it('coalesces concurrent polls within a single tick to exactly one read', async () => {
+        const { client, calls } = mockAdvisorClient([makeRec(account(0), 'High', 'Performance')]);
+        const now = Date.now();
+        const accounts = Array.from({ length: 5 }, (_, i) => account(i));
+
+        const results = await Promise.all(accounts.map((acct) => getRecommendations(client, 'sub1', acct, now)));
+
+        expect(calls()).toBe(1);
+        expect(results.every((r) => r.available)).toBe(true);
+    });
+});

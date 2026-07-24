@@ -9,15 +9,15 @@ import { actionsProcedures } from './accountOverview/actionsRouter';
 import { alertsRecommendationsProcedures } from './accountOverview/alertsRecommendationsRouter';
 import { derivedAdvisoriesProcedures } from './accountOverview/derivedAdvisoriesRouter';
 import { inventoryMetricsProcedures } from './accountOverview/inventoryMetricsRouter';
+import { metricSeriesProcedures } from './accountOverview/metricSeriesRouter';
 import { partitionHealthProcedures } from './accountOverview/partitionHealthRouter';
-import { ruTrendsProcedures } from './accountOverview/ruTrendsRouter';
 
 // ─── Account Overview Router ────────────────────────────────────────────────
 //
 // The router is split by dashboard zone under `./accountOverview/`: each zone
 // owns a thin procedure map (data preparation + service call) plus its pure
 // service module. This file merges those zone procedure maps into the single
-// flat tRPC router the webview client consumes (`accountOverview.getRuTrends`,
+// flat tRPC router the webview client consumes (`accountOverview.getMetricSeries`,
 // …). Keep the paths flat — the webview binds to them by name.
 
 // Re-exported for `src/webviews/api/types.ts`, which imports the static inventory
@@ -26,7 +26,7 @@ export type { InventoryContainerRow, ThroughputMode } from '../../accountOvervie
 
 export const accountOverviewRouterDef = accountOverviewRouter({
     ...accountInventoryProcedures,
-    ...ruTrendsProcedures,
+    ...metricSeriesProcedures,
     ...inventoryMetricsProcedures,
     ...partitionHealthProcedures,
     ...alertsRecommendationsProcedures,

@@ -5,10 +5,7 @@
 
 import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
 import { API, tryGetExperience } from '../../../../AzureDBExperiences';
-import {
-    collectDerivedAdvisories,
-    type DerivedAdvisoriesResult,
-} from '../../../accountOverview/services/derivedAdvisories';
+import { collectDerivedAdvisories, type DerivedAdvisoriesResult } from '../../../accountOverview/services/advisories';
 import { classifyUnavailable, type UnavailableReason } from '../../../accountOverview/services/shared';
 import { type AccountOverviewRouterContext } from '../../appRouter';
 import { accountOverviewProcedure } from '../../trpc';
@@ -41,11 +38,16 @@ export const derivedAdvisoriesProcedures = {
             if (!monitorClient || !cosmosClient) {
                 return unavailable('noData');
             }
+            // Tier-2 (Log Analytics) is optional: if the client can't be acquired the collector still ships the
+            // Tier-1 advisories and reports Tier-2 as unavailable via `logSource`.
+            const logsClient = await metadata.getLogsQueryClient();
 
             try {
-                const advisories = await collectDerivedAdvisories({
+                const account = metadata.databaseAccount as DatabaseAccountGetResults;
+                const { advisories, logSource } = await collectDerivedAdvisories({
                     monitorClient,
                     cosmosClient,
+                    logsClient,
                     accountId: metadata.accountId,
                     resourceGroup: metadata.resourceGroup,
                     accountName: metadata.accountName,
@@ -53,9 +55,20 @@ export const derivedAdvisoriesProcedures = {
                     healthThresholds: readHealthThresholds(),
                     partitionThresholds: readPartitionThresholds(),
                     advisoryThresholds: readAdvisoryThresholds(),
+                    accountConfig: {
+                        accountName: metadata.accountName,
+                        tags: account.tags,
+                        subscriptionName: metadata.subscription.name,
+                        consistencyLevel: account.consistencyPolicy?.defaultConsistencyLevel,
+                        regionCount: account.locations?.length ?? account.readLocations?.length ?? 0,
+                        multiRegionWritesEnabled: account.enableMultipleWriteLocations ?? false,
+                        writeRegionCount: account.writeLocations?.length ?? 0,
+                        // The derived-advisory engine only runs for the Core (SQL) API (guarded above).
+                        apiKind: 'core',
+                    },
                 });
 
-                return { available: true, advisories, generatedAt: Date.now() };
+                return { available: true, advisories, logSource, generatedAt: Date.now() };
             } catch (error) {
                 return unavailable(classifyUnavailable(error));
             }

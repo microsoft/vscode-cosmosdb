@@ -201,7 +201,10 @@ export const DashboardActionsProvider = DashboardActionsContext.Provider;
 export const useDashboardActions = (): DashboardActions => useContext(DashboardActionsContext);
 
 /** Azure RBAC overview, linked from the "not enough permissions" empty-state. */
-const RBAC_LEARN_MORE_URL = 'https://learn.microsoft.com/azure/role-based-access-control/overview';
+export const RBAC_LEARN_MORE_URL = 'https://learn.microsoft.com/azure/role-based-access-control/overview';
+
+/** How to enable Cosmos DB diagnostic settings → Log Analytics, linked from the `logAnalyticsDisabled` notice. */
+export const DIAGNOSTIC_SETTINGS_URL = 'https://learn.microsoft.com/azure/cosmos-db/monitor-resource-logs';
 
 /**
  * Shared empty-state copy for every async section. Distinguishes an as-yet-empty telemetry pipeline
@@ -226,12 +229,15 @@ export const EmptyState = ({ reason, requiredRole }: { reason?: UnavailableReaso
             break;
         case 'rbac':
             message = requiredRole
-                ? l10n.t('Not enough permissions — your role is missing {0}.', requiredRole)
+                ? l10n.t('Not enough permissions: your role is missing {0}.', requiredRole)
                 : l10n.t('Not enough permissions to load this section.');
+            break;
+        case 'logAnalyticsDisabled':
+            message = l10n.t('Enable diagnostic settings to a Log Analytics workspace to run log-based checks.');
             break;
         case 'noData':
         default:
-            message = l10n.t('Telemetry not yet available — first samples in ~1–3 min.');
+            message = l10n.t('No telemetry available for this selection yet.');
             break;
     }
 
@@ -241,6 +247,11 @@ export const EmptyState = ({ reason, requiredRole }: { reason?: UnavailableReaso
             {reason === 'rbac' && (
                 <Link as="button" onClick={() => openUrl(RBAC_LEARN_MORE_URL)}>
                     {l10n.t('Learn more about Azure roles')}
+                </Link>
+            )}
+            {reason === 'logAnalyticsDisabled' && (
+                <Link as="button" onClick={() => openUrl(DIAGNOSTIC_SETTINGS_URL)}>
+                    {l10n.t('Learn how to enable diagnostic settings')}
                 </Link>
             )}
         </output>

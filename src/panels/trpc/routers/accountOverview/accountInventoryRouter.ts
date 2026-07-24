@@ -6,7 +6,7 @@
 import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
 import * as l10n from '@vscode/l10n';
 import { API, tryGetExperience } from '../../../../AzureDBExperiences';
-import { getSqlInventory, type InventoryContainerRow } from '../../../accountOverview/services/inventory';
+import { getInventoryResult, type InventoryContainerRow } from '../../../accountOverview/services/inventory';
 import { type ProvisioningState } from '../../../accountOverview/services/shared';
 import { type AccountOverviewRouterContext } from '../../appRouter';
 import { accountOverviewProcedure } from '../../trpc';
@@ -55,15 +55,27 @@ export const accountInventoryProcedures = {
         // (see `NoSqlAccountResourceItem`); other APIs get an explicit
         // "not supported" empty-state on the webview side instead of rows.
         if (experience && experience.api !== API.Core) {
-            return { supported: false as const, rows: [] as InventoryContainerRow[] };
+            return { supported: false as const, available: true as const, rows: [] as InventoryContainerRow[] };
         }
 
         const client = await metadata.getClient();
         if (!client) {
-            throw new Error(l10n.t('Failed to connect to Cosmos DB account'));
+            // No management client means we could not authenticate to ARM at all; surface it as an
+            // explicit unavailable state so the table renders an empty-state instead of hanging.
+            return {
+                supported: true as const,
+                available: false as const,
+                reason: 'rbac' as const,
+                rows: [] as InventoryContainerRow[],
+            };
         }
 
-        const rows = await getSqlInventory(client, metadata.resourceGroup, metadata.accountName, metadata.isServerless);
-        return { supported: true as const, rows };
+        const result = await getInventoryResult(
+            client,
+            metadata.resourceGroup,
+            metadata.accountName,
+            metadata.isServerless,
+        );
+        return { supported: true as const, ...result };
     }),
 };

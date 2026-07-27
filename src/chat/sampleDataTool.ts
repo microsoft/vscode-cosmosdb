@@ -246,7 +246,7 @@ export function registerSampleDataTool(context: vscode.ExtensionContext): void {
                     } catch (error) {
                         actionContext.telemetry.properties.outcome = 'error';
                         const message = parseError(error).message;
-                        actionContext.valuesToMask.push(message);
+if (message.trim()) actionContext.valuesToMask.push(message);
                         ext.outputChannel.error(l10n.t('[Sample Schema Tool] Failed to sample data: {0}', message));
                         const baseMessage = l10n.t(
                             'Unable to sample the container schema. Query generation will continue without schema information, which may affect accuracy.',

@@ -133,6 +133,9 @@ export function registerExecuteCurrentQueryTool(context: vscode.ExtensionContext
                             ),
                         ]);
                     }
+                    // Mask query text early so it cannot leak via telemetry error messages; the query may carry
+                    // literal values (e.g. WHERE clauses). Masking does not affect the result returned to the model.
+                    actionContext.valuesToMask.push(activeQuery);
 
                     if (token.isCancellationRequested) {
                         actionContext.telemetry.properties.outcome = 'cancelled';

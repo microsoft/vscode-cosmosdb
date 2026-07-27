@@ -195,18 +195,21 @@ export function registerSampleDataTool(context: vscode.ExtensionContext): void {
                     const tab = getActiveTab();
                     const connection = tab ? getConnectionFromQueryTab(tab) : undefined;
                     if (connection) {
-                        actionContext.valuesToMask.push(connection.databaseId, connection.containerId);
-                    }
-                    if (!connection) {
-                        actionContext.telemetry.properties.outcome = 'noEditor';
-                        ext.outputChannel.warn(l10n.t('[Sample Schema Tool] No active Cosmos DB connection.'));
-                        return new vscode.LanguageModelToolResult([
-                            new vscode.LanguageModelTextPart(
-                                l10n.t(
-                                    'No active Cosmos DB connection. Please open a query editor and connect to a container first.',
-                                ),
-                            ),
-                        ]);
+                        actionContext.valuesToMask.push(
+                            connection.endpoint,
+                            connection.databaseId,
+                            connection.containerId,
+                        );
+                        const azureMetadata = connection.azureMetadata;
+                        if (azureMetadata) {
+                            actionContext.valuesToMask.push(
+                                azureMetadata.accountName,
+                                azureMetadata.subscription.subscriptionId,
+                                azureMetadata.subscription.name,
+                                azureMetadata.resourceGroup,
+                                azureMetadata.accountId,
+                            );
+                        }
                     }
 
                     if (token.isCancellationRequested) {

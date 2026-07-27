@@ -163,10 +163,16 @@ export function registerGetQueryEditorContextTool(context: vscode.ExtensionConte
                         // In a multi-query editor the user's focus is the selected text; fall back to the
                         // full editor content when nothing is selected. `activeQuery` is the one to operate on.
                         const currentQuery = tab.getCurrentQuery();
-                        const { selectedQuery, activeQuery } = resolveEditorQueries(
-                            currentQuery,
-                            tab.getSelectedQuery(),
-                        );
+                        const rawSelectedQuery = tab.getSelectedQuery();
+                        // Mask query text early so it cannot leak via telemetry error messages; queries may carry
+                        // literal values (e.g. WHERE clauses). Masking does not affect the result returned to the model.
+                        if (currentQuery?.trim()) {
+                            actionContext.valuesToMask.push(currentQuery);
+                        }
+                        if (rawSelectedQuery?.trim()) {
+                            actionContext.valuesToMask.push(rawSelectedQuery);
+                        }
+                        const { selectedQuery, activeQuery } = resolveEditorQueries(currentQuery, rawSelectedQuery);
                         const context: QueryEditorContext = {
                             databaseId: connection.databaseId,
                             containerId: connection.containerId,

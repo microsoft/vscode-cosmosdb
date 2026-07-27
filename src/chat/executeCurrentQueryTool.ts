@@ -212,7 +212,9 @@ export function registerExecuteCurrentQueryTool(context: vscode.ExtensionContext
                     } catch (error) {
                         actionContext.telemetry.properties.outcome = 'error';
                         const message = parseError(error).message;
-                        actionContext.valuesToMask.push(message);
+                        if (message.trim()) {
+                            actionContext.valuesToMask.push(message);
+                        }
                         ext.outputChannel.error(
                             l10n.t('[Execute Current Query Tool] Failed to run query: {0}', message),
                         );

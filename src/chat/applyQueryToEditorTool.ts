@@ -183,7 +183,9 @@ if (!tab || !connection) {
                     } catch (error) {
                         actionContext.telemetry.properties.outcome = 'error';
                         const message = parseError(error).message;
-                        actionContext.valuesToMask.push(message);
+                        if (message?.trim()) {
+                            actionContext.valuesToMask.push(message);
+                        }
                         ext.outputChannel.error(l10n.t('[Apply Query Tool] Failed to apply query: {0}', message));
                         return new vscode.LanguageModelToolResult([
                             new vscode.LanguageModelTextPart(

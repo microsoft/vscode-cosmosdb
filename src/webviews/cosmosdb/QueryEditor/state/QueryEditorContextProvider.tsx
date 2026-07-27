@@ -117,10 +117,9 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
                 this.dispatch({ type: 'updateHistory', queryHistory: historyResult.queryHistory });
             }
 
-            const session = await this.safeMutate(() =>
                 this.trpcClient.queryEditor.createQuerySession.mutate({
                     query: cleanQuery,
-                    options: DEFAULT_RESULT_VIEW_METADATA,
+                    options: { ...DEFAULT_RESULT_VIEW_METADATA },
                 }),
             );
             if (!session?.executionId) return;

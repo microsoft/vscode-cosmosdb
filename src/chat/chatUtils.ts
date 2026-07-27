@@ -94,3 +94,30 @@ export const getActiveQueryEditor = (activeQueryEditors: QueryEditorTab[]): Quer
 export const getConnectionFromQueryTab = (queryTab: QueryEditorTab): NoSqlQueryConnection | undefined => {
     return queryTab.getConnection();
 };
+
+/**
+ * Delimiters that fence a block of untrusted, user-supplied text inside an agent
+ * prompt. Everything between them is data (the user's request), never instructions.
+ */
+export const USER_DATA_START = 'BEGIN_USER_DATA';
+export const USER_DATA_END = 'END_USER_DATA';
+
+/**
+ * Wraps untrusted user text so it cannot restructure the surrounding agent instruction
+ * template (prompt injection). The text is newline-normalized so it cannot rely on odd
+ * line endings, stripped of any embedded delimiter markers so the user cannot forge an
+ * `END_USER_DATA` to break out and inject new steps, then fenced between the delimiters.
+ */
+export function wrapUserDataForAgent(text: string): string {
+    let neutralized = text.replace(/\r\n?/g, '\n');
+    // Remove delimiter markers repeatedly: a single pass can leave adjacent fragments
+    // that re-form a marker (e.g. `END_USEND_USER_DATAER_DATA`), so loop until stable.
+    const marker = new RegExp(`${USER_DATA_START}|${USER_DATA_END}`, 'gi');
+    let previous: string;
+    do {
+        previous = neutralized;
+        neutralized = neutralized.replace(marker, '');
+    } while (neutralized !== previous);
+
+    return `${USER_DATA_START}\n${neutralized}\n${USER_DATA_END}`;
+}

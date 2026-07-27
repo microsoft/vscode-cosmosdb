@@ -9,6 +9,9 @@ export {
     type QueryHistoryContext,
 } from './CosmosDbOperationsService';
 
+// Prompt-injection defense: wraps untrusted user text as data before it is embedded in an agent prompt.
+export { USER_DATA_END, USER_DATA_START, wrapUserDataForAgent } from './chatUtils';
+
 // Language model tools
 export { APPLY_QUERY_TO_EDITOR_TOOL_NAME, registerApplyQueryToEditorTool } from './applyQueryToEditorTool';
 export { EXECUTE_CURRENT_QUERY_TOOL_NAME, registerExecuteCurrentQueryTool } from './executeCurrentQueryTool';

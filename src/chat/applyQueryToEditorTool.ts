@@ -163,8 +163,7 @@ export function registerApplyQueryToEditorTool(context: vscode.ExtensionContext)
                         const currentQuery = tab.getCurrentQuery() ?? '';
                         // Prefer the request the agent passed; otherwise fall back to the prompt captured by
                         // the in-editor "Generate query" flow so the citation appears reliably "like before".
-                        const capturedPrompt = tab.takeLastGeneratePrompt();
-                        const promptDescription = options.input?.promptDescription?.trim() || capturedPrompt;
+                        const promptDescription = options.input?.promptDescription?.trim() || tab.takeLastGeneratePrompt();
                         const finalQuery = buildFramedQuery(query, currentQuery, promptDescription);
                         tab.updateQuery(finalQuery);
 

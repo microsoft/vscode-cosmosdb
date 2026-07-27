@@ -151,10 +151,7 @@ export function registerFocusQueryEditorTool(context: vscode.ExtensionContext): 
                         ]);
                     }
 
-                    const matches = entries.filter(
-                        (e) => e.connection.databaseId === databaseId && e.connection.containerId === containerId,
-                    );
-                    const target = matches.find((e) => !e.tab.isActive()) ?? matches[0];
+                    const { matches, target } = selectConnectionToFocus(entries, databaseId, containerId);
                     actionContext.telemetry.measurements.matchCount = matches.length;
 
                     if (!target) {

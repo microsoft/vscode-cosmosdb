@@ -46,7 +46,7 @@ interface QueryResultMetadata {
 }
 
 /**
- * The PII-free context returned by the tool.
+ * The context returned by the tool. Contains query text and connection identifiers, but never raw document data.
  */
 interface QueryEditorContext {
     databaseId: string;

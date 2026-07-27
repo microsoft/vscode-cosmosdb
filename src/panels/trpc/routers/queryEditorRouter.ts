@@ -689,29 +689,22 @@ export const queryEditorRouterDef = queryEditorRouter({
 
         // Route the prompt to the general Copilot agent. The agent orchestrates the flow
         // using the Cosmos DB language model tools; the extension does not run its own loop.
+        // This is an internal agent instruction, not user-facing UI — keep it as a stable, non-localized
+        // English string so translation cannot change or degrade the agent's behavior.
         const chatQuery =
-            l10n.t('Generate an Azure Cosmos DB for NoSQL query for the active Query Editor.') +
+            'Generate an Azure Cosmos DB for NoSQL query for the active Query Editor.' +
             '\n\n' +
-            l10n.t('Request: {0}', trimmedPrompt) +
+            `Request: ${trimmedPrompt}` +
             '\n\n' +
-            l10n.t('Steps:') +
+            'Steps:' +
             '\n' +
-            l10n.t(
-                '1. Use {0} to read the current query, history and result metadata.',
-                `#${GET_QUERY_EDITOR_CONTEXT_TOOL_NAME}`,
-            ) +
+            `1. Use #${GET_QUERY_EDITOR_CONTEXT_TOOL_NAME} to read the current query, history and result metadata.` +
             '\n' +
-            l10n.t(
-                '2. If the container schema (property names and types) is not already known from that context, call {0} first and wait for approval. Do not guess property names or casing.',
-                `#${SAMPLE_DATA_TOOL_NAME}`,
-            ) +
+            `2. If the container schema (property names and types) is not already known from that context, call #${SAMPLE_DATA_TOOL_NAME} first and wait for approval. Do not guess property names or casing.` +
             '\n' +
-            l10n.t('3. Write a single valid Cosmos DB NoSQL query that satisfies the request.') +
+            '3. Write a single valid Cosmos DB NoSQL query that satisfies the request.' +
             '\n' +
-            l10n.t(
-                '4. Use {0} to write the final query back to the editor, and pass the original request text as the description so it is cited in the query comments.',
-                `#${APPLY_QUERY_TO_EDITOR_TOOL_NAME}`,
-            );
+            `4. Use #${APPLY_QUERY_TO_EDITOR_TOOL_NAME} to write the final query back to the editor, and pass the original request text as the description so it is cited in the query comments.`;
 
         await vscode.commands.executeCommand('workbench.action.chat.open', {
             mode: 'agent',
@@ -726,13 +719,11 @@ export const queryEditorRouterDef = queryEditorRouter({
 
         // Route to the general Copilot agent; it reads the query to explain from the editor
         // context tool (the selected query when one is selected, otherwise the current query).
+        // Internal agent instruction, not user-facing UI — keep it as a stable, non-localized English string.
         const chatQuery =
-            l10n.t('Explain the Azure Cosmos DB for NoSQL query in the active Query Editor.') +
+            'Explain the Azure Cosmos DB for NoSQL query in the active Query Editor.' +
             '\n\n' +
-            l10n.t(
-                'Use {0} to read the query to explain, and explain its activeQuery (the selected query when one is selected, otherwise the current query).',
-                `#${GET_QUERY_EDITOR_CONTEXT_TOOL_NAME}`,
-            );
+            `Use #${GET_QUERY_EDITOR_CONTEXT_TOOL_NAME} to read the query to explain, and explain its activeQuery (the selected query when one is selected, otherwise the current query).`;
 
         await vscode.commands.executeCommand('workbench.action.chat.open', {
             mode: 'agent',

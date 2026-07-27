@@ -122,27 +122,31 @@ export function registerApplyQueryToEditorTool(context: vscode.ExtensionContext)
                         ]);
                     }
 
-const tab = getActiveTab();
-const connection = tab ? getConnectionFromQueryTab(tab) : undefined;
-// Mask sensitive values early so they cannot leak via telemetry error messages.
-actionContext.valuesToMask.push(query);
-const rawPromptDescription = options.input?.promptDescription;
-if (rawPromptDescription && rawPromptDescription.trim()) {
-    actionContext.valuesToMask.push(rawPromptDescription);
-}
-if (connection) {
-    actionContext.valuesToMask.push(connection.endpoint, connection.databaseId, connection.containerId);
-    const azureMetadata = connection.azureMetadata;
-    if (azureMetadata) {
-        actionContext.valuesToMask.push(
-            azureMetadata.accountName,
-            azureMetadata.subscription.subscriptionId,
-            azureMetadata.resourceGroup,
-            azureMetadata.accountId,
-        );
-    }
-}
-if (!tab || !connection) {
+                    const tab = getActiveTab();
+                    const connection = tab ? getConnectionFromQueryTab(tab) : undefined;
+                    // Mask sensitive values early so they cannot leak via telemetry error messages.
+                    actionContext.valuesToMask.push(query);
+                    const rawPromptDescription = options.input?.promptDescription;
+                    if (rawPromptDescription && rawPromptDescription.trim()) {
+                        actionContext.valuesToMask.push(rawPromptDescription);
+                    }
+                    if (connection) {
+                        actionContext.valuesToMask.push(
+                            connection.endpoint,
+                            connection.databaseId,
+                            connection.containerId,
+                        );
+                        const azureMetadata = connection.azureMetadata;
+                        if (azureMetadata) {
+                            actionContext.valuesToMask.push(
+                                azureMetadata.accountName,
+                                azureMetadata.subscription.subscriptionId,
+                                azureMetadata.resourceGroup,
+                                azureMetadata.accountId,
+                            );
+                        }
+                    }
+                    if (!tab || !connection) {
                         actionContext.telemetry.properties.outcome = 'noEditor';
                         ext.outputChannel.warn(l10n.t('[Apply Query Tool] No active Cosmos DB Query Editor.'));
                         return new vscode.LanguageModelToolResult([

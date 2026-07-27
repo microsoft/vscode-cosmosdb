@@ -129,21 +129,25 @@ export function registerGetQueryEditorContextTool(context: vscode.ExtensionConte
                     actionContext.errorHandling.suppressDisplay = true;
                     actionContext.telemetry.properties.outcome = 'error';
 
-const tab = getActiveTab();
-const connection = tab ? getConnectionFromQueryTab(tab) : undefined;
-if (connection) {
-    actionContext.valuesToMask.push(connection.endpoint, connection.databaseId, connection.containerId);
-    const azureMetadata = connection.azureMetadata;
-    if (azureMetadata) {
-        actionContext.valuesToMask.push(
-            azureMetadata.accountName,
-            azureMetadata.subscription.subscriptionId,
-            azureMetadata.resourceGroup,
-            azureMetadata.accountId,
-        );
-    }
-}
-if (!tab || !connection) {
+                    const tab = getActiveTab();
+                    const connection = tab ? getConnectionFromQueryTab(tab) : undefined;
+                    if (connection) {
+                        actionContext.valuesToMask.push(
+                            connection.endpoint,
+                            connection.databaseId,
+                            connection.containerId,
+                        );
+                        const azureMetadata = connection.azureMetadata;
+                        if (azureMetadata) {
+                            actionContext.valuesToMask.push(
+                                azureMetadata.accountName,
+                                azureMetadata.subscription.subscriptionId,
+                                azureMetadata.resourceGroup,
+                                azureMetadata.accountId,
+                            );
+                        }
+                    }
+                    if (!tab || !connection) {
                         actionContext.telemetry.properties.outcome = 'noEditor';
                         ext.outputChannel.warn(l10n.t('[Query Editor Context Tool] No active Cosmos DB Query Editor.'));
                         return new vscode.LanguageModelToolResult([

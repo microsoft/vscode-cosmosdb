@@ -103,6 +103,7 @@ export function registerExecuteCurrentQueryTool(context: vscode.ExtensionContext
                             actionContext.valuesToMask.push(
                                 azureMetadata.accountName,
                                 azureMetadata.subscription.subscriptionId,
+                                azureMetadata.subscription.name,
                                 azureMetadata.resourceGroup,
                                 azureMetadata.accountId,
                             );

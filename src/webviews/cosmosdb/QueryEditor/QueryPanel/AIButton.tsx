@@ -33,7 +33,8 @@ export const AIButton = ({ ref, type }: ToolbarOverflowItemProps<HTMLButtonEleme
     }
 
     const handleGenerateClick = () => {
-        void dispatcher.reportWebviewEvent('openGenerateInput');
+        // Event name reflects the agent-based flow this launches (there is no longer an in-webview input).
+        void dispatcher.reportWebviewEvent('generateQueryViaAgent');
         void dispatcher.generateQueryViaAgent();
     };
 

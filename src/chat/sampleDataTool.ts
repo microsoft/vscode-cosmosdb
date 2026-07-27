@@ -212,6 +212,18 @@ export function registerSampleDataTool(context: vscode.ExtensionContext): void {
                         }
                     }
 
+                    if (!tab || !connection) {
+                        actionContext.telemetry.properties.outcome = 'noEditor';
+                        ext.outputChannel.warn(l10n.t('[Sample Schema Tool] No active Cosmos DB Query Editor.'));
+                        return new vscode.LanguageModelToolResult([
+                            new vscode.LanguageModelTextPart(
+                                l10n.t(
+                                    'No active Cosmos DB Query Editor. Please open a query editor and connect to a container first.',
+                                ),
+                            ),
+                        ]);
+                    }
+
                     if (token.isCancellationRequested) {
                         actionContext.telemetry.properties.outcome = 'cancelled';
                         ext.outputChannel.info(l10n.t('[Sample Schema Tool] Operation cancelled by user.'));

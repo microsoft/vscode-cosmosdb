@@ -239,7 +239,9 @@ if (!tab || !connection) {
                     } catch (error) {
                         actionContext.telemetry.properties.outcome = 'error';
                         const message = parseError(error).message;
-                        actionContext.valuesToMask.push(message);
+                        if (message?.trim()) {
+                            actionContext.valuesToMask.push(message);
+                        }
                         ext.outputChannel.error(
                             l10n.t('[Query Editor Context Tool] Failed to read context: {0}', message),
                         );

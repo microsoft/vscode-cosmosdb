@@ -27,7 +27,7 @@ export const FOCUS_QUERY_EDITOR_TOOL_DESCRIPTION =
     'Identify the target by its databaseId and containerId — get these from cosmosdb_listOpenConnections. Use this ' +
     'after listing connections when the user wants to work with a specific editor other than the currently active ' +
     'one. Does not open new connections; if no open editor is connected to the given container, call ' +
-    'cosmosdb_openQueryEditor instead. Returns PII-free metadata only — never query text or document data.';
+    'cosmosdb_openQueryEditor instead. Returns connection metadata only — never query text or document data.';
 
 /**
  * Input for the focus-query-editor tool. Both fields are required and together identify the

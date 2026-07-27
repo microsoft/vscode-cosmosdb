@@ -179,7 +179,8 @@ export class QueryEditorTab extends BaseTab {
     public getCurrentQueryResults = (executionId?: string): SerializedQueryResult | undefined => {
         // When an executionId is given, read that exact session so a caller (e.g. the
         // cosmosdb_executeCurrentQuery tool) never picks up a different / previous run's result.
-        const activeSession = executionId ? this.sessions.get(executionId) : this.sessions.values().next().value;
+        const sessions = Array.from(this.sessions.values());
+        const activeSession = executionId ? this.sessions.get(executionId) : sessions[sessions.length - 1];
         const result = activeSession?.sessionResult;
         return result?.getSerializedResult(1);
     };

@@ -1,7 +1,6 @@
 {
-  "name": "@cosmosdb/schema-analyzer",
-  "version": "0.1.0",
-  "private": true,
+  "name": "@azure/cosmosdb-schema-analyzer",
+  "version": "1.0.0",
   "type": "module",
   "description": "Schema inference and analysis for JSON/NoSQL and BSON/MongoDB documents — extracts structure, types, and statistics from document collections",
   "main": "dist/esm/index.js",
@@ -31,11 +30,13 @@
     }
   },
   "files": [
-    "dist"
+    "dist/esm",
+    "dist/types"
   ],
   "scripts": {
     "build": "tsc",
     "clean": "rimraf dist tsconfig.tsbuildinfo",
+    "package": "npm pack",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
@@ -59,5 +60,18 @@
   "engines": {
     "node": ">=22"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "author": "Microsoft Corporation",
+  "homepage": "https://github.com/microsoft/vscode-cosmosdb/tree/main/packages/schema-analyzer#readme",
+  "bugs": {
+    "url": "https://github.com/microsoft/vscode-cosmosdb/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/microsoft/vscode-cosmosdb.git",
+    "directory": "packages/schema-analyzer"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
 }

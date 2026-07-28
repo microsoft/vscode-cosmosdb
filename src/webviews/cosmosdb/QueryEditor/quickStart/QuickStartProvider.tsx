@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { useTrpcClient } from '@cosmosdb/webview-rpc/react';
 import {
     Button,
     makeStaticStyles,
@@ -13,6 +12,7 @@ import {
     tokens,
     useAnnounce,
 } from '@fluentui/react-components';
+import { useTrpcClient } from '@microsoft/vscode-webview-rpc/react';
 import * as l10n from '@vscode/l10n';
 import { Component, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { type QueryEditorAppRouter } from '../../../../panels/trpc/appRouter';

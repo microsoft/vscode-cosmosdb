@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { setupTrpc } from '@cosmosdb/webview-rpc/server';
+import { setupTrpc } from '@microsoft/vscode-webview-rpc/server';
 import * as vscode from 'vscode';
 import { type AzureResourceMetadata } from '../cosmosdb/AzureResourceMetadata';
 import { BaseTab } from './BaseTab';

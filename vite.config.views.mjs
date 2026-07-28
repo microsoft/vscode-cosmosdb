@@ -152,23 +152,29 @@ export default ({ mode }) => {
             mainFields: ['browser', 'module', 'main'],
             conditions: ['browser', 'import', 'default'],
             alias: {
-                '@cosmosdb/nosql-language-service/monaco': path.resolve(
+                '@azure/cosmosdb-nosql-language-service/monaco': path.resolve(
                     __dirname,
                     'packages/nosql-language-service/src/providers/monaco/index.ts',
                 ),
-                '@cosmosdb/nosql-language-service/services': path.resolve(
+                '@azure/cosmosdb-nosql-language-service/services': path.resolve(
                     __dirname,
                     'packages/nosql-language-service/src/services/index.ts',
                 ),
-                '@cosmosdb/nosql-language-service': path.resolve(
+                '@azure/cosmosdb-nosql-language-service': path.resolve(
                     __dirname,
                     'packages/nosql-language-service/src/index.ts',
                 ),
                 // NB: only client + shared (no /server — that's vscode/Node-only and the
                 // noExtensionImports plugin would refuse it anyway).
-                '@cosmosdb/webview-rpc/client': path.resolve(__dirname, 'packages/webview-rpc/src/client/index.ts'),
-                '@cosmosdb/webview-rpc/react': path.resolve(__dirname, 'packages/webview-rpc/src/react/index.ts'),
-                '@cosmosdb/webview-rpc': path.resolve(__dirname, 'packages/webview-rpc/src/index.ts'),
+                '@microsoft/vscode-webview-rpc/client': path.resolve(
+                    __dirname,
+                    'packages/webview-rpc/src/client/index.ts',
+                ),
+                '@microsoft/vscode-webview-rpc/react': path.resolve(
+                    __dirname,
+                    'packages/webview-rpc/src/react/index.ts',
+                ),
+                '@microsoft/vscode-webview-rpc': path.resolve(__dirname, 'packages/webview-rpc/src/index.ts'),
             },
         },
         // CSS/SCSS handled natively by Vite (no css-loader/sass-loader needed).

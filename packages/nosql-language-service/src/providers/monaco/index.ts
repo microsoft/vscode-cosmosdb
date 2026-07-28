@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-// Barrel re-export for @cosmosdb/nosql-language-service/monaco
+// Barrel re-export for @azure/cosmosdb-nosql-language-service/monaco
 
 export { LANGUAGE_ID } from '../shared.js';
 export { MonacoCompletionProvider } from './completionProvider.js';

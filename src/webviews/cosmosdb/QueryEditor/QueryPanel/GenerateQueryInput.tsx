@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { useTrpcClient } from '@cosmosdb/webview-rpc/react';
 import {
     Badge,
     Button,
@@ -28,6 +27,7 @@ import {
     ThumbLikeFilled,
     ThumbLikeRegular,
 } from '@fluentui/react-icons';
+import { useTrpcClient } from '@microsoft/vscode-webview-rpc/react';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { type QueryEditorAppRouter } from '../../../../panels/trpc/appRouter';

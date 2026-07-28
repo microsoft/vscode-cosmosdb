@@ -5,12 +5,12 @@
 
 /**
  * Root entry point — re-exports the shared (side-independent) surface of
- * `@cosmosdb/webview-rpc`. For side-specific imports, use the subpath
+ * `@microsoft/vscode-webview-rpc`. For side-specific imports, use the subpath
  * entries:
  *
- * - `@cosmosdb/webview-rpc/server` for extension-host code (`vscode` API + Node).
- * - `@cosmosdb/webview-rpc/client` for webview code (browser, no `vscode` API).
- * - `@cosmosdb/webview-rpc/react` for React bindings on top of `/client`.
+ * - `@microsoft/vscode-webview-rpc/server` for extension-host code (`vscode` API + Node).
+ * - `@microsoft/vscode-webview-rpc/client` for webview code (browser, no `vscode` API).
+ * - `@microsoft/vscode-webview-rpc/react` for React bindings on top of `/client`.
  */
 
 export * from './shared/TypedEventSink';

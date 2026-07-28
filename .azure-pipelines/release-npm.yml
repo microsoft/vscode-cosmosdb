@@ -1,0 +1,53 @@
+trigger: none # Only run this pipeline when manually triggered
+pr: none
+
+# Choose which workspace package to publish to npmjs at run time.
+# The value must match the .tgz filename prefix produced by `npm pack`
+# (scope '@azure/' becomes 'azure-', so '@azure/cosmosdb-schema-analyzer'
+#  packs to 'azure-cosmosdb-schema-analyzer-<version>.tgz').
+parameters:
+  - name: packageToPublish
+    displayName: Package to Publish
+    type: string
+    values:
+      - azure-cosmosdb-schema-analyzer
+      - azure-cosmosdb-nosql-language-service
+  - name: publishVersion
+    displayName: Version to publish
+    type: string
+  - name: dryRun
+    displayName: Dry run
+    type: boolean
+    default: false
+
+resources:
+  pipelines:
+    - pipeline: build # identifier used in pipeline resource variables
+      # TODO: point this at the dedicated packages build once registered in ADO
+      # (packages-build.yml, suggested name \Azure Tools\VSCode\Packages\vscode-cosmosdb).
+      source: \Azure Tools\VSCode\Packages\vscode-cosmosdb # pipeline that produces the .tgz artifacts
+  repositories:
+    - repository: azExtTemplates
+      type: github
+      name: microsoft/vscode-azuretools
+      ref: main
+      endpoint: GitHub-AzureTools # service connection used to access the templates repo
+
+variables:
+  # Required by MicroBuild template
+  - name: TeamName
+    value: "Azure Tools for VS Code"
+
+# Reuse the shared 1ES npm release template (same repo we already use for the extension release).
+extends:
+  template: azure-pipelines/1es-release-npm.yml@azExtTemplates
+  parameters:
+    packageToPublish: ${{ parameters.packageToPublish }}
+    # The build publishes each package's .tgz as artifact "Build <packageToPublish>".
+    artifactName: Build ${{ parameters.packageToPublish }}
+    publishVersion: ${{ parameters.publishVersion }}
+    dryRun: ${{ parameters.dryRun }}
+    # ESRP release gate (four-eyes). alias@microsoft.com is appended by the template.
+    # Proposed: Owner = you (dshilov), Approver = Jade Welton (eng lead). Adjust if needed.
+    OwnerAlias: dshilov
+    ApproverAlias: jawelton

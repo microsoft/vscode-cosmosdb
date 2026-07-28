@@ -27,8 +27,8 @@
  * read them from `ctx.actionContext.telemetry`.
  */
 
-import { type ProcedureInvocation, type TelemetryRunner } from '@cosmosdb/webview-rpc/server';
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { type ProcedureInvocation, type TelemetryRunner } from '@microsoft/vscode-webview-rpc/server';
 
 /**
  * Shape this runner injects into the procedure ctx. Application context

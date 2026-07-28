@@ -1,8 +1,8 @@
 # API Reference
 
-Detailed API reference for `@cosmosdb/schema-analyzer`.
+Detailed API reference for `@azure/cosmosdb-schema-analyzer`.
 
-## Root Entry Point: `@cosmosdb/schema-analyzer`
+## Root Entry Point: `@azure/cosmosdb-schema-analyzer`
 
 Shared types and utilities that do not depend on JSON or BSON.
 
@@ -67,7 +67,7 @@ Combines a base path with property names to produce dot-notated full paths.
 
 ---
 
-## JSON Entry Point: `@cosmosdb/schema-analyzer/json`
+## JSON Entry Point: `@azure/cosmosdb-schema-analyzer/json`
 
 ### Types
 
@@ -132,7 +132,7 @@ Re-exported from core. See above.
 
 ---
 
-## BSON Entry Point: `@cosmosdb/schema-analyzer/bson`
+## BSON Entry Point: `@azure/cosmosdb-schema-analyzer/bson`
 
 ### Types
 

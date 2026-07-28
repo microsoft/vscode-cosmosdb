@@ -16,7 +16,7 @@
  * Format: `[trpc] mutation queryEditor.runQuery 42.0ms ok`
  */
 
-import { type ProcedureLogger } from '@cosmosdb/webview-rpc/server';
+import { type ProcedureLogger } from '@microsoft/vscode-webview-rpc/server';
 import { ext } from '../../../extensionVariables';
 
 /**

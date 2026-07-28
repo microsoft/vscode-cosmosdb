@@ -32,7 +32,7 @@ const trpc = vi.hoisted(() => {
     };
 });
 
-vi.mock('@cosmosdb/webview-rpc/react', () => ({
+vi.mock('@microsoft/vscode-webview-rpc/react', () => ({
     useTrpcClient: () => ({
         trpcClient: trpc,
         // The component never subscribes to events directly, but the hook contract returns one.

@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type JSONSchema } from '@cosmosdb/schema-analyzer';
-import { TypedEventSink } from '@cosmosdb/webview-rpc';
-import { setupTrpc } from '@cosmosdb/webview-rpc/server';
+import { type JSONSchema } from '@azure/cosmosdb-schema-analyzer';
+import { TypedEventSink } from '@microsoft/vscode-webview-rpc';
+import { setupTrpc } from '@microsoft/vscode-webview-rpc/server';
 import * as vscode from 'vscode';
 import { getThemedIconPath } from '../constants';
 import { getCosmosDBKeyCredential } from '../cosmosdb/CosmosDBCredential';

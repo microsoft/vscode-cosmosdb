@@ -4,11 +4,11 @@ This directory contains standalone packages that are part of the monorepo.
 
 ## Active Packages
 
-| Package                            | Description                                                                                                                                                                                                                                                 | Status    |
-| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| `@cosmosdb/nosql-language-service` | NoSQL language service — parser, AST, autocomplete, hover, formatting, and editor providers                                                                                                                                                                 | ✅ Active |
-| `@cosmosdb/schema-analyzer`        | Schema inference from sampled documents                                                                                                                                                                                                                     | ✅ Active |
-| `@cosmosdb/webview-rpc`            | Generic tRPC transport for VS Code webviews: `setupTrpc`, `vscodeLink`, `errorLink`, `TypedEventSink`, pluggable logging/telemetry middleware bodies, and React bindings (`WebviewContext` + `useTrpcClient`). Subpaths: `./server`, `./client`, `./react`. | ✅ Active |
+| Package                                  | Description                                                                                                                                                                                                                                                 | Status    |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| `@azure/cosmosdb-nosql-language-service` | NoSQL language service — parser, AST, autocomplete, hover, formatting, and editor providers                                                                                                                                                                 | ✅ Active |
+| `@azure/cosmosdb-schema-analyzer`        | Schema inference from sampled documents                                                                                                                                                                                                                     | ✅ Active |
+| `@microsoft/vscode-webview-rpc`          | Generic tRPC transport for VS Code webviews: `setupTrpc`, `vscodeLink`, `errorLink`, `TypedEventSink`, pluggable logging/telemetry middleware bodies, and React bindings (`WebviewContext` + `useTrpcClient`). Subpaths: `./server`, `./client`, `./react`. | ✅ Active |
 
 ## Planned Packages
 

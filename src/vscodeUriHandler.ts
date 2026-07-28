@@ -110,7 +110,7 @@ async function handleResourceIdRequest(
     // reveal the account first, this will open the Azure Resource Groups view,
     // select the resource in the tree and expand it, forcing it to load the children
     const resource = await revealAzureResourceInExplorer(context, resourceId, params.database, params.container);
-    if (params.database && params.container) {
+    if (params.database && params.container && resource) {
         await openAppropriateEditorForAzure(resource);
     }
 }
@@ -161,7 +161,7 @@ async function handleConnectionStringRequest(
         const resourceId = createAzureResourceId(params.subscriptionId, params.resourceGroup, accountName);
         context.telemetry.properties.resourceId = new vscode.TelemetryTrustedValue(resourceId.rawId);
         const resource = await revealAzureResourceInExplorer(context, resourceId, params.database, params.container);
-        if (params.database && params.container) {
+        if (params.database && params.container && resource) {
             await openAppropriateEditorForAzure(resource);
         }
     } else {
@@ -223,6 +223,7 @@ function createAzureResourceId(
  * @param resourceId - The ID of the Azure resource to reveal.
  * @param database - Optional. The name of the database associated with the resource.
  * @param container - Optional. The name of the container associated with the database.
+ * @param options
  * @returns A promise that resolves when the resource is revealed in the explorer.
  *
  * @remarks
@@ -236,17 +237,51 @@ export async function revealAzureResourceInExplorer(
     resourceId: ParsedAzureResourceId,
     database?: string,
     container?: string,
-): Promise<TreeElement> {
+    options?: { verifyAndResolve?: boolean },
+): Promise<TreeElement | undefined> {
+    // `verifyAndResolve` drives the heavy path used by the `vscode://` URI handler: it re-reveals the
+    // account, then resolves and verifies the target node via `findNodeById` (extra `getChildren` walks,
+    // i.e. extra network round-trips) because the caller needs the resolved `TreeElement` to open an editor.
+    // In-extension callers that only want to focus the tree (e.g. the Account Overview "Reveal in tree"
+    // action) pass `false` to skip both the redundant reveal and the verification walk.
+    const verifyAndResolve = options?.verifyAndResolve ?? true;
+
+    let fullId = resourceId.rawId;
+    if (database && container) {
+        fullId = `${resourceId.rawId}/${database}/${container}`;
+    }
+
+    // The error paths below embed the resource id, database, and container names into thrown error
+    // messages. Those values can reach telemetry/error reporting, so mask them up front when a context
+    // is available (database and container names are user data / EUII).
+    if (context) {
+        for (const value of [resourceId.rawId, database, container]) {
+            if (value) {
+                context.valuesToMask.push(value);
+            }
+        }
+    }
+
     await vscode.commands.executeCommand('azureResourceGroups.focus');
+
+    if (!verifyAndResolve) {
+        // Fast path: reveal the deepest target directly. VS Code expands the ancestor chain as part of the
+        // reveal, so a separate account-level reveal and the post-reveal verification are unnecessary here.
+        await ext.rgApiV2.resources.revealAzureResource(fullId, {
+            select: true,
+            focus: true,
+            expand: true,
+        });
+        return undefined;
+    }
+
     await ext.rgApiV2.resources.revealAzureResource(resourceId.rawId, {
         select: true,
         focus: true,
         expand: true,
     });
 
-    let fullId = resourceId.rawId;
     if (database && container) {
-        fullId = `${resourceId.rawId}${database ? `/${database}${container ? `/${container}` : ''}` : ''}`;
         await ext.rgApiV2.resources.revealAzureResource(fullId, {
             select: true,
             focus: true,

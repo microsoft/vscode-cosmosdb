@@ -8,7 +8,7 @@
 // re-exports (`src/webviews/api/types.ts`), and the unit tests.
 
 export * from './alertsRecommendations';
-export * from './derivedAdvisories';
+export * from './advisories';
 export * from './inventory';
 export * from './inventoryMetrics';
 export * from './partitionHealth';

@@ -11,6 +11,7 @@ import { type MonitorClient } from '@azure/arm-monitor';
 import { type PostgreSQLManagementClient } from '@azure/arm-postgresql';
 import { type PostgreSQLManagementFlexibleServerClient } from '@azure/arm-postgresql-flexible';
 import { type TokenCredential } from '@azure/core-auth';
+import { type KnownMonitorLogsQueryAudience, type LogsQueryClient } from '@azure/monitor-query-logs';
 import { createAzureClient } from '@microsoft/vscode-azext-azureutils';
 import { createSubscriptionContext, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
@@ -92,6 +93,48 @@ export async function createMonitorClient(
     const subContext = createSubscriptionContext(subscription);
     const { MonitorClient } = await import('@azure/arm-monitor');
     return createAzureClient([context, subContext], MonitorClient);
+}
+
+// `@azure/monitor-query-logs` is the data-plane Log Analytics client for the Account Overview dashboard's Tier-2
+// derived advisories (DX-002/003/007/010 over the `CDB*` diagnostic-log tables). It is dynamically imported so it
+// only enters the lazy chunk loaded when the dashboard opens, never the activation hot path. Unlike the classic
+// ARM SDKs it is a modular client — `new LogsQueryClient(credential, options)` with no subscriptionId and a
+// data-plane audience (`https://api.loganalytics.io` and sovereign-cloud equivalents) — so it is constructed
+// directly with the subscription's credential rather than via `createAzureClient`.
+export async function createLogsQueryClient(
+    context: IActionContext,
+    subscription: AzureSubscription,
+): Promise<LogsQueryClient> {
+    context.valuesToMask.push(subscription.subscriptionId);
+    const subContext = createSubscriptionContext(subscription);
+    const { LogsQueryClient, KnownMonitorLogsQueryAudience } = await import('@azure/monitor-query-logs');
+    const audience = logAnalyticsAudience(subscription.environment?.name, KnownMonitorLogsQueryAudience);
+    return new LogsQueryClient(subContext.credentials as TokenCredential, audience ? { audience } : undefined);
+}
+
+/**
+ * Maps an Azure environment name to the Log Analytics data-plane audience. Returns `undefined` for the public
+ * cloud (the SDK default) and for unknown environments; the sovereign clouds override the Microsoft Entra audience
+ * so the token is issued for the correct Log Analytics endpoint.
+ *
+ * The audience values are read from the SDK's own `KnownMonitorLogsQueryAudience` enum rather than hardcoded here,
+ * so if Azure ever changes a sovereign endpoint the mapping tracks the SDK instead of silently drifting. The enum
+ * is passed in (destructured from the same dynamic `@azure/monitor-query-logs` import as `LogsQueryClient`) to keep
+ * the package off the extension activation hot path. Note the SDK intentionally has no Azure Germany entry — that
+ * sovereign cloud was retired — so there is deliberately no case for it.
+ */
+function logAnalyticsAudience(
+    environmentName: string | undefined,
+    audiences: typeof KnownMonitorLogsQueryAudience,
+): string | undefined {
+    switch (environmentName) {
+        case 'AzureChinaCloud':
+            return audiences.AzureChina;
+        case 'AzureUSGovernment':
+            return audiences.AzureGovernment;
+        default:
+            return undefined;
+    }
 }
 
 // `@azure/arm-advisor` is dynamically imported so it only enters the lazy chunk loaded when the Account Overview

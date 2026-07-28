@@ -161,6 +161,7 @@
     "@azure/core-rest-pipeline": "~1.24.0",
     "@azure/cosmos": "~4.9.0",
     "@azure/identity": "~4.13.0",
+    "@azure/monitor-query-logs": "^1.0.0",
     "@fluentui/react-components": "~9.74.1",
     "@fluentui/react-icons": "~2.0.313",
     "@microsoft/vscode-azext-azureauth": "~5.1.1",
@@ -170,6 +171,7 @@
     "@microsoft/vscode-fabric-api": "~0.35.6",
     "@monaco-editor/react": "~4.7.0",
     "@prantlf/jsonlint": "~17.0.0",
+    "@tanstack/react-virtual": "^3.14.5",
     "@vscode/l10n": "~0.0.18",
     "@vscode/prompt-tsx": "^0.4.0-alpha.8",
     "allotment": "~1.20.4",
@@ -1037,56 +1039,217 @@
             "maximum": 100,
             "description": "%cosmosdb.configuration.accountOverview.health.warningRuPercent%"
           },
-          "cosmosDB.accountOverview.health.storageGrowthWarningGB": {
-            "type": "number",
-            "default": 10,
-            "minimum": 0,
-            "description": "%cosmosdb.configuration.accountOverview.health.storageGrowthWarningGB%"
-          },
-          "cosmosDB.accountOverview.partition.hotRuSharePercent": {
-            "type": "number",
-            "default": 40,
-            "minimum": 0,
-            "maximum": 100,
-            "description": "%cosmosdb.configuration.accountOverview.partition.hotRuSharePercent%"
-          },
-          "cosmosDB.accountOverview.partition.skewedStorageSharePercent": {
-            "type": "number",
-            "default": 35,
-            "minimum": 0,
-            "maximum": 100,
-            "description": "%cosmosdb.configuration.accountOverview.partition.skewedStorageSharePercent%"
-          },
           "cosmosDB.accountOverview.partition.topN": {
             "type": "number",
             "default": 5,
             "minimum": 1,
             "description": "%cosmosdb.configuration.accountOverview.partition.topN%"
           },
-          "cosmosDB.accountOverview.advisories.throttlingMinMinutes": {
+          "cosmosDB.accountOverview.advisories.partitionSaturationPercent": {
             "type": "number",
-            "default": 30,
-            "minimum": 1,
-            "description": "%cosmosdb.configuration.accountOverview.advisories.throttlingMinMinutes%"
-          },
-          "cosmosDB.accountOverview.advisories.overProvisioningPeakPercent": {
-            "type": "number",
-            "default": 25,
+            "default": 90,
             "minimum": 0,
             "maximum": 100,
-            "description": "%cosmosdb.configuration.accountOverview.advisories.overProvisioningPeakPercent%"
+            "description": "%cosmosdb.configuration.accountOverview.advisories.partitionSaturationPercent%"
           },
-          "cosmosDB.accountOverview.advisories.autoscaleCoefficientOfVariation": {
+          "cosmosDB.accountOverview.advisories.partitionHeadroomPercent": {
             "type": "number",
-            "default": 0.5,
+            "default": 70,
             "minimum": 0,
-            "description": "%cosmosdb.configuration.accountOverview.advisories.autoscaleCoefficientOfVariation%"
+            "maximum": 100,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.partitionHeadroomPercent%"
+          },
+          "cosmosDB.accountOverview.advisories.throttleRatePercent": {
+            "type": "number",
+            "default": 1,
+            "minimum": 0,
+            "maximum": 100,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.throttleRatePercent%"
+          },
+          "cosmosDB.accountOverview.advisories.overProvisioningBandPercent": {
+            "type": "number",
+            "default": 30,
+            "minimum": 0,
+            "maximum": 100,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.overProvisioningBandPercent%"
+          },
+          "cosmosDB.accountOverview.advisories.autoscaleMaxPercent": {
+            "type": "number",
+            "default": 40,
+            "minimum": 0,
+            "maximum": 100,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.autoscaleMaxPercent%"
+          },
+          "cosmosDB.accountOverview.advisories.autoscaleAvgPercent": {
+            "type": "number",
+            "default": 30,
+            "minimum": 0,
+            "maximum": 100,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.autoscaleAvgPercent%"
+          },
+          "cosmosDB.accountOverview.advisories.autoscalePeakToAvgRatio": {
+            "type": "number",
+            "default": 5,
+            "minimum": 1,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.autoscalePeakToAvgRatio%"
+          },
+          "cosmosDB.accountOverview.advisories.storageGrowthHorizonDays": {
+            "type": "number",
+            "default": 180,
+            "minimum": 0,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.storageGrowthHorizonDays%"
+          },
+          "cosmosDB.accountOverview.advisories.storageSkewBalanceRatio": {
+            "type": "number",
+            "default": 0.7,
+            "minimum": 0,
+            "maximum": 1,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.storageSkewBalanceRatio%"
           },
           "cosmosDB.accountOverview.advisories.indexingUsageRatio": {
             "type": "number",
             "default": 0.3,
             "minimum": 0,
             "description": "%cosmosdb.configuration.accountOverview.advisories.indexingUsageRatio%"
+          },
+          "cosmosDB.accountOverview.advisories.idlePeakRuPerBucket": {
+            "type": "number",
+            "default": 50,
+            "minimum": 0,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.idlePeakRuPerBucket%"
+          },
+          "cosmosDB.accountOverview.advisories.autoscaleToManualAvgPercent": {
+            "type": "number",
+            "default": 66,
+            "minimum": 0,
+            "maximum": 100,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.autoscaleToManualAvgPercent%"
+          },
+          "cosmosDB.accountOverview.advisories.autoscaleToManualPeakToAvgRatio": {
+            "type": "number",
+            "default": 1.3,
+            "minimum": 1,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.autoscaleToManualPeakToAvgRatio%"
+          },
+          "cosmosDB.accountOverview.advisories.serverlessSporadicRatio": {
+            "type": "number",
+            "default": 0.1,
+            "minimum": 0,
+            "maximum": 1,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.serverlessSporadicRatio%"
+          },
+          "cosmosDB.accountOverview.advisories.serverlessPeakFloorRuPerSec": {
+            "type": "number",
+            "default": 10,
+            "minimum": 0,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.serverlessPeakFloorRuPerSec%"
+          },
+          "cosmosDB.accountOverview.advisories.serverlessPeakCeilingRuPerSec": {
+            "type": "number",
+            "default": 5000,
+            "minimum": 0,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.serverlessPeakCeilingRuPerSec%"
+          },
+          "cosmosDB.accountOverview.advisories.crossPartitionMinQueries": {
+            "type": "number",
+            "default": 50,
+            "minimum": 0,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.crossPartitionMinQueries%"
+          },
+          "cosmosDB.accountOverview.advisories.crossPartitionFanoutThreshold": {
+            "type": "number",
+            "default": 1.5,
+            "minimum": 0,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.crossPartitionFanoutThreshold%"
+          },
+          "cosmosDB.accountOverview.advisories.crossPartitionHighPct": {
+            "type": "number",
+            "default": 30,
+            "minimum": 0,
+            "maximum": 100,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.crossPartitionHighPct%"
+          },
+          "cosmosDB.accountOverview.advisories.crossPartitionMedPct": {
+            "type": "number",
+            "default": 10,
+            "minimum": 0,
+            "maximum": 100,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.crossPartitionMedPct%"
+          },
+          "cosmosDB.accountOverview.advisories.shardKeyStructuralPct": {
+            "type": "number",
+            "default": 60,
+            "minimum": 0,
+            "maximum": 100,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.shardKeyStructuralPct%"
+          },
+          "cosmosDB.accountOverview.advisories.shardKeyHighPct": {
+            "type": "number",
+            "default": 80,
+            "minimum": 0,
+            "maximum": 100,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.shardKeyHighPct%"
+          },
+          "cosmosDB.accountOverview.advisories.ingestionWriteRuPctFloor": {
+            "type": "number",
+            "default": 80,
+            "minimum": 0,
+            "maximum": 100,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.ingestionWriteRuPctFloor%"
+          },
+          "cosmosDB.accountOverview.advisories.ingestionThrottleRatePct": {
+            "type": "number",
+            "default": 10,
+            "minimum": 0,
+            "maximum": 100,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.ingestionThrottleRatePct%"
+          },
+          "cosmosDB.accountOverview.advisories.ingestionHighPct": {
+            "type": "number",
+            "default": 20,
+            "minimum": 0,
+            "maximum": 100,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.ingestionHighPct%"
+          },
+          "cosmosDB.accountOverview.advisories.ingestionMinRequests": {
+            "type": "number",
+            "default": 1000,
+            "minimum": 0,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.ingestionMinRequests%"
+          },
+          "cosmosDB.accountOverview.advisories.sharedThroughputMinRequests": {
+            "type": "number",
+            "default": 100,
+            "minimum": 0,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.sharedThroughputMinRequests%"
+          },
+          "cosmosDB.accountOverview.advisories.sharedThroughputPoolThrottlePct": {
+            "type": "number",
+            "default": 5,
+            "minimum": 0,
+            "maximum": 100,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.sharedThroughputPoolThrottlePct%"
+          },
+          "cosmosDB.accountOverview.advisories.sharedThroughputDominancePct": {
+            "type": "number",
+            "default": 60,
+            "minimum": 0,
+            "maximum": 100,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.sharedThroughputDominancePct%"
+          },
+          "cosmosDB.accountOverview.advisories.sharedThroughputVictimThrottlePct": {
+            "type": "number",
+            "default": 5,
+            "minimum": 0,
+            "maximum": 100,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.sharedThroughputVictimThrottlePct%"
+          },
+          "cosmosDB.accountOverview.advisories.sharedThroughputVictimSharePct": {
+            "type": "number",
+            "default": 20,
+            "minimum": 0,
+            "maximum": 100,
+            "description": "%cosmosdb.configuration.accountOverview.advisories.sharedThroughputVictimSharePct%"
           },
           "cosmosDB.quickStart.enabled": {
             "type": "boolean",

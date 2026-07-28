@@ -8,7 +8,7 @@
  * no `vscode` API).
  *
  * The shared wire-protocol types are re-exported from the package root
- * (`@cosmosdb/webview-rpc`).
+ * (`@microsoft/vscode-webview-rpc`).
  */
 
 export * from './vscodeLink';

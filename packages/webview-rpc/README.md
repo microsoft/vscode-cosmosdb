@@ -1,15 +1,15 @@
-# `@cosmosdb/webview-rpc`
+# `@microsoft/vscode-webview-rpc`
 
 Generic [tRPC](https://trpc.io) transport for VS Code webviews. The package is intentionally **application-agnostic** — it ships only the framework pieces (transport, middleware factories, adapter interfaces) and knows nothing about any specific extension's routers, contexts, or telemetry backend. Concrete logger / telemetry runners, tRPC instances, and routers all live in the consumer.
 
 ## What's in here
 
-| Subpath                        | Side                               | Purpose                                                                                                                                                                                                                                                                                                                                         |
-| ------------------------------ | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@cosmosdb/webview-rpc`        | shared                             | `TypedEventSink<TEvent>` — single-consumer async event sink (re-exported from `./shared`).                                                                                                                                                                                                                                                      |
-| `@cosmosdb/webview-rpc/server` | extension-host (Node + `vscode`)   | `setupTrpc`, `BaseRouterContext`, `WithRequired<T,K>`, middleware factories (`loggingMiddlewareBody`, `telemetryMiddlewareBody`), middleware types (`ProcedureInvocation`, `ProcedureType`, `MiddlewareResultLike`), `ProcedureLogger` / `TelemetryRunner` adapter interfaces, plus re-exports of `initTRPC` / `AnyRouter` from `@trpc/server`. |
-| `@cosmosdb/webview-rpc/client` | webview (browser, no `vscode` API) | `vscodeLink`, `errorLink`, `createEventChannel` + `RpcEventChannel` / `RpcEventEmitter` types, wire-protocol types (`VsCodeLinkRequestMessage`, `VsCodeLinkResponseMessage`, `StopOperation`, `OperationContext`).                                                                                                                              |
-| `@cosmosdb/webview-rpc/react`  | webview (browser, React)           | `WebviewContext` + `WithWebviewContext` provider and the `useTrpcClient<TRouter>()` hook. Returns `{ trpcClient, events }` — a per-webview singleton pair cached by `vscodeApi`, so every call inside the same webview hands back the **same** client and the **same** event channel. Re-exports `AnyRouter` for consumer-side type aliases.    |
+| Subpath                                | Side                               | Purpose                                                                                                                                                                                                                                                                                                                                         |
+| -------------------------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@microsoft/vscode-webview-rpc`        | shared                             | `TypedEventSink<TEvent>` — single-consumer async event sink (re-exported from `./shared`).                                                                                                                                                                                                                                                      |
+| `@microsoft/vscode-webview-rpc/server` | extension-host (Node + `vscode`)   | `setupTrpc`, `BaseRouterContext`, `WithRequired<T,K>`, middleware factories (`loggingMiddlewareBody`, `telemetryMiddlewareBody`), middleware types (`ProcedureInvocation`, `ProcedureType`, `MiddlewareResultLike`), `ProcedureLogger` / `TelemetryRunner` adapter interfaces, plus re-exports of `initTRPC` / `AnyRouter` from `@trpc/server`. |
+| `@microsoft/vscode-webview-rpc/client` | webview (browser, no `vscode` API) | `vscodeLink`, `errorLink`, `createEventChannel` + `RpcEventChannel` / `RpcEventEmitter` types, wire-protocol types (`VsCodeLinkRequestMessage`, `VsCodeLinkResponseMessage`, `StopOperation`, `OperationContext`).                                                                                                                              |
+| `@microsoft/vscode-webview-rpc/react`  | webview (browser, React)           | `WebviewContext` + `WithWebviewContext` provider and the `useTrpcClient<TRouter>()` hook. Returns `{ trpcClient, events }` — a per-webview singleton pair cached by `vscodeApi`, so every call inside the same webview hands back the **same** client and the **same** event channel. Re-exports `AnyRouter` for consumer-side type aliases.    |
 
 ## Wiring
 
@@ -25,7 +25,7 @@ import {
     loggingMiddlewareBody,
     setupTrpc,
     telemetryMiddlewareBody,
-} from '@cosmosdb/webview-rpc/server';
+} from '@microsoft/vscode-webview-rpc/server';
 import * as vscode from 'vscode';
 import { z } from 'zod';
 import { myLogger, myTelemetryRunner } from './observability'; // your adapters
@@ -90,7 +90,7 @@ import {
     errorLink,
     vscodeLink,
     type VsCodeLinkResponseMessage,
-} from '@cosmosdb/webview-rpc/client';
+} from '@microsoft/vscode-webview-rpc/client';
 import { createTRPCClient, loggerLink } from '@trpc/client';
 import type { MyAppRouter } from '../panels/myAppRouter';
 
@@ -132,7 +132,7 @@ The `/react` subpath bundles the `acquireVsCodeApi` plumbing and the boilerplate
 
 ```tsx
 // src/webview/index.tsx ───────────────────────────────────────────────────────
-import { WithWebviewContext } from '@cosmosdb/webview-rpc/react';
+import { WithWebviewContext } from '@microsoft/vscode-webview-rpc/react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 
@@ -148,7 +148,7 @@ createRoot(document.getElementById('root')!).render(
 
 ```tsx
 // src/webview/App.tsx ─────────────────────────────────────────────────────────
-import { useTrpcClient } from '@cosmosdb/webview-rpc/react';
+import { useTrpcClient } from '@microsoft/vscode-webview-rpc/react';
 import { useEffect, useState } from 'react';
 import type { MyAppRouter } from '../panels/myAppRouter';
 
@@ -189,7 +189,7 @@ For long-running work (background tasks, progress, log streams) the server pushe
 
 ```ts
 // Server side
-import { TypedEventSink } from '@cosmosdb/webview-rpc';
+import { TypedEventSink } from '@microsoft/vscode-webview-rpc';
 
 type AppEvent =
     | { type: 'progress'; percent: number }
@@ -230,7 +230,7 @@ trpcClient.onEvent.subscribe(undefined, {
 The middleware bodies are **logger-agnostic** and **telemetry-runner-agnostic**. The consumer supplies concrete implementations of the two interfaces below and passes them to the factory functions:
 
 ```ts
-import { type ProcedureLogger, type TelemetryRunner, loggingMiddlewareBody, telemetryMiddlewareBody } from '@cosmosdb/webview-rpc/server';
+import { type ProcedureLogger, type TelemetryRunner, loggingMiddlewareBody, telemetryMiddlewareBody } from '@microsoft/vscode-webview-rpc/server';
 
 // Example: write a one-line summary to a vscode.LogOutputChannel.
 const myLogger: ProcedureLogger = {

@@ -1,6 +1,6 @@
 # Design Decisions
 
-This document records key architectural decisions for `@cosmosdb/schema-analyzer` using the ADR (Architecture Decision Record) format.
+This document records key architectural decisions for `@azure/cosmosdb-schema-analyzer` using the ADR (Architecture Decision Record) format.
 
 ---
 
@@ -134,9 +134,9 @@ The `mongodb` driver is a heavy dependency (~2MB). Projects that only need JSON 
 **Decision:**
 Three entry points via `package.json` `exports`:
 
-- `@cosmosdb/schema-analyzer` — shared types only, zero dependencies
-- `@cosmosdb/schema-analyzer/json` — JSON analyzer, depends only on `denque`
-- `@cosmosdb/schema-analyzer/bson` — BSON analyzer, requires `mongodb` as a peer dependency
+- `@azure/cosmosdb-schema-analyzer` — shared types only, zero dependencies
+- `@azure/cosmosdb-schema-analyzer/json` — JSON analyzer, depends only on `denque`
+- `@azure/cosmosdb-schema-analyzer/bson` — BSON analyzer, requires `mongodb` as a peer dependency
 
 **Consequences:**
 

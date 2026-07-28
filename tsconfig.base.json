@@ -21,23 +21,27 @@
     "resolveJsonModule": true,
     "jsx": "react-jsx",
     "paths": {
-      "@cosmosdb/schema-analyzer": ["./packages/schema-analyzer/src/index.ts"],
-      "@cosmosdb/schema-analyzer/json": ["./packages/schema-analyzer/src/json/index.ts"],
-      "@cosmosdb/schema-analyzer/*": [
+      "@azure/cosmosdb-schema-analyzer": ["./packages/schema-analyzer/src/index.ts"],
+      "@azure/cosmosdb-schema-analyzer/json": ["./packages/schema-analyzer/src/json/index.ts"],
+      "@azure/cosmosdb-schema-analyzer/*": [
         "./packages/schema-analyzer/src/*.ts",
         "./packages/schema-analyzer/src/*/index.ts"
       ],
-      "@cosmosdb/nosql-language-service": ["./packages/nosql-language-service/src/index.ts"],
-      "@cosmosdb/nosql-language-service/vscode": ["./packages/nosql-language-service/src/providers/vscode/index.ts"],
-      "@cosmosdb/nosql-language-service/monaco": ["./packages/nosql-language-service/src/providers/monaco/index.ts"],
-      "@cosmosdb/nosql-language-service/*": [
+      "@azure/cosmosdb-nosql-language-service": ["./packages/nosql-language-service/src/index.ts"],
+      "@azure/cosmosdb-nosql-language-service/vscode": [
+        "./packages/nosql-language-service/src/providers/vscode/index.ts"
+      ],
+      "@azure/cosmosdb-nosql-language-service/monaco": [
+        "./packages/nosql-language-service/src/providers/monaco/index.ts"
+      ],
+      "@azure/cosmosdb-nosql-language-service/*": [
         "./packages/nosql-language-service/src/*.ts",
         "./packages/nosql-language-service/src/*/index.ts"
       ],
-      "@cosmosdb/webview-rpc": ["./packages/webview-rpc/src/index.ts"],
-      "@cosmosdb/webview-rpc/server": ["./packages/webview-rpc/src/server/index.ts"],
-      "@cosmosdb/webview-rpc/client": ["./packages/webview-rpc/src/client/index.ts"],
-      "@cosmosdb/webview-rpc/react": ["./packages/webview-rpc/src/react/index.ts"]
+      "@microsoft/vscode-webview-rpc": ["./packages/webview-rpc/src/index.ts"],
+      "@microsoft/vscode-webview-rpc/server": ["./packages/webview-rpc/src/server/index.ts"],
+      "@microsoft/vscode-webview-rpc/client": ["./packages/webview-rpc/src/client/index.ts"],
+      "@microsoft/vscode-webview-rpc/react": ["./packages/webview-rpc/src/react/index.ts"]
     }
   }
 }

@@ -3,8 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { TypedEventSink } from '@cosmosdb/webview-rpc';
-import { setupTrpc } from '@cosmosdb/webview-rpc/server';
 import { VSCodeAzureSubscriptionProvider } from '@microsoft/vscode-azext-azureauth';
 import {
     LocationListStep,
@@ -20,6 +18,8 @@ import {
     type AzureWizardPromptStep,
 } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType, type AzureSubscription } from '@microsoft/vscode-azureresources-api';
+import { TypedEventSink } from '@microsoft/vscode-webview-rpc';
+import { setupTrpc } from '@microsoft/vscode-webview-rpc/server';
 import * as l10n from '@vscode/l10n';
 import * as path from 'path';
 import * as vscode from 'vscode';

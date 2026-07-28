@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { useTrpcClient } from '@cosmosdb/webview-rpc/react';
 import {
     Accordion,
     AccordionHeader,
@@ -56,6 +55,7 @@ import {
     StopRegular,
     WarningRegular,
 } from '@fluentui/react-icons';
+import { useTrpcClient } from '@microsoft/vscode-webview-rpc/react';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { type MigrationAppRouter } from '../../../panels/trpc/appRouter';

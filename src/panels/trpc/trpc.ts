@@ -45,7 +45,7 @@ import {
     loggingMiddlewareBody,
     type ProcedureInvocation,
     telemetryMiddlewareBody,
-} from '@cosmosdb/webview-rpc/server';
+} from '@microsoft/vscode-webview-rpc/server';
 import {
     type AccountOverviewRouterContext,
     type DocumentRouterContext,

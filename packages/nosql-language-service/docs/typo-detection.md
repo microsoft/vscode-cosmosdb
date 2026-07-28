@@ -61,7 +61,7 @@ LIMIT, OFFSET, HAVING, VALUE, BETWEEN, EXISTS
 ### Direct API
 
 ```typescript
-import { detectTypos } from '@cosmosdb/nosql-language-service';
+import { detectTypos } from '@azure/cosmosdb-nosql-language-service';
 
 const warnings = detectTypos('SELECT * FORM c');
 // [{ typed: 'FORM', suggestion: 'FROM', range: {...}, message: '...' }]

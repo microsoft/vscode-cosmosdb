@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { useTrpcClient } from '@cosmosdb/webview-rpc/react';
 import { makeStyles, Spinner, tokens } from '@fluentui/react-components';
+import { useTrpcClient } from '@microsoft/vscode-webview-rpc/react';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {

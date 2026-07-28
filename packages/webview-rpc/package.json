@@ -1,5 +1,5 @@
 {
-  "name": "@cosmosdb/webview-rpc",
+  "name": "@microsoft/vscode-webview-rpc",
   "version": "0.1.0",
   "private": true,
   "type": "module",

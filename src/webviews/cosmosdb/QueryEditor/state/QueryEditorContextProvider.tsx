@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type PartitionKeyDefinition, type PriorityLevel } from '@azure/cosmos';
-import { type JSONSchema } from '@cosmosdb/schema-analyzer';
-import { type TrpcClient } from '@cosmosdb/webview-rpc/react';
+import { type JSONSchema } from '@azure/cosmosdb-schema-analyzer';
+import { type TrpcClient } from '@microsoft/vscode-webview-rpc/react';
 import * as l10n from '@vscode/l10n';
 import {
     type CosmosDBRecordIdentifier,

@@ -8,7 +8,7 @@
  * in code that runs in the Node.js extension host (depends on `vscode`).
  *
  * The shared wire-protocol types are re-exported from the package root
- * (`@cosmosdb/webview-rpc`).
+ * (`@microsoft/vscode-webview-rpc`).
  */
 
 export * from './baseRouterContext';

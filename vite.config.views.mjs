@@ -146,6 +146,12 @@ export default ({ mode }) => {
                 '@emotion/hash',
                 '@fluentui/react-components',
                 '@fluentui/react-icons',
+                // CommonJS package. Listing it here keeps the CJS→ESM interop
+                // shim ready at server start instead of triggering a
+                // re-optimize + full page reload on the first webview open.
+                '@microsoft/vscode-ext-webview',
+                '@microsoft/vscode-ext-webview/react',
+                '@microsoft/vscode-ext-webview/webview',
             ],
         },
         resolve: {

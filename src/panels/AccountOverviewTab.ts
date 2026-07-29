@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { setupTrpc } from '@cosmosdb/webview-rpc/server';
+import { attachTrpc } from '@microsoft/vscode-ext-webview/host';
 import * as vscode from 'vscode';
 import { type AzureResourceMetadata } from '../cosmosdb/AzureResourceMetadata';
 import { BaseTab } from './BaseTab';
@@ -27,7 +27,7 @@ export class AccountOverviewTab extends BaseTab {
         this.metadata = metadata;
         this.panel.title = `${AccountOverviewTab.title}: ${metadata.accountName}`;
 
-        const { disposable } = setupTrpc(
+        const { disposable } = attachTrpc(
             this.panel,
             this.buildRouterContext(),
             accountOverviewAppRouter,

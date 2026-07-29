@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type TypedEventSink } from '@cosmosdb/webview-rpc';
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { type TypedEventSink } from '@microsoft/vscode-ext-webview';
 import * as l10n from '@vscode/l10n';
 import { renderPrompt } from '@vscode/prompt-tsx';
 import * as fs from 'fs';

@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { useTrpcClient } from '@cosmosdb/webview-rpc/react';
 import {
     Badge,
     Button,
@@ -28,6 +27,7 @@ import {
     ThumbLikeFilled,
     ThumbLikeRegular,
 } from '@fluentui/react-icons';
+import { useTrpcClient } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { type QueryEditorAppRouter } from '../../../../panels/trpc/appRouter';
@@ -368,7 +368,7 @@ const ProgressBorder = ({ width, height }: { width: number; height: number }) =>
 
 export const GenerateQueryInput = () => {
     const styles = useStyles();
-    const { trpcClient } = useTrpcClient<QueryEditorAppRouter>();
+    const trpcClient = useTrpcClient<QueryEditorAppRouter>();
     const state = useQueryEditorState();
     const dispatch = useQueryEditorStateDispatch();
     const [input, setInput] = useState('');

@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type TrpcClient } from '@cosmosdb/webview-rpc/react';
+import { type TrpcClient } from '@microsoft/vscode-ext-webview/react';
 import { type MigrationAppRouter } from '../../../../panels/trpc/appRouter';
 
 /**

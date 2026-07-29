@@ -18,9 +18,6 @@ export default defineConfig({
             '@cosmosdb/schema-analyzer/json': path.resolve(__dirname, 'packages/schema-analyzer/src/json/index.ts'),
             '@cosmosdb/schema-analyzer/bson': path.resolve(__dirname, 'packages/schema-analyzer/src/bson/index.ts'),
             '@cosmosdb/schema-analyzer': path.resolve(__dirname, 'packages/schema-analyzer/src/index.ts'),
-            '@cosmosdb/webview-rpc/client': path.resolve(__dirname, 'packages/webview-rpc/src/client/index.ts'),
-            '@cosmosdb/webview-rpc/react': path.resolve(__dirname, 'packages/webview-rpc/src/react/index.ts'),
-            '@cosmosdb/webview-rpc': path.resolve(__dirname, 'packages/webview-rpc/src/index.ts'),
         },
     },
     test: {

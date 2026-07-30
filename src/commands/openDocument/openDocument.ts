@@ -7,6 +7,7 @@ import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
 import { createNoSqlQueryConnection } from '../../cosmosdb/NoSqlQueryConnection';
+import { recordCosmosShellEngagementAndMaybeRecommend } from '../../cosmosDBShell/recommendation/shellRecommendation';
 import { DocumentTab } from '../../panels/DocumentTab';
 import { type CosmosDBItemResourceItem } from '../../tree/cosmosdb/CosmosDBItemResourceItem';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
@@ -36,4 +37,5 @@ export async function cosmosDBOpenItem(context: IActionContext, node?: CosmosDBI
 
     const experienceKind = ExperienceKind.NoSQL;
     countExperienceUsageForSurvey(experienceKind, UsageImpact.Low);
+    void recordCosmosShellEngagementAndMaybeRecommend('openDocument');
 }

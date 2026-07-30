@@ -21,6 +21,7 @@ import { ext } from '../extensionVariables';
 import { SettingsService } from '../services/SettingsService';
 import { type NoSqlContainerResourceItem } from '../tree/nosql/NoSqlContainerResourceItem';
 import {
+    COMMAND_INSTALL_OR_UPDATE_SHELL,
     COMMAND_LAUNCH_COSMOS_DB_SHELL,
     COSMOS_DB_SHELL_TERMINAL_NAME,
     DEFAULT_MCP_PORT,
@@ -28,7 +29,7 @@ import {
     SETTING_MCP_PORT,
     SETTING_SHELL_PATH,
 } from './constants';
-import { promptToResolveMissingCosmosDBShell } from './install/installPrompts';
+import { installOrUpdateCosmosDBShell, promptToResolveMissingCosmosDBShell } from './install/installPrompts';
 import {
     getCosmosDBShellCredential,
     getCosmosDBShellToken,
@@ -103,6 +104,9 @@ export class CosmosDBShellExtension implements vscode.Disposable {
                 this.terminalChangeListeners.push(openListener, closeListener);
 
                 registerCommandWithTreeNodeUnwrapping(COMMAND_LAUNCH_COSMOS_DB_SHELL, connectCosmosDBShell);
+                registerCommandWithTreeNodeUnwrapping(COMMAND_INSTALL_OR_UPDATE_SHELL, (context: IActionContext) =>
+                    installOrUpdateCosmosDBShell(context, launchCosmosDBShell),
+                );
 
                 if (shellInstalled) {
                     ext.outputChannel.appendLine(`Cosmos DB Shell Extension: activated.`);
@@ -137,6 +141,9 @@ export async function launchCosmosDBShell(context: IActionContext, node?: NoSqlC
     const mcpPortSetting = SettingsService.getSetting<number>(SETTING_MCP_PORT);
     const mcpPort = (mcpPortSetting ?? DEFAULT_MCP_PORT).toString();
     const shellPathSetting = SettingsService.getSetting<string>(SETTING_SHELL_PATH);
+    if (shellPathSetting?.trim()) {
+        context.valuesToMask.push(shellPathSetting.trim());
+    }
     context.telemetry.properties.shellInstalled = String(shellInstalled);
     context.telemetry.properties.shellPathCustom = String(!!shellPathSetting?.trim());
     context.telemetry.properties.mcpEnabled = String(mcpEnabled);
@@ -170,7 +177,7 @@ export async function launchCosmosDBShell(context: IActionContext, node?: NoSqlC
         } else {
             args = [];
         }
-        ext.outputChannel.appendLine(`Launching Cosmos DB Shell: ${command} ${args.join(' ')}`);
+        ext.outputChannel.appendLine('Launching Cosmos DB Shell.');
         const terminal: vscode.Terminal = vscode.window.createTerminal({
             name: COSMOS_DB_SHELL_TERMINAL_NAME,
             shellPath: command,
@@ -198,6 +205,25 @@ export async function launchCosmosDBShell(context: IActionContext, node?: NoSqlC
         return;
     }
 
+    // These values are required to construct the shell process, but must be redacted from any
+    // error or telemetry generated while this action is running.
+    context.valuesToMask.push(rawEndpoint);
+    if (node.model.database.id) {
+        context.valuesToMask.push(node.model.database.id);
+    }
+    if (node.model.container.id) {
+        context.valuesToMask.push(node.model.container.id);
+    }
+    if (cosmosDBShellCredential) {
+        context.valuesToMask.push(cosmosDBShellCredential);
+    }
+    if (entraCredential?.tenantId) {
+        context.valuesToMask.push(entraCredential.tenantId);
+    }
+    if (managedIdentityCredential?.clientId) {
+        context.valuesToMask.push(managedIdentityCredential.clientId);
+    }
+
     if (useMcp) {
         args = ['--mcp', mcpPort, '--connect', rawEndpoint];
     } else {
@@ -222,7 +248,7 @@ export async function launchCosmosDBShell(context: IActionContext, node?: NoSqlC
         args.push('-k', containerCommand);
     }
 
-    ext.outputChannel.appendLine(`Launching Cosmos DB Shell: ${command} ${args.join(' ')}`);
+    ext.outputChannel.appendLine('Launching Cosmos DB Shell with connection context.');
 
     const env: Record<string, string> = {};
     if (cosmosDBShellCredential) {
@@ -234,6 +260,7 @@ export async function launchCosmosDBShell(context: IActionContext, node?: NoSqlC
         const fallbackToken = await getCosmosDBShellToken(entraCredential, rawEndpoint);
         context.telemetry.properties.fallbackTokenObtained = String(!!fallbackToken);
         if (fallbackToken) {
+            context.valuesToMask.push(fallbackToken);
             env['COSMOSDB_SHELL_TOKEN'] = fallbackToken;
         }
     }
@@ -267,9 +294,11 @@ export async function connectCosmosDBShell(context: IActionContext, node?: NoSql
     // reuse path below and the fall-through to `launchCosmosDBShell`.
     context.telemetry.properties.shellVersion = getDetectedCosmosDBShellVersion() ?? 'unknown';
     context.telemetry.properties.shellInstalled = String(isCosmosDBShellInstalled());
-    context.telemetry.properties.shellPathCustom = String(
-        !!SettingsService.getSetting<string>(SETTING_SHELL_PATH)?.trim(),
-    );
+    const shellPathSetting = SettingsService.getSetting<string>(SETTING_SHELL_PATH)?.trim();
+    context.telemetry.properties.shellPathCustom = String(!!shellPathSetting);
+    if (shellPathSetting) {
+        context.valuesToMask.push(shellPathSetting);
+    }
     context.telemetry.properties.mcpEnabled = String(SettingsService.getSetting<boolean>(SETTING_MCP_ENABLED) ?? false);
     const mcpPortSetting = SettingsService.getSetting<number>(SETTING_MCP_PORT);
     context.telemetry.properties.mcpPortDefault = String(
@@ -291,6 +320,13 @@ export async function connectCosmosDBShell(context: IActionContext, node?: NoSql
     if (!rawEndpoint) {
         void vscode.window.showErrorMessage(l10n.t('Failed to extract the account endpoint from the selected node.'));
         return;
+    }
+    context.valuesToMask.push(rawEndpoint);
+    if (node.model.database.id) {
+        context.valuesToMask.push(node.model.database.id);
+    }
+    if (node.model.container.id) {
+        context.valuesToMask.push(node.model.container.id);
     }
 
     // Try to reuse an existing Cosmos DB Shell terminal whose launch-time env credentials

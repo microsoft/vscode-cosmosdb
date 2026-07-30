@@ -9,14 +9,15 @@
  * (`ext.outputChannel`).
  *
  * This is the only logger that has access to `ext.outputChannel`; the
- * framework-level `loggingMiddleware.ts` only knows about the
- * structural `ProcedureLogger` interface so it can be reused in other
- * environments (tests, future packages, …).
+ * framework-level `loggingMiddlewareBody` (from
+ * `@microsoft/vscode-ext-webview/host`) only knows about the structural
+ * `ProcedureLogger` interface so it can be reused in other environments
+ * (tests, other extensions, …).
  *
  * Format: `[trpc] mutation queryEditor.runQuery 42.0ms ok`
  */
 
-import { type ProcedureLogger } from '@cosmosdb/webview-rpc/server';
+import { type ProcedureLogger } from '@microsoft/vscode-ext-webview/host';
 import { ext } from '../../../extensionVariables';
 
 /**

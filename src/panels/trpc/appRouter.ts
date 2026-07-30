@@ -12,9 +12,8 @@
  */
 
 import { type PartitionKeyDefinition } from '@azure/cosmos';
-import { type TypedEventSink } from '@cosmosdb/webview-rpc';
-import { type BaseRouterContext } from '@cosmosdb/webview-rpc/server';
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { type BaseRouterContext, type TypedEventSink } from '@microsoft/vscode-ext-webview';
 import * as vscode from 'vscode';
 import { z } from 'zod';
 import { type AzureResourceMetadata } from '../../cosmosdb/AzureResourceMetadata';

@@ -32,12 +32,10 @@ const trpc = vi.hoisted(() => {
     };
 });
 
-vi.mock('@cosmosdb/webview-rpc/react', () => ({
-    useTrpcClient: () => ({
-        trpcClient: trpc,
-        // The component never subscribes to events directly, but the hook contract returns one.
-        events: { onError: () => () => {} },
-    }),
+vi.mock('@microsoft/vscode-ext-webview/react', () => ({
+    useTrpcClient: () => trpc,
+    // The component never subscribes to events directly, but the hook contract returns one.
+    useRpcEvents: () => ({ onError: () => () => {} }),
 }));
 
 function renderInput(stateOverrides: Partial<QueryEditorState> = {}) {

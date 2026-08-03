@@ -117,6 +117,12 @@ function seedUserSettings(userDataDir: string): void {
         // The dedicated e2e emulator binds to 8082 (not the default 8081);
         // the migration provisioning step reads this to target the right port.
         'cosmosDB.emulator.port': E2E_EMULATOR_PORT,
+        // Suppress the Quick Start onboarding tour globally. On a fresh profile
+        // the automatic tour opens a Popover overlay anchored to the Query
+        // Editor toolbar; it intercepts pointer events and hides toolbar
+        // controls, which makes every Query Editor spec flake. Specs that
+        // exercise Quick Start itself opt back in by re-enabling this setting.
+        'cosmosDB.quickStart.enabled': false,
     };
     const settingsPath = path.join(userDataDir, 'User', 'settings.json');
     mkdirSync(path.dirname(settingsPath), { recursive: true });

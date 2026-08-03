@@ -281,7 +281,10 @@
           },
           "required": [
             "query"
-          ]
+          ],
+          "additionalProperties": {
+            "not": {}
+          }
         }
       },
       {
@@ -319,6 +322,9 @@
               "type": "string",
               "description": "Container of the connection to reveal in the tree. Use together with databaseId."
             }
+          },
+          "additionalProperties": {
+            "not": {}
           }
         }
       },
@@ -343,7 +349,10 @@
           "required": [
             "databaseId",
             "containerId"
-          ]
+          ],
+          "additionalProperties": {
+            "not": {}
+          }
         }
       }
     ],

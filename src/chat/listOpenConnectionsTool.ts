@@ -72,7 +72,7 @@ export const LIST_OPEN_CONNECTIONS_TOOL_INPUT_SCHEMA = {
             description: 'Container of the connection to reveal in the tree. Use together with databaseId.',
         },
     },
-    additionalProperties: false,
+    additionalProperties: { not: {} },
 };
 
 /**

@@ -51,7 +51,7 @@ export const SAMPLE_DATA_TOOL_DESCRIPTION =
 export const SAMPLE_DATA_TOOL_INPUT_SCHEMA = {
     type: 'object' as const,
     properties: {},
-    additionalProperties: false,
+    additionalProperties: { not: {} },
 };
 
 /**

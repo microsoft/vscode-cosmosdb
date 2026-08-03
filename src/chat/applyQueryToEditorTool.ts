@@ -56,7 +56,7 @@ export const APPLY_QUERY_TO_EDITOR_TOOL_INPUT_SCHEMA = {
         },
     },
     required: ['query'],
-    additionalProperties: false,
+    additionalProperties: { not: {} },
 };
 
 /**

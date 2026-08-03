@@ -57,7 +57,7 @@ export const FOCUS_QUERY_EDITOR_TOOL_INPUT_SCHEMA = {
         },
     },
     required: ['databaseId', 'containerId'],
-    additionalProperties: false,
+    additionalProperties: { not: {} },
 };
 
 /**

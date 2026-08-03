@@ -45,8 +45,6 @@ import { registerCommand, type IActionContext } from '@microsoft/vscode-azext-ut
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { API } from '../../AzureDBExperiences';
-import { getActiveQueryEditor } from '../../chat/chatUtils';
-import { CosmosDbChatParticipant } from '../../chat/cosmosDbChatParticipant';
 import { AuthenticationMethod } from '../../cosmosdb/AuthenticationMethod';
 import { type CosmosDBCredential } from '../../cosmosdb/CosmosDBCredential';
 import { type NoSqlQueryConnection } from '../../cosmosdb/NoSqlQueryConnection';
@@ -57,10 +55,7 @@ import { QueryEditorTab } from '../../panels/QueryEditorTab';
 import { MIGRATION_FOLDER } from '../../services/MigrationProjectService';
 import { StorageNames, StorageService, type StorageItem } from '../../services/StorageService';
 import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
-import { setE2eModelOverride, type AvailableModelDescriptor } from '../../utils/aiUtils';
 import { getEmulatorItemUniqueId } from '../../utils/emulatorUtils';
-import { installAiMockDispatcher } from './e2eAiMock';
-import { registerGenerateQueryMock } from './generateQueryMockModel';
 
 const E2E_TEST_ENV_KEY = 'COSMOSDB_E2E_TEST';
 const E2E_TEST_CONTEXT_KEY = 'cosmosDB.e2eTestMode';
@@ -73,23 +68,6 @@ const ENV_EMULATOR_ENDPOINT = 'COSMOSDB_E2E_EMULATOR_ENDPOINT';
 const ENV_EMULATOR_KEY = 'COSMOSDB_E2E_EMULATOR_KEY';
 const ENV_DATABASE_ID = 'COSMOSDB_E2E_DATABASE_ID';
 const ENV_CONTAINER_ID = 'COSMOSDB_E2E_CONTAINER_ID';
-
-/**
- * Deterministic fake Copilot models used by `cosmosDB.e2e.setMockLanguageModels`.
- * Two entries (>1) so the Generate Query input renders the model-switcher
- * `Combobox` rather than the single-model static label. Names are referenced
- * verbatim by `test/e2e/specs/generate-query-input.spec.ts`.
- */
-const E2E_MOCK_MODELS: readonly AvailableModelDescriptor[] = [
-    { id: 'e2e-mock-gpt-4o', name: 'Mock GPT-4o', family: 'gpt-4o', vendor: 'copilot', maxInputTokens: 128_000 },
-    {
-        id: 'e2e-mock-gpt-4o-mini',
-        name: 'Mock GPT-4o mini',
-        family: 'gpt-4o-mini',
-        vendor: 'copilot',
-        maxInputTokens: 128_000,
-    },
-];
 
 // Absolute path of a fixture directory copied into `<workspace>/.cosmosdb-migration`
 // by `cosmosDB.e2e.openMigration`. Set by the Playwright fixture so the command
@@ -227,35 +205,6 @@ async function setGitPresent(workspacePath: string, present: boolean): Promise<v
     }
 }
 
-/** Deterministic query the chat edit-query button e2e commands apply. */
-const E2E_EDIT_QUERY_SUGGESTION = 'SELECT * FROM c WHERE c.e2eEditQuery = true';
-
-/** Fixed id for the seeded pending result — safe because no chat runs in e2e. */
-const E2E_EDIT_QUERY_RESULT_ID = 987654;
-
-/**
- * Seeds a pending edit-query result (the structure `CosmosDbChatParticipant`
- * stores for its action buttons) from the active Query Editor's connection, so
- * the real `cosmosDB.applyQuerySuggestion` / `cosmosDB.openQuerySideBySide`
- * commands can be exercised without running the chat participant. Returns the
- * lightweight result id the button commands look up.
- */
-function seedEditQuerySuggestion(): number {
-    const tabs = Array.from(QueryEditorTab.openTabs);
-    if (tabs.length === 0) {
-        throw new Error('cosmosDB.e2e edit-query seed requires an open Query Editor.');
-    }
-    const connection = getActiveQueryEditor(tabs).getConnection();
-    if (!connection) {
-        throw new Error('cosmosDB.e2e edit-query seed requires a connected Query Editor (run with the e2e emulator).');
-    }
-    CosmosDbChatParticipant.pendingResults.set(E2E_EDIT_QUERY_RESULT_ID, {
-        connection,
-        suggestedQuery: E2E_EDIT_QUERY_SUGGESTION,
-    });
-    return E2E_EDIT_QUERY_RESULT_ID;
-}
-
 /**
  * Registers the e2e-test commands and sets the `cosmosDB.e2eTestMode` context
  * key. Safe to call unconditionally — exits early if the env flag is unset.
@@ -268,35 +217,6 @@ export function registerE2eTestCommands(): void {
 
     // The `when` clauses in package.json menus look for this context key.
     void vscode.commands.executeCommand('setContext', E2E_TEST_CONTEXT_KEY, true);
-
-    // Wire the control-file AI mock engine: register each feature's response
-    // catalogue and install the shared dispatcher onto the mock model. Tests
-    // select behavior by writing a control file (see `./e2eAiMock`), so no
-    // per-scenario command is needed. Inert until a control file + the mock
-    // model override (`setMockLanguageModels`) are both present.
-    registerGenerateQueryMock();
-    installAiMockDispatcher();
-
-    // ─── Chat participant edit-query button commands ────────────────────
-    // The native Chat view can't be driven headlessly (it needs a real Copilot
-    // model provider), so we test the two edit-query action buttons' *effects*
-    // directly. Each command seeds a pending edit-query result — the exact
-    // structure the chat participant stores — using the active Query Editor's
-    // connection, then invokes the real button command. No chat/LLM involved.
-    registerCommand('cosmosDB.e2e.applyEditQuerySuggestion', async (context: IActionContext): Promise<void> => {
-        context.telemetry.properties.isE2eTest = 'true';
-        const resultId = seedEditQuerySuggestion();
-        await vscode.commands.executeCommand('cosmosDB.applyQuerySuggestion', resultId);
-    });
-
-    registerCommand(
-        'cosmosDB.e2e.openEditQuerySuggestionSideBySide',
-        async (context: IActionContext): Promise<void> => {
-            context.telemetry.properties.isE2eTest = 'true';
-            const resultId = seedEditQuerySuggestion();
-            await vscode.commands.executeCommand('cosmosDB.openQuerySideBySide', resultId);
-        },
-    );
 
     // Opens the Migration Assistant against a deterministic, pre-seeded project
     // (consent granted + application analysis populated + schema files present)
@@ -381,26 +301,6 @@ export function registerE2eTestCommands(): void {
         ext.isAIFeaturesEnabled = isEnabled;
         context.telemetry.properties.aiFeaturesEnabled = String(isEnabled);
         QueryEditorTab.notifyAIFeaturesChanged(isEnabled);
-    });
-
-    // Installs a fixed pair of fake Copilot models so the Generate Query input's
-    // model switcher renders and behaves without a real Copilot install. The
-    // override bypasses `vscode.lm.selectChatModels` inside `aiUtils`. Invoked
-    // from the palette with no args (palette can't pass arguments), so the
-    // fixtures are baked into the command. Pass `false` to clear the override.
-    registerCommand('cosmosDB.e2e.setMockLanguageModels', (context: IActionContext, enabled?: boolean): void => {
-        context.telemetry.properties.isE2eTest = 'true';
-        const shouldMock = enabled ?? true;
-        setE2eModelOverride(shouldMock ? E2E_MOCK_MODELS : undefined);
-        context.telemetry.measurements.modelCount = shouldMock ? E2E_MOCK_MODELS.length : 0;
-    });
-
-    // Clears the fake-model override so it can't leak into other specs that
-    // share the worker's VS Code instance. Palette can't pass args, so this is
-    // a dedicated no-arg counterpart to `setMockLanguageModels`.
-    registerCommand('cosmosDB.e2e.clearMockLanguageModels', (context: IActionContext): void => {
-        context.telemetry.properties.isE2eTest = 'true';
-        setE2eModelOverride(undefined);
     });
 
     // Forces the survey-candidate flag so the thumbs up/down feedback buttons

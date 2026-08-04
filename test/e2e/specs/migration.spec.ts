@@ -119,6 +119,27 @@ test.describe('Migration Assistant', () => {
         );
     });
 
+    test('interactive help links are keyboard accessible', async ({ vscodeWindow }) => {
+        const frame = await openMigrationSeeded(vscodeWindow);
+        const helpLinks = [
+            ['Database schema files help', 'schema-ddl/'],
+            ['Volumetrics help', 'volumetrics/'],
+            ['Access patterns help', 'access-patterns/'],
+        ] as const;
+
+        for (const [helpLabel, linkLabel] of helpLinks) {
+            const trigger = frame.getByRole('button', { name: helpLabel, exact: true });
+            await trigger.focus();
+            await trigger.press('Enter');
+
+            const link = frame.getByRole('link', { name: linkLabel, exact: true });
+            await expect(link).toBeFocused();
+            await link.press('Escape');
+            await expect(link).toBeHidden();
+            await expect(trigger).toBeFocused();
+        }
+    });
+
     test('exclude-from-VCS checkbox toggles the .gitignore entry', async ({ vscodeWindow }) => {
         const frame = await openMigrationSeeded(vscodeWindow);
         const migration = new MigrationPage(frame);

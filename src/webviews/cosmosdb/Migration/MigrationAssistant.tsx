@@ -25,6 +25,9 @@ import {
     MenuTrigger,
     Option,
     OptionGroup,
+    Popover,
+    PopoverSurface,
+    PopoverTrigger,
     ProgressBar,
     Radio,
     RadioGroup,
@@ -264,6 +267,9 @@ const useStyles = makeStyles({
             outlineColor: 'var(--vscode-focusBorder)',
             outlineOffset: '1px',
         },
+    },
+    infoPopoverSurface: {
+        maxWidth: '360px',
     },
     analysisResult: {
         display: 'grid',
@@ -596,6 +602,29 @@ function InfoTooltipIcon({
                 <InfoRegular />
             </button>
         </Tooltip>
+    );
+}
+
+function InfoPopoverIcon({
+    content,
+    ariaLabel,
+    styles,
+}: {
+    content: ReactNode;
+    ariaLabel: string;
+    styles: ReturnType<typeof useStyles>;
+}) {
+    return (
+        <Popover withArrow>
+            <PopoverTrigger>
+                <button type="button" aria-label={ariaLabel} className={styles.infoIcon}>
+                    <InfoRegular />
+                </button>
+            </PopoverTrigger>
+            <PopoverSurface className={styles.infoPopoverSurface} aria-label={ariaLabel}>
+                {content}
+            </PopoverSurface>
+        </Popover>
     );
 }
 
@@ -1221,7 +1250,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                         <Text weight="semibold" size={200}>
                             {l10n.t('Database Schema Files:')}{' '}
                             <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>
-                            <InfoTooltipIcon
+                            <InfoPopoverIcon
                                 content={
                                     <>
                                         <p style={tooltipParagraphStyle}>
@@ -1291,7 +1320,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                         {/* Volumetric Files */}
                         <Text weight="semibold" size={200}>
                             {l10n.t('Volumetrics:')}
-                            <InfoTooltipIcon
+                            <InfoPopoverIcon
                                 content={
                                     <>
                                         <p style={tooltipParagraphStyle}>
@@ -1359,7 +1388,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                         {/* Access Pattern Files */}
                         <Text weight="semibold" size={200}>
                             {l10n.t('Access Patterns:')}
-                            <InfoTooltipIcon
+                            <InfoPopoverIcon
                                 content={
                                     <>
                                         <p style={tooltipParagraphStyle}>

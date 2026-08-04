@@ -231,6 +231,19 @@ test.describe('Migration Assistant', () => {
         await expect(migration.openedTab(/summary\.md/)).toBeVisible({ timeout: 15_000 });
     });
 
+    test('Phase 2 announces whether a domain is referenced in code', async ({ vscodeWindow }) => {
+        const frame = await openMigrationSeeded(vscodeWindow);
+        const migration = new MigrationPage(frame);
+
+        await migration.runDiscovery();
+        await migration.runAssessment();
+
+        const salesDomainRow = migration.phase2DomainTable.getByRole('row').filter({ hasText: 'SalesDomain' });
+        const referencedCell = salesDomainRow.getByRole('cell', { name: 'Yes', exact: true });
+        await expect(referencedCell).toBeVisible();
+        await expect(referencedCell.getByRole('img', { name: 'Yes', exact: true })).toBeVisible();
+    });
+
     test('surfaces domain, summary, and schema-model artifacts with links', async ({ vscodeWindow }) => {
         const frame = await openMigrationSeeded(vscodeWindow);
         const migration = new MigrationPage(frame);

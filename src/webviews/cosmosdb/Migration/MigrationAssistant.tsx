@@ -631,6 +631,30 @@ function getPhaseIcon(state: PhaseState) {
     );
 }
 
+function ReferencedInCodeStatus({ isMapped }: { isMapped: boolean }): React.ReactElement {
+    const label = isMapped ? l10n.t('Yes') : l10n.t('No');
+
+    return (
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- composite ARIA img: wraps the visible status symbol which a native <img> cannot contain
+        <span role="img" aria-label={label} style={{ display: 'inline-flex' }}>
+            {isMapped ? (
+                <CheckmarkCircleFilled
+                    aria-hidden={true}
+                    style={{ color: 'var(--vscode-testing-iconPassed)' }}
+                />
+            ) : (
+                <Text
+                    aria-hidden={true}
+                    size={200}
+                    style={{ color: 'var(--vscode-descriptionForeground)' }}
+                >
+                    —
+                </Text>
+            )}
+        </span>
+    );
+}
+
 function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
     const styles = useStyles();
     const state = useMigrationState();
@@ -1919,22 +1943,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                                                 textAlign: 'center',
                                                             }}
                                                         >
-                                                            {domain.isMapped ? (
-                                                                <CheckmarkCircleFilled
-                                                                    style={{
-                                                                        color: 'var(--vscode-testing-iconPassed)',
-                                                                    }}
-                                                                />
-                                                            ) : (
-                                                                <Text
-                                                                    size={200}
-                                                                    style={{
-                                                                        color: 'var(--vscode-descriptionForeground)',
-                                                                    }}
-                                                                >
-                                                                    —
-                                                                </Text>
-                                                            )}
+                                                            <ReferencedInCodeStatus isMapped={domain.isMapped} />
                                                         </td>
                                                     </tr>
                                                 ))}

@@ -81,6 +81,44 @@ test.describe('Migration Assistant', () => {
         await expect(fileListExpander).toHaveAttribute('aria-expanded', 'false');
     });
 
+    test('announces required migration configuration fields', async ({ vscodeWindow }) => {
+        const frame = await openMigrationSeeded(vscodeWindow);
+        const migration = new MigrationPage(frame);
+
+        await expect(frame.getByRole('textbox', { name: /Project Name/ })).toHaveAttribute('required', '');
+        await expect(frame.getByTestId('migration-model-dropdown')).toHaveAttribute('aria-required', 'true');
+
+        const analysisFields = [
+            ['project-name', 'Project:'],
+            ['project-type', 'Type:'],
+            ['language', 'Language:'],
+            ['frameworks', 'Frameworks:'],
+            ['database', 'Database:'],
+            ['access', 'Access Method:'],
+        ] as const;
+        for (const [field, name] of analysisFields) {
+            await expect(migration.analysisField(field)).toHaveAccessibleName(name);
+            await expect(migration.analysisField(field)).toHaveAttribute('required', '');
+        }
+
+        const schemaFilesDescription = 'Database Schema Files, required';
+        await expect(frame.getByRole('button', { name: 'Select Files…' })).toHaveAccessibleDescription(
+            schemaFilesDescription,
+        );
+        await expect(frame.getByRole('button', { name: 'Select Folder…' })).toHaveAccessibleDescription(
+            schemaFilesDescription,
+        );
+        await expect(
+            frame.getByRole('button', { name: 'Generate schema files from workspace code using AI' }),
+        ).toHaveAccessibleDescription(schemaFilesDescription);
+
+        await frame.getByRole('button', { name: /Phase 4: Target Cosmos DB Environment/ }).click();
+        await expect(frame.getByRole('radiogroup', { name: /Target Environment/ })).toHaveAttribute(
+            'aria-required',
+            'true',
+        );
+    });
+
     test('exclude-from-VCS checkbox toggles the .gitignore entry', async ({ vscodeWindow }) => {
         const frame = await openMigrationSeeded(vscodeWindow);
         const migration = new MigrationPage(frame);

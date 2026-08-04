@@ -57,7 +57,7 @@ import {
     WarningRegular,
 } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { type MigrationAppRouter } from '../../../panels/trpc/appRouter';
 import { sanitizeCosmosDBAccountName, validateCosmosDBAccountName } from '../../../utils/cosmosDBAccountName';
 import { formatTokenCount, partitionModelsByCapability } from '../../../utils/modelUtils';
@@ -658,6 +658,7 @@ function ReferencedInCodeStatus({ isMapped }: { isMapped: boolean }): React.Reac
 
 function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
     const styles = useStyles();
+    const analysisLabelId = useId();
     const state = useMigrationState();
     const dispatch = useMigrationDispatch();
 
@@ -1094,13 +1095,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                     <Text size={200}>{state.workspacePath}</Text>
                 </Field>
 
-                <Field
-                    label={
-                        <>
-                            {l10n.t('Project Name')} <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>
-                        </>
-                    }
-                >
+                <Field required label={l10n.t('Project Name')}>
                     <Input
                         value={state.projectName}
                         onChange={(_e, data) => handleProjectNameChange(data.value)}
@@ -1135,7 +1130,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                 )}
 
                 {state.availableModels.length > 0 && (
-                    <Field label={l10n.t('AI Model')}>
+                    <Field required label={l10n.t('AI Model')}>
                         <Dropdown
                             data-testid="migration-model-dropdown"
                             onOptionSelect={handleModelChange}
@@ -1252,10 +1247,20 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                 styles={styles}
                             />
                         </Text>
-                        <Button appearance="secondary" size="small" onClick={handleSelectSchemaFiles}>
+                        <Button
+                            appearance="secondary"
+                            size="small"
+                            aria-description={l10n.t('Database Schema Files, required')}
+                            onClick={handleSelectSchemaFiles}
+                        >
                             {l10n.t('Select Files…')}
                         </Button>
-                        <Button appearance="secondary" size="small" onClick={handleSelectSchemaFolder}>
+                        <Button
+                            appearance="secondary"
+                            size="small"
+                            aria-description={l10n.t('Database Schema Files, required')}
+                            onClick={handleSelectSchemaFolder}
+                        >
                             {l10n.t('Select Folder…')}
                         </Button>
                         <Tooltip
@@ -1267,6 +1272,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                 appearance="primary"
                                 size="small"
                                 icon={<SparkleRegular />}
+                                aria-description={l10n.t('Database Schema Files, required')}
                                 onClick={handleAnalyzeDatabaseSchema}
                             />
                         </Tooltip>
@@ -1423,7 +1429,8 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                     <div className={styles.analysisPanel}>
                         <div className={styles.analysisResult}>
                             <Text weight="semibold" size={200}>
-                                {l10n.t('Project:')} <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>
+                                <span id={`${analysisLabelId}-project`}>{l10n.t('Project:')}</span>{' '}
+                                <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>
                                 <InfoTooltipIcon
                                     content={l10n.t(
                                         'The name of your application or service. Examples: OrderService, InventoryAPI, CustomerPortal',
@@ -1441,6 +1448,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                             >
                                 <Input
                                     data-testid="migration-project-name"
+                                    aria-labelledby={`${analysisLabelId}-project`}
                                     size="small"
                                     value={state.analysisResult?.projectName ?? ''}
                                     onChange={(_e, data) => handleAnalysisFieldChange('projectName', data.value)}
@@ -1448,7 +1456,8 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                 />
                             </Field>
                             <Text weight="semibold" size={200}>
-                                {l10n.t('Type:')} <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>
+                                <span id={`${analysisLabelId}-type`}>{l10n.t('Type:')}</span>{' '}
+                                <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>
                                 <InfoTooltipIcon
                                     content={l10n.t(
                                         'The architecture or deployment style of your application. Examples: Web API, Microservice, Monolithic MVC',
@@ -1466,6 +1475,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                             >
                                 <Input
                                     data-testid="migration-project-type"
+                                    aria-labelledby={`${analysisLabelId}-type`}
                                     size="small"
                                     value={state.analysisResult?.projectType ?? ''}
                                     onChange={(_e, data) => handleAnalysisFieldChange('projectType', data.value)}
@@ -1473,7 +1483,8 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                 />
                             </Field>
                             <Text weight="semibold" size={200}>
-                                {l10n.t('Language:')} <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>
+                                <span id={`${analysisLabelId}-language`}>{l10n.t('Language:')}</span>{' '}
+                                <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>
                                 <InfoTooltipIcon
                                     content={l10n.t(
                                         'The primary programming language of your application. Examples: C#, Java, Python',
@@ -1491,6 +1502,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                             >
                                 <Input
                                     data-testid="migration-language"
+                                    aria-labelledby={`${analysisLabelId}-language`}
                                     size="small"
                                     value={state.analysisResult?.language ?? ''}
                                     onChange={(_e, data) => handleAnalysisFieldChange('language', data.value)}
@@ -1498,7 +1510,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                 />
                             </Field>
                             <Text weight="semibold" size={200}>
-                                {l10n.t('Frameworks:')}{' '}
+                                <span id={`${analysisLabelId}-frameworks`}>{l10n.t('Frameworks:')}</span>{' '}
                                 <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>
                                 <InfoTooltipIcon
                                     content={l10n.t(
@@ -1517,6 +1529,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                             >
                                 <Input
                                     data-testid="migration-frameworks"
+                                    aria-labelledby={`${analysisLabelId}-frameworks`}
                                     size="small"
                                     value={state.analysisResult?.frameworks?.join(', ') ?? ''}
                                     onChange={(_e, data) => handleFrameworksChange(data.value)}
@@ -1524,7 +1537,8 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                 />
                             </Field>
                             <Text weight="semibold" size={200}>
-                                {l10n.t('Database:')} <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>
+                                <span id={`${analysisLabelId}-database`}>{l10n.t('Database:')}</span>{' '}
+                                <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>
                                 <InfoTooltipIcon
                                     content={l10n.t(
                                         'The source relational database system you are migrating from. Examples: PostgreSQL, SQL Server, Oracle',
@@ -1542,6 +1556,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                             >
                                 <Input
                                     data-testid="migration-database"
+                                    aria-labelledby={`${analysisLabelId}-database`}
                                     size="small"
                                     value={state.analysisResult?.databaseType ?? ''}
                                     onChange={(_e, data) => handleAnalysisFieldChange('databaseType', data.value)}
@@ -1549,7 +1564,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                 />
                             </Field>
                             <Text weight="semibold" size={200}>
-                                {l10n.t('Access Method:')}{' '}
+                                <span id={`${analysisLabelId}-access`}>{l10n.t('Access Method:')}</span>{' '}
                                 <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>
                                 <InfoTooltipIcon
                                     content={l10n.t(
@@ -1568,6 +1583,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                             >
                                 <Input
                                     data-testid="migration-access"
+                                    aria-labelledby={`${analysisLabelId}-access`}
                                     size="small"
                                     value={state.analysisResult?.databaseAccess ?? ''}
                                     onChange={(_e, data) => handleAnalysisFieldChange('databaseAccess', data.value)}
@@ -2268,14 +2284,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                         {l10n.t('Select your target Cosmos DB environment and verify the connection.')}
                                     </Text>
 
-                                    <Field
-                                        label={
-                                            <>
-                                                {l10n.t('Target Environment')}{' '}
-                                                <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>
-                                            </>
-                                        }
-                                    >
+                                    <Field required label={l10n.t('Target Environment')}>
                                         <RadioGroup
                                             value={state.targetType ?? ''}
                                             onChange={handleTargetTypeChange}

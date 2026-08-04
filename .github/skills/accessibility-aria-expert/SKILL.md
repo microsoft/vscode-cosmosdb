@@ -59,6 +59,41 @@ await expect(moreLabel).toHaveAccessibleName(/^More…/);
 await expect(moreLabel).toHaveAccessibleDescription('Show full description');
 ```
 
+## Avoid Hidden-Text Scroll Regressions
+
+Do not add an absolutely positioned screen-reader-only element just to name a nearby semantic element, especially inside a
+scrollable table, grid, list, or panel. VoiceOver may move the virtual cursor to the hidden element's layout box and scroll the
+visible content out of view.
+
+Prefer setting the accessible name or description on a rendered element with useful on-screen bounds. For text controls, this is
+usually the semantic element itself. For an icon or symbol inside a table cell, use a visible inline wrapper as the named
+accessibility node and keep the visual-only child hidden from assistive technology:
+
+```tsx
+// ❌ VoiceOver may scroll to the hidden span when navigating the cell.
+<td>
+  <span className={styles.srOnly}>{l10n.t('Yes')}</span>
+  <CheckmarkCircleFilled />
+</td>
+
+// ❌ The value is announced, but VoiceOver's visual focus indicator may disappear from the rendered symbol.
+<td aria-label={l10n.t('Yes')}>
+  <CheckmarkCircleFilled aria-hidden={true} />
+</td>
+
+// ✅ The accessibility node uses the visible symbol's bounds; there is no off-screen layout box to reveal.
+<td>
+  <span role="img" aria-label={l10n.t('Yes')} style={{ display: 'inline-flex' }}>
+    <CheckmarkCircleFilled aria-hidden={true} />
+  </span>
+</td>
+```
+
+Use hidden DOM text only when the semantic relationship cannot be expressed directly. When it is necessary, use an established
+shared utility, anchor it to an appropriate containing block, and manually navigate the control with VoiceOver or NVDA to verify
+that focus and the virtual cursor do not scroll the visible content away or lose the visual focus indicator. Playwright
+accessible-name assertions do not detect these screen-reader-driven visual regressions.
+
 ## Detection Rules
 
 ### 1. Tooltip Without aria-label Context
@@ -332,6 +367,7 @@ import { Announcer } from '../../api/webview-client/accessibility';
 - [ ] Visible text wrapped in `aria-hidden="true"` when aria-label duplicates it
 - [ ] Redundant aria-labels removed (identical to visible text)
 - [ ] Accessible names contain the exact localized visible label (for voice control)
+- [ ] VoiceOver/NVDA navigation neither scrolls visible content away nor loses its visual focus indicator
 - [ ] Decorative elements have `aria-hidden={true}`
 - [ ] Badges with tooltips use `focusableBadge` class + `tabIndex={0}`
 - [ ] Status updates use `Announcer` component

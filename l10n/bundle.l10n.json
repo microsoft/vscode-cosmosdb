@@ -300,6 +300,7 @@
   "Database name is missing in artifact connection info": "Database name is missing in artifact connection info",
   "Database name is required.": "Database name is required.",
   "Database schema files help": "Database schema files help",
+  "Database Schema Files, required": "Database Schema Files, required",
   "Database Schema Files:": "Database Schema Files:",
   "Database:": "Database:",
   "Databases": "Databases",

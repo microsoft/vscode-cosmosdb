@@ -300,6 +300,7 @@
   "Database name is missing in artifact connection info": "V informacích o připojení artefaktu chybí název databáze.",
   "Database name is required.": "Název databáze je povinný.",
   "Database schema files help": "Nápověda k souborům schématu databáze",
+  "Database Schema Files, required": "Database Schema Files, required",
   "Database Schema Files:": "Soubory schématu databáze:",
   "Database:": "Databáze:",
   "Databases": "Databáze",

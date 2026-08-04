@@ -300,6 +300,7 @@
   "Database name is missing in artifact connection info": "아티팩트 연결 정보에 데이터베이스 이름이 없습니다.",
   "Database name is required.": "데이터베이스 이름이 필요합니다.",
   "Database schema files help": "데이터베이스 스키마 파일 도움말",
+  "Database Schema Files, required": "Database Schema Files, required",
   "Database Schema Files:": "데이터베이스 스키마 파일:",
   "Database:": "데이터베이스:",
   "Databases": "데이터베이스",

@@ -300,6 +300,7 @@
   "Database name is missing in artifact connection info": "成果物の接続情報にデータベース名がありません",
   "Database name is required.": "データベース名が必要です。",
   "Database schema files help": "データベース スキーマ ファイルのヘルプ",
+  "Database Schema Files, required": "Database Schema Files, required",
   "Database Schema Files:": "データベース スキーマ ファイル:",
   "Database:": "データベース:",
   "Databases": "データベース",

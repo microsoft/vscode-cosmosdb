@@ -61,15 +61,6 @@ test.describe('Migration Assistant', () => {
         await expect(migration.modelDropdown).toBeVisible();
     });
 
-    test('More button has its visible label as its name and describes its purpose', async ({ vscodeWindow }) => {
-        const frame = await openMigrationSeeded(vscodeWindow);
-        const moreButton = frame.getByRole('button', { name: /^More…/ });
-
-        await expect(moreButton).toHaveText('More…');
-        await expect(moreButton).toHaveAccessibleName('More…');
-        await expect(moreButton).toHaveAccessibleDescription('Show full migration assistant description');
-    });
-
     test('file list discloses its expanded state', async ({ vscodeWindow }) => {
         const frame = await openMigrationSeeded(vscodeWindow);
         const fileListExpander = frame.getByRole('button', { name: /file\(s\) selected/ }).first();
@@ -105,12 +96,12 @@ test.describe('Migration Assistant', () => {
         }
 
         const schemaFilesDescription = 'Database Schema Files, required';
-        await expect(frame.getByRole('button', { name: 'Select Files…' })).toHaveAccessibleDescription(
-            schemaFilesDescription,
-        );
-        await expect(frame.getByRole('button', { name: 'Select Folder…' })).toHaveAccessibleDescription(
-            schemaFilesDescription,
-        );
+        await expect(
+            frame.getByRole('button', { name: 'Select Files…', description: schemaFilesDescription }),
+        ).toHaveAccessibleDescription(schemaFilesDescription);
+        await expect(
+            frame.getByRole('button', { name: 'Select Folder…', description: schemaFilesDescription }),
+        ).toHaveAccessibleDescription(schemaFilesDescription);
         await expect(
             frame.getByRole('button', { name: 'Generate schema files from workspace code using AI' }),
         ).toHaveAccessibleDescription(schemaFilesDescription);
@@ -135,7 +126,7 @@ test.describe('Migration Assistant', () => {
             await trigger.focus();
             await trigger.press('Enter');
 
-            const link = frame.getByRole('link', { name: linkLabel, exact: true });
+            const link = frame.getByRole('button', { name: linkLabel, exact: true });
             await expect(link).toBeFocused();
             await link.press('Escape');
             await expect(link).toBeHidden();
@@ -257,6 +248,11 @@ test.describe('Migration Assistant', () => {
         await expect(migration.progressBar).toBeVisible();
         await expect(migration.cancelButton).toBeVisible();
         await expect(migration.phaseCompleteBadge('phase1')).toBeVisible({ timeout: 30_000 });
+
+        const moreButton = frame.getByRole('button', { name: 'More…', exact: true });
+        await expect(moreButton).toHaveText('More…');
+        await expect(moreButton).toHaveAccessibleName('More…');
+        await expect(moreButton).toHaveAccessibleDescription('Show full migration assistant description');
     });
 
     test('Cancel aborts Discovery without completing', async ({ vscodeWindow }) => {

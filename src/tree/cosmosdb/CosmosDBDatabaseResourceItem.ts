@@ -8,6 +8,7 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { getControlPlane } from '../../cosmosdb/controlPlane';
+import { compareResourceIds } from '../../utils/strings';
 import { countExperienceUsageForSurvey } from '../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../utils/surveyTypes';
 import { type TreeElement } from '../TreeElement';
@@ -36,7 +37,7 @@ export abstract class CosmosDBDatabaseResourceItem
     async getChildren(): Promise<TreeElement[]> {
         const controlPlane = getControlPlane(this.model.accountInfo);
         const containers = await controlPlane.listContainers(this.model.database.id);
-        const sortedContainers = containers.sort((a, b) => a.id.localeCompare(b.id));
+        const sortedContainers = containers.sort((a, b) => compareResourceIds(a.id, b.id));
 
         if (containers.length === 0) {
             // no databases in there:

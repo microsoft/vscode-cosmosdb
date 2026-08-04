@@ -5,6 +5,7 @@
 
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
+import { compareResourceIds } from '../../utils/strings';
 import { type TreeElement } from '../TreeElement';
 
 export type SortDirection = 'asc' | 'desc';
@@ -135,8 +136,8 @@ export function makeSortable<T extends TreeElement>(
                     }
                     return -1; // `b` is undefined, a comes first
                 }
-                // Compare the values as strings
-                const compareResult = String(a.value).localeCompare(String(b.value));
+                // Compare the values as strings, using the same ordering as the default sort
+                const compareResult = compareResourceIds(String(a.value), String(b.value));
                 return sortDirection === 'desc' ? -compareResult : compareResult;
             })
             .map(({ item }) => item); // Return the sorted items

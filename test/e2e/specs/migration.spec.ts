@@ -61,6 +61,15 @@ test.describe('Migration Assistant', () => {
         await expect(migration.modelDropdown).toBeVisible();
     });
 
+    test('More button has its visible label as its name and describes its purpose', async ({ vscodeWindow }) => {
+        const frame = await openMigrationSeeded(vscodeWindow);
+        const moreButton = frame.getByRole('button', { name: /^More…/ });
+
+        await expect(moreButton).toHaveText('More…');
+        await expect(moreButton).toHaveAccessibleName('More…');
+        await expect(moreButton).toHaveAccessibleDescription('Show full migration assistant description');
+    });
+
     test('exclude-from-VCS checkbox toggles the .gitignore entry', async ({ vscodeWindow }) => {
         const frame = await openMigrationSeeded(vscodeWindow);
         const migration = new MigrationPage(frame);

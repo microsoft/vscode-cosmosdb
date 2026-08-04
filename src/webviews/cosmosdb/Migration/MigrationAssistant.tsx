@@ -1057,7 +1057,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                         {l10n.t('RDBMS → Cosmos DB NoSQL migration assistant.')}{' '}
                         <Link
                             style={{ fontSize: '12px' }}
-                            aria-label={l10n.t('Show full migration assistant description')}
+                            aria-description={l10n.t('Show full migration assistant description')}
                             onClick={() => setDescriptionExpanded(true)}
                         >
                             {l10n.t('More…')}

@@ -61,6 +61,79 @@ test.describe('Migration Assistant', () => {
         await expect(migration.modelDropdown).toBeVisible();
     });
 
+    test('file list discloses its expanded state', async ({ vscodeWindow }) => {
+        const frame = await openMigrationSeeded(vscodeWindow);
+        const fileListExpander = frame.getByRole('button', { name: /file\(s\) selected/ }).first();
+
+        await expect(fileListExpander).toHaveAttribute('aria-expanded', 'false');
+        await fileListExpander.focus();
+        const scrollPosition = await frame.locator('html').evaluate((element) => element.scrollTop);
+        await fileListExpander.press('Space');
+        await expect(fileListExpander).toHaveAttribute('aria-expanded', 'true');
+        await expect(frame.locator('html')).toHaveJSProperty('scrollTop', scrollPosition);
+        await fileListExpander.press('Enter');
+        await expect(fileListExpander).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    test('announces required migration configuration fields', async ({ vscodeWindow }) => {
+        const frame = await openMigrationSeeded(vscodeWindow);
+        const migration = new MigrationPage(frame);
+
+        await expect(frame.getByRole('textbox', { name: /Project Name/ })).toHaveAttribute('required', '');
+        await expect(frame.getByTestId('migration-model-dropdown')).toHaveAttribute('aria-required', 'true');
+
+        const analysisFields = [
+            ['project-name', 'Project:'],
+            ['project-type', 'Type:'],
+            ['language', 'Language:'],
+            ['frameworks', 'Frameworks:'],
+            ['database', 'Database:'],
+            ['access', 'Access Method:'],
+        ] as const;
+        for (const [field, name] of analysisFields) {
+            await expect(migration.analysisField(field)).toHaveAccessibleName(name);
+            await expect(migration.analysisField(field)).toHaveAttribute('required', '');
+        }
+
+        const schemaFilesDescription = 'Database Schema Files, required';
+        await expect(
+            frame.getByRole('button', { name: 'Select Files…', description: schemaFilesDescription }),
+        ).toHaveAccessibleDescription(schemaFilesDescription);
+        await expect(
+            frame.getByRole('button', { name: 'Select Folder…', description: schemaFilesDescription }),
+        ).toHaveAccessibleDescription(schemaFilesDescription);
+        await expect(
+            frame.getByRole('button', { name: 'Generate schema files from workspace code using AI' }),
+        ).toHaveAccessibleDescription(schemaFilesDescription);
+
+        await frame.getByRole('button', { name: /Phase 4: Target Cosmos DB Environment/ }).click();
+        await expect(frame.getByRole('radiogroup', { name: /Target Environment/ })).toHaveAttribute(
+            'aria-required',
+            'true',
+        );
+    });
+
+    test('interactive help links are keyboard accessible', async ({ vscodeWindow }) => {
+        const frame = await openMigrationSeeded(vscodeWindow);
+        const helpLinks = [
+            ['Database schema files help', 'schema-ddl/'],
+            ['Volumetrics help', 'volumetrics/'],
+            ['Access patterns help', 'access-patterns/'],
+        ] as const;
+
+        for (const [helpLabel, linkLabel] of helpLinks) {
+            const trigger = frame.getByRole('button', { name: helpLabel, exact: true });
+            await trigger.focus();
+            await trigger.press('Enter');
+
+            const link = frame.getByRole('button', { name: linkLabel, exact: true });
+            await expect(link).toBeFocused();
+            await link.press('Escape');
+            await expect(link).toBeHidden();
+            await expect(trigger).toBeFocused();
+        }
+    });
+
     test('exclude-from-VCS checkbox toggles the .gitignore entry', async ({ vscodeWindow }) => {
         const frame = await openMigrationSeeded(vscodeWindow);
         const migration = new MigrationPage(frame);
@@ -175,6 +248,11 @@ test.describe('Migration Assistant', () => {
         await expect(migration.progressBar).toBeVisible();
         await expect(migration.cancelButton).toBeVisible();
         await expect(migration.phaseCompleteBadge('phase1')).toBeVisible({ timeout: 30_000 });
+
+        const moreButton = frame.getByRole('button', { name: 'More…', exact: true });
+        await expect(moreButton).toHaveText('More…');
+        await expect(moreButton).toHaveAccessibleName('More…');
+        await expect(moreButton).toHaveAccessibleDescription('Show full migration assistant description');
     });
 
     test('Cancel aborts Discovery without completing', async ({ vscodeWindow }) => {
@@ -220,6 +298,19 @@ test.describe('Migration Assistant', () => {
         await migration.focus();
         await migration.phase2SummaryButton.click();
         await expect(migration.openedTab(/summary\.md/)).toBeVisible({ timeout: 15_000 });
+    });
+
+    test('Phase 2 announces whether a domain is referenced in code', async ({ vscodeWindow }) => {
+        const frame = await openMigrationSeeded(vscodeWindow);
+        const migration = new MigrationPage(frame);
+
+        await migration.runDiscovery();
+        await migration.runAssessment();
+
+        const salesDomainRow = migration.phase2DomainTable.getByRole('row').filter({ hasText: 'SalesDomain' });
+        const referencedCell = salesDomainRow.getByRole('cell', { name: 'Yes', exact: true });
+        await expect(referencedCell).toBeVisible();
+        await expect(referencedCell.getByRole('img', { name: 'Yes', exact: true })).toBeVisible();
     });
 
     test('surfaces domain, summary, and schema-model artifacts with links', async ({ vscodeWindow }) => {

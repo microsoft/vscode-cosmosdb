@@ -149,7 +149,7 @@ describe('strings', () => {
             expect(sorted(['shard10', 'shard2', 'shard1'])).toEqual(['shard1', 'shard2', 'shard10']);
         });
 
-        it('should keep ids that differ only by case in a stable order', () => {
+        it('should deterministically order ids that differ only by case', () => {
             expect(sorted(['orders', 'Orders'])).toEqual(['Orders', 'orders']);
             expect(sorted(['Orders', 'orders'])).toEqual(['Orders', 'orders']);
         });

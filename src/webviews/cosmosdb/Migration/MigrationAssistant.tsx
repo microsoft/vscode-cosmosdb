@@ -519,7 +519,12 @@ function FileListExpander({
                 aria-expanded={expanded}
                 tabIndex={0}
                 onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') setExpanded(!expanded);
+                    if (e.key === ' ') {
+                        e.preventDefault();
+                        setExpanded(!expanded);
+                    } else if (e.key === 'Enter') {
+                        setExpanded(!expanded);
+                    }
                 }}
             >
                 {expanded ? <ChevronDownRegular /> : <ChevronRightRegular />}
@@ -661,7 +666,7 @@ function getPhaseIcon(state: PhaseState) {
     );
 }
 
-function ReferencedInCodeStatus({ isMapped }: { isMapped: boolean }): React.ReactElement {
+function ReferencedInCodeStatus({ isMapped }: { isMapped: boolean }): ReactElement {
     const label = isMapped ? l10n.t('Yes') : l10n.t('No');
 
     return (

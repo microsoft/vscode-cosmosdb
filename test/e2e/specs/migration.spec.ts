@@ -75,9 +75,12 @@ test.describe('Migration Assistant', () => {
         const fileListExpander = frame.getByRole('button', { name: /file\(s\) selected/ }).first();
 
         await expect(fileListExpander).toHaveAttribute('aria-expanded', 'false');
-        await fileListExpander.click();
+        await fileListExpander.focus();
+        const scrollPosition = await frame.locator('html').evaluate((element) => element.scrollTop);
+        await fileListExpander.press('Space');
         await expect(fileListExpander).toHaveAttribute('aria-expanded', 'true');
-        await fileListExpander.click();
+        await expect(frame.locator('html')).toHaveJSProperty('scrollTop', scrollPosition);
+        await fileListExpander.press('Enter');
         await expect(fileListExpander).toHaveAttribute('aria-expanded', 'false');
     });
 

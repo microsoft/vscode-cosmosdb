@@ -510,6 +510,7 @@ function FileListExpander({
                 onClick={() => setExpanded(!expanded)}
                 // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- styled <div> expander; switching to <button> would break layout
                 role="button"
+                aria-expanded={expanded}
                 tabIndex={0}
                 onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') setExpanded(!expanded);

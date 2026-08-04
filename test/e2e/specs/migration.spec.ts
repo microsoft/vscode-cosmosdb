@@ -70,6 +70,17 @@ test.describe('Migration Assistant', () => {
         await expect(moreButton).toHaveAccessibleDescription('Show full migration assistant description');
     });
 
+    test('file list discloses its expanded state', async ({ vscodeWindow }) => {
+        const frame = await openMigrationSeeded(vscodeWindow);
+        const fileListExpander = frame.getByRole('button', { name: /file\(s\) selected/ }).first();
+
+        await expect(fileListExpander).toHaveAttribute('aria-expanded', 'false');
+        await fileListExpander.click();
+        await expect(fileListExpander).toHaveAttribute('aria-expanded', 'true');
+        await fileListExpander.click();
+        await expect(fileListExpander).toHaveAttribute('aria-expanded', 'false');
+    });
+
     test('exclude-from-VCS checkbox toggles the .gitignore entry', async ({ vscodeWindow }) => {
         const frame = await openMigrationSeeded(vscodeWindow);
         const migration = new MigrationPage(frame);

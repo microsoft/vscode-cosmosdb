@@ -130,7 +130,7 @@
     "@vscode/l10n-dev": "~0.0.35",
     "@vscode/test-electron": "~3.0.0",
     "@vscode/vsce": "~3.9.1",
-    "concurrently": "~10.0.3",
+    "concurrently": "~10.0.4",
     "cross-env": "~10.1.0",
     "diff": "~9.0.0",
     "eslint": "~10.5.0",

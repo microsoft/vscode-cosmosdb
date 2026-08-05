@@ -1,5 +1,24 @@
 # Change Log
 
+## 0.36.0
+
+### Added
+
+- Added a **Quick Start tour** for the NoSQL Query Editor, with contextual tips for query, document, schema, connection, and results actions and commands to replay or reset the tour. (#3180)
+- Added GitHub Copilot tools and skills for opening and focusing Query Editors, inspecting editor and connection context, sampling data, applying generated queries, and executing the current query. (#3206)
+- Added support for **query-enabled throughput buckets**, gated on the account's preview feature registration. (#3198)
+
+### Fixed
+
+- Improved keyboard and screen reader accessibility throughout the Migration Assistant, including focus management, status announcements, and dialog labeling. (#3234)
+
+### Changed
+
+- Reworked **Natural Language to Query (NL2Query)** to use GitHub Copilot tools and skills instead of the previous in-editor generation experience and chat participant. (#3206)
+- Expanded end-to-end coverage for NL2Query, the Learn menu, Query Editor onboarding, and the Migration Assistant; isolated migration tests from Copilot sign-in. (#3175, #3225, #3244)
+- Updated localization.
+- Updated several dependencies to address vulnerabilities.
+
 ## 0.35.2 (Preview)
 
 ### Added

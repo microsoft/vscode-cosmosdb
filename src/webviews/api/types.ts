@@ -12,32 +12,5 @@
  * into the webview bundle.
  */
 
-export type { AccountOverviewAppRouter, DocumentAppRouter, QueryEditorAppRouter } from '../../panels/trpc/appRouter';
-export type {
-    AccountHealthSignals,
-    AlertItem,
-    AlertSeverity,
-    AlertsResult,
-    AlertTimeRange,
-    ContainerMetrics,
-    DerivedAdvisoriesResult,
-    DerivedAdvisory,
-    DerivedAdvisoryRule,
-    DerivedAdvisorySeverity,
-    HealthState,
-    InventoryMetricsResult,
-    PartitionDistributionMode,
-    PartitionHealthResult,
-    PartitionIntensityLevel,
-    PartitionTile,
-    ProvisioningState,
-    RecommendationImpact,
-    RecommendationItem,
-    RecommendationsResult,
-    RuTrendPoint,
-    RuTrendsResult,
-    TimeRange,
-    UnavailableReason,
-} from '../../panels/accountOverview/services';
-export type { InventoryContainerRow, ThroughputMode } from '../../panels/trpc/routers/accountOverviewRouter';
+export type { DocumentAppRouter, QueryEditorAppRouter } from '../../panels/trpc/appRouter';
 export type { QueryEditorEvent } from '../../panels/trpc/routers/queryEditorEventsRouter';

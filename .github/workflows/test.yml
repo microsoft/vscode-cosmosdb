@@ -48,9 +48,9 @@ jobs:
     name: Tests
     runs-on: ubuntu-latest
 
-    # Same push+pull_request dedupe trick as build.yml — see the comment there.
+    # Skip duplicate synchronize runs for covered same-repo branches, but run opened/reopened events to post status.
     if: >-
-      github.event_name != 'pull_request' ||
+      github.event_name != 'pull_request' || github.event.action != 'synchronize' ||
       github.event.pull_request.head.repo.full_name != github.repository ||
       (github.head_ref != 'main' &&
        !startsWith(github.head_ref, 'rel/') &&

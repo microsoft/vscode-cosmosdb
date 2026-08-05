@@ -50,13 +50,10 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
 
-    # A push to a branch with an open PR fires both `push` and `pull_request` events. Cancelling one of them
-    # would leave a failed/cancelled required check on the PR head and block merge, so instead we SKIP the
-    # `pull_request` run for same-repo PRs whose head branch is already covered by this workflow's
-    # `push.branches` filters (only those branches get a `push` run in this repo). Fork PRs and same-repo PRs
-    # from other head branches (e.g. feature/*) still run on `pull_request`.
+    # A push to a covered same-repo branch with an open PR triggers both push and pull_request synchronize events.
+    # Skip that duplicate PR run, but keep opened/reopened runs so branches pushed before PR creation can report status.
     if: >-
-      github.event_name != 'pull_request' ||
+      github.event_name != 'pull_request' || github.event.action != 'synchronize' ||
       github.event.pull_request.head.repo.full_name != github.repository ||
       (github.head_ref != 'main' &&
        !startsWith(github.head_ref, 'rel/') &&

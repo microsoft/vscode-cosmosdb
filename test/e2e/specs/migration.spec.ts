@@ -476,11 +476,13 @@ test.describe('Migration Assistant', () => {
         await expect(migration.migrationActionButton).toBeEnabled();
         await expect(migration.migrationActionButton).toContainText('Plan Migration');
 
-        // Click "Plan Migration" (opens Copilot Chat with the generated prompt —
-        // a no-op for plan creation in the mocked e2e run), then simulate Chat
-        // writing the plan to disk. The file watcher flips hasCodeMigrationPlan.
+        // Click "Plan Migration" and verify the offline mock receives the generated
+        // prompt, then simulate Chat writing the plan to disk. The file watcher
+        // flips hasCodeMigrationPlan.
         await migration.migrationActionButton.click();
-        await migration.focus();
+        await expect
+            .poll(() => readCapturedPrompts().some((p) => p.route === 'code-migration-plan'), { timeout: 15_000 })
+            .toBe(true);
         writeCodeMigrationPlan();
 
         // The plan now exists: "View Plan" appears and the primary action

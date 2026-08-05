@@ -41,11 +41,14 @@ on:
       - 'scripts/import-seed.mjs'
       - '.github/workflows/nosql-language-service.yml'
 
-# Workflow-level concurrency dedupes rapid pushes on the same branch; PR runs are scoped by PR number + head
-# repo so two forks pushing branches with the same name don't cancel each other.
+# Workflow-level concurrency dedupes rapid pushes on the same branch, except on main and rel/* where every run
+# gets a unique group. PR runs are scoped by PR number + head repo so two forks pushing branches with the same
+# name don't cancel each other.
 concurrency:
   group: >-
     nosql-${{ github.workflow }}-${{
+    github.ref == 'refs/heads/main' && github.run_id ||
+    startsWith(github.ref, 'refs/heads/rel/') && github.run_id ||
     github.event_name == 'pull_request' &&
     format('{0}-{1}', github.event.pull_request.head.repo.full_name, github.event.pull_request.number) ||
     github.ref_name }}

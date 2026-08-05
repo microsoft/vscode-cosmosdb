@@ -46,12 +46,7 @@ import {
     type ProcedureInvocation,
     telemetryMiddlewareBody,
 } from '@cosmosdb/webview-rpc/server';
-import {
-    type AccountOverviewRouterContext,
-    type DocumentRouterContext,
-    type MigrationRouterContext,
-    type QueryEditorRouterContext,
-} from './appRouter';
+import { type DocumentRouterContext, type MigrationRouterContext, type QueryEditorRouterContext } from './appRouter';
 import { azextTelemetryRunner } from './middleware/azextTelemetryRunner';
 import { outputChannelProcedureLogger } from './middleware/outputChannelLogger';
 
@@ -114,14 +109,3 @@ export const migrationProcedure = migrationT.procedure
 export const migrationRouter = migrationT.router;
 export const migrationMergeRouters = migrationT.mergeRouters;
 export const migrationCallerFactory = migrationT.createCallerFactory;
-
-// ─── Account Overview tRPC Instance ─────────────────────────────────────────
-
-const accountOverviewT = initTRPC.context<AccountOverviewRouterContext>().create();
-
-/** Base procedure with logging + telemetry middleware already applied. */
-export const accountOverviewProcedure = accountOverviewT.procedure
-    .use(accountOverviewT.middleware(sharedLoggingBody))
-    .use(accountOverviewT.middleware(sharedTelemetryBody));
-export const accountOverviewRouter = accountOverviewT.router;
-export const accountOverviewCallerFactory = accountOverviewT.createCallerFactory;

@@ -7,6 +7,7 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
+import { compareResourceIds } from '../../utils/strings';
 import { type TreeElement } from '../TreeElement';
 import { TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../TreeElementWithExperience';
@@ -39,7 +40,7 @@ export abstract class CosmosDBStoredProceduresResourceItem
                 .fetchAll();
             return result.resources;
         });
-        const sortedProcedures = storedProcedures.sort((a, b) => a.id.localeCompare(b.id));
+        const sortedProcedures = storedProcedures.sort((a, b) => compareResourceIds(a.id, b.id));
 
         return this.getChildrenImpl(sortedProcedures);
     }

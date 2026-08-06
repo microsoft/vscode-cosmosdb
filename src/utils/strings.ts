@@ -4,8 +4,38 @@
  *--------------------------------------------------------------------------------------------*/
 
 /**
- * General-purpose string utilities: serialisation, truncation, and padding.
+ * General-purpose string utilities: serialisation, truncation, padding, and comparison.
  */
+
+/**
+ * Orders ids the way people read them: case is ignored, and embedded numbers are compared
+ * by value so that `container2` sorts before `container10`.
+ */
+const resourceIdCollator = new Intl.Collator(undefined, { sensitivity: 'accent', numeric: true });
+
+/**
+ * Compares two resource ids to decide their display order in the tree view.
+ *
+ * Cosmos DB ids are case-sensitive, so `Orders` and `orders` are two different containers even
+ * though the collator considers them equal. A plain code-unit comparison breaks that tie, which
+ * keeps the order stable instead of leaving it up to whatever order the service replied with.
+ *
+ * @param a First id
+ * @param b Second id
+ * @returns Negative if `a` comes first, positive if `b` comes first, zero if the ids are identical
+ */
+export function compareResourceIds(a: string, b: string): number {
+    const result = resourceIdCollator.compare(a, b);
+    if (result !== 0) {
+        return result;
+    }
+
+    if (a === b) {
+        return 0;
+    }
+
+    return a < b ? -1 : 1;
+}
 
 /**
  * Converts any value to a human-readable string.

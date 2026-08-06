@@ -14,7 +14,7 @@ describe('isThroughputBucketsFeatureRegistered', () => {
     it('returns true for the registered Throughput Buckets feature', () => {
         expect(
             isThroughputBucketsFeatureRegistered({
-                name: 'Microsoft.DocumentDB/ThroughputBuckets',
+                name: 'Microsoft.DocumentDB/ThroughputBucketing',
                 properties: { state: 'Registered' },
             }),
         ).toBe(true);
@@ -23,7 +23,7 @@ describe('isThroughputBucketsFeatureRegistered', () => {
     it('matches the feature name and state case-insensitively', () => {
         expect(
             isThroughputBucketsFeatureRegistered({
-                name: 'microsoft.documentdb/throughputbuckets',
+                name: 'microsoft.documentdb/throughputbucketing',
                 properties: { state: 'REGISTERED' },
             }),
         ).toBe(true);
@@ -34,7 +34,7 @@ describe('isThroughputBucketsFeatureRegistered', () => {
         (state) => {
             expect(
                 isThroughputBucketsFeatureRegistered({
-                    name: 'Microsoft.DocumentDB/ThroughputBuckets',
+                    name: 'Microsoft.DocumentDB/ThroughputBucketing',
                     properties: { state },
                 }),
             ).toBe(false);

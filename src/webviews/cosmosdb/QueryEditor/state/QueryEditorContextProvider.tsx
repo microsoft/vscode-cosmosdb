@@ -468,10 +468,20 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
                     containerSchema: event.containerSchema as JSONSchema | null,
                 });
                 break;
+            case 'throughputBucketsRefreshRequested':
+                void this.refreshThroughputBuckets();
+                break;
             case 'runActiveQueryRequested':
                 void this.runActiveQueryFromTool(event.query);
                 break;
         }
+    }
+
+    private async refreshThroughputBuckets(): Promise<void> {
+        const throughputBuckets = await this.safeMutate(() =>
+            this.trpcClient.queryEditor.refreshThroughputBuckets.mutate(),
+        );
+        this.dispatch({ type: 'updateThroughputBuckets', throughputBuckets });
     }
 
     private handleQueryExecutionResult(result?: QueryExecutionResponse): void {

@@ -300,7 +300,7 @@
   "Database name is missing in artifact connection info": "Имя базы данных отсутствует в сведениях о подключении артефакта",
   "Database name is required.": "Имя базы данных является обязательным значением.",
   "Database schema files help": "Справка по файлам схемы базы данных",
-  "Database Schema Files, required": "Database Schema Files, required",
+  "Database Schema Files, required": "Файлы схемы базы данных, обязательно",
   "Database Schema Files:": "Файлы схемы базы данных:",
   "Database:": "База данных:",
   "Databases": "Базы данных",

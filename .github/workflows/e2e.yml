@@ -75,11 +75,13 @@ jobs:
        !startsWith(github.head_ref, 'rel/') &&
        !startsWith(github.head_ref, 'dev/'))
 
-    # Scope concurrency by PR (or by branch on push) so two forks pushing branches with the same name don't cancel
-    # each other.
+    # Scope concurrency by PR (or by branch on push) so two forks pushing branches with the same name don't
+    # cancel each other. Main and rel/* runs get unique groups so every commit is tested.
     concurrency:
       group: >-
         e2e-${{ github.workflow }}-${{
+        github.ref == 'refs/heads/main' && github.run_id ||
+        startsWith(github.ref, 'refs/heads/rel/') && github.run_id ||
         github.event_name == 'pull_request' &&
         format('{0}-{1}', github.event.pull_request.head.repo.full_name, github.event.pull_request.number) ||
         github.ref_name }}

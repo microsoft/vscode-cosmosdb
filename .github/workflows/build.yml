@@ -35,14 +35,17 @@ on:
       - dev/**
 
 # Workflow-level concurrency dedupes runs for the SAME branch across DIFFERENT commits (e.g. rapid pushes
-# during a rebase). For pull_request events the group is scoped by PR number + head repo so two forks pushing
-# branches with the same name don't cancel each other.
+# during a rebase), except on main and rel/* where every run gets a unique group and is always built. For
+# pull_request events the group is scoped by PR number + head repo so two forks pushing branches with the same
+# name don't cancel each other.
 concurrency:
   group: >-
     build-${{ github.workflow }}-${{
-    github.event_name == 'pull_request' &&
-    format('{0}-{1}', github.event.pull_request.head.repo.full_name, github.event.pull_request.number) ||
-    github.ref_name }}
+    github.ref == 'refs/heads/main' && github.run_id ||
+    startsWith(github.ref, 'refs/heads/rel/') && github.run_id ||
+        github.event_name == 'pull_request' &&
+        format('{0}-{1}', github.event.pull_request.head.repo.full_name, github.event.pull_request.number) ||
+        github.ref_name }}
   cancel-in-progress: true
 
 jobs:

@@ -300,7 +300,7 @@
   "Database name is missing in artifact connection info": "Yapıt bağlantı bilgilerinde veritabanı adı eksik",
   "Database name is required.": "Veritabanı adı gereklidir.",
   "Database schema files help": "Veritabanı şema dosyaları yardımı",
-  "Database Schema Files, required": "Database Schema Files, required",
+  "Database Schema Files, required": "Veritabanı Şeması Dosyaları, gerekli",
   "Database Schema Files:": "Veritabanı Şema Dosyaları:",
   "Database:": "Veritabanı:",
   "Databases": "Veritabanları",

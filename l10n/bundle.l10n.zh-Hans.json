@@ -300,7 +300,7 @@
   "Database name is missing in artifact connection info": "工件连接信息中缺少数据库名称",
   "Database name is required.": "数据库名称是必需的。",
   "Database schema files help": "数据库架构文件帮助",
-  "Database Schema Files, required": "Database Schema Files, required",
+  "Database Schema Files, required": "数据库架构文件，必需",
   "Database Schema Files:": "数据库架构文件:",
   "Database:": "数据库:",
   "Databases": "数据库",

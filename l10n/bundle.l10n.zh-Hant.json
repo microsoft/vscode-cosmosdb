@@ -300,7 +300,7 @@
   "Database name is missing in artifact connection info": "成品連線資訊中缺少資料庫名稱",
   "Database name is required.": "資料庫名稱是必要項目。",
   "Database schema files help": "資料庫結構描述檔案說明",
-  "Database Schema Files, required": "Database Schema Files, required",
+  "Database Schema Files, required": "資料庫結構描述檔案，必要項目",
   "Database Schema Files:": "資料庫結構描述檔案:",
   "Database:": "資料庫:",
   "Databases": "資料庫",

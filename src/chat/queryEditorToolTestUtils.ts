@@ -53,3 +53,4 @@ export async function invokeRegisteredTool(
             delete lmRecord.registerTool;
         }
     }
+}

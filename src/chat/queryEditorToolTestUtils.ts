@@ -22,19 +22,34 @@ interface InvokableTool {
 export async function invokeRegisteredTool(
     register: (context: vscode.ExtensionContext) => void,
 ): Promise<{ result: vscode.LanguageModelToolResult; text: string }> {
+    const lmRecord = vscode.lm as unknown as Record<string, unknown>;
+    const originalRegisterTool = lmRecord.registerTool;
+
     let captured: InvokableTool | undefined;
-    (vscode.lm as unknown as { registerTool: unknown }).registerTool = (_name: string, tool: unknown) => {
+    lmRecord.registerTool = (_name: string, tool: unknown) => {
         captured = tool as InvokableTool;
         return { dispose: () => {} };
     };
 
-    register({ subscriptions: { push: () => {} } } as unknown as vscode.ExtensionContext);
+    try {
+        register({ subscriptions: { push: () => {} } } as unknown as vscode.ExtensionContext);
 
-    if (!captured) {
-        throw new Error('register did not call vscode.lm.registerTool');
+        if (!captured) {
+            throw new Error('register did not call vscode.lm.registerTool');
+        }
+
+        const cts = new vscode.CancellationTokenSource();
+        try {
+            const result = await captured.invoke({ input: {} }, cts.token);
+            const text = (result.content as Array<{ value?: string }>).map((part) => part.value ?? '').join('');
+            return { result, text };
+        } finally {
+            cts.dispose();
+        }
+    } finally {
+        if (originalRegisterTool !== undefined) {
+            lmRecord.registerTool = originalRegisterTool;
+        } else {
+            delete lmRecord.registerTool;
+        }
     }
-
-    const result = await captured.invoke({ input: {} }, { isCancellationRequested: false });
-    const text = (result.content as Array<{ value?: string }>).map((part) => part.value ?? '').join('');
-    return { result, text };
-}

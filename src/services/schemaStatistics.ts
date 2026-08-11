@@ -19,7 +19,7 @@ import { type JSONSchema } from '@cosmosdb/schema-analyzer';
  * `packages/schema-analyzer/docs/schema-format.md`) treats `x-dataType` / `x-bsonType` as part of
  * the public type tag.
  */
-export const NOISY_STAT_KEYS = new Set<string>([
+export const NOISY_STAT_KEYS: ReadonlySet<string> = new Set<string>([
     'x-documentsInspected',
     'x-minProperties',
     'x-maxProperties',

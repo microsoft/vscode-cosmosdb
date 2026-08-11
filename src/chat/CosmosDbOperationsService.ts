@@ -7,6 +7,7 @@ import { type JSONSchema } from '@cosmosdb/schema-analyzer';
 import { getSchemaFromDocument, updateSchemaWithDocument, type NoSQLDocument } from '@cosmosdb/schema-analyzer/json';
 import { type SerializedQueryResult } from '../cosmosdb/types/queryResult';
 import { type QueryEditorTab } from '../panels/QueryEditorTab';
+import { stripSchemaStatistics } from '../services/schemaStatistics';
 import { getConnectionFromQueryTab } from './chatUtils';
 
 /**
@@ -89,7 +90,9 @@ export class CosmosDbOperationsService {
             for (const document of documents.slice(1)) {
                 updateSchemaWithDocument(schema, document as NoSQLDocument);
             }
-            return schema;
+            // Strip value-derived statistics (x-minValue/x-maxValue, string lengths, boolean counts)
+            // before the schema is stored and later surfaced to the language model.
+            return stripSchemaStatistics(schema);
         } catch (error) {
             console.warn('Failed to extract schema from results:', error);
             return undefined;

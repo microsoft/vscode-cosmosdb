@@ -9,6 +9,7 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
+import { stripSchemaStatistics } from '../services/schemaStatistics';
 import { getActiveQueryEditor, getConnectionFromQueryTab } from './chatUtils';
 
 /**
@@ -171,7 +172,9 @@ export function registerExecuteCurrentQueryTool(context: vscode.ExtensionContext
                         }
 
                         const documents = queryResult.documents ?? [];
-                        // Result metadata only — never include raw document values.
+                        // Result metadata only — never include raw document values. The inferred
+                        // schema is stripped of value-derived statistics (x-minValue/x-maxValue,
+                        // x-min/maxLength, boolean counts) so no actual document values reach the model.
                         const metadata = {
                             databaseId: connection.databaseId,
                             containerId: connection.containerId,
@@ -181,7 +184,9 @@ export function registerExecuteCurrentQueryTool(context: vscode.ExtensionContext
                             hasMoreResults: queryResult.hasMoreResults,
                             schema:
                                 documents.length > 0
-                                    ? (getSchemaFromDocuments(documents as NoSQLDocument[]) as Record<string, unknown>)
+                                    ? (stripSchemaStatistics(
+                                          getSchemaFromDocuments(documents as NoSQLDocument[]),
+                                      ) as Record<string, unknown>)
                                     : undefined,
                         };
 

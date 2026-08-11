@@ -10,6 +10,7 @@ import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
 import { SchemaService } from '../services/SchemaService';
+import { stripSchemaStatistics } from '../services/schemaStatistics';
 import { getActiveQueryEditor, getConnectionFromQueryTab } from './chatUtils';
 import { CosmosDbOperationsService } from './CosmosDbOperationsService';
 
@@ -210,13 +211,13 @@ export function registerGetQueryEditorContextTool(context: vscode.ExtensionConte
                                 requestCharge: currentResult.requestCharge,
                                 roundTrips: currentResult.roundTrips,
                                 hasMoreResults: currentResult.hasMoreResults,
-                                // Structure only — getSchemaFromDocuments never carries raw values.
+                                // Structure only — stripped of value-derived statistics so no actual
+                                // document values (numeric min/max, string lengths) reach the model.
                                 schema:
                                     documents.length > 0
-                                        ? (getSchemaFromDocuments(documents as NoSQLDocument[]) as Record<
-                                              string,
-                                              unknown
-                                          >)
+                                        ? (stripSchemaStatistics(
+                                              getSchemaFromDocuments(documents as NoSQLDocument[]),
+                                          ) as Record<string, unknown>)
                                         : undefined,
                             };
                         }

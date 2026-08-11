@@ -16,6 +16,7 @@ import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { type SchemaMetadata } from './SchemaFileStorage';
 import type * as SchemaFileStorageModule from './SchemaFileStorage';
 import { type SchemaWriteOptions } from './SchemaService';
+import { collectSchemaKeys, findConfidentialStatKeys } from './schemaStatisticsTestUtils';
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -105,6 +106,7 @@ vi.mock('./SchemaFileStorage', async () => {
 const {
     SchemaService,
     aggressivelySimplify,
+    stripSchemaStatistics,
     composeMetadata,
     SCHEMA_SIZE_LIMIT_BYTES,
     DEFAULT_SIMPLIFIED_TARGET_BYTES,
@@ -703,6 +705,89 @@ describe('aggressivelySimplify (pure helper)', () => {
         // The other 2 slots are filled by *some* rare fields (stable sort
         // picks them by insertion order — `rare_000` and `rare_001`).
         expect(kept.filter((k) => k.startsWith('rare_'))).toEqual(['rare_000', 'rare_001']);
+    });
+});
+
+describe('stripSchemaStatistics (confidentiality boundary)', () => {
+    it('removes every value-derived statistic that getSchemaFromDocuments records', () => {
+        // Sensitive documents: a salary (numeric), a national ID (string) and a flag (boolean).
+        const documents = [
+            { id: '1', salary: 987654, nationalId: 'AB-123456789', active: true },
+            { id: '2', salary: 42, nationalId: 'CD-9', active: false },
+        ];
+        const raw = getSchemaFromDocuments(documents) as JSONSchema;
+
+        // Precondition: the raw schema DOES leak the value-derived extremes — this is the bug
+        // the stripping guards against, so assert it is present before stripping.
+        const rawKeys = collectSchemaKeys(raw);
+        expect(rawKeys.has('x-minValue')).toBe(true);
+        expect(rawKeys.has('x-maxValue')).toBe(true);
+        expect(JSON.stringify(raw)).toContain('987654');
+
+        const stripped = stripSchemaStatistics(raw);
+        expect(findConfidentialStatKeys(stripped)).toEqual([]);
+        // The actual sensitive numeric value must not survive anywhere in the payload.
+        expect(JSON.stringify(stripped)).not.toContain('987654');
+    });
+
+    it('preserves structural information the model needs (property names, types, popularity)', () => {
+        const schema: JSONSchema = {
+            type: 'object',
+            'x-occurrence': 5,
+            properties: {
+                salary: { type: 'number', 'x-occurrence': 5, 'x-minValue': 42, 'x-maxValue': 987654 },
+                name: { type: 'string', 'x-occurrence': 5, 'x-minLength': 1, 'x-maxLength': 40 },
+            },
+        } as unknown as JSONSchema;
+
+        const stripped = stripSchemaStatistics(schema) as unknown as Record<string, unknown>;
+        const props = stripped.properties as Record<string, Record<string, unknown>>;
+
+        expect(Object.keys(props).sort()).toEqual(['name', 'salary']);
+        expect(props.salary.type).toBe('number');
+        expect(props.name.type).toBe('string');
+        // Popularity counters are intentionally kept — they drive later simplification.
+        expect(stripped['x-occurrence']).toBe(5);
+        expect(props.salary['x-occurrence']).toBe(5);
+        // Value-derived extremes are gone.
+        expect(findConfidentialStatKeys(stripped)).toEqual([]);
+    });
+
+    it('strips statistics nested inside anyOf branches and array items', () => {
+        const schema: JSONSchema = {
+            type: 'object',
+            properties: {
+                tags: {
+                    type: 'array',
+                    items: { type: 'string', 'x-minLength': 3, 'x-maxLength': 20 },
+                    'x-minItems': 0,
+                    'x-maxItems': 9,
+                },
+                mixed: {
+                    anyOf: [
+                        { type: 'number', 'x-minValue': -5, 'x-maxValue': 100 },
+                        { type: 'string', 'x-minLength': 2, 'x-maxLength': 6 },
+                    ],
+                },
+            },
+        } as unknown as JSONSchema;
+
+        expect(findConfidentialStatKeys(stripSchemaStatistics(schema))).toEqual([]);
+    });
+
+    it('does not mutate the input schema (returns a clone)', () => {
+        const schema: JSONSchema = {
+            type: 'object',
+            properties: { salary: { type: 'number', 'x-minValue': 1, 'x-maxValue': 2 } },
+        } as unknown as JSONSchema;
+
+        const stripped = stripSchemaStatistics(schema);
+        const original = (schema.properties as Record<string, Record<string, unknown>>).salary;
+
+        expect(stripped).not.toBe(schema);
+        // Original still carries its statistics — stripping happened on the clone only.
+        expect(original['x-minValue']).toBe(1);
+        expect(original['x-maxValue']).toBe(2);
     });
 });
 

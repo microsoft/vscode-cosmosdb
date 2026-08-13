@@ -171,7 +171,15 @@ export const documentRouterDef = documentRouter({
         const pendingCleanup = ctx.state.pendingPartitionKeyCleanup;
         if (!pendingCleanup) {
             console.warn('[Document] Partition key cleanup retry requested with no pending cleanup.');
-            return { success: true, cleanupRequired: false } as const;
+            const currentDocument = ctx.state.documentId
+                ? await readDocument(ctx.connection, ctx.state.documentId, undefined, ctx.state.partitionKeyDefinition)
+                : undefined;
+            return {
+                success: true,
+                cleanupRequired: false,
+                documentContent: currentDocument?.documentContent,
+                partitionKey: currentDocument?.partitionKey,
+            } as const;
         }
 
         try {
@@ -272,7 +280,7 @@ async function updateDocument(
         const confirmation = await getConfirmationAsInSettings(
             l10n.t('Partition Key changed'),
             l10n.t(
-                'Are you sure you want to change the items partition key?\n\nThis will delete the old item and create a new one.',
+                'Are you sure you want to change the items partition key?\n\nThis will create the item in the new partition before deleting the original. If deletion fails, both items may temporarily exist.',
             ),
             'change',
         );
@@ -282,7 +290,8 @@ async function updateDocument(
             return undefined;
         }
 
-        const result = await createDocument(connection, documentContent, ctx.signal, state.partitionKeyDefinition);
+        // After confirmation, complete the cross-partition move independently of webview request cancellation.
+        const result = await createDocument(connection, documentContent, undefined, state.partitionKeyDefinition);
         if (!result) {
             throw new Error(l10n.t('Item update with partition key change failed'));
         }

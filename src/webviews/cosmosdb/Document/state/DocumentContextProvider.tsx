@@ -12,6 +12,22 @@ import { type DispatchAction, type OpenDocumentMode } from './DocumentState';
 
 const emptyPartitionKey: PartitionKeyDefinition = { paths: [] };
 
+type PartitionKeyCleanupResult = {
+    success: boolean;
+    cleanupRequired: boolean;
+    message?: string;
+    documentContent?: JSONValue;
+    partitionKey?: PartitionKeyDefinition;
+};
+
+type PartitionKeyCleanupClient = {
+    document: {
+        retryPartitionKeyCleanup: {
+            mutate: () => Promise<PartitionKeyCleanupResult>;
+        };
+    };
+};
+
 export class DocumentContextProvider extends BaseContextProvider<DocumentAppRouter> {
     constructor(
         private readonly dispatch: (action: DispatchAction) => void,
@@ -56,16 +72,11 @@ export class DocumentContextProvider extends BaseContextProvider<DocumentAppRout
         this.dispatch({ type: 'setCleaningUp', isCleaningUp: true });
 
         try {
-            const result = (await this.trpcClient.document.retryPartitionKeyCleanup.mutate()) as {
-                success: boolean;
-                cleanupRequired: boolean;
-                message?: string;
-                documentContent?: JSONValue;
-                partitionKey?: PartitionKeyDefinition;
-            };
+            const cleanupClient = this.trpcClient as unknown as PartitionKeyCleanupClient;
+            const result = await cleanupClient.document.retryPartitionKeyCleanup.mutate();
             if (result.success && result.documentContent) {
                 this.dispatch({
-                    type: 'setDocument',
+                    type: 'completeCleanup',
                     documentContent: JSON.stringify(result.documentContent, null, 4),
                     partitionKey: result.partitionKey ?? emptyPartitionKey,
                 });

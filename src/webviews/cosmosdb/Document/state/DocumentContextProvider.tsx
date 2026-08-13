@@ -27,11 +27,15 @@ export class DocumentContextProvider extends BaseContextProvider<DocumentAppRout
         try {
             const result = (await this.trpcClient.document.saveDocument.mutate({ documentText })) as {
                 success: boolean;
+                cleanupRequired?: boolean;
+                message?: string;
                 documentContent?: JSONValue;
                 partitionKey?: PartitionKeyDefinition;
             };
 
-            if (result.success && result.documentContent) {
+            if (result.cleanupRequired && result.message) {
+                this.dispatch({ type: 'setCleanupRequired', message: result.message });
+            } else if (result.success && result.documentContent) {
                 this.dispatch({
                     type: 'setDocument',
                     documentContent: JSON.stringify(result.documentContent, null, 4),
@@ -45,6 +49,36 @@ export class DocumentContextProvider extends BaseContextProvider<DocumentAppRout
             this.dispatch({ type: 'setError', error: this.parseError(message) });
         } finally {
             this.dispatch({ type: 'setSaving', isSaving: false });
+        }
+    }
+
+    public async retryPartitionKeyCleanup(): Promise<void> {
+        this.dispatch({ type: 'setCleaningUp', isCleaningUp: true });
+
+        try {
+            const result = (await this.trpcClient.document.retryPartitionKeyCleanup.mutate()) as {
+                success: boolean;
+                cleanupRequired: boolean;
+                message?: string;
+                documentContent?: JSONValue;
+                partitionKey?: PartitionKeyDefinition;
+            };
+            if (result.success && result.documentContent) {
+                this.dispatch({
+                    type: 'setDocument',
+                    documentContent: JSON.stringify(result.documentContent, null, 4),
+                    partitionKey: result.partitionKey ?? emptyPartitionKey,
+                });
+            } else if (result.success) {
+                this.dispatch({ type: 'setCleanupRequired', message: undefined });
+            } else {
+                this.dispatch({ type: 'setCleanupRequired', message: result.message });
+            }
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            this.dispatch({ type: 'setError', error: this.parseError(message) });
+        } finally {
+            this.dispatch({ type: 'setCleaningUp', isCleaningUp: false });
         }
     }
 

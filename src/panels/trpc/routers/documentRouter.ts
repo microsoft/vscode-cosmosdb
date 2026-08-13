@@ -128,7 +128,11 @@ export const documentRouterDef = documentRouter({
         let saveResult;
         if (state.documentId) {
             // Update existing document
-            saveResult = await updateDocument(connection, documentContent, state, ctx);
+            const updateResult = await updateDocument(connection, documentContent, state, ctx);
+            if (updateResult && 'cleanupRequired' in updateResult) {
+                return updateResult;
+            }
+            saveResult = updateResult;
         } else {
             // Create new document
             saveResult = await createDocument(connection, documentContent, ctx.signal, state.partitionKeyDefinition);
@@ -160,6 +164,32 @@ export const documentRouterDef = documentRouter({
             success: true,
             documentContent: saveResult.documentContent,
             partitionKey: saveResult.partitionKey,
+        } as const;
+    }),
+
+    retryPartitionKeyCleanup: documentProcedure.mutation(async ({ ctx }) => {
+        const pendingCleanup = ctx.state.pendingPartitionKeyCleanup;
+        if (!pendingCleanup) {
+            console.warn('[Document] Partition key cleanup retry requested with no pending cleanup.');
+            return { success: true, cleanupRequired: false } as const;
+        }
+
+        try {
+            await deletePartitionKeyMoveSource(ctx.connection, pendingCleanup.sourceIdentifier);
+        } catch {
+            return {
+                success: false,
+                cleanupRequired: true,
+                message: getPartitionKeyCleanupRequiredMessage(),
+            } as const;
+        }
+
+        completePartitionKeyMove(ctx, pendingCleanup.destination);
+        return {
+            success: true,
+            cleanupRequired: false,
+            documentContent: pendingCleanup.destination.documentContent,
+            partitionKey: pendingCleanup.destination.partitionKey,
         } as const;
     }),
 
@@ -208,8 +238,8 @@ export const documentRouterDef = documentRouter({
 
 /**
  * Handle document update with partition key change detection.
- * If the partition key changed, confirms with the user, deletes the old document,
- * and creates a new one. Otherwise, does a simple replace.
+ * If the partition key changed, confirms with the user, creates a new document,
+ * and deletes the old one. Otherwise, does a simple replace.
  */
 async function updateDocument(
     connection: NoSqlQueryConnection,
@@ -217,6 +247,14 @@ async function updateDocument(
     state: DocumentMutableState,
     ctx: DocumentRouterContext & { actionContext?: IActionContext },
 ) {
+    if (state.pendingPartitionKeyCleanup) {
+        return {
+            success: false,
+            cleanupRequired: true,
+            message: getPartitionKeyCleanupRequiredMessage(),
+        } as const;
+    }
+
     const documentId = state.documentId!;
     const actionContext = ctx.actionContext;
 
@@ -244,17 +282,23 @@ async function updateDocument(
             return undefined;
         }
 
-        // Delete old document, then create new one
-        await deleteDocument(connection, documentId, ctx.signal);
-
         const result = await createDocument(connection, documentContent, ctx.signal, state.partitionKeyDefinition);
         if (!result) {
             throw new Error(l10n.t('Item update with partition key change failed'));
         }
 
-        if (result.partitionKey) state.partitionKeyDefinition = result.partitionKey;
-        state.documentId = result.identifier;
-        ctx.panel.title = `${result.identifier.id}.json`;
+        try {
+            await deletePartitionKeyMoveSource(connection, documentId);
+        } catch {
+            state.pendingPartitionKeyCleanup = { sourceIdentifier: documentId, destination: result };
+            return {
+                success: false,
+                cleanupRequired: true,
+                message: getPartitionKeyCleanupRequiredMessage(),
+            } as const;
+        }
+
+        completePartitionKeyMove(ctx, result);
         return result;
     } else {
         // Simple replace
@@ -276,6 +320,52 @@ async function updateDocument(
         ctx.panel.title = `${result.identifier.id}.json`;
         return result;
     }
+}
+
+async function deletePartitionKeyMoveSource(
+    connection: NoSqlQueryConnection,
+    documentId: DocumentMutableState['documentId'] & {},
+): Promise<void> {
+    try {
+        // Once creation succeeds, finish cleanup even if the originating webview request is canceled.
+        const deleted = await deleteDocument(connection, documentId);
+        if (!deleted) {
+            throw new Error('Item deletion did not complete');
+        }
+    } catch (error) {
+        if (!isNotFound(error)) {
+            throw error;
+        }
+    }
+}
+
+function completePartitionKeyMove(
+    ctx: DocumentRouterContext,
+    result: Awaited<ReturnType<typeof createDocument>> & {},
+): void {
+    if (result.partitionKey) ctx.state.partitionKeyDefinition = result.partitionKey;
+    ctx.state.documentId = result.identifier;
+    ctx.state.pendingPartitionKeyCleanup = undefined;
+    ctx.panel.title = `${result.identifier.id}.json`;
+}
+
+function getPartitionKeyCleanupRequiredMessage(): string {
+    return l10n.t(
+        'The item was created in the new partition, but the original item could not be deleted. Both items may exist.',
+    );
+}
+
+function isNotFound(error: unknown): boolean {
+    if (!error || typeof error !== 'object') {
+        return false;
+    }
+    const candidate = error as { statusCode?: number; code?: string | number };
+    return (
+        candidate.statusCode === 404 ||
+        candidate.code === 404 ||
+        candidate.code === 'NotFound' ||
+        candidate.code === 'ResourceNotFound'
+    );
 }
 
 /**

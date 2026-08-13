@@ -18,6 +18,7 @@ import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microso
 import * as vscode from 'vscode';
 import { z } from 'zod';
 import { type NoSqlQueryConnection } from '../../cosmosdb/NoSqlQueryConnection';
+import { type DocumentWriteResult } from '../../cosmosdb/session/DocumentSession';
 import { type QuerySession } from '../../cosmosdb/session/QuerySession';
 import { type CosmosDBRecordIdentifier } from '../../cosmosdb/types/queryResult';
 import { type TelemetryContext } from '../../Telemetry';
@@ -108,6 +109,10 @@ export type DocumentMutableState = {
     documentId: CosmosDBRecordIdentifier | undefined;
     isDirty: boolean;
     partitionKeyDefinition?: PartitionKeyDefinition;
+    pendingPartitionKeyCleanup?: {
+        sourceIdentifier: CosmosDBRecordIdentifier;
+        destination: DocumentWriteResult;
+    };
 };
 
 export type DocumentRouterContext = CosmosDBRouterContext & {

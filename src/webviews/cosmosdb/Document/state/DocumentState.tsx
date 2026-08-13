@@ -48,6 +48,14 @@ export type DispatchAction =
           isRefreshing: boolean;
       }
     | {
+          type: 'setCleaningUp';
+          isCleaningUp: boolean;
+      }
+    | {
+          type: 'setCleanupRequired';
+          message: string | undefined;
+      }
+    | {
           type: 'setError';
           error: string[] | string | undefined;
       };
@@ -66,9 +74,11 @@ export type DocumentState = {
     isDirty: boolean; // Document has been modified
     isSaving: boolean; // Document is being saved
     isRefreshing: boolean; // Document is being refreshed
+    isCleaningUp: boolean; // The original document is being deleted after a partition key move
     isReady: boolean; // Document is being initialized
 
     currentDocumentContent: string; // Current content of the document
+    cleanupRequiredMessage: string | undefined; // A partition key move created the destination but did not delete the source
     error: string[] | string | undefined; // Error message(s)
 };
 
@@ -83,8 +93,10 @@ export const defaultState: DocumentState = {
     isDirty: false,
     isSaving: false,
     isRefreshing: false,
+    isCleaningUp: false,
     isReady: false,
     currentDocumentContent: '',
+    cleanupRequiredMessage: undefined,
     error: undefined,
 };
 
@@ -117,6 +129,7 @@ export function dispatch(state: DocumentState, action: DispatchAction): Document
                 currentDocumentContent: action.documentContent,
                 partitionKey: action.partitionKey,
                 isDirty: false,
+                cleanupRequiredMessage: undefined,
             };
         case 'setMode':
             return { ...state, mode: action.mode };
@@ -128,6 +141,10 @@ export function dispatch(state: DocumentState, action: DispatchAction): Document
             return { ...state, isSaving: action.isSaving };
         case 'setRefreshing':
             return { ...state, isRefreshing: action.isRefreshing };
+        case 'setCleaningUp':
+            return { ...state, isCleaningUp: action.isCleaningUp };
+        case 'setCleanupRequired':
+            return { ...state, cleanupRequiredMessage: action.message };
         case 'setError':
             return { ...state, error: action.error };
         case 'setCurrentDocument':

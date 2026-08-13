@@ -4,10 +4,12 @@
  *--------------------------------------------------------------------------------------------*/
 
 import {
+    Button,
     List,
     ListItem,
     makeStyles,
     MessageBar,
+    MessageBarActions,
     type MessageBarProps,
     ProgressBar,
     Text,
@@ -92,7 +94,7 @@ export const DocumentPanel = () => {
 
     const errors = state.error ? (Array.isArray(state.error) ? state.error : [state.error]) : [];
     const isReadOnly = state.mode === 'view';
-    const inProgress = state.isSaving || state.isRefreshing;
+    const inProgress = state.isSaving || state.isRefreshing || state.isCleaningUp;
 
     const onChange = useCallback(
         (newValue: string | undefined) => {
@@ -154,6 +156,23 @@ export const DocumentPanel = () => {
                     intent={'warning'}
                 >
                     <Text>{l10n.t('This item has unsaved changes.')}</Text>
+                </MessageBarWrapper>
+                <MessageBarWrapper
+                    key={'cleanupRequired'}
+                    visible={!!state.cleanupRequiredMessage}
+                    debounceTime={0}
+                    intent={'warning'}
+                >
+                    <Text>{state.cleanupRequiredMessage}</Text>
+                    <MessageBarActions>
+                        <Button
+                            appearance={'primary'}
+                            disabled={state.isCleaningUp}
+                            onClick={() => void dispatcher.retryPartitionKeyCleanup()}
+                        >
+                            {l10n.t('Retry cleanup')}
+                        </Button>
+                    </MessageBarActions>
                 </MessageBarWrapper>
                 <MessageBarWrapper
                     key={'error'}

@@ -56,6 +56,11 @@ export type DispatchAction =
           message: string | undefined;
       }
     | {
+          type: 'completeCleanup';
+          documentContent: string;
+          partitionKey: PartitionKeyDefinition;
+      }
+    | {
           type: 'setError';
           error: string[] | string | undefined;
       };
@@ -129,7 +134,6 @@ export function dispatch(state: DocumentState, action: DispatchAction): Document
                 currentDocumentContent: action.documentContent,
                 partitionKey: action.partitionKey,
                 isDirty: false,
-                cleanupRequiredMessage: undefined,
             };
         case 'setMode':
             return { ...state, mode: action.mode };
@@ -145,6 +149,15 @@ export function dispatch(state: DocumentState, action: DispatchAction): Document
             return { ...state, isCleaningUp: action.isCleaningUp };
         case 'setCleanupRequired':
             return { ...state, cleanupRequiredMessage: action.message };
+        case 'completeCleanup':
+            return {
+                ...state,
+                documentContent: action.documentContent,
+                currentDocumentContent: action.documentContent,
+                partitionKey: action.partitionKey,
+                isDirty: false,
+                cleanupRequiredMessage: undefined,
+            };
         case 'setError':
             return { ...state, error: action.error };
         case 'setCurrentDocument':

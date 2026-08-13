@@ -76,6 +76,10 @@ describe('documentRouter partition key updates', () => {
         documentSessionMocks.extractPartitionKeyFromDocument.mockResolvedValue('new');
         documentSessionMocks.createDocument.mockResolvedValue(writeResult);
         documentSessionMocks.deleteDocument.mockResolvedValue(true);
+        documentSessionMocks.readDocument.mockResolvedValue({
+            documentContent,
+            partitionKey: writeResult.partitionKey,
+        });
     });
 
     it('keeps the original item when destination creation fails', async () => {
@@ -165,18 +169,31 @@ describe('documentRouter partition key updates', () => {
 
     it('treats a retry with no pending cleanup as an idempotent success', async () => {
         const context = createContext();
+        context.state.documentId = newIdentifier;
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
         const result = await documentRouterDef.createCaller(context).retryPartitionKeyCleanup();
 
-        expect(result).toEqual({ success: true, cleanupRequired: false });
+        expect(result).toMatchObject({
+            success: true,
+            cleanupRequired: false,
+            documentContent,
+            partitionKey: writeResult.partitionKey,
+        });
         expect(warn).toHaveBeenCalledWith('[Document] Partition key cleanup retry requested with no pending cleanup.');
+        expect(documentSessionMocks.readDocument).toHaveBeenCalledWith(
+            context.connection,
+            newIdentifier,
+            undefined,
+            context.state.partitionKeyDefinition,
+        );
         expect(documentSessionMocks.createDocument).not.toHaveBeenCalled();
         expect(documentSessionMocks.deleteDocument).not.toHaveBeenCalled();
     });
 
     it('creates the destination before deleting the source and updates state after both succeed', async () => {
         const context = createContext();
+        context.signal = AbortSignal.abort();
 
         const result = await documentRouterDef
             .createCaller(context)
@@ -186,6 +203,12 @@ describe('documentRouter partition key updates', () => {
             documentSessionMocks.deleteDocument.mock.invocationCallOrder[0],
         );
         expect(documentSessionMocks.deleteDocument).toHaveBeenCalledWith(context.connection, oldIdentifier);
+        expect(documentSessionMocks.createDocument).toHaveBeenCalledWith(
+            context.connection,
+            documentContent,
+            undefined,
+            context.state.partitionKeyDefinition,
+        );
         expect(result).toMatchObject({ success: true, documentContent });
         expect(context.state.documentId).toEqual(newIdentifier);
         expect(context.panel.title).toBe('item.json');

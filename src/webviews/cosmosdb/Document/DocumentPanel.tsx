@@ -94,6 +94,7 @@ export const DocumentPanel = () => {
 
     const errors = state.error ? (Array.isArray(state.error) ? state.error : [state.error]) : [];
     const isReadOnly = state.mode === 'view';
+    const isEditorReadOnly = isReadOnly || !!state.cleanupRequiredMessage;
     const inProgress = state.isSaving || state.isRefreshing || state.isCleaningUp;
 
     const onChange = useCallback(
@@ -174,6 +175,9 @@ export const DocumentPanel = () => {
                         </Button>
                     </MessageBarActions>
                 </MessageBarWrapper>
+                <MessageBarWrapper key={'cleaningUp'} visible={state.isCleaningUp} debounceTime={0} intent={'info'}>
+                    <Text>{l10n.t('Cleaning up the original item...')}</Text>
+                </MessageBarWrapper>
                 <MessageBarWrapper
                     key={'error'}
                     visible={!!errors.length}
@@ -207,7 +211,7 @@ export const DocumentPanel = () => {
                     width={'100%'}
                     defaultLanguage={'json'}
                     value={state.currentDocumentContent ?? l10n.t('No result')}
-                    options={{ domReadOnly: isReadOnly, readOnly: isReadOnly, scrollBeyondLastLine: false }}
+                    options={{ domReadOnly: isEditorReadOnly, readOnly: isEditorReadOnly, scrollBeyondLastLine: false }}
                     onChange={onChange}
                 />
             </section>

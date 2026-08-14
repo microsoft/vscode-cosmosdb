@@ -80,7 +80,7 @@ jobs:
           ${{ !cancelled() && steps.unit-tests.outcome != 'skipped' &&
           (github.event_name != 'pull_request' ||
           github.event.pull_request.head.repo.full_name == github.repository) }}
-        uses: actions/upload-code-coverage@f8bb4848421d758cb893e8e371d261678618a754
+        uses: actions/upload-code-coverage@d8e329117199404bba6fc81efe8093dc7c015e34
         with:
           file: coverage/cobertura-coverage.xml
           language: TypeScript

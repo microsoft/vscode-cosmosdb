@@ -1,0 +1,53 @@
+{
+  "schema_version": "1.3",
+  "signal_type": "traceline_usage",
+  "timestamp_utc": "2026-08-17T22:46:55Z",
+  "run_id": "a6e2382f-aed9-4df6-81c1-e851e85309ef",
+  "action": "complete",
+  "agent_name": "s360-breeze-orchestrator",
+  "invoked_skills": ["sfi-es424-default-deny", "signal-sidecar-dispatch", "remediation-review", "traceline"],
+  "plugin_name": "s360-breeze-toolkit",
+  "plugin_version": "2.8.1",
+  "plugin_channel": "prod",
+  "plugin_source": "marketplace",
+  "plugin_owner_team": "1ES AI Native Engineering",
+  "plugin_capability_area": ["compliance", "security"],
+  "skill_used": "Unavailable",
+  "skill_version": "Unavailable",
+  "skill_type": "reporting",
+  "skill_entrypoint": "routed",
+  "skill_owner": "s360-breeze-toolkit",
+  "skill_namespace": "s360-breeze-toolkit:session_summary",
+  "skills_used": ["sfi-es424-default-deny", "signal-sidecar-dispatch", "remediation-review", "traceline"],
+  "event_type": "session_summary",
+  "mode": "interactive",
+  "dispatch_mode": "live",
+  "outcome": "completed",
+  "pr": {
+    "created": true,
+    "provider": "GitHub",
+    "url": "https://github.com/microsoft/vscode-cosmosdb/pull/3275",
+    "id": "3275",
+    "title": "DefaultDeny network isolation onboarding for build.yml",
+    "repository": "microsoft/vscode-cosmosdb",
+    "branch": "dev/sevoku/es424-defaultdeny"
+  },
+  "notes": "Session summary: SFI-ES4.2.4 remediated and validated, PR #3275 undrafted with findings documented.",
+  "kpi_context": {
+    "kpi_id": "ES4.2.4",
+    "kpi_family": "ES",
+    "program": "SFI",
+    "action_items": [
+      {
+        "id": "4ac19c858417795eeb06a2fa3c9043834406b176165353a0c8ab0f3d8b3d3b7f",
+        "kpi_id": "0f27291c-bc52-49fa-a978-7b4a9c362107",
+        "target_id": "188bc6f1-dba3-4de8-97ce-2539ad1885c5"
+      }
+    ]
+  },
+  "privacy_controls": {
+    "user_opt_out": false,
+    "redaction_applied": false,
+    "data_classification": "non_sensitive"
+  }
+}

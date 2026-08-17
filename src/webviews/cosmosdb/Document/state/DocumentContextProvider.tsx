@@ -43,13 +43,16 @@ export class DocumentContextProvider extends BaseContextProvider<DocumentAppRout
         try {
             const result = (await this.trpcClient.document.saveDocument.mutate({ documentText })) as {
                 success: boolean;
+                aborted?: boolean;
                 cleanupRequired?: boolean;
                 message?: string;
                 documentContent?: JSONValue;
                 partitionKey?: PartitionKeyDefinition;
             };
 
-            if (result.cleanupRequired && result.message) {
+            if (result.aborted) {
+                return;
+            } else if (result.cleanupRequired && result.message) {
                 this.dispatch({ type: 'setCleanupRequired', message: result.message });
             } else if (result.success && result.documentContent) {
                 this.dispatch({

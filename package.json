@@ -87,6 +87,8 @@
     "l10n:export": "npx @vscode/l10n-dev generate-xlf ./l10n/bundle.l10n.json --outFile vscode-cosmosdb.xlf",
     "l10n:import": "npx @vscode/l10n-dev import-xlf ./translations.xlf",
     "fetch-skill": "node scripts/fetch-skill.mjs",
+    "lock:normalize": "node scripts/normalize-lockfile.mjs",
+    "lock:check": "node scripts/normalize-lockfile.mjs --check",
     "pre-commit": "npm run build && npm run prettier-fix && npm run lint-fix && npm run l10n && npm run vitest",
     "docker-up": "docker compose up -d",
     "docker-down": "docker compose down",
@@ -97,7 +99,8 @@
     "e2e:debug": "playwright test --debug",
     "e2e:emulator:up": "docker compose -f docker-compose.e2e.yml -p cosmosdb-e2e up -d --remove-orphans",
     "e2e:emulator:down": "docker compose -f docker-compose.e2e.yml -p cosmosdb-e2e down --volumes --remove-orphans",
-    "e2e:emulator:seed": "node scripts/import-seed.mjs --all --reset --endpoint https://localhost:8082 --database nosql-test-db"
+    "e2e:emulator:seed": "node scripts/import-seed.mjs --all --reset --endpoint https://localhost:8082 --database nosql-test-db",
+    "prepare": "husky"
   },
   "externalSkills": {
     "cosmosdb-best-practices": {
@@ -137,6 +140,7 @@
     "eslint-plugin-license-header": "~0.9.0",
     "glob": "~13.0.6",
     "globals": "~17.9.0",
+    "husky": "^9.1.7",
     "jest-mock-vscode": "~4.12.0",
     "jsdom": "~30.0.0",
     "oxfmt": "~0.63.0",

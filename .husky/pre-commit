@@ -1,0 +1,10 @@
+# Keep package-lock.json pointing at the public npm registry, never an internal
+# Azure Artifacts feed. Local `npm install` (via ~/.npmrc feed) rewrites tarball
+# URLs to the feed; this normalizes them back so external users and CI that
+# clone from GitHub can `npm ci` without feed access. See
+# scripts/normalize-lockfile.mjs for the rationale. Runs on Linux and Windows
+# (Git for Windows executes hooks through its bundled POSIX sh).
+if git diff --cached --name-only | grep -q '^package-lock\.json$'; then
+	node scripts/normalize-lockfile.mjs
+	git add package-lock.json
+fi

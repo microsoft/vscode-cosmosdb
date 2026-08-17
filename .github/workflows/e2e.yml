@@ -65,11 +65,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
-    # Same push+pull_request dedupe trick as build.yml: cancelling either run on the same SHA leaves a failed
-    # required check on the PR head. Skip the pull_request run only for same-repo PRs whose head branch already
-    # triggers a push run.
+    # Same push+pull_request synchronize dedupe trick as build.yml. PR opened/reopened events still run so they
+    # can create a status comment when the branch's earlier push had no PR.
     if: >-
-      github.event_name != 'pull_request' ||
+      github.event_name != 'pull_request' || github.event.action != 'synchronize' ||
       github.event.pull_request.head.repo.full_name != github.repository ||
       (github.head_ref != 'main' &&
        !startsWith(github.head_ref, 'rel/') &&

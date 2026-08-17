@@ -127,6 +127,20 @@ describe('documentRouter partition key updates', () => {
         expect(context.state.isDirty).toBe(true);
     });
 
+    it('restores pending cleanup when the document view reloads', async () => {
+        const context = createContext();
+        context.state.pendingPartitionKeyCleanup = {
+            sourceIdentifier: oldIdentifier,
+            sourceEtag: 'loaded-etag',
+            destination: writeResult,
+            message: 'Stored cleanup phase',
+        };
+
+        const result = await documentRouterDef.createCaller(context).getInitialState();
+
+        expect(result.cleanupRequiredMessage).toBe('Stored cleanup phase');
+    });
+
     it('retries cleanup without recreating the destination', async () => {
         const context = createContext();
         documentSessionMocks.deleteDocument.mockRejectedValueOnce(new Error('Service unavailable'));
@@ -182,6 +196,93 @@ describe('documentRouter partition key updates', () => {
         });
         expect(context.state.documentId).toEqual(oldIdentifier);
         expect(context.state.pendingPartitionKeyCleanup).toBeDefined();
+    });
+
+    it('uses the latest source etag when cleanup overwrite is confirmed', async () => {
+        const context = createContext();
+        const currentSource = {
+            documentContent: { ...documentContent, pk: 'old', _etag: 'current-source-etag' },
+            partitionKey: writeResult.partitionKey,
+        };
+        documentSessionMocks.deleteDocument
+            .mockRejectedValueOnce(new Error('Service unavailable'))
+            .mockRejectedValueOnce({ statusCode: 412 })
+            .mockResolvedValueOnce(true);
+        documentSessionMocks.readDocument.mockResolvedValueOnce(currentSource).mockResolvedValueOnce({
+            documentContent,
+            partitionKey: writeResult.partitionKey,
+        });
+        vi.mocked(vscode.window.showWarningMessage).mockImplementation(async (_message, _options, ...items) =>
+            items.find((item) => item.title === 'Overwrite'),
+        );
+        const caller = documentRouterDef.createCaller(context);
+        await caller.saveDocument({ documentText: JSON.stringify(documentContent) });
+
+        const result = await caller.retryPartitionKeyCleanup();
+
+        expect(result).toMatchObject({ success: true, cleanupRequired: false });
+        expect(documentSessionMocks.deleteDocument).toHaveBeenLastCalledWith(
+            context.connection,
+            oldIdentifier,
+            undefined,
+            'current-source-etag',
+        );
+    });
+
+    it('removes the destination and restores the source when cleanup changes are discarded', async () => {
+        const context = createContext();
+        const currentSource = {
+            documentContent: { ...documentContent, pk: 'old', _etag: 'current-source-etag' },
+            partitionKey: writeResult.partitionKey,
+        };
+        documentSessionMocks.deleteDocument
+            .mockRejectedValueOnce(new Error('Service unavailable'))
+            .mockRejectedValueOnce({ statusCode: 412 })
+            .mockResolvedValueOnce(true);
+        documentSessionMocks.readDocument.mockResolvedValue(currentSource);
+        vi.mocked(vscode.window.showWarningMessage).mockImplementation(async (_message, _options, ...items) =>
+            items.find((item) => item.title === 'Discard Changes and Refresh'),
+        );
+        const caller = documentRouterDef.createCaller(context);
+        await caller.saveDocument({ documentText: JSON.stringify(documentContent) });
+
+        const result = await caller.retryPartitionKeyCleanup();
+
+        expect(result).toMatchObject({
+            success: true,
+            cleanupRequired: false,
+            documentContent: currentSource.documentContent,
+        });
+        expect(documentSessionMocks.deleteDocument).toHaveBeenLastCalledWith(
+            context.connection,
+            newIdentifier,
+            undefined,
+            documentContent._etag,
+        );
+        expect(context.state.documentId).toEqual(oldIdentifier);
+        expect(context.state.documentEtag).toBe('current-source-etag');
+        expect(context.state.pendingPartitionKeyCleanup).toBeUndefined();
+    });
+
+    it('keeps cleanup pending when source conflict resolution is canceled', async () => {
+        const context = createContext();
+        documentSessionMocks.deleteDocument
+            .mockRejectedValueOnce(new Error('Service unavailable'))
+            .mockRejectedValueOnce({ statusCode: 412 });
+        documentSessionMocks.readDocument.mockResolvedValue({
+            documentContent: { ...documentContent, pk: 'old', _etag: 'current-source-etag' },
+            partitionKey: writeResult.partitionKey,
+        });
+        vi.mocked(vscode.window.showWarningMessage).mockResolvedValue(undefined);
+        const caller = documentRouterDef.createCaller(context);
+        await caller.saveDocument({ documentText: JSON.stringify(documentContent) });
+
+        const result = await caller.retryPartitionKeyCleanup();
+
+        expect(result).toMatchObject({ success: false, cleanupRequired: true });
+        expect(documentSessionMocks.deleteDocument).toHaveBeenCalledTimes(2);
+        expect(context.state.pendingPartitionKeyCleanup).toBeDefined();
+        expect(context.state.documentId).toEqual(oldIdentifier);
     });
 
     it('does not recreate the destination when save is repeated before cleanup', async () => {
@@ -309,6 +410,29 @@ describe('documentRouter concurrent updates', () => {
         expect(documentSessionMocks.replaceDocument).toHaveBeenCalledTimes(1);
         expect(context.state.documentEtag).toBe('server-etag');
     });
+
+    it.each([{ statusCode: '412' }, { code: '412' }])(
+        'recognizes a string precondition failure shape: %o',
+        async (preconditionFailure) => {
+            const context = createContext();
+            context.state.documentEtag = 'loaded-etag';
+            const serverDocument = { ...documentContent, pk: 'old', _etag: 'server-etag' };
+            documentSessionMocks.readDocument.mockResolvedValue({
+                documentContent: serverDocument,
+                partitionKey: writeResult.partitionKey,
+            });
+            documentSessionMocks.replaceDocument.mockRejectedValue(preconditionFailure);
+            vi.mocked(vscode.window.showWarningMessage).mockImplementation(async (_message, _options, ...items) =>
+                items.find((item) => item.title === 'Discard Changes and Refresh'),
+            );
+
+            const result = await documentRouterDef
+                .createCaller(context)
+                .saveDocument({ documentText: JSON.stringify(documentContent) });
+
+            expect(result).toMatchObject({ success: true, discarded: true, documentContent: serverDocument });
+        },
+    );
 
     it('uses the latest etag after the user chooses overwrite', async () => {
         const context = createContext();

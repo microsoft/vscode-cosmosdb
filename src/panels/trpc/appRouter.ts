@@ -119,6 +119,7 @@ export type DocumentMutableState = {
         sourceIdentifier: CosmosDBRecordIdentifier;
         sourceEtag?: string;
         destination: DocumentWriteResult;
+        message?: string;
     };
 };
 

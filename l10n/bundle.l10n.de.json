@@ -300,7 +300,7 @@
   "Database name is missing in artifact connection info": "Der Datenbankname fehlt in den Verbindungsinformationen des Artefakts.",
   "Database name is required.": "Datenbankname ist erforderlich.",
   "Database schema files help": "Hilfe zu Datenbankschemadateien",
-  "Database Schema Files, required": "Database Schema Files, required",
+  "Database Schema Files, required": "Datenbankschemadateien, erforderlich",
   "Database Schema Files:": "Datenbankschemadateien:",
   "Database:": "Datenbank:",
   "Databases": "Datenbanken",

@@ -241,6 +241,23 @@ export class QueryEditorTab extends BaseTab {
         }
     }
 
+    public static refreshThroughputBucketsForContainer(
+        accountId: string,
+        databaseId?: string,
+        containerId?: string,
+    ): void {
+        for (const tab of QueryEditorTab.openTabs) {
+            const connection = tab.state.connection;
+            if (
+                connection?.azureMetadata?.accountId === accountId &&
+                (!databaseId || connection.databaseId === databaseId) &&
+                (!containerId || connection.containerId === containerId)
+            ) {
+                tab.eventSink.emit({ type: 'throughputBucketsRefreshRequested' });
+            }
+        }
+    }
+
     public updateQuery(query: string): void {
         this.state.query = query;
         this.state.isLastQueryAIGenerated = true;

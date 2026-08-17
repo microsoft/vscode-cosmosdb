@@ -300,7 +300,7 @@
   "Database name is missing in artifact connection info": "Brak nazwy bazy danych w informacjach o połączeniu artefaktu",
   "Database name is required.": "Nazwa bazy danych jest wymagana.",
   "Database schema files help": "Pomoc dotycząca plików schematu bazy danych",
-  "Database Schema Files, required": "Database Schema Files, required",
+  "Database Schema Files, required": "Pliki schematu bazy danych, wymagane",
   "Database Schema Files:": "Pliki schematu bazy danych:",
   "Database:": "Baza danych:",
   "Databases": "Bazy danych",

@@ -18,7 +18,13 @@ export const SaveButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) =
     const dispatcher = useDocumentDispatcher();
     const { ref, type } = props;
 
-    const isSaveDisabled = state.isSaving || state.isRefreshing || !state.isDirty || !state.isValid;
+    const isSaveDisabled =
+        state.isSaving ||
+        state.isRefreshing ||
+        state.isCleaningUp ||
+        !!state.cleanupRequiredMessage ||
+        !state.isDirty ||
+        !state.isValid;
 
     const hotkey = useMemo(() => getShortcutDisplay(DocumentGlobalHotkeys, 'SaveDocument'), []);
 

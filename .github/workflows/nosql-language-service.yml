@@ -59,11 +59,9 @@ jobs:
     name: NoSQL language-service integration
     runs-on: ubuntu-latest
 
-    # Same push+pull_request synchronize dedupe trick as build.yml. PR opened/reopened events still run so they
-    # can create a status comment when the branch's earlier push had no PR; fork PRs and other head branches run
-    # normally.
+    # Same push+pull_request dedupe behavior as build.yml.
     if: >-
-      github.event_name != 'pull_request' || github.event.action != 'synchronize' ||
+      github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name != github.repository ||
       (github.head_ref != 'main' &&
        !startsWith(github.head_ref, 'rel/') &&

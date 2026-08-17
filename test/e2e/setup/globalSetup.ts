@@ -237,7 +237,8 @@ export default async function globalSetup(): Promise<void> {
 
     // 2. Download VS Code (cached by @vscode/test-electron under .vscode-test/).
     console.log(`[e2e setup] Resolving VS Code (${VSCODE_VERSION})…`);
-    const vscodeExecutablePath = await downloadAndUnzipVSCode(VSCODE_VERSION);
+    const downloadedExecutablePath = await downloadAndUnzipVSCode(VSCODE_VERSION);
+    const vscodeExecutablePath = resolveVSCodeExecutablePath(downloadedExecutablePath);
 
     // 3. Install dependent extensions into a dedicated, cached extensions dir.
     const extensionsDir = path.resolve(repoRoot, '.vscode-test', 'e2e-extensions');
@@ -316,4 +317,15 @@ export default async function globalSetup(): Promise<void> {
     const configPath = path.resolve(repoRoot, '.vscode-test', 'e2e-config.json');
     writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
     console.log(`[e2e setup] Config written to ${configPath}`);
+}
+
+function resolveVSCodeExecutablePath(downloadedExecutablePath: string): string {
+    if (existsSync(downloadedExecutablePath)) return downloadedExecutablePath;
+
+    if (process.platform === 'darwin' && path.basename(downloadedExecutablePath) === 'Electron') {
+        const currentExecutablePath = path.join(path.dirname(downloadedExecutablePath), 'Code');
+        if (existsSync(currentExecutablePath)) return currentExecutablePath;
+    }
+
+    return downloadedExecutablePath;
 }

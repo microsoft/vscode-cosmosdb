@@ -167,6 +167,9 @@ export class DocumentContextProvider extends BaseContextProvider<DocumentAppRout
                     partitionKey: result.documentPartitionKey ?? emptyPartitionKey,
                 });
             }
+            if (result.cleanupRequiredMessage) {
+                this.dispatch({ type: 'setCleanupRequired', message: result.cleanupRequiredMessage });
+            }
         });
     }
 

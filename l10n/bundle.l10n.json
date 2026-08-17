@@ -929,6 +929,7 @@
   "The name cannot end in a period.": "The name cannot end in a period.",
   "The name must be between {0} and {1} characters.": "The name must be between {0} and {1} characters.",
   "The name of your application or service. Examples: OrderService, InventoryAPI, CustomerPortal": "The name of your application or service. Examples: OrderService, InventoryAPI, CustomerPortal",
+  "The partition key change could not be discarded because the item in the new partition has changed. Both items still exist. Resolve the duplicate items before retrying.": "The partition key change could not be discarded because the item in the new partition has changed. Both items still exist. Resolve the duplicate items before retrying.",
   "The previously saved schema for this container will be replaced.": "The previously saved schema for this container will be replaced.",
   "The primary programming language of your application. Examples: C#, Java, Python": "The primary programming language of your application. Examples: C#, Java, Python",
   "The query could not be executed in the Query Editor. Please try again.": "The query could not be executed in the Query Editor. Please try again.",

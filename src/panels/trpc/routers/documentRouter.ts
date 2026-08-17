@@ -77,6 +77,9 @@ export const documentRouterDef = documentRouter({
             documentId: state.documentId,
             documentContent,
             documentPartitionKey,
+            cleanupRequiredMessage: state.pendingPartitionKeyCleanup
+                ? (state.pendingPartitionKeyCleanup.message ?? getPartitionKeyCleanupRequiredMessage())
+                : undefined,
         };
     }),
 
@@ -202,12 +205,72 @@ export const documentRouterDef = documentRouter({
                 pendingCleanup.sourceIdentifier,
                 pendingCleanup.sourceEtag,
             );
-        } catch {
-            return {
-                success: false,
-                cleanupRequired: true,
-                message: getPartitionKeyCleanupRequiredMessage(),
-            } as const;
+        } catch (error) {
+            if (!isPreconditionFailed(error)) {
+                return cleanupRequiredResult();
+            }
+
+            let currentSource: DocumentResult | undefined;
+            try {
+                currentSource = await readDocument(
+                    ctx.connection,
+                    pendingCleanup.sourceIdentifier,
+                    undefined,
+                    ctx.state.partitionKeyDefinition,
+                );
+            } catch {
+                return cleanupRequiredResult();
+            }
+            if (!currentSource) {
+                return cleanupRequiredResult();
+            }
+
+            const resolution = await promptForDocumentConflict();
+            if (resolution === 'overwrite') {
+                const currentSourceEtag = currentSource.documentContent._etag;
+                if (!currentSourceEtag) {
+                    return cleanupRequiredResult();
+                }
+                pendingCleanup.sourceEtag = currentSourceEtag;
+                try {
+                    await deletePartitionKeyMoveSource(
+                        ctx.connection,
+                        pendingCleanup.sourceIdentifier,
+                        pendingCleanup.sourceEtag,
+                    );
+                } catch {
+                    return cleanupRequiredResult();
+                }
+            } else if (resolution === 'discard') {
+                const destinationEtag = pendingCleanup.destination.documentContent._etag;
+                if (!destinationEtag) {
+                    pendingCleanup.message = getPartitionKeyRollbackRequiredMessage();
+                    return cleanupRequiredResult(pendingCleanup.message);
+                }
+                try {
+                    await deletePartitionKeyMoveSource(
+                        ctx.connection,
+                        pendingCleanup.destination.identifier,
+                        destinationEtag,
+                    );
+                } catch {
+                    pendingCleanup.message = getPartitionKeyRollbackRequiredMessage();
+                    return cleanupRequiredResult(pendingCleanup.message);
+                }
+
+                ctx.state.documentId = pendingCleanup.sourceIdentifier;
+                ctx.state.pendingPartitionKeyCleanup = undefined;
+                updateLoadedDocumentState(ctx.state, currentSource);
+                ctx.panel.title = `${pendingCleanup.sourceIdentifier.id}.json`;
+                return {
+                    success: true,
+                    cleanupRequired: false,
+                    documentContent: currentSource.documentContent,
+                    partitionKey: currentSource.partitionKey,
+                } as const;
+            } else {
+                return cleanupRequiredResult();
+            }
         }
 
         try {
@@ -233,10 +296,11 @@ export const documentRouterDef = documentRouter({
                 partitionKey: currentDestination.partitionKey,
             } as const;
         } catch {
+            pendingCleanup.message = getPartitionKeyDestinationRefreshRequiredMessage();
             return {
                 success: false,
                 cleanupRequired: true,
-                message: getPartitionKeyDestinationRefreshRequiredMessage(),
+                message: pendingCleanup.message,
             } as const;
         }
     }),
@@ -492,6 +556,20 @@ function getPartitionKeyDestinationRefreshRequiredMessage(): string {
     );
 }
 
+function getPartitionKeyRollbackRequiredMessage(): string {
+    return l10n.t(
+        'The partition key change could not be discarded because the item in the new partition has changed. Both items still exist. Resolve the duplicate items before retrying.',
+    );
+}
+
+function cleanupRequiredResult(message: string = getPartitionKeyCleanupRequiredMessage()) {
+    return {
+        success: false,
+        cleanupRequired: true,
+        message,
+    } as const;
+}
+
 function isNotFound(error: unknown): boolean {
     if (!error || typeof error !== 'object') {
         return false;
@@ -509,8 +587,14 @@ function isPreconditionFailed(error: unknown): boolean {
     if (!error || typeof error !== 'object') {
         return false;
     }
-    const candidate = error as { statusCode?: number; code?: string | number };
-    return candidate.statusCode === 412 || candidate.code === 412 || candidate.code === 'PreconditionFailed';
+    const candidate = error as { statusCode?: string | number; code?: string | number };
+    return (
+        candidate.statusCode === 412 ||
+        candidate.statusCode === '412' ||
+        candidate.code === 412 ||
+        candidate.code === '412' ||
+        candidate.code === 'PreconditionFailed'
+    );
 }
 
 /**

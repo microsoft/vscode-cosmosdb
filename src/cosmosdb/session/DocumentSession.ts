@@ -232,6 +232,7 @@ export async function replaceDocument(
     documentId: CosmosDBRecordIdentifier,
     signal?: AbortSignal,
     partitionKeyDefinition?: PartitionKeyDefinition,
+    expectedEtag?: string,
 ): Promise<DocumentWriteResult | undefined> {
     return callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.update', async (context) => {
         context.errorHandling.rethrow = true;
@@ -246,6 +247,7 @@ export async function replaceDocument(
             container.item(documentId.id!, documentId.partitionKey).replace(document, {
                 abortSignal: signal,
                 priorityLevel,
+                accessCondition: expectedEtag ? { type: 'IfMatch', condition: expectedEtag } : undefined,
             }),
         );
 
@@ -275,6 +277,7 @@ export async function deleteDocument(
     connection: NoSqlQueryConnection,
     documentId: CosmosDBRecordIdentifier,
     signal?: AbortSignal,
+    expectedEtag?: string,
 ): Promise<boolean> {
     const result = await callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.delete', async (context) => {
         context.errorHandling.rethrow = true;
@@ -289,6 +292,7 @@ export async function deleteDocument(
             container.item(documentId.id!, documentId.partitionKey).delete({
                 abortSignal: signal,
                 priorityLevel,
+                accessCondition: expectedEtag ? { type: 'IfMatch', condition: expectedEtag } : undefined,
             }),
         );
 

@@ -3,6 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import * as vscode from 'vscode';
 import { type DocumentWriteResult } from '../../../cosmosdb/session/DocumentSession';
 import { type DocumentRouterContext } from '../appRouter';
 import { documentRouterDef } from './documentRouter';
@@ -202,7 +204,12 @@ describe('documentRouter partition key updates', () => {
         expect(documentSessionMocks.createDocument.mock.invocationCallOrder[0]).toBeLessThan(
             documentSessionMocks.deleteDocument.mock.invocationCallOrder[0],
         );
-        expect(documentSessionMocks.deleteDocument).toHaveBeenCalledWith(context.connection, oldIdentifier);
+        expect(documentSessionMocks.deleteDocument).toHaveBeenCalledWith(
+            context.connection,
+            oldIdentifier,
+            undefined,
+            undefined,
+        );
         expect(documentSessionMocks.createDocument).toHaveBeenCalledWith(
             context.connection,
             documentContent,
@@ -212,5 +219,125 @@ describe('documentRouter partition key updates', () => {
         expect(result).toMatchObject({ success: true, documentContent });
         expect(context.state.documentId).toEqual(newIdentifier);
         expect(context.panel.title).toBe('item.json');
+    });
+});
+
+describe('documentRouter concurrent updates', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        documentSessionMocks.extractPartitionKeyFromDocument.mockResolvedValue('old');
+        documentSessionMocks.replaceDocument.mockResolvedValue(writeResult);
+    });
+
+    it('conditions an update on the etag loaded by the editor', async () => {
+        const context = createContext();
+        context.state.documentEtag = 'loaded-etag';
+
+        await documentRouterDef.createCaller(context).saveDocument({ documentText: JSON.stringify(documentContent) });
+
+        expect(documentSessionMocks.replaceDocument).toHaveBeenCalledWith(
+            context.connection,
+            documentContent,
+            oldIdentifier,
+            undefined,
+            context.state.partitionKeyDefinition,
+            'loaded-etag',
+        );
+        expect(context.state.documentEtag).toBe('etag');
+    });
+
+    it('discards local changes and refreshes when the loaded etag is stale', async () => {
+        const context = createContext();
+        context.state.documentEtag = 'loaded-etag';
+        const serverDocument = { ...documentContent, pk: 'old', _etag: 'server-etag', value: 'server' };
+        documentSessionMocks.readDocument.mockResolvedValue({
+            documentContent: serverDocument,
+            partitionKey: writeResult.partitionKey,
+        });
+        documentSessionMocks.replaceDocument.mockRejectedValue({ statusCode: 412 });
+        vi.mocked(vscode.window.showWarningMessage).mockImplementation(async (_message, _options, ...items) =>
+            items.find((item) => item.title === 'Discard Changes and Refresh'),
+        );
+
+        const result = await documentRouterDef
+            .createCaller(context)
+            .saveDocument({ documentText: JSON.stringify(documentContent) });
+
+        expect(result).toMatchObject({ success: true, discarded: true, documentContent: serverDocument });
+        expect(documentSessionMocks.replaceDocument).toHaveBeenCalledTimes(1);
+        expect(context.state.documentEtag).toBe('server-etag');
+    });
+
+    it('uses the latest etag after the user chooses overwrite', async () => {
+        const context = createContext();
+        context.state.documentEtag = 'loaded-etag';
+        documentSessionMocks.readDocument.mockResolvedValue({
+            documentContent: { ...documentContent, pk: 'old', _etag: 'server-etag' },
+            partitionKey: writeResult.partitionKey,
+        });
+        documentSessionMocks.replaceDocument
+            .mockRejectedValueOnce({ statusCode: 412 })
+            .mockResolvedValueOnce(writeResult);
+        vi.mocked(vscode.window.showWarningMessage).mockImplementation(async (_message, _options, ...items) =>
+            items.find((item) => item.title === 'Overwrite'),
+        );
+
+        await documentRouterDef.createCaller(context).saveDocument({ documentText: JSON.stringify(documentContent) });
+
+        expect(documentSessionMocks.replaceDocument).toHaveBeenCalledWith(
+            context.connection,
+            documentContent,
+            oldIdentifier,
+            undefined,
+            context.state.partitionKeyDefinition,
+            'server-etag',
+        );
+    });
+
+    it('handles a conflict that occurs after the preflight read', async () => {
+        const context = createContext();
+        context.state.documentEtag = 'loaded-etag';
+        const serverDocument = { ...documentContent, pk: 'old', _etag: 'server-etag', value: 'server' };
+        documentSessionMocks.readDocument.mockResolvedValue({
+            documentContent: serverDocument,
+            partitionKey: writeResult.partitionKey,
+        });
+        documentSessionMocks.replaceDocument.mockRejectedValue({ statusCode: 412 });
+        vi.mocked(vscode.window.showWarningMessage).mockImplementation(async (_message, _options, ...items) =>
+            items.find((item) => item.title === 'Discard Changes and Refresh'),
+        );
+
+        const result = await documentRouterDef
+            .createCaller(context)
+            .saveDocument({ documentText: JSON.stringify(documentContent) });
+
+        expect(result).toMatchObject({ success: true, discarded: true, documentContent: serverDocument });
+        expect(documentSessionMocks.replaceDocument).toHaveBeenCalledTimes(1);
+        expect(context.state.documentEtag).toBe('server-etag');
+    });
+
+    it('conditions partition-key source deletion on the latest etag', async () => {
+        const context = createContext();
+        context.state.documentEtag = 'loaded-etag';
+        documentSessionMocks.extractPartitionKeyFromDocument.mockResolvedValue('new');
+        documentSessionMocks.readDocument.mockResolvedValue({
+            documentContent: { ...documentContent, pk: 'old', _etag: 'server-etag' },
+            partitionKey: writeResult.partitionKey,
+        });
+        documentSessionMocks.createDocument.mockResolvedValue(writeResult);
+        documentSessionMocks.deleteDocument.mockResolvedValue(true);
+        confirmationMocks.getConfirmationAsInSettings.mockResolvedValue(true);
+        vi.mocked(vscode.window.showWarningMessage).mockImplementation(async (_message, _options, ...items) =>
+            items.find((item) => item.title === 'Overwrite'),
+        );
+
+        await documentRouterDef.createCaller(context).saveDocument({ documentText: JSON.stringify(documentContent) });
+
+        expect(documentSessionMocks.deleteDocument).toHaveBeenCalledWith(
+            context.connection,
+            oldIdentifier,
+            undefined,
+            'server-etag',
+        );
     });
 });

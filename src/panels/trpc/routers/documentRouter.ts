@@ -14,6 +14,8 @@ import {
     buildNewDocumentTemplate,
     createDocument,
     deleteDocument,
+    type DocumentResult,
+    type DocumentWriteResult,
     extractPartitionKeyFromDocument,
     readDocument,
     replaceDocument,
@@ -60,6 +62,7 @@ export const documentRouterDef = documentRouter({
             documentContent = result?.documentContent;
             documentPartitionKey = result?.partitionKey;
             if (result?.partitionKey) state.partitionKeyDefinition = result.partitionKey;
+            state.documentEtag = result?.documentContent._etag;
         } else if (state.mode === 'add') {
             const result = await buildNewDocumentTemplate(connection, state.partitionKeyDefinition);
             documentContent = result?.documentContent;
@@ -108,6 +111,7 @@ export const documentRouterDef = documentRouter({
         }
 
         if (documentResult?.partitionKey) state.partitionKeyDefinition = documentResult.partitionKey;
+        state.documentEtag = documentResult?.documentContent._etag;
 
         return {
             aborted: false,
@@ -129,8 +133,16 @@ export const documentRouterDef = documentRouter({
         if (state.documentId) {
             // Update existing document
             const updateResult = await updateDocument(connection, documentContent, state, ctx);
-            if (updateResult && 'cleanupRequired' in updateResult) {
+            if (updateResult && ('cleanupRequired' in updateResult || 'aborted' in updateResult)) {
                 return updateResult;
+            }
+            if (updateResult && 'discarded' in updateResult) {
+                return {
+                    success: true,
+                    discarded: true,
+                    documentContent: updateResult.documentContent,
+                    partitionKey: updateResult.partitionKey,
+                } as const;
             }
             saveResult = updateResult;
         } else {
@@ -142,6 +154,7 @@ export const documentRouterDef = documentRouter({
 
             if (saveResult.partitionKey) state.partitionKeyDefinition = saveResult.partitionKey;
             state.documentId = saveResult.identifier;
+            state.documentEtag = saveResult.documentContent._etag;
             ctx.panel.title = `${saveResult.identifier.id}.json`;
 
             // Fire-and-forget: refresh the persisted container schema with the
@@ -174,6 +187,7 @@ export const documentRouterDef = documentRouter({
             const currentDocument = ctx.state.documentId
                 ? await readDocument(ctx.connection, ctx.state.documentId, undefined, ctx.state.partitionKeyDefinition)
                 : undefined;
+            ctx.state.documentEtag = currentDocument?.documentContent._etag;
             return {
                 success: true,
                 cleanupRequired: false,
@@ -183,7 +197,11 @@ export const documentRouterDef = documentRouter({
         }
 
         try {
-            await deletePartitionKeyMoveSource(ctx.connection, pendingCleanup.sourceIdentifier);
+            await deletePartitionKeyMoveSource(
+                ctx.connection,
+                pendingCleanup.sourceIdentifier,
+                pendingCleanup.sourceEtag,
+            );
         } catch {
             return {
                 success: false,
@@ -277,6 +295,26 @@ async function updateDocument(
     if (partitionKeyChanged) {
         if (actionContext) actionContext.telemetry.properties.partitionKeyChanged = 'true';
 
+        if (state.documentEtag) {
+            const currentDocument = await readDocument(
+                connection,
+                documentId,
+                ctx.signal,
+                state.partitionKeyDefinition,
+            );
+            if (currentDocument && currentDocument.documentContent._etag !== state.documentEtag) {
+                const resolution = await promptForDocumentConflict();
+                if (resolution === 'discard') {
+                    updateLoadedDocumentState(state, currentDocument);
+                    return { discarded: true, ...currentDocument } as const;
+                }
+                if (resolution !== 'overwrite') {
+                    return { success: false, aborted: true } as const;
+                }
+                state.documentEtag = currentDocument.documentContent._etag;
+            }
+        }
+
         const confirmation = await getConfirmationAsInSettings(
             l10n.t('Partition Key changed'),
             l10n.t(
@@ -297,9 +335,13 @@ async function updateDocument(
         }
 
         try {
-            await deletePartitionKeyMoveSource(connection, documentId);
+            await deletePartitionKeyMoveSource(connection, documentId, state.documentEtag);
         } catch {
-            state.pendingPartitionKeyCleanup = { sourceIdentifier: documentId, destination: result };
+            state.pendingPartitionKeyCleanup = {
+                sourceIdentifier: documentId,
+                sourceEtag: state.documentEtag,
+                destination: result,
+            };
             return {
                 success: false,
                 cleanupRequired: true,
@@ -313,19 +355,57 @@ async function updateDocument(
         // Simple replace
         if (actionContext) actionContext.telemetry.properties.partitionKeyChanged = 'false';
 
-        const result = await replaceDocument(
-            connection,
-            documentContent,
-            documentId,
-            ctx.signal,
-            state.partitionKeyDefinition,
-        );
+        let result: DocumentWriteResult | undefined;
+        try {
+            result = await replaceDocument(
+                connection,
+                documentContent,
+                documentId,
+                ctx.signal,
+                state.partitionKeyDefinition,
+                state.documentEtag,
+            );
+        } catch (error) {
+            if (!isPreconditionFailed(error)) {
+                throw error;
+            }
+
+            const currentDocument = await readDocument(
+                connection,
+                documentId,
+                ctx.signal,
+                state.partitionKeyDefinition,
+            );
+            if (!currentDocument) {
+                throw error;
+            }
+
+            const resolution = await promptForDocumentConflict();
+            if (resolution === 'discard') {
+                updateLoadedDocumentState(state, currentDocument);
+                return { discarded: true, ...currentDocument } as const;
+            }
+            if (resolution !== 'overwrite') {
+                return { success: false, aborted: true } as const;
+            }
+
+            state.documentEtag = currentDocument.documentContent._etag;
+            result = await replaceDocument(
+                connection,
+                documentContent,
+                documentId,
+                ctx.signal,
+                state.partitionKeyDefinition,
+                state.documentEtag,
+            );
+        }
         if (!result) {
             throw new Error(l10n.t('Failed to update item'));
         }
 
         if (result.partitionKey) state.partitionKeyDefinition = result.partitionKey;
         state.documentId = result.identifier;
+        state.documentEtag = result.documentContent._etag;
         ctx.panel.title = `${result.identifier.id}.json`;
         return result;
     }
@@ -334,10 +414,11 @@ async function updateDocument(
 async function deletePartitionKeyMoveSource(
     connection: NoSqlQueryConnection,
     documentId: DocumentMutableState['documentId'] & {},
+    expectedEtag?: string,
 ): Promise<void> {
     try {
         // Once creation succeeds, finish cleanup even if the originating webview request is canceled.
-        const deleted = await deleteDocument(connection, documentId);
+        const deleted = await deleteDocument(connection, documentId, undefined, expectedEtag);
         if (!deleted) {
             throw new Error('Item deletion did not complete');
         }
@@ -354,8 +435,27 @@ function completePartitionKeyMove(
 ): void {
     if (result.partitionKey) ctx.state.partitionKeyDefinition = result.partitionKey;
     ctx.state.documentId = result.identifier;
+    ctx.state.documentEtag = result.documentContent._etag;
     ctx.state.pendingPartitionKeyCleanup = undefined;
     ctx.panel.title = `${result.identifier.id}.json`;
+}
+
+function updateLoadedDocumentState(state: DocumentMutableState, document: DocumentResult): void {
+    if (document.partitionKey) state.partitionKeyDefinition = document.partitionKey;
+    state.documentEtag = document.documentContent._etag;
+}
+
+async function promptForDocumentConflict(): Promise<'overwrite' | 'discard' | undefined> {
+    const overwriteItem: vscode.MessageItem = { title: l10n.t('Overwrite') };
+    const discardItem: vscode.MessageItem = { title: l10n.t('Discard Changes and Refresh') };
+    const message = l10n.t(
+        'This item changed after it was opened. Overwrite the newer item with your changes, or discard your changes and refresh?',
+    );
+    const choice = await vscode.window.showWarningMessage(message, { modal: true }, overwriteItem, discardItem);
+
+    if (choice === overwriteItem) return 'overwrite';
+    if (choice === discardItem) return 'discard';
+    return undefined;
 }
 
 function getPartitionKeyCleanupRequiredMessage(): string {
@@ -375,6 +475,14 @@ function isNotFound(error: unknown): boolean {
         candidate.code === 'NotFound' ||
         candidate.code === 'ResourceNotFound'
     );
+}
+
+function isPreconditionFailed(error: unknown): boolean {
+    if (!error || typeof error !== 'object') {
+        return false;
+    }
+    const candidate = error as { statusCode?: number; code?: string | number };
+    return candidate.statusCode === 412 || candidate.code === 412 || candidate.code === 'PreconditionFailed';
 }
 
 /**

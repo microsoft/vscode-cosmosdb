@@ -107,10 +107,12 @@ export type QueryEditorRouterContext = CosmosDBRouterContext & {
 export type DocumentMutableState = {
     mode: 'add' | 'edit' | 'view';
     documentId: CosmosDBRecordIdentifier | undefined;
+    documentEtag?: string;
     isDirty: boolean;
     partitionKeyDefinition?: PartitionKeyDefinition;
     pendingPartitionKeyCleanup?: {
         sourceIdentifier: CosmosDBRecordIdentifier;
+        sourceEtag?: string;
         destination: DocumentWriteResult;
     };
 };

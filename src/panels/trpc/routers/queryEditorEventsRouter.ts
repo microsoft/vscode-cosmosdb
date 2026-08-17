@@ -34,6 +34,9 @@ export const QueryEditorEventSchema = z.discriminatedUnion('type', [
         containerSchema: z.record(z.string(), z.unknown()).nullable(),
     }),
     z.object({
+        type: z.literal('throughputBucketsRefreshRequested'),
+    }),
+    z.object({
         type: z.literal('runActiveQueryRequested'),
         query: z.string(),
     }),

@@ -5,7 +5,10 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { ext } from '../../extensionVariables';
+import { QueryEditorTab } from '../../panels/QueryEditorTab';
+import { CosmosDBAccountResourceItemBase } from '../../tree/azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
 import { BaseCachedBranchDataProvider } from '../../tree/BaseCachedBranchDataProvider';
+import { CosmosDBContainerResourceItem } from '../../tree/cosmosdb/CosmosDBContainerResourceItem';
 import { type TreeElement } from '../../tree/TreeElement';
 
 export async function refreshTreeElement(context: IActionContext, node?: TreeElement): Promise<void> {
@@ -15,14 +18,30 @@ export async function refreshTreeElement(context: IActionContext, node?: TreeEle
 
     if (node && 'refresh' in node && typeof node.refresh === 'function') {
         await node.refresh.call(node, context);
+        notifyThroughputBucketRefresh(node);
         return;
     }
 
     if (node.dataProvider && node.dataProvider instanceof BaseCachedBranchDataProvider) {
-        return node.dataProvider.refresh(node);
+        node.dataProvider.refresh(node);
+        notifyThroughputBucketRefresh(node);
+        return;
     }
 
     if (node && 'id' in node && typeof node.id === 'string') {
-        return ext.state.notifyChildrenChanged(node.id);
+        ext.state.notifyChildrenChanged(node.id);
+        notifyThroughputBucketRefresh(node);
+    }
+}
+
+function notifyThroughputBucketRefresh(node: TreeElement): void {
+    if (node instanceof CosmosDBContainerResourceItem) {
+        QueryEditorTab.refreshThroughputBucketsForContainer(
+            node.model.accountInfo.id,
+            node.model.database.id,
+            node.model.container.id,
+        );
+    } else if (node instanceof CosmosDBAccountResourceItemBase) {
+        QueryEditorTab.refreshThroughputBucketsForContainer(node.id);
     }
 }

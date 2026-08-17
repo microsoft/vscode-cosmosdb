@@ -453,6 +453,10 @@ export const queryEditorRouterDef = queryEditorRouter({
         return undefined;
     }),
 
+    refreshThroughputBuckets: queryEditorProcedure.mutation(async ({ ctx }) => {
+        return getEnabledThroughputBuckets(ctx.state.connection, ctx.actionContext);
+    }),
+
     disconnectFromDatabase: queryEditorProcedure.mutation(({ ctx }) => {
         ctx.state.connection = undefined;
         ctx.panel.title = QueryEditorTab.title;

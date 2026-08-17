@@ -41,11 +41,14 @@ on:
       - 'scripts/import-seed.mjs'
       - '.github/workflows/nosql-language-service.yml'
 
-# Workflow-level concurrency dedupes rapid pushes on the same branch; PR runs are scoped by PR number + head
-# repo so two forks pushing branches with the same name don't cancel each other.
+# Workflow-level concurrency dedupes rapid pushes on the same branch, except on main and rel/* where every run
+# gets a unique group. PR runs are scoped by PR number + head repo so two forks pushing branches with the same
+# name don't cancel each other.
 concurrency:
   group: >-
     nosql-${{ github.workflow }}-${{
+    github.ref == 'refs/heads/main' && github.run_id ||
+    startsWith(github.ref, 'refs/heads/rel/') && github.run_id ||
     github.event_name == 'pull_request' &&
     format('{0}-{1}', github.event.pull_request.head.repo.full_name, github.event.pull_request.number) ||
     github.ref_name }}
@@ -56,11 +59,11 @@ jobs:
     name: NoSQL language-service integration
     runs-on: ubuntu-latest
 
-    # Same push+pull_request dedupe trick as build.yml: a same-repo branch covered by `push.branches` fires
-    # both events on one commit. Skip the pull_request run for those (the push run provides the checks); fork
-    # PRs and other head branches still run on pull_request.
+    # Same push+pull_request synchronize dedupe trick as build.yml. PR opened/reopened events still run so they
+    # can create a status comment when the branch's earlier push had no PR; fork PRs and other head branches run
+    # normally.
     if: >-
-      github.event_name != 'pull_request' ||
+      github.event_name != 'pull_request' || github.event.action != 'synchronize' ||
       github.event.pull_request.head.repo.full_name != github.repository ||
       (github.head_ref != 'main' &&
        !startsWith(github.head_ref, 'rel/') &&

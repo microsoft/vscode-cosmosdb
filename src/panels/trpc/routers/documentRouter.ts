@@ -17,6 +17,7 @@ import {
     type DocumentResult,
     type DocumentWriteResult,
     extractPartitionKeyFromDocument,
+    isPreconditionFailedError,
     readDocument,
     replaceDocument,
 } from '../../../cosmosdb/session/DocumentSession';
@@ -29,6 +30,37 @@ import * as vscodeUtil from '../../../utils/vscodeUtils';
 import { type DocumentMutableState, type DocumentRouterContext } from '../appRouter';
 import { OpenDocumentModeSchema } from '../schemas';
 import { documentProcedure, documentRouter } from '../trpc';
+
+type DocumentConflict = {
+    message: string;
+    serverDocumentContent: ItemDefinition;
+    partitionKey?: PartitionKeyDefinition;
+};
+
+type DocumentSaveResult =
+    | {
+          success: true;
+          documentContent: ItemDefinition;
+          partitionKey?: PartitionKeyDefinition;
+      }
+    | {
+          success: false;
+          conflict: DocumentConflict;
+      }
+    | {
+          success: false;
+          cleanupRequired: true;
+          message?: string;
+      }
+    | {
+          success: false;
+          aborted: true;
+      }
+    | {
+          discarded: true;
+          documentContent: ItemDefinition;
+          partitionKey?: PartitionKeyDefinition;
+      };
 
 function isCosmosDBItemDefinition(documentContent: unknown): documentContent is ItemDefinition {
     if (documentContent && typeof documentContent === 'object' && !Array.isArray(documentContent)) {
@@ -123,65 +155,87 @@ export const documentRouterDef = documentRouter({
         } as const;
     }),
 
-    saveDocument: documentProcedure.input(z.object({ documentText: z.string() })).mutation(async ({ input, ctx }) => {
-        const { connection, state } = ctx;
+    saveDocument: documentProcedure
+        .input(
+            z.object({
+                documentText: z.string(),
+                overwrite: z.boolean().optional(),
+            }),
+        )
+        .mutation(async ({ input, ctx }) => {
+            const { connection, state } = ctx;
 
-        const documentContent: JSONValue = JSON.parse(input.documentText) as JSONValue;
+            const documentContent: JSONValue = JSON.parse(input.documentText) as JSONValue;
 
-        if (!isCosmosDBItemDefinition(documentContent)) {
-            throw new Error(l10n.t('Item is not a valid Cosmos DB item definition'));
-        }
-
-        let saveResult;
-        if (state.documentId) {
-            // Update existing document
-            const updateResult = await updateDocument(connection, documentContent, state, ctx);
-            if (updateResult && ('cleanupRequired' in updateResult || 'aborted' in updateResult)) {
-                return updateResult;
+            if (!isCosmosDBItemDefinition(documentContent)) {
+                throw new Error(l10n.t('Item is not a valid Cosmos DB item definition'));
             }
-            if (updateResult && 'discarded' in updateResult) {
-                return {
+
+            let saveResult: DocumentSaveResult | undefined;
+            if (state.documentId) {
+                // Update existing document
+                const updateResult = await updateDocument(
+                    connection,
+                    documentContent,
+                    state,
+                    ctx,
+                    input.overwrite ?? false,
+                );
+                if (updateResult && ('cleanupRequired' in updateResult || 'aborted' in updateResult)) {
+                    return updateResult;
+                }
+                if (updateResult && 'discarded' in updateResult) {
+                    return {
+                        success: true,
+                        discarded: true,
+                        documentContent: updateResult.documentContent,
+                        partitionKey: updateResult.partitionKey,
+                    } as const;
+                }
+                saveResult = updateResult;
+            } else {
+                // Create new document
+                const created = await createDocument(
+                    connection,
+                    documentContent,
+                    ctx.signal,
+                    state.partitionKeyDefinition,
+                );
+                if (!created) {
+                    throw new Error(l10n.t('Failed to create item'));
+                }
+
+                if (created.partitionKey) state.partitionKeyDefinition = created.partitionKey;
+                state.documentId = created.identifier;
+                state.documentEtag = created.documentContent._etag;
+                ctx.panel.title = `${created.identifier.id}.json`;
+
+                // Fire-and-forget: refresh the persisted container schema with the
+                // newly created document. Only runs when a schema already exists for
+                // this container; we never start tracking schema implicitly here.
+                void refreshSchemaForNewDocument(connection, created.documentContent);
+
+                saveResult = {
                     success: true,
-                    discarded: true,
-                    documentContent: updateResult.documentContent,
-                    partitionKey: updateResult.partitionKey,
-                } as const;
+                    documentContent: created.documentContent,
+                    partitionKey: created.partitionKey,
+                };
             }
-            saveResult = updateResult;
-        } else {
-            // Create new document
-            saveResult = await createDocument(connection, documentContent, ctx.signal, state.partitionKeyDefinition);
+
+            if (saveResult?.success) {
+                void promptAfterActionEventually(
+                    ExperienceKind.NoSQL,
+                    UsageImpact.High,
+                    'cosmosDB.nosql.document.saveDocument',
+                );
+            }
+
             if (!saveResult) {
-                throw new Error(l10n.t('Failed to create item'));
+                return { success: false } as const;
             }
 
-            if (saveResult.partitionKey) state.partitionKeyDefinition = saveResult.partitionKey;
-            state.documentId = saveResult.identifier;
-            state.documentEtag = saveResult.documentContent._etag;
-            ctx.panel.title = `${saveResult.identifier.id}.json`;
-
-            // Fire-and-forget: refresh the persisted container schema with the
-            // newly created document. Only runs when a schema already exists for
-            // this container; we never start tracking schema implicitly here.
-            void refreshSchemaForNewDocument(connection, saveResult.documentContent);
-        }
-
-        void promptAfterActionEventually(
-            ExperienceKind.NoSQL,
-            UsageImpact.High,
-            'cosmosDB.nosql.document.saveDocument',
-        );
-
-        if (!saveResult) {
-            return { success: false } as const;
-        }
-
-        return {
-            success: true,
-            documentContent: saveResult.documentContent,
-            partitionKey: saveResult.partitionKey,
-        } as const;
-    }),
+            return saveResult;
+        }),
 
     retryPartitionKeyCleanup: documentProcedure.mutation(async ({ ctx }) => {
         const pendingCleanup = ctx.state.pendingPartitionKeyCleanup;
@@ -358,7 +412,11 @@ async function updateDocument(
     documentContent: ItemDefinition,
     state: DocumentMutableState,
     ctx: DocumentRouterContext & { actionContext?: IActionContext },
-) {
+    overwrite = false,
+): Promise<DocumentSaveResult | undefined> {
+    const documentId = state.documentId!;
+    const actionContext = ctx.actionContext;
+
     if (state.pendingPartitionKeyCleanup) {
         return {
             success: false,
@@ -366,9 +424,6 @@ async function updateDocument(
             message: getPartitionKeyCleanupRequiredMessage(),
         } as const;
     }
-
-    const documentId = state.documentId!;
-    const actionContext = ctx.actionContext;
 
     // Check if partition key has changed
     const newPartitionKey = await extractPartitionKeyFromDocument(
@@ -441,9 +496,31 @@ async function updateDocument(
         // Simple replace
         if (actionContext) actionContext.telemetry.properties.partitionKeyChanged = 'false';
 
-        let result: DocumentWriteResult | undefined;
+        if (overwrite) {
+            const result = await replaceDocument(
+                connection,
+                documentContent,
+                documentId,
+                ctx.signal,
+                state.partitionKeyDefinition,
+                { overwrite: true },
+            );
+            if (!result) {
+                throw new Error(l10n.t('Failed to update item'));
+            }
+
+            if (result.partitionKey) state.partitionKeyDefinition = result.partitionKey;
+            state.documentId = result.identifier;
+            ctx.panel.title = `${result.identifier.id}.json`;
+            return {
+                success: true,
+                documentContent: result.documentContent,
+                partitionKey: result.partitionKey,
+            };
+        }
+
         try {
-            result = await replaceDocument(
+            const result = await replaceDocument(
                 connection,
                 documentContent,
                 documentId,
@@ -451,49 +528,42 @@ async function updateDocument(
                 state.partitionKeyDefinition,
                 state.documentEtag,
             );
-        } catch (error) {
-            if (!isPreconditionFailed(error)) {
+            if (!result) {
+                throw new Error(l10n.t('Failed to update item'));
+            }
+
+            if (result.partitionKey) state.partitionKeyDefinition = result.partitionKey;
+            state.documentId = result.identifier;
+            state.documentEtag = result.documentContent._etag;
+            ctx.panel.title = `${result.identifier.id}.json`;
+            return {
+                success: true,
+                documentContent: result.documentContent,
+                partitionKey: result.partitionKey,
+            };
+        } catch (error: unknown) {
+            if (!isPreconditionFailedError(error)) {
                 throw error;
             }
 
-            const currentDocument = await readDocument(
-                connection,
-                documentId,
-                ctx.signal,
-                state.partitionKeyDefinition,
-            );
-            if (!currentDocument) {
-                throw error;
+            const latest = await readDocument(connection, documentId, ctx.signal, state.partitionKeyDefinition);
+            if (!latest?.documentContent) {
+                throw new Error(
+                    l10n.t(
+                        'Item update failed because the document changed and the latest version could not be loaded',
+                    ),
+                );
             }
 
-            const resolution = await promptForDocumentConflict();
-            if (resolution === 'discard') {
-                updateLoadedDocumentState(state, currentDocument);
-                return { discarded: true, ...currentDocument } as const;
-            }
-            if (resolution !== 'overwrite') {
-                return { success: false, aborted: true } as const;
-            }
-
-            state.documentEtag = currentDocument.documentContent._etag;
-            result = await replaceDocument(
-                connection,
-                documentContent,
-                documentId,
-                ctx.signal,
-                state.partitionKeyDefinition,
-                state.documentEtag,
-            );
+            return {
+                success: false,
+                conflict: {
+                    message: l10n.t('This item changed after you opened it. Your changes were not saved.'),
+                    serverDocumentContent: latest.documentContent,
+                    partitionKey: latest.partitionKey,
+                },
+            };
         }
-        if (!result) {
-            throw new Error(l10n.t('Failed to update item'));
-        }
-
-        if (result.partitionKey) state.partitionKeyDefinition = result.partitionKey;
-        state.documentId = result.identifier;
-        state.documentEtag = result.documentContent._etag;
-        ctx.panel.title = `${result.identifier.id}.json`;
-        return result;
     }
 }
 

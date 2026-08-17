@@ -13,6 +13,7 @@ import {
     type JSONObject,
     type PartitionKey,
     type PartitionKeyDefinition,
+    type RequestOptions,
 } from '@azure/cosmos';
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
@@ -232,7 +233,8 @@ export async function replaceDocument(
     documentId: CosmosDBRecordIdentifier,
     signal?: AbortSignal,
     partitionKeyDefinition?: PartitionKeyDefinition,
-    expectedEtag?: string,
+    expectedEtagOrOptions?: string | { overwrite?: boolean },
+    options?: { overwrite?: boolean },
 ): Promise<DocumentWriteResult | undefined> {
     return callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.update', async (context) => {
         context.errorHandling.rethrow = true;
@@ -243,12 +245,26 @@ export async function replaceDocument(
         }
 
         const priorityLevel = resolveEffectivePriorityLevel(connection);
+        const requestOptions: RequestOptions = {
+            abortSignal: signal,
+            priorityLevel,
+        };
+
+        const overwrite =
+            typeof expectedEtagOrOptions === 'object' ? expectedEtagOrOptions.overwrite : options?.overwrite;
+        const expectedEtag = typeof expectedEtagOrOptions === 'string' ? expectedEtagOrOptions : undefined;
+
+        if (!overwrite) {
+            Object.assign(
+                requestOptions,
+                expectedEtag
+                    ? { accessCondition: { type: 'IfMatch', condition: expectedEtag } }
+                    : buildIfMatchRequestOptions(document),
+            );
+        }
+
         const response = await withContainer(connection, (container) =>
-            container.item(documentId.id!, documentId.partitionKey).replace(document, {
-                abortSignal: signal,
-                priorityLevel,
-                accessCondition: expectedEtag ? { type: 'IfMatch', condition: expectedEtag } : undefined,
-            }),
+            container.item(documentId.id!, documentId.partitionKey).replace(document, requestOptions),
         );
 
         if (!response?.resource) {
@@ -268,6 +284,33 @@ export async function replaceDocument(
             },
         };
     });
+}
+
+/**
+ * Build request options for replacing an existing item.
+ *
+ * The editor must preserve the ETag from the loaded document so stale tabs
+ * fail with HTTP 412 instead of silently overwriting newer server changes.
+ */
+export function buildIfMatchRequestOptions(document: ItemDefinition): Pick<RequestOptions, 'accessCondition'> {
+    if (!document['_etag'] || typeof document['_etag'] !== 'string') {
+        throw new Error(l10n.t('The "_etag" field is required to update an item'));
+    }
+
+    return {
+        accessCondition: { type: 'IfMatch', condition: document['_etag'] },
+    };
+}
+
+export function isPreconditionFailedError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') {
+        return false;
+    }
+
+    const statusCode = (error as { statusCode?: unknown }).statusCode;
+    const code = (error as { code?: unknown }).code;
+
+    return statusCode === 412 || statusCode === '412' || code === 412 || code === '412';
 }
 
 /**

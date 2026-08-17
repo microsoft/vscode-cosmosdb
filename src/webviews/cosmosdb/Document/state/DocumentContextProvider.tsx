@@ -8,7 +8,7 @@ import { type TrpcClient } from '@cosmosdb/webview-rpc/react';
 import * as l10n from '@vscode/l10n';
 import { type DocumentAppRouter } from '../../../api/types';
 import { BaseContextProvider, type DispatchToastFn } from '../../../utils/context/BaseContextProvider';
-import { type DispatchAction, type OpenDocumentMode } from './DocumentState';
+import { type DispatchAction, type DocumentConflictState, type OpenDocumentMode } from './DocumentState';
 
 const emptyPartitionKey: PartitionKeyDefinition = { paths: [] };
 
@@ -37,28 +37,44 @@ export class DocumentContextProvider extends BaseContextProvider<DocumentAppRout
         super(dispatchToast, trpcClient);
     }
 
-    public async saveDocument(documentText: string): Promise<void> {
+    public async saveDocument(documentText: string, overwrite = false): Promise<void> {
         this.dispatch({ type: 'setSaving', isSaving: true });
 
         try {
-            const result = (await this.trpcClient.document.saveDocument.mutate({ documentText })) as {
+            const result = (await this.trpcClient.document.saveDocument.mutate({
+                documentText,
+                overwrite,
+            })) as {
                 success: boolean;
                 aborted?: boolean;
                 cleanupRequired?: boolean;
                 message?: string;
                 documentContent?: JSONValue;
                 partitionKey?: PartitionKeyDefinition;
+                conflict?: {
+                    message: string;
+                    serverDocumentContent: JSONValue;
+                    partitionKey?: PartitionKeyDefinition;
+                };
             };
 
             if (result.aborted) {
                 return;
-            } else if (result.cleanupRequired && result.message) {
+            } else if (result.cleanupRequired) {
+                this.dispatch({ type: 'setError', error: undefined });
                 this.dispatch({ type: 'setCleanupRequired', message: result.message });
             } else if (result.success && result.documentContent) {
+                this.dispatch({ type: 'setError', error: undefined });
                 this.dispatch({
                     type: 'setDocument',
                     documentContent: JSON.stringify(result.documentContent, null, 4),
                     partitionKey: result.partitionKey ?? emptyPartitionKey,
+                });
+            } else if (result.conflict) {
+                this.dispatch({ type: 'setError', error: undefined });
+                this.dispatch({
+                    type: 'setConflict',
+                    conflict: this.normalizeConflict(result.conflict),
                 });
             } else {
                 this.dispatch({ type: 'setError', error: l10n.t('Failed to save item') });
@@ -94,6 +110,29 @@ export class DocumentContextProvider extends BaseContextProvider<DocumentAppRout
         } finally {
             this.dispatch({ type: 'setCleaningUp', isCleaningUp: false });
         }
+    }
+
+    public async overwriteConflict(documentText: string): Promise<void> {
+        await this.saveDocument(documentText, true);
+    }
+
+    public async refreshConflict(conflict: DocumentConflictState): Promise<void> {
+        this.dispatch({ type: 'setError', error: undefined });
+        this.dispatch({
+            type: 'setDocument',
+            documentContent: conflict.serverDocumentContent,
+            partitionKey: conflict.partitionKey ?? emptyPartitionKey,
+        });
+    }
+
+    public async compareConflict(documentText: string, conflict: DocumentConflictState): Promise<void> {
+        await this.compareTextDocuments({
+            title: l10n.t('Compare item changes'),
+            leftTitle: l10n.t('Your changes'),
+            leftContent: documentText,
+            rightTitle: l10n.t('Server changes'),
+            rightContent: conflict.serverDocumentContent,
+        });
     }
 
     public async saveDocumentAsFile(documentText: string): Promise<void> {
@@ -195,5 +234,17 @@ export class DocumentContextProvider extends BaseContextProvider<DocumentAppRout
         } catch {
             return false;
         }
+    }
+
+    private normalizeConflict(conflict: {
+        message: string;
+        serverDocumentContent: JSONValue;
+        partitionKey?: PartitionKeyDefinition;
+    }): DocumentConflictState {
+        return {
+            message: conflict.message,
+            serverDocumentContent: JSON.stringify(conflict.serverDocumentContent, null, 4),
+            partitionKey: conflict.partitionKey ?? emptyPartitionKey,
+        };
     }
 }

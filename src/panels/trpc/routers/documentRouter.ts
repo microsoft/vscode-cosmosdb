@@ -210,13 +210,35 @@ export const documentRouterDef = documentRouter({
             } as const;
         }
 
-        completePartitionKeyMove(ctx, pendingCleanup.destination);
-        return {
-            success: true,
-            cleanupRequired: false,
-            documentContent: pendingCleanup.destination.documentContent,
-            partitionKey: pendingCleanup.destination.partitionKey,
-        } as const;
+        try {
+            const currentDestination = await readDocument(
+                ctx.connection,
+                pendingCleanup.destination.identifier,
+                undefined,
+                pendingCleanup.destination.partitionKey,
+            );
+            if (!currentDestination) {
+                throw new Error('Partition key move destination could not be confirmed');
+            }
+
+            const currentDestinationResult = {
+                ...currentDestination,
+                identifier: pendingCleanup.destination.identifier,
+            };
+            completePartitionKeyMove(ctx, currentDestinationResult);
+            return {
+                success: true,
+                cleanupRequired: false,
+                documentContent: currentDestination.documentContent,
+                partitionKey: currentDestination.partitionKey,
+            } as const;
+        } catch {
+            return {
+                success: false,
+                cleanupRequired: true,
+                message: getPartitionKeyDestinationRefreshRequiredMessage(),
+            } as const;
+        }
     }),
 
     saveDocumentAsFile: documentProcedure
@@ -461,6 +483,12 @@ async function promptForDocumentConflict(): Promise<'overwrite' | 'discard' | un
 function getPartitionKeyCleanupRequiredMessage(): string {
     return l10n.t(
         'The item was created in the new partition, but the original item could not be deleted. Both items may exist.',
+    );
+}
+
+function getPartitionKeyDestinationRefreshRequiredMessage(): string {
+    return l10n.t(
+        'Cleanup may have completed, but the item in the new partition could not be refreshed. Retry to load its latest state.',
     );
 }
 

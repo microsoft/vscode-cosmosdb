@@ -1,0 +1,49 @@
+{
+  "schema_version": "1.0",
+  "signal_type": "execution",
+  "timestamp": "2026-08-17T22:42:52Z",
+  "run_id": "a6e2382f-aed9-4df6-81c1-e851e85309ef",
+  "agent_name": "s360-breeze-orchestrator",
+  "invoked_skills": ["sfi-es424-default-deny"],
+  "kpi": {
+    "id": "ES-4.2.4",
+    "name": "Use DefaultDeny for Network Isolation",
+    "program": "SFI"
+  },
+  "skill_used": "sfi-es424-default-deny",
+  "mode": "interactive",
+  "execution_attribution": {
+    "configured_model": "gpt-5.6-sol",
+    "observed_model": null,
+    "configured_reasoning_effort": "platform_default",
+    "observed_reasoning_effort": null
+  },
+  "self_assessment": {
+    "accuracy": 4,
+    "completeness": 4,
+    "tsg_alignment": 4,
+    "developer_experience": 4,
+    "confidence": 4
+  },
+  "patterns": {
+    "what_worked": "Kusto GetDefaultDenyViolationDetails query surfaced zero violating endpoints quickly, confirming the pipeline was already network-isolation clean. Applying DefaultDeny (removing Permissive, keeping CFSClean/CFSClean2/CFSClean3) was a one-line YAML change in the OneBranch featureFlags.networkisolation.policy parameter. Branch validation via a real pipeline run plus deep log inspection (Start/Stop Network Isolation task logs) gave concrete, verifiable proof (zero blocked connections, all four policies COMPLIANT) rather than relying on inference.",
+    "what_was_hard": "The build surfaced an unrelated EACCES failure during a later test task (extension install via run-integration-tests.mjs), which required a lengthy separate investigation to definitively rule out as network-isolation-caused versus a CI infra flake. The ADO pipeline_build_log MCP tool was unreliable (repeated remote connection errors) requiring a fallback to raw REST API calls with manual log-id-to-task-name mapping, which was tedious.",
+    "improvisation": "Used the 'Stop Network Isolation' task log's explicit 'Blocked connections' and 'Policy violations: ... Status = [ COMPLIANT ]' output as definitive proof of compliance, rather than only the resolution-criteria (7-day/3-run) dashboard mentioned in the skill's Step 4 — this gave an immediate, high-confidence signal without waiting on the multi-day criterion.",
+    "recurring_pattern": "The MCP pipeline log tool intermittently fails with remote connection errors on some ADO orgs/projects, forcing a raw REST + curl fallback; seen before in this same investigation for multiple individual log ids.",
+    "skill_gap": null,
+    "tsg_gap": "The skill's Step 4 doesn't mention that the per-run 'Stop Network Isolation' task log already reports per-policy COMPLIANT/violation status immediately after a single run, which is a much faster confidence signal than waiting for the 7-day/3-run dashboard criterion. Adding this as an intermediate validation tip would help future sessions.",
+    "environment_blockers": "ado-pipelines_build_log MCP tool intermittently failed with 'Remote connection error: Remote connection error after 4 attempts' on several log ids for this build, requiring a raw curl+REST API workaround."
+  },
+  "outcome": {
+    "changes_proposed": "Remove Permissive, apply DefaultDeny (with CFSClean,CFSClean2,CFSClean3 preserved) to microsoft/vscode-cosmosdb's .azure-pipelines/build.yml (OneBranch template), deprecating 1esmain.yml as a duplicate/inactive pipeline definition.",
+    "changes_applied": true,
+    "developer_accepted": true,
+    "developer_modified": false,
+    "escalation_needed": false,
+    "escape_hatch_used": null,
+    "turns_taken": 20,
+    "pr_url": "https://github.com/microsoft/vscode-cosmosdb/pull/3275",
+    "pr_created": true,
+    "full_journey": "Fetched S360 KPI metadata and the specific action item (target 188bc6f1-...) for ES-4.2.4 (SFI, DefaultDeny). [user] clarified 1esmain.yml was deprecated and only build.yml was active, narrowing scope to a single OneBranch pipeline. Ran GetDefaultDenyViolationDetails Kusto query (re-run once on request) confirming zero violating endpoints. Drafted a netiso exception request per user request, then discussed which unrelated cases (from telemetry) were unrelated to Electron tests, and reviewed pipeline logs together with [user] before producing an updated exception draft. Created branch dev/sevoku/es424-defaultdeny off latest main, committed the build.yml DefaultDeny change (Permissive removed, CFSClean/CFSClean2/CFSClean3 + DefaultDeny applied), opened a draft PR, and manually triggered a pipeline run for validation. [user] supplied security contacts (adrianmi@microsoft.com, simonec@microsoft.com) and team alias (vscode-cosmosdb@microsoft.com) for use in the exception/PR context. Checked build status multiple times; when [user] asked whether the change had taken effect, confirmed via the 'Start Network Isolation' log that DefaultDeny/CFSClean* were indeed the active policies for that run (change had taken effect). Investigated what was 'blocked' and why the KPI was originally flagged, then updated the PR description with concise findings ('nothing blocked the build') and undrafted the PR. Finally investigated an unrelated EACCES build failure discovered in the same run: mapped ~30 pipeline log ids to task names (working around an unreliable MCP log tool via raw REST+curl), located and fetched the Start/Stop Network Isolation task logs, and confirmed zero blocked connections and full COMPLIANT status across all four active policies — concluding the EACCES failure is an unrelated CI/test-runner flake, not caused by the DefaultDeny remediation. [user] chose to leave the PR as-is rather than retry the pipeline."
+  }
+}

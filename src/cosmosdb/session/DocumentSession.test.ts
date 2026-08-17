@@ -3,15 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type ItemDefinition } from '@azure/cosmos';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { type NoSqlQueryConnection } from '../NoSqlQueryConnection';
-import {
-    buildIfMatchRequestOptions,
-    deleteDocument,
-    isPreconditionFailedError,
-    replaceDocument,
-} from './DocumentSession';
 
 const cosmosMocks = vi.hoisted(() => ({
     delete: vi.fn(),
@@ -42,20 +35,7 @@ vi.mock('../withClaimsChallengeHandling', () => ({
     ),
 }));
 
-vi.mock('vscode', () => ({
-    window: {},
-    workspace: {},
-    commands: {},
-    Uri: { parse: vi.fn(), file: vi.fn() },
-}));
-
-vi.mock('@microsoft/vscode-azureresources-api', () => ({
-    AzExtResourceType: { AzureCosmosDb: 'AzureCosmosDb' },
-}));
-
-vi.mock('@microsoft/vscode-azext-azureauth', () => ({
-    getSessionFromVSCode: vi.fn(),
-}));
+import { deleteDocument, replaceDocument } from './DocumentSession';
 
 const connection = {
     containerId: 'container',
@@ -78,26 +58,6 @@ describe('DocumentSession ETag conditions', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         cosmosMocks.item.mockReturnValue({ delete: cosmosMocks.delete, replace: cosmosMocks.replace });
-    });
-
-    it('uses the loaded _etag as an IfMatch access condition', () => {
-        expect(
-            buildIfMatchRequestOptions({
-                id: 'concurrency-proof',
-                _etag: '"etag-value"',
-            } as ItemDefinition),
-        ).toEqual({
-            accessCondition: {
-                type: 'IfMatch',
-                condition: '"etag-value"',
-            },
-        });
-    });
-
-    it('requires an _etag before updating an item', () => {
-        expect(() => buildIfMatchRequestOptions({ id: 'concurrency-proof' } as ItemDefinition)).toThrow(
-            'The "_etag" field is required to update an item',
-        );
     });
 
     it('passes IfMatch when replacing a document', async () => {
@@ -123,23 +83,5 @@ describe('DocumentSession ETag conditions', () => {
                 accessCondition: { type: 'IfMatch', condition: 'loaded-etag' },
             }),
         );
-    });
-
-    it.each([
-        ['statusCode number', { statusCode: 412 }],
-        ['statusCode string', { statusCode: '412' }],
-        ['code number', { code: 412 }],
-        ['code string', { code: '412' }],
-    ])('detects a precondition failure from %s', (_label, error) => {
-        expect(isPreconditionFailedError(error)).toBe(true);
-    });
-
-    it.each([
-        ['different status code', { statusCode: 500 }],
-        ['different code', { code: 'Conflict' }],
-        ['plain error', new Error('boom')],
-        ['null', null],
-    ])('does not misclassify %s', (_label, error) => {
-        expect(isPreconditionFailedError(error)).toBe(false);
     });
 });

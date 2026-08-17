@@ -136,11 +136,14 @@ extends:
                               pwsh: true
                               targetType: 'inline'
 
-                        # Temporarily disabled: manual Component Governance detection is causing
-                        # Network Isolation blocked-connection noise in this
-                        # pipeline. This task can be re-enabled after policy/tooling alignment.
-                        # - task: ComponentGovernanceComponentDetection@0
-                        #   displayName: '🛡️ Component Governance - Component Detection'
+                        # Re-enabled: runs before packaging so the NOTICE file below reflects the
+                        # component snapshot for the artifact this job actually produces. Previously
+                        # disabled due to Network Isolation noise (#3159); a 30-day Kusto review of
+                        # DefaultDeny violations for this pipeline shows no blocked connections
+                        # attributable to Component Governance (only Npm/OneLocBuild tasks appear),
+                        # so it is safe to re-enable here.
+                        - task: ComponentGovernanceComponentDetection@0
+                          displayName: '🛡️ Component Governance - Component Detection'
 
                         - task: notice@0
                           displayName: '📄 Generate NOTICE file'

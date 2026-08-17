@@ -142,6 +142,48 @@ describe('documentRouter partition key updates', () => {
         expect(context.state.pendingPartitionKeyCleanup).toBeUndefined();
     });
 
+    it('refreshes the destination after cleanup succeeds', async () => {
+        const context = createContext();
+        const currentDestination = {
+            documentContent: { ...documentContent, _etag: 'current-etag', version: 2 },
+            partitionKey: writeResult.partitionKey,
+        };
+        documentSessionMocks.deleteDocument.mockRejectedValueOnce(new Error('Service unavailable'));
+        documentSessionMocks.readDocument.mockResolvedValue(currentDestination);
+        const caller = documentRouterDef.createCaller(context);
+        await caller.saveDocument({ documentText: JSON.stringify(documentContent) });
+
+        const result = await caller.retryPartitionKeyCleanup();
+
+        expect(documentSessionMocks.readDocument).toHaveBeenCalledWith(
+            context.connection,
+            newIdentifier,
+            undefined,
+            writeResult.partitionKey,
+        );
+        expect(result).toMatchObject({ success: true, cleanupRequired: false, ...currentDestination });
+        expect(context.state.documentEtag).toBe('current-etag');
+        expect(context.state.pendingPartitionKeyCleanup).toBeUndefined();
+    });
+
+    it('keeps cleanup recoverable when the destination cannot be confirmed', async () => {
+        const context = createContext();
+        documentSessionMocks.deleteDocument.mockRejectedValueOnce(new Error('Service unavailable'));
+        documentSessionMocks.readDocument.mockResolvedValue(undefined);
+        const caller = documentRouterDef.createCaller(context);
+        await caller.saveDocument({ documentText: JSON.stringify(documentContent) });
+
+        const result = await caller.retryPartitionKeyCleanup();
+
+        expect(result).toMatchObject({
+            success: false,
+            cleanupRequired: true,
+            message: expect.stringContaining('could not be refreshed'),
+        });
+        expect(context.state.documentId).toEqual(oldIdentifier);
+        expect(context.state.pendingPartitionKeyCleanup).toBeDefined();
+    });
+
     it('does not recreate the destination when save is repeated before cleanup', async () => {
         const context = createContext();
         documentSessionMocks.deleteDocument.mockRejectedValue(new Error('Service unavailable'));

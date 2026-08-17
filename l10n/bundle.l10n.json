@@ -208,6 +208,7 @@
   "Choose how many rows to load per page. Larger pages cost more request units to fetch.": "Choose how many rows to load per page. Larger pages cost more request units to fetch.",
   "Choose the database and container to run your queries against from this connection picker.": "Choose the database and container to run your queries against from this connection picker.",
   "Cleaning up the original item...": "Cleaning up the original item...",
+  "Cleanup may have completed, but the item in the new partition could not be refreshed. Retry to load its latest state.": "Cleanup may have completed, but the item in the new partition could not be refreshed. Retry to load its latest state.",
   "Click to view resource": "Click to view resource",
   "Close": "Close",
   "Collapse": "Collapse",

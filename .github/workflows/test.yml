@@ -30,10 +30,7 @@ on:
       - dev/**
 
   pull_request:
-    branches:
-      - main
-      - rel/*
-      - dev/**
+    types: [opened, reopened, synchronize]
 
 concurrency:
   group: >-
@@ -49,14 +46,6 @@ jobs:
   test:
     name: Tests
     runs-on: ubuntu-latest
-
-    # Same push+pull_request dedupe behavior as build.yml.
-    if: >-
-      github.event_name != 'pull_request' ||
-      github.event.pull_request.head.repo.full_name != github.repository ||
-      (github.head_ref != 'main' &&
-       !startsWith(github.head_ref, 'rel/') &&
-       !startsWith(github.head_ref, 'dev/'))
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -132,7 +121,7 @@ jobs:
           REPO: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           COVERAGE_URL: ${{ steps.upload-coverage.outputs.artifact-url }}
-          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         shell: bash
         run: |
@@ -187,15 +176,6 @@ jobs:
           unit_icon=$(result_icon "$UNIT_TEST_RESULT")
           int_icon=$(result_icon "$INTEGRATION_TEST_RESULT")
 
-          # Resolve PR number for push events (no PR payload) by branch name.
-          if [ -z "${PR_NUMBER:-}" ] && [ -n "${BRANCH_NAME:-}" ]; then
-              pr_info=$(gh pr view "${BRANCH_NAME}" --repo "${REPO}" \
-                  --json number 2>/dev/null) || true
-              if [ -n "$pr_info" ]; then
-                  PR_NUMBER=$(echo "$pr_info" | jq -r '.number // empty')
-              fi
-          fi
-
           coverage_section=""
           if [ -n "${COVERAGE_URL:-}" ]; then
               coverage_section="
@@ -224,6 +204,6 @@ jobs:
               esac
           done
 
-          if [ -n "${PR_NUMBER:-}" ]; then
+          if [ "${EVENT_NAME}" = "pull_request" ] && [ -n "${PR_NUMBER:-}" ]; then
               post_or_update_comment "${PR_NUMBER}" "${MARKER}" "${GITHUB_STEP_SUMMARY}" "${comment_meaningful}"
           fi

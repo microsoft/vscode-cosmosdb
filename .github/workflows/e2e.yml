@@ -44,10 +44,7 @@ on:
       - '.github/workflows/e2e.yml'
 
   pull_request:
-    branches:
-      - main
-      - rel/*
-      - dev/**
+    types: [opened, reopened, synchronize]
     paths:
       - 'src/**'
       - 'test/e2e/**'
@@ -64,14 +61,6 @@ jobs:
     name: 🎭 Run e2e tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
-    # Same push+pull_request dedupe behavior as build.yml.
-    if: >-
-      github.event_name != 'pull_request' ||
-      github.event.pull_request.head.repo.full_name != github.repository ||
-      (github.head_ref != 'main' &&
-       !startsWith(github.head_ref, 'rel/') &&
-       !startsWith(github.head_ref, 'dev/'))
 
     # Scope concurrency by PR (or by branch on push) so two forks pushing branches with the same name don't
     # cancel each other. Main and rel/* runs get unique groups so every commit is tested.
@@ -185,7 +174,7 @@ jobs:
           REPO: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           E2E_RESULT: ${{ steps.e2e-tests.outcome }}
-          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         shell: bash
         run: |
@@ -264,15 +253,6 @@ jobs:
           e2e_icon=$(result_icon "$E2E_RESULT")
           artifacts=$(list_run_artifacts "${GITHUB_RUN_ID}")
 
-          # Resolve PR number for push events (no PR payload) by branch name.
-          if [ -z "${PR_NUMBER:-}" ] && [ -n "${BRANCH_NAME:-}" ]; then
-              pr_info=$(gh pr view "${BRANCH_NAME}" --repo "${REPO}" \
-                  --json number 2>/dev/null) || true
-              if [ -n "$pr_info" ]; then
-                  PR_NUMBER=$(echo "$pr_info" | jq -r '.number // empty')
-              fi
-          fi
-
           MARKER="<!-- ci-summary:e2e -->"
           cat >> "$GITHUB_STEP_SUMMARY" << SUMMARY_EOF
           ${MARKER}
@@ -297,6 +277,6 @@ jobs:
               success|failure) comment_meaningful=true ;;
           esac
 
-          if [ -n "${PR_NUMBER:-}" ]; then
+          if [ "${EVENT_NAME}" = "pull_request" ] && [ -n "${PR_NUMBER:-}" ]; then
               post_or_update_comment "${PR_NUMBER}" "${MARKER}" "${GITHUB_STEP_SUMMARY}" "${comment_meaningful}"
           fi

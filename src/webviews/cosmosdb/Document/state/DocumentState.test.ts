@@ -10,6 +10,7 @@ describe('DocumentState cleanup', () => {
         const state = {
             ...defaultState,
             cleanupRequiredMessage: 'Cleanup required',
+            cleanupRequiredAction: 'viewConflicts' as const,
         };
 
         const result = dispatch(state, {
@@ -19,6 +20,7 @@ describe('DocumentState cleanup', () => {
         });
 
         expect(result.cleanupRequiredMessage).toBe('Cleanup required');
+        expect(result.cleanupRequiredAction).toBe('viewConflicts');
     });
 
     it('clears pending cleanup and establishes the destination baseline when cleanup completes', () => {
@@ -28,6 +30,7 @@ describe('DocumentState cleanup', () => {
             currentDocumentContent: '{"id":"destination","edited":true}',
             isDirty: true,
             cleanupRequiredMessage: 'Cleanup required',
+            cleanupRequiredAction: 'retry' as const,
         };
 
         const result = dispatch(state, {
@@ -40,5 +43,15 @@ describe('DocumentState cleanup', () => {
         expect(result.currentDocumentContent).toBe('{"id":"destination"}');
         expect(result.isDirty).toBe(false);
         expect(result.cleanupRequiredMessage).toBeUndefined();
+        expect(result.cleanupRequiredAction).toBeUndefined();
+    });
+
+    it('defaults cleanup warnings to the retry action', () => {
+        const result = dispatch(defaultState, {
+            type: 'setCleanupRequired',
+            message: 'Cleanup required',
+        });
+
+        expect(result.cleanupRequiredAction).toBe('retry');
     });
 });

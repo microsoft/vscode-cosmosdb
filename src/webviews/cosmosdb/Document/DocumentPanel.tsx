@@ -166,13 +166,19 @@ export const DocumentPanel = () => {
                 >
                     <Text>{state.cleanupRequiredMessage}</Text>
                     <MessageBarActions>
-                        <Button
-                            appearance={'primary'}
-                            disabled={state.isCleaningUp}
-                            onClick={() => void dispatcher.retryPartitionKeyCleanup()}
-                        >
-                            {l10n.t('Retry cleanup')}
-                        </Button>
+                        {state.cleanupRequiredAction === 'viewConflicts' ? (
+                            <Button appearance={'primary'} onClick={() => void dispatcher.viewPartitionKeyConflicts()}>
+                                {l10n.t('View conflicting items')}
+                            </Button>
+                        ) : (
+                            <Button
+                                appearance={'primary'}
+                                disabled={state.isCleaningUp}
+                                onClick={() => void dispatcher.retryPartitionKeyCleanup()}
+                            >
+                                {l10n.t('Retry cleanup')}
+                            </Button>
+                        )}
                     </MessageBarActions>
                 </MessageBarWrapper>
                 <MessageBarWrapper key={'cleaningUp'} visible={state.isCleaningUp} debounceTime={0} intent={'info'}>

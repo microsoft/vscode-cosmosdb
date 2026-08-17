@@ -22,9 +22,19 @@ const confirmationMocks = vi.hoisted(() => ({
     getConfirmationAsInSettings: vi.fn(),
 }));
 
+const queryEditorMocks = vi.hoisted(() => ({
+    render: vi.fn(),
+    runActiveQueryInEditor: vi.fn(),
+}));
+
 vi.mock('../../../cosmosdb/session/DocumentSession', () => documentSessionMocks);
 vi.mock('../../../services/SchemaService', () => ({ SchemaService: { getInstance: vi.fn() } }));
 vi.mock('../../../utils/dialogs/getConfirmation', () => confirmationMocks);
+vi.mock('../../QueryEditorTab', () => ({
+    QueryEditorTab: {
+        render: queryEditorMocks.render,
+    },
+}));
 vi.mock('../../../utils/survey', () => ({ promptAfterActionEventually: vi.fn() }));
 vi.mock('../../../utils/vscodeUtils', () => ({ showNewFile: vi.fn() }));
 vi.mock('@vscode/l10n', () => ({ t: (message: string) => message }));
@@ -81,6 +91,9 @@ describe('documentRouter partition key updates', () => {
         documentSessionMocks.readDocument.mockResolvedValue({
             documentContent,
             partitionKey: writeResult.partitionKey,
+        });
+        queryEditorMocks.render.mockReturnValue({
+            runActiveQueryInEditor: queryEditorMocks.runActiveQueryInEditor,
         });
     });
 
@@ -283,6 +296,49 @@ describe('documentRouter partition key updates', () => {
         expect(documentSessionMocks.deleteDocument).toHaveBeenCalledTimes(2);
         expect(context.state.pendingPartitionKeyCleanup).toBeDefined();
         expect(context.state.documentId).toEqual(oldIdentifier);
+    });
+
+    it('offers conflicting items when the destination changed during rollback', async () => {
+        const context = createContext();
+        documentSessionMocks.deleteDocument
+            .mockRejectedValueOnce(new Error('Service unavailable'))
+            .mockRejectedValueOnce({ statusCode: 412 })
+            .mockRejectedValueOnce({ statusCode: 412 });
+        documentSessionMocks.readDocument.mockResolvedValue({
+            documentContent: { ...documentContent, pk: 'old', _etag: 'current-source-etag' },
+            partitionKey: writeResult.partitionKey,
+        });
+        vi.mocked(vscode.window.showWarningMessage).mockImplementation(async (_message, _options, ...items) =>
+            items.find((item) => item.title === 'Discard Changes and Refresh'),
+        );
+        const caller = documentRouterDef.createCaller(context);
+        await caller.saveDocument({ documentText: JSON.stringify(documentContent) });
+
+        const result = await caller.retryPartitionKeyCleanup();
+
+        expect(result).toMatchObject({
+            success: false,
+            cleanupRequired: true,
+            action: 'viewConflicts',
+            message: expect.stringContaining('View them in the Query Editor'),
+        });
+        expect(context.state.pendingPartitionKeyCleanup?.action).toBe('viewConflicts');
+    });
+
+    it('opens and runs a query scoped to both conflicting items', async () => {
+        const context = createContext();
+        context.state.pendingPartitionKeyCleanup = {
+            sourceIdentifier: oldIdentifier,
+            sourceEtag: 'source-etag',
+            destination: writeResult,
+            action: 'viewConflicts',
+        };
+
+        await documentRouterDef.createCaller(context).viewPartitionKeyConflicts();
+
+        const query = 'SELECT * FROM c WHERE c._rid IN ("old-rid", "new-rid")';
+        expect(queryEditorMocks.render).toHaveBeenCalledWith(context.connection, undefined, false, query);
+        expect(queryEditorMocks.runActiveQueryInEditor).toHaveBeenCalledWith(query);
     });
 
     it('does not recreate the destination when save is repeated before cleanup', async () => {

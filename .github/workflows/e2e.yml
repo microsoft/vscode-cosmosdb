@@ -62,17 +62,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
-    # Scope concurrency by PR (or by branch on push) so two forks pushing branches with the same name don't
-    # cancel each other. Main and rel/* runs get unique groups so every commit is tested.
+    # Push and PR runs share a head repository + branch group, so PR runs cancel overlapping push builds.
+    # Main and rel/* pushes remain unique, and fork PRs remain isolated by their head repository.
     concurrency:
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
       group: >-
         e2e-${{ github.workflow }}-${{
         github.ref == 'refs/heads/main' && github.run_id ||
         startsWith(github.ref, 'refs/heads/rel/') && github.run_id ||
         github.event_name == 'pull_request' &&
-        format('{0}-{1}', github.event.pull_request.head.repo.full_name, github.event.pull_request.number) ||
-        github.ref_name }}
-      cancel-in-progress: true
+        format('{0}-{1}', github.event.pull_request.head.repo.full_name, github.head_ref) ||
+        format('{0}-{1}', github.repository, github.ref_name) }}
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

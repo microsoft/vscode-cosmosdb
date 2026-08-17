@@ -39,18 +39,17 @@ on:
       - 'scripts/import-seed.mjs'
       - '.github/workflows/nosql-language-service.yml'
 
-# Workflow-level concurrency dedupes rapid pushes on the same branch, except on main and rel/* where every run
-# gets a unique group. PR runs are scoped by PR number + head repo so two forks pushing branches with the same
-# name don't cancel each other.
+# Push and PR runs share a head repository + branch group, so PR runs cancel overlapping push builds. Main and
+# rel/* pushes remain unique, and fork PRs remain isolated by their head repository.
 concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
   group: >-
     nosql-${{ github.workflow }}-${{
     github.ref == 'refs/heads/main' && github.run_id ||
     startsWith(github.ref, 'refs/heads/rel/') && github.run_id ||
     github.event_name == 'pull_request' &&
-    format('{0}-{1}', github.event.pull_request.head.repo.full_name, github.event.pull_request.number) ||
-    github.ref_name }}
-  cancel-in-progress: true
+    format('{0}-{1}', github.event.pull_request.head.repo.full_name, github.head_ref) ||
+    format('{0}-{1}', github.repository, github.ref_name) }}
 
 jobs:
   integration:

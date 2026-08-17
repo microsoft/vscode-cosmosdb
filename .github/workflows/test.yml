@@ -33,14 +33,14 @@ on:
     types: [opened, reopened, synchronize]
 
 concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
   group: >-
     test-${{ github.workflow }}-${{
     github.ref == 'refs/heads/main' && github.run_id ||
     startsWith(github.ref, 'refs/heads/rel/') && github.run_id ||
     github.event_name == 'pull_request' &&
-    format('{0}-{1}', github.event.pull_request.head.repo.full_name, github.event.pull_request.number) ||
-    github.ref_name }}
-  cancel-in-progress: true
+    format('{0}-{1}', github.event.pull_request.head.repo.full_name, github.head_ref) ||
+    format('{0}-{1}', github.repository, github.ref_name) }}
 
 jobs:
   test:

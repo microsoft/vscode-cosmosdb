@@ -49,7 +49,7 @@ export class QueryEditorTab extends BaseTab {
             pendingRunResolve: undefined,
         };
 
-        this.panel.iconPath = getThemedIconPath('editor.svg');
+        this.panel.iconPath = getThemedIconPath('editor.svg') as { light: vscode.Uri; dark: vscode.Uri };
 
         if (connection) {
             if (connection.credentials) {

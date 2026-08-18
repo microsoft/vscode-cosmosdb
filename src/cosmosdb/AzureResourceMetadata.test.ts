@@ -29,7 +29,7 @@ class TestableAzureResourceMetadata extends AzureResourceMetadata {
             'account-id',
             'account-name',
             'resource-group',
-            databaseAccount,
+            databaseAccount as DatabaseAccountGetResults,
         );
     }
 }

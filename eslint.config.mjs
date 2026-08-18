@@ -37,13 +37,9 @@ export default defineConfig([
         ],
     },
     // TypeScript parser — required so ESLint can parse .ts/.tsx AST correctly.
-    // No type-aware rules run here (the only rule is the syntax-only `no-restricted-syntax`),
-    // so we deliberately omit `parserOptions.project`: pure syntactic parsing is all we need
-    // and it avoids building a type-info program (faster, and no dependency on the TS type checker).
-    // The `@typescript-eslint` plugin is intentionally not registered — it only provides
-    // `@typescript-eslint/*` rules, none of which are used here; we need the parser alone.
     {
         files: ['**/*.ts', '**/*.tsx'],
+        plugins: { '@typescript-eslint': ts.plugin },
         languageOptions: {
             ecmaVersion: 2024,
             parser: ts.parser,
@@ -51,6 +47,9 @@ export default defineConfig([
                 ecmaFeatures: {
                     jsx: true,
                 },
+                project: './tsconfig.eslint.json',
+                projectService: false,
+                tsconfigRootDir: import.meta.dirname,
             },
             sourceType: 'module',
         },

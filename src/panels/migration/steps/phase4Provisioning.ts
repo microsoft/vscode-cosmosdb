@@ -1046,7 +1046,7 @@ async function resolveUniqueDatabaseNameViaArm(
  */
 function toArmIndexingPolicy(policy: NonNullable<IndexingPolicy>): ArmIndexingPolicy {
     return {
-        indexingMode: policy.indexingMode ?? 'consistent',
+        indexingMode: (policy.indexingMode ?? 'consistent') as ArmIndexingPolicy['indexingMode'],
         automatic: policy.automatic ?? true,
         includedPaths: sanitizeIndexingPaths(policy.includedPaths),
         excludedPaths: sanitizeIndexingPaths(policy.excludedPaths),

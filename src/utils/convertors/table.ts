@@ -9,7 +9,7 @@
  * NOTE: Mostly of these functions are async to be able to move them to backend in the future.
  */
 
-import { type JSONObject, type PartitionKeyDefinition } from '@azure/cosmos';
+import { type ItemDefinition, type JSONObject, type PartitionKeyDefinition } from '@azure/cosmos';
 import { isEmptyObject } from 'es-toolkit';
 import { CosmosDBHiddenFields } from '../../cosmosdb/cosmosdb-shared-constants';
 import { type SerializedQueryResult } from '../../cosmosdb/types/queryResult';
@@ -62,7 +62,7 @@ export const buildTableHeadersFromObjectDocuments = (
     const serviceKeys = new Set<string>();
 
     documents.forEach((doc) => {
-        Object.keys(doc).forEach((key) => {
+        Object.keys(doc as object).forEach((key) => {
             if (CosmosDBHiddenFields.includes(key)) {
                 serviceKeys.add(key);
             } else {
@@ -157,7 +157,7 @@ const buildTableRowsFromObjectDocuments = async (
             const doc = docRaw as Record<string, unknown>;
             const row: TableRecord = {
                 __id: globalThis.crypto.randomUUID(),
-                __documentId: getDocumentId(docRaw, partitionKey) ?? undefined,
+                __documentId: getDocumentId(docRaw as unknown as ItemDefinition, partitionKey) ?? undefined,
             };
 
             // Inject virtual partition key columns (only for SELECT *)
@@ -165,7 +165,7 @@ const buildTableRowsFromObjectDocuments = async (
                 const partitionKeyPaths = (partitionKey.paths ?? []).map((path) =>
                     path.startsWith('/') ? path.slice(1) : path,
                 );
-                const partitionKeyValues = extractPartitionKey(docRaw, partitionKey);
+                const partitionKeyValues = extractPartitionKey(docRaw as unknown as ItemDefinition, partitionKey);
                 const valuesArray = Array.isArray(partitionKeyValues) ? partitionKeyValues : [partitionKeyValues];
 
                 partitionKeyPaths.forEach((path, index) => {

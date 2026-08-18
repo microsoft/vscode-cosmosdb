@@ -614,7 +614,7 @@ describe('aggressivelySimplify (pure helper)', () => {
             'x-minProperties': 1,
             'x-maxProperties': 99,
             properties: { name: { type: 'string', 'x-occurrence': 10, 'x-minLength': 2 } },
-        } as unknown as JSONSchema;
+        };
 
         const result = aggressivelySimplify(schema, {
             targetSizeBytes: 10 * 1024,
@@ -649,7 +649,7 @@ describe('aggressivelySimplify (pure helper)', () => {
                     },
                 },
             },
-        } as unknown as JSONSchema;
+        };
 
         const result = aggressivelySimplify(schema, {
             targetSizeBytes: 120,
@@ -682,7 +682,7 @@ describe('aggressivelySimplify (pure helper)', () => {
         for (let i = 0; i < 47; i++) {
             properties[`rare_${String(i).padStart(3, '0')}`] = { type: 'string', 'x-occurrence': 1 };
         }
-        const schema: JSONSchema = { type: 'object', properties } as unknown as JSONSchema;
+        const schema: JSONSchema = { type: 'object', properties };
 
         const result = aggressivelySimplify(schema, {
             // Force the popularity loop to need a root trim by setting a tiny
@@ -737,7 +737,7 @@ describe('stripSchemaStatistics (confidentiality boundary)', () => {
                 salary: { type: 'number', 'x-occurrence': 5, 'x-minValue': 42, 'x-maxValue': 987654 },
                 name: { type: 'string', 'x-occurrence': 5, 'x-minLength': 1, 'x-maxLength': 40 },
             },
-        } as unknown as JSONSchema;
+        };
 
         const stripped = stripSchemaStatistics(schema) as unknown as Record<string, unknown>;
         const props = stripped.properties as Record<string, Record<string, unknown>>;
@@ -769,7 +769,7 @@ describe('stripSchemaStatistics (confidentiality boundary)', () => {
                     ],
                 },
             },
-        } as unknown as JSONSchema;
+        };
 
         expect(findConfidentialStatKeys(stripSchemaStatistics(schema))).toEqual([]);
     });
@@ -778,7 +778,7 @@ describe('stripSchemaStatistics (confidentiality boundary)', () => {
         const schema: JSONSchema = {
             type: 'object',
             properties: { salary: { type: 'number', 'x-minValue': 1, 'x-maxValue': 2 } },
-        } as unknown as JSONSchema;
+        };
 
         const stripped = stripSchemaStatistics(schema);
         const original = (schema.properties as Record<string, Record<string, unknown>>).salary;

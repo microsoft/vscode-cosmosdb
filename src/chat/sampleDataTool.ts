@@ -82,7 +82,7 @@ async function fetchSampleDocuments(
         })
         .fetchAll();
     return {
-        documents: (response.resources ?? []) as NoSQLDocument[],
+        documents: response.resources ?? [],
         requestCharge: response.requestCharge,
     };
 }
@@ -127,7 +127,7 @@ export async function sampleAndPersistContainerSchema(connection: NoSqlQueryConn
         .getConfiguration('cosmosDB.queryEditor')
         .get<boolean>('generateSchemaBasedOnQueries', false);
 
-    result.schema = getSchemaFromDocuments(documents) as Record<string, unknown>;
+    result.schema = getSchemaFromDocuments(documents);
 
     // Always persist the sampled schema into the schema analyzer (`SchemaService`) — even when the
     // "generate schema based on queries" setting is off — so later query generation can read it back
@@ -143,7 +143,7 @@ export async function sampleAndPersistContainerSchema(connection: NoSqlQueryConn
         });
         const simplified = await SchemaService.getInstance().getSimplifiedSchema(connection);
         if (simplified) {
-            result.schema = simplified.schema as Record<string, unknown>;
+            result.schema = simplified.schema;
         }
     } catch (saveError) {
         ext.outputChannel.warn(

@@ -49,7 +49,7 @@ describe('rbacUtils', () => {
 
     describe('showRbacPermissionError', () => {
         it('shows an error message that includes the account name', async () => {
-            const showErrorMessage = vi.spyOn(vscode.window, 'showErrorMessage').mockResolvedValue(undefined as never);
+            const showErrorMessage = vi.spyOn(vscode.window, 'showErrorMessage').mockResolvedValue(undefined);
 
             await showRbacPermissionError('my-account');
 
@@ -59,7 +59,7 @@ describe('rbacUtils', () => {
         });
 
         it('includes the principal id in the message when provided', async () => {
-            const showErrorMessage = vi.spyOn(vscode.window, 'showErrorMessage').mockResolvedValue(undefined as never);
+            const showErrorMessage = vi.spyOn(vscode.window, 'showErrorMessage').mockResolvedValue(undefined);
 
             await showRbacPermissionError('my-account', 'principal-42');
 
@@ -80,7 +80,7 @@ describe('rbacUtils', () => {
         });
 
         it('does not open any link when the user dismisses the message', async () => {
-            vi.spyOn(vscode.window, 'showErrorMessage').mockResolvedValue(undefined as never);
+            vi.spyOn(vscode.window, 'showErrorMessage').mockResolvedValue(undefined);
             const openExternal = vi.fn().mockResolvedValue(true);
             (vscode as unknown as { env: { openExternal: typeof openExternal } }).env = { openExternal };
 

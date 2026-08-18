@@ -190,7 +190,7 @@ class FabricServiceImpl implements IFabricService {
             throw new Error(l10n.t('Artifact not found for id {0}', artifact.id));
         }
 
-        return { ...artifact, ...fullArtifact } as IArtifact & Record<string, unknown>;
+        return { ...artifact, ...fullArtifact };
     }
 
     protected getArtifact(artifact: CosmosDBArtifact): Promise<IApiClientResponse> {

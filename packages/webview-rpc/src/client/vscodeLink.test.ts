@@ -53,8 +53,8 @@ function createTestHarness(op: ReturnType<typeof createMockOp>) {
     // vscodeLink returns: (runtime) => ({ op, next }) => Observable
     // runtime is unused (_runtime), so we pass a dummy
     // next is unused (terminating link), so we pass a dummy
-    const linkRuntime = link({} as never);
-    const observable = linkRuntime({ op, next: (() => {}) as never } as never);
+    const linkRuntime = link({});
+    const observable = linkRuntime({ op, next: (() => {}) as never });
 
     // Observer callbacks
     const onNext: Mock = vi.fn();
@@ -293,13 +293,13 @@ describe('vscodeLink', () => {
             });
 
             const link = vscodeLink<AnyRouter>({ send, onReceive });
-            const linkRuntime = link({} as never);
+            const linkRuntime = link({});
 
             const onNext1: Mock = vi.fn();
             const onNext2: Mock = vi.fn();
 
-            linkRuntime({ op: op1, next: (() => {}) as never } as never).subscribe({ next: onNext1 });
-            linkRuntime({ op: op2, next: (() => {}) as never } as never).subscribe({ next: onNext2 });
+            linkRuntime({ op: op1, next: (() => {}) as never }).subscribe({ next: onNext1 });
+            linkRuntime({ op: op2, next: (() => {}) as never }).subscribe({ next: onNext2 });
 
             // Both operations should have been sent
             expect(sentMessages).toHaveLength(2);

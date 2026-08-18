@@ -223,7 +223,7 @@ function toContainerResource(c: SqlContainerGetResults): ContainerResource {
             ? {
                   paths: partitionKey.paths ?? [],
                   kind: (partitionKey.kind as PartitionKeyKind | undefined) ?? PartitionKeyKind.Hash,
-                  version: (partitionKey.version as PartitionKeyDefinitionVersion | undefined) ?? undefined,
+                  version: partitionKey.version ?? undefined,
                   systemKey: partitionKey.systemKey,
               }
             : undefined,

@@ -73,7 +73,7 @@ export class TypedEventSink<T extends DiscriminatedEvent> implements AsyncIterab
         if (this.resolve) {
             const res = this.resolve;
             this.resolve = null;
-            res({ value: undefined as unknown as T, done: true });
+            res({ value: undefined, done: true });
         }
     }
 
@@ -138,7 +138,7 @@ export class TypedEventSink<T extends DiscriminatedEvent> implements AsyncIterab
                 if (this.resolve) {
                     const res = this.resolve;
                     this.resolve = null;
-                    res({ value: undefined as unknown as T, done: true });
+                    res({ value: undefined, done: true });
                 }
 
                 // Release the single-consumer guard. A second `for await`

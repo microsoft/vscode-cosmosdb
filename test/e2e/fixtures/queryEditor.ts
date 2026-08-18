@@ -908,7 +908,8 @@ export class QueryEditorPage {
         return this.resultRegion()
             .getByRole('link', { name: 'Learn more about query metrics' })
             .first()
-            .isVisible({ timeout: timeoutMs })
+            .waitFor({ state: 'visible', timeout: timeoutMs })
+            .then(() => true)
             .catch(() => false);
     }
 
@@ -921,7 +922,8 @@ export class QueryEditorPage {
         return this.resultRegion()
             .getByRole('link', { name: 'Learn more about index metrics' })
             .first()
-            .isVisible({ timeout: timeoutMs })
+            .waitFor({ state: 'visible', timeout: timeoutMs })
+            .then(() => true)
             .catch(() => false);
     }
 

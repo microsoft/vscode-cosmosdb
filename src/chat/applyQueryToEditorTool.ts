@@ -8,7 +8,7 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
-import { commentOutQuery, sanitizeSqlComment, stripCodeFences } from '../utils/sanitization';
+import { commentOutQuery, normalizeQueryText, sanitizeSqlComment, stripCodeFences } from '../utils/sanitization';
 import { getActiveQueryEditor, getConnectionFromQueryTab } from './chatUtils';
 
 /**
@@ -166,7 +166,15 @@ export function registerApplyQueryToEditorTool(context: vscode.ExtensionContext)
                         const promptDescription =
                             options.input?.promptDescription?.trim() || tab.takeLastGeneratePrompt();
                         const finalQuery = buildFramedQuery(query, currentQuery, promptDescription);
-                        tab.updateQuery(finalQuery);
+                        // Store the generated statement in the SAME normalized form the execution path
+                        // produces, so a later "run as-is" compares equal via plain string equality (no
+                        // re-parsing in `createQuerySession`). `normalizeQueryText` strips comments (which
+                        // also collapses inter-token whitespace) and the trailing semicolon — the exact
+                        // normalization `prepareQuery` applies — so the stored value matches the executed
+                        // one; storing `query` verbatim would misreport reformatted multi-line runs as
+                        // edited. `stripCodeFences` first removes any markdown fences the model emitted.
+                        const aiGeneratedQuery = normalizeQueryText(stripCodeFences(query));
+                        tab.updateQuery(finalQuery, aiGeneratedQuery);
 
                         actionContext.telemetry.properties.outcome = 'success';
                         actionContext.telemetry.properties.hasPromptDescription = promptDescription ? 'true' : 'false';

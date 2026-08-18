@@ -258,11 +258,21 @@ export class QueryEditorTab extends BaseTab {
         }
     }
 
-    public updateQuery(query: string): void {
-        this.state.query = query;
+    /**
+     * Pushes an AI-generated query into the editor.
+     *
+     * @param editorText - The full text to display in the editor: the generated statement framed
+     *   with the "Generated from" / "Previous query" comment blocks.
+     * @param aiGeneratedQuery - The generated statement in isolation, already normalized (comments
+     *   stripped, whitespace collapsed, trailing semicolon removed) to match how the editor text is
+     *   normalized before execution. Stored so `createQuerySession` can detect whether the user
+     *   edited the query before running it with a plain string comparison — no re-parsing needed.
+     */
+    public updateQuery(editorText: string, aiGeneratedQuery: string): void {
+        this.state.query = editorText;
         this.state.isLastQueryAIGenerated = true;
-        this.state.lastAIGeneratedQuery = query;
-        this.eventSink.emit({ type: 'queryTextPushed', query });
+        this.state.lastAIGeneratedQuery = aiGeneratedQuery;
+        this.eventSink.emit({ type: 'queryTextPushed', query: editorText });
     }
 
     /**

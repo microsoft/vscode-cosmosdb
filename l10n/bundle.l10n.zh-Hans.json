@@ -1055,7 +1055,6 @@
   "Telemetry unavailable for this API or SKU.": "遥测数据不可用于此 API 或 SKU。",
   "Tell us what works and what does not — your feedback helps shape the Query Editor.": "告诉我们哪些功能有效或无效 - 你的反馈将有助于优化“查询编辑器”。",
   "Test Connection": "测试连接",
-  "Thanks for your feedback!": "感谢你的反馈!",
   "The \"_etag\" field is required to update an item": "需要 \"_etag\" 字段才能更新项",
   "The \"{databaseId}\" database has been deleted.": "数据库“{databaseId}”已删除。",
   "The \"{name}\" database has been created.": "已创建数据库“{name}”。",

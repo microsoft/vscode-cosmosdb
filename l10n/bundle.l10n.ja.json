@@ -1055,7 +1055,6 @@
   "Telemetry unavailable for this API or SKU.": "この API または SKU ではテレメトリを利用できません。",
   "Tell us what works and what does not — your feedback helps shape the Query Editor.": "何が機能し、何が機能しないのかをお聞かせください。フィードバックは、クエリ エディターを形成するのに役立ちます。",
   "Test Connection": "接続テスト",
-  "Thanks for your feedback!": "フィードバックをありがとうございます。",
   "The \"_etag\" field is required to update an item": "項目を更新するには、\"_etag\" フィールドが必要です",
   "The \"{databaseId}\" database has been deleted.": "\"{databaseId}\" データベースが削除されました。",
   "The \"{name}\" database has been created.": "\"{name}\" データベースが作成されました。",

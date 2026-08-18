@@ -1055,7 +1055,6 @@
   "Telemetry unavailable for this API or SKU.": "Telemetria indisponível para esta API ou SKU.",
   "Tell us what works and what does not — your feedback helps shape the Query Editor.": "Diga-nos o que funciona e o que não funciona — seus comentários ajudam a moldar o Editor de Consultas.",
   "Test Connection": "Testar Conexão",
-  "Thanks for your feedback!": "Agradecemos seu comentário!",
   "The \"_etag\" field is required to update an item": "O campo \"_etag\" é necessário para atualizar um item",
   "The \"{databaseId}\" database has been deleted.": "O banco de dados \"{databaseId}\" foi excluído.",
   "The \"{name}\" database has been created.": "O banco de dados \"{name}\" foi criado.",

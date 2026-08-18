@@ -1055,7 +1055,6 @@
   "Telemetry unavailable for this API or SKU.": "이 API 또는 SKU에서는 원격 분석을 사용할 수 없습니다.",
   "Tell us what works and what does not — your feedback helps shape the Query Editor.": "어떤 점이 효과적이고 어떤 점이 효과적이지 않은지 알려주세요. 여러분의 피드백은 쿼리 편집기를 개선하는 데 도움이 됩니다.",
   "Test Connection": "테스트 연결",
-  "Thanks for your feedback!": "피드백을 제공해 주셔서 감사합니다.",
   "The \"_etag\" field is required to update an item": "항목을 업데이트하려면 \"_etag\" 필드가 필요합니다.",
   "The \"{databaseId}\" database has been deleted.": "\"{databaseId}\" 데이터베이스가 삭제되었습니다.",
   "The \"{name}\" database has been created.": "\"{name}\" 데이터베이스를 만들었습니다.",

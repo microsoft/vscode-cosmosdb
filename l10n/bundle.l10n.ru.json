@@ -1055,7 +1055,6 @@
   "Telemetry unavailable for this API or SKU.": "Данные телеметрии для этого API или SKU недоступны.",
   "Tell us what works and what does not — your feedback helps shape the Query Editor.": "Расскажите нам, что работает, а что нет — ваши отзывы помогут улучшить редактор запросов.",
   "Test Connection": "Проверить подключение",
-  "Thanks for your feedback!": "Спасибо за отзыв!",
   "The \"_etag\" field is required to update an item": "Для обновления элемента требуется задать значение в поле \"_etag\"",
   "The \"{databaseId}\" database has been deleted.": "База данных \"{databaseId}\" удалена.",
   "The \"{name}\" database has been created.": "База данных \"{name}\" создана.",

@@ -1055,7 +1055,6 @@
   "Telemetry unavailable for this API or SKU.": "Bu API veya SKU için telemetri kullanılamıyor.",
   "Tell us what works and what does not — your feedback helps shape the Query Editor.": "Neyin işe yaradığını ve neyin yaramadığını bize bildirin; geri bildiriminiz Sorgu Düzenleyicisi'nin şekillendirilmesine yardımcı olur.",
   "Test Connection": "Bağlantı Testi",
-  "Thanks for your feedback!": "Geri bildiriminiz için teşekkür ederiz!",
   "The \"_etag\" field is required to update an item": "Bir öğeyi güncelleştirmek için “_etag” alanı gereklidir",
   "The \"{databaseId}\" database has been deleted.": "\"{databaseId}\" veritabanı silindi.",
   "The \"{name}\" database has been created.": "\"{name}\" veritabanı oluşturuldu.",

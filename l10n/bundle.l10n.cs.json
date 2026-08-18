@@ -1055,7 +1055,6 @@
   "Telemetry unavailable for this API or SKU.": "Telemetrie není dostupná pro toto rozhraní API nebo SKU.",
   "Tell us what works and what does not — your feedback helps shape the Query Editor.": "Dejte nám vědět, co funguje a co ne. Vaše zpětná vazba pomáhá utvářet editor dotazů.",
   "Test Connection": "Test připojení",
-  "Thanks for your feedback!": "Děkujeme za váš názor!",
   "The \"_etag\" field is required to update an item": "Pole „_etag“ se vyžaduje k aktualizaci položky",
   "The \"{databaseId}\" database has been deleted.": "Databáze „{databaseId}“ byla odstraněna.",
   "The \"{name}\" database has been created.": "Byla vytvořena databáze „{name}“.",

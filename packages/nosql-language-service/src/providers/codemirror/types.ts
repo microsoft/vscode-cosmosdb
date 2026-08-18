@@ -102,5 +102,5 @@ export function createTooltipView(view: EditorView, className: string, innerHTML
     const dom = ownerDoc.createElement('div');
     dom.className = className;
     dom.innerHTML = innerHTML;
-    return { dom };
+    return { dom } as TooltipView;
 }

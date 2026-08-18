@@ -41,7 +41,7 @@ function makeAlert(id: string, severity: string, essentials: Record<string, unkn
                 ...essentials,
             },
         },
-    };
+    } as unknown as Alert;
 }
 
 function mockAlertsClient(alerts: Alert[], fail = false): AlertsManagementClient {
@@ -69,7 +69,7 @@ function makeRec(
         impact,
         shortDescription: { problem, solution: 'solution' },
         resourceMetadata: { resourceId },
-    };
+    } as unknown as ResourceRecommendationBase;
 }
 
 function mockAdvisorClient(

@@ -136,21 +136,24 @@ extends:
                               pwsh: true
                               targetType: 'inline'
 
-                        # Re-enabled: runs before packaging so the NOTICE file below reflects the
-                        # component snapshot for the artifact this job actually produces. Previously
-                        # disabled due to Network Isolation noise (#3159); a 30-day Kusto review of
-                        # DefaultDeny violations for this pipeline shows no blocked connections
-                        # attributable to Component Governance (only Npm/OneLocBuild tasks appear),
-                        # so it is safe to re-enable here.
-                        - task: ComponentGovernanceComponentDetection@0
-                          displayName: '🛡️ Component Governance - Component Detection'
+                        # Component Governance detection and the notice@0 NOTICE-file generator are both
+                        # disabled here. notice@0 depends on CG scan data and has proven unreliable —
+                        # it intermittently fails with a generic, unactionable
+                        # "failed to call notice file generator API" error caused by outages in the
+                        # external OSPO NOTICE-generation service, unrelated to this repo or its
+                        # dependency graph. Since notice@0 is CG's only consumer in this pipeline,
+                        # running CG detection here brought Network Isolation noise (#3159) for no
+                        # benefit once NOTICE generation is disabled too. NOTICE.html is now maintained
+                        # manually in the repo instead of being regenerated at build time.
+                        # - task: ComponentGovernanceComponentDetection@0
+                        #   displayName: '🛡️ Component Governance - Component Detection'
 
-                        - task: notice@0
-                          displayName: '📄 Generate NOTICE file'
-                          continueOnError: true # the notice@0 task is unreliable and sometimes fails the build unexpectedly due to random outages
-                          inputs:
-                              outputfile: $(Build.SourcesDirectory)/NOTICE.html
-                              outputformat: html
+                        # - task: notice@0
+                        #   displayName: '📄 Generate NOTICE file'
+                        #   continueOnError: true # the notice@0 task is unreliable and sometimes fails the build unexpectedly due to random outages
+                        #   inputs:
+                        #       outputfile: $(Build.SourcesDirectory)/NOTICE.html
+                        #       outputformat: html
 
                         - task: PowerShell@2
                           displayName: '🔢 Read Node.js version from .nvmrc'

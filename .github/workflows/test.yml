@@ -38,6 +38,8 @@ on:
 concurrency:
   group: >-
     test-${{ github.workflow }}-${{
+    github.ref == 'refs/heads/main' && github.run_id ||
+    startsWith(github.ref, 'refs/heads/rel/') && github.run_id ||
     github.event_name == 'pull_request' &&
     format('{0}-{1}', github.event.pull_request.head.repo.full_name, github.event.pull_request.number) ||
     github.ref_name }}
@@ -48,19 +50,19 @@ jobs:
     name: Tests
     runs-on: ubuntu-latest
 
-    # Same push+pull_request dedupe trick as build.yml — see the comment there.
+    # Skip duplicate synchronize runs for covered same-repo branches, but run opened/reopened events to post status.
     if: >-
-      github.event_name != 'pull_request' ||
+      github.event_name != 'pull_request' || github.event.action != 'synchronize' ||
       github.event.pull_request.head.repo.full_name != github.repository ||
       (github.head_ref != 'main' &&
        !startsWith(github.head_ref, 'rel/') &&
        !startsWith(github.head_ref, 'dev/'))
 
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: 📦 Using Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .nvmrc
           cache: 'npm'
@@ -74,13 +76,14 @@ jobs:
         run: npm run vitest:coverage
 
       - name: 📊 Upload Code Coverage
-        # Skip on fork PRs (no token to upload) and when unit tests never ran. `!cancelled()` so coverage from
-        # a passing unit run is still uploaded even though later steps (build/integration) continue.
+        # The coverage service accepts uploads only for the default branch or a PR. Skip release/dev branch
+        # pushes, fork PRs (no token to upload), and runs where unit tests never started.
         if: >-
           ${{ !cancelled() && steps.unit-tests.outcome != 'skipped' &&
-          (github.event_name != 'pull_request' ||
-          github.event.pull_request.head.repo.full_name == github.repository) }}
-        uses: actions/upload-code-coverage@82c7aee3fb2ad768e00b00a0a8d749c5815085b6 # v1
+          (github.ref_name == github.event.repository.default_branch ||
+          (github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository)) }}
+        uses: actions/upload-code-coverage@d8e329117199404bba6fc81efe8093dc7c015e34
         with:
           file: coverage/cobertura-coverage.xml
           language: TypeScript

@@ -41,13 +41,31 @@ import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 export const COSMOSDB_ARM_API_VERSION = '2025-10-15';
 const DOCUMENT_DB_PROVIDER_PATH = '/providers/microsoft.documentdb/';
 
+/**
+ * Opt-out marker for {@link COSMOSDB_ARM_API_VERSION} pinning. A caller that must reach a
+ * preview-only resource property (e.g. `throughputBuckets`, which the pinned GA api-version omits)
+ * sets this header so its own `api-version` survives the pipeline.
+ * The header is stripped before the request leaves the pipeline, so ARM never sees it.
+ */
+export const PRESERVE_API_VERSION_HEADER = 'x-vscode-cosmosdb-preserve-api-version';
+
+type PinnablePipelineRequest = {
+    url: string;
+    headers: { has(name: string): boolean; delete(name: string): void };
+};
+
 function pinCosmosDBApiVersion(client: CosmosDBManagementClient): CosmosDBManagementClient {
     const clientWithPipeline = client as unknown as {
         pipeline: { addPolicy: (policy: unknown) => void };
     };
     clientWithPipeline.pipeline.addPolicy({
         name: 'PinCosmosDBApiVersionPolicy',
-        async sendRequest(request: { url: string }, next: (req: { url: string }) => Promise<unknown>) {
+        async sendRequest(request: PinnablePipelineRequest, next: (req: PinnablePipelineRequest) => Promise<unknown>) {
+            if (request.headers.has(PRESERVE_API_VERSION_HEADER)) {
+                request.headers.delete(PRESERVE_API_VERSION_HEADER);
+                return next(request);
+            }
+
             const [path, query] = request.url.split('?');
             if (query && path.toLowerCase().includes(DOCUMENT_DB_PROVIDER_PATH)) {
                 const rewritten = query

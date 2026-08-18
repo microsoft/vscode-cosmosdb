@@ -85,8 +85,18 @@ export class DocumentPanel {
         await this.app.evaluate(({ clipboard }, text) => clipboard.writeText(text), json);
         await this.frame.locator('.monaco-editor').first().click();
         await this.frame.locator('textarea.inputarea').first().waitFor({ state: 'attached', timeout: 5_000 });
-        await this.window.keyboard.press('Control+A');
-        await this.window.keyboard.press('Control+V');
+        await this.window.keyboard.press('ControlOrMeta+A');
+        await this.window.keyboard.press('ControlOrMeta+V');
+    }
+
+    /** Reads the current Monaco JSON through the OS clipboard. */
+    async getContent(): Promise<string> {
+        await this.app.evaluate(({ clipboard }) => clipboard.clear());
+        await this.frame.locator('.monaco-editor').first().click();
+        await this.window.keyboard.press('ControlOrMeta+A');
+        await this.window.keyboard.press('ControlOrMeta+C');
+        await expect.poll(() => this.app.evaluate(({ clipboard }) => clipboard.readText())).not.toBe('');
+        return this.app.evaluate(({ clipboard }) => clipboard.readText());
     }
 
     /**

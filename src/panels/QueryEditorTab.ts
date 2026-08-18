@@ -45,9 +45,8 @@ export class QueryEditorTab extends BaseTab {
             query: query ?? QueryEditorTab.DEFAULT_QUERY_VALUE,
             isLastQueryAIGenerated: false,
             lastAIGeneratedQuery: undefined,
-            lastGenerationFailed: false,
-            generateQueryCancellation: undefined,
-            pendingConfirmResolve: undefined,
+            lastGeneratePrompt: undefined,
+            pendingRunResolve: undefined,
         };
 
         this.panel.iconPath = getThemedIconPath('editor.svg') as { light: vscode.Uri; dark: vscode.Uri };
@@ -177,8 +176,11 @@ export class QueryEditorTab extends BaseTab {
         };
     }
 
-    public getCurrentQueryResults = (): SerializedQueryResult | undefined => {
-        const activeSession = this.sessions.values().next().value;
+    public getCurrentQueryResults = (executionId?: string): SerializedQueryResult | undefined => {
+        // When an executionId is given, read that exact session so a caller (e.g. the
+        // cosmosdb_executeCurrentQuery tool) never picks up a different / previous run's result.
+        const sessions = Array.from(this.sessions.values());
+        const activeSession = executionId ? this.sessions.get(executionId) : sessions[sessions.length - 1];
         const result = activeSession?.sessionResult;
         return result?.getSerializedResult(1);
     };
@@ -195,12 +197,27 @@ export class QueryEditorTab extends BaseTab {
         return this.state.selectedQuery;
     };
 
+    public takeLastGeneratePrompt = (): string | undefined => {
+        const prompt = this.state.lastGeneratePrompt;
+        this.state.lastGeneratePrompt = undefined;
+        return prompt;
+    };
+
     public isActive(): boolean {
         return this.panel.active;
     }
 
     public isVisible(): boolean {
         return this.panel.visible;
+    }
+
+    /**
+     * Brings this Query Editor tab to the foreground and gives it focus, making it the active
+     * editor. Used by the `cosmosdb_focusQueryEditor` tool so subsequent Query Editor tools
+     * (which target the active editor) operate on this tab.
+     */
+    public reveal(): void {
+        this.panel.reveal();
     }
 
     /**
@@ -224,11 +241,53 @@ export class QueryEditorTab extends BaseTab {
         }
     }
 
+    public static refreshThroughputBucketsForContainer(
+        accountId: string,
+        databaseId?: string,
+        containerId?: string,
+    ): void {
+        for (const tab of QueryEditorTab.openTabs) {
+            const connection = tab.state.connection;
+            if (
+                connection?.azureMetadata?.accountId === accountId &&
+                (!databaseId || connection.databaseId === databaseId) &&
+                (!containerId || connection.containerId === containerId)
+            ) {
+                tab.eventSink.emit({ type: 'throughputBucketsRefreshRequested' });
+            }
+        }
+    }
+
     public updateQuery(query: string): void {
         this.state.query = query;
         this.state.isLastQueryAIGenerated = true;
         this.state.lastAIGeneratedQuery = query;
         this.eventSink.emit({ type: 'queryTextPushed', query });
+    }
+
+    /**
+     * Asks the webview to run `query` in the Query Editor (so results appear in the grid) and
+     * resolves once the webview reports completion via `reportActiveQueryExecuted`. Resolves with the
+     * executionId of the run that actually happened, or `undefined` when the run was cancelled / never
+     * started / timed out — so the `cosmosdb_executeCurrentQuery` tool reads PII-free result metadata
+     * only for this run and never reports stale results. Resolves after `timeoutMs` (with `undefined`)
+     * as a safety net so the tool never hangs.
+     */
+    public runActiveQueryInEditor(query: string, timeoutMs = 120_000): Promise<string | undefined> {
+        // Abandon any prior pending run so a stale resolver can't fire against this one.
+        this.state.pendingRunResolve?.(undefined);
+        return new Promise<string | undefined>((resolve) => {
+            const timer = setTimeout(() => {
+                this.state.pendingRunResolve = undefined;
+                resolve(undefined);
+            }, timeoutMs);
+            this.state.pendingRunResolve = (executionId?: string) => {
+                clearTimeout(timer);
+                this.state.pendingRunResolve = undefined;
+                resolve(executionId);
+            };
+            this.eventSink.emit({ type: 'runActiveQueryRequested', query });
+        });
     }
 
     public refreshSurveyFeedbackVisibility(): void {

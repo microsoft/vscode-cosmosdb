@@ -18,7 +18,8 @@ export const RefreshButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>
     const dispatcher = useDocumentDispatcher();
     const { ref, type } = props;
 
-    const isRefreshDisabled = state.isSaving || state.isRefreshing;
+    const isRefreshDisabled =
+        state.isSaving || state.isRefreshing || state.isCleaningUp || !!state.cleanupRequiredMessage;
 
     const hotkey = useMemo(() => getShortcutDisplay(DocumentGlobalHotkeys, 'Refresh'), []);
 

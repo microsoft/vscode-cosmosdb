@@ -697,7 +697,7 @@ export class QueryEditorPage {
     async setQueryText(text: string): Promise<void> {
         await this.frame.locator('.monaco-editor').first().click();
         await this.frame.locator('textarea.inputarea').first().waitFor({ state: 'attached', timeout: 5_000 });
-        await this.window.keyboard.press('Control+A');
+        await this.window.keyboard.press('ControlOrMeta+A');
         await this.window.keyboard.press('Delete');
         await this.window.keyboard.type(text);
     }

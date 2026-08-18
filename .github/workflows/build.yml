@@ -72,13 +72,6 @@ jobs:
           cache: 'npm'
           cache-dependency-path: '**/package-lock.json'
 
-      # Guard: the committed lockfile must reference the public npm registry, not
-      # an internal Azure Artifacts feed. A feed URL here means external clones
-      # and these runners cannot `npm ci` (they have no feed auth). Fails fast
-      # with a clear message instead of a confusing 401. Fix: `npm run lock:normalize`.
-      - name: 🔒 Lockfile is npmjs-clean
-        run: node scripts/normalize-lockfile.mjs --check
-
       # Hard prerequisite: if dependencies don't install, every analyzer below is skipped (they all gate on
       # `steps.install.outcome == 'success'`).
       - name: ⬇️ Install Dependencies

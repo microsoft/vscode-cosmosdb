@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type PartitionKeyDefinition, type PriorityLevel } from '@azure/cosmos';
-import { parse, parseMultiQueryDocument, stripComments } from '@cosmosdb/nosql-language-service';
+import { parse, parseMultiQueryDocument } from '@cosmosdb/nosql-language-service';
 import { type JSONSchema } from '@cosmosdb/schema-analyzer';
 import { type NoSQLDocument } from '@cosmosdb/schema-analyzer/json';
 import { parseError } from '@microsoft/vscode-azext-utils';
@@ -34,6 +34,7 @@ import { getAvailableModelsInfo, getSelectedModel } from '../../../utils/aiUtils
 import { queryMetricsToCsv, queryResultToCsv } from '../../../utils/csvConverter';
 import { getConfirmationAsInSettings } from '../../../utils/dialogs/getConfirmation';
 import { isSelectStar } from '../../../utils/queryAnalysis';
+import { normalizeQueryText } from '../../../utils/sanitization';
 import { toStringUniversal } from '../../../utils/strings';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../../utils/surveyTypes';
@@ -53,7 +54,6 @@ import { queryEditorProcedure, queryEditorRouter } from '../trpc';
 
 const QUERY_HISTORY_SIZE = 10;
 const HISTORY_STORAGE_KEY = 'ms-azuretools.vscode-cosmosdb.history';
-const SELECTED_MODEL_KEY = 'ms-azuretools.vscode-cosmosdb.selectedModel';
 // Persists the user-selected Priority Level across panel reopens. Single key
 // scope (per-extension, not per-account / per-container) to mirror cosmos-explorer
 // which stores one LocalStorage entry for all connections.
@@ -567,7 +567,7 @@ export const queryEditorRouterDef = queryEditorRouter({
         .output(z.object({ cleanQuery: z.string() }).optional())
         .mutation(async ({ input }) => {
             // Strip comments, normalize whitespace, then remove trailing semicolon
-            const cleanQuery = stripComments(input.query).replace(/;\s*$/, '');
+            const cleanQuery = normalizeQueryText(input.query);
 
             if (!cleanQuery) return undefined;
 
@@ -658,18 +658,6 @@ export const queryEditorRouterDef = queryEditorRouter({
             models: models.map((m) => ({ id: m.id, name: m.name, family: m.family, vendor: m.vendor })),
             savedModelId,
         };
-    }),
-
-    setSelectedModel: queryEditorProcedure.input(z.object({ modelId: z.string() })).mutation(async ({ input, ctx }) => {
-        if (ctx.actionContext) {
-            ctx.actionContext.errorHandling.suppressDisplay = true;
-            ctx.actionContext.telemetry.properties.modelId = input.modelId;
-        }
-
-        await ext.context.globalState.update(SELECTED_MODEL_KEY, input.modelId);
-
-        const selectedModel = await getSelectedModel({ modelId: input.modelId }).catch(() => undefined);
-        return { modelName: selectedModel?.name ?? 'Copilot' };
     }),
 
     generateQueryViaAgent: queryEditorProcedure.mutation(async ({ ctx }) => {
@@ -846,17 +834,6 @@ export const queryEditorRouterDef = queryEditorRouter({
             actionContext: ctx.actionContext,
         });
     }),
-
-    reportFeedback: queryEditorProcedure
-        .input(z.object({ feedbackValue: z.enum(['up', 'down']), component: z.string() }))
-        .mutation(({ input, ctx }) => {
-            if (ctx.actionContext) {
-                ctx.actionContext.telemetry.properties.feedbackDirection = input.feedbackValue;
-                ctx.actionContext.telemetry.properties.category = input.component;
-                ctx.actionContext.telemetry.properties.isAIGenerated = String(ctx.state.isLastQueryAIGenerated);
-            }
-            void vscode.window.showInformationMessage(l10n.t('Thanks for your feedback!'));
-        }),
 
     /**
      * Returns query-editor capabilities that depend on the current connection.

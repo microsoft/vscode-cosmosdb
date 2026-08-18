@@ -30,33 +30,22 @@ on:
       - dev/**
 
   pull_request:
-    branches:
-      - main
-      - rel/*
-      - dev/**
+    types: [opened, reopened, synchronize]
 
 concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
   group: >-
     test-${{ github.workflow }}-${{
     github.ref == 'refs/heads/main' && github.run_id ||
     startsWith(github.ref, 'refs/heads/rel/') && github.run_id ||
     github.event_name == 'pull_request' &&
-    format('{0}-{1}', github.event.pull_request.head.repo.full_name, github.event.pull_request.number) ||
-    github.ref_name }}
-  cancel-in-progress: true
+    format('{0}-{1}', github.event.pull_request.head.repo.full_name, github.head_ref) ||
+    format('{0}-{1}', github.repository, github.ref_name) }}
 
 jobs:
   test:
     name: Tests
     runs-on: ubuntu-latest
-
-    # Skip duplicate synchronize runs for covered same-repo branches, but run opened/reopened events to post status.
-    if: >-
-      github.event_name != 'pull_request' || github.event.action != 'synchronize' ||
-      github.event.pull_request.head.repo.full_name != github.repository ||
-      (github.head_ref != 'main' &&
-       !startsWith(github.head_ref, 'rel/') &&
-       !startsWith(github.head_ref, 'dev/'))
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -132,7 +121,7 @@ jobs:
           REPO: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           COVERAGE_URL: ${{ steps.upload-coverage.outputs.artifact-url }}
-          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         shell: bash
         run: |
@@ -187,15 +176,6 @@ jobs:
           unit_icon=$(result_icon "$UNIT_TEST_RESULT")
           int_icon=$(result_icon "$INTEGRATION_TEST_RESULT")
 
-          # Resolve PR number for push events (no PR payload) by branch name.
-          if [ -z "${PR_NUMBER:-}" ] && [ -n "${BRANCH_NAME:-}" ]; then
-              pr_info=$(gh pr view "${BRANCH_NAME}" --repo "${REPO}" \
-                  --json number 2>/dev/null) || true
-              if [ -n "$pr_info" ]; then
-                  PR_NUMBER=$(echo "$pr_info" | jq -r '.number // empty')
-              fi
-          fi
-
           coverage_section=""
           if [ -n "${COVERAGE_URL:-}" ]; then
               coverage_section="
@@ -224,6 +204,6 @@ jobs:
               esac
           done
 
-          if [ -n "${PR_NUMBER:-}" ]; then
+          if [ "${EVENT_NAME}" = "pull_request" ] && [ -n "${PR_NUMBER:-}" ]; then
               post_or_update_comment "${PR_NUMBER}" "${MARKER}" "${GITHUB_STEP_SUMMARY}" "${comment_meaningful}"
           fi

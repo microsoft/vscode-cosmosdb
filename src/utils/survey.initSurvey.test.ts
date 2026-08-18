@@ -8,6 +8,10 @@ import crypto from 'crypto';
 // Create a hoisted mutable mock for ext.context so each beforeEach can swap globalState
 // without hitting the write-once setter on the real ExtensionService.
 const mockContext = vi.hoisted(() => ({
+    // The assertion is required under the vitest tsconfig to keep the mock's `get`/`update`
+    // typed as plain `vi.fn()` mocks; oxlint's tsgolint checks it under the base tsconfig where
+    // it looks redundant, so the rule is disabled for this line only.
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion
     globalState: { get: vi.fn(), update: vi.fn() } as {
         get: ReturnType<typeof vi.fn>;
         update: ReturnType<typeof vi.fn>;

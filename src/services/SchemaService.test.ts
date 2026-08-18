@@ -156,7 +156,7 @@ beforeEach(() => {
         has: vi.fn(),
         inspect: vi.fn(),
         update: vi.fn(),
-    } as unknown as vscode.WorkspaceConfiguration);
+    });
 });
 
 afterEach(() => {
@@ -344,8 +344,7 @@ describe('SchemaService.deleteSchema', () => {
         const showWarning = vi
             .spyOn(vscode.window, 'showWarningMessage')
             .mockImplementation(
-                (async (_message: string, _options: unknown, ...items: vscode.MessageItem[]) =>
-                    items[0]) as unknown as typeof vscode.window.showWarningMessage,
+                async (_message: string, _options: unknown, ...items: vscode.MessageItem[]) => items[0],
             );
 
         const ok = await service.deleteSchema(connection, { source: 'manualDelete' });
@@ -359,8 +358,8 @@ describe('SchemaService.deleteSchema', () => {
         const id = seedSchema();
         const service = new SchemaService();
         vi.spyOn(vscode.window, 'showWarningMessage').mockImplementation(
-            (async (_message: string, _options: unknown, _confirm: vscode.MessageItem, cancel: vscode.MessageItem) =>
-                cancel) as unknown as typeof vscode.window.showWarningMessage,
+            async (_message: string, _options: unknown, _confirm: vscode.MessageItem, cancel: vscode.MessageItem) =>
+                cancel,
         );
 
         const ok = await service.deleteSchema(connection, { source: 'manualDelete' });
@@ -676,12 +675,12 @@ describe('aggressivelySimplify (pure helper)', () => {
         // `rootKeepTopN = 5`, the simplified root keeps exactly the 3 stable
         // fields plus 2 of the rare ones (chosen by stable insertion order).
         const properties: Record<string, JSONSchema> = {
-            id: { type: 'string', 'x-occurrence': 1000 } as JSONSchema,
-            _partitionKey: { type: 'string', 'x-occurrence': 1000 } as JSONSchema,
-            status: { type: 'string', 'x-occurrence': 1000 } as JSONSchema,
+            id: { type: 'string', 'x-occurrence': 1000 },
+            _partitionKey: { type: 'string', 'x-occurrence': 1000 },
+            status: { type: 'string', 'x-occurrence': 1000 },
         };
         for (let i = 0; i < 47; i++) {
-            properties[`rare_${String(i).padStart(3, '0')}`] = { type: 'string', 'x-occurrence': 1 } as JSONSchema;
+            properties[`rare_${String(i).padStart(3, '0')}`] = { type: 'string', 'x-occurrence': 1 };
         }
         const schema: JSONSchema = { type: 'object', properties } as unknown as JSONSchema;
 
@@ -696,7 +695,7 @@ describe('aggressivelySimplify (pure helper)', () => {
             popularityKey: 'x-occurrence',
         });
 
-        const kept = Object.keys((result.schema.properties ?? {}) as Record<string, JSONSchema>).sort();
+        const kept = Object.keys(result.schema.properties ?? {}).sort();
         expect(result.popularityKeyHit).toBe(true);
         expect(result.wasSimplified).toBe(true);
         expect(kept).toHaveLength(5);
@@ -715,7 +714,7 @@ describe('stripSchemaStatistics (confidentiality boundary)', () => {
             { id: '1', salary: 987654, nationalId: 'AB-123456789', active: true },
             { id: '2', salary: 42, nationalId: 'CD-9', active: false },
         ];
-        const raw = getSchemaFromDocuments(documents) as JSONSchema;
+        const raw = getSchemaFromDocuments(documents);
 
         // Precondition: the raw schema DOES leak the value-derived extremes — this is the bug
         // the stripping guards against, so assert it is present before stripping.
@@ -1366,9 +1365,7 @@ describe('SchemaService.mergeDocumentsIntoSchema — over-limit messaging', () =
         { timeout: 60_000 },
         async () => {
             const service = new SchemaService();
-            const showInfo = vi
-                .spyOn(vscode.window, 'showInformationMessage')
-                .mockResolvedValue(undefined as unknown as vscode.MessageItem);
+            const showInfo = vi.spyOn(vscode.window, 'showInformationMessage').mockResolvedValue(undefined);
             showInfo.mockClear();
 
             await service.mergeDocumentsIntoSchema(connection, buildOversizedDocuments(), {
@@ -1398,9 +1395,7 @@ describe('SchemaService.mergeDocumentsIntoSchema — over-limit messaging', () =
         { timeout: 60_000 },
         async () => {
             const service = new SchemaService();
-            const showInfo = vi
-                .spyOn(vscode.window, 'showInformationMessage')
-                .mockResolvedValue(undefined as unknown as vscode.MessageItem);
+            const showInfo = vi.spyOn(vscode.window, 'showInformationMessage').mockResolvedValue(undefined);
             showInfo.mockClear();
 
             await service.mergeDocumentsIntoSchema(connection, buildOversizedDocuments(), {

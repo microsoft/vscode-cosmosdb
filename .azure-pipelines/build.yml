@@ -81,6 +81,8 @@ extends:
             linuxEsrpSigning: true
             WindowsHostVersion:
                 Version: 2022
+            networkisolation:
+                policy: DefaultDeny
         git:
             # Use the OAuth token in the Git config for localized file check-in
             persistCredentials: true

@@ -14,6 +14,7 @@ import { getSignedInPrincipalIdForAccountEndpoint } from '../../cosmosdb/utils/a
 import { isRbacException, showRbacPermissionError } from '../../cosmosdb/utils/rbacUtils';
 import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../extensionVariables';
+import { compareResourceIds } from '../../utils/strings';
 import { rejectOnTimeout } from '../../utils/timeout';
 import { CosmosDBAccountResourceItemBase } from '../azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
 import { type TreeElement } from '../TreeElement';
@@ -60,7 +61,9 @@ export abstract class CosmosDBAccountAttachedResourceItem
             ];
         }
 
-        return this.getChildrenImpl(accountInfo, databases);
+        const sortedDatabases = databases.sort((a, b) => compareResourceIds(a.id, b.id));
+
+        return this.getChildrenImpl(accountInfo, sortedDatabases);
     }
 
     public getTreeItem(): vscode.TreeItem {

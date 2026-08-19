@@ -355,13 +355,23 @@ extends:
                               TargetFolder: '$(ob_outputDirectory)'
                           condition: and(succeeded(), ne(variables['System.PullRequest.IsFork'], 'True'))
 
-                        - task: Npm@1
-                          displayName: '🧪 Test'
-                          inputs:
-                              command: custom
-                              customCommand: test
-                              workingDir: $(Build.SourcesDirectory)
-                          condition: succeeded()
+                        # The 'Test' step (npm test -> scripts/run-integration-tests.mjs) is disabled here. It launches a real VS Code
+                        # extension host via @vscode/test-electron and installs the dependent extension
+                        # 'ms-azuretools.vscode-azureresourcegroups' from the VS Code Marketplace, which requires outbound network
+                        # access that is incompatible with this pipeline's DefaultDeny network isolation policy (see PR #3275,
+                        # reverted in #3278 after the Marketplace install was blocked with AggregateError [EACCES]).
+                        #
+                        # These integration tests (and the separate Playwright E2E suite) already run and gate every PR/push via
+                        # GitHub Actions (.github/workflows/test.yml and .github/workflows/e2e.yml), so re-running them here would
+                        # be redundant. Re-enable only if the Marketplace-dependent install is removed or moved to a
+                        # network-isolation-compatible environment (e.g. CloudTest).
+                        # - task: Npm@1
+                        #   displayName: '🧪 Test'
+                        #   inputs:
+                        #       command: custom
+                        #       customCommand: test
+                        #       workingDir: $(Build.SourcesDirectory)
+                        #   condition: succeeded()
 
                         - task: PowerShell@2
                           displayName: '⚖️ Validate Version / Preview Alignment'

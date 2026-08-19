@@ -12,6 +12,7 @@ import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { ext } from '../extensionVariables';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
 import { SchemaService } from '../services/SchemaService';
+import { stripSchemaStatistics } from '../services/schemaStatistics';
 import { getActiveQueryEditor, getConnectionFromQueryTab } from './chatUtils';
 
 /**
@@ -127,7 +128,10 @@ export async function sampleAndPersistContainerSchema(connection: NoSqlQueryConn
         .getConfiguration('cosmosDB.queryEditor')
         .get<boolean>('generateSchemaBasedOnQueries', false);
 
-    result.schema = getSchemaFromDocuments(documents) as Record<string, unknown>;
+    // Structure only — stripped of value-derived statistics (`x-minValue`/`x-maxValue`, string
+    // lengths, etc.) so no actual document values reach the model on the persistence-failure fallback
+    // path below, where this raw inferred schema is serialized directly instead of the simplified one.
+    result.schema = stripSchemaStatistics(getSchemaFromDocuments(documents)) as Record<string, unknown>;
 
     // Always persist the sampled schema into the schema analyzer (`SchemaService`) — even when the
     // "generate schema based on queries" setting is off — so later query generation can read it back

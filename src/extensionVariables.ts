@@ -24,8 +24,13 @@ const UNSET = Symbol('unset');
  * - The getter throws if the field has never been set.
  * - The setter throws if the field has already been set (prevents accidental re-init).
  */
-function required<T>(name: string): { get: () => T; set: (v: T) => void } {
+function required<T>(name: string): { get: () => T; set: (v: T) => void; ready: Promise<T> } {
     let stored: T | typeof UNSET = UNSET;
+    let resolveReady: (value: T) => void;
+    const ready = new Promise<T>((resolve) => {
+        resolveReady = resolve;
+    });
+
     return {
         get: () => {
             if (stored === UNSET) throw new Error(`[ext] '${name}' not initialized — call activate() first.`);
@@ -34,7 +39,9 @@ function required<T>(name: string): { get: () => T; set: (v: T) => void } {
         set: (value: T) => {
             if (stored !== UNSET) throw new Error(`[ext] '${name}' already initialized.`);
             stored = value;
+            resolveReady(value);
         },
+        ready,
     };
 }
 
@@ -125,6 +132,9 @@ class ExtensionService {
 
     get rgApiV2() {
         return this._rgApiV2.get();
+    }
+    get rgApiV2Ready() {
+        return this._rgApiV2.ready;
     }
     set rgApiV2(v) {
         this._rgApiV2.set(v);

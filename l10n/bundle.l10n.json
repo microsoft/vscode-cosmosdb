@@ -582,6 +582,7 @@
   "Install .NET Install Tool": "Install .NET Install Tool",
   "Install .NET SDK": "Install .NET SDK",
   "Install Azure Account Extension...": "Install Azure Account Extension...",
+  "Install Azure Resources extension": "Install Azure Resources extension",
   "Install Bicep extension": "Install Bicep extension",
   "Installation Guide": "Installation Guide",
   "Installation via \"{0}\" failed: {1}": "Installation via \"{0}\" failed: {1}",

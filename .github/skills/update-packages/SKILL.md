@@ -98,9 +98,9 @@ Before running anything, determine:
      (see the no-feed path in Phase B). Choose this when the project has no internal feed / quarantine.
 
    Pass the chosen registry to the selector via `FEED_REGISTRY=<url>`; the npmjs `latest` guard always uses
-   `NPM_REGISTRY` (npmjs). For an **authenticated** feed the selector's `npm outdated` pass uses the token
-   from `.npmrc`, but its direct-dep feed-availability (downgrade) pass reads packuments with an
-   unauthenticated `fetch`, so that pass may be limited — rely on the upgrade pass and confirm manually.
+   `NPM_REGISTRY` (npmjs). For an **authenticated** feed, run the token step in Phase A first: the selector's
+   `npm outdated` pass and its direct-dep feed-availability (downgrade) pass both authenticate using the
+   token `vsts-npm-auth` wrote to `.npmrc` (Bearer `_authToken`, or Basic `username`+`_password`).
 2. **Scope** — default is *every outdated top-level package*. If the user named specific packages (e.g.
    "update fast-uri and js-yaml", or "re-apply the dependabot bumps for X, Y"), restrict to that list.
    Named packages may be transitive.

@@ -27,7 +27,9 @@
 // `fetch` of the abbreviated packument (`application/vnd.npm.install-v1+json`) per package+registry,
 // cached and shared across both passes. This replaces per-package `npm view` subprocesses (each of which
 // paid full npm/Node start-up cost on top of the network round-trip), and returns versions AND dist-tags
-// in one request — dramatically fewer, faster calls on large trees.
+// in one request — dramatically fewer, faster calls on large trees. When FEED_REGISTRY is an authenticated
+// feed (e.g. Azure Artifacts / PowerBI), the feed requests carry an Authorization header derived from the
+// token vsts-npm-auth writes to .npmrc, so the feed-availability pass works against private feeds too.
 //
 // It never mutates anything. It prints a human-readable table plus a machine-readable JSON block
 // (delimited by BEGIN_JSON / END_JSON) that the agent can act on. For accurate results the installed
@@ -44,8 +46,10 @@
 //   CONCURRENCY     default 24   (parallel packument fetches)
 
 import { execFile } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
@@ -55,6 +59,66 @@ const semver = require('semver');
 const FEED_REGISTRY = process.env.FEED_REGISTRY ?? 'https://packagefeedproxy.microsoft.io/npm/';
 const NPM_REGISTRY = process.env.NPM_REGISTRY ?? 'https://registry.npmjs.org/';
 const CONCURRENCY = Number(process.env.CONCURRENCY ?? 24);
+
+// Reduce a registry URL to npm's "nerf dart" — protocol stripped, path kept, trailing slash — so it can be
+// matched against the `//host/path/:_authToken` style keys npm writes to .npmrc.
+function nerf(registryUrl) {
+    const u = new URL(registryUrl);
+    const path = u.pathname.endsWith('/') ? u.pathname : `${u.pathname}/`;
+    return `//${u.host}${path}`;
+}
+
+// Parse an .npmrc into a flat key -> value map (quotes stripped, ${VAR} expanded from the environment).
+function parseNpmrc(file) {
+    const map = new Map();
+    if (!existsSync(file)) return map;
+    for (const raw of readFileSync(file, 'utf8').split(/\r?\n/)) {
+        const line = raw.trim();
+        if (!line || line.startsWith('#') || line.startsWith(';')) continue;
+        const eq = line.indexOf('=');
+        if (eq === -1) continue;
+        const key = line.slice(0, eq).trim();
+        const val = line
+            .slice(eq + 1)
+            .trim()
+            .replace(/^["']|["']$/g, '')
+            .replace(/\$\{([^}]+)\}/g, (_, v) => process.env[v] ?? '');
+        map.set(key, val);
+    }
+    return map;
+}
+
+// Build the Authorization header for a registry from the tokens npm/vsts-npm-auth wrote to .npmrc, or
+// undefined when the registry needs no auth (e.g. the no-auth proxy). Reads the user .npmrc first, then the
+// project .npmrc (project wins, matching npm's precedence). Supports both `_authToken` (Bearer) and the
+// `username` + base64 `_password` (Basic) form Azure Artifacts / vsts-npm-auth emit; the most specific
+// (longest) matching path prefix wins.
+function feedAuthHeader(registry) {
+    const merged = new Map();
+    for (const file of [join(homedir(), '.npmrc'), join(process.cwd(), '.npmrc')]) {
+        for (const [k, v] of parseNpmrc(file)) merged.set(k, v);
+    }
+    const target = nerf(registry);
+    let prefix;
+    for (const key of merged.keys()) {
+        const m = /^(\/\/.+\/):(?:_authToken|_password|_auth|username)$/.exec(key);
+        if (m && target.startsWith(m[1]) && (!prefix || m[1].length > prefix.length)) prefix = m[1];
+    }
+    if (!prefix) return undefined;
+    const authToken = merged.get(`${prefix}:_authToken`);
+    if (authToken) return `Bearer ${authToken}`;
+    const basic = merged.get(`${prefix}:_auth`);
+    if (basic) return `Basic ${basic}`;
+    const password = merged.get(`${prefix}:_password`);
+    if (password) {
+        const username = merged.get(`${prefix}:username`) ?? '';
+        const decoded = Buffer.from(password, 'base64').toString('utf8');
+        return `Basic ${Buffer.from(`${username}:${decoded}`).toString('base64')}`;
+    }
+    return undefined;
+}
+
+const FEED_AUTH = feedAuthHeader(FEED_REGISTRY);
 
 const only = new Set(process.argv.slice(2));
 
@@ -80,6 +144,7 @@ async function npmOutdated() {
 
 // Fetch the abbreviated packument for a package from a registry, once per (registry, name). Returns
 // `{ versions: string[], latest: string | undefined }`, or null if the package is not served there.
+// Requests to an authenticated feed carry the Authorization header derived from .npmrc.
 const packumentCache = new Map();
 function packument(registry, name) {
     const key = `${registry}\u0000${name}`;
@@ -88,7 +153,9 @@ function packument(registry, name) {
     const base = registry.endsWith('/') ? registry : `${registry}/`;
     // Scoped names (@scope/pkg) must have the slash percent-encoded in the request path.
     const url = base + name.replace('/', '%2F');
-    pending = fetch(url, { headers: { accept: 'application/vnd.npm.install-v1+json' } })
+    const headers = { accept: 'application/vnd.npm.install-v1+json' };
+    if (registry === FEED_REGISTRY && FEED_AUTH) headers.authorization = FEED_AUTH;
+    pending = fetch(url, { headers })
         .then((res) => (res.ok ? res.json() : null))
         .then((body) =>
             body

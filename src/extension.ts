@@ -47,7 +47,7 @@ import {
     MIGRATION_ENABLED_CONTEXT_KEY,
 } from './commands/migration/migrationFeatureFlag';
 import { registerCommands } from './commands/registerCommands';
-import { type FabricArtifactType } from './constants';
+import { azureResourcesExtensionId, type FabricArtifactType } from './constants';
 import { cleanupLLMInstructionsFiles } from './cosmosdb/commands/cleanupLLMInstructionsFiles';
 import { SCHEMA_STORAGE_KEY } from './cosmosdb/cosmosdb-shared-constants';
 import { getIsRunningOnAzure } from './cosmosdb/utils/managedIdentityUtils';
@@ -231,7 +231,7 @@ export async function activateInternal(
 
         // The user can turn off Azure Resources extension. Or do not have it at all, only Fabric.
         let apiProvider: apiUtils.AzureExtensionApiProvider | undefined = undefined;
-        const azureResources = vscode.extensions.getExtension('ms-azuretools.vscode-azureresourcegroups');
+        const azureResources = vscode.extensions.getExtension(azureResourcesExtensionId);
         if (azureResources) {
             const azureResourcesStartTime = performance.now();
             if (!azureResources.isActive) {
@@ -242,6 +242,8 @@ export async function activateInternal(
 
             activateContext.telemetry.measurements.azureResourcesApiLoadTime =
                 performance.now() - azureResourcesStartTime;
+        } else {
+            ext.setRgApiV2Unavailable();
         }
 
         const endTime = performance.now();
@@ -265,7 +267,8 @@ function registerAzureResourcesProviders(_context: vscode.ExtensionContext): api
         ) => {
             const [rgApiV2] = azureResourcesApis;
             if (!rgApiV2) {
-                throw new Error(l10n.t('Failed to find a matching Azure Resources API for version "{0}".', v2));
+                ext.setRgApiV2Unavailable();
+                return;
             }
 
             ext.rgApiV2 = rgApiV2 as AzureResourcesExtensionApiWithActivity;
@@ -295,6 +298,7 @@ function registerAzureResourcesProviders(_context: vscode.ExtensionContext): api
                 ext.migrationWorkspaceBranchDataProvider,
             );
         },
+        onApiRequestError: () => ext.setRgApiV2Unavailable(),
     };
 
     const { clientApi, requestResourcesApis } = prepareAzureResourcesApiRequest(requestContext, exportedApi);

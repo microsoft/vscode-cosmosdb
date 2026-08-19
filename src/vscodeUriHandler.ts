@@ -13,6 +13,7 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { API, getExperienceFromApi } from './AzureDBExperiences';
 import { openNoSqlQueryEditor } from './commands/openNoSqlQueryEditor/openNoSqlQueryEditor';
+import { azureResourcesExtensionId } from './constants';
 import {
     parseCosmosDBConnectionString,
     type ParsedCosmosDBConnectionString,
@@ -32,7 +33,6 @@ const supportedProviders = [
     // 'Microsoft.DocumentDB/mongoClusters', // discontinued API, uncomment if we add support for MongoDB Clusters
     // 'Microsoft.DBforPostgreSQL/serverGroupsv2', // uncomment once we support Cosmos DB for PostgreSQL
 ];
-const azureResourcesExtensionId = 'ms-azuretools.vscode-azureresourcegroups';
 
 /**
  * Global URI handler for processing external URIs related to Azure Cosmos DB.

@@ -47,7 +47,7 @@ import {
     MIGRATION_ENABLED_CONTEXT_KEY,
 } from './commands/migration/migrationFeatureFlag';
 import { registerCommands } from './commands/registerCommands';
-import { type FabricArtifactType } from './constants';
+import { azureResourcesExtensionId, type FabricArtifactType } from './constants';
 import { cleanupLLMInstructionsFiles } from './cosmosdb/commands/cleanupLLMInstructionsFiles';
 import { SCHEMA_STORAGE_KEY } from './cosmosdb/cosmosdb-shared-constants';
 import { getIsRunningOnAzure } from './cosmosdb/utils/managedIdentityUtils';
@@ -231,7 +231,7 @@ export async function activateInternal(
 
         // The user can turn off Azure Resources extension. Or do not have it at all, only Fabric.
         let apiProvider: apiUtils.AzureExtensionApiProvider | undefined = undefined;
-        const azureResources = vscode.extensions.getExtension('ms-azuretools.vscode-azureresourcegroups');
+        const azureResources = vscode.extensions.getExtension(azureResourcesExtensionId);
         if (azureResources) {
             const azureResourcesStartTime = performance.now();
             if (!azureResources.isActive) {

@@ -32,6 +32,7 @@ const supportedProviders = [
     // 'Microsoft.DocumentDB/mongoClusters', // discontinued API, uncomment if we add support for MongoDB Clusters
     // 'Microsoft.DBforPostgreSQL/serverGroupsv2', // uncomment once we support Cosmos DB for PostgreSQL
 ];
+const azureResourcesExtensionId = 'ms-azuretools.vscode-azureresourcegroups';
 
 /**
  * Global URI handler for processing external URIs related to Azure Cosmos DB.
@@ -52,6 +53,14 @@ export async function globalUriHandler(uri: vscode.Uri): Promise<void> {
         try {
             const rgApiV2 = await ext.rgApiV2Ready;
             if (!rgApiV2) {
+                context.errorHandling.buttons = [
+                    {
+                        title: l10n.t('Install Azure Resources extension'),
+                        callback: async () => {
+                            await vscode.commands.executeCommand('extension.open', azureResourcesExtensionId);
+                        },
+                    },
+                ];
                 throw new Error(l10n.t('Azure Resources is unavailable.'));
             }
 

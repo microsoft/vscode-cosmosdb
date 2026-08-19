@@ -715,7 +715,7 @@ describe('stripSchemaStatistics (confidentiality boundary)', () => {
             { id: '1', salary: 987654, nationalId: 'AB-123456789', active: true },
             { id: '2', salary: 42, nationalId: 'CD-9', active: false },
         ];
-        const raw = getSchemaFromDocuments(documents) as JSONSchema;
+        const raw = getSchemaFromDocuments(documents);
 
         // Precondition: the raw schema DOES leak the value-derived extremes — this is the bug
         // the stripping guards against, so assert it is present before stripping.

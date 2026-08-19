@@ -58,11 +58,24 @@ export const documentRouterDef = documentRouter({
         let documentPartitionKey: PartitionKeyDefinition | undefined;
 
         if (state.documentId) {
-            const result = await readDocument(connection, state.documentId, ctx.signal, state.partitionKeyDefinition);
-            documentContent = result?.documentContent;
-            documentPartitionKey = result?.partitionKey;
-            if (result?.partitionKey) state.partitionKeyDefinition = result.partitionKey;
-            state.documentEtag = result?.documentContent._etag;
+            try {
+                const result = await readDocument(
+                    connection,
+                    state.documentId,
+                    ctx.signal,
+                    state.partitionKeyDefinition,
+                );
+                documentContent = result?.documentContent;
+                documentPartitionKey = result?.partitionKey;
+                if (result?.partitionKey) state.partitionKeyDefinition = result.partitionKey;
+                state.documentEtag = result?.documentContent._etag;
+            } catch (error) {
+                if (!state.pendingPartitionKeyCleanup) {
+                    throw error;
+                }
+                documentContent = state.pendingPartitionKeyCleanup.destination.documentContent;
+                documentPartitionKey = state.pendingPartitionKeyCleanup.destination.partitionKey;
+            }
         } else if (state.mode === 'add') {
             const result = await buildNewDocumentTemplate(connection, state.partitionKeyDefinition);
             documentContent = result?.documentContent;

@@ -141,6 +141,34 @@ describe('documentRouter partition key updates', () => {
         expect(result.cleanupRequiredMessage).toBe('Stored cleanup phase');
     });
 
+    it('restores pending cleanup from the destination when the source disappeared', async () => {
+        const context = createContext();
+        context.state.pendingPartitionKeyCleanup = {
+            sourceIdentifier: oldIdentifier,
+            sourceEtag: 'loaded-etag',
+            destination: writeResult,
+            message: 'Stored cleanup phase',
+        };
+        documentSessionMocks.readDocument
+            .mockRejectedValueOnce(new Error('Item not found or request timed out'))
+            .mockResolvedValueOnce({ documentContent, partitionKey: writeResult.partitionKey });
+        documentSessionMocks.deleteDocument.mockRejectedValueOnce({ statusCode: 404 });
+        const caller = documentRouterDef.createCaller(context);
+
+        const initialState = await caller.getInitialState();
+        const cleanupResult = await caller.retryPartitionKeyCleanup();
+
+        expect(initialState).toMatchObject({
+            documentId: oldIdentifier,
+            documentContent,
+            documentPartitionKey: writeResult.partitionKey,
+            cleanupRequiredMessage: 'Stored cleanup phase',
+        });
+        expect(cleanupResult).toMatchObject({ success: true, cleanupRequired: false, documentContent });
+        expect(context.state.documentId).toEqual(newIdentifier);
+        expect(context.state.pendingPartitionKeyCleanup).toBeUndefined();
+    });
+
     it('retries cleanup without recreating the destination', async () => {
         const context = createContext();
         documentSessionMocks.deleteDocument.mockRejectedValueOnce(new Error('Service unavailable'));

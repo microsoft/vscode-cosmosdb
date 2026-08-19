@@ -29,6 +29,9 @@ the "same" version), the lockfile's `resolved`/`integrity` must come from **one*
 npmjs.org for the bytes (canonical, publicly reproducible) and use the feed only to *discover and gate*
 versions.
 
+When the user selects **no feed**, there is no quarantine to respect, so the skill deliberately degrades to
+exactly `npm update` (within ranges) against npmjs — the two constraints above simply do not apply.
+
 ## Version-selection rule (the core)
 
 Resolution is delegated to npm so the real semver ranges are honored — direct deps' `package.json` ranges
@@ -82,12 +85,28 @@ variables (defaults: the no-auth Microsoft proxy `https://packagefeedproxy.micro
 
 Before running anything, determine:
 
-1. **Scope** — default is *every outdated top-level package*. If the user named specific packages (e.g.
+1. **Feed** — which registry the update should be gated against (this is the registry CI restores from, so
+   targets must be resolvable there). Ask the user and offer these options:
+   - **Common Microsoft proxy** *(default, no auth)* — `https://packagefeedproxy.microsoft.io/npm/`. Use
+     this when unsure; it is the no-auth proxy the selector already defaults to.
+   - **PowerBI Azure Artifacts feed** *(requires auth)* —
+     `https://powerbi.pkgs.visualstudio.com/_packaging/PowerBIClients/npm/registry/`. Acquire a token
+     first (Phase A) before any feed query.
+   - **A custom feed** — the user supplies the registry URL. It may also require auth (same token step as
+     PowerBI).
+   - **No feed** — skip feed gating entirely and update straight against npmjs with plain `npm update`
+     (see the no-feed path in Phase B). Choose this when the project has no internal feed / quarantine.
+
+   Pass the chosen registry to the selector via `FEED_REGISTRY=<url>`; the npmjs `latest` guard always uses
+   `NPM_REGISTRY` (npmjs). For an **authenticated** feed the selector's `npm outdated` pass uses the token
+   from `.npmrc`, but its direct-dep feed-availability (downgrade) pass reads packuments with an
+   unauthenticated `fetch`, so that pass may be limited — rely on the upgrade pass and confirm manually.
+2. **Scope** — default is *every outdated top-level package*. If the user named specific packages (e.g.
    "update fast-uri and js-yaml", or "re-apply the dependabot bumps for X, Y"), restrict to that list.
    Named packages may be transitive.
-2. **Base branch** — where the update should land. Default: a new branch off the current branch. If the
+3. **Base branch** — where the update should land. Default: a new branch off the current branch. If the
    user says "on top of <branch>/<PR>", check that branch out first and branch from it.
-3. **Deliverable** — commit only, or commit + push + open a PR. Ask if unclear (default: commit, then
+4. **Deliverable** — commit only, or commit + push + open a PR. Ask if unclear (default: commit, then
    ask before pushing).
 
 If anything is ambiguous, ask once before mutating the working tree.
@@ -107,15 +126,35 @@ Execute in order. Stop and report on any error (verify every command exits `0`).
    reinstalling — skip this step in that common case. Run `npm ci` when `node_modules` is missing or you
    just switched branches / pulled, since a badly drifted tree can make `npm outdated` omit or invent
    entries. (This full reinstall is the slowest step in the workflow; do not run it reflexively.)
-4. No `~/.npmrc` auth is required for version discovery — the helper uses the **no-auth** Microsoft proxy
-   `https://packagefeedproxy.microsoft.io/npm/`. Do **not** rely on the machine's configured registry;
-   always pass `--registry` explicitly so the result is deterministic.
+4. **Authenticate the feed if it needs it.** The default common proxy
+   (`https://packagefeedproxy.microsoft.io/npm/`) needs **no** auth. The PowerBI feed and most custom
+   Azure Artifacts feeds **do** — acquire a token before any feed query:
+   ```
+   npx vsts-npm-auth -config .npmrc -f
+   ```
+   - `-config` (`-C`) points at the **source** `.npmrc` that lists the feed registry to authenticate
+     (the project `.npmrc`); the token is written to the **target** config, which defaults to your user
+     `%USERPROFILE%/.npmrc` (override with `-T`). `-f` (`-F`) forces a refresh even if a token exists.
+   - This is **interactive and blocks** until you complete the PIN / domain sign-in — treat it as a
+     long-running foreground step and wait for it, do **not** pass `-N` (non-interactive). The tool is
+     **Windows-only**.
+   - Skip this step for the no-auth common proxy and for the no-feed path.
+5. Do **not** rely on the machine's configured registry — always pass `--registry` (the selector does this
+   for you via `FEED_REGISTRY`) so the result is deterministic regardless of `.npmrc` defaults.
 
 ### Phase B — Select targets
 
-1. Run the helper for the resolved scope:
+> **No-feed path.** If the user chose **No feed**, skip the selector and Phase C entirely: run
+> `npm update --no-save` (or scoped: `npm update --no-save <pkg> ...`). This resolves every declared range
+> against npmjs and rewrites `package-lock.json` with npmjs tarballs, without touching `package.json`
+> (`--no-save`). Then continue at **Phase D** (verify) and **Phase E** (build). The rest of Phase B/C below
+> applies only when a feed was chosen.
+
+1. Run the helper for the resolved scope (pass the chosen feed via `FEED_REGISTRY` when it is not the
+   default proxy, and authenticate it first per Phase A if it needs a token):
    - whole tree: `node .github/skills/update-packages/scripts/select-targets.mjs`
    - a subset: `node .github/skills/update-packages/scripts/select-targets.mjs fast-uri js-yaml ...`
+   - a non-default feed: `FEED_REGISTRY=<url> node .github/skills/update-packages/scripts/select-targets.mjs`
 2. Read the printed table and the `BEGIN_JSON … END_JSON` list. Show the user the proposed bumps
    (package: current → target) and confirm before applying. If the list is empty, report "nothing to
    update" and stop.

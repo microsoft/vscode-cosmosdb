@@ -74,7 +74,7 @@ describe('MonacoDiagnosticsProvider', () => {
 
     it('publishes markers for existing matching models on construction', () => {
         const model = makeModel(INVALID_QUERY);
-        const monaco = createMonacoMock([model]);
+        const monaco = createMonacoMock([model as unknown as ReturnType<typeof makeModel>]);
         new MonacoDiagnosticsProvider(monaco, service);
         expect(monaco.editor.setModelMarkers).toHaveBeenCalledTimes(1);
         const [, owner, markers] = monaco.editor.setModelMarkers.mock.calls[0];

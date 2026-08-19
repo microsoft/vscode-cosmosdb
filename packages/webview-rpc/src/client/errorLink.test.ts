@@ -53,7 +53,7 @@ function createTestHarness(type: 'query' | 'mutation' | 'subscription', outcome:
     events.onAborted(aborted);
 
     const link = errorLink<AnyRouter>(events);
-    const linkRuntime = link({});
+    const linkRuntime = link({} as never);
 
     const op = {
         id: 0,
@@ -65,7 +65,7 @@ function createTestHarness(type: 'query' | 'mutation' | 'subscription', outcome:
     };
 
     const next = makeDownstreamNext(outcome);
-    const obs = linkRuntime({ op, next });
+    const obs = linkRuntime({ op, next } as never);
 
     const onNext: Mock = vi.fn();
     const onError: Mock = vi.fn();
@@ -159,7 +159,7 @@ describe('errorLink', () => {
             events.onError(error);
 
             const link = errorLink<AnyRouter>(events);
-            const linkRuntime = link({});
+            const linkRuntime = link({} as never);
             const abortErr = Object.assign(new Error('Aborted'), { name: 'AbortError' });
             const obs = linkRuntime({
                 op: { id: 0, type: 'query', path: 'p', input: undefined, context: {}, signal: null },
@@ -222,7 +222,7 @@ describe('errorLink', () => {
             events.onError(c);
 
             const link = errorLink<AnyRouter>(events);
-            const linkRuntime = link({});
+            const linkRuntime = link({} as never);
             const obs = linkRuntime({
                 op: { id: 0, type: 'query', path: 'p', input: undefined, context: {}, signal: null },
                 next: makeDownstreamNext({ kind: 'error', error: new Error('x') }),

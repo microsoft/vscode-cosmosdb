@@ -117,7 +117,7 @@ export function toTreeItem<T extends object>(toObj: T, fromTreeItem: vscode.Tree
     // If mixin was already applied, just update the stored reference
     if (hasTreeItemMixin(toObj)) {
         (toObj as TreeItemHolder)[treeItemSymbol] = fromTreeItem;
-        return toObj;
+        return toObj as T & vscode.TreeItem;
     }
 
     // Store the TreeItem reference using a Symbol (writable so it can be updated)
@@ -165,5 +165,5 @@ export function toTreeItem<T extends object>(toObj: T, fromTreeItem: vscode.Tree
             }
             return Reflect.getOwnPropertyDescriptor(target, prop);
         },
-    });
+    }) as T & vscode.TreeItem;
 }

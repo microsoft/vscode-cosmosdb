@@ -10,6 +10,7 @@ import { type FeatureClient } from '@azure/arm-features';
 import { type MonitorClient } from '@azure/arm-monitor';
 import { type PostgreSQLManagementClient } from '@azure/arm-postgresql';
 import { type PostgreSQLManagementFlexibleServerClient } from '@azure/arm-postgresql-flexible';
+import { type TokenCredential } from '@azure/core-auth';
 import { createAzureClient } from '@microsoft/vscode-azext-azureutils';
 import { createSubscriptionContext, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
@@ -130,7 +131,7 @@ export async function createAlertsManagementClient(subscription: AzureSubscripti
     const subContext = createSubscriptionContext(subscription);
     const { AlertsManagementClient } = await import('@azure/arm-alertsmanagement');
     const endpoint = subscription.environment?.resourceManagerEndpointUrl;
-    return new AlertsManagementClient(subContext.credentials, endpoint ? { endpoint } : undefined);
+    return new AlertsManagementClient(subContext.credentials as TokenCredential, endpoint ? { endpoint } : undefined);
 }
 
 export async function createPostgreSQLClient(

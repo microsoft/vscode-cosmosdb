@@ -223,7 +223,7 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
                 type: 'databaseConnected',
                 dbName: result.dbName,
                 containerName: result.containerName,
-                partitionKey: result.partitionKey,
+                partitionKey: result.partitionKey as PartitionKeyDefinition | undefined,
             });
         }
     }
@@ -250,7 +250,7 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
                 type: 'databaseConnected',
                 dbName: result.dbName,
                 containerName: result.containerName,
-                partitionKey: result.partitionKey,
+                partitionKey: result.partitionKey as PartitionKeyDefinition | undefined,
             });
         }
     }
@@ -404,7 +404,7 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
                     type: 'databaseConnected',
                     dbName: result.connectionState.dbName,
                     containerName: result.connectionState.containerName,
-                    partitionKey: result.connectionState.partitionKey,
+                    partitionKey: result.connectionState.partitionKey as PartitionKeyDefinition | undefined,
                 });
             } else {
                 this.dispatch({ type: 'databaseDisconnected' });

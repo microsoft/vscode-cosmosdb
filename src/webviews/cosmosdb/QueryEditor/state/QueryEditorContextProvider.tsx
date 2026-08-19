@@ -478,10 +478,12 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
     }
 
     private async refreshThroughputBuckets(): Promise<void> {
-        const throughputBuckets = await this.safeMutate(() =>
-            this.trpcClient.queryEditor.refreshThroughputBuckets.mutate(),
-        );
-        this.dispatch({ type: 'updateThroughputBuckets', throughputBuckets });
+        try {
+            const throughputBuckets = await this.trpcClient.queryEditor.refreshThroughputBuckets.mutate();
+            this.dispatch({ type: 'updateThroughputBuckets', throughputBuckets });
+        } catch {
+            // Error notification is handled by the tRPC errorLink middleware. Keep the last known availability.
+        }
     }
 
     private handleQueryExecutionResult(result?: QueryExecutionResponse): void {

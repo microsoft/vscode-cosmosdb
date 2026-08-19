@@ -242,6 +242,8 @@ export async function activateInternal(
 
             activateContext.telemetry.measurements.azureResourcesApiLoadTime =
                 performance.now() - azureResourcesStartTime;
+        } else {
+            ext.setRgApiV2Unavailable();
         }
 
         const endTime = performance.now();
@@ -265,7 +267,8 @@ function registerAzureResourcesProviders(_context: vscode.ExtensionContext): api
         ) => {
             const [rgApiV2] = azureResourcesApis;
             if (!rgApiV2) {
-                throw new Error(l10n.t('Failed to find a matching Azure Resources API for version "{0}".', v2));
+                ext.setRgApiV2Unavailable();
+                return;
             }
 
             ext.rgApiV2 = rgApiV2 as AzureResourcesExtensionApiWithActivity;
@@ -295,6 +298,7 @@ function registerAzureResourcesProviders(_context: vscode.ExtensionContext): api
                 ext.migrationWorkspaceBranchDataProvider,
             );
         },
+        onApiRequestError: () => ext.setRgApiV2Unavailable(),
     };
 
     const { clientApi, requestResourcesApis } = prepareAzureResourcesApiRequest(requestContext, exportedApi);

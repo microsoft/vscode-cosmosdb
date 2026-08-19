@@ -24,13 +24,8 @@ const UNSET = Symbol('unset');
  * - The getter throws if the field has never been set.
  * - The setter throws if the field has already been set (prevents accidental re-init).
  */
-function required<T>(name: string): { get: () => T; set: (v: T) => void; ready: Promise<T> } {
+function required<T>(name: string): { get: () => T; set: (v: T) => void } {
     let stored: T | typeof UNSET = UNSET;
-    let resolveReady: (value: T) => void;
-    const ready = new Promise<T>((resolve) => {
-        resolveReady = resolve;
-    });
-
     return {
         get: () => {
             if (stored === UNSET) throw new Error(`[ext] '${name}' not initialized — call activate() first.`);
@@ -39,7 +34,37 @@ function required<T>(name: string): { get: () => T; set: (v: T) => void; ready: 
         set: (value: T) => {
             if (stored !== UNSET) throw new Error(`[ext] '${name}' already initialized.`);
             stored = value;
+        },
+    };
+}
+
+function asyncRequired<T>(name: string): {
+    get: () => T;
+    set: (v: T) => void;
+    setUnavailable: () => void;
+    ready: Promise<T | undefined>;
+} {
+    let stored: T | undefined | typeof UNSET = UNSET;
+    let resolveReady: (value: T | undefined) => void;
+    const ready = new Promise<T | undefined>((resolve) => {
+        resolveReady = resolve;
+    });
+
+    return {
+        get: () => {
+            if (stored === UNSET) throw new Error(`[ext] '${name}' not initialized — call activate() first.`);
+            if (stored === undefined) throw new Error(`[ext] '${name}' unavailable.`);
+            return stored;
+        },
+        set: (value: T) => {
+            if (stored !== UNSET) throw new Error(`[ext] '${name}' already initialized.`);
+            stored = value;
             resolveReady(value);
+        },
+        setUnavailable: () => {
+            if (stored !== UNSET) return;
+            stored = undefined;
+            resolveReady(undefined);
         },
         ready,
     };
@@ -69,7 +94,7 @@ class ExtensionService {
     private readonly _outputChannel = required<IAzExtLogOutputChannel>('outputChannel');
     private readonly _secretStorage = required<vscode.SecretStorage>('secretStorage');
     private readonly _fileSystem = required<DatabasesFileSystem>('fileSystem');
-    private readonly _rgApiV2 = required<AzureResourcesExtensionApiWithActivity>('rgApiV2');
+    private readonly _rgApiV2 = asyncRequired<AzureResourcesExtensionApiWithActivity>('rgApiV2');
     private readonly _state = required<TreeElementStateManager>('state');
     private readonly _cosmosDBBranchDataProvider = required<CosmosDBBranchDataProvider>('cosmosDBBranchDataProvider');
     private readonly _cosmosDBWorkspaceBranchDataProvider = required<CosmosDBWorkspaceBranchDataProvider>(
@@ -138,6 +163,9 @@ class ExtensionService {
     }
     set rgApiV2(v) {
         this._rgApiV2.set(v);
+    }
+    setRgApiV2Unavailable() {
+        this._rgApiV2.setUnavailable();
     }
 
     get state() {

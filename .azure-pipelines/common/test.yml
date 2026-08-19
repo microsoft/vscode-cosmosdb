@@ -7,26 +7,16 @@ steps:
   displayName: 'Start X Virtual Frame Buffer'
   condition: eq(variables['Agent.OS'], 'Linux')
 
-# The 'Test' step (npm test -> scripts/run-integration-tests.mjs) is disabled here. It launches a real VS Code
-# extension host via @vscode/test-electron and installs the dependent extension
-# 'ms-azuretools.vscode-azureresourcegroups' from the VS Code Marketplace, which requires outbound network access
-# that is incompatible with this pipeline's DefaultDeny network isolation policy (see PR #3275, reverted in #3278
-# after the Marketplace install was blocked with AggregateError [EACCES]).
-#
-# These integration tests (and the separate Playwright E2E suite) already run and gate every PR/push via GitHub
-# Actions (.github/workflows/test.yml and .github/workflows/e2e.yml), so re-running them here would be redundant.
-# Re-enable only if the Marketplace-dependent install is removed or moved to a network-isolation-compatible
-# environment (e.g. CloudTest).
-# - task: Npm@1
-#   displayName: 'Test'
-#   inputs:
-#     command: custom
-#     customCommand: test
-#   env:
-#     SERVICE_PRINCIPAL_CLIENT_ID: $(SERVICE_PRINCIPAL_CLIENT_ID)
-#     SERVICE_PRINCIPAL_SECRET: $(SERVICE_PRINCIPAL_SECRET)
-#     SERVICE_PRINCIPAL_DOMAIN: $(SERVICE_PRINCIPAL_DOMAIN)
-#     DISPLAY: :10 # Only necessary for linux test
+- task: Npm@1
+  displayName: 'Test'
+  inputs:
+    command: custom
+    customCommand: test
+  env:
+    SERVICE_PRINCIPAL_CLIENT_ID: $(SERVICE_PRINCIPAL_CLIENT_ID)
+    SERVICE_PRINCIPAL_SECRET: $(SERVICE_PRINCIPAL_SECRET)
+    SERVICE_PRINCIPAL_DOMAIN: $(SERVICE_PRINCIPAL_DOMAIN)
+    DISPLAY: :10 # Only necessary for linux test
 
 - task: Npm@1
   displayName: 'Unit Test'

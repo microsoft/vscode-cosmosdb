@@ -229,10 +229,6 @@ extends:
                               customCommand: run package
                               workingDir: $(Build.SourcesDirectory)
 
-                        - pwsh: npm i -g @vscode/vsce --userconfig $(Build.SourcesDirectory)/.azure-pipelines/.npmrc
-                          displayName: '⬇️ Install vsce'
-                          condition: succeeded()
-
                         # Find the vsix and set the vsix file name variable
                         # Fails with an error if more than one .vsix file is found, or if no .vsix file is found
                         - task: PowerShell@2
@@ -264,7 +260,7 @@ extends:
 
                         ## Sign the extension using OneBranch signing task
                         ## see for VS Code specifics: https://aka.ms/vsm-ms-publisher-sign#cai-teams-sign-using-onebranch
-                        - script: vsce generate-manifest -i $(vsixFileName) -o extension.manifest
+                        - script: npx vsce generate-manifest -i $(vsixFileName) -o extension.manifest
                           displayName: '📝 Generate extension manifest for signing'
                           condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, true) }})
 
@@ -301,7 +297,7 @@ extends:
                           condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, true) }})
                           inputs:
                               script: |
-                                  $output = vsce verify-signature -i $(vsixFileName) -m extension.manifest -s extension.signature.p7s 2>&1
+                                  $output = npx vsce verify-signature -i $(vsixFileName) -m extension.manifest -s extension.signature.p7s 2>&1
                                   Write-Output $output
 
                                   # Check if the vsce command failed to execute

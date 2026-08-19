@@ -244,7 +244,15 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
         case 'selectBucket':
             return { ...state, selectedThroughputBucket: action.throughputBucket };
         case 'updateThroughputBuckets':
-            return { ...state, throughputBuckets: action.throughputBuckets };
+            return {
+                ...state,
+                throughputBuckets: action.throughputBuckets,
+                selectedThroughputBucket:
+                    state.selectedThroughputBucket !== undefined &&
+                    action.throughputBuckets?.[state.selectedThroughputBucket - 1]
+                        ? state.selectedThroughputBucket
+                        : undefined,
+            };
         case 'setConnectionList':
             return { ...state, connectionList: action.connectionList };
         case 'setSchemaBasedOnQueries':

@@ -381,14 +381,15 @@ async function updateDocument(
     if (partitionKeyChanged) {
         if (actionContext) actionContext.telemetry.properties.partitionKeyChanged = 'true';
 
-        if (state.documentEtag) {
+        let sourceEtag = state.documentEtag;
+        if (sourceEtag) {
             const currentDocument = await readDocument(
                 connection,
                 documentId,
                 ctx.signal,
                 state.partitionKeyDefinition,
             );
-            if (currentDocument && currentDocument.documentContent._etag !== state.documentEtag) {
+            if (currentDocument && currentDocument.documentContent._etag !== sourceEtag) {
                 const resolution = await promptForDocumentConflict();
                 if (resolution === 'discard') {
                     updateLoadedDocumentState(state, currentDocument);
@@ -397,7 +398,7 @@ async function updateDocument(
                 if (resolution !== 'overwrite') {
                     return { success: false, aborted: true } as const;
                 }
-                state.documentEtag = currentDocument.documentContent._etag;
+                sourceEtag = currentDocument.documentContent._etag;
             }
         }
 
@@ -421,11 +422,11 @@ async function updateDocument(
         }
 
         try {
-            await deletePartitionKeyMoveSource(connection, documentId, state.documentEtag);
+            await deletePartitionKeyMoveSource(connection, documentId, sourceEtag);
         } catch {
             state.pendingPartitionKeyCleanup = {
                 sourceIdentifier: documentId,
-                sourceEtag: state.documentEtag,
+                sourceEtag,
                 destination: result,
             };
             return {

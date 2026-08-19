@@ -506,4 +506,46 @@ describe('documentRouter concurrent updates', () => {
             'server-etag',
         );
     });
+
+    it('keeps the loaded etag when a stale partition-key move is not confirmed', async () => {
+        const context = createContext();
+        context.state.documentEtag = 'loaded-etag';
+        documentSessionMocks.extractPartitionKeyFromDocument.mockResolvedValue('new');
+        documentSessionMocks.readDocument.mockResolvedValue({
+            documentContent: { ...documentContent, pk: 'old', _etag: 'server-etag' },
+            partitionKey: writeResult.partitionKey,
+        });
+        confirmationMocks.getConfirmationAsInSettings.mockResolvedValue(false);
+        vi.mocked(vscode.window.showWarningMessage).mockImplementation(async (_message, _options, ...items) =>
+            items.find((item) => item.title === 'Overwrite'),
+        );
+
+        await documentRouterDef.createCaller(context).saveDocument({ documentText: JSON.stringify(documentContent) });
+
+        expect(context.state.documentEtag).toBe('loaded-etag');
+        expect(documentSessionMocks.createDocument).not.toHaveBeenCalled();
+        expect(documentSessionMocks.deleteDocument).not.toHaveBeenCalled();
+    });
+
+    it('keeps the loaded etag when partition-key confirmation throws', async () => {
+        const context = createContext();
+        context.state.documentEtag = 'loaded-etag';
+        documentSessionMocks.extractPartitionKeyFromDocument.mockResolvedValue('new');
+        documentSessionMocks.readDocument.mockResolvedValue({
+            documentContent: { ...documentContent, pk: 'old', _etag: 'server-etag' },
+            partitionKey: writeResult.partitionKey,
+        });
+        confirmationMocks.getConfirmationAsInSettings.mockRejectedValue(new Error('Canceled'));
+        vi.mocked(vscode.window.showWarningMessage).mockImplementation(async (_message, _options, ...items) =>
+            items.find((item) => item.title === 'Overwrite'),
+        );
+
+        await expect(
+            documentRouterDef.createCaller(context).saveDocument({ documentText: JSON.stringify(documentContent) }),
+        ).rejects.toThrow('Canceled');
+
+        expect(context.state.documentEtag).toBe('loaded-etag');
+        expect(documentSessionMocks.createDocument).not.toHaveBeenCalled();
+        expect(documentSessionMocks.deleteDocument).not.toHaveBeenCalled();
+    });
 });

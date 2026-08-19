@@ -157,6 +157,7 @@ export function dispatch(state: DocumentState, action: DispatchAction): Document
                 partitionKey: action.partitionKey,
                 isDirty: false,
                 cleanupRequiredMessage: undefined,
+                error: undefined,
             };
         case 'setError':
             return { ...state, error: action.error };

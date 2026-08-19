@@ -120,6 +120,7 @@ export type DocumentMutableState = {
         sourceEtag?: string;
         destination: DocumentWriteResult;
         message?: string;
+        action?: 'retry' | 'viewConflicts';
     };
 };
 

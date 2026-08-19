@@ -18,12 +18,16 @@ type PartitionKeyCleanupResult = {
     message?: string;
     documentContent?: JSONValue;
     partitionKey?: PartitionKeyDefinition;
+    action?: 'retry' | 'viewConflicts';
 };
 
 type PartitionKeyCleanupClient = {
     document: {
         retryPartitionKeyCleanup: {
             mutate: () => Promise<PartitionKeyCleanupResult>;
+        };
+        viewPartitionKeyConflicts: {
+            mutate: () => Promise<void>;
         };
     };
 };
@@ -46,6 +50,7 @@ export class DocumentContextProvider extends BaseContextProvider<DocumentAppRout
                 aborted?: boolean;
                 cleanupRequired?: boolean;
                 message?: string;
+                action?: 'retry' | 'viewConflicts';
                 documentContent?: JSONValue;
                 partitionKey?: PartitionKeyDefinition;
             };
@@ -53,7 +58,7 @@ export class DocumentContextProvider extends BaseContextProvider<DocumentAppRout
             if (result.aborted) {
                 return;
             } else if (result.cleanupRequired && result.message) {
-                this.dispatch({ type: 'setCleanupRequired', message: result.message });
+                this.dispatch({ type: 'setCleanupRequired', message: result.message, action: result.action });
             } else if (result.success && result.documentContent) {
                 this.dispatch({
                     type: 'setDocument',
@@ -86,7 +91,7 @@ export class DocumentContextProvider extends BaseContextProvider<DocumentAppRout
             } else if (result.success) {
                 this.dispatch({ type: 'setCleanupRequired', message: undefined });
             } else {
-                this.dispatch({ type: 'setCleanupRequired', message: result.message });
+                this.dispatch({ type: 'setCleanupRequired', message: result.message, action: result.action });
             }
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : String(error);
@@ -94,6 +99,11 @@ export class DocumentContextProvider extends BaseContextProvider<DocumentAppRout
         } finally {
             this.dispatch({ type: 'setCleaningUp', isCleaningUp: false });
         }
+    }
+
+    public async viewPartitionKeyConflicts(): Promise<void> {
+        const cleanupClient = this.trpcClient as unknown as PartitionKeyCleanupClient;
+        await cleanupClient.document.viewPartitionKeyConflicts.mutate();
     }
 
     public async saveDocumentAsFile(documentText: string): Promise<void> {
@@ -168,7 +178,11 @@ export class DocumentContextProvider extends BaseContextProvider<DocumentAppRout
                 });
             }
             if (result.cleanupRequiredMessage) {
-                this.dispatch({ type: 'setCleanupRequired', message: result.cleanupRequiredMessage });
+                this.dispatch({
+                    type: 'setCleanupRequired',
+                    message: result.cleanupRequiredMessage,
+                    action: result.cleanupRequiredAction,
+                });
             }
         });
     }

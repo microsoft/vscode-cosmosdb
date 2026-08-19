@@ -54,6 +54,7 @@ export type DispatchAction =
     | {
           type: 'setCleanupRequired';
           message: string | undefined;
+          action?: 'retry' | 'viewConflicts';
       }
     | {
           type: 'completeCleanup';
@@ -84,6 +85,7 @@ export type DocumentState = {
 
     currentDocumentContent: string; // Current content of the document
     cleanupRequiredMessage: string | undefined; // A partition key move created the destination but did not delete the source
+    cleanupRequiredAction: 'retry' | 'viewConflicts' | undefined;
     error: string[] | string | undefined; // Error message(s)
 };
 
@@ -102,6 +104,7 @@ export const defaultState: DocumentState = {
     isReady: false,
     currentDocumentContent: '',
     cleanupRequiredMessage: undefined,
+    cleanupRequiredAction: undefined,
     error: undefined,
 };
 
@@ -148,7 +151,11 @@ export function dispatch(state: DocumentState, action: DispatchAction): Document
         case 'setCleaningUp':
             return { ...state, isCleaningUp: action.isCleaningUp };
         case 'setCleanupRequired':
-            return { ...state, cleanupRequiredMessage: action.message };
+            return {
+                ...state,
+                cleanupRequiredMessage: action.message,
+                cleanupRequiredAction: action.message ? (action.action ?? 'retry') : undefined,
+            };
         case 'completeCleanup':
             return {
                 ...state,
@@ -157,6 +164,7 @@ export function dispatch(state: DocumentState, action: DispatchAction): Document
                 partitionKey: action.partitionKey,
                 isDirty: false,
                 cleanupRequiredMessage: undefined,
+                cleanupRequiredAction: undefined,
             };
         case 'setError':
             return { ...state, error: action.error };

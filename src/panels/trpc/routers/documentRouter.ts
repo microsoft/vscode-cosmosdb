@@ -26,6 +26,7 @@ import { arePartitionKeysEqual } from '../../../utils/document';
 import { promptAfterActionEventually } from '../../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../../utils/surveyTypes';
 import * as vscodeUtil from '../../../utils/vscodeUtils';
+import { QueryEditorTab } from '../../QueryEditorTab';
 import { type DocumentMutableState, type DocumentRouterContext } from '../appRouter';
 import { OpenDocumentModeSchema } from '../schemas';
 import { documentProcedure, documentRouter } from '../trpc';
@@ -79,6 +80,9 @@ export const documentRouterDef = documentRouter({
             documentPartitionKey,
             cleanupRequiredMessage: state.pendingPartitionKeyCleanup
                 ? (state.pendingPartitionKeyCleanup.message ?? getPartitionKeyCleanupRequiredMessage())
+                : undefined,
+            cleanupRequiredAction: state.pendingPartitionKeyCleanup
+                ? (state.pendingPartitionKeyCleanup.action ?? 'retry')
                 : undefined,
         };
     }),
@@ -224,6 +228,12 @@ export const documentRouterDef = documentRouter({
             if (!currentSource) {
                 return cleanupRequiredResult();
             }
+            if (!pendingCleanup.sourceIdentifier._rid && typeof currentSource.documentContent._rid === 'string') {
+                pendingCleanup.sourceIdentifier = {
+                    ...pendingCleanup.sourceIdentifier,
+                    _rid: currentSource.documentContent._rid,
+                };
+            }
 
             const resolution = await promptForDocumentConflict();
             if (resolution === 'overwrite') {
@@ -245,7 +255,8 @@ export const documentRouterDef = documentRouter({
                 const destinationEtag = pendingCleanup.destination.documentContent._etag;
                 if (!destinationEtag) {
                     pendingCleanup.message = getPartitionKeyRollbackRequiredMessage();
-                    return cleanupRequiredResult(pendingCleanup.message);
+                    pendingCleanup.action = 'viewConflicts';
+                    return cleanupRequiredResult(pendingCleanup.message, pendingCleanup.action);
                 }
                 try {
                     await deletePartitionKeyMoveSource(
@@ -255,7 +266,8 @@ export const documentRouterDef = documentRouter({
                     );
                 } catch {
                     pendingCleanup.message = getPartitionKeyRollbackRequiredMessage();
-                    return cleanupRequiredResult(pendingCleanup.message);
+                    pendingCleanup.action = 'viewConflicts';
+                    return cleanupRequiredResult(pendingCleanup.message, pendingCleanup.action);
                 }
 
                 ctx.state.documentId = pendingCleanup.sourceIdentifier;
@@ -303,6 +315,17 @@ export const documentRouterDef = documentRouter({
                 message: pendingCleanup.message,
             } as const;
         }
+    }),
+
+    viewPartitionKeyConflicts: documentProcedure.mutation(({ ctx }) => {
+        const pendingCleanup = ctx.state.pendingPartitionKeyCleanup;
+        if (!pendingCleanup || pendingCleanup.action !== 'viewConflicts') {
+            return;
+        }
+
+        const query = buildPartitionKeyConflictQuery(pendingCleanup);
+        const queryEditor = QueryEditorTab.render(ctx.connection, ctx.panel.viewColumn, false, query);
+        void queryEditor.runActiveQueryInEditor(query);
     }),
 
     saveDocumentAsFile: documentProcedure
@@ -363,7 +386,8 @@ async function updateDocument(
         return {
             success: false,
             cleanupRequired: true,
-            message: getPartitionKeyCleanupRequiredMessage(),
+            message: state.pendingPartitionKeyCleanup.message ?? getPartitionKeyCleanupRequiredMessage(),
+            action: state.pendingPartitionKeyCleanup.action ?? 'retry',
         } as const;
     }
 
@@ -558,16 +582,33 @@ function getPartitionKeyDestinationRefreshRequiredMessage(): string {
 
 function getPartitionKeyRollbackRequiredMessage(): string {
     return l10n.t(
-        'The partition key change could not be discarded because the item in the new partition has changed. Both items still exist. Resolve the duplicate items before retrying.',
+        'The partition key change could not be discarded because the item in the new partition has changed. Both items still exist. View them in the Query Editor to resolve the conflict.',
     );
 }
 
-function cleanupRequiredResult(message: string = getPartitionKeyCleanupRequiredMessage()) {
+function cleanupRequiredResult(
+    message: string = getPartitionKeyCleanupRequiredMessage(),
+    action: 'retry' | 'viewConflicts' = 'retry',
+) {
     return {
         success: false,
         cleanupRequired: true,
         message,
+        action,
     } as const;
+}
+
+function buildPartitionKeyConflictQuery(
+    pendingCleanup: NonNullable<DocumentMutableState['pendingPartitionKeyCleanup']>,
+): string {
+    const sourceRid = pendingCleanup.sourceIdentifier._rid;
+    const destinationRid =
+        pendingCleanup.destination.identifier._rid ?? pendingCleanup.destination.documentContent._rid;
+    if (!sourceRid || !destinationRid) {
+        throw new Error(l10n.t('The conflicting items could not be uniquely identified.'));
+    }
+
+    return `SELECT * FROM c WHERE c._rid IN (${JSON.stringify(sourceRid)}, ${JSON.stringify(destinationRid)})`;
 }
 
 function isNotFound(error: unknown): boolean {

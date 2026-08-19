@@ -50,7 +50,10 @@ const supportedProviders = [
 export async function globalUriHandler(uri: vscode.Uri): Promise<void> {
     await callWithTelemetryAndErrorHandling('handleExternalUri', async (context: IActionContext) => {
         try {
-            await ext.rgApiV2Ready;
+            const rgApiV2 = await ext.rgApiV2Ready;
+            if (!rgApiV2) {
+                throw new Error(l10n.t('Azure Resources is unavailable.'));
+            }
 
             // Extract and validate parameters
             const params = extractAndValidateParams(context, uri.query);

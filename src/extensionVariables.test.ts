@@ -4,11 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type AzureResourcesExtensionApiWithActivity } from '@microsoft/vscode-azext-utils/activity';
-import { describe, expect, it } from 'vitest';
-import { ext } from './extensionVariables';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('extensionVariables', () => {
+    beforeEach(() => vi.resetModules());
+
     it('resolves rgApiV2Ready when the API is initialized', async () => {
+        const { ext } = await import('./extensionVariables');
         const api = {} as AzureResourcesExtensionApiWithActivity;
         let isReady = false;
         const ready = ext.rgApiV2Ready.then((resolvedApi) => {
@@ -23,5 +25,14 @@ describe('extensionVariables', () => {
 
         await expect(ready).resolves.toBe(api);
         expect(ext.rgApiV2).toBe(api);
+    });
+
+    it('settles rgApiV2Ready when the API is unavailable', async () => {
+        const { ext } = await import('./extensionVariables');
+
+        ext.setRgApiV2Unavailable();
+
+        await expect(ext.rgApiV2Ready).resolves.toBeUndefined();
+        expect(() => ext.rgApiV2).toThrow("[ext] 'rgApiV2' unavailable.");
     });
 });

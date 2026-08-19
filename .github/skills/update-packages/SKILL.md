@@ -1,0 +1,219 @@
+---
+name: update-packages
+description: Update npm dependencies to safe, quarantine-cleared versions using the Microsoft package feed, writing canonical npmjs.org tarballs to package-lock.json. Use when the user says "update packages", "update dependencies", "bump deps", "re-apply a dependabot bump", or asks to move dependencies to newer versions that will pass internal CI. Handles version selection (feed availability + npmjs `latest` dist-tag guard), lockfile-only updates within existing semver ranges, validation, commit, and optionally a PR.
+---
+
+# Update Packages Skill
+
+Bump npm dependencies to the newest version that is **safe on both sides**: available on the internal
+Microsoft package feed (so CI, which installs from that feed, can resolve it) **and** not ahead of the
+version npmjs.org has promoted to its `latest` dist-tag (so we never jump to a pre-release/beta that the
+feed mislabels). The lockfile is updated **within the existing semver ranges only** — `package.json` is
+never touched — and every `resolved`/`integrity` field is written from the **canonical npmjs.org tarball**.
+
+## Why this is not just `npm update`
+
+This skill *is* `npm update` at heart — it lets npm resolve every declared range — but with two extra
+constraints that a naive `npm update` against npmjs.org would violate:
+
+1. **The Microsoft feed quarantines newly published versions for ~7 days.** A version that exists on
+   npmjs may not yet be installable from the feed, so CI (which uses the feed) would fail. We must only
+   pick versions the feed actually serves. This is handled automatically by running `npm outdated`
+   **against the feed** — its `wanted` can then never exceed what the feed serves.
+2. **The Microsoft feed ignores npm dist-tags.** Its notion of "latest" is simply the highest version
+   number published, so it can point at a version that npmjs still keeps off `latest` (a beta / `next`
+   release). We must not jump to such a version, so we cap every target at npmjs' `latest` dist-tag.
+
+Because the two registries can also disagree on the **tarball bytes** (different `sha512` integrity for
+the "same" version), the lockfile's `resolved`/`integrity` must come from **one** registry. We use
+npmjs.org for the bytes (canonical, publicly reproducible) and use the feed only to *discover and gate*
+versions.
+
+## Version-selection rule (the core)
+
+Resolution is delegated to npm so the real semver ranges are honored — direct deps' `package.json` ranges
+**and** transitive deps' parent ranges — exactly like `npm update`:
+
+1. Run `npm outdated --all --json` **against the Microsoft feed**. For each install location npm reports
+   `wanted` (where `npm update` would move it) already limited to versions the feed serves.
+2. For a package's **hoisted (top-level)** install, the target is the **minimum `wanted` across every
+   dependent that shares that install** — one hoisted copy must satisfy them all, so the most constrained
+   dependent wins. This is what prevents false bumps (e.g. an aliased `typescript` where some dependents
+   allow a newer major but others pin the current one).
+3. The **current** version is read from `package-lock.json` (the committed source of truth), so the result
+   is correct even if `node_modules` has drifted.
+4. Cap the target at the package's **`latest` dist-tag on npmjs.org**. If the feed's `wanted` exceeds
+   npmjs' `latest`, or is itself a pre-release, do **not** auto-bump — flag it for manual review.
+5. **Feed-availability check (the reverse hazard).** Steps 1–4 only surface versions the feed serves
+   *newer* than the lockfile. They cannot see a lockfile pinned to a version the feed does **not** serve
+   — e.g. a bump installed straight from npmjs before it cleared the feed's quarantine — which CI
+   restoring from the feed would fail to resolve. For every **direct** dependency, check the pinned
+   lockfile version against the feed; if it is missing, propose the **highest feed version that satisfies
+   the declared range and is not ahead of npmjs' `latest`** (a downgrade). The `latest` cap matters
+   because the feed ignores npm dist-tags, so its top in-range version may be a beta npmjs never promoted.
+   If no such feed version exists, flag for review.
+
+The bundled helper implements all of this and only reads state — it mutates nothing:
+
+```
+node .github/skills/update-packages/scripts/select-targets.mjs [pkg ...]
+```
+
+- **no arguments** → every outdated top-level package.
+- **with names** → restrict the report to those packages.
+
+It prints a table plus a machine-readable JSON block between `BEGIN_JSON` / `END_JSON` listing
+`{ name, current, target }` for each package that should change — this includes both feed-newer **upgrades**
+and feed-availability **downgrades** (apply is identical: install `target` from npmjs) — and separately
+lists packages flagged for review (feed ahead of npmjs `latest`, a pre-release, or a lockfile version the
+feed cannot serve with no in-range alternative). Version metadata (each package's versions and its `latest`
+dist-tag) is read with a single HTTPS `fetch` of the abbreviated packument per package+registry — cached
+and shared across both passes — rather than per-package `npm view` subprocesses, so the selector stays fast
+even on a large tree. Registries can be overridden with the `FEED_REGISTRY` / `NPM_REGISTRY` environment
+variables (defaults: the no-auth Microsoft proxy `https://packagefeedproxy.microsoft.io/npm/` and
+`https://registry.npmjs.org/`); `CONCURRENCY` tunes the parallel packument fetches.
+
+> **Prerequisite:** `npm outdated` reads `node_modules` to see what is installed, so a matching tree gives
+> the most trustworthy result. The selector reads each package's **current** version from
+> `package-lock.json` (not from `node_modules`), so a clean, in-sync checkout does **not** need reinstalling.
+> Run `npm ci` (Phase A) only if the tree may have drifted — e.g. right after switching branches or pulling.
+
+## Inputs to resolve
+
+Before running anything, determine:
+
+1. **Scope** — default is *every outdated top-level package*. If the user named specific packages (e.g.
+   "update fast-uri and js-yaml", or "re-apply the dependabot bumps for X, Y"), restrict to that list.
+   Named packages may be transitive.
+2. **Base branch** — where the update should land. Default: a new branch off the current branch. If the
+   user says "on top of <branch>/<PR>", check that branch out first and branch from it.
+3. **Deliverable** — commit only, or commit + push + open a PR. Ask if unclear (default: commit, then
+   ask before pushing).
+
+If anything is ambiguous, ask once before mutating the working tree.
+
+## Workflow
+
+Execute in order. Stop and report on any error (verify every command exits `0`).
+
+### Phase A — Pre-flight
+
+1. `git status --porcelain` — the working tree must be clean before starting. If dirty, ask whether to
+   proceed (the update will be mixed into their changes) or stop.
+2. Create the working branch: `git checkout -b dev/<user>/update-packages` (or from the requested base
+   branch first). Use the repository's branch-naming convention (`dev/<username>/...`).
+3. **Only if the installed tree may have drifted, sync it: `npm ci`.** The selector reads each package's
+   `current` version from `package-lock.json`, so a clean, in-sync `node_modules` does not need
+   reinstalling — skip this step in that common case. Run `npm ci` when `node_modules` is missing or you
+   just switched branches / pulled, since a badly drifted tree can make `npm outdated` omit or invent
+   entries. (This full reinstall is the slowest step in the workflow; do not run it reflexively.)
+4. No `~/.npmrc` auth is required for version discovery — the helper uses the **no-auth** Microsoft proxy
+   `https://packagefeedproxy.microsoft.io/npm/`. Do **not** rely on the machine's configured registry;
+   always pass `--registry` explicitly so the result is deterministic.
+
+### Phase B — Select targets
+
+1. Run the helper for the resolved scope:
+   - whole tree: `node .github/skills/update-packages/scripts/select-targets.mjs`
+   - a subset: `node .github/skills/update-packages/scripts/select-targets.mjs fast-uri js-yaml ...`
+2. Read the printed table and the `BEGIN_JSON … END_JSON` list. Show the user the proposed bumps
+   (package: current → target) and confirm before applying. If the list is empty, report "nothing to
+   update" and stop.
+3. Report any package the helper flagged **for review** (`feed ahead of npmjs latest …` or
+   `wanted is a pre-release …`): do not auto-bump these — they need a human decision. Aliased packages
+   (e.g. a `typescript` installed via `npm:@scope/pkg@range`) also warrant a manual look before applying.
+
+### Phase C — Apply (lockfile-only, npmjs tarballs)
+
+Apply each target so the lockfile ends up with the exact target version and **canonical npmjs.org**
+`resolved`/`integrity`, without editing `package.json`.
+
+1. Install the exact targets from npmjs, without saving to `package.json`:
+   ```
+   npm install <pkg>@<target> [<pkg>@<target> ...] --registry https://registry.npmjs.org/ --no-save
+   ```
+   `--no-save` updates `node_modules` and `package-lock.json` to reflect the installed tree but leaves
+   `package.json` untouched. Installing the **exact** target (not a range) is what enforces the
+   version-selection rule — do **not** use a bare `npm update`, which would re-resolve to npm's own
+   `wanted` from npmjs and can overshoot the feed-gated target the selector computed.
+2. If a transitive target conflicts with a parent's range, npm will error. That means the bump is not
+   actually reachable within the current tree — exclude that package and report it; do not force it.
+
+> **Ordering rule:** any npm install/update is the *last* mutation of `package-lock.json`. If you need to
+> hand-correct the lockfile (see Phase D), do it **after** all npm commands, never before.
+
+### Phase D — Verify the lockfile
+
+1. **Versions:** confirm each bumped package shows the target version:
+   ```
+   node -e "const l=require('./package-lock.json');for(const [k,v] of Object.entries(l.packages)){const b=k.split('node_modules/').pop();if(process.argv.slice(1).includes(b))console.log(b,v.version,v.resolved)}" <pkg> <pkg> ...
+   ```
+2. **Resolved host:** every changed `resolved` URL must point at `https://registry.npmjs.org/`. Confirm no
+   Microsoft-feed host leaked into the diff:
+   ```
+   git diff package-lock.json | Select-String 'resolved' | Select-String -NotMatch 'registry.npmjs.org'
+   ```
+   That command must return nothing. (A pre-existing feed URL elsewhere in the lockfile that your diff did
+   **not** touch is out of scope — do not rewrite it, because its `integrity` was computed from the feed
+   tarball and changing only the host would break `npm ci`.)
+3. **package.json untouched:** `git diff --quiet -- package.json` must exit `0`.
+4. **Diff scope:** the diff should be limited to `package-lock.json` (and `package.json` only if the user
+   explicitly opted into range bumps, which this skill does not do by default).
+
+### Phase E — Validate the build
+
+A dependency bump can change the shape of installed type definitions, so verify the project still
+type-checks and builds. Run the repository's build and confirm it exits `0`:
+
+```
+npm run build
+```
+
+Do **not** run linting or formatting (`npm run lint`, `npm run prettier-fix`) here: this skill changes only
+`package-lock.json`, never source, so those checks have nothing to act on and only add minutes. Likewise
+`npm run l10n` is irrelevant to a lockfile-only bump. If `npm run build` fails because of the bump, treat it
+as a real regression: investigate, and if the target is incompatible, drop that package from the batch and
+re-run. A pre-existing, unrelated failure (e.g. a known Windows-only `oxlint`/`tsgolint` false positive that
+is green on CI) should be identified as such and reported, not "fixed" by unrelated edits.
+
+### Phase F — Commit and (optionally) PR
+
+1. Stage only the manifest(s): `git add package-lock.json` (and `package.json` only if intentionally
+   changed). Commit with a Conventional-Commits subject and the required trailer:
+   ```
+   build(deps): bump <pkg list>
+
+   <one line per package: name current -> target>
+
+   Targets verified available past the 7-day quarantine on the Microsoft feed, installed from
+   registry.npmjs.org so the lockfile resolved/integrity stay canonical npmjs.
+
+   Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+   ```
+2. If the user wants a PR: `git push -u origin <branch>` then `gh pr create` (write the body to a file and
+   pass `--body-file`; real newlines, no hard-wrapped sentences, no task-list checkboxes). Never use
+   `--force`.
+
+## Constraints
+
+- **Never touch `package.json`** unless the user explicitly asks to bump the declared ranges. Default is
+  lockfile-only, within existing ranges.
+- **Never write a feed host into a `resolved` URL.** Tarballs come from npmjs.org; the feed is used only to
+  discover and gate versions.
+- **Never mix registries for one version.** The `integrity` in the lockfile must match the `resolved`
+  tarball's registry (npmjs.org).
+- **Never jump to a pre-release**, and never exceed npmjs' `latest` dist-tag or the allowed semver range.
+- **Never install/update after a manual lockfile edit** — npm commands are always the last lockfile
+  mutation.
+- Do not rewrite pre-existing feed URLs elsewhere in the lockfile that your bump did not introduce.
+- Verify every command exits `0`; a nonzero exit stops the workflow.
+
+## Reporting
+
+When done, summarize:
+
+- Scope (every outdated top-level package, or the named subset).
+- The bumps applied (`name: current → target`) and any packages skipped or flagged for review (feed ahead
+  of npmjs `latest`, pre-release, aliased, or validation-incompatible) with the reason.
+- Build result (`npm run build`), calling out any known pre-existing false positives.
+- The branch name, and the PR URL if one was opened.

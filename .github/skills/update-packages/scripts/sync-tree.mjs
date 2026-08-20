@@ -18,15 +18,23 @@
 //   exactly what we want to build against; only the lockfile's `resolved` host stays as it was.
 //
 // Usage: node .github/skills/update-packages/scripts/sync-tree.mjs
-// Env:   NPM_REGISTRY (default https://registry.npmjs.org/), CONCURRENCY (default 12)
+// Env:   NPM_REGISTRY (default https://registry.npmjs.org/), CONCURRENCY (default 8)
 
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { dirname, join } from 'node:path';
 
 const LOCK = 'package-lock.json';
 const NPM = (process.env.NPM_REGISTRY || 'https://registry.npmjs.org/').replace(/\/?$/, '/');
-const CONCURRENCY = Number(process.env.CONCURRENCY || 12);
+const CONCURRENCY = Number(process.env.CONCURRENCY || 8);
 const NPMJS_HOST = 'registry.npmjs.org';
+const NPM_CLI = join(dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js');
+const NPM_COMMAND = process.platform === 'win32' ? process.execPath : 'npm';
+const NPM_PREFIX = process.platform === 'win32' ? [NPM_CLI] : [];
+
+if (process.platform === 'win32' && !fs.existsSync(NPM_CLI)) {
+    throw new Error(`npm CLI not found at ${NPM_CLI}`);
+}
 
 const originalBytes = fs.readFileSync(LOCK, 'utf8');
 const lock = JSON.parse(originalBytes);
@@ -44,12 +52,21 @@ for (const [key, entry] of Object.entries(lock.packages ?? {})) {
 const cache = new Map();
 function packument(name) {
     if (cache.has(name)) return cache.get(name);
-    const p = fetch(NPM + name.replace('/', '%2f'), {
-        headers: { accept: 'application/vnd.npm.install-v1+json' },
-    }).then((r) => {
-        if (!r.ok) throw new Error(`fetch ${name} -> ${r.status}`);
-        return r.json();
-    });
+    const p = (async () => {
+        const url = NPM + name.replace('/', '%2f');
+        for (let attempt = 1; ; attempt++) {
+            try {
+                const res = await fetch(url, { headers: { accept: 'application/vnd.npm.install-v1+json' } });
+                if (res.ok) return res.json();
+                if (attempt === 3 || (res.status !== 429 && res.status < 500)) {
+                    throw new Error(`fetch ${url} -> ${res.status} ${res.statusText}`);
+                }
+            } catch (error) {
+                if (attempt === 3) throw error;
+            }
+            await new Promise((resolve) => setTimeout(resolve, attempt * 500));
+        }
+    })();
     cache.set(name, p);
     return p;
 }
@@ -84,9 +101,9 @@ let installErr;
 try {
     console.log('Running incremental `npm install`…');
     execFileSync(
-        'npm',
-        ['install', '--registry', NPM, '--no-audit', '--no-fund'],
-        { stdio: 'inherit', shell: process.platform === 'win32' },
+        NPM_COMMAND,
+        [...NPM_PREFIX, 'install', '--registry', NPM, '--no-audit', '--no-fund'],
+        { stdio: 'inherit' },
     );
 } catch (e) {
     installErr = e;

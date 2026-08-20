@@ -32,8 +32,10 @@
 // token vsts-npm-auth writes to .npmrc, so the feed-availability pass works against private feeds too.
 //
 // It never mutates anything. It prints a human-readable table plus a machine-readable JSON block
-// (delimited by BEGIN_JSON / END_JSON) that the agent can act on. For accurate results the installed
-// tree should match the lockfile — run `npm ci` first if unsure.
+// (delimited by BEGIN_JSON / END_JSON) that the agent can act on. For accurate results the installed tree
+// should match the lockfile: the selector compares the two and prints a DRIFT warning to stderr when
+// `node_modules` is out of sync (an AHEAD tree hides rows from `npm outdated`). Sync with an INCREMENTAL
+// `npm install` if warned — never `npm ci` (see the skill's Phase A / Phase E).
 //
 // Usage:
 //   node .github/skills/update-packages/scripts/select-targets.mjs [pkg ...]
@@ -125,6 +127,49 @@ const only = new Set(process.argv.slice(2));
 const lock = JSON.parse(readFileSync('package-lock.json', 'utf8'));
 function lockTopLevelVersion(name) {
     return lock.packages?.[`node_modules/${name}`]?.version;
+}
+
+// Detect a drifted install tree by comparing the committed lockfile against npm's own record of what is
+// actually installed (`node_modules/.package-lock.json`). This matters because `npm outdated` derives its
+// report from `node_modules`: if the tree is AHEAD of the lockfile (installed version >= wanted), npm emits
+// no row for that package, so the selector would silently return an incomplete list — in the worst case an
+// empty one that reads as "nothing to update" while real bumps are being masked. A drift signal here is the
+// difference between a fast, correct run and re-discovering this the hard way (see the skill's Phase A). We
+// only READ both lockfiles; syncing (an incremental `npm install`) is the agent's job.
+function detectDrift() {
+    const hidden = 'node_modules/.package-lock.json';
+    if (!existsSync(hidden)) return { installed: false, mismatches: [] };
+    let installedLock;
+    try {
+        installedLock = JSON.parse(readFileSync(hidden, 'utf8'));
+    } catch {
+        return { installed: false, mismatches: [] };
+    }
+    const mismatches = [];
+    for (const [loc, entry] of Object.entries(lock.packages ?? {})) {
+        if (!loc.startsWith('node_modules/') || entry.link) continue;
+        const inst = installedLock.packages?.[loc];
+        if (!inst || !inst.version || !entry.version) continue;
+        if (inst.version !== entry.version) {
+            const name = loc.split('node_modules/').pop();
+            mismatches.push({ name, lock: entry.version, installed: inst.version });
+        }
+    }
+    return { installed: true, mismatches };
+}
+
+const drift = detectDrift();
+if (drift.mismatches.length) {
+    const ahead = drift.mismatches.filter((m) => semver.valid(m.installed) && semver.valid(m.lock) && semver.gt(m.installed, m.lock));
+    console.error('\n\u26a0\ufe0f  DRIFT: node_modules does not match package-lock.json.');
+    console.error(`   ${drift.mismatches.length} package(s) differ` + (ahead.length ? `, ${ahead.length} installed AHEAD of the lockfile.` : '.'));
+    if (ahead.length) {
+        console.error('   An AHEAD tree hides updates from `npm outdated`, so this report may be INCOMPLETE.');
+        console.error('   Sync first with an incremental `npm install`, then re-run this selector. Examples:');
+        for (const m of ahead.slice(0, 8)) console.error(`     ${m.name}: lock ${m.lock} vs installed ${m.installed}`);
+        if (ahead.length > 8) console.error(`     … and ${ahead.length - 8} more`);
+    }
+    console.error('');
 }
 
 // `npm outdated` exits with code 1 when anything is outdated; capture stdout from the thrown error too.

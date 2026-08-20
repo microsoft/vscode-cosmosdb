@@ -77,9 +77,15 @@ variables (defaults: the no-auth Microsoft proxy `https://packagefeedproxy.micro
 `https://registry.npmjs.org/`); `CONCURRENCY` tunes the parallel packument fetches.
 
 > **Prerequisite:** the selector reads each package's **current** version from `package-lock.json` (not
-> from `node_modules`), so a clean, in-sync checkout does **not** need reinstalling. `npm outdated` reads
-> `node_modules` for its report, but a missing/drifted tree at most omits a row — it never justifies a
-> `npm ci`. Do **not** run `npm ci` here (see Phase A step 3 and the Phase E warning).
+> from `node_modules`), so a clean, in-sync checkout does **not** need reinstalling. But `npm outdated`
+> derives its report from `node_modules`, so the tree does affect **which rows appear**: if `node_modules`
+> has drifted **ahead** of the lockfile (installed version ≥ `wanted`), npm emits **no row** for that
+> package and the selector silently drops it — in the worst case returning an empty "nothing to update"
+> while real bumps are masked. The selector detects this by comparing the lockfile against npm's own record
+> of the installed tree (`node_modules/.package-lock.json`) and prints a **DRIFT** warning to stderr. If you
+> see it, sync the tree first with an **incremental** `npm install` (never `npm ci`) and re-run — the
+> bundled `scripts/sync-tree.mjs` does this safely (see Phase A step 3). A merely **missing** row for a
+> behind/absent tree is harmless; an **ahead** tree is not.
 
 ## Inputs to resolve
 
@@ -127,6 +133,25 @@ Execute in order. Stop and report on any error (verify every command exits `0`).
    which is the slowest step in the workflow and, in a live dev environment, fails outright). Only if
    `node_modules` is actually **missing** should you populate it, and then with an **incremental**
    `npm install` (never `npm ci`).
+   - **Drift exception (do not skip).** There is one case where the tree *does* matter: if `node_modules`
+     has drifted **ahead** of the lockfile (e.g. leftovers from earlier experiments), `npm outdated` sees
+     `installed ≥ wanted` and reports **no row**, so the selector silently returns an incomplete — possibly
+     empty — list. The selector detects this and prints a **DRIFT** warning to stderr. When you see it (or
+     the selector reports "0 to bump" on a repo you expect to have updates), **sync the tree first**, then
+     re-run the selector. Sync with the bundled helper, which is safe against the `EALLOWREMOTE` trap below:
+     ```
+     node .github/skills/update-packages/scripts/sync-tree.mjs
+     ```
+     It temp-patches any pre-existing feed `resolved` URL to npmjs for the duration of an **incremental**
+     `npm install`, then restores the lockfile bytes verbatim (so the committed diff is untouched). Never
+     `npm ci`.
+   - **`EALLOWREMOTE` (why the plain `npm install` can abort).** If the user's npm config sets
+     `replace-registry-host=npmjs`, npm **refuses** to download any `resolved` that points at a feed host
+     ("EALLOWREMOTE"). A lockfile may legitimately carry such a pre-existing feed URL (e.g.
+     `@azure/arm-features`) that we must **not** rewrite in the commit. When that package is already
+     installed, a plain `npm install` never fetches it and succeeds; when it is **missing** (fresh/wiped
+     tree), it aborts. `sync-tree.mjs` is the fix — use it instead of a bare `npm install` whenever the tree
+     needs syncing.
 4. **Authenticate the feed if it needs it.** The default common proxy
    (`https://packagefeedproxy.microsoft.io/npm/`) needs **no** auth. The PowerBI feed and most custom
    Azure Artifacts feeds **do** — acquire a token before any feed query:
@@ -266,6 +291,13 @@ type-checks and builds.
    traps above. Afterwards, re-check the lockfile diff is still limited to your intended changes (if `npm
    install` re-touched any `resolved` back to a feed host, re-run the Phase C step-2 helper — it is
    idempotent).
+   - **If this `npm install` aborts with `EALLOWREMOTE`** (the pre-existing feed-URL package is *not*
+     already installed — e.g. the tree was wiped), use the bundled helper instead, which temp-patches that
+     URL to npmjs for the install and then restores the lockfile bytes verbatim:
+     ```
+     node .github/skills/update-packages/scripts/sync-tree.mjs
+     ```
+     It performs the same incremental install, so the diff-recheck note above still applies.
 2. **Build:**
    ```
    npm run build
@@ -311,7 +343,12 @@ is green on CI) should be identified as such and reported, not "fixed" by unrela
   mutation; a later `npm install`/`npm update` can re-introduce feed hosts.
 - **Never run `npm ci` or delete `node_modules`** as prep or validation — it is unnecessary (the lockfile is
   correct by construction), the slowest step, and fails on IDE-held native binaries (`EPERM`) and
-  pre-existing feed URLs (`EALLOWREMOTE`). Repopulate a missing tree with an incremental `npm install` only.
+  pre-existing feed URLs (`EALLOWREMOTE`). Repopulate a missing tree, or sync a drifted one, with an
+  incremental `npm install` only — or `scripts/sync-tree.mjs`, which wraps that install against the
+  `EALLOWREMOTE` trap.
+- **Trust the selector, but heed its DRIFT warning.** A tree drifted **ahead** of the lockfile hides rows
+  from `npm outdated`; if the selector warns (or reports "0 to bump" unexpectedly), sync and re-run before
+  concluding there is nothing to update.
 - Do not rewrite pre-existing feed URLs elsewhere in the lockfile that your bump did not introduce.
 - Verify every command exits `0`; a nonzero exit stops the workflow.
 

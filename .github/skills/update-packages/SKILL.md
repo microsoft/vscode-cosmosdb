@@ -76,10 +76,10 @@ even on a large tree. Registries can be overridden with the `FEED_REGISTRY` / `N
 variables (defaults: the no-auth Microsoft proxy `https://packagefeedproxy.microsoft.io/npm/` and
 `https://registry.npmjs.org/`); `CONCURRENCY` tunes the parallel packument fetches.
 
-> **Prerequisite:** `npm outdated` reads `node_modules` to see what is installed, so a matching tree gives
-> the most trustworthy result. The selector reads each package's **current** version from
-> `package-lock.json` (not from `node_modules`), so a clean, in-sync checkout does **not** need reinstalling.
-> Run `npm ci` (Phase A) only if the tree may have drifted — e.g. right after switching branches or pulling.
+> **Prerequisite:** the selector reads each package's **current** version from `package-lock.json` (not
+> from `node_modules`), so a clean, in-sync checkout does **not** need reinstalling. `npm outdated` reads
+> `node_modules` for its report, but a missing/drifted tree at most omits a row — it never justifies a
+> `npm ci`. Do **not** run `npm ci` here (see Phase A step 3 and the Phase E warning).
 
 ## Inputs to resolve
 
@@ -121,11 +121,12 @@ Execute in order. Stop and report on any error (verify every command exits `0`).
    proceed (the update will be mixed into their changes) or stop.
 2. Create the working branch: `git checkout -b dev/<user>/update-packages` (or from the requested base
    branch first). Use the repository's branch-naming convention (`dev/<username>/...`).
-3. **Only if the installed tree may have drifted, sync it: `npm ci`.** The selector reads each package's
-   `current` version from `package-lock.json`, so a clean, in-sync `node_modules` does not need
-   reinstalling — skip this step in that common case. Run `npm ci` when `node_modules` is missing or you
-   just switched branches / pulled, since a badly drifted tree can make `npm outdated` omit or invent
-   entries. (This full reinstall is the slowest step in the workflow; do not run it reflexively.)
+3. **Do not reinstall to "prepare".** The selector reads each package's `current` version from
+   `package-lock.json`, not from `node_modules`, so a clean checkout needs no reinstall — and `npm ci` is
+   **never** an acceptable prep or validation step here (see the warning in Phase E: it wipes `node_modules`,
+   which is the slowest step in the workflow and, in a live dev environment, fails outright). Only if
+   `node_modules` is actually **missing** should you populate it, and then with an **incremental**
+   `npm install` (never `npm ci`).
 4. **Authenticate the feed if it needs it.** The default common proxy
    (`https://packagefeedproxy.microsoft.io/npm/`) needs **no** auth. The PowerBI feed and most custom
    Azure Artifacts feeds **do** — acquire a token before any feed query:
@@ -145,10 +146,12 @@ Execute in order. Stop and report on any error (verify every command exits `0`).
 ### Phase B — Select targets
 
 > **No-feed path.** If the user chose **No feed**, skip the selector and Phase C entirely: run
-> `npm update --no-save` (or scoped: `npm update --no-save <pkg> ...`). This resolves every declared range
-> against npmjs and rewrites `package-lock.json` with npmjs tarballs, without touching `package.json`
-> (`--no-save`). Then continue at **Phase D** (verify) and **Phase E** (build). The rest of Phase B/C below
-> applies only when a feed was chosen.
+> `npm update --package-lock-only` (or scoped: `npm update --package-lock-only <pkg> ...`). This resolves
+> every declared range against npmjs and rewrites **only** `package-lock.json` with canonical npmjs tarballs,
+> without touching `package.json` and without editing its declared ranges — so no `resolved`-rewrite step is
+> needed. Do **not** use `--no-save` (on npm ≥ 12 it silently no-ops the lockfile — see Phase C). Then
+> continue at **Phase D** (verify) and **Phase E** (build). The rest of Phase B/C below applies only when a
+> feed was chosen.
 
 1. Run the helper for the resolved scope (pass the chosen feed via `FEED_REGISTRY` when it is not the
    default proxy, and authenticate it first per Phase A if it needs a token):
@@ -164,22 +167,47 @@ Execute in order. Stop and report on any error (verify every command exits `0`).
 
 ### Phase C — Apply (lockfile-only, npmjs tarballs)
 
-Apply each target so the lockfile ends up with the exact target version and **canonical npmjs.org**
-`resolved`/`integrity`, without editing `package.json`.
+Get the lockfile to the exact target versions with **canonical npmjs.org** `resolved`/`integrity`, without
+editing `package.json`.
 
-1. Install the exact targets from npmjs, without saving to `package.json`:
-   ```
-   npm install <pkg>@<target> [<pkg>@<target> ...] --registry https://registry.npmjs.org/ --no-save
-   ```
-   `--no-save` updates `node_modules` and `package-lock.json` to reflect the installed tree but leaves
-   `package.json` untouched. Installing the **exact** target (not a range) is what enforces the
-   version-selection rule — do **not** use a bare `npm update`, which would re-resolve to npm's own
-   `wanted` from npmjs and can overshoot the feed-gated target the selector computed.
-2. If a transitive target conflicts with a parent's range, npm will error. That means the bump is not
-   actually reachable within the current tree — exclude that package and report it; do not force it.
+> **npm-version caveat (why not `npm install … --no-save`).** On **npm ≥ 12**, `npm install <pkg>@<ver>
+> --no-save` does **not** write `package-lock.json` at all — it only reifies `node_modules`, so the lockfile
+> is silently left unchanged (verified on npm 12.0.2 for both direct and transitive deps). And plain
+> `npm install --package-lock-only` (without `--no-save`) rewrites the declared **ranges** in `package.json`.
+> Neither can do a lockfile-only, `package.json`-untouched bump. Use `npm update --package-lock-only`
+> instead: it moves the **locked** versions within the existing ranges and never edits `package.json` or its
+> range mirror in the lockfile's root entry (so lock/manifest stay in sync for CI's `npm ci`).
 
-> **Ordering rule:** any npm install/update is the *last* mutation of `package-lock.json`. If you need to
-> hand-correct the lockfile (see Phase D), do it **after** all npm commands, never before.
+1. **Update the locked versions, lockfile-only, run against the FEED.** Pass exactly the package **names**
+   from the selector's `BEGIN_JSON` list (versions come from the ranges; the flagged-for-review packages are
+   excluded, so `npm update` cannot pull a pre-release or a feed-ahead-of-npmjs version):
+   ```
+   npm update <name> [<name> ...] --package-lock-only --registry <FEED>
+   ```
+   Running against the feed makes its ~7-day quarantine cap every version at the feed-served target — this
+   reproduces the selector's choice and prevents overshoot to a newer npmjs `latest` the feed cannot serve
+   yet (e.g. it lands `@fluentui/react-icons` on the feed's `2.0.336`, not npmjs' `2.0.337`). Do **not** pass
+   `--no-save` (no-ops the lockfile on npm ≥ 12) and do **not** run a bare `npm install …@target` (overshoots
+   and needlessly reifies `node_modules`).
+
+2. **Rewrite the feed tarball hosts to canonical npmjs.** Step 1 writes the feed's host into every changed
+   `resolved`/`integrity` (e.g. `*.pkgs.visualstudio.com`). Rewrite only the entries this run introduced to
+   the npmjs.org tarball + npmjs `dist.integrity`, leaving any pre-existing feed URL untouched:
+   ```
+   node .github/skills/update-packages/scripts/rewrite-resolved-to-npmjs.mjs
+   ```
+   The helper diffs the working lockfile against `HEAD:package-lock.json` (so it skips pre-existing feed
+   URLs), fetches each changed package's npmjs `dist.tarball`/`dist.integrity`, and writes them in place. It
+   only touches `resolved`/`integrity` values, preserving key order so the diff stays minimal.
+
+3. If a transitive target is not reachable within the current tree, `npm update` simply won't move it — the
+   selector's row then won't appear in the lockfile diff. Exclude that package and report it; do not force it.
+
+> **Ordering rule:** the `npm update` in step 1 is the last *version-resolving* npm command. The step-2
+> rewrite is a targeted hand-correction of `resolved`/`integrity` performed **after** it. The only npm
+> command allowed afterwards is the Phase E **reify-only** `npm install` (lockfile-authoritative, no range
+> given, so it cannot re-resolve versions) — and Phase E re-verifies the diff and re-runs this helper if that
+> install disturbs any `resolved`. Never run another `npm update`/ranged `npm install` after step 2.
 
 ### Phase D — Verify the lockfile
 
@@ -188,9 +216,9 @@ Apply each target so the lockfile ends up with the exact target version and **ca
    node -e "const l=require('./package-lock.json');for(const [k,v] of Object.entries(l.packages)){const b=k.split('node_modules/').pop();if(process.argv.slice(1).includes(b))console.log(b,v.version,v.resolved)}" <pkg> <pkg> ...
    ```
 2. **Resolved host:** every changed `resolved` URL must point at `https://registry.npmjs.org/`. Confirm no
-   Microsoft-feed host leaked into the diff:
+   Microsoft-feed host leaked into the **added** lines of the diff:
    ```
-   git diff package-lock.json | Select-String 'resolved' | Select-String -NotMatch 'registry.npmjs.org'
+   git diff package-lock.json | Select-String '^\+' | Select-String 'resolved' | Select-String -NotMatch 'registry.npmjs.org'
    ```
    That command must return nothing. (A pre-existing feed URL elsewhere in the lockfile that your diff did
    **not** touch is out of scope — do not rewrite it, because its `integrity` was computed from the feed
@@ -202,11 +230,32 @@ Apply each target so the lockfile ends up with the exact target version and **ca
 ### Phase E — Validate the build
 
 A dependency bump can change the shape of installed type definitions, so verify the project still
-type-checks and builds. Run the repository's build and confirm it exits `0`:
+type-checks and builds.
 
-```
-npm run build
-```
+> **Never run `npm ci` and never delete `node_modules` to "validate".** The lockfile is already correct by
+> construction — the versions came from `npm update` within ranges, and every rewritten `integrity` came
+> from npmjs' authoritative `dist` metadata. A full reinstall proves nothing extra, is the slowest step in
+> the workflow, and in a live dev environment **fails**: the IDE keeps native service binaries loaded
+> (`oxfmt`, `oxlint`, `tsserver`, …), so wiping `node_modules` hits `EPERM` unlinking exactly those files;
+> and once `node_modules` is gone, a pre-existing feed `resolved` URL can abort the reinstall with
+> `EALLOWREMOTE`. Those failures are environment artifacts, not lockfile problems — don't chase them.
+
+1. **Sync `node_modules` to the corrected lockfile incrementally** (so the build type-checks against the new
+   versions, not the old ones). `npm update --package-lock-only` in Phase C did **not** touch `node_modules`,
+   so reify just the changed packages — without wiping anything:
+   ```
+   npm install --registry https://registry.npmjs.org/ --no-audit --no-fund
+   ```
+   This fetches only the bumped packages (all npmjs URLs) and leaves unchanged native binaries and the
+   pre-existing feed-URL package in place (both already installed), so it avoids the `EPERM`/`EALLOWREMOTE`
+   traps above. Afterwards, re-check the lockfile diff is still limited to your intended changes (if `npm
+   install` re-touched any `resolved` back to a feed host, re-run the Phase C step-2 helper — it is
+   idempotent).
+2. **Build:**
+   ```
+   npm run build
+   ```
+   Confirm it exits `0`.
 
 Do **not** run linting or formatting (`npm run lint`, `npm run prettier-fix`) here: this skill changes only
 `package-lock.json`, never source, so those checks have nothing to act on and only add minutes. Likewise
@@ -242,8 +291,11 @@ is green on CI) should be identified as such and reported, not "fixed" by unrela
 - **Never mix registries for one version.** The `integrity` in the lockfile must match the `resolved`
   tarball's registry (npmjs.org).
 - **Never jump to a pre-release**, and never exceed npmjs' `latest` dist-tag or the allowed semver range.
-- **Never install/update after a manual lockfile edit** — npm commands are always the last lockfile
-  mutation.
+- **Never install/update after the Phase C step-2 `resolved` rewrite** — that rewrite is the last lockfile
+  mutation; a later `npm install`/`npm update` can re-introduce feed hosts.
+- **Never run `npm ci` or delete `node_modules`** as prep or validation — it is unnecessary (the lockfile is
+  correct by construction), the slowest step, and fails on IDE-held native binaries (`EPERM`) and
+  pre-existing feed URLs (`EALLOWREMOTE`). Repopulate a missing tree with an incremental `npm install` only.
 - Do not rewrite pre-existing feed URLs elsewhere in the lockfile that your bump did not introduce.
 - Verify every command exits `0`; a nonzero exit stops the workflow.
 

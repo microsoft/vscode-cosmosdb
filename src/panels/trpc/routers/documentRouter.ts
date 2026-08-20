@@ -58,11 +58,24 @@ export const documentRouterDef = documentRouter({
         let documentPartitionKey: PartitionKeyDefinition | undefined;
 
         if (state.documentId) {
-            const result = await readDocument(connection, state.documentId, ctx.signal, state.partitionKeyDefinition);
-            documentContent = result?.documentContent;
-            documentPartitionKey = result?.partitionKey;
-            if (result?.partitionKey) state.partitionKeyDefinition = result.partitionKey;
-            state.documentEtag = result?.documentContent._etag;
+            try {
+                const result = await readDocument(
+                    connection,
+                    state.documentId,
+                    ctx.signal,
+                    state.partitionKeyDefinition,
+                );
+                documentContent = result?.documentContent;
+                documentPartitionKey = result?.partitionKey;
+                if (result?.partitionKey) state.partitionKeyDefinition = result.partitionKey;
+                state.documentEtag = result?.documentContent._etag;
+            } catch (error) {
+                if (!state.pendingPartitionKeyCleanup) {
+                    throw error;
+                }
+                documentContent = state.pendingPartitionKeyCleanup.destination.documentContent;
+                documentPartitionKey = state.pendingPartitionKeyCleanup.destination.partitionKey;
+            }
         } else if (state.mode === 'add') {
             const result = await buildNewDocumentTemplate(connection, state.partitionKeyDefinition);
             documentContent = result?.documentContent;
@@ -381,14 +394,15 @@ async function updateDocument(
     if (partitionKeyChanged) {
         if (actionContext) actionContext.telemetry.properties.partitionKeyChanged = 'true';
 
-        if (state.documentEtag) {
+        let sourceEtag = state.documentEtag;
+        if (sourceEtag) {
             const currentDocument = await readDocument(
                 connection,
                 documentId,
                 ctx.signal,
                 state.partitionKeyDefinition,
             );
-            if (currentDocument && currentDocument.documentContent._etag !== state.documentEtag) {
+            if (currentDocument && currentDocument.documentContent._etag !== sourceEtag) {
                 const resolution = await promptForDocumentConflict();
                 if (resolution === 'discard') {
                     updateLoadedDocumentState(state, currentDocument);
@@ -397,7 +411,7 @@ async function updateDocument(
                 if (resolution !== 'overwrite') {
                     return { success: false, aborted: true } as const;
                 }
-                state.documentEtag = currentDocument.documentContent._etag;
+                sourceEtag = currentDocument.documentContent._etag;
             }
         }
 
@@ -421,11 +435,11 @@ async function updateDocument(
         }
 
         try {
-            await deletePartitionKeyMoveSource(connection, documentId, state.documentEtag);
+            await deletePartitionKeyMoveSource(connection, documentId, sourceEtag);
         } catch {
             state.pendingPartitionKeyCleanup = {
                 sourceIdentifier: documentId,
-                sourceEtag: state.documentEtag,
+                sourceEtag,
                 destination: result,
             };
             return {

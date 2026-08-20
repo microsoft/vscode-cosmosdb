@@ -6,7 +6,7 @@
 import { useTrpcClient } from '@cosmosdb/webview-rpc/react';
 import { makeStyles, Spinner, tokens } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     type AccountOverviewAppRouter,
     type AlertsResult,
@@ -15,21 +15,23 @@ import {
     type HealthState,
     type InventoryContainerRow,
     type InventoryMetricsResult,
+    type MetricKey,
+    type MetricSeriesResult,
     type PartitionDistributionMode,
     type PartitionHealthResult,
     type RecommendationsResult,
-    type RuTrendsResult,
     type TimeRange,
+    type UnavailableReason,
 } from '../../api/types';
 import { AccountHeader, type AccountSummary } from './AccountHeader';
 import { ActiveAlerts } from './ActiveAlerts';
 import { DashboardActionsProvider, DashboardCard, SectionHeader } from './DashboardChrome';
 import { DerivedAdvisories } from './DerivedAdvisories';
 import { InventoryTable } from './InventoryTable';
+import { type ContainerRef, type MetricScope, METRIC_ORDER } from './metrics/descriptors';
+import { MetricsSection } from './metrics/MetricsSection';
 import { PartitionHealth } from './PartitionHealth';
 import { Recommendations } from './Recommendations';
-import { type ContainerRef, RuTrendsChart } from './RuTrendsChart';
-import { SummaryMetrics } from './SummaryMetrics';
 
 const AUTO_REFRESH_INTERVAL_MS = 60_000;
 /** Lightweight inventory metrics poll; staggered from the 60 s trends poll. */
@@ -73,7 +75,9 @@ const useStyles = makeStyles({
     },
     layout: {
         display: 'flex',
-        alignItems: 'flex-start',
+        // Stretch the two columns to a common height so the rail can match the taller main column (the rail's own
+        // content never drives the row height because its growable card can shrink — see `advisoriesCard`).
+        alignItems: 'stretch',
         gap: tokens.spacingHorizontalL,
         flexWrap: 'wrap',
     },
@@ -90,7 +94,18 @@ const useStyles = makeStyles({
         gap: tokens.spacingVerticalL,
         flex: '1 1 300px',
         minWidth: 0,
+        // Allow the flex children to shrink below their content size so the growable advisories card can bound
+        // itself and scroll internally instead of stretching the whole panel taller.
+        minHeight: 0,
         maxWidth: '420px',
+    },
+    // The Derived Advisories card fills whatever vertical space is left in the rail after the fixed cards, matching
+    // the main column's height. `flex: 1 1 0` + `minHeight: 0` lets it grow to fill yet shrink to nothing, so its
+    // (potentially long) content never drives the row taller; the list scrolls inside it instead.
+    advisoriesCard: {
+        flex: '1 1 0',
+        minHeight: 0,
+        overflow: 'hidden',
     },
     loading: {
         display: 'flex',
@@ -102,6 +117,8 @@ const useStyles = makeStyles({
 
 type Inventory = {
     supported: boolean;
+    available: boolean;
+    reason?: UnavailableReason;
     rows: InventoryContainerRow[];
 };
 
@@ -112,10 +129,10 @@ export const AccountOverview = () => {
     const [summary, setSummary] = useState<AccountSummary | undefined>(undefined);
     const [inventory, setInventory] = useState<Inventory | undefined>(undefined);
     const [inventoryMetrics, setInventoryMetrics] = useState<InventoryMetricsResult | undefined>(undefined);
-    const [trends, setTrends] = useState<RuTrendsResult | undefined>(undefined);
+    const [trends, setTrends] = useState<Partial<Record<MetricKey, MetricSeriesResult>>>({});
     const [trendsLoading, setTrendsLoading] = useState(true);
     const [timeRange, setTimeRange] = useState<TimeRange>('24H');
-    const [selectedContainer, setSelectedContainer] = useState<ContainerRef | undefined>(undefined);
+    const [selectedContainer, setSelectedContainer] = useState<MetricScope | undefined>(undefined);
     const [partitionMode, setPartitionMode] = useState<PartitionDistributionMode>('ru');
     const [partitionContainer, setPartitionContainer] = useState<ContainerRef | undefined>(undefined);
     const [partitionHealth, setPartitionHealth] = useState<PartitionHealthResult | undefined>(undefined);
@@ -130,6 +147,8 @@ export const AccountOverview = () => {
     const [dismissedAdvisoryIds, setDismissedAdvisoryIds] = useState<ReadonlySet<string>>(() => new Set());
     const [paused, setPaused] = useState(false);
     const [lastRefreshedAt, setLastRefreshedAt] = useState(() => Date.now());
+    // Monotonic id of the latest in-flight trends request; only that request may commit its result.
+    const trendsRequestSeq = useRef(0);
 
     const reportEvent = useCallback(
         (eventName: string, properties?: Record<string, string>, measurements?: Record<string, number>) => {
@@ -145,19 +164,55 @@ export const AccountOverview = () => {
     }, [trpcClient]);
 
     const fetchTrends = useCallback(
-        (range: TimeRange, container?: ContainerRef) => {
+        async (range: TimeRange, container?: MetricScope) => {
+            // Guard against out-of-order responses: range/scope changes and manual refreshes can leave
+            // several requests in flight, and a slower older one must not overwrite a newer result. Only
+            // the most recently issued request is allowed to commit its state.
+            const requestId = ++trendsRequestSeq.current;
             setTrendsLoading(true);
-            return trpcClient.accountOverview.getRuTrends
-                .query({
-                    timeRange: range,
-                    databaseId: container?.databaseId,
-                    containerId: container?.containerId,
-                })
-                .then((result: RuTrendsResult) => {
-                    setTrends(result);
-                    setLastRefreshedAt(Date.now());
-                })
-                .finally(() => setTrendsLoading(false));
+            try {
+                // Load each metric independently: one failing request (transport/transient error) should
+                // degrade just that tile to an unavailable placeholder, not reject the whole batch and
+                // leave every tile stale via an unhandled rejection.
+                const outcomes = await Promise.allSettled(
+                    METRIC_ORDER.map(async (metric) => {
+                        const result = await trpcClient.accountOverview.getMetricSeries.query({
+                            metric,
+                            timeRange: range,
+                            databaseId: container?.databaseId,
+                            containerId: container?.containerId,
+                        });
+                        return [metric, result] as const;
+                    }),
+                );
+                if (requestId !== trendsRequestSeq.current) {
+                    return;
+                }
+                const next: Partial<Record<MetricKey, MetricSeriesResult>> = {};
+                METRIC_ORDER.forEach((metric, index) => {
+                    const outcome = outcomes[index];
+                    if (outcome.status === 'fulfilled') {
+                        next[outcome.value[0]] = outcome.value[1];
+                    } else {
+                        next[metric] = {
+                            metric,
+                            available: false,
+                            reason: 'noData',
+                            points: [],
+                            timeRange: range,
+                            databaseId: container?.databaseId,
+                            containerId: container?.containerId,
+                            generatedAt: Date.now(),
+                        };
+                    }
+                });
+                setTrends(next);
+                setLastRefreshedAt(Date.now());
+            } finally {
+                if (requestId === trendsRequestSeq.current) {
+                    setTrendsLoading(false);
+                }
+            }
         },
         [trpcClient],
     );
@@ -232,11 +287,20 @@ export const AccountOverview = () => {
     useEffect(() => {
         let cancelled = false;
         void fetchSummary();
-        void trpcClient.accountOverview.getInventory.query().then((result: Inventory) => {
-            if (!cancelled) {
-                setInventory(result);
-            }
-        });
+        void trpcClient.accountOverview.getInventory
+            .query()
+            .then((result: Inventory) => {
+                if (!cancelled) {
+                    setInventory(result);
+                }
+            })
+            .catch(() => {
+                // A transport-level failure (the router already shapes ARM/RBAC errors) must still
+                // resolve the inventory state, otherwise the whole panel stays on the loading spinner.
+                if (!cancelled) {
+                    setInventory({ supported: true, available: false, reason: 'noData', rows: [] });
+                }
+            });
         return () => {
             cancelled = true;
         };
@@ -260,10 +324,15 @@ export const AccountOverview = () => {
         }
     }, [inventory, partitionContainer]);
 
-    // Keep the partition container synchronized with the inventory/chart selection.
+    // Mirror a container-scoped selection into the partition panel. The metrics scope dropdown only emits
+    // account/database scope today (no container drill-in is wired), so this effect is currently inert but
+    // kept so a future container-level selection flows through without extra plumbing.
     useEffect(() => {
-        if (selectedContainer) {
-            setPartitionContainer(selectedContainer);
+        if (selectedContainer?.containerId) {
+            setPartitionContainer({
+                databaseId: selectedContainer.databaseId,
+                containerId: selectedContainer.containerId,
+            });
         }
     }, [selectedContainer]);
 
@@ -425,14 +494,6 @@ export const AccountOverview = () => {
         [trpcClient, reportEvent],
     );
 
-    const handleShowInChart = useCallback(
-        (databaseId: string, containerId: string) => {
-            reportEvent('drillInOpened', { target: 'container' });
-            setSelectedContainer({ databaseId, containerId });
-        },
-        [reportEvent],
-    );
-
     const handleSelectPartitionContainer = useCallback(
         (container: ContainerRef) => {
             reportEvent('drillInOpened', { target: 'partition' });
@@ -492,25 +553,16 @@ export const AccountOverview = () => {
                             />
                         </DashboardCard>
 
-                        <SummaryMetrics rows={inventory.rows} supported={inventory.supported} trends={trends} />
-
-                        <DashboardCard>
-                            <SectionHeader
-                                title={l10n.t('Recent RU Usage Trends')}
-                                description={l10n.t(
-                                    'Consumed throughput versus the provisioned ceiling, with throttling windows highlighted.',
-                                )}
-                            />
-                            <RuTrendsChart
-                                trends={trends}
-                                loading={trendsLoading}
-                                timeRange={timeRange}
-                                onTimeRangeChange={setTimeRange}
-                                containers={containers}
-                                selected={selectedContainer}
-                                onSelectContainer={setSelectedContainer}
-                            />
-                        </DashboardCard>
+                        <MetricsSection
+                            order={METRIC_ORDER}
+                            seriesByMetric={trends}
+                            loading={trendsLoading}
+                            timeRange={timeRange}
+                            onTimeRangeChange={setTimeRange}
+                            containers={containers}
+                            selectedContainer={selectedContainer}
+                            onSelectContainer={setSelectedContainer}
+                        />
 
                         <DashboardCard>
                             <SectionHeader
@@ -522,10 +574,11 @@ export const AccountOverview = () => {
                             <InventoryTable
                                 rows={inventory.rows}
                                 supported={inventory.supported}
+                                available={inventory.available}
+                                reason={inventory.reason}
                                 metrics={inventoryMetrics?.available ? inventoryMetrics.metrics : undefined}
                                 onRevealInTree={handleRevealInTree}
                                 onOpenQueryEditor={handleOpenQueryEditor}
-                                onShowInChart={handleShowInChart}
                             />
                         </DashboardCard>
 
@@ -575,11 +628,11 @@ export const AccountOverview = () => {
                             />
                         </DashboardCard>
 
-                        <DashboardCard>
+                        <DashboardCard className={styles.advisoriesCard}>
                             <SectionHeader
                                 title={l10n.t('Derived Advisories')}
                                 description={l10n.t(
-                                    'Advisories computed from this account’s telemetry, not the Azure portal.',
+                                    "Advisories computed from this account's telemetry, not the Azure portal.",
                                 )}
                             />
                             <DerivedAdvisories

@@ -1,5 +1,19 @@
 # Change Log
 
+## 0.36.1
+
+### Fixed
+
+- Prevented document data loss and stale overwrites by detecting concurrent edits, preserving conflict recovery state, and cleaning up document sessions when their source disappears. (#3293)
+- Fixed external URI handling during extension activation. (#3294)
+- Fixed the Query Editor to refresh throughput bucket availability after the account's preview feature registration changes. (#3291)
+
+### Changed
+
+- Reduced the schema information sent to GitHub Copilot by NL2Query while preserving the statistics needed to generate queries. (#3292)
+- Hardened the Azure DevOps build pipeline with network isolation and updated component governance and signing tasks. (#3290)
+- Skipped coverage uploads when they are unsupported by the workflow context. (#3253)
+
 ## 0.36.0
 
 ### Added

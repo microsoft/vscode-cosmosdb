@@ -13,6 +13,7 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { API, getExperienceFromApi } from './AzureDBExperiences';
 import { openNoSqlQueryEditor } from './commands/openNoSqlQueryEditor/openNoSqlQueryEditor';
+import { azureResourcesExtensionId } from './constants';
 import {
     parseCosmosDBConnectionString,
     type ParsedCosmosDBConnectionString,
@@ -50,6 +51,19 @@ const supportedProviders = [
 export async function globalUriHandler(uri: vscode.Uri): Promise<void> {
     await callWithTelemetryAndErrorHandling('handleExternalUri', async (context: IActionContext) => {
         try {
+            const rgApiV2 = await ext.rgApiV2Ready;
+            if (!rgApiV2) {
+                context.errorHandling.buttons = [
+                    {
+                        title: l10n.t('Install Azure Resources extension'),
+                        callback: async () => {
+                            await vscode.commands.executeCommand('extension.open', azureResourcesExtensionId);
+                        },
+                    },
+                ];
+                throw new Error(l10n.t('Azure Resources is unavailable.'));
+            }
+
             // Extract and validate parameters
             const params = extractAndValidateParams(context, uri.query);
 

@@ -468,9 +468,21 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
                     containerSchema: event.containerSchema as JSONSchema | null,
                 });
                 break;
+            case 'throughputBucketsRefreshRequested':
+                void this.refreshThroughputBuckets();
+                break;
             case 'runActiveQueryRequested':
                 void this.runActiveQueryFromTool(event.query);
                 break;
+        }
+    }
+
+    private async refreshThroughputBuckets(): Promise<void> {
+        try {
+            const throughputBuckets = await this.trpcClient.queryEditor.refreshThroughputBuckets.mutate();
+            this.dispatch({ type: 'updateThroughputBuckets', throughputBuckets });
+        } catch {
+            // Error notification is handled by the tRPC errorLink middleware. Keep the last known availability.
         }
     }
 

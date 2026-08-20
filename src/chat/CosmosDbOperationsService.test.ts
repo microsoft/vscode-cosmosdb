@@ -6,6 +6,7 @@
 /// <reference types="vitest/globals" />
 
 import { type SerializedQueryResult } from '../cosmosdb/types/queryResult';
+import { findConfidentialStatKeys } from '../services/schemaStatisticsTestUtils';
 import { CosmosDbOperationsService } from './CosmosDbOperationsService';
 
 // ─── Shared string constants (used in both mock setup and assertions) ────────
@@ -239,6 +240,34 @@ describe('CosmosDbOperationsService', () => {
             const result = service.getQueryHistoryContext(mockEditor);
 
             expect(result).toBeUndefined();
+        });
+    });
+
+    describe('confidentiality (no raw document values in stored schema)', () => {
+        it('stores a schema stripped of value-derived statistics', () => {
+            service.recordQueryExecution(
+                'acc1',
+                'db1',
+                'c1',
+                makeResult({
+                    query: QUERY_SELECT_ALL,
+                    documents: [
+                        { id: '1', salary: 987654, nationalId: 'AB-123456789', active: true },
+                        { id: '2', salary: 42, nationalId: 'CD-9', active: false },
+                    ],
+                }),
+            );
+
+            const history = service.getQueryHistoryForContainer('acc1', 'db1', 'c1');
+            const entry = history!.executions[0];
+
+            expect(entry.schema).toBeDefined();
+            expect(findConfidentialStatKeys(entry.schema)).toEqual([]);
+            // The actual sensitive numeric value must not survive anywhere in the stored schema.
+            expect(JSON.stringify(entry.schema)).not.toContain('987654');
+            // Structure is still retained so the schema remains useful to the model.
+            const props = (entry.schema as any).properties as Record<string, unknown>;
+            expect(Object.keys(props)).toEqual(expect.arrayContaining(['salary', 'nationalId', 'active']));
         });
     });
 });

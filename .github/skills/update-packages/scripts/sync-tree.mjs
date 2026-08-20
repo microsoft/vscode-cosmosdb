@@ -27,7 +27,7 @@ import { dirname, join } from 'node:path';
 const LOCK = 'package-lock.json';
 const NPM = (process.env.NPM_REGISTRY || 'https://registry.npmjs.org/').replace(/\/?$/, '/');
 const CONCURRENCY = Number(process.env.CONCURRENCY || 8);
-const NPMJS_HOST = 'registry.npmjs.org';
+const NPMJS_HOST = new URL(NPM).host;
 const NPM_CLI = join(dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js');
 const NPM_COMMAND = process.platform === 'win32' ? process.execPath : 'npm';
 const NPM_PREFIX = process.platform === 'win32' ? [NPM_CLI] : [];
@@ -44,8 +44,8 @@ const pkgName = (key) => key.split('node_modules/').pop();
 const targets = [];
 for (const [key, entry] of Object.entries(lock.packages ?? {})) {
     if (!entry || typeof entry.resolved !== 'string') continue;
-    if (entry.resolved.includes(NPMJS_HOST)) continue;
     if (!/^https?:/.test(entry.resolved)) continue; // skip file:/link:/git: specs
+    if (new URL(entry.resolved).host === NPMJS_HOST) continue;
     targets.push({ key, name: pkgName(key), version: entry.version });
 }
 
@@ -53,7 +53,7 @@ const cache = new Map();
 function packument(name) {
     if (cache.has(name)) return cache.get(name);
     const p = (async () => {
-        const url = NPM + name.replace('/', '%2f');
+        const url = NPM + encodeURIComponent(name);
         for (let attempt = 1; ; attempt++) {
             try {
                 const res = await fetch(url, { headers: { accept: 'application/vnd.npm.install-v1+json' } });

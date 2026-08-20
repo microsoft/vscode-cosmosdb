@@ -96,7 +96,7 @@ try {
     function packument(name) {
         let pending = cache.get(name);
         if (pending) return pending;
-        const url = NPM + name.replace('/', '%2F');
+        const url = NPM + encodeURIComponent(name);
         pending = (async () => {
             for (let attempt = 1; ; attempt++) {
                 try {

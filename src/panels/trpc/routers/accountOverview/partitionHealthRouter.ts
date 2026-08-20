@@ -58,10 +58,6 @@ export const partitionHealthProcedures = {
                     skewScore: 0,
                     topPartitionShare: 0,
                     partitionCount: 0,
-                    hotThresholdPercent:
-                        input.mode === 'ru'
-                            ? DEFAULT_PARTITION_THRESHOLDS.hotRuSharePercent
-                            : DEFAULT_PARTITION_THRESHOLDS.skewedStorageSharePercent,
                     topN: DEFAULT_PARTITION_THRESHOLDS.topN,
                     generatedAt: Date.now(),
                 });

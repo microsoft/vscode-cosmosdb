@@ -23,7 +23,8 @@ const lock = JSON.parse(fs.readFileSync(LOCK, 'utf8'));
 // Baseline lockfile from HEAD, to tell apart entries this run changed from pre-existing ones.
 let head = { packages: {} };
 try {
-    head = JSON.parse(execFileSync('git', ['show', 'HEAD:' + LOCK], { encoding: 'utf8', maxBuffer: 1 << 30 }));
+    // `:./` makes the path cwd-relative, so this also works when run inside a subproject (multi-lockfile repo).
+    head = JSON.parse(execFileSync('git', ['show', 'HEAD:./' + LOCK], { encoding: 'utf8', maxBuffer: 1 << 30 }));
 } catch {
     console.warn('warning: could not read HEAD:package-lock.json — treating every entry as changed');
 }

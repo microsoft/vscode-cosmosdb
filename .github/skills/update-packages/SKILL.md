@@ -223,9 +223,24 @@ editing `package.json`.
    That command must return nothing. (A pre-existing feed URL elsewhere in the lockfile that your diff did
    **not** touch is out of scope — do not rewrite it, because its `integrity` was computed from the feed
    tarball and changing only the host would break `npm ci`.)
-3. **package.json untouched:** `git diff --quiet -- package.json` must exit `0`.
-4. **Diff scope:** the diff should be limited to `package-lock.json` (and `package.json` only if the user
-   explicitly opted into range bumps, which this skill does not do by default).
+3. **No manifest touched (git-state driven, workspace-aware).** This is an npm **workspaces monorepo**
+   (`workspaces` in the root `package.json`), so there are **multiple** `package.json` files (root +
+   `packages/*`) but a **single** root `package-lock.json`. Don't check only the root manifest — read the
+   actual git state and assert that **no** `package.json` anywhere changed:
+   ```
+   git diff --name-only -- '**/package.json' 'package.json'
+   ```
+   That must return nothing. (`npm update --package-lock-only` should never edit a manifest, but a workspace
+   `package.json` slipping into the diff means something re-resolved ranges — investigate, don't commit it.)
+4. **Diff scope (git-state driven).** Confirm the full changed set is exactly the intended lockfile(s):
+   ```
+   git diff --name-only
+   ```
+   For npm workspaces this must be exactly `package-lock.json`. If the repo instead has **several**
+   independent lockfiles (nested projects each with their own `package-lock.json`, not npm workspaces), the
+   set is those lockfiles — and Phase C step 1 / the rewrite helper must be run **per lockfile** (`cd` into
+   each project), since each has its own `resolved`/`integrity` entries. Anything else in the diff is out of
+   scope; back it out.
 
 ### Phase E — Validate the build
 
@@ -284,8 +299,9 @@ is green on CI) should be identified as such and reported, not "fixed" by unrela
 
 ## Constraints
 
-- **Never touch `package.json`** unless the user explicitly asks to bump the declared ranges. Default is
-  lockfile-only, within existing ranges.
+- **Never touch any `package.json`** (root **or** workspace/`packages/*`) unless the user explicitly asks to
+  bump the declared ranges. Default is lockfile-only, within existing ranges. Verify with git state across
+  all manifests (Phase D step 3), not just the root file.
 - **Never write a feed host into a `resolved` URL.** Tarballs come from npmjs.org; the feed is used only to
   discover and gate versions.
 - **Never mix registries for one version.** The `integrity` in the lockfile must match the `resolved`

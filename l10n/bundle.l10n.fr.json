@@ -763,7 +763,7 @@
   "Others": "Autres",
   "Output document count": "Nombre de documents de sortie",
   "Output document size": "Taille du document de sortie",
-  "Overwrite": "Overwrite",
+  "Overwrite": "Remplacer",
   "Page through results": "Parcourir les résultats",
   "Parameters": "Réglages",
   "Partition distribution heatmap with {count} physical partitions": "Carte thermique de distribution de partitions avec {count} partitions physiques",

@@ -586,6 +586,18 @@
       },
       {
         "category": "Cosmos DB",
+        "command": "cosmosDB.dataModeling.open",
+        "title": "%cosmosdb.command.dataModeling.open%",
+        "icon": "$(type-hierarchy)"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.dataModeling.openDrawer",
+        "title": "%cosmosdb.command.dataModeling.openDrawer%",
+        "icon": "$(layout-sidebar-right)"
+      },
+      {
+        "category": "Cosmos DB",
         "command": "cosmosDB.e2e.openQueryEditor",
         "title": "[E2E Test] Open Query Editor"
       },

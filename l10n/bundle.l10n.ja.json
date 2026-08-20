@@ -763,7 +763,7 @@
   "Others": "その他",
   "Output document count": "出力ドキュメント数",
   "Output document size": "出力ドキュメントのサイズ",
-  "Overwrite": "Overwrite",
+  "Overwrite": "上書き",
   "Page through results": "結果のページング",
   "Parameters": "パラメーター",
   "Partition distribution heatmap with {count} physical partitions": "{count} 個の物理パーティションを含むパーティション分布ヒートマップ",

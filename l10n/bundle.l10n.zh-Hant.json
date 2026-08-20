@@ -763,7 +763,7 @@
   "Others": "其他",
   "Output document count": "輸出文件計數",
   "Output document size": "輸出文件大小",
-  "Overwrite": "Overwrite",
+  "Overwrite": "覆寫",
   "Page through results": "逐頁檢視結果",
   "Parameters": "參數",
   "Partition distribution heatmap with {count} physical partitions": "具有 {count} 實體分割區的磁碟分割分佈熱度圖",

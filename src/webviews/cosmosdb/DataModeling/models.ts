@@ -118,21 +118,4 @@ export interface ScoringWeights {
     storage: number;
 }
 
-/** Complete, serializable wizard state. */
-export interface WizardState {
-    step: number;
-    scenario?: ScenarioId;
-    containers: ContainerModel[];
-    activeContainerId?: string;
-    reads: ReadQuery[];
-    writes: WriteOps;
-    scale: ScaleProfile;
-    weights: ScoringWeights;
-}
-
 export const TOTAL_STEPS = 6;
-
-export interface WizardStepDescriptor {
-    index: number;
-    label: string;
-}

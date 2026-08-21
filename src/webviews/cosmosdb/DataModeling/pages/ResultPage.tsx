@@ -7,7 +7,7 @@ import { Button, makeStyles, mergeClasses, Tab, TabList, Text, tokens } from '@f
 import { CopyRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useMemo, useState } from 'react';
-import { FieldGroup, PageHeader, SubPanel } from '../components/primitives';
+import { FieldGroup, SubPanel } from '../components/primitives';
 import { WeightSliders } from '../components/WeightSliders';
 import { type ContainerModel, type ScoringWeights } from '../models';
 import {
@@ -298,7 +298,7 @@ export function ResultPage({
 
     return (
         <div className={styles.stack}>
-            <PageHeader title={l10n.t('Partition key recommendation')} description={result.summary} />
+            <Text>{result.summary}</Text>
 
             {containers.length > 1 ? (
                 <div className={styles.containerBar}>

@@ -30,7 +30,8 @@ import {
 import { ArrowUploadRegular, DismissRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { type ChangeEvent, type KeyboardEvent, useRef, useState } from 'react';
-import { FieldGroup, MythBox, PageHeader, SubPanel, TwoColumn } from '../components/primitives';
+import { FieldGroup, MythBox, SubPanel, TwoColumn } from '../components/primitives';
+import { type DataModel } from '../dataModel';
 import { inferSchemaFromJson } from '../jsonInference';
 import {
     type ArrayUpdatePattern,
@@ -180,20 +181,12 @@ const ADD_TAB = '__add_container__';
 type PendingConfirm = { kind: 'remove'; containerId: string } | { kind: 'upload'; file: File };
 
 export interface DataPageProps {
-    containers: ContainerModel[];
-    activeContainerId?: string;
+    model: DataModel;
     scenarioLabel?: string;
-    onSetActive: (id: string) => void;
-    onChangeContainers: (containers: ContainerModel[]) => void;
+    onChange: (next: DataModel) => void;
 }
 
-export function DataPage({
-    containers,
-    activeContainerId,
-    scenarioLabel,
-    onSetActive,
-    onChangeContainers,
-}: DataPageProps) {
+export function DataPage({ model, scenarioLabel, onChange }: DataPageProps) {
     const styles = useStyles();
     const [draftTag, setDraftTag] = useState('');
     const [uploadInfo, setUploadInfo] = useState<string>();
@@ -202,6 +195,13 @@ export function DataPage({
     const fileRef = useRef<HTMLInputElement>(null);
     const roleOptions = getRoleOptions();
     const arrayOptions = getArrayUpdateOptions();
+
+    const { containers, activeContainerId } = model;
+
+    // Local adapters keep the rest of the page working on containers while writing back the
+    // whole DataModel. The wizard re-derives PK candidates from the updated schema.
+    const onChangeContainers = (next: ContainerModel[]) => onChange({ ...model, containers: next });
+    const onSetActive = (id: string) => onChange({ ...model, activeContainerId: id });
 
     const active = containers.find((c) => c.id === activeContainerId) ?? containers[0];
 
@@ -352,13 +352,6 @@ export function DataPage({
 
     return (
         <div>
-            <PageHeader
-                title={l10n.t("Describe your container's data")}
-                description={l10n.t(
-                    'Switch tabs to design each container — every container gets its own partition-key recommendation. Edit properties to shape the schema.',
-                )}
-            />
-
             <TwoColumn>
                 <aside className={styles.sidebar}>
                     <SubPanel title={l10n.t('Why this matters')}>

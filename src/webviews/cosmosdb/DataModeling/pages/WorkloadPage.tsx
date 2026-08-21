@@ -7,7 +7,6 @@ import { Badge, Input, makeStyles, Text, tokens } from '@fluentui/react-componen
 import { SearchRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useMemo, useState } from 'react';
-import { PageHeader } from '../components/primitives';
 import { SelectableCard } from '../components/SelectableCard';
 import { type ScenarioId } from '../models';
 import { getScenarioList, type ScenarioBadge } from '../scenarios';
@@ -80,13 +79,6 @@ export function WorkloadPage({ scenario, onPickScenario }: WorkloadPageProps) {
 
     return (
         <div>
-            <PageHeader
-                title={l10n.t('What kind of workload are you building?')}
-                description={l10n.t(
-                    "Pick the closest pattern. We'll pre-fill typical partition key (PK) candidates and defaults.",
-                )}
-            />
-
             <Input
                 className={styles.search}
                 contentBefore={<SearchRegular />}

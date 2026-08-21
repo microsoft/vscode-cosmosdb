@@ -6,15 +6,8 @@
 import { Button, Input, makeStyles, Text, tokens } from '@fluentui/react-components';
 import { AddRegular, DismissRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import {
-    MetricPill,
-    PageHeader,
-    PillRow,
-    SectionHead,
-    SidebarInfo,
-    SubPanel,
-    TwoColumn,
-} from '../components/primitives';
+import { MetricPill, PillRow, SectionHead, SidebarInfo, SubPanel, TwoColumn } from '../components/primitives';
+import { getAvgDocSizeKb, type DataModel } from '../dataModel';
 import { type ReadQuery, type WriteOps } from '../models';
 import { nextId } from '../scenarios';
 
@@ -60,15 +53,17 @@ const useStyles = makeStyles({
 });
 
 export interface QueriesPageProps {
-    reads: ReadQuery[];
-    writes: WriteOps;
-    avgDocSizeKb: number;
-    onChangeReads: (reads: ReadQuery[]) => void;
-    onChangeWrites: (writes: WriteOps) => void;
+    model: DataModel;
+    onChange: (next: DataModel) => void;
 }
 
-export function QueriesPage({ reads, writes, avgDocSizeKb, onChangeReads, onChangeWrites }: QueriesPageProps) {
+export function QueriesPage({ model, onChange }: QueriesPageProps) {
     const styles = useStyles();
+
+    const { reads, writes } = model;
+    const avgDocSizeKb = getAvgDocSizeKb(model);
+    const onChangeReads = (next: ReadQuery[]) => onChange({ ...model, reads: next });
+    const onChangeWrites = (next: WriteOps) => onChange({ ...model, writes: next });
 
     const patchRead = (id: string, patch: Partial<ReadQuery>) =>
         onChangeReads(reads.map((r) => (r.id === id ? { ...r, ...patch } : r)));
@@ -84,11 +79,6 @@ export function QueriesPage({ reads, writes, avgDocSizeKb, onChangeReads, onChan
 
     return (
         <div>
-            <PageHeader
-                title={l10n.t('What are your most common queries?')}
-                description={l10n.t("Your dominant query's WHERE filter should be the partition key.")}
-            />
-
             <TwoColumn>
                 <SidebarInfo
                     title={l10n.t('Query alignment is critical')}

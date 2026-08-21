@@ -14,19 +14,6 @@ import { makeStyles, mergeClasses, Text, tokens } from '@fluentui/react-componen
 import { type PropsWithChildren, type ReactNode } from 'react';
 
 const useStyles = makeStyles({
-    pageHeader: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: tokens.spacingVerticalXS,
-        marginBottom: tokens.spacingVerticalL,
-    },
-    pageTitle: {
-        fontSize: tokens.fontSizeBase500,
-        fontWeight: tokens.fontWeightSemibold,
-    },
-    pageDesc: {
-        color: tokens.colorNeutralForeground3,
-    },
     // Responsive 2-column layout: sidebar collapses under the main content on narrow widths.
     twoCol: {
         display: 'grid',
@@ -155,18 +142,6 @@ const useStyles = makeStyles({
         gap: tokens.spacingHorizontalS,
     },
 });
-
-export function PageHeader({ title, description }: { title: string; description: string }) {
-    const styles = useStyles();
-    return (
-        <div className={styles.pageHeader}>
-            <Text as="h2" className={styles.pageTitle}>
-                {title}
-            </Text>
-            <Text className={styles.pageDesc}>{description}</Text>
-        </div>
-    );
-}
 
 export function TwoColumn({ children, reverseOnNarrow }: PropsWithChildren<{ reverseOnNarrow?: boolean }>) {
     const styles = useStyles();

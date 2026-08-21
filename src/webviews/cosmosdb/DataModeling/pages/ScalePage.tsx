@@ -16,17 +16,9 @@ import {
     tokens,
 } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
-import {
-    FieldGroup,
-    MetricPill,
-    MythBox,
-    PageHeader,
-    PillRow,
-    SidebarInfo,
-    SubPanel,
-    TwoColumn,
-} from '../components/primitives';
+import { FieldGroup, MetricPill, MythBox, PillRow, SidebarInfo, SubPanel, TwoColumn } from '../components/primitives';
 import { SelectableCard } from '../components/SelectableCard';
+import { getAvgDocSizeKb, type DataModel } from '../dataModel';
 import { type DataGrowth, type ItemsPerPartition, type ScaleProfile, type WriteDistribution } from '../models';
 
 /**
@@ -91,13 +83,16 @@ function formatCount(n: number): string {
 }
 
 export interface ScalePageProps {
-    scale: ScaleProfile;
-    avgDocSizeKb: number;
-    onChangeScale: (scale: ScaleProfile) => void;
+    model: DataModel;
+    onChange: (next: DataModel) => void;
 }
 
-export function ScalePage({ scale, avgDocSizeKb, onChangeScale }: ScalePageProps) {
+export function ScalePage({ model, onChange }: ScalePageProps) {
     const styles = useStyles();
+
+    const { scale } = model;
+    const avgDocSizeKb = getAvgDocSizeKb(model);
+    const onChangeScale = (next: ScaleProfile) => onChange({ ...model, scale: next });
 
     const setDistinct = (id: string, distinctValues: number) =>
         onChangeScale({
@@ -111,11 +106,6 @@ export function ScalePage({ scale, avgDocSizeKb, onChangeScale }: ScalePageProps
 
     return (
         <div>
-            <PageHeader
-                title={l10n.t('Scale, distribution, and growth')}
-                description={l10n.t('Each logical partition: 20 GB storage limit, 10,000 RU/s throughput ceiling.')}
-            />
-
             <TwoColumn>
                 <SidebarInfo
                     title={l10n.t('Partition limits')}

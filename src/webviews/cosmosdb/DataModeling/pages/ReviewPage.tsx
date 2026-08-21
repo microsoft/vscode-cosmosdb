@@ -6,7 +6,7 @@
 import { Button, makeStyles, Text, tokens } from '@fluentui/react-components';
 import { CheckmarkCircleFilled } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { FieldGroup, InfoBox, PageHeader, TwoColumn } from '../components/primitives';
+import { FieldGroup, InfoBox, TwoColumn } from '../components/primitives';
 import { WeightSliders } from '../components/WeightSliders';
 import { type ContainerModel, type ScoringWeights } from '../models';
 
@@ -127,11 +127,6 @@ export function ReviewPage({ summary, containers, weights, onEditStep, onChangeW
 
     return (
         <div>
-            <PageHeader
-                title={l10n.t('Review your inputs')}
-                description={l10n.t('Click Edit to change any selection before analysis.')}
-            />
-
             <TwoColumn reverseOnNarrow>
                 <div className={styles.stack}>
                     <ReviewRow

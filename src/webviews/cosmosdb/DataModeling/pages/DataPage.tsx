@@ -324,6 +324,9 @@ export function DataPage({ model, scenarioLabel, onChange }: DataPageProps) {
             properties: [{ id: nextId('prop'), name: 'id', type: 'string', role: 'key', pkCandidate: true }],
             document: { attributeCount: 8, avgSizeKb: 1, maxSizeKb: 4 },
             arrays: { hasArrays: false, avgItems: 10, maxItems: 100, updatePattern: 'none' },
+            reads: [{ id: nextId('read'), pattern: '', filters: 'id', qps: 100 }],
+            writes: { insertsPerSec: 0, updatesPerSec: 0, deletesPerSec: 0 },
+            scale: { candidates: [], items: 'medium', writes: 'even', growth: 'slow' },
         };
         onChangeContainers([...containers, container]);
         onSetActive(container.id);

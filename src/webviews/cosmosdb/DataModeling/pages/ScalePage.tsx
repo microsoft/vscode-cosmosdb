@@ -18,7 +18,7 @@ import {
 import * as l10n from '@vscode/l10n';
 import { FieldGroup, MetricPill, MythBox, PillRow, SidebarInfo, SubPanel, TwoColumn } from '../components/primitives';
 import { SelectableCard } from '../components/SelectableCard';
-import { getAvgDocSizeKb, type DataModel } from '../dataModel';
+import { getActiveContainer, getAvgDocSizeKb, type DataModel, updateActiveContainer } from '../dataModel';
 import { type DataGrowth, type ItemsPerPartition, type ScaleProfile, type WriteDistribution } from '../models';
 
 /**
@@ -90,9 +90,12 @@ export interface ScalePageProps {
 export function ScalePage({ model, onChange }: ScalePageProps) {
     const styles = useStyles();
 
-    const { scale } = model;
+    // Scale is per-container: edit the active container's scale profile.
+    const active = getActiveContainer(model);
+    const scale = active?.scale ?? { candidates: [], items: 'medium', writes: 'even', growth: 'slow' };
     const avgDocSizeKb = getAvgDocSizeKb(model);
-    const onChangeScale = (next: ScaleProfile) => onChange({ ...model, scale: next });
+    const onChangeScale = (next: ScaleProfile) =>
+        onChange(updateActiveContainer(model, (c) => ({ ...c, scale: next })));
 
     const setDistinct = (id: string, distinctValues: number) =>
         onChangeScale({

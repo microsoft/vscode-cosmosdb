@@ -48,6 +48,7 @@ import {
 } from '@cosmosdb/webview-rpc/server';
 import {
     type AccountOverviewRouterContext,
+    type DataModelingRouterContext,
     type DocumentRouterContext,
     type MigrationRouterContext,
     type QueryEditorRouterContext,
@@ -125,3 +126,15 @@ export const accountOverviewProcedure = accountOverviewT.procedure
     .use(accountOverviewT.middleware(sharedTelemetryBody));
 export const accountOverviewRouter = accountOverviewT.router;
 export const accountOverviewCallerFactory = accountOverviewT.createCallerFactory;
+
+// ─── Data Modeling tRPC Instance ────────────────────────────────────────────
+
+const dataModelingT = initTRPC.context<DataModelingRouterContext>().create();
+
+/** Base procedure with logging + telemetry middleware already applied. */
+export const dataModelingProcedure = dataModelingT.procedure
+    .use(dataModelingT.middleware(sharedLoggingBody))
+    .use(dataModelingT.middleware(sharedTelemetryBody));
+export const dataModelingRouter = dataModelingT.router;
+export const dataModelingMergeRouters = dataModelingT.mergeRouters;
+export const dataModelingCallerFactory = dataModelingT.createCallerFactory;

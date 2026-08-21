@@ -3,11 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { useTrpcClient } from '@cosmosdb/webview-rpc/react';
 import { Button, Link, makeStyles, tokens } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { type DataModelingAppRouter, type DataModelingEvent, type PartitionKeyRecommendation } from '../../api/types';
 import { ContainerFooter } from './components/Container/ContainerFooter';
 import { ContainerHeader } from './components/Container/ContainerHeader';
+import { type RecommendationStatus } from './components/CopilotRecommendation';
 import { Wizard } from './components/Wizard/Wizard';
 import { WizardStep } from './components/Wizard/WizardStep';
 import {
@@ -70,7 +73,30 @@ function footerHint(step: number): string {
 
 export const DataModelingWizard = () => {
     const styles = useStyles();
+    const { trpcClient } = useTrpcClient<DataModelingAppRouter>();
     const [state, setState] = useState<WizardState>(createInitialState);
+
+    const [recommendationStatus, setRecommendationStatus] = useState<RecommendationStatus>('idle');
+    const [recommendation, setRecommendation] = useState<PartitionKeyRecommendation>();
+    const [recommendationError, setRecommendationError] = useState<string>();
+
+    // Stream the recommendation (or failure) that Copilot delivers via the
+    // cosmosdb_reportPartitionKeyRecommendation tool.
+    useEffect(() => {
+        const subscription = trpcClient.dataModeling.events.subscribe(undefined, {
+            onData: (event: DataModelingEvent) => {
+                if (event.type === 'recommendationReceived') {
+                    setRecommendation(event.recommendation);
+                    setRecommendationError(undefined);
+                    setRecommendationStatus('received');
+                } else {
+                    setRecommendationError(event.message);
+                    setRecommendationStatus('error');
+                }
+            },
+        });
+        return () => subscription.unsubscribe();
+    }, [trpcClient]);
 
     const patch = useCallback((partial: Partial<WizardState>) => setState((prev) => ({ ...prev, ...partial })), []);
 
@@ -113,11 +139,28 @@ export const DataModelingWizard = () => {
         }));
     }, []);
 
+    // Send the finished data model to Copilot Chat and wait for the tool callback.
+    const requestRecommendation = useCallback(() => {
+        setRecommendation(undefined);
+        setRecommendationError(undefined);
+        setRecommendationStatus('waiting');
+        void trpcClient.dataModeling.requestRecommendation
+            .mutate({ dataModelJson: JSON.stringify(state.dataModel) })
+            .catch(() => {
+                setRecommendationStatus('error');
+                setRecommendationError(l10n.t('Could not open Copilot Chat to request a recommendation.'));
+            });
+    }, [trpcClient, state.dataModel]);
+
     const canAdvance = state.step > 1 || !!state.scenario;
     const nextLabel = state.step === 5 ? l10n.t('Get Recommendation') : l10n.t('Next →');
 
     const onNext = () => {
         if (state.step < TOTAL_STEPS) {
+            // Leaving Review kicks off the Copilot request that the Result page awaits.
+            if (state.step === 5) {
+                requestRecommendation();
+            }
             goToStep(state.step + 1);
         }
     };
@@ -126,7 +169,12 @@ export const DataModelingWizard = () => {
             goToStep(state.step - 1);
         }
     };
-    const restart = () => setState(createInitialState());
+    const restart = () => {
+        setState(createInitialState());
+        setRecommendationStatus('idle');
+        setRecommendation(undefined);
+        setRecommendationError(undefined);
+    };
 
     // Footer is shown for the input steps (1-5); the Result step carries its own
     // actions (Apply / Copy / Start Over), so no wizard footer there. Back and Next
@@ -212,10 +260,10 @@ export const DataModelingWizard = () => {
                     summary={{
                         workload: scenarioLabel ?? l10n.t('Not selected'),
                         entity: activeContainer?.entity ?? '—',
-                        query: state.dataModel.reads[0]?.pattern || '—',
+                        query: activeContainer?.reads[0]?.pattern || '—',
                         scale: l10n.t('{items} items · {writes} writes', {
-                            items: state.dataModel.scale.items,
-                            writes: state.dataModel.scale.writes,
+                            items: activeContainer?.scale.items ?? '—',
+                            writes: activeContainer?.scale.writes ?? '—',
                         }),
                     }}
                     containers={state.dataModel.containers}
@@ -235,6 +283,10 @@ export const DataModelingWizard = () => {
                     containers={state.dataModel.containers}
                     activeContainerId={state.dataModel.activeContainerId}
                     weights={state.weights}
+                    recommendationStatus={recommendationStatus}
+                    recommendation={recommendation}
+                    recommendationError={recommendationError}
+                    onRetryRecommendation={requestRecommendation}
                     onChangeWeights={(weights) => patch({ weights })}
                     onSelectContainer={selectContainer}
                     onRestart={restart}

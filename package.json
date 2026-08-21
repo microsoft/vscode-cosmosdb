@@ -248,6 +248,102 @@
     },
     "languageModelTools": [
       {
+        "name": "cosmosdb_reportPartitionKeyRecommendation",
+        "displayName": "Report Partition Key Recommendation",
+        "modelDescription": "Displays a partition-key recommendation on the Result page of the open Cosmos DB Data Modeling wizard. Call this once after analyzing the data model the wizard sent, passing a structured recommendation: an overall summary and, for each container, the recommended partition key with a short rationale plus optional alternatives and keys to avoid. This is the only way the wizard receives the recommendation.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "cosmosdb_reportPartitionKeyRecommendation",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "summary": {
+              "type": "string",
+              "description": "One or two sentences summarizing the recommendation across all containers."
+            },
+            "containers": {
+              "type": "array",
+              "description": "Per-container recommendation.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "entity": {
+                    "type": "string",
+                    "description": "Name of the container this recommendation applies to."
+                  },
+                  "partitionKey": {
+                    "type": "string",
+                    "description": "Recommended partition-key path, e.g. \"/customerId\" or a hierarchical \"/tenantId, /userId\"."
+                  },
+                  "rationale": {
+                    "type": "string",
+                    "description": "Why this key is recommended (short text)."
+                  },
+                  "alternatives": {
+                    "type": "array",
+                    "description": "Viable alternative keys, each with a short note.",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "partitionKey": {
+                          "type": "string"
+                        },
+                        "reason": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "partitionKey",
+                        "reason"
+                      ],
+                      "additionalProperties": {
+                        "not": {}
+                      }
+                    }
+                  },
+                  "avoid": {
+                    "type": "array",
+                    "description": "Keys to avoid, each with the reason it is a poor fit.",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "partitionKey": {
+                          "type": "string"
+                        },
+                        "reason": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "partitionKey",
+                        "reason"
+                      ],
+                      "additionalProperties": {
+                        "not": {}
+                      }
+                    }
+                  }
+                },
+                "required": [
+                  "entity",
+                  "partitionKey",
+                  "rationale"
+                ],
+                "additionalProperties": {
+                  "not": {}
+                }
+              }
+            }
+          },
+          "required": [
+            "summary",
+            "containers"
+          ],
+          "additionalProperties": {
+            "not": {}
+          }
+        }
+      },
+      {
         "name": "cosmosdb_sampleContainerSchema",
         "displayName": "Sample Container Schema",
         "modelDescription": "Samples a few documents from the active Cosmos DB container to infer its schema (property names and types). Runs a cheap, read-only query. Use this when the container schema is unknown, to avoid guessing property names or casing. If the schema is already available (e.g. containerSchema from cosmosdb_getQueryEditorContext), you do not need to call this.",

@@ -12,7 +12,12 @@
  * into the webview bundle.
  */
 
-export type { AccountOverviewAppRouter, DocumentAppRouter, QueryEditorAppRouter } from '../../panels/trpc/appRouter';
+export type {
+    AccountOverviewAppRouter,
+    DataModelingAppRouter,
+    DocumentAppRouter,
+    QueryEditorAppRouter,
+} from '../../panels/trpc/appRouter';
 export type {
     AccountHealthSignals,
     AlertItem,
@@ -40,4 +45,9 @@ export type {
     UnavailableReason,
 } from '../../panels/accountOverview/services';
 export type { InventoryContainerRow, ThroughputMode } from '../../panels/trpc/routers/accountOverviewRouter';
+export type {
+    ContainerRecommendation,
+    DataModelingEvent,
+    PartitionKeyRecommendation,
+} from '../../panels/trpc/routers/dataModelingEventsRouter';
 export type { QueryEditorEvent } from '../../panels/trpc/routers/queryEditorEventsRouter';

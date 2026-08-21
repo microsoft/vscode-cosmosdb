@@ -7,7 +7,7 @@ import { Button, Input, makeStyles, Text, tokens } from '@fluentui/react-compone
 import { AddRegular, DismissRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { MetricPill, PillRow, SectionHead, SidebarInfo, SubPanel, TwoColumn } from '../components/primitives';
-import { getAvgDocSizeKb, type DataModel } from '../dataModel';
+import { getActiveContainer, getAvgDocSizeKb, type DataModel, updateActiveContainer } from '../dataModel';
 import { type ReadQuery, type WriteOps } from '../models';
 import { nextId } from '../scenarios';
 
@@ -60,10 +60,13 @@ export interface QueriesPageProps {
 export function QueriesPage({ model, onChange }: QueriesPageProps) {
     const styles = useStyles();
 
-    const { reads, writes } = model;
+    // Queries are per-container: edit the active container's reads and write rates.
+    const active = getActiveContainer(model);
+    const reads = active?.reads ?? [];
+    const writes = active?.writes ?? { insertsPerSec: 0, updatesPerSec: 0, deletesPerSec: 0 };
     const avgDocSizeKb = getAvgDocSizeKb(model);
-    const onChangeReads = (next: ReadQuery[]) => onChange({ ...model, reads: next });
-    const onChangeWrites = (next: WriteOps) => onChange({ ...model, writes: next });
+    const onChangeReads = (next: ReadQuery[]) => onChange(updateActiveContainer(model, (c) => ({ ...c, reads: next })));
+    const onChangeWrites = (next: WriteOps) => onChange(updateActiveContainer(model, (c) => ({ ...c, writes: next })));
 
     const patchRead = (id: string, patch: Partial<ReadQuery>) =>
         onChangeReads(reads.map((r) => (r.id === id ? { ...r, ...patch } : r)));

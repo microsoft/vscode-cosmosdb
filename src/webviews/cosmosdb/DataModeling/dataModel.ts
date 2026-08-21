@@ -4,44 +4,30 @@
  *--------------------------------------------------------------------------------------------*/
 
 /**
- * The single, unified structure that captures every input the user provides on the
- * **Data**, **Queries** and **Scale** pages of the wizard, plus the pure helpers that
- * build and derive it.
+ * The unified structure that captures every input the user provides on the **Data**,
+ * **Queries** and **Scale** pages of the wizard, plus the pure helpers that build and derive it.
  *
- * Each page reads its slice from a {@link DataModel} and writes back an updated
- * {@link DataModel}, so all workload input lives in one place instead of being spread
- * across separate wizard-state fields. The **Workload** page seeds a fully pre-filled
- * model per scenario via {@link buildDataModel}.
+ * The Data, Queries and Scale pages are all **per-container**: each {@link ContainerModel}
+ * carries its own schema, document shape, array profile, read patterns, write rates, and scale
+ * characteristics. A {@link DataModel} is therefore just the list of containers plus which one is
+ * active. The **Workload** page seeds a fully pre-filled model per scenario via
+ * {@link buildDataModel}.
  *
  * Kept free of React so the same logic can back a future generic wizard package or a
  * host-side seeding step.
  */
 
 import { type ContainerDefault, DATA_MODEL_DEFAULTS } from './dataModelDefaults';
-import {
-    type ContainerModel,
-    type PartitionCandidate,
-    type ReadQuery,
-    type ScaleProfile,
-    type ScenarioId,
-    type ScoringWeights,
-    type WriteOps,
-} from './models';
+import { type ContainerModel, type PartitionCandidate, type ScenarioId, type ScoringWeights } from './models';
 import { nextId } from './scenarios';
 
 /**
- * All workload input collected by the Data, Queries and Scale pages, in one structure.
- *
- * - {@link containers} / {@link activeContainerId} — Data page (schema, document shape, arrays).
- * - {@link reads} / {@link writes} — Queries page (read patterns and write rates).
- * - {@link scale} — Scale page (cardinality, distribution and growth).
+ * All workload input collected by the Data, Queries and Scale pages. Everything is per-container,
+ * so this is just the container list plus the active selection.
  */
 export interface DataModel {
     containers: ContainerModel[];
     activeContainerId?: string;
-    reads: ReadQuery[];
-    writes: WriteOps;
-    scale: ScaleProfile;
 }
 
 /** Top-level wizard state: navigation, the chosen scenario, the {@link DataModel}, and scoring weights. */
@@ -67,24 +53,7 @@ function estimateDistinctValues(name: string): number {
     return 1000;
 }
 
-function instantiateContainer(def: ContainerDefault): ContainerModel {
-    return {
-        id: nextId('container'),
-        entity: def.entity,
-        partitionKey: def.partitionKey,
-        properties: def.properties.map((p) => ({
-            id: nextId('prop'),
-            name: p.name,
-            type: p.type,
-            role: p.role,
-            pkCandidate: p.pkCandidate,
-        })),
-        document: { ...def.document },
-        arrays: { ...def.arrays },
-    };
-}
-
-/** Build the partition-key candidate rows for the Scale page from a container. */
+/** Build the partition-key candidate rows for the Scale page from a container's schema. */
 export function buildCandidates(container: ContainerModel | undefined): PartitionCandidate[] {
     if (!container) {
         return [];
@@ -99,6 +68,32 @@ export function buildCandidates(container: ContainerModel | undefined): Partitio
         }));
 }
 
+function instantiateContainer(def: ContainerDefault): ContainerModel {
+    const properties = def.properties.map((p) => ({
+        id: nextId('prop'),
+        name: p.name,
+        type: p.type,
+        role: p.role,
+        pkCandidate: p.pkCandidate,
+    }));
+    return {
+        id: nextId('container'),
+        entity: def.entity,
+        partitionKey: def.partitionKey,
+        properties,
+        document: { ...def.document },
+        arrays: { ...def.arrays },
+        reads: def.reads.map((r) => ({ id: nextId('read'), pattern: r.pattern, filters: r.filters, qps: r.qps })),
+        writes: { ...def.writes },
+        scale: {
+            candidates: buildCandidates({ properties } as ContainerModel),
+            items: def.scale.items,
+            writes: def.scale.writes,
+            growth: def.scale.growth,
+        },
+    };
+}
+
 /** The container currently being edited/viewed (falls back to the first one). */
 export function getActiveContainer(model: DataModel): ContainerModel | undefined {
     return model.containers.find((c) => c.id === model.activeContainerId) ?? model.containers[0];
@@ -109,44 +104,36 @@ export function getAvgDocSizeKb(model: DataModel): number {
     return getActiveContainer(model)?.document.avgSizeKb ?? 1;
 }
 
+/** Replace the active container in the model with an updated copy. */
+export function updateActiveContainer(model: DataModel, updater: (c: ContainerModel) => ContainerModel): DataModel {
+    const active = getActiveContainer(model);
+    if (!active) {
+        return model;
+    }
+    return { ...model, containers: model.containers.map((c) => (c.id === active.id ? updater(c) : c)) };
+}
+
 /**
- * Refresh the derived partition-key candidates from the active container's key/filter
- * properties. Call after the schema or active container changes (Data page); leaves the
- * rest of {@link DataModel.scale} untouched so user-edited distinct-value counts survive
- * edits made on the Scale page itself.
+ * Refresh the active container's derived partition-key candidates from its key/filter properties.
+ * Call after the schema or active container changes (Data page); leaves the rest of the
+ * container's scale untouched so user-edited distinct-value counts survive Scale-page edits.
  */
 export function withDerivedCandidates(model: DataModel): DataModel {
-    return { ...model, scale: { ...model.scale, candidates: buildCandidates(getActiveContainer(model)) } };
+    return updateActiveContainer(model, (c) => ({
+        ...c,
+        scale: { ...c.scale, candidates: buildCandidates(c) },
+    }));
 }
 
 /** Empty model shown before a scenario is chosen. */
 export function createEmptyDataModel(): DataModel {
-    return {
-        containers: [],
-        activeContainerId: undefined,
-        reads: [],
-        writes: { insertsPerSec: 0, updatesPerSec: 0, deletesPerSec: 0 },
-        scale: { candidates: [], items: 'medium', writes: 'even', growth: 'slow' },
-    };
+    return { containers: [], activeContainerId: undefined };
 }
 
 /** Fully pre-filled model built from a scenario's hardcoded defaults (Workload page selection). */
 export function buildDataModel(scenario: ScenarioId): DataModel {
-    const defaults = DATA_MODEL_DEFAULTS[scenario];
-    const containers = defaults.containers.map(instantiateContainer);
-    const active = containers[0];
-    return {
-        containers,
-        activeContainerId: active?.id,
-        reads: defaults.reads.map((r) => ({ id: nextId('read'), pattern: r.pattern, filters: r.filters, qps: r.qps })),
-        writes: { ...defaults.writes },
-        scale: {
-            candidates: buildCandidates(active),
-            items: defaults.scale.items,
-            writes: defaults.scale.writes,
-            growth: defaults.scale.growth,
-        },
-    };
+    const containers = DATA_MODEL_DEFAULTS[scenario].containers.map(instantiateContainer);
+    return { containers, activeContainerId: containers[0]?.id };
 }
 
 /** Initial wizard state shown before a scenario is chosen. */

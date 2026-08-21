@@ -26,6 +26,8 @@ import { type TelemetryContext } from '../../Telemetry';
 import { openSurvey, promptAfterActionEventually } from '../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../utils/surveyTypes';
 import { accountOverviewRouterDef } from './routers/accountOverviewRouter';
+import { type DataModelingEvent, dataModelingEventsRouterDef } from './routers/dataModelingEventsRouter';
+import { dataModelingRouterDef } from './routers/dataModelingRouter';
 import { documentRouterDef } from './routers/documentRouter';
 import { migrationEventsRouterDef, type MigrationEvent } from './routers/migrationEventsRouter';
 import { migrationRouterDef } from './routers/migrationRouter';
@@ -36,6 +38,10 @@ import {
     accountOverviewCallerFactory,
     accountOverviewProcedure,
     accountOverviewRouter,
+    dataModelingCallerFactory,
+    dataModelingMergeRouters,
+    dataModelingProcedure,
+    dataModelingRouter,
     documentCallerFactory,
     documentProcedure,
     documentRouter,
@@ -148,6 +154,11 @@ export type MigrationRouterContext = CosmosDBRouterContext & {
 
 export type AccountOverviewRouterContext = CosmosDBRouterContext & {
     metadata: AzureResourceMetadata;
+};
+
+export type DataModelingRouterContext = CosmosDBRouterContext & {
+    panel: vscode.WebviewPanel;
+    eventSink: TypedEventSink<DataModelingEvent>;
 };
 
 // ─── Common Procedures (per-instance) ───────────────────────────────────────
@@ -353,3 +364,14 @@ export const accountOverviewAppRouter = accountOverviewRouter({
 
 export type AccountOverviewAppRouter = typeof accountOverviewAppRouter;
 export { accountOverviewCallerFactory };
+
+// ─── Data Modeling App Router ───────────────────────────────────────────────
+
+export const dataModelingAppRouter = dataModelingRouter({
+    // oxlint-disable-next-line typescript/no-unsafe-assignment
+    common: buildCommonRouter(dataModelingProcedure, dataModelingRouter),
+    dataModeling: dataModelingMergeRouters(dataModelingRouterDef, dataModelingEventsRouterDef),
+});
+
+export type DataModelingAppRouter = typeof dataModelingAppRouter;
+export { dataModelingCallerFactory };

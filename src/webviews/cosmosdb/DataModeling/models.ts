@@ -78,6 +78,12 @@ export interface ContainerModel {
     properties: SchemaProperty[];
     document: DocumentShape;
     arrays: ArrayProfile;
+    /** Read query patterns for this container (Queries page). */
+    reads: ReadQuery[];
+    /** Write rates for this container (Queries page). */
+    writes: WriteOps;
+    /** Scale characteristics for this container (Scale page). */
+    scale: ScaleProfile;
 }
 
 export interface ReadQuery {

@@ -7,6 +7,8 @@ import { Button, makeStyles, mergeClasses, Tab, TabList, Text, tokens } from '@f
 import { CopyRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useMemo, useState } from 'react';
+import { type PartitionKeyRecommendation } from '../../../api/types';
+import { CopilotRecommendation, type RecommendationStatus } from '../components/CopilotRecommendation';
 import { FieldGroup, SubPanel } from '../components/primitives';
 import { WeightSliders } from '../components/WeightSliders';
 import { type ContainerModel, type ScoringWeights } from '../models';
@@ -233,6 +235,10 @@ export interface ResultPageProps {
     containers: ContainerModel[];
     activeContainerId?: string;
     weights: ScoringWeights;
+    recommendationStatus: RecommendationStatus;
+    recommendation?: PartitionKeyRecommendation;
+    recommendationError?: string;
+    onRetryRecommendation: () => void;
     onChangeWeights: (weights: ScoringWeights) => void;
     onSelectContainer: (id: string) => void;
     onRestart: () => void;
@@ -242,6 +248,10 @@ export function ResultPage({
     containers,
     activeContainerId,
     weights,
+    recommendationStatus,
+    recommendation,
+    recommendationError,
+    onRetryRecommendation,
     onChangeWeights,
     onSelectContainer,
     onRestart,
@@ -298,6 +308,14 @@ export function ResultPage({
 
     return (
         <div className={styles.stack}>
+            <CopilotRecommendation
+                status={recommendationStatus}
+                recommendation={recommendation}
+                error={recommendationError}
+                onRetry={onRetryRecommendation}
+            />
+
+            <Text weight="semibold">{l10n.t('Offline heuristic analysis')}</Text>
             <Text>{result.summary}</Text>
 
             {containers.length > 1 ? (

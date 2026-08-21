@@ -3,10 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Badge, Button, makeStyles, Spinner, Text, tokens } from '@fluentui/react-components';
+import { Button, makeStyles, Spinner, Text, tokens } from '@fluentui/react-components';
 import { SparkleRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { type PartitionKeyRecommendation } from '../../../api/types';
 
 /** Lifecycle of the Copilot partition-key recommendation request. */
 export type RecommendationStatus = 'idle' | 'waiting' | 'received' | 'error';
@@ -33,7 +32,7 @@ const useStyles = makeStyles({
     title: {
         fontWeight: tokens.fontWeightSemibold,
     },
-    waiting: {
+    row: {
         display: 'flex',
         alignItems: 'center',
         gap: tokens.spacingHorizontalM,
@@ -41,70 +40,25 @@ const useStyles = makeStyles({
     error: {
         color: tokens.colorPaletteRedForeground1,
     },
-    cards: {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-        gap: tokens.spacingHorizontalM,
-    },
-    card: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: tokens.spacingVerticalS,
-        padding: tokens.spacingHorizontalM,
-        borderRadius: tokens.borderRadiusMedium,
-        border: `1px solid ${tokens.colorNeutralStroke2}`,
-        backgroundColor: tokens.colorNeutralBackground1,
-    },
-    entity: {
-        fontWeight: tokens.fontWeightSemibold,
-    },
-    pk: {
-        fontFamily: tokens.fontFamilyMonospace,
-        fontSize: tokens.fontSizeBase400,
-        fontWeight: tokens.fontWeightSemibold,
-        color: tokens.colorBrandForeground1,
-    },
-    rationale: {
-        color: tokens.colorNeutralForeground2,
-    },
-    noteList: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: tokens.spacingVerticalXXS,
-        margin: 0,
-        paddingLeft: 0,
-        listStyle: 'none',
-    },
-    note: {
-        display: 'flex',
-        gap: tokens.spacingHorizontalXS,
-        alignItems: 'baseline',
-        fontSize: tokens.fontSizeBase200,
-    },
-    noteKey: {
-        fontFamily: tokens.fontFamilyMonospace,
-        whiteSpace: 'nowrap',
-    },
-    noteReason: {
-        color: tokens.colorNeutralForeground3,
-    },
-    sectionLabel: {
-        fontSize: tokens.fontSizeBase200,
-        fontWeight: tokens.fontWeightSemibold,
-        color: tokens.colorNeutralForeground3,
-        marginTop: tokens.spacingVerticalXS,
-    },
 });
 
-export interface CopilotRecommendationProps {
+export interface CopilotRecommendationStatusProps {
     status: RecommendationStatus;
-    recommendation?: PartitionKeyRecommendation;
     error?: string;
     onRetry: () => void;
 }
 
-export function CopilotRecommendation({ status, recommendation, error, onRetry }: CopilotRecommendationProps) {
+/**
+ * Status panel for the Copilot recommendation request. Renders the idle prompt, the in-flight
+ * waiting note, or an error with a retry. The `received` payload is rendered by the Result page
+ * itself, so this component shows nothing in that state.
+ */
+export function CopilotRecommendation({ status, error, onRetry }: CopilotRecommendationStatusProps) {
     const styles = useStyles();
+
+    if (status === 'received') {
+        return null;
+    }
 
     return (
         <section className={styles.panel} aria-live="polite">
@@ -114,7 +68,7 @@ export function CopilotRecommendation({ status, recommendation, error, onRetry }
             </div>
 
             {status === 'idle' ? (
-                <div className={styles.waiting}>
+                <div className={styles.row}>
                     <Text>{l10n.t('Ask Copilot to recommend the best partition key for this model.')}</Text>
                     <Button appearance="primary" onClick={onRetry}>
                         {l10n.t('Get Recommendation')}
@@ -123,7 +77,7 @@ export function CopilotRecommendation({ status, recommendation, error, onRetry }
             ) : null}
 
             {status === 'waiting' ? (
-                <div className={styles.waiting}>
+                <div className={styles.row}>
                     <Spinner size="tiny" />
                     <Text>
                         {l10n.t(
@@ -134,7 +88,7 @@ export function CopilotRecommendation({ status, recommendation, error, onRetry }
             ) : null}
 
             {status === 'error' ? (
-                <div className={styles.waiting}>
+                <div className={styles.row}>
                     <Text className={styles.error}>
                         {error ?? l10n.t('Copilot could not produce a recommendation.')}
                     </Text>
@@ -142,54 +96,6 @@ export function CopilotRecommendation({ status, recommendation, error, onRetry }
                         {l10n.t('Try again')}
                     </Button>
                 </div>
-            ) : null}
-
-            {status === 'received' && recommendation ? (
-                <>
-                    <Text>{recommendation.summary}</Text>
-                    <div className={styles.cards}>
-                        {recommendation.containers.map((c) => (
-                            <div key={c.entity} className={styles.card}>
-                                <Text className={styles.entity}>{c.entity}</Text>
-                                <Text className={styles.pk}>{c.partitionKey}</Text>
-                                <Text className={styles.rationale}>{c.rationale}</Text>
-                                {c.alternatives && c.alternatives.length > 0 ? (
-                                    <>
-                                        <Text className={styles.sectionLabel}>{l10n.t('Alternatives')}</Text>
-                                        <ul className={styles.noteList}>
-                                            {c.alternatives.map((a, i) => (
-                                                <li key={i} className={styles.note}>
-                                                    <Badge appearance="tint" color="informative">
-                                                        {a.partitionKey}
-                                                    </Badge>
-                                                    <span className={styles.noteReason}>{a.reason}</span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </>
-                                ) : null}
-                                {c.avoid && c.avoid.length > 0 ? (
-                                    <>
-                                        <Text className={styles.sectionLabel}>{l10n.t('Avoid')}</Text>
-                                        <ul className={styles.noteList}>
-                                            {c.avoid.map((a, i) => (
-                                                <li key={i} className={styles.note}>
-                                                    <Badge appearance="tint" color="danger">
-                                                        {a.partitionKey}
-                                                    </Badge>
-                                                    <span className={styles.noteReason}>{a.reason}</span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </>
-                                ) : null}
-                            </div>
-                        ))}
-                    </div>
-                    <Button appearance="subtle" size="small" onClick={onRetry}>
-                        {l10n.t('Ask again')}
-                    </Button>
-                </>
             ) : null}
         </section>
     );

@@ -24,7 +24,19 @@ function buildRecommendationPrompt(dataModelJson: string): string {
         '\n```\n\n' +
         'For EACH container, decide the best partition key. Weigh cardinality (favor high-cardinality keys), query alignment (the dominant read filters should be the partition key), write distribution (avoid hot partitions), and the 20 GB storage / 10,000 RU-per-second limits of a single logical partition. Consider a hierarchical partition key when one attribute is not enough.' +
         '\n\n' +
-        `When you have decided, call #${REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_NAME} exactly once with the structured recommendation for every container, so it is displayed in the Data Modeling wizard's Result page. Provide a short overall summary, and for each container the recommended partition key with a brief rationale, plus viable alternatives and keys to avoid where useful.`
+        `When you have decided, call #${REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_NAME} exactly once with the structured recommendation for every container, so it is displayed in the Data Modeling wizard's Result page.` +
+        '\n\n' +
+        'Provide a short overall `summary`, and for each container:' +
+        '\n' +
+        '- `partitionKey`: the recommended key path, and a `rationale` (1–2 sentences, may name the workload pattern).' +
+        '\n' +
+        '- `candidates`: 3–4 scored candidate keys ordered best first. Each has a `verdict` (recommended / alternative / avoid), a `score` 0–100 (higher is better), and 2–3 `assessments` — each a short rule `label` (e.g. "Query match", "Cardinality", "Immutability", "Write dist."), a `status` (pass / warn / fail / info), and a one-line `detail`. Include realistic "avoid" candidates (e.g. low-cardinality or time-bucketed keys) with low scores.' +
+        '\n' +
+        '- `hotPartitionRisk`: one row per candidate with a `risk` band (low / medium / high / severe) and a `pct` 0–100 (higher = more skew) for the comparison bars.' +
+        '\n' +
+        '- `queryRouting`: a `headline` (e.g. "1/3 reads single-partition with /conversationId"), a `routes` row per read pattern (`pattern`, `filters`, `qps` like "200/s", `routing` single/cross, `estCost` like "3 RU" or "50–100× RU"), and an `analysis` describing how to resolve cross-partition reads.' +
+        '\n' +
+        '- `documentIdStrategy`: a short access-pattern `tag` (e.g. "Query-driven access") and a `recommendation` for the document id.'
     );
 }
 

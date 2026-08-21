@@ -12,8 +12,8 @@ import { type ReadQuery, type WriteOps } from '../models';
 import { nextId } from '../scenarios';
 
 /**
- * Step 3 — Queries. Self-contained editor for read patterns and write rates.
- * RU estimates are illustrative (prototype), derived from the passed doc size.
+ * Queries tab of a container step. Self-contained editor for the active container's read
+ * patterns and write rates. RU estimates are illustrative (prototype), derived from doc size.
  */
 
 const useStyles = makeStyles({

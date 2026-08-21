@@ -22,9 +22,9 @@ import { getActiveContainer, getAvgDocSizeKb, type DataModel, updateActiveContai
 import { type DataGrowth, type ItemsPerPartition, type ScaleProfile, type WriteDistribution } from '../models';
 
 /**
- * Step 4 — Scale & distribution. Self-contained: distinct-value estimates,
- * items-per-partition, write distribution and growth. The projected size is an
- * illustrative estimate for the prototype.
+ * Scale tab of a container step. Self-contained: distinct-value estimates,
+ * items-per-partition, write distribution and growth for the active container.
+ * The projected size is an illustrative estimate for the prototype.
  */
 
 const useStyles = makeStyles({

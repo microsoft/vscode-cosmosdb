@@ -7,9 +7,10 @@
  * Domain models for the Data-Modeling (Partition Key Advisor) wizard.
  *
  * The wizard is a UI prototype: these types describe just enough shape to drive
- * the six pages and to be handed, unchanged, to a future generic wizard package.
- * Each page component receives a slice of {@link WizardState} plus an update
- * callback, so no page reaches into global state directly.
+ * the pages and to be handed, unchanged, to a future generic wizard package.
+ * The steps are dynamic — a Workload step, one step per modeled container, then
+ * Review and Result. Each page component receives a slice of {@link WizardState}
+ * plus an update callback, so no page reaches into global state directly.
  */
 
 export type ScenarioId =
@@ -124,4 +125,5 @@ export interface ScoringWeights {
     storage: number;
 }
 
-export const TOTAL_STEPS = 6;
+/** Upper bound on how many containers a single workload can model in the wizard. */
+export const MAX_CONTAINERS = 10;

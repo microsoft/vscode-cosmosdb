@@ -3,28 +3,41 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Button, makeStyles, mergeClasses, Tab, TabList, Text, tokens } from '@fluentui/react-components';
+import {
+    Badge,
+    Button,
+    makeStyles,
+    mergeClasses,
+    Tab,
+    TabList,
+    Table,
+    TableBody,
+    TableCell,
+    TableHeader,
+    TableHeaderCell,
+    TableRow,
+    Text,
+    tokens,
+} from '@fluentui/react-components';
 import { CopyRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useMemo, useState } from 'react';
-import { type PartitionKeyRecommendation } from '../../../api/types';
-import { CopilotRecommendation, type RecommendationStatus } from '../components/CopilotRecommendation';
-import { FieldGroup, SubPanel } from '../components/primitives';
-import { WeightSliders } from '../components/WeightSliders';
-import { type ContainerModel, type ScoringWeights } from '../models';
 import {
-    type AssessmentIcon,
-    buildContainerResult,
-    type CandidateType,
-    rankCandidates,
-    type RiskLevel,
-} from '../results';
+    type CandidateAssessment,
+    type ContainerRecommendation,
+    type HotPartitionRisk,
+    type PartitionKeyRecommendation,
+    type PkCandidate,
+} from '../../../api/types';
+import { CopilotRecommendation, type RecommendationStatus } from '../components/CopilotRecommendation';
+import { InfoBox, SubPanel } from '../components/primitives';
 
 /**
- * Step 6 — Result. Ranks partition-key candidates for the active container by a
- * weighted best-practice score, shows a hot-partition risk comparison, and lets
- * the user re-tune the scoring weights inline (the ranking updates live). All
- * scoring is illustrative prototype data.
+ * Result step. One tab per container, each showing Copilot's partition-key recommendation:
+ * scored candidate cards, a hot-partition risk comparison, a query-routing analysis, a
+ * document-id strategy, and a copyable infrastructure snippet with Apply / Copy actions. All
+ * content is LLM-driven — while the request is in flight the {@link CopilotRecommendation} panel
+ * shows a waiting note instead.
  */
 
 const useStyles = makeStyles({
@@ -33,12 +46,12 @@ const useStyles = makeStyles({
         flexDirection: 'column',
         gap: tokens.spacingVerticalL,
     },
-    containerBar: {
-        display: 'flex',
+    tabList: {
         flexWrap: 'wrap',
-        gap: tokens.spacingHorizontalS,
     },
-    // Ranked candidate cards adapt from multi-column to single column when narrow.
+    summary: {
+        color: tokens.colorNeutralForeground2,
+    },
     cards: {
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
@@ -66,7 +79,11 @@ const useStyles = makeStyles({
     badge: {
         fontSize: tokens.fontSizeBase200,
         fontWeight: tokens.fontWeightSemibold,
+        textTransform: 'uppercase',
     },
+    badgeRec: { color: tokens.colorPaletteGreenForeground1 },
+    badgeAlt: { color: tokens.colorBrandForeground1 },
+    badgeAvoid: { color: tokens.colorPaletteRedForeground1 },
     pk: {
         display: 'block',
         fontFamily: tokens.fontFamilyMonospace,
@@ -160,6 +177,16 @@ const useStyles = makeStyles({
     labelLow: { color: tokens.colorPaletteGreenForeground1 },
     labelMedium: { color: tokens.colorPaletteDarkOrangeForeground1 },
     labelHigh: { color: tokens.colorPaletteRedForeground1 },
+    routeSingle: { color: tokens.colorPaletteGreenForeground1, fontWeight: tokens.fontWeightSemibold },
+    routeCross: { color: tokens.colorPaletteRedForeground1, fontWeight: tokens.fontWeightSemibold },
+    analysis: {
+        marginTop: tokens.spacingVerticalM,
+        color: tokens.colorNeutralForeground2,
+        whiteSpace: 'pre-wrap',
+    },
+    strategyTag: {
+        marginBottom: tokens.spacingVerticalS,
+    },
     codeWrap: {
         position: 'relative',
     },
@@ -186,25 +213,25 @@ const useStyles = makeStyles({
         alignItems: 'center',
         gap: tokens.spacingHorizontalS,
         flexWrap: 'wrap',
-    },
-    spacer: {
-        marginLeft: 'auto',
+        marginTop: tokens.spacingVerticalM,
     },
 });
 
 type CodeTab = 'bicep' | 'terraform' | 'sdk';
 
 function buildCode(tab: CodeTab, entity: string, partitionKey: string): string {
+    const safeEntity = entity || 'Container';
+    const pk = partitionKey || '/id';
     switch (tab) {
         case 'bicep':
             return [
                 `resource container 'Microsoft.DocumentDB/.../containers@2024-05-15' = {`,
-                `  name: '${entity}'`,
+                `  name: '${safeEntity}'`,
                 `  properties: {`,
                 `    resource: {`,
-                `      id: '${entity}'`,
+                `      id: '${safeEntity}'`,
                 `      partitionKey: {`,
-                `        paths: [ '${partitionKey}' ]`,
+                `        paths: [ '${pk}' ]`,
                 `        kind: 'Hash'`,
                 `      }`,
                 `    }`,
@@ -213,204 +240,240 @@ function buildCode(tab: CodeTab, entity: string, partitionKey: string): string {
             ].join('\n');
         case 'terraform':
             return [
-                `resource "azurerm_cosmosdb_sql_container" "${entity.toLowerCase()}" {`,
-                `  name                = "${entity}"`,
-                `  partition_key_paths = ["${partitionKey}"]`,
+                `resource "azurerm_cosmosdb_sql_container" "${safeEntity.toLowerCase()}" {`,
+                `  name                  = "${safeEntity}"`,
+                `  partition_key_paths   = ["${pk}"]`,
                 `  partition_key_version = 2`,
                 `}`,
             ].join('\n');
         case 'sdk':
             return [
                 `var props = new ContainerProperties(`,
-                `    id: "${entity}",`,
-                `    partitionKeyPath: "${partitionKey}");`,
+                `    id: "${safeEntity}",`,
+                `    partitionKeyPath: "${pk}");`,
                 `await database.CreateContainerIfNotExistsAsync(props);`,
             ].join('\n');
     }
 }
 
-const ASSESS_GLYPH: Record<AssessmentIcon, string> = { pass: '✓', fail: '✗', info: 'i', warn: '!' };
+const ASSESS_GLYPH: Record<CandidateAssessment['status'], string> = { pass: '✓', fail: '✗', info: 'i', warn: '!' };
 
-export interface ResultPageProps {
-    containers: ContainerModel[];
-    activeContainerId?: string;
-    weights: ScoringWeights;
-    recommendationStatus: RecommendationStatus;
-    recommendation?: PartitionKeyRecommendation;
-    recommendationError?: string;
-    onRetryRecommendation: () => void;
-    onChangeWeights: (weights: ScoringWeights) => void;
-    onSelectContainer: (id: string) => void;
-    onRestart: () => void;
-}
-
-export function ResultPage({
-    containers,
-    activeContainerId,
-    weights,
-    recommendationStatus,
-    recommendation,
-    recommendationError,
-    onRetryRecommendation,
-    onChangeWeights,
-    onSelectContainer,
-    onRestart,
-}: ResultPageProps) {
+function CandidateCard({ candidate }: { candidate: PkCandidate }) {
     const styles = useStyles();
-    const [codeTab, setCodeTab] = useState<CodeTab>('bicep');
-    const active = containers.find((c) => c.id === activeContainerId) ?? containers[0];
 
-    // Rebuild the base result only when the active container changes; re-rank on
-    // every weight change so the sliders update the ordering and scores live.
-    const result = useMemo(() => (active ? buildContainerResult(active) : undefined), [active]);
-    const ranked = useMemo(() => (result ? rankCandidates(result.candidates, weights) : []), [result, weights]);
-
-    const topPk = ranked.find((c) => c.type !== 'avoid')?.pk ?? active?.partitionKey ?? '/id';
-    const code = useMemo(() => (active ? buildCode(codeTab, active.entity, topPk) : ''), [codeTab, active, topPk]);
-
-    const copy = () => void navigator.clipboard?.writeText(code);
-
-    if (!active || !result) {
-        return null;
-    }
-
-    const cardTone: Record<CandidateType, string> = {
-        rec: styles.cardRec,
-        alt: styles.cardAlt,
+    const cardTone: Record<PkCandidate['verdict'], string> = {
+        recommended: styles.cardRec,
+        alternative: styles.cardAlt,
         avoid: styles.cardAvoid,
     };
-    const iconTone: Record<AssessmentIcon, string> = {
+    const badgeTone: Record<PkCandidate['verdict'], string> = {
+        recommended: styles.badgeRec,
+        alternative: styles.badgeAlt,
+        avoid: styles.badgeAvoid,
+    };
+    const badgeText: Record<PkCandidate['verdict'], string> = {
+        recommended: l10n.t('Recommended'),
+        alternative: l10n.t('Alternative'),
+        avoid: l10n.t('Avoid'),
+    };
+    const ringStroke: Record<PkCandidate['verdict'], string> = {
+        recommended: tokens.colorPaletteGreenForeground1,
+        alternative: tokens.colorBrandForeground1,
+        avoid: tokens.colorPaletteRedForeground1,
+    };
+    const iconTone: Record<CandidateAssessment['status'], string> = {
         pass: styles.iconPass,
         fail: styles.iconFail,
         info: styles.iconInfo,
         warn: styles.iconWarn,
     };
-    const fillTone: Record<RiskLevel, string> = {
+
+    const score = Math.max(0, Math.min(100, Math.round(candidate.score)));
+
+    return (
+        <div className={mergeClasses(styles.card, cardTone[candidate.verdict])}>
+            <div className={styles.cardHead}>
+                <div>
+                    <Text className={mergeClasses(styles.badge, badgeTone[candidate.verdict])}>
+                        {badgeText[candidate.verdict]}
+                    </Text>
+                    <Text className={styles.pk}>{candidate.partitionKey}</Text>
+                </div>
+                <div className={styles.ring} aria-hidden="true">
+                    <svg width="44" height="44" viewBox="0 0 44 44">
+                        <circle
+                            cx="22"
+                            cy="22"
+                            r="18"
+                            fill="none"
+                            stroke={tokens.colorNeutralStroke2}
+                            strokeWidth="4"
+                        />
+                        <circle
+                            cx="22"
+                            cy="22"
+                            r="18"
+                            fill="none"
+                            stroke={ringStroke[candidate.verdict]}
+                            strokeWidth="4"
+                            strokeLinecap="round"
+                            strokeDasharray={`${(score / 100) * 113} 113`}
+                            transform="rotate(-90 22 22)"
+                        />
+                    </svg>
+                    <span className={styles.ringVal} style={{ color: ringStroke[candidate.verdict] }}>
+                        {score}
+                    </span>
+                </div>
+            </div>
+            <div className={styles.assessList}>
+                {candidate.assessments.map((a, i) => (
+                    <div key={i} className={styles.assessRow}>
+                        <span className={mergeClasses(styles.assessIcon, iconTone[a.status])}>
+                            {ASSESS_GLYPH[a.status]}
+                        </span>
+                        <span className={styles.assessRule}>{a.label}</span>
+                        <span className={styles.assessReason}>{a.detail}</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function riskBand(risk: HotPartitionRisk['risk']): { fill: string; label: string; text: string } {
+    // "severe" shares the high (red) visuals but keeps its own label.
+    const styleName = risk === 'severe' ? 'high' : risk;
+    return { fill: styleName, label: styleName, text: risk };
+}
+
+function ContainerResultView({ container }: { container: ContainerRecommendation }) {
+    const styles = useStyles();
+    const [codeTab, setCodeTab] = useState<CodeTab>('bicep');
+
+    const code = useMemo(
+        () => buildCode(codeTab, container.entity, container.partitionKey),
+        [codeTab, container.entity, container.partitionKey],
+    );
+    const copy = () => void navigator.clipboard?.writeText(code);
+
+    const fillTone: Record<'low' | 'medium' | 'high', string> = {
         low: styles.fillLow,
         medium: styles.fillMedium,
         high: styles.fillHigh,
     };
-    const labelTone: Record<RiskLevel, string> = {
+    const labelTone: Record<'low' | 'medium' | 'high', string> = {
         low: styles.labelLow,
         medium: styles.labelMedium,
         high: styles.labelHigh,
     };
-    const riskLabel: Record<RiskLevel, string> = {
+    const riskLabelText: Record<HotPartitionRisk['risk'], string> = {
         low: l10n.t('Low'),
         medium: l10n.t('Medium'),
         high: l10n.t('High'),
-    };
-    const ringStroke: Record<CandidateType, string> = {
-        rec: tokens.colorPaletteGreenForeground1,
-        alt: tokens.colorBrandForeground1,
-        avoid: tokens.colorPaletteRedForeground1,
+        severe: l10n.t('Severe'),
     };
 
     return (
         <div className={styles.stack}>
-            <CopilotRecommendation
-                status={recommendationStatus}
-                recommendation={recommendation}
-                error={recommendationError}
-                onRetry={onRetryRecommendation}
-            />
+            {container.rationale ? <Text className={styles.summary}>{container.rationale}</Text> : null}
 
-            <Text weight="semibold">{l10n.t('Offline heuristic analysis')}</Text>
-            <Text>{result.summary}</Text>
-
-            {containers.length > 1 ? (
-                <div className={styles.containerBar}>
-                    {containers.map((c) => (
-                        <Button
-                            key={c.id}
-                            appearance={c.id === active.id ? 'primary' : 'secondary'}
-                            size="small"
-                            onClick={() => onSelectContainer(c.id)}
-                        >
-                            {c.entity}
-                        </Button>
+            {container.candidates && container.candidates.length > 0 ? (
+                <div className={styles.cards}>
+                    {container.candidates.map((c, i) => (
+                        <CandidateCard key={i} candidate={c} />
                     ))}
                 </div>
             ) : null}
 
-            <div className={styles.cards}>
-                {ranked.map((c) => (
-                    <div key={c.id} className={mergeClasses(styles.card, cardTone[c.type])}>
-                        <div className={styles.cardHead}>
-                            <div>
-                                <Text className={styles.badge}>{c.badge}</Text>
-                                <Text className={styles.pk}>{c.pk}</Text>
-                            </div>
-                            <div className={styles.ring} aria-hidden="true">
-                                <svg width="44" height="44" viewBox="0 0 44 44">
-                                    <circle
-                                        cx="22"
-                                        cy="22"
-                                        r="18"
-                                        fill="none"
-                                        stroke={tokens.colorNeutralStroke2}
-                                        strokeWidth="4"
-                                    />
-                                    <circle
-                                        cx="22"
-                                        cy="22"
-                                        r="18"
-                                        fill="none"
-                                        stroke={ringStroke[c.type]}
-                                        strokeWidth="4"
-                                        strokeLinecap="round"
-                                        strokeDasharray={`${(c.score / 100) * 113} 113`}
-                                        transform="rotate(-90 22 22)"
-                                    />
-                                </svg>
-                                <span className={styles.ringVal} style={{ color: ringStroke[c.type] }}>
-                                    {c.score}
-                                </span>
-                            </div>
-                        </div>
-                        <div className={styles.assessList}>
-                            {c.rows.map((r, i) => (
-                                <div key={i} className={styles.assessRow}>
-                                    <span className={mergeClasses(styles.assessIcon, iconTone[r.icon])}>
-                                        {ASSESS_GLYPH[r.icon]}
+            {container.hotPartitionRisk && container.hotPartitionRisk.length > 0 ? (
+                <SubPanel
+                    title={l10n.t('🔥 Hot-partition risk — candidates compared')}
+                    subtitle={l10n.t('Measured from sampled logical-partition skew. Lower is better.')}
+                >
+                    <div className={styles.rankList}>
+                        {container.hotPartitionRisk.map((r, i) => {
+                            const band = riskBand(r.risk);
+                            const pct = Math.max(0, Math.min(100, Math.round(r.pct)));
+                            return (
+                                <div key={i} className={styles.rankRow}>
+                                    <span className={styles.rankPk}>{r.partitionKey}</span>
+                                    <div className={styles.rankTrack}>
+                                        <div
+                                            className={mergeClasses(
+                                                styles.rankFill,
+                                                fillTone[band.fill as 'low' | 'medium' | 'high'],
+                                            )}
+                                            style={{ width: `${pct}%` }}
+                                        />
+                                    </div>
+                                    <span
+                                        className={mergeClasses(
+                                            styles.rankLabel,
+                                            labelTone[band.label as 'low' | 'medium' | 'high'],
+                                        )}
+                                    >
+                                        {riskLabelText[r.risk]}
                                     </span>
-                                    <span className={styles.assessRule}>{r.rule}</span>
-                                    <span className={styles.assessReason}>{r.reason}</span>
                                 </div>
-                            ))}
-                        </div>
+                            );
+                        })}
                     </div>
-                ))}
-            </div>
+                </SubPanel>
+            ) : null}
 
-            <SubPanel
-                title={l10n.t('🔥 Hot-partition risk — candidates compared')}
-                subtitle={l10n.t('Measured from sampled logical-partition skew. Lower is better.')}
-            >
-                <div className={styles.rankList}>
-                    {result.ranking.map((r) => (
-                        <div key={r.pk} className={styles.rankRow}>
-                            <span className={styles.rankPk}>{r.pk}</span>
-                            <div className={styles.rankTrack}>
-                                <div
-                                    className={mergeClasses(styles.rankFill, fillTone[r.risk])}
-                                    style={{ width: `${r.pct}%` }}
-                                />
-                            </div>
-                            <span className={mergeClasses(styles.rankLabel, labelTone[r.risk])}>
-                                {riskLabel[r.risk]}
-                            </span>
-                        </div>
-                    ))}
-                </div>
-            </SubPanel>
+            {container.queryRouting ? (
+                <SubPanel title={l10n.t('🧭 Query routing')} subtitle={container.queryRouting.headline}>
+                    <Table size="small" aria-label={l10n.t('Query routing')}>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHeaderCell>{l10n.t('Read pattern')}</TableHeaderCell>
+                                <TableHeaderCell>{l10n.t('Filters on')}</TableHeaderCell>
+                                <TableHeaderCell>{l10n.t('QPS')}</TableHeaderCell>
+                                <TableHeaderCell>{l10n.t('Routing')}</TableHeaderCell>
+                                <TableHeaderCell>{l10n.t('Est. cost')}</TableHeaderCell>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {container.queryRouting.routes.map((route, i) => (
+                                <TableRow key={i}>
+                                    <TableCell>{route.pattern}</TableCell>
+                                    <TableCell>{route.filters}</TableCell>
+                                    <TableCell>{route.qps}</TableCell>
+                                    <TableCell>
+                                        <span
+                                            className={
+                                                route.routing === 'single' ? styles.routeSingle : styles.routeCross
+                                            }
+                                        >
+                                            {route.routing === 'single'
+                                                ? l10n.t('Single-partition')
+                                                : l10n.t('Cross-partition')}
+                                        </span>
+                                    </TableCell>
+                                    <TableCell>{route.estCost}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                    {container.queryRouting.analysis ? (
+                        <Text className={styles.analysis} as="p">
+                            {container.queryRouting.analysis}
+                        </Text>
+                    ) : null}
+                </SubPanel>
+            ) : null}
 
-            <FieldGroup
-                label={l10n.t('Scoring priorities')}
-                hint={l10n.t('Slide toward what matters most for your workload — the ranking re-scores instantly.')}
-            >
-                <WeightSliders weights={weights} onChange={onChangeWeights} />
-            </FieldGroup>
+            {container.documentIdStrategy ? (
+                <SubPanel title={l10n.t('🆔 Document id strategy')}>
+                    <div className={styles.strategyTag}>
+                        <Badge appearance="tint" color="informative">
+                            {container.documentIdStrategy.tag}
+                        </Badge>
+                    </div>
+                    <InfoBox>{container.documentIdStrategy.recommendation}</InfoBox>
+                </SubPanel>
+            ) : null}
 
             <div className={styles.codeWrap}>
                 <div className={styles.codeHead}>
@@ -424,18 +487,67 @@ export function ResultPage({
                     </Button>
                 </div>
                 <pre className={styles.pre}>{code}</pre>
+                <div className={styles.actions}>
+                    <Button appearance="primary">{l10n.t('Apply to Container')}</Button>
+                    <Button appearance="secondary" onClick={copy}>
+                        {l10n.t('Copy Config')}
+                    </Button>
+                </div>
             </div>
+        </div>
+    );
+}
 
-            <div className={styles.actions}>
-                <Button appearance="primary">{l10n.t('Apply to Container')}</Button>
-                <Button appearance="secondary" onClick={copy}>
-                    {l10n.t('Copy Config')}
-                </Button>
-                <Button appearance="secondary">{l10n.t('Open in Copilot Chat')}</Button>
-                <Button appearance="subtle" className={styles.spacer} onClick={onRestart}>
-                    {l10n.t('Start Over')}
-                </Button>
+export interface ResultPageProps {
+    recommendationStatus: RecommendationStatus;
+    recommendation?: PartitionKeyRecommendation;
+    recommendationError?: string;
+    onRetryRecommendation: () => void;
+}
+
+export function ResultPage({
+    recommendationStatus,
+    recommendation,
+    recommendationError,
+    onRetryRecommendation,
+}: ResultPageProps) {
+    const styles = useStyles();
+    const containers = recommendation?.containers ?? [];
+    const [activeEntity, setActiveEntity] = useState<string>();
+
+    const active = containers.find((c) => c.entity === activeEntity) ?? containers[0];
+
+    if (recommendationStatus !== 'received' || !recommendation || !active) {
+        return (
+            <div className={styles.stack}>
+                <CopilotRecommendation
+                    status={recommendationStatus}
+                    error={recommendationError}
+                    onRetry={onRetryRecommendation}
+                />
             </div>
+        );
+    }
+
+    return (
+        <div className={styles.stack}>
+            {recommendation.summary ? <Text className={styles.summary}>{recommendation.summary}</Text> : null}
+
+            {containers.length > 1 ? (
+                <TabList
+                    className={styles.tabList}
+                    selectedValue={active.entity}
+                    onTabSelect={(_, data) => setActiveEntity(data.value as string)}
+                >
+                    {containers.map((c) => (
+                        <Tab key={c.entity} value={c.entity}>
+                            {c.entity}
+                        </Tab>
+                    ))}
+                </TabList>
+            ) : null}
+
+            <ContainerResultView key={active.entity} container={active} />
         </div>
     );
 }

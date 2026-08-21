@@ -34,7 +34,7 @@ export class DataModelingWizardDrawerTab extends BaseTab {
 
         const panel = vscode.window.createWebviewPanel(
             DataModelingWizardDrawerTab.viewType,
-            l10n.t('Data Modeling'),
+            l10n.t('Data Modeler'),
             column,
             {
                 enableScripts: true,

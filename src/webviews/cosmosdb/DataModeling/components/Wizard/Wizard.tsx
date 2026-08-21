@@ -30,7 +30,7 @@ const useStyles = makeStyles({
         boxSizing: 'border-box',
     },
     scrollArea: { flex: 1, minHeight: 0, overflowY: 'auto' },
-    scrollInner: { maxWidth: '760px', padding: '20px 24px 24px', boxSizing: 'border-box' },
+    scrollInner: { maxWidth: '760px', padding: '12px 24px 24px', boxSizing: 'border-box' },
     divider: { borderTop: `1px solid ${tokens.colorNeutralStroke2}` },
 });
 

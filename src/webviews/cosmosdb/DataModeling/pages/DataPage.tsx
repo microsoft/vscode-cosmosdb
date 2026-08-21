@@ -16,8 +16,6 @@ import {
     makeStyles,
     Radio,
     Select,
-    Tab,
-    TabList,
     Table,
     TableBody,
     TableCell,
@@ -45,8 +43,10 @@ import { getArrayUpdateOptions, nextId } from '../scenarios';
 import { getRoleOptions } from '../wizardState';
 
 /**
- * Step 2 — Data. Self-contained editor for one or more container schemas.
- * Receives the containers slice plus change callbacks; owns no navigation.
+ * Data tab of a container step. Self-contained editor for one container's schema:
+ * properties, partition-key candidate, document shape and array profile. Receives
+ * the whole {@link DataModel} plus a change callback and edits the active container;
+ * owns no navigation or container-list management (that lives in the wizard).
  */
 
 const useStyles = makeStyles({
@@ -54,9 +54,6 @@ const useStyles = makeStyles({
         display: 'flex',
         flexDirection: 'column',
         gap: tokens.spacingVerticalM,
-    },
-    tabList: {
-        flexWrap: 'wrap',
     },
     tagBox: {
         display: 'flex',
@@ -129,28 +126,6 @@ const useStyles = makeStyles({
         flexDirection: 'column',
         gap: tokens.spacingVerticalM,
     },
-    tabPk: {
-        fontFamily: tokens.fontFamilyMonospace,
-        color: tokens.colorNeutralForeground3,
-    },
-    tabInner: {
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: tokens.spacingHorizontalXS,
-    },
-    tabClose: {
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '2px',
-        borderRadius: tokens.borderRadiusCircular,
-        color: tokens.colorNeutralForeground3,
-        cursor: 'pointer',
-        ':hover': {
-            backgroundColor: tokens.colorNeutralBackground3,
-            color: tokens.colorNeutralForeground1,
-        },
-    },
     uploadPanel: {
         display: 'flex',
         alignItems: 'center',
@@ -174,11 +149,8 @@ const useStyles = makeStyles({
 
 const PK_ICON = ' 🔑';
 
-/** Sentinel tab value used for the trailing "+" (add container) tab. */
-const ADD_TAB = '__add_container__';
-
-/** Pending confirmation for a destructive action on the Data page. */
-type PendingConfirm = { kind: 'remove'; containerId: string } | { kind: 'upload'; file: File };
+/** Pending confirmation for the destructive JSON-upload (schema replace) action. */
+type PendingConfirm = { kind: 'upload'; file: File };
 
 export interface DataPageProps {
     model: DataModel;
@@ -198,10 +170,9 @@ export function DataPage({ model, scenarioLabel, onChange }: DataPageProps) {
 
     const { containers, activeContainerId } = model;
 
-    // Local adapters keep the rest of the page working on containers while writing back the
+    // Local adapter keeps the rest of the page working on containers while writing back the
     // whole DataModel. The wizard re-derives PK candidates from the updated schema.
     const onChangeContainers = (next: ContainerModel[]) => onChange({ ...model, containers: next });
-    const onSetActive = (id: string) => onChange({ ...model, activeContainerId: id });
 
     const active = containers.find((c) => c.id === activeContainerId) ?? containers[0];
 
@@ -301,11 +272,7 @@ export function DataPage({ model, scenarioLabel, onChange }: DataPageProps) {
         if (!pending) {
             return;
         }
-        if (pending.kind === 'remove') {
-            removeContainer(pending.containerId);
-        } else {
-            await applyUpload(pending.file);
-        }
+        await applyUpload(pending.file);
     };
 
     const onTagKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -313,33 +280,6 @@ export function DataPage({ model, scenarioLabel, onChange }: DataPageProps) {
             e.preventDefault();
             addProperty(draftTag);
             setDraftTag('');
-        }
-    };
-
-    const addContainer = () => {
-        const container: ContainerModel = {
-            id: nextId('container'),
-            entity: l10n.t('NewContainer'),
-            partitionKey: '/id',
-            properties: [{ id: nextId('prop'), name: 'id', type: 'string', role: 'key', pkCandidate: true }],
-            document: { attributeCount: 8, avgSizeKb: 1, maxSizeKb: 4 },
-            arrays: { hasArrays: false, avgItems: 10, maxItems: 100, updatePattern: 'none' },
-            reads: [{ id: nextId('read'), pattern: '', filters: 'id', qps: 100 }],
-            writes: { insertsPerSec: 0, updatesPerSec: 0, deletesPerSec: 0 },
-            scale: { candidates: [], items: 'medium', writes: 'even', growth: 'slow' },
-        };
-        onChangeContainers([...containers, container]);
-        onSetActive(container.id);
-    };
-
-    const removeContainer = (id: string) => {
-        if (containers.length <= 1) {
-            return;
-        }
-        const remaining = containers.filter((c) => c.id !== id);
-        onChangeContainers(remaining);
-        if (activeContainerId === id) {
-            onSetActive(remaining[0].id);
         }
     };
 
@@ -374,55 +314,6 @@ export function DataPage({ model, scenarioLabel, onChange }: DataPageProps) {
                 </aside>
 
                 <div className={styles.stack}>
-                    <TabList
-                        className={styles.tabList}
-                        selectedValue={active.id}
-                        onTabSelect={(_, data) => {
-                            if (data.value === ADD_TAB) {
-                                addContainer();
-                                return;
-                            }
-                            onSetActive(data.value as string);
-                        }}
-                    >
-                        {containers.map((c) => {
-                            const pkProp = c.properties.find((p) => p.pkCandidate);
-                            const pkPath = pkProp ? `/${pkProp.name}` : c.partitionKey;
-                            return (
-                                <Tab key={c.id} value={c.id}>
-                                    <span className={styles.tabInner}>
-                                        <span>
-                                            {c.entity} <span className={styles.tabPk}>{pkPath}</span>
-                                        </span>
-                                        {containers.length > 1 ? (
-                                            <span
-                                                // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- close affordance inside a tab button; a nested <button> is invalid HTML
-                                                role="button"
-                                                tabIndex={0}
-                                                className={styles.tabClose}
-                                                aria-label={l10n.t('Remove {entity}', { entity: c.entity })}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setConfirm({ kind: 'remove', containerId: c.id });
-                                                }}
-                                                onKeyDown={(e) => {
-                                                    if (e.key === 'Enter' || e.key === ' ') {
-                                                        e.preventDefault();
-                                                        e.stopPropagation();
-                                                        setConfirm({ kind: 'remove', containerId: c.id });
-                                                    }
-                                                }}
-                                            >
-                                                <DismissRegular fontSize={12} />
-                                            </span>
-                                        ) : null}
-                                    </span>
-                                </Tab>
-                            );
-                        })}
-                        <Tab value={ADD_TAB}>{l10n.t('+ Add container')}</Tab>
-                    </TabList>
-
                     <FieldGroup label={l10n.t('Entity name')}>
                         <Input
                             value={active.entity}
@@ -651,23 +542,14 @@ export function DataPage({ model, scenarioLabel, onChange }: DataPageProps) {
             >
                 <DialogSurface>
                     <DialogBody>
-                        <DialogTitle>
-                            {confirm?.kind === 'remove' ? l10n.t('Remove container?') : l10n.t('Replace schema?')}
-                        </DialogTitle>
+                        <DialogTitle>{l10n.t('Replace schema?')}</DialogTitle>
                         <DialogContent>
-                            {confirm?.kind === 'remove'
-                                ? l10n.t('Remove the “{entity}” container? This cannot be undone.', {
-                                      entity: containers.find((c) => c.id === confirm.containerId)?.entity ?? '',
+                            {confirm
+                                ? l10n.t('Replace the properties of “{entity}” with the schema inferred from {file}?', {
+                                      entity: active.entity,
+                                      file: confirm.file.name,
                                   })
-                                : confirm?.kind === 'upload'
-                                  ? l10n.t(
-                                        'Replace the properties of “{entity}” with the schema inferred from {file}?',
-                                        {
-                                            entity: active.entity,
-                                            file: confirm.file.name,
-                                        },
-                                    )
-                                  : ''}
+                                : ''}
                         </DialogContent>
                         <DialogActions>
                             <Button appearance="secondary" onClick={() => setConfirm(undefined)}>

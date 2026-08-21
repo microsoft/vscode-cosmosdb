@@ -56,15 +56,10 @@ export class DataModelingWizardTab extends BaseTab {
             return existing;
         }
 
-        const panel = vscode.window.createWebviewPanel(
-            DataModelingWizardTab.viewType,
-            l10n.t('Data Modeling'),
-            column,
-            {
-                enableScripts: true,
-                retainContextWhenHidden: true,
-            },
-        );
+        const panel = vscode.window.createWebviewPanel(DataModelingWizardTab.viewType, l10n.t('Data Modeler'), column, {
+            enableScripts: true,
+            retainContextWhenHidden: true,
+        });
 
         return new DataModelingWizardTab(panel);
     }
@@ -77,6 +72,10 @@ export class DataModelingWizardTab extends BaseTab {
 
     /** Push a Copilot-produced recommendation to the webview's Result page. */
     public reportRecommendation(recommendation: PartitionKeyRecommendation): void {
+        console.log(
+            `[DataModelingWizardTab] emitting 'recommendationReceived' to event sink ` +
+                `(${recommendation.containers.length} container(s)).`,
+        );
         this.eventSink.emit({ type: 'recommendationReceived', recommendation });
     }
 

@@ -46,8 +46,14 @@ export type {
 } from '../../panels/accountOverview/services';
 export type { InventoryContainerRow, ThroughputMode } from '../../panels/trpc/routers/accountOverviewRouter';
 export type {
+    CandidateAssessment,
     ContainerRecommendation,
     DataModelingEvent,
+    DocumentIdStrategy,
+    HotPartitionRisk,
     PartitionKeyRecommendation,
+    PkCandidate,
+    QueryRoute,
+    QueryRouting,
 } from '../../panels/trpc/routers/dataModelingEventsRouter';
 export type { QueryEditorEvent } from '../../panels/trpc/routers/queryEditorEventsRouter';

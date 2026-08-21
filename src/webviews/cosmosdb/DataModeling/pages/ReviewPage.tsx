@@ -11,9 +11,10 @@ import { WeightSliders } from '../components/WeightSliders';
 import { type ContainerModel, type ScoringWeights } from '../models';
 
 /**
- * Step 5 — Review. Read-only summary with per-section Edit shortcuts plus the
- * scoring-weight sliders. Editing jumps back via the provided callback so the
- * page stays decoupled from the wizard mechanism.
+ * Review step. Read-only summary with Edit shortcuts: one for the workload, and one
+ * per container that jumps back to that container's step. Also hosts the scoring-weight
+ * sliders. Editing jumps back via the provided callbacks so the page stays decoupled
+ * from the wizard mechanism.
  */
 
 const useStyles = makeStyles({
@@ -60,12 +61,6 @@ const useStyles = makeStyles({
     checkIcon: {
         color: tokens.colorPaletteGreenForeground1,
     },
-    containerRow: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
-        borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
-    },
 });
 
 const RULES = [
@@ -79,18 +74,12 @@ const RULES = [
     'Hierarchical PK assessment',
 ];
 
-export interface ReviewSummary {
-    workload: string;
-    entity: string;
-    query: string;
-    scale: string;
-}
-
 export interface ReviewPageProps {
-    summary: ReviewSummary;
+    workloadLabel: string;
     containers: ContainerModel[];
     weights: ScoringWeights;
-    onEditStep: (step: number) => void;
+    onEditWorkload: () => void;
+    onEditContainer: (containerId: string) => void;
     onChangeWeights: (weights: ScoringWeights) => void;
 }
 
@@ -113,7 +102,7 @@ function ReviewRow({
             </span>
             <div className={styles.reviewInfo}>
                 <Text className={styles.reviewLabel}>{label}</Text>
-                <Text className={styles.reviewDetail}>{detail}</Text>
+                {detail ? <Text className={styles.reviewDetail}>{detail}</Text> : null}
             </div>
             <Button appearance="secondary" size="small" onClick={onEdit}>
                 {l10n.t('Edit')}
@@ -122,7 +111,14 @@ function ReviewRow({
     );
 }
 
-export function ReviewPage({ summary, containers, weights, onEditStep, onChangeWeights }: ReviewPageProps) {
+export function ReviewPage({
+    workloadLabel,
+    containers,
+    weights,
+    onEditWorkload,
+    onEditContainer,
+    onChangeWeights,
+}: ReviewPageProps) {
     const styles = useStyles();
 
     return (
@@ -131,36 +127,25 @@ export function ReviewPage({ summary, containers, weights, onEditStep, onChangeW
                 <div className={styles.stack}>
                     <ReviewRow
                         icon="📋"
-                        label={l10n.t('Workload: {value}', { value: summary.workload })}
-                        detail=""
-                        onEdit={() => onEditStep(1)}
-                    />
-                    <ReviewRow
-                        icon="🗄️"
-                        label={l10n.t('Entity: {value}', { value: summary.entity })}
-                        detail=""
-                        onEdit={() => onEditStep(2)}
-                    />
-                    <ReviewRow
-                        icon="🔍"
-                        label={l10n.t('Query: {value}', { value: summary.query })}
-                        detail=""
-                        onEdit={() => onEditStep(3)}
-                    />
-                    <ReviewRow
-                        icon="📈"
-                        label={l10n.t('Scale: {value}', { value: summary.scale })}
-                        detail=""
-                        onEdit={() => onEditStep(4)}
+                        label={l10n.t('Workload: {value}', { value: workloadLabel })}
+                        detail={l10n.t('{count} containers', { count: containers.length })}
+                        onEdit={onEditWorkload}
                     />
 
-                    <FieldGroup label={l10n.t('Per-container summary')}>
-                        <div>
+                    <FieldGroup label={l10n.t('Containers')}>
+                        <div className={styles.stack}>
                             {containers.map((c) => (
-                                <div key={c.id} className={styles.containerRow}>
-                                    <Text weight="semibold">{c.entity}</Text>
-                                    <Text>{c.partitionKey}</Text>
-                                </div>
+                                <ReviewRow
+                                    key={c.id}
+                                    icon="🗄️"
+                                    label={c.entity}
+                                    detail={l10n.t('Partition key {pk} · {items} items · {writes} writes', {
+                                        pk: c.partitionKey,
+                                        items: c.scale.items,
+                                        writes: c.scale.writes,
+                                    })}
+                                    onEdit={() => onEditContainer(c.id)}
+                                />
                             ))}
                         </div>
                     </FieldGroup>

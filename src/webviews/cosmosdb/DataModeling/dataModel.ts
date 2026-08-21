@@ -136,6 +136,32 @@ export function buildDataModel(scenario: ScenarioId): DataModel {
     return { containers, activeContainerId: containers[0]?.id };
 }
 
+/**
+ * A fresh, minimally-populated container for the "Add Container" action. Seeded with a single
+ * `id` key property so it is immediately valid on the Data, Queries and Scale tabs.
+ */
+export function createBlankContainer(entity = 'NewContainer'): ContainerModel {
+    const properties = [
+        { id: nextId('prop'), name: 'id', type: 'string' as const, role: 'key' as const, pkCandidate: true },
+    ];
+    return {
+        id: nextId('container'),
+        entity,
+        partitionKey: '/id',
+        properties,
+        document: { attributeCount: 8, avgSizeKb: 1, maxSizeKb: 4 },
+        arrays: { hasArrays: false, avgItems: 10, maxItems: 100, updatePattern: 'none' },
+        reads: [{ id: nextId('read'), pattern: '', filters: 'id', qps: 100 }],
+        writes: { insertsPerSec: 0, updatesPerSec: 0, deletesPerSec: 0 },
+        scale: {
+            candidates: buildCandidates({ properties } as ContainerModel),
+            items: 'medium',
+            writes: 'even',
+            growth: 'slow',
+        },
+    };
+}
+
 /** Initial wizard state shown before a scenario is chosen. */
 export function createInitialState(): WizardState {
     return {

@@ -264,7 +264,7 @@ export const DataModelingWizard = () => {
     const isContainerStep = activeValue.startsWith(CONTAINER_PREFIX);
 
     const canAdvance = !isWorkload || !!state.scenario;
-    const nextLabel = isReview ? l10n.t('Get Recommendation') : l10n.t('Next →');
+    const nextLabel = isWorkload ? l10n.t('Start') : isReview ? l10n.t('Get Recommendation') : l10n.t('Next');
 
     const onNext = () => {
         if (stepIndex >= stepValues.length) {
@@ -285,8 +285,8 @@ export const DataModelingWizard = () => {
     };
 
     // The Result step's footer carries only a Start Over action; every other step gets the
-    // Back / Next controls. Back and Next sit together on the left; container actions and a
-    // "Learn more" link are end-aligned on the right.
+    // Next / Back controls. The primary Next button sits first (left), Back after it; container
+    // actions and a "Learn more" link are end-aligned on the right.
     const footer = isResult ? (
         <ContainerFooter className={styles.footerDivider}>
             <Button appearance="secondary" onClick={restart}>
@@ -326,14 +326,14 @@ export const DataModelingWizard = () => {
                 </div>
             }
         >
-            {stepIndex > 1 ? (
-                <Button appearance="secondary" onClick={onBack}>
-                    {l10n.t('← Back')}
-                </Button>
-            ) : null}
             <Button appearance="primary" disabled={!canAdvance} onClick={onNext}>
                 {nextLabel}
             </Button>
+            {stepIndex > 1 ? (
+                <Button appearance="secondary" onClick={onBack}>
+                    {l10n.t('Back')}
+                </Button>
+            ) : null}
         </ContainerFooter>
     );
 

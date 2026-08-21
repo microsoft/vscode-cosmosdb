@@ -19,9 +19,9 @@ import {
     Text,
     tokens,
 } from '@fluentui/react-components';
-import { CopyRegular } from '@fluentui/react-icons';
+import { CheckmarkRegular, CopyRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
     type CandidateAssessment,
     type ContainerRecommendation,
@@ -51,6 +51,16 @@ const useStyles = makeStyles({
     },
     summary: {
         color: tokens.colorNeutralForeground2,
+    },
+    // Responsive grid: compact panels sit side by side on wide surfaces and stack when narrow.
+    twoCol: {
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+        gap: tokens.spacingHorizontalM,
+        alignItems: 'start',
+    },
+    tableWrap: {
+        overflowX: 'auto',
     },
     cards: {
         display: 'grid',
@@ -215,6 +225,9 @@ const useStyles = makeStyles({
         flexWrap: 'wrap',
         marginTop: tokens.spacingVerticalM,
     },
+    copiedIcon: {
+        color: tokens.colorBrandForeground1,
+    },
 });
 
 type CodeTab = 'bicep' | 'terraform' | 'sdk';
@@ -350,12 +363,26 @@ function riskBand(risk: HotPartitionRisk['risk']): { fill: string; label: string
 function ContainerResultView({ container }: { container: ContainerRecommendation }) {
     const styles = useStyles();
     const [codeTab, setCodeTab] = useState<CodeTab>('bicep');
+    const [copied, setCopied] = useState(false);
 
     const code = useMemo(
         () => buildCode(codeTab, container.entity, container.partitionKey),
         [codeTab, container.entity, container.partitionKey],
     );
-    const copy = () => void navigator.clipboard?.writeText(code);
+
+    // Reset the "Copied" affordance shortly after a copy; clean up on unmount / tab switch.
+    useEffect(() => {
+        if (!copied) {
+            return;
+        }
+        const timer = setTimeout(() => setCopied(false), 1500);
+        return () => clearTimeout(timer);
+    }, [copied]);
+
+    const copy = () => {
+        void navigator.clipboard?.writeText(code);
+        setCopied(true);
+    };
 
     const fillTone: Record<'low' | 'medium' | 'high', string> = {
         low: styles.fillLow,
@@ -386,92 +413,96 @@ function ContainerResultView({ container }: { container: ContainerRecommendation
                 </div>
             ) : null}
 
-            {container.hotPartitionRisk && container.hotPartitionRisk.length > 0 ? (
-                <SubPanel
-                    title={l10n.t('🔥 Hot-partition risk — candidates compared')}
-                    subtitle={l10n.t('Measured from sampled logical-partition skew. Lower is better.')}
-                >
-                    <div className={styles.rankList}>
-                        {container.hotPartitionRisk.map((r, i) => {
-                            const band = riskBand(r.risk);
-                            const pct = Math.max(0, Math.min(100, Math.round(r.pct)));
-                            return (
-                                <div key={i} className={styles.rankRow}>
-                                    <span className={styles.rankPk}>{r.partitionKey}</span>
-                                    <div className={styles.rankTrack}>
-                                        <div
+            <div className={styles.twoCol}>
+                {container.hotPartitionRisk && container.hotPartitionRisk.length > 0 ? (
+                    <SubPanel
+                        title={l10n.t('🔥 Hot-partition risk — candidates compared')}
+                        subtitle={l10n.t('Measured from sampled logical-partition skew. Lower is better.')}
+                    >
+                        <div className={styles.rankList}>
+                            {container.hotPartitionRisk.map((r, i) => {
+                                const band = riskBand(r.risk);
+                                const pct = Math.max(0, Math.min(100, Math.round(r.pct)));
+                                return (
+                                    <div key={i} className={styles.rankRow}>
+                                        <span className={styles.rankPk}>{r.partitionKey}</span>
+                                        <div className={styles.rankTrack}>
+                                            <div
+                                                className={mergeClasses(
+                                                    styles.rankFill,
+                                                    fillTone[band.fill as 'low' | 'medium' | 'high'],
+                                                )}
+                                                style={{ width: `${pct}%` }}
+                                            />
+                                        </div>
+                                        <span
                                             className={mergeClasses(
-                                                styles.rankFill,
-                                                fillTone[band.fill as 'low' | 'medium' | 'high'],
+                                                styles.rankLabel,
+                                                labelTone[band.label as 'low' | 'medium' | 'high'],
                                             )}
-                                            style={{ width: `${pct}%` }}
-                                        />
+                                        >
+                                            {riskLabelText[r.risk]}
+                                        </span>
                                     </div>
-                                    <span
-                                        className={mergeClasses(
-                                            styles.rankLabel,
-                                            labelTone[band.label as 'low' | 'medium' | 'high'],
-                                        )}
-                                    >
-                                        {riskLabelText[r.risk]}
-                                    </span>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </SubPanel>
-            ) : null}
+                                );
+                            })}
+                        </div>
+                    </SubPanel>
+                ) : null}
+
+                {container.documentIdStrategy ? (
+                    <SubPanel title={l10n.t('🆔 Document id strategy')}>
+                        <div className={styles.strategyTag}>
+                            <Badge appearance="tint" color="informative">
+                                {container.documentIdStrategy.tag}
+                            </Badge>
+                        </div>
+                        <InfoBox>{container.documentIdStrategy.recommendation}</InfoBox>
+                    </SubPanel>
+                ) : null}
+            </div>
 
             {container.queryRouting ? (
                 <SubPanel title={l10n.t('🧭 Query routing')} subtitle={container.queryRouting.headline}>
-                    <Table size="small" aria-label={l10n.t('Query routing')}>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHeaderCell>{l10n.t('Read pattern')}</TableHeaderCell>
-                                <TableHeaderCell>{l10n.t('Filters on')}</TableHeaderCell>
-                                <TableHeaderCell>{l10n.t('QPS')}</TableHeaderCell>
-                                <TableHeaderCell>{l10n.t('Routing')}</TableHeaderCell>
-                                <TableHeaderCell>{l10n.t('Est. cost')}</TableHeaderCell>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {container.queryRouting.routes.map((route, i) => (
-                                <TableRow key={i}>
-                                    <TableCell>{route.pattern}</TableCell>
-                                    <TableCell>{route.filters}</TableCell>
-                                    <TableCell>{route.qps}</TableCell>
-                                    <TableCell>
-                                        <span
-                                            className={
-                                                route.routing === 'single' ? styles.routeSingle : styles.routeCross
-                                            }
-                                        >
-                                            {route.routing === 'single'
-                                                ? l10n.t('Single-partition')
-                                                : l10n.t('Cross-partition')}
-                                        </span>
-                                    </TableCell>
-                                    <TableCell>{route.estCost}</TableCell>
+                    <div className={styles.tableWrap}>
+                        <Table size="small" aria-label={l10n.t('Query routing')}>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHeaderCell>{l10n.t('Read pattern')}</TableHeaderCell>
+                                    <TableHeaderCell>{l10n.t('Filters on')}</TableHeaderCell>
+                                    <TableHeaderCell>{l10n.t('QPS')}</TableHeaderCell>
+                                    <TableHeaderCell>{l10n.t('Routing')}</TableHeaderCell>
+                                    <TableHeaderCell>{l10n.t('Est. cost')}</TableHeaderCell>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                            </TableHeader>
+                            <TableBody>
+                                {container.queryRouting.routes.map((route, i) => (
+                                    <TableRow key={i}>
+                                        <TableCell>{route.pattern}</TableCell>
+                                        <TableCell>{route.filters}</TableCell>
+                                        <TableCell>{route.qps}</TableCell>
+                                        <TableCell>
+                                            <span
+                                                className={
+                                                    route.routing === 'single' ? styles.routeSingle : styles.routeCross
+                                                }
+                                            >
+                                                {route.routing === 'single'
+                                                    ? l10n.t('Single-partition')
+                                                    : l10n.t('Cross-partition')}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell>{route.estCost}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
                     {container.queryRouting.analysis ? (
                         <Text className={styles.analysis} as="p">
                             {container.queryRouting.analysis}
                         </Text>
                     ) : null}
-                </SubPanel>
-            ) : null}
-
-            {container.documentIdStrategy ? (
-                <SubPanel title={l10n.t('🆔 Document id strategy')}>
-                    <div className={styles.strategyTag}>
-                        <Badge appearance="tint" color="informative">
-                            {container.documentIdStrategy.tag}
-                        </Badge>
-                    </div>
-                    <InfoBox>{container.documentIdStrategy.recommendation}</InfoBox>
                 </SubPanel>
             ) : null}
 
@@ -482,16 +513,18 @@ function ContainerResultView({ container }: { container: ContainerRecommendation
                         <Tab value="terraform">Terraform</Tab>
                         <Tab value="sdk">{l10n.t('SDK (C#)')}</Tab>
                     </TabList>
-                    <Button icon={<CopyRegular />} appearance="subtle" size="small" onClick={copy}>
-                        {l10n.t('Copy')}
+                    <Button
+                        icon={copied ? <CheckmarkRegular className={styles.copiedIcon} /> : <CopyRegular />}
+                        appearance="subtle"
+                        size="small"
+                        onClick={copy}
+                    >
+                        {copied ? l10n.t('Copied') : l10n.t('Copy')}
                     </Button>
                 </div>
                 <pre className={styles.pre}>{code}</pre>
                 <div className={styles.actions}>
                     <Button appearance="primary">{l10n.t('Apply to Container')}</Button>
-                    <Button appearance="secondary" onClick={copy}>
-                        {l10n.t('Copy Config')}
-                    </Button>
                 </div>
             </div>
         </div>

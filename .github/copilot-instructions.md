@@ -44,17 +44,28 @@
 
 Before finishing work, agents **must** run the following steps in order:
 
+> **Verify every command's exit code.** A command has passed only when its process exits with code `0`; seeing the npm command
+> banner or no error output is not sufficient. Some tools in this repository can terminate silently with exit code `255`.
+> When the execution tool does not report the exit code reliably, capture and print it explicitly, and fail the shell command
+> when it is nonzero. Do not continue to the next validation step after a nonzero exit.
+
 1. **Localization** — If any user-facing strings were added, modified, or removed, run:
    ```bash
    npm run l10n
    ```
-2. **Formatting** — Run Prettier to ensure all files meet formatting standards:
+2. **Formatting** — Run oxfmt and verify that it exits with code `0`:
    ```bash
    npm run prettier-fix
    ```
-3. **Linting** — Run ESLint to confirm there are no linting errors:
+   Do not infer success from a clean `git status`: the formatter may have exited before processing files.
+3. **Linting** — Run the complete lint suite to confirm there are no linting errors:
    ```bash
    npm run lint
    ```
+4. **Build** — Run all configured TypeScript build targets:
+   ```bash
+   npm run build
+   ```
 
-> **An agent must not finish or terminate until all three steps above have been run and pass successfully.** Skipping these steps leads to CI failures.
+> **An agent must not finish or terminate until every applicable step above has been run and its zero exit code verified.**
+> Skipping these steps or trusting output without checking the process result leads to CI failures.

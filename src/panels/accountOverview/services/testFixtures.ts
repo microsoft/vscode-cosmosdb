@@ -13,7 +13,7 @@ import { type MonitorClient } from '@azure/arm-monitor';
 export const GB = 1024 * 1024 * 1024;
 
 export type Meta = { name?: { value?: string }; value?: string };
-export type Point = { timeStamp: string; maximum?: number; total?: number };
+export type Point = { timeStamp: string; maximum?: number; average?: number; total?: number };
 export type Series = { metadatavalues?: Meta[]; data?: Point[] };
 
 /** Builds the database/collection (and optional status-code) dimension metadata for a series. */

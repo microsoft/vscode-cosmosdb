@@ -35,6 +35,7 @@
   "cosmosdb.command.ai.deploy_instruction_files": "[الهاتفCopy LLM instructions to user profile folderעִבְרִית عليكעִבְרִי!]",
   "cosmosdb.command.ai.remove_instruction_files": "[الهاتفRemove LLM instructions from user profile folderעִבְרִית عليكעִבְרִית!]",
   "cosmosdb.command.schema.delete_all": "[الهاتفDelete All Saved Schemasעִבְרִית علي!]",
+  "cosmosdb.command.quickStart.reset": "[الهاتفReset Quick Start Tips (Internal)עִבְרִית عليكעִ!]",
   "cosmosdb.command.migration.open": "[الهاتفNew Migration…עִבְרִית!]",
   "cosmosdb.command.migration.openExisting": "[الهاتفCosmos DB Migration…עִבְרִית ع!]",
   "cosmosdb.command.migration.remove": "[الهاتفRemove Migration…עִבְרִית !]",
@@ -78,6 +79,7 @@
   "cosmosdb.configuration.accountOverview.advisories.overProvisioningPeakPercent": "[الهاتفAccount Overview: peak normalized RU consumption (%) below which, sustained over 7 days, an Over-provisioning advisory is derived from your telemetry.עִבְרִית عليكעִבְרִית عليكעִבְרִית عليكעִבְרִית عليكעִבְרִית ع!]",
   "cosmosdb.configuration.accountOverview.advisories.autoscaleCoefficientOfVariation": "[الهاتفAccount Overview: coefficient of variation (standard deviation / mean) of RU consumption above which, on manual throughput, an Autoscale Candidate advisory is derived from your telemetry.עִבְרִית عليكעִבְרִית عليكעִבְרִית عليكעִבְרִית عليكעִבְרִית عليكעִבְרִית علي!]",
   "cosmosdb.configuration.accountOverview.advisories.indexingUsageRatio": "[الهاتفAccount Overview: index-to-data storage ratio above which, when no index paths are excluded, an Indexing Cost Risk advisory is derived from your telemetry.עִבְרִית عليكעִבְרִית عليكעִבְרִית عليكעִבְרִית عليكעִבְרִית علي!]",
+  "cosmosdb.configuration.quickStart.enabled": "[الهاتفWhen enabled, Quick Start tips are shown in the Query Editor after a major or minor extension update. Disable this to turn off Quick Start tips entirely, including the replay button.עִבְרִית عليكעִבְרִית عليكעִבְרִית عليكעִבְרִית عليكעִבְרִית عليكעִבְרִית ع!]",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "[الهاتف(Experimental) Show token usage estimates in the Migration Assistant UI.עִבְרִית عليكעִבְרִית عليكעִבְרִ!]",
   "cosmosdb.configuration.experimental.migration.enabled": "[الهاتف(Experimental) Enable the Cosmos DB Migration (Preview) feature. When disabled, the Cosmos DB Migrations node and its commands are hidden.עִבְרִית عليكעִבְרִית عليكעִבְרִית عليكעִבְרִית عليكעִבְרִ!]"
 }

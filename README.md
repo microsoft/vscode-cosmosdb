@@ -47,14 +47,19 @@ Every section reads from Azure Resource Manager and Azure Monitor. When a sectio
 
 Data is fetched with your Azure credentials, so each section requires the corresponding role assignment. If a role is missing, that section shows an "Access required" empty state naming the role below; the rest of the dashboard continues to work.
 
-| Dashboard section                               | Minimum Azure role              |
-| ----------------------------------------------- | ------------------------------- |
-| Account header, inventory, throughput           | Reader on the Cosmos DB account |
-| RU trends, partition health, derived advisories | Monitoring Reader               |
-| Active alerts                                   | Monitoring Reader               |
-| Advisor recommendations                         | Reader on the subscription      |
+| Dashboard section                                      | Minimum Azure role              |
+| ------------------------------------------------------ | ------------------------------- |
+| Account header, inventory, throughput                  | Reader on the Cosmos DB account |
+| RU trends, partition health, Tier-1 derived advisories | Monitoring Reader               |
+| Tier-2 (log-based) derived advisories                  | Log Analytics Reader            |
+| Active alerts                                          | Monitoring Reader               |
+| Advisor recommendations                                | Reader on the subscription      |
+
+Tier-2 derived advisories (cross-partition query fan-out, shard-key misalignment, uncontrolled ingestion, and shared-throughput starvation) additionally read the account's `CDB*` diagnostic-log tables, so they require **Diagnostic Settings → Log Analytics** enabled on the account plus the [Log Analytics Reader](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/monitor#log-analytics-reader) role (Monitoring Reader also works). When these are missing, the Derived Advisories card still renders every Tier-1 advisory and flags the Tier-2 gap with a "Partial coverage" notice.
 
 Learn more about assigning roles in [Azure role-based access control](https://learn.microsoft.com/azure/role-based-access-control/overview).
+
+For the metrics, detections, and ARM endpoints behind the dashboard, see [`docs/account-overview-dashboard.md`](./docs/account-overview-dashboard.md).
 
 ## Query Editor
 
@@ -91,11 +96,6 @@ The extension integrates with GitHub Copilot to help you write, edit, and unders
 - **Generate Query**: Click the **AI** button in the Query Editor toolbar and select **Generate query** to describe your query in plain English. Copilot will generate a Cosmos DB NoSQL query for you.
 
 - **Explain Query**: Click the **AI** button and select **Explain query** to get a plain-English explanation of the current query in the editor.
-
-- **`@cosmosdb` Chat Participant**: Use `@cosmosdb` in VS Code Chat (Copilot) with dedicated commands:
-  - `/generateQuery` – Generate a new query from a description.
-  - `/explainQuery` – Explain an existing query.
-  - `/editQuery` – Edit or optimize a query based on instructions.
 
 > **Requires** the [GitHub Copilot](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot) extension and an active Copilot subscription.
 

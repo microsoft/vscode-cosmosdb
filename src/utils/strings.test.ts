@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { leftPadIndex, toStringUniversal, truncateString } from './strings';
+import { compareResourceIds, leftPadIndex, toStringUniversal, truncateString } from './strings';
 
 describe('strings', () => {
     describe('toStringUniversal', () => {
@@ -131,6 +131,35 @@ describe('strings', () => {
         it('should handle an empty collection without throwing', () => {
             expect(leftPadIndex(0, 0)).toBe('0');
             expect(leftPadIndex(0, [])).toBe('0');
+        });
+    });
+
+    describe('compareResourceIds', () => {
+        const sorted = (ids: string[]): string[] => [...ids].sort(compareResourceIds);
+
+        it('should sort ids alphabetically', () => {
+            expect(sorted(['orders', 'customers', 'products'])).toEqual(['customers', 'orders', 'products']);
+        });
+
+        it('should ignore case when comparing', () => {
+            expect(sorted(['beta', 'Alpha', 'Gamma'])).toEqual(['Alpha', 'beta', 'Gamma']);
+        });
+
+        it('should compare embedded numbers by value', () => {
+            expect(sorted(['shard10', 'shard2', 'shard1'])).toEqual(['shard1', 'shard2', 'shard10']);
+        });
+
+        it('should deterministically order ids that differ only by case', () => {
+            expect(sorted(['orders', 'Orders'])).toEqual(['Orders', 'orders']);
+            expect(sorted(['Orders', 'orders'])).toEqual(['Orders', 'orders']);
+        });
+
+        it('should return zero for identical ids', () => {
+            expect(compareResourceIds('orders', 'orders')).toBe(0);
+        });
+
+        it('should handle empty ids', () => {
+            expect(sorted(['orders', ''])).toEqual(['', 'orders']);
         });
     });
 });

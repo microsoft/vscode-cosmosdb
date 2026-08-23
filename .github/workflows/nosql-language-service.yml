@@ -26,45 +26,34 @@ on:
     branches:
       - main
       - rel/*
-      - dev/**
-    paths:
-      - 'packages/**'
-      - 'scripts/import-seed.mjs'
-      - '.github/workflows/nosql-language-service.yml'
-  pull_request:
-    branches:
-      - main
-      - rel/*
-      - dev/**
     paths:
       - 'packages/**'
       - 'scripts/import-seed.mjs'
       - '.github/workflows/nosql-language-service.yml'
 
-# Workflow-level concurrency dedupes rapid pushes on the same branch; PR runs are scoped by PR number + head
-# repo so two forks pushing branches with the same name don't cancel each other.
+  pull_request:
+    types: [opened, reopened, synchronize]
+    paths:
+      - 'packages/**'
+      - 'scripts/import-seed.mjs'
+      - '.github/workflows/nosql-language-service.yml'
+
+# Push and PR runs share a head repository + branch group, so PR runs cancel overlapping push builds. Main and
+# rel/* pushes remain unique, and fork PRs remain isolated by their head repository.
 concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
   group: >-
     nosql-${{ github.workflow }}-${{
+    github.ref == 'refs/heads/main' && github.run_id ||
+    startsWith(github.ref, 'refs/heads/rel/') && github.run_id ||
     github.event_name == 'pull_request' &&
-    format('{0}-{1}', github.event.pull_request.head.repo.full_name, github.event.pull_request.number) ||
-    github.ref_name }}
-  cancel-in-progress: true
+    format('{0}-{1}', github.event.pull_request.head.repo.full_name, github.head_ref) ||
+    format('{0}-{1}', github.repository, github.ref_name) }}
 
 jobs:
   integration:
     name: NoSQL language-service integration
     runs-on: ubuntu-latest
-
-    # Same push+pull_request dedupe trick as build.yml: a same-repo branch covered by `push.branches` fires
-    # both events on one commit. Skip the pull_request run for those (the push run provides the checks); fork
-    # PRs and other head branches still run on pull_request.
-    if: >-
-      github.event_name != 'pull_request' ||
-      github.event.pull_request.head.repo.full_name != github.repository ||
-      (github.head_ref != 'main' &&
-       !startsWith(github.head_ref, 'rel/') &&
-       !startsWith(github.head_ref, 'dev/'))
 
     env:
       COSMOS_ENDPOINT: https://localhost:8081
@@ -164,7 +153,7 @@ jobs:
           REPO: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           NOSQL_RESULT: ${{ steps.nosql-tests.outcome }}
-          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         shell: bash
         run: |
@@ -242,14 +231,6 @@ jobs:
           nosql_icon=$(result_icon "$NOSQL_RESULT")
           artifacts=$(list_run_artifacts "${GITHUB_RUN_ID}")
 
-          if [ -z "${PR_NUMBER:-}" ] && [ -n "${BRANCH_NAME:-}" ]; then
-              pr_info=$(gh pr view "${BRANCH_NAME}" --repo "${REPO}" \
-                  --json number 2>/dev/null) || true
-              if [ -n "$pr_info" ]; then
-                  PR_NUMBER=$(echo "$pr_info" | jq -r '.number // empty')
-              fi
-          fi
-
           MARKER="<!-- ci-summary:nosql -->"
           cat >> "$GITHUB_STEP_SUMMARY" << SUMMARY_EOF
           ${MARKER}
@@ -270,6 +251,6 @@ jobs:
               success|failure) comment_meaningful=true ;;
           esac
 
-          if [ -n "${PR_NUMBER:-}" ]; then
+          if [ "${EVENT_NAME}" = "pull_request" ] && [ -n "${PR_NUMBER:-}" ]; then
               post_or_update_comment "${PR_NUMBER}" "${MARKER}" "${GITHUB_STEP_SUMMARY}" "${comment_meaningful}"
           fi

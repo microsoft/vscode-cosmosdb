@@ -14,6 +14,7 @@ import { isRbacException, showRbacPermissionError } from '../../cosmosdb/utils/r
 import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../extensionVariables';
 import { FabricService, type ArtifactConnectionInfo } from '../../services/FabricService';
+import { compareResourceIds } from '../../utils/strings';
 import { CosmosDBAccountResourceItemBase } from '../azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
 import { type AccountInfo } from '../cosmosdb/AccountInfo';
 import { type DatabaseResource } from '../cosmosdb/models/CosmosDBTypes';
@@ -44,7 +45,7 @@ export abstract class FabricArtifactResourceItem extends CosmosDBAccountResource
         const databases = await withClaimsChallengeHandling(accountInfo, async (cosmosClient) =>
             this.getDatabases(artifactConnectionInfo, cosmosClient),
         );
-        const sortedDatabases = databases.sort((a, b) => a.id.localeCompare(b.id));
+        const sortedDatabases = databases.sort((a, b) => compareResourceIds(a.id, b.id));
 
         return this.getChildrenImpl(accountInfo, artifactConnectionInfo, sortedDatabases);
     }

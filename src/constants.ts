@@ -12,6 +12,7 @@ import { ext } from './extensionVariables';
 export const isWindows: boolean = process.platform.startsWith('win');
 export const isLinux: boolean = process.platform.startsWith('linux');
 export const isMacOS: boolean = process.platform.startsWith('darwin');
+export const azureResourcesExtensionId = 'ms-azuretools.vscode-azureresourcegroups';
 
 export namespace Links {
     export const LocalConnectionDebuggingTips: string = 'https://aka.ms/AA5zah5';

@@ -4,10 +4,12 @@
  *--------------------------------------------------------------------------------------------*/
 
 import {
+    Button,
     List,
     ListItem,
     makeStyles,
     MessageBar,
+    MessageBarActions,
     type MessageBarProps,
     ProgressBar,
     Text,
@@ -92,7 +94,8 @@ export const DocumentPanel = () => {
 
     const errors = state.error ? (Array.isArray(state.error) ? state.error : [state.error]) : [];
     const isReadOnly = state.mode === 'view';
-    const inProgress = state.isSaving || state.isRefreshing;
+    const isEditorReadOnly = isReadOnly || !!state.cleanupRequiredMessage;
+    const inProgress = state.isSaving || state.isRefreshing || state.isCleaningUp;
 
     const onChange = useCallback(
         (newValue: string | undefined) => {
@@ -156,6 +159,26 @@ export const DocumentPanel = () => {
                     <Text>{l10n.t('This item has unsaved changes.')}</Text>
                 </MessageBarWrapper>
                 <MessageBarWrapper
+                    key={'cleanupRequired'}
+                    visible={!!state.cleanupRequiredMessage}
+                    debounceTime={0}
+                    intent={'warning'}
+                >
+                    <Text>{state.cleanupRequiredMessage}</Text>
+                    <MessageBarActions>
+                        <Button
+                            appearance={'primary'}
+                            disabled={state.isCleaningUp}
+                            onClick={() => void dispatcher.retryPartitionKeyCleanup()}
+                        >
+                            {l10n.t('Retry cleanup')}
+                        </Button>
+                    </MessageBarActions>
+                </MessageBarWrapper>
+                <MessageBarWrapper key={'cleaningUp'} visible={state.isCleaningUp} debounceTime={0} intent={'info'}>
+                    <Text>{l10n.t('Cleaning up the original item...')}</Text>
+                </MessageBarWrapper>
+                <MessageBarWrapper
                     key={'error'}
                     visible={!!errors.length}
                     debounceTime={2000}
@@ -188,7 +211,7 @@ export const DocumentPanel = () => {
                     width={'100%'}
                     defaultLanguage={'json'}
                     value={state.currentDocumentContent ?? l10n.t('No result')}
-                    options={{ domReadOnly: isReadOnly, readOnly: isReadOnly, scrollBeyondLastLine: false }}
+                    options={{ domReadOnly: isEditorReadOnly, readOnly: isEditorReadOnly, scrollBeyondLastLine: false }}
                     onChange={onChange}
                 />
             </section>

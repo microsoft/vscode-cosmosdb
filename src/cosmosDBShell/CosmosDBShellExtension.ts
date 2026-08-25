@@ -9,7 +9,6 @@
  * and {@link connectCosmosDBShell}). Heavier subsystems (install flow, MCP provider,
  * language server, terminal reuse, version cache) live in sibling modules.
  */
-import { type ContainerDefinition, type DatabaseDefinition } from '@azure/cosmos';
 import {
     callWithTelemetryAndErrorHandling,
     registerCommandWithTreeNodeUnwrapping,
@@ -28,6 +27,7 @@ import {
     SETTING_MCP_PORT,
     SETTING_SHELL_PATH,
 } from './constants';
+import { getGoToContainerCommand } from './goToContainerCommand';
 import { promptToResolveMissingCosmosDBShell } from './install/installPrompts';
 import {
     getCosmosDBShellCredential,
@@ -250,15 +250,6 @@ export async function launchCosmosDBShell(context: IActionContext, node?: NoSqlC
     // Record how this process was launched so future reuse decisions know which env vars
     // (e.g. COSMOSDB_SHELL_ACCOUNT_KEY / COSMOSDB_SHELL_TOKEN) are baked in.
     terminalStates.set(terminal, buildTerminalStateForNode(node));
-}
-
-function getGoToContainerCommand(database: DatabaseDefinition, container: ContainerDefinition): string | undefined {
-    if (container) {
-        return `cd "/${database.id}/${container.id}"`;
-    } else if (database) {
-        return `cd "/${database.id}"`;
-    }
-    return undefined;
 }
 
 export async function connectCosmosDBShell(context: IActionContext, node?: NoSqlContainerResourceItem) {

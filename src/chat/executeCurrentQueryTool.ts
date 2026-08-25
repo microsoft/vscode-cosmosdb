@@ -43,6 +43,41 @@ function getActiveTab(): QueryEditorTab | undefined {
 }
 
 /**
+ * Finds an open Query Editor tab by its stable id, or `undefined` when it has since been closed.
+ */
+function findTabById(tabId: string): QueryEditorTab | undefined {
+    for (const tab of QueryEditorTab.openTabs) {
+        if (tab.getId() === tabId) {
+            return tab;
+        }
+    }
+    return undefined;
+}
+
+/**
+ * Snapshot of the exact Query Editor tab + query that a confirmation prompt was built for.
+ *
+ * `prepareInvocation` records this and `invoke` consumes it so the tool runs precisely what the
+ * user confirmed. Without it, `invoke` re-resolves the *active* editor and its *current* query,
+ * which lets the user switch tabs or edit the query while the confirmation prompt is open and have
+ * the tool execute unconfirmed state — authorizing a different query/container than was shown.
+ *
+ * The VS Code language-model tool API provides no channel to pass data from `prepareInvocation`
+ * to `invoke` (prepare only receives `input`, and is not necessarily followed by an `invoke`), so a
+ * module-scoped record is the handoff. Only one confirmation can be pending at a time because the
+ * chat runtime invokes tools sequentially; `invoke` clears it on read.
+ */
+interface PendingRunConfirmation {
+    tabId: string;
+    query: string;
+    endpoint: string;
+    databaseId: string;
+    containerId: string;
+}
+
+let pendingRunConfirmation: PendingRunConfirmation | undefined;
+
+/**
  * Resolves the query the editor would run: the selected text when there is a selection, otherwise
  * the full editor content.
  */
@@ -64,7 +99,23 @@ export function registerExecuteCurrentQueryTool(context: vscode.ExtensionContext
             _token: vscode.CancellationToken,
         ): vscode.PreparedToolInvocation {
             const tab = getActiveTab();
+            const connection = tab ? getConnectionFromQueryTab(tab) : undefined;
             const activeQuery = tab ? getActiveQuery(tab) : undefined;
+
+            // Pin the confirmation to this exact tab + query so `invoke` runs what the user is shown
+            // here, even if they switch tabs or edit the query before confirming. See
+            // PendingRunConfirmation for why a module-scoped snapshot is the only available handoff.
+            pendingRunConfirmation =
+                tab && connection && activeQuery && activeQuery.trim()
+                    ? {
+                          tabId: tab.getId(),
+                          query: activeQuery,
+                          endpoint: connection.endpoint,
+                          databaseId: connection.databaseId,
+                          containerId: connection.containerId,
+                      }
+                    : undefined;
+
             const message = new vscode.MarkdownString(
                 l10n.t('Running this query reads data from your Cosmos DB container and consumes Request Units (RUs).'),
             );
@@ -91,7 +142,14 @@ export function registerExecuteCurrentQueryTool(context: vscode.ExtensionContext
                     actionContext.errorHandling.suppressDisplay = true;
                     actionContext.telemetry.properties.outcome = 'error';
 
-                    const tab = getActiveTab();
+                    // Consume the snapshot captured for the confirmation prompt (cleared on read so a
+                    // later invoke can't reuse a stale confirmation). When present, resolve the
+                    // *confirmed* tab by id instead of whatever is active now, so switching tabs while
+                    // the prompt was open can't redirect the run to a different container.
+                    const confirmation = pendingRunConfirmation;
+                    pendingRunConfirmation = undefined;
+
+                    const tab = confirmation ? findTabById(confirmation.tabId) : getActiveTab();
                     const connection = tab ? getConnectionFromQueryTab(tab) : undefined;
                     if (connection) {
                         actionContext.valuesToMask.push(
@@ -137,6 +195,31 @@ export function registerExecuteCurrentQueryTool(context: vscode.ExtensionContext
                     // Mask query text early so it cannot leak via telemetry error messages; the query may carry
                     // literal values (e.g. WHERE clauses). Masking does not affect the result returned to the model.
                     actionContext.valuesToMask.push(activeQuery);
+                    if (confirmation) {
+                        // The confirmed query may also carry literal values; mask it too in case the state
+                        // drifted (below) and it differs from the query we just masked.
+                        actionContext.valuesToMask.push(confirmation.query);
+                    }
+
+                    // Refuse to run if the editor drifted from what the user confirmed: an edited query
+                    // (changed while the prompt was open) or a re-pointed connection would target state the
+                    // user never saw. Re-running the tool captures a fresh snapshot and shows a new prompt.
+                    if (
+                        confirmation &&
+                        (activeQuery !== confirmation.query ||
+                            connection.endpoint !== confirmation.endpoint ||
+                            connection.databaseId !== confirmation.databaseId ||
+                            connection.containerId !== confirmation.containerId)
+                    ) {
+                        actionContext.telemetry.properties.outcome = 'stateChanged';
+                        return new vscode.LanguageModelToolResult([
+                            new vscode.LanguageModelTextPart(
+                                l10n.t(
+                                    'The Query Editor changed after you confirmed, so the query was not run. Please run it again to confirm the current query.',
+                                ),
+                            ),
+                        ]);
+                    }
 
                     if (token.isCancellationRequested) {
                         actionContext.telemetry.properties.outcome = 'cancelled';

@@ -1204,6 +1204,7 @@
   "The previously saved schema for this container will be replaced.": "The previously saved schema for this container will be replaced.",
   "The primary programming language of your application. Examples: C#, Java, Python": "The primary programming language of your application. Examples: C#, Java, Python",
   "The query could not be executed in the Query Editor. Please try again.": "The query could not be executed in the Query Editor. Please try again.",
+  "The Query Editor changed after you confirmed, so the query was not run. Please run it again to confirm the current query.": "The Query Editor changed after you confirmed, so the query was not run. Please run it again to confirm the current query.",
   "The Query Editor has no query to run. Write a query first, then run it.": "The Query Editor has no query to run. Write a query first, then run it.",
   "The query has syntax errors:": "The query has syntax errors:",
   "The query text contains multiple statements separated by semicolons.": "The query text contains multiple statements separated by semicolons.",

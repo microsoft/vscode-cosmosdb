@@ -189,6 +189,16 @@ export class QueryEditorTab extends BaseTab {
         return this.state.connection;
     };
 
+    /**
+     * Stable identifier for this tab instance, unique for the lifetime of the tab. Used by the
+     * `cosmosdb_executeCurrentQuery` tool to pin a run to the exact tab whose query the user
+     * confirmed, so switching tabs while the confirmation prompt is open can't redirect the run to
+     * a different tab.
+     */
+    public getId(): string {
+        return this.id;
+    }
+
     public getCurrentQuery = (): string | undefined => {
         return this.state.query;
     };

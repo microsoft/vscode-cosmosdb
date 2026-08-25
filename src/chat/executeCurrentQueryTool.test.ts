@@ -7,7 +7,7 @@
 
 import { findConfidentialStatKeys } from '../services/schemaStatisticsTestUtils';
 import { registerExecuteCurrentQueryTool } from './executeCurrentQueryTool';
-import { invokeRegisteredTool } from './queryEditorToolTestUtils';
+import { captureRegisteredTool, invokeRegisteredTool, serializeToolResult } from './queryEditorToolTestUtils';
 
 // Drive the telemetry wrapper synchronously so the tool body runs end-to-end and we can inspect
 // the LanguageModelToolResult it returns.
@@ -83,5 +83,123 @@ describe('cosmosdb_executeCurrentQuery — confidentiality', () => {
         // Structural information is preserved so the schema remains useful to the model.
         const props = payload.schema.properties as Record<string, unknown>;
         expect(Object.keys(props)).toEqual(expect.arrayContaining(['salary', 'nationalId', 'active']));
+    });
+});
+
+/**
+ * A minimal QueryEditorTab stub whose `getCurrentQuery` reflects the mutable `query` field, so a
+ * test can simulate the user editing the query between `prepareInvocation` and `invoke`.
+ */
+function makeTab(id: string, query: string, connection: unknown) {
+    const tab = {
+        query,
+        getId: () => id,
+        getSelectedQuery: () => undefined,
+        getCurrentQuery: () => tab.query,
+        connection,
+        runActiveQueryInEditor: vi.fn(async () => 'exec-1'),
+        getCurrentQueryResults: vi.fn(() => ({
+            documents: [],
+            requestCharge: 1,
+            roundTrips: 1,
+            hasMoreResults: false,
+        })),
+    };
+    return tab;
+}
+
+function setOpenTabs(queryEditorTab: { openTabs: Set<unknown> }, tabs: unknown[]): void {
+    queryEditorTab.openTabs.clear();
+    for (const tab of tabs) {
+        queryEditorTab.openTabs.add(tab);
+    }
+}
+
+const noopToken = { isCancellationRequested: false } as never;
+
+describe('cosmosdb_executeCurrentQuery — confirmation snapshot (P1)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('runs the confirmed tab, not the now-active tab, after a tab switch', async () => {
+        const { getActiveQueryEditor, getConnectionFromQueryTab } = await import('./chatUtils');
+        const { QueryEditorTab } = await import('../panels/QueryEditorTab');
+
+        const connA = { endpoint: 'https://a.documents.azure.com/', databaseId: 'dbA', containerId: 'cA' };
+        const connB = { endpoint: 'https://b.documents.azure.com/', databaseId: 'dbB', containerId: 'cB' };
+        const tabA = makeTab('A', 'SELECT * FROM a', connA);
+        const tabB = makeTab('B', 'SELECT * FROM b', connB);
+        setOpenTabs(QueryEditorTab as unknown as { openTabs: Set<unknown> }, [tabA, tabB]);
+
+        vi.mocked(getConnectionFromQueryTab).mockImplementation(
+            ((tab: unknown) => (tab as typeof tabA).connection) as never,
+        );
+        // Active tab while the confirmation prompt is built is A.
+        vi.mocked(getActiveQueryEditor).mockReturnValue(tabA as never);
+
+        const tool = captureRegisteredTool(registerExecuteCurrentQueryTool);
+        tool.prepareInvocation?.({ input: {} }, noopToken);
+
+        // User switches to tab B while the prompt is open; the active editor is now B.
+        vi.mocked(getActiveQueryEditor).mockReturnValue(tabB as never);
+
+        const result = await tool.invoke({ input: {} }, noopToken);
+        const payload = JSON.parse(serializeToolResult(result));
+
+        // The confirmed tab A ran; the now-active tab B did not.
+        expect(tabA.runActiveQueryInEditor).toHaveBeenCalledWith('SELECT * FROM a');
+        expect(tabB.runActiveQueryInEditor).not.toHaveBeenCalled();
+        expect(payload.databaseId).toBe('dbA');
+        expect(payload.containerId).toBe('cA');
+    });
+
+    it('does not run an edited query after confirmation and asks to re-confirm', async () => {
+        const { getActiveQueryEditor, getConnectionFromQueryTab } = await import('./chatUtils');
+        const { QueryEditorTab } = await import('../panels/QueryEditorTab');
+
+        const connA = { endpoint: 'https://a.documents.azure.com/', databaseId: 'dbA', containerId: 'cA' };
+        const tabA = makeTab('A', 'SELECT * FROM a', connA);
+        setOpenTabs(QueryEditorTab as unknown as { openTabs: Set<unknown> }, [tabA]);
+
+        vi.mocked(getConnectionFromQueryTab).mockImplementation(
+            ((tab: unknown) => (tab as typeof tabA).connection) as never,
+        );
+        vi.mocked(getActiveQueryEditor).mockReturnValue(tabA as never);
+
+        const tool = captureRegisteredTool(registerExecuteCurrentQueryTool);
+        tool.prepareInvocation?.({ input: {} }, noopToken);
+
+        // User edits the query while the confirmation prompt is open.
+        tabA.query = 'SELECT * FROM a WHERE secret = 1';
+
+        const result = await tool.invoke({ input: {} }, noopToken);
+        const text = serializeToolResult(result);
+
+        expect(tabA.runActiveQueryInEditor).not.toHaveBeenCalled();
+        expect(text).toContain('changed after you confirmed');
+    });
+
+    it('runs the query when the editor is unchanged since confirmation', async () => {
+        const { getActiveQueryEditor, getConnectionFromQueryTab } = await import('./chatUtils');
+        const { QueryEditorTab } = await import('../panels/QueryEditorTab');
+
+        const connA = { endpoint: 'https://a.documents.azure.com/', databaseId: 'dbA', containerId: 'cA' };
+        const tabA = makeTab('A', 'SELECT * FROM a', connA);
+        setOpenTabs(QueryEditorTab as unknown as { openTabs: Set<unknown> }, [tabA]);
+
+        vi.mocked(getConnectionFromQueryTab).mockImplementation(
+            ((tab: unknown) => (tab as typeof tabA).connection) as never,
+        );
+        vi.mocked(getActiveQueryEditor).mockReturnValue(tabA as never);
+
+        const tool = captureRegisteredTool(registerExecuteCurrentQueryTool);
+        tool.prepareInvocation?.({ input: {} }, noopToken);
+
+        const result = await tool.invoke({ input: {} }, noopToken);
+        const payload = JSON.parse(serializeToolResult(result));
+
+        expect(tabA.runActiveQueryInEditor).toHaveBeenCalledWith('SELECT * FROM a');
+        expect(payload.databaseId).toBe('dbA');
     });
 });

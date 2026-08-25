@@ -24,6 +24,14 @@ describe('escapeCosmosDBShellStringLiteral', () => {
         expect(escapeCosmosDBShellStringLiteral('a\rb')).toBe('a\\rb');
         expect(escapeCosmosDBShellStringLiteral('a\tb')).toBe('a\\tb');
     });
+
+    it('escapes `$` so CosmosDBShell cannot interpolate a variable or run a nested command', () => {
+        // Verified against the real binary: `echo "$((help))"` executes the `help` command
+        // even inside an intact, properly-quoted string. Escaping `$` as `\$` neutralizes it.
+        expect(escapeCosmosDBShellStringLiteral('$name')).toBe('\\$name');
+        expect(escapeCosmosDBShellStringLiteral('$((help))')).toBe('\\$((help))');
+        expect(escapeCosmosDBShellStringLiteral('a$(echo injected)b')).toBe('a\\$(echo injected)b');
+    });
 });
 
 describe('getGoToContainerCommand', () => {
@@ -54,5 +62,11 @@ describe('getGoToContainerCommand', () => {
         const malicious = 'mydb"\necho "injected';
         const command = getGoToContainerCommand(db(malicious), container('mycon'));
         expect(command).toBe('cd "/mydb\\"\\necho \\"injected/mycon"');
+    });
+
+    it('neutralizes a container id shaped as a nested command execution `$(...)`', () => {
+        const malicious = '$((help))';
+        const command = getGoToContainerCommand(db('mydb'), container(malicious));
+        expect(command).toBe('cd "/mydb/\\$((help))"');
     });
 });

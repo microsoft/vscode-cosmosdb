@@ -631,16 +631,17 @@ export const queryEditorRouterDef = queryEditorRouter({
         }),
 
     reportActiveQueryExecuted: queryEditorProcedure
-        .input(z.object({ executionId: z.string().optional() }).optional())
+        .input(z.object({ executionId: z.string().optional(), requestId: z.string() }))
         .mutation(({ input, ctx }) => {
             if (ctx.actionContext) {
                 ctx.actionContext.telemetry.suppressIfSuccessful = true;
             }
-            // Unblock the cosmosdb_executeCurrentQuery tool. Pass the executionId that actually ran
-            // (undefined when the run was cancelled or never started) so the tool reads results only
-            // for this run and never reports stale success.
-            ctx.state.pendingRunResolve?.(input?.executionId);
-            ctx.state.pendingRunResolve = undefined;
+            // Unblock the cosmosdb_executeCurrentQuery tool. Resolve only the run identified by
+            // `requestId`, passing the executionId that actually ran (undefined when the run was
+            // cancelled or never started), so each invocation reads results for exactly its own run
+            // and never receives another concurrent run's executionId or stale success.
+            const resolve = ctx.state.pendingRuns.get(input.requestId);
+            resolve?.(input.executionId);
         }),
 
     getSelectedModelName: queryEditorProcedure.query(async () => {

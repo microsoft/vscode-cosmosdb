@@ -46,7 +46,7 @@ export class QueryEditorTab extends BaseTab {
             isLastQueryAIGenerated: false,
             lastAIGeneratedQuery: undefined,
             lastGeneratePrompt: undefined,
-            pendingRunResolve: undefined,
+            pendingRuns: new Map(),
         };
 
         this.panel.iconPath = getThemedIconPath('editor.svg') as { light: vscode.Uri; dark: vscode.Uri };
@@ -138,6 +138,13 @@ export class QueryEditorTab extends BaseTab {
 
         this.sessions.forEach((session) => session.dispose());
         this.sessions.clear();
+
+        // Settle any in-flight runs so awaiting tool calls resolve immediately instead of hanging until
+        // their timeout fires. Each resolver removes itself from the map, so snapshot the values first.
+        for (const resolve of [...this.state.pendingRuns.values()]) {
+            resolve(undefined);
+        }
+        this.state.pendingRuns.clear();
 
         this.eventSink.close();
 
@@ -292,21 +299,24 @@ export class QueryEditorTab extends BaseTab {
      * started / timed out — so the `cosmosdb_executeCurrentQuery` tool reads PII-free result metadata
      * only for this run and never reports stale results. Resolves after `timeoutMs` (with `undefined`)
      * as a safety net so the tool never hangs.
+     *
+     * Each call gets a unique `requestId` that travels with the request event and comes back on the
+     * completion signal, so concurrent invocations stay isolated: a completing run resolves only its
+     * own caller and can never deliver its executionId to a different still-pending invocation.
      */
     public runActiveQueryInEditor(query: string, timeoutMs = 120_000): Promise<string | undefined> {
-        // Abandon any prior pending run so a stale resolver can't fire against this one.
-        this.state.pendingRunResolve?.(undefined);
+        const requestId = globalThis.crypto.randomUUID();
         return new Promise<string | undefined>((resolve) => {
             const timer = setTimeout(() => {
-                this.state.pendingRunResolve = undefined;
+                this.state.pendingRuns.delete(requestId);
                 resolve(undefined);
             }, timeoutMs);
-            this.state.pendingRunResolve = (executionId?: string) => {
+            this.state.pendingRuns.set(requestId, (executionId?: string) => {
                 clearTimeout(timer);
-                this.state.pendingRunResolve = undefined;
+                this.state.pendingRuns.delete(requestId);
                 resolve(executionId);
-            };
-            this.eventSink.emit({ type: 'runActiveQueryRequested', query });
+            });
+            this.eventSink.emit({ type: 'runActiveQueryRequested', query, requestId });
         });
     }
 

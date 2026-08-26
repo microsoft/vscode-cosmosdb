@@ -6,7 +6,7 @@
 import { type CosmosClient } from '@azure/cosmos';
 import type * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
-import { getThemeAgnosticIconPath } from '../../constants';
+import { getThemedIconPath } from '../../constants';
 import { AuthenticationMethod } from '../../cosmosdb/AuthenticationMethod';
 import { getCosmosDBEntraIdCredential } from '../../cosmosdb/CosmosDBCredential';
 import { getSignedInPrincipalIdForAccountEndpoint } from '../../cosmosdb/utils/azureSessionHelper';
@@ -51,7 +51,7 @@ export abstract class FabricArtifactResourceItem extends CosmosDBAccountResource
 
     public getTreeItem(): vscode.TreeItem {
         const treeItem = super.getTreeItem();
-        treeItem.iconPath = getThemeAgnosticIconPath('database');
+        treeItem.iconPath = getThemedIconPath('cosmosdb_64.svg');
         return treeItem;
     }
 

@@ -1,5 +1,16 @@
 # Change Log
 
+## 0.36.2
+
+### Fixed
+
+- Prevented command injection when opening Cosmos DB Shell at a database or container whose ID contains shell syntax or control characters. (#3313)
+- Fixed Cosmos DB Shell startup navigation across older and newer Shell versions, with compatibility guidance and consent-based update notifications that account for custom executable paths. (#3317)
+
+### Changed
+
+- Updated localization.
+
 ## 0.36.1
 
 ### Fixed

@@ -12,10 +12,13 @@
  * the `cosmosDB.shell.path` setting changes.
  */
 import * as child from 'child_process';
+import * as semver from 'semver';
 import { ext } from '../extensionVariables';
 import { getCosmosDBShellCommand } from './shellCommand';
 
 type CosmosDBShellSupportInfo = { installed: boolean; version?: string };
+
+export const MINIMUM_COSMOS_DB_SHELL_VERSION = '1.1.209-preview';
 
 const cosmosDBShellSupportCache = new Map<string, CosmosDBShellSupportInfo>();
 
@@ -35,6 +38,12 @@ export function isCosmosDBShellInstalled(): boolean {
  */
 export function getDetectedCosmosDBShellVersion(): string | undefined {
     return getCachedShellSupport().version;
+}
+
+/** Returns true when the installed shell supports safe startup database/container selection. */
+export function isCosmosDBShellVersionSupported(): boolean {
+    const version = getCachedShellSupport().version;
+    return version !== undefined && semver.gte(version, MINIMUM_COSMOS_DB_SHELL_VERSION);
 }
 
 /**
@@ -59,11 +68,13 @@ function getCachedShellSupport(): CosmosDBShellSupportInfo {
 /**
  * Extracts a SemVer-like version token (e.g. `1.2.3` or `1.2.3-prerelease.4`)
  * from the `--version` output of CosmosDBShell. Returns undefined when no
- * recognizable version token is present.
+ * recognizable version token is present, or when the token is not valid SemVer
+ * (so version comparisons can never throw on malformed shell output).
  */
 function parseShellVersion(output: string): string | undefined {
     const match = output.match(/\b(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.+-]+)?)\b/);
-    return match?.[1];
+    const version = match?.[1];
+    return version && semver.valid(version) ? version : undefined;
 }
 
 function detectCosmosDBShellSupport(command: string): CosmosDBShellSupportInfo {

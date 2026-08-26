@@ -41,6 +41,55 @@ describe('cosmosDBShellCommandResolver', () => {
         expect(resolvedCommand).toBe(resolvedExePath);
     });
 
+    it('prefers an updated dotnet tool shim target over a stale root executable', () => {
+        const rootExePath = 'C:\\Users\\test\\.dotnet\\tools\\cosmosdbshell.exe';
+        const commandShimPath = 'C:\\Users\\test\\.dotnet\\tools\\cosmosdbshell.cmd';
+        const updatedExePath =
+            'C:\\Users\\test\\.dotnet\\tools\\.store\\cosmosdbshell\\1.1.209-preview\\cosmosdbshell.win-x64\\1.1.209-preview\\tools\\net10.0\\win-x64\\CosmosDBShell.exe';
+
+        configureMockFiles([rootExePath, commandShimPath, updatedExePath]);
+        (fs.readFileSync as Mock).mockImplementation((filePath: string) =>
+            filePath.toLowerCase() === commandShimPath.toLowerCase()
+                ? '@echo off\n"%~dp0.store\\cosmosdbshell\\1.1.209-preview\\cosmosdbshell.win-x64\\1.1.209-preview\\tools\\net10.0\\win-x64\\CosmosDBShell.exe" %*'
+                : '',
+        );
+
+        const resolvedCommand = resolveCosmosDBShellCommand(
+            undefined,
+            {
+                PATH: 'C:\\Users\\test\\.dotnet\\tools',
+                PATHEXT: '.COM;.EXE;.BAT;.CMD',
+            },
+            true,
+        );
+
+        expect(resolvedCommand).toBe(updatedExePath);
+    });
+
+    it('does not prefer a same-named batch launcher that targets outside the dotnet tool store', () => {
+        const rootExePath = 'C:\\tools\\cosmosdbshell.EXE';
+        const commandShimPath = 'C:\\tools\\cosmosdbshell.cmd';
+        const arbitraryExePath = 'C:\\other\\CosmosDBShell.exe';
+
+        configureMockFiles([rootExePath, commandShimPath, arbitraryExePath]);
+        (fs.readFileSync as Mock).mockImplementation((filePath: string) =>
+            filePath.toLowerCase() === commandShimPath.toLowerCase()
+                ? '@echo off\n"C:\\other\\CosmosDBShell.exe" %*'
+                : '',
+        );
+
+        const resolvedCommand = resolveCosmosDBShellCommand(
+            undefined,
+            {
+                PATH: 'C:\\tools',
+                PATHEXT: '.COM;.EXE;.BAT;.CMD',
+            },
+            true,
+        );
+
+        expect(resolvedCommand).toBe(rootExePath);
+    });
+
     it('returns the sanitized configured path when no PATH lookup is needed', () => {
         const configuredPath = 'C:\\tools\\CosmosDBShell.exe';
         configureMockFiles([configuredPath]);

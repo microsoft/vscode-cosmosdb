@@ -7,8 +7,8 @@ import { parseError } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
-import { QueryEditorTab } from '../panels/QueryEditorTab';
-import { getActiveQueryEditor, getConnectionFromQueryTab } from './chatUtils';
+import { type QueryEditorTab } from '../panels/QueryEditorTab';
+import { getConnectionFromQueryTab } from './chatUtils';
 import { revealConnectionInTree } from './revealConnection';
 
 /**
@@ -36,17 +36,6 @@ export const OPEN_QUERY_EDITOR_TOOL_DESCRIPTION =
 const OPEN_QUERY_EDITOR_COMMAND = 'cosmosDB.openNoSqlQueryEditor';
 
 /**
- * Gets the active query editor tab, if available.
- */
-function getActiveTab(): QueryEditorTab | undefined {
-    const tabs = Array.from(QueryEditorTab.openTabs);
-    if (tabs.length === 0) {
-        return undefined;
-    }
-    return getActiveQueryEditor(tabs);
-}
-
-/**
  * Registers the cosmosdb_openQueryEditor tool with the VS Code Language Model API.
  */
 export function registerOpenQueryEditorTool(context: vscode.ExtensionContext): void {
@@ -72,10 +61,10 @@ export function registerOpenQueryEditorTool(context: vscode.ExtensionContext): v
 
             try {
                 // Executing the command with no arguments starts the connection flow: the user is
-                // prompted to pick a container and a Query Editor is opened connected to it.
-                await vscode.commands.executeCommand(OPEN_QUERY_EDITOR_COMMAND);
-
-                const tab = getActiveTab();
+                // prompted to pick a container and a Query Editor is opened connected to it. The
+                // command resolves with the tab it actually opened, or undefined when the flow was
+                // cancelled, so we never mistake a pre-existing editor for a newly opened one.
+                const tab = await vscode.commands.executeCommand<QueryEditorTab | undefined>(OPEN_QUERY_EDITOR_COMMAND);
                 const connection = tab ? getConnectionFromQueryTab(tab) : undefined;
                 if (!connection) {
                     // The user most likely cancelled the container picker, so no editor was opened.

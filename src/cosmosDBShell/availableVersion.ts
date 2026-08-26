@@ -21,6 +21,7 @@ type PackageIndexRequest = () => Promise<PackageIndexResponse>;
 
 export async function logAvailableCosmosDBShellUpdate(
     installedVersion: string | undefined,
+    customShellPathConfigured: boolean,
     requestPackageIndex: PackageIndexRequest = getPackageIndex,
 ): Promise<void> {
     if (!installedVersion || !semver.valid(installedVersion)) {
@@ -36,11 +37,17 @@ export async function logAvailableCosmosDBShellUpdate(
         const latestVersion = getLatestPackageVersion(response.bodyAsText);
         if (latestVersion && semver.gt(latestVersion, installedVersion)) {
             ext.outputChannel.info(
-                l10n.t(
-                    'A newer Cosmos DB Shell version is available: {0} (installed: {1}).',
-                    latestVersion,
-                    installedVersion,
-                ),
+                customShellPathConfigured
+                    ? l10n.t(
+                          'A newer Cosmos DB Shell version is available: {0} (installed: {1}). A custom Cosmos DB Shell path is configured; update that installation manually.',
+                          latestVersion,
+                          installedVersion,
+                      )
+                    : l10n.t(
+                          'A newer Cosmos DB Shell version is available: {0} (installed: {1}). To update, run: dotnet tool update --global CosmosDBShell --prerelease',
+                          latestVersion,
+                          installedVersion,
+                      ),
             );
         }
     } catch (error) {

@@ -5,9 +5,9 @@
 
 /**
  * Entry point for Cosmos DB Shell support. Owns the {@link CosmosDBShellExtension}
- * activation lifecycle and the two top-level command handlers ({@link launchCosmosDBShell}
- * and {@link connectCosmosDBShell}). Heavier subsystems (install flow, MCP provider,
- * language server, terminal reuse, version cache) live in sibling modules.
+ * activation lifecycle and the {@link launchCosmosDBShell} command handler. Heavier
+ * subsystems (install flow, MCP provider, language server, version cache) live in
+ * sibling modules.
  */
 import {
     callWithTelemetryAndErrorHandling,
@@ -18,7 +18,6 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { SettingsService } from '../services/SettingsService';
-import { type NoSqlContainerResourceItem } from '../tree/nosql/NoSqlContainerResourceItem';
 import {
     COMMAND_LAUNCH_COSMOS_DB_SHELL,
     COSMOS_DB_SHELL_TERMINAL_NAME,
@@ -27,8 +26,7 @@ import {
     SETTING_MCP_PORT,
     SETTING_SHELL_PATH,
 } from './constants';
-import { getGoToContainerCommand } from './goToContainerCommand';
-import { promptToResolveMissingCosmosDBShell } from './install/installPrompts';
+import { promptToResolveMissingCosmosDBShell, promptToUpdateCosmosDBShell } from './install/installPrompts';
 import {
     getCosmosDBShellCredential,
     getCosmosDBShellToken,
@@ -37,13 +35,13 @@ import {
     getNodeAuthKind,
 } from './nodeCredentials';
 import { getCosmosDBShellCommand, watchForEarlyExit } from './shellCommand';
-import { getDetectedCosmosDBShellVersion, isCosmosDBShellInstalled } from './shellSupportCache';
+import { type CosmosDBShellLaunchNode } from './shellLaunchNode';
 import {
-    buildInteractiveConnectCommand,
-    buildTerminalStateForNode,
-    findReusableTerminalForNode,
-    terminalStates,
-} from './terminalReuse';
+    getDetectedCosmosDBShellVersion,
+    isCosmosDBShellInstalled,
+    isCosmosDBShellVersionSupported,
+} from './shellSupportCache';
+import { getStartupLocationArguments } from './startupLocationArguments';
 
 // Re-exports preserve the existing public surface consumed by ../extension.ts.
 export { registerCosmosDBShellLanguageServer } from './languageServer';
@@ -63,7 +61,6 @@ export class CosmosDBShellExtension implements vscode.Disposable {
             listener.dispose();
         });
         this.terminalChangeListeners = [];
-        terminalStates.clear();
         return Promise.resolve();
     }
 
@@ -94,15 +91,13 @@ export class CosmosDBShellExtension implements vscode.Disposable {
                     // Check if it was a Cosmos DB Shell terminal
                     if (terminal.creationOptions.name === COSMOS_DB_SHELL_TERMINAL_NAME) {
                         this.updateCosmosDBShellTerminalContext();
-                        // Remove tracked launch state for this terminal
-                        terminalStates.delete(terminal);
                     }
                 });
 
                 // Store listeners for disposal
                 this.terminalChangeListeners.push(openListener, closeListener);
 
-                registerCommandWithTreeNodeUnwrapping(COMMAND_LAUNCH_COSMOS_DB_SHELL, connectCosmosDBShell);
+                registerCommandWithTreeNodeUnwrapping(COMMAND_LAUNCH_COSMOS_DB_SHELL, launchCosmosDBShell);
 
                 if (shellInstalled) {
                     ext.outputChannel.appendLine(`Cosmos DB Shell Extension: activated.`);
@@ -128,8 +123,10 @@ export class CosmosDBShellExtension implements vscode.Disposable {
     }
 }
 
-export async function launchCosmosDBShell(context: IActionContext, node?: NoSqlContainerResourceItem) {
+export async function launchCosmosDBShell(context: IActionContext, node?: CosmosDBShellLaunchNode) {
     const shellInstalled: boolean = isCosmosDBShellInstalled();
+    const shellVersionSupported = isCosmosDBShellVersionSupported();
+    const startupLocationArgs = node ? getStartupLocationArguments(node.model.database, node.model.container) : [];
 
     // Telemetry: capture launch-shape signals as early as possible so they're attached even
     // when the install/credential paths bail out before a terminal is created.
@@ -138,6 +135,8 @@ export async function launchCosmosDBShell(context: IActionContext, node?: NoSqlC
     const mcpPort = (mcpPortSetting ?? DEFAULT_MCP_PORT).toString();
     const shellPathSetting = SettingsService.getSetting<string>(SETTING_SHELL_PATH);
     context.telemetry.properties.shellInstalled = String(shellInstalled);
+    context.telemetry.properties.shellVersion = getDetectedCosmosDBShellVersion() ?? 'unknown';
+    context.telemetry.properties.shellVersionSupported = String(shellVersionSupported);
     context.telemetry.properties.shellPathCustom = String(!!shellPathSetting?.trim());
     context.telemetry.properties.mcpEnabled = String(mcpEnabled);
     context.telemetry.properties.mcpPortDefault = String(
@@ -146,10 +145,14 @@ export async function launchCosmosDBShell(context: IActionContext, node?: NoSqlC
     context.telemetry.properties.authKind = node ? getNodeAuthKind(node) : 'none';
     context.telemetry.properties.hasNode = String(!!node);
     context.telemetry.properties.containerScoped = String(!!node?.model.container);
-    context.telemetry.properties.terminalReused = 'false';
 
     if (!shellInstalled) {
         await promptToResolveMissingCosmosDBShell(context, node, launchCosmosDBShell);
+        return;
+    }
+
+    if (startupLocationArgs.length > 0 && !shellVersionSupported) {
+        await promptToUpdateCosmosDBShell(context, node, launchCosmosDBShell);
         return;
     }
 
@@ -178,9 +181,6 @@ export async function launchCosmosDBShell(context: IActionContext, node?: NoSqlC
         });
         terminal.show();
         watchForEarlyExit(terminal);
-        // Track the command-launched terminal with no endpoint/auth so it can be reused later
-        // when the user invokes "Launch Cosmos DB Shell" from a tree node.
-        terminalStates.set(terminal, { endpoint: '', authKind: 'none' });
         return;
     }
 
@@ -196,6 +196,24 @@ export async function launchCosmosDBShell(context: IActionContext, node?: NoSqlC
     if (!rawEndpoint) {
         void vscode.window.showErrorMessage(l10n.t('Failed to extract the account endpoint from the selected node.'));
         return;
+    }
+    context.valuesToMask.push(rawEndpoint);
+    if (cosmosDBShellCredential) {
+        context.valuesToMask.push(cosmosDBShellCredential);
+    }
+    if (entraCredential?.tenantId) {
+        context.valuesToMask.push(entraCredential.tenantId);
+    }
+    if (managedIdentityCredential?.clientId) {
+        context.valuesToMask.push(managedIdentityCredential.clientId);
+    }
+    const databaseId = node.model.database?.id;
+    if (databaseId) {
+        context.valuesToMask.push(databaseId);
+    }
+    const containerId = node.model.container?.id;
+    if (containerId) {
+        context.valuesToMask.push(containerId);
     }
 
     if (useMcp) {
@@ -217,10 +235,7 @@ export async function launchCosmosDBShell(context: IActionContext, node?: NoSqlC
         args.push('--connect-managed-identity', managedIdentityCredential.clientId);
     }
 
-    const containerCommand = getGoToContainerCommand(node.model.database, node.model.container);
-    if (containerCommand) {
-        args.push('-k', containerCommand);
-    }
+    args.push(...startupLocationArgs);
 
     ext.outputChannel.appendLine(`Launching Cosmos DB Shell: ${command} ${args.join(' ')}`);
 
@@ -234,6 +249,7 @@ export async function launchCosmosDBShell(context: IActionContext, node?: NoSqlC
         const fallbackToken = await getCosmosDBShellToken(entraCredential, rawEndpoint);
         context.telemetry.properties.fallbackTokenObtained = String(!!fallbackToken);
         if (fallbackToken) {
+            context.valuesToMask.push(fallbackToken);
             env['COSMOSDB_SHELL_TOKEN'] = fallbackToken;
         }
     }
@@ -247,63 +263,4 @@ export async function launchCosmosDBShell(context: IActionContext, node?: NoSqlC
 
     terminal.show();
     watchForEarlyExit(terminal);
-    // Record how this process was launched so future reuse decisions know which env vars
-    // (e.g. COSMOSDB_SHELL_ACCOUNT_KEY / COSMOSDB_SHELL_TOKEN) are baked in.
-    terminalStates.set(terminal, buildTerminalStateForNode(node));
-}
-
-export async function connectCosmosDBShell(context: IActionContext, node?: NoSqlContainerResourceItem) {
-    // Attach the detected Cosmos DB Shell version to the auto-emitted
-    // `cosmosDB.launchCosmosDBShell` telemetry event. Calling this here covers both the
-    // reuse path below and the fall-through to `launchCosmosDBShell`.
-    context.telemetry.properties.shellVersion = getDetectedCosmosDBShellVersion() ?? 'unknown';
-    context.telemetry.properties.shellInstalled = String(isCosmosDBShellInstalled());
-    context.telemetry.properties.shellPathCustom = String(
-        !!SettingsService.getSetting<string>(SETTING_SHELL_PATH)?.trim(),
-    );
-    context.telemetry.properties.mcpEnabled = String(SettingsService.getSetting<boolean>(SETTING_MCP_ENABLED) ?? false);
-    const mcpPortSetting = SettingsService.getSetting<number>(SETTING_MCP_PORT);
-    context.telemetry.properties.mcpPortDefault = String(
-        mcpPortSetting === undefined || mcpPortSetting === DEFAULT_MCP_PORT,
-    );
-    context.telemetry.properties.hasNode = String(!!node);
-    context.telemetry.properties.containerScoped = String(!!node?.model.container);
-    context.telemetry.properties.authKind = node ? getNodeAuthKind(node) : 'none';
-    context.telemetry.properties.terminalReused = 'false';
-    context.telemetry.properties.mcpUsedThisLaunch = 'false';
-
-    if (!node) {
-        // No node selected, just launch a new shell without connection.
-        await launchCosmosDBShell(context, node);
-        return;
-    }
-
-    const rawEndpoint = node.model.accountInfo.endpoint;
-    if (!rawEndpoint) {
-        void vscode.window.showErrorMessage(l10n.t('Failed to extract the account endpoint from the selected node.'));
-        return;
-    }
-
-    // Try to reuse an existing Cosmos DB Shell terminal whose launch-time env credentials
-    // are compatible with what this node needs. If none qualifies, fall through to launch a
-    // fresh shell so the right env vars can be baked into the new process.
-    const reusable = findReusableTerminalForNode(node);
-    if (reusable) {
-        const { terminal } = reusable;
-        context.telemetry.properties.terminalReused = 'true';
-        terminal.show();
-        // Always re-issue `connect` before navigating: the shell may have been disconnected
-        // by the user, or previously associated with a different account on a prior reuse.
-        terminal.sendText(buildInteractiveConnectCommand(node, rawEndpoint), true);
-        const containerCommand = getGoToContainerCommand(node.model.database, node.model.container);
-        if (containerCommand) {
-            terminal.sendText(containerCommand, true);
-        }
-        // Update tracked state to reflect the now-active node.
-        terminalStates.set(terminal, buildTerminalStateForNode(node));
-        return;
-    }
-
-    // No reusable terminal (none open, or a different launch-time env is required).
-    await launchCosmosDBShell(context, node);
 }

@@ -19,6 +19,7 @@ import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { SettingsService } from '../services/SettingsService';
 import { logAvailableCosmosDBShellUpdate } from './availableVersion';
+import { createCompatibilityModeLogger } from './compatibilityModeLog';
 import {
     COMMAND_LAUNCH_COSMOS_DB_SHELL,
     COSMOS_DB_SHELL_TERMINAL_NAME,
@@ -43,6 +44,8 @@ import {
     isCosmosDBShellVersionSupported,
 } from './shellSupportCache';
 import { getStartupNavigationArguments } from './startupLocationArguments';
+
+const logCompatibilityModeOnce = createCompatibilityModeLogger();
 
 // Re-exports preserve the existing public surface consumed by ../extension.ts.
 export { registerCosmosDBShellLanguageServer } from './languageServer';
@@ -102,7 +105,8 @@ export class CosmosDBShellExtension implements vscode.Disposable {
 
                 if (shellInstalled) {
                     ext.outputChannel.appendLine(`Cosmos DB Shell Extension: activated.`);
-                    void logAvailableCosmosDBShellUpdate(getDetectedCosmosDBShellVersion());
+                    const customShellPathConfigured = !!SettingsService.getSetting<string>(SETTING_SHELL_PATH)?.trim();
+                    void logAvailableCosmosDBShellUpdate(getDetectedCosmosDBShellVersion(), customShellPathConfigured);
                 } else {
                     ext.outputChannel.appendLine(`Cosmos DB Shell Extension: deactivated.`);
                 }
@@ -236,9 +240,11 @@ export async function launchCosmosDBShell(context: IActionContext, node?: Cosmos
 
     args.push(...startupNavigationArgs);
 
-    ext.outputChannel.appendLine(
-        `Launching Cosmos DB Shell with an account connection using ${shellVersionSupported ? 'startup location arguments' : 'an escaped startup command'}.`,
-    );
+    if (!shellVersionSupported && startupNavigationArgs.length > 0) {
+        logCompatibilityModeOnce(getDetectedCosmosDBShellVersion());
+    }
+
+    ext.outputChannel.appendLine('Launching Cosmos DB Shell with an account connection.');
 
     const env: Record<string, string> = {};
     if (cosmosDBShellCredential) {

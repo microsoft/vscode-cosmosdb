@@ -45,25 +45,34 @@ function stripWrappingQuotes(value: string): string {
 
 function resolveWindowsCommand(command: string, env: NodeJS.ProcessEnv): string | undefined {
     if (isExplicitPath(command)) {
-        for (const candidate of getWindowsCommandCandidates(command, env.PATHEXT)) {
-            if (isFile(candidate)) {
-                return candidate;
-            }
-        }
-
-        return undefined;
+        return selectWindowsCommand(getWindowsCommandCandidates(command, env.PATHEXT));
     }
 
     for (const pathEntry of getPathEntries(env)) {
-        for (const candidate of getWindowsCommandCandidates(command, env.PATHEXT)) {
-            const candidatePath = path.win32.join(pathEntry, candidate);
-            if (isFile(candidatePath)) {
-                return candidatePath;
-            }
+        const candidates = getWindowsCommandCandidates(command, env.PATHEXT).map((candidate) =>
+            path.win32.join(pathEntry, candidate),
+        );
+        const selectedCommand = selectWindowsCommand(candidates);
+        if (selectedCommand) {
+            return selectedCommand;
         }
     }
 
     return undefined;
+}
+
+// Prefers a `.cmd`/`.bat` dotnet tool shim over a same-named `.exe` in the same directory,
+// even though PATHEXT would pick the `.exe` first: `dotnet tool update` rewrites the shim to
+// point at the new versioned payload but can leave a stale root `.exe` behind.
+function selectWindowsCommand(candidates: string[]): string | undefined {
+    const existingCandidates = candidates.filter(isFile);
+    for (const candidate of existingCandidates) {
+        const shimTarget = resolveWindowsDotnetToolShim(candidate);
+        if (shimTarget) {
+            return shimTarget;
+        }
+    }
+    return existingCandidates[0];
 }
 
 function isExplicitPath(command: string): boolean {
@@ -112,6 +121,11 @@ function resolveWindowsDotnetToolShim(commandPath: string): string | undefined {
             shimDirectory,
             launcherMatch[1].replace(/%~dp0/gi, `${shimDirectory}${path.win32.sep}`),
         );
+        const storeDirectory = path.win32.join(shimDirectory, '.store');
+        const relativeTarget = path.win32.relative(storeDirectory, resolvedTarget);
+        if (relativeTarget.startsWith('..') || path.win32.isAbsolute(relativeTarget)) {
+            return undefined;
+        }
 
         return isFile(resolvedTarget) ? resolvedTarget : undefined;
     } catch {

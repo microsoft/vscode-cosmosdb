@@ -73,27 +73,3 @@ export function watchForEarlyExit(terminal: vscode.Terminal): void {
         listener.dispose();
     }, 5000);
 }
-
-/**
- * Quotes a value for use as a single argument inside an interactive Cosmos DB Shell
- * command (sent via `terminal.sendText`). Wraps values containing whitespace, quotes, or
- * backslashes in double quotes and applies C-style escapes (`\\`, `\"`, `\r`, `\n`, `\t`) so
- * the argument is preserved verbatim when parsed by the shell.
- *
- * Backslashes are escaped before quotes so the substitutions don't compound (e.g. a
- * literal `\"` in the input becomes `\\\"` in the output, not `\\"` which would be
- * parsed as `\` followed by an argument-terminating quote). Control characters (`\r`,
- * `\n`, `\t`) are escaped too so a value containing one can't be split into a separate
- * line once written to the terminal's PTY, which would otherwise let it be interpreted
- * as additional shell input.
- */
-export function quoteArg(value: string): string {
-    return /[\s"'\\]/.test(value)
-        ? `"${value
-              .replace(/\\/g, '\\\\')
-              .replace(/"/g, '\\"')
-              .replace(/\r/g, '\\r')
-              .replace(/\n/g, '\\n')
-              .replace(/\t/g, '\\t')}"`
-        : value;
-}

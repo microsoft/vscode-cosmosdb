@@ -106,13 +106,20 @@ export function registerApplyQueryToEditorTool(context: vscode.ExtensionContext)
 
         async invoke(
             options: vscode.LanguageModelToolInvocationOptions<ApplyQueryToEditorInput>,
-            _token: vscode.CancellationToken,
+            token: vscode.CancellationToken,
         ): Promise<vscode.LanguageModelToolResult> {
             const toolResult = await callWithTelemetryAndErrorHandling(
                 'cosmosDB.ai.tool.applyQueryToEditor',
                 async (actionContext) => {
                     actionContext.errorHandling.suppressDisplay = true;
                     actionContext.telemetry.properties.outcome = 'error';
+
+                    if (token.isCancellationRequested) {
+                        actionContext.telemetry.properties.outcome = 'cancelled';
+                        return new vscode.LanguageModelToolResult([
+                            new vscode.LanguageModelTextPart(l10n.t('Operation cancelled.')),
+                        ]);
+                    }
 
                     const query = options.input?.query;
                     if (!query || !query.trim()) {
@@ -174,6 +181,12 @@ export function registerApplyQueryToEditorTool(context: vscode.ExtensionContext)
                         // one; storing `query` verbatim would misreport reformatted multi-line runs as
                         // edited. `stripCodeFences` first removes any markdown fences the model emitted.
                         const aiGeneratedQuery = normalizeQueryText(stripCodeFences(query));
+                        if (token.isCancellationRequested) {
+                            actionContext.telemetry.properties.outcome = 'cancelled';
+                            return new vscode.LanguageModelToolResult([
+                                new vscode.LanguageModelTextPart(l10n.t('Operation cancelled.')),
+                            ]);
+                        }
                         tab.updateQuery(finalQuery, aiGeneratedQuery);
 
                         actionContext.telemetry.properties.outcome = 'success';

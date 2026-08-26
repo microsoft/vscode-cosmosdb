@@ -140,8 +140,8 @@ export class QueryEditorTab extends BaseTab {
         this.sessions.clear();
 
         // Settle any in-flight runs so awaiting tool calls resolve immediately instead of hanging until
-        // their timeout fires. Each resolver removes itself from the map, so snapshot the values first.
-        for (const resolve of [...this.state.pendingRuns.values()]) {
+        // their timeout fires. Deleting the current entry during Map iteration does not skip remaining entries.
+        for (const resolve of this.state.pendingRuns.values()) {
             resolve(undefined);
         }
         this.state.pendingRuns.clear();

@@ -5,13 +5,21 @@
 
 /// <reference types="vitest/globals" />
 
-import { buildFramedQuery } from './applyQueryToEditorTool';
+import * as vscode from 'vscode';
+import { QueryEditorTab } from '../panels/QueryEditorTab';
+import { buildFramedQuery, registerApplyQueryToEditorTool } from './applyQueryToEditorTool';
+import { captureRegisteredTool, serializeToolResult } from './queryEditorToolTestUtils';
 
-// `buildFramedQuery` only depends on the real sanitization helpers and `@vscode/l10n`. Mock the
-// heavy sibling modules the tool file imports (but that this function never touches) so the unit
-// under test loads fast and deterministically without pulling in the panel / tRPC / webview graph.
+// Mock the heavy sibling modules so these tests load without pulling in the panel / tRPC / webview graph.
 vi.mock('@microsoft/vscode-azext-utils', () => ({
-    callWithTelemetryAndErrorHandling: vi.fn(),
+    callWithTelemetryAndErrorHandling: vi.fn(
+        async (_event: string, callback: (ctx: unknown) => unknown): Promise<unknown> =>
+            callback({
+                telemetry: { properties: {} as Record<string, string>, measurements: {} as Record<string, number> },
+                errorHandling: { suppressDisplay: false },
+                valuesToMask: [] as string[],
+            }),
+    ),
     parseError: (error: unknown) => ({ message: error instanceof Error ? error.message : String(error) }),
 }));
 
@@ -29,6 +37,64 @@ vi.mock('./chatUtils', () => ({
     getActiveQueryEditor: vi.fn(),
     getConnectionFromQueryTab: vi.fn(),
 }));
+
+describe('cosmosdb_applyQueryToEditor — cancellation', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        QueryEditorTab.openTabs.clear();
+    });
+
+    it('does not update the editor when the invocation is cancelled', async () => {
+        const { getActiveQueryEditor } = await import('./chatUtils');
+        const updateQuery = vi.fn();
+        vi.mocked(getActiveQueryEditor).mockReturnValue({ updateQuery } as never);
+
+        const tool = captureRegisteredTool(registerApplyQueryToEditorTool);
+        const cts = new vscode.CancellationTokenSource();
+        cts.cancel();
+
+        try {
+            const result = await tool.invoke({ input: { query: 'SELECT * FROM c' } }, cts.token);
+
+            expect(serializeToolResult(result)).toBe('Operation cancelled.');
+            expect(getActiveQueryEditor).not.toHaveBeenCalled();
+            expect(updateQuery).not.toHaveBeenCalled();
+        } finally {
+            cts.dispose();
+        }
+    });
+
+    it('rechecks cancellation immediately before updating the editor', async () => {
+        const { getActiveQueryEditor, getConnectionFromQueryTab } = await import('./chatUtils');
+        const cts = new vscode.CancellationTokenSource();
+        const updateQuery = vi.fn();
+        const tab = {
+            getCurrentQuery: vi.fn(() => {
+                cts.cancel();
+                return 'SELECT c.id FROM c';
+            }),
+            takeLastGeneratePrompt: vi.fn(() => undefined),
+            updateQuery,
+        };
+        QueryEditorTab.openTabs.add(tab as never);
+        vi.mocked(getActiveQueryEditor).mockReturnValue(tab as never);
+        vi.mocked(getConnectionFromQueryTab).mockReturnValue({
+            endpoint: 'https://example.test',
+            databaseId: 'db',
+            containerId: 'container',
+        } as never);
+
+        try {
+            const tool = captureRegisteredTool(registerApplyQueryToEditorTool);
+            const result = await tool.invoke({ input: { query: 'SELECT * FROM c' } }, cts.token);
+
+            expect(serializeToolResult(result)).toBe('Operation cancelled.');
+            expect(updateQuery).not.toHaveBeenCalled();
+        } finally {
+            cts.dispose();
+        }
+    });
+});
 
 describe('buildFramedQuery', () => {
     it('frames the generated query with a "Generated from" header and a commented "Previous query" block', () => {

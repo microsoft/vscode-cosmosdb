@@ -4,6 +4,20 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type ContainerDefinition, type DatabaseDefinition } from '@azure/cosmos';
+import { getGoToContainerCommand } from './goToContainerCommand';
+
+export function getStartupNavigationArguments(
+    database: DatabaseDefinition | undefined,
+    container: ContainerDefinition | undefined,
+    supportsStartupLocationArguments: boolean,
+): string[] {
+    if (supportsStartupLocationArguments) {
+        return getStartupLocationArguments(database, container);
+    }
+
+    const legacyCommand = getGoToContainerCommand(database, container);
+    return legacyCommand ? ['-k', legacyCommand] : [];
+}
 
 /**
  * Builds process arguments for selecting a location without sending commands to the shell.

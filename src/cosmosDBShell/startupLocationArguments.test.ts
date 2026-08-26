@@ -5,7 +5,37 @@
 
 import { type ContainerDefinition, type DatabaseDefinition } from '@azure/cosmos';
 import { describe, expect, it } from 'vitest';
-import { getStartupLocationArguments } from './startupLocationArguments';
+import { getStartupLocationArguments, getStartupNavigationArguments } from './startupLocationArguments';
+
+describe('getStartupNavigationArguments', () => {
+    it('uses database and container arguments for shells that support them', () => {
+        const database = { id: 'mydb' } as DatabaseDefinition;
+        const container = { id: 'mycontainer' } as ContainerDefinition;
+
+        expect(getStartupNavigationArguments(database, container, true)).toEqual([
+            '--database',
+            'mydb',
+            '--container',
+            'mycontainer',
+        ]);
+    });
+
+    it('uses an escaped startup command for older shells', () => {
+        const database = { id: 'db"; help' } as DatabaseDefinition;
+        const container = { id: '$((exit))' } as ContainerDefinition;
+
+        expect(getStartupNavigationArguments(database, container, false)).toEqual([
+            '-k',
+            'cd "/db\\"; help/\\$((exit))"',
+        ]);
+    });
+
+    it('supports database-only navigation for older shells', () => {
+        const database = { id: 'mydb' } as DatabaseDefinition;
+
+        expect(getStartupNavigationArguments(database, undefined, false)).toEqual(['-k', 'cd "/mydb"']);
+    });
+});
 
 describe('getStartupLocationArguments', () => {
     it('passes database and container IDs as separate process arguments', () => {

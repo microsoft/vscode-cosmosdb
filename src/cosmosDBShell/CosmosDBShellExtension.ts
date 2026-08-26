@@ -18,6 +18,7 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { SettingsService } from '../services/SettingsService';
+import { logAvailableCosmosDBShellUpdate } from './availableVersion';
 import {
     COMMAND_LAUNCH_COSMOS_DB_SHELL,
     COSMOS_DB_SHELL_TERMINAL_NAME,
@@ -26,7 +27,7 @@ import {
     SETTING_MCP_PORT,
     SETTING_SHELL_PATH,
 } from './constants';
-import { promptToResolveMissingCosmosDBShell, promptToUpdateCosmosDBShell } from './install/installPrompts';
+import { promptToResolveMissingCosmosDBShell } from './install/installPrompts';
 import {
     getCosmosDBShellCredential,
     getCosmosDBShellToken,
@@ -41,7 +42,7 @@ import {
     isCosmosDBShellInstalled,
     isCosmosDBShellVersionSupported,
 } from './shellSupportCache';
-import { getStartupLocationArguments } from './startupLocationArguments';
+import { getStartupNavigationArguments } from './startupLocationArguments';
 
 // Re-exports preserve the existing public surface consumed by ../extension.ts.
 export { registerCosmosDBShellLanguageServer } from './languageServer';
@@ -101,6 +102,7 @@ export class CosmosDBShellExtension implements vscode.Disposable {
 
                 if (shellInstalled) {
                     ext.outputChannel.appendLine(`Cosmos DB Shell Extension: activated.`);
+                    void logAvailableCosmosDBShellUpdate(getDetectedCosmosDBShellVersion());
                 } else {
                     ext.outputChannel.appendLine(`Cosmos DB Shell Extension: deactivated.`);
                 }
@@ -126,7 +128,9 @@ export class CosmosDBShellExtension implements vscode.Disposable {
 export async function launchCosmosDBShell(context: IActionContext, node?: CosmosDBShellLaunchNode) {
     const shellInstalled: boolean = isCosmosDBShellInstalled();
     const shellVersionSupported = isCosmosDBShellVersionSupported();
-    const startupLocationArgs = node ? getStartupLocationArguments(node.model.database, node.model.container) : [];
+    const startupNavigationArgs = node
+        ? getStartupNavigationArguments(node.model.database, node.model.container, shellVersionSupported)
+        : [];
 
     // Telemetry: capture launch-shape signals as early as possible so they're attached even
     // when the install/credential paths bail out before a terminal is created.
@@ -151,11 +155,6 @@ export async function launchCosmosDBShell(context: IActionContext, node?: Cosmos
         return;
     }
 
-    if (startupLocationArgs.length > 0 && !shellVersionSupported) {
-        await promptToUpdateCosmosDBShell(context, node, launchCosmosDBShell);
-        return;
-    }
-
     const command = getCosmosDBShellCommand();
     const foundTerminal = vscode.window.terminals.find(
         (terminal) => terminal.creationOptions.name === COSMOS_DB_SHELL_TERMINAL_NAME,
@@ -173,7 +172,7 @@ export async function launchCosmosDBShell(context: IActionContext, node?: Cosmos
         } else {
             args = [];
         }
-        ext.outputChannel.appendLine(`Launching Cosmos DB Shell: ${command} ${args.join(' ')}`);
+        ext.outputChannel.appendLine('Launching Cosmos DB Shell without an account connection.');
         const terminal: vscode.Terminal = vscode.window.createTerminal({
             name: COSMOS_DB_SHELL_TERMINAL_NAME,
             shellPath: command,
@@ -235,9 +234,11 @@ export async function launchCosmosDBShell(context: IActionContext, node?: Cosmos
         args.push('--connect-managed-identity', managedIdentityCredential.clientId);
     }
 
-    args.push(...startupLocationArgs);
+    args.push(...startupNavigationArgs);
 
-    ext.outputChannel.appendLine(`Launching Cosmos DB Shell: ${command} ${args.join(' ')}`);
+    ext.outputChannel.appendLine(
+        `Launching Cosmos DB Shell with an account connection using ${shellVersionSupported ? 'startup location arguments' : 'an escaped startup command'}.`,
+    );
 
     const env: Record<string, string> = {};
     if (cosmosDBShellCredential) {

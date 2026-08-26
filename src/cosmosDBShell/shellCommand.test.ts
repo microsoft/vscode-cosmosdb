@@ -63,6 +63,16 @@ describe('shellCommand.quoteArg', () => {
         expect(quoteArg('C:\\Users\\test')).toBe('"C:\\\\Users\\\\test"');
         expect(quoteArg('C:\\path with space\\file.txt')).toBe('"C:\\\\path with space\\\\file.txt"');
     });
+
+    it('wraps and escapes embedded control characters so they cannot be split into a separate terminal line', () => {
+        // An un-escaped raw newline/CR/tab written via `terminal.sendText` would be interpreted
+        // by the shell's line-based reader as ending the current input, letting the remainder
+        // of the value be parsed as separate shell input.
+        expect(quoteArg('foo\nbar')).toBe('"foo\\nbar"');
+        expect(quoteArg('foo\rbar')).toBe('"foo\\rbar"');
+        expect(quoteArg('foo\tbar')).toBe('"foo\\tbar"');
+        expect(quoteArg('a"; echo "injected\ndone')).toBe('"a\\"; echo \\"injected\\ndone"');
+    });
 });
 
 describe('shellCommand.isCosmosDBShellPathFound', () => {

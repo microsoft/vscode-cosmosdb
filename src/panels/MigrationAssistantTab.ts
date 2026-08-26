@@ -3,8 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { TypedEventSink } from '@cosmosdb/webview-rpc';
-import { setupTrpc } from '@cosmosdb/webview-rpc/server';
 import { VSCodeAzureSubscriptionProvider } from '@microsoft/vscode-azext-azureauth';
 import {
     LocationListStep,
@@ -20,6 +18,8 @@ import {
     type AzureWizardPromptStep,
 } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType, type AzureSubscription } from '@microsoft/vscode-azureresources-api';
+import { TypedEventSink } from '@microsoft/vscode-ext-webview';
+import { attachTrpc } from '@microsoft/vscode-ext-webview/host';
 import * as l10n from '@vscode/l10n';
 import * as path from 'path';
 import * as vscode from 'vscode';
@@ -106,7 +106,7 @@ export class MigrationAssistantTab extends BaseTab {
 
         this.eventSink = new TypedEventSink<MigrationEvent>();
 
-        const { disposable } = setupTrpc(
+        const { disposable } = attachTrpc(
             this.panel,
             this.buildRouterContext(),
             migrationAppRouter,

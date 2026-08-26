@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type JSONSchema } from '@cosmosdb/schema-analyzer';
-import { TypedEventSink } from '@cosmosdb/webview-rpc';
-import { setupTrpc } from '@cosmosdb/webview-rpc/server';
+import { TypedEventSink } from '@microsoft/vscode-ext-webview';
+import { attachTrpc } from '@microsoft/vscode-ext-webview/host';
 import * as vscode from 'vscode';
 import { getThemedIconPath } from '../constants';
 import { getCosmosDBKeyCredential } from '../cosmosdb/CosmosDBCredential';
@@ -66,7 +66,7 @@ export class QueryEditorTab extends BaseTab {
         // Create TypedEventSink for tRPC subscription
         this.eventSink = new TypedEventSink<QueryEditorEvent>();
 
-        const { disposable } = setupTrpc(
+        const { disposable } = attachTrpc(
             this.panel,
             this.buildRouterContext(),
             queryEditorAppRouter,

@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type JSONObject, type JSONValue, type PartitionKeyDefinition } from '@azure/cosmos';
-import { type TrpcClient } from '@cosmosdb/webview-rpc/react';
+import { type TrpcClient } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
 import { type DocumentAppRouter } from '../../../api/types';
 import { BaseContextProvider, type DispatchToastFn } from '../../../utils/context/BaseContextProvider';

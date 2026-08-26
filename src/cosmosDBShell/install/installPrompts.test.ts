@@ -16,6 +16,10 @@ vi.mock('child_process', () => ({
     spawn: vi.fn(),
 }));
 
+vi.mock('@vscode/l10n', () => ({
+    t: vi.fn((message: string) => message),
+}));
+
 vi.mock('@microsoft/vscode-azext-utils', () => ({
     callWithTelemetryAndErrorHandling: vi.fn(
         async (_eventName: string, callback: (context: unknown) => Promise<unknown>) =>
@@ -52,7 +56,7 @@ vi.mock('./dotNetSdk', () => ({
     tryInstallDotNetSdkViaExtension: vi.fn(),
 }));
 
-function mockCancelledDotNetTool(): { kill: Mock } {
+function mockCancelledDotNetTool(exitCode: number | null = null): { kill: Mock } {
     const process = new EventEmitter() as EventEmitter & {
         kill: Mock;
         stdout: EventEmitter;
@@ -61,7 +65,7 @@ function mockCancelledDotNetTool(): { kill: Mock } {
     process.stdout = new EventEmitter();
     process.stderr = new EventEmitter();
     process.kill = vi.fn(() => {
-        queueMicrotask(() => process.emit('close', null));
+        queueMicrotask(() => process.emit('close', exitCode));
         return true;
     });
     (child.spawn as Mock).mockReturnValue(process);
@@ -84,7 +88,7 @@ function mockCancelledDotNetTool(): { kill: Mock } {
     return process;
 }
 
-describe('updateCosmosDBShell', () => {
+describe('Cosmos DB Shell tool operations', () => {
     beforeEach(() => {
         vi.clearAllMocks();
     });
@@ -99,6 +103,17 @@ describe('updateCosmosDBShell', () => {
         expect(vscode.window.showInformationMessage).not.toHaveBeenCalled();
         expect(invalidateCosmosDBShellSupportCache).not.toHaveBeenCalled();
         expect(ext.outputChannel.show).toHaveBeenCalledOnce();
+    });
+
+    it('reports success when the process exits successfully after cancellation is requested', async () => {
+        const process = mockCancelledDotNetTool(0);
+
+        await updateCosmosDBShell();
+
+        expect(process.kill).toHaveBeenCalledOnce();
+        expect(vscode.window.showErrorMessage).not.toHaveBeenCalled();
+        expect(vscode.window.showInformationMessage).toHaveBeenCalledWith('Cosmos DB Shell update completed.');
+        expect(invalidateCosmosDBShellSupportCache).toHaveBeenCalledOnce();
     });
 
     it('does not report a failure or launch the shell when installation is cancelled', async () => {

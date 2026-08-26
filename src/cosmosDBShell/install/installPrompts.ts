@@ -97,16 +97,17 @@ async function runCosmosDBShellDotNetTool(
                     });
                 },
             );
+            const cancelled = outcome.cancelled && !outcome.success;
             telemetryContext.telemetry.measurements.durationMs = Date.now() - startedAt;
             telemetryContext.telemetry.properties.exitCode =
                 outcome.exitCode === null ? 'null' : String(outcome.exitCode);
-            telemetryContext.telemetry.properties.cancelled = String(outcome.cancelled);
-            telemetryContext.telemetry.properties.outcome = outcome.cancelled
+            telemetryContext.telemetry.properties.cancelled = String(cancelled);
+            telemetryContext.telemetry.properties.outcome = cancelled
                 ? 'cancelled'
                 : outcome.success
                   ? 'success'
                   : 'failure';
-            return { success: outcome.success, cancelled: outcome.cancelled };
+            return { success: outcome.success, cancelled };
         },
     );
     return result ?? { success: false, cancelled: false };

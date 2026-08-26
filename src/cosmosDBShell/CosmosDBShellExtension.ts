@@ -18,7 +18,7 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { SettingsService } from '../services/SettingsService';
-import { logAvailableCosmosDBShellUpdate } from './availableVersion';
+import { notifyAvailableCosmosDBShellUpdate } from './availableVersion';
 import { createCompatibilityModeLogger } from './compatibilityModeLog';
 import {
     COMMAND_LAUNCH_COSMOS_DB_SHELL,
@@ -28,7 +28,7 @@ import {
     SETTING_MCP_PORT,
     SETTING_SHELL_PATH,
 } from './constants';
-import { promptToResolveMissingCosmosDBShell } from './install/installPrompts';
+import { promptToResolveMissingCosmosDBShell, updateCosmosDBShell } from './install/installPrompts';
 import {
     getCosmosDBShellCredential,
     getCosmosDBShellToken,
@@ -106,7 +106,11 @@ export class CosmosDBShellExtension implements vscode.Disposable {
                 if (shellInstalled) {
                     ext.outputChannel.appendLine(`Cosmos DB Shell Extension: activated.`);
                     const customShellPathConfigured = !!SettingsService.getSetting<string>(SETTING_SHELL_PATH)?.trim();
-                    void logAvailableCosmosDBShellUpdate(getDetectedCosmosDBShellVersion(), customShellPathConfigured);
+                    void notifyAvailableCosmosDBShellUpdate(
+                        getDetectedCosmosDBShellVersion(),
+                        customShellPathConfigured,
+                        updateCosmosDBShell,
+                    );
                 } else {
                     ext.outputChannel.appendLine(`Cosmos DB Shell Extension: deactivated.`);
                 }

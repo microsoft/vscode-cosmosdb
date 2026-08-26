@@ -27,12 +27,19 @@ import { hasRequiredDotNetSdk, MIN_DOTNET_SDK_VERSION, tryInstallDotNetSdkViaExt
 /** Callback signature used by the install flow to resume the original launch action after install. */
 export type LaunchShellFn = (context: IActionContext, node: CosmosDBShellLaunchNode | undefined) => Promise<void>;
 
+interface DotNetToolResult {
+    success: boolean;
+    cancelled: boolean;
+}
+
 /**
  * Runs `dotnet tool install|update --global CosmosDBShell --prerelease` with a progress
- * notification, streaming output to the extension output channel. Returns true
- * when the process exits with code 0.
+ * notification, streaming output to the extension output channel.
  */
-async function runCosmosDBShellDotNetTool(operation: 'install' | 'update', dotnetPath?: string): Promise<boolean> {
+async function runCosmosDBShellDotNetTool(
+    operation: 'install' | 'update',
+    dotnetPath?: string,
+): Promise<DotNetToolResult> {
     const result = await callWithTelemetryAndErrorHandling(
         'cosmosDB.cosmosDBShell.install.tool',
         async (telemetryContext: IActionContext) => {
@@ -90,24 +97,28 @@ async function runCosmosDBShellDotNetTool(operation: 'install' | 'update', dotne
                     });
                 },
             );
+            const cancelled = outcome.cancelled && !outcome.success;
             telemetryContext.telemetry.measurements.durationMs = Date.now() - startedAt;
             telemetryContext.telemetry.properties.exitCode =
                 outcome.exitCode === null ? 'null' : String(outcome.exitCode);
-            telemetryContext.telemetry.properties.cancelled = String(outcome.cancelled);
-            telemetryContext.telemetry.properties.outcome = outcome.cancelled
+            telemetryContext.telemetry.properties.cancelled = String(cancelled);
+            telemetryContext.telemetry.properties.outcome = cancelled
                 ? 'cancelled'
                 : outcome.success
                   ? 'success'
                   : 'failure';
-            return outcome.success;
+            return { success: outcome.success, cancelled };
         },
     );
-    return result ?? false;
+    return result ?? { success: false, cancelled: false };
 }
 
 export async function updateCosmosDBShell(): Promise<void> {
-    const success = await runCosmosDBShellDotNetTool('update');
-    if (!success) {
+    const result = await runCosmosDBShellDotNetTool('update');
+    if (result.cancelled) {
+        return;
+    }
+    if (!result.success) {
         const showOutput = l10n.t('Show Output');
         const selection = await vscode.window.showErrorMessage(
             l10n.t('Failed to update Cosmos DB Shell. See the output for details.'),
@@ -200,8 +211,11 @@ async function installAndLaunchCosmosDBShell(
     launchShell: LaunchShellFn,
     dotnetPath?: string,
 ): Promise<void> {
-    const success = await runCosmosDBShellDotNetTool('install', dotnetPath);
-    if (!success) {
+    const result = await runCosmosDBShellDotNetTool('install', dotnetPath);
+    if (result.cancelled) {
+        return;
+    }
+    if (!result.success) {
         const showOutput = l10n.t('Show Output');
         const failureSelection = await vscode.window.showErrorMessage(
             l10n.t('Failed to install Cosmos DB Shell. See the output for details.'),

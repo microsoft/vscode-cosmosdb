@@ -15,12 +15,12 @@ Connect to **Azure Cosmos DB for NoSQL** from VS Code to explore accounts, manag
 
 ## Get Started
 
+<!-- prettier-ignore -->
 1. Install the extension from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-cosmosdb) or search for **Azure Cosmos DB** in the VS Code Extensions view.
 2. Open the **Azure** view in the Activity Bar and choose how to connect:
-
-- Sign in to Azure to browse Cosmos DB accounts across your subscriptions.
-- Select **New Connection…** to attach an account with a connection string.
-- Select **New Emulator Connection** under **Local Emulators** to use a local development instance.
+   - Sign in to Azure to browse Cosmos DB accounts across your subscriptions.
+   - Select **New Connection…** to attach an account with a connection string.
+   - Select **New Emulator Connection** under **Local Emulators** to use a local development instance.
 
 3. Expand an account, database, and container. Use the context menu to create or open items, import documents, or launch the Query Editor.
 4. Run a query such as `SELECT * FROM c`, then inspect the results as a table, JSON, or tree. Query metrics and index recommendations help you tune the request.

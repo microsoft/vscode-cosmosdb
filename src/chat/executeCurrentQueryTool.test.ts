@@ -53,6 +53,7 @@ describe('cosmosdb_executeCurrentQuery — confidentiality', () => {
             getId: vi.fn(() => 'tab-1'),
             getSelectedQuery: vi.fn(() => undefined),
             getCurrentQuery: vi.fn(() => 'SELECT * FROM c'),
+            reveal: vi.fn(),
             runActiveQueryInEditor: vi.fn(async () => 'exec-1'),
             getCurrentQueryResults: vi.fn(() => ({
                 query: 'SELECT * FROM c',
@@ -102,6 +103,7 @@ function makeTab(id: string, query: string, connection: unknown) {
         getId: () => id,
         getSelectedQuery: () => undefined,
         getCurrentQuery: () => tab.query,
+        reveal: vi.fn(),
         connection,
         runActiveQueryInEditor: vi.fn(
             async (
@@ -165,6 +167,8 @@ describe('cosmosdb_executeCurrentQuery — confirmation snapshot (P1)', () => {
         const payload = JSON.parse(serializeToolResult(result));
 
         // The confirmed tab A ran; the now-active tab B did not.
+        expect(tabA.reveal).toHaveBeenCalledOnce();
+        expect(tabB.reveal).not.toHaveBeenCalled();
         expect(tabA.runActiveQueryInEditor).toHaveBeenCalledWith('SELECT * FROM a', connA, noopToken);
         expect(tabB.runActiveQueryInEditor).not.toHaveBeenCalled();
         expect(payload.databaseId).toBe('dbA');

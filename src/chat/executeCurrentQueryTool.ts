@@ -204,6 +204,10 @@ export function registerExecuteCurrentQueryTool(context: vscode.ExtensionContext
                     }
 
                     try {
+                        // The user may have switched tabs while the confirmation prompt was open.
+                        // Bring the confirmed editor forward so the query and its results are visible.
+                        tab.reveal();
+
                         // The webview runs the query and renders results in the grid; this resolves with
                         // the executionId that actually ran once it reports completion, or `undefined` when
                         // the run was cancelled / never started / timed out.

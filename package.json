@@ -255,14 +255,29 @@
       {
         "name": "cosmosdb_sampleContainerSchema",
         "displayName": "Sample Container Schema",
-        "modelDescription": "Samples a few documents from the active Cosmos DB container to infer its schema (property names and types). Runs a cheap, read-only query. Use this when the container schema is unknown, to avoid guessing property names or casing. If the schema is already available (e.g. containerSchema from cosmosdb_getQueryEditorContext), you do not need to call this.",
+        "modelDescription": "Samples a few documents from a Cosmos DB container to infer its schema (property names and types). Runs a cheap, read-only query. Use this when the container schema is unknown, to avoid guessing property names or casing. Pass the sampleContextId returned by cosmosdb_getQueryEditorContext so the confirmed container is the one sampled even if the active editor changes. If the schema is already available (e.g. containerSchema from cosmosdb_getQueryEditorContext), you do not need to call this.",
         "canBeReferencedInPrompt": true,
-        "toolReferenceName": "cosmosdb_sampleContainerSchema"
+        "toolReferenceName": "cosmosdb_sampleContainerSchema",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sampleContextId": {
+              "type": "string",
+              "description": "The sampleContextId returned by cosmosdb_getQueryEditorContext."
+            }
+          },
+          "required": [
+            "sampleContextId"
+          ],
+          "additionalProperties": {
+            "not": {}
+          }
+        }
       },
       {
         "name": "cosmosdb_getQueryEditorContext",
         "displayName": "Get Query Editor Context",
-        "modelDescription": "Returns the context of the active Cosmos DB Query Editor: the full editor text (currentQuery, which may contain multiple queries), the selected query if any (selectedQuery), the single query to operate on or explain (activeQuery — the selection when present, otherwise the full text), the Azure coordinates of the connected account (azure: accountName, subscriptionId, subscriptionName, resourceGroup — present only for Azure-signed-in accounts, omitted for workspace-attached accounts and the emulator), the persisted container schema (if one has already been sampled or inferred), recent query history, result metadata (row counts, request charge, inferred result schema), and a one-use queryContextId for cosmosdb_executeCurrentQuery when activeQuery is present. Never returns raw document data. Use this to ground query generation or explanation; if it returns a containerSchema, you already know the schema and do not need to sample again.",
+        "modelDescription": "Returns the context of the active Cosmos DB Query Editor: the full editor text (currentQuery, which may contain multiple queries), the selected query if any (selectedQuery), the single query to operate on or explain (activeQuery — the selection when present, otherwise the full text), the Azure coordinates of the connected account (azure: accountName, subscriptionId, subscriptionName, resourceGroup — present only for Azure-signed-in accounts, omitted for workspace-attached accounts and the emulator), the persisted container schema (if one has already been sampled or inferred), recent query history, result metadata (row counts, request charge, inferred result schema), a one-use queryContextId for cosmosdb_executeCurrentQuery when activeQuery is present, and a one-use sampleContextId for cosmosdb_sampleContainerSchema. Never returns raw document data. Use this to ground query generation or explanation; if it returns a containerSchema, you already know the schema and do not need to sample again.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "cosmosdb_getQueryEditorContext"
       },

@@ -5,6 +5,7 @@
 
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { type QueryEditorTab } from '../panels/QueryEditorTab';
+import { createExpiringOneShotStore } from './expiringOneShotStore';
 
 const QUERY_EXECUTION_CONTEXT_TTL_MS = 5 * 60 * 1000;
 
@@ -16,56 +17,26 @@ export interface QueryExecutionContext {
     containerId: string;
 }
 
-interface StoredQueryExecutionContext {
-    context: QueryExecutionContext;
-    expiresAt: number;
-}
-
-const queryExecutionContexts = new Map<string, StoredQueryExecutionContext>();
-
-function pruneExpiredQueryExecutionContexts(now = Date.now()): void {
-    for (const [id, stored] of queryExecutionContexts) {
-        if (stored.expiresAt <= now) {
-            queryExecutionContexts.delete(id);
-        }
-    }
-}
+const store = createExpiringOneShotStore<QueryExecutionContext>(QUERY_EXECUTION_CONTEXT_TTL_MS);
 
 export function createQueryExecutionContext(
     tab: QueryEditorTab,
     connection: NoSqlQueryConnection,
     query: string,
 ): string {
-    pruneExpiredQueryExecutionContexts();
-
-    const id = globalThis.crypto.randomUUID();
-    queryExecutionContexts.set(id, {
-        context: {
-            tabId: tab.getId(),
-            query,
-            endpoint: connection.endpoint,
-            databaseId: connection.databaseId,
-            containerId: connection.containerId,
-        },
-        expiresAt: Date.now() + QUERY_EXECUTION_CONTEXT_TTL_MS,
+    return store.create({
+        tabId: tab.getId(),
+        query,
+        endpoint: connection.endpoint,
+        databaseId: connection.databaseId,
+        containerId: connection.containerId,
     });
-    return id;
 }
 
 export function getQueryExecutionContext(id: string): QueryExecutionContext | undefined {
-    const stored = queryExecutionContexts.get(id);
-    if (!stored) {
-        return undefined;
-    }
-    if (stored.expiresAt <= Date.now()) {
-        queryExecutionContexts.delete(id);
-        return undefined;
-    }
-    return stored.context;
+    return store.peek(id);
 }
 
 export function takeQueryExecutionContext(id: string): QueryExecutionContext | undefined {
-    const context = getQueryExecutionContext(id);
-    queryExecutionContexts.delete(id);
-    return context;
+    return store.take(id);
 }

@@ -10,7 +10,8 @@ import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
 import { stripSchemaStatistics } from '../services/schemaStatistics';
-import { getActiveQueryEditor, getConnectionFromQueryTab } from './chatUtils';
+import { getConnectionFromQueryTab } from './chatUtils';
+import { getQueryExecutionContext, takeQueryExecutionContext } from './queryExecutionContext';
 
 /**
  * Tool name constant for the execute-current-query tool.
@@ -23,24 +24,30 @@ export const EXECUTE_CURRENT_QUERY_TOOL_NAME = 'cosmosdb_executeCurrentQuery';
  * Keep in sync with the `modelDescription` in package.json `contributes.languageModelTools`.
  */
 export const EXECUTE_CURRENT_QUERY_TOOL_DESCRIPTION =
-    'Runs the CURRENT query in the active Cosmos DB Query Editor (the selected text if there is a selection, ' +
-    'otherwise the full editor content) and shows the results in the editor grid. Use this whenever the user wants ' +
-    'to see, show, list, find, count, or return data — writing or applying a query does NOT run it. This tool takes ' +
-    'no query parameter; it always runs whatever is currently in the editor, so to run a specific or newly generated ' +
-    'query you MUST first call cosmosdb_applyQueryToEditor to make it the current query, then call this tool. Asks ' +
-    'the user for confirmation first because it reads data and consumes Request Units (RUs). Returns result ' +
-    'metadata (row count, request charge, inferred result schema) — never raw documents.';
+    'Runs a query previously read from or applied to a Cosmos DB Query Editor and shows the results in that editor. ' +
+    'Use this whenever the user wants to see, show, list, find, count, or return data — writing or applying a query ' +
+    'does NOT run it. Pass the queryContextId returned by cosmosdb_getQueryEditorContext or ' +
+    'cosmosdb_applyQueryToEditor. The context pins the exact editor, query, and container so concurrent tool calls ' +
+    'cannot execute or return results for one another. Asks the user for confirmation first because it reads data ' +
+    'and consumes Request Units (RUs). Returns result metadata (row count, request charge, inferred result schema) — ' +
+    'never raw documents.';
 
-/**
- * Gets the active query editor tab, if available.
- */
-function getActiveTab(): QueryEditorTab | undefined {
-    const tabs = Array.from(QueryEditorTab.openTabs);
-    if (tabs.length === 0) {
-        return undefined;
-    }
-    return getActiveQueryEditor(tabs);
+interface ExecuteCurrentQueryInput {
+    queryContextId: string;
 }
+
+export const EXECUTE_CURRENT_QUERY_TOOL_INPUT_SCHEMA = {
+    type: 'object' as const,
+    properties: {
+        queryContextId: {
+            type: 'string',
+            description:
+                'The queryContextId returned by cosmosdb_getQueryEditorContext or cosmosdb_applyQueryToEditor.',
+        },
+    },
+    required: ['queryContextId'],
+    additionalProperties: { not: {} },
+};
 
 /**
  * Finds an open Query Editor tab by its stable id, or `undefined` when it has since been closed.
@@ -53,29 +60,6 @@ function findTabById(tabId: string): QueryEditorTab | undefined {
     }
     return undefined;
 }
-
-/**
- * Snapshot of the exact Query Editor tab + query that a confirmation prompt was built for.
- *
- * `prepareInvocation` records this and `invoke` consumes it so the tool runs precisely what the
- * user confirmed. Without it, `invoke` re-resolves the *active* editor and its *current* query,
- * which lets the user switch tabs or edit the query while the confirmation prompt is open and have
- * the tool execute unconfirmed state — authorizing a different query/container than was shown.
- *
- * The VS Code language-model tool API provides no channel to pass data from `prepareInvocation`
- * to `invoke` (prepare only receives `input`, and is not necessarily followed by an `invoke`), so a
- * module-scoped record is the handoff. Only one confirmation can be pending at a time because the
- * chat runtime invokes tools sequentially; `invoke` clears it on read.
- */
-interface PendingRunConfirmation {
-    tabId: string;
-    query: string;
-    endpoint: string;
-    databaseId: string;
-    containerId: string;
-}
-
-let pendingRunConfirmation: PendingRunConfirmation | undefined;
 
 /**
  * Resolves the query the editor would run: the selected text when there is a selection, otherwise
@@ -93,35 +77,23 @@ function getActiveQuery(tab: QueryEditorTab): string | undefined {
  * Registers the cosmosdb_executeCurrentQuery tool with the VS Code Language Model API.
  */
 export function registerExecuteCurrentQueryTool(context: vscode.ExtensionContext): void {
-    const tool = vscode.lm.registerTool(EXECUTE_CURRENT_QUERY_TOOL_NAME, {
+    const tool = vscode.lm.registerTool<ExecuteCurrentQueryInput>(EXECUTE_CURRENT_QUERY_TOOL_NAME, {
         prepareInvocation(
-            _options: vscode.LanguageModelToolInvocationPrepareOptions<Record<string, never>>,
+            options: vscode.LanguageModelToolInvocationPrepareOptions<ExecuteCurrentQueryInput>,
             _token: vscode.CancellationToken,
         ): vscode.PreparedToolInvocation {
-            const tab = getActiveTab();
-            const connection = tab ? getConnectionFromQueryTab(tab) : undefined;
-            const activeQuery = tab ? getActiveQuery(tab) : undefined;
-
-            // Pin the confirmation to this exact tab + query so `invoke` runs what the user is shown
-            // here, even if they switch tabs or edit the query before confirming. See
-            // PendingRunConfirmation for why a module-scoped snapshot is the only available handoff.
-            pendingRunConfirmation =
-                tab && connection && activeQuery && activeQuery.trim()
-                    ? {
-                          tabId: tab.getId(),
-                          query: activeQuery,
-                          endpoint: connection.endpoint,
-                          databaseId: connection.databaseId,
-                          containerId: connection.containerId,
-                      }
-                    : undefined;
+            const confirmation = options.input?.queryContextId
+                ? getQueryExecutionContext(options.input.queryContextId)
+                : undefined;
 
             const message = new vscode.MarkdownString(
                 l10n.t('Running this query reads data from your Cosmos DB container and consumes Request Units (RUs).'),
             );
-            if (activeQuery && activeQuery.trim()) {
+            if (confirmation) {
+                message.appendMarkdown('\n\n**' + l10n.t('Database:') + `** ${confirmation.databaseId}`);
+                message.appendMarkdown('\n\n**' + l10n.t('Container:') + `** ${confirmation.containerId}`);
                 message.appendMarkdown('\n\n**' + l10n.t('Query:') + '**\n');
-                message.appendCodeblock(activeQuery.trim(), 'sql');
+                message.appendCodeblock(confirmation.query.trim(), 'sql');
             }
             return {
                 invocationMessage: l10n.t('Running the query in the Query Editor…'),
@@ -133,7 +105,7 @@ export function registerExecuteCurrentQueryTool(context: vscode.ExtensionContext
         },
 
         async invoke(
-            _options: vscode.LanguageModelToolInvocationOptions<Record<string, never>>,
+            options: vscode.LanguageModelToolInvocationOptions<ExecuteCurrentQueryInput>,
             token: vscode.CancellationToken,
         ): Promise<vscode.LanguageModelToolResult> {
             const toolResult = await callWithTelemetryAndErrorHandling(
@@ -142,14 +114,20 @@ export function registerExecuteCurrentQueryTool(context: vscode.ExtensionContext
                     actionContext.errorHandling.suppressDisplay = true;
                     actionContext.telemetry.properties.outcome = 'error';
 
-                    // Consume the snapshot captured for the confirmation prompt (cleared on read so a
-                    // later invoke can't reuse a stale confirmation). When present, resolve the
-                    // *confirmed* tab by id instead of whatever is active now, so switching tabs while
-                    // the prompt was open can't redirect the run to a different container.
-                    const confirmation = pendingRunConfirmation;
-                    pendingRunConfirmation = undefined;
+                    const queryContextId = options.input?.queryContextId;
+                    const confirmation = queryContextId ? takeQueryExecutionContext(queryContextId) : undefined;
+                    if (!confirmation) {
+                        actionContext.telemetry.properties.outcome = 'invalidContext';
+                        return new vscode.LanguageModelToolResult([
+                            new vscode.LanguageModelTextPart(
+                                l10n.t(
+                                    'The query context is no longer available. Read or apply the query again, then retry execution.',
+                                ),
+                            ),
+                        ]);
+                    }
 
-                    const tab = confirmation ? findTabById(confirmation.tabId) : getActiveTab();
+                    const tab = findTabById(confirmation.tabId);
                     const connection = tab ? getConnectionFromQueryTab(tab) : undefined;
                     if (connection) {
                         actionContext.valuesToMask.push(
@@ -195,21 +173,18 @@ export function registerExecuteCurrentQueryTool(context: vscode.ExtensionContext
                     // Mask query text early so it cannot leak via telemetry error messages; the query may carry
                     // literal values (e.g. WHERE clauses). Masking does not affect the result returned to the model.
                     actionContext.valuesToMask.push(activeQuery);
-                    if (confirmation) {
-                        // The confirmed query may also carry literal values; mask it too in case the state
-                        // drifted (below) and it differs from the query we just masked.
-                        actionContext.valuesToMask.push(confirmation.query);
-                    }
+                    // The confirmed query may also carry literal values; mask it too in case the state
+                    // drifted (below) and it differs from the query we just masked.
+                    actionContext.valuesToMask.push(confirmation.query);
 
                     // Refuse to run if the editor drifted from what the user confirmed: an edited query
                     // (changed while the prompt was open) or a re-pointed connection would target state the
                     // user never saw. Re-running the tool captures a fresh snapshot and shows a new prompt.
                     if (
-                        confirmation &&
-                        (activeQuery !== confirmation.query ||
-                            connection.endpoint !== confirmation.endpoint ||
-                            connection.databaseId !== confirmation.databaseId ||
-                            connection.containerId !== confirmation.containerId)
+                        activeQuery !== confirmation.query ||
+                        connection.endpoint !== confirmation.endpoint ||
+                        connection.databaseId !== confirmation.databaseId ||
+                        connection.containerId !== confirmation.containerId
                     ) {
                         actionContext.telemetry.properties.outcome = 'stateChanged';
                         return new vscode.LanguageModelToolResult([
@@ -232,8 +207,22 @@ export function registerExecuteCurrentQueryTool(context: vscode.ExtensionContext
                         // The webview runs the query and renders results in the grid; this resolves with
                         // the executionId that actually ran once it reports completion, or `undefined` when
                         // the run was cancelled / never started / timed out.
-                        const executionId = await tab.runActiveQueryInEditor(activeQuery);
+                        const executionId = await tab.runActiveQueryInEditor(
+                            activeQuery,
+                            {
+                                endpoint: confirmation.endpoint,
+                                databaseId: confirmation.databaseId,
+                                containerId: confirmation.containerId,
+                            },
+                            token,
+                        );
                         if (!executionId) {
+                            if (token.isCancellationRequested) {
+                                actionContext.telemetry.properties.outcome = 'cancelled';
+                                return new vscode.LanguageModelToolResult([
+                                    new vscode.LanguageModelTextPart(l10n.t('Operation cancelled.')),
+                                ]);
+                            }
                             actionContext.telemetry.properties.outcome = 'notExecuted';
                             return new vscode.LanguageModelToolResult([
                                 new vscode.LanguageModelTextPart(

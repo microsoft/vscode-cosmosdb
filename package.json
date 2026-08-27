@@ -259,14 +259,14 @@
       {
         "name": "cosmosdb_getQueryEditorContext",
         "displayName": "Get Query Editor Context",
-        "modelDescription": "Returns the context of the active Cosmos DB Query Editor: the full editor text (currentQuery, which may contain multiple queries), the selected query if any (selectedQuery), the single query to operate on or explain (activeQuery — the selection when present, otherwise the full text), the Azure coordinates of the connected account (azure: accountName, subscriptionId, subscriptionName, resourceGroup — present only for Azure-signed-in accounts, omitted for workspace-attached accounts and the emulator), the persisted container schema (if one has already been sampled or inferred), recent query history, and result metadata (row counts, request charge, inferred result schema). Never returns raw document data. Use this to ground query generation or explanation; if it returns a containerSchema, you already know the schema and do not need to sample again.",
+        "modelDescription": "Returns the context of the active Cosmos DB Query Editor: the full editor text (currentQuery, which may contain multiple queries), the selected query if any (selectedQuery), the single query to operate on or explain (activeQuery — the selection when present, otherwise the full text), the Azure coordinates of the connected account (azure: accountName, subscriptionId, subscriptionName, resourceGroup — present only for Azure-signed-in accounts, omitted for workspace-attached accounts and the emulator), the persisted container schema (if one has already been sampled or inferred), recent query history, result metadata (row counts, request charge, inferred result schema), and a one-use queryContextId for cosmosdb_executeCurrentQuery when activeQuery is present. Never returns raw document data. Use this to ground query generation or explanation; if it returns a containerSchema, you already know the schema and do not need to sample again.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "cosmosdb_getQueryEditorContext"
       },
       {
         "name": "cosmosdb_applyQueryToEditor",
         "displayName": "Apply Query to Editor",
-        "modelDescription": "Writes a generated Cosmos DB NoSQL query into the active Query Editor, replacing its contents. The previous query is preserved below the new one as a commented \"Previous query\" block. Pass the user's original natural-language request as promptDescription so it is cited in a \"Generated from\" comment. Applying does NOT run the query; if the user wants to see results, call cosmosdb_executeCurrentQuery afterwards.",
+        "modelDescription": "Writes a generated Cosmos DB NoSQL query into the active Query Editor, replacing its contents. The previous query is preserved below the new one as a commented \"Previous query\" block. Pass the user's original natural-language request as promptDescription so it is cited in a \"Generated from\" comment. Applying does NOT run the query. Returns a queryContextId that must be passed to cosmosdb_executeCurrentQuery if the user wants to see results.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "cosmosdb_applyQueryToEditor",
         "inputSchema": {
@@ -292,9 +292,24 @@
       {
         "name": "cosmosdb_executeCurrentQuery",
         "displayName": "Execute Current Query",
-        "modelDescription": "Runs the CURRENT query in the active Cosmos DB Query Editor (the selected text if there is a selection, otherwise the full editor content) and shows the results in the editor grid. Use this whenever the user wants to see, show, list, find, count, or return data — writing or applying a query does NOT run it. This tool takes no query parameter; it always runs whatever is currently in the editor, so to run a specific or newly generated query you MUST first call cosmosdb_applyQueryToEditor to make it the current query, then call this tool. Asks the user for confirmation first because it reads data and consumes Request Units (RUs). Returns result metadata (row count, request charge, inferred result schema) — never raw documents.",
+        "modelDescription": "Runs a query previously read from or applied to a Cosmos DB Query Editor and shows the results in that editor. Use this whenever the user wants to see, show, list, find, count, or return data — writing or applying a query does NOT run it. Pass the queryContextId returned by cosmosdb_getQueryEditorContext or cosmosdb_applyQueryToEditor. The context pins the exact editor, query, and container so concurrent tool calls cannot execute or return results for one another. Asks the user for confirmation first because it reads data and consumes Request Units (RUs). Returns result metadata (row count, request charge, inferred result schema) — never raw documents.",
         "canBeReferencedInPrompt": true,
-        "toolReferenceName": "cosmosdb_executeCurrentQuery"
+        "toolReferenceName": "cosmosdb_executeCurrentQuery",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "queryContextId": {
+              "type": "string",
+              "description": "The queryContextId returned by cosmosdb_getQueryEditorContext or cosmosdb_applyQueryToEditor."
+            }
+          },
+          "required": [
+            "queryContextId"
+          ],
+          "additionalProperties": {
+            "not": {}
+          }
+        }
       },
       {
         "name": "cosmosdb_openQueryEditor",

@@ -10,6 +10,7 @@ import { ext } from '../extensionVariables';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
 import { commentOutQuery, normalizeQueryText, sanitizeSqlComment, stripCodeFences } from '../utils/sanitization';
 import { getActiveQueryEditor, getConnectionFromQueryTab } from './chatUtils';
+import { createQueryExecutionContext } from './queryExecutionContext';
 
 /**
  * Tool name constant for the apply-query-to-editor tool.
@@ -25,8 +26,8 @@ export const APPLY_QUERY_TO_EDITOR_TOOL_DESCRIPTION =
     'Writes a generated Cosmos DB NoSQL query into the active Query Editor, replacing its contents. ' +
     'The previous query is preserved below the new one as a commented "Previous query" block. ' +
     "Pass the user's original natural-language request as promptDescription so it is cited in a " +
-    '"Generated from" comment. Applying does NOT run the query; if the user wants to see results, ' +
-    'call cosmosdb_executeCurrentQuery afterwards.';
+    '"Generated from" comment. Applying does NOT run the query. Returns a queryContextId that must be passed to ' +
+    'cosmosdb_executeCurrentQuery if the user wants to see results.';
 
 /**
  * Input for the apply-query-to-editor tool.
@@ -188,6 +189,7 @@ export function registerApplyQueryToEditorTool(context: vscode.ExtensionContext)
                             ]);
                         }
                         tab.updateQuery(finalQuery, aiGeneratedQuery);
+                        const queryContextId = createQueryExecutionContext(tab, connection, finalQuery);
 
                         actionContext.telemetry.properties.outcome = 'success';
                         actionContext.telemetry.properties.hasPromptDescription = promptDescription ? 'true' : 'false';
@@ -203,7 +205,10 @@ export function registerApplyQueryToEditorTool(context: vscode.ExtensionContext)
 
                         return new vscode.LanguageModelToolResult([
                             new vscode.LanguageModelTextPart(
-                                l10n.t('The generated query was written to the Query Editor.'),
+                                JSON.stringify({
+                                    message: l10n.t('The generated query was written to the Query Editor.'),
+                                    queryContextId,
+                                }),
                             ),
                         ]);
                     } catch (error) {

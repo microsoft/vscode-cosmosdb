@@ -11,7 +11,7 @@ import { getThemedIconPath } from '../constants';
 import { getCosmosDBKeyCredential } from '../cosmosdb/CosmosDBCredential';
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { type QuerySession } from '../cosmosdb/session/QuerySession';
-import { type SerializedQueryResult } from '../cosmosdb/types/queryResult';
+import { DEFAULT_EXECUTION_TIMEOUT, type SerializedQueryResult } from '../cosmosdb/types/queryResult';
 import { SchemaFileStorage } from '../services/SchemaFileStorage';
 import { SchemaService } from '../services/SchemaService';
 import { getIsSurveyDisabledGlobally } from '../utils/survey';
@@ -22,6 +22,7 @@ import {
     type QueryEditorMutableState,
     type QueryEditorRouterContext,
 } from './trpc/appRouter';
+import { cleanUpSupersededReadSessions } from './trpc/querySessionIsolation';
 import { type QueryEditorEvent } from './trpc/routers/queryEditorEventsRouter';
 
 export class QueryEditorTab extends BaseTab {
@@ -33,6 +34,7 @@ export class QueryEditorTab extends BaseTab {
     public readonly eventSink: TypedEventSink<QueryEditorEvent>;
 
     private readonly state: QueryEditorMutableState;
+    private readonly readToolSessionIds = new Set<string>();
     private static readonly DEFAULT_QUERY_VALUE = `SELECT * FROM c`;
 
     protected constructor(panel: vscode.WebviewPanel, connection?: NoSqlQueryConnection, query?: string) {
@@ -142,7 +144,7 @@ export class QueryEditorTab extends BaseTab {
         // Settle any in-flight runs so awaiting tool calls resolve immediately instead of hanging until
         // their timeout fires. Deleting the current entry during Map iteration does not skip remaining entries.
         for (const resolve of this.state.pendingRuns.values()) {
-            resolve(undefined);
+            resolve.resolve(undefined);
         }
         this.state.pendingRuns.clear();
 
@@ -186,10 +188,17 @@ export class QueryEditorTab extends BaseTab {
     public getCurrentQueryResults = (executionId?: string): SerializedQueryResult | undefined => {
         // When an executionId is given, read that exact session so a caller (e.g. the
         // cosmosdb_executeCurrentQuery tool) never picks up a different / previous run's result.
+        // Tool-owned sessions coexist while their callers await exact results. Once read, release
+        // superseded sessions but retain the active result so pagination keeps working in the grid.
         const sessions = Array.from(this.sessions.values());
         const activeSession = executionId ? this.sessions.get(executionId) : sessions[sessions.length - 1];
         const result = activeSession?.sessionResult;
-        return result?.getSerializedResult(1);
+        const serializedResult = result?.getSerializedResult(1);
+        if (executionId && activeSession) {
+            this.readToolSessionIds.add(executionId);
+            cleanUpSupersededReadSessions(this.sessions, this.readToolSessionIds);
+        }
+        return serializedResult;
     };
 
     public getConnection = (): NoSqlQueryConnection | undefined => {
@@ -287,6 +296,7 @@ export class QueryEditorTab extends BaseTab {
      */
     public updateQuery(editorText: string, aiGeneratedQuery: string): void {
         this.state.query = editorText;
+        this.state.selectedQuery = undefined;
         this.state.isLastQueryAIGenerated = true;
         this.state.lastAIGeneratedQuery = aiGeneratedQuery;
         this.eventSink.emit({ type: 'queryTextPushed', query: editorText });
@@ -304,19 +314,37 @@ export class QueryEditorTab extends BaseTab {
      * completion signal, so concurrent invocations stay isolated: a completing run resolves only its
      * own caller and can never deliver its executionId to a different still-pending invocation.
      */
-    public runActiveQueryInEditor(query: string, timeoutMs = 120_000): Promise<string | undefined> {
+    public runActiveQueryInEditor(
+        query: string,
+        connection: { endpoint: string; databaseId: string; containerId: string },
+        token: vscode.CancellationToken,
+        timeoutMs = DEFAULT_EXECUTION_TIMEOUT + 30_000,
+    ): Promise<string | undefined> {
+        if (token.isCancellationRequested) {
+            return Promise.resolve(undefined);
+        }
+
         const requestId = globalThis.crypto.randomUUID();
         return new Promise<string | undefined>((resolve) => {
-            const timer = setTimeout(() => {
-                this.state.pendingRuns.delete(requestId);
-                resolve(undefined);
-            }, timeoutMs);
-            this.state.pendingRuns.set(requestId, (executionId?: string) => {
+            const finish = (executionId?: string): void => {
                 clearTimeout(timer);
                 this.state.pendingRuns.delete(requestId);
+                cancellationSubscription.dispose();
                 resolve(executionId);
-            });
-            this.eventSink.emit({ type: 'runActiveQueryRequested', query, requestId });
+            };
+            const cancel = (): void => {
+                const pendingRun = this.state.pendingRuns.get(requestId);
+                if (pendingRun?.executionId) {
+                    const session = this.sessions.get(pendingRun.executionId);
+                    this.sessions.delete(pendingRun.executionId);
+                    session?.dispose();
+                }
+                finish(undefined);
+            };
+            const timer = setTimeout(cancel, timeoutMs);
+            this.state.pendingRuns.set(requestId, { resolve: finish });
+            const cancellationSubscription = token.onCancellationRequested(cancel);
+            this.eventSink.emit({ type: 'runActiveQueryRequested', query, requestId, connection });
         });
     }
 

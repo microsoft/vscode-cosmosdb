@@ -99,6 +99,7 @@ describe('cosmosdb_getQueryEditorContext — confidentiality', () => {
         const { getActiveQueryEditor, getConnectionFromQueryTab } = await import('./chatUtils');
 
         const tab = {
+            getId: vi.fn(() => 'tab-1'),
             getCurrentQuery: vi.fn(() => 'SELECT * FROM c'),
             getSelectedQuery: vi.fn(() => undefined),
             getCurrentQueryResults: vi.fn(() => ({
@@ -114,6 +115,7 @@ describe('cosmosdb_getQueryEditorContext — confidentiality', () => {
         };
         vi.mocked(getActiveQueryEditor).mockReturnValue(tab as never);
         vi.mocked(getConnectionFromQueryTab).mockReturnValue({
+            endpoint: 'https://example.documents.azure.com/',
             databaseId: 'db1',
             containerId: 'c1',
         } as never);
@@ -123,6 +125,7 @@ describe('cosmosdb_getQueryEditorContext — confidentiality', () => {
 
         expect(context.currentResult).toBeDefined();
         expect(context.currentResult.schema).toBeDefined();
+        expect(context.queryContextId).toEqual(expect.any(String));
 
         expect(findConfidentialStatKeys(context)).toEqual([]);
         // The actual sensitive numeric value must not appear anywhere in the serialized context.

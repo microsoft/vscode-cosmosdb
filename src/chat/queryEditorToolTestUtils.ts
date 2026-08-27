@@ -60,12 +60,13 @@ export function serializeToolResult(result: vscode.LanguageModelToolResult): str
  */
 export async function invokeRegisteredTool(
     register: (context: vscode.ExtensionContext) => void,
+    input: unknown = {},
 ): Promise<{ result: vscode.LanguageModelToolResult; text: string }> {
     const captured = captureRegisteredTool(register);
 
     const cts = new vscode.CancellationTokenSource();
     try {
-        const result = await captured.invoke({ input: {} }, cts.token);
+        const result = await captured.invoke({ input }, cts.token);
         return { result, text: serializeToolResult(result) };
     } finally {
         cts.dispose();

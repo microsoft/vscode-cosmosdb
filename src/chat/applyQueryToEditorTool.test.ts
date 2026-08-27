@@ -9,6 +9,7 @@ import * as vscode from 'vscode';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
 import { buildFramedQuery, registerApplyQueryToEditorTool } from './applyQueryToEditorTool';
 import { captureRegisteredTool, serializeToolResult } from './queryEditorToolTestUtils';
+import { getQueryExecutionContext } from './queryExecutionContext';
 
 // Mock the heavy sibling modules so these tests load without pulling in the panel / tRPC / webview graph.
 vi.mock('@microsoft/vscode-azext-utils', () => ({
@@ -37,6 +38,8 @@ vi.mock('./chatUtils', () => ({
     getActiveQueryEditor: vi.fn(),
     getConnectionFromQueryTab: vi.fn(),
 }));
+
+const noopToken = { isCancellationRequested: false } as never;
 
 describe('cosmosdb_applyQueryToEditor — cancellation', () => {
     beforeEach(() => {
@@ -93,6 +96,45 @@ describe('cosmosdb_applyQueryToEditor — cancellation', () => {
         } finally {
             cts.dispose();
         }
+    });
+});
+
+describe('cosmosdb_applyQueryToEditor — execution context', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        QueryEditorTab.openTabs.clear();
+    });
+
+    it('returns a context pinned to the applied query and editor', async () => {
+        const { getActiveQueryEditor, getConnectionFromQueryTab } = await import('./chatUtils');
+        const connection = {
+            endpoint: 'https://example.documents.azure.com/',
+            databaseId: 'db',
+            containerId: 'container',
+        };
+        const tab = {
+            getId: vi.fn(() => 'tab-1'),
+            getCurrentQuery: vi.fn(() => 'SELECT old FROM c'),
+            takeLastGeneratePrompt: vi.fn(() => undefined),
+            updateQuery: vi.fn(),
+        };
+        QueryEditorTab.openTabs.add(tab as never);
+        vi.mocked(getActiveQueryEditor).mockReturnValue(tab as never);
+        vi.mocked(getConnectionFromQueryTab).mockReturnValue(connection as never);
+
+        const tool = captureRegisteredTool(registerApplyQueryToEditorTool);
+        const result = await tool.invoke({ input: { query: 'SELECT * FROM c' } }, noopToken);
+        const payload = JSON.parse(serializeToolResult(result));
+        const executionContext = getQueryExecutionContext(payload.queryContextId);
+
+        expect(tab.updateQuery).toHaveBeenCalledOnce();
+        expect(executionContext).toMatchObject({
+            tabId: 'tab-1',
+            query: 'SELECT * FROM c\n\n-- Previous query:\n-- SELECT old FROM c',
+            endpoint: connection.endpoint,
+            databaseId: connection.databaseId,
+            containerId: connection.containerId,
+        });
     });
 });
 

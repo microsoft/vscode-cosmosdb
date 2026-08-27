@@ -101,7 +101,13 @@ export type QueryEditorMutableState = {
      * by `requestId` keeps concurrent invocations isolated so a completing run only ever resolves its own
      * caller and can never hand its executionId to a different, still-pending invocation.
      */
-    pendingRuns: Map<string, (executionId?: string) => void>;
+    pendingRuns: Map<
+        string,
+        {
+            resolve(executionId?: string): void;
+            executionId?: string;
+        }
+    >;
 };
 
 export type QueryEditorRouterContext = CosmosDBRouterContext & {

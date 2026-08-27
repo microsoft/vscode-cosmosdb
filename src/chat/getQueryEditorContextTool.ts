@@ -13,6 +13,7 @@ import { SchemaService } from '../services/SchemaService';
 import { stripSchemaStatistics } from '../services/schemaStatistics';
 import { getActiveQueryEditor, getConnectionFromQueryTab } from './chatUtils';
 import { CosmosDbOperationsService } from './CosmosDbOperationsService';
+import { createQueryExecutionContext } from './queryExecutionContext';
 
 /**
  * Tool name constant for the query-editor context tool.
@@ -31,8 +32,9 @@ export const GET_QUERY_EDITOR_CONTEXT_TOOL_DESCRIPTION =
     'account (azure: accountName, subscriptionId, subscriptionName, resourceGroup — present only for Azure-signed-in ' +
     'accounts, omitted for workspace-attached accounts and the emulator), the persisted container schema (if one has ' +
     'already been sampled or inferred), recent query history, and result metadata (row counts, request charge, inferred ' +
-    'result schema). Never returns raw document data. Use this to ground query generation or explanation; if it returns ' +
-    'a containerSchema, you already know the schema and do not need to sample again.';
+    'result schema), and a one-use queryContextId for cosmosdb_executeCurrentQuery when activeQuery is present. Never ' +
+    'returns raw document data. Use this to ground query generation or explanation; if it returns a containerSchema, ' +
+    'you already know the schema and do not need to sample again.';
 
 /**
  * Result metadata for a single query result. Structure and counts only — no raw document data.
@@ -52,6 +54,8 @@ interface QueryResultMetadata {
 interface QueryEditorContext {
     databaseId: string;
     containerId: string;
+    /** Opaque handle that pins activeQuery to this exact editor and connection for one execution. */
+    queryContextId?: string;
     /**
      * Azure resource coordinates for the connected account. Present only for Azure-signed-in
      * accounts; omitted for workspace-attached accounts and the local emulator.
@@ -182,6 +186,9 @@ export function registerGetQueryEditorContextTool(context: vscode.ExtensionConte
                             selectedQuery,
                             activeQuery,
                         };
+                        if (activeQuery?.trim()) {
+                            context.queryContextId = createQueryExecutionContext(tab, connection, activeQuery);
+                        }
 
                         // Azure resource coordinates, when the connection is an Azure-signed-in account
                         // (undefined for workspace-attached accounts and the local emulator).

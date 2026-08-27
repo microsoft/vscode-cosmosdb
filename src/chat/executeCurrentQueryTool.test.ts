@@ -5,9 +5,11 @@
 
 /// <reference types="vitest/globals" />
 
+import * as vscode from 'vscode';
 import { findConfidentialStatKeys } from '../services/schemaStatisticsTestUtils';
 import { registerExecuteCurrentQueryTool } from './executeCurrentQueryTool';
 import { captureRegisteredTool, invokeRegisteredTool, serializeToolResult } from './queryEditorToolTestUtils';
+import { createQueryExecutionContext } from './queryExecutionContext';
 
 // Drive the telemetry wrapper synchronously so the tool body runs end-to-end and we can inspect
 // the LanguageModelToolResult it returns.
@@ -44,9 +46,11 @@ describe('cosmosdb_executeCurrentQuery — confidentiality', () => {
     });
 
     it('never sends value-derived statistics or raw values to the model', async () => {
-        const { getActiveQueryEditor, getConnectionFromQueryTab } = await import('./chatUtils');
+        const { getConnectionFromQueryTab } = await import('./chatUtils');
+        const { QueryEditorTab } = await import('../panels/QueryEditorTab');
 
         const tab = {
+            getId: vi.fn(() => 'tab-1'),
             getSelectedQuery: vi.fn(() => undefined),
             getCurrentQuery: vi.fn(() => 'SELECT * FROM c'),
             runActiveQueryInEditor: vi.fn(async () => 'exec-1'),
@@ -61,14 +65,16 @@ describe('cosmosdb_executeCurrentQuery — confidentiality', () => {
                 hasMoreResults: false,
             })),
         };
-        vi.mocked(getActiveQueryEditor).mockReturnValue(tab as never);
-        vi.mocked(getConnectionFromQueryTab).mockReturnValue({
+        const connection = {
             endpoint: 'https://example.documents.azure.com/',
             databaseId: 'db1',
             containerId: 'c1',
-        } as never);
+        };
+        setOpenTabs(QueryEditorTab as unknown as { openTabs: Set<unknown> }, [tab]);
+        vi.mocked(getConnectionFromQueryTab).mockReturnValue(connection as never);
+        const queryContextId = createQueryExecutionContext(tab as never, connection as never, 'SELECT * FROM c');
 
-        const { text } = await invokeRegisteredTool(registerExecuteCurrentQueryTool);
+        const { text } = await invokeRegisteredTool(registerExecuteCurrentQueryTool, { queryContextId });
         const payload = JSON.parse(text);
 
         // The tool still returns useful metadata + an inferred schema.
@@ -97,7 +103,13 @@ function makeTab(id: string, query: string, connection: unknown) {
         getSelectedQuery: () => undefined,
         getCurrentQuery: () => tab.query,
         connection,
-        runActiveQueryInEditor: vi.fn(async () => 'exec-1'),
+        runActiveQueryInEditor: vi.fn(
+            async (
+                _query: string,
+                _connection: { endpoint: string; databaseId: string; containerId: string },
+                _token: vscode.CancellationToken,
+            ): Promise<string | undefined> => 'exec-1',
+        ),
         getCurrentQueryResults: vi.fn(() => ({
             documents: [],
             requestCharge: 1,
@@ -116,6 +128,10 @@ function setOpenTabs(queryEditorTab: { openTabs: Set<unknown> }, tabs: unknown[]
 }
 
 const noopToken = { isCancellationRequested: false } as never;
+
+function createContext(tab: ReturnType<typeof makeTab>): string {
+    return createQueryExecutionContext(tab as never, tab.connection as never, tab.query);
+}
 
 describe('cosmosdb_executeCurrentQuery — confirmation snapshot (P1)', () => {
     beforeEach(() => {
@@ -139,16 +155,17 @@ describe('cosmosdb_executeCurrentQuery — confirmation snapshot (P1)', () => {
         vi.mocked(getActiveQueryEditor).mockReturnValue(tabA as never);
 
         const tool = captureRegisteredTool(registerExecuteCurrentQueryTool);
-        tool.prepareInvocation?.({ input: {} }, noopToken);
+        const queryContextId = createContext(tabA);
+        tool.prepareInvocation?.({ input: { queryContextId } }, noopToken);
 
         // User switches to tab B while the prompt is open; the active editor is now B.
         vi.mocked(getActiveQueryEditor).mockReturnValue(tabB as never);
 
-        const result = await tool.invoke({ input: {} }, noopToken);
+        const result = await tool.invoke({ input: { queryContextId } }, noopToken);
         const payload = JSON.parse(serializeToolResult(result));
 
         // The confirmed tab A ran; the now-active tab B did not.
-        expect(tabA.runActiveQueryInEditor).toHaveBeenCalledWith('SELECT * FROM a');
+        expect(tabA.runActiveQueryInEditor).toHaveBeenCalledWith('SELECT * FROM a', connA, noopToken);
         expect(tabB.runActiveQueryInEditor).not.toHaveBeenCalled();
         expect(payload.databaseId).toBe('dbA');
         expect(payload.containerId).toBe('cA');
@@ -168,12 +185,13 @@ describe('cosmosdb_executeCurrentQuery — confirmation snapshot (P1)', () => {
         vi.mocked(getActiveQueryEditor).mockReturnValue(tabA as never);
 
         const tool = captureRegisteredTool(registerExecuteCurrentQueryTool);
-        tool.prepareInvocation?.({ input: {} }, noopToken);
+        const queryContextId = createContext(tabA);
+        tool.prepareInvocation?.({ input: { queryContextId } }, noopToken);
 
         // User edits the query while the confirmation prompt is open.
         tabA.query = 'SELECT * FROM a WHERE secret = 1';
 
-        const result = await tool.invoke({ input: {} }, noopToken);
+        const result = await tool.invoke({ input: { queryContextId } }, noopToken);
         const text = serializeToolResult(result);
 
         expect(tabA.runActiveQueryInEditor).not.toHaveBeenCalled();
@@ -194,12 +212,155 @@ describe('cosmosdb_executeCurrentQuery — confirmation snapshot (P1)', () => {
         vi.mocked(getActiveQueryEditor).mockReturnValue(tabA as never);
 
         const tool = captureRegisteredTool(registerExecuteCurrentQueryTool);
-        tool.prepareInvocation?.({ input: {} }, noopToken);
+        const queryContextId = createContext(tabA);
+        tool.prepareInvocation?.({ input: { queryContextId } }, noopToken);
 
-        const result = await tool.invoke({ input: {} }, noopToken);
+        const result = await tool.invoke({ input: { queryContextId } }, noopToken);
         const payload = JSON.parse(serializeToolResult(result));
 
-        expect(tabA.runActiveQueryInEditor).toHaveBeenCalledWith('SELECT * FROM a');
+        expect(tabA.runActiveQueryInEditor).toHaveBeenCalledWith('SELECT * FROM a', connA, noopToken);
         expect(payload.databaseId).toBe('dbA');
+    });
+
+    it('keeps overlapping confirmations and out-of-order executions isolated', async () => {
+        const { getConnectionFromQueryTab } = await import('./chatUtils');
+        const { QueryEditorTab } = await import('../panels/QueryEditorTab');
+
+        const connA = { endpoint: 'https://a.documents.azure.com/', databaseId: 'dbA', containerId: 'cA' };
+        const connB = { endpoint: 'https://b.documents.azure.com/', databaseId: 'dbB', containerId: 'cB' };
+        const tabA = makeTab('A', 'SELECT * FROM a', connA);
+        const tabB = makeTab('B', 'SELECT * FROM b', connB);
+        setOpenTabs(QueryEditorTab as unknown as { openTabs: Set<unknown> }, [tabA, tabB]);
+        vi.mocked(getConnectionFromQueryTab).mockImplementation(
+            ((tab: unknown) => (tab as typeof tabA).connection) as never,
+        );
+
+        let resolveA: ((executionId: string) => void) | undefined;
+        let resolveB: ((executionId: string) => void) | undefined;
+        tabA.runActiveQueryInEditor.mockImplementation(
+            () => new Promise((resolve) => (resolveA = resolve as (executionId: string) => void)),
+        );
+        tabB.runActiveQueryInEditor.mockImplementation(
+            () => new Promise((resolve) => (resolveB = resolve as (executionId: string) => void)),
+        );
+        tabA.getCurrentQueryResults.mockImplementation((executionId?: string) => ({
+            documents: [],
+            requestCharge: executionId === 'exec-a' ? 1 : 99,
+            roundTrips: 1,
+            hasMoreResults: false,
+        }));
+        tabB.getCurrentQueryResults.mockImplementation((executionId?: string) => ({
+            documents: [],
+            requestCharge: executionId === 'exec-b' ? 2 : 99,
+            roundTrips: 1,
+            hasMoreResults: false,
+        }));
+
+        const contextA = createContext(tabA);
+        const contextB = createContext(tabB);
+        const tool = captureRegisteredTool(registerExecuteCurrentQueryTool);
+        tool.prepareInvocation?.({ input: { queryContextId: contextA } }, noopToken);
+        tool.prepareInvocation?.({ input: { queryContextId: contextB } }, noopToken);
+
+        const resultA = tool.invoke({ input: { queryContextId: contextA } }, noopToken);
+        const resultB = tool.invoke({ input: { queryContextId: contextB } }, noopToken);
+        resolveB?.('exec-b');
+        resolveA?.('exec-a');
+
+        const [payloadA, payloadB] = await Promise.all([resultA, resultB]).then((results) =>
+            results.map((result) => JSON.parse(serializeToolResult(result))),
+        );
+
+        expect(tabA.runActiveQueryInEditor).toHaveBeenCalledWith('SELECT * FROM a', connA, noopToken);
+        expect(tabB.runActiveQueryInEditor).toHaveBeenCalledWith('SELECT * FROM b', connB, noopToken);
+        expect(tabA.getCurrentQueryResults).toHaveBeenCalledWith('exec-a');
+        expect(tabB.getCurrentQueryResults).toHaveBeenCalledWith('exec-b');
+        expect(payloadA).toMatchObject({ databaseId: 'dbA', containerId: 'cA', requestCharge: 1 });
+        expect(payloadB).toMatchObject({ databaseId: 'dbB', containerId: 'cB', requestCharge: 2 });
+    });
+
+    it('keeps overlapping executions in the same tab correlated with their own results', async () => {
+        const { getConnectionFromQueryTab } = await import('./chatUtils');
+        const { QueryEditorTab } = await import('../panels/QueryEditorTab');
+
+        const connection = { endpoint: 'https://a.documents.azure.com/', databaseId: 'dbA', containerId: 'cA' };
+        const tab = makeTab('A', 'SELECT * FROM a', connection);
+        setOpenTabs(QueryEditorTab as unknown as { openTabs: Set<unknown> }, [tab]);
+        vi.mocked(getConnectionFromQueryTab).mockReturnValue(connection as never);
+
+        let resolveFirst: ((executionId: string) => void) | undefined;
+        let resolveSecond: ((executionId: string) => void) | undefined;
+        tab.runActiveQueryInEditor
+            .mockImplementationOnce(
+                () => new Promise((resolve) => (resolveFirst = resolve as (executionId: string) => void)),
+            )
+            .mockImplementationOnce(
+                () => new Promise((resolve) => (resolveSecond = resolve as (executionId: string) => void)),
+            );
+        tab.getCurrentQueryResults.mockImplementation((executionId?: string) => ({
+            documents: [],
+            requestCharge: executionId === 'exec-first' ? 1 : 2,
+            roundTrips: 1,
+            hasMoreResults: false,
+        }));
+
+        const firstContext = createContext(tab);
+        const secondContext = createContext(tab);
+        const tool = captureRegisteredTool(registerExecuteCurrentQueryTool);
+        const firstResult = tool.invoke({ input: { queryContextId: firstContext } }, noopToken);
+        const secondResult = tool.invoke({ input: { queryContextId: secondContext } }, noopToken);
+
+        resolveSecond?.('exec-second');
+        resolveFirst?.('exec-first');
+
+        const [firstPayload, secondPayload] = await Promise.all([firstResult, secondResult]).then((results) =>
+            results.map((result) => JSON.parse(serializeToolResult(result))),
+        );
+
+        expect(tab.getCurrentQueryResults).toHaveBeenCalledWith('exec-first');
+        expect(tab.getCurrentQueryResults).toHaveBeenCalledWith('exec-second');
+        expect(firstPayload.requestCharge).toBe(1);
+        expect(secondPayload.requestCharge).toBe(2);
+    });
+
+    it('rejects replaying a consumed query context', async () => {
+        const { getConnectionFromQueryTab } = await import('./chatUtils');
+        const { QueryEditorTab } = await import('../panels/QueryEditorTab');
+
+        const connection = { endpoint: 'https://a.documents.azure.com/', databaseId: 'dbA', containerId: 'cA' };
+        const tab = makeTab('A', 'SELECT * FROM a', connection);
+        setOpenTabs(QueryEditorTab as unknown as { openTabs: Set<unknown> }, [tab]);
+        vi.mocked(getConnectionFromQueryTab).mockReturnValue(connection as never);
+
+        const queryContextId = createContext(tab);
+        const tool = captureRegisteredTool(registerExecuteCurrentQueryTool);
+        await tool.invoke({ input: { queryContextId } }, noopToken);
+        const replay = await tool.invoke({ input: { queryContextId } }, noopToken);
+
+        expect(tab.runActiveQueryInEditor).toHaveBeenCalledTimes(1);
+        expect(serializeToolResult(replay)).toContain('no longer available');
+    });
+
+    it('propagates cancellation requested while the query is running', async () => {
+        const { getConnectionFromQueryTab } = await import('./chatUtils');
+        const { QueryEditorTab } = await import('../panels/QueryEditorTab');
+
+        const connection = { endpoint: 'https://a.documents.azure.com/', databaseId: 'dbA', containerId: 'cA' };
+        const tab = makeTab('A', 'SELECT * FROM a', connection);
+        setOpenTabs(QueryEditorTab as unknown as { openTabs: Set<unknown> }, [tab]);
+        vi.mocked(getConnectionFromQueryTab).mockReturnValue(connection as never);
+        tab.runActiveQueryInEditor.mockImplementation(
+            (_query, _connection, token) =>
+                new Promise<string | undefined>((resolve) => token.onCancellationRequested(() => resolve(undefined))),
+        );
+
+        const queryContextId = createContext(tab);
+        const tool = captureRegisteredTool(registerExecuteCurrentQueryTool);
+        const cts = new vscode.CancellationTokenSource();
+        const result = tool.invoke({ input: { queryContextId } }, cts.token);
+        cts.cancel();
+
+        expect(serializeToolResult(await result)).toBe('Operation cancelled.');
+        expect(tab.getCurrentQueryResults).not.toHaveBeenCalled();
     });
 });

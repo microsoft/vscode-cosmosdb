@@ -18,6 +18,11 @@ import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { withClaimsChallengeHandling } from '../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../extensionVariables';
 import { SchemaFileStorage, type SchemaMetadata } from './SchemaFileStorage';
+import { deepCloneSchema, stripNoisyStats } from './schemaStatistics';
+
+// Re-exported so existing importers (and tests) can keep pulling the confidentiality helper from
+// `SchemaService`; the implementation now lives in the dependency-light `schemaStatistics` module.
+export { stripSchemaStatistics } from './schemaStatistics';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -66,32 +71,6 @@ export const DEFAULT_SIMPLIFIED_KEEP_TOP_N = 2;
  */
 export const DEFAULT_SIMPLIFIED_ROOT_KEEP_TOP_N = 50;
 export const DEFAULT_POPULARITY_KEY = 'x-occurrence';
-
-/**
- * `x-*` extensions that are stripped from schemas before they are handed to
- * the language model: they are dense statistics that the LLM cannot use
- * meaningfully, and they consume the majority of bytes in deep schemas.
- *
- * `x-occurrence`, `x-typeOccurrence`, `x-dataType` and `x-bsonType` are kept
- * because the popularity cut depends on them and because the schema format
- * documentation (see `packages/schema-analyzer/docs/schema-format.md`) treats
- * `x-dataType` / `x-bsonType` as part of the public type tag.
- */
-const NOISY_STAT_KEYS = new Set<string>([
-    'x-documentsInspected',
-    'x-minProperties',
-    'x-maxProperties',
-    'x-minItems',
-    'x-maxItems',
-    'x-minLength',
-    'x-maxLength',
-    'x-minValue',
-    'x-maxValue',
-    'x-minDate',
-    'x-maxDate',
-    'x-trueCount',
-    'x-falseCount',
-]);
 
 // ─── Public types ───────────────────────────────────────────────────────────
 
@@ -1156,45 +1135,8 @@ export function aggressivelySimplify(
     return { schema: clone, popularityKeyHit, wasSimplified: mutated };
 }
 
-function deepCloneSchema(schema: JSONSchema): JSONSchema {
-    // Schemas are tree-shaped JSON; structuredClone is the safest deep copy.
-    return structuredClone(schema);
-}
-
 function jsonByteSize(value: unknown): number {
     return Buffer.byteLength(JSON.stringify(value) ?? '', 'utf8');
-}
-
-function stripNoisyStats(node: JSONSchema | undefined): boolean {
-    if (!node || typeof node !== 'object') return false;
-    let mutated = false;
-
-    for (const key of Object.keys(node)) {
-        if (NOISY_STAT_KEYS.has(key)) {
-            delete (node as Record<string, unknown>)[key];
-            mutated = true;
-        }
-    }
-
-    if (node.properties) {
-        for (const child of Object.values(node.properties)) {
-            if (typeof child === 'object') {
-                mutated = stripNoisyStats(child) || mutated;
-            }
-        }
-    }
-    if (node.anyOf) {
-        for (const entry of node.anyOf) {
-            if (typeof entry === 'object') {
-                mutated = stripNoisyStats(entry) || mutated;
-            }
-        }
-    }
-    if (node.items && typeof node.items === 'object' && !Array.isArray(node.items)) {
-        mutated = stripNoisyStats(node.items) || mutated;
-    }
-
-    return mutated;
 }
 
 function hasPopularityCounter(node: JSONSchema | undefined, key: string): boolean {

@@ -367,7 +367,7 @@ function delay(ms: number, token?: vscode.CancellationToken): Promise<void> {
  * text to `capture.jsonl` in {@link CAPTURE_DIR_ENV_KEY}. Lets e2e tests assert
  * that user-entered phase instructions actually reach the model prompt.
  */
-function capturePrompt(route: string | undefined, promptText: string): void {
+export function capturePrompt(route: string | undefined, promptText: string): void {
     const dir = process.env[CAPTURE_DIR_ENV_KEY];
     if (!dir) {
         return;

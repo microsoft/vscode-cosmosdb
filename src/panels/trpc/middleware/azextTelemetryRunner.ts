@@ -8,10 +8,9 @@
  * `@microsoft/vscode-azext-utils`'s `callWithTelemetryAndErrorHandling`.
  *
  * This is the **only** place in the trpc layer that imports azext-utils.
- * The framework-level `telemetryMiddlewareBody` calls into this runner
- * and stays dependency-free, so the rest of `src/panels/trpc/` could be
- * lifted into a shared package without dragging azext-utils along
- * (see `plans/webview-vs-documentdb-package.md`).
+ * The framework-level `telemetryMiddlewareBody` (from
+ * `@microsoft/vscode-ext-webview/host`) calls into this runner and stays
+ * dependency-free, keeping azext-utils out of the transport layer.
  *
  * The runner contributes a single field to the procedure ctx:
  *
@@ -28,7 +27,7 @@
  */
 
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
-import { type ProcedureInvocation, type TelemetryRunner } from '@microsoft/vscode-webview-rpc/server';
+import { getInvocationSignal, type ProcedureErrorLike, type TelemetryRunner } from '@microsoft/vscode-ext-webview/host';
 
 /**
  * Shape this runner injects into the procedure ctx. Application context
@@ -45,36 +44,39 @@ export interface AzextTelemetryEnrichment {
  * procedure to azext-utils telemetry without displaying them as toasts
  * (each webview surfaces its own error UI).
  *
- * **Cancellation accounting.** Reads `invocation.signal?.aborted` after
- * the call completes; when set, the call is reported with
+ * **Cancellation accounting.** Reads the invocation's `AbortSignal` (via
+ * `getInvocationSignal(invocation.ctx)`) after the call completes; when
+ * set, the call is reported with
  * `result=Canceled` and `aborted=true` instead of `result=Failed`. This
  * lets dashboards distinguish genuine errors from user-driven cancels
  * (panel closed mid-query, user hit "Stop", etc.) so cancellation rate
  * does not pollute the error budget.
  */
 export const azextTelemetryRunner: TelemetryRunner<AzextTelemetryEnrichment> = {
-    async run(eventId, invocation: ProcedureInvocation, invoke) {
+    async run(eventId, invocation, invoke) {
         const result = await callWithTelemetryAndErrorHandling(eventId, async (actionContext) => {
             actionContext.errorHandling.suppressDisplay = true;
 
             const middlewareResult = await invoke({ actionContext });
 
-            const aborted = invocation.signal?.aborted ?? false;
+            const aborted = getInvocationSignal(invocation.ctx)?.aborted ?? false;
             if (aborted) {
                 actionContext.telemetry.properties.aborted = 'true';
                 actionContext.telemetry.properties.result = 'Canceled';
             }
 
             if (!middlewareResult.ok && middlewareResult.error) {
-                const error = middlewareResult.error;
+                // `ProcedureErrorLike` does not surface `stack`; the runtime value is a
+                // real `Error`, so widen it to read the stack best-effort.
+                const error = middlewareResult.error as ProcedureErrorLike & { stack?: string };
                 // Do not overwrite the canceled-result marker — a procedure
                 // that observed `ctx.signal.aborted` and threw should still
                 // count as a cancellation, not a failure.
                 if (!aborted) {
                     actionContext.telemetry.properties.result = 'Failed';
                 }
-                actionContext.telemetry.properties.error = error.name;
-                actionContext.telemetry.properties.errorMessage = error.message;
+                actionContext.telemetry.properties.error = error.name ?? '';
+                actionContext.telemetry.properties.errorMessage = error.message ?? '';
                 actionContext.telemetry.properties.errorStack = error.stack ?? '';
                 if (error.cause) {
                     actionContext.telemetry.properties.errorCause = JSON.stringify(error.cause, null, 0);

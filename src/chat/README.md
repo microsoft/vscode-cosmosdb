@@ -1,71 +1,48 @@
-# CosmosDB Chat Participant
+# Cosmos DB (NoSQL) Language Model Tools
 
-This directory contains the implementation of the `@cosmosdb` chat participant for VS Code.
+This directory contains the VS Code **language model tools** that let the general Copilot agent
+work with the Azure Cosmos DB for NoSQL Query Editor, plus small shared helpers. There is no
+bespoke `@cosmosdb` chat participant and no in-extension NL2Query agentic loop — the extension
+contributes tools and lets the Copilot agent orchestrate them.
 
 ## Overview
 
-The CosmosDB chat participant is an AI-powered assistant that helps users with Azure Cosmos DB questions, best practices, and code examples. It leverages VS Code's language model API (GitHub Copilot) to provide intelligent, context-aware responses.
+The Query Editor's AI actions ("Generate query", "Explain query") route a prompt to the general
+Copilot agent (`workbench.action.chat.open` in `agent` mode). The agent reads context, samples the
+schema when needed, writes the query back, and can run it — all through the tools registered here.
+Query-language rules live in the `cosmosdb-nosql-query-generation` skill; editor orchestration lives
+in the `cosmosdb-nosql-query-editor` skill.
 
-## Features
+## Registered tools
 
-- **AI-Powered Responses**: Uses GitHub Copilot's language model for intelligent answers
-- **CosmosDB Specialization**: Focused on Azure Cosmos DB topics and best practices
-- **Chat Integration**: Responds to `@cosmosdb` mentions in VS Code chat
-- **CosmosDB Branding**: Uses the official CosmosDB logo as the participant icon
-- **Error Handling**: Graceful fallback when language models are unavailable
-- **Natural Language to Query**: Generate, explain, and edit Cosmos DB SQL queries using natural language via dedicated commands (`/generateQuery`, `/explainQuery`, `/editQuery`).
+| Tool name (`vscode.lm`)          | File                           | Purpose                                                                                                       |
+| -------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| `cosmosdb_getQueryEditorContext` | `getQueryEditorContextTool.ts` | Reads the active editor's current/selected query, connection, recent query history, and last result metadata. |
+| `cosmosdb_sampleContainerSchema` | `sampleDataTool.ts`            | Samples documents from the container to infer property names/types (requires user approval).                  |
+| `cosmosdb_applyQueryToEditor`    | `applyQueryToEditorTool.ts`    | Writes a generated query back into the active Query Editor.                                                   |
+| `cosmosdb_executeCurrentQuery`   | `executeCurrentQueryTool.ts`   | Runs the current query in the Query Editor and waits for completion.                                          |
+| `cosmosdb_listOpenConnections`   | `listOpenConnectionsTool.ts`   | Lists the currently open Query Editor connections.                                                            |
+| `cosmosdb_openQueryEditor`       | `openQueryEditorTool.ts`       | Opens a Query Editor for a given connection.                                                                  |
 
-## Usage
+All tools are registered during extension activation (see `src/extension.ts`) and are gated behind
+their `onLanguageModelTool:*` activation events in `package.json`.
 
-1. Open VS Code chat (Ctrl+Alt+I or through the Command Palette)
-2. Type `@cosmosdb` followed by your question about Cosmos DB, or use one of the specific commands (e.g., `/generateQuery get all users created today`)
-3. The assistant will provide AI-powered responses with:
-   - Best practices and recommendations
-   - Code examples and snippets
-   - Query optimization advice
-   - Troubleshooting help
-   - Performance tuning tips
-   - Automatically generated queries based on your prompt
+## Shared helpers
+
+- `CosmosDbOperationsService.ts`: In-memory **query execution history** store, keyed by
+  account/database/container. `QuerySession` records executions here after each run, and
+  `getQueryEditorContextTool` reads it so the agent can see recent queries and their inferred schemas.
+  No PII/document data is stored — only the query text, counts, request charge, and inferred schema.
+- `chatUtils.ts`: Helpers for resolving the active Query Editor tab and its connection.
+- `revealConnection.ts`: Reveals a connection in the Azure Resources tree.
 
 ## Prerequisites
 
-- GitHub Copilot extension must be installed and enabled
-- Active GitHub Copilot subscription
+- GitHub Copilot extension installed and enabled, with an active subscription (the agent and the
+  language models come from Copilot).
 
-## Implementation Details
+## Related
 
-- **File**: `cosmosDbChatParticipant.ts`
-- **Registration**: Automatically registered during extension activation
-- **Icon**: Uses `resources/icons/theme-agnostic/CosmosDBAccount.svg`
-- **ID**: `cosmosdb`
-- **LLM Integration**: Uses VS Code's `vscode.lm` API with Copilot models
-- **Architecture**:
-  - `CosmosDbChatParticipant`: Main entry point and router for chat requests.
-  - `CosmosDbOperationsService`: Execution engine that securely runs natural language query commands.
-  - `OperationParser`: Parses and extracts structured intents from the LLM outputs.
-  - `systemPrompt.ts` & `userPayload.ts`: Manages dynamic prompt generation for NLP.
-  - Domain Skills: Injects domain knowledge from workspace (e.g. `skills/cosmosdb-best-practices/SKILL.md`).
-
-## Example Queries
-
-### Free-form QA
-
-- `@cosmosdb How do I optimize a query in Cosmos DB?`
-- `@cosmosdb What are the best practices for partition keys?`
-- `@cosmosdb Show me how to use the .NET SDK for bulk operations`
-- `@cosmosdb How can I reduce RU consumption?`
-
-### NL2Query Commands
-
-- `@cosmosdb /generateQuery find all documents where type is 'device' and status is 'active'`
-- `@cosmosdb /explainQuery SELECT * FROM c WHERE c.partitionKey = 'user123' and c.age > 30`
-- `@cosmosdb /editQuery optimize this query by removing the cross-partition ORDER BY`
-
-## Error Handling
-
-The participant includes robust error handling for:
-
-- Missing language models
-- Network connectivity issues
-- Content filter blocks
-- Token cancellation requests
+- `skills/cosmosdb-nosql-query-generation/SKILL.md` — the NoSQL query-language rules and examples.
+- `skills/cosmosdb-nosql-query-editor/SKILL.md` — how the agent drives the Query Editor tools.
+- `docs/ai-agent-migration.md` — background on moving from the hand-rolled loop to agent + tools.

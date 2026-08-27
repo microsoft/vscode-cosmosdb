@@ -18,8 +18,8 @@ import {
     type AzureWizardPromptStep,
 } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType, type AzureSubscription } from '@microsoft/vscode-azureresources-api';
-import { TypedEventSink } from '@microsoft/vscode-webview-rpc';
-import { setupTrpc } from '@microsoft/vscode-webview-rpc/server';
+import { TypedEventSink } from '@microsoft/vscode-ext-webview';
+import { attachTrpc } from '@microsoft/vscode-ext-webview/host';
 import * as l10n from '@vscode/l10n';
 import * as path from 'path';
 import * as vscode from 'vscode';
@@ -40,6 +40,7 @@ import { MIGRATION_SELECTED_MODEL_KEY } from '../utils/modelUtils';
 import { pickAppResource, pickWorkspaceResource } from '../utils/pickItem/pickAppResource';
 import { BaseTab } from './BaseTab';
 import { getSelectedModel, IS_PHASE4_REQUIRED, isDebugPromptsEnabled } from './migration/helpers/aiHelpers';
+import { capturePrompt, isMigrationAiMockEnabled } from './migration/helpers/e2eMigrationAiMock';
 import { emitMigrationEvent, resetCancellationToken } from './migration/helpers/migrationHelpers';
 import { setMigrationTelemetryContext } from './migration/helpers/migrationTelemetry';
 import { buildCodeMigrationPrompt } from './migration/prompts';
@@ -105,7 +106,7 @@ export class MigrationAssistantTab extends BaseTab {
 
         this.eventSink = new TypedEventSink<MigrationEvent>();
 
-        const { disposable } = setupTrpc(
+        const { disposable } = attachTrpc(
             this.panel,
             this.buildRouterContext(),
             migrationAppRouter,
@@ -1649,6 +1650,11 @@ export class MigrationAssistantTab extends BaseTab {
             } catch (error) {
                 console.warn('Failed to handle code migration prompt debug file:', error);
             }
+        }
+
+        if (isMigrationAiMockEnabled()) {
+            capturePrompt(`code-migration-${mode}`, prompt);
+            return;
         }
 
         await vscode.commands.executeCommand('workbench.action.chat.open', {

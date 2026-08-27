@@ -9,7 +9,7 @@ This guide explains how to add a new webview panel that communicates with the ex
 │   Webview     │ ◄─────────────► │  Extension Host   │
 │  (React app)  │   vscodeLink    │   (tRPC server)   │
 │               │                 │                   │
-│  tRPC Client  │                 │  setupTrpc()      │
+│  tRPC Client  │                 │  attachTrpc()     │
 │  (vscodeLink) │                 │  ↓                │
 │               │                 │  appRouter        │
 │               │                 │   ├─ common       │
@@ -148,8 +148,8 @@ export const appRouter = router({
 In your panel class:
 
 ```typescript
-import { TypedEventSink } from '@microsoft/vscode-webview-rpc';
-import { setupTrpc } from '../webviews/api/extension-server/setupTrpc';
+import { TypedEventSink } from '@microsoft/vscode-ext-webview';
+import { attachTrpc } from '@microsoft/vscode-ext-webview/host';
 
 class MyPanel extends BaseTab {
     constructor(...) {
@@ -162,7 +162,7 @@ class MyPanel extends BaseTab {
             eventSink,
         };
 
-        const { disposable } = setupTrpc(this.panel, context);
+        const { disposable } = attachTrpc(this.panel, context, myPanelAppRouter, myPanelCallerFactory);
         this.disposables.push(disposable);
     }
 }

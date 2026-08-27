@@ -194,15 +194,6 @@ export default ({ mode }) => {
                     'packages/schema-analyzer/src/bson/index.ts',
                 ),
                 '@azure/cosmosdb-schema-analyzer': path.resolve(__dirname, 'packages/schema-analyzer/src/index.ts'),
-                '@microsoft/vscode-webview-rpc/server': path.resolve(
-                    __dirname,
-                    'packages/webview-rpc/src/server/index.ts',
-                ),
-                '@microsoft/vscode-webview-rpc/client': path.resolve(
-                    __dirname,
-                    'packages/webview-rpc/src/client/index.ts',
-                ),
-                '@microsoft/vscode-webview-rpc': path.resolve(__dirname, 'packages/webview-rpc/src/index.ts'),
             },
         },
         define: {

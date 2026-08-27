@@ -3,6 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { stripComments } from '@cosmosdb/nosql-language-service';
+
 /**
  * Security utilities for sanitizing and escaping user-controlled content
  * to prevent XSS and UI injection attacks in VS Code webviews and markdown rendering.
@@ -155,6 +157,18 @@ export function stripCodeFences(text: string): string {
         cleaned = cleaned.replace(/^```\n?/, '').replace(/\n?```$/, '');
     }
     return cleaned.trim();
+}
+
+/**
+ * Normalizes query text to the canonical form used for storage and execution: strips comments
+ * (which also collapses inter-token whitespace) then removes any trailing semicolon.
+ *
+ * Both the AI apply-query flow and `prepareQuery` must produce byte-for-byte identical output so
+ * a later "run as-is" compares equal via plain string equality; sharing this helper keeps them in
+ * lockstep rather than relying on the two call sites staying manually synchronized.
+ */
+export function normalizeQueryText(text: string): string {
+    return stripComments(text).replace(/;\s*$/, '');
 }
 
 export function safeCodeBlock(content: string, language: string = ''): string {

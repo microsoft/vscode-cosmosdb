@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type TypedEventSink } from '@microsoft/vscode-webview-rpc';
+import { type TypedEventSink } from '@microsoft/vscode-ext-webview';
 import { z } from 'zod';
 import { queryEditorProcedure, queryEditorRouter } from '../trpc';
 
@@ -13,10 +13,6 @@ import { queryEditorProcedure, queryEditorRouter } from '../trpc';
 // be returned as mutation/query responses.
 
 export const QueryEditorEventSchema = z.discriminatedUnion('type', [
-    z.object({
-        type: z.literal('confirmToolInvocation'),
-        message: z.string(),
-    }),
     z.object({
         type: z.literal('aiFeaturesEnabledChanged'),
         isEnabled: z.boolean(),
@@ -36,6 +32,13 @@ export const QueryEditorEventSchema = z.discriminatedUnion('type', [
     z.object({
         type: z.literal('schemaUpdated'),
         containerSchema: z.record(z.string(), z.unknown()).nullable(),
+    }),
+    z.object({
+        type: z.literal('throughputBucketsRefreshRequested'),
+    }),
+    z.object({
+        type: z.literal('runActiveQueryRequested'),
+        query: z.string(),
     }),
 ]);
 

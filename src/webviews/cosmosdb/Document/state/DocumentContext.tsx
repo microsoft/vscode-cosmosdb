@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Toaster, useId, useToastController } from '@fluentui/react-components';
-import { useTrpcClient } from '@microsoft/vscode-webview-rpc/react';
+import { useRpcEvents, useTrpcClient } from '@microsoft/vscode-ext-webview/react';
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useReducer, useRef } from 'react';
 import { type DocumentAppRouter } from '../../../../panels/trpc/appRouter';
 import { type BaseContextProvider } from '../../../utils/context/BaseContextProvider';
@@ -33,7 +33,8 @@ export const WithDocumentContext = ({ children }: { children: ReactNode }) => {
     // `trpcClient`, so it does not exist yet on the first render).
     const providerRef = useRef<BaseContextProvider | null>(null);
 
-    const { trpcClient, events } = useTrpcClient<DocumentAppRouter>();
+    const trpcClient = useTrpcClient<DocumentAppRouter>();
+    const events = useRpcEvents();
 
     const provider = useMemo(
         () => new DocumentContextProvider(dispatch, dispatchToast, trpcClient),

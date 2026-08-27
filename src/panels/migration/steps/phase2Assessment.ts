@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
-import { type TypedEventSink } from '@microsoft/vscode-webview-rpc';
+import { type TypedEventSink } from '@microsoft/vscode-ext-webview';
 import * as l10n from '@vscode/l10n';
 import * as path from 'path';
 import * as vscode from 'vscode';

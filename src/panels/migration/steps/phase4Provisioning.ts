@@ -18,7 +18,7 @@ import { VSCodeAzureSubscriptionProvider } from '@microsoft/vscode-azext-azureau
 import { getResourceGroupFromId } from '@microsoft/vscode-azext-azureutils';
 import { callWithTelemetryAndErrorHandling, parseError, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
-import { type TypedEventSink } from '@microsoft/vscode-webview-rpc';
+import { type TypedEventSink } from '@microsoft/vscode-ext-webview';
 import * as l10n from '@vscode/l10n';
 import * as path from 'path';
 import * as vscode from 'vscode';

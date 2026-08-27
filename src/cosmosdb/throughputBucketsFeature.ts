@@ -5,7 +5,7 @@
 
 import { type FeatureResult } from '@azure/arm-features';
 
-const THROUGHPUT_BUCKETS_FEATURE = 'ThroughputBuckets';
+const THROUGHPUT_BUCKETS_FEATURE = 'ThroughputBucketing';
 
 /** Cosmos DB supports at most five throughput buckets per container. */
 export const MAX_THROUGHPUT_BUCKETS = 5;

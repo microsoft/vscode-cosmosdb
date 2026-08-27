@@ -27,13 +27,26 @@ export default defineConfig({
                 'packages/schema-analyzer/src/bson/index.ts',
             ),
             '@azure/cosmosdb-schema-analyzer': path.resolve(__dirname, 'packages/schema-analyzer/src/index.ts'),
-            '@microsoft/vscode-webview-rpc/client': path.resolve(__dirname, 'packages/webview-rpc/src/client/index.ts'),
-            '@microsoft/vscode-webview-rpc/react': path.resolve(__dirname, 'packages/webview-rpc/src/react/index.ts'),
-            '@microsoft/vscode-webview-rpc': path.resolve(__dirname, 'packages/webview-rpc/src/index.ts'),
         },
     },
     test: {
         globals: true,
+        deps: {
+            optimizer: {
+                ssr: {
+                    // `@microsoft/vscode-ext-webview` ships CommonJS and `require`s `vscode` from its host
+                    // entry. Pre-bundling it with esbuild rewrites those internal `require()` calls so the
+                    // `vscode` alias above resolves to the test mock instead of hitting Node's resolver.
+                    enabled: true,
+                    include: [
+                        '@microsoft/vscode-ext-webview',
+                        '@microsoft/vscode-ext-webview/host',
+                        '@microsoft/vscode-ext-webview/react',
+                        '@microsoft/vscode-ext-webview/webview',
+                    ],
+                },
+            },
+        },
         // Node is the default for the bulk of the suite. React component tests opt into a DOM
         // environment per-file via a `// @vitest-environment jsdom` docblock at the top of the file.
         environment: 'node',

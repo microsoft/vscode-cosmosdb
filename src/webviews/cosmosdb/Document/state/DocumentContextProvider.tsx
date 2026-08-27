@@ -4,13 +4,29 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type JSONObject, type JSONValue, type PartitionKeyDefinition } from '@azure/cosmos';
-import { type TrpcClient } from '@microsoft/vscode-webview-rpc/react';
+import { type TrpcClient } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
 import { type DocumentAppRouter } from '../../../api/types';
 import { BaseContextProvider, type DispatchToastFn } from '../../../utils/context/BaseContextProvider';
 import { type DispatchAction, type OpenDocumentMode } from './DocumentState';
 
 const emptyPartitionKey: PartitionKeyDefinition = { paths: [] };
+
+type PartitionKeyCleanupResult = {
+    success: boolean;
+    cleanupRequired: boolean;
+    message?: string;
+    documentContent?: JSONValue;
+    partitionKey?: PartitionKeyDefinition;
+};
+
+type PartitionKeyCleanupClient = {
+    document: {
+        retryPartitionKeyCleanup: {
+            mutate: () => Promise<PartitionKeyCleanupResult>;
+        };
+    };
+};
 
 export class DocumentContextProvider extends BaseContextProvider<DocumentAppRouter> {
     constructor(
@@ -27,11 +43,18 @@ export class DocumentContextProvider extends BaseContextProvider<DocumentAppRout
         try {
             const result = (await this.trpcClient.document.saveDocument.mutate({ documentText })) as {
                 success: boolean;
+                aborted?: boolean;
+                cleanupRequired?: boolean;
+                message?: string;
                 documentContent?: JSONValue;
                 partitionKey?: PartitionKeyDefinition;
             };
 
-            if (result.success && result.documentContent) {
+            if (result.aborted) {
+                return;
+            } else if (result.cleanupRequired && result.message) {
+                this.dispatch({ type: 'setCleanupRequired', message: result.message });
+            } else if (result.success && result.documentContent) {
                 this.dispatch({
                     type: 'setDocument',
                     documentContent: JSON.stringify(result.documentContent, null, 4),
@@ -45,6 +68,31 @@ export class DocumentContextProvider extends BaseContextProvider<DocumentAppRout
             this.dispatch({ type: 'setError', error: this.parseError(message) });
         } finally {
             this.dispatch({ type: 'setSaving', isSaving: false });
+        }
+    }
+
+    public async retryPartitionKeyCleanup(): Promise<void> {
+        this.dispatch({ type: 'setCleaningUp', isCleaningUp: true });
+
+        try {
+            const cleanupClient = this.trpcClient as unknown as PartitionKeyCleanupClient;
+            const result = await cleanupClient.document.retryPartitionKeyCleanup.mutate();
+            if (result.success && result.documentContent) {
+                this.dispatch({
+                    type: 'completeCleanup',
+                    documentContent: JSON.stringify(result.documentContent, null, 4),
+                    partitionKey: result.partitionKey ?? emptyPartitionKey,
+                });
+            } else if (result.success) {
+                this.dispatch({ type: 'setCleanupRequired', message: undefined });
+            } else {
+                this.dispatch({ type: 'setCleanupRequired', message: result.message });
+            }
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            this.dispatch({ type: 'setError', error: this.parseError(message) });
+        } finally {
+            this.dispatch({ type: 'setCleaningUp', isCleaningUp: false });
         }
     }
 
@@ -118,6 +166,9 @@ export class DocumentContextProvider extends BaseContextProvider<DocumentAppRout
                     documentContent: JSON.stringify(result.documentContent, null, 4),
                     partitionKey: result.documentPartitionKey ?? emptyPartitionKey,
                 });
+            }
+            if (result.cleanupRequiredMessage) {
+                this.dispatch({ type: 'setCleanupRequired', message: result.cleanupRequiredMessage });
             }
         });
     }

@@ -26,47 +26,29 @@ on:
     branches:
       - main
       - rel/*
-      - dev/**
 
   pull_request:
-    branches:
-      - main
-      - rel/*
-      - dev/**
+    types: [opened, reopened, synchronize]
 
-# Workflow-level concurrency dedupes runs for the SAME branch across DIFFERENT commits (e.g. rapid pushes
-# during a rebase). For pull_request events the group is scoped by PR number + head repo so two forks pushing
-# branches with the same name don't cancel each other.
+# Push and PR runs for the same head repository and branch share a concurrency group, so a scheduled PR run
+# cancels an overlapping push build. Push runs cannot cancel PR runs. Main and rel/* pushes get unique groups
+# so every release commit is built, and fork PRs remain isolated by their head repository.
 concurrency:
-  group: >-
-    build-${{ github.workflow }}-${{
-    github.event_name == 'pull_request' &&
-    format('{0}-{1}', github.event.pull_request.head.repo.full_name, github.event.pull_request.number) ||
-    github.ref_name }}
-  cancel-in-progress: true
+  {
+    cancel-in-progress: "${{ github.event_name == 'pull_request' }}",
+    group: "build-${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.run_id || startsWith(github.ref, 'refs/heads/rel/') && github.run_id || github.event_name == 'pull_request' && format('{0}-{1}', github.event.pull_request.head.repo.full_name, github.head_ref) || format('{0}-{1}', github.repository, github.ref_name) }}",
+  }
 
 jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
 
-    # A push to a branch with an open PR fires both `push` and `pull_request` events. Cancelling one of them
-    # would leave a failed/cancelled required check on the PR head and block merge, so instead we SKIP the
-    # `pull_request` run for same-repo PRs whose head branch is already covered by this workflow's
-    # `push.branches` filters (only those branches get a `push` run in this repo). Fork PRs and same-repo PRs
-    # from other head branches (e.g. feature/*) still run on `pull_request`.
-    if: >-
-      github.event_name != 'pull_request' ||
-      github.event.pull_request.head.repo.full_name != github.repository ||
-      (github.head_ref != 'main' &&
-       !startsWith(github.head_ref, 'rel/') &&
-       !startsWith(github.head_ref, 'dev/'))
-
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: 📦 Using Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .nvmrc
           cache: 'npm'
@@ -243,7 +225,7 @@ jobs:
           SERVER_URL: ${{ github.server_url }}
           REPO: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
-          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         shell: bash
         run: |
@@ -339,19 +321,6 @@ jobs:
           package_icon=$(result_icon "$PACKAGE_RESULT")
           build_artifacts=$(list_run_artifacts "${GITHUB_RUN_ID}")
 
-          # Resolve PR number for comment posting: prefer the pull_request event payload, otherwise use
-          # `gh pr view` by branch name (works for push events too).
-          if [ -z "${PR_NUMBER:-}" ] && [ -n "${BRANCH_NAME:-}" ]; then
-              pr_info=$(gh pr view "${BRANCH_NAME}" --repo "${REPO}" \
-                  --json number 2>/dev/null) || true
-              if [ -n "$pr_info" ]; then
-                  PR_NUMBER=$(echo "$pr_info" | jq -r '.number // empty')
-                  echo "ℹ️ Found PR #${PR_NUMBER}"
-              else
-                  echo "ℹ️ No open PR found for branch '${BRANCH_NAME}'"
-              fi
-          fi
-
           # Overall status — green only when every gating step succeeded or was skipped. verify-skills is
           # warning-only and excluded from pass/fail. Drives the title icon (no separate status section).
           all_green=true
@@ -399,6 +368,6 @@ jobs:
 
           echo "✅ Job summary written to: ${GITHUB_STEP_SUMMARY}"
 
-          if [ -n "${PR_NUMBER:-}" ]; then
+          if [ "${EVENT_NAME}" = "pull_request" ] && [ -n "${PR_NUMBER:-}" ]; then
               post_or_update_comment "${PR_NUMBER}" "${MARKER}" "${GITHUB_STEP_SUMMARY}" "${comment_meaningful}"
           fi

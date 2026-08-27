@@ -13,12 +13,12 @@
 
 import { type PartitionKeyDefinition } from '@azure/cosmos';
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
-import { type TypedEventSink } from '@microsoft/vscode-webview-rpc';
-import { type BaseRouterContext } from '@microsoft/vscode-webview-rpc/server';
+import { type BaseRouterContext, type TypedEventSink } from '@microsoft/vscode-ext-webview';
 import * as vscode from 'vscode';
 import { z } from 'zod';
 import { type AzureResourceMetadata } from '../../cosmosdb/AzureResourceMetadata';
 import { type NoSqlQueryConnection } from '../../cosmosdb/NoSqlQueryConnection';
+import { type DocumentWriteResult } from '../../cosmosdb/session/DocumentSession';
 import { type QuerySession } from '../../cosmosdb/session/QuerySession';
 import { type CosmosDBRecordIdentifier } from '../../cosmosdb/types/queryResult';
 import { type TelemetryContext } from '../../Telemetry';
@@ -86,9 +86,18 @@ export type QueryEditorMutableState = {
     selectedQuery?: string;
     isLastQueryAIGenerated: boolean;
     lastAIGeneratedQuery?: string;
-    lastGenerationFailed: boolean;
-    generateQueryCancellation?: vscode.CancellationTokenSource;
-    pendingConfirmResolve?: (confirmed: boolean) => void;
+    /**
+     * The natural-language prompt captured by the in-editor "Generate query" flow. Stored so the
+     * `cosmosdb_applyQueryToEditor` tool can cite the original request in the query comments even
+     * when the agent does not pass it explicitly.
+     */
+    lastGeneratePrompt?: string;
+    /**
+     * Resolver for the promise the `cosmosdb_executeCurrentQuery` tool awaits while the webview runs the
+     * active query. The `reportActiveQueryExecuted` procedure calls it once execution finishes, passing
+     * the executionId that actually ran (or `undefined` when the run was cancelled or never started).
+     */
+    pendingRunResolve?: (executionId?: string) => void;
 };
 
 export type QueryEditorRouterContext = CosmosDBRouterContext & {
@@ -102,8 +111,15 @@ export type QueryEditorRouterContext = CosmosDBRouterContext & {
 export type DocumentMutableState = {
     mode: 'add' | 'edit' | 'view';
     documentId: CosmosDBRecordIdentifier | undefined;
+    documentEtag?: string;
     isDirty: boolean;
     partitionKeyDefinition?: PartitionKeyDefinition;
+    pendingPartitionKeyCleanup?: {
+        sourceIdentifier: CosmosDBRecordIdentifier;
+        sourceEtag?: string;
+        destination: DocumentWriteResult;
+        message?: string;
+    };
 };
 
 export type DocumentRouterContext = CosmosDBRouterContext & {

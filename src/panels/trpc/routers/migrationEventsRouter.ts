@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type TypedEventSink } from '@microsoft/vscode-webview-rpc';
+import { type TypedEventSink } from '@microsoft/vscode-ext-webview';
 import { type ProjectJson } from '../../../services/MigrationProjectService';
 import { type ModelInfo } from '../../../utils/modelUtils';
 import { type ProvisioningResult } from '../../migration/steps/phase4Provisioning';

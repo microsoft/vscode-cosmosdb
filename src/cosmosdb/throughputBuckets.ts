@@ -4,9 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
-import { createPipelineRequest } from '@azure/core-rest-pipeline';
+import { createHttpHeaders, createPipelineRequest } from '@azure/core-rest-pipeline';
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
-import { COSMOSDB_ARM_API_VERSION, createFeatureClient } from '../utils/azureClients';
+import { createFeatureClient, PRESERVE_API_VERSION_HEADER } from '../utils/azureClients';
 import { type AzureResourceMetadata } from './AzureResourceMetadata';
 import { type NoSqlQueryConnection } from './NoSqlQueryConnection';
 import {
@@ -16,7 +16,8 @@ import {
 } from './throughputBucketsFeature';
 
 const DOCUMENT_DB_PROVIDER = 'Microsoft.DocumentDB';
-const THROUGHPUT_BUCKETS_FEATURE = 'ThroughputBuckets';
+const THROUGHPUT_BUCKETS_FEATURE = 'ThroughputBucketing';
+const THROUGHPUT_BUCKETS_API_VERSION = '2025-05-01-preview';
 const MANAGEMENT_ENDPOINT_FALLBACK = 'https://management.azure.com';
 
 /**
@@ -58,7 +59,7 @@ export async function supportsThroughputBuckets(
  * configured on the container (or its shared-throughput database).
  *
  * The Cosmos DB ARM SDK does not yet model `throughputBuckets`, so the value is
- * read directly from the pinned-api-version REST response. If the buckets
+ * read directly from the preview REST response. If the buckets
  * cannot be read, all five are reported as enabled to preserve the selector's
  * previous always-available behaviour.
  */
@@ -102,7 +103,7 @@ async function readEnabledThroughputBuckets(
         `${host}/subscriptions/${metadata.subscription.subscriptionId}` +
         `/resourceGroups/${metadata.resourceGroup}` +
         `/providers/Microsoft.DocumentDB/databaseAccounts/${metadata.accountName}`;
-    const query = `?api-version=${COSMOSDB_ARM_API_VERSION}`;
+    const query = `?api-version=${THROUGHPUT_BUCKETS_API_VERSION}`;
 
     // Prefer the container's dedicated throughput settings. A 404 means the
     // container inherits throughput (and any buckets) from a shared-throughput
@@ -126,7 +127,15 @@ async function readEnabledThroughputBuckets(
  * throughput) and throws for any other non-success status.
  */
 async function getThroughputSettings(client: CosmosDBManagementClient, url: string): Promise<unknown> {
-    const response = await client.sendRequest(createPipelineRequest({ url, method: 'GET' }));
+    // `throughputBuckets` is preview-only, so this request must keep
+    // `THROUGHPUT_BUCKETS_API_VERSION` instead of the client's pinned GA api-version.
+    const response = await client.sendRequest(
+        createPipelineRequest({
+            url,
+            method: 'GET',
+            headers: createHttpHeaders({ [PRESERVE_API_VERSION_HEADER]: 'true' }),
+        }),
+    );
 
     if (response.status === 404) {
         return undefined;

@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { setupTrpc } from '@microsoft/vscode-webview-rpc/server';
+import { attachTrpc } from '@microsoft/vscode-ext-webview/host';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { getCosmosDBKeyCredential } from '../cosmosdb/CosmosDBCredential';
@@ -57,7 +57,7 @@ export class DocumentTab extends BaseTab {
             },
         };
 
-        const { disposable } = setupTrpc(this.panel, routerContext, documentAppRouter, documentCallerFactory);
+        const { disposable } = attachTrpc(this.panel, routerContext, documentAppRouter, documentCallerFactory);
         this.disposables.push(disposable);
     }
 

@@ -12,7 +12,7 @@ import {
     tokens,
     useAnnounce,
 } from '@fluentui/react-components';
-import { useTrpcClient } from '@microsoft/vscode-webview-rpc/react';
+import { useTrpcClient } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
 import { Component, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { type QueryEditorAppRouter } from '../../../../panels/trpc/appRouter';
@@ -162,7 +162,7 @@ interface QuickStartTourProps {
 const QuickStartTour = ({ startup }: QuickStartTourProps) => {
     useStaticStyles();
     const styles = useStyles();
-    const { trpcClient } = useTrpcClient<QueryEditorAppRouter>();
+    const trpcClient = useTrpcClient<QueryEditorAppRouter>();
     const dispatcher = useQueryEditorDispatcher();
     const { announce } = useAnnounce();
 
@@ -450,7 +450,7 @@ class QuickStartTourBoundary extends Component<{ children: ReactNode }, { hasErr
  * the extension version and user settings.
  */
 export const QuickStartProvider = ({ children }: { children: ReactNode }) => {
-    const { trpcClient } = useTrpcClient<QueryEditorAppRouter>();
+    const trpcClient = useTrpcClient<QueryEditorAppRouter>();
     const [startup, setStartup] = useState<QuickStartStartupState | null>(null);
 
     useEffect(() => {

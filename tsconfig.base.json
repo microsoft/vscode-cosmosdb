@@ -37,11 +37,7 @@
       "@azure/cosmosdb-nosql-language-service/*": [
         "./packages/nosql-language-service/src/*.ts",
         "./packages/nosql-language-service/src/*/index.ts"
-      ],
-      "@microsoft/vscode-webview-rpc": ["./packages/webview-rpc/src/index.ts"],
-      "@microsoft/vscode-webview-rpc/server": ["./packages/webview-rpc/src/server/index.ts"],
-      "@microsoft/vscode-webview-rpc/client": ["./packages/webview-rpc/src/client/index.ts"],
-      "@microsoft/vscode-webview-rpc/react": ["./packages/webview-rpc/src/react/index.ts"]
+      ]
     }
   }
 }

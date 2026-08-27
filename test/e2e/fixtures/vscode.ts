@@ -117,6 +117,12 @@ function seedUserSettings(userDataDir: string): void {
         // The dedicated e2e emulator binds to 8082 (not the default 8081);
         // the migration provisioning step reads this to target the right port.
         'cosmosDB.emulator.port': E2E_EMULATOR_PORT,
+        // Suppress the Quick Start onboarding tour globally. On a fresh profile
+        // the automatic tour opens a Popover overlay anchored to the Query
+        // Editor toolbar; it intercepts pointer events and hides toolbar
+        // controls, which makes every Query Editor spec flake. Specs that
+        // exercise Quick Start itself opt back in by re-enabling this setting.
+        'cosmosDB.quickStart.enabled': false,
     };
     const settingsPath = path.join(userDataDir, 'User', 'settings.json');
     mkdirSync(path.dirname(settingsPath), { recursive: true });
@@ -231,12 +237,6 @@ export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
             const migrationCaptureDir = path.join(workerDir, 'migration-capture');
             mkdirSync(migrationCaptureDir, { recursive: true });
 
-            // Per-worker scratch dir the shared AI mock engine reads (ai-mock.json).
-            // Written by the `aiMock` fixtures and read by the extension's control-
-            // file dispatcher (see `src/commands/e2eTestCommands/e2eAiMock.ts`).
-            const aiMockDir = path.join(workerDir, 'ai-mock');
-            mkdirSync(aiMockDir, { recursive: true });
-
             // Expose the per-worker workspace + capture dirs to this worker's
             // process.env. The migration fixtures (readGitignore, gitDirExists,
             // provisioningArtifact*, setMockControl) read these from the worker,
@@ -246,7 +246,6 @@ export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
             // leaks across workers.
             process.env.COSMOSDB_E2E_WORKSPACE_DIR = workspaceDir;
             process.env.COSMOSDB_E2E_MIGRATION_CAPTURE_DIR = migrationCaptureDir;
-            process.env.COSMOSDB_E2E_AI_MOCK_DIR = aiMockDir;
 
             seedUserSettings(userDataDir);
 

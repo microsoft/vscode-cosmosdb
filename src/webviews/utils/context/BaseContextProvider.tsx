@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Link, Toast, ToastBody, ToastTitle, ToastTrigger, type useToastController } from '@fluentui/react-components';
-import { type AnyRouter, type TrpcClient } from '@microsoft/vscode-webview-rpc/react';
+import { type AnyRouter, type TrpcClient } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
 
 export type DispatchToastFn = ReturnType<typeof useToastController>['dispatchToast'];

@@ -2,36 +2,57 @@
 
 <!-- region exclude-from-marketplace -->
 
-[![Version](https://img.shields.io/visual-studio-marketplace/v/ms-azuretools.vscode-cosmosdb.svg?label=Version)](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-cosmosdb)
-[![Preview](https://img.shields.io/visual-studio-marketplace/v/ms-azuretools.vscode-cosmosdb?include_prereleases&label=Preview)](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-cosmosdb)
-[![Installs](https://img.shields.io/visual-studio-marketplace/i/ms-azuretools.vscode-cosmosdb.svg?label=Installs)](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-cosmosdb)
 [![Build Status](https://dev.azure.com/msdata/CosmosDB/_apis/build/status%2FVSCode%20Extensions%2Fvscode-cosmosdb?repoName=microsoft%2Fvscode-cosmosdb&branchName=main)](https://dev.azure.com/msdata/CosmosDB/_build/latest?definitionId=51963&repoName=microsoft%2Fvscode-cosmosdb&branchName=main)
+[![License](https://img.shields.io/github/license/microsoft/vscode-cosmosdb)](LICENSE.md)
 
 <!-- endregion exclude-from-marketplace -->
 
-Browse, manage, and query your Azure Cosmos DB databases both locally and in the cloud with support for **Azure Cosmos DB for NoSQL**.
+Connect to **Azure Cosmos DB for NoSQL** from VS Code to explore accounts, manage databases and containers, edit items, and run queries without leaving your editor. Work with Azure accounts, connection strings, or the local Azure Cosmos DB Emulator.
+
+[Install from the Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-cosmosdb) | [Read the documentation](https://learn.microsoft.com/azure/cosmos-db/) | [Report an issue](https://github.com/microsoft/vscode-cosmosdb/issues/new/choose)
 
 ![Azure Cosmos DB Extension](resources/readme/overview.gif)
 
-> Sign up today for your free Azure account and receive 12 months of free popular services, $200 free credit and 25+ always free services 👉 [Start Free](https://azure.microsoft.com/free/open-source).
+## Get Started
 
-# Features
+1. Install the extension from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-cosmosdb) or search for **Azure Cosmos DB** in the VS Code Extensions view.
+2. Open the **Azure** view in the Activity Bar and choose how to connect:
+
+- Sign in to Azure to browse Cosmos DB accounts across your subscriptions.
+- Select **New Connection…** to attach an account with a connection string.
+- Select **New Emulator Connection** under **Local Emulators** to use a local development instance.
+
+3. Expand an account, database, and container. Use the context menu to create or open items, import documents, or launch the Query Editor.
+4. Run a query such as `SELECT * FROM c`, then inspect the results as a table, JSON, or tree. Query metrics and index recommendations help you tune the request.
+
+> Don't have an account? [Create an Azure account](https://azure.microsoft.com/free/) or use the [Azure Cosmos DB Emulator](https://learn.microsoft.com/azure/cosmos-db/emulator) for local development.
+
+## Features
+
+| Capability                 | What you can do                                                                                         |
+| -------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Explore resources          | Browse subscriptions, accounts, databases, containers, items, and server-side scripts.                  |
+| Manage data                | Create, edit, delete, and import JSON documents with validation and syntax highlighting.                |
+| Build and optimize queries | Use completions and diagnostics, compare result views, inspect request charge, and review index advice. |
+| Monitor account health     | Review throughput, RU consumption, partitions, alerts, and recommendations from the account dashboard.  |
+| Work locally               | Attach the Azure Cosmos DB Emulator or a connection string without depending on subscription discovery. |
+| Use GitHub Copilot         | Generate, edit, and explain Azure Cosmos DB for NoSQL queries from natural-language requests.           |
 
 ## Azure Cosmos DB Explorer
 
-The Azure Cosmos DB Explorer helps you find, view, and manage your Azure CosmosDB databases.
+The Azure Cosmos DB Explorer helps you find, view, and manage your Azure Cosmos DB databases.
 
-- **Discover Database Accounts**: scan your Azure subscription for available database accounts and get a structured list of your resources.
+- **Discover Database Accounts**: Scan your Azure subscriptions for available database accounts and browse their resources.
 
-- **Open in Azure Portal**: Access database servers directly in the Azure portal.
+- **Open in Azure Portal**: Open an account directly in the Azure portal for service-level configuration.
 
-- **Manage Databases**: View, create, and delete databases, collections, stored procedures, and documents.
+- **Manage Resources**: View, create, and delete databases, containers, stored procedures, triggers, and documents.
 
-- **Edit Documents and Queries**: Open documents, stored procedures, and queries in the editor.
+- **Edit Documents and Scripts**: Open documents and stored procedures in the editor, then save changes to the service.
 
-- **Save Changes**: Make updates and persist them to the cloud.
+- **Filter and Sort**: Narrow large resource trees and choose the order that best fits your workflow.
 
-- **Workspace Support**: Attach database accounts to your workspace using connection strings. This is especially useful for teams working with shared resources from various subscriptions.
+- **Workspace Connections**: Attach database accounts with connection strings, including accounts that are not discoverable through your current Azure subscriptions.
 
 ## Account Overview Dashboard
 
@@ -63,9 +84,9 @@ For the metrics, detections, and ARM endpoints behind the dashboard, see [`docs/
 
 ## Query Editor
 
-The Query Editor allows you to write and execute queries across your databases.
+The Query Editor provides a focused workspace for writing, running, and tuning Azure Cosmos DB for NoSQL queries.
 
-- **Rich Syntax Highlighting**: Highlights query syntax to make it more readable and help prevent errors.
+- **Language Support**: Get syntax highlighting, completions, diagnostics, hover documentation, signature help, and formatting. Schema-aware suggestions include properties discovered in the active container.
 
 - **Query History**: Automatically saves previously executed queries, allowing you to open and reuse them later.
 
@@ -75,13 +96,13 @@ The Query Editor allows you to write and execute queries across your databases.
 
 - **Pagination**: Adjust how many results are displayed at a time when working with large datasets.
 
-- **Query Insights and Index Advisor**: Displays key details such as execution time, resource consumption, and indexing recommendations.
+- **Query Insights and Index Advisor**: Review execution time, request charge, response size, activity ID, and indexing recommendations.
 
 - **Edit Documents**: Open, update, and save individual documents.
 
 - **Create New Documents**: Write and validate documents with syntax highlighting.
 
-![Query Editor with Results](resources/readme/queryEditor.png)
+![Query Editor result views](resources/readme/queryEditor.gif)
 
 ### Keyboard Shortcuts
 
@@ -103,9 +124,9 @@ For more details, see the [AI Chat documentation](src/chat/README.md).
 
 ## Import into Azure Cosmos DB
 
-The extension allows you to import documents into CosmosDB.
+The extension allows you to import documents into Azure Cosmos DB.
 
-- **Workspace Integration**: Use the context menu of a collection or document file (JSON) to initiate import.
+- **Workspace Integration**: Use the context menu of a container or JSON document file to start an import.
 
   ![Import documents](resources/readme/import_documents.gif)
 
@@ -113,9 +134,11 @@ The extension allows you to import documents into CosmosDB.
 
 Attach the Azure Cosmos DB Emulator to work with a local instance of Azure Cosmos DB for development and testing purposes.
 
-- **Emulator Installation**: Install and run the [Azure Cosmos DB Emulator](https://docs.microsoft.com/azure/cosmos-db/local-emulator) on your local machine.
+- **Emulator Installation**: Install and run the [Azure Cosmos DB Emulator](https://learn.microsoft.com/azure/cosmos-db/emulator) on your local machine.
 
-- **New Emulator Connection**: Expand 'CosmosDB Accounts', next expand 'Local Emulators', and select 'New Emulator Connection' to link the emulator to your workspace.
+- **New Emulator Connection**: Expand **Cosmos DB Accounts**, then **Local Emulators**, and select **New Emulator Connection** to attach the emulator to your workspace.
+
+For local setup instructions and connection details, see [Azure Cosmos DB Emulator](docs/cosmosdb-emulator.md).
 
 ## Known Issues
 
@@ -127,7 +150,7 @@ Attach the Azure Cosmos DB Emulator to work with a local instance of Azure Cosmo
 
 <!-- region exclude-from-marketplace -->
 
-# How to Contribute
+## How to Contribute
 
 This project welcomes contributions and suggestions. To contribute, see these documents:
 
@@ -137,12 +160,12 @@ This project welcomes contributions and suggestions. To contribute, see these do
 
 <!-- endregion exclude-from-marketplace -->
 
-# Telemetry
+## Telemetry
 
 VS Code collects usage data and sends it to Microsoft to help improve our products and services. Read our [privacy statement](https://go.microsoft.com/fwlink/?LinkID=521839) to learn more. If you don’t wish to send usage data to Microsoft, you can set the `telemetry.enableTelemetry` setting to `false`. If you want to disable feedback requests in VS Code, set `telemetry.feedback.enabled` to `false`. Learn more in our [FAQ](https://code.visualstudio.com/docs/supporting/faq#_how-to-disable-telemetry-reporting).
 
 **Data Collection.** The software may collect information about you and your use of the software and send it to Microsoft. Microsoft may use this information to provide services and improve our products and services. You may turn off the telemetry as described in the repository. There are also some features in the software that may enable you and Microsoft to collect data from users of your applications. If you use these features, you must comply with applicable law, including providing appropriate notices to users of your applications together with a copy of Microsoft’s privacy statement. Our privacy statement is located at https://go.microsoft.com/fwlink/?LinkID=521839. You can learn more about data collection and use in the help documentation and our privacy statement. Your use of the software operates as your consent to these practices.
 
-# License
+## License
 
 [MIT](LICENSE.md)

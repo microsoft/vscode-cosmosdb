@@ -277,14 +277,14 @@
       {
         "name": "cosmosdb_getQueryEditorContext",
         "displayName": "Get Query Editor Context",
-        "modelDescription": "Returns the context of the active Cosmos DB Query Editor: the full editor text (currentQuery, which may contain multiple queries), the selected query if any (selectedQuery), the single query to operate on or explain (activeQuery — the selection when present, otherwise the full text), the Azure coordinates of the connected account (azure: accountName, subscriptionId, subscriptionName, resourceGroup — present only for Azure-signed-in accounts, omitted for workspace-attached accounts and the emulator), the persisted container schema (if one has already been sampled or inferred), recent query history, result metadata (row counts, request charge, inferred result schema), a one-use queryContextId for cosmosdb_executeCurrentQuery when activeQuery is present, and a one-use sampleContextId for cosmosdb_sampleContainerSchema. Never returns raw document data. Use this to ground query generation or explanation; if it returns a containerSchema, you already know the schema and do not need to sample again.",
+        "modelDescription": "Returns the context of the active Cosmos DB Query Editor: the full editor text (currentQuery, which may contain multiple queries), the selected query if any (selectedQuery), the single query to operate on or explain (activeQuery — the selection when present, otherwise the full text), the Azure coordinates of the connected account (azure: accountName, subscriptionId, subscriptionName, resourceGroup — present only for Azure-signed-in accounts, omitted for workspace-attached accounts and the emulator), the persisted container schema (if one has already been sampled or inferred), recent query history, result metadata (row counts, request charge, inferred result schema), a one-use queryContextId for cosmosdb_executeCurrentQuery when activeQuery is present, a one-use sampleContextId for cosmosdb_sampleContainerSchema, and a one-use applyContextId for cosmosdb_applyQueryToEditor. Preserve applyContextId while sampling, then pass it when applying the generated query. Never returns raw document data. Use this to ground query generation or explanation; if it returns a containerSchema, you already know the schema and do not need to sample again.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "cosmosdb_getQueryEditorContext"
       },
       {
         "name": "cosmosdb_applyQueryToEditor",
         "displayName": "Apply Query to Editor",
-        "modelDescription": "Writes a generated Cosmos DB NoSQL query into the active Query Editor, replacing its contents. The previous query is preserved below the new one as a commented \"Previous query\" block. Pass the user's original natural-language request as promptDescription so it is cited in a \"Generated from\" comment. Applying does NOT run the query. Returns a queryContextId that must be passed to cosmosdb_executeCurrentQuery if the user wants to see results.",
+        "modelDescription": "Writes a generated Cosmos DB NoSQL query into the Query Editor pinned by applyContextId, replacing its contents. Pass the applyContextId returned by cosmosdb_getQueryEditorContext, preserving it while sampling if needed. The previous query is preserved below the new one as a commented \"Previous query\" block. Pass the user's original natural-language request as promptDescription so it is cited in a \"Generated from\" comment. Applying does NOT run the query. Returns a queryContextId that must be passed to cosmosdb_executeCurrentQuery if the user wants to see results.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "cosmosdb_applyQueryToEditor",
         "inputSchema": {
@@ -292,7 +292,11 @@
           "properties": {
             "query": {
               "type": "string",
-              "description": "The generated Cosmos DB NoSQL query to write into the active Query Editor."
+              "description": "The generated Cosmos DB NoSQL query to write into the pinned Query Editor."
+            },
+            "applyContextId": {
+              "type": "string",
+              "description": "The applyContextId returned by cosmosdb_getQueryEditorContext."
             },
             "promptDescription": {
               "type": "string",
@@ -300,7 +304,8 @@
             }
           },
           "required": [
-            "query"
+            "query",
+            "applyContextId"
           ],
           "additionalProperties": {
             "not": {}
@@ -332,7 +337,7 @@
       {
         "name": "cosmosdb_openQueryEditor",
         "displayName": "Open Query Editor",
-        "modelDescription": "Opens a Cosmos DB NoSQL Query Editor by starting the connection flow: prompts the user to pick a Cosmos DB container, then opens a Query Editor connected to it. After opening, it also reveals the connected container in the Azure Resources tree (Azure-signed-in accounts only). Use this when there is no active Query Editor / connection yet and the user wants to write, run, or explain a query. The other Query Editor tools (cosmosdb_getQueryEditorContext, cosmosdb_applyQueryToEditor, cosmosdb_executeCurrentQuery) require an active editor, so call this first when none is open. The picker is interactive; the user may cancel it.",
+        "modelDescription": "Opens a Cosmos DB NoSQL Query Editor by starting the connection flow: prompts the user to pick a Cosmos DB container, then opens a Query Editor connected to it. After opening, it also reveals the connected container in the Azure Resources tree (Azure-signed-in accounts only). This is the entry point for ALL Query Editor work: whenever the user wants to write, run, explain, sample, or explore Cosmos DB data and no Query Editor is open yet, call this tool yourself FIRST to open one — do NOT ask the user to open or connect a Query Editor manually, and do NOT emit a query as text for the user to run. The other Query Editor tools (cosmosdb_getQueryEditorContext, cosmosdb_applyQueryToEditor, cosmosdb_executeCurrentQuery, cosmosdb_sampleContainerSchema) require an open editor; if any of them reports that no editor is open, call this tool to open one and then retry that tool. The picker is interactive; the user may cancel it.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "cosmosdb_openQueryEditor"
       },

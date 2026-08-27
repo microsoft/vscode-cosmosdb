@@ -8,6 +8,7 @@
 import * as vscode from 'vscode';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
 import { buildFramedQuery, registerApplyQueryToEditorTool } from './applyQueryToEditorTool';
+import { createQueryApplyContext } from './queryApplyContext';
 import { captureRegisteredTool, serializeToolResult } from './queryEditorToolTestUtils';
 import { getQueryExecutionContext } from './queryExecutionContext';
 
@@ -76,7 +77,9 @@ describe('cosmosdb_applyQueryToEditor — cancellation', () => {
                 cts.cancel();
                 return 'SELECT c.id FROM c';
             }),
+            getId: vi.fn(() => 'tab-1'),
             takeLastGeneratePrompt: vi.fn(() => undefined),
+            reveal: vi.fn(),
             updateQuery,
         };
         QueryEditorTab.openTabs.add(tab as never);
@@ -89,7 +92,15 @@ describe('cosmosdb_applyQueryToEditor — cancellation', () => {
 
         try {
             const tool = captureRegisteredTool(registerApplyQueryToEditorTool);
-            const result = await tool.invoke({ input: { query: 'SELECT * FROM c' } }, cts.token);
+            const applyContextId = createQueryApplyContext(
+                tab as never,
+                {
+                    endpoint: 'https://example.test',
+                    databaseId: 'db',
+                    containerId: 'container',
+                } as never,
+            );
+            const result = await tool.invoke({ input: { query: 'SELECT * FROM c', applyContextId } }, cts.token);
 
             expect(serializeToolResult(result)).toBe('Operation cancelled.');
             expect(updateQuery).not.toHaveBeenCalled();
@@ -116,6 +127,7 @@ describe('cosmosdb_applyQueryToEditor — execution context', () => {
             getId: vi.fn(() => 'tab-1'),
             getCurrentQuery: vi.fn(() => 'SELECT old FROM c'),
             takeLastGeneratePrompt: vi.fn(() => undefined),
+            reveal: vi.fn(),
             updateQuery: vi.fn(),
         };
         QueryEditorTab.openTabs.add(tab as never);
@@ -123,7 +135,8 @@ describe('cosmosdb_applyQueryToEditor — execution context', () => {
         vi.mocked(getConnectionFromQueryTab).mockReturnValue(connection as never);
 
         const tool = captureRegisteredTool(registerApplyQueryToEditorTool);
-        const result = await tool.invoke({ input: { query: 'SELECT * FROM c' } }, noopToken);
+        const applyContextId = createQueryApplyContext(tab as never, connection as never);
+        const result = await tool.invoke({ input: { query: 'SELECT * FROM c', applyContextId } }, noopToken);
         const payload = JSON.parse(serializeToolResult(result));
         const executionContext = getQueryExecutionContext(payload.queryContextId);
 
@@ -135,6 +148,47 @@ describe('cosmosdb_applyQueryToEditor — execution context', () => {
             databaseId: connection.databaseId,
             containerId: connection.containerId,
         });
+    });
+
+    it('applies to the pinned editor when the active editor changes', async () => {
+        const { getConnectionFromQueryTab } = await import('./chatUtils');
+        const connectionA = {
+            endpoint: 'https://example.documents.azure.com/',
+            databaseId: 'db',
+            containerId: 'trucks',
+        };
+        const connectionB = {
+            endpoint: 'https://example.documents.azure.com/',
+            databaseId: 'db',
+            containerId: 'cars',
+        };
+        const tabA = {
+            getId: vi.fn(() => 'tab-a'),
+            getCurrentQuery: vi.fn(() => 'SELECT old FROM c'),
+            takeLastGeneratePrompt: vi.fn(() => undefined),
+            reveal: vi.fn(),
+            updateQuery: vi.fn(),
+        };
+        const tabB = {
+            getId: vi.fn(() => 'tab-b'),
+            getCurrentQuery: vi.fn(() => 'SELECT other FROM c'),
+            takeLastGeneratePrompt: vi.fn(() => undefined),
+            reveal: vi.fn(),
+            updateQuery: vi.fn(),
+        };
+        QueryEditorTab.openTabs.add(tabA as never);
+        QueryEditorTab.openTabs.add(tabB as never);
+        vi.mocked(getConnectionFromQueryTab).mockImplementation((tab) =>
+            tab === (tabA as never) ? (connectionA as never) : (connectionB as never),
+        );
+
+        const applyContextId = createQueryApplyContext(tabA as never, connectionA as never);
+        const tool = captureRegisteredTool(registerApplyQueryToEditorTool);
+        await tool.invoke({ input: { query: 'SELECT * FROM c', applyContextId } }, noopToken);
+
+        expect(tabA.reveal).toHaveBeenCalledOnce();
+        expect(tabA.updateQuery).toHaveBeenCalledOnce();
+        expect(tabB.updateQuery).not.toHaveBeenCalled();
     });
 });
 

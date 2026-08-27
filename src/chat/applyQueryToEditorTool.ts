@@ -9,7 +9,8 @@ import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
 import { commentOutQuery, normalizeQueryText, sanitizeSqlComment, stripCodeFences } from '../utils/sanitization';
-import { getActiveQueryEditor, getConnectionFromQueryTab } from './chatUtils';
+import { getConnectionFromQueryTab } from './chatUtils';
+import { takeQueryApplyContext } from './queryApplyContext';
 import { createQueryExecutionContext } from './queryExecutionContext';
 
 /**
@@ -23,8 +24,9 @@ export const APPLY_QUERY_TO_EDITOR_TOOL_NAME = 'cosmosdb_applyQueryToEditor';
  * Keep in sync with the `modelDescription` in package.json `contributes.languageModelTools`.
  */
 export const APPLY_QUERY_TO_EDITOR_TOOL_DESCRIPTION =
-    'Writes a generated Cosmos DB NoSQL query into the active Query Editor, replacing its contents. ' +
+    'Writes a generated Cosmos DB NoSQL query into the Query Editor pinned by applyContextId, replacing its contents. ' +
     'The previous query is preserved below the new one as a commented "Previous query" block. ' +
+    'Pass the applyContextId returned by cosmosdb_getQueryEditorContext, preserving it while sampling if needed. ' +
     "Pass the user's original natural-language request as promptDescription so it is cited in a " +
     '"Generated from" comment. Applying does NOT run the query. Returns a queryContextId that must be passed to ' +
     'cosmosdb_executeCurrentQuery if the user wants to see results.';
@@ -33,6 +35,8 @@ export const APPLY_QUERY_TO_EDITOR_TOOL_DESCRIPTION =
  * Input for the apply-query-to-editor tool.
  */
 interface ApplyQueryToEditorInput {
+    /** The applyContextId returned by cosmosdb_getQueryEditorContext. */
+    applyContextId: string;
     /** The generated Cosmos DB NoSQL query to write into the editor. */
     query: string;
     /** The user's original natural-language request, cited in the "Generated from" comment. */
@@ -48,7 +52,11 @@ export const APPLY_QUERY_TO_EDITOR_TOOL_INPUT_SCHEMA = {
     properties: {
         query: {
             type: 'string',
-            description: 'The generated Cosmos DB NoSQL query to write into the active Query Editor.',
+            description: 'The generated Cosmos DB NoSQL query to write into the pinned Query Editor.',
+        },
+        applyContextId: {
+            type: 'string',
+            description: 'The applyContextId returned by cosmosdb_getQueryEditorContext.',
         },
         promptDescription: {
             type: 'string',
@@ -56,19 +64,12 @@ export const APPLY_QUERY_TO_EDITOR_TOOL_INPUT_SCHEMA = {
                 'The user\'s original natural-language request, cited in the "Generated from" comment above the query.',
         },
     },
-    required: ['query'],
+    required: ['query', 'applyContextId'],
     additionalProperties: { not: {} },
 };
 
-/**
- * Gets the active query editor tab, if available.
- */
-function getActiveTab(): QueryEditorTab | undefined {
-    const tabs = Array.from(QueryEditorTab.openTabs);
-    if (tabs.length === 0) {
-        return undefined;
-    }
-    return getActiveQueryEditor(tabs);
+function findTabById(tabId: string): QueryEditorTab | undefined {
+    return Array.from(QueryEditorTab.openTabs).find((tab) => tab.getId() === tabId);
 }
 
 /**
@@ -130,14 +131,35 @@ export function registerApplyQueryToEditorTool(context: vscode.ExtensionContext)
                         ]);
                     }
 
-                    const tab = getActiveTab();
-                    const connection = tab ? getConnectionFromQueryTab(tab) : undefined;
                     // Mask sensitive values early so they cannot leak via telemetry error messages.
                     actionContext.valuesToMask.push(query);
+                    const applyContextId = options.input?.applyContextId;
+                    if (applyContextId?.trim()) {
+                        actionContext.valuesToMask.push(applyContextId);
+                    }
                     const rawPromptDescription = options.input?.promptDescription;
                     if (rawPromptDescription && rawPromptDescription.trim()) {
                         actionContext.valuesToMask.push(rawPromptDescription);
                     }
+                    const applyContext = applyContextId ? takeQueryApplyContext(applyContextId) : undefined;
+                    if (!applyContext) {
+                        actionContext.telemetry.properties.outcome = 'invalidContext';
+                        return new vscode.LanguageModelToolResult([
+                            new vscode.LanguageModelTextPart(
+                                l10n.t(
+                                    'The apply context is no longer available. Read the Query Editor context again, then retry applying the query.',
+                                ),
+                            ),
+                        ]);
+                    }
+
+                    actionContext.valuesToMask.push(
+                        applyContext.endpoint,
+                        applyContext.databaseId,
+                        applyContext.containerId,
+                    );
+                    const tab = findTabById(applyContext.tabId);
+                    const connection = tab ? getConnectionFromQueryTab(tab) : undefined;
                     if (connection) {
                         actionContext.valuesToMask.push(
                             connection.endpoint,
@@ -157,11 +179,28 @@ export function registerApplyQueryToEditorTool(context: vscode.ExtensionContext)
                     }
                     if (!tab || !connection) {
                         actionContext.telemetry.properties.outcome = 'noEditor';
-                        ext.outputChannel.warn(l10n.t('[Apply Query Tool] No active Cosmos DB Query Editor.'));
+                        ext.outputChannel.warn(
+                            l10n.t('[Apply Query Tool] The target Cosmos DB Query Editor is unavailable.'),
+                        );
                         return new vscode.LanguageModelToolResult([
                             new vscode.LanguageModelTextPart(
                                 l10n.t(
-                                    'No active Cosmos DB Query Editor. Please open a query editor and connect to a container first.',
+                                    'The target Cosmos DB Query Editor is no longer available. Read the Query Editor context again, then retry applying the query.',
+                                ),
+                            ),
+                        ]);
+                    }
+
+                    if (
+                        connection.endpoint !== applyContext.endpoint ||
+                        connection.databaseId !== applyContext.databaseId ||
+                        connection.containerId !== applyContext.containerId
+                    ) {
+                        actionContext.telemetry.properties.outcome = 'stateChanged';
+                        return new vscode.LanguageModelToolResult([
+                            new vscode.LanguageModelTextPart(
+                                l10n.t(
+                                    'The Query Editor connection changed before the query was applied. Read the Query Editor context again, then retry.',
                                 ),
                             ),
                         ]);
@@ -188,6 +227,7 @@ export function registerApplyQueryToEditorTool(context: vscode.ExtensionContext)
                                 new vscode.LanguageModelTextPart(l10n.t('Operation cancelled.')),
                             ]);
                         }
+                        tab.reveal();
                         tab.updateQuery(finalQuery, aiGeneratedQuery);
                         const queryContextId = createQueryExecutionContext(tab, connection, finalQuery);
 

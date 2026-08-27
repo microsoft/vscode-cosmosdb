@@ -127,6 +127,7 @@ describe('cosmosdb_getQueryEditorContext — confidentiality', () => {
         expect(context.currentResult.schema).toBeDefined();
         expect(context.queryContextId).toEqual(expect.any(String));
         expect(context.sampleContextId).toEqual(expect.any(String));
+        expect(context.applyContextId).toEqual(expect.any(String));
 
         expect(findConfidentialStatKeys(context)).toEqual([]);
         // The actual sensitive numeric value must not appear anywhere in the serialized context.

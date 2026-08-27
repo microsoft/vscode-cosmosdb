@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { useTrpcClient } from '@cosmosdb/webview-rpc/react';
 import { makeStyles, Spinner, tokens } from '@fluentui/react-components';
+import { useTrpcClient } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -124,7 +124,7 @@ type Inventory = {
 
 export const AccountOverview = () => {
     const styles = useStyles();
-    const { trpcClient } = useTrpcClient<AccountOverviewAppRouter>();
+    const trpcClient = useTrpcClient<AccountOverviewAppRouter>();
 
     const [summary, setSummary] = useState<AccountSummary | undefined>(undefined);
     const [inventory, setInventory] = useState<Inventory | undefined>(undefined);

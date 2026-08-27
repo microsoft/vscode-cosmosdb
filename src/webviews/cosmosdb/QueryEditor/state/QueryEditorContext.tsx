@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { useTrpcClient } from '@cosmosdb/webview-rpc/react';
 import { Toaster, useId, useToastController } from '@fluentui/react-components';
+import { useRpcEvents, useTrpcClient } from '@microsoft/vscode-ext-webview/react';
 import { type ReactNode, createContext, useContext, useEffect, useMemo, useReducer, useRef } from 'react';
 import { type QueryEditorAppRouter } from '../../../../panels/trpc/appRouter';
 import { type BaseContextProvider } from '../../../utils/context/BaseContextProvider';
@@ -48,7 +48,8 @@ export const WithQueryEditorContext = ({ children }: { children: ReactNode }) =>
     // `trpcClient`, so it does not exist yet on the first render).
     const providerRef = useRef<BaseContextProvider | null>(null);
 
-    const { trpcClient, events } = useTrpcClient<QueryEditorAppRouter>();
+    const trpcClient = useTrpcClient<QueryEditorAppRouter>();
+    const events = useRpcEvents();
 
     const provider = useMemo(
         () => new QueryEditorContextProvider(dispatch, dispatchToast, trpcClient),

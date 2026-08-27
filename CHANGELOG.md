@@ -1,5 +1,19 @@
 # Change Log
 
+## 0.37.2 (Preview)
+
+### Fixed
+
+- Prevented command injection when opening Cosmos DB Shell at a database or container whose ID contains shell syntax or control characters. (#3313, #3315)
+- Fixed Cosmos DB Shell startup navigation across older and newer Shell versions, with compatibility guidance and consent-based update notifications that account for custom executable paths. (#3316)
+- Fixed cancelled Cosmos DB Shell install and update operations to exit silently instead of showing a misleading failure notification. (#3321)
+- Fixed Fabric artifact tree items to use the Cosmos DB product icon in light and dark themes. (#3323)
+
+### Changed
+
+- Migrated the extension's webview transport to the published `@microsoft/vscode-ext-webview` package. (#3217)
+- Updated localization.
+
 ## 0.37.1 (Preview)
 
 ### Fixed

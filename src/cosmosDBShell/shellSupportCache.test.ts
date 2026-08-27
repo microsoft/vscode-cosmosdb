@@ -10,6 +10,7 @@ import {
     getDetectedCosmosDBShellVersion,
     invalidateCosmosDBShellSupportCache,
     isCosmosDBShellInstalled,
+    isCosmosDBShellVersionSupported,
 } from './shellSupportCache';
 
 vi.mock('child_process', () => ({
@@ -46,10 +47,33 @@ describe('shellSupportCache', () => {
         expect(getDetectedCosmosDBShellVersion()).toBe('1.2.3-prerelease.4');
     });
 
+    it.each([
+        ['1.1.208', false],
+        ['1.1.209-alpha', false],
+        ['1.1.209-preview', true],
+        ['1.1.209-preview.1', true],
+        ['1.1.209', true],
+        ['1.2.0', true],
+    ])('reports whether version %s supports startup navigation', (version, expected) => {
+        (child.execFileSync as Mock).mockReturnValue(Buffer.from(`CosmosDBShell ${version}\n`));
+        expect(isCosmosDBShellVersionSupported()).toBe(expected);
+    });
+
     it('returns installed=true with undefined version when no SemVer-like token is in the output', () => {
         (child.execFileSync as Mock).mockReturnValue(Buffer.from('no version info here\n'));
         expect(isCosmosDBShellInstalled()).toBe(true);
         expect(getDetectedCosmosDBShellVersion()).toBeUndefined();
+        expect(isCosmosDBShellVersionSupported()).toBe(false);
+    });
+
+    it('ignores a version-shaped token that is not valid SemVer instead of throwing', () => {
+        // `1.2.3-01` matches the version regex but SemVer forbids leading zeroes in numeric
+        // prerelease identifiers, so comparing it would throw.
+        (child.execFileSync as Mock).mockReturnValue(Buffer.from('CosmosDBShell 1.2.3-01\n'));
+        expect(isCosmosDBShellInstalled()).toBe(true);
+        expect(getDetectedCosmosDBShellVersion()).toBeUndefined();
+        expect(() => isCosmosDBShellVersionSupported()).not.toThrow();
+        expect(isCosmosDBShellVersionSupported()).toBe(false);
     });
 
     it('caches the probe result across calls keyed on the resolved command', () => {

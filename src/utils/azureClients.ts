@@ -11,8 +11,9 @@ import { type MonitorClient } from '@azure/arm-monitor';
 import { type PostgreSQLManagementClient } from '@azure/arm-postgresql';
 import { type PostgreSQLManagementFlexibleServerClient } from '@azure/arm-postgresql-flexible';
 import { type TokenCredential } from '@azure/core-auth';
+import { type Pipeline, type PipelineRequest, type SendRequest } from '@azure/core-rest-pipeline';
 import { type KnownMonitorLogsQueryAudience, type LogsQueryClient } from '@azure/monitor-query-logs';
-import { createAzureClient } from '@microsoft/vscode-azext-azureutils';
+import { createAzureClient, type AzExtClientContext } from '@microsoft/vscode-azext-azureutils';
 import { createSubscriptionContext, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 
@@ -49,18 +50,23 @@ const DOCUMENT_DB_PROVIDER_PATH = '/providers/microsoft.documentdb/';
  */
 export const PRESERVE_API_VERSION_HEADER = 'x-vscode-cosmosdb-preserve-api-version';
 
-type PinnablePipelineRequest = {
-    url: string;
-    headers: { has(name: string): boolean; delete(name: string): void };
-};
+type PipelineClientConstructor<T> = new (
+    credential: TokenCredential,
+    subscriptionId: string,
+    options?: { endpoint?: string },
+) => T;
 
-function pinCosmosDBApiVersion(client: CosmosDBManagementClient): CosmosDBManagementClient {
-    const clientWithPipeline = client as unknown as {
-        pipeline: { addPolicy: (policy: unknown) => void };
-    };
-    clientWithPipeline.pipeline.addPolicy({
+// The latest generated ARM clients expose the same pipeline contract used by createAzureClient, but no longer
+// extend ServiceClient. Keep the compatibility assertion isolated until vscode-azext-azureutils widens its types.
+const createPipelineAzureClient = createAzureClient as unknown as <T extends { readonly pipeline: Pipeline }>(
+    context: AzExtClientContext,
+    clientType: PipelineClientConstructor<T>,
+) => T;
+
+export function pinCosmosDBApiVersion<T extends { readonly pipeline: Pipeline }>(client: T): T {
+    client.pipeline.addPolicy({
         name: 'PinCosmosDBApiVersionPolicy',
-        async sendRequest(request: PinnablePipelineRequest, next: (req: PinnablePipelineRequest) => Promise<unknown>) {
+        async sendRequest(request: PipelineRequest, next: SendRequest) {
             if (request.headers.has(PRESERVE_API_VERSION_HEADER)) {
                 request.headers.delete(PRESERVE_API_VERSION_HEADER);
                 return next(request);
@@ -89,7 +95,7 @@ export async function createCosmosDBManagementClient(
     subscription: AzureSubscription,
 ): Promise<CosmosDBManagementClient> {
     const subContext = createSubscriptionContext(subscription);
-    return pinCosmosDBApiVersion(createAzureClient([context, subContext], CosmosDBManagementClient));
+    return pinCosmosDBApiVersion(createPipelineAzureClient([context, subContext], CosmosDBManagementClient));
 }
 
 export async function createFeatureClient(
@@ -110,7 +116,7 @@ export async function createMonitorClient(
 ): Promise<MonitorClient> {
     const subContext = createSubscriptionContext(subscription);
     const { MonitorClient } = await import('@azure/arm-monitor');
-    return createAzureClient([context, subContext], MonitorClient);
+    return createPipelineAzureClient([context, subContext], MonitorClient);
 }
 
 // `@azure/monitor-query-logs` is the data-plane Log Analytics client for the Account Overview dashboard's Tier-2
@@ -127,7 +133,7 @@ export async function createLogsQueryClient(
     const subContext = createSubscriptionContext(subscription);
     const { LogsQueryClient, KnownMonitorLogsQueryAudience } = await import('@azure/monitor-query-logs');
     const audience = logAnalyticsAudience(subscription.environment?.name, KnownMonitorLogsQueryAudience);
-    return new LogsQueryClient(subContext.credentials as TokenCredential, audience ? { audience } : undefined);
+    return new LogsQueryClient(subContext.credentials, audience ? { audience } : undefined);
 }
 
 /**
@@ -174,7 +180,7 @@ export async function createAlertsManagementClient(subscription: AzureSubscripti
     const subContext = createSubscriptionContext(subscription);
     const { AlertsManagementClient } = await import('@azure/arm-alertsmanagement');
     const endpoint = subscription.environment?.resourceManagerEndpointUrl;
-    return new AlertsManagementClient(subContext.credentials as TokenCredential, endpoint ? { endpoint } : undefined);
+    return new AlertsManagementClient(subContext.credentials, endpoint ? { endpoint } : undefined);
 }
 
 export async function createPostgreSQLClient(

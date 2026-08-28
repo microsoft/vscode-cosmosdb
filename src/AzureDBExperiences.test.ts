@@ -21,6 +21,7 @@ describe('AzureDBExperiences', () => {
         });
 
         it('maps the (retired) Graph API to the Gremlin experience', () => {
+            // oxlint-disable-next-line typescript/no-deprecated -- verifies compatibility with the retired API value
             expect(getExperienceFromApi(API.Graph)).toBe(GremlinExperience);
         });
 

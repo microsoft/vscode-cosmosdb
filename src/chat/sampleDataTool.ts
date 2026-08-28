@@ -109,7 +109,7 @@ async function fetchSampleDocuments(
             })
             .fetchAll();
         return {
-            documents: (response.resources ?? []),
+            documents: response.resources ?? [],
             requestCharge: response.requestCharge,
         };
     } finally {

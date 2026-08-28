@@ -102,6 +102,7 @@ describe('Cosmos DB Shell tool operations', () => {
         expect(vscode.window.showErrorMessage).not.toHaveBeenCalled();
         expect(vscode.window.showInformationMessage).not.toHaveBeenCalled();
         expect(invalidateCosmosDBShellSupportCache).not.toHaveBeenCalled();
+        // oxlint-disable-next-line typescript/no-deprecated -- member reference includes a deprecated overload not invoked here
         expect(ext.outputChannel.show).toHaveBeenCalledOnce();
     });
 

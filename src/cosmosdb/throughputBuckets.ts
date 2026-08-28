@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
-import { createHttpHeaders, createPipelineRequest } from '@azure/core-rest-pipeline';
+import { createDefaultHttpClient, createHttpHeaders, createPipelineRequest } from '@azure/core-rest-pipeline';
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { createFeatureClient, PRESERVE_API_VERSION_HEADER } from '../utils/azureClients';
 import { type AzureResourceMetadata } from './AzureResourceMetadata';
@@ -98,7 +98,7 @@ async function readEnabledThroughputBuckets(
         return Array.from<boolean>({ length: MAX_THROUGHPUT_BUCKETS }).fill(true);
     }
 
-    const host = client.$host ?? MANAGEMENT_ENDPOINT_FALLBACK;
+    const host = metadata.subscription.environment?.resourceManagerEndpointUrl ?? MANAGEMENT_ENDPOINT_FALLBACK;
     const accountPath =
         `${host}/subscriptions/${metadata.subscription.subscriptionId}` +
         `/resourceGroups/${metadata.resourceGroup}` +
@@ -129,7 +129,8 @@ async function readEnabledThroughputBuckets(
 async function getThroughputSettings(client: CosmosDBManagementClient, url: string): Promise<unknown> {
     // `throughputBuckets` is preview-only, so this request must keep
     // `THROUGHPUT_BUCKETS_API_VERSION` instead of the client's pinned GA api-version.
-    const response = await client.sendRequest(
+    const response = await client.pipeline.sendRequest(
+        createDefaultHttpClient(),
         createPipelineRequest({
             url,
             method: 'GET',

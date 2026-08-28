@@ -166,6 +166,7 @@ export function inferBsonType(value: unknown): BSONType {
             if (value instanceof DBRef) return 'dbref';
             if (value instanceof Map) return 'map';
             if (value instanceof UUID && value.sub_type === Binary.SUBTYPE_UUID) return 'uuid';
+            // oxlint-disable-next-line typescript/no-deprecated -- required to classify legacy BSON UUID values
             if (value instanceof UUID && value.sub_type === Binary.SUBTYPE_UUID_OLD) return 'uuid-legacy';
             if (value instanceof Buffer || value instanceof Binary) return 'binary';
             if (value instanceof RegExp) return 'regexp';

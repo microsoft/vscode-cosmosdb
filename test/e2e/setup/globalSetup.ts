@@ -168,12 +168,14 @@ function isDistStale(extensionDevelopmentPath: string): { stale: boolean; reason
 
 function runViteProd(extensionDevelopmentPath: string): void {
     console.log('[e2e setup] Running `npm run vite-prod` (this can take ~30–60 s)…');
-    const result = spawnSync('npm', ['run', 'vite-prod'], {
-        cwd: repoRoot,
-        stdio: 'inherit',
-        // Required on Windows where `npm` resolves to a .cmd shim.
-        shell: process.platform === 'win32',
-    });
+    const result =
+        process.platform === 'win32'
+            ? spawnSync('npm run vite-prod', {
+                  cwd: repoRoot,
+                  stdio: 'inherit',
+                  shell: process.env.ComSpec ?? 'cmd.exe',
+              })
+            : spawnSync('npm', ['run', 'vite-prod'], { cwd: repoRoot, stdio: 'inherit' });
     if (result.status !== 0) {
         throw new Error(`\`npm run vite-prod\` exited with code ${result.status}`);
     }
@@ -253,12 +255,15 @@ export default async function globalSetup(): Promise<void> {
         const [cli, ...baseArgs] = resolveCliArgsFromVSCodeExecutablePath(vscodeExecutablePath);
         for (const id of toInstall) {
             console.log(`[e2e setup] Installing dependent extension: ${id}`);
-            const result = spawnSync(cli, [...baseArgs, '--extensions-dir', extensionsDir, '--install-extension', id], {
-                encoding: 'utf-8',
-                stdio: 'inherit',
-                // Required on Windows when `cli` resolves to a .cmd / .bat.
-                shell: process.platform === 'win32',
-            });
+            const args = [...baseArgs, '--extensions-dir', extensionsDir, '--install-extension', id];
+            const result =
+                process.platform === 'win32'
+                    ? spawnSync(`call "${cli}" ${args.map((arg) => `"${arg}"`).join(' ')}`, {
+                          encoding: 'utf-8',
+                          stdio: 'inherit',
+                          shell: process.env.ComSpec ?? 'cmd.exe',
+                      })
+                    : spawnSync(cli, args, { encoding: 'utf-8', stdio: 'inherit' });
             if (result.status !== 0) {
                 throw new Error(
                     `Failed to install ${id} (exit code ${result.status}${

@@ -83,6 +83,15 @@ describe('Error recovery — error codes are correct', () => {
 });
 
 describe('Error recovery — errors have valid ranges', () => {
+    it('uses the end of input when EOF token locations are unavailable', () => {
+        const query = 'SELECT';
+        const { errors } = parse(query);
+
+        expect(errors[0].range.start.offset).toBe(query.length);
+        expect(errors[0].range.start.line).toBe(1);
+        expect(errors[0].range.start.col).toBe(query.length + 1);
+    });
+
     it('error range has valid start/end offsets', () => {
         const { errors } = parse('SELECT * FORM c');
         for (const e of errors) {

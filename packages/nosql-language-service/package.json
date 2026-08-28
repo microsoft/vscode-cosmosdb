@@ -62,7 +62,7 @@
   },
   "dependencies": {
     "@cosmosdb/schema-analyzer": "*",
-    "chevrotain": "^12.0.0"
+    "chevrotain": "^13.2.0"
   },
   "devDependencies": {
     "@codemirror/autocomplete": "^6.18.0",

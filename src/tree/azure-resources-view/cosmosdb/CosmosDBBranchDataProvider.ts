@@ -46,6 +46,7 @@ export class CosmosDBBranchDataProvider extends BaseCachedBranchDataProvider<Cos
                 return makeFilterable(makeSortable(new NoSqlAccountResourceItem(accountModel, experience)));
             }
 
+            // oxlint-disable-next-line typescript/no-deprecated -- retired account types remain discoverable
             if (experience?.api === API.Cassandra) {
                 context.telemetry.properties.isCassandra = 'true';
                 context.telemetry.properties.deprecated = 'true';
@@ -53,6 +54,7 @@ export class CosmosDBBranchDataProvider extends BaseCachedBranchDataProvider<Cos
                 return new CosmosDBAccountUnsupportedResourceItem(accountModel, experience);
             }
 
+            // oxlint-disable-next-line typescript/no-deprecated -- retired account types remain discoverable
             if (experience?.api === API.Graph) {
                 context.telemetry.properties.isGraph = 'true';
                 context.telemetry.properties.deprecated = 'true';
@@ -60,6 +62,7 @@ export class CosmosDBBranchDataProvider extends BaseCachedBranchDataProvider<Cos
                 return new CosmosDBAccountUnsupportedResourceItem(accountModel, experience);
             }
 
+            // oxlint-disable-next-line typescript/no-deprecated -- retired account types remain discoverable
             if (experience?.api === API.Table) {
                 context.telemetry.properties.isTable = 'true';
                 context.telemetry.properties.deprecated = 'true';

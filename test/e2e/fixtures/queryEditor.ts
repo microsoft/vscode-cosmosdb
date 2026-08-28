@@ -905,10 +905,9 @@ export class QueryEditorPage {
      * is stable regardless of which metrics the backend returned.
      */
     async hasQueryMetrics(timeoutMs: number = DEFAULT_TIMEOUT_MS): Promise<boolean> {
-        return this.resultRegion()
-            .getByRole('link', { name: 'Learn more about query metrics' })
-            .first()
-            .isVisible({ timeout: timeoutMs })
+        return expect(this.resultRegion().getByRole('link', { name: 'Learn more about query metrics' }).first())
+            .toBeVisible({ timeout: timeoutMs })
+            .then(() => true)
             .catch(() => false);
     }
 
@@ -918,10 +917,9 @@ export class QueryEditorPage {
      * Anchored on its "Learn more about index metrics" link.
      */
     async hasIndexMetrics(timeoutMs: number = DEFAULT_TIMEOUT_MS): Promise<boolean> {
-        return this.resultRegion()
-            .getByRole('link', { name: 'Learn more about index metrics' })
-            .first()
-            .isVisible({ timeout: timeoutMs })
+        return expect(this.resultRegion().getByRole('link', { name: 'Learn more about index metrics' }).first())
+            .toBeVisible({ timeout: timeoutMs })
+            .then(() => true)
             .catch(() => false);
     }
 

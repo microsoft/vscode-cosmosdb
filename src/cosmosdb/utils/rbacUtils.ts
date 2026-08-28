@@ -21,6 +21,22 @@ import {
     COSMOS_DB_OPERATOR_ROLE_DEFINITION_ID,
 } from '../cosmosdb-shared-constants';
 
+const dataPlaneRbacRetryDelaysMs = [5_000, 10_000, 15_000, 20_000, 30_000, 30_000, 30_000, 40_000];
+
+interface CosmosErrorLike {
+    code?: number | string;
+    statusCode?: number;
+    substatus?: number;
+    headers?: Record<string, unknown>;
+    body?: { message?: string };
+    message?: string;
+}
+
+export interface DataPlaneRbacRetryOptions {
+    token?: vscode.CancellationToken;
+    onRetry?: (attempt: number, totalWaitedMs: number) => void | Promise<void>;
+}
+
 export async function ensureRbacPermissionV2(
     fullId: string,
     subscription: AzureSubscription,
@@ -32,12 +48,14 @@ export async function ensureRbacPermissionV2(
             context.errorHandling.rethrow = false;
 
             const accountName: string = getDatabaseAccountNameFromId(fullId);
+            context.valuesToMask.push(fullId, accountName, principalId, subscription.subscriptionId);
             if (await askForRbacPermissions(accountName, subscription.name, context)) {
                 context.telemetry.properties.lastStep = 'addRbacContributorPermission';
                 const resourceGroup: string = getResourceGroupFromId(fullId);
+                context.valuesToMask.push(resourceGroup);
                 const start: number = Date.now();
                 await addRbacContributorPermission(accountName, principalId, resourceGroup, context, subscription);
-                //send duration of the previous call (in seconds) in addition to the duration of the whole event including user prompt
+                // Send the duration of the ARM call in addition to the duration of the whole event, including the user prompt.
                 context.telemetry.measurements['createRoleAssignment'] = (Date.now() - start) / 1000;
 
                 return true;
@@ -47,10 +65,47 @@ export async function ensureRbacPermissionV2(
     );
 }
 
-export function isRbacException(error: Error): boolean {
+export function isRbacException(error: unknown): boolean {
+    const cosmosError = getCosmosError(error);
+    const statusCode = cosmosError?.statusCode ?? cosmosError?.code;
+    const substatus =
+        cosmosError?.substatus ?? parseNumericHeader(getHeaderValue(cosmosError?.headers, 'x-ms-substatus'));
+
+    if ((statusCode === 403 || statusCode === '403') && substatus === 5301) {
+        return true;
+    }
+
+    const message = getErrorMessage(error);
     return (
-        error instanceof Error && error.message.includes('does not have required RBAC permissions to perform action')
+        message.includes('does not have required RBAC permissions to perform action') ||
+        message.includes('cannot be authorized by AAD token in data plane')
     );
+}
+
+export async function withDataPlaneRbacRetry<T>(
+    operation: () => Promise<T>,
+    options: DataPlaneRbacRetryOptions = {},
+): Promise<T> {
+    let totalWaitedMs = 0;
+
+    for (let attempt = 0; ; attempt++) {
+        try {
+            return await operation();
+        } catch (error) {
+            if (!isRbacException(error) || attempt >= dataPlaneRbacRetryDelaysMs.length) {
+                throw error;
+            }
+
+            const delay = dataPlaneRbacRetryDelaysMs[attempt];
+            totalWaitedMs += delay;
+            await options.onRetry?.(attempt + 1, totalWaitedMs);
+            await waitForRbacRetry(delay, options.token);
+
+            if (options.token?.isCancellationRequested) {
+                throw error;
+            }
+        }
+    }
 }
 
 export async function showRbacPermissionError(accountName: string, principalId?: string): Promise<void> {
@@ -120,16 +175,71 @@ export async function addRbacContributorPermission(
         scope: fullAccountId,
     };
 
-    const roleAssignmentId = globalThis.crypto.randomUUID();
+    const roleAssignmentId = await createDeterministicUuid(
+        `${fullAccountId.toLowerCase()}:${principalId.toLowerCase()}:${defaultRoleId.toLowerCase()}`,
+    );
     const client = await createCosmosDBManagementClient(context, subscription);
-    const create = await client.sqlResources.beginCreateUpdateSqlRoleAssignmentAndWait(
-        roleAssignmentId,
+    const poller = client.sqlResources.createUpdateSqlRoleAssignment(
         resourceGroup,
         databaseAccount,
+        roleAssignmentId,
         createUpdateSqlRoleAssignmentParameters,
     );
+    const create = await poller.pollUntilDone();
 
     return create.id;
+}
+
+function getCosmosError(error: unknown): CosmosErrorLike | undefined {
+    return error !== null && typeof error === 'object' ? error : undefined;
+}
+
+function getErrorMessage(error: unknown): string {
+    const cosmosError = getCosmosError(error);
+    if (!cosmosError) {
+        return String(error);
+    }
+    return [cosmosError?.message, cosmosError?.body?.message]
+        .filter((message): message is string => typeof message === 'string')
+        .join('\n');
+}
+
+function getHeaderValue(headers: Record<string, unknown> | undefined, name: string): unknown {
+    return Object.entries(headers ?? {}).find(([headerName]) => headerName.toLowerCase() === name)?.[1];
+}
+
+function parseNumericHeader(value: unknown): number | undefined {
+    if (typeof value === 'number') {
+        return value;
+    }
+    if (typeof value === 'string' && value.trim() !== '') {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : undefined;
+    }
+    return undefined;
+}
+
+async function waitForRbacRetry(delayMs: number, token?: vscode.CancellationToken): Promise<void> {
+    if (token?.isCancellationRequested) {
+        return;
+    }
+
+    await new Promise<void>((resolve) => {
+        const timeout = setTimeout(resolve, delayMs);
+        token?.onCancellationRequested(() => {
+            clearTimeout(timeout);
+            resolve();
+        });
+    });
+}
+
+async function createDeterministicUuid(value: string): Promise<string> {
+    const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+    const bytes = new Uint8Array(digest, 0, 16);
+    bytes[6] = (bytes[6] & 0x0f) | 0x80;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
 /**

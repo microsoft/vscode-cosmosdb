@@ -388,15 +388,12 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
 
             if (armTarget) {
                 const mgmt = await getMgmtClient();
-                await mgmt.sqlResources.beginCreateUpdateSqlDatabaseAndWait(
-                    armTarget.resourceGroup,
-                    armTarget.accountName,
-                    databaseName,
-                    {
+                await mgmt.sqlResources
+                    .createUpdateSqlDatabase(armTarget.resourceGroup, armTarget.accountName, databaseName, {
                         resource: { id: databaseName },
                         options: {},
-                    },
-                );
+                    })
+                    .pollUntilDone();
             } else {
                 await withDataPlaneRbacRetry(() => client.databases.createIfNotExists({ id: databaseName }), {
                     token,
@@ -437,25 +434,27 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
 
                 if (armTarget) {
                     const mgmt = await getMgmtClient();
-                    await mgmt.sqlResources.beginCreateUpdateSqlContainerAndWait(
-                        armTarget.resourceGroup,
-                        armTarget.accountName,
-                        databaseName,
-                        container.name,
-                        {
-                            resource: {
-                                id: container.name,
-                                partitionKey: toArmPartitionKey(partitionKeyPaths),
-                                indexingPolicy: container.indexingPolicy
-                                    ? toArmIndexingPolicy(container.indexingPolicy)
-                                    : undefined,
+                    await mgmt.sqlResources
+                        .createUpdateSqlContainer(
+                            armTarget.resourceGroup,
+                            armTarget.accountName,
+                            databaseName,
+                            container.name,
+                            {
+                                resource: {
+                                    id: container.name,
+                                    partitionKey: toArmPartitionKey(partitionKeyPaths),
+                                    indexingPolicy: container.indexingPolicy
+                                        ? toArmIndexingPolicy(container.indexingPolicy)
+                                        : undefined,
+                                },
+                                options:
+                                    model.capacityMode === 'provisioned' && container.maxThroughput
+                                        ? { autoscaleSettings: { maxThroughput: container.maxThroughput } }
+                                        : {},
                             },
-                            options:
-                                model.capacityMode === 'provisioned' && container.maxThroughput
-                                    ? { autoscaleSettings: { maxThroughput: container.maxThroughput } }
-                                    : {},
-                        },
-                    );
+                        )
+                        .pollUntilDone();
                 } else {
                     await database.containers.createIfNotExists({
                         id: container.name,
@@ -956,11 +955,9 @@ async function resolveUniqueDatabaseNameViaArm(
         if (!confirmed) {
             return undefined;
         }
-        await mgmtClient.sqlResources.beginDeleteSqlDatabaseAndWait(
-            armTarget.resourceGroup,
-            armTarget.accountName,
-            baseName,
-        );
+        await mgmtClient.sqlResources
+            .deleteSqlDatabase(armTarget.resourceGroup, armTarget.accountName, baseName)
+            .pollUntilDone();
         return baseName;
     }
 
@@ -1192,7 +1189,7 @@ export async function provisionAccount(
                 const cancellationListener = token?.onCancellationRequested(() => abortController.abort());
 
                 const result = await mgmtClient.databaseAccounts
-                    .beginCreateOrUpdateAndWait(
+                    .createOrUpdate(
                         resourceGroup,
                         accountName,
                         {
@@ -1205,6 +1202,7 @@ export async function provisionAccount(
                         },
                         { abortSignal: abortController.signal },
                     )
+                    .pollUntilDone()
                     .finally(() => {
                         cancellationListener?.dispose();
                     });

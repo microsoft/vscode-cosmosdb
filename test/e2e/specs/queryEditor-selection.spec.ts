@@ -22,6 +22,7 @@ import { attachEmulator } from '../fixtures/webviews';
  *  - single click selects exactly one row;
  *  - Ctrl/Cmd+click toggles a row in and out of the selection;
  *  - Shift+click selects a contiguous range from the anchor;
+ *  - Space toggles the focused row and Shift+Arrow changes the selected range;
  *  - the View / Edit / Delete item buttons are disabled with no selection and
  *    enabled once a row is selected;
  *  - double-clicking a row opens that document in a separate Document webview.
@@ -86,6 +87,37 @@ test.describe('queryEditor-selection', { tag: '@queryEditor' }, () => {
 
         await qe.shiftClickRow(3);
         await expect.poll(() => qe.getSelectedRowCount()).toBe(4);
+
+        qe.consoleHealth.assertNoConsoleErrors();
+    });
+
+    test('Space toggles the focused row', async () => {
+        const qe = queryEditor!;
+
+        await qe.selectRow(0);
+        await expect.poll(() => qe.getSelectedRowCount()).toBe(1);
+
+        await qe.window.keyboard.press('Space');
+        await expect.poll(() => qe.getSelectedRowCount()).toBe(0);
+
+        await qe.window.keyboard.press('Space');
+        await expect.poll(() => qe.getSelectedRowCount()).toBe(1);
+
+        qe.consoleHealth.assertNoConsoleErrors();
+    });
+
+    test('Shift+Arrow extends and shrinks selection while moving grid focus', async () => {
+        const qe = queryEditor!;
+
+        await qe.selectRow(0);
+        await qe.window.keyboard.press('Shift+ArrowDown');
+        await expect.poll(() => qe.getSelectedRowCount()).toBe(2);
+
+        await qe.window.keyboard.press('Shift+ArrowDown');
+        await expect.poll(() => qe.getSelectedRowCount()).toBe(3);
+
+        await qe.window.keyboard.press('Shift+ArrowUp');
+        await expect.poll(() => qe.getSelectedRowCount()).toBe(2);
 
         qe.consoleHealth.assertNoConsoleErrors();
     });

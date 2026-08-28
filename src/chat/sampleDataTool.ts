@@ -109,7 +109,7 @@ async function fetchSampleDocuments(
             })
             .fetchAll();
         return {
-            documents: (response.resources ?? []) as NoSQLDocument[],
+            documents: (response.resources ?? []),
             requestCharge: response.requestCharge,
         };
     } finally {
@@ -164,7 +164,7 @@ export async function sampleAndPersistContainerSchema(
     // Structure only — stripped of value-derived statistics (`x-minValue`/`x-maxValue`, string
     // lengths, etc.) so no actual document values reach the model on the persistence-failure fallback
     // path below, where this raw inferred schema is serialized directly instead of the simplified one.
-    result.schema = stripSchemaStatistics(getSchemaFromDocuments(documents)) as Record<string, unknown>;
+    result.schema = stripSchemaStatistics(getSchemaFromDocuments(documents));
 
     // Always persist the sampled schema into the schema analyzer (`SchemaService`) — even when the
     // "generate schema based on queries" setting is off — so later query generation can read it back
@@ -180,7 +180,7 @@ export async function sampleAndPersistContainerSchema(
         });
         const simplified = await SchemaService.getInstance().getSimplifiedSchema(connection);
         if (simplified) {
-            result.schema = simplified.schema as Record<string, unknown>;
+            result.schema = simplified.schema;
         }
     } catch (saveError) {
         ext.outputChannel.warn(

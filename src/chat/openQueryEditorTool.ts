@@ -7,8 +7,8 @@ import { parseError } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
-import { QueryEditorTab } from '../panels/QueryEditorTab';
-import { getActiveQueryEditor, getConnectionFromQueryTab } from './chatUtils';
+import { type QueryEditorTab } from '../panels/QueryEditorTab';
+import { getConnectionFromQueryTab } from './chatUtils';
 import { revealConnectionInTree } from './revealConnection';
 
 /**
@@ -24,27 +24,19 @@ export const OPEN_QUERY_EDITOR_TOOL_NAME = 'cosmosdb_openQueryEditor';
 export const OPEN_QUERY_EDITOR_TOOL_DESCRIPTION =
     'Opens a Cosmos DB NoSQL Query Editor by starting the connection flow: prompts the user to pick a Cosmos DB ' +
     'container, then opens a Query Editor connected to it. After opening, it also reveals the connected container in ' +
-    'the Azure Resources tree (Azure-signed-in accounts only). Use this when there is no active Query Editor / ' +
-    'connection yet and the user wants to write, run, or explain a query. The other Query Editor tools ' +
-    '(cosmosdb_getQueryEditorContext, cosmosdb_applyQueryToEditor, cosmosdb_executeCurrentQuery) require an active ' +
-    'editor, so call this first when none is open. The picker is interactive; the user may cancel it.';
+    'the Azure Resources tree (Azure-signed-in accounts only). This is the entry point for ALL Query Editor work: ' +
+    'whenever the user wants to write, run, explain, sample, or explore Cosmos DB data and no Query Editor is open ' +
+    'yet, call this tool yourself FIRST to open one — do NOT ask the user to open or connect a Query Editor manually, ' +
+    'and do NOT emit a query as text for the user to run. The other Query Editor tools ' +
+    '(cosmosdb_getQueryEditorContext, cosmosdb_applyQueryToEditor, cosmosdb_executeCurrentQuery, ' +
+    'cosmosdb_sampleContainerSchema) require an open editor; if any of them reports that no editor is open, call this ' +
+    'tool to open one and then retry that tool. The picker is interactive; the user may cancel it.';
 
 /**
  * Command that opens the NoSQL Query Editor. When invoked with no arguments it starts the
  * connection flow (a container picker), so it doubles as "open a new connection".
  */
 const OPEN_QUERY_EDITOR_COMMAND = 'cosmosDB.openNoSqlQueryEditor';
-
-/**
- * Gets the active query editor tab, if available.
- */
-function getActiveTab(): QueryEditorTab | undefined {
-    const tabs = Array.from(QueryEditorTab.openTabs);
-    if (tabs.length === 0) {
-        return undefined;
-    }
-    return getActiveQueryEditor(tabs);
-}
 
 /**
  * Registers the cosmosdb_openQueryEditor tool with the VS Code Language Model API.
@@ -72,10 +64,10 @@ export function registerOpenQueryEditorTool(context: vscode.ExtensionContext): v
 
             try {
                 // Executing the command with no arguments starts the connection flow: the user is
-                // prompted to pick a container and a Query Editor is opened connected to it.
-                await vscode.commands.executeCommand(OPEN_QUERY_EDITOR_COMMAND);
-
-                const tab = getActiveTab();
+                // prompted to pick a container and a Query Editor is opened connected to it. The
+                // command resolves with the tab it actually opened, or undefined when the flow was
+                // cancelled, so we never mistake a pre-existing editor for a newly opened one.
+                const tab = await vscode.commands.executeCommand<QueryEditorTab | undefined>(OPEN_QUERY_EDITOR_COMMAND);
                 const connection = tab ? getConnectionFromQueryTab(tab) : undefined;
                 if (!connection) {
                     // The user most likely cancelled the container picker, so no editor was opened.

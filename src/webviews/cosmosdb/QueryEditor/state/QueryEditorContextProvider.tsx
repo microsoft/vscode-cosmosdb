@@ -97,9 +97,14 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
      * Runs `query` in the editor on behalf of the `cosmosdb_executeCurrentQuery` tool. Mirrors the normal
      * run flow so results render in the grid, then signals the extension (`reportActiveQueryExecuted`)
      * so the awaiting tool can read PII-free result metadata. Awaits execution so the signal fires
-     * only after the result is available.
+     * only after the result is available. `requestId` correlates this run with the exact invocation that
+     * requested it, so concurrent tool calls never resolve against each other's results.
      */
-    private async runActiveQueryFromTool(query: string): Promise<void> {
+    private async runActiveQueryFromTool(
+        query: string,
+        requestId: string,
+        connection: { endpoint: string; databaseId: string; containerId: string },
+    ): Promise<void> {
         // The executionId of the run we actually start. It stays undefined when the run is cancelled
         // or never starts (e.g. prepareQuery is cancelled, or createQuerySession fails), so the
         // awaiting tool can tell "ran" from "did not run" and never reads stale results from a
@@ -110,22 +115,24 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
             if (!prepared?.cleanQuery) return;
             const cleanQuery = prepared.cleanQuery;
 
-            const historyResult = await this.safeMutate(() =>
-                this.trpcClient.queryEditor.updateQueryHistory.mutate({ query: cleanQuery }),
-            );
-            if (historyResult?.queryHistory) {
-                this.dispatch({ type: 'updateHistory', queryHistory: historyResult.queryHistory });
-            }
-
             const session = await this.safeMutate(() =>
                 this.trpcClient.queryEditor.createQuerySession.mutate({
                     query: cleanQuery,
                     options: { ...DEFAULT_RESULT_VIEW_METADATA },
+                    expectedConnection: connection,
+                    preserveExistingSessions: true,
                 }),
             );
             if (!session?.executionId) return;
-            executedId = session.executionId;
+            const shouldExecute = await this.safeMutate(() =>
+                this.trpcClient.queryEditor.reportActiveQueryStarted.mutate({
+                    executionId: session.executionId,
+                    requestId,
+                }),
+            );
+            if (!shouldExecute) return;
 
+            executedId = session.executionId;
             this.dispatch({
                 type: 'executionStarted',
                 executionId: session.executionId,
@@ -144,7 +151,7 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
             // Signal completion to the tool, passing the executionId only when a run was actually
             // started so the tool reads results for exactly this run (or none).
             void this.safeMutate(() =>
-                this.trpcClient.queryEditor.reportActiveQueryExecuted.mutate({ executionId: executedId }),
+                this.trpcClient.queryEditor.reportActiveQueryExecuted.mutate({ executionId: executedId, requestId }),
             );
         }
     }
@@ -472,7 +479,7 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
                 void this.refreshThroughputBuckets();
                 break;
             case 'runActiveQueryRequested':
-                void this.runActiveQueryFromTool(event.query);
+                void this.runActiveQueryFromTool(event.query, event.requestId, event.connection);
                 break;
         }
     }

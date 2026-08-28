@@ -276,7 +276,7 @@ export class QuerySession {
             // Record query execution to in-memory history for AI context
             if (serializedResult) {
                 CosmosDbOperationsService.getInstance().recordQueryExecution(
-                    this.connection?.azureMetadata?.accountId,
+                    this.endpoint,
                     this.databaseId,
                     this.containerId,
                     serializedResult,

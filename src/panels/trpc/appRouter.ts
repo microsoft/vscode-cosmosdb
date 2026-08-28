@@ -93,11 +93,20 @@ export type QueryEditorMutableState = {
      */
     lastGeneratePrompt?: string;
     /**
-     * Resolver for the promise the `cosmosdb_executeCurrentQuery` tool awaits while the webview runs the
-     * active query. The `reportActiveQueryExecuted` procedure calls it once execution finishes, passing
-     * the executionId that actually ran (or `undefined` when the run was cancelled or never started).
+     * Resolvers for the promises the `cosmosdb_executeCurrentQuery` tool awaits while the webview runs an
+     * active query, keyed by the `requestId` of each run. The `reportActiveQueryExecuted` procedure looks
+     * up the resolver for its `requestId` and calls it once that execution finishes, passing the
+     * executionId that actually ran (or `undefined` when the run was cancelled or never started). Keying
+     * by `requestId` keeps concurrent invocations isolated so a completing run only ever resolves its own
+     * caller and can never hand its executionId to a different, still-pending invocation.
      */
-    pendingRunResolve?: (executionId?: string) => void;
+    pendingRuns: Map<
+        string,
+        {
+            resolve(executionId?: string): void;
+            executionId?: string;
+        }
+    >;
 };
 
 export type QueryEditorRouterContext = CosmosDBRouterContext & {

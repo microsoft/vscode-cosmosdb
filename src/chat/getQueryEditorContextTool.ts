@@ -12,7 +12,10 @@ import { QueryEditorTab } from '../panels/QueryEditorTab';
 import { SchemaService } from '../services/SchemaService';
 import { stripSchemaStatistics } from '../services/schemaStatistics';
 import { getActiveQueryEditor, getConnectionFromQueryTab } from './chatUtils';
+import { createContainerSampleContext } from './containerSampleContext';
 import { CosmosDbOperationsService } from './CosmosDbOperationsService';
+import { createQueryApplyContext } from './queryApplyContext';
+import { createQueryExecutionContext } from './queryExecutionContext';
 
 /**
  * Tool name constant for the query-editor context tool.
@@ -31,8 +34,11 @@ export const GET_QUERY_EDITOR_CONTEXT_TOOL_DESCRIPTION =
     'account (azure: accountName, subscriptionId, subscriptionName, resourceGroup — present only for Azure-signed-in ' +
     'accounts, omitted for workspace-attached accounts and the emulator), the persisted container schema (if one has ' +
     'already been sampled or inferred), recent query history, and result metadata (row counts, request charge, inferred ' +
-    'result schema). Never returns raw document data. Use this to ground query generation or explanation; if it returns ' +
-    'a containerSchema, you already know the schema and do not need to sample again.';
+    'result schema), a one-use queryContextId for cosmosdb_executeCurrentQuery when activeQuery is present, a one-use ' +
+    'sampleContextId for cosmosdb_sampleContainerSchema, and a one-use applyContextId for ' +
+    'cosmosdb_applyQueryToEditor. Preserve applyContextId while sampling, then pass it when applying the generated query. Never ' +
+    'returns raw document data. Use this to ground query generation or explanation; if it returns a containerSchema, ' +
+    'you already know the schema and do not need to sample again.';
 
 /**
  * Result metadata for a single query result. Structure and counts only — no raw document data.
@@ -52,6 +58,12 @@ interface QueryResultMetadata {
 interface QueryEditorContext {
     databaseId: string;
     containerId: string;
+    /** Opaque handle that pins activeQuery to this exact editor and connection for one execution. */
+    queryContextId?: string;
+    /** Opaque handle that pins this exact editor and container for one schema-sampling call. */
+    sampleContextId?: string;
+    /** Opaque handle that pins this exact editor and container for one query-application call. */
+    applyContextId: string;
     /**
      * Azure resource coordinates for the connected account. Present only for Azure-signed-in
      * accounts; omitted for workspace-attached accounts and the local emulator.
@@ -181,7 +193,15 @@ export function registerGetQueryEditorContextTool(context: vscode.ExtensionConte
                             currentQuery,
                             selectedQuery,
                             activeQuery,
+                            applyContextId: createQueryApplyContext(tab, connection),
                         };
+                        // Pin this exact editor + container so a later cosmosdb_sampleContainerSchema call
+                        // samples the confirmed container, even if the user switches tabs meanwhile. Always
+                        // present (unlike queryContextId) since sampling needs no query text.
+                        context.sampleContextId = createContainerSampleContext(tab, connection);
+                        if (activeQuery?.trim()) {
+                            context.queryContextId = createQueryExecutionContext(tab, connection, activeQuery);
+                        }
 
                         // Azure resource coordinates, when the connection is an Azure-signed-in account
                         // (undefined for workspace-attached accounts and the local emulator).

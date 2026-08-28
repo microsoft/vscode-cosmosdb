@@ -8,13 +8,22 @@
 import * as vscode from 'vscode';
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { findConfidentialStatKeys } from '../services/schemaStatisticsTestUtils';
-import { sampleAndPersistContainerSchema } from './sampleDataTool';
+import { createContainerSampleContext } from './containerSampleContext';
+import { captureRegisteredTool, serializeToolResult } from './queryEditorToolTestUtils';
+import { registerSampleDataTool, sampleAndPersistContainerSchema } from './sampleDataTool';
 
 // `sampleAndPersistContainerSchema` exercises the real `getSchemaFromDocuments` /
 // `stripSchemaStatistics` helpers. Mock only the heavy siblings (Cosmos client, schema analyzer
 // service) so the confidentiality boundary can be asserted deterministically.
 vi.mock('@microsoft/vscode-azext-utils', () => ({
-    callWithTelemetryAndErrorHandling: vi.fn(),
+    callWithTelemetryAndErrorHandling: vi.fn(async (_event: string, callback: (ctx: unknown) => unknown) => {
+        const ctx = {
+            telemetry: { properties: {} as Record<string, string>, measurements: {} as Record<string, number> },
+            errorHandling: { suppressDisplay: false },
+            valuesToMask: [] as string[],
+        };
+        return callback(ctx);
+    }),
     parseError: (error: unknown) => ({ message: error instanceof Error ? error.message : String(error) }),
 }));
 
@@ -45,12 +54,13 @@ vi.mock('../services/SchemaService', () => ({
 }));
 
 const fetchAll = vi.fn();
+const querySpy = vi.fn((_query?: string, _options?: { abortSignal?: AbortSignal }) => ({ fetchAll }));
 
 vi.mock('../cosmosdb/getCosmosClient', () => ({
     getCosmosClient: () => ({
         database: () => ({
             container: () => ({
-                items: { query: () => ({ fetchAll }) },
+                items: { query: querySpy },
             }),
         }),
     }),
@@ -98,5 +108,132 @@ describe('sampleAndPersistContainerSchema — confidentiality boundary', () => {
         expect(getSimplifiedSchema).toHaveBeenCalledOnce();
         expect(findConfidentialStatKeys(result.schema)).toEqual([]);
         expect(JSON.stringify(result)).not.toContain('987654');
+    });
+
+    it('passes an abort signal to the Cosmos query and aborts when the token is already cancelled', async () => {
+        const cts = new vscode.CancellationTokenSource();
+        cts.cancel();
+
+        await sampleAndPersistContainerSchema(connection, cts.token);
+        cts.dispose();
+
+        const options = querySpy.mock.calls[0]?.[1];
+        expect(options?.abortSignal).toBeInstanceOf(AbortSignal);
+        expect(options?.abortSignal?.aborted).toBe(true);
+    });
+});
+
+/**
+ * A minimal QueryEditorTab stub whose id/connection are fixed, used to exercise the sample tool's
+ * context pinning (confirm one container, sample exactly that one even after a tab switch).
+ */
+function makeTab(id: string, tabConnection: unknown) {
+    return {
+        getId: () => id,
+        reveal: vi.fn(),
+        connection: tabConnection,
+    };
+}
+
+function setOpenTabs(queryEditorTab: { openTabs: Set<unknown> }, tabs: unknown[]): void {
+    queryEditorTab.openTabs.clear();
+    for (const tab of tabs) {
+        queryEditorTab.openTabs.add(tab);
+    }
+}
+
+const noopToken = { isCancellationRequested: false, onCancellationRequested: () => ({ dispose() {} }) } as never;
+
+describe('cosmosdb_sampleContainerSchema — sample context (pinning)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        fetchAll.mockResolvedValue({ resources: sampleDocuments, requestCharge: 1.23 });
+        mergeDocumentsIntoSchema.mockResolvedValue(undefined);
+        getSimplifiedSchema.mockResolvedValue(undefined);
+        vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({ get: () => false } as never);
+    });
+
+    it('samples the confirmed container and reveals its tab, not the now-active tab', async () => {
+        const { getConnectionFromQueryTab } = await import('./chatUtils');
+        const { QueryEditorTab } = await import('../panels/QueryEditorTab');
+
+        const connA = { endpoint: 'https://a.documents.azure.com/', databaseId: 'dbA', containerId: 'cA' };
+        const connB = { endpoint: 'https://b.documents.azure.com/', databaseId: 'dbB', containerId: 'cB' };
+        const tabA = makeTab('A', connA);
+        const tabB = makeTab('B', connB);
+        setOpenTabs(QueryEditorTab as unknown as { openTabs: Set<unknown> }, [tabA, tabB]);
+        vi.mocked(getConnectionFromQueryTab).mockImplementation(
+            ((tab: unknown) => (tab as typeof tabA).connection) as never,
+        );
+
+        const sampleContextId = createContainerSampleContext(tabA as never, connA as never);
+        const tool = captureRegisteredTool(registerSampleDataTool);
+        const result = await tool.invoke({ input: { sampleContextId } }, noopToken);
+        const payload = JSON.parse(serializeToolResult(result));
+
+        expect(tabA.reveal).toHaveBeenCalledOnce();
+        expect(tabB.reveal).not.toHaveBeenCalled();
+        expect(payload.databaseId).toBe('dbA');
+        expect(payload.containerId).toBe('cA');
+    });
+
+    it('does not sample when the connection drifted after confirmation', async () => {
+        const { getConnectionFromQueryTab } = await import('./chatUtils');
+        const { QueryEditorTab } = await import('../panels/QueryEditorTab');
+
+        const confirmed = { endpoint: 'https://a.documents.azure.com/', databaseId: 'dbA', containerId: 'cA' };
+        const drifted = { endpoint: 'https://a.documents.azure.com/', databaseId: 'dbA', containerId: 'cOTHER' };
+        const tabA = makeTab('A', drifted);
+        setOpenTabs(QueryEditorTab as unknown as { openTabs: Set<unknown> }, [tabA]);
+        vi.mocked(getConnectionFromQueryTab).mockReturnValue(drifted as never);
+
+        const sampleContextId = createContainerSampleContext(tabA as never, confirmed as never);
+        const tool = captureRegisteredTool(registerSampleDataTool);
+        const result = await tool.invoke({ input: { sampleContextId } }, noopToken);
+
+        expect(serializeToolResult(result)).toContain('changed after you confirmed');
+        expect(tabA.reveal).not.toHaveBeenCalled();
+        expect(fetchAll).not.toHaveBeenCalled();
+    });
+
+    it('rejects an invalid or already-consumed sample context', async () => {
+        const { getConnectionFromQueryTab } = await import('./chatUtils');
+        const { QueryEditorTab } = await import('../panels/QueryEditorTab');
+
+        const connA = { endpoint: 'https://a.documents.azure.com/', databaseId: 'dbA', containerId: 'cA' };
+        const tabA = makeTab('A', connA);
+        setOpenTabs(QueryEditorTab as unknown as { openTabs: Set<unknown> }, [tabA]);
+        vi.mocked(getConnectionFromQueryTab).mockReturnValue(connA as never);
+
+        const sampleContextId = createContainerSampleContext(tabA as never, connA as never);
+        const tool = captureRegisteredTool(registerSampleDataTool);
+
+        await tool.invoke({ input: { sampleContextId } }, noopToken);
+        const replay = await tool.invoke({ input: { sampleContextId } }, noopToken);
+
+        expect(fetchAll).toHaveBeenCalledTimes(1);
+        expect(serializeToolResult(replay)).toContain('no longer available');
+    });
+
+    it('does not sample when the invocation is already cancelled', async () => {
+        const { getConnectionFromQueryTab } = await import('./chatUtils');
+        const { QueryEditorTab } = await import('../panels/QueryEditorTab');
+
+        const connA = { endpoint: 'https://a.documents.azure.com/', databaseId: 'dbA', containerId: 'cA' };
+        const tabA = makeTab('A', connA);
+        setOpenTabs(QueryEditorTab as unknown as { openTabs: Set<unknown> }, [tabA]);
+        vi.mocked(getConnectionFromQueryTab).mockReturnValue(connA as never);
+
+        const sampleContextId = createContainerSampleContext(tabA as never, connA as never);
+        const tool = captureRegisteredTool(registerSampleDataTool);
+        const cts = new vscode.CancellationTokenSource();
+        cts.cancel();
+
+        const result = await tool.invoke({ input: { sampleContextId } }, cts.token);
+        cts.dispose();
+
+        expect(serializeToolResult(result)).toBe('Operation cancelled.');
+        expect(tabA.reveal).not.toHaveBeenCalled();
+        expect(fetchAll).not.toHaveBeenCalled();
     });
 });

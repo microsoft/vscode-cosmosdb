@@ -139,13 +139,33 @@ describe('CosmosDbOperationsService', () => {
             expect(history!.executions[1].query).toBe(QUERY_SELECT_NAME);
         });
 
-        it('should use undefined accountId gracefully', () => {
-            service.recordQueryExecution(undefined, 'db1', 'c1', makeResult({ query: QUERY_SELECT_ALL }));
+        it('should scope history by account endpoint so identical db/container names do not collide', () => {
+            // Two different endpoints (e.g. a workspace connection and the emulator) that share the
+            // same database and container names must not share query history.
+            service.recordQueryExecution(
+                'https://workspace.example.com:443/',
+                'db1',
+                'c1',
+                makeResult({ query: QUERY_SELECT_ALL }),
+            );
+            service.recordQueryExecution(
+                'https://localhost:8081/',
+                'db1',
+                'c1',
+                makeResult({ query: QUERY_SELECT_NAME }),
+            );
 
-            const history = service.getQueryHistoryForContainer(undefined, 'db1', 'c1');
+            const workspaceHistory = service.getQueryHistoryForContainer(
+                'https://workspace.example.com:443/',
+                'db1',
+                'c1',
+            );
+            const emulatorHistory = service.getQueryHistoryForContainer('https://localhost:8081/', 'db1', 'c1');
 
-            expect(history).toBeDefined();
-            expect(history!.executions).toHaveLength(1);
+            expect(workspaceHistory!.executions).toHaveLength(1);
+            expect(workspaceHistory!.executions[0].query).toBe(QUERY_SELECT_ALL);
+            expect(emulatorHistory!.executions).toHaveLength(1);
+            expect(emulatorHistory!.executions[0].query).toBe(QUERY_SELECT_NAME);
         });
     });
 
@@ -197,12 +217,13 @@ describe('CosmosDbOperationsService', () => {
             const mockConnection = {
                 databaseId: 'db1',
                 containerId: 'c1',
+                endpoint: 'https://acc1.documents.azure.com:443/',
                 azureMetadata: { accountId: 'acc1' },
             };
             getConnectionFromQueryTab.mockReturnValue(mockConnection as any);
 
             service.recordQueryExecution(
-                'acc1',
+                'https://acc1.documents.azure.com:443/',
                 'db1',
                 'c1',
                 makeResult({ query: QUERY_SELECT_ALL, documents: [{ id: '1' }] }),
@@ -232,6 +253,7 @@ describe('CosmosDbOperationsService', () => {
             const mockConnection = {
                 databaseId: 'db1',
                 containerId: 'c1',
+                endpoint: 'https://acc1.documents.azure.com:443/',
                 azureMetadata: { accountId: 'acc1' },
             };
             getConnectionFromQueryTab.mockReturnValue(mockConnection as any);

@@ -1,3 +1,23 @@
+# =============================================================================
+# Release pipeline for npm packages — publishes a selected workspace package
+# to npmjs.org via OUR OWN ESRP Release registration (not the shared Azure
+# Tools / vscode-azuretools template — we run our own AME identity end to end
+# so the team can operate this pipeline independently).
+#
+# Prerequisites (see plan.md / project ESRP onboarding notes for full detail):
+#   1. ESRP Release registration approved in aka.ms/esrpportal for App
+#      Registration/Managed Identity Client Id below (domain: AME).
+#   2. ARM service connection in this ADO project using Workload Identity
+#      Federation, backed by the SAME AME identity as (1). The identity must
+#      also have "Key Vault Certificate User" on EsrpKeyVaultName.
+#   3. ESRP Request Signing (TSS) certificate generated in that Key Vault via
+#      OneCertV2-PublicCA, subject CN=<the AAD App Id below>.
+#
+# TODO: replace 'TODO-SET-SERVICE-CONNECTION-NAME' below once the ARM service
+# connection has been created (blocked as of this writing on Endpoint Creator
+# permissions in this ADO project — see esrp-07 in the onboarding tracker).
+# =============================================================================
+
 trigger: none # Only run this pipeline when manually triggered
 pr: none
 
@@ -12,13 +32,33 @@ parameters:
     values:
       - azure-cosmosdb-schema-analyzer
       - azure-cosmosdb-nosql-language-service
+
   - name: publishVersion
-    displayName: Version to publish
+    displayName: Expected package version (must match package.json)
     type: string
-  - name: dryRun
-    displayName: Dry run
-    type: boolean
-    default: false
+
+  # Run mode controls how far the pipeline goes. Default is the safest option.
+  #   validate-only  : Validate the artifact only. Skips ESRP entirely. No risk of publishing.
+  #   test-esrp-auth : Smoke-test the full ESRP auth path (service connection -> managed
+  #                    identity -> Key Vault -> signing cert -> ESRP) by submitting with
+  #                    contenttype='Maven' instead of 'npm'. ESRP authenticates and accepts
+  #                    the request, then fails at the final content-validation step because
+  #                    the payload is not a Maven artifact. NOTHING IS PUBLISHED.
+  #
+  #                    NOTE: a failed run in this mode does NOT, by itself, prove the auth
+  #                    path worked — it could also fail on bad service connection, Key Vault
+  #                    permissions, cert names, tenant, or client id. After running, inspect
+  #                    the ESRP task logs (and aka.ms/releaseui if an operation id was issued)
+  #                    to confirm the failure was the expected content-type rejection.
+  #   publish        : REAL release. Publishes the .tgz to npmjs.org via ESRP.
+  - name: mode
+    displayName: Run mode
+    type: string
+    default: "validate-only (Validate the artifact only. Skips ESRP entirely. No risk of publishing.)"
+    values:
+      - "validate-only (Validate the artifact only. Skips ESRP entirely. No risk of publishing.)"
+      - "test-esrp-auth (Submits an invalid job, Maven instead of npm, that ESRP rejects; the job fails; nothing is published.)"
+      - "publish (The REAL release. Publishes the package to npmjs.org via ESRP.)"
 
 resources:
   pipelines:
@@ -27,27 +67,138 @@ resources:
       # (packages-build.yml, suggested name \Azure Tools\VSCode\Packages\vscode-cosmosdb).
       source: \Azure Tools\VSCode\Packages\vscode-cosmosdb # pipeline that produces the .tgz artifacts
   repositories:
-    - repository: azExtTemplates
-      type: github
-      name: microsoft/vscode-azuretools
-      ref: main
-      endpoint: GitHub-AzureTools # service connection used to access the templates repo
+    - repository: 1esPipelines
+      type: git
+      name: 1ESPipelineTemplates/MicroBuildTemplate
+      ref: refs/tags/release
 
 variables:
-  # Required by MicroBuild template
-  - name: TeamName
-    value: "Azure Tools for VS Code"
+  TeamName: "Azure Tools for VS Code"
 
-# Reuse the shared 1ES npm release template (same repo we already use for the extension release).
+  # ESRP wiring — our own registration (AME), not shared with any other team.
+  # None of these are secrets: Key Vault name and cert name are resource
+  # identifiers; the client id is a public Entra identifier. The federated
+  # credential configured on the identity in Azure is what actually authenticates.
+  EsrpKeyVaultName: "vscode-cosmosdb-ext-akv"
+  EsrpSignCertName: "RequestSigningCert"
+  # Must be the App Registration / Managed Identity Client Id that is
+  # REGISTERED AND APPROVED with ESRP as the publisher (ESRP Portal ->
+  # Onboarding -> Release = Approved). This must be the SAME identity that
+  # backs the ARM service connection referenced below.
+  EsrpClientId: "fa2b5892-9caa-4f07-b1be-58692353e233"
+  # NOTE: this is NOT our own AME tenant id. It is the tenant of the shared
+  # "ESRPRELPACMAN" OSS publisher (mainpublisher below), which lives in PME.
+  # ESRP OSS docs (npm/PyPI/Maven/Crates/MCP/WinGet) all use this PME tenant
+  # for that shared publisher; ErrorCode 2252 ("Tenant does not have access
+  # to the given Main Publisher") is what you get if you put your own tenant
+  # here instead. Confirmed against vscode-documentdb's working pipeline.
+  EsrpDomainTenantId: "975f013f-7f24-47e8-a7d3-abc4752bf346"
+  # ARM service connection (Workload Identity Federation) backed by the same
+  # identity as EsrpClientId. TODO: set once created (see esrp-07).
+  EsrpConnectedServiceName: "TODO-SET-SERVICE-CONNECTION-NAME"
+
+  # ESRP release notification / approval contacts. Comma-separated list of
+  # individual Microsoft aliases — the EsrpRelease task splits on ',', and a
+  # ';' is treated as part of a single address and rejected. Distribution
+  # lists and security groups are not supported. List at least two people so
+  # releases are not tied to a single person.
+  EsrpReleaseOwners: "dshilov@microsoft.com,jawelton@microsoft.com"
+  EsrpReleaseApprovers: "dshilov@microsoft.com,jawelton@microsoft.com"
+
 extends:
-  template: azure-pipelines/1es-release-npm.yml@azExtTemplates
+  template: azure-pipelines/MicroBuild.1ES.Official.yml@1esPipelines
   parameters:
-    packageToPublish: ${{ parameters.packageToPublish }}
-    # The build publishes each package's .tgz as artifact "Build <packageToPublish>".
-    artifactName: Build ${{ parameters.packageToPublish }}
-    publishVersion: ${{ parameters.publishVersion }}
-    dryRun: ${{ parameters.dryRun }}
-    # ESRP release gate (four-eyes). alias@microsoft.com is appended by the template.
-    # Proposed: Owner = you (dshilov), Approver = Jade Welton (eng lead). Adjust if needed.
-    OwnerAlias: dshilov
-    ApproverAlias: jawelton
+    pool:
+      name: AzurePipelines-EO
+      image: 1ESPT-Ubuntu22.04
+      os: linux
+
+    stages:
+      - stage: Release
+        displayName: ${{ format('Release npm package ({0})', parameters.mode) }}
+        variables:
+          - name: ob_release_environment
+            # Only use the Production environment (and its stricter approval gate)
+            # for an actual publish. Validation and smoke-test runs use Test.
+            ${{ if startsWith(parameters.mode, 'publish') }}:
+              value: Production
+            ${{ else }}:
+              value: Test
+        jobs:
+          - job: ReleaseValidation
+            displayName: "Validate Artifacts"
+            templateContext:
+              inputs:
+                - input: pipelineArtifact
+                  pipeline: build
+                  targetPath: $(System.DefaultWorkingDirectory)
+                  artifactName: Build ${{ parameters.packageToPublish }}
+            pool:
+              type: release
+            variables:
+              ob_outputDirectory: "$(Build.ArtifactStagingDirectory)"
+            steps:
+              - task: PowerShell@2
+                displayName: "Show source build metadata"
+                inputs:
+                  targetType: "inline"
+                  script: |
+                    Write-Output "Releasing from build pipeline run:"
+                    Write-Output "  Pipeline : $(resources.pipeline.build.pipelineName)"
+                    Write-Output "  Run id   : $(resources.pipeline.build.runID)"
+
+              - task: PowerShell@2
+                displayName: "Verify package.json version matches publishVersion"
+                inputs:
+                  targetType: "inline"
+                  script: |
+                    $pkgJson = Get-Content "$(System.DefaultWorkingDirectory)/package.json" -Raw | ConvertFrom-Json
+                    if ($pkgJson.version -ne "${{ parameters.publishVersion }}") {
+                      Write-Error "package.json version ($($pkgJson.version)) does not match requested publishVersion (${{ parameters.publishVersion }})"
+                      exit 1
+                    }
+                    Write-Output "Version check passed: $($pkgJson.version)"
+
+              - script: |
+                  cd "$(System.DefaultWorkingDirectory)"
+                  ls -la *.tgz
+                displayName: "Inspect .tgz contents"
+
+              # Only actually run ESRP for test-esrp-auth / publish modes; validate-only
+              # stops before this step (condition evaluated at compile time from the
+              # pipeline parameter, so a validate-only run never invokes ESRP at all).
+              - task: EsrpRelease@11
+                displayName: ${{ format('ESRP Release ({0})', parameters.mode) }}
+                condition: ${{ ne(parameters.mode, 'validate-only (Validate the artifact only. Skips ESRP entirely. No risk of publishing.)') }}
+                inputs:
+                  connectedservicename: "$(EsrpConnectedServiceName)"
+                  clientid: "$(EsrpClientId)"
+                  domaintenantid: "$(EsrpDomainTenantId)"
+                  keyvaultname: "$(EsrpKeyVaultName)"
+                  signcertname: "$(EsrpSignCertName)"
+                  usemanagedidentity: true
+                  intent: "PackageDistribution"
+                  # test-esrp-auth deliberately submits an invalid content type so ESRP
+                  # authenticates and accepts the request, then rejects it at content
+                  # validation — proves the auth path works without publishing anything.
+                  ${{ if eq(parameters.mode, 'test-esrp-auth (Submits an invalid job, Maven instead of npm, that ESRP rejects; the job fails; nothing is published.)') }}:
+                    contenttype: Maven
+                  ${{ else }}:
+                    contenttype: npm
+                  contentsource: "Folder"
+                  folderlocation: "$(System.DefaultWorkingDirectory)"
+                  waitforreleasecompletion: true
+                  owners: "$(EsrpReleaseOwners)"
+                  approvers: "$(EsrpReleaseApprovers)"
+                  mainpublisher: "ESRPRELPACMAN"
+                  serviceendpointurl: "https://api.esrp.microsoft.com"
+
+              - task: PowerShell@2
+                displayName: "Publish outcome summary"
+                condition: always()
+                inputs:
+                  targetType: "inline"
+                  script: |
+                    Write-Output "Mode: ${{ parameters.mode }}"
+                    Write-Output "Package: ${{ parameters.packageToPublish }}"
+                    Write-Output "Version: ${{ parameters.publishVersion }}"

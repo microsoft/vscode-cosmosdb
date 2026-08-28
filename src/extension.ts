@@ -95,12 +95,12 @@ export async function activateInternal(
         activateContext.telemetry.measurements.startTime = startTime;
         activateContext.telemetry.properties.migrationFeatureEnabled = String(isMigrationFeatureEnabled());
 
-        // eslint-disable-next-line no-restricted-syntax
+        // oxlint-disable-next-line cosmosdb/no-vscode-l10n
         if (vscode.l10n.uri) {
             const l10nStartTime = performance.now();
 
             l10n.config({
-                // eslint-disable-next-line no-restricted-syntax
+                // oxlint-disable-next-line cosmosdb/no-vscode-l10n
                 contents: vscode.l10n.bundle ?? {},
             });
 

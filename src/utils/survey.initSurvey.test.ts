@@ -8,9 +8,9 @@ import crypto from 'crypto';
 // Create a hoisted mutable mock for ext.context so each beforeEach can swap globalState
 // without hitting the write-once setter on the real ExtensionService.
 const mockContext = vi.hoisted(() => ({
-    globalState: { get: vi.fn(), update: vi.fn() } as {
-        get: ReturnType<typeof vi.fn>;
-        update: ReturnType<typeof vi.fn>;
+    globalState: {
+        get: vi.fn<(key: string) => unknown>(),
+        update: vi.fn<(key: string, value: unknown) => PromiseLike<void>>(),
     },
     extension: { packageJSON: { version: '1.1.1' } },
 }));
@@ -39,7 +39,7 @@ vi.mock('vscode', () => ({
 import { env, workspace } from 'vscode';
 import { getIsSurveyCandidate, getSurveyConfig, getSurveyState, getSurveyStateKeys } from './survey';
 
-let globalState: { get: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
+let globalState: typeof mockContext.globalState;
 // Using type assertion here to tell TypeScript that we're confident getSurveyConfig() will not return undefined
 // in the test environment.
 const SurveyConfig = getSurveyConfig() as NonNullable<ReturnType<typeof getSurveyConfig>>;
@@ -90,8 +90,8 @@ beforeAll(() => {
 describe('Survey Initialization', () => {
     beforeEach(() => {
         globalState = {
-            get: vi.fn(),
-            update: vi.fn(),
+            get: vi.fn<(key: string) => unknown>(),
+            update: vi.fn<(key: string, value: unknown) => PromiseLike<void>>(),
         };
         // Update the mocked ext.context so survey.ts sees the fresh globalState
         mockContext.globalState = globalState;
@@ -414,8 +414,8 @@ describe('Survey Initialization', () => {
         // For these tests we want to force the AB test branch. In order to do that,
         beforeEach(() => {
             globalState = {
-                get: vi.fn(),
-                update: vi.fn(),
+                get: vi.fn<(key: string) => unknown>(),
+                update: vi.fn<(key: string, value: unknown) => PromiseLike<void>>(),
             };
             // Update the mocked ext.context so survey.ts sees the fresh globalState
             mockContext.globalState = globalState;

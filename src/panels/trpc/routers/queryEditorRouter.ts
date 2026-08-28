@@ -397,7 +397,7 @@ export const queryEditorRouterDef = queryEditorRouter({
 
     getConnections: queryEditorProcedure.query(async ({ ctx }) => {
         if (!ctx.state.connection) {
-            return { connectionList: {} as Record<string, string[]> };
+            return { connectionList: {} };
         }
 
         const controlPlane = getControlPlaneForConnection(ctx.state.connection);

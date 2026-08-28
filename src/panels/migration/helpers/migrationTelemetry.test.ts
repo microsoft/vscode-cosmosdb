@@ -40,7 +40,7 @@ function createProject(overrides?: Partial<ProjectJson>): ProjectJson {
         runCounts: {},
         phases: { discovery: { status: 'not-started' } },
         ...overrides,
-    } as ProjectJson;
+    };
 }
 
 /**

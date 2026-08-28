@@ -50,13 +50,15 @@ async function main() {
         const [cli, ...baseArgs] = resolveCliArgsFromVSCodeExecutablePath(vscodeExecutablePath);
         for (const id of REQUIRED_EXTENSIONS) {
             console.log(`Installing dependent extension: ${id}`);
-            const result = spawnSync(cli, [...baseArgs, '--install-extension', id], {
-                encoding: 'utf-8',
-                stdio: 'inherit',
-                // Required on Windows when `cli` resolves to a .cmd / .bat (e.g. bin/code.cmd):
-                // child_process.spawn on Windows cannot launch shell scripts without a shell.
-                shell: process.platform === 'win32',
-            });
+            const args = [...baseArgs, '--install-extension', id];
+            const result =
+                process.platform === 'win32'
+                    ? spawnSync(`call "${cli}" ${args.map((arg) => `"${arg}"`).join(' ')}`, {
+                          encoding: 'utf-8',
+                          stdio: 'inherit',
+                          shell: process.env.ComSpec ?? 'cmd.exe',
+                      })
+                    : spawnSync(cli, args, { encoding: 'utf-8', stdio: 'inherit' });
             if (result.status !== 0) {
                 throw new Error(
                     `Failed to install ${id} (exit code ${result.status}${result.error ? `, error: ${result.error.message}` : ''})`,

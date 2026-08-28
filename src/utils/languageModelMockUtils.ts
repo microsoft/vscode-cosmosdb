@@ -168,7 +168,7 @@ export function createMockLanguageModel(options: CreateMockLanguageModelOptions)
                         yield new vscode.LanguageModelToolCallPart(
                             part.callId ?? `mock-call-${++mockToolCallSeq}`,
                             part.name,
-                            (part.input ?? {}) as object,
+                            part.input ?? {},
                         );
                     }
                 }
@@ -178,7 +178,7 @@ export function createMockLanguageModel(options: CreateMockLanguageModelOptions)
         return {
             text: textIterable,
             stream: streamIterable,
-        } as vscode.LanguageModelChatResponse;
+        };
     };
 
     const model: vscode.LanguageModelChat = {

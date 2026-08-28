@@ -1176,7 +1176,7 @@ export class SqlParser extends EmbeddedActionsParser {
                                     kind: 'SubqueryScalarExpression' as const,
                                     query,
                                     range: query.range,
-                                } as AST.SqlScalarExpression;
+                                };
                             },
                         },
                         {

@@ -326,7 +326,13 @@ export class QueryEditorTab extends BaseTab {
 
         const requestId = globalThis.crypto.randomUUID();
         return new Promise<string | undefined>((resolve) => {
+            let cancellationSubscription: vscode.Disposable = new vscode.Disposable(() => undefined);
+            let isFinished = false;
             const finish = (executionId?: string): void => {
+                if (isFinished) {
+                    return;
+                }
+                isFinished = true;
                 clearTimeout(timer);
                 this.state.pendingRuns.delete(requestId);
                 cancellationSubscription.dispose();
@@ -343,8 +349,12 @@ export class QueryEditorTab extends BaseTab {
             };
             const timer = setTimeout(cancel, timeoutMs);
             this.state.pendingRuns.set(requestId, { resolve: finish });
-            const cancellationSubscription = token.onCancellationRequested(cancel);
-            this.eventSink.emit({ type: 'runActiveQueryRequested', query, requestId, connection });
+            cancellationSubscription = token.onCancellationRequested(cancel);
+            if (isFinished) {
+                cancellationSubscription.dispose();
+            } else {
+                this.eventSink.emit({ type: 'runActiveQueryRequested', query, requestId, connection });
+            }
         });
     }
 

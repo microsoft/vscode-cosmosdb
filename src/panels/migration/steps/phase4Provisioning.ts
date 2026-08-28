@@ -33,6 +33,7 @@ import {
     hasCosmosDBOperatorRoleAssignment,
     hasDataContributorRoleAssignment,
     isRbacException,
+    withDataPlaneRbacRetry,
 } from '../../../cosmosdb/utils/rbacUtils';
 import { ext } from '../../../extensionVariables';
 import { MigrationProjectService, type ProjectJson } from '../../../services/MigrationProjectService';
@@ -112,66 +113,6 @@ export interface ProvisioningResult {
      * items failed to insert). Empty when everything succeeded.
      */
     warnings: string[];
-}
-
-// ─── Data-Plane RBAC Propagation Retry ──────────────────────────────
-
-/**
- * Detects the Cosmos DB data-plane authorization error that occurs when a SQL
- * role assignment exists at the control plane but has not yet propagated to the
- * account's data-plane auth cache. Cosmos DB surfaces this as a 403 containing
- * the phrase "cannot be authorized by AAD token in data plane". See:
- * https://aka.ms/cosmos-native-rbac
- */
-function isDataPlaneRbacPropagationError(error: unknown): boolean {
-    const message = error instanceof Error ? error.message : String(error);
-    return message.includes('cannot be authorized by AAD token in data plane');
-}
-
-/**
- * Runs a data-plane operation, retrying with linear backoff while Cosmos DB
- * reports that the caller's role assignment has not yet propagated. Role
- * propagation is typically observed within a minute of assignment but can
- * occasionally take a few minutes. We cap total wait at ~3 minutes so a genuine
- * permission issue eventually surfaces to the user.
- *
- * The retried error message (which links to aka.ms/cosmos-native-rbac) is
- * re-thrown unchanged if the cap is exceeded.
- */
-async function withDataPlaneRbacRetry<T>(
-    operation: () => Promise<T>,
-    token: vscode.CancellationToken,
-    onRetry: (attempt: number, totalWaitedMs: number) => void | Promise<void>,
-): Promise<T> {
-    // Wait intervals (ms) between retries. Total ~180s = 3 minutes.
-    const waits = [5_000, 10_000, 15_000, 20_000, 30_000, 30_000, 30_000, 40_000];
-    let attempt = 0;
-    let totalWaitedMs = 0;
-
-    while (true) {
-        try {
-            return await operation();
-        } catch (error) {
-            if (!isDataPlaneRbacPropagationError(error) || attempt >= waits.length) {
-                throw error;
-            }
-            const delay = waits[attempt];
-            attempt++;
-            totalWaitedMs += delay;
-            await onRetry(attempt, totalWaitedMs);
-            const interruptible = new Promise<void>((resolve) => {
-                const t = setTimeout(resolve, delay);
-                token.onCancellationRequested(() => {
-                    clearTimeout(t);
-                    resolve();
-                });
-            });
-            await interruptible;
-            if (token.isCancellationRequested) {
-                throw error;
-            }
-        }
-    }
 }
 
 // ─── Main Entry Point ───────────────────────────────────────────────
@@ -405,10 +346,9 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
             context.telemetry.properties.lastStep = 'createDatabase';
             const databaseName = armTarget
                 ? await resolveUniqueDatabaseNameViaArm(await getMgmtClient(), armTarget, baseDatabaseName)
-                : await withDataPlaneRbacRetry(
-                      () => resolveUniqueDatabaseName(client, baseDatabaseName),
+                : await withDataPlaneRbacRetry(() => resolveUniqueDatabaseName(client, baseDatabaseName), {
                       token,
-                      async (_attempt, totalWaitedMs) => {
+                      onRetry: async (_attempt, totalWaitedMs) => {
                           await sendPhaseProgress(
                               channel,
                               'Provisioning',
@@ -421,7 +361,7 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
                               ),
                           );
                       },
-                  );
+                  });
 
             if (databaseName === undefined) {
                 // User cancelled the prompt
@@ -458,10 +398,9 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
                     },
                 );
             } else {
-                await withDataPlaneRbacRetry(
-                    () => client.databases.createIfNotExists({ id: databaseName }),
+                await withDataPlaneRbacRetry(() => client.databases.createIfNotExists({ id: databaseName }), {
                     token,
-                    async (_attempt, totalWaitedMs) => {
+                    onRetry: async (_attempt, totalWaitedMs) => {
                         await sendPhaseProgress(
                             channel,
                             'Provisioning',
@@ -474,7 +413,7 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
                             ),
                         );
                     },
-                );
+                });
             }
             // Data-plane handle used for item upserts below. Safe to obtain
             // regardless of who created the database.
@@ -544,10 +483,9 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
             // against the first container, retrying with backoff, so the
             // subsequent item upserts don't fail the first call.
             if (armTarget && containersCreated.length > 0) {
-                await withDataPlaneRbacRetry(
-                    () => database.container(containersCreated[0]).read(),
+                await withDataPlaneRbacRetry(() => database.container(containersCreated[0]).read(), {
                     token,
-                    async (_attempt, totalWaitedMs) => {
+                    onRetry: async (_attempt, totalWaitedMs) => {
                         await sendPhaseProgress(
                             channel,
                             'Provisioning',
@@ -560,7 +498,7 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
                             ),
                         );
                     },
-                );
+                });
             }
 
             // ─── Step 6: Insert sample data ─────────────────────────
@@ -1046,7 +984,7 @@ async function resolveUniqueDatabaseNameViaArm(
  */
 function toArmIndexingPolicy(policy: NonNullable<IndexingPolicy>): ArmIndexingPolicy {
     return {
-        indexingMode: (policy.indexingMode ?? 'consistent') as ArmIndexingPolicy['indexingMode'],
+        indexingMode: policy.indexingMode ?? 'consistent',
         automatic: policy.automatic ?? true,
         includedPaths: sanitizeIndexingPaths(policy.includedPaths),
         excludedPaths: sanitizeIndexingPaths(policy.excludedPaths),

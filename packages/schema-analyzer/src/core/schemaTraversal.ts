@@ -208,7 +208,7 @@ function ensureTypeEntry<TType extends string>(
         parentSchema.properties![fieldName] = {
             anyOf: [],
             'x-occurrence': 0,
-        } as JSONSchema;
+        };
     }
 
     const propertySchema = parentSchema.properties![fieldName] as JSONSchema;

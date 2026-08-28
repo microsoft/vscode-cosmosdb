@@ -57,23 +57,21 @@ export function createMultiQuerySeparatorExtension(
         return deps.Decoration.set(ranges, true);
     }
 
-    type Doc = { toString(): string; lineAt(pos: number): { from: number } };
-
     class SeparatorPlugin {
         decorations: unknown;
 
         constructor(view: EditorView) {
-            this.decorations = buildDecorations(view.state.doc as unknown as Doc);
+            this.decorations = buildDecorations(view.state.doc);
         }
 
         update(update: ViewUpdate) {
             if (update.docChanged) {
-                this.decorations = buildDecorations(update.state.doc as unknown as Doc);
+                this.decorations = buildDecorations(update.state.doc);
             }
         }
     }
 
-    return deps.ViewPlugin.fromClass(SeparatorPlugin as unknown as new (view: EditorView) => SeparatorPlugin, {
+    return deps.ViewPlugin.fromClass(SeparatorPlugin, {
         decorations: (v: SeparatorPlugin) => v.decorations,
     });
 }

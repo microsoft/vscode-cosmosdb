@@ -30,7 +30,7 @@
       "label": "Lint",
       "type": "shell",
       "command": "npm run lint",
-      "problemMatcher": "$eslint-stylish"
+      "problemMatcher": []
     },
 
     // ── Vite watch (default F5 workflow) ────────────────────────────────────────

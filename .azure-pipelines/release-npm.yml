@@ -6,16 +6,18 @@
 #
 # Prerequisites (see plan.md / project ESRP onboarding notes for full detail):
 #   1. ESRP Release registration approved in aka.ms/esrpportal for App
-#      Registration/Managed Identity Client Id below (domain: AME).
-#   2. ARM service connection in this ADO project using Workload Identity
-#      Federation, backed by the SAME AME identity as (1). The identity must
-#      also have "Key Vault Certificate User" on EsrpKeyVaultName.
+#      Registration Client Id below (domain: AME).
+#   2. ARM service connection "CosmosDB VSCode NPM Publishing" in this ADO
+#      project using Workload Identity Federation, backed by the SAME AME
+#      App Registration as (1), with a manually-added Federated Credential
+#      (Entra ID does not create this automatically — see onboarding notes).
+#      That identity must also have "Key Vault Certificate User" on
+#      EsrpKeyVaultName.
 #   3. ESRP Request Signing (TSS) certificate generated in that Key Vault via
 #      OneCertV2-PublicCA, subject CN=<the AAD App Id below>.
 #
-# TODO: replace 'TODO-SET-SERVICE-CONNECTION-NAME' below once the ARM service
-# connection has been created (blocked as of this writing on Endpoint Creator
-# permissions in this ADO project — see esrp-07 in the onboarding tracker).
+# Still open before this can be validated end to end: ESRP registration Submit
+# is blocked on a portal backend bug (GetAADOwners) — see onboarding notes.
 # =============================================================================
 
 trigger: none # Only run this pipeline when manually triggered
@@ -94,8 +96,8 @@ variables:
   # here instead. Confirmed against vscode-documentdb's working pipeline.
   EsrpDomainTenantId: "975f013f-7f24-47e8-a7d3-abc4752bf346"
   # ARM service connection (Workload Identity Federation) backed by the same
-  # identity as EsrpClientId. TODO: set once created (see esrp-07).
-  EsrpConnectedServiceName: "TODO-SET-SERVICE-CONNECTION-NAME"
+  # identity as EsrpClientId.
+  EsrpConnectedServiceName: "CosmosDB VSCode NPM Publishing"
 
   # ESRP release notification / approval contacts. Comma-separated list of
   # individual Microsoft aliases — the EsrpRelease task splits on ',', and a

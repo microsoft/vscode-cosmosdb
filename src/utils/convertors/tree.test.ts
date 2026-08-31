@@ -70,7 +70,7 @@ describe('queryResultToTree', () => {
     });
 
     it('includes partition-key path rows when a partition key is provided', async () => {
-        const partitionKey: PartitionKeyDefinition = { paths: ['/pk'] };
+        const partitionKey: PartitionKeyDefinition = { paths: ['/pk'] } as PartitionKeyDefinition;
         const result = makeResult({ documents: [{ id: 'd1', pk: 'tenant-a' }] });
         const rows = await queryResultToTree(result, partitionKey);
         const pkRow = rows[0].children?.find((c) => c.field === '/pk');

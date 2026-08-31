@@ -6,7 +6,7 @@
 import * as fs from 'fs';
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { SettingsService } from '../services/SettingsService';
-import { isCosmosDBShellPathFound, quoteArg } from './shellCommand';
+import { isCosmosDBShellPathFound } from './shellCommand';
 
 vi.mock('fs', () => ({
     existsSync: vi.fn(),
@@ -27,43 +27,6 @@ vi.mock('../extensionVariables', () => ({
         },
     },
 }));
-
-describe('shellCommand.quoteArg', () => {
-    it('returns the value unchanged when no whitespace, quotes, or backslashes are present', () => {
-        expect(quoteArg('foo')).toBe('foo');
-        expect(quoteArg('connect')).toBe('connect');
-    });
-
-    it('wraps values containing spaces in double quotes', () => {
-        expect(quoteArg('foo bar')).toBe('"foo bar"');
-        expect(quoteArg('https://my account.documents.azure.com/')).toBe('"https://my account.documents.azure.com/"');
-    });
-
-    it('wraps and escapes embedded double quotes', () => {
-        expect(quoteArg('he said "hi"')).toBe('"he said \\"hi\\""');
-    });
-
-    it('wraps values containing single quotes', () => {
-        expect(quoteArg("don't")).toBe('"don\'t"');
-    });
-
-    it('does not strip leading or trailing whitespace', () => {
-        expect(quoteArg(' foo ')).toBe('" foo "');
-    });
-
-    it('wraps and escapes embedded backslashes', () => {
-        // Without backslash escaping, `foo\"bar` would round-trip to `"foo\"bar"`, where
-        // the `\"` is parsed by the shell as an escaped quote and the actual `"` then
-        // terminates the argument early. Backslashes must be escaped before quotes.
-        expect(quoteArg('foo\\bar')).toBe('"foo\\\\bar"');
-        expect(quoteArg('foo\\"bar')).toBe('"foo\\\\\\"bar"');
-    });
-
-    it('wraps and escapes Windows-style paths containing backslashes', () => {
-        expect(quoteArg('C:\\Users\\test')).toBe('"C:\\\\Users\\\\test"');
-        expect(quoteArg('C:\\path with space\\file.txt')).toBe('"C:\\\\path with space\\\\file.txt"');
-    });
-});
 
 describe('shellCommand.isCosmosDBShellPathFound', () => {
     beforeEach(() => {

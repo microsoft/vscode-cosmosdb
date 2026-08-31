@@ -1,5 +1,37 @@
 # Change Log
 
+## 0.37.2 (Preview)
+
+### Fixed
+
+- Prevented command injection when opening Cosmos DB Shell at a database or container whose ID contains shell syntax or control characters. (#3313, #3315)
+- Fixed Cosmos DB Shell startup navigation across older and newer Shell versions, with compatibility guidance and consent-based update notifications that account for custom executable paths. (#3316)
+- Fixed cancelled Cosmos DB Shell install and update operations to exit silently instead of showing a misleading failure notification. (#3321)
+- Fixed Fabric artifact tree items to use the Cosmos DB product icon in light and dark themes. (#3323)
+
+### Changed
+
+- Migrated the extension's webview transport to the published `@microsoft/vscode-ext-webview` package. (#3217)
+- Updated localization.
+
+## 0.37.1 (Preview)
+
+### Fixed
+
+- Prevented document data loss and stale overwrites by detecting concurrent edits, preserving conflict recovery state, and cleaning up document sessions when their source disappears. (#3266, #3293)
+- Fixed external URI handling during extension activation. (#3288)
+- Fixed the Query Editor to show and refresh throughput bucket availability after the account's preview feature registration changes. (#3257, #3296)
+- Sorted tree resources case-insensitively, including resources under attached accounts. (#3235)
+
+### Changed
+
+- Expanded the **Account Overview dashboard** with richer metric charts, additional cost, performance, partition, and configuration advisories, partial-coverage guidance for missing Log Analytics permissions or data, RBAC-aware actions, and improved accessibility. (#3207)
+- Reduced the schema information sent to GitHub Copilot by NL2Query and schema sampling while preserving the statistics needed to generate queries. (#3261, #3297)
+- Improved Query Editor telemetry handling and removed unused query functions. (#3279)
+- Hardened build and release pipelines with network isolation, pinned signing tooling, reliable status reporting, and more focused workflow triggers and test execution.
+- Updated localization.
+- Updated dependencies.
+
 ## 0.37.0 (Preview)
 
 ### Added

@@ -4,14 +4,14 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type JSONSchema } from '@cosmosdb/schema-analyzer';
-import { TypedEventSink } from '@cosmosdb/webview-rpc';
-import { setupTrpc } from '@cosmosdb/webview-rpc/server';
+import { TypedEventSink } from '@microsoft/vscode-ext-webview';
+import { attachTrpc } from '@microsoft/vscode-ext-webview/host';
 import * as vscode from 'vscode';
 import { getThemedIconPath } from '../constants';
 import { getCosmosDBKeyCredential } from '../cosmosdb/CosmosDBCredential';
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { type QuerySession } from '../cosmosdb/session/QuerySession';
-import { type SerializedQueryResult } from '../cosmosdb/types/queryResult';
+import { DEFAULT_EXECUTION_TIMEOUT, type SerializedQueryResult } from '../cosmosdb/types/queryResult';
 import { SchemaFileStorage } from '../services/SchemaFileStorage';
 import { SchemaService } from '../services/SchemaService';
 import { getIsSurveyDisabledGlobally } from '../utils/survey';
@@ -22,6 +22,7 @@ import {
     type QueryEditorMutableState,
     type QueryEditorRouterContext,
 } from './trpc/appRouter';
+import { cleanUpSupersededReadSessions } from './trpc/querySessionIsolation';
 import { type QueryEditorEvent } from './trpc/routers/queryEditorEventsRouter';
 
 export class QueryEditorTab extends BaseTab {
@@ -33,6 +34,7 @@ export class QueryEditorTab extends BaseTab {
     public readonly eventSink: TypedEventSink<QueryEditorEvent>;
 
     private readonly state: QueryEditorMutableState;
+    private readonly readToolSessionIds = new Set<string>();
     private static readonly DEFAULT_QUERY_VALUE = `SELECT * FROM c`;
 
     protected constructor(panel: vscode.WebviewPanel, connection?: NoSqlQueryConnection, query?: string) {
@@ -46,10 +48,10 @@ export class QueryEditorTab extends BaseTab {
             isLastQueryAIGenerated: false,
             lastAIGeneratedQuery: undefined,
             lastGeneratePrompt: undefined,
-            pendingRunResolve: undefined,
+            pendingRuns: new Map(),
         };
 
-        this.panel.iconPath = getThemedIconPath('editor.svg');
+        this.panel.iconPath = getThemedIconPath('editor.svg') as { light: vscode.Uri; dark: vscode.Uri };
 
         if (connection) {
             if (connection.credentials) {
@@ -66,7 +68,7 @@ export class QueryEditorTab extends BaseTab {
         // Create TypedEventSink for tRPC subscription
         this.eventSink = new TypedEventSink<QueryEditorEvent>();
 
-        const { disposable } = setupTrpc(
+        const { disposable } = attachTrpc(
             this.panel,
             this.buildRouterContext(),
             queryEditorAppRouter,
@@ -139,6 +141,13 @@ export class QueryEditorTab extends BaseTab {
         this.sessions.forEach((session) => session.dispose());
         this.sessions.clear();
 
+        // Settle any in-flight runs so awaiting tool calls resolve immediately instead of hanging until
+        // their timeout fires. Deleting the current entry during Map iteration does not skip remaining entries.
+        for (const resolve of this.state.pendingRuns.values()) {
+            resolve.resolve(undefined);
+        }
+        this.state.pendingRuns.clear();
+
         this.eventSink.close();
 
         super.dispose();
@@ -179,15 +188,32 @@ export class QueryEditorTab extends BaseTab {
     public getCurrentQueryResults = (executionId?: string): SerializedQueryResult | undefined => {
         // When an executionId is given, read that exact session so a caller (e.g. the
         // cosmosdb_executeCurrentQuery tool) never picks up a different / previous run's result.
+        // Tool-owned sessions coexist while their callers await exact results. Once read, release
+        // superseded sessions but retain the active result so pagination keeps working in the grid.
         const sessions = Array.from(this.sessions.values());
         const activeSession = executionId ? this.sessions.get(executionId) : sessions[sessions.length - 1];
         const result = activeSession?.sessionResult;
-        return result?.getSerializedResult(1);
+        const serializedResult = result?.getSerializedResult(1);
+        if (executionId && activeSession) {
+            this.readToolSessionIds.add(executionId);
+            cleanUpSupersededReadSessions(this.sessions, this.readToolSessionIds);
+        }
+        return serializedResult;
     };
 
     public getConnection = (): NoSqlQueryConnection | undefined => {
         return this.state.connection;
     };
+
+    /**
+     * Stable identifier for this tab instance, unique for the lifetime of the tab. Used by the
+     * `cosmosdb_executeCurrentQuery` tool to pin a run to the exact tab whose query the user
+     * confirmed, so switching tabs while the confirmation prompt is open can't redirect the run to
+     * a different tab.
+     */
+    public getId(): string {
+        return this.id;
+    }
 
     public getCurrentQuery = (): string | undefined => {
         return this.state.query;
@@ -270,6 +296,7 @@ export class QueryEditorTab extends BaseTab {
      */
     public updateQuery(editorText: string, aiGeneratedQuery: string): void {
         this.state.query = editorText;
+        this.state.selectedQuery = undefined;
         this.state.isLastQueryAIGenerated = true;
         this.state.lastAIGeneratedQuery = aiGeneratedQuery;
         this.eventSink.emit({ type: 'queryTextPushed', query: editorText });
@@ -282,21 +309,52 @@ export class QueryEditorTab extends BaseTab {
      * started / timed out — so the `cosmosdb_executeCurrentQuery` tool reads PII-free result metadata
      * only for this run and never reports stale results. Resolves after `timeoutMs` (with `undefined`)
      * as a safety net so the tool never hangs.
+     *
+     * Each call gets a unique `requestId` that travels with the request event and comes back on the
+     * completion signal, so concurrent invocations stay isolated: a completing run resolves only its
+     * own caller and can never deliver its executionId to a different still-pending invocation.
      */
-    public runActiveQueryInEditor(query: string, timeoutMs = 120_000): Promise<string | undefined> {
-        // Abandon any prior pending run so a stale resolver can't fire against this one.
-        this.state.pendingRunResolve?.(undefined);
+    public runActiveQueryInEditor(
+        query: string,
+        connection: { endpoint: string; databaseId: string; containerId: string },
+        token: vscode.CancellationToken,
+        timeoutMs = DEFAULT_EXECUTION_TIMEOUT + 30_000,
+    ): Promise<string | undefined> {
+        if (token.isCancellationRequested) {
+            return Promise.resolve(undefined);
+        }
+
+        const requestId = globalThis.crypto.randomUUID();
         return new Promise<string | undefined>((resolve) => {
-            const timer = setTimeout(() => {
-                this.state.pendingRunResolve = undefined;
-                resolve(undefined);
-            }, timeoutMs);
-            this.state.pendingRunResolve = (executionId?: string) => {
+            let cancellationSubscription: vscode.Disposable = new vscode.Disposable(() => undefined);
+            let isFinished = false;
+            const finish = (executionId?: string): void => {
+                if (isFinished) {
+                    return;
+                }
+                isFinished = true;
                 clearTimeout(timer);
-                this.state.pendingRunResolve = undefined;
+                this.state.pendingRuns.delete(requestId);
+                cancellationSubscription.dispose();
                 resolve(executionId);
             };
-            this.eventSink.emit({ type: 'runActiveQueryRequested', query });
+            const cancel = (): void => {
+                const pendingRun = this.state.pendingRuns.get(requestId);
+                if (pendingRun?.executionId) {
+                    const session = this.sessions.get(pendingRun.executionId);
+                    this.sessions.delete(pendingRun.executionId);
+                    session?.dispose();
+                }
+                finish(undefined);
+            };
+            const timer = setTimeout(cancel, timeoutMs);
+            this.state.pendingRuns.set(requestId, { resolve: finish });
+            cancellationSubscription = token.onCancellationRequested(cancel);
+            if (isFinished) {
+                cancellationSubscription.dispose();
+            } else {
+                this.eventSink.emit({ type: 'runActiveQueryRequested', query, requestId, connection });
+            }
         });
     }
 

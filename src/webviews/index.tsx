@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type WebviewState, WithWebviewContext } from '@cosmosdb/webview-rpc/react';
 import { AriaLiveAnnouncer, useFocusFinders } from '@fluentui/react-components';
+import { type WebviewState, WithWebviewContext } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
 import { type l10nJsonFormat } from '@vscode/l10n';
 import { isPlainObject } from 'es-toolkit';

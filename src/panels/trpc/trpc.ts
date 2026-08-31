@@ -24,10 +24,11 @@
  *     `IActionContext` and surfaces it on `ctx.actionContext` /
  *     `ctx.telemetry`.
  *
- * The middleware **factories** live under `./middleware/`. They are
- * framework-level and dependency-free, so they could be lifted into a
- * shared package without dragging cosmosdb-specific code along — see
- * `plans/webview-vs-documentdb-package.md`.
+ * The middleware **bodies** (`loggingMiddlewareBody`,
+ * `telemetryMiddlewareBody`) come from
+ * `@microsoft/vscode-ext-webview/host`; only the cosmosdb-specific
+ * adapters (`outputChannelProcedureLogger`, `azextTelemetryRunner`) live
+ * under `./middleware/`.
  *
  * Procedures access:
  *  - `ctx.actionContext` — full `IActionContext`, populated by the
@@ -40,12 +41,12 @@
  * @see https://trpc.io/docs/v11/procedures
  */
 
+import { initWebviewTrpc } from '@microsoft/vscode-ext-webview';
 import {
-    initTRPC,
     loggingMiddlewareBody,
     type ProcedureInvocation,
     telemetryMiddlewareBody,
-} from '@cosmosdb/webview-rpc/server';
+} from '@microsoft/vscode-ext-webview/host';
 import {
     type AccountOverviewRouterContext,
     type DataModelingRouterContext,
@@ -65,65 +66,67 @@ function buildCosmosDbEventId({ type, path }: ProcedureInvocation): string {
 
 // The two middleware bodies are *ctx-agnostic* — they're plain async
 // functions whose only contract with tRPC is structural (`path`, `type`,
-// `next`). Each tRPC instance wraps them with its own `t.middleware(...)`
-// so the bound types stay precise per webview.
+// `next`). We wire them onto each instance's `publicProcedure` so the
+// bound types stay precise per webview.
 //
 // We deliberately inline the `.use(...)` chain at each instance instead of
 // hiding it behind a generic helper: tRPC's `ProcedureBuilder` is a
 // deep-generic type whose inference collapses to `any` the moment a
 // helper widens its return type, which in turn would erase the typed
 // router shape downstream (e.g. `trpcClient.foo.query` would lose
-// `input`/`output` typing). Three near-identical lines per instance is
+// `input`/`output` typing). Two near-identical lines per instance is
 // the price of that precision.
 
-const sharedLoggingBody = loggingMiddlewareBody(outputChannelProcedureLogger);
+// `telemetryMiddlewareBody` is curried and returns a ready-to-use body;
+// `loggingMiddlewareBody` takes the invocation directly, so it is wrapped
+// per call site with the output-channel logger.
 const sharedTelemetryBody = telemetryMiddlewareBody(azextTelemetryRunner, {
     buildEventId: buildCosmosDbEventId,
 });
 
 // ─── Query Editor tRPC Instance ─────────────────────────────────────────────
 
-const queryEditorT = initTRPC.context<QueryEditorRouterContext>().create();
+const queryEditorT = initWebviewTrpc<QueryEditorRouterContext>();
 
 /** Base procedure with logging + telemetry middleware already applied. */
-export const queryEditorProcedure = queryEditorT.procedure
-    .use(queryEditorT.middleware(sharedLoggingBody))
-    .use(queryEditorT.middleware(sharedTelemetryBody));
+export const queryEditorProcedure = queryEditorT.publicProcedure
+    .use((opts) => loggingMiddlewareBody(opts, outputChannelProcedureLogger))
+    .use(sharedTelemetryBody);
 export const queryEditorRouter = queryEditorT.router;
 export const queryEditorMergeRouters = queryEditorT.mergeRouters;
 export const queryEditorCallerFactory = queryEditorT.createCallerFactory;
 
 // ─── Document tRPC Instance ─────────────────────────────────────────────────
 
-const documentT = initTRPC.context<DocumentRouterContext>().create();
+const documentT = initWebviewTrpc<DocumentRouterContext>();
 
 /** Base procedure with logging + telemetry middleware already applied. */
-export const documentProcedure = documentT.procedure
-    .use(documentT.middleware(sharedLoggingBody))
-    .use(documentT.middleware(sharedTelemetryBody));
+export const documentProcedure = documentT.publicProcedure
+    .use((opts) => loggingMiddlewareBody(opts, outputChannelProcedureLogger))
+    .use(sharedTelemetryBody);
 export const documentRouter = documentT.router;
 export const documentCallerFactory = documentT.createCallerFactory;
 
 // ─── Migration Assistant tRPC Instance ──────────────────────────────────────
 
-const migrationT = initTRPC.context<MigrationRouterContext>().create();
+const migrationT = initWebviewTrpc<MigrationRouterContext>();
 
 /** Base procedure with logging + telemetry middleware already applied. */
-export const migrationProcedure = migrationT.procedure
-    .use(migrationT.middleware(sharedLoggingBody))
-    .use(migrationT.middleware(sharedTelemetryBody));
+export const migrationProcedure = migrationT.publicProcedure
+    .use((opts) => loggingMiddlewareBody(opts, outputChannelProcedureLogger))
+    .use(sharedTelemetryBody);
 export const migrationRouter = migrationT.router;
 export const migrationMergeRouters = migrationT.mergeRouters;
 export const migrationCallerFactory = migrationT.createCallerFactory;
 
 // ─── Account Overview tRPC Instance ─────────────────────────────────────────
 
-const accountOverviewT = initTRPC.context<AccountOverviewRouterContext>().create();
+const accountOverviewT = initWebviewTrpc<AccountOverviewRouterContext>();
 
 /** Base procedure with logging + telemetry middleware already applied. */
-export const accountOverviewProcedure = accountOverviewT.procedure
-    .use(accountOverviewT.middleware(sharedLoggingBody))
-    .use(accountOverviewT.middleware(sharedTelemetryBody));
+export const accountOverviewProcedure = accountOverviewT.publicProcedure
+    .use((opts) => loggingMiddlewareBody(opts, outputChannelProcedureLogger))
+    .use(sharedTelemetryBody);
 export const accountOverviewRouter = accountOverviewT.router;
 export const accountOverviewCallerFactory = accountOverviewT.createCallerFactory;
 

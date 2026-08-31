@@ -42,6 +42,7 @@ import * as vscodeUtil from '../../../utils/vscodeUtils';
 import { DocumentTab } from '../../DocumentTab';
 import { QueryEditorTab } from '../../QueryEditorTab';
 import { type QueryEditorRouterContext } from '../appRouter';
+import { matchesQueryConnection, storeQuerySession } from '../querySessionIsolation';
 import {
     CosmosDBRecordIdentifierSchema,
     OpenDocumentModeSchema,
@@ -151,9 +152,29 @@ export const queryEditorRouterDef = queryEditorRouter({
      * returned `executionId` to actually run it.
      */
     createQuerySession: queryEditorProcedure
-        .input(z.object({ query: z.string(), options: QueryMetadataSchema }))
+        .input(
+            z.object({
+                query: z.string(),
+                options: QueryMetadataSchema,
+                expectedConnection: z
+                    .object({
+                        endpoint: z.string(),
+                        databaseId: z.string(),
+                        containerId: z.string(),
+                    })
+                    .optional(),
+                preserveExistingSessions: z.boolean().optional(),
+            }),
+        )
         .output(z.object({ executionId: z.string() }).optional())
         .mutation(async ({ input, ctx }) => {
+            if (!ctx.state.connection) {
+                throw new Error(l10n.t('No connection'));
+            }
+            if (!matchesQueryConnection(ctx.state.connection, input.expectedConnection)) {
+                return undefined;
+            }
+
             // Strip trailing semicolons — they are multi-query separators
             // in the editor but CosmosDB server rejects them.
             input.query = input.query.trim().replace(/;\s*$/, '');
@@ -167,10 +188,6 @@ export const queryEditorRouterDef = queryEditorRouter({
                 input.query !== ctx.state.lastAIGeneratedQuery;
             ctx.state.isLastQueryAIGenerated = false;
             ctx.state.lastAIGeneratedQuery = undefined;
-
-            if (!ctx.state.connection) {
-                throw new Error(l10n.t('No connection'));
-            }
 
             if (ctx.actionContext) {
                 ctx.actionContext.telemetry.properties.isAIGenerated = String(wasAIGenerated);
@@ -206,9 +223,7 @@ export const queryEditorRouterDef = queryEditorRouter({
                 ctx.actionContext.telemetry.properties.executionId = session.id;
             }
 
-            ctx.sessions.forEach((existingSession: QuerySession) => existingSession.dispose());
-            ctx.sessions.clear();
-            ctx.sessions.set(session.id, session);
+            storeQuerySession(ctx.sessions, session, input.preserveExistingSessions ?? false);
 
             return { executionId: session.id };
         }),
@@ -382,7 +397,7 @@ export const queryEditorRouterDef = queryEditorRouter({
 
     getConnections: queryEditorProcedure.query(async ({ ctx }) => {
         if (!ctx.state.connection) {
-            return { connectionList: {} };
+            return { connectionList: {} as Record<string, string[]> };
         }
 
         const controlPlane = getControlPlaneForConnection(ctx.state.connection);
@@ -631,16 +646,41 @@ export const queryEditorRouterDef = queryEditorRouter({
         }),
 
     reportActiveQueryExecuted: queryEditorProcedure
-        .input(z.object({ executionId: z.string().optional() }).optional())
+        .input(z.object({ executionId: z.string().optional(), requestId: z.string() }))
         .mutation(({ input, ctx }) => {
             if (ctx.actionContext) {
                 ctx.actionContext.telemetry.suppressIfSuccessful = true;
             }
-            // Unblock the cosmosdb_executeCurrentQuery tool. Pass the executionId that actually ran
-            // (undefined when the run was cancelled or never started) so the tool reads results only
-            // for this run and never reports stale success.
-            ctx.state.pendingRunResolve?.(input?.executionId);
-            ctx.state.pendingRunResolve = undefined;
+            // Unblock the cosmosdb_executeCurrentQuery tool. Resolve only the run identified by
+            // `requestId`, passing the executionId that actually ran (undefined when the run was
+            // cancelled or never started), so each invocation reads results for exactly its own run
+            // and never receives another concurrent run's executionId or stale success.
+            const pendingRun = ctx.state.pendingRuns.get(input.requestId);
+            if (pendingRun) {
+                pendingRun.resolve(input.executionId);
+            } else if (input.executionId) {
+                const orphanedSession = ctx.sessions.get(input.executionId);
+                ctx.sessions.delete(input.executionId);
+                orphanedSession?.dispose();
+            }
+        }),
+
+    reportActiveQueryStarted: queryEditorProcedure
+        .input(z.object({ executionId: z.string(), requestId: z.string() }))
+        .mutation(({ input, ctx }) => {
+            if (ctx.actionContext) {
+                ctx.actionContext.telemetry.suppressIfSuccessful = true;
+            }
+            const pendingRun = ctx.state.pendingRuns.get(input.requestId);
+            if (pendingRun) {
+                pendingRun.executionId = input.executionId;
+                return true;
+            }
+
+            const cancelledSession = ctx.sessions.get(input.executionId);
+            ctx.sessions.delete(input.executionId);
+            cancelledSession?.dispose();
+            return false;
         }),
 
     getSelectedModelName: queryEditorProcedure.query(async () => {

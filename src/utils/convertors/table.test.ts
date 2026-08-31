@@ -57,7 +57,7 @@ describe('queryResultToTable', () => {
     });
 
     it('injects virtual partition-key column for SELECT * when a partition key is provided', async () => {
-        const partitionKey: PartitionKeyDefinition = { paths: ['/pk'] };
+        const partitionKey: PartitionKeyDefinition = { paths: ['/pk'] } as PartitionKeyDefinition;
         const result = makeResult({ query: 'SELECT * FROM c', documents: [{ id: '1', pk: 'tenant-a' }] });
         const table = await queryResultToTable(result, partitionKey);
         // partition-key path column is shown (prefixed with /), id first

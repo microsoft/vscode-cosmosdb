@@ -229,10 +229,6 @@ extends:
                               customCommand: run package
                               workingDir: $(Build.SourcesDirectory)
 
-                        - pwsh: npm i -g @vscode/vsce --userconfig $(Build.SourcesDirectory)/.azure-pipelines/.npmrc
-                          displayName: '⬇️ Install vsce'
-                          condition: succeeded()
-
                         # Find the vsix and set the vsix file name variable
                         # Fails with an error if more than one .vsix file is found, or if no .vsix file is found
                         - task: PowerShell@2
@@ -264,7 +260,7 @@ extends:
 
                         ## Sign the extension using OneBranch signing task
                         ## see for VS Code specifics: https://aka.ms/vsm-ms-publisher-sign#cai-teams-sign-using-onebranch
-                        - script: vsce generate-manifest -i $(vsixFileName) -o extension.manifest
+                        - script: npx vsce generate-manifest -i $(vsixFileName) -o extension.manifest
                           displayName: '📝 Generate extension manifest for signing'
                           condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, true) }})
 
@@ -301,7 +297,7 @@ extends:
                           condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, true) }})
                           inputs:
                               script: |
-                                  $output = vsce verify-signature -i $(vsixFileName) -m extension.manifest -s extension.signature.p7s 2>&1
+                                  $output = npx vsce verify-signature -i $(vsixFileName) -m extension.manifest -s extension.signature.p7s 2>&1
                                   Write-Output $output
 
                                   # Check if the vsce command failed to execute
@@ -359,13 +355,23 @@ extends:
                               TargetFolder: '$(ob_outputDirectory)'
                           condition: and(succeeded(), ne(variables['System.PullRequest.IsFork'], 'True'))
 
-                        - task: Npm@1
-                          displayName: '🧪 Test'
-                          inputs:
-                              command: custom
-                              customCommand: test
-                              workingDir: $(Build.SourcesDirectory)
-                          condition: succeeded()
+                        # The 'Test' step (npm test -> scripts/run-integration-tests.mjs) is disabled here. It launches a real VS Code
+                        # extension host via @vscode/test-electron and installs the dependent extension
+                        # 'ms-azuretools.vscode-azureresourcegroups' from the VS Code Marketplace, which requires outbound network
+                        # access that is incompatible with this pipeline's DefaultDeny network isolation policy (see PR #3275,
+                        # reverted in #3278 after the Marketplace install was blocked with AggregateError [EACCES]).
+                        #
+                        # These integration tests (and the separate Playwright E2E suite) already run and gate every PR/push via
+                        # GitHub Actions (.github/workflows/test.yml and .github/workflows/e2e.yml), so re-running them here would
+                        # be redundant. Re-enable only if the Marketplace-dependent install is removed or moved to a
+                        # network-isolation-compatible environment (e.g. CloudTest).
+                        # - task: Npm@1
+                        #   displayName: '🧪 Test'
+                        #   inputs:
+                        #       command: custom
+                        #       customCommand: test
+                        #       workingDir: $(Build.SourcesDirectory)
+                        #   condition: succeeded()
 
                         - task: PowerShell@2
                           displayName: '⚖️ Validate Version / Preview Alignment'

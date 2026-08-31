@@ -31,6 +31,7 @@ export type {
     DerivedAdvisorySeverity,
     HealthState,
     InventoryMetricsResult,
+    LogsSourceStatus,
     PartitionDistributionMode,
     PartitionHealthResult,
     PartitionIntensityLevel,
@@ -44,6 +45,13 @@ export type {
     TimeRange,
     UnavailableReason,
 } from '../../panels/accountOverview/services';
+export type {
+    MetricAggregation,
+    MetricKey,
+    MetricPoint,
+    MetricSeriesResult,
+    MetricUnit,
+} from '../../panels/accountOverview/metrics/contracts';
 export type { InventoryContainerRow, ThroughputMode } from '../../panels/trpc/routers/accountOverviewRouter';
 export type {
     CandidateAssessment,

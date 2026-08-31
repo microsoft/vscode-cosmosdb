@@ -141,6 +141,34 @@ describe('documentRouter partition key updates', () => {
         expect(result.cleanupRequiredMessage).toBe('Stored cleanup phase');
     });
 
+    it('restores pending cleanup from the destination when the source disappeared', async () => {
+        const context = createContext();
+        context.state.pendingPartitionKeyCleanup = {
+            sourceIdentifier: oldIdentifier,
+            sourceEtag: 'loaded-etag',
+            destination: writeResult,
+            message: 'Stored cleanup phase',
+        };
+        documentSessionMocks.readDocument
+            .mockRejectedValueOnce(new Error('Item not found or request timed out'))
+            .mockResolvedValueOnce({ documentContent, partitionKey: writeResult.partitionKey });
+        documentSessionMocks.deleteDocument.mockRejectedValueOnce({ statusCode: 404 });
+        const caller = documentRouterDef.createCaller(context);
+
+        const initialState = await caller.getInitialState();
+        const cleanupResult = await caller.retryPartitionKeyCleanup();
+
+        expect(initialState).toMatchObject({
+            documentId: oldIdentifier,
+            documentContent,
+            documentPartitionKey: writeResult.partitionKey,
+            cleanupRequiredMessage: 'Stored cleanup phase',
+        });
+        expect(cleanupResult).toMatchObject({ success: true, cleanupRequired: false, documentContent });
+        expect(context.state.documentId).toEqual(newIdentifier);
+        expect(context.state.pendingPartitionKeyCleanup).toBeUndefined();
+    });
+
     it('retries cleanup without recreating the destination', async () => {
         const context = createContext();
         documentSessionMocks.deleteDocument.mockRejectedValueOnce(new Error('Service unavailable'));
@@ -505,5 +533,47 @@ describe('documentRouter concurrent updates', () => {
             undefined,
             'server-etag',
         );
+    });
+
+    it('keeps the loaded etag when a stale partition-key move is not confirmed', async () => {
+        const context = createContext();
+        context.state.documentEtag = 'loaded-etag';
+        documentSessionMocks.extractPartitionKeyFromDocument.mockResolvedValue('new');
+        documentSessionMocks.readDocument.mockResolvedValue({
+            documentContent: { ...documentContent, pk: 'old', _etag: 'server-etag' },
+            partitionKey: writeResult.partitionKey,
+        });
+        confirmationMocks.getConfirmationAsInSettings.mockResolvedValue(false);
+        vi.mocked(vscode.window.showWarningMessage).mockImplementation(async (_message, _options, ...items) =>
+            items.find((item) => item.title === 'Overwrite'),
+        );
+
+        await documentRouterDef.createCaller(context).saveDocument({ documentText: JSON.stringify(documentContent) });
+
+        expect(context.state.documentEtag).toBe('loaded-etag');
+        expect(documentSessionMocks.createDocument).not.toHaveBeenCalled();
+        expect(documentSessionMocks.deleteDocument).not.toHaveBeenCalled();
+    });
+
+    it('keeps the loaded etag when partition-key confirmation throws', async () => {
+        const context = createContext();
+        context.state.documentEtag = 'loaded-etag';
+        documentSessionMocks.extractPartitionKeyFromDocument.mockResolvedValue('new');
+        documentSessionMocks.readDocument.mockResolvedValue({
+            documentContent: { ...documentContent, pk: 'old', _etag: 'server-etag' },
+            partitionKey: writeResult.partitionKey,
+        });
+        confirmationMocks.getConfirmationAsInSettings.mockRejectedValue(new Error('Canceled'));
+        vi.mocked(vscode.window.showWarningMessage).mockImplementation(async (_message, _options, ...items) =>
+            items.find((item) => item.title === 'Overwrite'),
+        );
+
+        await expect(
+            documentRouterDef.createCaller(context).saveDocument({ documentText: JSON.stringify(documentContent) }),
+        ).rejects.toThrow('Canceled');
+
+        expect(context.state.documentEtag).toBe('loaded-etag');
+        expect(documentSessionMocks.createDocument).not.toHaveBeenCalled();
+        expect(documentSessionMocks.deleteDocument).not.toHaveBeenCalled();
     });
 });

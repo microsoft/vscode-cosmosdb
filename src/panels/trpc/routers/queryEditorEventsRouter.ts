@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type TypedEventSink } from '@cosmosdb/webview-rpc';
+import { type TypedEventSink } from '@microsoft/vscode-ext-webview';
 import { z } from 'zod';
 import { queryEditorProcedure, queryEditorRouter } from '../trpc';
 
@@ -39,6 +39,12 @@ export const QueryEditorEventSchema = z.discriminatedUnion('type', [
     z.object({
         type: z.literal('runActiveQueryRequested'),
         query: z.string(),
+        requestId: z.string(),
+        connection: z.object({
+            endpoint: z.string(),
+            databaseId: z.string(),
+            containerId: z.string(),
+        }),
     }),
 ]);
 

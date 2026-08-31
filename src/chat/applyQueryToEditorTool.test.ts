@@ -5,13 +5,23 @@
 
 /// <reference types="vitest/globals" />
 
-import { buildFramedQuery } from './applyQueryToEditorTool';
+import * as vscode from 'vscode';
+import { QueryEditorTab } from '../panels/QueryEditorTab';
+import { buildFramedQuery, registerApplyQueryToEditorTool } from './applyQueryToEditorTool';
+import { createQueryApplyContext } from './queryApplyContext';
+import { captureRegisteredTool, serializeToolResult } from './queryEditorToolTestUtils';
+import { getQueryExecutionContext } from './queryExecutionContext';
 
-// `buildFramedQuery` only depends on the real sanitization helpers and `@vscode/l10n`. Mock the
-// heavy sibling modules the tool file imports (but that this function never touches) so the unit
-// under test loads fast and deterministically without pulling in the panel / tRPC / webview graph.
+// Mock the heavy sibling modules so these tests load without pulling in the panel / tRPC / webview graph.
 vi.mock('@microsoft/vscode-azext-utils', () => ({
-    callWithTelemetryAndErrorHandling: vi.fn(),
+    callWithTelemetryAndErrorHandling: vi.fn(
+        async (_event: string, callback: (ctx: unknown) => unknown): Promise<unknown> =>
+            callback({
+                telemetry: { properties: {} as Record<string, string>, measurements: {} as Record<string, number> },
+                errorHandling: { suppressDisplay: false },
+                valuesToMask: [] as string[],
+            }),
+    ),
     parseError: (error: unknown) => ({ message: error instanceof Error ? error.message : String(error) }),
 }));
 
@@ -29,6 +39,158 @@ vi.mock('./chatUtils', () => ({
     getActiveQueryEditor: vi.fn(),
     getConnectionFromQueryTab: vi.fn(),
 }));
+
+const noopToken = { isCancellationRequested: false } as never;
+
+describe('cosmosdb_applyQueryToEditor — cancellation', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        QueryEditorTab.openTabs.clear();
+    });
+
+    it('does not update the editor when the invocation is cancelled', async () => {
+        const { getActiveQueryEditor } = await import('./chatUtils');
+        const updateQuery = vi.fn();
+        vi.mocked(getActiveQueryEditor).mockReturnValue({ updateQuery } as never);
+
+        const tool = captureRegisteredTool(registerApplyQueryToEditorTool);
+        const cts = new vscode.CancellationTokenSource();
+        cts.cancel();
+
+        try {
+            const result = await tool.invoke({ input: { query: 'SELECT * FROM c' } }, cts.token);
+
+            expect(serializeToolResult(result)).toBe('Operation cancelled.');
+            expect(getActiveQueryEditor).not.toHaveBeenCalled();
+            expect(updateQuery).not.toHaveBeenCalled();
+        } finally {
+            cts.dispose();
+        }
+    });
+
+    it('rechecks cancellation immediately before updating the editor', async () => {
+        const { getActiveQueryEditor, getConnectionFromQueryTab } = await import('./chatUtils');
+        const cts = new vscode.CancellationTokenSource();
+        const updateQuery = vi.fn();
+        const tab = {
+            getCurrentQuery: vi.fn(() => {
+                cts.cancel();
+                return 'SELECT c.id FROM c';
+            }),
+            getId: vi.fn(() => 'tab-1'),
+            takeLastGeneratePrompt: vi.fn(() => undefined),
+            reveal: vi.fn(),
+            updateQuery,
+        };
+        QueryEditorTab.openTabs.add(tab as never);
+        vi.mocked(getActiveQueryEditor).mockReturnValue(tab as never);
+        vi.mocked(getConnectionFromQueryTab).mockReturnValue({
+            endpoint: 'https://example.test',
+            databaseId: 'db',
+            containerId: 'container',
+        } as never);
+
+        try {
+            const tool = captureRegisteredTool(registerApplyQueryToEditorTool);
+            const applyContextId = createQueryApplyContext(
+                tab as never,
+                {
+                    endpoint: 'https://example.test',
+                    databaseId: 'db',
+                    containerId: 'container',
+                } as never,
+            );
+            const result = await tool.invoke({ input: { query: 'SELECT * FROM c', applyContextId } }, cts.token);
+
+            expect(serializeToolResult(result)).toBe('Operation cancelled.');
+            expect(updateQuery).not.toHaveBeenCalled();
+        } finally {
+            cts.dispose();
+        }
+    });
+});
+
+describe('cosmosdb_applyQueryToEditor — execution context', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        QueryEditorTab.openTabs.clear();
+    });
+
+    it('returns a context pinned to the applied query and editor', async () => {
+        const { getActiveQueryEditor, getConnectionFromQueryTab } = await import('./chatUtils');
+        const connection = {
+            endpoint: 'https://example.documents.azure.com/',
+            databaseId: 'db',
+            containerId: 'container',
+        };
+        const tab = {
+            getId: vi.fn(() => 'tab-1'),
+            getCurrentQuery: vi.fn(() => 'SELECT old FROM c'),
+            takeLastGeneratePrompt: vi.fn(() => undefined),
+            reveal: vi.fn(),
+            updateQuery: vi.fn(),
+        };
+        QueryEditorTab.openTabs.add(tab as never);
+        vi.mocked(getActiveQueryEditor).mockReturnValue(tab as never);
+        vi.mocked(getConnectionFromQueryTab).mockReturnValue(connection as never);
+
+        const tool = captureRegisteredTool(registerApplyQueryToEditorTool);
+        const applyContextId = createQueryApplyContext(tab as never, connection as never);
+        const result = await tool.invoke({ input: { query: 'SELECT * FROM c', applyContextId } }, noopToken);
+        const payload = JSON.parse(serializeToolResult(result));
+        const executionContext = getQueryExecutionContext(payload.queryContextId);
+
+        expect(tab.updateQuery).toHaveBeenCalledOnce();
+        expect(executionContext).toMatchObject({
+            tabId: 'tab-1',
+            query: 'SELECT * FROM c\n\n-- Previous query:\n-- SELECT old FROM c',
+            endpoint: connection.endpoint,
+            databaseId: connection.databaseId,
+            containerId: connection.containerId,
+        });
+    });
+
+    it('applies to the pinned editor when the active editor changes', async () => {
+        const { getConnectionFromQueryTab } = await import('./chatUtils');
+        const connectionA = {
+            endpoint: 'https://example.documents.azure.com/',
+            databaseId: 'db',
+            containerId: 'trucks',
+        };
+        const connectionB = {
+            endpoint: 'https://example.documents.azure.com/',
+            databaseId: 'db',
+            containerId: 'cars',
+        };
+        const tabA = {
+            getId: vi.fn(() => 'tab-a'),
+            getCurrentQuery: vi.fn(() => 'SELECT old FROM c'),
+            takeLastGeneratePrompt: vi.fn(() => undefined),
+            reveal: vi.fn(),
+            updateQuery: vi.fn(),
+        };
+        const tabB = {
+            getId: vi.fn(() => 'tab-b'),
+            getCurrentQuery: vi.fn(() => 'SELECT other FROM c'),
+            takeLastGeneratePrompt: vi.fn(() => undefined),
+            reveal: vi.fn(),
+            updateQuery: vi.fn(),
+        };
+        QueryEditorTab.openTabs.add(tabA as never);
+        QueryEditorTab.openTabs.add(tabB as never);
+        vi.mocked(getConnectionFromQueryTab).mockImplementation((tab) =>
+            tab === (tabA as never) ? (connectionA as never) : (connectionB as never),
+        );
+
+        const applyContextId = createQueryApplyContext(tabA as never, connectionA as never);
+        const tool = captureRegisteredTool(registerApplyQueryToEditorTool);
+        await tool.invoke({ input: { query: 'SELECT * FROM c', applyContextId } }, noopToken);
+
+        expect(tabA.reveal).toHaveBeenCalledOnce();
+        expect(tabA.updateQuery).toHaveBeenCalledOnce();
+        expect(tabB.updateQuery).not.toHaveBeenCalled();
+    });
+});
 
 describe('buildFramedQuery', () => {
     it('frames the generated query with a "Generated from" header and a commented "Previous query" block', () => {

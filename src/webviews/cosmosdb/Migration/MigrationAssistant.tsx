@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { useTrpcClient } from '@cosmosdb/webview-rpc/react';
 import {
     Accordion,
     AccordionHeader,
@@ -59,6 +58,7 @@ import {
     StopRegular,
     WarningRegular,
 } from '@fluentui/react-icons';
+import { useTrpcClient } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { type MigrationAppRouter } from '../../../panels/trpc/appRouter';
@@ -2784,7 +2784,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
 }
 
 export const MigrationAssistant = () => {
-    const { trpcClient } = useTrpcClient<MigrationAppRouter>();
+    const trpcClient = useTrpcClient<MigrationAppRouter>();
     const channel = useMemo(() => new MigrationChannel(trpcClient), [trpcClient]);
     useEffect(() => () => channel.dispose(), [channel]);
 

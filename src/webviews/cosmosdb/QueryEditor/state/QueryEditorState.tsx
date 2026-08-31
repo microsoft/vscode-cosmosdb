@@ -222,6 +222,13 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
         case 'setPageSize':
             return { ...state, pageSize: action.pageSize };
         case 'updateQueryResult':
+            // Drop results from a superseded execution so a late-arriving older result cannot
+            // overwrite the grid once a newer execution has started. An empty executionId matches
+            // any current execution (used for error recovery), mirroring `executionStopped`.
+            if (action.executionId !== '' && action.executionId !== state.currentExecutionId) {
+                // TODO: send telemetry. It should not happen
+                return state;
+            }
             // `isEditMode` describes the query that produced `currentQueryResult` and is
             // refreshed in `executionStarted` / `updateQueryResult`. Typing in the editor
             // doesn't change the already-executed query, so we don't re-parse here.
@@ -244,7 +251,15 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
         case 'selectBucket':
             return { ...state, selectedThroughputBucket: action.throughputBucket };
         case 'updateThroughputBuckets':
-            return { ...state, throughputBuckets: action.throughputBuckets };
+            return {
+                ...state,
+                throughputBuckets: action.throughputBuckets,
+                selectedThroughputBucket:
+                    state.selectedThroughputBucket !== undefined &&
+                    action.throughputBuckets?.[state.selectedThroughputBucket - 1]
+                        ? state.selectedThroughputBucket
+                        : undefined,
+            };
         case 'setConnectionList':
             return { ...state, connectionList: action.connectionList };
         case 'setSchemaBasedOnQueries':

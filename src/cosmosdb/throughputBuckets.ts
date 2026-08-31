@@ -59,7 +59,7 @@ export async function supportsThroughputBuckets(
  * configured on the container (or its shared-throughput database).
  *
  * The Cosmos DB ARM SDK does not yet model `throughputBuckets`, so the value is
- * read directly from the pinned-api-version REST response. If the buckets
+ * read directly from the preview REST response. If the buckets
  * cannot be read, all five are reported as enabled to preserve the selector's
  * previous always-available behaviour.
  */

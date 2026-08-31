@@ -23,7 +23,7 @@ import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 export async function openNoSqlQueryEditor(
     context: IActionContext,
     nodeOrConnection?: TreeElement | FabricTreeElement | NoSqlQueryConnection,
-): Promise<void> {
+): Promise<QueryEditorTab | undefined> {
     let connection: NoSqlQueryConnection;
 
     if (isNoSqlQueryConnection(nodeOrConnection)) {
@@ -63,5 +63,5 @@ export async function openNoSqlQueryEditor(
         throw new Error(l10n.t('Failed to determine connection information for the selected item.'));
     }
 
-    QueryEditorTab.render(connection);
+    return QueryEditorTab.render(connection);
 }

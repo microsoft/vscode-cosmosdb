@@ -450,11 +450,14 @@ async function processBulkDeleteBatch(connection: NoSqlQueryConnection, ids: Doc
         const promises: Promise<Array<BulkOperationResult & { documentId: DocumentId }>>[] = [];
         while (ids.length > 0 && !abortSignal.aborted) {
             const chunk = ids.splice(0, BULK_DELETE_LIMIT);
-            const operations = chunk.map((d): DeleteOperationInput => ({
-                id: d.id,
-                partitionKey: Array.isArray(d.partitionKey) && d.partitionKey.length === 0 ? undefined : d.partitionKey,
-                operationType: BulkOperationType.Delete,
-            }));
+            const operations = chunk.map(
+                (d): DeleteOperationInput => ({
+                    id: d.id,
+                    partitionKey:
+                        Array.isArray(d.partitionKey) && d.partitionKey.length === 0 ? undefined : d.partitionKey,
+                    operationType: BulkOperationType.Delete,
+                }),
+            );
             promises.push(
                 container.items
                     .executeBulkOperations(operations, { abortSignal, priorityLevel })

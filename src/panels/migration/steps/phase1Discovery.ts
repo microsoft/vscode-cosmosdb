@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type TypedEventSink } from '@cosmosdb/webview-rpc';
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { type TypedEventSink } from '@microsoft/vscode-ext-webview';
 import * as l10n from '@vscode/l10n';
 import { renderPrompt } from '@vscode/prompt-tsx';
 import * as fs from 'fs';
@@ -370,7 +370,7 @@ export async function estimateDiscoveryTokens(
     const codeEvidencedTables = accessPatternsMdContent ? parseCodeEvidencedTables(accessPatternsMdContent) : [];
     const volumetricsMdContent = await readFileByName(volumetricFiles, 'volumetrics.md');
 
-    const analysis = project.phases.discovery.applicationAnalysis ?? {};
+    const analysis = (project.phases.discovery.applicationAnalysis as AnalysisResult | undefined) ?? {};
     const discoveryDir = projectService.getDiscoveryPath();
     const workspaceRoot = projectService.getWorkspacePath();
     const outputRelativePath = path.relative(workspaceRoot, path.join(discoveryDir, 'discovery-report.md'));
@@ -625,7 +625,7 @@ export async function runDiscoveryReport(ctx: Phase1Context): Promise<void> {
                 return;
             }
 
-            const analysis = project.phases.discovery.applicationAnalysis;
+            const analysis = project.phases.discovery.applicationAnalysis as AnalysisResult | undefined;
 
             const accessPatternFiles = await projectService.listDiscoveryFiles(project, 'access-patterns');
             const volumetricFiles = await projectService.listDiscoveryFiles(project, 'volumetrics');

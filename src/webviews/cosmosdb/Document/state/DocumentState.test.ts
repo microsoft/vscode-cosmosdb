@@ -28,6 +28,7 @@ describe('DocumentState cleanup', () => {
             currentDocumentContent: '{"id":"destination","edited":true}',
             isDirty: true,
             cleanupRequiredMessage: 'Cleanup required',
+            error: 'Previous cleanup failed',
         };
 
         const result = dispatch(state, {
@@ -40,5 +41,6 @@ describe('DocumentState cleanup', () => {
         expect(result.currentDocumentContent).toBe('{"id":"destination"}');
         expect(result.isDirty).toBe(false);
         expect(result.cleanupRequiredMessage).toBeUndefined();
+        expect(result.error).toBeUndefined();
     });
 });

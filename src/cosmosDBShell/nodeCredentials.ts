@@ -4,30 +4,30 @@
  *--------------------------------------------------------------------------------------------*/
 
 /**
- * Credential extraction and authentication classification for {@link NoSqlContainerResourceItem}
- * nodes. The {@link AuthKind} value is what the terminal-reuse layer consults to decide whether
- * an already-running shell can host a new node.
+ * Credential extraction and authentication classification for the tree nodes that can launch
+ * the shell. The {@link AuthKind} value determines which credential flags and env vars the
+ * launched process receives.
  */
 import { AuthenticationMethod } from '../cosmosdb/AuthenticationMethod';
 import { type CosmosDBEntraIdCredential, type CosmosDBManagedIdentityCredential } from '../cosmosdb/CosmosDBCredential';
 import { getAccessTokenForVSCode } from '../cosmosdb/utils/azureSessionHelper';
 import { ext } from '../extensionVariables';
-import { type NoSqlContainerResourceItem } from '../tree/nosql/NoSqlContainerResourceItem';
+import { type CosmosDBShellLaunchNode } from './shellLaunchNode';
 
 /** Authentication mode used at launch — determines which env vars (if any) are baked into the process. */
 export type AuthKind = 'emulator' | 'accountKey' | 'entraId' | 'managedIdentity' | 'none';
 
-export function getCosmosDBShellCredential(node: NoSqlContainerResourceItem): string | undefined {
+export function getCosmosDBShellCredential(node: CosmosDBShellLaunchNode): string | undefined {
     const credential = node.model.accountInfo.credentials.find((c) => c.type === AuthenticationMethod.accountKey);
     return credential?.key;
 }
 
-export function getEntraIdCredential(node: NoSqlContainerResourceItem): CosmosDBEntraIdCredential | undefined {
+export function getEntraIdCredential(node: CosmosDBShellLaunchNode): CosmosDBEntraIdCredential | undefined {
     return node.model.accountInfo.credentials.find((c) => c.type === AuthenticationMethod.entraId);
 }
 
 export function getManagedIdentityCredential(
-    node: NoSqlContainerResourceItem,
+    node: CosmosDBShellLaunchNode,
 ): CosmosDBManagedIdentityCredential | undefined {
     return node.model.accountInfo.credentials.find((c) => c.type === AuthenticationMethod.managedIdentity);
 }
@@ -36,7 +36,7 @@ export function getManagedIdentityCredential(
  * Classifies the authentication mode required by a node. This determines which env vars
  * (if any) the shell process must have been launched with in order to authenticate.
  */
-export function getNodeAuthKind(node: NoSqlContainerResourceItem): AuthKind {
+export function getNodeAuthKind(node: CosmosDBShellLaunchNode): AuthKind {
     if (node.model.accountInfo.isEmulator) {
         return 'emulator';
     }

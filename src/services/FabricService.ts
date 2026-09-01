@@ -17,15 +17,21 @@ import { parseCosmosDBConnectionString } from '../cosmosdb/cosmosDBConnectionStr
 import { getCosmosDBCredentials } from '../cosmosdb/CosmosDBCredential';
 import { ext } from '../extensionVariables';
 import { type AccountInfo } from '../tree/cosmosdb/AccountInfo';
+import { type CosmosDbSourceInfo, getArtifactPath, parseCosmosDbSourceProperties } from './FabricServiceUtils';
 
 export const CosmosDbArtifactType = ['NATIVE', 'MIRRORED_KEY', 'MIRRORED_AAD'] as const;
 export type CosmosDbArtifactType = (typeof CosmosDbArtifactType)[number];
 
 export type ExtendedProperties = {
-    serverFqdn: string;
-    databaseName: string;
+    serverFqdn?: string;
+    databaseName?: string;
     connectionId?: string;
     resourceTokens?: Record<string, string>;
+    cosmosDbSourceProperties?: {
+        serverFqdn?: string;
+        databaseName?: string;
+        credentialType?: string;
+    };
 };
 
 export type ArtifactConnectionInfo = {
@@ -71,13 +77,27 @@ class FabricServiceImpl implements IFabricService {
             throw new Error(l10n.t('Fabric Service is not initialized'));
         }
 
-        const credentialType = await this.getCredentialType(artifact);
         const fullArtifact = await this.getFullArtifact(artifact);
 
         const extendedProperties = (fullArtifact.properties ?? {}) as ExtendedProperties;
-        const accountEndpoint = `${extendedProperties?.serverFqdn ?? ''}`;
-        const databaseName = `${extendedProperties?.databaseName ?? ''}`;
-        const connectionId = extendedProperties?.connectionId;
+        let mirroredSourceProperties: CosmosDbSourceInfo | undefined;
+        if (artifact.type === 'MirroredDatabase') {
+            try {
+                mirroredSourceProperties = parseCosmosDbSourceProperties(extendedProperties);
+            } catch (error) {
+                throw new Error(
+                    l10n.t(
+                        'Unable to read the mirrored database connection information: {0}',
+                        this.getErrorMessage(error),
+                    ),
+                );
+            }
+        }
+
+        const credentialType = this.getCredentialType(artifact, mirroredSourceProperties?.credentialType);
+        const accountEndpoint = mirroredSourceProperties?.accountEndpoint ?? `${extendedProperties.serverFqdn ?? ''}`;
+        const databaseName = mirroredSourceProperties?.databaseName ?? `${extendedProperties.databaseName ?? ''}`;
+        const connectionId = extendedProperties.connectionId;
         const resourceTokens = extendedProperties?.resourceTokens;
 
         const accountInfo = await this.getAccountInfo(artifact, credentialType, accountEndpoint);
@@ -199,7 +219,7 @@ class FabricServiceImpl implements IFabricService {
         }
 
         // If the handler has a readWorkflow with onBeforeRead, call it before sending the request
-        const pathTemplate = `/v1/workspaces/${artifact.workspaceId}/cosmosdbdatabases/${artifact.id}`;
+        const pathTemplate = getArtifactPath(artifact.workspaceId, artifact.id, artifact.type);
 
         const options: IApiClientRequestOptions = {
             method: 'GET',
@@ -264,54 +284,26 @@ class FabricServiceImpl implements IFabricService {
         };
     }
 
-    protected getCredentialType(artifact: CosmosDBArtifact): Promise<CosmosDbArtifactType> | never {
+    protected getCredentialType(artifact: CosmosDBArtifact, credentialType?: string): CosmosDbArtifactType | never {
         if (!ext.fabricServices) {
             throw new Error(l10n.t('Fabric Service is not initialized'));
         }
 
         if (artifact.type === 'CosmosDBDatabase') {
-            return Promise.resolve('NATIVE');
+            return 'NATIVE';
         }
 
-        // TODO: Fabric web page has internal url to figure out what type of credential it is,
-        //  we might need to expose something in Public API to avoid hardcoding the logic here
         if (artifact.type === 'MirroredDatabase') {
-            const credentialType: string = 'OAuth2';
-            // This code uses internal powerbi API endpoint what requires "user_impersonation" scope
+            if (credentialType === 'Key') {
+                return 'MIRRORED_KEY';
+            }
+            if (credentialType === 'OAuth2') {
+                return 'MIRRORED_AAD';
+            }
 
-            // const connectionId =
-            //     ((artifact.extendedProperties ?? {}) as ExtendedProperties)?.connectionId;
-            // const pathTemplate = `/v1/connections/${connectionId}`;
-            // const options: IApiClientRequestOptions = {
-            //     method: 'GET',
-            //     url: 'https://api.powerbi.com',
-            //     pathTemplate: pathTemplate,
-            //     headers: { 'x-ms-originatingapp': 'vscodefabric' },
-            // };
-            // const response = await ext.fabricServices.apiClient.sendRequest(options);
-            //
-            // if (response?.status !== 200) {
-            //     throw new Error(
-            //         l10n.t(
-            //             "Error getting Artifact data for '{0}' Status = {1} {2}",
-            //             artifact.displayName,
-            //             response.status,
-            //             response.response?.bodyAsText ?? '',
-            //         ),
-            //     );
-            // }
-            //
-            // // oxlint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-member-access
-            // const credentialType = response.parsedBody?.credentialDetails?.credentialType;
-
-            const result =
-                credentialType === 'Key'
-                    ? 'MIRRORED_KEY'
-                    : credentialType === 'OAuth2'
-                      ? 'MIRRORED_AAD'
-                      : 'MIRRORED_AAD';
-
-            return Promise.resolve(result);
+            throw new Error(
+                l10n.t('Unsupported credential type for mirrored database: {0}', credentialType ?? 'unknown'),
+            );
         }
 
         throw new Error(
@@ -329,6 +321,10 @@ class FabricServiceImpl implements IFabricService {
         const msg = response.parsedBody?.message ?? response.parsedBody?.errorCode ?? response.status;
         // Only include status in the message if it's not already the fallback
         return typeof msg === 'number' ? `${operation} (${msg})` : `${operation} (${response.status}): ${msg}`;
+    }
+
+    private getErrorMessage(error: unknown): string {
+        return error instanceof Error ? error.message : String(error);
     }
 }
 

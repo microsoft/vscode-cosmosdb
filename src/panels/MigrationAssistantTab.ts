@@ -102,7 +102,7 @@ export class MigrationAssistantTab extends BaseTab {
         this.workspaceKey = MigrationAssistantTab.normalizeKey(this.workspacePath);
         this.projectService = new MigrationProjectService(this.workspacePath);
 
-        this.panel.iconPath = getThemedIconPath('editor.svg') as { light: vscode.Uri; dark: vscode.Uri };
+        this.panel.iconPath = getThemedIconPath('editor.svg');
 
         this.eventSink = new TypedEventSink<MigrationEvent>();
 

@@ -30,6 +30,7 @@ export async function openUnsupportedAccount(
     const message: string = l10n.t('This extension does not support Azure Cosmos DB for') + ` ${api} API.`;
 
     if ('subscription' in node.account && node.account.subscription) {
+        // oxlint-disable-next-line typescript/no-deprecated -- legacy PostgreSQL accounts are routed to their extension
         if (node.experience.api === API.PostgresSingle || node.experience.api === API.PostgresFlexible) {
             await openPostgresExtension(node);
         } else {

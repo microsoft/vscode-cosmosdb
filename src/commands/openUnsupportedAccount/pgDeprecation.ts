@@ -64,6 +64,7 @@ export async function openPostgresExtension(node: CosmosDBAccountUnsupportedReso
 
             const resourceGroupName = getResourceGroupFromId(node.account.id);
             const postgresClient =
+                // oxlint-disable-next-line typescript/no-deprecated -- distinguishes the retired single-server API
                 node.experience.api === API.PostgresSingle
                     ? await createPostgreSQLClient(context, node.account.subscription)
                     : await createPostgreSQLFlexibleClient(context, node.account.subscription);

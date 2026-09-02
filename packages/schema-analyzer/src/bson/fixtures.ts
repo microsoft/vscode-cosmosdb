@@ -50,6 +50,7 @@ export const flatDocument: WithId<Document> = {
     uuidField: new UUID(),
     uuidLegacyField: (() => {
         const u = new UUID();
+        // oxlint-disable-next-line typescript/no-deprecated -- fixture verifies legacy BSON UUID handling
         (u as unknown as { sub_type: number }).sub_type = Binary.SUBTYPE_UUID_OLD;
         return u;
     })(),

@@ -3,14 +3,20 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import type * as vscode from 'vscode';
+import * as l10n from '@vscode/l10n';
+import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { getThemeAgnosticIconURI } from '../../constants';
 import { AuthenticationMethod } from '../../cosmosdb/AuthenticationMethod';
 import { getControlPlane } from '../../cosmosdb/controlPlane';
 import { getCosmosDBEntraIdCredential } from '../../cosmosdb/CosmosDBCredential';
 import { getSignedInPrincipalIdForAccountEndpoint } from '../../cosmosdb/utils/azureSessionHelper';
-import { ensureRbacPermissionV2, isRbacException, showRbacPermissionError } from '../../cosmosdb/utils/rbacUtils';
+import {
+    ensureRbacPermissionV2,
+    isRbacException,
+    showRbacPermissionError,
+    withDataPlaneRbacRetry,
+} from '../../cosmosdb/utils/rbacUtils';
 import { ext } from '../../extensionVariables';
 import { compareResourceIds } from '../../utils/strings';
 import { CosmosDBAccountResourceItemBase } from '../azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
@@ -80,7 +86,14 @@ export abstract class CosmosDBAccountResourceItem extends CosmosDBAccountResourc
                     e.message.includes(`[${principalId}]`) &&
                     (await ensureRbacPermissionV2(this.id, this.account.subscription, principalId))
                 ) {
-                    return controlPlane.listDatabases();
+                    return vscode.window.withProgress(
+                        {
+                            location: vscode.ProgressLocation.Notification,
+                            title: l10n.t('Waiting for Azure Cosmos DB permissions to propagate…'),
+                            cancellable: true,
+                        },
+                        (_progress, token) => withDataPlaneRbacRetry(() => controlPlane.listDatabases(), { token }),
+                    );
                 } else {
                     void showRbacPermissionError(this.id, principalId);
                     ext.outputChannel.error(e);

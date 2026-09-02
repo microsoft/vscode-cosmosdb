@@ -44,19 +44,19 @@ describe('isCosmosDBRecordIdentifier', () => {
     });
 
     it('verifies every partition key path exists when a definition is provided', () => {
-        const pk: PartitionKeyDefinition = { paths: ['/tenantId'] } as PartitionKeyDefinition;
+        const pk: PartitionKeyDefinition = { paths: ['/tenantId'] };
         expect(isCosmosDBRecordIdentifier({ id: 'doc-1', tenantId: 't1' }, pk)).toBe(true);
         expect(isCosmosDBRecordIdentifier({ id: 'doc-1' }, pk)).toBe(false);
     });
 
     it('resolves nested partition key paths', () => {
-        const pk: PartitionKeyDefinition = { paths: ['/address/zip'] } as PartitionKeyDefinition;
+        const pk: PartitionKeyDefinition = { paths: ['/address/zip'] };
         expect(isCosmosDBRecordIdentifier({ id: 'doc-1', address: { zip: '12345' } }, pk)).toBe(true);
         expect(isCosmosDBRecordIdentifier({ id: 'doc-1', address: {} }, pk)).toBe(false);
     });
 
     it('skips the partition key check entirely when _rid is present', () => {
-        const pk: PartitionKeyDefinition = { paths: ['/missing'] } as PartitionKeyDefinition;
+        const pk: PartitionKeyDefinition = { paths: ['/missing'] };
         expect(isCosmosDBRecordIdentifier({ _rid: 'abc' }, pk)).toBe(true);
     });
 });

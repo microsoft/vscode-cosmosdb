@@ -70,6 +70,7 @@ export class CosmosDBWorkspaceItem implements TreeElement, TreeElementWithContex
                         tenantId,
                     };
 
+                    // oxlint-disable-next-line typescript/no-deprecated -- retained for persisted attached accounts
                     if (experience?.api === API.Cassandra) {
                         return makeFilterable(
                             makeSortable(new NoSqlAccountAttachedResourceItem(accountModel, experience)),
@@ -82,6 +83,7 @@ export class CosmosDBWorkspaceItem implements TreeElement, TreeElementWithContex
                         );
                     }
 
+                    // oxlint-disable-next-line typescript/no-deprecated -- retained for persisted attached accounts
                     if (experience?.api === API.Graph) {
                         // Uncomment this line if Graph support is ever re-added
                         // return new GraphAccountAttachedResourceItem(accountModel, experience);
@@ -89,6 +91,7 @@ export class CosmosDBWorkspaceItem implements TreeElement, TreeElementWithContex
                         return new CosmosDBAccountUnsupportedResourceItem(accountModel, experience);
                     }
 
+                    // oxlint-disable-next-line typescript/no-deprecated -- retained for persisted attached accounts
                     if (experience?.api === API.Table) {
                         // Uncomment this line if Table support is ever re-added
                         // return new TableAccountAttachedResourceItem(accountModel, experience);

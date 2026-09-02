@@ -21,6 +21,7 @@ describe('AzureDBExperiences', () => {
         });
 
         it('maps the (retired) Graph API to the Gremlin experience', () => {
+            // oxlint-disable-next-line typescript/no-deprecated -- verifies compatibility with the retired API value
             expect(getExperienceFromApi(API.Graph)).toBe(GremlinExperience);
         });
 
@@ -56,21 +57,19 @@ describe('AzureDBExperiences', () => {
         });
 
         it('detects experiences from the defaultExperience tag', () => {
-            expect(tryGetExperience({ tags: { defaultExperience: 'Gremlin (graph)' } } as never)).toBe(
-                GremlinExperience,
-            );
-            expect(tryGetExperience({ tags: { defaultExperience: 'Azure Table' } } as never)).toBe(TableExperience);
-            expect(tryGetExperience({ tags: { defaultExperience: 'Cassandra' } } as never)).toBe(CassandraExperience);
-            expect(tryGetExperience({ tags: { defaultExperience: 'Core (SQL)' } } as never)).toBe(CoreExperience);
+            expect(tryGetExperience({ tags: { defaultExperience: 'Gremlin (graph)' } })).toBe(GremlinExperience);
+            expect(tryGetExperience({ tags: { defaultExperience: 'Azure Table' } })).toBe(TableExperience);
+            expect(tryGetExperience({ tags: { defaultExperience: 'Cassandra' } })).toBe(CassandraExperience);
+            expect(tryGetExperience({ tags: { defaultExperience: 'Core (SQL)' } })).toBe(CoreExperience);
         });
 
         it('falls back to Core when kind is GlobalDocumentDB with no tags/capabilities', () => {
-            expect(tryGetExperience({ kind: 'GlobalDocumentDB' } as never)).toBe(CoreExperience);
+            expect(tryGetExperience({ kind: 'GlobalDocumentDB' })).toBe(CoreExperience);
         });
 
         it('returns undefined when nothing matches', () => {
-            expect(tryGetExperience({ tags: { defaultExperience: 'Unknown' } } as never)).toBeUndefined();
-            expect(tryGetExperience({ kind: 'MongoDB' } as never)).toBeUndefined();
+            expect(tryGetExperience({ tags: { defaultExperience: 'Unknown' } })).toBeUndefined();
+            expect(tryGetExperience({ kind: 'MongoDB' })).toBeUndefined();
         });
     });
 

@@ -54,18 +54,18 @@ export class ArmCosmosDBControlPlane implements CosmosDBControlPlane {
 
     public async createDatabase(databaseId: string): Promise<DatabaseResource> {
         const client = await this.getArmClient();
-        const response = await client.sqlResources.beginCreateUpdateSqlDatabaseAndWait(
-            this.resourceGroup,
-            this.accountName,
-            databaseId,
-            { resource: { id: databaseId }, options: {} },
-        );
+        const response = await client.sqlResources
+            .createUpdateSqlDatabase(this.resourceGroup, this.accountName, databaseId, {
+                resource: { id: databaseId },
+                options: {},
+            })
+            .pollUntilDone();
         return toDatabaseResource(response);
     }
 
     public async deleteDatabase(databaseId: string): Promise<void> {
         const client = await this.getArmClient();
-        await client.sqlResources.beginDeleteSqlDatabaseAndWait(this.resourceGroup, this.accountName, databaseId);
+        await client.sqlResources.deleteSqlDatabase(this.resourceGroup, this.accountName, databaseId).pollUntilDone();
         await SchemaService.getInstance().deleteSchemasForDatabase(this.endpoint, databaseId);
     }
 
@@ -121,24 +121,17 @@ export class ArmCosmosDBControlPlane implements CosmosDBControlPlane {
             options,
         };
 
-        const response = await client.sqlResources.beginCreateUpdateSqlContainerAndWait(
-            this.resourceGroup,
-            this.accountName,
-            databaseId,
-            containerId,
-            parameters,
-        );
+        const response = await client.sqlResources
+            .createUpdateSqlContainer(this.resourceGroup, this.accountName, databaseId, containerId, parameters)
+            .pollUntilDone();
         return toContainerResource(response);
     }
 
     public async deleteContainer(databaseId: string, containerId: string): Promise<void> {
         const client = await this.getArmClient();
-        await client.sqlResources.beginDeleteSqlContainerAndWait(
-            this.resourceGroup,
-            this.accountName,
-            databaseId,
-            containerId,
-        );
+        await client.sqlResources
+            .deleteSqlContainer(this.resourceGroup, this.accountName, databaseId, containerId)
+            .pollUntilDone();
         await SchemaService.getInstance().deleteSchemasForContainer(this.endpoint, databaseId, containerId);
     }
 
@@ -223,7 +216,7 @@ function toContainerResource(c: SqlContainerGetResults): ContainerResource {
             ? {
                   paths: partitionKey.paths ?? [],
                   kind: (partitionKey.kind as PartitionKeyKind | undefined) ?? PartitionKeyKind.Hash,
-                  version: (partitionKey.version as PartitionKeyDefinitionVersion | undefined) ?? undefined,
+                  version: partitionKey.version ?? undefined,
                   systemKey: partitionKey.systemKey,
               }
             : undefined,

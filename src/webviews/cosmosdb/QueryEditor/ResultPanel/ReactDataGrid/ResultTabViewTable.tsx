@@ -193,7 +193,7 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
     // Handle keyboard selection: Space toggles current row, Shift+Arrow extends range
     const handleCellKeyDown = useCallback(
         (args: CellKeyDownArgs<GridRow>, event: CellKeyboardEvent) => {
-            if (args.mode !== 'SELECT') return;
+            if (args.mode !== 'ACTIVE' || !args.row) return;
 
             const rowId = args.row.__id;
             const rowIdx = args.rowIdx;
@@ -223,10 +223,8 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
             } else if (event.shiftKey && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
                 // Shift+Arrow: extend/shrink selection; let the grid move focus normally
                 globalThis.getSelection()?.removeAllRanges();
-                if (anchorRowIdRef.current === null) {
-                    anchorRowIdRef.current = rowId;
-                }
-                const anchorId = anchorRowIdRef.current;
+                const anchorId = anchorRowIdRef.current ?? rowId;
+                anchorRowIdRef.current = anchorId;
 
                 const nextRowIdx =
                     event.key === 'ArrowDown' ? Math.min(rowIdx + 1, rows.length - 1) : Math.max(rowIdx - 1, 0);

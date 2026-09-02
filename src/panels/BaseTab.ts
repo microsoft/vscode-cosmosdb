@@ -198,7 +198,7 @@ export class BaseTab {
     </div>
     <script nonce="${params.nonce}">
       globalThis.l10n_bundle = ${
-          // eslint-disable-next-line no-restricted-syntax
+          // oxlint-disable-next-line cosmosdb/no-vscode-l10n
           JSON.stringify(vscode.l10n.bundle ?? {})
       };
     </script>

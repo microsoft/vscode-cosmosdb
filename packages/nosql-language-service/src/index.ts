@@ -150,13 +150,14 @@ export function parse(query: string): ParseResult {
     for (const e of parserInstance.errors) {
         const token = e.token;
 
-        // Chevrotain returns NaN for virtual EOF tokens — treat NaN as missing
-        const safeOffset = (v: number | undefined, fallback: number) => (v !== undefined && !isNaN(v) ? v : fallback);
+        // Chevrotain uses negative values for unavailable locations on virtual and recovery tokens.
+        const safeLocation = (value: number | undefined): number | undefined =>
+            value !== undefined && Number.isFinite(value) && value >= 0 ? value : undefined;
 
-        const startOffset = safeOffset(token.startOffset, query.length);
-        const endOffset = safeOffset(token.endOffset, startOffset) + 1;
-        const startLine = safeOffset(token.startLine, undefined as unknown as number);
-        const startCol = safeOffset(token.startColumn, undefined as unknown as number);
+        const startOffset = safeLocation(token.startOffset) ?? query.length;
+        const endOffset = (safeLocation(token.endOffset) ?? startOffset) + 1;
+        const startLine = safeLocation(token.startLine);
+        const startCol = safeLocation(token.startColumn);
 
         // If Chevrotain didn't provide line/col (EOF token), compute from offset
         const computedStart =
@@ -164,8 +165,8 @@ export function parse(query: string): ParseResult {
                 ? { offset: startOffset, line: startLine, col: startCol ?? 1 }
                 : offsetToPosition(query, startOffset);
 
-        const endLine = safeOffset(token.endLine, undefined as unknown as number);
-        const endCol = safeOffset(token.endColumn, undefined as unknown as number);
+        const endLine = safeLocation(token.endLine);
+        const endCol = safeLocation(token.endColumn);
         const computedEnd =
             endLine !== undefined
                 ? { offset: endOffset, line: endLine, col: (endCol ?? 0) + 1 }

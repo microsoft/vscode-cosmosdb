@@ -13,11 +13,20 @@ export default defineConfig({
     // docblock; everything else runs in the default node environment.
     resolve: {
         alias: {
-            vscode: path.resolve(__dirname, 'src/__mocks__/vscode.ts'),
-            '@cosmosdb/nosql-language-service': path.resolve(__dirname, 'packages/nosql-language-service/src/index.ts'),
-            '@cosmosdb/schema-analyzer/json': path.resolve(__dirname, 'packages/schema-analyzer/src/json/index.ts'),
-            '@cosmosdb/schema-analyzer/bson': path.resolve(__dirname, 'packages/schema-analyzer/src/bson/index.ts'),
-            '@cosmosdb/schema-analyzer': path.resolve(__dirname, 'packages/schema-analyzer/src/index.ts'),
+            vscode: path.resolve(import.meta.dirname, 'src/__mocks__/vscode.ts'),
+            '@cosmosdb/nosql-language-service': path.resolve(
+                import.meta.dirname,
+                'packages/nosql-language-service/src/index.ts',
+            ),
+            '@cosmosdb/schema-analyzer/json': path.resolve(
+                import.meta.dirname,
+                'packages/schema-analyzer/src/json/index.ts',
+            ),
+            '@cosmosdb/schema-analyzer/bson': path.resolve(
+                import.meta.dirname,
+                'packages/schema-analyzer/src/bson/index.ts',
+            ),
+            '@cosmosdb/schema-analyzer': path.resolve(import.meta.dirname, 'packages/schema-analyzer/src/index.ts'),
         },
     },
     test: {

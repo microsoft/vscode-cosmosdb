@@ -1380,6 +1380,7 @@
   "View selected item in separate tab": "View selected item in separate tab",
   "Volumetrics help": "Volumetrics help",
   "Volumetrics:": "Volumetrics:",
+  "Waiting for Azure Cosmos DB permissions to propagate…": "Waiting for Azure Cosmos DB permissions to propagate…",
   "Waiting for Azure sign-in...": "Waiting for Azure sign-in...",
   "Waiting for data-plane role assignment to propagate ({0}s elapsed)…": "Waiting for data-plane role assignment to propagate ({0}s elapsed)…",
   "Warning": "Warning",

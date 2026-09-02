@@ -119,6 +119,7 @@ export const CoreExperience: Experience = {
     tag: 'Core (SQL)',
 } as const;
 export const TableExperience: Experience = {
+    // oxlint-disable-next-line typescript/no-deprecated -- retained to recognize retired account types
     api: API.Table,
     longName: 'Cosmos DB for Table',
     shortName: 'Table',
@@ -127,6 +128,7 @@ export const TableExperience: Experience = {
     tag: 'Azure Table',
 } as const;
 export const GremlinExperience: Experience = {
+    // oxlint-disable-next-line typescript/no-deprecated -- retained to recognize retired account types
     api: API.Graph,
     longName: 'Cosmos DB for Gremlin',
     description: '(Graph)',
@@ -136,6 +138,7 @@ export const GremlinExperience: Experience = {
     tag: 'Gremlin (graph)',
 } as const;
 export const CassandraExperience: Experience = {
+    // oxlint-disable-next-line typescript/no-deprecated -- retained to recognize retired account types
     api: API.Cassandra,
     longName: 'Cosmos DB for Cassandra',
     shortName: 'Cassandra',
@@ -144,11 +147,13 @@ export const CassandraExperience: Experience = {
     tag: 'Cassandra',
 };
 export const PostgresSingleExperience: Experience = {
+    // oxlint-disable-next-line typescript/no-deprecated -- retained to route unsupported legacy accounts
     api: API.PostgresSingle,
     longName: 'PostgreSQL Single Server',
     shortName: 'PostgreSQLSingle',
 };
 export const PostgresFlexibleExperience: Experience = {
+    // oxlint-disable-next-line typescript/no-deprecated -- retained to route unsupported legacy accounts
     api: API.PostgresFlexible,
     longName: 'PostgreSQL Flexible Server',
     shortName: 'PostgreSQLFlexible',

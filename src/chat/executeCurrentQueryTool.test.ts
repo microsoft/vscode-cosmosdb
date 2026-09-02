@@ -71,7 +71,7 @@ describe('cosmosdb_executeCurrentQuery — confidentiality', () => {
             databaseId: 'db1',
             containerId: 'c1',
         };
-        setOpenTabs(QueryEditorTab as unknown as { openTabs: Set<unknown> }, [tab]);
+        setOpenTabs(QueryEditorTab, [tab]);
         vi.mocked(getConnectionFromQueryTab).mockReturnValue(connection as never);
         const queryContextId = createQueryExecutionContext(tab as never, connection as never, 'SELECT * FROM c');
 
@@ -148,7 +148,7 @@ describe('cosmosdb_executeCurrentQuery — confirmation snapshot (P1)', () => {
         const connB = { endpoint: 'https://b.documents.azure.com/', databaseId: 'dbB', containerId: 'cB' };
         const tabA = makeTab('A', 'SELECT * FROM a', connA);
         const tabB = makeTab('B', 'SELECT * FROM b', connB);
-        setOpenTabs(QueryEditorTab as unknown as { openTabs: Set<unknown> }, [tabA, tabB]);
+        setOpenTabs(QueryEditorTab, [tabA, tabB]);
 
         vi.mocked(getConnectionFromQueryTab).mockImplementation(
             ((tab: unknown) => (tab as typeof tabA).connection) as never,
@@ -181,7 +181,7 @@ describe('cosmosdb_executeCurrentQuery — confirmation snapshot (P1)', () => {
 
         const connA = { endpoint: 'https://a.documents.azure.com/', databaseId: 'dbA', containerId: 'cA' };
         const tabA = makeTab('A', 'SELECT * FROM a', connA);
-        setOpenTabs(QueryEditorTab as unknown as { openTabs: Set<unknown> }, [tabA]);
+        setOpenTabs(QueryEditorTab, [tabA]);
 
         vi.mocked(getConnectionFromQueryTab).mockImplementation(
             ((tab: unknown) => (tab as typeof tabA).connection) as never,
@@ -208,7 +208,7 @@ describe('cosmosdb_executeCurrentQuery — confirmation snapshot (P1)', () => {
 
         const connA = { endpoint: 'https://a.documents.azure.com/', databaseId: 'dbA', containerId: 'cA' };
         const tabA = makeTab('A', 'SELECT * FROM a', connA);
-        setOpenTabs(QueryEditorTab as unknown as { openTabs: Set<unknown> }, [tabA]);
+        setOpenTabs(QueryEditorTab, [tabA]);
 
         vi.mocked(getConnectionFromQueryTab).mockImplementation(
             ((tab: unknown) => (tab as typeof tabA).connection) as never,
@@ -234,7 +234,7 @@ describe('cosmosdb_executeCurrentQuery — confirmation snapshot (P1)', () => {
         const connB = { endpoint: 'https://b.documents.azure.com/', databaseId: 'dbB', containerId: 'cB' };
         const tabA = makeTab('A', 'SELECT * FROM a', connA);
         const tabB = makeTab('B', 'SELECT * FROM b', connB);
-        setOpenTabs(QueryEditorTab as unknown as { openTabs: Set<unknown> }, [tabA, tabB]);
+        setOpenTabs(QueryEditorTab, [tabA, tabB]);
         vi.mocked(getConnectionFromQueryTab).mockImplementation(
             ((tab: unknown) => (tab as typeof tabA).connection) as never,
         );
@@ -289,7 +289,7 @@ describe('cosmosdb_executeCurrentQuery — confirmation snapshot (P1)', () => {
 
         const connection = { endpoint: 'https://a.documents.azure.com/', databaseId: 'dbA', containerId: 'cA' };
         const tab = makeTab('A', 'SELECT * FROM a', connection);
-        setOpenTabs(QueryEditorTab as unknown as { openTabs: Set<unknown> }, [tab]);
+        setOpenTabs(QueryEditorTab, [tab]);
         vi.mocked(getConnectionFromQueryTab).mockReturnValue(connection as never);
 
         let resolveFirst: ((executionId: string) => void) | undefined;
@@ -333,7 +333,7 @@ describe('cosmosdb_executeCurrentQuery — confirmation snapshot (P1)', () => {
 
         const connection = { endpoint: 'https://a.documents.azure.com/', databaseId: 'dbA', containerId: 'cA' };
         const tab = makeTab('A', 'SELECT * FROM a', connection);
-        setOpenTabs(QueryEditorTab as unknown as { openTabs: Set<unknown> }, [tab]);
+        setOpenTabs(QueryEditorTab, [tab]);
         vi.mocked(getConnectionFromQueryTab).mockReturnValue(connection as never);
 
         const queryContextId = createContext(tab);
@@ -351,7 +351,7 @@ describe('cosmosdb_executeCurrentQuery — confirmation snapshot (P1)', () => {
 
         const connection = { endpoint: 'https://a.documents.azure.com/', databaseId: 'dbA', containerId: 'cA' };
         const tab = makeTab('A', 'SELECT * FROM a', connection);
-        setOpenTabs(QueryEditorTab as unknown as { openTabs: Set<unknown> }, [tab]);
+        setOpenTabs(QueryEditorTab, [tab]);
         vi.mocked(getConnectionFromQueryTab).mockReturnValue(connection as never);
         tab.runActiveQueryInEditor.mockImplementation(
             (_query, _connection, token) =>

@@ -24,7 +24,7 @@ function buildRecommendationPrompt(dataModelJson: string): string {
         '\n```\n\n' +
         'For EACH container, decide the best partition key. Weigh cardinality (favor high-cardinality keys), query alignment (the dominant read filters should be the partition key), write distribution (avoid hot partitions), and the 20 GB storage / 10,000 RU-per-second limits of a single logical partition. Consider a hierarchical partition key when one attribute is not enough.' +
         '\n\n' +
-        `When you have decided, call #${REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_NAME} exactly once with the structured recommendation for every container, so it is displayed in the Data Modeling wizard's Result page.` +
+        `When you have decided, call #${REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_NAME} exactly once with the structured recommendation for every container, so it is displayed in the Data Modeling wizard's Result page. If its result says the wizard is no longer open, present the complete recommendation it returns in the Chat response instead.` +
         '\n\n' +
         'Provide a short overall `summary`, and for each container:' +
         '\n' +

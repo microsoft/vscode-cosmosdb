@@ -33,6 +33,67 @@ export const REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_DESCRIPTION =
 export type ReportPartitionKeyRecommendationInput = PartitionKeyRecommendation;
 
 /**
+ * Formats a complete recommendation for the Chat fallback when its originating
+ * Data Modeling wizard has been closed before the tool is invoked.
+ */
+export function formatRecommendationForChat(recommendation: PartitionKeyRecommendation): string {
+    const sections = [
+        l10n.t('The Data Modeling wizard is no longer open. Show this complete recommendation in the chat response.'),
+        `## ${l10n.t('Summary')}\n${recommendation.summary}`,
+    ];
+
+    for (const container of recommendation.containers) {
+        const lines = [
+            `## ${container.entity}`,
+            `${l10n.t('Recommended partition key:')} \`${container.partitionKey}\``,
+            `${l10n.t('Rationale:')} ${container.rationale}`,
+        ];
+
+        if (container.candidates?.length) {
+            lines.push(
+                `### ${l10n.t('Candidate keys')}`,
+                ...container.candidates.flatMap((candidate) => [
+                    `- \`${candidate.partitionKey}\` — ${candidate.verdict} (${candidate.score}/100)`,
+                    ...candidate.assessments.map(
+                        (assessment) => `  - ${assessment.label} (${assessment.status}): ${assessment.detail}`,
+                    ),
+                ]),
+            );
+        }
+
+        if (container.hotPartitionRisk?.length) {
+            lines.push(
+                `### ${l10n.t('Hot-partition risk')}`,
+                ...container.hotPartitionRisk.map((risk) => `- \`${risk.partitionKey}\`: ${risk.risk} (${risk.pct}%)`),
+            );
+        }
+
+        if (container.queryRouting) {
+            lines.push(
+                `### ${l10n.t('Query routing')}`,
+                container.queryRouting.headline,
+                ...container.queryRouting.routes.map(
+                    (route) =>
+                        `- ${route.pattern}: ${route.routing} partition; ${route.filters}; ${route.qps}; ${route.estCost}`,
+                ),
+                container.queryRouting.analysis,
+            );
+        }
+
+        if (container.documentIdStrategy) {
+            lines.push(
+                `### ${l10n.t('Document ID strategy')} (${container.documentIdStrategy.tag})`,
+                container.documentIdStrategy.recommendation,
+            );
+        }
+
+        sections.push(lines.join('\n'));
+    }
+
+    return sections.join('\n\n');
+}
+
+/**
  * Tool input schema. Keep in sync with the `inputSchema` in package.json.
  */
 export const REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_INPUT_SCHEMA = {
@@ -185,7 +246,8 @@ export const REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_INPUT_SCHEMA = {
 /**
  * Registers the cosmosdb_reportPartitionKeyRecommendation tool with the VS Code
  * Language Model API. The tool forwards the structured recommendation to the
- * open Data Modeling wizard's Result page over its event stream.
+ * open Data Modeling wizard's Result page over its event stream, or returns it
+ * to Chat when the wizard has been closed.
  */
 export function registerReportPartitionKeyRecommendationTool(context: vscode.ExtensionContext): void {
     const tool = vscode.lm.registerTool<ReportPartitionKeyRecommendationInput>(
@@ -251,9 +313,7 @@ export function registerReportPartitionKeyRecommendationTool(context: vscode.Ext
                                 '[Report Partition Key Tool] No open Data Modeling wizard to receive the recommendation.',
                             );
                             return new vscode.LanguageModelToolResult([
-                                new vscode.LanguageModelTextPart(
-                                    l10n.t('No Data Modeling wizard is open to display the recommendation.'),
-                                ),
+                                new vscode.LanguageModelTextPart(formatRecommendationForChat(parsed.data)),
                             ]);
                         }
 

@@ -13,7 +13,7 @@ import { dataModelingProcedure, dataModelingRouter } from '../trpc';
  * instruction, not user-facing UI — kept as a stable, non-localized English
  * string so the model behavior is predictable.
  */
-function buildRecommendationPrompt(dataModelJson: string): string {
+function buildRecommendationPrompt(dataModelJson: string, wizardTabId: string): string {
     return (
         'You are helping choose the best Azure Cosmos DB for NoSQL partition key for a data model designed in the Cosmos DB Data Modeling wizard.' +
         '\n\n' +
@@ -24,7 +24,7 @@ function buildRecommendationPrompt(dataModelJson: string): string {
         '\n```\n\n' +
         'For EACH container, decide the best partition key. Weigh cardinality (favor high-cardinality keys), query alignment (the dominant read filters should be the partition key), write distribution (avoid hot partitions), and the 20 GB storage / 10,000 RU-per-second limits of a single logical partition. Consider a hierarchical partition key when one attribute is not enough.' +
         '\n\n' +
-        `When you have decided, call #${REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_NAME} exactly once with the structured recommendation for every container, so it is displayed in the Data Modeling wizard's Result page. If its result says the wizard is no longer open, present the complete recommendation it returns in the Chat response instead.` +
+        `When you have decided, call #${REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_NAME} exactly once with the structured recommendation for every container and wizardTabId "${wizardTabId}", so it is displayed in the originating Data Modeling wizard's Result page. If its result says that wizard is no longer open, present the complete recommendation it returns in the Chat response instead.` +
         '\n\n' +
         'Provide a short overall `summary`, and for each container:' +
         '\n' +
@@ -55,7 +55,7 @@ export const dataModelingRouterDef = dataModelingRouter({
 
             await vscode.commands.executeCommand('workbench.action.chat.open', {
                 mode: 'agent',
-                query: buildRecommendationPrompt(input.dataModelJson),
+                query: buildRecommendationPrompt(input.dataModelJson, ctx.wizardTabId),
             });
         }),
 });

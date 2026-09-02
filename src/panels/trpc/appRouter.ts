@@ -167,6 +167,8 @@ export type AccountOverviewRouterContext = CosmosDBRouterContext & {
 export type DataModelingRouterContext = CosmosDBRouterContext & {
     panel: vscode.WebviewPanel;
     eventSink: TypedEventSink<DataModelingEvent>;
+    /** Stable ID of the wizard that initiated this request. Never sent to telemetry. */
+    wizardTabId: string;
 };
 
 // ─── Common Procedures (per-instance) ───────────────────────────────────────

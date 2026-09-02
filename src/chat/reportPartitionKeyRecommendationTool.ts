@@ -6,6 +6,7 @@
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
+import { z } from 'zod';
 import { ext } from '../extensionVariables';
 import { DataModelingWizardTab } from '../panels/DataModelingWizardTab';
 import {
@@ -27,10 +28,19 @@ export const REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_DESCRIPTION =
     'Call this once after analyzing the data model the wizard sent, passing a structured recommendation: an overall ' +
     'summary and, for each container, the recommended partition key with a short rationale, scored candidate keys ' +
     '(with per-rule assessments), a hot-partition risk comparison, a query-routing analysis, and a document-id ' +
-    'strategy. This is the only way the wizard receives the recommendation.';
+    'strategy. Pass the wizardTabId supplied with the analysis request so the recommendation reaches its originating wizard.';
 
-/** Input for the report tool — the structured recommendation. */
-export type ReportPartitionKeyRecommendationInput = PartitionKeyRecommendation;
+/** Input for the report tool — a recommendation and its originating wizard id. */
+export type ReportPartitionKeyRecommendationInput = PartitionKeyRecommendation & { wizardTabId: string };
+
+const ReportPartitionKeyRecommendationSchema = PartitionKeyRecommendationSchema.extend({
+    wizardTabId: z.string().uuid(),
+});
+
+/** Finds the wizard that originated a recommendation request, if it is still open. */
+export function findDataModelingWizardTab(wizardTabId: string): DataModelingWizardTab | undefined {
+    return DataModelingWizardTab.findById(wizardTabId);
+}
 
 /**
  * Formats a complete recommendation for the Chat fallback when its originating
@@ -99,6 +109,10 @@ export function formatRecommendationForChat(recommendation: PartitionKeyRecommen
 export const REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_INPUT_SCHEMA = {
     type: 'object' as const,
     properties: {
+        wizardTabId: {
+            type: 'string',
+            description: 'The wizardTabId included in the partition-key analysis request.',
+        },
         summary: {
             type: 'string',
             description: 'One or two sentences summarizing the recommendation across all containers.',
@@ -239,7 +253,7 @@ export const REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_INPUT_SCHEMA = {
             },
         },
     },
-    required: ['summary', 'containers'],
+    required: ['wizardTabId', 'summary', 'containers'],
     additionalProperties: { not: {} },
 };
 
@@ -280,7 +294,7 @@ export function registerReportPartitionKeyRecommendationTool(context: vscode.Ext
                         actionContext.errorHandling.suppressDisplay = true;
                         actionContext.telemetry.properties.outcome = 'error';
 
-                        const parsed = PartitionKeyRecommendationSchema.safeParse(options.input);
+                        const parsed = ReportPartitionKeyRecommendationSchema.safeParse(options.input);
                         if (!parsed.success) {
                             actionContext.telemetry.properties.outcome = 'invalidInput';
                             console.error(
@@ -298,11 +312,10 @@ export function registerReportPartitionKeyRecommendationTool(context: vscode.Ext
                             ]);
                         }
 
-                        const openTabCount = DataModelingWizardTab.openTabs.size;
-                        const tab = DataModelingWizardTab.getActiveTab();
+                        const { wizardTabId, ...recommendation } = parsed.data;
+                        const tab = findDataModelingWizardTab(wizardTabId);
                         console.log(
-                            `[${REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_NAME}] open wizard tabs: ${openTabCount}, ` +
-                                `active tab found: ${!!tab}`,
+                            `[${REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_NAME}] originating wizard tab found: ${!!tab}`,
                         );
                         if (!tab) {
                             actionContext.telemetry.properties.outcome = 'noWizard';
@@ -313,18 +326,18 @@ export function registerReportPartitionKeyRecommendationTool(context: vscode.Ext
                                 '[Report Partition Key Tool] No open Data Modeling wizard to receive the recommendation.',
                             );
                             return new vscode.LanguageModelToolResult([
-                                new vscode.LanguageModelTextPart(formatRecommendationForChat(parsed.data)),
+                                new vscode.LanguageModelTextPart(formatRecommendationForChat(recommendation)),
                             ]);
                         }
 
-                        tab.reportRecommendation(parsed.data);
+                        tab.reportRecommendation(recommendation);
                         console.log(
                             `[${REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_NAME}] reportRecommendation() called with ` +
-                                `${parsed.data.containers.length} container(s); event emitted to sink.`,
+                                `${recommendation.containers.length} container(s); event emitted to sink.`,
                         );
 
                         actionContext.telemetry.properties.outcome = 'success';
-                        actionContext.telemetry.measurements.containerCount = parsed.data.containers.length;
+                        actionContext.telemetry.measurements.containerCount = recommendation.containers.length;
                         return new vscode.LanguageModelToolResult([
                             new vscode.LanguageModelTextPart(
                                 l10n.t('The recommendation is now shown on the Data Modeling wizard Result page.'),

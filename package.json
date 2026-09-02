@@ -255,12 +255,16 @@
       {
         "name": "cosmosdb_reportPartitionKeyRecommendation",
         "displayName": "Report Partition Key Recommendation",
-        "modelDescription": "Displays a partition-key recommendation on the Result page of the open Cosmos DB Data Modeling wizard. Call this once after analyzing the data model the wizard sent, passing a structured recommendation: an overall summary and, for each container, the recommended partition key with a short rationale, scored candidate keys (with per-rule assessments), a hot-partition risk comparison, a query-routing analysis, and a document-id strategy. This is the only way the wizard receives the recommendation.",
+        "modelDescription": "Displays a partition-key recommendation on the Result page of the open Cosmos DB Data Modeling wizard. Call this once after analyzing the data model the wizard sent, passing a structured recommendation: an overall summary and, for each container, the recommended partition key with a short rationale, scored candidate keys (with per-rule assessments), a hot-partition risk comparison, a query-routing analysis, and a document-id strategy. Pass the wizardTabId supplied with the analysis request so the recommendation reaches its originating wizard.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "cosmosdb_reportPartitionKeyRecommendation",
         "inputSchema": {
           "type": "object",
           "properties": {
+            "wizardTabId": {
+              "type": "string",
+              "description": "The wizardTabId included in the partition-key analysis request."
+            },
             "summary": {
               "type": "string",
               "description": "One or two sentences summarizing the recommendation across all containers."
@@ -485,6 +489,7 @@
             }
           },
           "required": [
+            "wizardTabId",
             "summary",
             "containers"
           ],

@@ -23,19 +23,11 @@ export class DataModelingWizardTab extends BaseTab {
 
     public readonly eventSink: TypedEventSink<DataModelingEvent>;
 
-    private isActive = true;
-
     protected constructor(panel: vscode.WebviewPanel) {
         super(panel, DataModelingWizardTab.viewType);
         DataModelingWizardTab.openTabs.add(this);
 
         this.eventSink = new TypedEventSink<DataModelingEvent>();
-
-        this.disposables.push(
-            this.panel.onDidChangeViewState((e) => {
-                this.isActive = e.webviewPanel.active;
-            }),
-        );
 
         const { disposable } = attachTrpc(
             this.panel,
@@ -64,10 +56,14 @@ export class DataModelingWizardTab extends BaseTab {
         return new DataModelingWizardTab(panel);
     }
 
-    /** The tab a tool should deliver a recommendation to: the active one, else the first open. */
-    public static getActiveTab(): DataModelingWizardTab | undefined {
-        const tabs = [...DataModelingWizardTab.openTabs];
-        return tabs.find((tab) => tab.isActive) ?? tabs[0];
+    /** Finds the tab that originated a recommendation request. */
+    public static findById(tabId: string): DataModelingWizardTab | undefined {
+        return [...DataModelingWizardTab.openTabs].find((tab) => tab.getId() === tabId);
+    }
+
+    /** Stable tab id used to route asynchronous Copilot recommendations. */
+    public getId(): string {
+        return this.id;
     }
 
     /** Push a Copilot-produced recommendation to the webview's Result page. */
@@ -95,6 +91,7 @@ export class DataModelingWizardTab extends BaseTab {
             webviewName: DataModelingWizardTab.viewType,
             panel: this.panel,
             eventSink: this.eventSink,
+            wizardTabId: this.getId(),
         };
     }
 }

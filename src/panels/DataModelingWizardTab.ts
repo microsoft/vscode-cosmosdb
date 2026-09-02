@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { TypedEventSink } from '@cosmosdb/webview-rpc';
-import { setupTrpc } from '@cosmosdb/webview-rpc/server';
+import { TypedEventSink } from '@microsoft/vscode-ext-webview';
+import { attachTrpc } from '@microsoft/vscode-ext-webview/host';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { BaseTab } from './BaseTab';
@@ -37,7 +37,7 @@ export class DataModelingWizardTab extends BaseTab {
             }),
         );
 
-        const { disposable } = setupTrpc(
+        const { disposable } = attachTrpc(
             this.panel,
             this.buildRouterContext(),
             dataModelingAppRouter,

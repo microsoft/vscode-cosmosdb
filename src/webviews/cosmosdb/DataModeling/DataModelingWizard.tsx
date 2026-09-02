@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { useTrpcClient } from '@cosmosdb/webview-rpc/react';
 import {
     Button,
     Dialog,
@@ -20,6 +19,7 @@ import {
     tokens,
 } from '@fluentui/react-components';
 import { AddRegular, DeleteRegular } from '@fluentui/react-icons';
+import { useTrpcClient } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { type DataModelingAppRouter, type DataModelingEvent, type PartitionKeyRecommendation } from '../../api/types';
@@ -32,9 +32,9 @@ import {
     applyScenario,
     createBlankContainer,
     createInitialState,
+    withDerivedCandidates,
     type DataModel,
     type WizardState,
-    withDerivedCandidates,
 } from './dataModel';
 import { MAX_CONTAINERS, type ScenarioId } from './models';
 import { ContainerPage } from './pages/ContainerPage';
@@ -103,7 +103,7 @@ function footerHint(value: string): string {
 
 export const DataModelingWizard = () => {
     const styles = useStyles();
-    const { trpcClient } = useTrpcClient<DataModelingAppRouter>();
+    const trpcClient = useTrpcClient<DataModelingAppRouter>();
     const [state, setState] = useState<WizardState>(createInitialState);
     const [confirmRemove, setConfirmRemove] = useState(false);
     const [addOpen, setAddOpen] = useState(false);

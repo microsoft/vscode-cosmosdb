@@ -132,12 +132,12 @@ export const accountOverviewCallerFactory = accountOverviewT.createCallerFactory
 
 // ─── Data Modeling tRPC Instance ────────────────────────────────────────────
 
-const dataModelingT = initTRPC.context<DataModelingRouterContext>().create();
+const dataModelingT = initWebviewTrpc<DataModelingRouterContext>();
 
 /** Base procedure with logging + telemetry middleware already applied. */
-export const dataModelingProcedure = dataModelingT.procedure
-    .use(dataModelingT.middleware(sharedLoggingBody))
-    .use(dataModelingT.middleware(sharedTelemetryBody));
+export const dataModelingProcedure = dataModelingT.publicProcedure
+    .use((opts) => loggingMiddlewareBody(opts, outputChannelProcedureLogger))
+    .use(sharedTelemetryBody);
 export const dataModelingRouter = dataModelingT.router;
 export const dataModelingMergeRouters = dataModelingT.mergeRouters;
 export const dataModelingCallerFactory = dataModelingT.createCallerFactory;

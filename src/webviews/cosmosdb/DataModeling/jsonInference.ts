@@ -4,13 +4,15 @@
  *--------------------------------------------------------------------------------------------*/
 
 /**
- * Client-side JSON → schema inference for the Data page's "Upload JSON"
- * feature. Runs entirely inside the webview (no host round-trip): given the text
- * of a JSON document (or an array of documents), it extracts the top-level
- * properties, infers a {@link PropertyType} and {@link PropertyRole} for each,
- * and picks a sensible default partition-key candidate.
+ * Client-side JSON schema inference for the Data page's "Upload JSON" feature.
+ * Runs entirely inside the webview (no host round-trip): given the text of a JSON
+ * document (or an array of documents), it uses the shared schema analyzer to
+ * extract every property, including nested properties, and picks a sensible
+ * default partition-key candidate.
  */
 
+import { type JSONSchema, type JSONSchemaRef } from '@cosmosdb/schema-analyzer';
+import { getSchemaFromDocuments, type NoSQLDocument } from '@cosmosdb/schema-analyzer/json';
 import { type PropertyRole, type PropertyType } from './models';
 
 export interface InferredProperty {
@@ -26,29 +28,35 @@ export interface InferredSchema {
     partitionKey: string;
 }
 
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}(:\d{2})?)?/;
-const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function getDominantSchema(node: JSONSchema): JSONSchema {
+    if (!node.anyOf?.length) {
+        return node;
+    }
 
-function inferType(value: unknown): PropertyType {
-    if (typeof value === 'boolean') {
-        return 'boolean';
-    }
-    if (typeof value === 'number') {
-        return 'number';
-    }
-    if (typeof value === 'string') {
-        if (GUID.test(value)) {
-            return 'guid';
+    return node.anyOf.reduce<JSONSchema>((dominant, entry) => {
+        if (typeof entry === 'boolean') {
+            return dominant;
         }
-        if (ISO_DATE.test(value) && !Number.isNaN(Date.parse(value))) {
-            return 'string (ISO)';
-        }
-        return 'string';
+
+        return (entry['x-typeOccurrence'] ?? 0) > (dominant['x-typeOccurrence'] ?? 0) ? entry : dominant;
+    }, node);
+}
+
+function toPropertyType(schema: JSONSchema): PropertyType {
+    const dominant = getDominantSchema(schema);
+
+    switch (dominant['x-dataType'] ?? dominant.type) {
+        case 'boolean':
+            return 'boolean';
+        case 'number':
+            return 'number';
+        case 'array':
+            return 'array';
+        case 'object':
+            return 'object';
+        default:
+            return 'string';
     }
-    if (Array.isArray(value)) {
-        return value.length > 0 && value.every((v) => typeof v === 'number') ? 'number[]' : 'array';
-    }
-    return 'object';
 }
 
 function inferRole(name: string, type: PropertyType): PropertyRole {
@@ -67,69 +75,103 @@ function inferRole(name: string, type: PropertyType): PropertyRole {
 
 /** Prefer a domain key like `sessionId` over the generic `id`, else first prop. */
 function pickPartitionKey(names: string[]): string | undefined {
-    const domainId = names.find((n) => /id$/i.test(n) && n.toLowerCase() !== 'id');
+    const domainId = names.find((name) => /id$/i.test(name) && name.toLowerCase() !== 'id');
     if (domainId) {
         return domainId;
     }
-    const genericId = names.find((n) => n.toLowerCase() === 'id');
+    const genericId = names.find((name) => name.toLowerCase() === 'id');
     return genericId ?? names[0];
+}
+
+function isSchema(schema: JSONSchemaRef | undefined): schema is JSONSchema {
+    return typeof schema === 'object' && schema !== null;
+}
+
+function isDocument(value: unknown): value is NoSQLDocument {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function getSchemaVariants(schema: JSONSchemaRef | JSONSchemaRef[] | undefined): JSONSchema[] {
+    if (Array.isArray(schema)) {
+        return schema.filter(isSchema);
+    }
+
+    if (!isSchema(schema)) {
+        return [];
+    }
+
+    return schema.anyOf?.filter(isSchema) ?? [schema];
+}
+
+/**
+ * Adds each property node to the result, then recurses into nested object
+ * properties and object elements in arrays. An object can appear in a
+ * polymorphic `anyOf`, so all object branches must be visited to avoid
+ * omitting fields only present in a less common document shape.
+ */
+function flattenProperties(schema: JSONSchema, parentPath = '', result: InferredProperty[] = []): InferredProperty[] {
+    for (const [name, child] of Object.entries(schema.properties ?? {})) {
+        if (!isSchema(child)) {
+            continue;
+        }
+
+        const path = parentPath ? `${parentPath}/${name}` : name;
+        const type = toPropertyType(child);
+        result.push({
+            name: path,
+            type,
+            role: inferRole(path, type),
+            pkCandidate: false,
+        });
+
+        for (const variant of getSchemaVariants(child)) {
+            if (variant.type === 'object') {
+                flattenProperties(variant, path, result);
+            }
+
+            if (variant.type === 'array') {
+                for (const itemVariant of getSchemaVariants(variant.items)) {
+                    if (itemVariant.type === 'object') {
+                        flattenProperties(itemVariant, path, result);
+                    }
+                }
+            }
+        }
+    }
+
+    return result;
 }
 
 /**
  * Parse `text` and infer a container schema. Accepts a single JSON object or an
- * array of objects (keys are unioned across array elements). Throws if the text
- * is not valid JSON or does not contain any object with properties.
+ * array of objects. Throws if the text is not valid JSON or does not contain an
+ * object with properties.
  */
 export function inferSchemaFromJson(text: string): InferredSchema {
     const parsed: unknown = JSON.parse(text);
-
-    // Collect candidate documents: the object itself, or the objects in an array.
-    const docs: Record<string, unknown>[] = [];
-    const pushIfObject = (v: unknown) => {
-        if (v && typeof v === 'object' && !Array.isArray(v)) {
-            docs.push(v as Record<string, unknown>);
+    const docs: NoSQLDocument[] = [];
+    const addDocument = (value: unknown) => {
+        if (isDocument(value)) {
+            docs.push(value);
         }
     };
+
     if (Array.isArray(parsed)) {
-        parsed.forEach(pushIfObject);
+        parsed.forEach(addDocument);
     } else {
-        pushIfObject(parsed);
+        addDocument(parsed);
     }
 
     if (docs.length === 0) {
         throw new Error('The JSON does not contain an object with properties.');
     }
 
-    // Union keys across docs, preserving first-seen order; infer type from the
-    // first non-null value seen for each key.
-    const order: string[] = [];
-    const typeByName = new Map<string, PropertyType>();
-    for (const doc of docs) {
-        for (const [name, value] of Object.entries(doc)) {
-            if (!typeByName.has(name)) {
-                order.push(name);
-            }
-            const existing = typeByName.get(name);
-            if (existing === undefined || (existing === 'object' && value !== null)) {
-                if (value !== null && value !== undefined) {
-                    typeByName.set(name, inferType(value));
-                } else if (existing === undefined) {
-                    typeByName.set(name, 'string');
-                }
-            }
-        }
-    }
+    const properties = flattenProperties(getSchemaFromDocuments(docs));
+    const pkName = pickPartitionKey(properties.map((property) => property.name));
 
-    const pkName = pickPartitionKey(order);
-    const properties: InferredProperty[] = order.map((name) => {
-        const type = typeByName.get(name) ?? 'string';
-        return {
-            name,
-            type,
-            role: inferRole(name, type),
-            pkCandidate: name === pkName,
-        };
-    });
+    for (const property of properties) {
+        property.pkCandidate = property.name === pkName;
+    }
 
     return {
         properties,

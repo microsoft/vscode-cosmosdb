@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { stripComments } from '@cosmosdb/nosql-language-service';
+import { stripComments } from '@azure/cosmosdb-nosql-language-service';
 
 /**
  * Security utilities for sanitizing and escaping user-controlled content

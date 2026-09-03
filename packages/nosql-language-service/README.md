@@ -34,21 +34,21 @@ npm install @azure/cosmosdb-nosql-language-service
 ## Architecture — Three Layers
 
 ```
-┌─────────────────────────────────────────────────┐
-│  Layer 1: Core API                              │
-│  parse(), sqlToString(), getCompletions(),      │
-│  AST types, Visitor, errors                     │
-├─────────────────────────────────────────────────┤
-│  Layer 2: Language Service                      │
-│  SqlLanguageService — IDE-agnostic facade       │
-│  Diagnostics, Hover, Signature Help, Formatting │
-├─────────────────────────────────────────────────┤
-│  Layer 3: Provider Adapters (pick one)          │
-│  @azure/cosmosdb-nosql-language-service/monaco        │
-│  @azure/cosmosdb-nosql-language-service/vscode        │
-│  @azure/cosmosdb-nosql-language-service/codemirror   │
-│  (or write your own)                            │
-└─────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────┐
+│  Layer 1: Core API                                 │
+│  parse(), sqlToString(), getCompletions(),         │
+│  AST types, Visitor, errors                        │
+├────────────────────────────────────────────────────┤
+│  Layer 2: Language Service                         │
+│  SqlLanguageService — IDE-agnostic facade          │
+│  Diagnostics, Hover, Signature Help, Formatting    │
+├─────────────────────────────────────────────────   ┤
+│  Layer 3: Provider Adapters (pick one)             │
+│  @azure/cosmosdb-nosql-language-service/monaco     │
+│  @azure/cosmosdb-nosql-language-service/vscode     │
+│  @azure/cosmosdb-nosql-language-service/codemirror │
+│  (or write your own)                               │
+└────────────────────────────────────────────────────┘
 ```
 
 **You can use any layer independently:**

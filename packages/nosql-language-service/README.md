@@ -46,7 +46,7 @@ npm install @azure/cosmosdb-nosql-language-service
 │  Layer 3: Provider Adapters (pick one)          │
 │  @azure/cosmosdb-nosql-language-service/monaco        │
 │  @azure/cosmosdb-nosql-language-service/vscode        │
-│  @cosmosdb/snosql-language-service/codemirror   │
+│  @azure/cosmosdb-nosql-language-service/codemirror   │
 │  (or write your own)                            │
 └─────────────────────────────────────────────────┘
 ```

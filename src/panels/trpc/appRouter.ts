@@ -304,6 +304,46 @@ function buildCommonRouter(procedure: any, routerFn: any) {
                 await vscode.window.showErrorMessage(input.message);
             }),
 
+        compareTextDocuments: procedure
+            .input(
+                z.object({
+                    title: z.string(),
+                    leftTitle: z.string(),
+                    leftContent: z.string(),
+                    rightTitle: z.string(),
+                    rightContent: z.string(),
+                }),
+            )
+            .mutation(
+                async ({
+                    input,
+                }: {
+                    input: {
+                        title: string;
+                        leftTitle: string;
+                        leftContent: string;
+                        rightTitle: string;
+                        rightContent: string;
+                    };
+                }) => {
+                    const leftDocument = await vscode.workspace.openTextDocument({
+                        content: input.leftContent,
+                        language: 'json',
+                    });
+                    const rightDocument = await vscode.workspace.openTextDocument({
+                        content: input.rightContent,
+                        language: 'json',
+                    });
+
+                    await vscode.commands.executeCommand(
+                        'vscode.diff',
+                        leftDocument.uri,
+                        rightDocument.uri,
+                        input.title || `${input.leftTitle} vs ${input.rightTitle}`,
+                    );
+                },
+            ),
+
         executeReportIssueCommand: procedure.mutation(async () => {
             await vscode.commands.executeCommand('azureDatabases.reportIssue');
         }),

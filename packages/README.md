@@ -4,10 +4,10 @@ This directory contains standalone packages that are part of the monorepo.
 
 ## Active Packages
 
-| Package                                  | Description                                                                                  | Status    |
-| ---------------------------------------- | -------------------------------------------------------------------------------------------- | --------- |
-| `@azure/cosmosdb-nosql-language-service` | NoSQL language service — parser, AST, autocomplete, hover, formatting, and editor providers  | ✅ Active |
-| `@azure/cosmosdb-schema-analyzer`        | Schema inference from sampled documents                                                      | ✅ Active |
+| Package                                  | Description                                                                                 | Status    |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------- | --------- |
+| `@azure/cosmosdb-nosql-language-service` | NoSQL language service — parser, AST, autocomplete, hover, formatting, and editor providers | ✅ Active |
+| `@azure/cosmosdb-schema-analyzer`        | Schema inference from sampled documents                                                     | ✅ Active |
 
 ## Planned Packages
 

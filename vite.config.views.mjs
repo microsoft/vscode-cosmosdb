@@ -158,15 +158,15 @@ export default ({ mode }) => {
             mainFields: ['browser', 'module', 'main'],
             conditions: ['browser', 'import', 'default'],
             alias: {
-                '@cosmosdb/nosql-language-service/monaco': path.resolve(
+                '@azure/cosmosdb-nosql-language-service/monaco': path.resolve(
                     __dirname,
                     'packages/nosql-language-service/src/providers/monaco/index.ts',
                 ),
-                '@cosmosdb/nosql-language-service/services': path.resolve(
+                '@azure/cosmosdb-nosql-language-service/services': path.resolve(
                     __dirname,
                     'packages/nosql-language-service/src/services/index.ts',
                 ),
-                '@cosmosdb/nosql-language-service': path.resolve(
+                '@azure/cosmosdb-nosql-language-service': path.resolve(
                     __dirname,
                     'packages/nosql-language-service/src/index.ts',
                 ),

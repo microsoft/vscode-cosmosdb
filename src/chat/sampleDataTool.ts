@@ -13,7 +13,8 @@ import { ext } from '../extensionVariables';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
 import { SchemaService } from '../services/SchemaService';
 import { stripSchemaStatistics } from '../services/schemaStatistics';
-import { getActiveQueryEditor, getConnectionFromQueryTab } from './chatUtils';
+import { getConnectionFromQueryTab } from './chatUtils';
+import { getContainerSampleContext, takeContainerSampleContext } from './containerSampleContext';
 
 /**
  * The sampling query used to infer container schema.
@@ -41,17 +42,31 @@ export const SAMPLE_DATA_CONFIRMATION_MESSAGE =
  * Keep in sync with the description in package.json contributes.languageModelTools.
  */
 export const SAMPLE_DATA_TOOL_DESCRIPTION =
-    'Samples a few documents from the active Cosmos DB container to infer its schema (property names and types). ' +
+    'Samples a few documents from a Cosmos DB container to infer its schema (property names and types). ' +
     'Runs a cheap, read-only query. Use this when the container schema is unknown, to avoid guessing property names or ' +
-    'casing. If the schema is already available (e.g. containerSchema from cosmosdb_getQueryEditorContext), you do not ' +
-    'need to call this.';
+    'casing. Pass the sampleContextId returned by cosmosdb_getQueryEditorContext so the confirmed container is the one ' +
+    'sampled even if the active editor changes. If the schema is already available (e.g. containerSchema from ' +
+    'cosmosdb_getQueryEditorContext), you do not need to call this.';
+
+/** Input for the sample data schema tool. */
+interface SampleContainerSchemaInput {
+    /** The sampleContextId returned by cosmosdb_getQueryEditorContext. */
+    sampleContextId: string;
+}
 
 /**
- * Tool input schema. No parameters are required.
+ * Tool input schema. `sampleContextId` is required.
+ * Keep in sync with the `inputSchema` in package.json `contributes.languageModelTools`.
  */
 export const SAMPLE_DATA_TOOL_INPUT_SCHEMA = {
     type: 'object' as const,
-    properties: {},
+    properties: {
+        sampleContextId: {
+            type: 'string',
+            description: 'The sampleContextId returned by cosmosdb_getQueryEditorContext.',
+        },
+    },
+    required: ['sampleContextId'],
     additionalProperties: { not: {} },
 };
 
@@ -69,34 +84,49 @@ export interface SampleSchemaResult {
 
 /**
  * Executes the sample query against the given connection and returns the documents and RUs.
+ *
+ * `token` cancels the in-flight Cosmos request: it is bridged to an `AbortController` so a cancelled
+ * tool invocation stops reading documents (and consuming RUs) instead of running to completion.
  */
 async function fetchSampleDocuments(
     connection: NoSqlQueryConnection,
+    token?: vscode.CancellationToken,
 ): Promise<{ documents: NoSQLDocument[]; requestCharge?: number }> {
-    const client = getCosmosClient(connection);
-    const container = client.database(connection.databaseId).container(connection.containerId);
-    const response = await container.items
-        .query<Record<string, unknown>>(SAMPLE_QUERY, {
-            maxItemCount: 10,
-            maxDegreeOfParallelism: 1,
-            bufferItems: false,
-        })
-        .fetchAll();
-    return {
-        documents: (response.resources ?? []) as NoSQLDocument[],
-        requestCharge: response.requestCharge,
-    };
+    const abortController = new AbortController();
+    if (token?.isCancellationRequested) {
+        abortController.abort();
+    }
+    const cancellationSubscription = token?.onCancellationRequested(() => abortController.abort());
+    try {
+        const client = getCosmosClient(connection);
+        const container = client.database(connection.databaseId).container(connection.containerId);
+        const response = await container.items
+            .query<Record<string, unknown>>(SAMPLE_QUERY, {
+                maxItemCount: 10,
+                maxDegreeOfParallelism: 1,
+                bufferItems: false,
+                abortSignal: abortController.signal,
+            })
+            .fetchAll();
+        return {
+            documents: (response.resources ?? []) as NoSQLDocument[],
+            requestCharge: response.requestCharge,
+        };
+    } finally {
+        cancellationSubscription?.dispose();
+    }
 }
 
 /**
- * Gets the active query editor tab, if available.
+ * Finds an open Query Editor tab by its stable id, or `undefined` when it has since been closed.
  */
-function getActiveTab(): QueryEditorTab | undefined {
-    const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
-    if (activeQueryEditors.length === 0) {
-        return undefined;
+function findTabById(tabId: string): QueryEditorTab | undefined {
+    for (const tab of QueryEditorTab.openTabs) {
+        if (tab.getId() === tabId) {
+            return tab;
+        }
     }
-    return getActiveQueryEditor(activeQueryEditors);
+    return undefined;
 }
 
 /**
@@ -109,8 +139,11 @@ function getActiveTab(): QueryEditorTab | undefined {
  * container shape. If persistence fails, we fall back to the one-shot inferred schema built from
  * the just-sampled documents.
  */
-export async function sampleAndPersistContainerSchema(connection: NoSqlQueryConnection): Promise<SampleSchemaResult> {
-    const { documents, requestCharge } = await fetchSampleDocuments(connection);
+export async function sampleAndPersistContainerSchema(
+    connection: NoSqlQueryConnection,
+    token?: vscode.CancellationToken,
+): Promise<SampleSchemaResult> {
+    const { documents, requestCharge } = await fetchSampleDocuments(connection, token);
     const result = {
         databaseId: connection.databaseId,
         containerId: connection.containerId,
@@ -162,30 +195,37 @@ export async function sampleAndPersistContainerSchema(connection: NoSqlQueryConn
  * Registers the cosmosdb_sampleContainerSchema tool with the VS Code Language Model API.
  */
 export function registerSampleDataTool(context: vscode.ExtensionContext): void {
-    const tool = vscode.lm.registerTool(SAMPLE_DATA_TOOL_NAME, {
+    const tool = vscode.lm.registerTool<SampleContainerSchemaInput>(SAMPLE_DATA_TOOL_NAME, {
         prepareInvocation(
-            _options: vscode.LanguageModelToolInvocationPrepareOptions<Record<string, never>>,
+            options: vscode.LanguageModelToolInvocationPrepareOptions<SampleContainerSchemaInput>,
             _token: vscode.CancellationToken,
         ): vscode.PreparedToolInvocation {
+            const sampleContext = options.input?.sampleContextId
+                ? getContainerSampleContext(options.input.sampleContextId)
+                : undefined;
+
+            const message = new vscode.MarkdownString(
+                l10n.t(
+                    'To generate an accurate query, Copilot needs to sample your container schema by reading a few documents. This will consume a small number of Request Units (RUs).',
+                ),
+            );
+            if (sampleContext) {
+                message.appendMarkdown('\n\n**' + l10n.t('Database:') + `** ${sampleContext.databaseId}`);
+                message.appendMarkdown('\n\n**' + l10n.t('Container:') + `** ${sampleContext.containerId}`);
+            }
+            message.appendMarkdown('\n\n**' + l10n.t('Query:') + `** \`${SAMPLE_QUERY}\``);
+
             return {
                 invocationMessage: l10n.t('Sampling container schema…'),
                 confirmationMessages: {
                     title: l10n.t('Allow Copilot to sample your container schema to generate an accurate query?'),
-                    message: new vscode.MarkdownString(
-                        l10n.t(
-                            'To generate an accurate query, Copilot needs to sample your container schema by reading a few documents. This will consume a small number of Request Units (RUs).',
-                        ) +
-                            '\n\n' +
-                            '**' +
-                            l10n.t('Query:') +
-                            `** \`${SAMPLE_QUERY}\``,
-                    ),
+                    message,
                 },
             };
         },
 
         async invoke(
-            _options: vscode.LanguageModelToolInvocationOptions<Record<string, never>>,
+            options: vscode.LanguageModelToolInvocationOptions<SampleContainerSchemaInput>,
             token: vscode.CancellationToken,
         ): Promise<vscode.LanguageModelToolResult> {
             const toolResult = await callWithTelemetryAndErrorHandling(
@@ -196,7 +236,23 @@ export function registerSampleDataTool(context: vscode.ExtensionContext): void {
                     actionContext.errorHandling.suppressDisplay = true;
                     actionContext.telemetry.properties.outcome = 'error';
 
-                    const tab = getActiveTab();
+                    // Consume the one-use context captured for the confirmation prompt (removed on read so
+                    // it can't be replayed). Resolve the *confirmed* tab by id instead of whatever is active
+                    // now, so switching tabs while the prompt was open can't redirect sampling elsewhere.
+                    const sampleContextId = options.input?.sampleContextId;
+                    const sampleContext = sampleContextId ? takeContainerSampleContext(sampleContextId) : undefined;
+                    if (!sampleContext) {
+                        actionContext.telemetry.properties.outcome = 'invalidContext';
+                        return new vscode.LanguageModelToolResult([
+                            new vscode.LanguageModelTextPart(
+                                l10n.t(
+                                    'The sampling context is no longer available. Read the Query Editor context again, then retry sampling.',
+                                ),
+                            ),
+                        ]);
+                    }
+
+                    const tab = findTabById(sampleContext.tabId);
                     const connection = tab ? getConnectionFromQueryTab(tab) : undefined;
                     if (connection) {
                         actionContext.valuesToMask.push(
@@ -228,6 +284,24 @@ export function registerSampleDataTool(context: vscode.ExtensionContext): void {
                         ]);
                     }
 
+                    // Refuse to sample if the editor drifted from what the user confirmed: a re-pointed
+                    // connection would read a container the user never saw. Re-reading the context captures
+                    // a fresh snapshot and shows a new prompt.
+                    if (
+                        connection.endpoint !== sampleContext.endpoint ||
+                        connection.databaseId !== sampleContext.databaseId ||
+                        connection.containerId !== sampleContext.containerId
+                    ) {
+                        actionContext.telemetry.properties.outcome = 'stateChanged';
+                        return new vscode.LanguageModelToolResult([
+                            new vscode.LanguageModelTextPart(
+                                l10n.t(
+                                    'The Query Editor changed after you confirmed, so no data was sampled. Please try again to confirm the current container.',
+                                ),
+                            ),
+                        ]);
+                    }
+
                     if (token.isCancellationRequested) {
                         actionContext.telemetry.properties.outcome = 'cancelled';
                         ext.outputChannel.info(l10n.t('[Sample Schema Tool] Operation cancelled by user.'));
@@ -237,7 +311,18 @@ export function registerSampleDataTool(context: vscode.ExtensionContext): void {
                     }
 
                     try {
-                        const sample = await sampleAndPersistContainerSchema(connection);
+                        // The user may have switched tabs while the confirmation prompt was open. Bring the
+                        // confirmed editor forward so it is clear which container was sampled.
+                        tab.reveal();
+
+                        const sample = await sampleAndPersistContainerSchema(connection, token);
+                        if (token.isCancellationRequested) {
+                            actionContext.telemetry.properties.outcome = 'cancelled';
+                            ext.outputChannel.info(l10n.t('[Sample Schema Tool] Operation cancelled by user.'));
+                            return new vscode.LanguageModelToolResult([
+                                new vscode.LanguageModelTextPart(l10n.t('Operation cancelled.')),
+                            ]);
+                        }
                         actionContext.telemetry.properties.outcome =
                             sample.documentCount > 0 ? 'success' : 'noDocuments';
                         actionContext.telemetry.measurements.documentCount = sample.documentCount;

@@ -39,8 +39,8 @@ export interface QueryExecutionEntry {
  * Each entry groups a query with its results and schema.
  */
 export interface QueryHistoryContext {
-    /** Account ID (optional for backwards compatibility) */
-    accountId?: string;
+    /** Account endpoint that scopes this history (uniquely identifies the account/server) */
+    accountEndpoint: string;
     /** Database being queried */
     databaseId: string;
     /** Container being queried */
@@ -58,20 +58,26 @@ export class CosmosDbOperationsService {
     private static instance: CosmosDbOperationsService;
 
     /**
-     * In-memory storage for query execution history, keyed by "accountId/databaseId/containerId".
+     * In-memory storage for query execution history, keyed by "accountEndpoint/databaseId/containerId".
      * Each entry stores recent query executions with their computed schemas.
      */
     private queryHistoryStore: Map<string, QueryExecutionEntry[]> = new Map();
 
     /**
      * Generates a storage key for query history lookup.
-     * @param accountId The account ID (optional)
+     *
+     * The account endpoint is used (rather than the ARM account ID) because it is always present for
+     * every connection type — Azure, workspace-attached, and the local emulator — and uniquely identifies
+     * the target account/server. Keying on an optional account ID would let workspace and emulator
+     * connections that happen to share database/container names collapse into a single shared bucket,
+     * leaking one endpoint's query text into another's history.
+     * @param accountEndpoint The account endpoint (always present on a connection)
      * @param databaseId The database ID
      * @param containerId The container ID
-     * @returns A unique key in the format "accountId/databaseId/containerId"
+     * @returns A unique key in the format "accountEndpoint/databaseId/containerId"
      */
-    private static getQueryHistoryKey(accountId: string | undefined, databaseId: string, containerId: string): string {
-        return `${accountId ?? 'unknown'}/${databaseId}/${containerId}`;
+    private static getQueryHistoryKey(accountEndpoint: string, databaseId: string, containerId: string): string {
+        return `${accountEndpoint}/${databaseId}/${containerId}`;
     }
 
     public static getInstance(): CosmosDbOperationsService {
@@ -136,18 +142,18 @@ export class CosmosDbOperationsService {
     /**
      * Records a query execution result to the in-memory history store.
      * This should be called after every successful query execution.
-     * @param accountId The account ID (optional)
+     * @param accountEndpoint The account endpoint that scopes the history
      * @param databaseId The database ID
      * @param containerId The container ID
      * @param result The serialized query result
      */
     public recordQueryExecution(
-        accountId: string | undefined,
+        accountEndpoint: string,
         databaseId: string,
         containerId: string,
         result: SerializedQueryResult,
     ): void {
-        const key = CosmosDbOperationsService.getQueryHistoryKey(accountId, databaseId, containerId);
+        const key = CosmosDbOperationsService.getQueryHistoryKey(accountEndpoint, databaseId, containerId);
         const entry = this.buildQueryExecutionEntry(result);
 
         let history = this.queryHistoryStore.get(key);
@@ -173,17 +179,17 @@ export class CosmosDbOperationsService {
 
     /**
      * Gets the query execution history for a specific container from the in-memory store.
-     * @param accountId The account ID (optional)
+     * @param accountEndpoint The account endpoint that scopes the history
      * @param databaseId The database ID
      * @param containerId The container ID
      * @returns The query history context or undefined if no history exists
      */
     public getQueryHistoryForContainer(
-        accountId: string | undefined,
+        accountEndpoint: string,
         databaseId: string,
         containerId: string,
     ): QueryHistoryContext | undefined {
-        const key = CosmosDbOperationsService.getQueryHistoryKey(accountId, databaseId, containerId);
+        const key = CosmosDbOperationsService.getQueryHistoryKey(accountEndpoint, databaseId, containerId);
         const executions = this.queryHistoryStore.get(key);
 
         if (!executions || executions.length === 0) {
@@ -191,7 +197,7 @@ export class CosmosDbOperationsService {
         }
 
         return {
-            accountId,
+            accountEndpoint,
             databaseId,
             containerId,
             executions,
@@ -209,10 +215,6 @@ export class CosmosDbOperationsService {
         }
 
         // Use the in-memory store instead of iterating through sessions
-        return this.getQueryHistoryForContainer(
-            connection?.azureMetadata?.accountId,
-            connection.databaseId,
-            connection.containerId,
-        );
+        return this.getQueryHistoryForContainer(connection.endpoint, connection.databaseId, connection.containerId);
     }
 }

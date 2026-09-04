@@ -11,7 +11,14 @@
  *   (no more than 10 unique names per slot), with complex nested object values
  *   (depth ≤ 3, ~5 properties each, mix of objects, arrays, primitives)
  *
- * Usage:  node scripts/generate-test-data.mjs [outputPath]
+ * Usage:
+ *   node scripts/generate-test-data.mjs [outputPath]
+ *   node scripts/generate-test-data.mjs [outputPath] --binary [--binary-bytes <n>]
+ *
+ * `--binary` adds a base64-encoded `binaryData` field to every document.
+ * `--binary-bytes` controls the decoded payload size per document and defaults
+ * to 12 KiB, producing an output file of roughly 200 MiB with 10,000 records.
+ *
  * Default output: scripts/test-data.json
  */
 
@@ -20,8 +27,21 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const OUTPUT = resolve(process.argv[2] ?? `${__dirname}/test-data.json`);
+const args = process.argv.slice(2);
+const flag = (name) => {
+    const index = args.indexOf(`--${name}`);
+    return index === -1 ? undefined : args[index + 1];
+};
+const hasFlag = (name) => args.includes(`--${name}`);
+const outputArgument = args[0]?.startsWith('--') ? undefined : args[0];
+const OUTPUT = resolve(outputArgument ?? `${__dirname}/test-data.json`);
 const RECORD_COUNT = 10_000;
+const INCLUDE_BINARY_DATA = hasFlag('binary');
+const BINARY_BYTES = Number.parseInt(flag('binary-bytes') ?? `${12 * 1024}`, 10);
+
+if (!Number.isSafeInteger(BINARY_BYTES) || BINARY_BYTES < 0) {
+    throw new Error(`--binary-bytes must be a non-negative integer, got "${flag('binary-bytes')}"`);
+}
 
 // ── helpers ──────────────────────────────────────────────────────────
 
@@ -266,6 +286,14 @@ function generateFixedProps(index) {
     };
 }
 
+function generateBinaryData(index) {
+    const bytes = Buffer.alloc(BINARY_BYTES, index % 256);
+    if (bytes.length >= 4) {
+        bytes.writeUInt32BE(index, 0);
+    }
+    return bytes.toString('base64');
+}
+
 // ── record generation ────────────────────────────────────────────────
 
 function generateRecord(index) {
@@ -273,6 +301,9 @@ function generateRecord(index) {
 
     // Fixed primitive properties
     Object.assign(record, generateFixedProps(index));
+    if (INCLUDE_BINARY_DATA) {
+        record.binaryData = generateBinaryData(index);
+    }
 
     // Varying complex properties
     for (const slot of VARYING_SLOTS) {
@@ -285,11 +316,14 @@ function generateRecord(index) {
 
 // ── main ─────────────────────────────────────────────────────────────
 
-console.log(`Generating ${RECORD_COUNT} records…`);
+console.log(
+    `Generating ${RECORD_COUNT} records${INCLUDE_BINARY_DATA ? ` with ${BINARY_BYTES} binary bytes each` : ''}…`,
+);
 const records = [];
 for (let i = 0; i < RECORD_COUNT; i++) {
     records.push(generateRecord(i));
 }
 
-writeFileSync(OUTPUT, JSON.stringify(records, null, 2), 'utf-8');
-console.log(`Done → ${OUTPUT}  (${(Buffer.byteLength(JSON.stringify(records)) / 1024 / 1024).toFixed(1)} MB)`);
+const json = JSON.stringify(records, null, 2);
+writeFileSync(OUTPUT, json, 'utf-8');
+console.log(`Done → ${OUTPUT}  (${(Buffer.byteLength(json) / 1024 / 1024).toFixed(1)} MiB)`);

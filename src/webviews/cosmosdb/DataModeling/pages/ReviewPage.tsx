@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Button, makeStyles, Text, tokens } from '@fluentui/react-components';
-import { CheckmarkCircleFilled } from '@fluentui/react-icons';
+import { ArrowRightRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { FieldGroup, InfoBox, TwoColumn } from '../components/primitives';
 import { WeightSliders } from '../components/WeightSliders';
@@ -58,8 +58,8 @@ const useStyles = makeStyles({
         alignItems: 'center',
         gap: tokens.spacingHorizontalXS,
     },
-    checkIcon: {
-        color: tokens.colorPaletteGreenForeground1,
+    ruleIcon: {
+        color: tokens.colorBrandForeground1,
     },
 });
 
@@ -156,7 +156,7 @@ export function ReviewPage({
                         <div className={styles.checklist}>
                             {RULES.map((rule) => (
                                 <div key={rule} className={styles.checkItem}>
-                                    <CheckmarkCircleFilled className={styles.checkIcon} />
+                                    <ArrowRightRegular className={styles.ruleIcon} aria-hidden />
                                     <Text>{rule}</Text>
                                 </div>
                             ))}

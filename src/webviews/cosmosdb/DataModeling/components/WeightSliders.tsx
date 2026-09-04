@@ -68,18 +68,18 @@ function redistribute(weights: ScoringWeights, changed: keyof ScoringWeights, ra
 export function WeightSliders({ weights, onChange }: WeightSlidersProps) {
     const styles = useStyles();
 
-    const row = (
-        label: string,
-        key: keyof ScoringWeights,
-        value: number,
-        hint: string,
-    ) => (
+    const row = (label: string, key: keyof ScoringWeights, value: number, hint: string) => (
         <div className={styles.row}>
             <div className={styles.head}>
                 <Text weight="semibold">{label}</Text>
                 <Text>{`${value}%`}</Text>
             </div>
-            <Slider min={0} max={100} value={value} onChange={(_, data) => onChange(redistribute(weights, key, data.value))} />
+            <Slider
+                min={0}
+                max={100}
+                value={value}
+                onChange={(_, data) => onChange(redistribute(weights, key, data.value))}
+            />
             <Text className={styles.hint}>{hint}</Text>
         </div>
     );

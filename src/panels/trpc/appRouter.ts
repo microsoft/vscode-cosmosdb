@@ -22,6 +22,7 @@ import { type DocumentWriteResult } from '../../cosmosdb/session/DocumentSession
 import { type QuerySession } from '../../cosmosdb/session/QuerySession';
 import { type CosmosDBRecordIdentifier } from '../../cosmosdb/types/queryResult';
 import { type TelemetryContext } from '../../Telemetry';
+import { type CosmosDBAccountResourceItem } from '../../tree/cosmosdb/CosmosDBAccountResourceItem';
 import { openSurvey, promptAfterActionEventually } from '../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../utils/surveyTypes';
 import { accountOverviewRouterDef } from './routers/accountOverviewRouter';
@@ -162,6 +163,13 @@ export type MigrationRouterContext = CosmosDBRouterContext & {
 
 export type AccountOverviewRouterContext = CosmosDBRouterContext & {
     metadata: AzureResourceMetadata;
+    /**
+     * The account tree node the overview was opened from, when available. Footer
+     * actions (create database / delete account) pass it to their commands so the
+     * flow targets this account; the commands fall back to their own picker when
+     * it is absent.
+     */
+    accountNode?: CosmosDBAccountResourceItem;
 };
 
 export type DataModelingRouterContext = CosmosDBRouterContext & {

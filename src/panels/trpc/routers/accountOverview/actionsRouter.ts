@@ -132,4 +132,37 @@ export const actionsProcedures = {
                 );
             },
         ),
+
+    /**
+     * Footer action: create a database in this account. Passes the originating
+     * account node (captured when the overview opened) so the create wizard is
+     * scoped to this account; when it is unavailable the command falls back to
+     * its own account picker.
+     */
+    addDatabase: accountOverviewProcedure.mutation(async ({ ctx }: { ctx: AccountOverviewRouterContext }) => {
+        await vscode.commands.executeCommand('cosmosDB.createDatabase', ctx.accountNode);
+    }),
+
+    /**
+     * Footer action: create a container. A container needs a target *database*,
+     * which the overview does not have a node for, so the command prompts for the
+     * database via its own picker.
+     */
+    addContainer: accountOverviewProcedure.mutation(async () => {
+        await vscode.commands.executeCommand('cosmosDB.createContainer');
+    }),
+
+    /**
+     * Footer action: delete this account. Passes the originating account node so
+     * the delete wizard targets this account (it still shows its own name-bearing
+     * confirmation); falls back to the command's picker when unavailable.
+     */
+    deleteAccount: accountOverviewProcedure.mutation(async ({ ctx }: { ctx: AccountOverviewRouterContext }) => {
+        await vscode.commands.executeCommand('cosmosDB.deleteAccount', ctx.accountNode);
+    }),
+
+    /** Footer action: open the Data Modeler (Partition Key Advisor) wizard. */
+    openDataModeler: accountOverviewProcedure.mutation(async () => {
+        await vscode.commands.executeCommand('cosmosDB.dataModeling.open');
+    }),
 };

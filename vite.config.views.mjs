@@ -158,6 +158,9 @@ export default ({ mode }) => {
             mainFields: ['browser', 'module', 'main'],
             conditions: ['browser', 'import', 'default'],
             alias: {
+                '@cosmosdb/schema-analyzer/json': path.resolve(__dirname, 'packages/schema-analyzer/src/json/index.ts'),
+                '@cosmosdb/schema-analyzer/bson': path.resolve(__dirname, 'packages/schema-analyzer/src/bson/index.ts'),
+                '@cosmosdb/schema-analyzer': path.resolve(__dirname, 'packages/schema-analyzer/src/index.ts'),
                 '@cosmosdb/nosql-language-service/monaco': path.resolve(
                     __dirname,
                     'packages/nosql-language-service/src/providers/monaco/index.ts',

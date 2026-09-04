@@ -253,6 +253,252 @@
     },
     "languageModelTools": [
       {
+        "name": "cosmosdb_reportPartitionKeyRecommendation",
+        "displayName": "Report Partition Key Recommendation",
+        "modelDescription": "Displays a partition-key recommendation on the Result page of the open Cosmos DB Data Modeling wizard. Call this once after analyzing the data model the wizard sent, passing a structured recommendation: an overall summary and, for each container, the recommended partition key with a short rationale, scored candidate keys (with per-rule assessments), a hot-partition risk comparison, a query-routing analysis, and a document-id strategy. Pass the wizardTabId supplied with the analysis request so the recommendation reaches its originating wizard.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "cosmosdb_reportPartitionKeyRecommendation",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "wizardTabId": {
+              "type": "string",
+              "description": "The wizardTabId included in the partition-key analysis request."
+            },
+            "summary": {
+              "type": "string",
+              "description": "One or two sentences summarizing the recommendation across all containers."
+            },
+            "containers": {
+              "type": "array",
+              "description": "Per-container recommendation.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "entity": {
+                    "type": "string",
+                    "description": "Name of the container this recommendation applies to."
+                  },
+                  "partitionKey": {
+                    "type": "string",
+                    "description": "Recommended partition-key path, e.g. \"/customerId\" or a hierarchical \"/tenantId, /userId\"."
+                  },
+                  "rationale": {
+                    "type": "string",
+                    "description": "Why this key is recommended (short text; may name the workload pattern)."
+                  },
+                  "candidates": {
+                    "type": "array",
+                    "description": "Scored partition-key candidates, ordered best first.",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "partitionKey": {
+                          "type": "string",
+                          "description": "Candidate partition-key path."
+                        },
+                        "verdict": {
+                          "type": "string",
+                          "enum": [
+                            "recommended",
+                            "alternative",
+                            "avoid"
+                          ],
+                          "description": "Ranking verdict for this candidate."
+                        },
+                        "score": {
+                          "type": "number",
+                          "description": "Best-practice score 0-100 (higher is better)."
+                        },
+                        "assessments": {
+                          "type": "array",
+                          "description": "Per-rule breakdown explaining the score.",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "label": {
+                                "type": "string",
+                                "description": "Short rule name, e.g. \"Query match\", \"Cardinality\"."
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "pass",
+                                  "warn",
+                                  "fail",
+                                  "info"
+                                ],
+                                "description": "How the candidate fares on this rule."
+                              },
+                              "detail": {
+                                "type": "string",
+                                "description": "One-line explanation."
+                              }
+                            },
+                            "required": [
+                              "label",
+                              "status",
+                              "detail"
+                            ],
+                            "additionalProperties": {
+                              "not": {}
+                            }
+                          }
+                        }
+                      },
+                      "required": [
+                        "partitionKey",
+                        "verdict",
+                        "score",
+                        "assessments"
+                      ],
+                      "additionalProperties": {
+                        "not": {}
+                      }
+                    }
+                  },
+                  "hotPartitionRisk": {
+                    "type": "array",
+                    "description": "Hot-partition risk comparison across candidates.",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "partitionKey": {
+                          "type": "string"
+                        },
+                        "risk": {
+                          "type": "string",
+                          "enum": [
+                            "low",
+                            "medium",
+                            "high",
+                            "severe"
+                          ],
+                          "description": "Risk band for this candidate."
+                        },
+                        "pct": {
+                          "type": "number",
+                          "description": "Relative skew 0 (best) - 100 (worst) for the bar width."
+                        }
+                      },
+                      "required": [
+                        "partitionKey",
+                        "risk",
+                        "pct"
+                      ],
+                      "additionalProperties": {
+                        "not": {}
+                      }
+                    }
+                  },
+                  "queryRouting": {
+                    "type": "object",
+                    "description": "How the container reads route under the recommended key.",
+                    "properties": {
+                      "headline": {
+                        "type": "string",
+                        "description": "e.g. \"1/3 reads single-partition with /conversationId\"."
+                      },
+                      "routes": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "pattern": {
+                              "type": "string",
+                              "description": "Read pattern description."
+                            },
+                            "filters": {
+                              "type": "string",
+                              "description": "Attribute(s) it filters on."
+                            },
+                            "qps": {
+                              "type": "string",
+                              "description": "Peak QPS as displayed, e.g. \"200/s\"."
+                            },
+                            "routing": {
+                              "type": "string",
+                              "enum": [
+                                "single",
+                                "cross"
+                              ],
+                              "description": "Single-partition or cross-partition."
+                            },
+                            "estCost": {
+                              "type": "string",
+                              "description": "Rough RU cost, e.g. \"3 RU\" or \"50-100x RU\"."
+                            }
+                          },
+                          "required": [
+                            "pattern",
+                            "filters",
+                            "qps",
+                            "routing",
+                            "estCost"
+                          ],
+                          "additionalProperties": {
+                            "not": {}
+                          }
+                        }
+                      },
+                      "analysis": {
+                        "type": "string",
+                        "description": "Analysis of cross-partition reads and how to resolve them."
+                      }
+                    },
+                    "required": [
+                      "headline",
+                      "routes",
+                      "analysis"
+                    ],
+                    "additionalProperties": {
+                      "not": {}
+                    }
+                  },
+                  "documentIdStrategy": {
+                    "type": "object",
+                    "description": "Document-id strategy guidance.",
+                    "properties": {
+                      "tag": {
+                        "type": "string",
+                        "description": "Short access-pattern tag, e.g. \"Query-driven access\"."
+                      },
+                      "recommendation": {
+                        "type": "string",
+                        "description": "The recommendation text."
+                      }
+                    },
+                    "required": [
+                      "tag",
+                      "recommendation"
+                    ],
+                    "additionalProperties": {
+                      "not": {}
+                    }
+                  }
+                },
+                "required": [
+                  "entity",
+                  "partitionKey",
+                  "rationale"
+                ],
+                "additionalProperties": {
+                  "not": {}
+                }
+              }
+            }
+          },
+          "required": [
+            "wizardTabId",
+            "summary",
+            "containers"
+          ],
+          "additionalProperties": {
+            "not": {}
+          }
+        }
+      },
+      {
         "name": "cosmosdb_sampleContainerSchema",
         "displayName": "Sample Container Schema",
         "modelDescription": "Samples a few documents from a Cosmos DB container to infer its schema (property names and types). Runs a cheap, read-only query. Use this when the container schema is unknown, to avoid guessing property names or casing. Pass the sampleContextId returned by cosmosdb_getQueryEditorContext so the confirmed container is the one sampled even if the active editor changes. If the schema is already available (e.g. containerSchema from cosmosdb_getQueryEditorContext), you do not need to call this.",
@@ -623,6 +869,18 @@
         "category": "Cosmos DB",
         "command": "cosmosDB.migration.remove",
         "title": "%cosmosdb.command.migration.remove%"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.dataModeling.open",
+        "title": "%cosmosdb.command.dataModeling.open%",
+        "icon": "$(type-hierarchy)"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.dataModeling.openDrawer",
+        "title": "%cosmosdb.command.dataModeling.openDrawer%",
+        "icon": "$(layout-sidebar-right)"
       },
       {
         "category": "Cosmos DB",

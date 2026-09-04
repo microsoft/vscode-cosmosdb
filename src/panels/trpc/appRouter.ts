@@ -22,9 +22,12 @@ import { type DocumentWriteResult } from '../../cosmosdb/session/DocumentSession
 import { type QuerySession } from '../../cosmosdb/session/QuerySession';
 import { type CosmosDBRecordIdentifier } from '../../cosmosdb/types/queryResult';
 import { type TelemetryContext } from '../../Telemetry';
+import { type CosmosDBAccountResourceItem } from '../../tree/cosmosdb/CosmosDBAccountResourceItem';
 import { openSurvey, promptAfterActionEventually } from '../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../utils/surveyTypes';
 import { accountOverviewRouterDef } from './routers/accountOverviewRouter';
+import { type DataModelingEvent, dataModelingEventsRouterDef } from './routers/dataModelingEventsRouter';
+import { dataModelingRouterDef } from './routers/dataModelingRouter';
 import { documentRouterDef } from './routers/documentRouter';
 import { migrationEventsRouterDef, type MigrationEvent } from './routers/migrationEventsRouter';
 import { migrationRouterDef } from './routers/migrationRouter';
@@ -35,6 +38,10 @@ import {
     accountOverviewCallerFactory,
     accountOverviewProcedure,
     accountOverviewRouter,
+    dataModelingCallerFactory,
+    dataModelingMergeRouters,
+    dataModelingProcedure,
+    dataModelingRouter,
     documentCallerFactory,
     documentProcedure,
     documentRouter,
@@ -156,6 +163,20 @@ export type MigrationRouterContext = CosmosDBRouterContext & {
 
 export type AccountOverviewRouterContext = CosmosDBRouterContext & {
     metadata: AzureResourceMetadata;
+    /**
+     * The account tree node the overview was opened from, when available. Footer
+     * actions (create database / delete account) pass it to their commands so the
+     * flow targets this account; the commands fall back to their own picker when
+     * it is absent.
+     */
+    accountNode?: CosmosDBAccountResourceItem;
+};
+
+export type DataModelingRouterContext = CosmosDBRouterContext & {
+    panel: vscode.WebviewPanel;
+    eventSink: TypedEventSink<DataModelingEvent>;
+    /** Stable ID of the wizard that initiated this request. Never sent to telemetry. */
+    wizardTabId: string;
 };
 
 // ─── Common Procedures (per-instance) ───────────────────────────────────────
@@ -361,3 +382,14 @@ export const accountOverviewAppRouter = accountOverviewRouter({
 
 export type AccountOverviewAppRouter = typeof accountOverviewAppRouter;
 export { accountOverviewCallerFactory };
+
+// ─── Data Modeling App Router ───────────────────────────────────────────────
+
+export const dataModelingAppRouter = dataModelingRouter({
+    // oxlint-disable-next-line typescript/no-unsafe-assignment
+    common: buildCommonRouter(dataModelingProcedure, dataModelingRouter),
+    dataModeling: dataModelingMergeRouters(dataModelingRouterDef, dataModelingEventsRouterDef),
+});
+
+export type DataModelingAppRouter = typeof dataModelingAppRouter;
+export { dataModelingCallerFactory };

@@ -13,7 +13,7 @@
 
 import { type JSONSchema, type JSONSchemaRef } from '@cosmosdb/schema-analyzer';
 import { getSchemaFromDocuments, type NoSQLDocument } from '@cosmosdb/schema-analyzer/json';
-import { type PropertyRole, type PropertyType } from './models';
+import { type DocumentShape, type PropertyRole, type PropertyType } from './models';
 
 export interface InferredProperty {
     name: string;
@@ -26,6 +26,10 @@ export interface InferredSchema {
     properties: InferredProperty[];
     /** Partition-key path derived from the chosen candidate, e.g. `/sessionId`. */
     partitionKey: string;
+    /** Document-shape metrics calculated from the uploaded documents. */
+    document: DocumentShape;
+    /** Whether the uploaded documents contain arrays or nested objects. */
+    hasNestedCollections: boolean;
 }
 
 function getDominantSchema(node: JSONSchema): JSONSchema {
@@ -89,6 +93,25 @@ function isSchema(schema: JSONSchemaRef | undefined): schema is JSONSchema {
 
 function isDocument(value: unknown): value is NoSQLDocument {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function toKilobytes(value: number): number {
+    return Math.round((value / 1024) * 100) / 100;
+}
+
+function inferDocumentShape(documents: NoSQLDocument[], attributeCount: number): DocumentShape {
+    const sizes = documents.map((document) => new TextEncoder().encode(JSON.stringify(document)).length);
+    return {
+        attributeCount,
+        avgSizeKb: toKilobytes(sizes.reduce((total, size) => total + size, 0) / sizes.length),
+        maxSizeKb: toKilobytes(Math.max(...sizes)),
+    };
+}
+
+function hasNestedCollections(documents: NoSQLDocument[]): boolean {
+    return documents.some((document) =>
+        Object.values(document).some((value) => Array.isArray(value) || isDocument(value)),
+    );
 }
 
 function getSchemaVariants(schema: JSONSchemaRef | JSONSchemaRef[] | undefined): JSONSchema[] {
@@ -176,5 +199,7 @@ export function inferSchemaFromJson(text: string): InferredSchema {
     return {
         properties,
         partitionKey: pkName ? `/${pkName}` : '/id',
+        document: inferDocumentShape(docs, properties.length),
+        hasNestedCollections: hasNestedCollections(docs),
     };
 }

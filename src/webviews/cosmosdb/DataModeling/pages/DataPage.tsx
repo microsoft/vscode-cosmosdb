@@ -234,6 +234,8 @@ export function DataPage({ model, scenarioLabel, onChange }: DataPageProps) {
                 ...c,
                 properties: schema.properties.map((p) => ({ id: nextId('prop'), ...p })),
                 partitionKey: schema.partitionKey,
+                document: schema.document,
+                arrays: { ...c.arrays, hasArrays: schema.hasNestedCollections },
             }));
             setUploadInfo(file.name);
             setUploadError(undefined);

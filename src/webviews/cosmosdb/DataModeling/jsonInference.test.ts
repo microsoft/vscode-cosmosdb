@@ -28,6 +28,12 @@ describe('inferSchemaFromJson', () => {
             ]),
         );
         expect(schema.partitionKey).toBe('/customer/customerId');
+        expect(schema.document).toEqual({
+            attributeCount: 5,
+            avgSizeKb: 0.08,
+            maxSizeKb: 0.08,
+        });
+        expect(schema.hasNestedCollections).toBe(true);
     });
 
     it('includes nested properties from object array elements across every document', () => {
@@ -47,5 +53,17 @@ describe('inferSchemaFromJson', () => {
                 { name: 'items/quantity', type: 'number', role: 'payload', pkCandidate: false },
             ]),
         );
+        expect(schema.document).toEqual({
+            attributeCount: 6,
+            avgSizeKb: 0.06,
+            maxSizeKb: 0.07,
+        });
+        expect(schema.hasNestedCollections).toBe(true);
+    });
+
+    it('does not mark flat documents as containing nested collections', () => {
+        const schema = inferSchemaFromJson(JSON.stringify({ id: 'customer-1', name: 'Ada' }));
+
+        expect(schema.hasNestedCollections).toBe(false);
     });
 });

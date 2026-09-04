@@ -6,7 +6,7 @@
 import { makeStyles, Spinner } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
 import { useEffect, useState } from 'react';
-import { queryResultToJSON, queryResultToTable, queryResultToTree, type TableData, type TreeRow } from '../../../utils';
+import { queryResultToTable, queryResultToTree, type TableData, type TreeRow } from '../../../utils';
 import { useQueryEditorState } from '../state/QueryEditorContext';
 import { ResultTabViewTable as ReactDataGridResultTabViewTable } from './ReactDataGrid/ResultTabViewTable';
 import { ResultTabViewTree as ReactDataGridResultTabViewTree } from './ReactDataGrid/ResultTabViewTree';
@@ -44,7 +44,6 @@ const useClasses = makeStyles({
 });
 
 type ViewData = {
-    json?: string;
     table?: TableData;
     tree?: TreeRow[];
 };
@@ -92,9 +91,7 @@ export const ResultTab = ({ className }: ResultTabProps) => {
 
         // Check if data for current view mode needs calculation
         const needsCalculation =
-            (tableViewMode === 'Table' && !viewData.table) ||
-            (tableViewMode === 'Tree' && !viewData.tree) ||
-            (tableViewMode === 'JSON' && !viewData.json);
+            (tableViewMode === 'Table' && !viewData.table) || (tableViewMode === 'Tree' && !viewData.tree);
 
         // Only calculate if needed
         if (needsCalculation) {
@@ -122,13 +119,6 @@ export const ResultTab = ({ className }: ResultTabProps) => {
                             }
                             break;
                         }
-                        case 'JSON': {
-                            const newData = queryResultToJSON(currentQueryResult);
-                            if (!signal.aborted) {
-                                setViewData((prev) => ({ ...prev, json: newData }));
-                            }
-                            break;
-                        }
                     }
                 } catch (error) {
                     if (!signal.aborted) {
@@ -150,7 +140,7 @@ export const ResultTab = ({ className }: ResultTabProps) => {
         return () => {
             abortController.abort();
         };
-    }, [tableViewMode, currentQueryResult, partitionKey, viewData.table, viewData.tree, viewData.json, isExecuting]);
+    }, [tableViewMode, currentQueryResult, partitionKey, viewData.table, viewData.tree, isExecuting]);
 
     if (!currentQueryResult || currentQueryResult.documents.length === 0) {
         return (
@@ -191,7 +181,7 @@ export const ResultTab = ({ className }: ResultTabProps) => {
                     )}
                     {tableViewMode === 'Tree' && <ReactDataGridResultTabViewTree data={viewData.tree ?? EMPTY_TREE} />}
 
-                    {tableViewMode === 'JSON' && <ResultTabViewJson data={viewData.json ?? ''} />}
+                    {tableViewMode === 'JSON' && <ResultTabViewJson queryResult={currentQueryResult} />}
                 </>
             )}
         </div>

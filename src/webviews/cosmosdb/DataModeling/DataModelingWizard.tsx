@@ -403,7 +403,11 @@ export const DataModelingWizard = () => {
                 onStepChange={onStepChange}
                 stepsAriaLabel={l10n.t('Data modeling steps')}
                 stickyChrome
-                header={<ContainerHeader title={l10n.t('Data Modeler')} />}
+                header={
+                    <ContainerHeader
+                        title={l10n.t('Workload: {name}', { name: scenarioLabel ?? l10n.t('Not selected') })}
+                    />
+                }
                 footer={footer}
             >
                 <WizardStep

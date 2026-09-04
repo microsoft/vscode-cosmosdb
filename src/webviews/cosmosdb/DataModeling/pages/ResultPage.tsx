@@ -6,6 +6,7 @@
 import {
     Badge,
     Button,
+    Link,
     makeStyles,
     mergeClasses,
     Tab,
@@ -99,6 +100,18 @@ const useStyles = makeStyles({
         fontFamily: tokens.fontFamilyMonospace,
         fontSize: tokens.fontSizeBase500,
         fontWeight: tokens.fontWeightSemibold,
+    },
+    // Subtle caption under a multi-path key, marking it as a hierarchical partition key.
+    pkHierarchical: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: tokens.spacingHorizontalXS,
+        marginTop: tokens.spacingVerticalXXS,
+        fontSize: tokens.fontSizeBase200,
+        color: tokens.colorNeutralForeground3,
+    },
+    pkHierarchicalLink: {
+        fontSize: tokens.fontSizeBase200,
     },
     ring: {
         position: 'relative',
@@ -271,8 +284,39 @@ function buildCode(tab: CodeTab, entity: string, partitionKey: string): string {
 
 const ASSESS_GLYPH: Record<CandidateAssessment['status'], string> = { pass: '✓', fail: '✗', info: 'i', warn: '!' };
 
+/** Azure Cosmos DB hierarchical (multi-level) partition keys documentation. */
+const HIERARCHICAL_PARTITION_KEY_DOCS_URL = 'https://learn.microsoft.com/azure/cosmos-db/hierarchical-partition-keys';
+
+/**
+ * Splits a partition-key value into its individual paths. A hierarchical (multi-level)
+ * key is expressed as comma-separated paths, e.g. `/tenantId, /id`.
+ */
+function getPartitionKeyPaths(partitionKey: string): string[] {
+    return partitionKey
+        .split(',')
+        .map((path) => path.trim())
+        .filter((path) => path.length > 0);
+}
+
+/**
+ * Renders a partition key for display. A hierarchical key's comma-separated paths are joined
+ * into a single slash path (e.g. `/tenantId, /id` → `/tenantId/id`, and `/a, /b, /c` →
+ * `/a/b/c`); a single-path key is returned unchanged.
+ */
+function formatPartitionKeyForDisplay(paths: string[], partitionKey: string): string {
+    if (paths.length <= 1) {
+        return partitionKey;
+    }
+    return paths.map((path) => `/${path.replace(/^\/+/, '').replace(/\/+$/, '')}`).join('');
+}
+
 function CandidateCard({ candidate }: { candidate: PkCandidate }) {
     const styles = useStyles();
+
+    // Two or more paths means Cosmos DB treats this as a hierarchical partition key.
+    const partitionKeyPaths = getPartitionKeyPaths(candidate.partitionKey);
+    const isHierarchical = partitionKeyPaths.length >= 2;
+    const displayKey = formatPartitionKeyForDisplay(partitionKeyPaths, candidate.partitionKey);
 
     const cardTone: Record<PkCandidate['verdict'], string> = {
         recommended: styles.cardRec,
@@ -310,7 +354,20 @@ function CandidateCard({ candidate }: { candidate: PkCandidate }) {
                     <Text className={mergeClasses(styles.badge, badgeTone[candidate.verdict])}>
                         {badgeText[candidate.verdict]}
                     </Text>
-                    <Text className={styles.pk}>{candidate.partitionKey}</Text>
+                    <Text className={styles.pk}>{displayKey}</Text>
+                    {isHierarchical ? (
+                        <div className={styles.pkHierarchical}>
+                            <Text>{l10n.t('Hierarchical partition key')}</Text>
+                            <Link
+                                className={styles.pkHierarchicalLink}
+                                href={HIERARCHICAL_PARTITION_KEY_DOCS_URL}
+                                target="_blank"
+                                aria-label={l10n.t('Learn more about hierarchical partition keys')}
+                            >
+                                {l10n.t('Learn more')}
+                            </Link>
+                        </div>
+                    ) : null}
                 </div>
                 <div className={styles.ring} aria-hidden="true">
                     <svg width="44" height="44" viewBox="0 0 44 44">

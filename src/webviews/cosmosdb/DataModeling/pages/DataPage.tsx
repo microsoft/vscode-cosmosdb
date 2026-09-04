@@ -14,7 +14,6 @@ import {
     DialogTitle,
     Input,
     makeStyles,
-    Radio,
     Select,
     Table,
     TableBody,
@@ -99,9 +98,6 @@ const useStyles = makeStyles({
     cellSelect: {
         minWidth: '120px',
     },
-    center: {
-        textAlign: 'center',
-    },
     kvGrid: {
         display: 'grid',
         gridTemplateColumns: 'minmax(160px, 1fr) minmax(0, 140px)',
@@ -147,8 +143,6 @@ const useStyles = makeStyles({
     },
 });
 
-const PK_ICON = ' 🔑';
-
 /** Pending confirmation for the destructive JSON-upload (schema replace) action. */
 type PendingConfirm = { kind: 'upload'; file: File };
 
@@ -180,8 +174,6 @@ export function DataPage({ model, scenarioLabel, onChange }: DataPageProps) {
         onChangeContainers(containers.map((c) => (c.id === active?.id ? updater(c) : c)));
     };
 
-    const setEntity = (entity: string) => updateActive((c) => ({ ...c, entity }));
-
     const addProperty = (name: string) => {
         const trimmed = name.trim();
         if (!trimmed) {
@@ -206,9 +198,7 @@ export function DataPage({ model, scenarioLabel, onChange }: DataPageProps) {
         updateActive((c) => {
             const removed = c.properties.find((p) => p.id === id);
             const properties = c.properties.filter((p) => p.id !== id);
-            // If the removed property was the partition-key candidate, fall back to
-            // a neutral default so the container title doesn't reference a gone field.
-            const partitionKey = removed?.pkCandidate ? '/id' : c.partitionKey;
+            const partitionKey = c.partitionKey === `/${removed?.name}` ? '/id' : c.partitionKey;
             return { ...c, properties, partitionKey };
         });
 
@@ -217,15 +207,6 @@ export function DataPage({ model, scenarioLabel, onChange }: DataPageProps) {
             ...c,
             properties: c.properties.map((p) => (p.id === id ? { ...p, ...patch } : p)),
         }));
-
-    // Partition-key candidate is single-select per container: choosing one clears
-    // the others and updates the container's partition-key path.
-    const setPkCandidate = (id: string) =>
-        updateActive((c) => {
-            const properties = c.properties.map((p) => ({ ...p, pkCandidate: p.id === id }));
-            const selected = properties.find((p) => p.id === id);
-            return { ...c, properties, partitionKey: selected ? `/${selected.name}` : c.partitionKey };
-        });
 
     const onUploadClick = () => {
         setUploadError(undefined);
@@ -314,14 +295,6 @@ export function DataPage({ model, scenarioLabel, onChange }: DataPageProps) {
                 </aside>
 
                 <div className={styles.stack}>
-                    <FieldGroup label={l10n.t('Entity name')}>
-                        <Input
-                            value={active.entity}
-                            placeholder={l10n.t('e.g., Orders')}
-                            onChange={(_, data) => setEntity(data.value)}
-                        />
-                    </FieldGroup>
-
                     <div className={styles.uploadPanel}>
                         <Text className={styles.uploadText}>
                             {l10n.t('Upload your JSON documents to infer the schema for this container')}
@@ -339,7 +312,7 @@ export function DataPage({ model, scenarioLabel, onChange }: DataPageProps) {
                     </div>
                     {uploadInfo ? (
                         <MythBox icon="📄">
-                            {l10n.t('Inferred schema from {file}. Review the PK candidate below and edit as needed.', {
+                            {l10n.t('Inferred schema from {file}. Review the properties below and edit as needed.', {
                                 file: uploadInfo,
                             })}
                         </MythBox>
@@ -356,7 +329,6 @@ export function DataPage({ model, scenarioLabel, onChange }: DataPageProps) {
                             {active.properties.map((p) => (
                                 <span key={p.id} className={styles.tag}>
                                     {p.name}
-                                    {p.pkCandidate ? PK_ICON : ''}
                                     <button
                                         type="button"
                                         className={styles.tagRemove}
@@ -384,9 +356,6 @@ export function DataPage({ model, scenarioLabel, onChange }: DataPageProps) {
                                     <TableHeaderCell>{l10n.t('Property')}</TableHeaderCell>
                                     <TableHeaderCell>{l10n.t('Type')}</TableHeaderCell>
                                     <TableHeaderCell>{l10n.t('Role')}</TableHeaderCell>
-                                    <TableHeaderCell className={styles.center}>
-                                        {l10n.t('PK candidate')}
-                                    </TableHeaderCell>
                                     <TableHeaderCell />
                                 </TableRow>
                             </TableHeader>
@@ -423,15 +392,6 @@ export function DataPage({ model, scenarioLabel, onChange }: DataPageProps) {
                                                     </option>
                                                 ))}
                                             </Select>
-                                        </TableCell>
-                                        <TableCell className={styles.center}>
-                                            <Radio
-                                                name={`pk-${active.id}`}
-                                                value={p.id}
-                                                checked={p.pkCandidate}
-                                                aria-label={l10n.t('Use {name} as partition key', { name: p.name })}
-                                                onChange={() => setPkCandidate(p.id)}
-                                            />
                                         </TableCell>
                                         <TableCell>
                                             <Button

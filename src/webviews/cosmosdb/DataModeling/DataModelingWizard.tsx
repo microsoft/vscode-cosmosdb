@@ -18,10 +18,10 @@ import {
     Text,
     tokens,
 } from '@fluentui/react-components';
-import { AddRegular, DeleteRegular } from '@fluentui/react-icons';
+import { AddRegular, CheckmarkRegular, DeleteRegular, DismissRegular, EditRegular } from '@fluentui/react-icons';
 import { useTrpcClient } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type DataModelingAppRouter, type DataModelingEvent, type PartitionKeyRecommendation } from '../../api/types';
 import { ContainerFooter } from './components/Container/ContainerFooter';
 import { ContainerHeader } from './components/Container/ContainerHeader';
@@ -82,6 +82,17 @@ const useStyles = makeStyles({
         ':hover': { color: tokens.colorPaletteRedForeground1 },
         ':hover:active': { color: tokens.colorPaletteRedForeground1 },
     },
+    containerNameActions: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: tokens.spacingHorizontalXS,
+    },
+    containerNameInput: { width: '240px' },
+    // Keep the pen inline with the title text and vertically centered on it, so it sits right
+    // after the name instead of drifting to the end of the heading row.
+    containerTitle: { display: 'inline-flex', alignItems: 'center', gap: tokens.spacingHorizontalXXS },
+    containerTitleEdit: { color: tokens.colorNeutralForeground2 },
+    stepLabel: { display: 'inline-flex', alignItems: 'baseline', gap: tokens.spacingHorizontalXS },
 });
 
 /**
@@ -108,6 +119,9 @@ export const DataModelingWizard = () => {
     const [confirmRemove, setConfirmRemove] = useState(false);
     const [addOpen, setAddOpen] = useState(false);
     const [newContainerName, setNewContainerName] = useState('');
+    const [editingContainerId, setEditingContainerId] = useState<string>();
+    const [containerNameDraft, setContainerNameDraft] = useState('');
+    const containerNameInputRef = useRef<HTMLInputElement>(null);
 
     const [recommendationStatus, setRecommendationStatus] = useState<RecommendationStatus>('idle');
     const [recommendation, setRecommendation] = useState<PartitionKeyRecommendation>();
@@ -132,6 +146,12 @@ export const DataModelingWizard = () => {
         });
         return () => subscription.unsubscribe();
     }, [trpcClient]);
+
+    useEffect(() => {
+        if (editingContainerId) {
+            containerNameInputRef.current?.focus();
+        }
+    }, [editingContainerId]);
 
     const patch = useCallback((partial: Partial<WizardState>) => setState((prev) => ({ ...prev, ...partial })), []);
 
@@ -189,6 +209,34 @@ export const DataModelingWizard = () => {
     );
 
     const setDataModel = useCallback((dataModel: DataModel) => setState((prev) => ({ ...prev, dataModel })), []);
+
+    const startEditingContainerName = (containerId: string, entity: string) => {
+        setEditingContainerId(containerId);
+        setContainerNameDraft(entity);
+    };
+
+    const cancelEditingContainerName = () => {
+        setEditingContainerId(undefined);
+        setContainerNameDraft('');
+    };
+
+    const saveContainerName = () => {
+        const entity = containerNameDraft.trim();
+        if (!editingContainerId || !entity) {
+            return;
+        }
+
+        setState((previous) => ({
+            ...previous,
+            dataModel: {
+                ...previous.dataModel,
+                containers: previous.dataModel.containers.map((container) =>
+                    container.id === editingContainerId ? { ...container, entity } : container,
+                ),
+            },
+        }));
+        cancelEditingContainerName();
+    };
 
     // The Data tab changes the schema, so refresh the derived PK candidates the Scale tab
     // reads. Queries and Scale edits write their slice back unchanged.
@@ -362,14 +410,66 @@ export const DataModelingWizard = () => {
                     <WizardStep
                         key={c.id}
                         value={containerStep(c.id)}
-                        label={c.entity || l10n.t('Container {n}', { n: index + 1 })}
-                        title={
-                            <>
-                                {l10n.t('Model')}{' '}
-                                <Text font="monospace" size={500} weight="semibold">
-                                    {c.entity}
+                        label={
+                            <span className={styles.stepLabel}>
+                                <span>{l10n.t('Container:')}</span>
+                                <Text as="span" font="monospace">
+                                    {c.entity || l10n.t('Container {n}', { n: index + 1 })}
                                 </Text>
-                            </>
+                            </span>
+                        }
+                        title={
+                            editingContainerId === c.id ? (
+                                <Input
+                                    aria-label={l10n.t('Container name')}
+                                    className={styles.containerNameInput}
+                                    contentAfter={
+                                        <div className={styles.containerNameActions}>
+                                            <Button
+                                                appearance="transparent"
+                                                aria-label={l10n.t('Save container name')}
+                                                icon={<CheckmarkRegular />}
+                                                size="small"
+                                                disabled={!containerNameDraft.trim()}
+                                                onClick={saveContainerName}
+                                            />
+                                            <Button
+                                                appearance="transparent"
+                                                aria-label={l10n.t('Cancel editing container name')}
+                                                icon={<DismissRegular />}
+                                                size="small"
+                                                onClick={cancelEditingContainerName}
+                                            />
+                                        </div>
+                                    }
+                                    ref={containerNameInputRef}
+                                    value={containerNameDraft}
+                                    onChange={(_, data) => setContainerNameDraft(data.value)}
+                                    onKeyDown={(event) => {
+                                        if (event.key === 'Enter') {
+                                            event.preventDefault();
+                                            saveContainerName();
+                                        } else if (event.key === 'Escape') {
+                                            cancelEditingContainerName();
+                                        }
+                                    }}
+                                />
+                            ) : (
+                                <span className={styles.containerTitle}>
+                                    {l10n.t('Model')}{' '}
+                                    <Text font="monospace" size={500} weight="semibold">
+                                        {c.entity}
+                                    </Text>
+                                    <Button
+                                        appearance="transparent"
+                                        className={styles.containerTitleEdit}
+                                        icon={<EditRegular />}
+                                        size="small"
+                                        aria-label={l10n.t('Edit {name}', { name: c.entity })}
+                                        onClick={() => startEditingContainerName(c.id, c.entity)}
+                                    />
+                                </span>
+                            )
                         }
                         subtitle={l10n.t(
                             'Switch tabs to define this container’s data, queries and scale. Each container gets its own partition-key recommendation.',

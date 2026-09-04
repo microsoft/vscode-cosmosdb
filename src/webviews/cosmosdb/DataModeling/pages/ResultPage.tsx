@@ -550,12 +550,21 @@ export function ResultPage({
 
     const active = containers.find((c) => c.entity === activeEntity) ?? containers[0];
 
+    // A `received` status with no usable container means the tool delivered an
+    // empty/invalid recommendation. Surface it as a retryable error instead of a
+    // blank page so the state is never silently stuck.
+    const receivedButEmpty = recommendationStatus === 'received' && !active;
+
     if (recommendationStatus !== 'received' || !recommendation || !active) {
         return (
             <div className={styles.stack}>
                 <CopilotRecommendation
-                    status={recommendationStatus}
-                    error={recommendationError}
+                    status={receivedButEmpty ? 'error' : recommendationStatus}
+                    error={
+                        receivedButEmpty
+                            ? l10n.t('Copilot returned an empty recommendation. Try requesting it again.')
+                            : recommendationError
+                    }
                     onRetry={onRetryRecommendation}
                 />
             </div>
@@ -574,7 +583,9 @@ export function ResultPage({
                 >
                     {containers.map((c) => (
                         <Tab key={c.entity} value={c.entity}>
-                            {c.entity}
+                            <Text as="span" font="monospace">
+                                {l10n.t('container:')} {c.entity}
+                            </Text>
                         </Tab>
                     ))}
                 </TabList>

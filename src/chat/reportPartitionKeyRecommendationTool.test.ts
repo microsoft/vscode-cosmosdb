@@ -20,10 +20,17 @@ vi.mock('../extensionVariables', () => ({
 }));
 
 const wizardTabs = new Set<{ getId(): string }>();
+const wizardDrawerTabs = new Set<{ getId(): string }>();
 
 vi.mock('../panels/DataModelingWizardTab', () => ({
     DataModelingWizardTab: {
         findById: vi.fn((tabId: string) => Array.from(wizardTabs).find((tab) => tab.getId() === tabId)),
+    },
+}));
+
+vi.mock('../panels/DataModelingWizardDrawerTab', () => ({
+    DataModelingWizardDrawerTab: {
+        findById: vi.fn((tabId: string) => Array.from(wizardDrawerTabs).find((tab) => tab.getId() === tabId)),
     },
 }));
 
@@ -98,10 +105,22 @@ describe('findDataModelingWizardTab', () => {
 
         wizardTabs.clear();
     });
+
+    it('selects the originating drawer when the recommendation request came from a drawer wizard', () => {
+        const drawerTab = { getId: () => 'wizard-drawer' };
+        wizardDrawerTabs.add(drawerTab);
+
+        expect(findDataModelingWizardTab('wizard-drawer')).toBe(drawerTab);
+
+        wizardDrawerTabs.clear();
+    });
 });
 
 describe('cosmosdb_reportPartitionKeyRecommendation', () => {
-    afterEach(() => wizardTabs.clear());
+    afterEach(() => {
+        wizardTabs.clear();
+        wizardDrawerTabs.clear();
+    });
 
     it('delivers a recommendation only to the wizard that originated the request', async () => {
         const firstTab = { getId: () => '1c70d73d-9d5d-415a-93f3-630d3e581d63', reportRecommendation: vi.fn() };
@@ -129,5 +148,54 @@ describe('cosmosdb_reportPartitionKeyRecommendation', () => {
 
         expect(firstTab.reportRecommendation).toHaveBeenCalledOnce();
         expect(secondTab.reportRecommendation).not.toHaveBeenCalled();
+    });
+
+    it('delivers a recommendation to the drawer that originated the request', async () => {
+        const drawerTab = { getId: () => 'd7b9f7d4-84dc-4c95-8f7a-003d7f43be31', reportRecommendation: vi.fn() };
+        wizardDrawerTabs.add(drawerTab);
+
+        const tool = captureRegisteredTool(registerReportPartitionKeyRecommendationTool);
+        await tool.invoke(
+            {
+                input: {
+                    wizardTabId: drawerTab.getId(),
+                    summary: 'Use customerId.',
+                    containers: [
+                        {
+                            entity: 'Orders',
+                            partitionKey: '/customerId',
+                            rationale: 'Customer operations are co-located.',
+                        },
+                    ],
+                },
+            },
+            {} as never,
+        );
+
+        expect(drawerTab.reportRecommendation).toHaveBeenCalledOnce();
+    });
+
+    it('reports an invalid recommendation to the originating wizard', async () => {
+        const wizardTab = {
+            getId: () => '8d9c4b36-4f8d-44a4-9d86-a4811cc6ac3f',
+            reportRecommendationError: vi.fn(),
+        };
+        wizardTabs.add(wizardTab);
+
+        const tool = captureRegisteredTool(registerReportPartitionKeyRecommendationTool);
+        await tool.invoke(
+            {
+                input: {
+                    wizardTabId: wizardTab.getId(),
+                    summary: 'Use customerId.',
+                    containers: [{ entity: 'Orders', partitionKey: '/customerId' }],
+                },
+            },
+            {} as never,
+        );
+
+        expect(wizardTab.reportRecommendationError).toHaveBeenCalledWith(
+            'The recommendation was not in the expected shape and could not be shown.',
+        );
     });
 });

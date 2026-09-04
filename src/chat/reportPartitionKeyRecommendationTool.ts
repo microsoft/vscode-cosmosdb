@@ -8,6 +8,7 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { z } from 'zod';
 import { ext } from '../extensionVariables';
+import { DataModelingWizardDrawerTab } from '../panels/DataModelingWizardDrawerTab';
 import { DataModelingWizardTab } from '../panels/DataModelingWizardTab';
 import {
     type PartitionKeyRecommendation,
@@ -38,8 +39,23 @@ const ReportPartitionKeyRecommendationSchema = PartitionKeyRecommendationSchema.
 });
 
 /** Finds the wizard that originated a recommendation request, if it is still open. */
-export function findDataModelingWizardTab(wizardTabId: string): DataModelingWizardTab | undefined {
-    return DataModelingWizardTab.findById(wizardTabId);
+export function findDataModelingWizardTab(
+    wizardTabId: string,
+): DataModelingWizardTab | DataModelingWizardDrawerTab | undefined {
+    return DataModelingWizardTab.findById(wizardTabId) ?? DataModelingWizardDrawerTab.findById(wizardTabId);
+}
+
+function findOriginatingWizard(input: unknown): DataModelingWizardTab | DataModelingWizardDrawerTab | undefined {
+    if (
+        typeof input !== 'object' ||
+        input === null ||
+        !('wizardTabId' in input) ||
+        typeof input.wizardTabId !== 'string'
+    ) {
+        return undefined;
+    }
+
+    return findDataModelingWizardTab(input.wizardTabId);
 }
 
 /**
@@ -297,6 +313,9 @@ export function registerReportPartitionKeyRecommendationTool(context: vscode.Ext
                         const parsed = ReportPartitionKeyRecommendationSchema.safeParse(options.input);
                         if (!parsed.success) {
                             actionContext.telemetry.properties.outcome = 'invalidInput';
+                            findOriginatingWizard(options.input)?.reportRecommendationError(
+                                l10n.t('The recommendation was not in the expected shape and could not be shown.'),
+                            );
                             console.error(
                                 `[${REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_NAME}] input failed schema validation:`,
                                 parsed.error.issues,
@@ -317,13 +336,18 @@ export function registerReportPartitionKeyRecommendationTool(context: vscode.Ext
                         console.log(
                             `[${REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_NAME}] originating wizard tab found: ${!!tab}`,
                         );
+                        ext.outputChannel.info(
+                            `[${REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_NAME}] invoke: originating wizard tab found=${!!tab}, ` +
+                                `container(s)=${recommendation.containers.length}.`,
+                        );
                         if (!tab) {
                             actionContext.telemetry.properties.outcome = 'noWizard';
                             console.warn(
                                 `[${REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_NAME}] No open Data Modeling wizard to receive the recommendation.`,
                             );
                             ext.outputChannel.warn(
-                                '[Report Partition Key Tool] No open Data Modeling wizard to receive the recommendation.',
+                                '[Report Partition Key Tool] No open Data Modeling wizard to receive the recommendation. ' +
+                                    'Returning the recommendation to Chat instead.',
                             );
                             return new vscode.LanguageModelToolResult([
                                 new vscode.LanguageModelTextPart(formatRecommendationForChat(recommendation)),
@@ -333,7 +357,7 @@ export function registerReportPartitionKeyRecommendationTool(context: vscode.Ext
                         tab.reportRecommendation(recommendation);
                         console.log(
                             `[${REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_NAME}] reportRecommendation() called with ` +
-                                `${recommendation.containers.length} container(s); event emitted to sink.`,
+                                `${recommendation.containers.length} container(s); event emitted to hub.`,
                         );
 
                         actionContext.telemetry.properties.outcome = 'success';

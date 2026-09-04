@@ -7,6 +7,7 @@ import { TypedEventSink } from '@microsoft/vscode-ext-webview';
 import { attachTrpc } from '@microsoft/vscode-ext-webview/host';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
+import { ext } from '../extensionVariables';
 import { BaseTab } from './BaseTab';
 import { dataModelingAppRouter, dataModelingCallerFactory, type DataModelingRouterContext } from './trpc/appRouter';
 import { type DataModelingEvent, type PartitionKeyRecommendation } from './trpc/routers/dataModelingEventsRouter';
@@ -68,15 +69,16 @@ export class DataModelingWizardTab extends BaseTab {
 
     /** Push a Copilot-produced recommendation to the webview's Result page. */
     public reportRecommendation(recommendation: PartitionKeyRecommendation): void {
-        console.log(
-            `[DataModelingWizardTab] emitting 'recommendationReceived' to event sink ` +
-                `(${recommendation.containers.length} container(s)).`,
+        ext.outputChannel.info(
+            `[DataModelingWizardTab] emitting 'recommendationReceived' ` +
+                `(${recommendation.containers.length} container(s)) to the webview.`,
         );
         this.eventSink.emit({ type: 'recommendationReceived', recommendation });
     }
 
     /** Notify the webview that the recommendation could not be produced. */
     public reportRecommendationError(message: string): void {
+        ext.outputChannel.warn(`[DataModelingWizardTab] emitting 'recommendationError' to the webview.`);
         this.eventSink.emit({ type: 'recommendationError', message });
     }
 

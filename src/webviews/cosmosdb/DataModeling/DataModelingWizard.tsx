@@ -89,9 +89,16 @@ const useStyles = makeStyles({
     },
     containerNameInput: { width: '240px' },
     // Keep the pen inline with the title text and vertically centered on it, so it sits right
-    // after the name instead of drifting to the end of the heading row.
+    // after the model name instead of drifting to the end of the heading row.
     containerTitle: { display: 'inline-flex', alignItems: 'center', gap: tokens.spacingHorizontalXXS },
-    containerTitleEdit: { color: tokens.colorNeutralForeground2 },
+    // Shrink the pen so it reads as a subtle affordance next to the larger title text and lines
+    // up with its optical center rather than overpowering the heading.
+    containerTitleEdit: {
+        color: tokens.colorNeutralForeground2,
+        minWidth: 'unset',
+        padding: 0,
+        '& svg': { fontSize: '16px' },
+    },
     stepLabel: { display: 'inline-flex', alignItems: 'baseline', gap: tokens.spacingHorizontalXS },
 });
 
@@ -142,6 +149,10 @@ export const DataModelingWizard = () => {
                     setRecommendationError(event.message);
                     setRecommendationStatus('error');
                 }
+            },
+            onError: () => {
+                setRecommendationError(l10n.t('Could not receive the recommendation from the extension.'));
+                setRecommendationStatus('error');
             },
         });
         return () => subscription.unsubscribe();
@@ -456,9 +467,8 @@ export const DataModelingWizard = () => {
                                 />
                             ) : (
                                 <span className={styles.containerTitle}>
-                                    {l10n.t('Model')}{' '}
                                     <Text font="monospace" size={500} weight="semibold">
-                                        {c.entity}
+                                        {l10n.t('Model:')} {c.entity}
                                     </Text>
                                     <Button
                                         appearance="transparent"

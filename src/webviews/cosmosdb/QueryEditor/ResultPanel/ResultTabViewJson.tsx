@@ -55,11 +55,16 @@ const useClasses = makeStyles({
 
 const encoder = new TextEncoder();
 
-const LARGE_JSON_EDITOR_OPTIONS: MonacoEditorType.editor.IStandaloneEditorConstructionOptions = {
+const DEFAULT_JSON_EDITOR_OPTIONS: MonacoEditorType.editor.IStandaloneEditorConstructionOptions = {
     ariaLabel: l10n.t('Query results JSON'),
+    domReadOnly: true,
+    readOnly: true,
+};
+
+const LARGE_JSON_EDITOR_OPTIONS: MonacoEditorType.editor.IStandaloneEditorConstructionOptions = {
+    ...DEFAULT_JSON_EDITOR_OPTIONS,
     bracketPairColorization: { enabled: false },
     colorDecorators: false,
-    domReadOnly: true,
     folding: false,
     guides: {
         bracketPairs: false,
@@ -70,7 +75,6 @@ const LARGE_JSON_EDITOR_OPTIONS: MonacoEditorType.editor.IStandaloneEditorConstr
     matchBrackets: 'never',
     minimap: { enabled: false },
     occurrencesHighlight: 'off',
-    readOnly: true,
     renderWhitespace: 'none',
     selectionHighlight: false,
     stickyScroll: { enabled: false },
@@ -103,6 +107,7 @@ type ResultJsonEditorProps = {
     maximumBytes?: number;
     queryResult: SerializedQueryResult;
     totalByteLength: number;
+    useLargeFileOptions: boolean;
 };
 
 const yieldToBrowser = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
@@ -112,6 +117,7 @@ const ResultJsonEditor = ({
     maximumBytes = Number.POSITIVE_INFINITY,
     queryResult,
     totalByteLength,
+    useLargeFileOptions,
 }: ResultJsonEditorProps) => {
     const classes = useClasses();
     const modelRef = useRef<MonacoEditorType.editor.ITextModel | null>(null);
@@ -204,7 +210,7 @@ const ResultJsonEditor = ({
                     width={'100%'}
                     defaultLanguage={'json'}
                     defaultValue={''}
-                    options={LARGE_JSON_EDITOR_OPTIONS}
+                    options={useLargeFileOptions ? LARGE_JSON_EDITOR_OPTIONS : DEFAULT_JSON_EDITOR_OPTIONS}
                     onMount={handleMount}
                 />
             </div>
@@ -251,6 +257,7 @@ export const ResultTabViewJson = ({ queryResult }: ResultTabViewJsonProps) => {
                 queryResult={queryResult}
                 totalByteLength={byteLength}
                 focusOnMount={false}
+                useLargeFileOptions={false}
             />
         );
     }
@@ -316,6 +323,7 @@ export const ResultTabViewJson = ({ queryResult }: ResultTabViewJsonProps) => {
                 totalByteLength={byteLength}
                 maximumBytes={mode === 'preview' ? QUERY_RESULT_JSON_PREVIEW_BYTES : undefined}
                 focusOnMount={true}
+                useLargeFileOptions={true}
             />
         </div>
     );

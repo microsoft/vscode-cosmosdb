@@ -91,17 +91,16 @@ describe('ResultTabViewJson', () => {
         focus.mockClear();
     });
 
-    it('opens a small result directly with large-file optimizations', async () => {
+    it('opens a small result directly with the default editor options', async () => {
         renderJsonView(makeResult('small'));
 
         const editor = screen.getByTestId('monaco');
         expect(editor).toBeInTheDocument();
         await waitFor(() => expect(editor.dataset.value).toContain('small'));
-        expect(JSON.parse(editor.dataset.options ?? '{}')).toMatchObject({
-            largeFileOptimizations: true,
-            folding: false,
-            links: false,
-            minimap: { enabled: false },
+        expect(JSON.parse(editor.dataset.options ?? '{}')).toEqual({
+            ariaLabel: 'Query results JSON',
+            domReadOnly: true,
+            readOnly: true,
         });
     });
 
@@ -127,6 +126,12 @@ describe('ResultTabViewJson', () => {
         await waitFor(() =>
             expect(new TextEncoder().encode(previewEditor.dataset.value).byteLength).toBeLessThanOrEqual(512 * 1024),
         );
+        expect(JSON.parse(previewEditor.dataset.options ?? '{}')).toMatchObject({
+            largeFileOptimizations: true,
+            folding: false,
+            links: false,
+            minimap: { enabled: false },
+        });
 
         fireEvent.click(screen.getByRole('button', { name: 'Open all' }));
 

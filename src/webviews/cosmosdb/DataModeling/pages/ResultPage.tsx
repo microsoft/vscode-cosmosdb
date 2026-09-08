@@ -30,13 +30,14 @@ import {
     type PartitionKeyRecommendation,
     type PkCandidate,
 } from '../../../api/types';
+import { MonacoEditor, type MonacoEditorType } from '../../../MonacoEditor';
 import { CopilotRecommendation, type RecommendationStatus } from '../components/CopilotRecommendation';
 import { InfoBox, SubPanel } from '../components/primitives';
 
 /**
  * Result step. One tab per container, each showing Copilot's partition-key recommendation:
  * scored candidate cards, a hot-partition risk comparison, a query-routing analysis, a
- * document-id strategy, and a copyable infrastructure snippet with Apply / Copy actions. All
+ * document-id strategy, and a copyable infrastructure snippet with Create / Copy actions. All
  * content is LLM-driven — while the request is in flight the {@link CopilotRecommendation} panel
  * shows a waiting note instead.
  */
@@ -212,6 +213,7 @@ const useStyles = makeStyles({
     },
     codeWrap: {
         position: 'relative',
+        minWidth: 0,
     },
     codeHead: {
         display: 'flex',
@@ -220,16 +222,11 @@ const useStyles = makeStyles({
         gap: tokens.spacingHorizontalS,
         flexWrap: 'wrap',
     },
-    pre: {
-        margin: 0,
+    codeEditor: {
         marginTop: tokens.spacingVerticalS,
-        padding: tokens.spacingHorizontalM,
         borderRadius: tokens.borderRadiusMedium,
-        backgroundColor: tokens.colorNeutralBackground3,
-        overflowX: 'auto',
-        fontFamily: tokens.fontFamilyMonospace,
-        fontSize: tokens.fontSizeBase200,
-        whiteSpace: 'pre',
+        border: `1px solid ${tokens.colorNeutralStroke2}`,
+        overflow: 'hidden',
     },
     actions: {
         display: 'flex',
@@ -244,6 +241,31 @@ const useStyles = makeStyles({
 });
 
 type CodeTab = 'bicep' | 'terraform' | 'sdk';
+
+const CODE_LANGUAGES: Record<CodeTab, string> = { bicep: 'bicep', terraform: 'hcl', sdk: 'csharp' };
+const CODE_LINE_HEIGHT = 20;
+const CODE_PADDING = 12;
+const CODE_SCROLLBAR_SIZE = 12;
+const CODE_EDITOR_OPTIONS: MonacoEditorType.editor.IStandaloneEditorConstructionOptions = {
+    readOnly: true,
+    domReadOnly: true,
+    ariaLabel: l10n.t('Container creation code sample'),
+    tabFocusMode: true,
+    minimap: { enabled: false },
+    lineNumbers: 'off',
+    glyphMargin: false,
+    folding: false,
+    lineDecorationsWidth: 0,
+    overviewRulerLanes: 0,
+    overviewRulerBorder: false,
+    renderLineHighlight: 'none',
+    scrollBeyondLastLine: false,
+    wordWrap: 'off',
+    fontSize: 13,
+    lineHeight: CODE_LINE_HEIGHT,
+    padding: { top: CODE_PADDING, bottom: CODE_PADDING },
+    scrollbar: { horizontalScrollbarSize: CODE_SCROLLBAR_SIZE, alwaysConsumeMouseWheel: false },
+};
 
 function buildCode(tab: CodeTab, entity: string, partitionKey: string): string {
     const safeEntity = entity || 'Container';
@@ -426,6 +448,11 @@ function ContainerResultView({ container }: { container: ContainerRecommendation
         () => buildCode(codeTab, container.entity, container.partitionKey),
         [codeTab, container.entity, container.partitionKey],
     );
+    // With wrapping disabled, each source line occupies exactly one editor line.
+    const codeEditorHeight = Math.min(
+        400,
+        code.split('\n').length * CODE_LINE_HEIGHT + 2 * CODE_PADDING + CODE_SCROLLBAR_SIZE,
+    );
 
     // Reset the "Copied" affordance shortly after a copy; clean up on unmount / tab switch.
     useEffect(() => {
@@ -579,9 +606,11 @@ function ContainerResultView({ container }: { container: ContainerRecommendation
                         {copied ? l10n.t('Copied') : l10n.t('Copy')}
                     </Button>
                 </div>
-                <pre className={styles.pre}>{code}</pre>
+                <div className={styles.codeEditor} style={{ height: codeEditorHeight }}>
+                    <MonacoEditor language={CODE_LANGUAGES[codeTab]} value={code} options={CODE_EDITOR_OPTIONS} />
+                </div>
                 <div className={styles.actions}>
-                    <Button appearance="primary">{l10n.t('Apply to Container')}</Button>
+                    <Button appearance="primary">{l10n.t('Create Container')}</Button>
                 </div>
             </div>
         </div>
@@ -640,8 +669,11 @@ export function ResultPage({
                 >
                     {containers.map((c) => (
                         <Tab key={c.entity} value={c.entity}>
-                            <Text as="span" font="monospace">
-                                {l10n.t('container:')} {c.entity}
+                            <Text as="span">
+                                {l10n.t('Container:')}{' '}
+                                <Text as="span" font="monospace">
+                                    {c.entity}
+                                </Text>
                             </Text>
                         </Tab>
                     ))}

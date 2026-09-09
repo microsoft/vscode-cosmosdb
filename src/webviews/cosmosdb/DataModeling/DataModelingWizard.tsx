@@ -23,6 +23,7 @@ import { useTrpcClient } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type DataModelingAppRouter, type DataModelingEvent, type PartitionKeyRecommendation } from '../../api/types';
+import { AlertDialog } from '../../common/AlertDialog';
 import { ContainerFooter } from './components/Container/ContainerFooter';
 import { ContainerHeader } from './components/Container/ContainerHeader';
 import { type RecommendationStatus } from './components/CopilotRecommendation';
@@ -123,6 +124,10 @@ export const DataModelingWizard = () => {
     const styles = useStyles();
     const trpcClient = useTrpcClient<DataModelingAppRouter>();
     const [state, setState] = useState<WizardState>(createInitialState);
+    const [reachedSteps, setReachedSteps] = useState<string[]>([WORKLOAD_STEP]);
+    const [confirmAdvance, setConfirmAdvance] = useState(false);
+    const advanceButtonRef = useRef<HTMLButtonElement>(null);
+    const restoreAdvanceFocus = useRef(false);
     const [confirmRemove, setConfirmRemove] = useState(false);
     const [addOpen, setAddOpen] = useState(false);
     const [newContainerName, setNewContainerName] = useState('');
@@ -133,6 +138,17 @@ export const DataModelingWizard = () => {
     const [recommendationStatus, setRecommendationStatus] = useState<RecommendationStatus>('idle');
     const [recommendation, setRecommendation] = useState<PartitionKeyRecommendation>();
     const [recommendationError, setRecommendationError] = useState<string>();
+
+    useEffect(() => {
+        if (!confirmAdvance && restoreAdvanceFocus.current) {
+            const frame = requestAnimationFrame(() => {
+                advanceButtonRef.current?.focus();
+                restoreAdvanceFocus.current = false;
+            });
+            return () => cancelAnimationFrame(frame);
+        }
+        return undefined;
+    }, [confirmAdvance]);
 
     // Stream the recommendation (or failure) that Copilot delivers via the
     // cosmosdb_reportPartitionKeyRecommendation tool.
@@ -166,8 +182,7 @@ export const DataModelingWizard = () => {
 
     const patch = useCallback((partial: Partial<WizardState>) => setState((prev) => ({ ...prev, ...partial })), []);
 
-    // Navigate to a 1-based step index, syncing the active container when the target is a
-    // container step and refreshing that container's derived partition-key candidates.
+    // Navigate to a 1-based step index without changing model inputs or completion.
     const goToStep = useCallback((step: number) => {
         setState((prev) => {
             const values = buildStepValues(prev.dataModel);
@@ -179,7 +194,7 @@ export const DataModelingWizard = () => {
             return {
                 ...prev,
                 step: clamped,
-                dataModel: withDerivedCandidates({ ...prev.dataModel, activeContainerId }),
+                dataModel: { ...prev.dataModel, activeContainerId },
             };
         });
     }, []);
@@ -195,7 +210,7 @@ export const DataModelingWizard = () => {
             return {
                 ...prev,
                 step: index + 1,
-                dataModel: withDerivedCandidates({ ...prev.dataModel, activeContainerId: id }),
+                dataModel: { ...prev.dataModel, activeContainerId: id },
             };
         });
     }, []);
@@ -325,19 +340,31 @@ export const DataModelingWizard = () => {
     const canAdvance = !isWorkload || !!state.scenario;
     const nextLabel = isWorkload ? l10n.t('Start') : isReview ? l10n.t('Get Recommendation') : l10n.t('Next');
 
-    const onNext = () => {
+    const advance = () => {
         if (stepIndex >= stepValues.length) {
             return;
         }
+        setReachedSteps(stepValues.slice(0, stepIndex + 1));
+        setRecommendation(undefined);
+        setRecommendationError(undefined);
+        setRecommendationStatus('idle');
         // Leaving Review kicks off the Copilot request that the Result page awaits.
         if (isReview) {
             requestRecommendation();
         }
         goToStep(stepIndex + 1);
     };
+    const onNext = () => {
+        if (recommendation || reachedSteps.some((value) => stepValues.indexOf(value) >= stepIndex)) {
+            setConfirmAdvance(true);
+        } else {
+            advance();
+        }
+    };
     const onBack = () => goToStep(stepIndex - 1);
     const restart = () => {
         setState(createInitialState());
+        setReachedSteps([WORKLOAD_STEP]);
         setRecommendationStatus('idle');
         setRecommendation(undefined);
         setRecommendationError(undefined);
@@ -385,7 +412,7 @@ export const DataModelingWizard = () => {
                 </div>
             }
         >
-            <Button appearance="primary" disabled={!canAdvance} onClick={onNext}>
+            <Button ref={advanceButtonRef} appearance="primary" disabled={!canAdvance} onClick={onNext}>
                 {nextLabel}
             </Button>
             {stepIndex > 1 ? (
@@ -412,6 +439,8 @@ export const DataModelingWizard = () => {
             >
                 <WizardStep
                     value={WORKLOAD_STEP}
+                    completed={reachedSteps.includes(WORKLOAD_STEP) && reachedSteps.at(-1) !== WORKLOAD_STEP}
+                    navigable={reachedSteps.includes(WORKLOAD_STEP)}
                     label={l10n.t('Workload')}
                     title={l10n.t('What kind of workload are you building?')}
                     subtitle={l10n.t(
@@ -425,6 +454,10 @@ export const DataModelingWizard = () => {
                     <WizardStep
                         key={c.id}
                         value={containerStep(c.id)}
+                        completed={
+                            reachedSteps.includes(containerStep(c.id)) && reachedSteps.at(-1) !== containerStep(c.id)
+                        }
+                        navigable={reachedSteps.includes(containerStep(c.id))}
                         label={
                             <span className={styles.stepLabel}>
                                 <span>{l10n.t('Container:')}</span>
@@ -500,6 +533,8 @@ export const DataModelingWizard = () => {
 
                 <WizardStep
                     value={REVIEW_STEP}
+                    completed={reachedSteps.includes(REVIEW_STEP) && reachedSteps.at(-1) !== REVIEW_STEP}
+                    navigable={reachedSteps.includes(REVIEW_STEP)}
                     label={l10n.t('Review')}
                     title={l10n.t('Review your inputs')}
                     subtitle={l10n.t('Click Edit to change any selection before analysis.')}
@@ -516,6 +551,8 @@ export const DataModelingWizard = () => {
 
                 <WizardStep
                     value={RESULT_STEP}
+                    completed={recommendationStatus === 'received'}
+                    navigable={reachedSteps.includes(RESULT_STEP)}
                     label={l10n.t('Result')}
                     title={l10n.t('Partition key recommendation')}
                     subtitle={l10n.t("Copilot's analysis of your workload profile.")}
@@ -528,6 +565,25 @@ export const DataModelingWizard = () => {
                     />
                 </WizardStep>
             </Wizard>
+
+            <AlertDialog
+                isOpen={confirmAdvance}
+                onClose={(confirmed) => {
+                    restoreAdvanceFocus.current = !confirmed;
+                    setConfirmAdvance(false);
+                    if (confirmed) {
+                        advance();
+                    }
+                }}
+                title={l10n.t('Restart from this step?')}
+                confirmButtonText={l10n.t('Yes')}
+                cancelButtonText={l10n.t('Cancel')}
+                reverseButtonOrder
+            >
+                {l10n.t(
+                    'Continuing will clear completion of the following steps and discard the existing recommendation. Your entered model data will be kept. Do you want to continue?',
+                )}
+            </AlertDialog>
 
             <Dialog open={addOpen} onOpenChange={(_, data) => setAddOpen(data.open)}>
                 <DialogSurface>

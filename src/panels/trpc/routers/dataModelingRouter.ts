@@ -17,6 +17,16 @@ function buildRecommendationPrompt(dataModelJson: string, wizardTabId: string): 
     return (
         'You are helping choose the best Azure Cosmos DB for NoSQL partition key for a data model designed in the Cosmos DB Data Modeling wizard.' +
         '\n\n' +
+        'REQUIRED PREPARATION — complete this before scoring candidates or reporting a recommendation:' +
+        '\n' +
+        '1. Load the `cosmosdb-best-practices` skill using the available skill mechanism. Do not rely solely on your general knowledge or the brief criteria below.' +
+        '\n' +
+        "2. Use the loaded skill's current organization and links to find and read the detailed guidance covering high cardinality, query-pattern alignment, write distribution and hotspot avoidance, hierarchical partition keys, synthetic partition keys, partition-key value length limits, and logical-partition storage limits. Follow the skill's references rather than assuming particular file names, file counts, or section titles. Reading only the skill overview is not sufficient." +
+        '\n' +
+        '3. Apply the loaded rules to EACH container and ground candidate assessments in those rules and the supplied workload data. Complete this preparation before calling the report tool; the structured-output requirements below do not replace the skill-loading and reading steps.' +
+        '\n' +
+        'If the skill or any required rule cannot be loaded with the available tools, explicitly identify the missing guidance in the recommendation `summary` and label the recommendation as provisional. Never claim to have loaded or applied guidance you could not read.' +
+        '\n\n' +
         'The data model below is JSON. Each container has a schema (properties with a role: key / filter / payload), an estimated document shape, read query patterns (with the attributes they filter on and peak QPS), write rates, and scale characteristics (cardinality, write distribution, growth).' +
         '\n\n' +
         '```json\n' +

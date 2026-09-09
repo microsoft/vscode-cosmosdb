@@ -8,6 +8,7 @@ import { attachTrpc } from '@microsoft/vscode-ext-webview/host';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
+import { DataModelerProjectService, type DataModelerAccount } from '../services/DataModelerProjectService';
 import { BaseTab } from './BaseTab';
 import { dataModelingAppRouter, dataModelingCallerFactory, type DataModelingRouterContext } from './trpc/appRouter';
 import { type DataModelingEvent, type PartitionKeyRecommendation } from './trpc/routers/dataModelingEventsRouter';
@@ -24,7 +25,10 @@ export class DataModelingWizardTab extends BaseTab {
 
     public readonly eventSink: TypedEventSink<DataModelingEvent>;
 
-    protected constructor(panel: vscode.WebviewPanel) {
+    protected constructor(
+        panel: vscode.WebviewPanel,
+        private readonly project: DataModelerProjectService,
+    ) {
         super(panel, DataModelingWizardTab.viewType);
         DataModelingWizardTab.openTabs.add(this);
 
@@ -39,22 +43,28 @@ export class DataModelingWizardTab extends BaseTab {
         this.disposables.push(disposable);
     }
 
-    public static render(viewColumn?: vscode.ViewColumn): DataModelingWizardTab {
+    public static render(account: DataModelerAccount, viewColumn?: vscode.ViewColumn): DataModelingWizardTab {
         const column = viewColumn ?? vscode.ViewColumn.Active;
+        const project = DataModelerProjectService.getInstance(account.endpoint);
 
         // Reuse an already-open wizard tab rather than stacking duplicates.
-        const existing = [...DataModelingWizardTab.openTabs][0];
+        const existing = [...DataModelingWizardTab.openTabs].find((tab) => tab.project === project);
         if (existing) {
             existing.panel.reveal(column);
             return existing;
         }
 
-        const panel = vscode.window.createWebviewPanel(DataModelingWizardTab.viewType, l10n.t('Data Modeler'), column, {
-            enableScripts: true,
-            retainContextWhenHidden: true,
-        });
+        const panel = vscode.window.createWebviewPanel(
+            DataModelingWizardTab.viewType,
+            account.name ? l10n.t('Data Modeler: {name}', { name: account.name }) : l10n.t('Data Modeler'),
+            column,
+            {
+                enableScripts: true,
+                retainContextWhenHidden: true,
+            },
+        );
 
-        return new DataModelingWizardTab(panel);
+        return new DataModelingWizardTab(panel, project);
     }
 
     /** Finds the tab that originated a recommendation request. */
@@ -90,6 +100,7 @@ export class DataModelingWizardTab extends BaseTab {
 
     private buildRouterContext(): DataModelingRouterContext {
         return {
+            project: this.project,
             webviewName: DataModelingWizardTab.viewType,
             panel: this.panel,
             eventSink: this.eventSink,

@@ -8,6 +8,7 @@ import { attachTrpc } from '@microsoft/vscode-ext-webview/host';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
+import { DataModelerProjectService, type DataModelerAccount } from '../services/DataModelerProjectService';
 import { BaseTab } from './BaseTab';
 import { dataModelingAppRouter, dataModelingCallerFactory, type DataModelingRouterContext } from './trpc/appRouter';
 import { type DataModelingEvent, type PartitionKeyRecommendation } from './trpc/routers/dataModelingEventsRouter';
@@ -23,7 +24,10 @@ export class DataModelingWizardDrawerTab extends BaseTab {
     public static readonly openTabs: Set<DataModelingWizardDrawerTab> = new Set<DataModelingWizardDrawerTab>();
     public readonly eventSink: TypedEventSink<DataModelingEvent>;
 
-    protected constructor(panel: vscode.WebviewPanel) {
+    protected constructor(
+        panel: vscode.WebviewPanel,
+        private readonly project: DataModelerProjectService,
+    ) {
         super(panel, DataModelingWizardDrawerTab.viewType);
         DataModelingWizardDrawerTab.openTabs.add(this);
 
@@ -38,11 +42,12 @@ export class DataModelingWizardDrawerTab extends BaseTab {
         this.disposables.push(disposable);
     }
 
-    public static render(viewColumn?: vscode.ViewColumn): DataModelingWizardDrawerTab {
+    public static render(account: DataModelerAccount, viewColumn?: vscode.ViewColumn): DataModelingWizardDrawerTab {
         const column = viewColumn ?? vscode.ViewColumn.Active;
+        const project = DataModelerProjectService.getInstance(account.endpoint);
 
         // Reuse an already-open drawer tab rather than stacking duplicates.
-        const existing = [...DataModelingWizardDrawerTab.openTabs][0];
+        const existing = [...DataModelingWizardDrawerTab.openTabs].find((tab) => tab.project === project);
         if (existing) {
             existing.panel.reveal(column);
             return existing;
@@ -50,7 +55,7 @@ export class DataModelingWizardDrawerTab extends BaseTab {
 
         const panel = vscode.window.createWebviewPanel(
             DataModelingWizardDrawerTab.viewType,
-            l10n.t('Data Modeler'),
+            account.name ? l10n.t('Data Modeler: {name}', { name: account.name }) : l10n.t('Data Modeler'),
             column,
             {
                 enableScripts: true,
@@ -58,7 +63,7 @@ export class DataModelingWizardDrawerTab extends BaseTab {
             },
         );
 
-        return new DataModelingWizardDrawerTab(panel);
+        return new DataModelingWizardDrawerTab(panel, project);
     }
 
     /** Finds the drawer that originated a recommendation request. */
@@ -94,6 +99,7 @@ export class DataModelingWizardDrawerTab extends BaseTab {
 
     private buildRouterContext(): DataModelingRouterContext {
         return {
+            project: this.project,
             webviewName: DataModelingWizardDrawerTab.viewType,
             panel: this.panel,
             eventSink: this.eventSink,

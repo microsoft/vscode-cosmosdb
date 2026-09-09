@@ -81,7 +81,7 @@ export function CopilotRecommendation({ status, error, onRetry }: CopilotRecomme
                     <Spinner size="tiny" />
                     <Text>
                         {l10n.t(
-                            'Waiting for Copilot… We opened Copilot Chat with your data model. The recommendation will appear here.',
+                            'Waiting for Copilot… The recommendation will appear here after Copilot analyzes your data model.',
                         )}
                     </Text>
                 </div>

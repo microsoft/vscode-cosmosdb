@@ -21,22 +21,21 @@ import {
 import { AddRegular, CheckmarkRegular, DeleteRegular, DismissRegular, EditRegular } from '@fluentui/react-icons';
 import { useTrpcClient } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { type DataModelingAppRouter, type DataModelingEvent, type PartitionKeyRecommendation } from '../../api/types';
+import { type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type DataModelingAppRouter, type DataModelingEvent } from '../../api/types';
 import { AlertDialog } from '../../common/AlertDialog';
 import { ContainerFooter } from './components/Container/ContainerFooter';
 import { ContainerHeader } from './components/Container/ContainerHeader';
-import { type RecommendationStatus } from './components/CopilotRecommendation';
 import { Wizard } from './components/Wizard/Wizard';
 import { WizardStep } from './components/Wizard/WizardStep';
 import {
     applyScenario,
     createBlankContainer,
-    createInitialState,
     withDerivedCandidates,
     type DataModel,
     type WizardState,
 } from './dataModel';
+import { createInitialSnapshot, useModelingAdvisorPersistence } from './modelingAdvisorState';
 import { MAX_CONTAINERS, type ScenarioId } from './models';
 import { ContainerPage } from './pages/ContainerPage';
 import { ResultPage } from './pages/ResultPage';
@@ -121,13 +120,114 @@ function footerHint(value: string): string {
 }
 
 export const DataModelingWizard = () => {
+    const trpcClient = useTrpcClient<DataModelingAppRouter>();
+    const load = useCallback(() => trpcClient.dataModeling.loadState.query(), [trpcClient]);
+    const save = useCallback(
+        (snapshot: ReturnType<typeof createInitialSnapshot>) => trpcClient.dataModeling.saveState.mutate(snapshot),
+        [trpcClient],
+    );
+    const persistence = useModelingAdvisorPersistence({ load, save });
+    const loadMessage = l10n.t('Loading saved modeling advisor state…');
+    const loadError = l10n.t('Could not load the modeling advisor state. Retry before making changes.');
+    const saveError = l10n.t('Could not save the modeling advisor state. Keep this tab open and retry.');
+
+    if (persistence.loadStatus === 'loading' || persistence.loadStatus === 'error') {
+        return (
+            <div>
+                <output aria-live="polite">
+                    <Text>{persistence.loadStatus === 'loading' ? loadMessage : loadError}</Text>
+                </output>
+                {persistence.loadStatus === 'error' ? (
+                    <Button onClick={persistence.retryLoad}>{l10n.t('Retry loading')}</Button>
+                ) : null}
+            </div>
+        );
+    }
+
+    if (persistence.loadStatus === 'choice') {
+        return (
+            <>
+                <div inert>
+                    <Text as="h2">{l10n.t('Workload')}</Text>
+                    <WorkloadPage
+                        onPickScenario={(scenario) =>
+                            persistence.setSnapshot((previous) => ({
+                                ...previous,
+                                wizard: applyScenario(previous.wizard, scenario),
+                            }))
+                        }
+                    />
+                </div>
+                <Dialog open modalType="alert">
+                    <DialogSurface>
+                        <DialogBody>
+                            <DialogTitle>{l10n.t('Continue your data model?')}</DialogTitle>
+                            <DialogContent>
+                                {l10n.t(
+                                    'A saved data model was found. Continue where you left off, or start a new model and replace the saved one.',
+                                )}
+                            </DialogContent>
+                            <DialogActions>
+                                <Button appearance="primary" onClick={persistence.continueExisting}>
+                                    {l10n.t('Continue existing')}
+                                </Button>
+                                <Button appearance="secondary" onClick={persistence.startNew}>
+                                    {l10n.t('Start new')}
+                                </Button>
+                            </DialogActions>
+                        </DialogBody>
+                    </DialogSurface>
+                </Dialog>
+            </>
+        );
+    }
+
+    return (
+        <>
+            <div role="alert">{persistence.saveFailed ? <Text>{saveError}</Text> : null}</div>
+            {persistence.saveFailed ? (
+                <div>
+                    <Button onClick={persistence.retrySave}>{l10n.t('Retry saving')}</Button>
+                </div>
+            ) : null}
+            <HydratedDataModelingWizard
+                snapshot={persistence.snapshot}
+                setSnapshot={persistence.setSnapshot}
+                flush={persistence.flush}
+            />
+        </>
+    );
+};
+
+const HydratedDataModelingWizard = ({
+    snapshot,
+    setSnapshot,
+    flush,
+}: Pick<ReturnType<typeof useModelingAdvisorPersistence>, 'snapshot' | 'setSnapshot' | 'flush'>) => {
     const styles = useStyles();
     const trpcClient = useTrpcClient<DataModelingAppRouter>();
-    const [state, setState] = useState<WizardState>(createInitialState);
-    const [reachedSteps, setReachedSteps] = useState<string[]>([WORKLOAD_STEP]);
     const [confirmAdvance, setConfirmAdvance] = useState(false);
     const advanceButtonRef = useRef<HTMLButtonElement>(null);
     const restoreAdvanceFocus = useRef(false);
+    const requestGeneration = useRef(0);
+    useEffect(
+        () => () => {
+            requestGeneration.current += 1;
+        },
+        [],
+    );
+    const state = snapshot.wizard;
+    const setState = useCallback(
+        (update: SetStateAction<WizardState>) =>
+            setSnapshot((previous) => ({
+                ...previous,
+                wizard: typeof update === 'function' ? update(previous.wizard) : update,
+            })),
+        [setSnapshot],
+    );
+    const reachedSteps =
+        state.reachedSteps ??
+        buildStepValues(state.dataModel).slice(0, snapshot.recommendation.value ? undefined : state.step);
     const [confirmRemove, setConfirmRemove] = useState(false);
     const [addOpen, setAddOpen] = useState(false);
     const [newContainerName, setNewContainerName] = useState('');
@@ -135,9 +235,7 @@ export const DataModelingWizard = () => {
     const [containerNameDraft, setContainerNameDraft] = useState('');
     const containerNameInputRef = useRef<HTMLInputElement>(null);
 
-    const [recommendationStatus, setRecommendationStatus] = useState<RecommendationStatus>('idle');
-    const [recommendation, setRecommendation] = useState<PartitionKeyRecommendation>();
-    const [recommendationError, setRecommendationError] = useState<string>();
+    const { status: recommendationStatus, value: recommendation, error: recommendationError } = snapshot.recommendation;
 
     useEffect(() => {
         if (!confirmAdvance && restoreAdvanceFocus.current) {
@@ -155,24 +253,37 @@ export const DataModelingWizard = () => {
     useEffect(() => {
         const subscription = trpcClient.dataModeling.events.subscribe(undefined, {
             onData: (event: DataModelingEvent) => {
-                // Troubleshooting: confirm the event reaches the webview from the extension host.
-                console.log('[DataModelingWizard] received event from extension:', event);
-                if (event.type === 'recommendationReceived') {
-                    setRecommendation(event.recommendation);
-                    setRecommendationError(undefined);
-                    setRecommendationStatus('received');
-                } else {
-                    setRecommendationError(event.message);
-                    setRecommendationStatus('error');
-                }
+                setSnapshot((previous) => {
+                    // A queued event from the prior request must not undo Start Over.
+                    if (previous.recommendation.status === 'idle') {
+                        return previous;
+                    }
+                    return {
+                        ...previous,
+                        recommendation:
+                            event.type === 'recommendationReceived'
+                                ? { status: 'received', value: event.recommendation }
+                                : { ...previous.recommendation, status: 'error', error: event.message },
+                    };
+                });
             },
             onError: () => {
-                setRecommendationError(l10n.t('Could not receive the recommendation from the extension.'));
-                setRecommendationStatus('error');
+                setSnapshot((previous) =>
+                    previous.recommendation.status !== 'waiting'
+                        ? previous
+                        : {
+                              ...previous,
+                              recommendation: {
+                                  ...previous.recommendation,
+                                  status: 'error',
+                                  error: l10n.t('Could not receive the recommendation from the extension.'),
+                              },
+                          },
+                );
             },
         });
         return () => subscription.unsubscribe();
-    }, [trpcClient]);
+    }, [trpcClient, setSnapshot]);
 
     useEffect(() => {
         if (editingContainerId) {
@@ -180,40 +291,50 @@ export const DataModelingWizard = () => {
         }
     }, [editingContainerId]);
 
-    const patch = useCallback((partial: Partial<WizardState>) => setState((prev) => ({ ...prev, ...partial })), []);
+    const patch = useCallback(
+        (partial: Partial<WizardState>) => setState((prev) => ({ ...prev, ...partial })),
+        [setState],
+    );
 
-    // Navigate to a 1-based step index without changing model inputs or completion.
-    const goToStep = useCallback((step: number) => {
-        setState((prev) => {
-            const values = buildStepValues(prev.dataModel);
-            const clamped = Math.min(Math.max(step, 1), values.length);
-            const value = values[clamped - 1];
-            const activeContainerId = value.startsWith(CONTAINER_PREFIX)
-                ? value.slice(CONTAINER_PREFIX.length)
-                : prev.dataModel.activeContainerId;
-            return {
-                ...prev,
-                step: clamped,
-                dataModel: { ...prev.dataModel, activeContainerId },
-            };
-        });
-    }, []);
+    // Navigate to a 1-based step index, syncing the active container when the target is a
+    // container step without changing any user-entered cardinalities.
+    const goToStep = useCallback(
+        (step: number) => {
+            setState((prev) => {
+                const values = buildStepValues(prev.dataModel);
+                const clamped = Math.min(Math.max(step, 1), values.length);
+                const value = values[clamped - 1];
+                const activeContainerId = value.startsWith(CONTAINER_PREFIX)
+                    ? value.slice(CONTAINER_PREFIX.length)
+                    : prev.dataModel.activeContainerId;
+                return {
+                    ...prev,
+                    step: clamped,
+                    dataModel: { ...prev.dataModel, activeContainerId },
+                };
+            });
+        },
+        [setState],
+    );
 
     // Jump straight to a container's step (used by Review's per-container Edit).
-    const goToContainer = useCallback((id: string) => {
-        setState((prev) => {
-            const values = buildStepValues(prev.dataModel);
-            const index = values.indexOf(containerStep(id));
-            if (index < 0) {
-                return prev;
-            }
-            return {
-                ...prev,
-                step: index + 1,
-                dataModel: { ...prev.dataModel, activeContainerId: id },
-            };
-        });
-    }, []);
+    const goToContainer = useCallback(
+        (id: string) => {
+            setState((prev) => {
+                const values = buildStepValues(prev.dataModel);
+                const index = values.indexOf(containerStep(id));
+                if (index < 0) {
+                    return prev;
+                }
+                return {
+                    ...prev,
+                    step: index + 1,
+                    dataModel: { ...prev.dataModel, activeContainerId: id },
+                };
+            });
+        },
+        [setState],
+    );
 
     const onStepChange = useCallback(
         (value: string) => {
@@ -225,16 +346,22 @@ export const DataModelingWizard = () => {
         [goToStep, state.dataModel],
     );
 
-    const pickScenario = useCallback((scenario: ScenarioId) => {
-        setState((prev) => applyScenario(prev, scenario));
-    }, []);
+    const pickScenario = useCallback(
+        (scenario: ScenarioId) => {
+            setState((prev) => applyScenario(prev, scenario));
+        },
+        [setState],
+    );
 
     const scenarioLabel = useMemo(
         () => getScenarioList().find((s) => s.id === state.scenario)?.title,
         [state.scenario],
     );
 
-    const setDataModel = useCallback((dataModel: DataModel) => setState((prev) => ({ ...prev, dataModel })), []);
+    const setDataModel = useCallback(
+        (dataModel: DataModel) => setState((prev) => ({ ...prev, dataModel })),
+        [setState],
+    );
 
     const startEditingContainerName = (containerId: string, entity: string) => {
         setEditingContainerId(containerId);
@@ -273,16 +400,19 @@ export const DataModelingWizard = () => {
 
     // Append a fresh, named container to the end of the list without navigating away from the
     // current step. The prompted name is trimmed; empty falls back to the default label.
-    const addContainer = useCallback((name: string) => {
-        setState((prev) => {
-            if (prev.dataModel.containers.length >= MAX_CONTAINERS) {
-                return prev;
-            }
-            const container = createBlankContainer(name.trim() || undefined);
-            const containers = [...prev.dataModel.containers, container];
-            return { ...prev, dataModel: { ...prev.dataModel, containers } };
-        });
-    }, []);
+    const addContainer = useCallback(
+        (name: string) => {
+            setState((prev) => {
+                if (prev.dataModel.containers.length >= MAX_CONTAINERS) {
+                    return prev;
+                }
+                const container = createBlankContainer(name.trim() || undefined);
+                const containers = [...prev.dataModel.containers, container];
+                return { ...prev, dataModel: { ...prev.dataModel, containers } };
+            });
+        },
+        [setState],
+    );
 
     // Open the name prompt, disabled once at the container cap.
     const openAddDialog = useCallback(() => {
@@ -293,7 +423,7 @@ export const DataModelingWizard = () => {
     const confirmAddContainer = useCallback(() => {
         addContainer(newContainerName);
         setAddOpen(false);
-    }, [addContainer, newContainerName]);
+    }, [addContainer, newContainerName, setAddOpen]);
 
     // Remove the container of the current step and land on the previous container step.
     const removeCurrentContainer = useCallback(() => {
@@ -310,24 +440,60 @@ export const DataModelingWizard = () => {
             const index = prev.dataModel.containers.findIndex((c) => c.id === id);
             const containers = prev.dataModel.containers.filter((c) => c.id !== id);
             const target = containers[Math.max(0, index - 1)];
-            const dataModel = withDerivedCandidates({ ...prev.dataModel, containers, activeContainerId: target.id });
+            const dataModel = { ...prev.dataModel, containers, activeContainerId: target.id };
             const step = buildStepValues(dataModel).indexOf(containerStep(target.id)) + 1;
             return { ...prev, dataModel, step };
         });
-    }, []);
+    }, [setConfirmRemove, setState]);
 
     // Send the finished data model to Copilot Chat and wait for the tool callback.
     const requestRecommendation = useCallback(() => {
-        setRecommendation(undefined);
-        setRecommendationError(undefined);
-        setRecommendationStatus('waiting');
-        void trpcClient.dataModeling.requestRecommendation
-            .mutate({ dataModelJson: JSON.stringify(state.dataModel) })
-            .catch(() => {
-                setRecommendationStatus('error');
-                setRecommendationError(l10n.t('Could not open Copilot Chat to request a recommendation.'));
-            });
-    }, [trpcClient, state.dataModel]);
+        const generation = ++requestGeneration.current;
+        const next: typeof snapshot = {
+            ...snapshot,
+            wizard: {
+                ...snapshot.wizard,
+                step: buildStepValues(snapshot.wizard.dataModel).length,
+                reachedSteps: buildStepValues(snapshot.wizard.dataModel),
+            },
+            recommendation: { status: 'waiting' },
+        };
+        setSnapshot(next);
+        // Preserve inputs and Result navigation before opening Chat.
+        const run = async () => {
+            let inputsSaved = false;
+            try {
+                await flush(next);
+                inputsSaved = true;
+                if (generation !== requestGeneration.current) {
+                    return;
+                }
+                await trpcClient.dataModeling.requestRecommendation.mutate({
+                    dataModelJson: JSON.stringify(next.wizard.dataModel),
+                });
+            } catch {
+                if (generation !== requestGeneration.current) {
+                    return;
+                }
+                setSnapshot((previous) =>
+                    previous.recommendation.status === 'waiting'
+                        ? {
+                              ...previous,
+                              recommendation: {
+                                  status: 'error',
+                                  error: inputsSaved
+                                      ? l10n.t('Could not open Copilot Chat to request a recommendation.')
+                                      : l10n.t(
+                                            'Could not save your inputs before requesting a recommendation. Please retry.',
+                                        ),
+                              },
+                          }
+                        : previous,
+                );
+            }
+        };
+        void run();
+    }, [trpcClient, snapshot, setSnapshot, flush]);
 
     const stepValues = buildStepValues(state.dataModel);
     const stepIndex = Math.min(Math.max(state.step, 1), stepValues.length);
@@ -344,15 +510,18 @@ export const DataModelingWizard = () => {
         if (stepIndex >= stepValues.length) {
             return;
         }
-        setReachedSteps(stepValues.slice(0, stepIndex + 1));
-        setRecommendation(undefined);
-        setRecommendationError(undefined);
-        setRecommendationStatus('idle');
         // Leaving Review kicks off the Copilot request that the Result page awaits.
         if (isReview) {
             requestRecommendation();
+        } else {
+            requestGeneration.current += 1;
+            setSnapshot((previous) => ({
+                ...previous,
+                wizard: { ...previous.wizard, reachedSteps: stepValues.slice(0, stepIndex + 1) },
+                recommendation: { status: 'idle' },
+            }));
+            goToStep(stepIndex + 1);
         }
-        goToStep(stepIndex + 1);
     };
     const onNext = () => {
         if (recommendation || reachedSteps.some((value) => stepValues.indexOf(value) >= stepIndex)) {
@@ -363,11 +532,12 @@ export const DataModelingWizard = () => {
     };
     const onBack = () => goToStep(stepIndex - 1);
     const restart = () => {
-        setState(createInitialState());
-        setReachedSteps([WORKLOAD_STEP]);
-        setRecommendationStatus('idle');
-        setRecommendation(undefined);
-        setRecommendationError(undefined);
+        requestGeneration.current += 1;
+        setConfirmRemove(false);
+        setAddOpen(false);
+        setNewContainerName('');
+        cancelEditingContainerName();
+        setSnapshot(createInitialSnapshot());
     };
 
     // The Result step's footer carries only a Start Over action; every other step gets the

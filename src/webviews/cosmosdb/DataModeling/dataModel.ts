@@ -33,6 +33,8 @@ export interface DataModel {
 /** Top-level wizard state: navigation, the chosen scenario, the {@link DataModel}, and scoring weights. */
 export interface WizardState {
     step: number;
+    /** Visited steps remain navigable when revisiting an earlier step. Optional for older saved models. */
+    reachedSteps?: string[];
     scenario?: ScenarioId;
     dataModel: DataModel;
     weights: ScoringWeights;
@@ -115,13 +117,21 @@ export function updateActiveContainer(model: DataModel, updater: (c: ContainerMo
 
 /**
  * Refresh the active container's derived partition-key candidates from its key/filter properties.
- * Call after the schema or active container changes (Data page); leaves the rest of the
- * container's scale untouched so user-edited distinct-value counts survive Scale-page edits.
+ * Call after schema changes (Data page); retain existing candidates' IDs and user-entered
+ * cardinalities for properties that are still present.
  */
 export function withDerivedCandidates(model: DataModel): DataModel {
     return updateActiveContainer(model, (c) => ({
         ...c,
-        scale: { ...c.scale, candidates: buildCandidates(c) },
+        scale: {
+            ...c.scale,
+            candidates: buildCandidates(c).map((candidate) => {
+                const existing = c.scale.candidates.find((previous) => previous.attribute === candidate.attribute);
+                return existing
+                    ? { ...candidate, id: existing.id, distinctValues: existing.distinctValues }
+                    : candidate;
+            }),
+        },
     }));
 }
 

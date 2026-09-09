@@ -14,11 +14,9 @@
 import * as l10n from '@vscode/l10n';
 import { type ArrayUpdatePattern, type ScenarioId } from './models';
 
-let idCounter = 0;
-/** Stable-enough unique id for prototype rows (no crypto needed in the webview). */
+/** IDs remain unique when adding rows to a model restored in a new webview session. */
 export function nextId(prefix = 'id'): string {
-    idCounter += 1;
-    return `${prefix}-${idCounter}`;
+    return `${prefix}-${crypto.randomUUID()}`;
 }
 
 export interface ScenarioBadge {

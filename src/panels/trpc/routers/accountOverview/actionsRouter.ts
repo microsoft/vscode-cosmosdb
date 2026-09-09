@@ -162,7 +162,10 @@ export const actionsProcedures = {
     }),
 
     /** Footer action: open the Data Modeler (Partition Key Advisor) wizard. */
-    openDataModeler: accountOverviewProcedure.mutation(async () => {
-        await vscode.commands.executeCommand('cosmosDB.dataModeling.open');
+    openDataModeler: accountOverviewProcedure.mutation(async ({ ctx }) => {
+        await vscode.commands.executeCommand('cosmosDB.dataModeling.open', {
+            endpoint: ctx.metadata.documentEndpoint,
+            name: ctx.metadata.accountName,
+        });
     }),
 };

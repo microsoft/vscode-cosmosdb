@@ -82,6 +82,31 @@ Learn more about assigning roles in [Azure role-based access control](https://le
 
 For the metrics, detections, and ARM endpoints behind the dashboard, see [`docs/account-overview-dashboard.md`](./docs/account-overview-dashboard.md).
 
+## Data Modeler
+
+The Data Modeler automatically saves a separate session for each Cosmos DB account in the extension's VS Code global storage
+directory (`ExtensionContext.globalStorageUri`), under `data-modeler/<account-hash>.json`. The account key is derived from its
+normalized endpoint, not its display name or credentials. No workspace folder is required. Opening from Account Overview
+uses that account; opening from the command palette prompts for an account.
+
+When saved work exists for the selected account, the Workload screen offers **Continue existing** or **Start new**.
+Continuing restores modeling inputs, scoring weights, the current wizard step, and any saved Copilot recommendation/status.
+Starting new replaces only that account's saved session.
+
+Saved states expire **30 days after their last save** (based on file modification time). Every successful save prunes expired
+state files for all endpoints, and opening an expired state treats it as a new model. Reading a state does not extend its
+lifetime. The endpoint is sufficient to identify a state; account metadata and display names are optional.
+
+The JSON project uses a versioned envelope (`version: 1`, `name`, and `state`). **Start Over** saves a fresh wizard state.
+Interrupted recommendation requests can be retried after reopening. Non-expired invalid or unsupported project files are not overwritten;
+correct the file and use the modeler's retry action.
+
+Temporary UI state (selected tabs, search filters, unfinished text, dialogs, and pending uploads) is not saved.
+Recommendations arriving after the wizard closes remain in Chat rather than being added to the saved session.
+The saved file can contain schema details, query patterns, and recommendation text. It is stored outside your project and is
+not added to source control. Existing workspace-local and unscoped global data modeler files are left untouched and are not
+automatically assigned to an account.
+
 ## Query Editor
 
 The Query Editor provides a focused workspace for writing, running, and tuning Azure Cosmos DB for NoSQL queries.

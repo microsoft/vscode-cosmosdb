@@ -6,6 +6,7 @@
 import * as vscode from 'vscode';
 import { z } from 'zod';
 import { REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_NAME } from '../../../chat/reportPartitionKeyRecommendationTool';
+import { ModelingAdvisorSnapshotSchema } from '../../../dataModeling/modelingAdvisorSchema';
 import { dataModelingProcedure, dataModelingRouter } from '../trpc';
 
 /**
@@ -50,7 +51,21 @@ function buildRecommendationPrompt(dataModelJson: string, wizardTabId: string): 
     );
 }
 
+// Autosaves contain user inputs and AI output. Suppress telemetry, including validation errors,
+// and let the webview present storage failures with a retry action.
+const stateProcedure = dataModelingProcedure.use(({ ctx, next }) => {
+    if (ctx.actionContext) {
+        ctx.actionContext.telemetry.suppressAll = true;
+        ctx.actionContext.errorHandling.suppressDisplay = true;
+    }
+    return next();
+});
+
 export const dataModelingRouterDef = dataModelingRouter({
+    loadState: stateProcedure.query(({ ctx }) => ctx.project.loadState()),
+    saveState: stateProcedure
+        .input(ModelingAdvisorSnapshotSchema)
+        .mutation(({ ctx, input }) => ctx.project.saveState(input)),
     /**
      * Sends the finished data model to the general Copilot Chat with a prompt
      * asking for the best partition key. Copilot analyzes it and calls the

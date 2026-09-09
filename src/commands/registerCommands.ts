@@ -131,8 +131,8 @@ export function registerTriggerCommands() {
     registerCommandWithTreeNodeUnwrapping('cosmosDB.openTrigger', cosmosDBOpenTrigger, doubleClickDebounceDelay);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteTrigger', cosmosDBDeleteTrigger);
 
-    registerCommand('cosmosDB.dataModeling.open', openDataModelingWizard);
-    registerCommand('cosmosDB.dataModeling.openDrawer', openDataModelingWizardDrawer);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.dataModeling.open', openDataModelingWizard);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.dataModeling.openDrawer', openDataModelingWizardDrawer);
 }
 
 export function registerMigrationCommands() {

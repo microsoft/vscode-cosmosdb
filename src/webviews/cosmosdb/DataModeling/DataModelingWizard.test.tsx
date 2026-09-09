@@ -5,210 +5,300 @@
 
 // @vitest-environment jsdom
 
-import { FluentProvider, webLightTheme } from '@fluentui/react-components';
-import type * as FluentComponents from '@fluentui/react-components';
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { FluentProvider } from '@fluentui/react-components';
+import { type EditorProps } from '@monaco-editor/react';
+import { act, fireEvent, render as renderReact, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { type ComponentProps, type PropsWithChildren } from 'react';
+import { Children, isValidElement, type ReactElement } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { type ModelingAdvisorSnapshot } from '../../../dataModeling/modelingAdvisorSchema';
 import { type DataModelingEvent } from '../../api/types';
+import { type StepListItemProps, type StepListProps } from './components/StepList/StepList.types';
+import { createBlankContainer } from './dataModel';
 import { DataModelingWizard } from './DataModelingWizard';
-import { type ContainerPageProps } from './pages/ContainerPage';
-import { type ResultPage } from './pages/ResultPage';
-import { type WorkloadPageProps } from './pages/WorkloadPage';
+import { createInitialSnapshot } from './modelingAdvisorState';
 
-const { client, events } = vi.hoisted(() => {
-    const events = { onData: (_event: DataModelingEvent) => {} };
+const client = vi.hoisted(() => ({
+    dataModeling: {
+        loadState: { query: vi.fn() },
+        saveState: { mutate: vi.fn() },
+        requestRecommendation: { mutate: vi.fn() },
+        events: { subscribe: vi.fn() },
+    },
+}));
+vi.mock('@microsoft/vscode-ext-webview/react', () => ({ useTrpcClient: () => client }));
+vi.mock('../../MonacoEditor', () => ({
+    MonacoEditor: ({ value, options }: EditorProps) => (
+        <textarea aria-label={options?.ariaLabel} readOnly value={value} />
+    ),
+}));
+// jsdom has no layout callbacks to initialize Fluent's priority-overflow manager.
+vi.mock('./components/StepList/StepList', () => ({
+    StepList: ({ children, ariaLabel, onStepSelect }: StepListProps) => (
+        <nav aria-label={ariaLabel}>
+            {Children.map(children, (child) =>
+                isValidElement<StepListItemProps>(child) ? (
+                    <button
+                        disabled={!child.props.navigable}
+                        onClick={(event) => onStepSelect(event, { value: child.props.value })}
+                    >
+                        {child.props.children}
+                    </button>
+                ) : null,
+            )}
+        </nav>
+    ),
+}));
+
+function restored(step = 2): ModelingAdvisorSnapshot {
+    const container = createBlankContainer('Orders');
+    container.scale.candidates[0].distinctValues = 872;
     return {
-        events,
-        client: {
-            dataModeling: {
-                requestRecommendation: {
-                    mutate: vi.fn<(input: { dataModelJson: string }) => Promise<void>>().mockResolvedValue(undefined),
-                },
-                events: {
-                    subscribe: vi.fn((_input, handlers: typeof events) => {
-                        events.onData = handlers.onData;
-                        return { unsubscribe: vi.fn() };
-                    }),
-                },
+        wizard: {
+            ...createInitialSnapshot().wizard,
+            scenario: 'other',
+            step,
+            dataModel: { containers: [container], activeContainerId: container.id },
+        },
+        recommendation: {
+            status: 'received',
+            value: {
+                summary: 'Restored result',
+                containers: [{ entity: 'Orders', partitionKey: '/orderId', rationale: '' }],
             },
         },
     };
-});
-
-vi.mock('@microsoft/vscode-ext-webview/react', () => ({ useTrpcClient: () => client }));
-// jsdom has no layout measurements for Fluent's priority-overflow manager.
-vi.mock('@fluentui/react-components', async (importOriginal) => ({
-    ...(await importOriginal<typeof FluentComponents>()),
-    Overflow: ({ children }: PropsWithChildren) => <>{children}</>,
-    OverflowItem: ({ children }: PropsWithChildren) => <>{children}</>,
-    OverflowDivider: ({ children }: PropsWithChildren) => <>{children}</>,
-    useOverflowMenu: () => ({ isOverflowing: false }),
-}));
-vi.mock('./pages/WorkloadPage', () => ({
-    WorkloadPage: ({ onPickScenario }: WorkloadPageProps) => (
-        <button onClick={() => onPickScenario('chat')}>Choose chat</button>
-    ),
-}));
-vi.mock('./pages/ContainerPage', () => ({
-    ContainerPage: ({ model, onChange }: ContainerPageProps) => (
-        <>
-            <div>{JSON.stringify(model.containers)}</div>
-            <button
-                onClick={() =>
-                    onChange({
-                        ...model,
-                        containers: model.containers.map((container) =>
-                            container.id === model.activeContainerId
-                                ? {
-                                      ...container,
-                                      scale: {
-                                          ...container.scale,
-                                          candidates: container.scale.candidates.map((candidate) => ({
-                                              ...candidate,
-                                              distinctValues: 1234,
-                                          })),
-                                      },
-                                  }
-                                : container,
-                        ),
-                    })
-                }
-            >
-                Set cardinality
-            </button>
-        </>
-    ),
-}));
-vi.mock('./pages/ReviewPage', () => ({ ReviewPage: () => <div>Review inputs</div> }));
-vi.mock('./pages/ResultPage', () => ({
-    ResultPage: ({ recommendation, recommendationStatus }: ComponentProps<typeof ResultPage>) => (
-        <div>{recommendation?.summary ?? recommendationStatus}</div>
-    ),
-}));
-
-function renderWizard() {
-    render(
-        <FluentProvider theme={webLightTheme}>
-            <DataModelingWizard />
-        </FluentProvider>,
-    );
 }
 
-async function completeWizard(user: ReturnType<typeof userEvent.setup>) {
-    await user.click(screen.getByRole('button', { name: 'Choose chat' }));
-    await user.click(screen.getByRole('button', { name: 'Start' }));
-    await user.click(screen.getByRole('button', { name: 'Set cardinality' }));
-    while (screen.queryByRole('button', { name: 'Next' })) {
-        await user.click(screen.getByRole('button', { name: 'Next' }));
-    }
-    await user.click(screen.getByRole('button', { name: 'Get Recommendation' }));
-    act(() =>
-        events.onData({
-            type: 'recommendationReceived',
-            recommendation: { summary: 'Saved recommendation', containers: [] },
-        }),
-    );
-    expect(screen.getByText('Saved recommendation')).toBeInTheDocument();
+function lastSave(): ModelingAdvisorSnapshot {
+    return client.dataModeling.saveState.mutate.mock.calls.at(-1)?.[0] as ModelingAdvisorSnapshot;
 }
 
-describe('Data Modeling wizard revisiting steps', () => {
+function render(element: ReactElement) {
+    return renderReact(<FluentProvider>{element}</FluentProvider>);
+}
+
+async function continueExisting() {
+    await userEvent.click(await screen.findByRole('button', { name: 'Continue existing' }));
+}
+
+async function confirmAdvance() {
+    const yes = within(await screen.findByRole('alertdialog', { name: 'Restart from this step?' })).getByRole(
+        'button',
+        { name: 'Yes' },
+    );
+    expect(yes).toHaveTextContent('Yes');
+    expect(yes).toHaveAccessibleName('Yes');
+    await userEvent.click(yes);
+}
+
+describe('data modeler saved-work choice and revisiting steps', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        client.dataModeling.loadState.query.mockResolvedValue(null);
+        client.dataModeling.saveState.mutate.mockResolvedValue(undefined);
+        client.dataModeling.requestRecommendation.mutate.mockResolvedValue(undefined);
+        client.dataModeling.events.subscribe.mockReturnValue({ unsubscribe: vi.fn() });
+    });
+
+    it('opens directly on Workload with no saved project', async () => {
+        render(<DataModelingWizard />);
+        expect(await screen.findByRole('button', { name: 'Start' })).toBeDisabled();
+        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+        expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
+    });
+
+    it('shows an accessible choice on Workload without overwriting or resuming saved work', async () => {
+        client.dataModeling.loadState.query.mockResolvedValue(restored(4));
+        render(<DataModelingWizard />);
+        const dialog = await screen.findByRole('alertdialog', { name: 'Continue your data model?' });
+        expect(screen.getByText('Workload')).toBeInTheDocument();
+        const proceed = screen.getByRole('button', { name: 'Continue existing' });
+        expect(proceed).toHaveTextContent('Continue existing');
+        expect(proceed).toHaveAccessibleName('Continue existing');
+        expect(screen.getByRole('button', { name: 'Start new' })).toHaveTextContent('Start new');
+        expect(screen.getByRole('button', { name: 'Start new' })).toHaveAccessibleName('Start new');
+        await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
+        await userEvent.keyboard('{Escape}');
+        expect(dialog).toBeInTheDocument();
+        expect(client.dataModeling.events.subscribe).not.toHaveBeenCalled();
+        expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
+        await userEvent.click(proceed);
+        expect(await screen.findByText('Restored result')).toBeInTheDocument();
+        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+        expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
+    });
+
+    it('Start new replaces only the saved session and keeps the Workload page', async () => {
+        client.dataModeling.loadState.query.mockResolvedValue(restored(4));
+        render(<DataModelingWizard />);
+        await userEvent.click(await screen.findByRole('button', { name: 'Start new' }));
+        expect(await screen.findByRole('button', { name: 'Start' })).toBeDisabled();
+        expect(lastSave()).toEqual(createInitialSnapshot());
+        expect(screen.queryByText('Restored result')).not.toBeInTheDocument();
+    });
+
+    it('preserves inputs and cardinality, but does not save tabs, draft properties, or dialogs', async () => {
+        const user = userEvent.setup();
+        const saved = restored();
+        saved.recommendation = { status: 'idle' };
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        const mounted = render(<DataModelingWizard />);
+        await continueExisting();
+        await user.click(screen.getByRole('tab', { name: 'Scale' }));
+        expect(screen.getByDisplayValue('872')).toBeInTheDocument();
+        expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
+        await user.click(screen.getByRole('tab', { name: 'Data' }));
+        fireEvent.change(screen.getByPlaceholderText('Add property…'), { target: { value: 'draft' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Add container' }));
+        fireEvent.change(await screen.findByRole('textbox', { name: 'Container name' }), {
+            target: { value: 'unsaved name' },
+        });
+        expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
+        mounted.unmount();
+        render(<DataModelingWizard />);
+        await continueExisting();
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        expect(screen.getByRole('tab', { name: 'Data' })).toHaveAttribute('aria-selected', 'true');
+        expect(screen.getByPlaceholderText('Add property…')).toHaveValue('');
+        await user.click(screen.getByRole('button', { name: 'Next' }));
+        expect(lastSave().wizard).toEqual({
+            ...saved.wizard,
+            step: 3,
+            reachedSteps: ['workload', `container:${saved.wizard.dataModel.activeContainerId}`, 'review'],
+        });
+        expect(Object.keys(lastSave()).sort()).toEqual(['recommendation', 'wizard']);
+    });
+
+    it('reports load failures without enabling edits or saving, and retries detection', async () => {
+        client.dataModeling.loadState.query
+            .mockRejectedValueOnce(new Error('invalid file'))
+            .mockResolvedValue(restored());
+        render(<DataModelingWizard />);
+        await userEvent.click(await screen.findByRole('button', { name: 'Retry loading' }));
+        expect(await screen.findByRole('alertdialog')).toBeInTheDocument();
+        expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
+    });
+
+    it('surfaces a failed Start new save and retries the fresh state', async () => {
+        client.dataModeling.loadState.query.mockResolvedValue(restored());
+        client.dataModeling.saveState.mutate.mockRejectedValueOnce(new Error('disk full'));
+        render(<DataModelingWizard />);
+        await userEvent.click(await screen.findByRole('button', { name: 'Start new' }));
+        const retry = await screen.findByRole('button', { name: 'Retry saving' });
+        expect(screen.getByRole('alert')).toHaveTextContent('Could not save');
+        await userEvent.click(retry);
+        await waitFor(() => expect(screen.queryByRole('button', { name: 'Retry saving' })).not.toBeInTheDocument());
+        expect(lastSave()).toEqual(createInitialSnapshot());
+    });
+
+    it('saves recommendation events and ignores late events after Start Over', async () => {
+        const saved = restored(3);
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        render(<DataModelingWizard />);
+        await continueExisting();
+        await userEvent.click(screen.getByRole('button', { name: 'Get Recommendation' }));
+        await confirmAdvance();
+        expect(lastSave().recommendation.status).toBe('waiting');
+        const callbacks = client.dataModeling.events.subscribe.mock.calls[0][1] as {
+            onData: (event: DataModelingEvent) => void;
+        };
+        act(() => callbacks.onData({ type: 'recommendationReceived', recommendation: saved.recommendation.value! }));
+        expect(lastSave().recommendation).toEqual(saved.recommendation);
+        await userEvent.click(screen.getByRole('button', { name: 'Start Over' }));
+        act(() => callbacks.onData({ type: 'recommendationReceived', recommendation: saved.recommendation.value! }));
+        expect(lastSave()).toEqual(createInitialSnapshot());
+        expect(screen.getByRole('button', { name: 'Review' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Result' })).toBeDisabled();
+    });
+
+    it('waits for the input save before opening Chat', async () => {
+        const saved = restored(3);
+        saved.recommendation = { status: 'idle' };
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        let finishSave!: () => void;
+        client.dataModeling.saveState.mutate.mockImplementationOnce(
+            () =>
+                new Promise<void>((resolve) => {
+                    finishSave = resolve;
+                }),
+        );
+        render(<DataModelingWizard />);
+        await continueExisting();
+        await userEvent.click(screen.getByRole('button', { name: 'Get Recommendation' }));
+        expect(lastSave().wizard.step).toBe(4);
+        expect(client.dataModeling.requestRecommendation.mutate).not.toHaveBeenCalled();
+        await act(async () => {
+            finishSave();
+        });
+        expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledOnce();
     });
 
     it('preserves the recommendation and forward navigation when browsing completed steps', async () => {
-        const user = userEvent.setup();
-        renderWizard();
-        await completeWizard(user);
-
-        await user.click(screen.getByRole('button', { name: 'Review' }));
+        client.dataModeling.loadState.query.mockResolvedValue(restored(4));
+        render(<DataModelingWizard />);
+        await continueExisting();
+        await userEvent.click(screen.getByRole('button', { name: 'Review' }));
         expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
-        await user.click(screen.getByRole('button', { name: 'Back' }));
-        await user.click(screen.getByRole('button', { name: 'Result' }));
-
-        expect(screen.getByText('Saved recommendation')).toBeInTheDocument();
-        expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledTimes(1);
+        await userEvent.click(screen.getByRole('button', { name: 'Back' }));
+        await userEvent.click(screen.getByRole('button', { name: 'Result' }));
+        expect(screen.getByText('Restored result')).toBeInTheDocument();
+        expect(client.dataModeling.requestRecommendation.mutate).not.toHaveBeenCalled();
     });
 
-    it.each(['Cancel', 'Escape'])('keeps the result when confirmation is dismissed with %s', async (dismissal) => {
-        const user = userEvent.setup();
-        renderWizard();
-        await completeWizard(user);
-        await user.click(screen.getByRole('button', { name: 'Review' }));
-        const next = screen.getByRole('button', { name: 'Get Recommendation' });
-        await user.click(next);
-
-        const dialog = screen.getByRole('alertdialog', { name: 'Restart from this step?' });
-        const cancel = within(dialog).getByRole('button', { name: 'Cancel' });
-        expect(cancel).toHaveTextContent('Cancel');
-        expect(cancel).toHaveAccessibleName('Cancel');
-        await waitFor(() => expect(cancel).toHaveFocus());
-        expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledTimes(1);
-
-        if (dismissal === 'Escape') {
-            await user.keyboard('{Escape}');
-        } else {
-            await user.click(cancel);
-        }
-        await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
-        await waitFor(() => expect(next).toHaveFocus());
-        await user.click(screen.getByRole('button', { name: 'Result' }));
-        expect(screen.getByText('Saved recommendation')).toBeInTheDocument();
-        expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledTimes(1);
-    });
-
-    it('requests a new recommendation only after confirming from Review', async () => {
-        const user = userEvent.setup();
-        renderWizard();
-        await completeWizard(user);
-        await user.click(screen.getByRole('button', { name: 'Review' }));
-        await user.click(screen.getByRole('button', { name: 'Get Recommendation' }));
-
-        const yes = within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Yes' });
-        expect(yes).toHaveTextContent('Yes');
-        expect(yes).toHaveAccessibleName('Yes');
-        await user.click(yes);
-
-        expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledTimes(2);
-        expect(screen.queryByText('Saved recommendation')).not.toBeInTheDocument();
-        expect(screen.getByText('waiting')).toBeInTheDocument();
-    });
+    it.each(['Cancel', 'Escape'])(
+        'keeps the result and restores focus when confirmation is dismissed with %s',
+        async (dismissal) => {
+            const user = userEvent.setup();
+            client.dataModeling.loadState.query.mockResolvedValue(restored(4));
+            render(<DataModelingWizard />);
+            await continueExisting();
+            await user.click(screen.getByRole('button', { name: 'Review' }));
+            const next = screen.getByRole('button', { name: 'Get Recommendation' });
+            await user.click(next);
+            const cancel = within(
+                await screen.findByRole('alertdialog', { name: 'Restart from this step?' }),
+            ).getByRole('button', { name: 'Cancel' });
+            expect(cancel).toHaveTextContent('Cancel');
+            expect(cancel).toHaveAccessibleName('Cancel');
+            await waitFor(() => expect(cancel).toHaveFocus());
+            if (dismissal === 'Escape') await user.keyboard('{Escape}');
+            else await user.click(cancel);
+            await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+            await waitFor(() => expect(next).toHaveFocus());
+            await user.click(screen.getByRole('button', { name: 'Result' }));
+            expect(screen.getByText('Restored result')).toBeInTheDocument();
+            expect(client.dataModeling.requestRecommendation.mutate).not.toHaveBeenCalled();
+        },
+    );
 
     it.each([
         { step: 'Workload', next: 'Start' },
-        { step: /^Container:.*ChatSession$/, next: 'Next' },
-    ])('invalidates downstream progress from $step, preserving model inputs', async ({ step, next }) => {
-        const user = userEvent.setup();
-        renderWizard();
-        await completeWizard(user);
-        const originalRequest = client.dataModeling.requestRecommendation.mutate.mock.calls[0];
-        expect(originalRequest?.[0].dataModelJson).toContain('"distinctValues":1234');
-
-        await user.click(screen.getByRole('button', { name: step }));
-        await user.click(screen.getByRole('button', { name: next }));
-        await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Yes' }));
-
-        expect(screen.getByRole('button', { name: 'Review' })).toHaveAttribute('aria-disabled', 'true');
-        expect(screen.getByRole('button', { name: 'Result' })).toHaveAttribute('aria-disabled', 'true');
-        expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledTimes(1);
+        { step: 'Container: Orders', next: 'Next' },
+    ])('invalidates downstream progress from $step only after confirmation and persists it', async ({ step, next }) => {
+        const saved = restored(4);
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        const mounted = render(<DataModelingWizard />);
+        await continueExisting();
+        await userEvent.click(screen.getByRole('button', { name: step }));
+        await userEvent.click(screen.getByRole('button', { name: next }));
+        await confirmAdvance();
+        expect(lastSave().wizard.dataModel.containers).toEqual(saved.wizard.dataModel.containers);
+        expect(lastSave().recommendation).toEqual({ status: 'idle' });
+        expect(screen.getByRole('button', { name: 'Result' })).toBeDisabled();
+        const persisted = lastSave();
+        mounted.unmount();
+        client.dataModeling.loadState.query.mockResolvedValue(persisted);
+        render(<DataModelingWizard />);
+        await continueExisting();
+        expect(screen.getByRole('button', { name: 'Result' })).toBeDisabled();
         while (screen.queryByRole('button', { name: 'Next' })) {
-            await user.click(screen.getByRole('button', { name: 'Next' }));
+            await userEvent.click(screen.getByRole('button', { name: 'Next' }));
             expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
         }
-        await user.click(screen.getByRole('button', { name: 'Get Recommendation' }));
-        expect(client.dataModeling.requestRecommendation.mutate.mock.calls[1]).toEqual(originalRequest);
-        expect(screen.getByText('waiting')).toBeInTheDocument();
-    });
-
-    it('clears reached steps on Start Over', async () => {
-        const user = userEvent.setup();
-        renderWizard();
-        await completeWizard(user);
-        await user.click(screen.getByRole('button', { name: 'Start Over' }));
-        expect(screen.getByRole('button', { name: 'Review' })).toHaveAttribute('aria-disabled', 'true');
-        expect(screen.getByRole('button', { name: 'Result' })).toHaveAttribute('aria-disabled', 'true');
-        expect(screen.getByRole('button', { name: 'Start' })).toBeDisabled();
+        await userEvent.click(screen.getByRole('button', { name: 'Get Recommendation' }));
+        expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledWith({
+            dataModelJson: JSON.stringify(saved.wizard.dataModel),
+        });
     });
 });

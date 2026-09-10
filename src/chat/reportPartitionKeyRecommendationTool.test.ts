@@ -34,12 +34,30 @@ vi.mock('../panels/DataModelingWizardDrawerTab', () => ({
     },
 }));
 
+import packageJson from '../../package.json';
 import { captureRegisteredTool } from './queryEditorToolTestUtils';
 import {
     findDataModelingWizardTab,
     formatRecommendationForChat,
     registerReportPartitionKeyRecommendationTool,
+    REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_INPUT_SCHEMA,
+    REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_DESCRIPTION,
 } from './reportPartitionKeyRecommendationTool';
+
+const priorityCandidate = {
+    partitionKey: '/customerId',
+    priorityScores: { read: 95, write: 80, storage: 70 },
+    rationale: 'Customer operations are co-located.',
+    assessments: [{ label: 'Query alignment', status: 'pass', detail: 'Customer reads are targeted.' }],
+};
+
+it('keeps the registered tool schema and description in sync with the manifest', () => {
+    const manifest = packageJson.contributes.languageModelTools.find(
+        (tool) => tool.name === 'cosmosdb_reportPartitionKeyRecommendation',
+    );
+    expect(manifest?.inputSchema).toEqual(REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_INPUT_SCHEMA);
+    expect(manifest?.modelDescription).toBe(REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_DESCRIPTION);
+});
 
 describe('formatRecommendationForChat', () => {
     it('includes the complete recommendation when the Data Modeling wizard is unavailable', () => {
@@ -139,6 +157,7 @@ describe('cosmosdb_reportPartitionKeyRecommendation', () => {
                             entity: 'Orders',
                             partitionKey: '/customerId',
                             rationale: 'Customer operations are co-located.',
+                            candidates: [priorityCandidate],
                         },
                     ],
                 },
@@ -165,6 +184,7 @@ describe('cosmosdb_reportPartitionKeyRecommendation', () => {
                             entity: 'Orders',
                             partitionKey: '/customerId',
                             rationale: 'Customer operations are co-located.',
+                            candidates: [priorityCandidate],
                         },
                     ],
                 },
@@ -173,6 +193,40 @@ describe('cosmosdb_reportPartitionKeyRecommendation', () => {
         );
 
         expect(drawerTab.reportRecommendation).toHaveBeenCalledOnce();
+    });
+
+    it.each([
+        { read: -1, write: 50, storage: 50 },
+        { read: 101, write: 50, storage: 50 },
+        { read: '50', write: 50, storage: 50 },
+        { read: 50, write: 50 },
+    ])('rejects invalid component scores %j', async (priorityScores) => {
+        const tab = {
+            getId: () => '1c70d73d-9d5d-415a-93f3-630d3e581d63',
+            reportRecommendation: vi.fn(),
+            reportRecommendationError: vi.fn(),
+        };
+        wizardTabs.add(tab);
+        const tool = captureRegisteredTool(registerReportPartitionKeyRecommendationTool);
+        await tool.invoke(
+            {
+                input: {
+                    wizardTabId: tab.getId(),
+                    summary: '',
+                    containers: [
+                        {
+                            entity: 'Orders',
+                            partitionKey: '/customerId',
+                            rationale: '',
+                            candidates: [{ ...priorityCandidate, priorityScores }],
+                        },
+                    ],
+                },
+            },
+            {} as never,
+        );
+        expect(tab.reportRecommendation).not.toHaveBeenCalled();
+        expect(tab.reportRecommendationError).toHaveBeenCalledOnce();
     });
 
     it('reports an invalid recommendation to the originating wizard', async () => {

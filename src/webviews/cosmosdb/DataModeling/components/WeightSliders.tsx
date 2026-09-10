@@ -8,8 +8,7 @@ import * as l10n from '@vscode/l10n';
 import { type ScoringWeights } from '../models';
 
 /**
- * Scoring-priority sliders (read / write / storage). Shared by the Review and
- * Result pages so both drive the same normalized weighting. The three values are
+ * Review-step scoring-priority sliders (read / write / storage). The three values are
  * percentages that always total 100%: moving one slider redistributes the
  * remainder across the other two in proportion to their current values.
  */
@@ -34,6 +33,15 @@ const useStyles = makeStyles({
         color: tokens.colorNeutralForeground3,
         fontSize: tokens.fontSizeBase200,
     },
+    rail: {
+        height: '4px',
+        outlineColor: tokens.colorNeutralStrokeAccessible,
+        // Hundredth-percent steps make Fluent's 1px tick overlay cover the entire track.
+        '::before': { display: 'none' },
+        '@media (forced-colors: active)': {
+            outlineColor: 'CanvasText',
+        },
+    },
 });
 
 export interface WeightSlidersProps {
@@ -48,21 +56,16 @@ const WEIGHT_KEYS = ['read', 'write', 'storage'] as const;
  * three always sum to 100. The remainder is split in proportion to the other two current values;
  * when both are zero it is split as evenly as possible.
  */
-function redistribute(weights: ScoringWeights, changed: keyof ScoringWeights, rawValue: number): ScoringWeights {
-    const value = Math.min(100, Math.max(0, Math.round(rawValue)));
+export function redistribute(weights: ScoringWeights, changed: keyof ScoringWeights, rawValue: number): ScoringWeights {
+    const value = Math.min(10000, Math.max(0, Math.round(rawValue * 100)));
     const [otherA, otherB] = WEIGHT_KEYS.filter((k) => k !== changed);
-    const remaining = 100 - value;
-    const otherTotal = weights[otherA] + weights[otherB];
+    const remaining = 10000 - value;
+    const otherABasisPoints = Math.round(weights[otherA] * 100);
+    const otherTotal = otherABasisPoints + Math.round(weights[otherB] * 100);
+    const nextA = Math.round(otherTotal === 0 ? remaining / 2 : (otherABasisPoints / otherTotal) * remaining);
 
-    const next: ScoringWeights = { ...weights, [changed]: value };
-    if (otherTotal === 0) {
-        next[otherA] = Math.round(remaining / 2);
-    } else {
-        next[otherA] = Math.round((weights[otherA] / otherTotal) * remaining);
-    }
-    // Give the last slider whatever is left, so the three always sum to exactly 100.
-    next[otherB] = remaining - next[otherA];
-    return next;
+    // Redistribute integer basis points before converting back to percentages to avoid rounding drift.
+    return { ...weights, [changed]: value / 100, [otherA]: nextA / 100, [otherB]: (remaining - nextA) / 100 };
 }
 
 export function WeightSliders({ weights, onChange }: WeightSlidersProps) {
@@ -75,8 +78,12 @@ export function WeightSliders({ weights, onChange }: WeightSlidersProps) {
                 <Text>{`${value}%`}</Text>
             </div>
             <Slider
+                rail={{ className: styles.rail }}
+                aria-label={label}
+                aria-valuetext={`${value}%`}
                 min={0}
                 max={100}
+                step={0.01}
                 value={value}
                 onChange={(_, data) => onChange(redistribute(weights, key, data.value))}
             />

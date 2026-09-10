@@ -25,14 +25,23 @@ const CandidateAssessmentSchema = z.object({
     detail: z.string(),
 });
 
+export const PriorityScoresSchema = z.object({
+    read: z.number().min(0).max(100),
+    write: z.number().min(0).max(100),
+    storage: z.number().min(0).max(100),
+});
+
 /** A scored partition-key candidate shown as a card on the Result page. */
-const PkCandidateSchema = z.object({
+export const PkCandidateSchema = z.object({
     /** Candidate partition-key path, e.g. `/conversationId`. */
     partitionKey: z.string(),
     /** Ranking verdict; drives the card color and badge. */
     verdict: z.enum(['recommended', 'alternative', 'avoid']),
     /** Overall best-practice score, 0–100 (higher is better). */
     score: z.number(),
+    /** Independent LLM suitability scores. Absent only in legacy saved recommendations. */
+    priorityScores: PriorityScoresSchema.optional(),
+    rationale: z.string().optional(),
     /** Per-rule breakdown explaining the score. */
     assessments: z.array(CandidateAssessmentSchema),
 });
@@ -104,6 +113,26 @@ export const PartitionKeyRecommendationSchema = z.object({
     summary: z.string(),
     /** Per-container recommendation. */
     containers: z.array(ContainerRecommendationSchema),
+});
+
+/** Fresh tool responses require component scores; score and verdict are computed by Data Modeler. */
+export const PriorityRecommendationSchema = PartitionKeyRecommendationSchema.extend({
+    containers: z
+        .array(
+            ContainerRecommendationSchema.extend({
+                candidates: z
+                    .array(
+                        PkCandidateSchema.omit({ score: true, verdict: true })
+                            .extend({
+                                priorityScores: PriorityScoresSchema,
+                                rationale: z.string(),
+                            })
+                            .transform((candidate) => ({ ...candidate, score: 0, verdict: 'alternative' as const })),
+                    )
+                    .min(1),
+            }),
+        )
+        .min(1),
 });
 
 export type PartitionKeyRecommendation = z.infer<typeof PartitionKeyRecommendationSchema>;

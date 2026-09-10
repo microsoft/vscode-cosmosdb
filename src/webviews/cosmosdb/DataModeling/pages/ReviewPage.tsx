@@ -163,12 +163,12 @@ export function ReviewPage({
                         </div>
                     </FieldGroup>
 
-                    <InfoBox>{l10n.t('ℹ️ You can adjust any selection from the results page.')}</InfoBox>
+                    <InfoBox>{l10n.t('Review your selections and priorities before requesting analysis.')}</InfoBox>
 
                     <FieldGroup
                         label={l10n.t('Scoring priorities')}
                         hint={l10n.t(
-                            'Reads and writes are weighted equally by default. Slide toward what matters most — the ranking recalculates instantly.',
+                            'Read, write, and storage priorities are approximately equal by default (33.33% each). Adjust what matters most; these priorities determine the ranking after analysis.',
                         )}
                     >
                         <WeightSliders weights={weights} onChange={onChangeWeights} />

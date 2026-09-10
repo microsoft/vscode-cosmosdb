@@ -38,6 +38,7 @@ function snapshot(): ModelingAdvisorSnapshot {
         },
         recommendation: {
             status: 'received',
+            weights: { read: 33.34, write: 33.33, storage: 33.33 },
             value: {
                 summary: 'Use conversationId.',
                 containers: [
@@ -50,6 +51,8 @@ function snapshot(): ModelingAdvisorSnapshot {
                                 partitionKey: '/conversationId',
                                 verdict: 'recommended',
                                 score: 90,
+                                priorityScores: { read: 90, write: 90, storage: 90 },
+                                rationale: 'Balanced fit across all priorities.',
                                 assessments: [
                                     { label: 'Query match', status: 'pass', detail: 'Targets a conversation.' },
                                 ],

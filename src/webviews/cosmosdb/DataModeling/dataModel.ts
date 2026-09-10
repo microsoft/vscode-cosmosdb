@@ -17,6 +17,7 @@
  * host-side seeding step.
  */
 
+import { DEFAULT_SCORING_WEIGHTS } from '../../../dataModeling/scoring';
 import { type ContainerDefault, DATA_MODEL_DEFAULTS } from './dataModelDefaults';
 import { type ContainerModel, type PartitionCandidate, type ScenarioId, type ScoringWeights } from './models';
 import { nextId } from './scenarios';
@@ -178,7 +179,7 @@ export function createInitialState(): WizardState {
         step: 1,
         scenario: undefined,
         dataModel: createEmptyDataModel(),
-        weights: { read: 35, write: 35, storage: 30 },
+        weights: { ...DEFAULT_SCORING_WEIGHTS },
     };
 }
 

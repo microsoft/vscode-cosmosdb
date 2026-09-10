@@ -22,6 +22,8 @@ import { AddRegular, CheckmarkRegular, DeleteRegular, DismissRegular, EditRegula
 import { useTrpcClient } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
 import { type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { PriorityRecommendationSchema } from '../../../dataModeling/recommendationSchema';
+import { rankRecommendation, ScoringWeightsSchema } from '../../../dataModeling/scoring';
 import { type DataModelingAppRouter, type DataModelingEvent } from '../../api/types';
 import { AlertDialog } from '../../common/AlertDialog';
 import { ContainerFooter } from './components/Container/ContainerFooter';
@@ -258,12 +260,33 @@ const HydratedDataModelingWizard = ({
                     if (previous.recommendation.status === 'idle') {
                         return previous;
                     }
+                    if (event.type === 'recommendationReceived') {
+                        const parsed = PriorityRecommendationSchema.safeParse(event.recommendation);
+                        const appliedWeights = ScoringWeightsSchema.safeParse(previous.recommendation.weights);
+                        if (!parsed.success || !appliedWeights.success) {
+                            return {
+                                ...previous,
+                                recommendation: {
+                                    ...previous.recommendation,
+                                    status: 'error',
+                                    error: l10n.t(
+                                        'The recommendation is missing valid priority scores or priorities. Request a new recommendation.',
+                                    ),
+                                },
+                            };
+                        }
+                        return {
+                            ...previous,
+                            recommendation: {
+                                status: 'received',
+                                value: rankRecommendation(parsed.data, appliedWeights.data),
+                                weights: appliedWeights.data,
+                            },
+                        };
+                    }
                     return {
                         ...previous,
-                        recommendation:
-                            event.type === 'recommendationReceived'
-                                ? { status: 'received', value: event.recommendation }
-                                : { ...previous.recommendation, status: 'error', error: event.message },
+                        recommendation: { ...previous.recommendation, status: 'error', error: event.message },
                     };
                 });
             },
@@ -456,7 +479,7 @@ const HydratedDataModelingWizard = ({
                 step: buildStepValues(snapshot.wizard.dataModel).length,
                 reachedSteps: buildStepValues(snapshot.wizard.dataModel),
             },
-            recommendation: { status: 'waiting' },
+            recommendation: { status: 'waiting', weights: { ...snapshot.wizard.weights } },
         };
         setSnapshot(next);
         // Preserve inputs and Result navigation before opening Chat.
@@ -470,6 +493,7 @@ const HydratedDataModelingWizard = ({
                 }
                 await trpcClient.dataModeling.requestRecommendation.mutate({
                     dataModelJson: JSON.stringify(next.wizard.dataModel),
+                    weights: next.wizard.weights,
                 });
             } catch {
                 if (generation !== requestGeneration.current) {
@@ -480,6 +504,7 @@ const HydratedDataModelingWizard = ({
                         ? {
                               ...previous,
                               recommendation: {
+                                  ...previous.recommendation,
                                   status: 'error',
                                   error: inputsSaved
                                       ? l10n.t('Could not open Copilot Chat to request a recommendation.')
@@ -728,6 +753,7 @@ const HydratedDataModelingWizard = ({
                     subtitle={l10n.t("Copilot's analysis of your workload profile.")}
                 >
                     <ResultPage
+                        weights={snapshot.recommendation.weights}
                         recommendationStatus={recommendationStatus}
                         recommendation={recommendation}
                         recommendationError={recommendationError}

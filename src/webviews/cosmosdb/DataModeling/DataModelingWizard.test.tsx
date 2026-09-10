@@ -12,6 +12,7 @@ import userEvent from '@testing-library/user-event';
 import { Children, isValidElement, type ReactElement } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { type ModelingAdvisorSnapshot } from '../../../dataModeling/modelingAdvisorSchema';
+import { rankRecommendation } from '../../../dataModeling/scoring';
 import { type DataModelingEvent } from '../../api/types';
 import { type StepListItemProps, type StepListProps } from './components/StepList/StepList.types';
 import { createBlankContainer } from './dataModel';
@@ -62,9 +63,26 @@ function restored(step = 2): ModelingAdvisorSnapshot {
         },
         recommendation: {
             status: 'received',
+            weights: { ...createInitialSnapshot().wizard.weights },
             value: {
                 summary: 'Restored result',
-                containers: [{ entity: 'Orders', partitionKey: '/orderId', rationale: '' }],
+                containers: [
+                    {
+                        entity: 'Orders',
+                        partitionKey: '/orderId',
+                        rationale: '',
+                        candidates: [
+                            {
+                                partitionKey: '/orderId',
+                                score: 100,
+                                verdict: 'recommended',
+                                assessments: [],
+                                priorityScores: { read: 90, write: 70, storage: 80 },
+                                rationale: 'Order-scoped requests.',
+                            },
+                        ],
+                    },
+                ],
             },
         },
     };
@@ -204,7 +222,11 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             onData: (event: DataModelingEvent) => void;
         };
         act(() => callbacks.onData({ type: 'recommendationReceived', recommendation: saved.recommendation.value! }));
-        expect(lastSave().recommendation).toEqual(saved.recommendation);
+        expect(lastSave().recommendation).toEqual({
+            status: 'received',
+            weights: saved.wizard.weights,
+            value: rankRecommendation(saved.recommendation.value!, saved.wizard.weights),
+        });
         await userEvent.click(screen.getByRole('button', { name: 'Start Over' }));
         act(() => callbacks.onData({ type: 'recommendationReceived', recommendation: saved.recommendation.value! }));
         expect(lastSave()).toEqual(createInitialSnapshot());
@@ -244,6 +266,86 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         await userEvent.click(screen.getByRole('button', { name: 'Result' }));
         expect(screen.getByText('Restored result')).toBeInTheDocument();
         expect(client.dataModeling.requestRecommendation.mutate).not.toHaveBeenCalled();
+    });
+
+    it('uses request-time priorities even when Review priorities change before the response, and restores them', async () => {
+        const saved = restored(3);
+        saved.recommendation = { status: 'idle' };
+        saved.wizard.weights = { read: 80, write: 10, storage: 10 };
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        const mounted = render(<DataModelingWizard />);
+        await continueExisting();
+        await userEvent.click(screen.getByRole('button', { name: 'Get Recommendation' }));
+        expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledWith({
+            dataModelJson: JSON.stringify(saved.wizard.dataModel),
+            weights: { read: 80, write: 10, storage: 10 },
+        });
+        await userEvent.click(screen.getByRole('button', { name: 'Review' }));
+        // Review edits are independent of the priorities captured when the pending request began.
+        fireEvent.change(screen.getAllByRole('slider')[0], { target: { value: '10' } });
+        const callbacks = client.dataModeling.events.subscribe.mock.calls[0][1] as {
+            onData: (event: DataModelingEvent) => void;
+        };
+        const result = restored().recommendation.value!;
+        result.containers[0].candidates = [
+            {
+                partitionKey: '/write',
+                score: 100,
+                verdict: 'recommended',
+                assessments: [],
+                rationale: 'Write rationale',
+                priorityScores: { read: 10, write: 100, storage: 50 },
+            },
+            {
+                partitionKey: '/read',
+                score: 0,
+                verdict: 'avoid',
+                assessments: [],
+                rationale: 'Read rationale',
+                priorityScores: { read: 100, write: 10, storage: 50 },
+            },
+        ];
+        act(() => callbacks.onData({ type: 'recommendationReceived', recommendation: result }));
+        const persisted = lastSave();
+        expect(persisted.wizard.weights.read).toBe(10);
+        expect(persisted.recommendation.weights).toEqual({ read: 80, write: 10, storage: 10 });
+        expect(persisted.recommendation.value?.containers[0].partitionKey).toBe('/read');
+        expect(persisted.recommendation.value?.containers[0].candidates?.[0].score).toBe(86);
+        mounted.unmount();
+        client.dataModeling.loadState.query.mockResolvedValue({
+            ...persisted,
+            wizard: { ...persisted.wizard, step: 4 },
+        });
+        render(<DataModelingWizard />);
+        await continueExisting();
+        expect(
+            screen.getByRole<HTMLTextAreaElement>('textbox', { name: 'Container creation code sample' }).value,
+        ).toContain("paths: [ '/read' ]");
+        expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledOnce();
+    });
+
+    it('rejects fresh results without component scores rather than inventing a weighted score', async () => {
+        const saved = restored(3);
+        saved.recommendation = { status: 'idle' };
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        render(<DataModelingWizard />);
+        await continueExisting();
+        await userEvent.click(screen.getByRole('button', { name: 'Get Recommendation' }));
+        const callbacks = client.dataModeling.events.subscribe.mock.calls[0][1] as {
+            onData: (event: DataModelingEvent) => void;
+        };
+        act(() =>
+            callbacks.onData({
+                type: 'recommendationReceived',
+                recommendation: { summary: '', containers: [{ entity: 'Orders', partitionKey: '/id', rationale: '' }] },
+            }),
+        );
+        expect(lastSave().recommendation.status).toBe('error');
+        expect(
+            screen.getByText(
+                'The recommendation is missing valid priority scores or priorities. Request a new recommendation.',
+            ),
+        ).toBeInTheDocument();
     });
 
     it.each(['Cancel', 'Escape'])(
@@ -299,6 +401,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         await userEvent.click(screen.getByRole('button', { name: 'Get Recommendation' }));
         expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledWith({
             dataModelJson: JSON.stringify(saved.wizard.dataModel),
+            weights: saved.wizard.weights,
         });
     });
 });

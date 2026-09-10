@@ -12,7 +12,7 @@ import { DataModelingWizardDrawerTab } from '../panels/DataModelingWizardDrawerT
 import { DataModelingWizardTab } from '../panels/DataModelingWizardTab';
 import {
     type PartitionKeyRecommendation,
-    PartitionKeyRecommendationSchema,
+    PriorityRecommendationSchema,
 } from '../panels/trpc/routers/dataModelingEventsRouter';
 
 /**
@@ -28,13 +28,13 @@ export const REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_DESCRIPTION =
     'Displays a partition-key recommendation on the Result page of the open Cosmos DB Data Modeling wizard. ' +
     'Call this once after analyzing the data model the wizard sent, passing a structured recommendation: an overall ' +
     'summary and, for each container, the recommended partition key with a short rationale, scored candidate keys ' +
-    '(with per-rule assessments), a hot-partition risk comparison, a query-routing analysis, and a document-id ' +
+    '(with independent read, write, and storage suitability scores and per-rule assessments), a hot-partition risk comparison, a query-routing analysis, and a document-id ' +
     'strategy. Pass the wizardTabId supplied with the analysis request so the recommendation reaches its originating wizard.';
 
 /** Input for the report tool — a recommendation and its originating wizard id. */
-export type ReportPartitionKeyRecommendationInput = PartitionKeyRecommendation & { wizardTabId: string };
+export type ReportPartitionKeyRecommendationInput = z.input<typeof ReportPartitionKeyRecommendationSchema>;
 
-const ReportPartitionKeyRecommendationSchema = PartitionKeyRecommendationSchema.extend({
+const ReportPartitionKeyRecommendationSchema = PriorityRecommendationSchema.extend({
     wizardTabId: z.string().uuid(),
 });
 
@@ -79,7 +79,9 @@ export function formatRecommendationForChat(recommendation: PartitionKeyRecommen
             lines.push(
                 `### ${l10n.t('Candidate keys')}`,
                 ...container.candidates.flatMap((candidate) => [
-                    `- \`${candidate.partitionKey}\` — ${candidate.verdict} (${candidate.score}/100)`,
+                    candidate.priorityScores
+                        ? `- \`${candidate.partitionKey}\` — ${l10n.t('Priority scores (0–100): read {read}, write {write}, storage {storage}.', candidate.priorityScores)}`
+                        : `- \`${candidate.partitionKey}\` — ${candidate.verdict} (${candidate.score}/100)`,
                     ...candidate.assessments.map(
                         (assessment) => `  - ${assessment.label} (${assessment.status}): ${assessment.detail}`,
                     ),
@@ -136,6 +138,7 @@ export const REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_INPUT_SCHEMA = {
         containers: {
             type: 'array',
             description: 'Per-container recommendation.',
+            minItems: 1,
             items: {
                 type: 'object',
                 properties: {
@@ -151,19 +154,43 @@ export const REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_INPUT_SCHEMA = {
                     },
                     candidates: {
                         type: 'array',
-                        description: 'Scored partition-key candidates, ordered best first.',
+                        description:
+                            'Partition-key candidates with independent per-priority scores. Data Modeler computes weighted totals.',
+                        minItems: 1,
                         items: {
                             type: 'object',
                             properties: {
                                 partitionKey: { type: 'string', description: 'Candidate partition-key path.' },
-                                verdict: {
-                                    type: 'string',
-                                    enum: ['recommended', 'alternative', 'avoid'],
-                                    description: 'Ranking verdict for this candidate.',
+                                priorityScores: {
+                                    type: 'object',
+                                    description:
+                                        'Independent skill-grounded suitability scores, before applying user weights. Higher is better.',
+                                    properties: {
+                                        read: {
+                                            type: 'number',
+                                            minimum: 0,
+                                            maximum: 100,
+                                            description: 'Read and query alignment.',
+                                        },
+                                        write: {
+                                            type: 'number',
+                                            minimum: 0,
+                                            maximum: 100,
+                                            description: 'Write distribution and hotspot avoidance.',
+                                        },
+                                        storage: {
+                                            type: 'number',
+                                            minimum: 0,
+                                            maximum: 100,
+                                            description: 'Logical-partition storage and growth headroom.',
+                                        },
+                                    },
+                                    required: ['read', 'write', 'storage'],
+                                    additionalProperties: { not: {} },
                                 },
-                                score: {
-                                    type: 'number',
-                                    description: 'Best-practice score 0–100 (higher is better).',
+                                rationale: {
+                                    type: 'string',
+                                    description: 'Candidate-specific rationale and trade-offs.',
                                 },
                                 assessments: {
                                     type: 'array',
@@ -187,7 +214,7 @@ export const REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_INPUT_SCHEMA = {
                                     },
                                 },
                             },
-                            required: ['partitionKey', 'verdict', 'score', 'assessments'],
+                            required: ['partitionKey', 'priorityScores', 'rationale', 'assessments'],
                             additionalProperties: { not: {} },
                         },
                     },
@@ -205,7 +232,7 @@ export const REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_INPUT_SCHEMA = {
                                 },
                                 pct: {
                                     type: 'number',
-                                    description: 'Relative skew 0 (best) – 100 (worst) for the bar width.',
+                                    description: 'Relative skew 0 (best) - 100 (worst) for the bar width.',
                                 },
                             },
                             required: ['partitionKey', 'risk', 'pct'],
@@ -235,7 +262,7 @@ export const REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_INPUT_SCHEMA = {
                                         },
                                         estCost: {
                                             type: 'string',
-                                            description: 'Rough RU cost, e.g. "3 RU" or "50–100× RU".',
+                                            description: 'Rough RU cost, e.g. "3 RU" or "50-100x RU".',
                                         },
                                     },
                                     required: ['pattern', 'filters', 'qps', 'routing', 'estCost'],
@@ -264,7 +291,7 @@ export const REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_INPUT_SCHEMA = {
                         additionalProperties: { not: {} },
                     },
                 },
-                required: ['entity', 'partitionKey', 'rationale'],
+                required: ['entity', 'partitionKey', 'rationale', 'candidates'],
                 additionalProperties: { not: {} },
             },
         },

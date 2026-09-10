@@ -93,6 +93,19 @@ When saved work exists for the selected account, the Workload screen offers **Co
 Continuing restores modeling inputs, scoring weights, the current wizard step, and any saved Copilot recommendation/status.
 Starting new replaces only that account's saved session.
 
+On Review, set the **Read alignment**, **Write distribution**, and **Storage & growth** priorities. Defaults are 33.34%,
+33.33%, and 33.33%, totaling 100%. Copilot uses the Cosmos DB best-practices skill to assign each candidate three independent
+suitability scores (0-100). Data Modeler computes `(read score × read weight + write score × write weight + storage score ×
+storage weight) / 100`, sorts by the unrounded total, and assigns the recommendation badges. Equal scores retain their order;
+ties for best share the recommended badge.
+
+Results show the priorities captured when the request started, not later Review edits. Displayed percentages and scores round
+up to whole numbers; ranking uses the original precision. Hover, focus, or click a candidate's score to inspect the
+approximate calculation (rounded display values may not add up exactly). These scores are estimates, not measured performance. If weighting changes the LLM's
+proposed winning key, the code sample and rationale use the computed winner; analysis specific to the former key is omitted.
+Older saved recommendations without component scores or captured priorities remain viewable but need a new analysis to show
+weighted scoring and its formula.
+
 Saved states expire **30 days after their last save** (based on file modification time). Every successful save prunes expired
 state files for all endpoints, and opening an expired state treats it as a new model. Reading a state does not extend its
 lifetime. The endpoint is sufficient to identify a state; account metadata and display names are optional.

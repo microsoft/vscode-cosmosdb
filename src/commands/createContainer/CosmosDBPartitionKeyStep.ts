@@ -101,8 +101,8 @@ export class CosmosDBPartitionKeyStep extends AzureWizardPromptStep<CreateContai
             );
         }
 
-        if (!/^\/?[^/]*$/.test(partitionKey)) {
-            return l10n.t('Partition key can only start with a forward slash (/)');
+        if (!/^\/?[^/]+(?:\/[^/]+)*$/.test(partitionKey)) {
+            return l10n.t('Partition key path must contain non-empty segments separated by forward slashes (/)');
         }
 
         if (partitionKey.length > 255) {

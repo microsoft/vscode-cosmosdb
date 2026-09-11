@@ -57,6 +57,7 @@ function snapshot(): ModelingAdvisorSnapshot {
                         ],
                         hotPartitionRisk: [{ partitionKey: '/conversationId', risk: 'low', pct: 5 }],
                         documentIdStrategy: { tag: 'Message ID', recommendation: 'Use a unique message ID.' },
+                        guardrails: [{ rule: 'Immutability', detail: 'The supplied conversationId never changes.' }],
                         queryRouting: { headline: 'Targeted reads', routes: [], analysis: 'Single partition reads.' },
                     },
                 ],

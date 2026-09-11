@@ -93,6 +93,8 @@ export const ContainerRecommendationSchema = z.object({
     queryRouting: QueryRoutingSchema.optional(),
     /** Document-id strategy guidance. */
     documentIdStrategy: DocumentIdStrategySchema.optional(),
+    /** Relevant hard constraints and evidence, displayed last in the container result. */
+    guardrails: z.array(z.object({ rule: z.string().min(1), detail: z.string().min(1) })).optional(),
     /** Viable alternatives with a short note each (legacy/simple summary). */
     alternatives: z.array(CandidateNoteSchema).optional(),
     /** Keys to avoid with the reason each is a poor fit (legacy/simple summary). */

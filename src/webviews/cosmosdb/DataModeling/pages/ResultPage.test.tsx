@@ -42,6 +42,49 @@ describe('ResultPage', () => {
         vi.clearAllMocks();
     });
 
+    it('shows relevant absolute rules as the final named section for each container', async () => {
+        const user = userEvent.setup();
+        const value = structuredClone(recommendation);
+        value.containers[0].guardrails = [
+            {
+                rule: 'Logical-partition storage',
+                detail: 'The supplied retention bound keeps each full conversation key below 20 GB.',
+            },
+        ];
+        value.containers[1].guardrails = [
+            {
+                rule: 'Immutability',
+                detail: 'userId is immutable; mutable email is not recommended.',
+            },
+        ];
+        renderResult(value);
+        const section = screen.getByRole('region', { name: 'Absolute rules (guardrails)' });
+        expect(within(section).getByRole('heading', { name: 'Absolute rules (guardrails)', level: 2 })).toBeVisible();
+        expect(within(section).getAllByRole('listitem')).toHaveLength(1);
+        expect(within(section).getByText('Logical-partition storage')).toBeVisible();
+        expect(within(section).getByText(value.containers[0].guardrails[0].detail)).toBeVisible();
+        expect(section.parentElement?.lastElementChild).toBe(section);
+        expect(section.previousElementSibling).toContainElement(
+            screen.getByRole('textbox', { name: 'Container creation code sample' }),
+        );
+
+        await user.click(screen.getByRole('tab', { name: 'Container: User' }));
+        const userSection = screen.getByRole('region', { name: 'Absolute rules (guardrails)' });
+        expect(within(userSection).getByText(value.containers[1].guardrails[0].detail)).toBeVisible();
+        expect(screen.queryByText('Logical-partition storage')).not.toBeInTheDocument();
+        expect(userSection.parentElement?.lastElementChild).toBe(userSection);
+    });
+
+    it.each([{ guardrails: undefined }, { guardrails: [] }])(
+        'omits the guardrails section when no relevant rules are supplied (%j)',
+        ({ guardrails }) => {
+            const value = structuredClone(recommendation);
+            value.containers[0].guardrails = guardrails;
+            renderResult(value);
+            expect(screen.queryByRole('region', { name: 'Absolute rules (guardrails)' })).not.toBeInTheDocument();
+        },
+    );
+
     const scoredRecommendation: PartitionKeyRecommendation = {
         summary: 'Analysis complete',
         containers: [
@@ -180,6 +223,8 @@ describe('ResultPage', () => {
                 minimap: { enabled: false },
                 lineNumbers: 'off',
                 folding: false,
+                stickyScroll: { enabled: false },
+                padding: { top: 0, bottom: 0 },
                 scrollBeyondLastLine: false,
                 wordWrap: 'off',
             },
@@ -201,6 +246,27 @@ describe('ResultPage', () => {
         expect(screen.getByText('Message ID')).toHaveClass('fui-Badge');
         expect(screen.getByText('Use a unique message ID.')).toBeVisible();
     });
+
+    it.each(['Bicep', 'Terraform', 'SDK (C#)'])(
+        'keeps a persistent inset and accounts for frame spacing in the %s preview height',
+        async (tab) => {
+            renderResult();
+            await userEvent.click(screen.getByRole('tab', { name: tab }));
+            const frame = screen.getByRole('textbox', { name: 'Container creation code sample' }).parentElement!;
+            const style = getComputedStyle(frame);
+            expect(style.boxSizing).toBe('border-box');
+            for (const padding of [style.paddingTop, style.paddingRight, style.paddingBottom, style.paddingLeft]) {
+                expect(padding).toBe('12px');
+            }
+            const lines = editorProps()!.value!.split('\n').length;
+            expect(frame.style.height).toBe(`${Math.min(400, lines * 20 + 2 * (12 + 1) + 12)}px`);
+            expect(editorProps()?.options).toMatchObject({
+                padding: { top: 0, bottom: 0 },
+                stickyScroll: { enabled: false },
+                wordWrap: 'off',
+            });
+        },
+    );
 
     it.each([
         { tab: 'Terraform', language: 'hcl', code: 'partition_key_paths   = ["/conversationId"]' },

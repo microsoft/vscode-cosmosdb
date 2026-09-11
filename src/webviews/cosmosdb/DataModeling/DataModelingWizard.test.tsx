@@ -15,7 +15,7 @@ import { type DeploymentTemplateInput } from '../../../dataModeling/deploymentMo
 import { type ModelingAdvisorSnapshot } from '../../../dataModeling/modelingAdvisorSchema';
 import { type DataModelingEvent } from '../../api/types';
 import { type StepListItemProps, type StepListProps } from './components/StepList/StepList.types';
-import { createBlankContainer } from './dataModel';
+import { applyScenario, createBlankContainer } from './dataModel';
 import { DataModelingWizard } from './DataModelingWizard';
 import { createInitialSnapshot } from './modelingAdvisorState';
 
@@ -88,6 +88,7 @@ function restored(step = 2): ModelingAdvisorSnapshot {
                         entity: 'Orders',
                         partitionKey: '/orderId',
                         rationale: '',
+                        guardrails: [{ rule: 'Immutability', detail: 'Order IDs remain unchanged for each order.' }],
                         candidates: [
                             {
                                 partitionKey: '/orderId',
@@ -431,9 +432,8 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         const mounted = render(<DataModelingWizard />);
         await continueExisting();
         await userEvent.click(screen.getByRole('button', { name: 'Get Recommendation' }));
-        expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledWith({
-            dataModelJson: JSON.stringify(saved.wizard.dataModel),
-        });
+        expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledWith(lastSave().wizard);
+        expect(lastSave().wizard.dataModel).toEqual(saved.wizard.dataModel);
         await userEvent.click(screen.getByRole('button', { name: 'Review' }));
         expect(screen.queryByRole('slider')).not.toBeInTheDocument();
         const callbacks = client.dataModeling.events.subscribe.mock.calls[0][1] as {
@@ -485,6 +485,29 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             databaseName: 'model-db',
             containers: [{ entity: 'Orders', partitionKey: '/write' }],
         });
+    });
+
+    it('shows an explicit recommendation failure, blocks deployment, and allows retry', async () => {
+        const saved = restored(3);
+        saved.recommendation = { status: 'idle' };
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        render(<DataModelingWizard />);
+        await continueExisting();
+        await userEvent.click(screen.getByRole('button', { name: 'Get Recommendation' }));
+        const callbacks = client.dataModeling.events.subscribe.mock.calls[0][1] as {
+            onData: (event: DataModelingEvent) => void;
+        };
+        const message = 'Cannot recommend a key: provide dominant read predicates and peak QPS.';
+        act(() => callbacks.onData({ type: 'recommendationError', message }));
+        expect(lastSave().recommendation).toEqual({ status: 'error', error: message });
+        expect(screen.getByText(message)).toBeVisible();
+        for (const deploy of screen.getAllByRole('button', { name: 'Deploy' })) {
+            expect(deploy).toBeDisabled();
+        }
+        expect(screen.queryByText('Restored result')).not.toBeInTheDocument();
+        await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+        await waitFor(() => expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledTimes(2));
+        expect(lastSave().recommendation).toEqual({ status: 'waiting' });
     });
 
     it('rejects invalid results rather than inventing missing scores', async () => {
@@ -560,8 +583,20 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
         }
         await userEvent.click(screen.getByRole('button', { name: 'Get Recommendation' }));
-        expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledWith({
-            dataModelJson: JSON.stringify(saved.wizard.dataModel),
-        });
+        expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledWith(lastSave().wizard);
+        expect(lastSave().wizard.dataModel).toEqual(saved.wizard.dataModel);
+    });
+
+    it('sends the selected scenario and unmodified model so the host can apply the default hint rule', async () => {
+        const saved = createInitialSnapshot();
+        saved.wizard = { ...applyScenario(saved.wizard, 'inventory'), step: 4 };
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        render(<DataModelingWizard />);
+        await continueExisting();
+        await userEvent.click(screen.getByRole('button', { name: 'Get Recommendation' }));
+        await waitFor(() => expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledOnce());
+        expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledWith(lastSave().wizard);
+        expect(lastSave().wizard.scenario).toBe('inventory');
+        expect(lastSave().wizard.dataModel).toEqual(saved.wizard.dataModel);
     });
 });

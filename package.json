@@ -211,6 +211,9 @@
       },
       {
         "path": "./skills/cosmosdb-nosql-query-editor/SKILL.md"
+      },
+      {
+        "path": "./skills/cosmosdb-data-model-recommendation/SKILL.md"
       }
     ],
     "x-azResources": {
@@ -255,7 +258,7 @@
       {
         "name": "cosmosdb_reportPartitionKeyRecommendation",
         "displayName": "Report Partition Key Recommendation",
-        "modelDescription": "Displays a partition-key recommendation on the Result page of the open Cosmos DB Data Modeling wizard. Call this once after analyzing the data model the wizard sent, passing a structured recommendation: an overall summary and, for each container, the recommended partition key with a short rationale, scored candidate keys (with per-rule assessments), a hot-partition risk comparison, a query-routing analysis, and a document-id strategy. Pass the wizardTabId supplied with the analysis request so the recommendation reaches its originating wizard.",
+        "modelDescription": "Displays a partition-key recommendation on the Result page of the open Cosmos DB Data Modeling wizard. Call this once after analyzing the data model the wizard sent, passing a structured recommendation: an overall summary and, for each container, the recommended partition key with a short rationale, scored candidate keys (with per-rule assessments), a hot-partition risk comparison, a query-routing analysis, and a document-id strategy. Include relevant absolute-rule guardrails as the final section. If required information or guidance is missing, or you are unsure which recommendation is supported, send only wizardTabId and error explaining the blocker instead of inventing a recommendation. Pass the wizardTabId supplied with the analysis request so the recommendation reaches its originating wizard.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "cosmosdb_reportPartitionKeyRecommendation",
         "inputSchema": {
@@ -265,12 +268,19 @@
               "type": "string",
               "description": "The wizardTabId included in the partition-key analysis request."
             },
+            "error": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "\\S",
+              "description": "Why a recommendation cannot be provided and what information or guidance is needed. Send with wizardTabId only; omit summary and containers."
+            },
             "summary": {
               "type": "string",
               "description": "One or two sentences summarizing the recommendation across all containers."
             },
             "containers": {
               "type": "array",
+              "minItems": 1,
               "description": "Per-container recommendation.",
               "items": {
                 "type": "object",
@@ -475,6 +485,32 @@
                     "additionalProperties": {
                       "not": {}
                     }
+                  },
+                  "guardrails": {
+                    "type": "array",
+                    "description": "Relevant absolute constraints and evidence of compliance for the recommended key, displayed as the last section. Never claim compliance without evidence.",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "rule": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "Name of the absolute rule."
+                        },
+                        "detail": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "Applicable limit, scope, supporting evidence, and any rejected alternative."
+                        }
+                      },
+                      "required": [
+                        "rule",
+                        "detail"
+                      ],
+                      "additionalProperties": {
+                        "not": {}
+                      }
+                    }
                   }
                 },
                 "required": [
@@ -489,9 +525,39 @@
             }
           },
           "required": [
-            "wizardTabId",
-            "summary",
-            "containers"
+            "wizardTabId"
+          ],
+          "oneOf": [
+            {
+              "required": [
+                "summary",
+                "containers"
+              ],
+              "not": {
+                "required": [
+                  "error"
+                ]
+              }
+            },
+            {
+              "required": [
+                "error"
+              ],
+              "not": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "summary"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "containers"
+                    ]
+                  }
+                ]
+              }
+            }
           ],
           "additionalProperties": {
             "not": {}

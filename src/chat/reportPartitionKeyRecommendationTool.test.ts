@@ -5,13 +5,26 @@
 
 /// <reference types="vitest/globals" />
 
+const actionContexts = vi.hoisted(
+    () =>
+        [] as {
+            valuesToMask: string[];
+            telemetry: { properties: Record<string, string>; measurements: Record<string, number> };
+            errorHandling: { suppressDisplay: boolean };
+        }[],
+);
+
 vi.mock('@microsoft/vscode-azext-utils', () => ({
     callWithTelemetryAndErrorHandling: vi.fn(
-        async (_event: string, callback: (context: unknown) => unknown): Promise<unknown> =>
-            callback({
+        async (_event: string, callback: (context: unknown) => unknown): Promise<unknown> => {
+            const context = {
+                valuesToMask: [] as string[],
                 telemetry: { properties: {} as Record<string, string>, measurements: {} as Record<string, number> },
                 errorHandling: { suppressDisplay: false },
-            }),
+            };
+            actionContexts.push(context);
+            return callback(context);
+        },
     ),
 }));
 
@@ -35,7 +48,7 @@ vi.mock('../panels/DataModelingWizardDrawerTab', () => ({
 }));
 
 import packageJson from '../../package.json';
-import { captureRegisteredTool } from './queryEditorToolTestUtils';
+import { captureRegisteredTool, serializeToolResult } from './queryEditorToolTestUtils';
 import {
     findDataModelingWizardTab,
     formatRecommendationForChat,
@@ -96,6 +109,12 @@ describe('formatRecommendationForChat', () => {
                         tag: 'Customer order',
                         recommendation: 'Use the order identifier as id.',
                     },
+                    guardrails: [
+                        {
+                            rule: 'Immutability',
+                            detail: 'customerId is stable for the lifetime of each order; mutable status was rejected.',
+                        },
+                    ],
                 },
             ],
         });
@@ -108,6 +127,10 @@ describe('formatRecommendationForChat', () => {
         expect(text).toContain('Hot-partition risk');
         expect(text).toContain('List orders: single partition; customerId; 100/s; 3 RU');
         expect(text).toContain('Use the order identifier as id.');
+        expect(text).toContain('### Absolute rules (guardrails)');
+        expect(text.trimEnd()).toMatch(
+            /- Immutability: customerId is stable for the lifetime of each order; mutable status was rejected\.$/,
+        );
     });
 });
 
@@ -139,6 +162,81 @@ describe('cosmosdb_reportPartitionKeyRecommendation', () => {
     afterEach(() => {
         wizardTabs.clear();
         wizardDrawerTabs.clear();
+        actionContexts.length = 0;
+    });
+
+    it.each(['tab', 'drawer'])(
+        'reports insufficient evidence only to the originating %s without a recommendation',
+        async (kind) => {
+            const origin = {
+                getId: () => '1c70d73d-9d5d-415a-93f3-630d3e581d63',
+                reportRecommendation: vi.fn(),
+                reportRecommendationError: vi.fn(),
+            };
+            const other = {
+                getId: () => 'b85e997b-e945-46e2-a02a-4c763b251b18',
+                reportRecommendation: vi.fn(),
+                reportRecommendationError: vi.fn(),
+            };
+            (kind === 'tab' ? wizardTabs : wizardDrawerTabs).add(origin);
+            wizardTabs.add(other);
+            const error =
+                'Cannot recommend a key for PrivateOrders: provide the dominant read predicates and peak QPS.';
+            const tool = captureRegisteredTool(registerReportPartitionKeyRecommendationTool);
+            expect(tool.prepareInvocation?.({ input: { wizardTabId: origin.getId(), error } }, {})).toEqual({
+                invocationMessage: 'Reporting that a recommendation could not be provided…',
+            });
+            const result = await tool.invoke({ input: { wizardTabId: origin.getId(), error } }, {});
+
+            expect(origin.reportRecommendationError).toHaveBeenCalledWith(error);
+            expect(origin.reportRecommendation).not.toHaveBeenCalled();
+            expect(other.reportRecommendationError).not.toHaveBeenCalled();
+            expect(other.reportRecommendation).not.toHaveBeenCalled();
+            expect(serializeToolResult(result)).toBe(`Recommendation failed: ${error}`);
+            expect(actionContexts.at(-1)?.valuesToMask).toContain(error);
+            expect(actionContexts.at(-1)?.telemetry).toEqual({
+                properties: { outcome: 'recommendationFailed' },
+                measurements: {},
+            });
+        },
+    );
+
+    it('returns the failure explanation to Chat when the originating wizard is closed', async () => {
+        const tool = captureRegisteredTool(registerReportPartitionKeyRecommendationTool);
+        const error = 'Required partition-key guidance could not be loaded. Restore access before retrying.';
+        const result = await tool.invoke(
+            {
+                input: { wizardTabId: '1c70d73d-9d5d-415a-93f3-630d3e581d63', error },
+            },
+            {},
+        );
+        expect(serializeToolResult(result)).toBe(
+            `The Data Modeling wizard is no longer open. Recommendation failed: ${error}`,
+        );
+        expect(serializeToolResult(result)).not.toContain('Recommended partition key');
+    });
+
+    it.each([
+        { error: '' },
+        { error: '   ' },
+        { error: 123 },
+        { error: 'Missing evidence', summary: 'Not a recommendation' },
+        { error: 'Missing evidence', containers: [] },
+        { error: 'Missing evidence', summary: 'Not a recommendation', containers: [] },
+        { summary: 'Insufficient evidence', containers: [] },
+    ])('rejects invalid or mixed failure payloads %j', async (payload) => {
+        const tab = {
+            getId: () => '1c70d73d-9d5d-415a-93f3-630d3e581d63',
+            reportRecommendation: vi.fn(),
+            reportRecommendationError: vi.fn(),
+        };
+        wizardTabs.add(tab);
+        const tool = captureRegisteredTool(registerReportPartitionKeyRecommendationTool);
+        await tool.invoke({ input: { wizardTabId: tab.getId(), ...payload } }, {});
+        expect(tab.reportRecommendation).not.toHaveBeenCalled();
+        expect(tab.reportRecommendationError).toHaveBeenCalledWith(
+            'The recommendation was not in the expected shape and could not be shown.',
+        );
     });
 
     it('delivers a recommendation only to the wizard that originated the request', async () => {
@@ -159,6 +257,9 @@ describe('cosmosdb_reportPartitionKeyRecommendation', () => {
                             partitionKey: '/customerId',
                             rationale: 'Customer operations are co-located.',
                             candidates: [scoredCandidate],
+                            guardrails: [
+                                { rule: 'Key-value length', detail: 'Customer IDs are bounded to 36 ASCII bytes.' },
+                            ],
                         },
                     ],
                 },
@@ -175,10 +276,44 @@ describe('cosmosdb_reportPartitionKeyRecommendation', () => {
                     partitionKey: '/customerId',
                     rationale: 'Customer operations are co-located.',
                     candidates: [scoredCandidate],
+                    guardrails: [{ rule: 'Key-value length', detail: 'Customer IDs are bounded to 36 ASCII bytes.' }],
                 },
             ],
         });
         expect(secondTab.reportRecommendation).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        [{ rule: 'Immutability' }],
+        [{ rule: '', detail: 'No rule name' }],
+        [{ rule: 'Immutability', detail: '' }],
+    ])('rejects incomplete guardrail explanations %j', async (guardrail) => {
+        const tab = {
+            getId: () => '1c70d73d-9d5d-415a-93f3-630d3e581d63',
+            reportRecommendation: vi.fn(),
+            reportRecommendationError: vi.fn(),
+        };
+        wizardTabs.add(tab);
+        const tool = captureRegisteredTool(registerReportPartitionKeyRecommendationTool);
+        await tool.invoke(
+            {
+                input: {
+                    wizardTabId: tab.getId(),
+                    summary: 'Use customerId.',
+                    containers: [
+                        {
+                            entity: 'Orders',
+                            partitionKey: '/customerId',
+                            rationale: 'Customer operations are co-located.',
+                            guardrails: [guardrail],
+                        },
+                    ],
+                },
+            },
+            {},
+        );
+        expect(tab.reportRecommendation).not.toHaveBeenCalled();
+        expect(tab.reportRecommendationError).toHaveBeenCalledOnce();
     });
 
     it('delivers a recommendation to the drawer that originated the request', async () => {

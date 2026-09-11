@@ -39,10 +39,13 @@ import { InfoBox, SubPanel } from '../components/primitives';
 /**
  * Result step. One tab per container, each showing Copilot's partition-key recommendation:
  * scored candidate cards, a hot-partition risk comparison, a query-routing analysis, a
- * document-id strategy, and a copyable infrastructure snippet. Assessments, scores, and ranking
- * are LLM-driven. Deployment is configured in the following step.
+ * document-id strategy, a copyable infrastructure snippet, and relevant absolute rules as the last section.
+ * Assessments, scores, and ranking are LLM-driven. Deployment is configured in the following step.
  * While the request is in flight, the {@link CopilotRecommendation} panel shows a waiting note instead.
  */
+
+const CODE_PADDING = 12;
+const CODE_BORDER_WIDTH = 1;
 
 const useStyles = makeStyles({
     stack: {
@@ -55,6 +58,25 @@ const useStyles = makeStyles({
     },
     summary: {
         color: tokens.colorNeutralForeground2,
+    },
+    guardrails: {
+        padding: tokens.spacingHorizontalM,
+        borderRadius: tokens.borderRadiusMedium,
+        backgroundColor: tokens.colorNeutralBackground2,
+        border: `1px solid ${tokens.colorNeutralStroke2}`,
+        overflowWrap: 'anywhere',
+    },
+    guardrailsHeading: {
+        margin: 0,
+        fontSize: tokens.fontSizeBase400,
+        fontWeight: tokens.fontWeightSemibold,
+    },
+    guardrailsList: {
+        marginBottom: 0,
+        paddingLeft: tokens.spacingHorizontalL,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: tokens.spacingVerticalS,
     },
     // Responsive grid: compact panels sit side by side on wide surfaces and stack when narrow.
     twoCol: {
@@ -243,8 +265,10 @@ const useStyles = makeStyles({
     },
     codeEditor: {
         marginTop: tokens.spacingVerticalS,
+        boxSizing: 'border-box',
+        padding: `${CODE_PADDING}px`,
         borderRadius: tokens.borderRadiusMedium,
-        border: `1px solid ${tokens.colorNeutralStroke2}`,
+        border: `${CODE_BORDER_WIDTH}px solid ${tokens.colorNeutralStroke2}`,
         overflow: 'hidden',
     },
     copiedIcon: {
@@ -256,7 +280,6 @@ type CodeTab = 'bicep' | 'terraform' | 'sdk';
 
 const CODE_LANGUAGES: Record<CodeTab, string> = { bicep: 'bicep', terraform: 'hcl', sdk: 'csharp' };
 const CODE_LINE_HEIGHT = 20;
-const CODE_PADDING = 12;
 const CODE_SCROLLBAR_SIZE = 12;
 const CODE_EDITOR_OPTIONS: MonacoEditorType.editor.IStandaloneEditorConstructionOptions = {
     readOnly: true,
@@ -267,6 +290,7 @@ const CODE_EDITOR_OPTIONS: MonacoEditorType.editor.IStandaloneEditorConstruction
     lineNumbers: 'off',
     glyphMargin: false,
     folding: false,
+    stickyScroll: { enabled: false },
     lineDecorationsWidth: 0,
     overviewRulerLanes: 0,
     overviewRulerBorder: false,
@@ -275,7 +299,7 @@ const CODE_EDITOR_OPTIONS: MonacoEditorType.editor.IStandaloneEditorConstruction
     wordWrap: 'off',
     fontSize: 13,
     lineHeight: CODE_LINE_HEIGHT,
-    padding: { top: CODE_PADDING, bottom: CODE_PADDING },
+    padding: { top: 0, bottom: 0 },
     scrollbar: { horizontalScrollbarSize: CODE_SCROLLBAR_SIZE, alwaysConsumeMouseWheel: false },
 };
 
@@ -470,6 +494,7 @@ function riskBand(risk: HotPartitionRisk['risk']): { fill: string; label: string
 
 function ContainerResultView({ container }: { container: ContainerRecommendation }) {
     const styles = useStyles();
+    const guardrailsId = useId();
     const [codeTab, setCodeTab] = useState<CodeTab>('bicep');
     const [copied, setCopied] = useState(false);
 
@@ -477,10 +502,10 @@ function ContainerResultView({ container }: { container: ContainerRecommendation
         () => buildCode(codeTab, container.entity, container.partitionKey),
         [codeTab, container.entity, container.partitionKey],
     );
-    // With wrapping disabled, each source line occupies exactly one editor line.
+    // Include the frame's persistent inset and border so short snippets do not lose their final line.
     const codeEditorHeight = Math.min(
         400,
-        code.split('\n').length * CODE_LINE_HEIGHT + 2 * CODE_PADDING + CODE_SCROLLBAR_SIZE,
+        code.split('\n').length * CODE_LINE_HEIGHT + 2 * (CODE_PADDING + CODE_BORDER_WIDTH) + CODE_SCROLLBAR_SIZE,
     );
 
     // Reset the "Copied" affordance shortly after a copy; clean up on unmount / tab switch.
@@ -639,6 +664,23 @@ function ContainerResultView({ container }: { container: ContainerRecommendation
                     <MonacoEditor language={CODE_LANGUAGES[codeTab]} value={code} options={CODE_EDITOR_OPTIONS} />
                 </div>
             </div>
+            {container.guardrails?.length ? (
+                <section className={styles.guardrails} aria-labelledby={guardrailsId}>
+                    <h2 id={guardrailsId} className={styles.guardrailsHeading}>
+                        {l10n.t('Absolute rules (guardrails)')}
+                    </h2>
+                    <ul className={styles.guardrailsList}>
+                        {container.guardrails.map(({ rule, detail }, index) => (
+                            <li key={index}>
+                                <Text weight="semibold" block>
+                                    {rule}
+                                </Text>
+                                <Text>{detail}</Text>
+                            </li>
+                        ))}
+                    </ul>
+                </section>
+            ) : null}
         </div>
     );
 }

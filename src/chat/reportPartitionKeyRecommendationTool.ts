@@ -29,14 +29,22 @@ export const REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_DESCRIPTION =
     'Call this once after analyzing the data model the wizard sent, passing a structured recommendation: an overall ' +
     'summary and, for each container, the recommended partition key with a short rationale, scored candidate keys ' +
     '(with per-rule assessments), a hot-partition risk comparison, a query-routing analysis, and a document-id ' +
-    'strategy. Pass the wizardTabId supplied with the analysis request so the recommendation reaches its originating wizard.';
+    'strategy. Include relevant absolute-rule guardrails as the final section. ' +
+    'If required information or guidance is missing, or you are unsure which recommendation is supported, ' +
+    'send only wizardTabId and error explaining the blocker instead of inventing a recommendation. ' +
+    'Pass the wizardTabId supplied with the analysis request so the recommendation reaches its originating wizard.';
 
-/** Input for the report tool — a recommendation and its originating wizard id. */
-export type ReportPartitionKeyRecommendationInput = PartitionKeyRecommendation & { wizardTabId: string };
+const ReportPartitionKeyRecommendationSchema = z.union([
+    PartitionKeyRecommendationSchema.extend({
+        wizardTabId: z.string().uuid(),
+        containers: PartitionKeyRecommendationSchema.shape.containers.min(1),
+        error: z.never().optional(),
+    }),
+    z.object({ wizardTabId: z.string().uuid(), error: z.string().trim().min(1) }).strict(),
+]);
 
-const ReportPartitionKeyRecommendationSchema = PartitionKeyRecommendationSchema.extend({
-    wizardTabId: z.string().uuid(),
-});
+/** Input for the report tool — either a recommendation or an explicit failure, scoped to its originating wizard. */
+export type ReportPartitionKeyRecommendationInput = z.infer<typeof ReportPartitionKeyRecommendationSchema>;
 
 /** Finds the wizard that originated a recommendation request, if it is still open. */
 export function findDataModelingWizardTab(
@@ -113,6 +121,13 @@ export function formatRecommendationForChat(recommendation: PartitionKeyRecommen
             );
         }
 
+        if (container.guardrails?.length) {
+            lines.push(
+                `### ${l10n.t('Absolute rules (guardrails)')}`,
+                ...container.guardrails.map(({ rule, detail }) => `- ${rule}: ${detail}`),
+            );
+        }
+
         sections.push(lines.join('\n'));
     }
 
@@ -129,12 +144,20 @@ export const REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_INPUT_SCHEMA = {
             type: 'string',
             description: 'The wizardTabId included in the partition-key analysis request.',
         },
+        error: {
+            type: 'string',
+            minLength: 1,
+            pattern: '\\S',
+            description:
+                'Why a recommendation cannot be provided and what information or guidance is needed. Send with wizardTabId only; omit summary and containers.',
+        },
         summary: {
             type: 'string',
             description: 'One or two sentences summarizing the recommendation across all containers.',
         },
         containers: {
             type: 'array',
+            minItems: 1,
             description: 'Per-container recommendation.',
             items: {
                 type: 'object',
@@ -263,13 +286,36 @@ export const REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_INPUT_SCHEMA = {
                         required: ['tag', 'recommendation'],
                         additionalProperties: { not: {} },
                     },
+                    guardrails: {
+                        type: 'array',
+                        description:
+                            'Relevant absolute constraints and evidence of compliance for the recommended key, displayed as the last section. Never claim compliance without evidence.',
+                        items: {
+                            type: 'object',
+                            properties: {
+                                rule: { type: 'string', minLength: 1, description: 'Name of the absolute rule.' },
+                                detail: {
+                                    type: 'string',
+                                    minLength: 1,
+                                    description:
+                                        'Applicable limit, scope, supporting evidence, and any rejected alternative.',
+                                },
+                            },
+                            required: ['rule', 'detail'],
+                            additionalProperties: { not: {} },
+                        },
+                    },
                 },
                 required: ['entity', 'partitionKey', 'rationale'],
                 additionalProperties: { not: {} },
             },
         },
     },
-    required: ['wizardTabId', 'summary', 'containers'],
+    required: ['wizardTabId'],
+    oneOf: [
+        { required: ['summary', 'containers'], not: { required: ['error'] } },
+        { required: ['error'], not: { anyOf: [{ required: ['summary'] }, { required: ['containers'] }] } },
+    ],
     additionalProperties: { not: {} },
 };
 
@@ -277,18 +323,21 @@ export const REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_INPUT_SCHEMA = {
  * Registers the cosmosdb_reportPartitionKeyRecommendation tool with the VS Code
  * Language Model API. The tool forwards the structured recommendation to the
  * open Data Modeling wizard's Result page over its event stream, or returns it
- * to Chat when the wizard has been closed.
+ * to Chat when the wizard has been closed. Explicit failures use the wizard's error event instead.
  */
 export function registerReportPartitionKeyRecommendationTool(context: vscode.ExtensionContext): void {
     const tool = vscode.lm.registerTool<ReportPartitionKeyRecommendationInput>(
         REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_NAME,
         {
             prepareInvocation(
-                _options: vscode.LanguageModelToolInvocationPrepareOptions<ReportPartitionKeyRecommendationInput>,
+                options: vscode.LanguageModelToolInvocationPrepareOptions<ReportPartitionKeyRecommendationInput>,
                 _token: vscode.CancellationToken,
             ): vscode.PreparedToolInvocation {
                 return {
-                    invocationMessage: l10n.t('Sending the partition-key recommendation to the Data Modeling wizard…'),
+                    invocationMessage:
+                        options.input.error !== undefined
+                            ? l10n.t('Reporting that a recommendation could not be provided…')
+                            : l10n.t('Sending the partition-key recommendation to the Data Modeling wizard…'),
                 };
             },
 
@@ -296,12 +345,7 @@ export function registerReportPartitionKeyRecommendationTool(context: vscode.Ext
                 options: vscode.LanguageModelToolInvocationOptions<ReportPartitionKeyRecommendationInput>,
                 _token: vscode.CancellationToken,
             ): Promise<vscode.LanguageModelToolResult> {
-                // Troubleshooting: confirm the LLM actually invoked the tool and inspect the raw input.
                 console.log(`[${REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_NAME}] invoke() called`);
-                console.log(
-                    `[${REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_NAME}] raw input:`,
-                    JSON.stringify(options.input, null, 2),
-                );
                 ext.outputChannel.info(`[${REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_NAME}] invoke() called`);
 
                 const toolResult = await callWithTelemetryAndErrorHandling(
@@ -327,6 +371,24 @@ export function registerReportPartitionKeyRecommendationTool(context: vscode.Ext
                             return new vscode.LanguageModelToolResult([
                                 new vscode.LanguageModelTextPart(
                                     l10n.t('The recommendation was not in the expected shape and could not be shown.'),
+                                ),
+                            ]);
+                        }
+
+                        if (parsed.data.error !== undefined) {
+                            const { wizardTabId, error } = parsed.data;
+                            actionContext.valuesToMask.push(error);
+                            actionContext.telemetry.properties.outcome = 'recommendationFailed';
+                            const tab = findDataModelingWizardTab(wizardTabId);
+                            tab?.reportRecommendationError(error);
+                            return new vscode.LanguageModelToolResult([
+                                new vscode.LanguageModelTextPart(
+                                    tab
+                                        ? l10n.t('Recommendation failed: {reason}', { reason: error })
+                                        : l10n.t(
+                                              'The Data Modeling wizard is no longer open. Recommendation failed: {reason}',
+                                              { reason: error },
+                                          ),
                                 ),
                             ]);
                         }

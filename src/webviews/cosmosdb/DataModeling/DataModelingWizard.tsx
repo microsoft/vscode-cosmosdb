@@ -530,9 +530,7 @@ const HydratedDataModelingWizard = ({
                 if (generation !== requestGeneration.current) {
                     return;
                 }
-                await trpcClient.dataModeling.requestRecommendation.mutate({
-                    dataModelJson: JSON.stringify(next.wizard.dataModel),
-                });
+                await trpcClient.dataModeling.requestRecommendation.mutate(next.wizard);
             } catch {
                 if (generation !== requestGeneration.current) {
                     return;

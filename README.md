@@ -99,8 +99,26 @@ When saved work exists for the selected account, the Workload screen offers **Co
 Continuing restores modeling inputs, the current wizard step, and any saved Copilot recommendation/status.
 Starting new replaces only that account's saved session.
 
-Copilot uses the Cosmos DB best-practices skill to recommend partition keys and provide candidate scores, verdicts, and
-per-rule assessments. Results preserve Copilot's candidate ordering, recommended key, and workload analysis.
+Copilot uses the bundled [data model recommendation skill](skills/cosmosdb-data-model-recommendation/SKILL.md),
+which loads the Cosmos DB best-practices guidance, to provide candidate scores, verdicts, and per-rule assessments.
+The request carries the workload and verified scenario context rather than embedding the recommendation workflow.
+For an unchanged built-in scenario, the skill uses the scenario hint's exact per-container default keys as the first
+recommendations, preserving hierarchical path order. Any modeling-input edit disables that automatic preference for the
+whole model; generated IDs and navigation do not count as edits. Custom models have no automatic hint preference.
+Known hard-constraint conflicts must be explained rather than hidden to preserve a hint. Results preserve Copilot's
+candidate ordering, recommended key, and workload analysis; the extension does not rewrite scores or force a winner.
+The skill also supports direct Chat recommendations without a wizard.
+If required guidance or information is missing, or the recommendation cannot be justified, the skill fails rather than
+inventing a result. It reports the blocker and what is needed to proceed through the report tool's explicit error form,
+which puts the wizard in a retryable error state instead of returning provisional recommendations or fabricated scores.
+The skill derives applicable guardrails at request time solely from the loaded best-practices skill and its bundled local
+files, rather than duplicating a rule catalog or numeric limits. It does not fetch external documentation or search the web,
+including URLs cited by the bundled rules. Guardrail explanations identify the local rule actually read.
+It distinguishes hard constraints, conditional requirements, and optimization advice, and checks candidates before scoring.
+Unresolved conflicts or missing evidence needed to establish applicability cause failure.
+Relevant hard constraints, their sources, and supporting evidence appear last under **Absolute rules (guardrails)** in each container's
+result and in the Chat fallback. A known violation or missing evidence required to establish compliance cannot be overridden
+by a score or scenario hint.
 
 After receiving a recommendation on **Result**, select **Deploy** to open the **Deploy** step:
 

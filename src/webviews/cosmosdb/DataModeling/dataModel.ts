@@ -55,7 +55,7 @@ function estimateDistinctValues(name: string): number {
 }
 
 /** Build the partition-key candidate rows for the Scale page from a container's schema. */
-export function buildCandidates(container: ContainerModel | undefined): PartitionCandidate[] {
+export function buildCandidates(container: Pick<ContainerModel, 'properties'> | undefined): PartitionCandidate[] {
     if (!container) {
         return [];
     }
@@ -87,7 +87,12 @@ function instantiateContainer(def: ContainerDefault): ContainerModel {
         reads: def.reads.map((r) => ({ id: nextId('read'), pattern: r.pattern, filters: r.filters, qps: r.qps })),
         writes: { ...def.writes },
         scale: {
-            candidates: buildCandidates({ properties } as ContainerModel),
+            candidates: buildCandidates({ properties }).map((candidate) => ({
+                ...candidate,
+                distinctValues:
+                    def.properties.find((property) => property.name === candidate.attribute)?.distinctValues ??
+                    candidate.distinctValues,
+            })),
             items: def.scale.items,
             writes: def.scale.writes,
             growth: def.scale.growth,
@@ -163,7 +168,7 @@ export function createBlankContainer(entity = 'NewContainer'): ContainerModel {
         reads: [{ id: nextId('read'), pattern: '', filters: 'id', qps: 100 }],
         writes: { insertsPerSec: 0, updatesPerSec: 0, deletesPerSec: 0 },
         scale: {
-            candidates: buildCandidates({ properties } as ContainerModel),
+            candidates: buildCandidates({ properties }),
             items: 'medium',
             writes: 'even',
             growth: 'slow',

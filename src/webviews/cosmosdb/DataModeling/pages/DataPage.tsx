@@ -368,6 +368,7 @@ export function DataPage({ model, scenarioLabel, onChange }: DataPageProps) {
                                         <TableCell>
                                             <Select
                                                 className={styles.cellSelect}
+                                                aria-label={l10n.t('Type for {name}', { name: p.name })}
                                                 value={p.type}
                                                 onChange={(_, data) =>
                                                     patchProperty(p.id, { type: data.value as PropertyType })
@@ -375,7 +376,9 @@ export function DataPage({ model, scenarioLabel, onChange }: DataPageProps) {
                                             >
                                                 {PROPERTY_TYPES.map((t) => (
                                                     <option key={t} value={t}>
-                                                        {t}
+                                                        {t === 'string (ISO)'
+                                                            ? l10n.t('Date/time (ISO 8601 string)')
+                                                            : t}
                                                     </option>
                                                 ))}
                                             </Select>

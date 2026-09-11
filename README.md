@@ -84,6 +84,12 @@ For the metrics, detections, and ARM endpoints behind the dashboard, see [`docs/
 
 ## Data Modeler
 
+Built-in workloads use scenario catalog 2.1 for container schemas, ordered partition keys (including hierarchical keys),
+query descriptions and filter predicates, peak QPS, and write distributions. Enumerated fields seed the Scale page's
+distinct-value counts. Document-size, write-rate, and growth estimates remain editable planning defaults where the catalog
+does not specify them. Updated defaults apply when selecting a workload for a new model; continuing a saved model preserves
+its inputs.
+
 The Data Modeler automatically saves a separate session for each Cosmos DB account in the extension's VS Code global storage
 directory (`ExtensionContext.globalStorageUri`), under `data-modeler/<account-hash>.json`. The account key is derived from its
 normalized endpoint, not its display name or credentials. No workspace folder is required. Opening from Account Overview

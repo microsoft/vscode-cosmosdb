@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import * as vscode from 'vscode';
 import {
     deployDataModel,
     generateDeploymentTemplate,
@@ -102,25 +103,37 @@ describe('data modeler deployment procedure', () => {
     });
 });
 
-describe('priority recommendation prompt', () => {
-    it('requires detailed skill reading and independent component scores, not weighted LLM totals', () => {
-        const prompt = buildRecommendationPrompt('{"containers":[]}', 'wizard-id', {
-            read: 50,
-            write: 30,
-            storage: 20,
-        });
+describe('recommendation prompt', () => {
+    it('requires detailed skill reading and model-supplied scores and verdicts', () => {
+        const prompt = buildRecommendationPrompt('{"containers":[]}', 'wizard-id');
         expect(prompt).toContain('cosmosdb-best-practices');
         expect(prompt).toContain('Reading only the skill overview is not sufficient');
         expect(prompt).toContain('label the recommendation as provisional');
-        expect(prompt).toContain('{"read":50,"write":30,"storage":20}');
-        expect(prompt).toContain('Do not apply the weights to these component scores');
-        expect(prompt).toContain('(readScore*readWeight + writeScore*writeWeight + storageScore*storageWeight)/100');
-        expect(prompt).toContain('priorityScores: {read, write, storage}');
-        expect(prompt).toContain('not measured performance');
-        expect(prompt).toContain('immutability');
-        expect(prompt).toContain('hierarchical prefix routing');
-        expect(prompt).toContain('Do not submit a single combined score or rank verdict');
+        expect(prompt).toContain('3–4 scored candidate keys ordered best first');
+        expect(prompt).toContain('`verdict` (recommended / alternative / avoid)');
+        expect(prompt).toContain('`score` 0–100');
+        expect(prompt).toContain('Immutability');
+        expect(prompt).not.toContain('priorityScores');
+        expect(prompt).not.toContain('weights');
+        expect(prompt).not.toContain('weighted');
+        expect(prompt).not.toContain('scoring priorities');
         expect(prompt).toContain('wizardTabId "wizard-id"');
         expect(prompt).toContain('{"containers":[]}');
+    });
+
+    it('requests a recommendation without weights and retains error masking', async () => {
+        const executeCommand = vi.spyOn(vscode.commands, 'executeCommand').mockResolvedValue(undefined);
+        const ctx = context();
+        const dataModelJson = '{"containers":[{"entity":"PrivateOrders"}]}';
+
+        await dataModelingRouterDef.createCaller(ctx).requestRecommendation({ dataModelJson });
+
+        expect(executeCommand).toHaveBeenCalledWith('workbench.action.chat.open', {
+            mode: 'agent',
+            query: buildRecommendationPrompt(dataModelJson, ctx.wizardTabId),
+        });
+        expect(ctx.actionContext?.valuesToMask).toContain(dataModelJson);
+        expect(ctx.actionContext?.errorHandling.suppressDisplay).toBe(true);
+        executeCommand.mockRestore();
     });
 });

@@ -44,10 +44,10 @@ import {
     REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_DESCRIPTION,
 } from './reportPartitionKeyRecommendationTool';
 
-const priorityCandidate = {
+const scoredCandidate = {
     partitionKey: '/customerId',
-    priorityScores: { read: 95, write: 80, storage: 70 },
-    rationale: 'Customer operations are co-located.',
+    verdict: 'recommended',
+    score: 95,
     assessments: [{ label: 'Query alignment', status: 'pass', detail: 'Customer reads are targeted.' }],
 };
 
@@ -103,6 +103,7 @@ describe('formatRecommendationForChat', () => {
         expect(text).toContain('The Data Modeling wizard is no longer open.');
         expect(text).toContain('Use customerId to keep customer operations co-located.');
         expect(text).toContain('Recommended partition key: `/customerId`');
+        expect(text).toContain('`/customerId` — recommended (95/100)');
         expect(text).toContain('Query match (pass): Customer reads are targeted.');
         expect(text).toContain('Hot-partition risk');
         expect(text).toContain('List orders: single partition; customerId; 100/s; 3 RU');
@@ -157,7 +158,7 @@ describe('cosmosdb_reportPartitionKeyRecommendation', () => {
                             entity: 'Orders',
                             partitionKey: '/customerId',
                             rationale: 'Customer operations are co-located.',
-                            candidates: [priorityCandidate],
+                            candidates: [scoredCandidate],
                         },
                     ],
                 },
@@ -166,6 +167,17 @@ describe('cosmosdb_reportPartitionKeyRecommendation', () => {
         );
 
         expect(firstTab.reportRecommendation).toHaveBeenCalledOnce();
+        expect(firstTab.reportRecommendation).toHaveBeenCalledWith({
+            summary: 'Use customerId.',
+            containers: [
+                {
+                    entity: 'Orders',
+                    partitionKey: '/customerId',
+                    rationale: 'Customer operations are co-located.',
+                    candidates: [scoredCandidate],
+                },
+            ],
+        });
         expect(secondTab.reportRecommendation).not.toHaveBeenCalled();
     });
 
@@ -184,7 +196,7 @@ describe('cosmosdb_reportPartitionKeyRecommendation', () => {
                             entity: 'Orders',
                             partitionKey: '/customerId',
                             rationale: 'Customer operations are co-located.',
-                            candidates: [priorityCandidate],
+                            candidates: [scoredCandidate],
                         },
                     ],
                 },
@@ -195,12 +207,72 @@ describe('cosmosdb_reportPartitionKeyRecommendation', () => {
         expect(drawerTab.reportRecommendation).toHaveBeenCalledOnce();
     });
 
+    it('preserves model-supplied scores, verdicts, candidate order, and container analysis', async () => {
+        const tab = {
+            getId: () => '1c70d73d-9d5d-415a-93f3-630d3e581d63',
+            reportRecommendation: vi.fn(),
+        };
+        wizardTabs.add(tab);
+        const recommendation = {
+            summary: 'Favor the supplied workload analysis.',
+            containers: [
+                {
+                    entity: 'Orders',
+                    partitionKey: '/customerId',
+                    rationale: 'Customer operations are co-located.',
+                    candidates: [
+                        { ...scoredCandidate, score: 89.25 },
+                        { ...scoredCandidate, partitionKey: '/id', verdict: 'alternative', score: 92.5 },
+                        { ...scoredCandidate, partitionKey: '/status', verdict: 'avoid', score: 20 },
+                    ],
+                    queryRouting: {
+                        headline: 'Customer reads are single-partition.',
+                        routes: [],
+                        analysis: 'Retain customerId in read predicates.',
+                    },
+                    documentIdStrategy: { tag: 'Order identifier', recommendation: 'Use the order identifier as id.' },
+                    alternatives: [{ partitionKey: '/id', reason: 'Unique order identifiers.' }],
+                    avoid: [{ partitionKey: '/status', reason: 'Too few distinct values.' }],
+                },
+            ],
+        };
+        const tool = captureRegisteredTool(registerReportPartitionKeyRecommendationTool);
+        await tool.invoke({ input: { wizardTabId: tab.getId(), ...recommendation } }, {} as never);
+
+        expect(tab.reportRecommendation).toHaveBeenCalledWith(recommendation);
+    });
+
+    it('accepts a simple recommendation without candidate scores', async () => {
+        const tab = {
+            getId: () => '1c70d73d-9d5d-415a-93f3-630d3e581d63',
+            reportRecommendation: vi.fn(),
+        };
+        wizardTabs.add(tab);
+        const recommendation = {
+            summary: 'Use customerId.',
+            containers: [{ entity: 'Orders', partitionKey: '/customerId', rationale: 'Customer-scoped workload.' }],
+        };
+        const tool = captureRegisteredTool(registerReportPartitionKeyRecommendationTool);
+        await tool.invoke({ input: { wizardTabId: tab.getId(), ...recommendation } }, {} as never);
+
+        expect(tab.reportRecommendation).toHaveBeenCalledWith(recommendation);
+    });
+
     it.each([
-        { read: -1, write: 50, storage: 50 },
-        { read: 101, write: 50, storage: 50 },
-        { read: '50', write: 50, storage: 50 },
-        { read: 50, write: 50 },
-    ])('rejects invalid component scores %j', async (priorityScores) => {
+        { ...scoredCandidate, score: undefined },
+        { ...scoredCandidate, score: '95' },
+        { ...scoredCandidate, score: Number.NaN },
+        { ...scoredCandidate, verdict: undefined },
+        { ...scoredCandidate, verdict: 'best' },
+        { ...scoredCandidate, assessments: undefined },
+        { ...scoredCandidate, assessments: [{ label: 'Query match', status: 'unknown', detail: 'Invalid status.' }] },
+        {
+            partitionKey: '/customerId',
+            priorityScores: { read: 95, write: 80, storage: 70 },
+            rationale: 'Component scores are no longer the tool contract.',
+            assessments: [],
+        },
+    ])('rejects malformed scored candidates %j', async (candidate) => {
         const tab = {
             getId: () => '1c70d73d-9d5d-415a-93f3-630d3e581d63',
             reportRecommendation: vi.fn(),
@@ -218,7 +290,7 @@ describe('cosmosdb_reportPartitionKeyRecommendation', () => {
                             entity: 'Orders',
                             partitionKey: '/customerId',
                             rationale: '',
-                            candidates: [{ ...priorityCandidate, priorityScores }],
+                            candidates: [candidate],
                         },
                     ],
                 },

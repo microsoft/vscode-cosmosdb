@@ -119,11 +119,5 @@ export interface ScaleProfile {
     growth: DataGrowth;
 }
 
-export interface ScoringWeights {
-    read: number;
-    write: number;
-    storage: number;
-}
-
 /** Upper bound on how many containers a single workload can model in the wizard. */
 export const MAX_CONTAINERS = 10;

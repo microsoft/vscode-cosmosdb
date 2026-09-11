@@ -7,7 +7,6 @@ import { z } from 'zod';
 import { type WizardState } from '../webviews/cosmosdb/DataModeling/dataModel';
 import { MAX_CONTAINERS, type ContainerModel } from '../webviews/cosmosdb/DataModeling/models';
 import { PartitionKeyRecommendationSchema } from './recommendationSchema';
-import { ScoringWeightsSchema } from './scoring';
 
 const PropertyRoleSchema = z.enum(['key', 'filter', 'payload']);
 const ContainerModelSchema: z.ZodType<ContainerModel> = z.object({
@@ -75,7 +74,6 @@ export const WizardStateSchema: z.ZodType<WizardState> = z
             containers: z.array(ContainerModelSchema).max(MAX_CONTAINERS),
             activeContainerId: z.string().optional(),
         }),
-        weights: z.object({ read: z.number(), write: z.number(), storage: z.number() }),
     })
     .superRefine((state, ctx) => {
         const containers = state.dataModel.containers;
@@ -105,8 +103,6 @@ export const ModelingAdvisorSnapshotSchema = z
             status: z.enum(['idle', 'waiting', 'received', 'error']),
             value: PartitionKeyRecommendationSchema.optional(),
             error: z.string().optional(),
-            /** Snapshot of priorities at request time; never inferred from later Review edits. */
-            weights: ScoringWeightsSchema.optional(),
         }),
     })
     .refine(

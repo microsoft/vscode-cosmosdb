@@ -17,9 +17,8 @@
  * host-side seeding step.
  */
 
-import { DEFAULT_SCORING_WEIGHTS } from '../../../dataModeling/scoring';
 import { type ContainerDefault, DATA_MODEL_DEFAULTS } from './dataModelDefaults';
-import { type ContainerModel, type PartitionCandidate, type ScenarioId, type ScoringWeights } from './models';
+import { type ContainerModel, type PartitionCandidate, type ScenarioId } from './models';
 import { nextId } from './scenarios';
 
 /**
@@ -31,14 +30,13 @@ export interface DataModel {
     activeContainerId?: string;
 }
 
-/** Top-level wizard state: navigation, the chosen scenario, the {@link DataModel}, and scoring weights. */
+/** Top-level wizard state: navigation, the chosen scenario, and the {@link DataModel}. */
 export interface WizardState {
     step: number;
     /** Visited steps remain navigable when revisiting an earlier step. Optional for older saved models. */
     reachedSteps?: string[];
     scenario?: ScenarioId;
     dataModel: DataModel;
-    weights: ScoringWeights;
 }
 
 /** Rough cardinality guess from a property name, used to pre-fill the Scale page. */
@@ -179,11 +177,10 @@ export function createInitialState(): WizardState {
         step: 1,
         scenario: undefined,
         dataModel: createEmptyDataModel(),
-        weights: { ...DEFAULT_SCORING_WEIGHTS },
     };
 }
 
-/** Pre-fill the whole data model from a chosen scenario, preserving step and weights. */
+/** Pre-fill the whole data model from a chosen scenario, preserving navigation. */
 export function applyScenario(state: WizardState, scenario: ScenarioId): WizardState {
     return { ...state, scenario, dataModel: buildDataModel(scenario) };
 }

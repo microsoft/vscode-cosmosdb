@@ -38,7 +38,6 @@ function snapshot(): ModelingAdvisorSnapshot {
         },
         recommendation: {
             status: 'received',
-            weights: { read: 33.34, write: 33.33, storage: 33.33 },
             value: {
                 summary: 'Use conversationId.',
                 containers: [
@@ -51,8 +50,6 @@ function snapshot(): ModelingAdvisorSnapshot {
                                 partitionKey: '/conversationId',
                                 verdict: 'recommended',
                                 score: 90,
-                                priorityScores: { read: 90, write: 90, storage: 90 },
-                                rationale: 'Balanced fit across all priorities.',
                                 assessments: [
                                     { label: 'Query match', status: 'pass', detail: 'Targets a conversation.' },
                                 ],
@@ -282,7 +279,7 @@ describe('DataModelerProjectService', () => {
         const second = new DataModelerProjectService('https://account-b.documents.azure.com');
         const firstState = snapshot();
         const secondState = snapshot();
-        secondState.wizard.weights = { read: 10, write: 20, storage: 70 };
+        secondState.wizard.dataModel.containers[0].scale.candidates[0].distinctValues = 67890;
         secondState.recommendation.value!.summary = 'Account B recommendation';
         await service.loadState();
         await service.saveState(firstState);
@@ -302,6 +299,39 @@ describe('DataModelerProjectService', () => {
         expect(await service.loadState()).toBeNull();
         await service.saveState(snapshot());
         expect(files.get(legacy.toString())).toBe(content);
+    });
+
+    it('loads older priority-based projects without recalculating their saved recommendations', async () => {
+        const state = snapshot();
+        const candidate = state.recommendation.value!.containers[0].candidates![0];
+        const legacy = {
+            version: 1,
+            name: 'Saved model',
+            state: {
+                wizard: { ...state.wizard, weights: { read: 80, write: 10, storage: 10 } },
+                recommendation: {
+                    ...state.recommendation,
+                    weights: { read: 80, write: 10, storage: 10 },
+                    value: {
+                        ...state.recommendation.value,
+                        containers: [
+                            {
+                                ...state.recommendation.value!.containers[0],
+                                candidates: [
+                                    {
+                                        ...candidate,
+                                        priorityScores: { read: 100, write: 20, storage: 50 },
+                                        rationale: 'Previously weighted recommendation.',
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                },
+            },
+        };
+        files.set(service.projectUri.toString(), Buffer.from(JSON.stringify(legacy)));
+        expect(await service.loadState()).toEqual(state);
     });
 
     it('does not let a corrupt account file block another account', async () => {

@@ -6,13 +6,9 @@
 import {
     Badge,
     Button,
-    Card,
     Link,
     makeStyles,
     mergeClasses,
-    Popover,
-    PopoverSurface,
-    PopoverTrigger,
     Tab,
     TabList,
     Table,
@@ -26,7 +22,7 @@ import {
 } from '@fluentui/react-components';
 import { CheckmarkRegular, CopyRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { getPartitionKeyPaths } from '../../../../dataModeling/deploymentModel';
 import { buildExistingDatabaseContainerBicep } from '../../../../panels/migration/helpers/bicepGenerator';
 import {
@@ -39,13 +35,12 @@ import {
 import { MonacoEditor, type MonacoEditorType } from '../../../MonacoEditor';
 import { CopilotRecommendation, type RecommendationStatus } from '../components/CopilotRecommendation';
 import { InfoBox, SubPanel } from '../components/primitives';
-import { type ScoringWeights } from '../models';
 
 /**
  * Result step. One tab per container, each showing Copilot's partition-key recommendation:
  * scored candidate cards, a hot-partition risk comparison, a query-routing analysis, a
- * document-id strategy, and a copyable infrastructure snippet. Assessments are LLM-driven;
- * scores and ranking use the applied priorities. Deployment is configured in the following step.
+ * document-id strategy, and a copyable infrastructure snippet. Assessments, scores, and ranking
+ * are LLM-driven. Deployment is configured in the following step.
  * While the request is in flight, the {@link CopilotRecommendation} panel shows a waiting note instead.
  */
 
@@ -142,31 +137,6 @@ const useStyles = makeStyles({
         justifyContent: 'center',
         fontSize: tokens.fontSizeBase300,
         fontWeight: tokens.fontWeightBold,
-    },
-    formula: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: tokens.spacingVerticalS,
-        maxWidth: 'min(440px, 80vw)',
-        overflowWrap: 'anywhere',
-    },
-    priorities: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        alignItems: 'center',
-        gap: tokens.spacingHorizontalM,
-        backgroundColor: tokens.colorNeutralBackground2,
-    },
-    prioritiesTitle: {
-        margin: 0,
-        flexShrink: 0,
-    },
-    priorityBadge: {
-        height: 'auto',
-        padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalM}`,
-        fontSize: tokens.fontSizeBase300,
-        whiteSpace: 'normal',
-        textAlign: 'start',
     },
     assessList: {
         display: 'flex',
@@ -368,181 +338,39 @@ function formatPartitionKeyForDisplay(paths: string[], partitionKey: string): st
 const formatScore = (value: number) =>
     new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(Math.ceil(value));
 
-function ScoreExplanation({
-    candidate,
-    weights,
-    context,
-    color,
-}: {
-    candidate: PkCandidate;
-    weights?: ScoringWeights;
-    context: string;
-    color: string;
-}) {
+function ScoreRing({ candidate, context, color }: { candidate: PkCandidate; context: string; color: string }) {
     const styles = useStyles();
-    const [open, setOpen] = useState(false);
-    const triggerRef = useRef<HTMLButtonElement>(null);
-    const pinned = useRef(false);
-    const focused = useRef(false);
-    const formulaId = useId();
     const score = Math.max(0, Math.min(100, candidate.score));
     const scoreText = formatScore(score);
-    const scores = candidate.priorityScores;
-    const totalWeight = 100;
-    const priorities = [
-        { key: 'read', label: l10n.t('Read alignment:') },
-        { key: 'write', label: l10n.t('Write distribution:') },
-        { key: 'storage', label: l10n.t('Storage & growth:') },
-    ] as const;
-
-    useEffect(() => {
-        if (!open) {
-            return;
-        }
-        const ownerDocument = triggerRef.current?.ownerDocument;
-        const dismissPreview = (event: KeyboardEvent) => {
-            if (event.key === 'Escape' && !event.defaultPrevented) {
-                pinned.current = false;
-                setOpen(false);
-                event.preventDefault();
-            }
-        };
-        // Hover previews need Escape dismissal even when keyboard focus is outside the trigger.
-        ownerDocument?.addEventListener('keydown', dismissPreview);
-        return () => ownerDocument?.removeEventListener('keydown', dismissPreview);
-    }, [open]);
-
     return (
-        <Popover
-            open={open}
-            openOnHover
-            unstable_disableAutoFocus
-            onOpenChange={(event, data) => {
-                if (
-                    event.type === 'click' &&
-                    event.target instanceof Node &&
-                    triggerRef.current?.contains(event.target)
-                ) {
-                    // Clicking a preview pins it; a second activation closes it.
-                    pinned.current = !pinned.current;
-                    setOpen(pinned.current);
-                } else if (event.type !== 'mouseleave' || (!pinned.current && !focused.current)) {
-                    if (!data.open) {
-                        pinned.current = false;
-                    }
-                    setOpen(data.open);
-                }
-            }}
+        <div
+            className={styles.ring}
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- Composite score graphic, not an image file.
+            role="img"
+            aria-label={l10n.t('Score {score} out of 100 for {context}', { score: scoreText, context })}
         >
-            <PopoverTrigger disableButtonEnhancement>
-                <Button
-                    ref={triggerRef}
-                    appearance="transparent"
-                    className={styles.ring}
-                    aria-label={l10n.t('Score {score} out of 100 for {context}. Show weighted calculation.', {
-                        score: scoreText,
-                        context,
-                    })}
-                    aria-describedby={open ? formulaId : undefined}
-                    onFocus={() => {
-                        focused.current = true;
-                        setOpen(true);
-                    }}
-                    onBlur={() => {
-                        focused.current = false;
-                        if (!pinned.current) {
-                            setOpen(false);
-                        }
-                    }}
-                >
-                    <svg width="52" height="52" viewBox="0 0 52 52" aria-hidden="true">
-                        <circle
-                            cx="26"
-                            cy="26"
-                            r="22"
-                            fill="none"
-                            stroke={tokens.colorNeutralStroke2}
-                            strokeWidth="3"
-                        />
-                        <circle
-                            cx="26"
-                            cy="26"
-                            r="22"
-                            fill="none"
-                            stroke={color}
-                            strokeWidth="3"
-                            strokeLinecap="round"
-                            strokeDasharray={`${(score / 100) * 138.23} 138.23`}
-                            transform="rotate(-90 26 26)"
-                        />
-                    </svg>
-                    <span className={styles.ringVal} style={{ color }} aria-hidden="true">
-                        {scoreText}
-                    </span>
-                </Button>
-            </PopoverTrigger>
-            <PopoverSurface className={styles.formula} id={formulaId} aria-label={l10n.t('Weighted score calculation')}>
-                <Text weight="semibold">{l10n.t('Weighted score calculation')}</Text>
-                {weights && scores && totalWeight > 0 ? (
-                    <>
-                        <Text>
-                            {l10n.t(
-                                'Values are rounded up for display. The score and ranking use the original values, so displayed percentages and contributions may not add up exactly.',
-                            )}
-                        </Text>
-                        {priorities.map(({ key, label }) => (
-                            <Text key={key}>
-                                {l10n.t('{label} {score} × {weight}% / {totalWeight}% ≈ {contribution}', {
-                                    label,
-                                    score: formatScore(scores[key]),
-                                    weight: formatScore(weights[key]),
-                                    totalWeight: formatScore(totalWeight),
-                                    contribution: formatScore((scores[key] * weights[key]) / totalWeight),
-                                })}
-                            </Text>
-                        ))}
-                        <Text>
-                            {l10n.t(
-                                'Normalized total: ({readScore} × {readWeight} + {writeScore} × {writeWeight} + {storageScore} × {storageWeight}) / {totalWeight} ≈ {total}',
-                                {
-                                    readScore: formatScore(scores.read),
-                                    readWeight: formatScore(weights.read),
-                                    writeScore: formatScore(scores.write),
-                                    writeWeight: formatScore(weights.write),
-                                    storageScore: formatScore(scores.storage),
-                                    storageWeight: formatScore(weights.storage),
-                                    totalWeight: formatScore(totalWeight),
-                                    total: scoreText,
-                                },
-                            )}
-                        </Text>
-                        <Text>
-                            {l10n.t('Final score: {score} / 100 (rounded up).', {
-                                score: scoreText,
-                            })}
-                        </Text>
-                    </>
-                ) : (
-                    <Text>
-                        {l10n.t(
-                            'Regenerate this recommendation to see its applied priorities and weighted score calculation.',
-                        )}
-                    </Text>
-                )}
-            </PopoverSurface>
-        </Popover>
+            <svg width="52" height="52" viewBox="0 0 52 52" aria-hidden="true">
+                <circle cx="26" cy="26" r="22" fill="none" stroke={tokens.colorNeutralStroke2} strokeWidth="3" />
+                <circle
+                    cx="26"
+                    cy="26"
+                    r="22"
+                    fill="none"
+                    stroke={color}
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeDasharray={`${(score / 100) * 138.23} 138.23`}
+                    transform="rotate(-90 26 26)"
+                />
+            </svg>
+            <span className={styles.ringVal} style={{ color }} aria-hidden="true">
+                {scoreText}
+            </span>
+        </div>
     );
 }
 
-function CandidateCard({
-    candidate,
-    weights,
-    entity,
-}: {
-    candidate: PkCandidate;
-    weights?: ScoringWeights;
-    entity: string;
-}) {
+function CandidateCard({ candidate, entity }: { candidate: PkCandidate; entity: string }) {
     const styles = useStyles();
     const assessmentId = useId();
 
@@ -606,9 +434,8 @@ function CandidateCard({
                         </div>
                     ) : null}
                 </div>
-                <ScoreExplanation
+                <ScoreRing
                     candidate={candidate}
-                    weights={weights}
                     context={`${entity} ${displayKey}`}
                     color={ringStroke[candidate.verdict]}
                 />
@@ -641,7 +468,7 @@ function riskBand(risk: HotPartitionRisk['risk']): { fill: string; label: string
     return { fill: styleName, label: styleName, text: risk };
 }
 
-function ContainerResultView({ container, weights }: { container: ContainerRecommendation; weights?: ScoringWeights }) {
+function ContainerResultView({ container }: { container: ContainerRecommendation }) {
     const styles = useStyles();
     const [codeTab, setCodeTab] = useState<CodeTab>('bicep');
     const [copied, setCopied] = useState(false);
@@ -694,7 +521,7 @@ function ContainerResultView({ container, weights }: { container: ContainerRecom
             {container.candidates && container.candidates.length > 0 ? (
                 <div className={styles.cards}>
                     {container.candidates.map((c, i) => (
-                        <CandidateCard key={i} candidate={c} weights={weights} entity={container.entity} />
+                        <CandidateCard key={i} candidate={c} entity={container.entity} />
                     ))}
                 </div>
             ) : null}
@@ -819,7 +646,6 @@ function ContainerResultView({ container, weights }: { container: ContainerRecom
 export interface ResultPageProps {
     recommendationStatus: RecommendationStatus;
     recommendation?: PartitionKeyRecommendation;
-    weights?: ScoringWeights;
     recommendationError?: string;
     onRetryRecommendation: () => void;
 }
@@ -827,13 +653,11 @@ export interface ResultPageProps {
 export function ResultPage({
     recommendationStatus,
     recommendation,
-    weights,
     recommendationError,
     onRetryRecommendation,
 }: ResultPageProps) {
     const styles = useStyles();
     const containers = recommendation?.containers ?? [];
-    const appliedWeights = weights;
     const [activeEntity, setActiveEntity] = useState<string>();
 
     const active = containers.find((c) => c.entity === activeEntity) ?? containers[0];
@@ -861,53 +685,6 @@ export function ResultPage({
 
     return (
         <div className={styles.stack}>
-            <Card
-                appearance="outline"
-                size="small"
-                className={styles.priorities}
-                aria-label={l10n.t('Applied scoring priorities')}
-            >
-                <Text as="h3" weight="bold" className={styles.prioritiesTitle}>
-                    {l10n.t('Applied scoring priorities')}
-                </Text>
-                {appliedWeights ? (
-                    <>
-                        <Badge
-                            appearance="tint"
-                            color="informative"
-                            shape="rounded"
-                            size="large"
-                            className={styles.priorityBadge}
-                        >
-                            {l10n.t('Read / query alignment: {weight}%', { weight: formatScore(appliedWeights.read) })}
-                        </Badge>{' '}
-                        <Badge
-                            appearance="tint"
-                            color="informative"
-                            shape="rounded"
-                            size="large"
-                            className={styles.priorityBadge}
-                        >
-                            {l10n.t('Write distribution: {weight}%', { weight: formatScore(appliedWeights.write) })}
-                        </Badge>{' '}
-                        <Badge
-                            appearance="tint"
-                            color="informative"
-                            shape="rounded"
-                            size="large"
-                            className={styles.priorityBadge}
-                        >
-                            {l10n.t('Storage & growth: {weight}%', { weight: formatScore(appliedWeights.storage) })}
-                        </Badge>
-                    </>
-                ) : (
-                    <Text>
-                        {l10n.t(
-                            'Regenerate this recommendation to see its applied priorities and weighted score calculation.',
-                        )}
-                    </Text>
-                )}
-            </Card>
             {recommendation.summary ? <Text className={styles.summary}>{recommendation.summary}</Text> : null}
 
             {containers.length > 1 ? (
@@ -929,7 +706,7 @@ export function ResultPage({
                 </TabList>
             ) : null}
 
-            <ContainerResultView key={active.entity} container={active} weights={appliedWeights} />
+            <ContainerResultView key={active.entity} container={active} />
         </div>
     );
 }

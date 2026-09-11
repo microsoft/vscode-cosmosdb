@@ -90,21 +90,11 @@ normalized endpoint, not its display name or credentials. No workspace folder is
 uses that account; opening from the command palette prompts for an account.
 
 When saved work exists for the selected account, the Workload screen offers **Continue existing** or **Start new**.
-Continuing restores modeling inputs, scoring weights, the current wizard step, and any saved Copilot recommendation/status.
+Continuing restores modeling inputs, the current wizard step, and any saved Copilot recommendation/status.
 Starting new replaces only that account's saved session.
 
-On Review, set the **Read alignment**, **Write distribution**, and **Storage & growth** priorities. Defaults are 33.34%,
-33.33%, and 33.33%, totaling 100%. Copilot uses the Cosmos DB best-practices skill to assign each candidate three independent
-suitability scores (0-100). Data Modeler computes `(read score × read weight + write score × write weight + storage score ×
-storage weight) / 100`, sorts by the unrounded total, and assigns the recommendation badges. Equal scores retain their order;
-ties for best share the recommended badge.
-
-Results show the priorities captured when the request started, not later Review edits. Displayed percentages and scores round
-up to whole numbers; ranking uses the original precision. Hover, focus, or click a candidate's score to inspect the
-approximate calculation (rounded display values may not add up exactly). These scores are estimates, not measured performance. If weighting changes the LLM's
-proposed winning key, the code sample and rationale use the computed winner; analysis specific to the former key is omitted.
-Older saved recommendations without component scores or captured priorities remain viewable but need a new analysis to show
-weighted scoring and its formula.
+Copilot uses the Cosmos DB best-practices skill to recommend partition keys and provide candidate scores, verdicts, and
+per-rule assessments. Results preserve Copilot's candidate ordering, recommended key, and workload analysis.
 
 After receiving a recommendation on **Result**, select **Deploy** to open the **Deploy** step:
 

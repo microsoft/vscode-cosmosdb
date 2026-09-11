@@ -7,14 +7,12 @@ import { Button, makeStyles, Text, tokens } from '@fluentui/react-components';
 import { ArrowRightRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { FieldGroup, InfoBox, TwoColumn } from '../components/primitives';
-import { WeightSliders } from '../components/WeightSliders';
-import { type ContainerModel, type ScoringWeights } from '../models';
+import { type ContainerModel } from '../models';
 
 /**
  * Review step. Read-only summary with Edit shortcuts: one for the workload, and one
- * per container that jumps back to that container's step. Also hosts the scoring-weight
- * sliders. Editing jumps back via the provided callbacks so the page stays decoupled
- * from the wizard mechanism.
+ * per container that jumps back to that container's step. Editing jumps back via the provided
+ * callbacks so the page stays decoupled from the wizard mechanism.
  */
 
 const useStyles = makeStyles({
@@ -77,10 +75,8 @@ const RULES = [
 export interface ReviewPageProps {
     workloadLabel: string;
     containers: ContainerModel[];
-    weights: ScoringWeights;
     onEditWorkload: () => void;
     onEditContainer: (containerId: string) => void;
-    onChangeWeights: (weights: ScoringWeights) => void;
 }
 
 function ReviewRow({
@@ -111,14 +107,7 @@ function ReviewRow({
     );
 }
 
-export function ReviewPage({
-    workloadLabel,
-    containers,
-    weights,
-    onEditWorkload,
-    onEditContainer,
-    onChangeWeights,
-}: ReviewPageProps) {
+export function ReviewPage({ workloadLabel, containers, onEditWorkload, onEditContainer }: ReviewPageProps) {
     const styles = useStyles();
 
     return (
@@ -163,16 +152,7 @@ export function ReviewPage({
                         </div>
                     </FieldGroup>
 
-                    <InfoBox>{l10n.t('Review your selections and priorities before requesting analysis.')}</InfoBox>
-
-                    <FieldGroup
-                        label={l10n.t('Scoring priorities')}
-                        hint={l10n.t(
-                            'Read, write, and storage priorities are approximately equal by default (33.33% each). Adjust what matters most; these priorities determine the ranking after analysis.',
-                        )}
-                    >
-                        <WeightSliders weights={weights} onChange={onChangeWeights} />
-                    </FieldGroup>
+                    <InfoBox>{l10n.t('Review your selections before requesting analysis.')}</InfoBox>
                 </div>
             </TwoColumn>
         </div>

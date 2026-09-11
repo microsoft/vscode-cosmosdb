@@ -6,28 +6,40 @@
 // @vitest-environment jsdom
 
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { DEFAULT_SCORING_WEIGHTS } from '../../../../dataModeling/scoring';
+import { createBlankContainer } from '../dataModel';
 import { ReviewPage } from './ReviewPage';
 
-describe('ReviewPage scoring priorities', () => {
-    it('explains equal defaults and that priorities apply after analysis, not instantly', () => {
+describe('ReviewPage', () => {
+    it('shows the review summary and evaluation rules without scoring priorities', () => {
+        render(<ReviewPage workloadLabel="Chat" containers={[]} onEditContainer={vi.fn()} onEditWorkload={vi.fn()} />);
+        expect(screen.getByText('Workload: Chat')).toBeVisible();
+        expect(screen.getByText('High cardinality')).toBeVisible();
+        expect(screen.getByText('Review your selections before requesting analysis.')).toBeVisible();
+        expect(screen.queryByText(/priorities/i)).not.toBeInTheDocument();
+        expect(screen.queryByRole('slider')).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Edit' })).toHaveAccessibleName('Edit');
+    });
+
+    it('keeps workload and container edit shortcuts', async () => {
+        const user = userEvent.setup();
+        const container = createBlankContainer('Messages');
+        const onEditWorkload = vi.fn();
+        const onEditContainer = vi.fn();
         render(
             <ReviewPage
                 workloadLabel="Chat"
-                containers={[]}
-                weights={DEFAULT_SCORING_WEIGHTS}
-                onChangeWeights={vi.fn()}
-                onEditContainer={vi.fn()}
-                onEditWorkload={vi.fn()}
+                containers={[container]}
+                onEditContainer={onEditContainer}
+                onEditWorkload={onEditWorkload}
             />,
         );
-        expect(screen.getByText(/approximately equal by default \(33.33% each\)/)).toHaveTextContent(
-            'these priorities determine the ranking after analysis.',
-        );
-        expect(screen.queryByText(/recalculates instantly/)).not.toBeInTheDocument();
-        expect(screen.getByRole('slider', { name: 'Read / query alignment' })).toHaveValue('33.34');
-        expect(screen.getByRole('slider', { name: 'Write distribution' })).toHaveValue('33.33');
-        expect(screen.getByRole('slider', { name: 'Storage & growth' })).toHaveValue('33.33');
+        expect(screen.getByText('Messages')).toBeVisible();
+        const [editWorkload, editContainer] = screen.getAllByRole('button', { name: 'Edit' });
+        await user.click(editWorkload);
+        expect(onEditWorkload).toHaveBeenCalledOnce();
+        await user.click(editContainer);
+        expect(onEditContainer).toHaveBeenCalledWith(container.id);
     });
 });

@@ -14,8 +14,6 @@ import {
 } from '../../../commands/dataModeling/deployDataModel';
 import { DeploymentRequestSchema, DeploymentTemplateInputSchema } from '../../../dataModeling/deploymentModel';
 import { ModelingAdvisorSnapshotSchema } from '../../../dataModeling/modelingAdvisorSchema';
-import { ScoringWeightsSchema } from '../../../dataModeling/scoring';
-import { type ScoringWeights } from '../../../webviews/cosmosdb/DataModeling/models';
 import { dataModelingProcedure, dataModelingRouter } from '../trpc';
 
 /**
@@ -23,7 +21,7 @@ import { dataModelingProcedure, dataModelingRouter } from '../trpc';
  * instruction, not user-facing UI — kept as a stable, non-localized English
  * string so the model behavior is predictable.
  */
-export function buildRecommendationPrompt(dataModelJson: string, wizardTabId: string, weights: ScoringWeights): string {
+export function buildRecommendationPrompt(dataModelJson: string, wizardTabId: string): string {
     return (
         'You are helping choose the best Azure Cosmos DB for NoSQL partition key for a data model designed in the Cosmos DB Data Modeling wizard.' +
         '\n\n' +
@@ -42,13 +40,6 @@ export function buildRecommendationPrompt(dataModelJson: string, wizardTabId: st
         '```json\n' +
         dataModelJson +
         '\n```\n\n' +
-        'The user selected these scoring priorities (percentages totaling 100): ' +
-        JSON.stringify(weights) +
-        '.\n' +
-        'For every candidate, assign three INDEPENDENT suitability scores from 0 to 100 (higher is better) in priorityScores: read, write, storage. Do not apply the weights to these component scores. Data Modeler computes the final score as (readScore*readWeight + writeScore*writeWeight + storageScore*storageWeight)/100 and ranks candidates itself. Do not supply score or verdict.\n' +
-        'Use the loaded best-practices skill to ground each dimension: read = alignment with supplied query predicates and frequencies, including point reads and hierarchical prefix routing; write = cardinality, traffic distribution and hotspot risk; storage = projected logical-partition size, data distribution and growth headroom. Synthetic and hierarchical keys are strategies assessed through their effects, not automatic bonuses. Avoid double-counting the same benefit within a dimension.\n' +
-        'Use this consistent rubric in each dimension: 0 = unsuitable, 25 = major risk or mismatch, 50 = substantial trade-offs, 75 = good fit with minor trade-offs, 100 = excellent fit supported by the supplied workload. These are estimates, not measured performance. Explain uncertainty when information is missing. Always check immutability and applicable key-length/partition-size limits; do not recommend a known invalid configuration just because its weighted score is high. Reflect known disqualifying violations in all three scores and explain them in assessments.\n' +
-        'Use the weighted total only to choose which candidate the container-level partitionKey, rationale, queryRouting and documentIdStrategy describe. For tied totals retain candidate order. Keep the overall summary independent of a particular winning key. Data Modeler has final authority over totals, order and verdicts.\n\n' +
         'For EACH container, decide the best partition key. Weigh cardinality (favor high-cardinality keys), query alignment (the dominant read filters should be the partition key), write distribution (avoid hot partitions), and the 20 GB storage / 10,000 RU-per-second limits of a single logical partition. Consider a hierarchical partition key when one attribute is not enough.' +
         '\n\n' +
         `When you have decided, call #${REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_NAME} exactly once with the structured recommendation for every container and wizardTabId "${wizardTabId}", so it is displayed in the originating Data Modeling wizard's Result page. If its result says that wizard is no longer open, present the complete recommendation it returns in the Chat response instead.` +
@@ -57,7 +48,7 @@ export function buildRecommendationPrompt(dataModelJson: string, wizardTabId: st
         '\n' +
         '- `partitionKey`: the recommended key path, and a `rationale` (1–2 sentences, may name the workload pattern).' +
         '\n' +
-        '- `candidates`: 3–4 distinct candidate keys. Each must include `priorityScores: {read, write, storage}`, a candidate-specific `rationale` describing its trade-offs, and `assessments` covering the three dimensions and mandatory constraints. Each assessment has a short rule `label`, `status` (pass / warn / fail / info), and one-line `detail`. Include realistic weaker candidates for comparison. Do not submit a single combined score or rank verdict.' +
+        '- `candidates`: 3–4 scored candidate keys ordered best first. Each has a `verdict` (recommended / alternative / avoid), a `score` 0–100 (higher is better), and 2–3 `assessments` — each a short rule `label` (e.g. "Query match", "Cardinality", "Immutability", "Write dist."), a `status` (pass / warn / fail / info), and a one-line `detail`. Include realistic "avoid" candidates (e.g. low-cardinality or time-bucketed keys) with low scores.' +
         '\n' +
         '- `hotPartitionRisk`: one row per candidate with a `risk` band (low / medium / high / severe) and a `pct` 0–100 (higher = more skew) for the comparison bars.' +
         '\n' +
@@ -96,7 +87,7 @@ export const dataModelingRouterDef = dataModelingRouter({
      * report tool, whose result is streamed back to the Result page.
      */
     requestRecommendation: dataModelingProcedure
-        .input(z.object({ dataModelJson: z.string(), weights: ScoringWeightsSchema }))
+        .input(z.object({ dataModelJson: z.string() }))
         .mutation(async ({ input, ctx }) => {
             if (ctx.actionContext) {
                 ctx.actionContext.errorHandling.suppressDisplay = true;
@@ -107,7 +98,7 @@ export const dataModelingRouterDef = dataModelingRouter({
 
             await vscode.commands.executeCommand('workbench.action.chat.open', {
                 mode: 'agent',
-                query: buildRecommendationPrompt(input.dataModelJson, ctx.wizardTabId, input.weights),
+                query: buildRecommendationPrompt(input.dataModelJson, ctx.wizardTabId),
             });
         }),
 });

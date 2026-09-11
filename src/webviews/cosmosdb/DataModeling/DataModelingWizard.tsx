@@ -22,8 +22,7 @@ import { AddRegular, CheckmarkRegular, DeleteRegular, DismissRegular, EditRegula
 import { useTrpcClient } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
 import { type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { PriorityRecommendationSchema } from '../../../dataModeling/recommendationSchema';
-import { rankRecommendation, ScoringWeightsSchema } from '../../../dataModeling/scoring';
+import { PartitionKeyRecommendationSchema } from '../../../dataModeling/recommendationSchema';
 import { type DataModelingAppRouter, type DataModelingEvent } from '../../api/types';
 import { AlertDialog } from '../../common/AlertDialog';
 import { ContainerFooter } from './components/Container/ContainerFooter';
@@ -300,17 +299,14 @@ const HydratedDataModelingWizard = ({
                         return previous;
                     }
                     if (event.type === 'recommendationReceived') {
-                        const parsed = PriorityRecommendationSchema.safeParse(event.recommendation);
-                        const appliedWeights = ScoringWeightsSchema.safeParse(previous.recommendation.weights);
-                        if (!parsed.success || !appliedWeights.success) {
+                        const parsed = PartitionKeyRecommendationSchema.safeParse(event.recommendation);
+                        if (!parsed.success) {
                             return {
                                 ...previous,
                                 recommendation: {
                                     ...previous.recommendation,
                                     status: 'error',
-                                    error: l10n.t(
-                                        'The recommendation is missing valid priority scores or priorities. Request a new recommendation.',
-                                    ),
+                                    error: l10n.t('The recommendation is invalid. Request a new recommendation.'),
                                 },
                             };
                         }
@@ -318,8 +314,7 @@ const HydratedDataModelingWizard = ({
                             ...previous,
                             recommendation: {
                                 status: 'received',
-                                value: rankRecommendation(parsed.data, appliedWeights.data),
-                                weights: appliedWeights.data,
+                                value: parsed.data,
                             },
                         };
                     }
@@ -352,11 +347,6 @@ const HydratedDataModelingWizard = ({
             containerNameInputRef.current?.focus();
         }
     }, [editingContainerId]);
-
-    const patch = useCallback(
-        (partial: Partial<WizardState>) => setState((prev) => ({ ...prev, ...partial })),
-        [setState],
-    );
 
     // Navigate to a 1-based step index, syncing the active container when the target is a
     // container step without changing any user-entered cardinalities.
@@ -528,7 +518,7 @@ const HydratedDataModelingWizard = ({
                 step: buildStepValues(snapshot.wizard.dataModel).length,
                 reachedSteps: buildStepValues(snapshot.wizard.dataModel),
             },
-            recommendation: { status: 'waiting', weights: { ...snapshot.wizard.weights } },
+            recommendation: { status: 'waiting' },
         };
         setSnapshot(next);
         // Preserve inputs and Result navigation before opening Chat.
@@ -542,7 +532,6 @@ const HydratedDataModelingWizard = ({
                 }
                 await trpcClient.dataModeling.requestRecommendation.mutate({
                     dataModelJson: JSON.stringify(next.wizard.dataModel),
-                    weights: next.wizard.weights,
                 });
             } catch {
                 if (generation !== requestGeneration.current) {
@@ -812,10 +801,8 @@ const HydratedDataModelingWizard = ({
                     <ReviewPage
                         workloadLabel={scenarioLabel ?? l10n.t('Not selected')}
                         containers={state.dataModel.containers}
-                        weights={state.weights}
                         onEditWorkload={() => goToStep(1)}
                         onEditContainer={goToContainer}
-                        onChangeWeights={(weights) => patch({ weights })}
                     />
                 </WizardStep>
 
@@ -828,7 +815,6 @@ const HydratedDataModelingWizard = ({
                     subtitle={l10n.t("Copilot's analysis of your workload profile.")}
                 >
                     <ResultPage
-                        weights={snapshot.recommendation.weights}
                         recommendationStatus={recommendationStatus}
                         recommendation={recommendation}
                         recommendationError={recommendationError}

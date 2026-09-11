@@ -13,7 +13,6 @@ import { Children, isValidElement, type ReactElement } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { type DeploymentTemplateInput } from '../../../dataModeling/deploymentModel';
 import { type ModelingAdvisorSnapshot } from '../../../dataModeling/modelingAdvisorSchema';
-import { rankRecommendation } from '../../../dataModeling/scoring';
 import { type DataModelingEvent } from '../../api/types';
 import { type StepListItemProps, type StepListProps } from './components/StepList/StepList.types';
 import { createBlankContainer } from './dataModel';
@@ -82,7 +81,6 @@ function restored(step = 2): ModelingAdvisorSnapshot {
         },
         recommendation: {
             status: 'received',
-            weights: { ...createInitialSnapshot().wizard.weights },
             value: {
                 summary: 'Restored result',
                 containers: [
@@ -96,8 +94,6 @@ function restored(step = 2): ModelingAdvisorSnapshot {
                                 score: 100,
                                 verdict: 'recommended',
                                 assessments: [],
-                                priorityScores: { read: 90, write: 70, storage: 80 },
-                                rationale: 'Order-scoped requests.',
                             },
                         ],
                     },
@@ -385,8 +381,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         act(() => callbacks.onData({ type: 'recommendationReceived', recommendation: saved.recommendation.value! }));
         expect(lastSave().recommendation).toEqual({
             status: 'received',
-            weights: saved.wizard.weights,
-            value: rankRecommendation(saved.recommendation.value!, saved.wizard.weights),
+            value: saved.recommendation.value,
         });
         await userEvent.click(screen.getByRole('button', { name: 'Start Over' }));
         act(() => callbacks.onData({ type: 'recommendationReceived', recommendation: saved.recommendation.value! }));
@@ -429,49 +424,42 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(client.dataModeling.requestRecommendation.mutate).not.toHaveBeenCalled();
     });
 
-    it('uses request-time priorities even when Review priorities change before the response, and restores them', async () => {
+    it('preserves model scores, verdicts, and the selected key through save, restore, and deployment', async () => {
         const saved = restored(3);
         saved.recommendation = { status: 'idle' };
-        saved.wizard.weights = { read: 80, write: 10, storage: 10 };
         client.dataModeling.loadState.query.mockResolvedValue(saved);
         const mounted = render(<DataModelingWizard />);
         await continueExisting();
         await userEvent.click(screen.getByRole('button', { name: 'Get Recommendation' }));
         expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledWith({
             dataModelJson: JSON.stringify(saved.wizard.dataModel),
-            weights: { read: 80, write: 10, storage: 10 },
         });
         await userEvent.click(screen.getByRole('button', { name: 'Review' }));
-        // Review edits are independent of the priorities captured when the pending request began.
-        fireEvent.change(screen.getAllByRole('slider')[0], { target: { value: '10' } });
+        expect(screen.queryByRole('slider')).not.toBeInTheDocument();
         const callbacks = client.dataModeling.events.subscribe.mock.calls[0][1] as {
             onData: (event: DataModelingEvent) => void;
         };
         const result = restored().recommendation.value!;
+        result.containers[0].partitionKey = '/write';
+        result.containers[0].rationale = 'Write distribution best fits this workload.';
         result.containers[0].candidates = [
             {
                 partitionKey: '/write',
                 score: 100,
                 verdict: 'recommended',
                 assessments: [],
-                rationale: 'Write rationale',
-                priorityScores: { read: 10, write: 100, storage: 50 },
             },
             {
                 partitionKey: '/read',
                 score: 0,
                 verdict: 'avoid',
                 assessments: [],
-                rationale: 'Read rationale',
-                priorityScores: { read: 100, write: 10, storage: 50 },
             },
         ];
         act(() => callbacks.onData({ type: 'recommendationReceived', recommendation: result }));
         const persisted = lastSave();
-        expect(persisted.wizard.weights.read).toBe(10);
-        expect(persisted.recommendation.weights).toEqual({ read: 80, write: 10, storage: 10 });
-        expect(persisted.recommendation.value?.containers[0].partitionKey).toBe('/read');
-        expect(persisted.recommendation.value?.containers[0].candidates?.[0].score).toBe(86);
+        expect(persisted.wizard).not.toHaveProperty('weights');
+        expect(persisted.recommendation).toEqual({ status: 'received', value: result });
         mounted.unmount();
         client.dataModeling.loadState.query.mockResolvedValue({
             ...persisted,
@@ -481,11 +469,11 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         await continueExisting();
         expect(
             screen.getByRole<HTMLTextAreaElement>('textbox', { name: 'Container creation code sample' }).value,
-        ).toContain("paths: ['/read']");
+        ).toContain("paths: ['/write']");
         expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledOnce();
         await enterDeployStep();
         fireEvent.change(screen.getByRole('textbox', { name: 'New database name' }), {
-            target: { value: 'weighted-db' },
+            target: { value: 'model-db' },
         });
         const deploy = within(screen.getByRole('region', { name: 'Deploy data model' })).getByRole('button', {
             name: 'Deploy',
@@ -494,12 +482,12 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         await userEvent.click(deploy);
         expect(client.dataModeling.deploy.mutate).toHaveBeenCalledWith({
             databaseMode: 'new',
-            databaseName: 'weighted-db',
-            containers: [{ entity: 'Orders', partitionKey: '/read' }],
+            databaseName: 'model-db',
+            containers: [{ entity: 'Orders', partitionKey: '/write' }],
         });
     });
 
-    it('rejects fresh results without component scores rather than inventing a weighted score', async () => {
+    it('rejects invalid results rather than inventing missing scores', async () => {
         const saved = restored(3);
         saved.recommendation = { status: 'idle' };
         client.dataModeling.loadState.query.mockResolvedValue(saved);
@@ -509,18 +497,16 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         const callbacks = client.dataModeling.events.subscribe.mock.calls[0][1] as {
             onData: (event: DataModelingEvent) => void;
         };
+        const invalid = restored().recommendation.value!;
+        Reflect.deleteProperty(invalid.containers[0].candidates![0], 'score');
         act(() =>
             callbacks.onData({
                 type: 'recommendationReceived',
-                recommendation: { summary: '', containers: [{ entity: 'Orders', partitionKey: '/id', rationale: '' }] },
+                recommendation: invalid,
             }),
         );
         expect(lastSave().recommendation.status).toBe('error');
-        expect(
-            screen.getByText(
-                'The recommendation is missing valid priority scores or priorities. Request a new recommendation.',
-            ),
-        ).toBeInTheDocument();
+        expect(screen.getByText('The recommendation is invalid. Request a new recommendation.')).toBeInTheDocument();
     });
 
     it.each(['Cancel', 'Escape'])(
@@ -576,7 +562,6 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         await userEvent.click(screen.getByRole('button', { name: 'Get Recommendation' }));
         expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledWith({
             dataModelJson: JSON.stringify(saved.wizard.dataModel),
-            weights: saved.wizard.weights,
         });
     });
 });

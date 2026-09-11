@@ -6,6 +6,8 @@
 import * as l10n from '@vscode/l10n';
 import { createHash, randomUUID } from 'node:crypto';
 import * as vscode from 'vscode';
+import { type AzureResourceMetadata } from '../cosmosdb/AzureResourceMetadata';
+import { type CosmosDBControlPlane } from '../cosmosdb/controlPlane';
 import {
     ModelingAdvisorProjectSchema,
     ModelingAdvisorSnapshotSchema,
@@ -17,6 +19,10 @@ import { ext } from '../extensionVariables';
 export interface DataModelerAccount {
     endpoint: string;
     name?: string;
+    /** Host-only deployment capability. Never serialized into wizard state or sent to the webview. */
+    getControlPlane?: () => CosmosDBControlPlane;
+    /** Host-only metadata for target display and Bicep defaults. The object itself is never serialized or persisted. */
+    getDeploymentTarget?: () => AzureResourceMetadata | undefined;
 }
 
 export const DATA_MODELER_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;

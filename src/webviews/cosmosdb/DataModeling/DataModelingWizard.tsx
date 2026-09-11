@@ -40,6 +40,7 @@ import {
 import { createInitialSnapshot, useModelingAdvisorPersistence } from './modelingAdvisorState';
 import { MAX_CONTAINERS, type ScenarioId } from './models';
 import { ContainerPage } from './pages/ContainerPage';
+import { createDeploymentDraft, DeployPage, type DeploymentDraft } from './pages/DeployPage';
 import { ResultPage } from './pages/ResultPage';
 import { ReviewPage } from './pages/ReviewPage';
 import { WorkloadPage } from './pages/WorkloadPage';
@@ -53,8 +54,8 @@ import { getScenarioList } from './scenarios';
  * state and navigation and declares each step's content; every page remains a
  * self-contained component fed a slice of state plus change callbacks.
  *
- * The steps are **dynamic**: a Workload step, then one step per modeled container
- * (each a {@link ContainerPage} with Data/Queries/Scale tabs), then Review and Result.
+ * The steps are **dynamic**: Workload, one step per modeled container (each a {@link ContainerPage}
+ * with Data/Queries/Scale tabs), Review, Result, and a transient Deploy step.
  * The active container tracks the current container step.
  */
 
@@ -62,12 +63,13 @@ import { getScenarioList } from './scenarios';
 const WORKLOAD_STEP = 'workload';
 const REVIEW_STEP = 'review';
 const RESULT_STEP = 'result';
+const DEPLOY_STEP = 'deploy';
 const CONTAINER_PREFIX = 'container:';
 
 /** The step value for a container, derived from its id. */
 const containerStep = (id: string): string => `${CONTAINER_PREFIX}${id}`;
 
-/** Ordered list of step values for the current model: workload, one per container, review, result. */
+/** Persisted modeling steps. Deploy is intentionally excluded from this list and from saved navigation. */
 function buildStepValues(model: DataModel): string[] {
     return [WORKLOAD_STEP, ...model.containers.map((c) => containerStep(c.id)), REVIEW_STEP, RESULT_STEP];
 }
@@ -238,6 +240,43 @@ const HydratedDataModelingWizard = ({
     const containerNameInputRef = useRef<HTMLInputElement>(null);
 
     const { status: recommendationStatus, value: recommendation, error: recommendationError } = snapshot.recommendation;
+    const [deployOwner, setDeployOwner] = useState<typeof recommendation>();
+    const [deploymentBusy, setDeploymentBusy] = useState(false);
+    const [deployedRecommendation, setDeployedRecommendation] = useState<typeof recommendation>();
+    const [deploymentDraft, setDeploymentDraft] = useState<{
+        owner: typeof recommendation;
+        value: DeploymentDraft;
+    }>();
+    const initialDeploymentDraft = useMemo(
+        () => createDeploymentDraft(recommendation?.containers ?? []),
+        [recommendation],
+    );
+    const currentDeploymentDraft =
+        deploymentDraft && deploymentDraft.owner === recommendation ? deploymentDraft.value : initialDeploymentDraft;
+    const updateDeploymentDraft = useCallback(
+        (update: SetStateAction<DeploymentDraft>) => {
+            setDeployedRecommendation(undefined);
+            setDeploymentDraft((previous) => ({
+                owner: recommendation,
+                value:
+                    typeof update === 'function'
+                        ? update(
+                              previous && previous.owner === recommendation ? previous.value : initialDeploymentDraft,
+                          )
+                        : update,
+            }));
+        },
+        [recommendation, initialDeploymentDraft],
+    );
+    const loadDeploymentOptions = useCallback(() => trpcClient.dataModeling.getDeploymentOptions.query(), [trpcClient]);
+    const generateDeploymentTemplate = useCallback(
+        (input: Parameters<typeof trpcClient.dataModeling.generateDeploymentTemplate.query>[0]) =>
+            trpcClient.dataModeling.generateDeploymentTemplate.query(input),
+        [trpcClient],
+    );
+    const markDeployed = useCallback(() => setDeployedRecommendation(recommendation), [recommendation]);
+    const canEnterDeploy = recommendationStatus === 'received' && !!recommendation?.containers.length;
+    const isDeploy = canEnterDeploy && deployOwner === recommendation;
 
     useEffect(() => {
         if (!confirmAdvance && restoreAdvanceFocus.current) {
@@ -361,12 +400,22 @@ const HydratedDataModelingWizard = ({
 
     const onStepChange = useCallback(
         (value: string) => {
+            if (deploymentBusy) {
+                return;
+            }
+            if (value === DEPLOY_STEP) {
+                if (canEnterDeploy) {
+                    setDeployOwner(recommendation);
+                }
+                return;
+            }
+            setDeployOwner(undefined);
             const index = buildStepValues(state.dataModel).indexOf(value);
             if (index >= 0) {
                 goToStep(index + 1);
             }
         },
-        [goToStep, state.dataModel],
+        [goToStep, state.dataModel, deploymentBusy, canEnterDeploy, recommendation],
     );
 
     const pickScenario = useCallback(
@@ -522,7 +571,7 @@ const HydratedDataModelingWizard = ({
 
     const stepValues = buildStepValues(state.dataModel);
     const stepIndex = Math.min(Math.max(state.step, 1), stepValues.length);
-    const activeValue = stepValues[stepIndex - 1];
+    const activeValue = isDeploy ? DEPLOY_STEP : stepValues[stepIndex - 1];
     const isWorkload = activeValue === WORKLOAD_STEP;
     const isReview = activeValue === REVIEW_STEP;
     const isResult = activeValue === RESULT_STEP;
@@ -549,74 +598,100 @@ const HydratedDataModelingWizard = ({
         }
     };
     const onNext = () => {
+        if (isResult) {
+            if (canEnterDeploy) {
+                setDeployOwner(recommendation);
+            }
+            return;
+        }
         if (recommendation || reachedSteps.some((value) => stepValues.indexOf(value) >= stepIndex)) {
             setConfirmAdvance(true);
         } else {
             advance();
         }
     };
-    const onBack = () => goToStep(stepIndex - 1);
+    const onBack = () => {
+        if (isDeploy) {
+            setDeployOwner(undefined);
+            if (stepIndex !== stepValues.length) {
+                goToStep(stepValues.length);
+            }
+        } else {
+            goToStep(stepIndex - 1);
+        }
+    };
     const restart = () => {
         requestGeneration.current += 1;
         setConfirmRemove(false);
         setAddOpen(false);
         setNewContainerName('');
         cancelEditingContainerName();
+        setDeployOwner(undefined);
+        setDeploymentDraft(undefined);
+        setDeployedRecommendation(undefined);
         setSnapshot(createInitialSnapshot());
     };
 
-    // The Result step's footer carries only a Start Over action; every other step gets the
-    // Next / Back controls. The primary Next button sits first (left), Back after it; container
-    // actions and a "Learn more" link are end-aligned on the right.
-    const footer = isResult ? (
-        <ContainerFooter className={styles.footerDivider}>
-            <Button appearance="secondary" onClick={restart}>
-                {l10n.t('Start Over')}
-            </Button>
-        </ContainerFooter>
-    ) : (
-        <ContainerFooter
-            className={styles.footerDivider}
-            note={footerHint(activeValue)}
-            contentEnd={
-                <div className={styles.endGroup}>
-                    {isContainerStep ? (
-                        <>
-                            <Button
-                                appearance="secondary"
-                                icon={<AddRegular />}
-                                disabled={state.dataModel.containers.length >= MAX_CONTAINERS}
-                                onClick={openAddDialog}
-                            >
-                                {l10n.t('Add container')}
-                            </Button>
-                            <Button
-                                appearance="secondary"
-                                className={styles.dangerButton}
-                                icon={<DeleteRegular />}
-                                disabled={state.dataModel.containers.length <= 1}
-                                onClick={() => setConfirmRemove(true)}
-                            >
-                                {l10n.t('Remove this container')}
-                            </Button>
-                        </>
-                    ) : null}
-                    <Link href="https://learn.microsoft.com/azure/cosmos-db/partitioning-overview" target="_blank">
-                        {l10n.t('Learn more')}
-                    </Link>
-                </div>
-            }
-        >
-            <Button ref={advanceButtonRef} appearance="primary" disabled={!canAdvance} onClick={onNext}>
-                {nextLabel}
-            </Button>
-            {stepIndex > 1 ? (
-                <Button appearance="secondary" onClick={onBack}>
-                    {l10n.t('Back')}
+    // Deploy navigation and form drafts stay outside the persisted model and reached-step list.
+    const footer =
+        isResult || isDeploy ? (
+            <ContainerFooter className={styles.footerDivider}>
+                {isResult ? (
+                    <Button appearance="primary" disabled={!canEnterDeploy} onClick={onNext}>
+                        {l10n.t('Deploy')}
+                    </Button>
+                ) : (
+                    <Button appearance="secondary" disabled={deploymentBusy} onClick={onBack}>
+                        {l10n.t('Back')}
+                    </Button>
+                )}
+                <Button appearance="secondary" disabled={deploymentBusy} onClick={restart}>
+                    {l10n.t('Start Over')}
                 </Button>
-            ) : null}
-        </ContainerFooter>
-    );
+            </ContainerFooter>
+        ) : (
+            <ContainerFooter
+                className={styles.footerDivider}
+                note={footerHint(activeValue)}
+                contentEnd={
+                    <div className={styles.endGroup}>
+                        {isContainerStep ? (
+                            <>
+                                <Button
+                                    appearance="secondary"
+                                    icon={<AddRegular />}
+                                    disabled={state.dataModel.containers.length >= MAX_CONTAINERS}
+                                    onClick={openAddDialog}
+                                >
+                                    {l10n.t('Add container')}
+                                </Button>
+                                <Button
+                                    appearance="secondary"
+                                    className={styles.dangerButton}
+                                    icon={<DeleteRegular />}
+                                    disabled={state.dataModel.containers.length <= 1}
+                                    onClick={() => setConfirmRemove(true)}
+                                >
+                                    {l10n.t('Remove this container')}
+                                </Button>
+                            </>
+                        ) : null}
+                        <Link href="https://learn.microsoft.com/azure/cosmos-db/partitioning-overview" target="_blank">
+                            {l10n.t('Learn more')}
+                        </Link>
+                    </div>
+                }
+            >
+                <Button ref={advanceButtonRef} appearance="primary" disabled={!canAdvance} onClick={onNext}>
+                    {nextLabel}
+                </Button>
+                {stepIndex > 1 ? (
+                    <Button appearance="secondary" onClick={onBack}>
+                        {l10n.t('Back')}
+                    </Button>
+                ) : null}
+            </ContainerFooter>
+        );
 
     return (
         <>
@@ -635,7 +710,7 @@ const HydratedDataModelingWizard = ({
                 <WizardStep
                     value={WORKLOAD_STEP}
                     completed={reachedSteps.includes(WORKLOAD_STEP) && reachedSteps.at(-1) !== WORKLOAD_STEP}
-                    navigable={reachedSteps.includes(WORKLOAD_STEP)}
+                    navigable={!deploymentBusy && reachedSteps.includes(WORKLOAD_STEP)}
                     label={l10n.t('Workload')}
                     title={l10n.t('What kind of workload are you building?')}
                     subtitle={l10n.t(
@@ -652,7 +727,7 @@ const HydratedDataModelingWizard = ({
                         completed={
                             reachedSteps.includes(containerStep(c.id)) && reachedSteps.at(-1) !== containerStep(c.id)
                         }
-                        navigable={reachedSteps.includes(containerStep(c.id))}
+                        navigable={!deploymentBusy && reachedSteps.includes(containerStep(c.id))}
                         label={
                             <span className={styles.stepLabel}>
                                 <span>{l10n.t('Container:')}</span>
@@ -729,7 +804,7 @@ const HydratedDataModelingWizard = ({
                 <WizardStep
                     value={REVIEW_STEP}
                     completed={reachedSteps.includes(REVIEW_STEP) && reachedSteps.at(-1) !== REVIEW_STEP}
-                    navigable={reachedSteps.includes(REVIEW_STEP)}
+                    navigable={!deploymentBusy && reachedSteps.includes(REVIEW_STEP)}
                     label={l10n.t('Review')}
                     title={l10n.t('Review your inputs')}
                     subtitle={l10n.t('Click Edit to change any selection before analysis.')}
@@ -747,7 +822,7 @@ const HydratedDataModelingWizard = ({
                 <WizardStep
                     value={RESULT_STEP}
                     completed={recommendationStatus === 'received'}
-                    navigable={reachedSteps.includes(RESULT_STEP)}
+                    navigable={!deploymentBusy && reachedSteps.includes(RESULT_STEP)}
                     label={l10n.t('Result')}
                     title={l10n.t('Partition key recommendation')}
                     subtitle={l10n.t("Copilot's analysis of your workload profile.")}
@@ -759,6 +834,27 @@ const HydratedDataModelingWizard = ({
                         recommendationError={recommendationError}
                         onRetryRecommendation={requestRecommendation}
                     />
+                </WizardStep>
+                <WizardStep
+                    value={DEPLOY_STEP}
+                    completed={canEnterDeploy && deployedRecommendation === recommendation}
+                    navigable={canEnterDeploy && !deploymentBusy}
+                    label={l10n.t('Deploy')}
+                    title={l10n.t('Deploy data model')}
+                    subtitle={l10n.t('Deploy selected containers using the migration provisioning pipeline.')}
+                >
+                    {recommendation ? (
+                        <DeployPage
+                            containers={recommendation.containers}
+                            draft={currentDeploymentDraft}
+                            onDraftChange={updateDeploymentDraft}
+                            loadOptions={loadDeploymentOptions}
+                            generateTemplate={generateDeploymentTemplate}
+                            onDeploy={(input) => trpcClient.dataModeling.deploy.mutate(input)}
+                            onBusyChange={setDeploymentBusy}
+                            onDeployed={markDeployed}
+                        />
+                    ) : null}
                 </WizardStep>
             </Wizard>
 

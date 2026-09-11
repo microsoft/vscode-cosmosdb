@@ -27,6 +27,7 @@ export class DataModelingWizardDrawerTab extends BaseTab {
     protected constructor(
         panel: vscode.WebviewPanel,
         private readonly project: DataModelerProjectService,
+        private readonly account: DataModelerAccount,
     ) {
         super(panel, DataModelingWizardDrawerTab.viewType);
         DataModelingWizardDrawerTab.openTabs.add(this);
@@ -49,6 +50,12 @@ export class DataModelingWizardDrawerTab extends BaseTab {
         // Reuse an already-open drawer tab rather than stacking duplicates.
         const existing = [...DataModelingWizardDrawerTab.openTabs].find((tab) => tab.project === project);
         if (existing) {
+            if (account.getControlPlane) {
+                existing.account.getControlPlane = account.getControlPlane;
+            }
+            if (account.getDeploymentTarget) {
+                existing.account.getDeploymentTarget = account.getDeploymentTarget;
+            }
             existing.panel.reveal(column);
             return existing;
         }
@@ -63,7 +70,7 @@ export class DataModelingWizardDrawerTab extends BaseTab {
             },
         );
 
-        return new DataModelingWizardDrawerTab(panel, project);
+        return new DataModelingWizardDrawerTab(panel, project, { ...account });
     }
 
     /** Finds the drawer that originated a recommendation request. */
@@ -100,6 +107,7 @@ export class DataModelingWizardDrawerTab extends BaseTab {
     private buildRouterContext(): DataModelingRouterContext {
         return {
             project: this.project,
+            account: this.account,
             webviewName: DataModelingWizardDrawerTab.viewType,
             panel: this.panel,
             eventSink: this.eventSink,

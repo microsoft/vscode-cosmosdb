@@ -27,6 +27,8 @@ import {
 import { CheckmarkRegular, CopyRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { getPartitionKeyPaths } from '../../../../dataModeling/deploymentModel';
+import { buildExistingDatabaseContainerBicep } from '../../../../panels/migration/helpers/bicepGenerator';
 import {
     type CandidateAssessment,
     type ContainerRecommendation,
@@ -43,8 +45,8 @@ import { type ScoringWeights } from '../models';
  * Result step. One tab per container, each showing Copilot's partition-key recommendation:
  * scored candidate cards, a hot-partition risk comparison, a query-routing analysis, a
  * document-id strategy, and a copyable infrastructure snippet. Assessments are LLM-driven;
- * scores and ranking use the applied priorities. While the request is in flight, the
- * {@link CopilotRecommendation} panel shows a waiting note instead.
+ * scores and ranking use the applied priorities. Deployment is configured in the following step.
+ * While the request is in flight, the {@link CopilotRecommendation} panel shows a waiting note instead.
  */
 
 const useStyles = makeStyles({
@@ -308,37 +310,39 @@ const CODE_EDITOR_OPTIONS: MonacoEditorType.editor.IStandaloneEditorConstruction
 };
 
 function buildCode(tab: CodeTab, entity: string, partitionKey: string): string {
-    const safeEntity = entity || 'Container';
-    const pk = partitionKey || '/id';
+    const paths = getPartitionKeyPaths(partitionKey);
+    const quotedEntity = JSON.stringify(entity);
+    const quotedPaths = paths.map((path) => JSON.stringify(path));
+    const terraformString = (value: string) =>
+        JSON.stringify(value)
+            .replace(/\$\{/g, () => '$${')
+            .replace(/%\{/g, '%%{');
     switch (tab) {
         case 'bicep':
-            return [
-                `resource container 'Microsoft.DocumentDB/.../containers@2024-05-15' = {`,
-                `  name: '${safeEntity}'`,
-                `  properties: {`,
-                `    resource: {`,
-                `      id: '${safeEntity}'`,
-                `      partitionKey: {`,
-                `        paths: [ '${pk}' ]`,
-                `        kind: 'Hash'`,
-                `      }`,
-                `    }`,
-                `  }`,
-                `}`,
-            ].join('\n');
+            return buildExistingDatabaseContainerBicep({
+                name: entity,
+                partitionKeys: paths.map((path) => ({ path })),
+            });
         case 'terraform':
             return [
-                `resource "azurerm_cosmosdb_sql_container" "${safeEntity.toLowerCase()}" {`,
-                `  name                  = "${safeEntity}"`,
-                `  partition_key_paths   = ["${pk}"]`,
+                `resource "azurerm_cosmosdb_sql_container" "container" {`,
+                `  name                  = ${terraformString(entity)}`,
+                `  resource_group_name   = var.resource_group_name`,
+                `  account_name          = var.account_name`,
+                `  database_name         = var.database_name`,
+                `  partition_key_paths   = [${paths.map(terraformString).join(', ')}]`,
+                `  partition_key_kind    = "${paths.length > 1 ? 'MultiHash' : 'Hash'}"`,
                 `  partition_key_version = 2`,
                 `}`,
             ].join('\n');
         case 'sdk':
             return [
                 `var props = new ContainerProperties(`,
-                `    id: "${safeEntity}",`,
-                `    partitionKeyPath: "${pk}");`,
+                `    id: ${quotedEntity},`,
+                paths.length > 1
+                    ? `    partitionKeyPaths: new[] { ${quotedPaths.join(', ')} });`
+                    : `    partitionKeyPath: ${quotedPaths[0]});`,
+                `props.PartitionKeyDefinitionVersion = PartitionKeyDefinitionVersion.V2;`,
                 `await database.CreateContainerIfNotExistsAsync(props);`,
             ].join('\n');
     }
@@ -348,17 +352,6 @@ const ASSESS_GLYPH: Record<CandidateAssessment['status'], string> = { pass: '✓
 
 /** Azure Cosmos DB hierarchical (multi-level) partition keys documentation. */
 const HIERARCHICAL_PARTITION_KEY_DOCS_URL = 'https://learn.microsoft.com/azure/cosmos-db/hierarchical-partition-keys';
-
-/**
- * Splits a partition-key value into its individual paths. A hierarchical (multi-level)
- * key is expressed as comma-separated paths, e.g. `/tenantId, /id`.
- */
-function getPartitionKeyPaths(partitionKey: string): string[] {
-    return partitionKey
-        .split(',')
-        .map((path) => path.trim())
-        .filter((path) => path.length > 0);
-}
 
 /**
  * Renders a partition key for display. A hierarchical key's comma-separated paths are joined

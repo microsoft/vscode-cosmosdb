@@ -9,6 +9,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
 import { openDataModelingWizard } from '../commands/dataModeling/openDataModelingWizard';
 import { openDataModelingWizardDrawer } from '../commands/dataModeling/openDataModelingWizardDrawer';
+import { type AzureResourceMetadata } from '../cosmosdb/AzureResourceMetadata';
+import { getControlPlane } from '../cosmosdb/controlPlane';
 import { DataModelerProjectService } from '../services/DataModelerProjectService';
 import { getAccountInfo } from '../tree/cosmosdb/AccountInfo';
 import { type CosmosDBAccountResourceItem } from '../tree/cosmosdb/CosmosDBAccountResourceItem';
@@ -36,6 +38,7 @@ vi.mock('@microsoft/vscode-azureresources-api', () => ({
     AzExtResourceType: { AzureCosmosDb: 'Microsoft.DocumentDB/databaseAccounts' },
 }));
 vi.mock('../tree/cosmosdb/AccountInfo', () => ({ getAccountInfo: vi.fn() }));
+vi.mock('../cosmosdb/controlPlane', () => ({ getControlPlane: vi.fn() }));
 vi.mock('../utils/pickItem/pickAppResource', () => ({ pickAppResource: vi.fn() }));
 vi.mock('./BaseTab', () => ({
     BaseTab: class {
@@ -119,8 +122,10 @@ describe.each([
     it('reuses only the same account tab and binds each account to its own persistence service', () => {
         const first = render(firstAccount);
         const firstProject = lastContext().project;
+        expect(lastContext().account.endpoint).toBe(firstAccount.endpoint);
         const second = render(secondAccount);
         const secondProject = lastContext().project;
+        expect(lastContext().account.endpoint).toBe(secondAccount.endpoint);
         expect(second).not.toBe(first);
         expect(firstProject).toBe(DataModelerProjectService.getInstance(firstAccount.endpoint));
         expect(secondProject).toBe(DataModelerProjectService.getInstance(secondAccount.endpoint));
@@ -140,6 +145,24 @@ describe.each([
         expect(context.valuesToMask).toContain(firstAccount.name);
     });
 
+    it('preserves the host-only deployment capability and updates it when reopening an endpoint-only tab', () => {
+        const tab = render(firstAccount);
+        const context = lastContext();
+        const capability = vi.fn();
+        const deploymentTarget = vi.fn();
+        expect(context.account.getControlPlane).toBeUndefined();
+        expect(render({ ...firstAccount, getControlPlane: capability, getDeploymentTarget: deploymentTarget })).toBe(
+            tab,
+        );
+        expect(context.account.getControlPlane).toBe(capability);
+        expect(context.account.getDeploymentTarget).toBe(deploymentTarget);
+        context.account.getControlPlane?.();
+        expect(capability).toHaveBeenCalledOnce();
+        expect(render(firstAccount)).toBe(tab);
+        expect(context.account.getControlPlane).toBe(capability);
+        expect(context.account.getDeploymentTarget).toBe(deploymentTarget);
+    });
+
     it('accepts just an endpoint when account metadata and name are undefined', async () => {
         const context = actionContext();
         await open(context, { endpoint: firstAccount.endpoint });
@@ -157,6 +180,7 @@ describe.each([
 
     it('prompts for an account when launched without context, and uses that account endpoint', async () => {
         const node = { account: { id: 'account-id', name: 'Account' } } as CosmosDBAccountResourceItem;
+        const metadata = { accountName: secondAccount.name } as AzureResourceMetadata;
         vi.mocked(pickAppResource).mockResolvedValueOnce(node);
         vi.mocked(getAccountInfo).mockResolvedValueOnce({
             ...secondAccount,
@@ -164,12 +188,17 @@ describe.each([
             credentials: [],
             isEmulator: false,
             isServerless: false,
+            azureMetadata: metadata,
         });
         const context = actionContext();
         await open(context);
         expect(pickAppResource).toHaveBeenCalledOnce();
         expect(getAccountInfo).toHaveBeenCalledWith(node.account);
         expect(lastContext().project).toBe(DataModelerProjectService.getInstance(secondAccount.endpoint));
+        expect(lastContext().account.getControlPlane).toBeTypeOf('function');
+        expect(lastContext().account.getDeploymentTarget?.()).toBe(metadata);
+        lastContext().account.getControlPlane?.();
+        expect(getControlPlane).toHaveBeenCalledWith(expect.objectContaining({ endpoint: secondAccount.endpoint }));
     });
 
     it('does not open an unscoped session when the account picker is cancelled', async () => {

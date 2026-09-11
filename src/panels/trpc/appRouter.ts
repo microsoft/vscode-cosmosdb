@@ -21,7 +21,7 @@ import { type NoSqlQueryConnection } from '../../cosmosdb/NoSqlQueryConnection';
 import { type DocumentWriteResult } from '../../cosmosdb/session/DocumentSession';
 import { type QuerySession } from '../../cosmosdb/session/QuerySession';
 import { type CosmosDBRecordIdentifier } from '../../cosmosdb/types/queryResult';
-import { type DataModelerProjectService } from '../../services/DataModelerProjectService';
+import { type DataModelerAccount, type DataModelerProjectService } from '../../services/DataModelerProjectService';
 import { type TelemetryContext } from '../../Telemetry';
 import { type CosmosDBAccountResourceItem } from '../../tree/cosmosdb/CosmosDBAccountResourceItem';
 import { openSurvey, promptAfterActionEventually } from '../../utils/survey';
@@ -175,6 +175,7 @@ export type AccountOverviewRouterContext = CosmosDBRouterContext & {
 
 export type DataModelingRouterContext = CosmosDBRouterContext & {
     project: DataModelerProjectService;
+    account: DataModelerAccount;
     panel: vscode.WebviewPanel;
     eventSink: TypedEventSink<DataModelingEvent>;
     /** Stable ID of the wizard that initiated this request. Never sent to telemetry. */

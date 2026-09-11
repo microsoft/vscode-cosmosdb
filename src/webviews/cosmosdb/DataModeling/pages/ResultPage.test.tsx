@@ -27,9 +27,9 @@ const recommendation: PartitionKeyRecommendation = {
     ],
 };
 
-function renderResult() {
+function renderResult(value = recommendation) {
     return render(
-        <ResultPage recommendationStatus="received" recommendation={recommendation} onRetryRecommendation={vi.fn()} />,
+        <ResultPage recommendationStatus="received" recommendation={value} onRetryRecommendation={vi.fn()} />,
     );
 }
 
@@ -283,6 +283,7 @@ describe('ResultPage', () => {
         });
         expect(screen.queryByRole('button', { name: 'Create Container' })).not.toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Copy' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Deploy' })).not.toBeInTheDocument();
         expect(screen.getByRole('tab', { name: 'Container: Message' })).toHaveTextContent('Container: Message');
     });
 
@@ -320,7 +321,48 @@ describe('ResultPage', () => {
             language: 'bicep',
             value: expect.stringContaining("name: 'User'"),
         });
-        expect(editorProps()?.value).toContain("paths: [ '/userId' ]");
+        expect(editorProps()?.value).toContain("paths: ['/userId']");
         expect(editorProps()?.value).not.toContain('Message');
+    });
+
+    it('renders real Bicep resources referencing an existing account and database with hierarchical keys', () => {
+        renderResult({
+            summary: '',
+            containers: [{ entity: 'Orders', partitionKey: '/tenantId, /address/zip', rationale: '' }],
+        });
+        expect(editorProps()?.value).toContain(
+            "resource account 'Microsoft.DocumentDB/databaseAccounts@2024-05-15' existing",
+        );
+        expect(editorProps()?.value).toContain(
+            "resource sqlDatabase 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2024-05-15' existing",
+        );
+        expect(editorProps()?.value).toContain("paths: ['/tenantId', '/address/zip']");
+        expect(editorProps()?.value).toContain("kind: 'MultiHash'");
+        expect(editorProps()?.value).toContain('version: 2');
+        expect(editorProps()?.value).not.toContain('sqlRoleAssignments');
+    });
+
+    it.each([
+        { tab: 'Terraform', code: 'partition_key_paths   = ["/tenantId", "/address/zip"]' },
+        { tab: 'SDK (C#)', code: 'partitionKeyPaths: new[] { "/tenantId", "/address/zip" }' },
+    ])('keeps the $tab snippet aligned with deployed hierarchical keys', async ({ tab, code }) => {
+        renderResult({
+            summary: '',
+            containers: [{ entity: 'Orders', partitionKey: '/tenantId, /address/zip', rationale: '' }],
+        });
+        await userEvent.click(screen.getByRole('tab', { name: tab }));
+        expect(editorProps()?.value).toContain(code);
+    });
+
+    it('escapes names as literal strings in each infrastructure snippet', async () => {
+        renderResult({
+            summary: '',
+            containers: [{ entity: "o'brien${literal}", partitionKey: '/id', rationale: '' }],
+        });
+        expect(editorProps()?.value).toContain("name: 'o\\'brien\\${literal}'");
+        await userEvent.click(screen.getByRole('tab', { name: 'Terraform' }));
+        expect(editorProps()?.value).toContain('name                  = "o\'brien$${literal}"');
+        await userEvent.click(screen.getByRole('tab', { name: 'SDK (C#)' }));
+        expect(editorProps()?.value).toContain('id: "o\'brien${literal}"');
     });
 });

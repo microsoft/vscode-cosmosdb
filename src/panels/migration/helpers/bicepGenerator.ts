@@ -37,15 +37,39 @@ const GENERATED_BANNER = [
 
 // ─── Public API ─────────────────────────────────────────────────────
 
+export interface BicepTemplateOptions {
+    existingAccount?: boolean;
+    existingDatabase?: boolean;
+    accountName?: string;
+}
+
 /**
- * Build a `main.bicep` template that provisions the Cosmos DB account,
- * database, containers, and a SqlRoleAssignment for the deployer, mirroring
- * what `provisionAccount()` + `runProvisioning()` create via the SDK.
+ * Build a `main.bicep` export for the migration model. By default it includes the account and role assignment;
+ * existing-account mode limits the export to the database and containers.
  */
-export function buildBicepTemplate(model: CosmosModel): string {
+export function buildBicepTemplate(model: CosmosModel, options: BicepTemplateOptions = {}): string {
     const databaseName = model.databaseName ?? DEFAULT_DATABASE_NAME;
     const isProvisioned = model.capacityMode === 'provisioned';
     const lines: string[] = [];
+
+    if (options.existingAccount) {
+        lines.push("targetScope = 'resourceGroup'", '');
+        lines.push(
+            `param accountName string${options.accountName ? ` = '${escapeBicepString(options.accountName)}'` : ''}`,
+        );
+        lines.push(
+            `param databaseName string${model.databaseName ? ` = '${escapeBicepString(model.databaseName)}'` : ''}`,
+        );
+        lines.push('', "resource account 'Microsoft.DocumentDB/databaseAccounts@2024-05-15' existing = {");
+        lines.push('  name: accountName', '}', '');
+        emitDatabaseResource(lines, options.existingDatabase);
+        lines.push('');
+        for (const [index, container] of model.containers.entries()) {
+            emitContainerResource(lines, `container_${index}`, container, isProvisioned);
+            lines.push('');
+        }
+        return lines.join('\n');
+    }
 
     lines.push(...GENERATED_BANNER);
     lines.push("targetScope = 'resourceGroup'");
@@ -103,15 +127,7 @@ export function buildBicepTemplate(model: CosmosModel): string {
     lines.push('');
 
     // ─── SQL Database ──────────────────────────────────────────────
-    lines.push("resource sqlDatabase 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2024-05-15' = {");
-    lines.push('  parent: account');
-    lines.push('  name: databaseName');
-    lines.push('  properties: {');
-    lines.push('    resource: {');
-    lines.push('      id: databaseName');
-    lines.push('    }');
-    lines.push('  }');
-    lines.push('}');
+    emitDatabaseResource(lines);
     lines.push('');
 
     // ─── Containers ────────────────────────────────────────────────
@@ -148,6 +164,16 @@ export function buildBicepTemplate(model: CosmosModel): string {
     lines.push('');
 
     return lines.join('\n');
+}
+
+/** Container-only template for the Data Modeler. Neither the account nor the selected database is redeployed. */
+export function buildExistingDatabaseContainerBicep(
+    container: Pick<CosmosContainer, 'name' | 'partitionKeys'>,
+): string {
+    return buildBicepTemplate(
+        { version: 1, domain: '', containers: [{ ...container, entities: [] }] },
+        { existingAccount: true, existingDatabase: true },
+    );
 }
 
 /**
@@ -194,7 +220,8 @@ export function buildBicepParams(values: BicepParamValues = {}): string {
 export function parseBicepParams(content: string): BicepParamValues {
     const result: BicepParamValues = {};
     // Only matches active (uncommented) `param NAME = …` lines.
-    const stringPattern = /^param\s+(\w+)\s*=\s*'([^']*)'\s*$/;
+    const stringPattern = /^param\s+(\w+)\s*=\s*'((?:\\.|[^'\\])*)'\s*$/;
+    const escapes: Record<string, string> = { '\\': '\\', "'": "'", n: '\n', r: '\r', t: '\t', $: '$' };
     const boolPattern = /^param\s+(\w+)\s*=\s*(true|false)\s*$/;
     for (const rawLine of content.split(/\r?\n/)) {
         const line = rawLine.trim();
@@ -204,7 +231,7 @@ export function parseBicepParams(content: string): BicepParamValues {
         if (stringMatch) {
             const [, name, value] = stringMatch;
             if (name === 'accountName' || name === 'location' || name === 'databaseName' || name === 'principalId') {
-                result[name] = value;
+                result[name] = value.replace(/\\([\\'nrt$])/g, (_match, escaped: string) => escapes[escaped]);
             }
             continue;
         }
@@ -240,6 +267,17 @@ export function mergeBicepParams(existing: string, partial: BicepParamValues): s
 }
 
 // ─── Internal helpers ───────────────────────────────────────────────
+
+function emitDatabaseResource(lines: string[], existing = false): void {
+    lines.push(
+        `resource sqlDatabase 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2024-05-15'${existing ? ' existing' : ''} = {`,
+    );
+    lines.push('  parent: account', '  name: databaseName');
+    if (!existing) {
+        lines.push('  properties: {', '    resource: {', '      id: databaseName', '    }', '  }');
+    }
+    lines.push('}');
+}
 
 function emitContainerResource(
     lines: string[],
@@ -356,5 +394,11 @@ function stripUndefined<T extends object>(obj: T): Partial<T> {
  * Bicep uses backslash escapes for `'`, `\`, and a handful of control chars.
  */
 function escapeBicepString(value: string): string {
-    return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\r/g, '\\r').replace(/\n/g, '\\n');
+    return value
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/\$\{/g, '\\${')
+        .replace(/\r/g, '\\r')
+        .replace(/\n/g, '\\n')
+        .replace(/\t/g, '\\t');
 }

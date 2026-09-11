@@ -14,6 +14,16 @@ The webview is loaded by `src/panels/BaseTab.ts` and ships as a single
   `http://localhost:18080/views.js` and the webview loads it cross-origin from
   `vscode-webview://<uuid>`. HMR is fully wired.
 
+### Host API changes require a host restart
+
+Vite HMR updates React webviews, not the extension host's in-memory tRPC routers. After adding or changing host
+procedures, ensure `vite-watch:ext` has rebuilt successfully (or run `npm run vite-dev-ext`), then restart the
+Extension Development Host or run **Developer: Reload Window** in the window running the extension.
+
+A webview error such as `No procedure found on path "dataModeling.getDeploymentOptions"` means the new UI is calling
+an API absent from the running host. Rebuilding files on disk or reloading only the webview is insufficient.
+Reopen the modeler after the host restart. Unsaved deployment choices and Bicep edits are intentionally transient.
+
 ---
 
 ## <a id="base"></a> `base` — relative in prod, root in dev

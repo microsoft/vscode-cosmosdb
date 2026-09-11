@@ -11,6 +11,7 @@ import { act, fireEvent, render as renderReact, screen, waitFor, within } from '
 import userEvent from '@testing-library/user-event';
 import { Children, isValidElement, type ReactElement } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { type DeploymentTemplateInput } from '../../../dataModeling/deploymentModel';
 import { type ModelingAdvisorSnapshot } from '../../../dataModeling/modelingAdvisorSchema';
 import { rankRecommendation } from '../../../dataModeling/scoring';
 import { type DataModelingEvent } from '../../api/types';
@@ -24,13 +25,31 @@ const client = vi.hoisted(() => ({
         loadState: { query: vi.fn() },
         saveState: { mutate: vi.fn() },
         requestRecommendation: { mutate: vi.fn() },
+        getDeploymentOptions: { query: vi.fn() },
+        generateDeploymentTemplate: { query: vi.fn() },
+        deploy: { mutate: vi.fn() },
         events: { subscribe: vi.fn() },
     },
 }));
 vi.mock('@microsoft/vscode-ext-webview/react', () => ({ useTrpcClient: () => client }));
 vi.mock('../../MonacoEditor', () => ({
-    MonacoEditor: ({ value, options }: EditorProps) => (
-        <textarea aria-label={options?.ariaLabel} readOnly value={value} />
+    MonacoEditor: ({ value, options, onChange }: EditorProps) => (
+        <textarea
+            aria-label={options?.ariaLabel}
+            readOnly={options?.readOnly}
+            value={value}
+            onChange={(event) =>
+                onChange?.(event.currentTarget.value, {
+                    changes: [],
+                    eol: '\n',
+                    versionId: 1,
+                    isUndoing: false,
+                    isRedoing: false,
+                    isFlush: false,
+                    isEolChange: false,
+                })
+            }
+        />
     ),
 }));
 // jsdom has no layout callbacks to initialize Fluent's priority-overflow manager.
@@ -100,6 +119,17 @@ async function continueExisting() {
     await userEvent.click(await screen.findByRole('button', { name: 'Continue existing' }));
 }
 
+async function enterDeployStep() {
+    const button = screen.getAllByRole('button', { name: 'Deploy' }).find((element) => !element.closest('nav'));
+    if (!button) {
+        throw new Error('Result Deploy button not found');
+    }
+    expect(button).toHaveTextContent('Deploy');
+    expect(button).toHaveAccessibleName('Deploy');
+    expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
+    await userEvent.click(button);
+}
+
 async function confirmAdvance() {
     const yes = within(await screen.findByRole('alertdialog', { name: 'Restart from this step?' })).getByRole(
         'button',
@@ -116,7 +146,138 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         client.dataModeling.loadState.query.mockResolvedValue(null);
         client.dataModeling.saveState.mutate.mockResolvedValue(undefined);
         client.dataModeling.requestRecommendation.mutate.mockResolvedValue(undefined);
+        client.dataModeling.getDeploymentOptions.query.mockResolvedValue({
+            accountName: 'source',
+            databases: ['existing-db'],
+        });
+        client.dataModeling.generateDeploymentTemplate.query.mockImplementation(
+            async (input: DeploymentTemplateInput) =>
+                `// ${input.databaseMode} ${input.databaseName}: ${input.containers.map((container) => container.entity).join(', ')}`,
+        );
+        client.dataModeling.deploy.mutate.mockResolvedValue({ status: 'cancelled' });
         client.dataModeling.events.subscribe.mockReturnValue({ unsubscribe: vi.fn() });
+    });
+
+    it('deploys directly from the final step without generating or submitting Bicep or saving deployment state', async () => {
+        client.dataModeling.loadState.query.mockResolvedValue(restored(4));
+        render(<DataModelingWizard />);
+        await continueExisting();
+        const steps = within(screen.getByRole('navigation', { name: 'Data modeling steps' }));
+        expect(steps.getAllByRole('button').map((button) => button.textContent)).toEqual([
+            'Workload',
+            'Container:Orders',
+            'Review',
+            'Result',
+            'Deploy',
+        ]);
+        expect(client.dataModeling.getDeploymentOptions.query).not.toHaveBeenCalled();
+        await enterDeployStep();
+        const section = within(screen.getByRole('region', { name: 'Deploy data model' }));
+        await waitFor(() => expect(screen.getByRole('heading', { name: 'Deploy data model' })).toHaveFocus());
+        await screen.findByText('source', { selector: 'dd' });
+        expect(client.dataModeling.deploy.mutate).not.toHaveBeenCalled();
+        fireEvent.change(section.getByRole('textbox', { name: 'New database name' }), {
+            target: { value: 'fresh-db' },
+        });
+        const deploy = section.getByRole('button', { name: 'Deploy' });
+        await waitFor(() => expect(deploy).toBeEnabled());
+        expect(section.queryByRole('textbox', { name: 'Bicep deployment template' })).not.toBeInTheDocument();
+        expect(client.dataModeling.generateDeploymentTemplate.query).not.toHaveBeenCalled();
+        await userEvent.click(deploy);
+        expect(client.dataModeling.deploy.mutate).toHaveBeenCalledWith({
+            databaseMode: 'new',
+            databaseName: 'fresh-db',
+            containers: [{ entity: 'Orders', partitionKey: '/orderId' }],
+        });
+        expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
+    });
+
+    it('keeps a deployment draft on Back but does not restore it or Deploy navigation after reopening', async () => {
+        const saved = restored(4);
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        const mounted = render(<DataModelingWizard />);
+        await continueExisting();
+        await enterDeployStep();
+        await userEvent.click(screen.getByRole('radio', { name: 'Deploy with Biceps' }));
+        fireEvent.change(screen.getByRole('textbox', { name: 'New database name' }), {
+            target: { value: 'unsaved-db' },
+        });
+        await waitFor(() =>
+            expect(screen.getByRole('textbox', { name: 'Bicep deployment template' })).toHaveValue(
+                '// new unsaved-db: Orders',
+            ),
+        );
+        fireEvent.change(screen.getByRole('textbox', { name: 'Bicep deployment template' }), {
+            target: { value: '// unsaved Bicep' },
+        });
+        await userEvent.click(screen.getByRole('button', { name: 'Back' }));
+        expect(screen.getByText('Restored result')).toBeVisible();
+        await enterDeployStep();
+        expect(screen.getByRole('radio', { name: 'Deploy with Biceps' })).toBeChecked();
+        expect(screen.getByRole('textbox', { name: 'New database name' })).toHaveValue('unsaved-db');
+        expect(screen.getByRole('textbox', { name: 'Bicep deployment template' })).toHaveValue('// unsaved Bicep');
+        await userEvent.click(screen.getByRole('checkbox', { name: 'Orders' }));
+        expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
+        mounted.unmount();
+        render(<DataModelingWizard />);
+        await continueExisting();
+        expect(screen.getByText('Restored result')).toBeVisible();
+        expect(screen.queryByRole('textbox', { name: 'Bicep deployment template' })).not.toBeInTheDocument();
+        await enterDeployStep();
+        expect(screen.getByRole('textbox', { name: 'New database name' })).toHaveValue('');
+        expect(screen.getByRole('radio', { name: 'Deploy now' })).toBeChecked();
+        expect(screen.queryByRole('textbox', { name: 'Bicep deployment template' })).not.toBeInTheDocument();
+        await userEvent.click(screen.getByRole('radio', { name: 'Deploy with Biceps' }));
+        expect(screen.getByRole('textbox', { name: 'Bicep deployment template' })).toHaveValue('');
+        expect(screen.getByRole('checkbox', { name: 'Orders' })).toBeChecked();
+        expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
+    });
+
+    it('locks navigation during deployment and never saves its completion or template', async () => {
+        let finish!: (result: {
+            status: 'deployed';
+            databaseName: string;
+            createdCount: number;
+            existingCount: number;
+        }) => void;
+        client.dataModeling.deploy.mutate.mockImplementationOnce(
+            () =>
+                new Promise((resolve) => {
+                    finish = resolve;
+                }),
+        );
+        client.dataModeling.loadState.query.mockResolvedValue(restored(4));
+        render(<DataModelingWizard />);
+        await continueExisting();
+        await enterDeployStep();
+        fireEvent.change(screen.getByRole('textbox', { name: 'New database name' }), { target: { value: 'fresh-db' } });
+        const deploy = within(screen.getByRole('region', { name: 'Deploy data model' })).getByRole('button', {
+            name: 'Deploy',
+        });
+        await waitFor(() => expect(deploy).toBeEnabled());
+        await userEvent.click(deploy);
+        expect(screen.getByRole('button', { name: 'Back' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Start Over' })).toBeDisabled();
+        for (const step of within(screen.getByRole('navigation')).getAllByRole('button')) {
+            expect(step).toBeDisabled();
+        }
+        await act(async () =>
+            finish({ status: 'deployed', databaseName: 'fresh-db', createdCount: 1, existingCount: 0 }),
+        );
+        expect(screen.getByRole('button', { name: 'Back' })).toBeEnabled();
+        expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
+    });
+
+    it.each(['idle', 'waiting', 'error'] as const)('does not unlock Deploy for a %s recommendation', async (status) => {
+        const saved = restored(4);
+        saved.recommendation = { status };
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        render(<DataModelingWizard />);
+        await continueExisting();
+        for (const button of screen.getAllByRole('button', { name: 'Deploy' })) {
+            expect(button).toBeDisabled();
+        }
+        expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
     });
 
     it('opens directly on Workload with no saved project', async () => {
@@ -320,8 +481,22 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         await continueExisting();
         expect(
             screen.getByRole<HTMLTextAreaElement>('textbox', { name: 'Container creation code sample' }).value,
-        ).toContain("paths: [ '/read' ]");
+        ).toContain("paths: ['/read']");
         expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledOnce();
+        await enterDeployStep();
+        fireEvent.change(screen.getByRole('textbox', { name: 'New database name' }), {
+            target: { value: 'weighted-db' },
+        });
+        const deploy = within(screen.getByRole('region', { name: 'Deploy data model' })).getByRole('button', {
+            name: 'Deploy',
+        });
+        await waitFor(() => expect(deploy).toBeEnabled());
+        await userEvent.click(deploy);
+        expect(client.dataModeling.deploy.mutate).toHaveBeenCalledWith({
+            databaseMode: 'new',
+            databaseName: 'weighted-db',
+            containers: [{ entity: 'Orders', partitionKey: '/read' }],
+        });
     });
 
     it('rejects fresh results without component scores rather than inventing a weighted score', async () => {

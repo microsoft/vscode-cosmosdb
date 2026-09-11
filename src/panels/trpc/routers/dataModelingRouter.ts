@@ -3,9 +3,16 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { z } from 'zod';
 import { REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_NAME } from '../../../chat/reportPartitionKeyRecommendationTool';
+import {
+    deployDataModel,
+    generateDeploymentTemplate,
+    getDeploymentOptions,
+} from '../../../commands/dataModeling/deployDataModel';
+import { DeploymentRequestSchema, DeploymentTemplateInputSchema } from '../../../dataModeling/deploymentModel';
 import { ModelingAdvisorSnapshotSchema } from '../../../dataModeling/modelingAdvisorSchema';
 import { ScoringWeightsSchema } from '../../../dataModeling/scoring';
 import { type ScoringWeights } from '../../../webviews/cosmosdb/DataModeling/models';
@@ -60,8 +67,8 @@ export function buildRecommendationPrompt(dataModelJson: string, wizardTabId: st
     );
 }
 
-// Autosaves contain user inputs and AI output. Suppress telemetry, including validation errors,
-// and let the webview present storage failures with a retry action.
+// Autosaves and deployments contain user inputs and AI output. Suppress telemetry, including validation errors.
+// The webview presents storage failures; deployment helpers also show native VS Code notifications.
 const stateProcedure = dataModelingProcedure.use(({ ctx, next }) => {
     if (ctx.actionContext) {
         ctx.actionContext.telemetry.suppressAll = true;
@@ -75,6 +82,14 @@ export const dataModelingRouterDef = dataModelingRouter({
     saveState: stateProcedure
         .input(ModelingAdvisorSnapshotSchema)
         .mutation(({ ctx, input }) => ctx.project.saveState(input)),
+    getDeploymentOptions: stateProcedure.query(({ ctx }) => getDeploymentOptions(ctx.account)),
+    generateDeploymentTemplate: stateProcedure
+        .input(DeploymentTemplateInputSchema)
+        .query(({ ctx, input }) => generateDeploymentTemplate(ctx.account, input)),
+    deploy: stateProcedure.input(DeploymentRequestSchema).mutation(({ ctx, input }) => {
+        if (!ctx.actionContext) throw new Error(l10n.t('Reopen the Data Modeler to deploy this model.'));
+        return deployDataModel(ctx.account, input, ctx.actionContext);
+    }),
     /**
      * Sends the finished data model to the general Copilot Chat with a prompt
      * asking for the best partition key. Copilot analyzes it and calls the

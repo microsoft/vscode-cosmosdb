@@ -7,6 +7,7 @@ import { parseAzureResourceId } from '@microsoft/vscode-azext-azureutils';
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { z } from 'zod';
+import { ArmCosmosDBControlPlane } from '../../../../cosmosdb/controlPlane/ArmCosmosDBControlPlane';
 import { getCosmosDBCredentials } from '../../../../cosmosdb/CosmosDBCredential';
 import { type NoSqlQueryConnection } from '../../../../cosmosdb/NoSqlQueryConnection';
 import { revealAzureResourceInExplorer } from '../../../../vscodeUriHandler';
@@ -166,6 +167,8 @@ export const actionsProcedures = {
         await vscode.commands.executeCommand('cosmosDB.dataModeling.open', {
             endpoint: ctx.metadata.documentEndpoint,
             name: ctx.metadata.accountName,
+            getControlPlane: () => new ArmCosmosDBControlPlane(ctx.metadata),
+            getDeploymentTarget: () => ctx.metadata,
         });
     }),
 };

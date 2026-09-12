@@ -323,8 +323,8 @@ function registerFabricProviders(
         const extension: fabric.IFabricExtension & { artifactTypes: FabricArtifactType[] } = {
             identity: context.extension.id,
             apiVersion: String(fabric.apiVersion),
-            artifactTypes: ['CosmosDBDatabase' /*, 'MirroredDatabase'*/],
-            treeNodeProviders: [ext.fabricNativeTreeNodeProvider /*, ext.fabricMirroredTreeNodeProvider*/],
+            artifactTypes: ['CosmosDBDatabase', 'MirroredDatabase'],
+            treeNodeProviders: [ext.fabricNativeTreeNodeProvider, ext.fabricMirroredTreeNodeProvider],
             localProjectTreeNodeProviders: [],
             artifactHandlers: [
                 ...FabricService.getArtifactHandlers('CosmosDBDatabase'),

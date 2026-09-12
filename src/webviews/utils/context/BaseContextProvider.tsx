@@ -18,6 +18,15 @@ interface CommonRoutes {
     common: {
         showInformationMessage: { mutate: (input: { message: string }) => Promise<void> };
         showErrorMessage: { mutate: (input: { message: string }) => Promise<void> };
+        compareTextDocuments: {
+            mutate: (input: {
+                title: string;
+                leftTitle: string;
+                leftContent: string;
+                rightTitle: string;
+                rightContent: string;
+            }) => Promise<void>;
+        };
         openUrl: { mutate: (input: { url: string }) => Promise<void> };
         reportEvent: {
             mutate: (input: {
@@ -52,6 +61,15 @@ export class BaseContextProvider<TRouter extends AnyRouter = AnyRouter> {
     }
     public async showErrorMessage(message: string) {
         await this.common?.showErrorMessage.mutate({ message });
+    }
+    public async compareTextDocuments(input: {
+        title: string;
+        leftTitle: string;
+        leftContent: string;
+        rightTitle: string;
+        rightContent: string;
+    }) {
+        await this.common?.compareTextDocuments.mutate(input);
     }
     public async openUrl(url: string) {
         await this.common?.openUrl.mutate({ url });

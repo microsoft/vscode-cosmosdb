@@ -9,7 +9,7 @@
  *
  * Why?  The Cosmos DB local emulator does not support bulk inserts, so importing
  * tens of thousands of documents is impractical.  However, the size of the
- * schema produced by `@cosmosdb/schema-analyzer` is driven by the number of
+ * schema produced by `@azure/cosmosdb-schema-analyzer` is driven by the number of
  * *unique property paths* — not by the document count.  This script exploits
  * that: every record carries many uniquely-named properties so a few hundred
  * documents are enough to balloon the schema to the requested megabytes.
@@ -65,7 +65,7 @@
  *   <output>           — the document collection (array of records)
  *   <output>.schema.json
  *                      — the JSON Schema inferred from those documents by
- *                        `@cosmosdb/schema-analyzer` (pretty-printed). Suitable
+ *                        `@azure/cosmosdb-schema-analyzer` (pretty-printed). Suitable
  *                        as a test fixture.
  *
  * Output is fully deterministic for a given (seed, records, target-mb).
@@ -290,7 +290,7 @@ const FIXED_STATUSES = ['active', 'pending', 'archived', 'draft'];
 
 /**
  * Empirically observed average byte cost of one extra unique leaf property
- * in the pretty-printed JSON schema produced by `@cosmosdb/schema-analyzer`
+ * in the pretty-printed JSON schema produced by `@azure/cosmosdb-schema-analyzer`
  * after `simplifySchema()`.  Used only to *estimate* `propsPerRecord` —
  * actual delta vs. target is reported by the CLI for visibility.
  */
@@ -670,7 +670,7 @@ if (isMainModule) {
 
     if (writeSchema) {
         console.log();
-        console.log('▶ Building schema with @cosmosdb/schema-analyzer…');
+        console.log('▶ Building schema with @azure/cosmosdb-schema-analyzer…');
         const analyzerPath = resolve(__dirname, '../packages/schema-analyzer/dist/esm/json/index.js');
         try {
             const analyzer = await import(pathToFileURL(analyzerPath).href);
@@ -703,7 +703,7 @@ if (isMainModule) {
                 );
             }
         } catch (err) {
-            console.warn(`  ⚠  Could not analyze — @cosmosdb/schema-analyzer not built?`);
+            console.warn(`  ⚠  Could not analyze — @azure/cosmosdb-schema-analyzer not built?`);
             console.warn(`     Run: npm run build  (or build the schema-analyzer package)`);
             console.warn(`     Error: ${err.message}`);
             process.exitCode = 1;

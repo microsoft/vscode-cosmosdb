@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type ItemDefinition, type JSONValue, type PartitionKeyDefinition } from '@azure/cosmos';
-import { type NoSQLDocument } from '@cosmosdb/schema-analyzer/json';
+import { type NoSQLDocument } from '@azure/cosmosdb-schema-analyzer/json';
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';

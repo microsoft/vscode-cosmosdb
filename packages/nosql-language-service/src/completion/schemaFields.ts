@@ -7,7 +7,7 @@
 // Schema field extraction for CosmosDB NoSQL SQL completion
 // ---------------------------------------------------------------------------
 
-import { type JSONSchema } from '@cosmosdb/schema-analyzer';
+import { type JSONSchema } from '@azure/cosmosdb-schema-analyzer';
 import { type CompletionItem } from './types.js';
 
 export function getFieldsFromSchema(schema: JSONSchema | undefined, path: string[]): CompletionItem[] {

@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type JSONSchema } from '@cosmosdb/schema-analyzer';
+import { type JSONSchema } from '@azure/cosmosdb-schema-analyzer';
 import { TypedEventSink } from '@microsoft/vscode-ext-webview';
 import { attachTrpc } from '@microsoft/vscode-ext-webview/host';
 import * as vscode from 'vscode';

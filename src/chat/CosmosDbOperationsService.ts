@@ -3,8 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type JSONSchema } from '@cosmosdb/schema-analyzer';
-import { getSchemaFromDocument, updateSchemaWithDocument, type NoSQLDocument } from '@cosmosdb/schema-analyzer/json';
+import { type JSONSchema } from '@azure/cosmosdb-schema-analyzer';
+import {
+    getSchemaFromDocument,
+    updateSchemaWithDocument,
+    type NoSQLDocument,
+} from '@azure/cosmosdb-schema-analyzer/json';
 import { type SerializedQueryResult } from '../cosmosdb/types/queryResult';
 import { type QueryEditorTab } from '../panels/QueryEditorTab';
 import { stripSchemaStatistics } from '../services/schemaStatistics';

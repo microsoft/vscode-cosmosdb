@@ -2,7 +2,7 @@
 
 Syntax highlighting, code completion, hover docs, diagnostics, signature help, and formatting
 for the CosmosDB NoSQL query language. Powered by the
-[`@cosmosdb/nosql-language-service`](../packages/nosql-language-service/README.md) workspace package.
+[`@azure/cosmosdb-nosql-language-service`](../packages/nosql-language-service/README.md) workspace package.
 
 Works in two environments:
 
@@ -13,7 +13,7 @@ Works in two environments:
 
 ```
 ┌─────────────────────────────────────────────────┐
-│  @cosmosdb/nosql-language-service               │
+│  @azure/cosmosdb-nosql-language-service         │
 │                                                 │
 │  Chevrotain parser → full AST, error recovery   │
 │  SqlLanguageService (IDE-agnostic facade)       │
@@ -73,15 +73,15 @@ Works in two environments:
 | File                    | Purpose                                                                                                                                                                                                              |
 | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `package.json`          | Declares the `nosql` language (`contributes.languages`) with file extension, language configuration, and file icon. Declares the TextMate grammar (`contributes.grammars`). Adds `onLanguage:nosql` activation event |
-| `vite.config.ext.mjs`   | Aliases `@cosmosdb/nosql-language-service` to TypeScript sources; copies grammar and config from the package into `dist/`                                                                                            |
-| `vite.config.views.mjs` | Aliases `@cosmosdb/nosql-language-service/monaco` to TypeScript sources for the webview bundle                                                                                                                       |
+| `vite.config.ext.mjs`   | Aliases `@azure/cosmosdb-nosql-language-service` to TypeScript sources; copies grammar and config from the package into `dist/`                                                                                      |
+| `vite.config.views.mjs` | Aliases `@azure/cosmosdb-nosql-language-service/monaco` to TypeScript sources for the webview bundle                                                                                                                 |
 
 ## How It Works
 
 ### Syntax Highlighting
 
 - **VS Code editor**: The TextMate grammar (`packages/nosql-language-service/syntaxes/nosql.tmLanguage.json`) is loaded declaratively by VS Code from `package.json` — no extension activation needed.
-- **Webview Monaco**: The Monarch tokenizer is built into the `@cosmosdb/nosql-language-service/monaco` adapter and registered automatically by `registerCosmosDbSql()`. It uses keyword and function name lists derived from the package's Chevrotain tokens and function signatures.
+- **Webview Monaco**: The Monarch tokenizer is built into the `@azure/cosmosdb-nosql-language-service/monaco` adapter and registered automatically by `registerCosmosDbSql()`. It uses keyword and function name lists derived from the package's Chevrotain tokens and function signatures.
 
 ### Code Completion
 

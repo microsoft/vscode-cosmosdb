@@ -1,4 +1,4 @@
-# @cosmosdb/schema-analyzer
+# @azure/cosmosdb-schema-analyzer
 
 Schema inference and statistical analysis for JSON / NoSQL and BSON / MongoDB documents.
 
@@ -10,16 +10,16 @@ Inspects one or more documents and produces a **JSON Schema** (draft-07 compatib
 
 ## Sub-modules
 
-| Import path                      | Use case                               | Dependencies               |
-| -------------------------------- | -------------------------------------- | -------------------------- |
-| `@cosmosdb/schema-analyzer`      | Shared `JSONSchema` types only         | None                       |
-| `@cosmosdb/schema-analyzer/json` | Plain JSON / CosmosDB NoSQL documents  | `denque`                   |
-| `@cosmosdb/schema-analyzer/bson` | MongoDB API / DocumentDB API documents | `denque`, `mongodb` (peer) |
+| Import path                            | Use case                               | Dependencies               |
+| -------------------------------------- | -------------------------------------- | -------------------------- |
+| `@azure/cosmosdb-schema-analyzer`      | Shared `JSONSchema` types only         | None                       |
+| `@azure/cosmosdb-schema-analyzer/json` | Plain JSON / CosmosDB NoSQL documents  | `denque`                   |
+| `@azure/cosmosdb-schema-analyzer/bson` | MongoDB API / DocumentDB API documents | `denque`, `mongodb` (peer) |
 
 ## Installation
 
 ```bash
-pnpm add @cosmosdb/schema-analyzer
+pnpm add @azure/cosmosdb-schema-analyzer
 
 # If using the BSON sub-module, also install mongodb:
 pnpm add mongodb
@@ -31,7 +31,7 @@ pnpm add mongodb
 import {
   getSchemaFromDocuments,
   getPropertyNamesAtLevel,
-} from "@cosmosdb/schema-analyzer/json";
+} from "@azure/cosmosdb-schema-analyzer/json";
 
 const schema = getSchemaFromDocuments([
   { name: "Alice", age: 30, tags: ["admin"] },
@@ -46,7 +46,7 @@ const props = getPropertyNamesAtLevel(schema, []);
 ## Quick start — BSON
 
 ```typescript
-import { SchemaAnalyzer } from "@cosmosdb/schema-analyzer/bson";
+import { SchemaAnalyzer } from "@azure/cosmosdb-schema-analyzer/bson";
 
 const analyzer = new SchemaAnalyzer();
 analyzer.addDocument({ _id: new ObjectId(), name: "Alice", createdAt: new Date() });

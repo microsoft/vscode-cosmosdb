@@ -6,11 +6,11 @@
 /**
  * @module index
  *
- * Public API entry point for `@cosmosdb/nosql-language-service`.
+ * Public API entry point for `@azure/cosmosdb-nosql-language-service`.
  *
  * @example
  * ```typescript
- * import { parse, sqlToString, getCompletions } from "@cosmosdb/nosql-language-service";
+ * import { parse, sqlToString, getCompletions } from "@azure/cosmosdb-nosql-language-service";
  *
  * // Parse a query
  * const { ast, errors } = parse("SELECT * FROM c WHERE c.age > 21");
@@ -24,7 +24,7 @@
  */
 
 // ---------------------------------------------------------------------------
-// @cosmosdb/nosql-language-service — public API
+// @azure/cosmosdb-nosql-language-service — public API
 // ---------------------------------------------------------------------------
 
 import { MismatchedTokenException, NotAllInputParsedException } from 'chevrotain';

@@ -1,4 +1,4 @@
-﻿# Architecture
+# Architecture
 
 ## Pipeline
 
@@ -64,7 +64,7 @@ index.ts  (public API: parse, sqlToString, getCompletions, SqlLanguageService, t
     │       └── ast/nodes.ts
     ├── completion/SqlCompletion.ts
     │       ├── lexer/tokens.ts
-    │       └── @cosmosdb/schema-analyzer  (JSONSchema type)
+    │       └── @azure/cosmosdb-schema-analyzer  (JSONSchema type)
     ├── diagnostics/typoDetection.ts  (near-miss keyword detection)
     │       └── lexer/tokens.ts
     ├── errors/SqlError.ts        (SourceRange, error codes)
@@ -91,7 +91,7 @@ The library is organized in three layers:
 - `visitor/` — visitor pattern
 - `errors/` — error types
 - `diagnostics/` — post-parse warnings (typo detection)
-- `completion/` — autocomplete engine (uses `JSONSchema` from `@cosmosdb/schema-analyzer`)
+- `completion/` — autocomplete engine (uses `JSONSchema` from `@azure/cosmosdb-schema-analyzer`)
 
 ### Layer 2: Language Service (zero IDE dependencies)
 
@@ -144,11 +144,11 @@ dependencies and tree-shakes cleanly.
 ## Package Exports
 
 ```
-@cosmosdb/nosql-language-service            → Core API + LanguageService
-@cosmosdb/nosql-language-service/services   → LanguageService + types only
-@cosmosdb/nosql-language-service/monaco     → Monaco adapter
-@cosmosdb/nosql-language-service/vscode     → VS Code adapter
-@cosmosdb/nosql-language-service/codemirror → CodeMirror 6 adapter
+@azure/cosmosdb-nosql-language-service            → Core API + LanguageService
+@azure/cosmosdb-nosql-language-service/services   → LanguageService + types only
+@azure/cosmosdb-nosql-language-service/monaco     → Monaco adapter
+@azure/cosmosdb-nosql-language-service/vscode     → VS Code adapter
+@azure/cosmosdb-nosql-language-service/codemirror → CodeMirror 6 adapter
 ```
 
 ## Key Files

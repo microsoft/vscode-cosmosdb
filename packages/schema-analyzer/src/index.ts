@@ -6,24 +6,24 @@
 /**
  * @module index
  *
- * Public API entry point for `@cosmosdb/schema-analyzer`.
+ * Public API entry point for `@azure/cosmosdb-schema-analyzer`.
  *
  * Provides two sub-modules:
- * - `@cosmosdb/schema-analyzer/json` — for plain JSON / NoSQL documents
- * - `@cosmosdb/schema-analyzer/bson` — for MongoDB API / DocumentDB API documents (requires `mongodb` peer dependency)
+ * - `@azure/cosmosdb-schema-analyzer/json` — for plain JSON / NoSQL documents
+ * - `@azure/cosmosdb-schema-analyzer/bson` — for MongoDB API / DocumentDB API documents (requires `mongodb` peer dependency)
  *
  * The shared `JSONSchema` type is re-exported from the root for convenience.
  *
  * @example
  * ```typescript
  * // JSON documents (no mongodb dependency needed)
- * import { getSchemaFromDocuments } from "@cosmosdb/schema-analyzer/json";
+ * import { getSchemaFromDocuments } from "@azure/cosmosdb-schema-analyzer/json";
  *
  * // BSON documents (requires mongodb)
- * import { SchemaAnalyzer } from "@cosmosdb/schema-analyzer/bson";
+ * import { SchemaAnalyzer } from "@azure/cosmosdb-schema-analyzer/bson";
  *
  * // Shared types
- * import { type JSONSchema } from "@cosmosdb/schema-analyzer";
+ * import { type JSONSchema } from "@azure/cosmosdb-schema-analyzer";
  * ```
  */
 

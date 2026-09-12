@@ -4,9 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type PartitionKeyDefinition, type PriorityLevel } from '@azure/cosmos';
-import { parse, parseMultiQueryDocument } from '@cosmosdb/nosql-language-service';
-import { type JSONSchema } from '@cosmosdb/schema-analyzer';
-import { type NoSQLDocument } from '@cosmosdb/schema-analyzer/json';
+import { parse, parseMultiQueryDocument } from '@azure/cosmosdb-nosql-language-service';
+import { type JSONSchema } from '@azure/cosmosdb-schema-analyzer';
+import { type NoSQLDocument } from '@azure/cosmosdb-schema-analyzer/json';
 import { parseError } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as crypto from 'crypto';

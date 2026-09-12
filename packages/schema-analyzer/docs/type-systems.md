@@ -1,10 +1,10 @@
 # Type Systems
 
-This document describes the two type systems supported by `@cosmosdb/schema-analyzer` and how they map to JSON Schema types.
+This document describes the two type systems supported by `@azure/cosmosdb-schema-analyzer` and how they map to JSON Schema types.
 
 ## JSON / CosmosDB NoSQL Types
 
-Used by `@cosmosdb/schema-analyzer/json`. Type extension key: `x-dataType`.
+Used by `@azure/cosmosdb-schema-analyzer/json`. Type extension key: `x-dataType`.
 
 | NoSQL Type  | JSON Schema Type | Description                      |
 | ----------- | ---------------- | -------------------------------- |
@@ -33,7 +33,7 @@ otherwise             → '_unknown_'
 
 ## BSON / MongoDB Types
 
-Used by `@cosmosdb/schema-analyzer/bson`. Type extension key: `x-bsonType`.
+Used by `@azure/cosmosdb-schema-analyzer/bson`. Type extension key: `x-bsonType`.
 
 Reference: [MongoDB BSON Types](https://www.mongodb.com/docs/manual/reference/bson-types/)
 

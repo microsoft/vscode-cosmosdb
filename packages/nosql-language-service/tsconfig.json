@@ -1,4 +1,4 @@
-﻿{
+{
   "compilerOptions": {
     // Strictness
     "strict": true,
@@ -26,8 +26,8 @@
     "declarationMap": true,
     "types": ["node"],
     "paths": {
-      "@cosmosdb/schema-analyzer": ["../schema-analyzer/src/index.ts"],
-      "@cosmosdb/schema-analyzer/*": ["../schema-analyzer/src/*.ts", "../schema-analyzer/src/*/index.ts"]
+      "@azure/cosmosdb-schema-analyzer": ["../schema-analyzer/src/index.ts"],
+      "@azure/cosmosdb-schema-analyzer/*": ["../schema-analyzer/src/*.ts", "../schema-analyzer/src/*/index.ts"]
     }
   },
   "references": [{ "path": "../schema-analyzer" }],

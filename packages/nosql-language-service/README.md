@@ -1,4 +1,4 @@
-# @cosmosdb/nosql-language-service
+# @azure/cosmosdb-nosql-language-service
 
 TypeScript parser for CosmosDB NoSQL SQL with error recovery,
 autocomplete, and AST transformation.
@@ -28,27 +28,27 @@ Node.js and browsers (including Electron).
 ## Install
 
 ```bash
-npm install @cosmosdb/nosql-language-service
+npm install @azure/cosmosdb-nosql-language-service
 ```
 
 ## Architecture — Three Layers
 
 ```
-┌─────────────────────────────────────────────────┐
-│  Layer 1: Core API                              │
-│  parse(), sqlToString(), getCompletions(),      │
-│  AST types, Visitor, errors                     │
-├─────────────────────────────────────────────────┤
-│  Layer 2: Language Service                      │
-│  SqlLanguageService — IDE-agnostic facade       │
-│  Diagnostics, Hover, Signature Help, Formatting │
-├─────────────────────────────────────────────────┤
-│  Layer 3: Provider Adapters (pick one)          │
-│  @cosmosdb/nosql-language-service/monaco        │
-│  @cosmosdb/nosql-language-service/vscode        │
-│  @cosmosdb/snosql-language-service/codemirror   │
-│  (or write your own)                            │
-└─────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────┐
+│  Layer 1: Core API                                 │
+│  parse(), sqlToString(), getCompletions(),         │
+│  AST types, Visitor, errors                        │
+├────────────────────────────────────────────────────┤
+│  Layer 2: Language Service                         │
+│  SqlLanguageService — IDE-agnostic facade          │
+│  Diagnostics, Hover, Signature Help, Formatting    │
+├─────────────────────────────────────────────────   ┤
+│  Layer 3: Provider Adapters (pick one)             │
+│  @azure/cosmosdb-nosql-language-service/monaco     │
+│  @azure/cosmosdb-nosql-language-service/vscode     │
+│  @azure/cosmosdb-nosql-language-service/codemirror │
+│  (or write your own)                               │
+└────────────────────────────────────────────────────┘
 ```
 
 **You can use any layer independently:**
@@ -65,7 +65,7 @@ npm install @cosmosdb/nosql-language-service
 ### Option A: Use the Core API directly
 
 ```typescript
-import { parse, sqlToString, getCompletions } from "@cosmosdb/nosql-language-service";
+import { parse, sqlToString, getCompletions } from "@azure/cosmosdb-nosql-language-service";
 
 // Parse a query
 const { ast, errors } = parse("SELECT * FROM c WHERE c.age > 21");
@@ -85,7 +85,7 @@ const items = getCompletions({ query: "SELECT c.", offset: 9, schema });
 ### Option B: Use the Language Service
 
 ```typescript
-import { SqlLanguageService } from "@cosmosdb/nosql-language-service";
+import { SqlLanguageService } from "@azure/cosmosdb-nosql-language-service";
 
 const service = new SqlLanguageService({
   getSchema: () => collectionSchema,
@@ -103,8 +103,8 @@ const formatted   = service.format("SELECT  *  FROM  c");
 
 ```typescript
 import * as monaco from "monaco-editor";
-import { SqlLanguageService } from "@cosmosdb/nosql-language-service";
-import { registerCosmosDbSql } from "@cosmosdb/nosql-language-service/monaco";
+import { SqlLanguageService } from "@azure/cosmosdb-nosql-language-service";
+import { registerCosmosDbSql } from "@azure/cosmosdb-nosql-language-service/monaco";
 
 const service = new SqlLanguageService({
   getSchema: () => collectionSchema,
@@ -119,8 +119,8 @@ const disposable = registerCosmosDbSql(monaco, service);
 
 ```typescript
 import * as vscode from "vscode";
-import { SqlLanguageService } from "@cosmosdb/nosql-language-service";
-import { registerCosmosDbSql } from "@cosmosdb/nosql-language-service/vscode";
+import { SqlLanguageService } from "@azure/cosmosdb-nosql-language-service";
+import { registerCosmosDbSql } from "@azure/cosmosdb-nosql-language-service/vscode";
 
 export function activate(context: vscode.ExtensionContext) {
   const service = new SqlLanguageService({
@@ -137,12 +137,12 @@ export function activate(context: vscode.ExtensionContext) {
 import { autocompletion } from "@codemirror/autocomplete";
 import { linter } from "@codemirror/lint";
 import { hoverTooltip } from "@codemirror/view";
-import { SqlLanguageService } from "@cosmosdb/nosql-language-service";
+import { SqlLanguageService } from "@azure/cosmosdb-nosql-language-service";
 import {
   createCompletionSource,
   createLintSource,
   createHoverTooltipSource,
-} from "@cosmosdb/nosql-language-service/codemirror";
+} from "@azure/cosmosdb-nosql-language-service/codemirror";
 
 const service = new SqlLanguageService({
   getSchema: () => collectionSchema,
@@ -157,13 +157,13 @@ const extensions = [
 
 ## Package Exports
 
-| Import path                                   | What you get                                |
-| --------------------------------------------- | ------------------------------------------- |
-| `@cosmosdb/nosql-language-service`            | Core API + `SqlLanguageService` + all types |
-| `@cosmosdb/nosql-language-service/services`   | `SqlLanguageService` + types only           |
-| `@cosmosdb/nosql-language-service/monaco`     | Monaco adapter                              |
-| `@cosmosdb/nosql-language-service/vscode`     | VS Code adapter                             |
-| `@cosmosdb/nosql-language-service/codemirror` | CodeMirror 6 adapter                        |
+| Import path                                         | What you get                                |
+| --------------------------------------------------- | ------------------------------------------- |
+| `@azure/cosmosdb-nosql-language-service`            | Core API + `SqlLanguageService` + all types |
+| `@azure/cosmosdb-nosql-language-service/services`   | `SqlLanguageService` + types only           |
+| `@azure/cosmosdb-nosql-language-service/monaco`     | Monaco adapter                              |
+| `@azure/cosmosdb-nosql-language-service/vscode`     | VS Code adapter                             |
+| `@azure/cosmosdb-nosql-language-service/codemirror` | CodeMirror 6 adapter                        |
 
 ## API Reference
 

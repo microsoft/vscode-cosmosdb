@@ -1113,7 +1113,7 @@
   "Show the last 7 days": "過去 7 日間を表示",
   "Show the last hour": "過去 1 時間を表示する",
   "Showing Results": "結果を表示しています",
-  "Showing the first {0}. The complete JSON result has not been opened.": "Showing the first {0}. The complete JSON result has not been opened.",
+  "Showing the first {0}. The complete JSON result has not been opened.": "最初の {0} を表示しています。完全な JSON 結果は開かれていません。",
   "Sign in to Azure...": "Azure にサインイン...",
   "Signing out programmatically is not supported. You must sign out by selecting the account in the Accounts menu and choosing Sign Out.": "プログラムによるサインアウトはサポートされていません。サインアウトするには、[アカウント] メニューでアカウントを選択し、[サインアウト] を選択する必要があります。",
   "Single physical partition holds {percent}% of storage, indicating skewed distribution.": "単一の物理パーティションは、分散のずれを示すストレージの {percent}% を保持します。",

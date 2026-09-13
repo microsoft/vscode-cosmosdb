@@ -1113,7 +1113,7 @@
   "Show the last 7 days": "Son 7 günü göster",
   "Show the last hour": "Son saati göster",
   "Showing Results": "Sonuçlar Gösteriliyor",
-  "Showing the first {0}. The complete JSON result has not been opened.": "Showing the first {0}. The complete JSON result has not been opened.",
+  "Showing the first {0}. The complete JSON result has not been opened.": "İlk {0} gösteriliyor. JSON sonucunun tamamı açılmadı.",
   "Sign in to Azure...": "Azure'da oturum açın...",
   "Signing out programmatically is not supported. You must sign out by selecting the account in the Accounts menu and choosing Sign Out.": "Program aracılığıyla oturumu kapatma desteklenmiyor. Hesaplar menüsünden hesabı seçip Oturumu Kapat'ı seçerek oturumu kapatmalısınız.",
   "Single physical partition holds {percent}% of storage, indicating skewed distribution.": "Tek bir fiziksel bölüm depolama alanının %{percent} kadarını barındırıyor, bu da dengesiz dağılıma işaret ediyor.",

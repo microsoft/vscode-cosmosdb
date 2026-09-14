@@ -873,7 +873,7 @@
   "Partition key misalignment": "分割區索引鍵對齊錯誤",
   "Partition key must be unique.": "資料分割索引鍵必須是唯一的。",
   "Partition key path can only contain ASCII letters (a-z, A-Z), numbers (0-9), underscores, and forward slashes. [Learn more]({0}{1})": "資料分割索引鍵路徑只能包含 ASCII 字母 (a-z、A-Z)、數字 (0-9)、底線和斜線。[深入了解]({0}{1})",
-  "Partition key path must contain non-empty segments separated by forward slashes (/)": "Partition key path must contain non-empty segments separated by forward slashes (/)",
+  "Partition key path must contain non-empty segments separated by forward slashes (/)": "資料分割索引鍵路徑必須包含以正斜線 (/) 分隔的非空區段",
   "Partition Key Selection…": "資料分割索引鍵選取項目...",
   "Partition merge candidates": "分割區合併候選項目",
   "Pause auto-refresh": "暫停自動重新整理",

@@ -873,7 +873,7 @@
   "Partition key misalignment": "Fehlausrichtung des Partitionsschlüssels",
   "Partition key must be unique.": "Partitionsschlüssel muss eindeutig sein.",
   "Partition key path can only contain ASCII letters (a-z, A-Z), numbers (0-9), underscores, and forward slashes. [Learn more]({0}{1})": "Partitionsschlüsselpfad darf nur ASCII-Buchstaben (a–z, A–Z), Zahlen (0–9), Unterstriche und Schrägstriche enthalten. [Weitere Informationen]({0}{1})",
-  "Partition key path must contain non-empty segments separated by forward slashes (/)": "Partition key path must contain non-empty segments separated by forward slashes (/)",
+  "Partition key path must contain non-empty segments separated by forward slashes (/)": "Der Partitionsschlüsselpfad muss nicht leere Segmente enthalten, die durch Schrägstriche (/) getrennt sind.",
   "Partition Key Selection…": "Partitionsschlüssel auswählen…",
   "Partition merge candidates": "Kandidaten für Partitionszusammenführung",
   "Pause auto-refresh": "Automatische Aktualisierung anhalten",

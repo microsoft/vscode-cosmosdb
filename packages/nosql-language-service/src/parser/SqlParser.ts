@@ -75,7 +75,9 @@ export class SqlParser extends EmbeddedActionsParser {
     constructor() {
         super(allTokens, {
             recoveryEnabled: true,
-            maxLookahead: 3,
+            // Two tokens distinguish the grammar's alternatives. A third causes combinatorial expansion when
+            // Chevrotain computes expected-token paths for incomplete expressions on every parse error.
+            maxLookahead: 2,
             errorMessageProvider: new SqlErrorMessageProvider(),
         });
         this.performSelfAnalysis();

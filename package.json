@@ -7,8 +7,8 @@
   "displayName": "Azure Cosmos DB",
   "description": "Connect Azure CosmosDB databases in Azure, inspect and edit your data and run powerful queries with the visual query editor.",
   "engines": {
-    "vscode": "^1.122.0",
-    "node": ">=22.22.2"
+    "vscode": "^1.125.0",
+    "node": ">=24.15.0"
   },
   "galleryBanner": {
     "color": "#3c3c3c",
@@ -113,38 +113,38 @@
     }
   },
   "devDependencies": {
-    "@playwright/test": "~1.62.1",
+    "@playwright/test": "~1.63.0",
     "@testing-library/jest-dom": "~7.0.1",
     "@testing-library/react": "~16.3.2",
     "@testing-library/user-event": "~14.6.1",
     "@types/json-schema": "~7.0.15",
-    "@types/node": "~26.4.0",
-    "@types/react": "~19.2.15",
-    "@types/react-dom": "~19.2.3",
+    "@types/node": "~26.5.1",
+    "@types/react": "~19.3.0",
+    "@types/react-dom": "~19.3.0",
     "@types/semver": "~7.8.0",
-    "@types/vscode": "~1.120.0",
+    "@types/vscode": "~1.125.0",
     "@types/vscode-webview": "~1.57.5",
     "@vitejs/plugin-react": "~6.1.1",
     "@vitest/coverage-v8": "~4.1.8",
     "@vscode/l10n-dev": "~0.0.35",
     "@vscode/test-electron": "~3.1.0",
-    "@vscode/vsce": "~3.9.1",
+    "@vscode/vsce": "~4.0.0",
     "concurrently": "~10.0.4",
     "cross-env": "~10.1.0",
     "diff": "~9.0.0",
     "glob": "~13.0.6",
     "jest-mock-vscode": "~4.13.0",
     "jsdom": "~30.0.1",
-    "oxfmt": "~0.65.0",
-    "oxlint": "~1.80.0",
+    "oxfmt": "~0.68.0",
+    "oxlint": "~1.83.0",
     "oxlint-tsgolint": "~7.0.2001",
-    "react": "~19.2.1",
-    "react-dom": "~19.2.1",
-    "react-refresh": "~0.18.0",
+    "react": "~19.3.0",
+    "react-dom": "~19.3.0",
+    "react-refresh": "~0.19.0",
     "rimraf": "~6.1.0",
-    "sass": "~1.103.1",
+    "sass": "~1.104.1",
     "typescript": "~7.0.2",
-    "vite": "~8.2.2",
+    "vite": "~8.3.0",
     "vite-bundle-analyzer": "~1.3.7",
     "vite-plugin-static-copy": "~4.1.0",
     "vitest": "~4.1.7"
@@ -185,7 +185,7 @@
     "recharts": "~3.10.1",
     "semver": "~7.8.0",
     "vscode-languageclient": "~10.1.1",
-    "zod": "~4.5.4"
+    "zod": "~4.6.5"
   },
   "overrides": {
     "@prantlf/jsonlint": {

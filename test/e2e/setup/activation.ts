@@ -23,9 +23,9 @@
  *
  * What this helper does
  * ---------------------
- * 1. Issues `View: Show Azure` to open the sidebar — wakes Azure
- *    Resources, which in turn pulls our extension up via the activation
- *    events above.
+ * 1. Waits for the Azure activity-bar tab to be registered, then clicks it to
+ *    open the sidebar. This wakes Azure Resources, which in turn pulls our
+ *    extension up via the activation events above.
  * 2. Polls the workbench DOM until the `Cosmos DB Accounts` row appears
  *    in the Workspaces tree. That label is produced by
  *    `CosmosDBWorkspaceItem.ts` and is only contributed by our extension —
@@ -40,7 +40,6 @@
  */
 
 import { type Page } from '@playwright/test';
-import { runCommand } from '../fixtures/webviewHelpers';
 
 const ACTIVATION_TIMEOUT_MS = 60_000;
 const ACTIVATION_POLL_INTERVAL_MS = 500;
@@ -54,15 +53,15 @@ const ACTIVATION_POLL_INTERVAL_MS = 500;
 const WORKSPACE_TREE_NODE_LABEL = 'Cosmos DB Accounts';
 
 export async function waitForExtensionsActivated(window: Page): Promise<void> {
-    // 1. Reveal the Azure sidebar. The command label "Show Azure" is
-    //    contributed by `ms-azuretools.vscode-azureresourcegroups`; if it's
-    //    missing here, the extension itself failed to install.
-    await runCommand(window, 'View: Show Azure');
+    const deadline = Date.now() + ACTIVATION_TIMEOUT_MS;
+    // The workbench can be visible before extension views are registered. Opening the command palette then
+    // snapshots an incomplete command list, and "View: Show Azure" resolves to an unrelated "similar command".
+    // The activity-bar locator waits for the actual contribution instead of executing that fallback.
+    await window.getByRole('tab', { name: /^Azure(?: \(|$)/ }).click({ timeout: ACTIVATION_TIMEOUT_MS });
 
     // 2. Wait for our workspace contribution to render. Polling DOM is the
     //    most resilient signal we have without a direct bridge into the
     //    VS Code extension host.
-    const deadline = Date.now() + ACTIVATION_TIMEOUT_MS;
     const nodeLocator = window.getByRole('treeitem', { name: WORKSPACE_TREE_NODE_LABEL });
 
     let lastError: string = '(no probes yet)';

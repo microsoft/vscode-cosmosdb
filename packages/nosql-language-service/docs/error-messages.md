@@ -50,6 +50,17 @@ SqlLanguageService.getDiagnostics()  ← copies into Diagnostic.message
 User sees: "Expected '(' but found 'FORM'."
 ```
 
+## Diagnostic Performance
+
+`SqlParser` uses `maxLookahead: 2`, which is sufficient to distinguish the current grammar's alternatives.
+Chevrotain also uses this limit to compute expected-token paths on every parse error. Raising it to three
+causes combinatorial path expansion for incomplete expressions such as `SELECT * FROM c WHERE`, even though
+the message provider only displays the first token of each path.
+
+`SqlError.test.ts` includes performance regressions for incomplete expressions, checking that parsing still
+returns useful diagnostics within 500 ms, including when V8 coverage is enabled. Grammar changes that require
+more lookahead should use a local `MAX_LOOKAHEAD` where needed rather than increasing the global limit.
+
 ## Token Display Names
 
 Internal Chevrotain token names are mapped to user-friendly labels:

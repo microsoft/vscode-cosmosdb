@@ -69,6 +69,21 @@ describe('Error recovery — returns errors for invalid queries', () => {
     });
 });
 
+describe('Error recovery performance', () => {
+    it.each(['SELECT * FROM c WHERE', 'SELECT c.id, , c.name FROM c', 'SELECT * FROM c WHERE c.x IN ('])(
+        'reports an incomplete expression promptly: %s',
+        (query) => {
+            const start = performance.now();
+            const { errors } = parse(query);
+            const duration = performance.now() - start;
+
+            expect(errors.length).toBeGreaterThan(0);
+            expect(errors[0].message).toMatch(/^Unexpected .+\. Expected .+\.$/);
+            expect(duration).toBeLessThan(500);
+        },
+    );
+});
+
 describe('Error recovery — error codes are correct', () => {
     it('empty query gets UNEXPECTED_EOF', () => {
         const { errors } = parse('');

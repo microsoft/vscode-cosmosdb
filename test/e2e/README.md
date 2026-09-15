@@ -96,7 +96,7 @@ test/e2e/
 │   │                             temp dir
 │   ├── emulator.ts            — docker compose up/down + readiness wait +
 │   │                             seed import wrapper
-│   └── activation.ts          — pre-test handshake (open Azure sidebar +
+│   └── activation.ts          — pre-test handshake (wait for and click the Azure activity-bar tab +
 │                                wait until the "Cosmos DB Accounts" workspace
 │                                tree node appears, proving both extensions
 │                                activated). Called once per worker from
@@ -154,6 +154,11 @@ test/e2e/
                                       paging and item shortcut verified in the
                                       same case as its button action)
 ```
+
+The activation handshake waits for Azure's activity-bar contribution before clicking it. On a fresh profile,
+the workbench can render before extension commands are registered; opening the command palette at that point
+can return unrelated “similar commands” instead of `View: Show Azure`. The handshake still requires the
+`Cosmos DB Accounts` tree node within the same 60-second activation budget.
 
 ## Query Editor coverage (`@queryEditor`)
 

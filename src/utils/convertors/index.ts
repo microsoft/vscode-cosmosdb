@@ -15,7 +15,13 @@
  */
 
 export type { ColumnOptions, StatsItem, TableData, TableRecord, TableRowMeta, TreeRow } from './types';
-export { queryResultToJSON } from './json';
+export {
+    createQueryResultJsonPreview,
+    getQueryResultJsonByteLength,
+    getQueryResultJsonChunks,
+    queryResultToJSON,
+    type QueryResultJsonPreview,
+} from './json';
 export { queryResultToTable } from './table';
 export { queryResultToTree } from './tree';
 export { indexMetricsToTableItem, queryMetricsToJSON, queryMetricsToTable } from './metrics';

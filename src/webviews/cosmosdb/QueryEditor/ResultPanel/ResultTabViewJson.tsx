@@ -121,6 +121,7 @@ const ResultJsonEditor = ({
 }: ResultJsonEditorProps) => {
     const classes = useClasses();
     const modelRef = useRef<MonacoEditorType.editor.ITextModel | null>(null);
+    const keyDownDisposableRef = useRef<MonacoEditorType.IDisposable | null>(null);
     const loadRevisionRef = useRef(0);
     const [loadedByteLength, setLoadedByteLength] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
@@ -133,12 +134,27 @@ const ResultJsonEditor = ({
 
     const handleMount = useCallback<NonNullable<React.ComponentProps<typeof MonacoEditor>['onMount']>>(
         (editor, monaco) => {
+            keyDownDisposableRef.current?.dispose();
+            keyDownDisposableRef.current = null;
+
             const model = editor.getModel();
             if (!model) {
                 return;
             }
 
             modelRef.current = model;
+            keyDownDisposableRef.current = editor.onKeyDown((event) => {
+                const isCopyShortcut =
+                    event.keyCode === monaco.KeyCode.KeyC &&
+                    (event.ctrlKey || event.metaKey) &&
+                    !event.altKey &&
+                    !event.shiftKey;
+                const hasTextSelection = editor.getSelections()?.some((selection) => !selection.isEmpty()) ?? false;
+
+                if (isCopyShortcut && hasTextSelection) {
+                    event.stopPropagation();
+                }
+            });
             model.setValue('');
             setLoadedByteLength(0);
             setIsLoading(true);
@@ -188,6 +204,8 @@ const ResultJsonEditor = ({
     useEffect(
         () => () => {
             loadRevisionRef.current++;
+            keyDownDisposableRef.current?.dispose();
+            keyDownDisposableRef.current = null;
             if (modelRef.current && !modelRef.current.isDisposed()) {
                 modelRef.current.dispose();
             }

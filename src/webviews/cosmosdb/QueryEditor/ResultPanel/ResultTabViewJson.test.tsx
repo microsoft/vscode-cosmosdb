@@ -15,6 +15,18 @@ import { ResultTabViewJson } from './ResultTabViewJson';
 
 const dispose = vi.fn();
 const focus = vi.fn();
+const keyDownDispose = vi.fn();
+let keyDownHandler:
+    | ((event: {
+          altKey: boolean;
+          ctrlKey: boolean;
+          keyCode: number;
+          metaKey: boolean;
+          shiftKey: boolean;
+          stopPropagation: () => void;
+      }) => void)
+    | undefined;
+let hasTextSelection = false;
 
 vi.mock('../../../MonacoEditor', () => ({
     MonacoEditor: ({
@@ -27,6 +39,7 @@ vi.mock('../../../MonacoEditor', () => ({
         onMount?: (
             editor: {
                 focus: () => void;
+                getSelections: () => { isEmpty: () => boolean }[];
                 getModel: () => {
                     applyEdits: (edits: { text: string }[]) => void;
                     dispose: () => void;
@@ -35,8 +48,9 @@ vi.mock('../../../MonacoEditor', () => ({
                     isDisposed: () => boolean;
                     setValue: (value: string) => void;
                 };
+                onKeyDown: (handler: NonNullable<typeof keyDownHandler>) => { dispose: () => void };
             },
-            monaco: { Range: new () => object },
+            monaco: { KeyCode: { KeyC: number }; Range: new () => object },
         ) => void;
     }) => {
         const [value, setValue] = useState(defaultValue);
@@ -50,6 +64,7 @@ vi.mock('../../../MonacoEditor', () => ({
             onMount?.(
                 {
                     focus,
+                    getSelections: () => [{ isEmpty: () => !hasTextSelection }],
                     getModel: () => ({
                         applyEdits: (edits) => updateValue(valueRef.current + edits.map((edit) => edit.text).join('')),
                         dispose,
@@ -58,8 +73,12 @@ vi.mock('../../../MonacoEditor', () => ({
                         isDisposed: () => false,
                         setValue: updateValue,
                     }),
+                    onKeyDown: (handler) => {
+                        keyDownHandler = handler;
+                        return { dispose: keyDownDispose };
+                    },
                 },
-                { Range: class {} },
+                { KeyCode: { KeyC: 33 }, Range: class {} },
             );
         }, [onMount]);
 
@@ -89,6 +108,9 @@ describe('ResultTabViewJson', () => {
     beforeEach(() => {
         dispose.mockClear();
         focus.mockClear();
+        keyDownDispose.mockClear();
+        keyDownHandler = undefined;
+        hasTextSelection = false;
     });
 
     it('opens a small result directly with the default editor options', async () => {
@@ -103,6 +125,52 @@ describe('ResultTabViewJson', () => {
             readOnly: true,
         });
     });
+
+    it.each([
+        { ctrlKey: true, metaKey: false },
+        { ctrlKey: false, metaKey: true },
+    ])('preserves native copy for a text selection with $ctrlKey/$metaKey', async ({ ctrlKey, metaKey }) => {
+        hasTextSelection = true;
+        renderJsonView(makeResult('selected text'));
+        await waitFor(() => expect(keyDownHandler).toBeDefined());
+        const stopPropagation = vi.fn();
+
+        keyDownHandler?.({
+            altKey: false,
+            ctrlKey,
+            keyCode: 33,
+            metaKey,
+            shiftKey: false,
+            stopPropagation,
+        });
+
+        expect(stopPropagation).toHaveBeenCalledOnce();
+    });
+
+    it.each([
+        { hasSelection: false, keyCode: 33, shiftKey: false },
+        { hasSelection: true, keyCode: 34, shiftKey: false },
+        { hasSelection: true, keyCode: 33, shiftKey: true },
+    ])(
+        'lets non-native-copy keydowns bubble with selection=$hasSelection, key=$keyCode, shift=$shiftKey',
+        async ({ hasSelection, keyCode, shiftKey }) => {
+            hasTextSelection = hasSelection;
+            renderJsonView(makeResult('selected text'));
+            await waitFor(() => expect(keyDownHandler).toBeDefined());
+            const stopPropagation = vi.fn();
+
+            keyDownHandler?.({
+                altKey: false,
+                ctrlKey: true,
+                keyCode,
+                metaKey: false,
+                shiftKey,
+                stopPropagation,
+            });
+
+            expect(stopPropagation).not.toHaveBeenCalled();
+        },
+    );
 
     it('shows an accessible warning without mounting Monaco for a large result', () => {
         renderJsonView(makeResult('x'.repeat(QUERY_RESULT_JSON_WARNING_BYTES)));

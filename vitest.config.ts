@@ -24,6 +24,10 @@ export default defineConfig({
         globals: true,
         server: {
             deps: {
+                // `@microsoft/vscode-ext-webview-fluentui` is ESM and imports named exports such as
+                // `createDarkTheme` from `@fluentui/react-components`, which resolves to CommonJS under Node.
+                // Left external, importing it throws `Named export 'createDarkTheme' not found`; inlining lets
+                // Vite transform the package so its CommonJS interop applies.
                 inline: ['@microsoft/vscode-ext-webview-fluentui'],
             },
         },

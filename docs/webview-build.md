@@ -1,8 +1,9 @@
-# Webview build (Vite) — rationale
+# Webview build (Vite) and theming — rationale
 
-Detailed background for non-obvious settings in `vite.config.views.mjs` and the
-local plugins under `plugins/vite-plugin-*.mjs`. The config itself keeps only
-short comments that link back to the sections here.
+Detailed background for the non-obvious parts of the webview layer: the settings
+in `vite.config.views.mjs`, the local plugins under `plugins/vite-plugin-*.mjs`,
+and the shared theming that every webview renders under. The config itself keeps
+only short comments that link back to the sections here.
 
 The webview is loaded by `src/panels/BaseTab.ts` and ships as a single
 `views.js` module. Two runtimes share most of this config:
@@ -42,17 +43,16 @@ local because they are not Fluent or Monaco theme derivation.
   boundary: first registration, delayed loading, live color changes, all four theme bases and stable snapshots.
 - Vitest inlines the ESM theming package so its Fluent imports use Vite's CommonJS interoperability. Version 1.1.0
   emits sourcemap warnings because the published maps reference missing source files. Fix the published maps
-  upstream (include source content or ship sources), rather than suppressing warnings or copying package code.
+  upstream ([vscode-documentdb#926](https://github.com/microsoft/vscode-documentdb/issues/926)), rather than
+  suppressing warnings or copying package code.
 - [smoke.spec.ts](../test/e2e/specs/smoke.spec.ts) checks stylesheet injection and live Fluent/Monaco updates in a
   production VS Code webview using deterministic DOM color mutations. Run with
   `COSMOSDB_E2E_SKIP_EMULATOR=1 npm run e2e -- test/e2e/specs/smoke.spec.ts`; Electron requires its Linux GUI libraries
   and a working display. These mutations test the package's DOM contract, not actual VS Code settings changes.
-- Before shipping, visually check all four views, including Account Overview, in light/dark and both high-contrast
-  kinds, tinted community themes and real color-customization changes. Include field/progress states, portals,
-  grid selection, keyboard focus and Monaco suggestions/diagnostics. Preserve editor content, selection and undo.
 - The package currently retains static Fluent high-contrast fallbacks (Teams Light for HC Light), and some global
   neutral text/stroke tokens remain fixed Fluent colors. Result tree/table text uses `colorNeutralForeground4`
-  outside the package's field overrides. Improvements belong upstream, with contrast and interaction tests.
+  outside the package's field overrides. Improvements belong upstream, with contrast and interaction tests, and are
+  tracked in [vscode-documentdb#926](https://github.com/microsoft/vscode-documentdb/issues/926).
   A demonstrated integration regression should be fixed in a package release, not hidden by a local theme engine.
 
 ---

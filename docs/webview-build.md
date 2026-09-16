@@ -16,6 +16,47 @@ The webview is loaded by `src/panels/BaseTab.ts` and ships as a single
 
 ---
 
+## Shared webview theming
+
+All four webviews use `VSCodeFluentProvider` from `@microsoft/vscode-ext-webview-fluentui` in
+[src/webviews/index.tsx](../src/webviews/index.tsx). The package owns theme observation, adaptive Fluent token
+generation, palette math and Monaco color mapping. It tracks theme-kind changes and root CSS updates, including
+same-kind switches and `workbench.colorCustomizations`. Do not recreate a local theme context or color catalog.
+
+Importing the package root injects its adaptive stylesheet once per document, including overrides for portaled
+Fluent surfaces. The rules have zero specificity and intentionally affect existing Fluent controls. Do not copy
+the stylesheet or deep-import package internals. The current `style-src 'unsafe-inline'` policy already supports
+this and Griffel; no script-policy relaxation is needed. The optional `/components` entry is not used.
+
+[MonacoEditor.tsx](../src/webviews/MonacoEditor.tsx) consumes `useVSCodeMonacoTheme` from the public `/monaco` entry.
+It registers the latest theme before editor creation, composes the caller's `beforeMount`, and reapplies changed
+snapshots without replacing the editor. The extension still owns Monaco, loader/workers, language services,
+resize handling, model state and focus behavior. The package has no Monaco runtime dependency; its color catalog
+is generated from Monaco 0.52.2, matching the extension. Syntax rules still inherit Monaco's built-in palette,
+not the user's TextMate theme. Feature-specific styles such as react-data-grid's VS Code variable mappings remain
+local because they are not Fluent or Monaco theme derivation.
+
+### Verification and upstream follow-ups
+
+- [MonacoEditor.test.tsx](../src/webviews/MonacoEditor.test.tsx) exercises the installed package with a mocked editor
+  boundary: first registration, delayed loading, live color changes, all four theme bases and stable snapshots.
+- Vitest inlines the ESM theming package so its Fluent imports use Vite's CommonJS interoperability. Version 1.1.0
+  emits sourcemap warnings because the published maps reference missing source files. Fix the published maps
+  upstream (include source content or ship sources), rather than suppressing warnings or copying package code.
+- [smoke.spec.ts](../test/e2e/specs/smoke.spec.ts) checks stylesheet injection and live Fluent/Monaco updates in a
+  production VS Code webview using deterministic DOM color mutations. Run with
+  `COSMOSDB_E2E_SKIP_EMULATOR=1 npm run e2e -- test/e2e/specs/smoke.spec.ts`; Electron requires its Linux GUI libraries
+  and a working display. These mutations test the package's DOM contract, not actual VS Code settings changes.
+- Before shipping, visually check all four views, including Account Overview, in light/dark and both high-contrast
+  kinds, tinted community themes and real color-customization changes. Include field/progress states, portals,
+  grid selection, keyboard focus and Monaco suggestions/diagnostics. Preserve editor content, selection and undo.
+- The package currently retains static Fluent high-contrast fallbacks (Teams Light for HC Light), and some global
+  neutral text/stroke tokens remain fixed Fluent colors. Result tree/table text uses `colorNeutralForeground4`
+  outside the package's field overrides. Improvements belong upstream, with contrast and interaction tests.
+  A demonstrated integration regression should be fixed in a package release, not hidden by a local theme engine.
+
+---
+
 ## <a id="base"></a> `base` — relative in prod, root in dev
 
 ```js

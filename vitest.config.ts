@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import path from 'path';
-import { coverageConfigDefaults, defineConfig } from 'vitest/config';
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
     // Vite's built-in esbuild transform handles the automatic JSX runtime for the React component
@@ -22,6 +22,15 @@ export default defineConfig({
     },
     test: {
         globals: true,
+        server: {
+            deps: {
+                // `@microsoft/vscode-ext-webview-fluentui` is ESM and imports named exports such as
+                // `createDarkTheme` from `@fluentui/react-components`, which resolves to CommonJS under Node.
+                // Left external, importing it throws `Named export 'createDarkTheme' not found`; inlining lets
+                // Vite transform the package so its CommonJS interop applies.
+                inline: ['@microsoft/vscode-ext-webview-fluentui'],
+            },
+        },
         deps: {
             optimizer: {
                 ssr: {
@@ -51,12 +60,6 @@ export default defineConfig({
         testTimeout: 15_000,
         coverage: {
             reporter: ['text', 'cobertura', 'html'],
-            exclude: [
-                ...coverageConfigDefaults.exclude,
-                // Theme color utilities adapted from open-source projects (CSS WG / Material color
-                // tooling). Excluded from coverage since they are third-party code, not authored here.
-                'src/webviews/theme/utils/**',
-            ],
         },
     },
 });

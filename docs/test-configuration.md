@@ -16,7 +16,9 @@ vscode-cosmosdb/
 ├── packages/*/src/
 │   └── **/*.test.ts              # Vitest unit tests for workspace packages
 ├── test/                         # Integration tests (Vitest in Extension Host)
-│   ├── index.ts                  # Custom @vitest/runner entry executed inside VS Code
+│   ├── index.ts                  # Vitest worker entry executed inside VS Code
+│   ├── vitest.config.ts          # Single-host integration configuration
+│   ├── integration/             # VS Code custom pool and local IPC transport
 │   ├── **/*.test.ts              # Vitest integration tests (real vscode API)
 │   └── e2e/                      # Playwright e2e suite (real VS Code + emulator)
 │       ├── fixtures/             # Worker-scoped vscodeApp / vscodeWindow / webview helpers
@@ -42,8 +44,9 @@ vscode-cosmosdb/
 We used to have Mocha for integration tests because `@vscode/test-cli` is mocha-only.
 That meant two runners and two different APIs (`suite/test/assert.ok` vs `describe/it/expect`).
 
-Instead, we drive `@vitest/runner.startTests()` directly from a small entry script in
-`test/index.ts` that runs inside the VS Code Extension Host. The result:
+Instead, Vitest 5 runs integration tests through a custom pool. The main Node process
+handles discovery and reporting; `test/index.ts` initializes `vitest/worker` inside
+one VS Code Extension Host. The result:
 
 - **One framework** — `vitest` everywhere.
 - **One API** — `import { describe, it, expect, beforeAll } from 'vitest';`
@@ -66,6 +69,11 @@ Instead, we drive `@vitest/runner.startTests()` directly from a small entry scri
   because the source is bundled by Vite into `dist/main.mjs` and lives in a different
   module instance than the compiled test code.
 - Run with `npm test`.
+- All files share one Extension Host and run sequentially (`maxWorkers: 1`,
+  `fileParallelism: false`, `isolate: false`). Clean up commands, listeners and other
+  shared state in teardown hooks.
+- Tests use native ESM imports. Vite transforms and module mocking through
+  `vi.mock`/`vi.doMock` are not enabled in this integration configuration.
 
 ### End-to-end tests (`test/e2e/specs/**/*.spec.ts`)
 
@@ -154,10 +162,15 @@ The script:
 
 1. Downloads VS Code stable into `.vscode-test/`.
 2. Installs `ms-azuretools.vscode-azureresourcegroups` into that VS Code copy.
-3. Launches the Extension Host with `extensionTestsPath: out/test/index.js`.
-4. `out/test/index.js` globs `out/test/**/*.test.js` and runs them via
-   `@vitest/runner.startTests()`.
+3. Starts Vitest with `out/test/vitest.config.js`. Its custom pool launches one
+   VS Code instance with `extensionTestsPath: out/test/index.js`.
+4. Vitest discovers `out/test/**/*.test.js` and sends work over a local named pipe
+   (Unix socket on Linux/macOS). `vitest/worker` runs the compiled files natively
+   inside the Extension Host and reports results back to Vitest.
 5. Exits with non-zero status if any test fails.
+
+Build the extension with `npm run vite-prod` before the first integration run.
+To filter files, pass a filename substring: `npm test -- extensionActivation`.
 
 ### End-to-end tests (slow, real VS Code + Docker emulator)
 
@@ -252,21 +265,30 @@ the real VS Code window) and the helpers under `test/e2e/fixtures/`. Do
 
 ## 🧩 Architectural Notes
 
-### Why a custom `@vitest/runner` entry instead of `startVitest()` ?
+### Why a custom VS Code pool?
 
-The full `startVitest()` (the Vitest Node API) spins up a Vite dev server and a worker
-pool — neither is wanted when we're already running inside Electron. `@vitest/runner` is
-the headless test-collection/execution core: it accepts a tiny `VitestRunner` object
-that only needs an `importFile(filepath)` method, then drives `describe/it/beforeAll/…`
-exactly as Vitest does internally. About 80 lines of glue gives us the full Vitest API
-inside the extension host with zero extra processes.
+Vitest 5 deprecated `@vitest/runner`; its standalone collector no longer shares state
+with tests importing `vitest`. We instead call `startVitest()` outside Electron and
+use the public `vitest/worker` API (`init`, `runBaseTests`, `setupEnvironment`) inside
+the Extension Host. No worker threads or additional test-host processes are created.
+
+The custom pool and native module runner APIs are experimental. The integration
+configuration disables Vite module loading and Node loader hooks so VS Code retains
+control of the real `vscode` module. This is not the unit-test mock.
+
+On Windows, the worker imports Vitest using its canonical filesystem path. VS Code
+can lowercase the drive letter of the entry point; without normalization, native ESM
+loads two collectors and `describe`/`it` cannot find the active runner.
+
+The pool owns the launched VS Code process, waits for graceful shutdown, and terminates
+that specific instance if it does not exit. Startup and shutdown have bounded waits.
 
 ### Why drop `@vscode/test-cli` ?
 
 `@vscode/test-cli` is a thin wrapper around `@vscode/test-electron` that bakes in Mocha.
 Since we no longer use Mocha, we call `@vscode/test-electron` directly from
-`scripts/run-integration-tests.mjs` (~60 LOC). That keeps download/install behaviour
-identical to what we had before.
+`scripts/run-integration-tests.mjs` for downloads and extension installation. The pool
+uses the same isolated profile arguments when it launches VS Code.
 
 ---
 

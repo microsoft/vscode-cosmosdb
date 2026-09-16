@@ -30,6 +30,7 @@ export default defineConfig({
         },
     },
     test: {
+        clearMocks: false,
         globals: true,
         deps: {
             optimizer: {

@@ -189,6 +189,9 @@ export function DeployPage({
     const [options, setOptions] = useState<DeploymentOptions>();
     const [optionsError, setOptionsError] = useState('');
     const [loadAttempt, setLoadAttempt] = useState(0);
+    const [showDatabaseValidation, setShowDatabaseValidation] = useState(false);
+    const newDatabaseNameRef = useRef<HTMLInputElement>(null);
+    const existingDatabaseNameRef = useRef<HTMLButtonElement>(null);
     const [generating, setGenerating] = useState(false);
     const [templateError, setTemplateError] = useState('');
     const [regenerateKey, setRegenerateKey] = useState<string>();
@@ -277,9 +280,10 @@ export function DeployPage({
         input.containers.length === 0 ? l10n.t('Select at least one container to deploy.') : undefined;
     const valid = !!options && !options.unavailableReason && !nameError && !selectionError;
     const useBicep = draft.deploymentMethod === 'bicep';
+    const nameValidationMessage = showDatabaseValidation || useBicep ? nameError : undefined;
     const customized = draft.template !== draft.generatedTemplate;
     const templateCurrent = draft.templateInputKey === inputKey;
-    const canDeploy = valid && !useBicep && !deploying;
+    const canAttemptDeploy = !!options && !options.unavailableReason && !selectionError && !useBicep && !deploying;
 
     useEffect(() => {
         let disposed = false;
@@ -345,7 +349,16 @@ export function DeployPage({
     };
 
     const deploy = async () => {
-        if (!canDeploy || deployingRef.current) return;
+        if (!canAttemptDeploy || deployingRef.current) return;
+        setShowDatabaseValidation(true);
+        if (nameError) {
+            if (draft.databaseMode === 'new') {
+                newDatabaseNameRef.current?.focus();
+            } else {
+                existingDatabaseNameRef.current?.focus();
+            }
+            return;
+        }
         deployingRef.current = true;
         restoreDeployFocus.current = true;
         setDeploying(true);
@@ -473,28 +486,31 @@ export function DeployPage({
                 {draft.databaseMode === 'new' ? (
                     <Field
                         label={l10n.t('New database name')}
-                        validationMessage={nameError}
-                        validationState={nameError ? 'error' : 'none'}
+                        validationMessage={nameValidationMessage}
+                        validationState={nameValidationMessage ? 'error' : 'none'}
                         className={styles.databaseField}
                         required
                     >
                         <Input
+                            ref={newDatabaseNameRef}
                             value={draft.newDatabaseName}
                             disabled={deploying}
-                            onChange={(_, data) =>
-                                onDraftChange((previous) => ({ ...previous, newDatabaseName: data.value }))
-                            }
+                            onChange={(_, data) => {
+                                setShowDatabaseValidation(true);
+                                onDraftChange((previous) => ({ ...previous, newDatabaseName: data.value }));
+                            }}
                         />
                     </Field>
                 ) : (
                     <Field
                         label={l10n.t('Existing database')}
-                        validationMessage={nameError}
-                        validationState={nameError ? 'error' : 'none'}
+                        validationMessage={nameValidationMessage}
+                        validationState={nameValidationMessage ? 'error' : 'none'}
                         className={styles.databaseField}
                         required
                     >
                         <Dropdown
+                            ref={existingDatabaseNameRef}
                             value={draft.existingDatabaseName}
                             selectedOptions={draft.existingDatabaseName ? [draft.existingDatabaseName] : []}
                             placeholder={l10n.t('Select a database')}
@@ -502,6 +518,7 @@ export function DeployPage({
                             onOptionSelect={(_, data) => {
                                 if (data.optionValue !== undefined) {
                                     const existingDatabaseName = data.optionValue;
+                                    setShowDatabaseValidation(true);
                                     onDraftChange((previous) => ({ ...previous, existingDatabaseName }));
                                 }
                             }}
@@ -631,7 +648,7 @@ export function DeployPage({
                                     ref={deployButtonRef}
                                     appearance="primary"
                                     icon={<ArrowUploadRegular />}
-                                    disabled={!canDeploy}
+                                    disabled={!canAttemptDeploy}
                                     onClick={() => void deploy()}
                                 >
                                     {l10n.t('Deploy')}

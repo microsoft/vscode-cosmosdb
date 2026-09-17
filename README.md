@@ -167,6 +167,8 @@ After receiving a recommendation on **Result**, select **Deploy** to open the **
 - Choose **Deploy now** (the default) or **Deploy with Biceps** in the final section.
   - **Deploy now** shows the Deploy button and does not generate or require a Bicep template. Review the final confirmation;
     while deploying, the button is replaced by a **Deploying...** spinner and controls/navigation are locked.
+    Database errors stay hidden until you edit the field or select **Deploy**, then update as you correct it.
+    Invalid database choices block deployment and receive focus when you select **Deploy**.
     After success, **Open in Data Explorer** opens the first selected container in the extension's Query Editor,
     using the same action as Account Overview. This also supports attached accounts and emulators.
   - **Deploy with Biceps** reveals the compact Monaco editor and copy/regenerate buttons for manual deployment with your own tools.

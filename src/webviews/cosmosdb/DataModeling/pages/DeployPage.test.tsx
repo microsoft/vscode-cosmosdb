@@ -112,6 +112,9 @@ beforeEach(() => {
 describe('Deploy wizard page', () => {
     it('shows named database radios and all container checkboxes selected by default', async () => {
         render(<Harness />);
+        expect(screen.getByRole('button', { name: 'Deploy' })).toBeDisabled();
+        expect(screen.queryByText('Database name is required.')).not.toBeInTheDocument();
+        expect(screen.getByRole('textbox', { name: 'New database name' })).not.toHaveAttribute('aria-invalid', 'true');
         expect(await screen.findByText('source-account', { selector: 'dd' })).toBeVisible();
         const target = within(screen.getByRole('region', { name: 'Deployment target' }));
         expect(target.getByText('Subscription:')).toBeVisible();
@@ -135,7 +138,9 @@ describe('Deploy wizard page', () => {
             expect(within(group).getByRole('checkbox', { name: entity })).toBeChecked();
             expect(within(group).getByRole('checkbox', { name: entity })).toHaveAccessibleName(entity);
         }
-        expect(screen.getByRole('button', { name: 'Deploy' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Deploy' })).toBeEnabled();
+        expect(screen.queryByText('Database name is required.')).not.toBeInTheDocument();
+        expect(screen.getByRole('textbox', { name: 'New database name' })).not.toHaveAttribute('aria-invalid', 'true');
         expect(generateTemplate).not.toHaveBeenCalled();
         expect(screen.getByRole('radiogroup', { name: 'Deployment method' })).toBeVisible();
         expect(screen.getByRole('radio', { name: 'Deploy now' })).toBeChecked();
@@ -146,26 +151,125 @@ describe('Deploy wizard page', () => {
         expect(screen.queryByRole('button', { name: 'Copy Bicep' })).not.toBeInTheDocument();
     });
 
-    it('validates required, forbidden, too-long and duplicate new database names', async () => {
+    it('shows the required error when a database name is typed and cleared before deployment', async () => {
+        const user = userEvent.setup();
         render(<Harness />);
         await screen.findByText('source-account', { selector: 'dd' });
+        const nameInput = screen.getByRole('textbox', { name: 'New database name' });
+        expect(nameInput).not.toHaveAttribute('aria-invalid', 'true');
+        expect(screen.queryByText('Database name is required.')).not.toBeInTheDocument();
+        await user.type(nameInput, 'valid-db');
+        expect(nameInput).not.toHaveAttribute('aria-invalid', 'true');
+        await user.clear(nameInput);
+        expect(nameInput).toHaveValue('');
+        expect(nameInput).toHaveFocus();
+        expect(nameInput).toHaveAttribute('aria-invalid', 'true');
+        expect(nameInput).toHaveAccessibleDescription('Database name is required.');
         expect(screen.getByText('Database name is required.')).toBeVisible();
-        changeName('bad/name');
+        await user.type(nameInput, 'corrected-db');
+        expect(nameInput).not.toHaveAttribute('aria-invalid', 'true');
+        expect(screen.queryByText('Database name is required.')).not.toBeInTheDocument();
+        expect(onDeploy).not.toHaveBeenCalled();
+        expect(generateTemplate).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        ['bad/name', /cannot contain path separators/],
+        ['x'.repeat(256), /cannot be longer than 255/],
+        ['existing-db', /This database already exists/],
+        ['   ', /Database name is required/],
+    ])('validates the edited database name "%s" before a deployment attempt', async (name, message) => {
+        render(<Harness />);
+        await screen.findByText('source-account', { selector: 'dd' });
+        changeName(name);
         expect(screen.getByRole('textbox', { name: 'New database name' })).toHaveAttribute('aria-invalid', 'true');
-        expect(screen.getByRole('button', { name: 'Deploy' })).toBeDisabled();
+        expect(screen.getByText(message)).toBeVisible();
+        expect(onDeploy).not.toHaveBeenCalled();
+        expect(generateTemplate).not.toHaveBeenCalled();
+    });
+
+    it('validates required, forbidden, too-long and duplicate names after attempting deployment', async () => {
+        render(<Harness />);
+        await waitForDeploy();
+        const nameInput = screen.getByRole('textbox', { name: 'New database name' });
+        const deployButton = screen.getByRole('button', { name: 'Deploy' });
+        deployButton.focus();
+        await userEvent.keyboard('{Enter}');
+        expect(screen.getByText('Database name is required.')).toBeVisible();
+        expect(nameInput).toHaveFocus();
+        expect(nameInput).toHaveAttribute('aria-invalid', 'true');
+        expect(nameInput).toHaveAccessibleDescription('Database name is required.');
+        changeName('bad/name');
+        expect(nameInput).toHaveAttribute('aria-invalid', 'true');
+        await userEvent.click(deployButton);
         changeName('x'.repeat(256));
         expect(screen.getByText(/cannot be longer than 255/)).toBeVisible();
+        await userEvent.click(deployButton);
         changeName('existing-db');
         expect(screen.getByText('This database already exists. Select Existing database to use it.')).toBeVisible();
+        await userEvent.click(deployButton);
+        expect(onDeploy).not.toHaveBeenCalled();
+        expect(onBusyChange).not.toHaveBeenCalled();
         changeName(' valid-db ');
+        expect(nameInput).not.toHaveAttribute('aria-invalid', 'true');
+        expect(
+            screen.queryByText('This database already exists. Select Existing database to use it.'),
+        ).not.toBeInTheDocument();
         await waitForDeploy();
         await userEvent.click(screen.getByRole('button', { name: 'Deploy' }));
+        expect(onDeploy).toHaveBeenCalledOnce();
         expect(onDeploy).toHaveBeenLastCalledWith({
             databaseMode: 'new',
             databaseName: 'valid-db',
             containers,
         });
         expect(generateTemplate).not.toHaveBeenCalled();
+    });
+
+    it('defers existing database errors until deployment and focuses the invalid dropdown', async () => {
+        render(<Harness />);
+        await waitForDeploy();
+        await userEvent.click(screen.getByRole('radio', { name: 'Existing database' }));
+        const dropdown = screen.getByRole('combobox', { name: 'Existing database' });
+        expect(dropdown).not.toHaveAttribute('aria-invalid', 'true');
+        expect(screen.queryByText('Select an existing database.')).not.toBeInTheDocument();
+        await userEvent.click(screen.getByRole('button', { name: 'Deploy' }));
+        expect(screen.getByText('Select an existing database.')).toBeVisible();
+        expect(dropdown).toHaveAttribute('aria-invalid', 'true');
+        expect(dropdown).toHaveAccessibleDescription('Select an existing database.');
+        expect(dropdown).toHaveFocus();
+        expect(onDeploy).not.toHaveBeenCalled();
+        expect(onBusyChange).not.toHaveBeenCalled();
+        await userEvent.click(dropdown);
+        await userEvent.click(screen.getByRole('option', { name: 'existing-db' }));
+        expect(dropdown).not.toHaveAttribute('aria-invalid', 'true');
+        expect(screen.queryByText('Select an existing database.')).not.toBeInTheDocument();
+        await userEvent.click(screen.getByRole('button', { name: 'Deploy' }));
+        expect(onDeploy).toHaveBeenCalledExactlyOnceWith({
+            databaseMode: 'existing',
+            databaseName: 'existing-db',
+            containers,
+        });
+    });
+
+    it('keeps database validation visible in Bicep mode and does not generate an invalid template', async () => {
+        render(<Harness />);
+        await waitForDeploy();
+        await chooseBicep();
+        expect(screen.getByText('Database name is required.')).toBeVisible();
+        expect(screen.getByRole('textbox', { name: 'New database name' })).toHaveAttribute('aria-invalid', 'true');
+        expect(screen.getByRole('button', { name: 'Regenerate template' })).toBeDisabled();
+        expect(generateTemplate).not.toHaveBeenCalled();
+        changeName();
+        await waitForTemplate();
+        expect(screen.queryByText('Database name is required.')).not.toBeInTheDocument();
+        expect(screen.getByRole('textbox', { name: 'New database name' })).not.toHaveAttribute('aria-invalid', 'true');
+        expect(generateTemplate).toHaveBeenCalledExactlyOnceWith({
+            databaseMode: 'new',
+            databaseName: 'new-db',
+            containers,
+        });
+        expect(onDeploy).not.toHaveBeenCalled();
     });
 
     it('does not mount Monaco or schedule template generation in Deploy now mode', async () => {

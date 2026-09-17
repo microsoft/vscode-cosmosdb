@@ -1,7 +1,6 @@
 {
-  "name": "@cosmosdb/nosql-language-service",
-  "version": "0.1.0",
-  "private": true,
+  "name": "@azure/cosmosdb-nosql-language-service",
+  "version": "1.0.0",
   "type": "module",
   "description": "CosmosDB NoSQL language service — parser, AST, autocomplete, hover docs, formatting, and editor providers",
   "main": "dist/esm/index.js",
@@ -45,7 +44,8 @@
     }
   },
   "files": [
-    "dist",
+    "dist/esm",
+    "dist/types",
     "syntaxes",
     "language-configuration.json"
   ],
@@ -55,13 +55,14 @@
     "prebuild": "node scripts/generate-docs-index.mjs",
     "build": "tsc",
     "clean": "rimraf dist tsconfig.tsbuildinfo",
+    "package": "npm pack",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "demo": "node scripts/demo.mjs"
   },
   "dependencies": {
-    "@cosmosdb/schema-analyzer": "*",
+    "@azure/cosmosdb-schema-analyzer": "~1.0.0",
     "chevrotain": "^12.0.0"
   },
   "devDependencies": {
@@ -105,5 +106,18 @@
   "engines": {
     "node": ">=22"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "author": "Microsoft Corporation",
+  "homepage": "https://github.com/microsoft/vscode-cosmosdb/tree/main/packages/nosql-language-service#readme",
+  "bugs": {
+    "url": "https://github.com/microsoft/vscode-cosmosdb/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/microsoft/vscode-cosmosdb.git",
+    "directory": "packages/nosql-language-service"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
 }

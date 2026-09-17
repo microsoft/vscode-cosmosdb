@@ -3,14 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type JSONSchema } from '@cosmosdb/schema-analyzer';
+import { type JSONSchema } from '@azure/cosmosdb-schema-analyzer';
 import {
     getSchemaFromDocument,
     getSchemaFromDocuments,
     simplifySchema,
     updateSchemaWithDocument,
     type NoSQLDocument,
-} from '@cosmosdb/schema-analyzer/json';
+} from '@azure/cosmosdb-schema-analyzer/json';
 import { callWithTelemetryAndErrorHandling, parseError, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';

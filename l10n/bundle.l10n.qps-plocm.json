@@ -902,7 +902,7 @@
   "Populate Sample Data": "[الهاتفPopulate Sample Dataעִבְרִית ع!]",
   "Port {0} is in use by another process. Configure a different MCP port in settings.": "[الهاتفPort {0} is in use by another process. Configure a different MCP port in settings.עִבְרִית عليكעִבְרִית عليكעִבְרִית !]",
   "Port number is required": "[الهاتفPort number is requiredעִבְרִית عل!]",
-  "Port number must be a number": "[الهاتفPort number must be a numberעִבְרִית عليك!]",
+  "Port number must be an integer": "[الهاتفPort number must be an integerעִבְרִית عليكעִ!]",
   "Port number must be between 1 and 65535": "[الهاتفPort number must be between 1 and 65535עִבְרִית عليكעִבְרִ!]",
   "PostgreSQL Flexible Servers are no longer supported in Cosmos DB extension.": "[الهاتفPostgreSQL Flexible Servers are no longer supported in Cosmos DB extension.עִבְרִית عليكעִבְרִית عليكעִבְרִ!]",
   "PostgreSQL Single Servers are no longer supported in Cosmos DB extension.": "[الهاتفPostgreSQL Single Servers are no longer supported in Cosmos DB extension.עִבְרִית عليكעִבְרִית عليكעִבְרִ!]",

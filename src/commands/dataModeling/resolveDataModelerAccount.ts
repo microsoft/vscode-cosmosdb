@@ -37,6 +37,14 @@ export async function resolveDataModelerAccount(
             name: accountInfo.name,
             getControlPlane: () => getControlPlane(accountInfo),
             getDeploymentTarget: () => accountInfo.azureMetadata,
+            getQueryConnection: (databaseId, containerId) => ({
+                azureMetadata: accountInfo.azureMetadata,
+                databaseId,
+                containerId,
+                endpoint: accountInfo.endpoint,
+                credentials: accountInfo.credentials,
+                isEmulator: accountInfo.isEmulator,
+            }),
         };
     }
     if (account.endpoint.trim()) {

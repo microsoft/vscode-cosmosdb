@@ -150,17 +150,25 @@ describe.each([
         const context = lastContext();
         const capability = vi.fn();
         const deploymentTarget = vi.fn();
+        const queryConnection = vi.fn();
         expect(context.account.getControlPlane).toBeUndefined();
-        expect(render({ ...firstAccount, getControlPlane: capability, getDeploymentTarget: deploymentTarget })).toBe(
-            tab,
-        );
+        expect(
+            render({
+                ...firstAccount,
+                getControlPlane: capability,
+                getDeploymentTarget: deploymentTarget,
+                getQueryConnection: queryConnection,
+            }),
+        ).toBe(tab);
         expect(context.account.getControlPlane).toBe(capability);
         expect(context.account.getDeploymentTarget).toBe(deploymentTarget);
+        expect(context.account.getQueryConnection).toBe(queryConnection);
         context.account.getControlPlane?.();
         expect(capability).toHaveBeenCalledOnce();
         expect(render(firstAccount)).toBe(tab);
         expect(context.account.getControlPlane).toBe(capability);
         expect(context.account.getDeploymentTarget).toBe(deploymentTarget);
+        expect(context.account.getQueryConnection).toBe(queryConnection);
     });
 
     it('accepts just an endpoint when account metadata and name are undefined', async () => {
@@ -197,6 +205,14 @@ describe.each([
         expect(lastContext().project).toBe(DataModelerProjectService.getInstance(secondAccount.endpoint));
         expect(lastContext().account.getControlPlane).toBeTypeOf('function');
         expect(lastContext().account.getDeploymentTarget?.()).toBe(metadata);
+        expect(await lastContext().account.getQueryConnection?.('deployed-db', 'Orders')).toEqual({
+            endpoint: secondAccount.endpoint,
+            databaseId: 'deployed-db',
+            containerId: 'Orders',
+            credentials: [],
+            isEmulator: false,
+            azureMetadata: metadata,
+        });
         lastContext().account.getControlPlane?.();
         expect(getControlPlane).toHaveBeenCalledWith(expect.objectContaining({ endpoint: secondAccount.endpoint }));
     });
@@ -205,6 +221,29 @@ describe.each([
         vi.mocked(pickAppResource).mockRejectedValueOnce(new vscode.CancellationError());
         await expect(open(actionContext())).rejects.toThrow(vscode.CancellationError);
         expect(vscode.window.createWebviewPanel).not.toHaveBeenCalled();
+    });
+
+    it.each([false, true])('preserves attached-account credentials and emulator mode (%s)', async (isEmulator) => {
+        const node = { account: { id: 'attached-id' } } as CosmosDBAccountResourceItem;
+        const accountInfo = {
+            ...firstAccount,
+            id: 'attached-id',
+            credentials: [],
+            isEmulator,
+            isServerless: false,
+        };
+        vi.mocked(getAccountInfo).mockResolvedValueOnce(accountInfo);
+        await open(actionContext(), node);
+        const connection = await lastContext().account.getQueryConnection?.('db', 'Users');
+        expect(connection).toEqual({
+            endpoint: firstAccount.endpoint,
+            databaseId: 'db',
+            containerId: 'Users',
+            credentials: accountInfo.credentials,
+            isEmulator,
+            azureMetadata: undefined,
+        });
+        expect(connection?.credentials).toBe(accountInfo.credentials);
     });
 });
 

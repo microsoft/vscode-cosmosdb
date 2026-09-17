@@ -950,6 +950,11 @@
       },
       {
         "category": "Cosmos DB",
+        "command": "cosmosDB.dataModeling.validateRecommendations",
+        "title": "%cosmosdb.command.dataModeling.validateRecommendations%"
+      },
+      {
+        "category": "Cosmos DB",
         "command": "cosmosDB.e2e.openQueryEditor",
         "title": "[E2E Test] Open Query Editor"
       },

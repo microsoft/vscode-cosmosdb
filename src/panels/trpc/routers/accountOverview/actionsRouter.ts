@@ -7,6 +7,7 @@ import { parseAzureResourceId } from '@microsoft/vscode-azext-azureutils';
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { z } from 'zod';
+import { type AzureResourceMetadata } from '../../../../cosmosdb/AzureResourceMetadata';
 import { ArmCosmosDBControlPlane } from '../../../../cosmosdb/controlPlane/ArmCosmosDBControlPlane';
 import { getCosmosDBCredentials } from '../../../../cosmosdb/CosmosDBCredential';
 import { type NoSqlQueryConnection } from '../../../../cosmosdb/NoSqlQueryConnection';
@@ -14,6 +15,29 @@ import { revealAzureResourceInExplorer } from '../../../../vscodeUriHandler';
 import { QueryEditorTab } from '../../../QueryEditorTab';
 import { type AccountOverviewRouterContext } from '../../appRouter';
 import { accountOverviewProcedure } from '../../trpc';
+
+async function getQueryConnection(
+    metadata: AzureResourceMetadata,
+    databaseId: string,
+    containerId: string,
+): Promise<NoSqlQueryConnection> {
+    const credentials = await getCosmosDBCredentials({
+        accountName: metadata.accountName,
+        documentEndpoint: metadata.documentEndpoint,
+        isEmulator: false,
+        tenantId: metadata.subscription.tenantId,
+        arm: metadata,
+    });
+
+    return {
+        azureMetadata: metadata,
+        databaseId,
+        containerId,
+        endpoint: metadata.documentEndpoint,
+        credentials,
+        isEmulator: false,
+    };
+}
 
 // ─── Zone: User actions ─────────────────────────────────────────────────────────
 //
@@ -83,25 +107,7 @@ export const actionsProcedures = {
                 ctx: AccountOverviewRouterContext;
                 input: { databaseId: string; containerId: string };
             }) => {
-                const { metadata } = ctx;
-                const credentials = await getCosmosDBCredentials({
-                    accountName: metadata.accountName,
-                    documentEndpoint: metadata.documentEndpoint,
-                    isEmulator: false,
-                    tenantId: metadata.subscription.tenantId,
-                    arm: metadata,
-                });
-
-                const connection: NoSqlQueryConnection = {
-                    azureMetadata: metadata,
-                    databaseId: input.databaseId,
-                    containerId: input.containerId,
-                    endpoint: metadata.documentEndpoint,
-                    credentials,
-                    isEmulator: false,
-                };
-
-                QueryEditorTab.render(connection);
+                QueryEditorTab.render(await getQueryConnection(ctx.metadata, input.databaseId, input.containerId));
             },
         ),
 
@@ -169,6 +175,8 @@ export const actionsProcedures = {
             name: ctx.metadata.accountName,
             getControlPlane: () => new ArmCosmosDBControlPlane(ctx.metadata),
             getDeploymentTarget: () => ctx.metadata,
+            getQueryConnection: (databaseId: string, containerId: string) =>
+                getQueryConnection(ctx.metadata, databaseId, containerId),
         });
     }),
 };

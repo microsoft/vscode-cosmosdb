@@ -49,6 +49,7 @@ const containers: DeploymentContainer[] = [
 const loadOptions = vi.fn<() => Promise<DeploymentOptions>>();
 const generateTemplate = vi.fn<(input: DeploymentTemplateInput) => Promise<string>>();
 const onDeploy = vi.fn<(input: DeploymentRequest) => Promise<ModelDeploymentResult>>();
+const onOpenDataExplorer = vi.fn<(input: { databaseId: string; containerId: string }) => Promise<void>>();
 const onBusyChange = vi.fn();
 const onDeployed = vi.fn();
 
@@ -63,6 +64,7 @@ function Harness() {
                 loadOptions={loadOptions}
                 generateTemplate={generateTemplate}
                 onDeploy={onDeploy}
+                onOpenDataExplorer={onOpenDataExplorer}
                 onBusyChange={onBusyChange}
                 onDeployed={onDeployed}
             />
@@ -104,6 +106,7 @@ beforeEach(() => {
             `// ${input.databaseMode} ${input.databaseName}: ${input.containers.map((container) => container.entity).join(', ')}`,
     );
     onDeploy.mockResolvedValue({ status: 'cancelled' });
+    onOpenDataExplorer.mockResolvedValue(undefined);
 });
 
 describe('Deploy wizard page', () => {
@@ -368,6 +371,7 @@ describe('Deploy wizard page', () => {
                 }),
         );
         render(<Harness />);
+        expect(screen.queryByText('Open in Data Explorer')).not.toBeInTheDocument();
         changeName();
         await waitForDeploy();
         const button = screen.getByRole('button', { name: 'Deploy' });
@@ -385,6 +389,7 @@ describe('Deploy wizard page', () => {
         expect(screen.getByRole('radio', { name: 'Deploy with Biceps' })).toBeDisabled();
         expect(onBusyChange).toHaveBeenLastCalledWith(true);
         expect(onDeploy).toHaveBeenCalledOnce();
+        expect(screen.queryByText('Open in Data Explorer')).not.toBeInTheDocument();
         await act(async () =>
             resolveDeploy({ status: 'deployed', databaseName: 'new-db', createdCount: 2, existingCount: 0 }),
         );
@@ -396,6 +401,82 @@ describe('Deploy wizard page', () => {
         expect(onDeployed).toHaveBeenCalledOnce();
         expect(screen.getByRole('button', { name: 'Deploy' })).toBeEnabled();
         expect(screen.getByRole('button', { name: 'Deploy' })).toHaveFocus();
+        const explorer = screen.getByRole('button', { name: 'Open in Data Explorer' });
+        expect(explorer).toHaveTextContent('Open in Data Explorer');
+        expect(explorer).toHaveAccessibleName('Open in Data Explorer');
+        expect(explorer).toHaveAccessibleDescription('Open container "Orders" in database "new-db".');
+        await userEvent.tab();
+        expect(explorer).toHaveFocus();
+        await userEvent.keyboard('{Enter}');
+        expect(onOpenDataExplorer).toHaveBeenCalledWith({ databaseId: 'new-db', containerId: 'Orders' });
+    });
+
+    it('opens the first selected container in the returned database and clears the link when the draft changes', async () => {
+        onDeploy.mockResolvedValueOnce({
+            status: 'deployed',
+            databaseName: 'existing-db',
+            createdCount: 0,
+            existingCount: 1,
+        });
+        render(<Harness />);
+        await screen.findByText('source-account', { selector: 'dd' });
+        await userEvent.click(screen.getByRole('radio', { name: 'Existing database' }));
+        await userEvent.click(screen.getByRole('combobox', { name: 'Existing database' }));
+        await userEvent.click(screen.getByRole('option', { name: 'existing-db' }));
+        await userEvent.click(screen.getByRole('checkbox', { name: 'Orders' }));
+        await waitForDeploy();
+        await userEvent.click(screen.getByRole('button', { name: 'Deploy' }));
+        await userEvent.click(await screen.findByRole('button', { name: 'Open in Data Explorer' }));
+        expect(onOpenDataExplorer).toHaveBeenCalledWith({ databaseId: 'existing-db', containerId: 'Users' });
+        await userEvent.click(screen.getByRole('checkbox', { name: 'Orders' }));
+        expect(screen.queryByText('Open in Data Explorer')).not.toBeInTheDocument();
+    });
+
+    it('reports opening failures separately from deployment and allows retrying', async () => {
+        onDeploy.mockResolvedValueOnce({
+            status: 'deployed',
+            databaseName: 'new-db',
+            createdCount: 2,
+            existingCount: 0,
+        });
+        let rejectOpen!: (error: Error) => void;
+        onOpenDataExplorer.mockImplementationOnce(
+            () =>
+                new Promise<void>((_, reject) => {
+                    rejectOpen = reject;
+                }),
+        );
+        render(<Harness />);
+        changeName();
+        await waitForDeploy();
+        await userEvent.click(screen.getByRole('button', { name: 'Deploy' }));
+        const explorer = await screen.findByRole('button', { name: 'Open in Data Explorer' });
+        await userEvent.click(explorer);
+        expect(explorer).toBeDisabled();
+        await act(async () => rejectOpen(new Error('Access denied')));
+        expect(screen.getByRole('alert')).toHaveTextContent('Could not open Data Explorer. Access denied');
+        expect(screen.getByText(/Data model deployed to/)).toBeVisible();
+        expect(explorer).toBeEnabled();
+        await userEvent.click(explorer);
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        expect(onOpenDataExplorer).toHaveBeenCalledTimes(2);
+        expect(onDeploy).toHaveBeenCalledOnce();
+    });
+
+    it('clears the previous success link when a subsequent deployment is cancelled', async () => {
+        onDeploy.mockResolvedValueOnce({
+            status: 'deployed',
+            databaseName: 'new-db',
+            createdCount: 2,
+            existingCount: 0,
+        });
+        render(<Harness />);
+        changeName();
+        await waitForDeploy();
+        await userEvent.click(screen.getByRole('button', { name: 'Deploy' }));
+        expect(await screen.findByRole('button', { name: 'Open in Data Explorer' })).toBeVisible();
+        await userEvent.click(screen.getByRole('button', { name: 'Deploy' }));
+        expect(screen.queryByText('Open in Data Explorer')).not.toBeInTheDocument();
     });
 
     it('surfaces direct provisioning failures without generating a Bicep template', async () => {
@@ -405,6 +486,7 @@ describe('Deploy wizard page', () => {
         await waitForDeploy();
         await userEvent.click(screen.getByRole('button', { name: 'Deploy' }));
         expect(screen.getByText('Deployment failed. Quota exceeded')).toBeVisible();
+        expect(screen.queryByText('Open in Data Explorer')).not.toBeInTheDocument();
         expect(generateTemplate).not.toHaveBeenCalled();
         expect(onDeployed).not.toHaveBeenCalled();
         expect(screen.getByRole('button', { name: 'Deploy' })).toBeEnabled();
@@ -416,6 +498,7 @@ describe('Deploy wizard page', () => {
         await waitForDeploy();
         await userEvent.click(screen.getByRole('button', { name: 'Deploy' }));
         expect(screen.getByText('Deployment cancelled. No deployment was started.')).toBeVisible();
+        expect(screen.queryByText('Open in Data Explorer')).not.toBeInTheDocument();
         expect(onDeployed).not.toHaveBeenCalled();
     });
 

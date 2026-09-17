@@ -57,6 +57,9 @@ export class DataModelingWizardTab extends BaseTab {
             if (account.getDeploymentTarget) {
                 existing.account.getDeploymentTarget = account.getDeploymentTarget;
             }
+            if (account.getQueryConnection) {
+                existing.account.getQueryConnection = account.getQueryConnection;
+            }
             existing.panel.reveal(column);
             return existing;
         }

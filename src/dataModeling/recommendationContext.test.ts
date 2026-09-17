@@ -312,7 +312,7 @@ describe('bundled recommendation skill', () => {
         expect(skill).toContain('direct Chat requests without a wizard/report tool');
     });
 
-    it('requires explicit failure instead of guesses or provisional recommendations', () => {
+    it('requires explicit failure when core decision evidence is unavailable', () => {
         expect(skill).toContain('**stop and report failure**');
         expect(skill).toContain('precedence over the default-hint preference');
         expect(skill).toContain('Do not report partial success');
@@ -324,10 +324,19 @@ describe('bundled recommendation skill', () => {
         expect(skill).not.toContain('label illustrative estimates');
     });
 
-    it('enforces hard guardrails before scoring and reports relevant rules last', () => {
+    it('enforces known hard-constraint violations and reports unknown guardrails as warnings', () => {
         expect(skill).toContain('Never recommend a key that violates an applicable hard constraint');
         expect(skill).toContain('neither a high score nor an unchanged scenario hint can');
-        expect(skill).toContain('Unknown evidence needed to establish compliance is not a pass');
+        expect(skill).toContain('Unknown evidence needed to establish compliance is not a pass.');
+        expect(skill).toContain('unverified guardrail warning');
+        expect(skill).toContain('does not affect which key is suitable');
+        expect(skill).toContain('known violation, contradiction');
+        expect(skill).toContain('### Wizard evidence policy');
+        expect(skill).toContain('do not fail, request a retry, or withhold a');
+        expect(skill).toContain('maximum encoded partition-key lengths');
+        expect(skill).toContain('document-ID length/character guarantees');
+        expect(skill).toContain('retention/count/byte bounds');
+        expect(skill).toContain('not a certification');
         expect(skill).toContain('Derive the applicable guardrails at request time');
         expect(skill).toContain('hard constraints, conditional requirements, and optimization');
         expect(skill).toContain('CRITICAL alone does not establish that a rule is absolute');
@@ -359,5 +368,15 @@ describe('bundled recommendation skill', () => {
         expect(skill).not.toContain('official documentation URL');
         expect(skill).not.toContain('authoritative references it links to');
         expect(skill).not.toContain('check the relevant authoritative');
+    });
+
+    it('discovers required reading from the shipped rules rather than demanding nonexistent guidance', () => {
+        expect(skill).toContain("Use that skill's current index");
+        expect(skill).toContain('not from a fixed topic checklist');
+        expect(skill).toContain('Do not require a standalone rule for a topic that the bundle does not cover');
+        expect(skill).toContain('read the individual rules instead');
+        expect(skill).toContain('minimum input needed to check it');
+        expect(skill).not.toContain('synthetic keys, immutability, key-value length');
+        expect(skill).toContain('necessary correctness question unresolved');
     });
 });

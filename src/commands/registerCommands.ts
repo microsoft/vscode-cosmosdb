@@ -20,6 +20,7 @@ import { cosmosDBCreateStoredProcedure } from './createStoredProcedure/createSto
 import { cosmosDBCreateTrigger } from './createTrigger/createTrigger';
 import { openDataModelingWizard } from './dataModeling/openDataModelingWizard';
 import { openDataModelingWizardDrawer } from './dataModeling/openDataModelingWizardDrawer';
+import { validateRecommendations } from './dataModeling/validateRecommendations';
 import { deleteAllSavedSchemas } from './deleteAllSavedSchemas/deleteAllSavedSchemas';
 import { cosmosDBDeleteContainer } from './deleteContainer/deleteContainer';
 import { cosmosDBDeleteDatabase } from './deleteDatabase/deleteDatabase';
@@ -81,6 +82,7 @@ export function registerCommands(): void {
     registerMigrationCommands();
 
     registerCommand('cosmosDB.quickStart.reset', resetQuickStart);
+    registerCommand('cosmosDB.dataModeling.validateRecommendations', validateRecommendations);
 }
 
 export function registerAccountCommands() {

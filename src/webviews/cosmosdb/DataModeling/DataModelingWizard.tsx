@@ -835,6 +835,7 @@ const HydratedDataModelingWizard = ({
                             loadOptions={loadDeploymentOptions}
                             generateTemplate={generateDeploymentTemplate}
                             onDeploy={(input) => trpcClient.dataModeling.deploy.mutate(input)}
+                            onOpenDataExplorer={(input) => trpcClient.dataModeling.openDataExplorer.mutate(input)}
                             onBusyChange={setDeploymentBusy}
                             onDeployed={markDeployed}
                         />

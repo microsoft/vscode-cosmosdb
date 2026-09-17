@@ -9,6 +9,7 @@ import {
     Dropdown,
     Field,
     Input,
+    Link,
     makeStyles,
     Option,
     Radio,
@@ -64,6 +65,7 @@ export interface DeployPageProps {
     loadOptions: () => Promise<DeploymentOptions>;
     generateTemplate: (input: DeploymentTemplateInput) => Promise<string>;
     onDeploy: (input: DeploymentRequest) => Promise<ModelDeploymentResult>;
+    onOpenDataExplorer: (input: { databaseId: string; containerId: string }) => Promise<void>;
     onBusyChange: (busy: boolean) => void;
     onDeployed: () => void;
 }
@@ -157,7 +159,7 @@ const EDITOR_OPTIONS: MonacoEditorType.editor.IStandaloneEditorConstructionOptio
 function deploymentErrorDetail(error: unknown): string {
     const message = error instanceof Error ? error.message : String(error);
     if (
-        /^No procedure found on path "dataModeling\.(getDeploymentOptions|generateDeploymentTemplate|deploy)"$/.test(
+        /^No procedure found on path "dataModeling\.(getDeploymentOptions|generateDeploymentTemplate|deploy|openDataExplorer)"$/.test(
             message,
         )
     ) {
@@ -175,6 +177,7 @@ export function DeployPage({
     loadOptions,
     generateTemplate,
     onDeploy,
+    onOpenDataExplorer,
     onBusyChange,
     onDeployed,
 }: DeployPageProps) {
@@ -200,6 +203,9 @@ export function DeployPage({
     const restoreDeployFocus = useRef(false);
     const [deploymentMessage, setDeploymentMessage] = useState('');
     const [deploymentError, setDeploymentError] = useState('');
+    const [deployedTarget, setDeployedTarget] = useState<{ databaseId: string; containerId: string }>();
+    const [openingExplorer, setOpeningExplorer] = useState(false);
+    const [explorerError, setExplorerError] = useState('');
     const [copyMessage, setCopyMessage] = useState('');
 
     useEffect(() => {
@@ -328,6 +334,8 @@ export function DeployPage({
     useEffect(() => {
         setDeploymentMessage('');
         setDeploymentError('');
+        setDeployedTarget(undefined);
+        setExplorerError('');
         setCopyMessage('');
     }, [inputKey, draft.template, useBicep]);
 
@@ -344,9 +352,12 @@ export function DeployPage({
         onBusyChange(true);
         setDeploymentMessage('');
         setDeploymentError('');
+        setDeployedTarget(undefined);
+        setExplorerError('');
         try {
             const result = await onDeploy(input);
             if (result.status === 'deployed') {
+                setDeployedTarget({ databaseId: result.databaseName, containerId: input.containers[0].entity });
                 setDeploymentMessage(
                     l10n.t(
                         'Data model deployed to "{database}": {created} container(s) created, {existing} left unchanged.',
@@ -371,6 +382,19 @@ export function DeployPage({
             deployingRef.current = false;
             setDeploying(false);
             onBusyChange(false);
+        }
+    };
+
+    const openDataExplorer = async () => {
+        if (!deployedTarget || openingExplorer) return;
+        setOpeningExplorer(true);
+        setExplorerError('');
+        try {
+            await onOpenDataExplorer(deployedTarget);
+        } catch (error) {
+            setExplorerError(l10n.t('Could not open Data Explorer. {error}', { error: deploymentErrorDetail(error) }));
+        } finally {
+            setOpeningExplorer(false);
         }
     };
 
@@ -619,6 +643,20 @@ export function DeployPage({
             </section>
             <div className={styles.status}>
                 <output aria-live="polite">{deploymentMessage}</output>
+                {deployedTarget ? (
+                    <Link
+                        as="button"
+                        disabled={openingExplorer}
+                        aria-description={l10n.t('Open container "{container}" in database "{database}".', {
+                            container: deployedTarget.containerId,
+                            database: deployedTarget.databaseId,
+                        })}
+                        onClick={() => void openDataExplorer()}
+                    >
+                        {l10n.t('Open in Data Explorer')}
+                    </Link>
+                ) : null}
+                {explorerError ? <Text role="alert">{explorerError}</Text> : null}
                 {deploymentError ? <Text role="alert">{deploymentError}</Text> : null}
             </div>
             <AlertDialog

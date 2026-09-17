@@ -8,6 +8,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import * as vscode from 'vscode';
 import { type AzureResourceMetadata } from '../cosmosdb/AzureResourceMetadata';
 import { type CosmosDBControlPlane } from '../cosmosdb/controlPlane';
+import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import {
     ModelingAdvisorProjectSchema,
     ModelingAdvisorSnapshotSchema,
@@ -23,6 +24,11 @@ export interface DataModelerAccount {
     getControlPlane?: () => CosmosDBControlPlane;
     /** Host-only metadata for target display and Bicep defaults. The object itself is never serialized or persisted. */
     getDeploymentTarget?: () => AzureResourceMetadata | undefined;
+    /** Host-only connection factory. Credentials are never sent to the modeler webview or persisted with its state. */
+    getQueryConnection?: (
+        databaseId: string,
+        containerId: string,
+    ) => NoSqlQueryConnection | Promise<NoSqlQueryConnection>;
 }
 
 export const DATA_MODELER_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;

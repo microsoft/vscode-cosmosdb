@@ -902,7 +902,7 @@
   "Populate Sample Data": "Örnek Verileri Doldur",
   "Port {0} is in use by another process. Configure a different MCP port in settings.": "Bağlantı noktası {0} başka bir işlem tarafından kullanılıyor. Ayarlarda farklı bir MCP bağlantı noktası yapılandırın.",
   "Port number is required": "Bağlantı noktası numarası gereklidir",
-  "Port number must be a number": "Bağlantı noktası numarası bir sayı olmalıdır",
+  "Port number must be an integer": "Port number must be an integer",
   "Port number must be between 1 and 65535": "Bağlantı noktası numarası 1 ve 65535 arasında olmalıdır",
   "PostgreSQL Flexible Servers are no longer supported in Cosmos DB extension.": "PostgreSQL Esnek Sunucuları artık Cosmos DB uzantısında desteklenmiyor.",
   "PostgreSQL Single Servers are no longer supported in Cosmos DB extension.": "PostgreSQL Tek Sunucuları artık Cosmos DB uzantısında desteklenmiyor.",

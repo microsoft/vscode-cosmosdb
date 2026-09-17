@@ -902,7 +902,7 @@
   "Populate Sample Data": "샘플 데이터 채우기",
   "Port {0} is in use by another process. Configure a different MCP port in settings.": "다른 프로세스에서 {0} 포트를 사용 중입니다. 설정에서 다른 MCP 포트를 구성하세요.",
   "Port number is required": "포트 번호 필요",
-  "Port number must be a number": "포트 번호는 숫자여야 함",
+  "Port number must be an integer": "Port number must be an integer",
   "Port number must be between 1 and 65535": "포트 번호는 1에서 65535사이여야 함",
   "PostgreSQL Flexible Servers are no longer supported in Cosmos DB extension.": "PostgreSQL 유연한 서버는 Cosmos DB 확장에서 더 이상 지원되지 않습니다.",
   "PostgreSQL Single Servers are no longer supported in Cosmos DB extension.": "PostgreSQL 단일 서버는 Cosmos DB 확장에서 더 이상 지원되지 않습니다.",

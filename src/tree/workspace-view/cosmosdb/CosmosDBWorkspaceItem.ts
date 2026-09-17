@@ -8,7 +8,6 @@ import * as vscode from 'vscode';
 import { API, getExperienceFromApi } from '../../../AzureDBExperiences';
 import { isEmulatorSupported } from '../../../constants';
 import { type StorageItem, StorageNames, StorageService } from '../../../services/StorageService';
-import { nonNullValue } from '../../../utils/nonNull';
 import { CosmosDBAccountUnsupportedResourceItem } from '../../cosmosdb/CosmosDBAccountUnsupportedResourceItem';
 import { makeFilterable } from '../../mixins/Filterable';
 import { makeSortable } from '../../mixins/Sortable';
@@ -18,6 +17,7 @@ import { TreeElementWithContextValue } from '../../TreeElementWithContextValue';
 import { WorkspaceResourceType } from '../../workspace-api/SharedWorkspaceResourceProvider';
 import { CosmosDBAttachAccountResourceItem } from './CosmosDBAttachAccountResourceItem';
 import { type CosmosDBAttachedAccountModel } from './CosmosDBAttachedAccountModel';
+import { getSavedConnectionError, InvalidConnectionResourceItem } from './InvalidConnectionResourceItem';
 import { LocalCoreEmulatorsItem } from './LocalEmulators/LocalCoreEmulatorsItem';
 
 export class CosmosDBWorkspaceItem implements TreeElement, TreeElementWithContextValue {
@@ -54,50 +54,62 @@ export class CosmosDBWorkspaceItem implements TreeElement, TreeElementWithContex
             items
                 .filter((item) => item.properties?.isEmulator !== true)
                 .map((item) => {
-                    const { id, name, properties, secrets } = item;
-                    const api: API = nonNullValue(properties?.api, 'api') as API;
-                    const isEmulator: boolean = !!nonNullValue(properties?.isEmulator, 'isEmulator');
-                    const connectionString: string = nonNullValue(secrets?.[0], 'connectionString');
-                    const tenantId: string | undefined =
-                        typeof properties?.tenantId === 'string' ? properties.tenantId : undefined;
-                    const experience = getExperienceFromApi(api);
-                    const accountModel: CosmosDBAttachedAccountModel = {
-                        id: `${this.id}/${id}`, // To enable TreeView.reveal, we need to have a unique nested id
-                        storageId: id,
-                        name,
-                        connectionString,
-                        isEmulator,
-                        tenantId,
-                    };
+                    const validationError = getSavedConnectionError(item);
+                    if (validationError) {
+                        return new InvalidConnectionResourceItem(this.id, item, validationError);
+                    }
+                    try {
+                        const { id, name, properties, secrets } = item;
+                        const api = properties?.api as API;
+                        const isEmulator = properties?.isEmulator === true;
+                        const connectionString = secrets![0];
+                        const tenantId: string | undefined =
+                            typeof properties?.tenantId === 'string' ? properties.tenantId : undefined;
+                        const experience = getExperienceFromApi(api);
+                        const accountModel: CosmosDBAttachedAccountModel = {
+                            id: `${this.id}/${id}`, // To enable TreeView.reveal, we need to have a unique nested id
+                            storageId: id,
+                            name,
+                            connectionString,
+                            isEmulator,
+                            tenantId,
+                        };
 
-                    if (experience?.api === API.Cassandra) {
-                        return makeFilterable(
-                            makeSortable(new NoSqlAccountAttachedResourceItem(accountModel, experience)),
+                        if (experience?.api === API.Cassandra) {
+                            return makeFilterable(
+                                makeSortable(new NoSqlAccountAttachedResourceItem(accountModel, experience)),
+                            );
+                        }
+
+                        if (experience?.api === API.Core) {
+                            return makeFilterable(
+                                makeSortable(new NoSqlAccountAttachedResourceItem(accountModel, experience)),
+                            );
+                        }
+
+                        if (experience?.api === API.Graph) {
+                            // Uncomment this line if Graph support is ever re-added
+                            // return new GraphAccountAttachedResourceItem(accountModel, experience);
+
+                            return new CosmosDBAccountUnsupportedResourceItem(accountModel, experience);
+                        }
+
+                        if (experience?.api === API.Table) {
+                            // Uncomment this line if Table support is ever re-added
+                            // return new TableAccountAttachedResourceItem(accountModel, experience);
+
+                            return new CosmosDBAccountUnsupportedResourceItem(accountModel, experience);
+                        }
+
+                        // Unknown experience
+                        return undefined;
+                    } catch {
+                        return new InvalidConnectionResourceItem(
+                            this.id,
+                            item,
+                            l10n.t('Unable to load the saved connection.'),
                         );
                     }
-
-                    if (experience?.api === API.Core) {
-                        return makeFilterable(
-                            makeSortable(new NoSqlAccountAttachedResourceItem(accountModel, experience)),
-                        );
-                    }
-
-                    if (experience?.api === API.Graph) {
-                        // Uncomment this line if Graph support is ever re-added
-                        // return new GraphAccountAttachedResourceItem(accountModel, experience);
-
-                        return new CosmosDBAccountUnsupportedResourceItem(accountModel, experience);
-                    }
-
-                    if (experience?.api === API.Table) {
-                        // Uncomment this line if Table support is ever re-added
-                        // return new TableAccountAttachedResourceItem(accountModel, experience);
-
-                        return new CosmosDBAccountUnsupportedResourceItem(accountModel, experience);
-                    }
-
-                    // Unknown experience
-                    return undefined;
                 })
                 .filter((r) => r !== undefined),
         );

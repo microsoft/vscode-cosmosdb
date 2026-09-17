@@ -79,6 +79,7 @@ export function registerCommands(): void {
     registerMigrationCommands();
 
     registerCommand('cosmosDB.quickStart.reset', resetQuickStart);
+    registerCommand('cosmosDB.showOutput', () => ext.outputChannel.show(true));
 }
 
 export function registerAccountCommands() {

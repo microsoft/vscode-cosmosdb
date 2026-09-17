@@ -8,7 +8,6 @@ import {
     callWithTelemetryAndErrorHandlingSync,
     createGenericElement,
     type IActionContext,
-    parseError,
 } from '@microsoft/vscode-azext-utils';
 import {
     type AzureResource,
@@ -23,6 +22,8 @@ import { type FabricArtifact } from './fabric/models/FabricArtifact';
 import { type TreeElement } from './TreeElement';
 import { isTreeElementWithContextValue, TreeElementWithContextValue } from './TreeElementWithContextValue';
 import { isTreeElementWithExperience } from './TreeElementWithExperience';
+
+const toError = (error: unknown): Error => (error instanceof Error ? error : new Error(String(error)));
 
 /**
  * Abstract base class that implements a cached tree data provider for Visual Studio Code extensions.
@@ -153,9 +154,11 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
                 )) ?? []
             );
         } catch (error) {
+            ext.outputChannel.error('Failed to load child resources. Refresh the parent resource to retry.');
+            ext.outputChannel.error(toError(error));
             return [
                 this.createErrorElement(
-                    l10n.t('Error: {0}', parseError(error).message),
+                    l10n.t('Unable to load resources. Check the Azure Cosmos DB output for details.'),
                     `${element.id}/error-${Date.now()}`,
                 ),
             ];
@@ -163,11 +166,18 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
     }
 
     async getResourceItem(resource: T): Promise<TreeElement> {
-        return (
-            (await callWithTelemetryAndErrorHandling(
-                `${this.providerName}.getResourceItem`,
-                (context: IActionContext) => {
-                    try {
+        try {
+            return (
+                (await callWithTelemetryAndErrorHandling(
+                    `${this.providerName}.getResourceItem`,
+                    (context: IActionContext) => {
+                        context.errorHandling.suppressDisplay = true;
+                        context.errorHandling.rethrow = true;
+                        for (const value of [resource?.id, resource?.name]) {
+                            if (typeof value === 'string' && value.trim()) {
+                                context.valuesToMask.push(value);
+                            }
+                        }
                         if (resource) {
                             // TODO: refresh won't be called for root level resource elements,
                             // hence we don't know if we should refresh them. For now we'll use caching for lookups only
@@ -204,15 +214,19 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
                             );
                         }
                         return undefined as unknown as TreeElement;
-                    } catch (error) {
-                        return this.createErrorElement(
-                            l10n.t('Error creating resource: {0}', parseError(error).message),
-                            `error-${Date.now()}`,
-                        );
-                    }
-                },
-            )) ?? (null as unknown as TreeElement)
-        );
+                    },
+                )) ?? (null as unknown as TreeElement)
+            );
+        } catch (error) {
+            ext.outputChannel.error(
+                'Failed to create a resource tree item. Required resource metadata may be missing.',
+            );
+            ext.outputChannel.error(toError(error));
+            return this.createErrorElement(
+                l10n.t('Unable to load resource. Check the Azure Cosmos DB output for details.'),
+                `error-${Date.now()}`,
+            );
+        }
     }
 
     async getTreeItem(element: TreeElement): Promise<vscode.TreeItem> {
@@ -375,7 +389,7 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
                         this.refresh(item as TreeElement),
                     ) as TreeElement;
                 } catch (error) {
-                    context.telemetry.properties.wrapError = parseError(error).message;
+                    context.telemetry.properties.errorCategory = 'treeItemWrapping';
                     throw error; // Rethrow to ensure the error is logged
                 }
             },
@@ -389,6 +403,7 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
             contextValue: TreeElementWithContextValue.createContextValue([this.contextValue, 'item.error']),
             label: message,
             id: id,
+            commandId: 'cosmosDB.showOutput',
         }) as TreeElement;
     }
 

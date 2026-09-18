@@ -14,7 +14,7 @@ import {
 import { DeploymentRequestSchema, DeploymentTemplateInputSchema } from '../../../dataModeling/deploymentModel';
 import { ModelingAdvisorSnapshotSchema, WizardStateSchema } from '../../../dataModeling/modelingAdvisorSchema';
 import { buildRecommendationPrompt } from '../../../dataModeling/recommendationPrompt';
-import { QueryEditorTab } from '../../QueryEditorTab';
+import { openUrl } from '../../../utils/openUrl';
 import { dataModelingProcedure, dataModelingRouter } from '../trpc';
 
 export { buildRecommendationPrompt } from '../../../dataModeling/recommendationPrompt';
@@ -44,11 +44,14 @@ export const dataModelingRouterDef = dataModelingRouter({
     }),
     openDataExplorer: stateProcedure
         .input(z.object({ databaseId: z.string().min(1), containerId: z.string().min(1) }))
-        .mutation(async ({ ctx, input }) => {
-            if (!ctx.account.getQueryConnection) {
-                throw new Error(l10n.t('Reopen the Data Modeler from its connected account to open Data Explorer.'));
+        .mutation(async ({ ctx }) => {
+            const metadata = ctx.account.getDeploymentTarget?.();
+            if (!metadata) {
+                throw new Error(l10n.t('Reopen the Data Modeler from an Azure account to open Data Explorer.'));
             }
-            QueryEditorTab.render(await ctx.account.getQueryConnection(input.databaseId, input.containerId));
+            await openUrl(
+                `${metadata.subscription.environment.portalUrl}/#@${metadata.subscription.tenantId}/resource${metadata.accountId}/DataExplorerBlade`,
+            );
         }),
     /**
      * Sends the finished data model to the general Copilot Chat with a prompt

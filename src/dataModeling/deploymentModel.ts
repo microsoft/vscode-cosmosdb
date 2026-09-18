@@ -37,6 +37,17 @@ export type ModelDeploymentResult =
     | { status: 'cancelled' }
     | { status: 'deployed'; databaseName: string; createdCount: number; existingCount: number };
 
+export const SuccessfulDeploymentSchema = z.object({
+    input: DeploymentRequestSchema,
+    result: z.object({
+        status: z.literal('deployed'),
+        databaseName: z.string().min(1).max(255),
+        createdCount: z.number().int().nonnegative(),
+        existingCount: z.number().int().nonnegative(),
+    }),
+});
+export type SuccessfulDeployment = z.infer<typeof SuccessfulDeploymentSchema>;
+
 /** Recommendations express hierarchical keys as comma-separated paths, not a single nested path. */
 export function getPartitionKeyPaths(partitionKey: string): string[] {
     return partitionKey.split(',').map((path) => path.trim());

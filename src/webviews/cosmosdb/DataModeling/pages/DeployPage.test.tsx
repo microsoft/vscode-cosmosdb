@@ -17,6 +17,7 @@ import {
     type DeploymentRequest,
     type DeploymentTemplateInput,
     type ModelDeploymentResult,
+    type SuccessfulDeployment,
 } from '../../../../dataModeling/deploymentModel';
 import { MonacoEditor } from '../../../MonacoEditor';
 import { createDeploymentDraft, DeployPage } from './DeployPage';
@@ -51,22 +52,33 @@ const generateTemplate = vi.fn<(input: DeploymentTemplateInput) => Promise<strin
 const onDeploy = vi.fn<(input: DeploymentRequest) => Promise<ModelDeploymentResult>>();
 const onOpenDataExplorer = vi.fn<(input: { databaseId: string; containerId: string }) => Promise<void>>();
 const onBusyChange = vi.fn();
-const onDeployed = vi.fn();
+const onDeployed = vi.fn<(deployment: SuccessfulDeployment) => void>();
 
 function Harness() {
     const [draft, setDraft] = useState(() => createDeploymentDraft(containers));
+    const [deployment, setDeployment] = useState<SuccessfulDeployment>();
     return (
         <FluentProvider>
             <DeployPage
                 containers={containers}
                 draft={draft}
-                onDraftChange={setDraft}
+                deployment={deployment}
+                onDraftChange={(update) => {
+                    // Mirror the wizard: any draft edit clears a persisted deployment.
+                    setDeployment(undefined);
+                    setDraft(update);
+                }}
                 loadOptions={loadOptions}
                 generateTemplate={generateTemplate}
                 onDeploy={onDeploy}
                 onOpenDataExplorer={onOpenDataExplorer}
                 onBusyChange={onBusyChange}
-                onDeployed={onDeployed}
+                onDeploymentChange={(next) => {
+                    setDeployment(next);
+                    if (next) {
+                        onDeployed(next);
+                    }
+                }}
             />
         </FluentProvider>
     );
@@ -498,17 +510,22 @@ describe('Deploy wizard page', () => {
             resolveDeploy({ status: 'deployed', databaseName: 'new-db', createdCount: 2, existingCount: 0 }),
         );
         expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
-        expect(
-            screen.getByText('Data model deployed to "new-db": 2 container(s) created, 0 left unchanged.'),
-        ).toBeVisible();
+        const successCard = screen.getByRole('region', { name: 'Deployment successful' });
+        expect(within(successCard).getByRole('heading', { name: 'Deployment successful', level: 3 })).toBeVisible();
+        const successMessage = within(successCard).getByText(
+            'Data model deployed to "new-db": 2 container(s) created, 0 left unchanged.',
+        );
+        expect(successMessage).toBeVisible();
+        expect(successMessage).toHaveAttribute('aria-live', 'polite');
+        expect(successCard.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
         expect(onBusyChange).toHaveBeenLastCalledWith(false);
         expect(onDeployed).toHaveBeenCalledOnce();
         expect(screen.getByRole('button', { name: 'Deploy' })).toBeEnabled();
         expect(screen.getByRole('button', { name: 'Deploy' })).toHaveFocus();
-        const explorer = screen.getByRole('button', { name: 'Open in Data Explorer' });
+        const explorer = within(successCard).getByRole('button', { name: 'Open in Data Explorer' });
         expect(explorer).toHaveTextContent('Open in Data Explorer');
         expect(explorer).toHaveAccessibleName('Open in Data Explorer');
-        expect(explorer).toHaveAccessibleDescription('Open container "Orders" in database "new-db".');
+        expect(explorer).toHaveAccessibleDescription('Open Data Explorer for this account in the Azure portal.');
         await userEvent.tab();
         expect(explorer).toHaveFocus();
         await userEvent.keyboard('{Enter}');
@@ -534,6 +551,7 @@ describe('Deploy wizard page', () => {
         expect(onOpenDataExplorer).toHaveBeenCalledWith({ databaseId: 'existing-db', containerId: 'Users' });
         await userEvent.click(screen.getByRole('checkbox', { name: 'Orders' }));
         expect(screen.queryByText('Open in Data Explorer')).not.toBeInTheDocument();
+        expect(screen.queryByRole('region', { name: 'Deployment successful' })).not.toBeInTheDocument();
     });
 
     it('reports opening failures separately from deployment and allows retrying', async () => {
@@ -591,6 +609,7 @@ describe('Deploy wizard page', () => {
         await userEvent.click(screen.getByRole('button', { name: 'Deploy' }));
         expect(screen.getByText('Deployment failed. Quota exceeded')).toBeVisible();
         expect(screen.queryByText('Open in Data Explorer')).not.toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'Deployment successful' })).not.toBeInTheDocument();
         expect(generateTemplate).not.toHaveBeenCalled();
         expect(onDeployed).not.toHaveBeenCalled();
         expect(screen.getByRole('button', { name: 'Deploy' })).toBeEnabled();
@@ -603,6 +622,7 @@ describe('Deploy wizard page', () => {
         await userEvent.click(screen.getByRole('button', { name: 'Deploy' }));
         expect(screen.getByText('Deployment cancelled. No deployment was started.')).toBeVisible();
         expect(screen.queryByText('Open in Data Explorer')).not.toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'Deployment successful' })).not.toBeInTheDocument();
         expect(onDeployed).not.toHaveBeenCalled();
     });
 

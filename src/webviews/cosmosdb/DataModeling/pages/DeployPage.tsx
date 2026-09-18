@@ -9,8 +9,8 @@ import {
     Dropdown,
     Field,
     Input,
-    Link,
     makeStyles,
+    mergeClasses,
     Option,
     Radio,
     RadioGroup,
@@ -19,7 +19,7 @@ import {
     tokens,
     useId,
 } from '@fluentui/react-components';
-import { ArrowUploadRegular } from '@fluentui/react-icons';
+import { ArrowUploadRegular, CheckmarkCircleFilled, OpenRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { type Dispatch, type SetStateAction, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -29,12 +29,13 @@ import {
     type DeploymentRequest,
     type DeploymentTemplateInput,
     type ModelDeploymentResult,
+    type SuccessfulDeployment,
     validateDeploymentDatabaseName,
 } from '../../../../dataModeling/deploymentModel';
 import { AlertDialog } from '../../../common/AlertDialog';
 import { MonacoEditor, type MonacoEditorType } from '../../../MonacoEditor';
 
-/** In-memory form state only. This is deliberately separate from the persisted modeling snapshot. */
+/** Editable draft retained across step navigation. Only a successful deployment is saved in the modeling snapshot. */
 export interface DeploymentDraft {
     deploymentMethod: 'direct' | 'bicep';
     databaseMode: DatabaseMode;
@@ -46,28 +47,48 @@ export interface DeploymentDraft {
     templateInputKey?: string;
 }
 
-export function createDeploymentDraft(containers: DeploymentContainer[]): DeploymentDraft {
+export function createDeploymentDraft(
+    containers: DeploymentContainer[],
+    deployment?: SuccessfulDeployment,
+): DeploymentDraft {
     return {
         deploymentMethod: 'direct',
-        databaseMode: 'new',
-        newDatabaseName: '',
-        existingDatabaseName: '',
-        selectedContainers: containers.map((container) => container.entity),
+        databaseMode: deployment?.input.databaseMode ?? 'new',
+        newDatabaseName: deployment?.input.databaseMode === 'new' ? deployment.input.databaseName : '',
+        existingDatabaseName: deployment?.input.databaseMode === 'existing' ? deployment.input.databaseName : '',
+        selectedContainers: (deployment?.input.containers ?? containers).map((container) => container.entity),
         template: '',
         generatedTemplate: '',
     };
 }
 
+/** Structural equality of the fields identifying a deployment target, independent of object key order. */
+function sameDeploymentInput(a: DeploymentTemplateInput, b: DeploymentTemplateInput): boolean {
+    return (
+        a.databaseMode === b.databaseMode &&
+        a.databaseName === b.databaseName &&
+        a.containers.length === b.containers.length &&
+        a.containers.every(
+            (container, index) =>
+                container.entity === b.containers[index]?.entity &&
+                container.partitionKey === b.containers[index]?.partitionKey,
+        )
+    );
+}
+
 export interface DeployPageProps {
     containers: DeploymentContainer[];
     draft: DeploymentDraft;
+    /** The last successful deployment for this recommendation, persisted in the modeling snapshot. */
+    deployment?: SuccessfulDeployment;
     onDraftChange: Dispatch<SetStateAction<DeploymentDraft>>;
     loadOptions: () => Promise<DeploymentOptions>;
     generateTemplate: (input: DeploymentTemplateInput) => Promise<string>;
     onDeploy: (input: DeploymentRequest) => Promise<ModelDeploymentResult>;
     onOpenDataExplorer: (input: { databaseId: string; containerId: string }) => Promise<void>;
     onBusyChange: (busy: boolean) => void;
-    onDeployed: () => void;
+    /** Persist a successful deployment, or clear it (undefined) when a new deploy begins. */
+    onDeploymentChange: (deployment: SuccessfulDeployment | undefined) => void;
 }
 
 const useStyles = makeStyles({
@@ -141,6 +162,20 @@ const useStyles = makeStyles({
     },
     deploySlot: { display: 'flex', alignItems: 'center', minWidth: '140px', minHeight: '32px' },
     status: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalS },
+    successCard: {
+        borderLeft: `4px solid ${tokens.colorPaletteGreenForeground1}`,
+        gap: tokens.spacingVerticalM,
+    },
+    successHeader: { display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS },
+    successIcon: { color: tokens.colorPaletteGreenForeground1, fontSize: '24px', flexShrink: 0 },
+    successTitle: {
+        margin: 0,
+        fontSize: tokens.fontSizeBase400,
+        lineHeight: tokens.lineHeightBase400,
+        fontWeight: tokens.fontWeightSemibold,
+    },
+    successMessage: { overflowWrap: 'anywhere', color: tokens.colorNeutralForeground2 },
+    explorerButton: { alignSelf: 'flex-start', maxWidth: '100%' },
 });
 
 const EDITOR_OPTIONS: MonacoEditorType.editor.IStandaloneEditorConstructionOptions = {
@@ -173,19 +208,21 @@ function deploymentErrorDetail(error: unknown): string {
 export function DeployPage({
     containers,
     draft,
+    deployment,
     onDraftChange,
     loadOptions,
     generateTemplate,
     onDeploy,
     onOpenDataExplorer,
     onBusyChange,
-    onDeployed,
+    onDeploymentChange,
 }: DeployPageProps) {
     const styles = useStyles();
     const databaseGroupId = useId('database-mode');
     const containersLabelId = useId('deployment-containers');
     const methodLabelId = useId('deployment-method');
     const templateLabelId = useId('deployment-template');
+    const successTitleId = useId('deployment-success');
     const [options, setOptions] = useState<DeploymentOptions>();
     const [optionsError, setOptionsError] = useState('');
     const [loadAttempt, setLoadAttempt] = useState(0);
@@ -204,9 +241,8 @@ export function DeployPage({
     const deployButtonRef = useRef<HTMLButtonElement>(null);
     const deploymentStatusRef = useRef<HTMLOutputElement>(null);
     const restoreDeployFocus = useRef(false);
-    const [deploymentMessage, setDeploymentMessage] = useState('');
+    const [deploymentNotice, setDeploymentNotice] = useState('');
     const [deploymentError, setDeploymentError] = useState('');
-    const [deployedTarget, setDeployedTarget] = useState<{ databaseId: string; containerId: string }>();
     const [openingExplorer, setOpeningExplorer] = useState(false);
     const [explorerError, setExplorerError] = useState('');
     const [copyMessage, setCopyMessage] = useState('');
@@ -280,6 +316,22 @@ export function DeployPage({
         input.containers.length === 0 ? l10n.t('Select at least one container to deploy.') : undefined;
     const valid = !!options && !options.unavailableReason && !nameError && !selectionError;
     const useBicep = draft.deploymentMethod === 'bicep';
+    // A persisted deployment matching the current target (direct mode) drives the green success card.
+    const completedDeployment =
+        deployment && !useBicep && sameDeploymentInput(deployment.input, input) ? deployment : undefined;
+    const deployedTarget = completedDeployment
+        ? {
+              databaseId: completedDeployment.result.databaseName,
+              containerId: completedDeployment.input.containers[0].entity,
+          }
+        : undefined;
+    const deploymentMessage = completedDeployment
+        ? l10n.t('Data model deployed to "{database}": {created} container(s) created, {existing} left unchanged.', {
+              database: completedDeployment.result.databaseName,
+              created: completedDeployment.result.createdCount,
+              existing: completedDeployment.result.existingCount,
+          })
+        : deploymentNotice;
     const nameValidationMessage = showDatabaseValidation || useBicep ? nameError : undefined;
     const customized = draft.template !== draft.generatedTemplate;
     const templateCurrent = draft.templateInputKey === inputKey;
@@ -336,9 +388,8 @@ export function DeployPage({
     ]);
 
     useEffect(() => {
-        setDeploymentMessage('');
+        setDeploymentNotice('');
         setDeploymentError('');
-        setDeployedTarget(undefined);
         setExplorerError('');
         setCopyMessage('');
     }, [inputKey, draft.template, useBicep]);
@@ -363,27 +414,16 @@ export function DeployPage({
         restoreDeployFocus.current = true;
         setDeploying(true);
         onBusyChange(true);
-        setDeploymentMessage('');
+        setDeploymentNotice('');
         setDeploymentError('');
-        setDeployedTarget(undefined);
         setExplorerError('');
+        onDeploymentChange(undefined);
         try {
             const result = await onDeploy(input);
             if (result.status === 'deployed') {
-                setDeployedTarget({ databaseId: result.databaseName, containerId: input.containers[0].entity });
-                setDeploymentMessage(
-                    l10n.t(
-                        'Data model deployed to "{database}": {created} container(s) created, {existing} left unchanged.',
-                        {
-                            database: result.databaseName,
-                            created: result.createdCount,
-                            existing: result.existingCount,
-                        },
-                    ),
-                );
-                onDeployed();
+                onDeploymentChange({ input, result });
             } else {
-                setDeploymentMessage(l10n.t('Deployment cancelled. No deployment was started.'));
+                setDeploymentNotice(l10n.t('Deployment cancelled. No deployment was started.'));
             }
         } catch (error) {
             setDeploymentError(
@@ -658,24 +698,36 @@ export function DeployPage({
                     </div>
                 )}
             </section>
-            <div className={styles.status}>
-                <output aria-live="polite">{deploymentMessage}</output>
+            <section
+                className={deployedTarget ? mergeClasses(styles.panel, styles.successCard) : styles.status}
+                aria-labelledby={deployedTarget ? successTitleId : undefined}
+            >
                 {deployedTarget ? (
-                    <Link
-                        as="button"
+                    <div className={styles.successHeader}>
+                        <CheckmarkCircleFilled aria-hidden className={styles.successIcon} />
+                        <h3 id={successTitleId} className={styles.successTitle}>
+                            {l10n.t('Deployment successful')}
+                        </h3>
+                    </div>
+                ) : null}
+                <output aria-live="polite" className={deployedTarget ? styles.successMessage : undefined}>
+                    {deploymentMessage}
+                </output>
+                {deployedTarget ? (
+                    <Button
+                        className={styles.explorerButton}
+                        appearance="secondary"
+                        icon={<OpenRegular aria-hidden />}
                         disabled={openingExplorer}
-                        aria-description={l10n.t('Open container "{container}" in database "{database}".', {
-                            container: deployedTarget.containerId,
-                            database: deployedTarget.databaseId,
-                        })}
+                        aria-description={l10n.t('Open Data Explorer for this account in the Azure portal.')}
                         onClick={() => void openDataExplorer()}
                     >
                         {l10n.t('Open in Data Explorer')}
-                    </Link>
+                    </Button>
                 ) : null}
                 {explorerError ? <Text role="alert">{explorerError}</Text> : null}
                 {deploymentError ? <Text role="alert">{deploymentError}</Text> : null}
-            </div>
+            </section>
             <AlertDialog
                 isOpen={confirmRegenerate}
                 title={l10n.t('Replace your template edits?')}

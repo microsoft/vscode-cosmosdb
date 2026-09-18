@@ -12,7 +12,10 @@ import userEvent from '@testing-library/user-event';
 import { Children, isValidElement, type ReactElement } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { type DeploymentTemplateInput } from '../../../dataModeling/deploymentModel';
-import { type ModelingAdvisorSnapshot } from '../../../dataModeling/modelingAdvisorSchema';
+import {
+    ModelingAdvisorSnapshotSchema,
+    type ModelingAdvisorSnapshot,
+} from '../../../dataModeling/modelingAdvisorSchema';
 import { type DataModelingEvent } from '../../api/types';
 import { type StepListItemProps, type StepListProps } from './components/StepList/StepList.types';
 import { applyScenario, createBlankContainer } from './dataModel';
@@ -27,6 +30,7 @@ const client = vi.hoisted(() => ({
         getDeploymentOptions: { query: vi.fn() },
         generateDeploymentTemplate: { query: vi.fn() },
         deploy: { mutate: vi.fn() },
+        openDataExplorer: { mutate: vi.fn() },
         events: { subscribe: vi.fn() },
     },
 }));
@@ -59,6 +63,7 @@ vi.mock('./components/StepList/StepList', () => ({
                 isValidElement<StepListItemProps>(child) ? (
                     <button
                         disabled={!child.props.navigable}
+                        data-completed={child.props.completed}
                         onClick={(event) => onStepSelect(event, { value: child.props.value })}
                     >
                         {child.props.children}
@@ -108,6 +113,20 @@ function lastSave(): ModelingAdvisorSnapshot {
     return client.dataModeling.saveState.mutate.mock.calls.at(-1)?.[0] as ModelingAdvisorSnapshot;
 }
 
+function deployedSnapshot(): ModelingAdvisorSnapshot {
+    return {
+        ...restored(4),
+        deployment: {
+            input: {
+                databaseMode: 'existing',
+                databaseName: 'existing-db',
+                containers: [{ entity: 'Orders', partitionKey: '/orderId' }],
+            },
+            result: { status: 'deployed', databaseName: 'existing-db', createdCount: 0, existingCount: 1 },
+        },
+    };
+}
+
 function render(element: ReactElement) {
     return renderReact(<FluentProvider>{element}</FluentProvider>);
 }
@@ -152,6 +171,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
                 `// ${input.databaseMode} ${input.databaseName}: ${input.containers.map((container) => container.entity).join(', ')}`,
         );
         client.dataModeling.deploy.mutate.mockResolvedValue({ status: 'cancelled' });
+        client.dataModeling.openDataExplorer.mutate.mockResolvedValue(undefined);
         client.dataModeling.events.subscribe.mockReturnValue({ unsubscribe: vi.fn() });
     });
 
@@ -230,7 +250,92 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
     });
 
-    it('locks navigation during deployment and never saves its completion or template', async () => {
+    it('restores saved deployment success, green step and portal action after closing and reopening', async () => {
+        client.dataModeling.loadState.query.mockResolvedValue(restored(4));
+        client.dataModeling.deploy.mutate.mockResolvedValueOnce({
+            status: 'deployed',
+            databaseName: 'fresh-db',
+            createdCount: 1,
+            existingCount: 0,
+        });
+        const mounted = render(<DataModelingWizard />);
+        await continueExisting();
+        await enterDeployStep();
+        fireEvent.change(screen.getByRole('textbox', { name: 'New database name' }), { target: { value: 'fresh-db' } });
+        const deploy = within(screen.getByRole('region', { name: 'Deploy data model' })).getByRole('button', {
+            name: 'Deploy',
+        });
+        await waitFor(() => expect(deploy).toBeEnabled());
+        await userEvent.click(deploy);
+        expect(await screen.findByRole('region', { name: 'Deployment successful' })).toBeVisible();
+
+        client.dataModeling.getDeploymentOptions.query.mockResolvedValue({
+            accountName: 'source',
+            databases: ['existing-db', 'fresh-db'],
+        });
+        await userEvent.click(screen.getByRole('button', { name: 'Back' }));
+        expect(screen.queryByRole('region', { name: 'Deployment successful' })).not.toBeInTheDocument();
+        await enterDeployStep();
+        const success = within(screen.getByRole('region', { name: 'Deployment successful' }));
+        expect(
+            success.getByText('Data model deployed to "fresh-db": 1 container(s) created, 0 left unchanged.'),
+        ).toBeVisible();
+        expect(screen.getByRole('textbox', { name: 'New database name' })).toHaveValue('fresh-db');
+        const explorer = success.getByRole('button', { name: 'Open in Data Explorer' });
+        expect(explorer).toHaveAccessibleName('Open in Data Explorer');
+        await userEvent.click(explorer);
+        expect(client.dataModeling.openDataExplorer.mutate).toHaveBeenCalledWith({
+            databaseId: 'fresh-db',
+            containerId: 'Orders',
+        });
+        expect(client.dataModeling.deploy.mutate).toHaveBeenCalledOnce();
+        await waitFor(() => expect(lastSave().deployment?.result.databaseName).toBe('fresh-db'));
+        const saved = ModelingAdvisorSnapshotSchema.parse(JSON.parse(JSON.stringify(lastSave())));
+        expect(saved.deployment?.input).toEqual({
+            databaseMode: 'new',
+            databaseName: 'fresh-db',
+            containers: [{ entity: 'Orders', partitionKey: '/orderId' }],
+        });
+        expect(saved.deployment).not.toHaveProperty('template');
+        mounted.unmount();
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        render(<DataModelingWizard />);
+        await continueExisting();
+        expect(await screen.findByRole('region', { name: 'Deployment successful' })).toBeVisible();
+        expect(
+            within(screen.getByRole('navigation', { name: 'Data modeling steps' })).getByRole('button', {
+                name: 'Deploy',
+            }),
+        ).toHaveAttribute('data-completed', 'true');
+        expect(
+            screen.getByText('Data model deployed to "fresh-db": 1 container(s) created, 0 left unchanged.'),
+        ).toBeVisible();
+        expect(screen.getByRole('textbox', { name: 'New database name' })).toHaveValue('fresh-db');
+        await userEvent.click(screen.getByRole('button', { name: 'Open in Data Explorer' }));
+        expect(client.dataModeling.openDataExplorer.mutate).toHaveBeenLastCalledWith({
+            databaseId: 'fresh-db',
+            containerId: 'Orders',
+        });
+        expect(client.dataModeling.deploy.mutate).toHaveBeenCalledOnce();
+
+        fireEvent.change(screen.getByRole('textbox', { name: 'New database name' }), {
+            target: { value: 'another-db' },
+        });
+        expect(screen.queryByRole('region', { name: 'Deployment successful' })).not.toBeInTheDocument();
+        fireEvent.change(screen.getByRole('textbox', { name: 'New database name' }), { target: { value: 'fresh-db' } });
+        await userEvent.click(screen.getByRole('button', { name: 'Back' }));
+        await enterDeployStep();
+        expect(screen.queryByRole('region', { name: 'Deployment successful' })).not.toBeInTheDocument();
+        expect(client.dataModeling.deploy.mutate).toHaveBeenCalledOnce();
+        await waitFor(() => expect(lastSave().deployment).toBeUndefined());
+        expect(
+            within(screen.getByRole('navigation', { name: 'Data modeling steps' })).getByRole('button', {
+                name: 'Deploy',
+            }),
+        ).toHaveAttribute('data-completed', 'false');
+    });
+
+    it('locks navigation during deployment and saves only its successful completion, not its template', async () => {
         let finish!: (result: {
             status: 'deployed';
             databaseName: string;
@@ -262,7 +367,93 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             finish({ status: 'deployed', databaseName: 'fresh-db', createdCount: 1, existingCount: 0 }),
         );
         expect(screen.getByRole('button', { name: 'Back' })).toBeEnabled();
+        await waitFor(() =>
+            expect(lastSave().deployment?.result).toEqual({
+                status: 'deployed',
+                databaseName: 'fresh-db',
+                createdCount: 1,
+                existingCount: 0,
+            }),
+        );
+        expect(lastSave().deployment).not.toHaveProperty('template');
+    });
+
+    it('restores an existing-database deployment and clears saved completion when a retry is cancelled', async () => {
+        client.dataModeling.loadState.query.mockResolvedValue(deployedSnapshot());
+        render(<DataModelingWizard />);
+        await continueExisting();
+        expect(await screen.findByRole('region', { name: 'Deployment successful' })).toBeVisible();
+        expect(screen.getByRole('radio', { name: 'Existing database' })).toBeChecked();
+        expect(screen.getByRole('combobox', { name: 'Existing database' })).toHaveTextContent('existing-db');
+        expect(
+            screen.getByText('Data model deployed to "existing-db": 0 container(s) created, 1 left unchanged.'),
+        ).toBeVisible();
+        expect(client.dataModeling.deploy.mutate).not.toHaveBeenCalled();
         expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
+        const deploy = within(screen.getByRole('region', { name: 'Deploy data model' })).getByRole('button', {
+            name: 'Deploy',
+        });
+        await waitFor(() => expect(deploy).toBeEnabled());
+        await userEvent.click(deploy);
+        expect(await screen.findByText('Deployment cancelled. No deployment was started.')).toBeVisible();
+        expect(screen.queryByRole('region', { name: 'Deployment successful' })).not.toBeInTheDocument();
+        await waitFor(() => expect(client.dataModeling.saveState.mutate).toHaveBeenCalled());
+        expect(lastSave().deployment).toBeUndefined();
+    });
+
+    it.each(['Start Over', 'new recommendation'] as const)('clears persisted completion on %s', async (action) => {
+        client.dataModeling.loadState.query.mockResolvedValue(deployedSnapshot());
+        render(<DataModelingWizard />);
+        await continueExisting();
+        await screen.findByRole('region', { name: 'Deployment successful' });
+        if (action === 'Start Over') {
+            await userEvent.click(screen.getByRole('button', { name: 'Start Over' }));
+        } else {
+            await userEvent.click(
+                within(screen.getByRole('navigation', { name: 'Data modeling steps' })).getByRole('button', {
+                    name: 'Review',
+                }),
+            );
+            await userEvent.click(screen.getByRole('button', { name: 'Get Recommendation' }));
+            await confirmAdvance();
+        }
+        await waitFor(() =>
+            expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledTimes(
+                action === 'new recommendation' ? 1 : 0,
+            ),
+        );
+        await waitFor(() => expect(client.dataModeling.saveState.mutate).toHaveBeenCalled());
+        expect(lastSave().deployment).toBeUndefined();
+        expect(screen.queryByRole('region', { name: 'Deployment successful' })).not.toBeInTheDocument();
+        expect(client.dataModeling.deploy.mutate).not.toHaveBeenCalled();
+    });
+
+    it('keeps deployment success visible after a save failure and retries saving without deploying again', async () => {
+        client.dataModeling.loadState.query.mockResolvedValue(restored(4));
+        client.dataModeling.saveState.mutate.mockRejectedValueOnce(new Error('Disk full'));
+        client.dataModeling.deploy.mutate.mockResolvedValueOnce({
+            status: 'deployed',
+            databaseName: 'fresh-db',
+            createdCount: 1,
+            existingCount: 0,
+        });
+        render(<DataModelingWizard />);
+        await continueExisting();
+        await enterDeployStep();
+        fireEvent.change(screen.getByRole('textbox', { name: 'New database name' }), { target: { value: 'fresh-db' } });
+        const deploy = within(screen.getByRole('region', { name: 'Deploy data model' })).getByRole('button', {
+            name: 'Deploy',
+        });
+        await waitFor(() => expect(deploy).toBeEnabled());
+        await userEvent.click(deploy);
+        const retry = await screen.findByRole('button', { name: 'Retry saving' });
+        expect(screen.getByRole('region', { name: 'Deployment successful' })).toBeVisible();
+        expect(screen.queryByText(/Deployment failed/)).not.toBeInTheDocument();
+        await userEvent.click(retry);
+        await waitFor(() => expect(screen.queryByRole('button', { name: 'Retry saving' })).not.toBeInTheDocument());
+        expect(client.dataModeling.deploy.mutate).toHaveBeenCalledOnce();
+        expect(client.dataModeling.saveState.mutate).toHaveBeenCalledTimes(2);
+        expect(lastSave().deployment?.result.databaseName).toBe('fresh-db');
     });
 
     it.each(['idle', 'waiting', 'error'] as const)('does not unlock Deploy for a %s recommendation', async (status) => {
@@ -343,7 +534,9 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             step: 3,
             reachedSteps: ['workload', `container:${saved.wizard.dataModel.activeContainerId}`, 'review'],
         });
-        expect(Object.keys(lastSave()).sort()).toEqual(['recommendation', 'wizard']);
+        const { deployment, ...modelingState } = lastSave();
+        expect(deployment).toBeUndefined();
+        expect(Object.keys(modelingState).sort()).toEqual(['recommendation', 'wizard']);
     });
 
     it('reports load failures without enabling edits or saving, and retries detection', async () => {

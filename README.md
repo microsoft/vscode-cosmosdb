@@ -97,6 +97,7 @@ uses that account; opening from the command palette prompts for an account.
 
 When saved work exists for the selected account, the Workload screen offers **Continue existing** or **Start new**.
 Continuing restores modeling inputs, the current wizard step, and any saved Copilot recommendation/status.
+After a successful deployment, continuing opens Deploy with its green completed step, success summary, and Data Explorer button.
 Starting new replaces only that account's saved session.
 
 Copilot uses the bundled [data model recommendation skill](skills/cosmosdb-data-model-recommendation/SKILL.md),
@@ -189,10 +190,13 @@ An endpoint-only session without deployment access must be reopened from its con
 and full account metadata stay in the extension host; only subscription, resource-group, and account display labels are
 sent to the deployment page. They are not stored with the model.
 
-Deployment method, database choices, checked containers, custom Bicep, progress, completion, and navigation to **Deploy** are
-**not persisted in wizard state**. Drafts survive navigation within the open wizard but are reset when it is
-reopened or the recommendation changes. After a partial failure, choose the existing database and regenerate/review the
-template before retrying.
+Successful deployments save their database choice, selected containers and partition keys, and created/unchanged counts.
+Reopening restores the completed **Deploy** step and its portal action without deploying again. This records the last successful
+deployment; it does not recheck Azure resources. Changing deployment inputs, starting another deployment, requesting a new
+recommendation, or starting over clears the saved completion.
+Unsubmitted drafts, custom Bicep, progress, and errors are not persisted. Drafts survive navigation within the open wizard but
+are reset when it is reopened or the recommendation changes. After a partial failure, choose the existing database and
+regenerate/review the template before retrying.
 
 Saved states expire **30 days after their last save** (based on file modification time). Every successful save prunes expired
 state files for all endpoints, and opening an expired state treats it as a new model. Reading a state does not extend its

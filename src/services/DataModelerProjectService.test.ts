@@ -150,6 +150,53 @@ describe('DataModelerProjectService', () => {
         });
     });
 
+    it('round-trips successful deployment details across service instances and isolates them by account', async () => {
+        await service.loadState();
+        const state = snapshot();
+        state.deployment = {
+            input: {
+                databaseMode: 'existing',
+                databaseName: 'messages-db',
+                containers: [{ entity: 'Messages', partitionKey: '/conversationId' }],
+            },
+            result: { status: 'deployed', databaseName: 'messages-db', createdCount: 0, existingCount: 1 },
+        };
+        await service.saveState(state);
+        expect(await new DataModelerProjectService(endpoint).loadState()).toEqual(state);
+        expect(await new DataModelerProjectService('https://account-b.documents.azure.com').loadState()).toBeNull();
+        await service.saveState({ ...state, deployment: undefined });
+        expect((await new DataModelerProjectService(endpoint).loadState())?.deployment).toBeUndefined();
+    });
+
+    it('rejects invalid deployment details without overwriting saved work', async () => {
+        await service.loadState();
+        const state = snapshot();
+        await service.saveState(state);
+        const deployed: ModelingAdvisorSnapshot = {
+            ...state,
+            deployment: {
+                input: {
+                    databaseMode: 'new',
+                    databaseName: 'messages-db',
+                    containers: [{ entity: 'Messages', partitionKey: '/conversationId' }],
+                },
+                result: { status: 'deployed', databaseName: 'messages-db', createdCount: -1, existingCount: 0 },
+            },
+        };
+        await expect(service.saveState(deployed)).rejects.toThrow('The data modeler state is invalid');
+        await expect(
+            service.saveState({
+                ...deployed,
+                deployment: {
+                    ...deployed.deployment!,
+                    result: { status: 'deployed', databaseName: 'messages-db', createdCount: 1, existingCount: 0 },
+                },
+                recommendation: { status: 'idle' },
+            }),
+        ).rejects.toThrow('The data modeler state is invalid');
+        expect(await new DataModelerProjectService(endpoint).loadState()).toEqual(state);
+    });
+
     it.each([
         ['malformed JSON', '{broken'],
         ['unsupported version', JSON.stringify({ version: 2, name: 'Newer', state: snapshot() })],

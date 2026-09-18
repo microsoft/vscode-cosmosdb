@@ -6,6 +6,7 @@
 import { z } from 'zod';
 import { type WizardState } from '../webviews/cosmosdb/DataModeling/dataModel';
 import { MAX_CONTAINERS, type ContainerModel } from '../webviews/cosmosdb/DataModeling/models';
+import { SuccessfulDeploymentSchema } from './deploymentModel';
 import { PartitionKeyRecommendationSchema } from './recommendationSchema';
 
 const PropertyRoleSchema = z.enum(['key', 'filter', 'payload']);
@@ -104,6 +105,7 @@ export const ModelingAdvisorSnapshotSchema = z
             value: PartitionKeyRecommendationSchema.optional(),
             error: z.string().optional(),
         }),
+        deployment: SuccessfulDeploymentSchema.optional(),
     })
     .refine(
         (snapshot) => snapshot.recommendation.status !== 'received' || snapshot.recommendation.value !== undefined,
@@ -111,6 +113,18 @@ export const ModelingAdvisorSnapshotSchema = z
             message: 'A received recommendation requires a result.',
             path: ['recommendation', 'value'],
         },
+    )
+    .refine(
+        ({ deployment, recommendation }) =>
+            !deployment ||
+            (recommendation.status === 'received' &&
+                deployment.input.containers.every((container) =>
+                    recommendation.value?.containers.some(
+                        (candidate) =>
+                            candidate.entity === container.entity && candidate.partitionKey === container.partitionKey,
+                    ),
+                )),
+        { message: 'A deployment requires a matching received recommendation.', path: ['deployment'] },
     );
 export type ModelingAdvisorSnapshot = z.infer<typeof ModelingAdvisorSnapshotSchema>;
 

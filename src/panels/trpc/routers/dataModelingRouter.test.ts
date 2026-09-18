@@ -11,17 +11,18 @@ import {
     generateDeploymentTemplate,
     getDeploymentOptions,
 } from '../../../commands/dataModeling/deployDataModel';
+import { type AzureResourceMetadata } from '../../../cosmosdb/AzureResourceMetadata';
+import { openUrl } from '../../../utils/openUrl';
 import { applyScenario, createInitialState } from '../../../webviews/cosmosdb/DataModeling/dataModel';
-import { QueryEditorTab } from '../../QueryEditorTab';
 import { type DataModelingRouterContext } from '../appRouter';
 import { buildRecommendationPrompt, dataModelingRouterDef } from './dataModelingRouter';
 
-vi.mock('../../QueryEditorTab', () => ({ QueryEditorTab: { render: vi.fn() } }));
 vi.mock('../../../commands/dataModeling/deployDataModel', () => ({
     deployDataModel: vi.fn(),
     generateDeploymentTemplate: vi.fn(),
     getDeploymentOptions: vi.fn(),
 }));
+vi.mock('../../../utils/openUrl', () => ({ openUrl: vi.fn() }));
 vi.mock('../../../chat/reportPartitionKeyRecommendationTool', () => ({
     REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_NAME: 'cosmosdb_reportPartitionKeyRecommendation',
 }));
@@ -73,54 +74,63 @@ describe('data modeler deployment procedure', () => {
     describe('data modeler Data Explorer procedure', () => {
         beforeEach(() => vi.clearAllMocks());
 
-        it('opens the selected container with host-only connection details and returns no credentials', async () => {
+        it('opens the Azure portal Data Explorer blade for the connected account', async () => {
             const ctx = context();
-            const connection = {
-                endpoint: ctx.account.endpoint,
-                databaseId: 'deployed-db',
-                containerId: 'Orders',
-                credentials: [],
-                isEmulator: true,
-            };
-            ctx.account.getQueryConnection = vi.fn().mockResolvedValue(connection);
+            ctx.account.getDeploymentTarget = () =>
+                ({
+                    accountId:
+                        '/subscriptions/subscription/resourceGroups/resource-group/providers/Microsoft.DocumentDB/databaseAccounts/account',
+                    subscription: {
+                        environment: { portalUrl: 'https://portal.azure.com' },
+                        tenantId: 'tenant.onmicrosoft.com',
+                    },
+                }) as AzureResourceMetadata;
             expect(
                 await dataModelingRouterDef.createCaller(ctx).openDataExplorer({
                     databaseId: 'deployed-db',
                     containerId: 'Orders',
                 }),
             ).toBeUndefined();
-            expect(ctx.account.getQueryConnection).toHaveBeenCalledWith('deployed-db', 'Orders');
-            expect(QueryEditorTab.render).toHaveBeenCalledWith(connection);
+            expect(openUrl).toHaveBeenCalledWith(
+                'https://portal.azure.com/#@tenant.onmicrosoft.com/resource/subscriptions/subscription/resourceGroups/resource-group/providers/Microsoft.DocumentDB/databaseAccounts/account/DataExplorerBlade',
+            );
             expect(ctx.actionContext?.telemetry.suppressAll).toBe(true);
         });
 
-        it('rejects empty targets before retrieving a connection', async () => {
+        it('rejects empty targets before opening the portal', async () => {
             const ctx = context();
-            ctx.account.getQueryConnection = vi.fn();
+            ctx.account.getDeploymentTarget = vi.fn();
             await expect(
                 dataModelingRouterDef.createCaller(ctx).openDataExplorer({ databaseId: '', containerId: 'Orders' }),
             ).rejects.toThrow();
-            expect(ctx.account.getQueryConnection).not.toHaveBeenCalled();
-            expect(QueryEditorTab.render).not.toHaveBeenCalled();
+            expect(ctx.account.getDeploymentTarget).not.toHaveBeenCalled();
+            expect(openUrl).not.toHaveBeenCalled();
             expect(ctx.actionContext?.telemetry.suppressAll).toBe(true);
         });
 
-        it('reports missing connection capabilities without opening an account picker', async () => {
+        it('reports accounts without Azure metadata without opening the portal', async () => {
             await expect(
                 dataModelingRouterDef
                     .createCaller(context())
                     .openDataExplorer({ databaseId: 'db', containerId: 'Orders' }),
-            ).rejects.toThrow('Reopen the Data Modeler from its connected account to open Data Explorer.');
-            expect(QueryEditorTab.render).not.toHaveBeenCalled();
+            ).rejects.toThrow('Reopen the Data Modeler from an Azure account to open Data Explorer.');
+            expect(openUrl).not.toHaveBeenCalled();
         });
 
-        it('propagates connection errors so the deployment page can report them', async () => {
+        it('propagates portal opening errors so the deployment page can report them', async () => {
             const ctx = context();
-            ctx.account.getQueryConnection = vi.fn().mockRejectedValue(new Error('Access denied'));
+            ctx.account.getDeploymentTarget = () =>
+                ({
+                    accountId: '/subscriptions/subscription/providers/Microsoft.DocumentDB/databaseAccounts/account',
+                    subscription: {
+                        environment: { portalUrl: 'https://portal.azure.com' },
+                        tenantId: 'tenant',
+                    },
+                }) as AzureResourceMetadata;
+            vi.mocked(openUrl).mockRejectedValue(new Error('Browser unavailable'));
             await expect(
                 dataModelingRouterDef.createCaller(ctx).openDataExplorer({ databaseId: 'db', containerId: 'Orders' }),
-            ).rejects.toThrow('Access denied');
-            expect(QueryEditorTab.render).not.toHaveBeenCalled();
+            ).rejects.toThrow('Browser unavailable');
         });
     });
 

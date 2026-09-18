@@ -239,22 +239,23 @@ const HydratedDataModelingWizard = ({
     const containerNameInputRef = useRef<HTMLInputElement>(null);
 
     const { status: recommendationStatus, value: recommendation, error: recommendationError } = snapshot.recommendation;
-    const [deployOwner, setDeployOwner] = useState<typeof recommendation>();
+    const [deployOwner, setDeployOwner] = useState<typeof recommendation>(
+        snapshot.deployment ? recommendation : undefined,
+    );
     const [deploymentBusy, setDeploymentBusy] = useState(false);
-    const [deployedRecommendation, setDeployedRecommendation] = useState<typeof recommendation>();
     const [deploymentDraft, setDeploymentDraft] = useState<{
         owner: typeof recommendation;
         value: DeploymentDraft;
     }>();
     const initialDeploymentDraft = useMemo(
-        () => createDeploymentDraft(recommendation?.containers ?? []),
-        [recommendation],
+        () => createDeploymentDraft(recommendation?.containers ?? [], snapshot.deployment),
+        [recommendation, snapshot.deployment],
     );
     const currentDeploymentDraft =
         deploymentDraft && deploymentDraft.owner === recommendation ? deploymentDraft.value : initialDeploymentDraft;
     const updateDeploymentDraft = useCallback(
         (update: SetStateAction<DeploymentDraft>) => {
-            setDeployedRecommendation(undefined);
+            setSnapshot((previous) => (previous.deployment ? { ...previous, deployment: undefined } : previous));
             setDeploymentDraft((previous) => ({
                 owner: recommendation,
                 value:
@@ -265,7 +266,7 @@ const HydratedDataModelingWizard = ({
                         : update,
             }));
         },
-        [recommendation, initialDeploymentDraft],
+        [recommendation, initialDeploymentDraft, setSnapshot],
     );
     const loadDeploymentOptions = useCallback(() => trpcClient.dataModeling.getDeploymentOptions.query(), [trpcClient]);
     const generateDeploymentTemplate = useCallback(
@@ -273,7 +274,11 @@ const HydratedDataModelingWizard = ({
             trpcClient.dataModeling.generateDeploymentTemplate.query(input),
         [trpcClient],
     );
-    const markDeployed = useCallback(() => setDeployedRecommendation(recommendation), [recommendation]);
+    const persistDeployment = useCallback(
+        (deployment: typeof snapshot.deployment) =>
+            setSnapshot((previous) => (previous.deployment === deployment ? previous : { ...previous, deployment })),
+        [setSnapshot],
+    );
     const canEnterDeploy = recommendationStatus === 'received' && !!recommendation?.containers.length;
     const isDeploy = canEnterDeploy && deployOwner === recommendation;
 
@@ -303,6 +308,7 @@ const HydratedDataModelingWizard = ({
                         if (!parsed.success) {
                             return {
                                 ...previous,
+                                deployment: undefined,
                                 recommendation: {
                                     ...previous.recommendation,
                                     status: 'error',
@@ -312,6 +318,7 @@ const HydratedDataModelingWizard = ({
                         }
                         return {
                             ...previous,
+                            deployment: undefined,
                             recommendation: {
                                 status: 'received',
                                 value: parsed.data,
@@ -320,6 +327,7 @@ const HydratedDataModelingWizard = ({
                     }
                     return {
                         ...previous,
+                        deployment: undefined,
                         recommendation: { ...previous.recommendation, status: 'error', error: event.message },
                     };
                 });
@@ -519,6 +527,7 @@ const HydratedDataModelingWizard = ({
                 reachedSteps: buildStepValues(snapshot.wizard.dataModel),
             },
             recommendation: { status: 'waiting' },
+            deployment: undefined,
         };
         setSnapshot(next);
         // Preserve inputs and Result navigation before opening Chat.
@@ -580,6 +589,7 @@ const HydratedDataModelingWizard = ({
                 ...previous,
                 wizard: { ...previous.wizard, reachedSteps: stepValues.slice(0, stepIndex + 1) },
                 recommendation: { status: 'idle' },
+                deployment: undefined,
             }));
             goToStep(stepIndex + 1);
         }
@@ -615,11 +625,10 @@ const HydratedDataModelingWizard = ({
         cancelEditingContainerName();
         setDeployOwner(undefined);
         setDeploymentDraft(undefined);
-        setDeployedRecommendation(undefined);
         setSnapshot(createInitialSnapshot());
     };
 
-    // Deploy navigation and form drafts stay outside the persisted model and reached-step list.
+    // Only successful deployment details are persisted; editable drafts remain local to the open wizard.
     const footer =
         isResult || isDeploy ? (
             <ContainerFooter className={styles.footerDivider}>
@@ -821,7 +830,7 @@ const HydratedDataModelingWizard = ({
                 </WizardStep>
                 <WizardStep
                     value={DEPLOY_STEP}
-                    completed={canEnterDeploy && deployedRecommendation === recommendation}
+                    completed={canEnterDeploy && !!snapshot.deployment}
                     navigable={canEnterDeploy && !deploymentBusy}
                     label={l10n.t('Deploy')}
                     title={l10n.t('Deploy data model')}
@@ -831,13 +840,14 @@ const HydratedDataModelingWizard = ({
                         <DeployPage
                             containers={recommendation.containers}
                             draft={currentDeploymentDraft}
+                            deployment={snapshot.deployment}
                             onDraftChange={updateDeploymentDraft}
                             loadOptions={loadDeploymentOptions}
                             generateTemplate={generateDeploymentTemplate}
                             onDeploy={(input) => trpcClient.dataModeling.deploy.mutate(input)}
                             onOpenDataExplorer={(input) => trpcClient.dataModeling.openDataExplorer.mutate(input)}
                             onBusyChange={setDeploymentBusy}
-                            onDeployed={markDeployed}
+                            onDeploymentChange={persistDeployment}
                         />
                     ) : null}
                 </WizardStep>

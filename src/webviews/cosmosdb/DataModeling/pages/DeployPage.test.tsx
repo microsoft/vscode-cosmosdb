@@ -105,6 +105,13 @@ async function waitForDeploy() {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Deploy' })).toBeEnabled());
 }
 
+async function confirmDeployment() {
+    const dialog = await screen.findByRole('alertdialog', {
+        name: 'Deploy data model to "new-db" in "source-account"?',
+    });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Deploy' }));
+}
+
 beforeEach(() => {
     vi.clearAllMocks();
     loadOptions.mockResolvedValue({
@@ -229,6 +236,10 @@ describe('Deploy wizard page', () => {
         ).not.toBeInTheDocument();
         await waitForDeploy();
         await userEvent.click(screen.getByRole('button', { name: 'Deploy' }));
+        const dialog = await screen.findByRole('alertdialog', {
+            name: 'Deploy data model to "valid-db" in "source-account"?',
+        });
+        await userEvent.click(within(dialog).getByRole('button', { name: 'Deploy' }));
         expect(onDeploy).toHaveBeenCalledOnce();
         expect(onDeploy).toHaveBeenLastCalledWith({
             databaseMode: 'new',
@@ -257,6 +268,10 @@ describe('Deploy wizard page', () => {
         expect(dropdown).not.toHaveAttribute('aria-invalid', 'true');
         expect(screen.queryByText('Select an existing database.')).not.toBeInTheDocument();
         await userEvent.click(screen.getByRole('button', { name: 'Deploy' }));
+        const dialog = await screen.findByRole('alertdialog', {
+            name: 'Deploy data model to "existing-db" in "source-account"?',
+        });
+        await userEvent.click(within(dialog).getByRole('button', { name: 'Deploy' }));
         expect(onDeploy).toHaveBeenCalledExactlyOnceWith({
             databaseMode: 'existing',
             databaseName: 'existing-db',
@@ -380,6 +395,7 @@ describe('Deploy wizard page', () => {
         expect(button).toHaveAccessibleName('Deploy');
         expect(screen.queryByRole('textbox', { name: 'Bicep deployment template' })).not.toBeInTheDocument();
         await user.click(button);
+        await confirmDeployment();
         expect(onDeploy).toHaveBeenCalledWith({
             databaseMode: 'new',
             databaseName: 'new-db',
@@ -474,6 +490,7 @@ describe('Deploy wizard page', () => {
         await userEvent.click(screen.getByRole('radio', { name: 'Deploy now' }));
         await waitForDeploy();
         await userEvent.click(screen.getByRole('button', { name: 'Deploy' }));
+        await confirmDeployment();
         expect(onDeploy).toHaveBeenCalledWith({ databaseMode: 'new', databaseName: 'new-db', containers });
         expect(screen.queryByText(/Could not generate/)).not.toBeInTheDocument();
     });
@@ -492,6 +509,7 @@ describe('Deploy wizard page', () => {
         await waitForDeploy();
         const button = screen.getByRole('button', { name: 'Deploy' });
         await userEvent.click(button);
+        await confirmDeployment();
         const spinner = screen.getByRole('progressbar', { name: 'Deploying...' });
         expect(spinner).toBeVisible();
         expect(spinner).toHaveAccessibleName('Deploying...');
@@ -532,6 +550,23 @@ describe('Deploy wizard page', () => {
         expect(onOpenDataExplorer).toHaveBeenCalledWith({ databaseId: 'new-db', containerId: 'Orders' });
     });
 
+    it('confirms direct deployment in a Fluent UI dialog and restores focus after cancellation', async () => {
+        render(<Harness />);
+        changeName();
+        await waitForDeploy();
+        const deployButton = screen.getByRole('button', { name: 'Deploy' });
+        await userEvent.click(deployButton);
+        const dialog = await screen.findByRole('alertdialog', {
+            name: 'Deploy data model to "new-db" in "source-account"?',
+        });
+        expect(dialog).toHaveTextContent('Deploy 2 selected container(s): Orders, Users.');
+        expect(dialog).toHaveTextContent('Matching existing containers are left unchanged.');
+        expect(onDeploy).not.toHaveBeenCalled();
+        await userEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+        await waitFor(() => expect(deployButton).toHaveFocus());
+        expect(onDeploy).not.toHaveBeenCalled();
+    });
+
     it('opens the first selected container in the returned database and clears the link when the draft changes', async () => {
         onDeploy.mockResolvedValueOnce({
             status: 'deployed',
@@ -547,6 +582,10 @@ describe('Deploy wizard page', () => {
         await userEvent.click(screen.getByRole('checkbox', { name: 'Orders' }));
         await waitForDeploy();
         await userEvent.click(screen.getByRole('button', { name: 'Deploy' }));
+        const dialog = await screen.findByRole('alertdialog', {
+            name: 'Deploy data model to "existing-db" in "source-account"?',
+        });
+        await userEvent.click(within(dialog).getByRole('button', { name: 'Deploy' }));
         await userEvent.click(await screen.findByRole('button', { name: 'Open in Data Explorer' }));
         expect(onOpenDataExplorer).toHaveBeenCalledWith({ databaseId: 'existing-db', containerId: 'Users' });
         await userEvent.click(screen.getByRole('checkbox', { name: 'Orders' }));
@@ -572,6 +611,7 @@ describe('Deploy wizard page', () => {
         changeName();
         await waitForDeploy();
         await userEvent.click(screen.getByRole('button', { name: 'Deploy' }));
+        await confirmDeployment();
         const explorer = await screen.findByRole('button', { name: 'Open in Data Explorer' });
         await userEvent.click(explorer);
         expect(explorer).toBeDisabled();
@@ -596,8 +636,10 @@ describe('Deploy wizard page', () => {
         changeName();
         await waitForDeploy();
         await userEvent.click(screen.getByRole('button', { name: 'Deploy' }));
+        await confirmDeployment();
         expect(await screen.findByRole('button', { name: 'Open in Data Explorer' })).toBeVisible();
         await userEvent.click(screen.getByRole('button', { name: 'Deploy' }));
+        await confirmDeployment();
         expect(screen.queryByText('Open in Data Explorer')).not.toBeInTheDocument();
     });
 
@@ -607,6 +649,7 @@ describe('Deploy wizard page', () => {
         changeName();
         await waitForDeploy();
         await userEvent.click(screen.getByRole('button', { name: 'Deploy' }));
+        await confirmDeployment();
         expect(screen.getByText('Deployment failed. Quota exceeded')).toBeVisible();
         expect(screen.queryByText('Open in Data Explorer')).not.toBeInTheDocument();
         expect(screen.queryByRole('heading', { name: 'Deployment successful' })).not.toBeInTheDocument();
@@ -620,6 +663,7 @@ describe('Deploy wizard page', () => {
         changeName();
         await waitForDeploy();
         await userEvent.click(screen.getByRole('button', { name: 'Deploy' }));
+        await confirmDeployment();
         expect(screen.getByText('Deployment cancelled. No deployment was started.')).toBeVisible();
         expect(screen.queryByText('Open in Data Explorer')).not.toBeInTheDocument();
         expect(screen.queryByRole('heading', { name: 'Deployment successful' })).not.toBeInTheDocument();
@@ -682,6 +726,7 @@ describe('Deploy wizard page', () => {
                 if (procedure === 'deploy') {
                     await waitForDeploy();
                     await userEvent.click(screen.getByRole('button', { name: 'Deploy' }));
+                    await confirmDeployment();
                 } else {
                     await chooseBicep();
                 }

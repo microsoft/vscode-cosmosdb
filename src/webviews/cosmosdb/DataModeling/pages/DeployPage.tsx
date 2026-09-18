@@ -176,6 +176,7 @@ const useStyles = makeStyles({
     },
     successMessage: { overflowWrap: 'anywhere', color: tokens.colorNeutralForeground2 },
     explorerButton: { alignSelf: 'flex-start', maxWidth: '100%' },
+    containerNames: { fontFamily: tokens.fontFamilyMonospace },
 });
 
 const EDITOR_OPTIONS: MonacoEditorType.editor.IStandaloneEditorConstructionOptions = {
@@ -236,6 +237,7 @@ export function DeployPage({
     const [confirmRegenerate, setConfirmRegenerate] = useState(false);
     const regenerateButtonRef = useRef<HTMLButtonElement>(null);
     const restoreRegenerateFocus = useRef(false);
+    const [confirmDeploy, setConfirmDeploy] = useState(false);
     const [deploying, setDeploying] = useState(false);
     const deployingRef = useRef(false);
     const deployButtonRef = useRef<HTMLButtonElement>(null);
@@ -250,11 +252,11 @@ export function DeployPage({
     useEffect(() => {
         if (deploying) {
             deploymentStatusRef.current?.focus();
-        } else if (restoreDeployFocus.current) {
+        } else if (!confirmDeploy && restoreDeployFocus.current) {
             deployButtonRef.current?.focus();
             restoreDeployFocus.current = false;
         }
-    }, [deploying]);
+    }, [confirmDeploy, deploying]);
 
     useEffect(() => {
         if (!confirmRegenerate && !generating && restoreRegenerateFocus.current) {
@@ -399,7 +401,7 @@ export function DeployPage({
         setGenerationAttempt((attempt) => attempt + 1);
     };
 
-    const deploy = async () => {
+    const requestDeployment = () => {
         if (!canAttemptDeploy || deployingRef.current) return;
         setShowDatabaseValidation(true);
         if (nameError) {
@@ -410,6 +412,11 @@ export function DeployPage({
             }
             return;
         }
+        setConfirmDeploy(true);
+    };
+
+    const deploy = async () => {
+        if (!canAttemptDeploy || deployingRef.current) return;
         deployingRef.current = true;
         restoreDeployFocus.current = true;
         setDeploying(true);
@@ -689,7 +696,7 @@ export function DeployPage({
                                     appearance="primary"
                                     icon={<ArrowUploadRegular />}
                                     disabled={!canAttemptDeploy}
-                                    onClick={() => void deploy()}
+                                    onClick={requestDeployment}
                                 >
                                     {l10n.t('Deploy')}
                                 </Button>
@@ -742,6 +749,32 @@ export function DeployPage({
                 {l10n.t(
                     'Regenerating the Bicep template replaces your custom edits with a template for the selected database and containers.',
                 )}
+            </AlertDialog>
+            <AlertDialog
+                isOpen={confirmDeploy}
+                title={l10n.t('Deploy data model to "{database}" in "{account}"?', {
+                    database: input.databaseName,
+                    account: options?.accountName ?? l10n.t('this account'),
+                })}
+                confirmButtonText={l10n.t('Deploy')}
+                cancelButtonText={l10n.t('Cancel')}
+                onClose={(confirmed) => {
+                    setConfirmDeploy(false);
+                    if (confirmed) {
+                        void deploy();
+                    } else {
+                        restoreDeployFocus.current = true;
+                    }
+                }}
+            >
+                <>
+                    {l10n.t('Deploy {count} selected container(s):', { count: input.containers.length })}{' '}
+                    <span className={styles.containerNames}>
+                        {input.containers.map((container) => container.entity).join(', ')}.
+                    </span>
+                    <br />
+                    {l10n.t('Matching existing containers are left unchanged.')}
+                </>
             </AlertDialog>
         </div>
     );

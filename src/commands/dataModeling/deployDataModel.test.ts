@@ -76,9 +76,6 @@ beforeEach(() => {
         if (!definition.id) throw new Error('Missing container id');
         return { ...definition, ...fields, id: definition.id };
     });
-    vi.spyOn(vscode.window, 'showWarningMessage').mockImplementation(
-        (async () => 'Deploy') as typeof vscode.window.showWarningMessage,
-    );
     vi.spyOn(vscode.window, 'showInformationMessage').mockResolvedValue(undefined);
     vi.spyOn(vscode.window, 'showErrorMessage').mockResolvedValue(undefined);
     vi.spyOn(vscode.window, 'withProgress').mockImplementation(async (_options, task) =>
@@ -187,7 +184,7 @@ describe('Data Modeler reuses migration provisioning', () => {
         expect(plane.createContainer).not.toHaveBeenCalled();
     });
 
-    it('rechecks conflicts after confirmation before making changes', async () => {
+    it('rechecks conflicts before making changes', async () => {
         const value = request();
         plane.listContainers.mockResolvedValueOnce([]).mockResolvedValueOnce([
             {
@@ -206,29 +203,20 @@ describe('Data Modeler reuses migration provisioning', () => {
         expect(plane.createDatabase).not.toHaveBeenCalled();
     });
 
-    it('cancels without writes and releases the account lock', async () => {
-        const value = request();
-        vi.mocked(vscode.window.showWarningMessage).mockResolvedValueOnce(undefined);
-        expect(await deployDataModel(account, value, context())).toEqual({ status: 'cancelled' });
-        expect(plane.createContainer).not.toHaveBeenCalled();
-        expect(await deployDataModel(account, value, context())).toMatchObject({ status: 'deployed' });
-    });
-
     it('prevents simultaneous deployment from multiple tabs of the same account', async () => {
         const value = request();
         let finish!: () => void;
-        vi.mocked(vscode.window.showWarningMessage).mockImplementationOnce(
-            () =>
-                new Promise<undefined>((resolve) => {
-                    finish = () => resolve(undefined);
-                }),
+        vi.mocked(vscode.window.withProgress).mockImplementationOnce(
+            async (_options, task) =>
+                new Promise((resolve) => {
+                    finish = () => resolve(task({ report: vi.fn() }, new vscode.CancellationTokenSource().token));
+                }) as ReturnType<typeof task>,
         );
         const pending = deployDataModel(account, value, context());
-        await vi.waitFor(() => expect(vscode.window.showWarningMessage).toHaveBeenCalledOnce());
+        await vi.waitFor(() => expect(vscode.window.withProgress).toHaveBeenCalledOnce());
         await expect(deployDataModel(account, value, context())).rejects.toThrow('already in progress');
         finish();
-        expect(await pending).toEqual({ status: 'cancelled' });
-        expect(plane.createContainer).not.toHaveBeenCalled();
+        expect(await pending).toMatchObject({ status: 'deployed' });
     });
 
     it('does not hide missing account access or database-list failures', async () => {

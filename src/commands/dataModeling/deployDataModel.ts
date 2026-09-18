@@ -109,25 +109,6 @@ export async function deployDataModel(
         );
         const plane = requireControlPlane(account);
         missingContainers(model, await checkDatabase(plane, input, true));
-        const deploy = l10n.t('Deploy');
-        const confirmed = await vscode.window.showWarningMessage(
-            l10n.t('Deploy data model to "{database}" in "{account}"?', {
-                database: input.databaseName,
-                account: account.name ?? account.endpoint,
-            }),
-            {
-                modal: true,
-                detail: l10n.t(
-                    'Deploy {count} selected container(s): {containers}. Built-in deployment uses the migration provisioning pipeline, without Bicep CLI. Matching existing containers are left unchanged. Azure usage may incur charges. No documents are uploaded.',
-                    {
-                        count: input.containers.length,
-                        containers: input.containers.map((container) => container.entity).join(', '),
-                    },
-                ),
-            },
-            deploy,
-        );
-        if (confirmed !== deploy) return { status: 'cancelled' };
         const created = await vscode.window.withProgress(
             {
                 location: vscode.ProgressLocation.Notification,

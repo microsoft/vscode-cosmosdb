@@ -902,7 +902,7 @@
   "Populate Sample Data": "填入範例資料",
   "Port {0} is in use by another process. Configure a different MCP port in settings.": "其他處理程序正在使用連接埠 {0}。請在設定中設定不同的 MCP 連接埠。",
   "Port number is required": "需要連接埠號碼",
-  "Port number must be an integer": "Port number must be an integer",
+  "Port number must be an integer": "連接埠號碼必須是整數",
   "Port number must be between 1 and 65535": "連接埠號碼必須介於 1 到 65535 之間",
   "PostgreSQL Flexible Servers are no longer supported in Cosmos DB extension.": "Cosmos DB 延伸模組不再支援 PostgreSQL 彈性伺服器。",
   "PostgreSQL Single Servers are no longer supported in Cosmos DB extension.": "Cosmos DB 延伸模組不再支援 PostgreSQL 單一伺服器。",

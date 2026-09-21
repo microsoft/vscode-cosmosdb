@@ -114,6 +114,81 @@ describe('Data Modeler reuses migration provisioning', () => {
         expect(template).not.toContain('sqlRoleAssignments');
     });
 
+    it.each(['bicep', 'terraform', 'sdk'] as const)('generates %s without making any writes', async (format) => {
+        const code = await generateDeploymentTemplate(account, { ...input, format });
+        expect(code).toContain('Orders');
+        expect(code).toContain('/tenant');
+        expect(code).toContain('/id');
+        expect(plane.createDatabase).not.toHaveBeenCalled();
+        expect(plane.createContainer).not.toHaveBeenCalled();
+    });
+
+    it('defaults to the unchanged Bicep generator, preserving escaped names and ordered hierarchical keys', async () => {
+        const value = {
+            ...input,
+            containers: [{ entity: "o'brien${literal}", partitionKey: '/tenant, /address/zip' }],
+        };
+        const code = await generateDeploymentTemplate(account, value);
+        expect(code).toEqual(await generateDeploymentTemplate(account, { ...value, format: 'bicep' }));
+        expect(code).toContain("name: 'o\\'brien\\${literal}'");
+        expect(code).toContain("paths: ['/tenant', '/address/zip']");
+    });
+
+    it.each(['terraform', 'sdk'] as const)('uses host target metadata for %s', async (format) => {
+        const metadata = {
+            accountName: 'azure-account',
+            resourceGroup: 'modeling-rg',
+            subscription: { subscriptionId: 'subscription-id' },
+        } as AzureResourceMetadata;
+        const code = await generateDeploymentTemplate(
+            { ...account, getDeploymentTarget: () => metadata },
+            { ...input, format },
+        );
+        for (const value of ['azure-account', 'modeling-rg', 'subscription-id']) expect(code).toContain(value);
+    });
+
+    it('omits matching existing containers from Terraform ownership', async () => {
+        plane.listContainers.mockResolvedValue([
+            {
+                id: 'Orders',
+                ...fields,
+                partitionKey: { paths: ['/tenant', '/id'], kind: PartitionKeyKind.MultiHash, version: 1 },
+            },
+        ]);
+        const code = await generateDeploymentTemplate(account, {
+            ...input,
+            format: 'terraform',
+            containers: [...input.containers, { entity: 'Users', partitionKey: '/id' }],
+        });
+        expect(code).not.toContain('"Orders" = {');
+        expect(code).toContain('"Users" = {');
+    });
+
+    it.each(['bicep', 'terraform', 'sdk'] as const)('checks conflicts before exporting %s', async (format) => {
+        plane.listContainers.mockResolvedValue([
+            { id: 'Orders', ...fields, partitionKey: { paths: ['/id'], kind: PartitionKeyKind.Hash } },
+        ]);
+        await expect(generateDeploymentTemplate(account, { ...input, format })).rejects.toThrow(
+            'different partition key',
+        );
+    });
+
+    it.each(['terraform', 'sdk'] as const)('rejects a taken new database name for %s export', async (format) => {
+        await expect(generateDeploymentTemplate(account, { ...input, databaseMode: 'new', format })).rejects.toThrow(
+            'already exists',
+        );
+    });
+
+    it.each(['terraform', 'sdk'] as const)('exports a new database for %s without provisioning it', async (format) => {
+        plane.listDatabases.mockResolvedValue([]);
+        const code = await generateDeploymentTemplate(account, { ...input, databaseMode: 'new', format });
+        expect(code).toContain(
+            format === 'terraform' ? 'resource "azurerm_cosmosdb_sql_database"' : 'databases.CreateOrUpdateAsync',
+        );
+        expect(plane.createDatabase).not.toHaveBeenCalled();
+        expect(plane.createContainer).not.toHaveBeenCalled();
+    });
+
     it('calls the shared migration pipeline with the selected model and creates containers directly', async () => {
         const shared = vi.spyOn(provisioning, 'provisionCosmosModel');
         const ctx = context();
@@ -157,8 +232,8 @@ describe('Data Modeler reuses migration provisioning', () => {
         }
     });
 
-    it('rejects Bicep payloads sent to the direct deployment endpoint', async () => {
-        const value = { ...request(), template: '// manual Bicep export' };
+    it.each(['template', 'format', 'code'])('rejects %s payloads sent to direct deployment', async (field) => {
+        const value = { ...request(), [field]: 'sdk' };
         await expect(deployDataModel(account, value, context())).rejects.toThrow();
         expect(plane.createContainer).not.toHaveBeenCalled();
         expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();

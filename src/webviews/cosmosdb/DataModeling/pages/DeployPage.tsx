@@ -19,7 +19,7 @@ import {
     tokens,
     useId,
 } from '@fluentui/react-components';
-import { ArrowUploadRegular, CheckmarkCircleFilled, OpenRegular } from '@fluentui/react-icons';
+import { ArrowUploadRegular, CheckmarkCircleFilled, CopyRegular, OpenRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { type Dispatch, type SetStateAction, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -28,6 +28,8 @@ import {
     type DeploymentOptions,
     type DeploymentRequest,
     type DeploymentTemplateInput,
+    type DeploymentTemplateFormat,
+    type GenerateDeploymentTemplateInput,
     type ModelDeploymentResult,
     type SuccessfulDeployment,
     validateDeploymentDatabaseName,
@@ -36,15 +38,19 @@ import { AlertDialog } from '../../../common/AlertDialog';
 import { MonacoEditor, type MonacoEditorType } from '../../../MonacoEditor';
 
 /** Editable draft retained across step navigation. Only a successful deployment is saved in the modeling snapshot. */
+interface TemplateDraft {
+    template: string;
+    generatedTemplate: string;
+    templateInputKey?: string;
+}
+
 export interface DeploymentDraft {
-    deploymentMethod: 'direct' | 'bicep';
+    deploymentMethod: 'direct' | DeploymentTemplateFormat;
     databaseMode: DatabaseMode;
     newDatabaseName: string;
     existingDatabaseName: string;
     selectedContainers: string[];
-    template: string;
-    generatedTemplate: string;
-    templateInputKey?: string;
+    templates: Record<DeploymentTemplateFormat, TemplateDraft>;
 }
 
 export function createDeploymentDraft(
@@ -57,8 +63,11 @@ export function createDeploymentDraft(
         newDatabaseName: deployment?.input.databaseMode === 'new' ? deployment.input.databaseName : '',
         existingDatabaseName: deployment?.input.databaseMode === 'existing' ? deployment.input.databaseName : '',
         selectedContainers: (deployment?.input.containers ?? containers).map((container) => container.entity),
-        template: '',
-        generatedTemplate: '',
+        templates: {
+            bicep: { template: '', generatedTemplate: '' },
+            terraform: { template: '', generatedTemplate: '' },
+            sdk: { template: '', generatedTemplate: '' },
+        },
     };
 }
 
@@ -83,7 +92,7 @@ export interface DeployPageProps {
     deployment?: SuccessfulDeployment;
     onDraftChange: Dispatch<SetStateAction<DeploymentDraft>>;
     loadOptions: () => Promise<DeploymentOptions>;
-    generateTemplate: (input: DeploymentTemplateInput) => Promise<string>;
+    generateTemplate: (input: GenerateDeploymentTemplateInput) => Promise<string>;
     onDeploy: (input: DeploymentRequest) => Promise<ModelDeploymentResult>;
     onOpenDataExplorer: (input: { databaseId: string; containerId: string }) => Promise<void>;
     onBusyChange: (busy: boolean) => void;
@@ -128,6 +137,18 @@ const useStyles = makeStyles({
     },
     sectionTitle: { margin: 0, fontWeight: tokens.fontWeightSemibold, fontSize: tokens.fontSizeBase300 },
     caption: { color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase200 },
+    methods: { display: 'flex', flexWrap: 'wrap', gap: tokens.spacingHorizontalS },
+    method: {
+        flex: '1 1 130px',
+        border: `1px solid ${tokens.colorNeutralStroke2}`,
+        borderRadius: tokens.borderRadiusMedium,
+        backgroundColor: tokens.colorNeutralBackground1,
+        padding: tokens.spacingVerticalXS,
+    },
+    selectedMethod: {
+        border: `1px solid ${tokens.colorBrandStroke1}`,
+        backgroundColor: tokens.colorBrandBackground2,
+    },
     containerGroup: {
         border: 'none',
         padding: 0,
@@ -143,9 +164,12 @@ const useStyles = makeStyles({
         flexWrap: 'wrap',
         gap: tokens.spacingHorizontalM,
     },
+    templateTitle: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXXS },
     templateBody: { display: 'flex', flexDirection: 'column', gap: 0, minWidth: 0 },
     editor: {
-        height: '240px',
+        height: '320px',
+        padding: tokens.spacingHorizontalS,
+        boxSizing: 'border-box',
         minWidth: 0,
         overflow: 'hidden',
         border: `1px solid ${tokens.colorNeutralStroke2}`,
@@ -182,15 +206,45 @@ const useStyles = makeStyles({
 const EDITOR_OPTIONS: MonacoEditorType.editor.IStandaloneEditorConstructionOptions = {
     readOnly: false,
     domReadOnly: false,
-    ariaLabel: l10n.t('Bicep deployment template'),
     tabFocusMode: true,
     minimap: { enabled: false },
     lineNumbers: 'on',
     folding: true,
+    stickyScroll: { enabled: false },
     scrollBeyondLastLine: false,
     wordWrap: 'off',
     scrollbar: { vertical: 'visible', horizontal: 'auto', alwaysConsumeMouseWheel: false },
 };
+
+const EXPORT_METHODS: Record<
+    DeploymentTemplateFormat,
+    { label: string; title: string; language: string; fileName: string; description: string }
+> = {
+    bicep: {
+        label: 'Bicep',
+        title: l10n.t('Bicep deployment template'),
+        language: 'bicep',
+        fileName: 'main.bicep',
+        description: l10n.t('Review and copy the template, then deploy it with your Bicep tooling.'),
+    },
+    terraform: {
+        label: 'Terraform',
+        title: l10n.t('Terraform configuration'),
+        language: 'hcl',
+        fileName: 'main.tf',
+        description: l10n.t('Review and copy the configuration, then initialize, plan, and apply it with Terraform.'),
+    },
+    sdk: {
+        label: l10n.t('C# SDK'),
+        title: l10n.t('C# SDK deployment code'),
+        language: 'csharp',
+        fileName: 'Program.cs',
+        description: l10n.t(
+            'Review and copy the code, then run it in your .NET project using Azure management permissions. This export targets Azure, not the emulator.',
+        ),
+    },
+};
+const TEMPLATE_FORMATS: DeploymentTemplateFormat[] = ['bicep', 'terraform', 'sdk'];
 
 function deploymentErrorDetail(error: unknown): string {
     const message = error instanceof Error ? error.message : String(error);
@@ -317,10 +371,13 @@ export function DeployPage({
     const selectionError =
         input.containers.length === 0 ? l10n.t('Select at least one container to deploy.') : undefined;
     const valid = !!options && !options.unavailableReason && !nameError && !selectionError;
-    const useBicep = draft.deploymentMethod === 'bicep';
+    const format = draft.deploymentMethod === 'direct' ? undefined : draft.deploymentMethod;
+    const exportMethod = format ? EXPORT_METHODS[format] : undefined;
+    const templateDraft = format ? draft.templates[format] : undefined;
+    const template = templateDraft?.template ?? '';
     // A persisted deployment matching the current target (direct mode) drives the green success card.
     const completedDeployment =
-        deployment && !useBicep && sameDeploymentInput(deployment.input, input) ? deployment : undefined;
+        deployment && !format && sameDeploymentInput(deployment.input, input) ? deployment : undefined;
     const deployedTarget = completedDeployment
         ? {
               databaseId: completedDeployment.result.databaseName,
@@ -334,29 +391,31 @@ export function DeployPage({
               existing: completedDeployment.result.existingCount,
           })
         : deploymentNotice;
-    const nameValidationMessage = showDatabaseValidation || useBicep ? nameError : undefined;
-    const customized = draft.template !== draft.generatedTemplate;
-    const templateCurrent = draft.templateInputKey === inputKey;
-    const canAttemptDeploy = !!options && !options.unavailableReason && !selectionError && !useBicep && !deploying;
+    const nameValidationMessage = showDatabaseValidation || format ? nameError : undefined;
+    const customized = templateDraft !== undefined && template !== templateDraft.generatedTemplate;
+    const templateCurrent = templateDraft?.templateInputKey === inputKey;
+    const generationKey = `${format}:${inputKey}`;
+    const canAttemptDeploy = !!options && !options.unavailableReason && !selectionError && !format && !deploying;
 
     useEffect(() => {
         let disposed = false;
-        const force = regenerateKey === inputKey;
-        if (!useBicep || !valid || (!force && (customized || templateCurrent))) {
+        const force = regenerateKey === generationKey;
+        if (!format || !valid || (!force && (customized || templateCurrent))) {
             setGenerating(false);
             return;
         }
         setGenerating(true);
         setTemplateError('');
         const timer = setTimeout(() => {
-            void generateTemplate(input).then(
+            void generateTemplate({ ...input, format }).then(
                 (template) => {
                     if (disposed) return;
                     onDraftChange((previous) => ({
                         ...previous,
-                        template,
-                        generatedTemplate: template,
-                        templateInputKey: inputKey,
+                        templates: {
+                            ...previous.templates,
+                            [format]: { template, generatedTemplate: template, templateInputKey: inputKey },
+                        },
                     }));
                     setRegenerateKey(undefined);
                     setGenerating(false);
@@ -364,7 +423,7 @@ export function DeployPage({
                 (error: unknown) => {
                     if (disposed) return;
                     setTemplateError(
-                        l10n.t('Could not generate the Bicep template. {error}', {
+                        l10n.t('Could not generate deployment code. {error}', {
                             error: deploymentErrorDetail(error),
                         }),
                     );
@@ -380,7 +439,8 @@ export function DeployPage({
         input,
         inputKey,
         valid,
-        useBicep,
+        format,
+        generationKey,
         customized,
         templateCurrent,
         regenerateKey,
@@ -394,10 +454,14 @@ export function DeployPage({
         setDeploymentError('');
         setExplorerError('');
         setCopyMessage('');
-    }, [inputKey, draft.template, useBicep]);
+    }, [inputKey, template, format]);
+
+    useEffect(() => {
+        setTemplateError('');
+    }, [format, inputKey]);
 
     const requestRegeneration = () => {
-        setRegenerateKey(inputKey);
+        setRegenerateKey(generationKey);
         setGenerationAttempt((attempt) => attempt + 1);
     };
 
@@ -461,18 +525,19 @@ export function DeployPage({
     const editorOptions = useMemo(
         () => ({
             ...EDITOR_OPTIONS,
+            ariaLabel: exportMethod?.title,
             readOnly: deploying || generating,
             domReadOnly: deploying || generating,
         }),
-        [deploying, generating],
+        [deploying, generating, exportMethod],
     );
 
-    const copyBicep = async () => {
+    const copyCode = async () => {
         try {
-            await navigator.clipboard.writeText(draft.template);
-            setCopyMessage(l10n.t('Bicep copied.'));
+            await navigator.clipboard.writeText(template);
+            setCopyMessage(l10n.t('Code copied.'));
         } catch (error) {
-            setTemplateError(l10n.t('Could not copy Bicep. {error}', { error: deploymentErrorDetail(error) }));
+            setTemplateError(l10n.t('Could not copy code. {error}', { error: deploymentErrorDetail(error) }));
         }
     };
 
@@ -616,32 +681,54 @@ export function DeployPage({
                 </Text>
                 <RadioGroup
                     aria-labelledby={methodLabelId}
+                    className={styles.methods}
                     layout="horizontal"
-                    value={useBicep ? 'bicep' : 'direct'}
+                    value={draft.deploymentMethod}
                     disabled={deploying}
                     onChange={(_, data) => {
-                        if (data.value === 'direct' || data.value === 'bicep') {
+                        if (
+                            data.value === 'direct' ||
+                            data.value === 'bicep' ||
+                            data.value === 'terraform' ||
+                            data.value === 'sdk'
+                        ) {
                             const deploymentMethod = data.value;
                             onDraftChange((previous) => ({ ...previous, deploymentMethod }));
                         }
                     }}
                 >
-                    <Radio value="direct" label={l10n.t('Deploy now')} />
-                    <Radio value="bicep" label={l10n.t('Deploy with Biceps')} />
+                    <Radio
+                        value="direct"
+                        label={l10n.t('Direct')}
+                        className={mergeClasses(styles.method, !format && styles.selectedMethod)}
+                    />
+                    {TEMPLATE_FORMATS.map((value) => (
+                        <Radio
+                            key={value}
+                            value={value}
+                            label={EXPORT_METHODS[value].label}
+                            className={mergeClasses(styles.method, format === value && styles.selectedMethod)}
+                        />
+                    ))}
                 </RadioGroup>
-                {useBicep ? (
+                {format && exportMethod ? (
                     <section className={styles.stack} aria-labelledby={templateLabelId}>
                         <div className={styles.templateHeader}>
-                            <Text as="h3" id={templateLabelId} className={styles.sectionTitle}>
-                                {l10n.t('Bicep deployment template')}
-                            </Text>
+                            <div className={styles.templateTitle}>
+                                <Text as="h4" id={templateLabelId} className={styles.sectionTitle}>
+                                    {exportMethod.title}
+                                </Text>
+                                <Text className={styles.caption}>{exportMethod.fileName}</Text>
+                            </div>
                             <div className={styles.actions}>
                                 <Button
                                     size="small"
-                                    disabled={!draft.template || deploying || generating}
-                                    onClick={() => void copyBicep()}
+                                    appearance="primary"
+                                    icon={<CopyRegular aria-hidden />}
+                                    disabled={!template || deploying || generating}
+                                    onClick={() => void copyCode()}
                                 >
-                                    {l10n.t('Copy Bicep')}
+                                    {l10n.t('Copy code')}
                                 </Button>
                                 <Button
                                     size="small"
@@ -649,35 +736,41 @@ export function DeployPage({
                                     disabled={!valid || deploying || generating}
                                     onClick={() => (customized ? setConfirmRegenerate(true) : requestRegeneration())}
                                 >
-                                    {l10n.t('Regenerate template')}
+                                    {l10n.t('Regenerate')}
                                 </Button>
                             </div>
                         </div>
                         <div className={styles.templateBody}>
                             <Text className={styles.caption}>
-                                {l10n.t(
-                                    'Edit and copy this Bicep template for manual deployment with your own tooling. This option does not deploy resources from the wizard.',
-                                )}
+                                {exportMethod.description}{' '}
+                                {l10n.t('This option does not deploy resources from the wizard.')}
                             </Text>
                             {customized && !templateCurrent ? (
                                 <Text role="alert">
                                     {l10n.t(
-                                        'Your custom template has been kept. Regenerate it to match the current database and container selection. Regeneration replaces your edits.',
+                                        'Your custom code has been kept. Regenerate it to match the current database and container selection. Regeneration replaces your edits.',
                                     )}
                                 </Text>
                             ) : null}
                             {templateError ? <Text role="alert">{templateError}</Text> : null}
                             <output aria-live="polite">{copyMessage}</output>
                             <output aria-live="polite">
-                                {generating ? l10n.t('Generating Bicep template...') : ''}
+                                {generating ? l10n.t('Generating deployment code...') : ''}
                             </output>
                             <div className={styles.editor}>
                                 <MonacoEditor
-                                    language="bicep"
-                                    value={draft.template}
+                                    key={format}
+                                    language={exportMethod.language}
+                                    value={template}
                                     options={editorOptions}
                                     onChange={(value) =>
-                                        onDraftChange((previous) => ({ ...previous, template: value ?? '' }))
+                                        onDraftChange((previous) => ({
+                                            ...previous,
+                                            templates: {
+                                                ...previous.templates,
+                                                [format]: { ...previous.templates[format], template: value ?? '' },
+                                            },
+                                        }))
                                     }
                                 />
                             </div>
@@ -685,6 +778,11 @@ export function DeployPage({
                     </section>
                 ) : (
                     <div className={styles.deployActions}>
+                        <Text className={styles.caption}>
+                            {l10n.t(
+                                'Create the selected containers in this account. Matching existing containers are left unchanged.',
+                            )}
+                        </Text>
                         <div className={styles.deploySlot}>
                             {deploying ? (
                                 <output ref={deploymentStatusRef} tabIndex={-1} aria-live="polite">
@@ -737,8 +835,8 @@ export function DeployPage({
             </section>
             <AlertDialog
                 isOpen={confirmRegenerate}
-                title={l10n.t('Replace your template edits?')}
-                confirmButtonText={l10n.t('Regenerate template')}
+                title={l10n.t('Replace your code edits?')}
+                confirmButtonText={l10n.t('Regenerate')}
                 cancelButtonText={l10n.t('Cancel')}
                 onClose={(confirmed) => {
                     restoreRegenerateFocus.current = true;
@@ -747,7 +845,7 @@ export function DeployPage({
                 }}
             >
                 {l10n.t(
-                    'Regenerating the Bicep template replaces your custom edits with a template for the selected database and containers.',
+                    'Regenerating replaces your edits for this method with code for the selected database and containers.',
                 )}
             </AlertDialog>
             <AlertDialog

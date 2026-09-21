@@ -15,7 +15,7 @@ import {
     type DeploymentContainer,
     type DeploymentOptions,
     type DeploymentRequest,
-    type DeploymentTemplateInput,
+    type GenerateDeploymentTemplateInput,
     type ModelDeploymentResult,
     type SuccessfulDeployment,
 } from '../../../../dataModeling/deploymentModel';
@@ -48,7 +48,7 @@ const containers: DeploymentContainer[] = [
     { entity: 'Users', partitionKey: '/id' },
 ];
 const loadOptions = vi.fn<() => Promise<DeploymentOptions>>();
-const generateTemplate = vi.fn<(input: DeploymentTemplateInput) => Promise<string>>();
+const generateTemplate = vi.fn<(input: GenerateDeploymentTemplateInput) => Promise<string>>();
 const onDeploy = vi.fn<(input: DeploymentRequest) => Promise<ModelDeploymentResult>>();
 const onOpenDataExplorer = vi.fn<(input: { databaseId: string; containerId: string }) => Promise<void>>();
 const onBusyChange = vi.fn();
@@ -98,7 +98,7 @@ async function waitForTemplate() {
 }
 
 async function chooseBicep() {
-    await userEvent.click(screen.getByRole('radio', { name: 'Deploy with Biceps' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Bicep' }));
 }
 
 async function waitForDeploy() {
@@ -162,12 +162,13 @@ describe('Deploy wizard page', () => {
         expect(screen.getByRole('textbox', { name: 'New database name' })).not.toHaveAttribute('aria-invalid', 'true');
         expect(generateTemplate).not.toHaveBeenCalled();
         expect(screen.getByRole('radiogroup', { name: 'Deployment method' })).toBeVisible();
-        expect(screen.getByRole('radio', { name: 'Deploy now' })).toBeChecked();
-        const bicepChoice = screen.getByRole('radio', { name: 'Deploy with Biceps' });
-        expect(bicepChoice).toHaveAccessibleName('Deploy with Biceps');
-        expect(screen.getByText('Deploy with Biceps')).toBeVisible();
+        expect(screen.getByRole('radio', { name: 'Direct' })).toBeChecked();
+        for (const label of ['Direct', 'Bicep', 'Terraform', 'C# SDK']) {
+            expect(screen.getByRole('radio', { name: label })).toHaveAccessibleName(label);
+            expect(screen.getByText(label)).toBeVisible();
+        }
         expect(screen.queryByRole('textbox', { name: 'Bicep deployment template' })).not.toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: 'Copy Bicep' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Copy code' })).not.toBeInTheDocument();
     });
 
     it('shows the required error when a database name is typed and cleared before deployment', async () => {
@@ -285,13 +286,14 @@ describe('Deploy wizard page', () => {
         await chooseBicep();
         expect(screen.getByText('Database name is required.')).toBeVisible();
         expect(screen.getByRole('textbox', { name: 'New database name' })).toHaveAttribute('aria-invalid', 'true');
-        expect(screen.getByRole('button', { name: 'Regenerate template' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Regenerate' })).toBeDisabled();
         expect(generateTemplate).not.toHaveBeenCalled();
         changeName();
         await waitForTemplate();
         expect(screen.queryByText('Database name is required.')).not.toBeInTheDocument();
         expect(screen.getByRole('textbox', { name: 'New database name' })).not.toHaveAttribute('aria-invalid', 'true');
         expect(generateTemplate).toHaveBeenCalledExactlyOnceWith({
+            format: 'bicep',
             databaseMode: 'new',
             databaseName: 'new-db',
             containers,
@@ -299,7 +301,7 @@ describe('Deploy wizard page', () => {
         expect(onDeploy).not.toHaveBeenCalled();
     });
 
-    it('does not mount Monaco or schedule template generation in Deploy now mode', async () => {
+    it('does not mount Monaco or schedule template generation in Direct mode', async () => {
         vi.useFakeTimers();
         try {
             render(<Harness />);
@@ -321,7 +323,7 @@ describe('Deploy wizard page', () => {
         await chooseBicep();
         const editor = await waitForTemplate();
         const description = screen.getByText(
-            'Edit and copy this Bicep template for manual deployment with your own tooling. This option does not deploy resources from the wizard.',
+            'Review and copy the template, then deploy it with your Bicep tooling. This option does not deploy resources from the wizard.',
         );
         const body = description.parentElement;
         expect(body).toBe(editor.parentElement?.parentElement);
@@ -348,6 +350,7 @@ describe('Deploy wizard page', () => {
         await chooseBicep();
         await waitForTemplate();
         expect(generateTemplate).toHaveBeenLastCalledWith({
+            format: 'bicep',
             databaseMode: 'existing',
             databaseName: 'existing-db',
             containers,
@@ -365,6 +368,7 @@ describe('Deploy wizard page', () => {
         await userEvent.click(screen.getByRole('checkbox', { name: 'Users' }));
         const editor = await waitForTemplate();
         expect(generateTemplate).toHaveBeenLastCalledWith({
+            format: 'bicep',
             databaseMode: 'new',
             databaseName: 'new-db',
             containers: [containers[0]],
@@ -379,17 +383,17 @@ describe('Deploy wizard page', () => {
                 scrollbar: { vertical: 'visible', horizontal: 'auto', alwaysConsumeMouseWheel: false },
             },
         });
-        expect(editor.parentElement).toHaveStyle({ height: '240px' });
+        expect(editor.parentElement).toHaveStyle({ height: '320px', boxSizing: 'border-box' });
         fireEvent.change(editor, { target: { value: '// customized Bicep\n// throughput = 1000' } });
         expect(screen.queryByRole('button', { name: 'Deploy' })).not.toBeInTheDocument();
-        const copy = screen.getByRole('button', { name: 'Copy Bicep' });
-        expect(copy).toHaveTextContent('Copy Bicep');
-        expect(copy).toHaveAccessibleName('Copy Bicep');
+        const copy = screen.getByRole('button', { name: 'Copy code' });
+        expect(copy).toHaveTextContent('Copy code');
+        expect(copy).toHaveAccessibleName('Copy code');
         await user.click(copy);
         expect(writeText).toHaveBeenCalledWith('// customized Bicep\n// throughput = 1000');
-        expect(screen.getByText('Bicep copied.')).toBeVisible();
+        expect(screen.getByText('Code copied.')).toBeVisible();
         expect(onDeploy).not.toHaveBeenCalled();
-        await user.click(screen.getByRole('radio', { name: 'Deploy now' }));
+        await user.click(screen.getByRole('radio', { name: 'Direct' }));
         const button = screen.getByRole('button', { name: 'Deploy' });
         expect(button).toHaveTextContent('Deploy');
         expect(button).toHaveAccessibleName('Deploy');
@@ -418,6 +422,114 @@ describe('Deploy wizard page', () => {
         expect(generateTemplate).not.toHaveBeenCalled();
     });
 
+    it.each([
+        { format: 'terraform', label: 'Terraform', title: 'Terraform configuration', language: 'hcl', file: 'main.tf' },
+        { format: 'sdk', label: 'C# SDK', title: 'C# SDK deployment code', language: 'csharp', file: 'Program.cs' },
+    ])('generates, edits, and copies $label code for the selected target without deploying', async (method) => {
+        const user = userEvent.setup();
+        const writeText = vi.spyOn(navigator.clipboard, 'writeText');
+        render(<Harness />);
+        await screen.findByText('source-account', { selector: 'dd' });
+        changeName();
+        await user.click(screen.getByRole('checkbox', { name: 'Users' }));
+        await user.click(screen.getByRole('radio', { name: method.label }));
+        const editor = screen.getByRole('textbox', { name: method.title });
+        await waitFor(() => expect(editor).toHaveValue('// new new-db: Orders'));
+        expect(generateTemplate).toHaveBeenCalledExactlyOnceWith({
+            databaseMode: 'new',
+            databaseName: 'new-db',
+            containers: [containers[0]],
+            format: method.format,
+        });
+        expect(vi.mocked(MonacoEditor).mock.calls.at(-1)?.[0]).toMatchObject({
+            language: method.language,
+            options: { readOnly: false, domReadOnly: false, tabFocusMode: true, stickyScroll: { enabled: false } },
+        });
+        expect(editor).toHaveAccessibleName(method.title);
+        expect(screen.getByText(method.file)).toBeVisible();
+        expect(screen.getByText(/This option does not deploy resources from the wizard/)).toBeVisible();
+        fireEvent.change(editor, { target: { value: '// customized ' + method.format } });
+        const copy = screen.getByRole('button', { name: 'Copy code' });
+        expect(copy).toHaveTextContent('Copy code');
+        expect(copy).toHaveAccessibleName('Copy code');
+        await user.click(copy);
+        expect(writeText).toHaveBeenCalledWith('// customized ' + method.format);
+        expect(screen.getByText('Code copied.')).toBeVisible();
+        expect(screen.queryByRole('button', { name: 'Deploy' })).not.toBeInTheDocument();
+        expect(onDeploy).not.toHaveBeenCalled();
+    });
+
+    it('keeps independent edits for every method and flags outdated code after changing the target', async () => {
+        render(<Harness />);
+        changeName();
+        for (const [label, title] of [
+            ['Bicep', 'Bicep deployment template'],
+            ['Terraform', 'Terraform configuration'],
+            ['C# SDK', 'C# SDK deployment code'],
+        ]) {
+            await userEvent.click(screen.getByRole('radio', { name: label }));
+            const editor = screen.getByRole('textbox', { name: title });
+            await waitFor(() => expect(editor).toHaveValue('// new new-db: Orders, Users'));
+            fireEvent.change(editor, { target: { value: '// my ' + label } });
+        }
+        changeName('another-db');
+        for (const [label, title] of [
+            ['Bicep', 'Bicep deployment template'],
+            ['Terraform', 'Terraform configuration'],
+            ['C# SDK', 'C# SDK deployment code'],
+        ]) {
+            await userEvent.click(screen.getByRole('radio', { name: label }));
+            expect(screen.getByRole('textbox', { name: title })).toHaveValue('// my ' + label);
+            expect(screen.getByRole('alert')).toHaveTextContent('Your custom code has been kept.');
+        }
+        expect(generateTemplate).toHaveBeenCalledTimes(3);
+        await userEvent.click(screen.getByRole('button', { name: 'Regenerate' }));
+        const dialog = screen.getByRole('alertdialog', { name: 'Replace your code edits?' });
+        await userEvent.click(within(dialog).getByRole('button', { name: 'Regenerate' }));
+        await waitFor(() =>
+            expect(screen.getByRole('textbox', { name: 'C# SDK deployment code' })).toHaveValue(
+                '// new another-db: Orders, Users',
+            ),
+        );
+        expect(generateTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ format: 'sdk' }));
+        await chooseBicep();
+        expect(screen.getByRole('textbox', { name: 'Bicep deployment template' })).toHaveValue('// my Bicep');
+    });
+
+    it('ignores a late response from another method and preserves keyboard method selection', async () => {
+        let resolveBicep!: (code: string) => void;
+        generateTemplate.mockImplementationOnce(
+            () =>
+                new Promise<string>((resolve) => {
+                    resolveBicep = resolve;
+                }),
+        );
+        render(<Harness />);
+        changeName();
+        await chooseBicep();
+        await waitFor(() => expect(generateTemplate).toHaveBeenCalledOnce());
+        screen.getByRole('radio', { name: 'Bicep' }).focus();
+        await userEvent.keyboard('{ArrowRight}');
+        expect(screen.getByRole('radio', { name: 'Terraform' })).toBeChecked();
+        const editor = screen.getByRole('textbox', { name: 'Terraform configuration' });
+        await waitFor(() => expect(editor).toHaveValue('// new new-db: Orders, Users'));
+        await act(async () => resolveBicep('// stale bicep'));
+        expect(editor).toHaveValue('// new new-db: Orders, Users');
+        expect(generateTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ format: 'terraform' }));
+    });
+
+    it('surfaces clipboard errors instead of announcing copy success', async () => {
+        const user = userEvent.setup();
+        vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValueOnce(new Error('Clipboard denied'));
+        render(<Harness />);
+        changeName();
+        await chooseBicep();
+        await waitForTemplate();
+        await user.click(screen.getByRole('button', { name: 'Copy code' }));
+        expect(await screen.findByRole('alert')).toHaveTextContent('Could not copy code. Clipboard denied');
+        expect(screen.queryByText('Code copied.')).not.toBeInTheDocument();
+    });
+
     it('keeps custom edits after selection changes until regeneration is explicitly confirmed', async () => {
         render(<Harness />);
         changeName();
@@ -427,16 +539,16 @@ describe('Deploy wizard page', () => {
         await userEvent.click(screen.getByRole('checkbox', { name: 'Users' }));
         expect(editor).toHaveValue('// my custom template');
         expect(screen.queryByRole('button', { name: 'Deploy' })).not.toBeInTheDocument();
-        const regenerate = screen.getByRole('button', { name: 'Regenerate template' });
+        const regenerate = screen.getByRole('button', { name: 'Regenerate' });
         await userEvent.click(regenerate);
-        let dialog = screen.getByRole('alertdialog', { name: 'Replace your template edits?' });
+        let dialog = screen.getByRole('alertdialog', { name: 'Replace your code edits?' });
         await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
         await userEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
         expect(editor).toHaveValue('// my custom template');
         await waitFor(() => expect(regenerate).toHaveFocus());
         await userEvent.click(regenerate);
-        dialog = screen.getByRole('alertdialog', { name: 'Replace your template edits?' });
-        await userEvent.click(within(dialog).getByRole('button', { name: 'Regenerate template' }));
+        dialog = screen.getByRole('alertdialog', { name: 'Replace your code edits?' });
+        await userEvent.click(within(dialog).getByRole('button', { name: 'Regenerate' }));
         await waitForTemplate();
         expect(editor).toHaveValue('// new new-db: Orders');
     });
@@ -459,7 +571,7 @@ describe('Deploy wizard page', () => {
         expect(editor).toHaveValue('// new second-db: Orders, Users');
     });
 
-    it('ignores a pending export response when switching to Deploy now', async () => {
+    it('ignores a pending export response when switching to Direct', async () => {
         let resolveFirst!: (template: string) => void;
         generateTemplate.mockImplementationOnce(
             () =>
@@ -471,7 +583,7 @@ describe('Deploy wizard page', () => {
         changeName();
         await chooseBicep();
         await waitFor(() => expect(generateTemplate).toHaveBeenCalledOnce());
-        await userEvent.click(screen.getByRole('radio', { name: 'Deploy now' }));
+        await userEvent.click(screen.getByRole('radio', { name: 'Direct' }));
         await waitForDeploy();
         await act(async () => resolveFirst('// stale hidden template'));
         expect(screen.queryByRole('textbox', { name: 'Bicep deployment template' })).not.toBeInTheDocument();
@@ -486,8 +598,8 @@ describe('Deploy wizard page', () => {
         render(<Harness />);
         changeName();
         await chooseBicep();
-        await screen.findByText('Could not generate the Bicep template. Export unavailable');
-        await userEvent.click(screen.getByRole('radio', { name: 'Deploy now' }));
+        await screen.findByText('Could not generate deployment code. Export unavailable');
+        await userEvent.click(screen.getByRole('radio', { name: 'Direct' }));
         await waitForDeploy();
         await userEvent.click(screen.getByRole('button', { name: 'Deploy' }));
         await confirmDeployment();
@@ -520,7 +632,9 @@ describe('Deploy wizard page', () => {
         expect(screen.getByRole('radio', { name: 'Existing database' })).toBeDisabled();
         expect(screen.getByRole('textbox', { name: 'New database name' })).toBeDisabled();
         expect(screen.getByRole('checkbox', { name: 'Users' })).toBeDisabled();
-        expect(screen.getByRole('radio', { name: 'Deploy with Biceps' })).toBeDisabled();
+        for (const name of ['Direct', 'Bicep', 'Terraform', 'C# SDK']) {
+            expect(screen.getByRole('radio', { name })).toBeDisabled();
+        }
         expect(onBusyChange).toHaveBeenLastCalledWith(true);
         expect(onDeploy).toHaveBeenCalledOnce();
         expect(screen.queryByText('Open in Data Explorer')).not.toBeInTheDocument();
@@ -678,9 +792,9 @@ describe('Deploy wizard page', () => {
         await screen.findByText('source-account', { selector: 'dd' });
         changeName();
         await chooseBicep();
-        await screen.findByText('Could not generate the Bicep template. Invalid key');
+        await screen.findByText('Could not generate deployment code. Invalid key');
         expect(screen.queryByRole('button', { name: 'Deploy' })).not.toBeInTheDocument();
-        await userEvent.click(screen.getByRole('button', { name: 'Regenerate template' }));
+        await userEvent.click(screen.getByRole('button', { name: 'Regenerate' }));
         await waitForTemplate();
     });
 

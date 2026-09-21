@@ -33,10 +33,6 @@ function renderResult(value = recommendation) {
     );
 }
 
-function editorProps() {
-    return vi.mocked(MonacoEditor).mock.calls.at(-1)?.[0];
-}
-
 describe('ResultPage', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -64,9 +60,7 @@ describe('ResultPage', () => {
         expect(within(section).getByText('Logical-partition storage')).toBeVisible();
         expect(within(section).getByText(value.containers[0].guardrails[0].detail)).toBeVisible();
         expect(section.parentElement?.lastElementChild).toBe(section);
-        expect(section.previousElementSibling).toContainElement(
-            screen.getByRole('textbox', { name: 'Container creation code sample' }),
-        );
+        expect(MonacoEditor).not.toHaveBeenCalled();
 
         await user.click(screen.getByRole('tab', { name: 'Container: User' }));
         const userSection = screen.getByRole('region', { name: 'Absolute rules (guardrails)' });
@@ -208,30 +202,15 @@ describe('ResultPage', () => {
         });
     });
 
-    it('renders a named, read-only Bicep snippet without editor chrome or a keyboard trap', () => {
+    it('keeps deployment code and actions out of the recommendation step', () => {
         renderResult();
-
-        const editor = screen.getByRole('textbox', { name: 'Container creation code sample' });
-        expect(editor).toHaveAttribute('readonly');
-        expect(editorProps()).toMatchObject({
-            language: 'bicep',
-            value: expect.stringContaining("name: 'Message'"),
-            options: {
-                readOnly: true,
-                domReadOnly: true,
-                tabFocusMode: true,
-                minimap: { enabled: false },
-                lineNumbers: 'off',
-                folding: false,
-                stickyScroll: { enabled: false },
-                padding: { top: 0, bottom: 0 },
-                scrollBeyondLastLine: false,
-                wordWrap: 'off',
-            },
-        });
-
+        expect(MonacoEditor).not.toHaveBeenCalled();
+        expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+        for (const name of ['Bicep', 'Terraform', 'SDK (C#)']) {
+            expect(screen.queryByRole('tab', { name })).not.toBeInTheDocument();
+        }
         expect(screen.queryByRole('button', { name: 'Create Container' })).not.toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Copy' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Copy' })).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'Deploy' })).not.toBeInTheDocument();
         expect(screen.getByRole('tab', { name: 'Container: Message' })).toHaveTextContent('Container: Message');
     });
@@ -247,103 +226,13 @@ describe('ResultPage', () => {
         expect(screen.getByText('Use a unique message ID.')).toBeVisible();
     });
 
-    it.each(['Bicep', 'Terraform', 'SDK (C#)'])(
-        'keeps a persistent inset and accounts for frame spacing in the %s preview height',
-        async (tab) => {
-            renderResult();
-            await userEvent.click(screen.getByRole('tab', { name: tab }));
-            const frame = screen.getByRole('textbox', { name: 'Container creation code sample' }).parentElement!;
-            const style = getComputedStyle(frame);
-            expect(style.boxSizing).toBe('border-box');
-            for (const padding of [style.paddingTop, style.paddingRight, style.paddingBottom, style.paddingLeft]) {
-                expect(padding).toBe('12px');
-            }
-            const lines = editorProps()!.value!.split('\n').length;
-            expect(frame.style.height).toBe(`${Math.min(400, lines * 20 + 2 * (12 + 1) + 12)}px`);
-            expect(editorProps()?.options).toMatchObject({
-                padding: { top: 0, bottom: 0 },
-                stickyScroll: { enabled: false },
-                wordWrap: 'off',
-            });
-        },
-    );
-
-    it.each([
-        { tab: 'Terraform', language: 'hcl', code: 'partition_key_paths   = ["/conversationId"]' },
-        { tab: 'SDK (C#)', language: 'csharp', code: 'partitionKeyPath: "/conversationId"' },
-    ])('switches the snippet and language to $tab and copies its contents', async ({ tab, language, code }) => {
-        const user = userEvent.setup();
-        const writeText = vi.spyOn(navigator.clipboard, 'writeText');
-        renderResult();
-        const initialHeight = screen.getByRole('textbox').parentElement?.style.height;
-
-        const languageTab = screen.getByRole('tab', { name: tab });
-        expect(languageTab).toHaveTextContent(tab);
-        expect(languageTab).toHaveAccessibleName(tab);
-        await user.click(languageTab);
-
-        expect(editorProps()).toMatchObject({ language, value: expect.stringContaining(code) });
-        expect(screen.getByRole('textbox').parentElement?.style.height).not.toBe(initialHeight);
-
-        const copyButton = screen.getByRole('button', { name: 'Copy' });
-        expect(copyButton).toHaveTextContent('Copy');
-        expect(copyButton).toHaveAccessibleName('Copy');
-        await user.click(copyButton);
-        expect(writeText).toHaveBeenCalledWith(editorProps()?.value);
-    });
-
-    it('updates the snippet when switching containers', async () => {
+    it('switches container analysis without mounting a code editor', async () => {
         const user = userEvent.setup();
         renderResult();
 
         await user.click(screen.getByRole('tab', { name: 'Container: User' }));
 
-        expect(editorProps()).toMatchObject({
-            language: 'bicep',
-            value: expect.stringContaining("name: 'User'"),
-        });
-        expect(editorProps()?.value).toContain("paths: ['/userId']");
-        expect(editorProps()?.value).not.toContain('Message');
-    });
-
-    it('renders real Bicep resources referencing an existing account and database with hierarchical keys', () => {
-        renderResult({
-            summary: '',
-            containers: [{ entity: 'Orders', partitionKey: '/tenantId, /address/zip', rationale: '' }],
-        });
-        expect(editorProps()?.value).toContain(
-            "resource account 'Microsoft.DocumentDB/databaseAccounts@2024-05-15' existing",
-        );
-        expect(editorProps()?.value).toContain(
-            "resource sqlDatabase 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2024-05-15' existing",
-        );
-        expect(editorProps()?.value).toContain("paths: ['/tenantId', '/address/zip']");
-        expect(editorProps()?.value).toContain("kind: 'MultiHash'");
-        expect(editorProps()?.value).toContain('version: 2');
-        expect(editorProps()?.value).not.toContain('sqlRoleAssignments');
-    });
-
-    it.each([
-        { tab: 'Terraform', code: 'partition_key_paths   = ["/tenantId", "/address/zip"]' },
-        { tab: 'SDK (C#)', code: 'partitionKeyPaths: new[] { "/tenantId", "/address/zip" }' },
-    ])('keeps the $tab snippet aligned with deployed hierarchical keys', async ({ tab, code }) => {
-        renderResult({
-            summary: '',
-            containers: [{ entity: 'Orders', partitionKey: '/tenantId, /address/zip', rationale: '' }],
-        });
-        await userEvent.click(screen.getByRole('tab', { name: tab }));
-        expect(editorProps()?.value).toContain(code);
-    });
-
-    it('escapes names as literal strings in each infrastructure snippet', async () => {
-        renderResult({
-            summary: '',
-            containers: [{ entity: "o'brien${literal}", partitionKey: '/id', rationale: '' }],
-        });
-        expect(editorProps()?.value).toContain("name: 'o\\'brien\\${literal}'");
-        await userEvent.click(screen.getByRole('tab', { name: 'Terraform' }));
-        expect(editorProps()?.value).toContain('name                  = "o\'brien$${literal}"');
-        await userEvent.click(screen.getByRole('tab', { name: 'SDK (C#)' }));
-        expect(editorProps()?.value).toContain('id: "o\'brien${literal}"');
+        expect(screen.getByRole('tab', { name: 'Container: User' })).toHaveAttribute('aria-selected', 'true');
+        expect(MonacoEditor).not.toHaveBeenCalled();
     });
 });

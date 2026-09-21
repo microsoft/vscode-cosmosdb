@@ -5,7 +5,6 @@
 
 import {
     Badge,
-    Button,
     Link,
     makeStyles,
     mergeClasses,
@@ -20,11 +19,9 @@ import {
     Text,
     tokens,
 } from '@fluentui/react-components';
-import { CheckmarkRegular, CopyRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useId, useState } from 'react';
 import { getPartitionKeyPaths } from '../../../../dataModeling/deploymentModel';
-import { buildExistingDatabaseContainerBicep } from '../../../../panels/migration/helpers/bicepGenerator';
 import {
     type CandidateAssessment,
     type ContainerRecommendation,
@@ -32,20 +29,16 @@ import {
     type PartitionKeyRecommendation,
     type PkCandidate,
 } from '../../../api/types';
-import { MonacoEditor, type MonacoEditorType } from '../../../MonacoEditor';
 import { CopilotRecommendation, type RecommendationStatus } from '../components/CopilotRecommendation';
 import { InfoBox, SubPanel } from '../components/primitives';
 
 /**
  * Result step. One tab per container, each showing Copilot's partition-key recommendation:
  * scored candidate cards, a hot-partition risk comparison, a query-routing analysis, a
- * document-id strategy, a copyable infrastructure snippet, and relevant absolute rules as the last section.
- * Assessments, scores, and ranking are LLM-driven. Deployment is configured in the following step.
+ * document-id strategy, and relevant absolute rules as the last section.
+ * Assessments, scores, and ranking are LLM-driven. Deployment and code exports are in the following step.
  * While the request is in flight, the {@link CopilotRecommendation} panel shows a waiting note instead.
  */
-
-const CODE_PADDING = 12;
-const CODE_BORDER_WIDTH = 1;
 
 const useStyles = makeStyles({
     stack: {
@@ -252,95 +245,7 @@ const useStyles = makeStyles({
     strategyTag: {
         marginBottom: tokens.spacingVerticalS,
     },
-    codeWrap: {
-        position: 'relative',
-        minWidth: 0,
-    },
-    codeHead: {
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: tokens.spacingHorizontalS,
-        flexWrap: 'wrap',
-    },
-    codeEditor: {
-        marginTop: tokens.spacingVerticalS,
-        boxSizing: 'border-box',
-        padding: `${CODE_PADDING}px`,
-        borderRadius: tokens.borderRadiusMedium,
-        border: `${CODE_BORDER_WIDTH}px solid ${tokens.colorNeutralStroke2}`,
-        overflow: 'hidden',
-    },
-    copiedIcon: {
-        color: tokens.colorBrandForeground1,
-    },
 });
-
-type CodeTab = 'bicep' | 'terraform' | 'sdk';
-
-const CODE_LANGUAGES: Record<CodeTab, string> = { bicep: 'bicep', terraform: 'hcl', sdk: 'csharp' };
-const CODE_LINE_HEIGHT = 20;
-const CODE_SCROLLBAR_SIZE = 12;
-const CODE_EDITOR_OPTIONS: MonacoEditorType.editor.IStandaloneEditorConstructionOptions = {
-    readOnly: true,
-    domReadOnly: true,
-    ariaLabel: l10n.t('Container creation code sample'),
-    tabFocusMode: true,
-    minimap: { enabled: false },
-    lineNumbers: 'off',
-    glyphMargin: false,
-    folding: false,
-    stickyScroll: { enabled: false },
-    lineDecorationsWidth: 0,
-    overviewRulerLanes: 0,
-    overviewRulerBorder: false,
-    renderLineHighlight: 'none',
-    scrollBeyondLastLine: false,
-    wordWrap: 'off',
-    fontSize: 13,
-    lineHeight: CODE_LINE_HEIGHT,
-    padding: { top: 0, bottom: 0 },
-    scrollbar: { horizontalScrollbarSize: CODE_SCROLLBAR_SIZE, alwaysConsumeMouseWheel: false },
-};
-
-function buildCode(tab: CodeTab, entity: string, partitionKey: string): string {
-    const paths = getPartitionKeyPaths(partitionKey);
-    const quotedEntity = JSON.stringify(entity);
-    const quotedPaths = paths.map((path) => JSON.stringify(path));
-    const terraformString = (value: string) =>
-        JSON.stringify(value)
-            .replace(/\$\{/g, () => '$${')
-            .replace(/%\{/g, '%%{');
-    switch (tab) {
-        case 'bicep':
-            return buildExistingDatabaseContainerBicep({
-                name: entity,
-                partitionKeys: paths.map((path) => ({ path })),
-            });
-        case 'terraform':
-            return [
-                `resource "azurerm_cosmosdb_sql_container" "container" {`,
-                `  name                  = ${terraformString(entity)}`,
-                `  resource_group_name   = var.resource_group_name`,
-                `  account_name          = var.account_name`,
-                `  database_name         = var.database_name`,
-                `  partition_key_paths   = [${paths.map(terraformString).join(', ')}]`,
-                `  partition_key_kind    = "${paths.length > 1 ? 'MultiHash' : 'Hash'}"`,
-                `  partition_key_version = 2`,
-                `}`,
-            ].join('\n');
-        case 'sdk':
-            return [
-                `var props = new ContainerProperties(`,
-                `    id: ${quotedEntity},`,
-                paths.length > 1
-                    ? `    partitionKeyPaths: new[] { ${quotedPaths.join(', ')} });`
-                    : `    partitionKeyPath: ${quotedPaths[0]});`,
-                `props.PartitionKeyDefinitionVersion = PartitionKeyDefinitionVersion.V2;`,
-                `await database.CreateContainerIfNotExistsAsync(props);`,
-            ].join('\n');
-    }
-}
 
 const ASSESS_GLYPH: Record<CandidateAssessment['status'], string> = { pass: '✓', fail: '✗', info: 'i', warn: '!' };
 
@@ -495,33 +400,6 @@ function riskBand(risk: HotPartitionRisk['risk']): { fill: string; label: string
 function ContainerResultView({ container }: { container: ContainerRecommendation }) {
     const styles = useStyles();
     const guardrailsId = useId();
-    const [codeTab, setCodeTab] = useState<CodeTab>('bicep');
-    const [copied, setCopied] = useState(false);
-
-    const code = useMemo(
-        () => buildCode(codeTab, container.entity, container.partitionKey),
-        [codeTab, container.entity, container.partitionKey],
-    );
-    // Include the frame's persistent inset and border so short snippets do not lose their final line.
-    const codeEditorHeight = Math.min(
-        400,
-        code.split('\n').length * CODE_LINE_HEIGHT + 2 * (CODE_PADDING + CODE_BORDER_WIDTH) + CODE_SCROLLBAR_SIZE,
-    );
-
-    // Reset the "Copied" affordance shortly after a copy; clean up on unmount / tab switch.
-    useEffect(() => {
-        if (!copied) {
-            return;
-        }
-        const timer = setTimeout(() => setCopied(false), 1500);
-        return () => clearTimeout(timer);
-    }, [copied]);
-
-    const copy = () => {
-        void navigator.clipboard?.writeText(code);
-        setCopied(true);
-    };
-
     const fillTone: Record<'low' | 'medium' | 'high', string> = {
         low: styles.fillLow,
         medium: styles.fillMedium,
@@ -644,26 +522,6 @@ function ContainerResultView({ container }: { container: ContainerRecommendation
                 </SubPanel>
             ) : null}
 
-            <div className={styles.codeWrap}>
-                <div className={styles.codeHead}>
-                    <TabList selectedValue={codeTab} onTabSelect={(_, data) => setCodeTab(data.value as CodeTab)}>
-                        <Tab value="bicep">Bicep</Tab>
-                        <Tab value="terraform">Terraform</Tab>
-                        <Tab value="sdk">{l10n.t('SDK (C#)')}</Tab>
-                    </TabList>
-                    <Button
-                        icon={copied ? <CheckmarkRegular className={styles.copiedIcon} /> : <CopyRegular />}
-                        appearance="subtle"
-                        size="small"
-                        onClick={copy}
-                    >
-                        {copied ? l10n.t('Copied') : l10n.t('Copy')}
-                    </Button>
-                </div>
-                <div className={styles.codeEditor} style={{ height: codeEditorHeight }}>
-                    <MonacoEditor language={CODE_LANGUAGES[codeTab]} value={code} options={CODE_EDITOR_OPTIONS} />
-                </div>
-            </div>
             {container.guardrails?.length ? (
                 <section className={styles.guardrails} aria-labelledby={guardrailsId}>
                     <h2 id={guardrailsId} className={styles.guardrailsHeading}>

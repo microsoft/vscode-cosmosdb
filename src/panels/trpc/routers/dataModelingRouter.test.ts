@@ -169,6 +169,33 @@ describe('data modeler deployment procedure', () => {
         expect(ctx.actionContext?.telemetry.suppressAll).toBe(true);
         expect(generateDeploymentTemplate).not.toHaveBeenCalled();
     });
+
+    it.each(['bicep', 'terraform', 'sdk'] as const)('passes the %s format to host generation', async (format) => {
+        const ctx = context();
+        vi.mocked(generateDeploymentTemplate).mockResolvedValue('generated');
+        await expect(
+            dataModelingRouterDef.createCaller(ctx).generateDeploymentTemplate({ ...input, format }),
+        ).resolves.toBe('generated');
+        expect(generateDeploymentTemplate).toHaveBeenCalledWith(ctx.account, { ...input, format });
+    });
+
+    it('rejects unsupported export formats before generation', async () => {
+        await expect(
+            dataModelingRouterDef.createCaller(context()).generateDeploymentTemplate({
+                ...input,
+                // @ts-expect-error Verify runtime validation of untrusted webview input.
+                format: 'shell',
+            }),
+        ).rejects.toThrow();
+        expect(generateDeploymentTemplate).not.toHaveBeenCalled();
+    });
+
+    it.each(['format', 'code'])('rejects export %s fields on the direct deployment route', async (field) => {
+        await expect(
+            dataModelingRouterDef.createCaller(context()).deploy({ ...request, [field]: 'sdk' }),
+        ).rejects.toThrow();
+        expect(deployDataModel).not.toHaveBeenCalled();
+    });
 });
 
 describe('recommendation prompt', () => {

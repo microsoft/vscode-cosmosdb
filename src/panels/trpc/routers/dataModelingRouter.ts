@@ -11,7 +11,7 @@ import {
     generateDeploymentTemplate,
     getDeploymentOptions,
 } from '../../../commands/dataModeling/deployDataModel';
-import { DeploymentRequestSchema, DeploymentTemplateInputSchema } from '../../../dataModeling/deploymentModel';
+import { DeploymentRequestSchema, GenerateDeploymentTemplateInputSchema } from '../../../dataModeling/deploymentModel';
 import { ModelingAdvisorSnapshotSchema, WizardStateSchema } from '../../../dataModeling/modelingAdvisorSchema';
 import { buildRecommendationPrompt } from '../../../dataModeling/recommendationPrompt';
 import { openUrl } from '../../../utils/openUrl';
@@ -36,7 +36,7 @@ export const dataModelingRouterDef = dataModelingRouter({
         .mutation(({ ctx, input }) => ctx.project.saveState(input)),
     getDeploymentOptions: stateProcedure.query(({ ctx }) => getDeploymentOptions(ctx.account)),
     generateDeploymentTemplate: stateProcedure
-        .input(DeploymentTemplateInputSchema)
+        .input(GenerateDeploymentTemplateInputSchema)
         .query(({ ctx, input }) => generateDeploymentTemplate(ctx.account, input)),
     deploy: stateProcedure.input(DeploymentRequestSchema).mutation(({ ctx, input }) => {
         if (!ctx.actionContext) throw new Error(l10n.t('Reopen the Data Modeler to deploy this model.'));

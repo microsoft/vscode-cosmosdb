@@ -9,9 +9,11 @@ import * as vscode from 'vscode';
 import { type CosmosDBControlPlane } from '../../cosmosdb/controlPlane';
 import {
     DeploymentRequestSchema,
+    GenerateDeploymentTemplateInputSchema,
     type DeploymentOptions,
     type DeploymentRequest,
     type DeploymentTemplateInput,
+    type GenerateDeploymentTemplateInput,
     type ModelDeploymentResult,
 } from '../../dataModeling/deploymentModel';
 import { ext } from '../../extensionVariables';
@@ -20,6 +22,7 @@ import { buildBicepTemplate } from '../../panels/migration/helpers/bicepGenerato
 import { provisionCosmosModel } from '../../panels/migration/helpers/provisionCosmosModel';
 import { type DataModelerAccount } from '../../services/DataModelerProjectService';
 import { type ContainerResource } from '../../tree/cosmosdb/models/CosmosDBTypes';
+import { buildSdkDeployment, buildTerraformDeployment } from './deploymentExports';
 import { createDeploymentModel, missingContainers } from './deploymentTemplate';
 
 const deployingAccounts = new Set<string>();
@@ -78,12 +81,21 @@ function exportTemplate(account: DataModelerAccount, input: DeploymentTemplateIn
 
 export async function generateDeploymentTemplate(
     account: DataModelerAccount,
-    input: DeploymentTemplateInput,
+    request: GenerateDeploymentTemplateInput,
 ): Promise<string> {
+    const input = GenerateDeploymentTemplateInputSchema.parse(request);
     const model = createDeploymentModel(input);
-    const existing = await checkDatabase(requireControlPlane(account), input, false);
-    missingContainers(model, existing);
-    return exportTemplate(account, input, model);
+    const format = input.format ?? 'bicep';
+    const existing = await checkDatabase(requireControlPlane(account), input, format !== 'bicep');
+    const pending = missingContainers(model, existing);
+    switch (format) {
+        case 'terraform':
+            return buildTerraformDeployment(pending, input.databaseMode, account.getDeploymentTarget?.());
+        case 'sdk':
+            return buildSdkDeployment(model, input.databaseMode, account.getDeploymentTarget?.());
+        default:
+            return exportTemplate(account, input, model);
+    }
 }
 
 /** Uses migration's resource pipeline. Bicep is an optional export, not the built-in deployment input. */

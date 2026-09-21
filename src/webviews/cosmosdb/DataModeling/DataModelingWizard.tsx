@@ -834,7 +834,9 @@ const HydratedDataModelingWizard = ({
                     navigable={canEnterDeploy && !deploymentBusy}
                     label={l10n.t('Deploy')}
                     title={l10n.t('Deploy data model')}
-                    subtitle={l10n.t('Deploy selected containers using the migration provisioning pipeline.')}
+                    subtitle={l10n.t(
+                        'Create resources directly or prepare deployment code for your preferred tooling.',
+                    )}
                 >
                     {recommendation ? (
                         <DeployPage

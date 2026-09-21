@@ -22,9 +22,15 @@ export const DeploymentTemplateInputSchema = z.object({
 
 export const DeploymentRequestSchema = DeploymentTemplateInputSchema.strict();
 
+export const GenerateDeploymentTemplateInputSchema = DeploymentTemplateInputSchema.extend({
+    format: z.enum(['bicep', 'terraform', 'sdk']).optional(),
+});
+
 export type DatabaseMode = 'new' | 'existing';
 export type DeploymentTemplateInput = z.infer<typeof DeploymentTemplateInputSchema>;
 export type DeploymentRequest = z.infer<typeof DeploymentRequestSchema>;
+export type GenerateDeploymentTemplateInput = z.infer<typeof GenerateDeploymentTemplateInputSchema>;
+export type DeploymentTemplateFormat = NonNullable<GenerateDeploymentTemplateInput['format']>;
 export interface DeploymentOptions {
     accountName: string;
     subscriptionName?: string;

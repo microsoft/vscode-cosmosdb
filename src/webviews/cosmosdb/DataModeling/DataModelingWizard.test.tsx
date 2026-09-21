@@ -156,6 +156,11 @@ async function confirmAdvance() {
     await userEvent.click(yes);
 }
 
+async function confirmDeployment() {
+    const dialog = await screen.findByRole('alertdialog', { name: /^Deploy data model to/ });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Deploy' }));
+}
+
 describe('data modeler saved-work choice and revisiting steps', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -201,6 +206,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(section.queryByRole('textbox', { name: 'Bicep deployment template' })).not.toBeInTheDocument();
         expect(client.dataModeling.generateDeploymentTemplate.query).not.toHaveBeenCalled();
         await userEvent.click(deploy);
+        await confirmDeployment();
         expect(client.dataModeling.deploy.mutate).toHaveBeenCalledWith({
             databaseMode: 'new',
             databaseName: 'fresh-db',
@@ -215,7 +221,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         const mounted = render(<DataModelingWizard />);
         await continueExisting();
         await enterDeployStep();
-        await userEvent.click(screen.getByRole('radio', { name: 'Deploy with Biceps' }));
+        await userEvent.click(screen.getByRole('radio', { name: 'Bicep' }));
         fireEvent.change(screen.getByRole('textbox', { name: 'New database name' }), {
             target: { value: 'unsaved-db' },
         });
@@ -230,7 +236,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         await userEvent.click(screen.getByRole('button', { name: 'Back' }));
         expect(screen.getByText('Restored result')).toBeVisible();
         await enterDeployStep();
-        expect(screen.getByRole('radio', { name: 'Deploy with Biceps' })).toBeChecked();
+        expect(screen.getByRole('radio', { name: 'Bicep' })).toBeChecked();
         expect(screen.getByRole('textbox', { name: 'New database name' })).toHaveValue('unsaved-db');
         expect(screen.getByRole('textbox', { name: 'Bicep deployment template' })).toHaveValue('// unsaved Bicep');
         await userEvent.click(screen.getByRole('checkbox', { name: 'Orders' }));
@@ -242,9 +248,9 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(screen.queryByRole('textbox', { name: 'Bicep deployment template' })).not.toBeInTheDocument();
         await enterDeployStep();
         expect(screen.getByRole('textbox', { name: 'New database name' })).toHaveValue('');
-        expect(screen.getByRole('radio', { name: 'Deploy now' })).toBeChecked();
+        expect(screen.getByRole('radio', { name: 'Direct' })).toBeChecked();
         expect(screen.queryByRole('textbox', { name: 'Bicep deployment template' })).not.toBeInTheDocument();
-        await userEvent.click(screen.getByRole('radio', { name: 'Deploy with Biceps' }));
+        await userEvent.click(screen.getByRole('radio', { name: 'Bicep' }));
         expect(screen.getByRole('textbox', { name: 'Bicep deployment template' })).toHaveValue('');
         expect(screen.getByRole('checkbox', { name: 'Orders' })).toBeChecked();
         expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
@@ -267,6 +273,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         });
         await waitFor(() => expect(deploy).toBeEnabled());
         await userEvent.click(deploy);
+        await confirmDeployment();
         expect(await screen.findByRole('region', { name: 'Deployment successful' })).toBeVisible();
 
         client.dataModeling.getDeploymentOptions.query.mockResolvedValue({
@@ -358,6 +365,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         });
         await waitFor(() => expect(deploy).toBeEnabled());
         await userEvent.click(deploy);
+        await confirmDeployment();
         expect(screen.getByRole('button', { name: 'Back' })).toBeDisabled();
         expect(screen.getByRole('button', { name: 'Start Over' })).toBeDisabled();
         for (const step of within(screen.getByRole('navigation')).getAllByRole('button')) {
@@ -395,6 +403,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         });
         await waitFor(() => expect(deploy).toBeEnabled());
         await userEvent.click(deploy);
+        await confirmDeployment();
         expect(await screen.findByText('Deployment cancelled. No deployment was started.')).toBeVisible();
         expect(screen.queryByRole('region', { name: 'Deployment successful' })).not.toBeInTheDocument();
         await waitFor(() => expect(client.dataModeling.saveState.mutate).toHaveBeenCalled());
@@ -446,6 +455,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         });
         await waitFor(() => expect(deploy).toBeEnabled());
         await userEvent.click(deploy);
+        await confirmDeployment();
         const retry = await screen.findByRole('button', { name: 'Retry saving' });
         expect(screen.getByRole('region', { name: 'Deployment successful' })).toBeVisible();
         expect(screen.queryByText(/Deployment failed/)).not.toBeInTheDocument();
@@ -660,9 +670,8 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         });
         render(<DataModelingWizard />);
         await continueExisting();
-        expect(
-            screen.getByRole<HTMLTextAreaElement>('textbox', { name: 'Container creation code sample' }).value,
-        ).toContain("paths: ['/write']");
+        expect(screen.getByText('/write')).toBeVisible();
+        expect(screen.queryByRole('textbox', { name: 'Container creation code sample' })).not.toBeInTheDocument();
         expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledOnce();
         await enterDeployStep();
         fireEvent.change(screen.getByRole('textbox', { name: 'New database name' }), {
@@ -673,6 +682,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         });
         await waitFor(() => expect(deploy).toBeEnabled());
         await userEvent.click(deploy);
+        await confirmDeployment();
         expect(client.dataModeling.deploy.mutate).toHaveBeenCalledWith({
             databaseMode: 'new',
             databaseName: 'model-db',

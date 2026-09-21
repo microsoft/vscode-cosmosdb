@@ -8,14 +8,12 @@ import { attachTrpc } from '@microsoft/vscode-ext-webview/host';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
 import { openDataModelingWizard } from '../commands/dataModeling/openDataModelingWizard';
-import { openDataModelingWizardDrawer } from '../commands/dataModeling/openDataModelingWizardDrawer';
 import { type AzureResourceMetadata } from '../cosmosdb/AzureResourceMetadata';
 import { getControlPlane } from '../cosmosdb/controlPlane';
 import { DataModelerProjectService } from '../services/DataModelerProjectService';
 import { getAccountInfo } from '../tree/cosmosdb/AccountInfo';
 import { type CosmosDBAccountResourceItem } from '../tree/cosmosdb/CosmosDBAccountResourceItem';
 import { pickAppResource } from '../utils/pickItem/pickAppResource';
-import { DataModelingWizardDrawerTab } from './DataModelingWizardDrawerTab';
 import { DataModelingWizardTab } from './DataModelingWizardTab';
 import { type DataModelingRouterContext } from './trpc/appRouter';
 
@@ -103,22 +101,13 @@ beforeEach(() => {
 });
 afterEach(() => {
     for (const tab of DataModelingWizardTab.openTabs) tab.dispose();
-    for (const tab of DataModelingWizardDrawerTab.openTabs) tab.dispose();
     vi.restoreAllMocks();
 });
 
-describe.each([
-    {
-        name: 'full-page',
-        render: DataModelingWizardTab.render.bind(DataModelingWizardTab),
-        open: openDataModelingWizard,
-    },
-    {
-        name: 'drawer',
-        render: DataModelingWizardDrawerTab.render.bind(DataModelingWizardDrawerTab),
-        open: openDataModelingWizardDrawer,
-    },
-])('$name data modeler account scope', ({ render, open }) => {
+describe('data modeler account scope', () => {
+    const render = DataModelingWizardTab.render.bind(DataModelingWizardTab);
+    const open = openDataModelingWizard;
+
     it('reuses only the same account tab and binds each account to its own persistence service', () => {
         const first = render(firstAccount);
         const firstProject = lastContext().project;
@@ -245,11 +234,4 @@ describe.each([
         });
         expect(connection?.credentials).toBe(accountInfo.credentials);
     });
-});
-
-it('shares one account service across full-page and drawer presentations', () => {
-    DataModelingWizardTab.render(firstAccount);
-    const project = lastContext().project;
-    DataModelingWizardDrawerTab.render(firstAccount);
-    expect(lastContext().project).toBe(project);
 });

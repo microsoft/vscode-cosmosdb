@@ -33,17 +33,10 @@ vi.mock('../extensionVariables', () => ({
 }));
 
 const wizardTabs = new Set<{ getId(): string }>();
-const wizardDrawerTabs = new Set<{ getId(): string }>();
 
 vi.mock('../panels/DataModelingWizardTab', () => ({
     DataModelingWizardTab: {
         findById: vi.fn((tabId: string) => Array.from(wizardTabs).find((tab) => tab.getId() === tabId)),
-    },
-}));
-
-vi.mock('../panels/DataModelingWizardDrawerTab', () => ({
-    DataModelingWizardDrawerTab: {
-        findById: vi.fn((tabId: string) => Array.from(wizardDrawerTabs).find((tab) => tab.getId() === tabId)),
     },
 }));
 
@@ -53,8 +46,8 @@ import {
     findDataModelingWizardTab,
     formatRecommendationForChat,
     registerReportPartitionKeyRecommendationTool,
-    REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_INPUT_SCHEMA,
     REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_DESCRIPTION,
+    REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_INPUT_SCHEMA,
 } from './reportPartitionKeyRecommendationTool';
 
 const scoredCandidate = {
@@ -147,59 +140,45 @@ describe('findDataModelingWizardTab', () => {
 
         wizardTabs.clear();
     });
-
-    it('selects the originating drawer when the recommendation request came from a drawer wizard', () => {
-        const drawerTab = { getId: () => 'wizard-drawer' };
-        wizardDrawerTabs.add(drawerTab);
-
-        expect(findDataModelingWizardTab('wizard-drawer')).toBe(drawerTab);
-
-        wizardDrawerTabs.clear();
-    });
 });
 
 describe('cosmosdb_reportPartitionKeyRecommendation', () => {
     afterEach(() => {
         wizardTabs.clear();
-        wizardDrawerTabs.clear();
         actionContexts.length = 0;
     });
 
-    it.each(['tab', 'drawer'])(
-        'reports insufficient evidence only to the originating %s without a recommendation',
-        async (kind) => {
-            const origin = {
-                getId: () => '1c70d73d-9d5d-415a-93f3-630d3e581d63',
-                reportRecommendation: vi.fn(),
-                reportRecommendationError: vi.fn(),
-            };
-            const other = {
-                getId: () => 'b85e997b-e945-46e2-a02a-4c763b251b18',
-                reportRecommendation: vi.fn(),
-                reportRecommendationError: vi.fn(),
-            };
-            (kind === 'tab' ? wizardTabs : wizardDrawerTabs).add(origin);
-            wizardTabs.add(other);
-            const error =
-                'Cannot recommend a key for PrivateOrders: provide the dominant read predicates and peak QPS.';
-            const tool = captureRegisteredTool(registerReportPartitionKeyRecommendationTool);
-            expect(tool.prepareInvocation?.({ input: { wizardTabId: origin.getId(), error } }, {})).toEqual({
-                invocationMessage: 'Reporting that a recommendation could not be provided…',
-            });
-            const result = await tool.invoke({ input: { wizardTabId: origin.getId(), error } }, {});
+    it('reports insufficient evidence only to the originating tab without a recommendation', async () => {
+        const origin = {
+            getId: () => '1c70d73d-9d5d-415a-93f3-630d3e581d63',
+            reportRecommendation: vi.fn(),
+            reportRecommendationError: vi.fn(),
+        };
+        const other = {
+            getId: () => 'b85e997b-e945-46e2-a02a-4c763b251b18',
+            reportRecommendation: vi.fn(),
+            reportRecommendationError: vi.fn(),
+        };
+        wizardTabs.add(origin);
+        wizardTabs.add(other);
+        const error = 'Cannot recommend a key for PrivateOrders: provide the dominant read predicates and peak QPS.';
+        const tool = captureRegisteredTool(registerReportPartitionKeyRecommendationTool);
+        expect(tool.prepareInvocation?.({ input: { wizardTabId: origin.getId(), error } }, {})).toEqual({
+            invocationMessage: 'Reporting that a recommendation could not be provided…',
+        });
+        const result = await tool.invoke({ input: { wizardTabId: origin.getId(), error } }, {});
 
-            expect(origin.reportRecommendationError).toHaveBeenCalledWith(error);
-            expect(origin.reportRecommendation).not.toHaveBeenCalled();
-            expect(other.reportRecommendationError).not.toHaveBeenCalled();
-            expect(other.reportRecommendation).not.toHaveBeenCalled();
-            expect(serializeToolResult(result)).toBe(`Recommendation failed: ${error}`);
-            expect(actionContexts.at(-1)?.valuesToMask).toContain(error);
-            expect(actionContexts.at(-1)?.telemetry).toEqual({
-                properties: { outcome: 'recommendationFailed' },
-                measurements: {},
-            });
-        },
-    );
+        expect(origin.reportRecommendationError).toHaveBeenCalledWith(error);
+        expect(origin.reportRecommendation).not.toHaveBeenCalled();
+        expect(other.reportRecommendationError).not.toHaveBeenCalled();
+        expect(other.reportRecommendation).not.toHaveBeenCalled();
+        expect(serializeToolResult(result)).toBe(`Recommendation failed: ${error}`);
+        expect(actionContexts.at(-1)?.valuesToMask).toContain(error);
+        expect(actionContexts.at(-1)?.telemetry).toEqual({
+            properties: { outcome: 'recommendationFailed' },
+            measurements: {},
+        });
+    });
 
     it('returns the failure explanation to Chat when the originating wizard is closed', async () => {
         const tool = captureRegisteredTool(registerReportPartitionKeyRecommendationTool);
@@ -314,32 +293,6 @@ describe('cosmosdb_reportPartitionKeyRecommendation', () => {
         );
         expect(tab.reportRecommendation).not.toHaveBeenCalled();
         expect(tab.reportRecommendationError).toHaveBeenCalledOnce();
-    });
-
-    it('delivers a recommendation to the drawer that originated the request', async () => {
-        const drawerTab = { getId: () => 'd7b9f7d4-84dc-4c95-8f7a-003d7f43be31', reportRecommendation: vi.fn() };
-        wizardDrawerTabs.add(drawerTab);
-
-        const tool = captureRegisteredTool(registerReportPartitionKeyRecommendationTool);
-        await tool.invoke(
-            {
-                input: {
-                    wizardTabId: drawerTab.getId(),
-                    summary: 'Use customerId.',
-                    containers: [
-                        {
-                            entity: 'Orders',
-                            partitionKey: '/customerId',
-                            rationale: 'Customer operations are co-located.',
-                            candidates: [scoredCandidate],
-                        },
-                    ],
-                },
-            },
-            {} as never,
-        );
-
-        expect(drawerTab.reportRecommendation).toHaveBeenCalledOnce();
     });
 
     it('preserves model-supplied scores, verdicts, candidate order, and container analysis', async () => {

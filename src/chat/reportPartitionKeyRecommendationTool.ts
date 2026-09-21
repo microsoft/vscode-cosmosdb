@@ -12,7 +12,6 @@ import {
     isRecommendationValidationRequest,
 } from '../dataModeling/recommendationValidationRequests';
 import { ext } from '../extensionVariables';
-import { DataModelingWizardDrawerTab } from '../panels/DataModelingWizardDrawerTab';
 import { DataModelingWizardTab } from '../panels/DataModelingWizardTab';
 import {
     type PartitionKeyRecommendation,
@@ -51,13 +50,11 @@ const ReportPartitionKeyRecommendationSchema = z.union([
 export type ReportPartitionKeyRecommendationInput = z.infer<typeof ReportPartitionKeyRecommendationSchema>;
 
 /** Finds the wizard that originated a recommendation request, if it is still open. */
-export function findDataModelingWizardTab(
-    wizardTabId: string,
-): DataModelingWizardTab | DataModelingWizardDrawerTab | undefined {
-    return DataModelingWizardTab.findById(wizardTabId) ?? DataModelingWizardDrawerTab.findById(wizardTabId);
+export function findDataModelingWizardTab(wizardTabId: string): DataModelingWizardTab | undefined {
+    return DataModelingWizardTab.findById(wizardTabId);
 }
 
-function findOriginatingWizard(input: unknown): DataModelingWizardTab | DataModelingWizardDrawerTab | undefined {
+function findOriginatingWizard(input: unknown): DataModelingWizardTab | undefined {
     if (
         typeof input !== 'object' ||
         input === null ||

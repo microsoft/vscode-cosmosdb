@@ -13,8 +13,8 @@ import { applyScenario, createInitialState } from '../webviews/cosmosdb/DataMode
 import { getScenarioList } from '../webviews/cosmosdb/DataModeling/scenarios';
 import {
     createValidationReport,
-    runRecommendationValidation,
     formatRecommendationValidationReport,
+    runRecommendationValidation,
 } from './recommendationValidation';
 import { runRecommendationValidationChat } from './recommendationValidationChat';
 import {
@@ -27,9 +27,6 @@ vi.mock('../extensionVariables', () => ({
 }));
 vi.mock('../panels/DataModelingWizardTab', () => ({
     DataModelingWizardTab: { findById: vi.fn() },
-}));
-vi.mock('../panels/DataModelingWizardDrawerTab', () => ({
-    DataModelingWizardDrawerTab: { findById: vi.fn() },
 }));
 vi.mock('@microsoft/vscode-azext-utils', () => ({
     callWithTelemetryAndErrorHandling: async (_name: string, callback: (context: unknown) => unknown) =>

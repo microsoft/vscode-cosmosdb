@@ -944,12 +944,6 @@
       },
       {
         "category": "Cosmos DB",
-        "command": "cosmosDB.dataModeling.openDrawer",
-        "title": "%cosmosdb.command.dataModeling.openDrawer%",
-        "icon": "$(layout-sidebar-right)"
-      },
-      {
-        "category": "Cosmos DB",
         "command": "cosmosDB.dataModeling.validateRecommendations",
         "title": "%cosmosdb.command.dataModeling.validateRecommendations%"
       },

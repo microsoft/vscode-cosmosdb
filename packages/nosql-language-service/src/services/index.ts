@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 // ---------------------------------------------------------------------------
-// @cosmosdb/nosql-language-service/services — re-exports
+// @azure/cosmosdb-nosql-language-service/services — re-exports
 // ---------------------------------------------------------------------------
 
 export { FUNCTION_SIGNATURES, getFunctionMeta } from './functionSignatures.js';

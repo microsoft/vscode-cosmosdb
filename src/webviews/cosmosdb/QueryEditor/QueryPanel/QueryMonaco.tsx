@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { SqlLanguageService } from '@cosmosdb/nosql-language-service';
-import { registerCosmosDbSql } from '@cosmosdb/nosql-language-service/monaco';
+import { SqlLanguageService } from '@azure/cosmosdb-nosql-language-service';
+import { registerCosmosDbSql } from '@azure/cosmosdb-nosql-language-service/monaco';
 import { useMonaco } from '@monaco-editor/react';
 import { useCallback, useEffect, useRef } from 'react';
 import { MonacoEditor, type MonacoEditorType } from '../../../MonacoEditor';

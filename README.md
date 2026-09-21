@@ -97,7 +97,6 @@ uses that account; opening from the command palette prompts for an account.
 
 When saved work exists for the selected account, the Workload screen offers **Continue existing** or **Start new**.
 Continuing restores modeling inputs, the current wizard step, and any saved Copilot recommendation/status.
-After a successful deployment, continuing opens Deploy with its green completed step, success summary, and Data Explorer button.
 Starting new replaces only that account's saved session.
 
 Copilot uses the bundled [data model recommendation skill](skills/cosmosdb-data-model-recommendation/SKILL.md),
@@ -121,42 +120,6 @@ Relevant hard constraints, their sources, and supporting evidence appear last un
 result and in the Chat fallback. A known violation or missing evidence required to establish compliance cannot be overridden
 by a score or scenario hint.
 
-### Validate scenario recommendations
-
-Run **Cosmos DB: Validate Data Modeler Recommendations** from the Command Palette
-(`cosmosDB.dataModeling.validateRecommendations`). Select an available Copilot model, **one or more built-in scenarios**,
-and a Markdown report destination, then confirm the quota-consuming run. All 15 built-in wizard scenarios are selected
-by default; deselect any you do not want to run. The custom fallback is excluded because it has no predefined workload baseline.
-
-The validator opens a new **Copilot Chat** session for each scenario and submits the same agent-mode request used by
-Data Modeler (`workbench.action.chat.open`), with the chosen model passed as `modelSelector`. It shares the recommendation
-prompt, bundled recommendation/best-practices skills, and the actual registered report tool and parser. Tool approvals
-remain under user control. Finish existing Chat work before starting; do not change models or submit unrelated prompts
-during the run. The skill's no-external-documentation instructions apply just as they do in the wizard.
-Results go to isolated in-memory validation destinations, not saved wizard projects. This exercises Chat orchestration
-through the report tool, but not result-webview rendering or deployment.
-Both paths use the same prompt builder and skill instructions. The runner's delivery paragraph explains that the same
-report tool targets the Markdown report instead of the wizard UI. Comparison and file writing remain deterministic runner
-operations, not LLM tasks; the model must not adjust its recommendation to match the baseline.
-
-Default workload inputs are preserved, but `defaultsUnchanged` is explicitly false and scenario/container hints are withheld.
-The existing input `partitionKey` and `pkCandidate` fields are still present, just as in edited Data Modeler requests; this is
-not a blind benchmark. Output keys are compared against the built-in keys using ordered, case-sensitive path comparisons
-(ignoring surrounding path whitespace). Different keys are flagged for review, not automatically treated as incorrect.
-
-The report contains only a summary: requested model name, ID and version, run status, counts, and per-container comparisons
-with mismatch reasons and the model's rationale where available. Raw workloads and recommendation details are omitted.
-Actual backend execution identity and skill-read history are not
-exposed by the report tool, so the report does not claim to independently verify them. Scenarios run sequentially with a
-10-minute per-scenario timeout. A timeout or cancellation stops the batch, saves completed results, and marks remaining work
-as not run; an in-flight Chat request may still need to be stopped manually. Late reports cannot change finished results.
-The Markdown file is checkpointed before Chat requests and after every scenario, and opened when the run finishes.
-A failed report write stops the run. Model refusals, malformed responses, and timeouts are failures, never matches.
-The report separates failures received through the report tool from runner errors and invalid container coverage.
-Failed cases still list the built-in keys, with the full blocker explanation directly in the summary table.
-Default workloads are examples and may lack required compliance evidence; the runner does not
-invent that evidence or treat a successful Chat exchange as a successful recommendation.
-
 ### Deploy a recommended model
 
 After receiving a recommendation on **Result**, select **Deploy** to open the **Deploy** step:
@@ -168,8 +131,6 @@ After receiving a recommendation on **Result**, select **Deploy** to open the **
 - Choose **Deploy now** (the default) or **Deploy with Biceps** in the final section.
   - **Deploy now** shows the Deploy button and does not generate or require a Bicep template. Review the final confirmation;
     while deploying, the button is replaced by a **Deploying...** spinner and controls/navigation are locked.
-    Database errors stay hidden until you edit the field or select **Deploy**, then update as you correct it.
-    Invalid database choices block deployment and receive focus when you select **Deploy**.
     After success, **Open in Data Explorer** opens the first selected container in the extension's Query Editor,
     using the same action as Account Overview. This also supports attached accounts and emulators.
   - **Deploy with Biceps** reveals the compact Monaco editor and copy/regenerate buttons for manual deployment with your own tools.
@@ -190,13 +151,10 @@ An endpoint-only session without deployment access must be reopened from its con
 and full account metadata stay in the extension host; only subscription, resource-group, and account display labels are
 sent to the deployment page. They are not stored with the model.
 
-Successful deployments save their database choice, selected containers and partition keys, and created/unchanged counts.
-Reopening restores the completed **Deploy** step and its portal action without deploying again. This records the last successful
-deployment; it does not recheck Azure resources. Changing deployment inputs, starting another deployment, requesting a new
-recommendation, or starting over clears the saved completion.
-Unsubmitted drafts, custom Bicep, progress, and errors are not persisted. Drafts survive navigation within the open wizard but
-are reset when it is reopened or the recommendation changes. After a partial failure, choose the existing database and
-regenerate/review the template before retrying.
+Deployment method, database choices, checked containers, custom Bicep, progress, completion, and navigation to **Deploy** are
+**not persisted in wizard state**. Drafts survive navigation within the open wizard but are reset when it is
+reopened or the recommendation changes. After a partial failure, choose the existing database and regenerate/review the
+template before retrying.
 
 Saved states expire **30 days after their last save** (based on file modification time). Every successful save prunes expired
 state files for all endpoints, and opening an expired state treats it as a new model. Reading a state does not extend its

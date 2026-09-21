@@ -172,22 +172,6 @@ describe('data modeler deployment procedure', () => {
 });
 
 describe('recommendation prompt', () => {
-    it('keeps analysis instructions identical between wizard and runner, changing only delivery with the same context', async () => {
-        const wizard = applyScenario(createInitialState(), 'chat');
-        const uiPrompt = await buildRecommendationPrompt(wizard, 'same-id', { disableDefaultHints: true });
-        const reportPrompt = await buildRecommendationPrompt(wizard, 'same-id', {
-            disableDefaultHints: true,
-            destination: 'validationReport',
-        });
-        const delivery = 'Use its declared input schema. ';
-        expect(reportPrompt.split(delivery)[0]).toBe(uiPrompt.split(delivery)[0]);
-        expect(reportPrompt).toContain('compares the returned partition keys with the built-in defaults');
-        expect(reportPrompt).toContain('saves the result, differences, and model metadata in a Markdown report');
-        expect(reportPrompt).toContain('do not perform the comparison, write files, or adjust your recommendation');
-        expect(reportPrompt).not.toContain('If the tool reports that the wizard is closed');
-        expect(uiPrompt).not.toContain('This request targets the validation report');
-    });
-
     it('delegates the workflow to the skill and includes verified default context and tool routing', async () => {
         const wizard = applyScenario(createInitialState(), 'ecommerce');
         const prompt = await buildRecommendationPrompt(wizard, 'wizard-id');
@@ -218,16 +202,6 @@ describe('recommendation prompt', () => {
         expect(prompt).toContain('"defaultsUnchanged":false');
         expect(prompt).toContain('"containerHints":[]');
         expect(prompt).toContain(JSON.stringify(wizard.dataModel));
-    });
-
-    it('can explicitly disable default hints for validation without changing the workload', async () => {
-        const wizard = applyScenario(createInitialState(), 'ecommerce');
-        const original = structuredClone(wizard);
-        const prompt = await buildRecommendationPrompt(wizard, 'validation-id', { disableDefaultHints: true });
-        expect(prompt).toContain('"defaultsUnchanged":false,"hint":null,"containerHints":[]');
-        expect(prompt).toContain(JSON.stringify(wizard.dataModel));
-        expect(wizard).toEqual(original);
-        expect(await buildRecommendationPrompt(wizard, 'wizard-id')).toContain('"defaultsUnchanged":true');
     });
 
     it('requests a recommendation from validated wizard state and retains error masking', async () => {

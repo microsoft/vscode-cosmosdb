@@ -7,10 +7,6 @@ import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { z } from 'zod';
-import {
-    deliverRecommendationValidationResult,
-    isRecommendationValidationRequest,
-} from '../dataModeling/recommendationValidationRequests';
 import { ext } from '../extensionVariables';
 import { DataModelingWizardTab } from '../panels/DataModelingWizardTab';
 import {
@@ -355,22 +351,9 @@ export function registerReportPartitionKeyRecommendationTool(context: vscode.Ext
                         actionContext.errorHandling.suppressDisplay = true;
                         actionContext.telemetry.properties.outcome = 'error';
 
-                        const validationId =
-                            typeof options.input?.wizardTabId === 'string' &&
-                            isRecommendationValidationRequest(options.input.wizardTabId)
-                                ? options.input.wizardTabId
-                                : undefined;
-                        if (validationId) actionContext.telemetry.suppressAll = true;
                         const parsed = ReportPartitionKeyRecommendationSchema.safeParse(options.input);
                         if (!parsed.success) {
                             actionContext.telemetry.properties.outcome = 'invalidInput';
-                            if (validationId) {
-                                const message = l10n.t(
-                                    'The recommendation was not in the expected shape and could not be shown.',
-                                );
-                                deliverRecommendationValidationResult({ wizardTabId: validationId, error: message });
-                                return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(message)]);
-                            }
                             findOriginatingWizard(options.input)?.reportRecommendationError(
                                 l10n.t('The recommendation was not in the expected shape and could not be shown.'),
                             );
@@ -385,16 +368,6 @@ export function registerReportPartitionKeyRecommendationTool(context: vscode.Ext
                             return new vscode.LanguageModelToolResult([
                                 new vscode.LanguageModelTextPart(
                                     l10n.t('The recommendation was not in the expected shape and could not be shown.'),
-                                ),
-                            ]);
-                        }
-
-                        if (deliverRecommendationValidationResult(parsed.data)) {
-                            return new vscode.LanguageModelToolResult([
-                                new vscode.LanguageModelTextPart(
-                                    l10n.t(
-                                        'The validation request has been handled. Stop here; do not send another report or modify any files.',
-                                    ),
                                 ),
                             ]);
                         }

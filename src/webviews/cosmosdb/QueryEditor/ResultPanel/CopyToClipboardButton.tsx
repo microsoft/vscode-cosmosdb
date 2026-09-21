@@ -18,7 +18,7 @@ export const CopyToClipboardButton = (props: ToolbarOverflowItemProps<HTMLButton
     const dispatcher = useQueryEditorDispatcher();
 
     const { ref, selectedTab, type } = props;
-    const hasSelection = state.selectedRows.length > 1; // If one document selected, it's not a selection
+    const hasSelection = state.selectedRows.length > 0;
     const tooltipClipboardContent = hasSelection
         ? l10n.t('Copy selected items to clipboard')
         : l10n.t('Copy all results from the current page to clipboard');

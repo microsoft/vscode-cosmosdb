@@ -17,7 +17,7 @@ export const ExportButton = (props: ToolbarOverflowItemProps<HTMLButtonElement> 
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
     const { selectedTab, ref } = props;
-    const hasSelection = state.selectedRows.length > 1; // If one document selected, it's not a selection
+    const hasSelection = state.selectedRows.length > 0;
     const tooltipExportContent = hasSelection
         ? l10n.t('Export selected items')
         : l10n.t('Export all results from the current page');

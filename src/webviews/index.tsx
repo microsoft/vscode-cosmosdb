@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AriaLiveAnnouncer, useFocusFinders } from '@fluentui/react-components';
+import { VSCodeFluentProvider } from '@microsoft/vscode-ext-webview-fluentui';
 import { type WebviewState, WithWebviewContext } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
 import { type l10nJsonFormat } from '@vscode/l10n';
@@ -13,7 +14,6 @@ import { useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { type WebviewApi } from 'vscode-webview';
 import './index.scss';
-import { DynamicThemeProvider } from './theme/DynamicThemeProvider';
 import { WebviewRegistry } from './WebviewRegistry';
 
 export type ViewKey = keyof typeof WebviewRegistry;
@@ -49,13 +49,13 @@ export function render<V extends ViewKey>(key: V, vscodeApi: WebviewApi<WebviewS
     void WebviewRegistry[key]().then((Component) => {
         root.render(
             <AriaLiveAnnouncer>
-                <DynamicThemeProvider useAdaptive={true}>
+                <VSCodeFluentProvider>
                     <WithWebviewContext vscodeApi={vscodeApi}>
                         <FocusManager>
                             <Component />
                         </FocusManager>
                     </WithWebviewContext>
-                </DynamicThemeProvider>
+                </VSCodeFluentProvider>
             </AriaLiveAnnouncer>,
         );
     });

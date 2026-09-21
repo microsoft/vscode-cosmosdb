@@ -54,7 +54,7 @@
   "devDependencies": {
     "@types/json-schema": "~7.0.15",
     "mongodb": "~7.3.0",
-    "vitest": "~4.1.0"
+    "vitest": "~4.1.11"
   },
   "engines": {
     "node": ">=22"

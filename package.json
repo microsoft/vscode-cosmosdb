@@ -152,7 +152,7 @@
     "vite": "~8.0.16",
     "vite-bundle-analyzer": "~1.3.7",
     "vite-plugin-static-copy": "~4.1.0",
-    "vitest": "~4.1.7"
+    "vitest": "~4.1.11"
   },
   "dependencies": {
     "@azure/arm-advisor": "~3.2.0",
@@ -174,6 +174,7 @@
     "@microsoft/vscode-azext-utils": "~4.1.0",
     "@microsoft/vscode-azureresources-api": "~3.1.0",
     "@microsoft/vscode-ext-webview": "~0.10.0",
+    "@microsoft/vscode-ext-webview-fluentui": "~1.1.0",
     "@microsoft/vscode-fabric-api": "~0.35.6",
     "@monaco-editor/react": "~4.7.0",
     "@prantlf/jsonlint": "~17.0.0",

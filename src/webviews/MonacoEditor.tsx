@@ -17,12 +17,12 @@
 // `features`/`languages` options. With Vite we have to import it ourselves.
 import 'monaco-editor/esm/vs/editor/editor.main';
 import { useUncontrolledFocus } from '@fluentui/react-components';
-import Editor, { loader, useMonaco, type EditorProps, type OnMount } from '@monaco-editor/react';
+import { useVSCodeMonacoTheme } from '@microsoft/vscode-ext-webview-fluentui/monaco';
+import Editor, { loader, useMonaco, type BeforeMount, type EditorProps, type OnMount } from '@monaco-editor/react';
 // Type-only handle to the Monaco API (no `.d.ts` is published for
 // `editor.main`, but `editor.api` re-exports the same singleton namespace).
 import * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { useThemeState } from './theme/state/ThemeContext';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 export type * as MonacoEditorType from 'monaco-editor/esm/vs/editor/editor.api';
 
 loader.config({ monaco: monacoEditor });
@@ -93,19 +93,29 @@ function useEditorResizeObserver(containerRef: React.RefObject<HTMLElement | nul
 
 export const MonacoEditor = (props: EditorProps) => {
     const monaco = useMonaco();
-    const themeState = useThemeState();
+    const monacoTheme = useVSCodeMonacoTheme({ themeName: 'adaptive' });
+    const callerBeforeMount = props.beforeMount;
+    const beforeMountRef = useRef({ monacoTheme, callerBeforeMount });
     const uncontrolledFocus = useUncontrolledFocus();
     const containerRef = useRef<HTMLElement | null>(null);
     const editorRef = useEditorResizeObserver(containerRef);
 
-    useEffect(() => {
+    useLayoutEffect(() => {
+        beforeMountRef.current = { monacoTheme, callerBeforeMount };
+    }, [monacoTheme, callerBeforeMount]);
+
+    useLayoutEffect(() => {
         if (monaco) {
-            if (themeState.monaco.theme) {
-                monaco.editor.defineTheme(themeState.monaco.themeName, themeState.monaco.theme);
-                monaco.editor.setTheme(themeState.monaco.themeName);
-            }
+            monaco.editor.defineTheme(monacoTheme.themeName, monacoTheme.data);
+            monaco.editor.setTheme(monacoTheme.themeName);
         }
-    }, [monaco, themeState]);
+    }, [monaco, monacoTheme]);
+
+    const handleBeforeMount: BeforeMount = useCallback((monacoInstance) => {
+        const current = beforeMountRef.current;
+        monacoInstance.editor.defineTheme(current.monacoTheme.themeName, current.monacoTheme.data);
+        current.callerBeforeMount?.(monacoInstance);
+    }, []);
 
     // Merge our onMount with the caller's onMount so we can capture the editor instance
     const callerOnMount = props.onMount;
@@ -136,9 +146,10 @@ export const MonacoEditor = (props: EditorProps) => {
             <Editor
                 {...props}
                 options={options}
+                beforeMount={handleBeforeMount}
                 onMount={handleMount}
                 data-is-focus-trap-zone-bumper={true}
-                theme={themeState.monaco.themeName}
+                theme={monacoTheme.themeName}
             />
         </section>
     );

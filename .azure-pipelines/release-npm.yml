@@ -65,9 +65,7 @@ parameters:
 resources:
   pipelines:
     - pipeline: build # identifier used in pipeline resource variables
-      # TODO: point this at the dedicated packages build once registered in ADO
-      # (packages-build.yml, suggested name \Azure Tools\VSCode\Packages\vscode-cosmosdb).
-      source: \Azure Tools\VSCode\Packages\vscode-cosmosdb # pipeline that produces the .tgz artifacts
+      source: '\VSCode Extensions\vscode-cosmosdb Build NPM' # pipeline that produces the .tgz artifacts
   repositories:
     - repository: 1esPipelines
       type: git
@@ -75,7 +73,7 @@ resources:
       ref: refs/tags/release
 
 variables:
-  TeamName: "Azure Tools for VS Code"
+  TeamName: "Azure Cosmos DB - Desktop Tools"
 
   # ESRP wiring — our own registration (AME), not shared with any other team.
   # None of these are secrets: Key Vault name and cert name are resource
@@ -161,10 +159,25 @@ extends:
                     }
                     Write-Output "Version check passed: $($pkgJson.version)"
 
-              - script: |
-                  cd "$(System.DefaultWorkingDirectory)"
-                  ls -la *.tgz
-                displayName: "Inspect .tgz contents"
+              - task: PowerShell@2
+                displayName: "Verify packed .tgz contents match expected version"
+                inputs:
+                  targetType: "inline"
+                  script: |
+                    cd "$(System.DefaultWorkingDirectory)"
+                    $tgz = Get-ChildItem *.tgz | Select-Object -First 1
+                    if (-not $tgz) {
+                      Write-Error "No .tgz artifact found in $(System.DefaultWorkingDirectory)"
+                      exit 1
+                    }
+                    Write-Output "Inspecting $($tgz.Name)"
+                    $pkgJsonRaw = tar -xzOf $tgz.FullName package/package.json
+                    $pkgJson = $pkgJsonRaw | ConvertFrom-Json
+                    Write-Output "Packed package: $($pkgJson.name)@$($pkgJson.version)"
+                    if ($pkgJson.version -ne "${{ parameters.publishVersion }}") {
+                      Write-Error "Version inside .tgz ($($pkgJson.version)) does not match requested publishVersion (${{ parameters.publishVersion }})"
+                      exit 1
+                    }
 
               # Only actually run ESRP for test-esrp-auth / publish modes; validate-only
               # stops before this step (condition evaluated at compile time from the

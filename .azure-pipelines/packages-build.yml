@@ -1,10 +1,10 @@
 # =============================================================================
-# DRAFT — packages build pipeline for the publishable npm workspace packages.
+# Packages build pipeline for the publishable npm workspace packages.
 #
 # Produces one pipeline artifact per package named `Build <tgz-prefix>`, each
 # containing that package's `.tgz`. Consumed by `release-npm.yml`, whose
-# `resources.pipelines.build.source` must point at THIS pipeline once it is
-# registered in ADO (suggested name: \Azure Tools\VSCode\Packages\vscode-cosmosdb).
+# `resources.pipelines.build.source` must point at THIS pipeline (registered
+# in ADO as \VSCode Extensions\vscode-cosmosdb Build NPM).
 #
 # NOTE (why this is NOT the shared azExtTemplates 1esstages.yml): that template
 # runs `npm ci` in each package's working_directory, which only works for
@@ -47,7 +47,7 @@ resources:
 variables:
   # Required by MicroBuild template
   - name: TeamName
-    value: "Azure Tools for VS Code"
+    value: "Azure Cosmos DB - Desktop Tools"
 
 extends:
   ${{ if eq(parameters.isOfficialBuild, true) }}:

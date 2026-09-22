@@ -78,6 +78,13 @@ function buildStepValues(model: DataModel): string[] {
 }
 
 const useStyles = makeStyles({
+    fullWidthWizard: {
+        height: '100%',
+        minHeight: 0,
+        minWidth: 0,
+        // Temporary package DOM override until Wizard exposes a content-width prop.
+        '& [data-header-behavior] > div': { maxWidth: 'none' },
+    },
     // The footer's contentEnd is a single slot, so give its buttons and the link their own gap.
     endGroup: { display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS },
     // Fluent 9 has no built-in danger appearance; tint the destructive action red.
@@ -690,7 +697,7 @@ const HydratedDataModelingWizard = ({
         );
 
     return (
-        <>
+        <div className={styles.fullWidthWizard}>
             <Wizard
                 activeStep={activeValue}
                 onStepChange={onStepChange}
@@ -929,7 +936,7 @@ const HydratedDataModelingWizard = ({
                     </DialogBody>
                 </DialogSurface>
             </Dialog>
-        </>
+        </div>
     );
 };
 

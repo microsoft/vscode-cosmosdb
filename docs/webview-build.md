@@ -43,8 +43,13 @@ The Data Modeler imports `Wizard`, `WizardStep`, `ContainerHeader`, and `Contain
 entry. Keep these components together so they share the package's layout, overflow, and focus context; do not copy their
 implementation into the extension. The wizard uses `headerBehavior="sticky-navigation"`: step navigation stays pinned,
 the workload header scrolls away (with a reduced-motion-aware fade), and the footer remains pinned. The package owns
-content sizing and footer overflow elevation. The extension owns step state, navigation, page content, and localized
+footer overflow elevation. The extension owns step state, navigation, page content, and localized
 labels, including the step-overflow button.
+
+Until the package exposes a content-width prop, the Data Modeler scopes a
+`[data-header-behavior] > div { max-width: none; }` override under its own wrapper. This removes the package's
+760px content cap without changing padding or scroll behavior. The selector depends on the package's internal DOM;
+recheck it on upgrades and remove it when a public width option becomes available.
 
 [MonacoEditor.tsx](../src/webviews/MonacoEditor.tsx) consumes `useVSCodeMonacoTheme` from the public `/monaco` entry.
 It registers the latest theme before editor creation, composes the caller's `beforeMount`, and reapplies changed

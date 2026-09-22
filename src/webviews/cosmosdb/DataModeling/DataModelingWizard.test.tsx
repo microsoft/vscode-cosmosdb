@@ -179,6 +179,9 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         const navigation = screen.getByRole('navigation', { name: 'Data modeling steps' });
         const scrollRegion = navigation.closest('[data-header-behavior="sticky-navigation"]');
         expect(scrollRegion).toHaveAttribute('tabindex', '0');
+        const content = scrollRegion?.firstElementChild;
+        expect(content).toContainElement(navigation);
+        expect(content).toHaveStyle({ maxWidth: 'none', padding: '24px' });
         expect(scrollRegion).toContainElement(screen.getByRole('heading', { name: /^Workload:/ }));
         expect(scrollRegion).toContainElement(screen.getByRole('heading', { name: 'Partition key recommendation' }));
         expect(scrollRegion).not.toContainElement(screen.getByRole('button', { name: 'Start Over' }));

@@ -112,20 +112,26 @@ and prefers them only when suitable, preserving hierarchical path order. Any mod
 whole model; generated IDs and navigation do not count as edits. Custom models have no automatic hint preference.
 Known hard-constraint conflicts must be explained rather than hidden to preserve a hint. Results preserve Copilot's
 candidate ordering, recommended key, and workload analysis; the extension does not rewrite scores or force a winner.
-HPK recommendations must satisfy the skill's HPK rules, which point at the best-practices rules and official
-documentation through a small [HPK sources](skills/cosmosdb-data-model-recommendation/references/hpk-selection.md) file:
-compare a viable single-field baseline, demonstrate a workload-specific benefit, and explain prefix routing, write
-distribution, and transaction trade-offs. Default hints cannot bypass this check. When HPK has no demonstrated advantage,
-prefer a supported simpler key; missing compliance details alone do not justify adding levels or failing the recommendation.
-These selection rules live in the Data Modeler skill, so refreshing the pinned external best-practices skill does not overwrite them.
+The skill owns the recommendation workflow, not a second set of Cosmos DB design rules. Evaluation criteria come from
+the bundled best-practices rules, which it reads rather than restates.
+**Recommendations are single-path partition keys.** Hierarchical (multi-path) keys are out of scope: several built-in
+scenarios ship multi-path defaults, and those are treated as the user's current model rather than a proposal to
+endorse. Such a key is split into its component paths, the one the workload best supports is recommended, and the
+others are offered as alternatives ranked on their own evidence. Multi-path keys are never recommended or scored.
+Default hints cannot stand in for workload evidence: a hinted key that the rules and supplied inputs do not support is
+replaced by one they do, with the departure explained. Each candidate is judged on its own evidence rather than on how
+its neighbours score, and scores and verdicts follow a candidate's own assessments, so a decisive failure cannot be
+averaged away against passing checks. Card text explains the user's data model only: the scenario-hint mechanism is
+internal and never appears in a rationale, assessment, or Chat reply.
+This workflow lives in the Data Modeler skill, so refreshing the pinned external best-practices skill does not overwrite it.
 The skill also supports direct Chat recommendations without a wizard.
 If required guidance or information is missing, or the recommendation cannot be justified, the skill fails rather than
 inventing a result. It reports the blocker and what is needed to proceed through the report tool's explicit error form,
 which puts the wizard in a retryable error state instead of returning provisional recommendations or fabricated scores.
-The skill reads the best-practices rules first instead of duplicating their content. For missing, outdated, or conflicting
-guidance, it consults relevant Microsoft Learn documentation without sending workload data to external tools.
-The HPK reference links to those sources rather than maintaining a second rule catalog.
-Guardrail explanations identify the local rule or documentation section actually read.
+It works from the bundled rules and the supplied workload only: it does not fetch pages or search the web, so a
+recommendation never triggers a network-access prompt. Citations inside rule files are for maintainers, not sources to
+retrieve. When the bundled rules leave a necessary question unresolved, the skill reports that gap instead of guessing.
+Guardrail explanations identify the local rule actually read.
 It distinguishes hard constraints, conditional requirements, and optimization advice, and checks candidates before scoring.
 Unresolved conflicts or missing evidence needed to establish applicability cause failure.
 Relevant hard constraints, their sources, and supporting evidence appear last under **Absolute rules (guardrails)** in each container's

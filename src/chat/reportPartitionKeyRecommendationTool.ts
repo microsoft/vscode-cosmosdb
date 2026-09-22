@@ -163,7 +163,7 @@ export const REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_INPUT_SCHEMA = {
                     partitionKey: {
                         type: 'string',
                         description:
-                            'Recommended partition-key path, e.g. "/customerId" or a hierarchical "/tenantId, /userId".',
+                            'Recommended partition-key path, e.g. "/customerId". Supply exactly one path: hierarchical (multi-path) keys are not recommended by this wizard.',
                     },
                     rationale: {
                         type: 'string',

@@ -290,14 +290,9 @@ describe('recommendation scenario context', () => {
 });
 
 describe('bundled recommendation skill', () => {
-    it('registers the skill and includes its source files', () => {
+    it('registers the skill and includes its source file', () => {
         const skillPath = './skills/cosmosdb-data-model-recommendation/SKILL.md';
         expect(packageJson.contributes.chatSkills).toContainEqual({ path: skillPath });
         expect(statSync(new URL(`../../${skillPath}`, import.meta.url)).isFile()).toBe(true);
-        expect(
-            statSync(
-                new URL('../../skills/cosmosdb-data-model-recommendation/references/hpk-selection.md', import.meta.url),
-            ).isFile(),
-        ).toBe(true);
     });
 });

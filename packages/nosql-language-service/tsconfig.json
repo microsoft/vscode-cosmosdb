@@ -15,7 +15,13 @@
     "lib": ["ES2024", "DOM"],
 
     // Other
-    "sourceMap": true,
+    // sourceMap/declarationMap are OFF: this tsc invocation only produces the
+    // standalone publishable dist/ (npm pack), and package.json's "files" does
+    // not ship src/, so .js.map/.d.ts.map here would point at files consumers
+    // never receive. The monorepo build never consumes this package's dist —
+    // it resolves straight to src/ via path aliases (see packages/README.md) —
+    // so local/vite-bundled builds are unaffected by this.
+    "sourceMap": false,
     "resolveJsonModule": true,
 
     // Output
@@ -23,7 +29,7 @@
     "rootDir": "src",
     "declaration": true,
     "declarationDir": "dist/types",
-    "declarationMap": true,
+    "declarationMap": false,
     "types": ["node"],
     "paths": {
       "@azure/cosmosdb-schema-analyzer": ["../schema-analyzer/src/index.ts"],

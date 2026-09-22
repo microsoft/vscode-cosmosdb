@@ -100,7 +100,14 @@ extends:
               # build/pack plain npm packages. Their install has been observed to trip a
               # known npm 10/11 bug ("Exit handler never called!") that crashes the whole
               # `npm ci` instead of gracefully skipping the failed optional dependency.
-              - script: npm ci --omit=optional
+              # --cache: the default npm cache under the container profile
+              # (%LOCALAPPDATA%\npm-cache, i.e. under ContainerAdministrator's
+              # profile) has been observed returning EACCES on cache writes during
+              # fetch in this Windows build container -- not a network/registry
+              # problem (registry.npmjs.org itself is reachable; the failure is a
+              # local file write). Point the cache at the agent temp directory,
+              # which is guaranteed writable for the build.
+              - script: npm ci --omit=optional --cache "$(Agent.TempDirectory)\npm-cache"
                 displayName: "Install dependencies (root)"
                 workingDirectory: $(Build.SourcesDirectory)
 
@@ -118,9 +125,10 @@ extends:
                   script: |
                     # Do NOT shell out to `npm config get cache` here: that itself invokes
                     # npm, which writes its own fresh debug log and would become the
-                    # "newest" file below, masking the log we actually want. Use npm's
-                    # well-known default Windows cache location directly instead.
-                    $cacheDir = Join-Path $env:LOCALAPPDATA "npm-cache"
+                    # "newest" file below, masking the log we actually want. This must
+                    # match the --cache path passed to npm ci/build above, not npm's
+                    # default Windows cache location.
+                    $cacheDir = "$(Agent.TempDirectory)\npm-cache"
                     $logsDir = Join-Path $cacheDir "_logs"
                     Write-Output "Looking for npm debug logs in: $logsDir"
                     if (Test-Path $logsDir) {
@@ -152,9 +160,10 @@ extends:
                   script: |
                     # Do NOT shell out to `npm config get cache` here: that itself invokes
                     # npm, which writes its own fresh debug log and would become the
-                    # "newest" file below, masking the log we actually want. Use npm's
-                    # well-known default Windows cache location directly instead.
-                    $cacheDir = Join-Path $env:LOCALAPPDATA "npm-cache"
+                    # "newest" file below, masking the log we actually want. This must
+                    # match the --cache path passed to npm ci/build above, not npm's
+                    # default Windows cache location.
+                    $cacheDir = "$(Agent.TempDirectory)\npm-cache"
                     $logsDir = Join-Path $cacheDir "_logs"
                     Write-Output "Looking for npm debug logs in: $logsDir"
                     if (Test-Path $logsDir) {
@@ -216,7 +225,14 @@ extends:
               # build/pack plain npm packages. Their install has been observed to trip a
               # known npm 10/11 bug ("Exit handler never called!") that crashes the whole
               # `npm ci` instead of gracefully skipping the failed optional dependency.
-              - script: npm ci --omit=optional
+              # --cache: the default npm cache under the container profile
+              # (%LOCALAPPDATA%\npm-cache, i.e. under ContainerAdministrator's
+              # profile) has been observed returning EACCES on cache writes during
+              # fetch in this Windows build container -- not a network/registry
+              # problem (registry.npmjs.org itself is reachable; the failure is a
+              # local file write). Point the cache at the agent temp directory,
+              # which is guaranteed writable for the build.
+              - script: npm ci --omit=optional --cache "$(Agent.TempDirectory)\npm-cache"
                 displayName: "Install dependencies (root)"
                 workingDirectory: $(Build.SourcesDirectory)
 
@@ -234,9 +250,10 @@ extends:
                   script: |
                     # Do NOT shell out to `npm config get cache` here: that itself invokes
                     # npm, which writes its own fresh debug log and would become the
-                    # "newest" file below, masking the log we actually want. Use npm's
-                    # well-known default Windows cache location directly instead.
-                    $cacheDir = Join-Path $env:LOCALAPPDATA "npm-cache"
+                    # "newest" file below, masking the log we actually want. This must
+                    # match the --cache path passed to npm ci/build above, not npm's
+                    # default Windows cache location.
+                    $cacheDir = "$(Agent.TempDirectory)\npm-cache"
                     $logsDir = Join-Path $cacheDir "_logs"
                     Write-Output "Looking for npm debug logs in: $logsDir"
                     if (Test-Path $logsDir) {
@@ -268,9 +285,10 @@ extends:
                   script: |
                     # Do NOT shell out to `npm config get cache` here: that itself invokes
                     # npm, which writes its own fresh debug log and would become the
-                    # "newest" file below, masking the log we actually want. Use npm's
-                    # well-known default Windows cache location directly instead.
-                    $cacheDir = Join-Path $env:LOCALAPPDATA "npm-cache"
+                    # "newest" file below, masking the log we actually want. This must
+                    # match the --cache path passed to npm ci/build above, not npm's
+                    # default Windows cache location.
+                    $cacheDir = "$(Agent.TempDirectory)\npm-cache"
                     $logsDir = Join-Path $cacheDir "_logs"
                     Write-Output "Looking for npm debug logs in: $logsDir"
                     if (Test-Path $logsDir) {

@@ -87,7 +87,12 @@ extends:
                   versionFilePath: .nvmrc
 
               # Workspaces monorepo: install once at the repo root.
-              - script: npm ci
+              # --omit=optional: this repo carries root optionalDependencies (e.g. keytar)
+              # with native prebuild-install binaries that this build never needs to
+              # build/pack plain npm packages. Their install has been observed to trip a
+              # known npm 10/11 bug ("Exit handler never called!") that crashes the whole
+              # `npm ci` instead of gracefully skipping the failed optional dependency.
+              - script: npm ci --omit=optional
                 displayName: "Install dependencies (root)"
                 workingDirectory: $(Build.SourcesDirectory)
 
@@ -198,7 +203,12 @@ extends:
                   versionFilePath: .nvmrc
 
               # Workspaces monorepo: install once at the repo root.
-              - script: npm ci
+              # --omit=optional: this repo carries root optionalDependencies (e.g. keytar)
+              # with native prebuild-install binaries that this build never needs to
+              # build/pack plain npm packages. Their install has been observed to trip a
+              # known npm 10/11 bug ("Exit handler never called!") that crashes the whole
+              # `npm ci` instead of gracefully skipping the failed optional dependency.
+              - script: npm ci --omit=optional
                 displayName: "Install dependencies (root)"
                 workingDirectory: $(Build.SourcesDirectory)
 

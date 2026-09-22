@@ -107,6 +107,56 @@ public async Task<IActionResult> GetProducts(
 }
 ```
 
+```python
+# ❌ Anti-pattern: OFFSET/LIMIT cost grows with page depth
+async def get_scores_page_with_offset(container, player_id: str, page: int, page_size: int = 20):
+    offset = (page - 1) * page_size
+    query = (
+        "SELECT * FROM c "
+        "WHERE c.playerId = @playerId "
+        "ORDER BY c.submittedAt DESC "
+        f"OFFSET {offset} LIMIT {page_size}"
+    )
+    items = container.query_items(
+        query=query,
+        parameters=[{"name": "@playerId", "value": player_id}],
+        partition_key=player_id,
+    )
+    return [item async for item in items]
+
+
+# ✅ Preferred: continuation token pagination (stable RU per page)
+async def get_scores_page(
+    container,
+    player_id: str,
+    page_size: int = 20,
+    continuation_token: str | None = None,
+):
+    query = (
+        "SELECT * FROM c "
+        "WHERE c.playerId = @playerId "
+        "ORDER BY c.submittedAt DESC"
+    )
+
+    results = container.query_items(
+        query=query,
+        parameters=[{"name": "@playerId", "value": player_id}],
+        partition_key=player_id,
+        max_item_count=page_size,
+    )
+
+    pager = results.by_page(continuation_token=continuation_token)
+    page = await pager.__anext__()
+    items = [item async for item in page]
+
+    return {
+        "items": items,
+        "continuationToken": pager.continuation_token,
+    }
+```
+
+Python SDK note: Continuation tokens are supported for single-partition queries. Always set `partition_key` when using `by_page()`.
+
 ```csharp
 // Streaming through all results
 public async IAsyncEnumerable<Product> GetAllProducts()
@@ -169,4 +219,4 @@ public PagedResult<Task> getTasksByProject(
 
 **Rule of thumb:** If a query can return more than 100 items, it **must** use pagination.
 
-Reference: [Pagination in Azure Cosmos DB](https://learn.microsoft.com/azure/cosmos-db/nosql/query/pagination)
+Reference: [Pagination in Azure Cosmos DB](https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/query/pagination)

@@ -6,12 +6,6 @@
 import {
     Button,
     Checkbox,
-    Dialog,
-    DialogActions,
-    DialogBody,
-    DialogContent,
-    DialogSurface,
-    DialogTitle,
     Input,
     makeStyles,
     Select,
@@ -39,6 +33,7 @@ import {
     type SchemaProperty,
 } from '../models';
 import { getArrayUpdateOptions, nextId } from '../scenarios';
+import { useNativeConfirmation } from '../useNativeConfirmation';
 import { getRoleOptions } from '../wizardState';
 
 /**
@@ -143,9 +138,6 @@ const useStyles = makeStyles({
     },
 });
 
-/** Pending confirmation for the destructive JSON-upload (schema replace) action. */
-type PendingConfirm = { kind: 'upload'; file: File };
-
 export interface DataPageProps {
     model: DataModel;
     scenarioLabel?: string;
@@ -157,8 +149,9 @@ export function DataPage({ model, scenarioLabel, onChange }: DataPageProps) {
     const [draftTag, setDraftTag] = useState('');
     const [uploadInfo, setUploadInfo] = useState<string>();
     const [uploadError, setUploadError] = useState<string>();
-    const [confirm, setConfirm] = useState<PendingConfirm>();
+    const { confirm, confirmationError } = useNativeConfirmation();
     const fileRef = useRef<HTMLInputElement>(null);
+    const uploadButtonRef = useRef<HTMLButtonElement>(null);
     const roleOptions = getRoleOptions();
     const arrayOptions = getArrayUpdateOptions();
 
@@ -213,17 +206,23 @@ export function DataPage({ model, scenarioLabel, onChange }: DataPageProps) {
         fileRef.current?.click();
     };
 
-    // Selecting a file only stages it; the actual replace runs after the user
-    // confirms (parsing an object/array is destructive to the current schema).
-    const onFileSelected = (e: ChangeEvent<HTMLInputElement>) => {
+    const onFileSelected = async (e: ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         // Reset so selecting the same file again re-triggers change.
         e.target.value = '';
-        if (!file) {
+        if (!file || !active) {
             return;
         }
         setUploadError(undefined);
-        setConfirm({ kind: 'upload', file });
+        const result = await confirm(
+            l10n.t('Replace schema?'),
+            l10n.t('Replace the properties of “{entity}” with the schema inferred from {file}?', {
+                entity: active.entity,
+                file: file.name,
+            }),
+        );
+        if (result === true) await applyUpload(file);
+        uploadButtonRef.current?.focus();
     };
 
     const applyUpload = async (file: File) => {
@@ -247,15 +246,6 @@ export function DataPage({ model, scenarioLabel, onChange }: DataPageProps) {
                 }),
             );
         }
-    };
-
-    const onConfirm = async () => {
-        const pending = confirm;
-        setConfirm(undefined);
-        if (!pending) {
-            return;
-        }
-        await applyUpload(pending.file);
     };
 
     const onTagKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -301,7 +291,12 @@ export function DataPage({ model, scenarioLabel, onChange }: DataPageProps) {
                         <Text className={styles.uploadText}>
                             {l10n.t('Upload your JSON documents to infer the schema for this container')}
                         </Text>
-                        <Button appearance="primary" icon={<ArrowUploadRegular />} onClick={onUploadClick}>
+                        <Button
+                            ref={uploadButtonRef}
+                            appearance="primary"
+                            icon={<ArrowUploadRegular />}
+                            onClick={onUploadClick}
+                        >
                             {l10n.t('Upload JSON')}
                         </Button>
                         <input
@@ -309,7 +304,7 @@ export function DataPage({ model, scenarioLabel, onChange }: DataPageProps) {
                             type="file"
                             accept="application/json,.json"
                             style={{ display: 'none' }}
-                            onChange={onFileSelected}
+                            onChange={(event) => void onFileSelected(event)}
                         />
                     </div>
                     {uploadInfo ? (
@@ -320,6 +315,7 @@ export function DataPage({ model, scenarioLabel, onChange }: DataPageProps) {
                         </MythBox>
                     ) : null}
                     {uploadError ? <Text className={styles.uploadError}>{uploadError}</Text> : null}
+                    {confirmationError ? <Text role="alert">{confirmationError}</Text> : null}
 
                     <FieldGroup
                         label={l10n.t('Key & filter properties')}
@@ -496,37 +492,6 @@ export function DataPage({ model, scenarioLabel, onChange }: DataPageProps) {
                     </SubPanel>
                 </div>
             </TwoColumn>
-
-            <Dialog
-                open={!!confirm}
-                onOpenChange={(_, data) => {
-                    if (!data.open) {
-                        setConfirm(undefined);
-                    }
-                }}
-            >
-                <DialogSurface>
-                    <DialogBody>
-                        <DialogTitle>{l10n.t('Replace schema?')}</DialogTitle>
-                        <DialogContent>
-                            {confirm
-                                ? l10n.t('Replace the properties of “{entity}” with the schema inferred from {file}?', {
-                                      entity: active.entity,
-                                      file: confirm.file.name,
-                                  })
-                                : ''}
-                        </DialogContent>
-                        <DialogActions>
-                            <Button appearance="secondary" onClick={() => setConfirm(undefined)}>
-                                {l10n.t('Cancel')}
-                            </Button>
-                            <Button appearance="primary" onClick={() => void onConfirm()}>
-                                {l10n.t('Yes')}
-                            </Button>
-                        </DialogActions>
-                    </DialogBody>
-                </DialogSurface>
-            </Dialog>
         </div>
     );
 }

@@ -5,11 +5,20 @@
 
 // @vitest-environment jsdom
 
-import { render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createBlankContainer, type DataModel } from '../dataModel';
 import { DataPage } from './DataPage';
+
+const confirm = vi.hoisted(() => vi.fn());
+vi.mock('@microsoft/vscode-ext-webview/react', () => ({
+    useTrpcClient: () => ({ dataModeling: { confirm: { mutate: confirm } } }),
+}));
+
+beforeEach(() => {
+    confirm.mockReset();
+});
 
 describe('DataPage property types', () => {
     it('displays the descriptive date/time label and preserves the stored type when editing', async () => {
@@ -42,5 +51,57 @@ describe('DataPage property types', () => {
         expect(dateModel.containers[0].properties[0].type).toBe('string (ISO)');
         rerender(<DataPage model={dateModel} onChange={onChange} />);
         expect(typeSelect).toHaveValue('string (ISO)');
+    });
+});
+
+describe('DataPage native schema confirmation', () => {
+    it.each([true, false, undefined])('replaces the schema only on Yes (response: %s)', async (response) => {
+        let answer!: (result: boolean | undefined) => void;
+        confirm.mockImplementation(
+            () =>
+                new Promise<boolean | undefined>((resolve) => {
+                    answer = resolve;
+                }),
+        );
+        const container = createBlankContainer('Orders');
+        const model: DataModel = { containers: [container], activeContainerId: container.id };
+        const onChange = vi.fn<(next: DataModel) => void>();
+        const page = render(<DataPage model={model} onChange={onChange} />);
+        const file = new File(['{"id":"1","amount":5}'], 'orders.json', { type: 'application/json' });
+        const readFile = vi.fn().mockResolvedValue('{"id":"1","amount":5}');
+        Object.defineProperty(file, 'text', { value: readFile });
+
+        fireEvent.change(page.container.querySelector('input[type="file"]')!, { target: { files: [file] } });
+        expect(confirm).toHaveBeenCalledWith({
+            message: 'Replace schema?',
+            detail: 'Replace the properties of “Orders” with the schema inferred from orders.json?',
+        });
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        expect(readFile).not.toHaveBeenCalled();
+        expect(onChange).not.toHaveBeenCalled();
+        await act(async () => answer(response));
+
+        expect(readFile).toHaveBeenCalledTimes(response === true ? 1 : 0);
+        expect(onChange).toHaveBeenCalledTimes(response === true ? 1 : 0);
+        expect(onChange.mock.calls[0]?.[0].containers[0].properties.map((p) => p.name)).toEqual(
+            response === true ? ['id', 'amount'] : undefined,
+        );
+        expect(screen.getByRole('button', { name: 'Upload JSON' })).toHaveFocus();
+    });
+
+    it('reports confirmation failures and leaves the schema unchanged', async () => {
+        confirm.mockRejectedValue(new Error('Host disconnected'));
+        const container = createBlankContainer('Orders');
+        const onChange = vi.fn();
+        const page = render(
+            <DataPage model={{ containers: [container], activeContainerId: container.id }} onChange={onChange} />,
+        );
+        fireEvent.change(page.container.querySelector('input[type="file"]')!, {
+            target: { files: [new File(['{}'], 'orders.json', { type: 'application/json' })] },
+        });
+        await waitFor(() =>
+            expect(screen.getByRole('alert')).toHaveTextContent('Could not open the confirmation dialog.'),
+        );
+        expect(onChange).not.toHaveBeenCalled();
     });
 });

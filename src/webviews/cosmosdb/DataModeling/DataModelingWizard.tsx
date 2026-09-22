@@ -18,7 +18,14 @@ import {
     Text,
     tokens,
 } from '@fluentui/react-components';
-import { AddRegular, CheckmarkRegular, DeleteRegular, DismissRegular, EditRegular } from '@fluentui/react-icons';
+import {
+    AddRegular,
+    CheckmarkRegular,
+    DatabaseLinkRegular,
+    DeleteRegular,
+    DismissRegular,
+    EditRegular,
+} from '@fluentui/react-icons';
 import {
     ContainerFooter,
     ContainerHeader,
@@ -30,7 +37,6 @@ import * as l10n from '@vscode/l10n';
 import { type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PartitionKeyRecommendationSchema } from '../../../dataModeling/recommendationSchema';
 import { type DataModelingAppRouter, type DataModelingEvent } from '../../api/types';
-import { AlertDialog } from '../../common/AlertDialog';
 import {
     applyScenario,
     createBlankContainer,
@@ -46,6 +52,7 @@ import { ResultPage } from './pages/ResultPage';
 import { ReviewPage } from './pages/ReviewPage';
 import { WorkloadPage } from './pages/WorkloadPage';
 import { getScenarioList } from './scenarios';
+import { useNativeConfirmation } from './useNativeConfirmation';
 
 /**
  * Root of the Data-Modeling (Partition Key Advisor) wizard.
@@ -156,41 +163,7 @@ export const DataModelingWizard = () => {
     }
 
     if (persistence.loadStatus === 'choice') {
-        return (
-            <>
-                <div inert>
-                    <Text as="h2">{l10n.t('Workload')}</Text>
-                    <WorkloadPage
-                        onPickScenario={(scenario) =>
-                            persistence.setSnapshot((previous) => ({
-                                ...previous,
-                                wizard: applyScenario(previous.wizard, scenario),
-                            }))
-                        }
-                    />
-                </div>
-                <Dialog open modalType="alert">
-                    <DialogSurface>
-                        <DialogBody>
-                            <DialogTitle>{l10n.t('Continue your data model?')}</DialogTitle>
-                            <DialogContent>
-                                {l10n.t(
-                                    'A saved data model was found. Continue where you left off, or start a new model and replace the saved one.',
-                                )}
-                            </DialogContent>
-                            <DialogActions>
-                                <Button appearance="primary" onClick={persistence.continueExisting}>
-                                    {l10n.t('Continue existing')}
-                                </Button>
-                                <Button appearance="secondary" onClick={persistence.startNew}>
-                                    {l10n.t('Start new')}
-                                </Button>
-                            </DialogActions>
-                        </DialogBody>
-                    </DialogSurface>
-                </Dialog>
-            </>
-        );
+        return <SavedModelChoice onContinue={persistence.continueExisting} onStartNew={persistence.startNew} />;
     }
 
     return (
@@ -210,6 +183,39 @@ export const DataModelingWizard = () => {
     );
 };
 
+function SavedModelChoice({ onContinue, onStartNew }: { onContinue: () => void; onStartNew: () => void }) {
+    const { confirm, confirming, confirmationError } = useNativeConfirmation();
+    const prompted = useRef(false);
+    const buttonRef = useRef<HTMLButtonElement>(null);
+    const choose = useCallback(async () => {
+        const result = await confirm(
+            l10n.t('Continue your data model?'),
+            l10n.t(
+                'A saved data model was found. Choose Yes to continue where you left off, or No to start a new model and replace the saved one.',
+            ),
+        );
+        if (result === true) onContinue();
+        else if (result === false) onStartNew();
+        else buttonRef.current?.focus();
+    }, [confirm, onContinue, onStartNew]);
+    useEffect(() => {
+        if (!prompted.current) {
+            prompted.current = true;
+            void choose();
+        }
+    }, [choose]);
+
+    return (
+        <div>
+            <Text as="h2">{l10n.t('Workload')}</Text>
+            {confirmationError ? <Text role="alert">{confirmationError}</Text> : null}
+            <Button ref={buttonRef} aria-busy={confirming} onClick={() => void choose()}>
+                {l10n.t('Continue your data model?')}
+            </Button>
+        </div>
+    );
+}
+
 const HydratedDataModelingWizard = ({
     snapshot,
     setSnapshot,
@@ -217,9 +223,9 @@ const HydratedDataModelingWizard = ({
 }: Pick<ReturnType<typeof useModelingAdvisorPersistence>, 'snapshot' | 'setSnapshot' | 'flush'>) => {
     const styles = useStyles();
     const trpcClient = useTrpcClient<DataModelingAppRouter>();
-    const [confirmAdvance, setConfirmAdvance] = useState(false);
+    const { confirm, confirming, confirmationError } = useNativeConfirmation();
     const advanceButtonRef = useRef<HTMLButtonElement>(null);
-    const restoreAdvanceFocus = useRef(false);
+    const removeButtonRef = useRef<HTMLButtonElement>(null);
     const requestGeneration = useRef(0);
     useEffect(
         () => () => {
@@ -239,7 +245,6 @@ const HydratedDataModelingWizard = ({
     const reachedSteps =
         state.reachedSteps ??
         buildStepValues(state.dataModel).slice(0, snapshot.recommendation.value ? undefined : state.step);
-    const [confirmRemove, setConfirmRemove] = useState(false);
     const [addOpen, setAddOpen] = useState(false);
     const [newContainerName, setNewContainerName] = useState('');
     const [editingContainerId, setEditingContainerId] = useState<string>();
@@ -289,17 +294,6 @@ const HydratedDataModelingWizard = ({
     );
     const canEnterDeploy = recommendationStatus === 'received' && !!recommendation?.containers.length;
     const isDeploy = canEnterDeploy && deployOwner === recommendation;
-
-    useEffect(() => {
-        if (!confirmAdvance && restoreAdvanceFocus.current) {
-            const frame = requestAnimationFrame(() => {
-                advanceButtonRef.current?.focus();
-                restoreAdvanceFocus.current = false;
-            });
-            return () => cancelAnimationFrame(frame);
-        }
-        return undefined;
-    }, [confirmAdvance]);
 
     // Stream the recommendation (or failure) that Copilot delivers via the
     // cosmosdb_reportPartitionKeyRecommendation tool.
@@ -505,7 +499,6 @@ const HydratedDataModelingWizard = ({
 
     // Remove the container of the current step and land on the previous container step.
     const removeCurrentContainer = useCallback(() => {
-        setConfirmRemove(false);
         setState((prev) => {
             if (prev.dataModel.containers.length <= 1) {
                 return prev;
@@ -522,7 +515,7 @@ const HydratedDataModelingWizard = ({
             const step = buildStepValues(dataModel).indexOf(containerStep(target.id)) + 1;
             return { ...prev, dataModel, step };
         });
-    }, [setConfirmRemove, setState]);
+    }, [setState]);
 
     // Send the finished data model to Copilot Chat and wait for the tool callback.
     const requestRecommendation = useCallback(() => {
@@ -602,7 +595,7 @@ const HydratedDataModelingWizard = ({
             goToStep(stepIndex + 1);
         }
     };
-    const onNext = () => {
+    const onNext = async () => {
         if (isResult) {
             if (canEnterDeploy) {
                 setDeployOwner(recommendation);
@@ -610,10 +603,28 @@ const HydratedDataModelingWizard = ({
             return;
         }
         if (recommendation || reachedSteps.some((value) => stepValues.indexOf(value) >= stepIndex)) {
-            setConfirmAdvance(true);
-        } else {
-            advance();
+            const result = await confirm(
+                l10n.t('Restart from this step?'),
+                l10n.t(
+                    'Continuing will clear completion of the following steps and discard the existing recommendation. Your entered model data will be kept. Do you want to continue?',
+                ),
+            );
+            if (result !== true) {
+                advanceButtonRef.current?.focus();
+                return;
+            }
         }
+        advance();
+    };
+    const onRemove = async () => {
+        const result = await confirm(
+            l10n.t('Remove this container?'),
+            l10n.t('Remove the “{entity}” container? This cannot be undone.', {
+                entity: state.dataModel.containers.find((c) => containerStep(c.id) === activeValue)?.entity ?? '',
+            }),
+        );
+        if (result === true) removeCurrentContainer();
+        else removeButtonRef.current?.focus();
     };
     const onBack = () => {
         if (isDeploy) {
@@ -627,7 +638,6 @@ const HydratedDataModelingWizard = ({
     };
     const restart = () => {
         requestGeneration.current += 1;
-        setConfirmRemove(false);
         setAddOpen(false);
         setNewContainerName('');
         cancelEditingContainerName();
@@ -641,7 +651,7 @@ const HydratedDataModelingWizard = ({
         isResult || isDeploy ? (
             <ContainerFooter>
                 {isResult ? (
-                    <Button appearance="primary" disabled={!canEnterDeploy} onClick={onNext}>
+                    <Button appearance="primary" disabled={!canEnterDeploy} onClick={() => void onNext()}>
                         {l10n.t('Deploy')}
                     </Button>
                 ) : (
@@ -669,11 +679,12 @@ const HydratedDataModelingWizard = ({
                                     {l10n.t('Add container')}
                                 </Button>
                                 <Button
+                                    ref={removeButtonRef}
                                     appearance="secondary"
                                     className={styles.dangerButton}
                                     icon={<DeleteRegular />}
                                     disabled={state.dataModel.containers.length <= 1}
-                                    onClick={() => setConfirmRemove(true)}
+                                    onClick={() => void onRemove()}
                                 >
                                     {l10n.t('Remove this container')}
                                 </Button>
@@ -685,7 +696,12 @@ const HydratedDataModelingWizard = ({
                     </div>
                 }
             >
-                <Button ref={advanceButtonRef} appearance="primary" disabled={!canAdvance} onClick={onNext}>
+                <Button
+                    ref={advanceButtonRef}
+                    appearance="primary"
+                    disabled={!canAdvance}
+                    onClick={() => void onNext()}
+                >
                     {nextLabel}
                 </Button>
                 {stepIndex > 1 ? (
@@ -697,7 +713,8 @@ const HydratedDataModelingWizard = ({
         );
 
     return (
-        <div className={styles.fullWidthWizard}>
+        <div className={styles.fullWidthWizard} aria-busy={confirming}>
+            {confirmationError ? <Text role="alert">{confirmationError}</Text> : null}
             <Wizard
                 activeStep={activeValue}
                 onStepChange={onStepChange}
@@ -706,6 +723,7 @@ const HydratedDataModelingWizard = ({
                 headerBehavior="sticky-navigation"
                 header={
                     <ContainerHeader
+                        media={<DatabaseLinkRegular aria-hidden="true" focusable="false" />}
                         title={l10n.t('Workload: {name}', { name: scenarioLabel ?? l10n.t('Not selected') })}
                     />
                 }
@@ -863,25 +881,6 @@ const HydratedDataModelingWizard = ({
                 </WizardStep>
             </Wizard>
 
-            <AlertDialog
-                isOpen={confirmAdvance}
-                onClose={(confirmed) => {
-                    restoreAdvanceFocus.current = !confirmed;
-                    setConfirmAdvance(false);
-                    if (confirmed) {
-                        advance();
-                    }
-                }}
-                title={l10n.t('Restart from this step?')}
-                confirmButtonText={l10n.t('Yes')}
-                cancelButtonText={l10n.t('Cancel')}
-                reverseButtonOrder
-            >
-                {l10n.t(
-                    'Continuing will clear completion of the following steps and discard the existing recommendation. Your entered model data will be kept. Do you want to continue?',
-                )}
-            </AlertDialog>
-
             <Dialog open={addOpen} onOpenChange={(_, data) => setAddOpen(data.open)}>
                 <DialogSurface>
                     <form
@@ -911,29 +910,6 @@ const HydratedDataModelingWizard = ({
                             </DialogActions>
                         </DialogBody>
                     </form>
-                </DialogSurface>
-            </Dialog>
-
-            <Dialog open={confirmRemove} onOpenChange={(_, data) => setConfirmRemove(data.open)}>
-                <DialogSurface>
-                    <DialogBody>
-                        <DialogTitle>{l10n.t('Remove this container?')}</DialogTitle>
-                        <DialogContent>
-                            {l10n.t('Remove the “{entity}” container? This cannot be undone.', {
-                                entity:
-                                    state.dataModel.containers.find((c) => containerStep(c.id) === activeValue)
-                                        ?.entity ?? '',
-                            })}
-                        </DialogContent>
-                        <DialogActions>
-                            <Button appearance="secondary" onClick={() => setConfirmRemove(false)}>
-                                {l10n.t('Cancel')}
-                            </Button>
-                            <Button appearance="primary" onClick={removeCurrentContainer}>
-                                {l10n.t('Yes')}
-                            </Button>
-                        </DialogActions>
-                    </DialogBody>
                 </DialogSurface>
             </Dialog>
         </div>

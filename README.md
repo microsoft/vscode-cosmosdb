@@ -95,9 +95,14 @@ directory (`ExtensionContext.globalStorageUri`), under `data-modeler/<account-ha
 normalized endpoint, not its display name or credentials. No workspace folder is required. Opening from Account Overview
 uses that account; opening from the command palette prompts for an account.
 
-When saved work exists for the selected account, the Workload screen offers **Continue existing** or **Start new**.
-Continuing restores modeling inputs, the current wizard step, and any saved Copilot recommendation/status.
-Starting new replaces only that account's saved session.
+When saved work exists for the selected account, a native VS Code dialog asks whether to continue it. **Yes** restores
+modeling inputs, the current wizard step, and any saved Copilot recommendation/status. **No** starts a new model and replaces
+only that account's saved session. Dismissing the dialog leaves the saved session untouched; use **Continue your data model?**
+on the Workload screen to reopen the choice.
+
+Confirmations for restarting from a step, removing a container, replacing an uploaded schema, regenerating edited deployment
+code, and deploying also use native VS Code Yes/No dialogs. These actions run only after **Yes**; **No** or dismissal keeps the
+current state. The **Add container** name-entry form remains in the modeler.
 
 Copilot uses the bundled [data model recommendation skill](skills/cosmosdb-data-model-recommendation/SKILL.md),
 which loads the Cosmos DB best-practices guidance, to provide candidate scores, verdicts, and per-rule assessments.

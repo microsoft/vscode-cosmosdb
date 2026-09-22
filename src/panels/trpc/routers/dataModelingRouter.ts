@@ -30,6 +30,19 @@ const stateProcedure = dataModelingProcedure.use(({ ctx, next }) => {
 });
 
 export const dataModelingRouterDef = dataModelingRouter({
+    confirm: stateProcedure
+        .input(z.object({ message: z.string().min(1), detail: z.string() }))
+        .mutation(async ({ input }) => {
+            const yes = { title: l10n.t('Yes') };
+            const no = { title: l10n.t('No') };
+            const choice = await vscode.window.showWarningMessage(
+                input.message,
+                { modal: true, detail: input.detail },
+                yes,
+                no,
+            );
+            return choice === yes ? true : choice === no ? false : undefined;
+        }),
     loadState: stateProcedure.query(({ ctx }) => ctx.project.loadState()),
     saveState: stateProcedure
         .input(ModelingAdvisorSnapshotSchema)

@@ -22,6 +22,14 @@ import {
 import { MonacoEditor } from '../../../MonacoEditor';
 import { createDeploymentDraft, DeployPage } from './DeployPage';
 
+const confirmNative = vi.hoisted(() =>
+    vi.fn<(input: { message: string; detail: string }) => Promise<boolean | undefined>>(),
+);
+
+vi.mock('@microsoft/vscode-ext-webview/react', () => ({
+    useTrpcClient: () => ({ dataModeling: { confirm: { mutate: confirmNative } } }),
+}));
+
 vi.mock('../../../MonacoEditor', () => ({
     MonacoEditor: vi.fn(({ value, options, onChange }: EditorProps) => (
         <textarea
@@ -53,6 +61,8 @@ const onDeploy = vi.fn<(input: DeploymentRequest) => Promise<ModelDeploymentResu
 const onOpenDataExplorer = vi.fn<(input: { databaseId: string; containerId: string }) => Promise<void>>();
 const onBusyChange = vi.fn();
 const onDeployed = vi.fn<(deployment: SuccessfulDeployment) => void>();
+let resolveConfirmation: (confirmed: boolean | undefined) => void;
+let rejectConfirmation: (error: Error) => void;
 
 function Harness() {
     const [draft, setDraft] = useState(() => createDeploymentDraft(containers));
@@ -105,15 +115,30 @@ async function waitForDeploy() {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Deploy' })).toBeEnabled());
 }
 
-async function confirmDeployment() {
-    const dialog = await screen.findByRole('alertdialog', {
-        name: 'Deploy data model to "new-db" in "source-account"?',
+async function confirmDeployment(database = 'new-db') {
+    expect(confirmNative).toHaveBeenLastCalledWith(
+        expect.objectContaining({ message: `Deploy data model to "${database}" in "source-account"?` }),
+    );
+    await act(async () => resolveConfirmation(true));
+}
+
+async function confirmRegeneration() {
+    expect(confirmNative).toHaveBeenLastCalledWith({
+        message: 'Replace your code edits?',
+        detail: 'Regenerating replaces your edits for this method with code for the selected database and containers.',
     });
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Deploy' }));
+    await act(async () => resolveConfirmation(true));
 }
 
 beforeEach(() => {
     vi.clearAllMocks();
+    confirmNative.mockImplementation(
+        () =>
+            new Promise((resolve, reject) => {
+                resolveConfirmation = resolve;
+                rejectConfirmation = reject;
+            }),
+    );
     loadOptions.mockResolvedValue({
         accountName: 'source-account',
         subscriptionName: 'Engineering',
@@ -237,10 +262,7 @@ describe('Deploy wizard page', () => {
         ).not.toBeInTheDocument();
         await waitForDeploy();
         await userEvent.click(screen.getByRole('button', { name: 'Deploy' }));
-        const dialog = await screen.findByRole('alertdialog', {
-            name: 'Deploy data model to "valid-db" in "source-account"?',
-        });
-        await userEvent.click(within(dialog).getByRole('button', { name: 'Deploy' }));
+        await confirmDeployment('valid-db');
         expect(onDeploy).toHaveBeenCalledOnce();
         expect(onDeploy).toHaveBeenLastCalledWith({
             databaseMode: 'new',
@@ -269,10 +291,7 @@ describe('Deploy wizard page', () => {
         expect(dropdown).not.toHaveAttribute('aria-invalid', 'true');
         expect(screen.queryByText('Select an existing database.')).not.toBeInTheDocument();
         await userEvent.click(screen.getByRole('button', { name: 'Deploy' }));
-        const dialog = await screen.findByRole('alertdialog', {
-            name: 'Deploy data model to "existing-db" in "source-account"?',
-        });
-        await userEvent.click(within(dialog).getByRole('button', { name: 'Deploy' }));
+        await confirmDeployment('existing-db');
         expect(onDeploy).toHaveBeenCalledExactlyOnceWith({
             databaseMode: 'existing',
             databaseName: 'existing-db',
@@ -484,8 +503,7 @@ describe('Deploy wizard page', () => {
         }
         expect(generateTemplate).toHaveBeenCalledTimes(3);
         await userEvent.click(screen.getByRole('button', { name: 'Regenerate' }));
-        const dialog = screen.getByRole('alertdialog', { name: 'Replace your code edits?' });
-        await userEvent.click(within(dialog).getByRole('button', { name: 'Regenerate' }));
+        await confirmRegeneration();
         await waitFor(() =>
             expect(screen.getByRole('textbox', { name: 'C# SDK deployment code' })).toHaveValue(
                 '// new another-db: Orders, Users',
@@ -530,27 +548,91 @@ describe('Deploy wizard page', () => {
         expect(screen.queryByText('Code copied.')).not.toBeInTheDocument();
     });
 
-    it('keeps custom edits after selection changes until regeneration is explicitly confirmed', async () => {
+    it.each([false, undefined])(
+        'keeps custom edits after native regeneration cancellation (%s) until explicitly confirmed',
+        async (response) => {
+            render(<Harness />);
+            changeName();
+            await chooseBicep();
+            const editor = await waitForTemplate();
+            fireEvent.change(editor, { target: { value: '// my custom template' } });
+            await userEvent.click(screen.getByRole('checkbox', { name: 'Users' }));
+            expect(editor).toHaveValue('// my custom template');
+            expect(screen.queryByRole('button', { name: 'Deploy' })).not.toBeInTheDocument();
+            const regenerate = screen.getByRole('button', { name: 'Regenerate' });
+            await userEvent.click(regenerate);
+            expect(confirmNative).toHaveBeenCalledExactlyOnceWith({
+                message: 'Replace your code edits?',
+                detail: 'Regenerating replaces your edits for this method with code for the selected database and containers.',
+            });
+            expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+            expect(regenerate).toBeDisabled();
+            expect(editor).toHaveAttribute('readonly');
+            expect(screen.getByRole('button', { name: 'Copy code' })).toBeDisabled();
+            expect(screen.getByRole('checkbox', { name: 'Users' })).toBeDisabled();
+            expect(screen.getByRole('radio', { name: 'Terraform' })).toBeDisabled();
+            expect(onBusyChange).toHaveBeenLastCalledWith(true);
+            await userEvent.click(regenerate);
+            expect(confirmNative).toHaveBeenCalledOnce();
+            await act(async () => resolveConfirmation(response));
+            expect(editor).toHaveValue('// my custom template');
+            expect(generateTemplate).toHaveBeenCalledOnce();
+            expect(onBusyChange).toHaveBeenLastCalledWith(false);
+            await waitFor(() => expect(regenerate).toHaveFocus());
+            await userEvent.click(regenerate);
+            await confirmRegeneration();
+            await waitForTemplate();
+            expect(editor).toHaveValue('// new new-db: Orders');
+            await waitFor(() => expect(regenerate).toHaveFocus());
+        },
+    );
+
+    it.each(['Deploy', 'Regenerate'])('reports native %s confirmation errors and allows retrying', async (action) => {
         render(<Harness />);
         changeName();
-        await chooseBicep();
-        const editor = await waitForTemplate();
-        fireEvent.change(editor, { target: { value: '// my custom template' } });
-        await userEvent.click(screen.getByRole('checkbox', { name: 'Users' }));
-        expect(editor).toHaveValue('// my custom template');
-        expect(screen.queryByRole('button', { name: 'Deploy' })).not.toBeInTheDocument();
-        const regenerate = screen.getByRole('button', { name: 'Regenerate' });
-        await userEvent.click(regenerate);
-        let dialog = screen.getByRole('alertdialog', { name: 'Replace your code edits?' });
-        await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
-        await userEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
-        expect(editor).toHaveValue('// my custom template');
-        await waitFor(() => expect(regenerate).toHaveFocus());
-        await userEvent.click(regenerate);
-        dialog = screen.getByRole('alertdialog', { name: 'Replace your code edits?' });
-        await userEvent.click(within(dialog).getByRole('button', { name: 'Regenerate' }));
-        await waitForTemplate();
-        expect(editor).toHaveValue('// new new-db: Orders');
+        await waitForDeploy();
+        if (action === 'Regenerate') {
+            await chooseBicep();
+            fireEvent.change(await waitForTemplate(), { target: { value: '// keep my edits' } });
+        }
+        const button = screen.getByRole('button', { name: action });
+        await userEvent.click(button);
+        await act(async () => rejectConfirmation(new Error('Host unavailable')));
+        expect(screen.getByRole('alert')).toHaveTextContent(
+            'Could not open the confirmation dialog. Please try again.',
+        );
+        expect(onDeploy).not.toHaveBeenCalled();
+        expect(onBusyChange).toHaveBeenLastCalledWith(false);
+        await waitFor(() => expect(button).toHaveFocus());
+        expect(screen.queryAllByDisplayValue('// keep my edits')).toHaveLength(action === 'Regenerate' ? 1 : 0);
+        expect(generateTemplate).toHaveBeenCalledTimes(action === 'Regenerate' ? 1 : 0);
+        await userEvent.click(button);
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        expect(confirmNative).toHaveBeenCalledTimes(2);
+        if (action === 'Deploy') {
+            await confirmDeployment();
+        } else {
+            await confirmRegeneration();
+            await waitForTemplate();
+        }
+        expect(onDeploy).toHaveBeenCalledTimes(action === 'Deploy' ? 1 : 0);
+        expect(generateTemplate).toHaveBeenCalledTimes(action === 'Regenerate' ? 2 : 0);
+    });
+
+    it.each(['Deploy', 'Regenerate'])('ignores native %s confirmation after unmount', async (action) => {
+        const { unmount } = render(<Harness />);
+        changeName();
+        await waitForDeploy();
+        if (action === 'Regenerate') {
+            await chooseBicep();
+            fireEvent.change(await waitForTemplate(), { target: { value: '// keep my edits' } });
+        }
+        await userEvent.click(screen.getByRole('button', { name: action }));
+        unmount();
+        await act(async () => resolveConfirmation(true));
+        expect(onDeploy).not.toHaveBeenCalled();
+        expect(generateTemplate).toHaveBeenCalledTimes(action === 'Regenerate' ? 1 : 0);
+        expect(onDeployed).not.toHaveBeenCalled();
     });
 
     it('ignores a stale generated template when a newer database selection wins', async () => {
@@ -664,21 +746,31 @@ describe('Deploy wizard page', () => {
         expect(onOpenDataExplorer).toHaveBeenCalledWith({ databaseId: 'new-db', containerId: 'Orders' });
     });
 
-    it('confirms direct deployment in a Fluent UI dialog and restores focus after cancellation', async () => {
+    it.each([false, undefined])('restores focus after native deployment cancellation (%s)', async (response) => {
         render(<Harness />);
         changeName();
         await waitForDeploy();
         const deployButton = screen.getByRole('button', { name: 'Deploy' });
         await userEvent.click(deployButton);
-        const dialog = await screen.findByRole('alertdialog', {
-            name: 'Deploy data model to "new-db" in "source-account"?',
+        expect(confirmNative).toHaveBeenCalledExactlyOnceWith({
+            message: 'Deploy data model to "new-db" in "source-account"?',
+            detail: 'Deploy 2 selected container(s): Orders, Users.\nMatching existing containers are left unchanged.',
         });
-        expect(dialog).toHaveTextContent('Deploy 2 selected container(s): Orders, Users.');
-        expect(dialog).toHaveTextContent('Matching existing containers are left unchanged.');
+        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+        expect(deployButton).toBeDisabled();
+        expect(onBusyChange).toHaveBeenLastCalledWith(true);
+        expect(screen.getByRole('textbox', { name: 'New database name' })).toBeDisabled();
+        expect(screen.getByRole('radio', { name: 'Existing database' })).toBeDisabled();
+        expect(screen.getByRole('checkbox', { name: 'Users' })).toBeDisabled();
+        expect(screen.getByRole('radio', { name: 'Bicep' })).toBeDisabled();
         expect(onDeploy).not.toHaveBeenCalled();
-        await userEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+        await userEvent.click(deployButton);
+        expect(confirmNative).toHaveBeenCalledOnce();
+        await act(async () => resolveConfirmation(response));
         await waitFor(() => expect(deployButton).toHaveFocus());
+        expect(onBusyChange).toHaveBeenLastCalledWith(false);
         expect(onDeploy).not.toHaveBeenCalled();
+        expect(onDeployed).not.toHaveBeenCalled();
     });
 
     it('opens the first selected container in the returned database and clears the link when the draft changes', async () => {
@@ -696,10 +788,11 @@ describe('Deploy wizard page', () => {
         await userEvent.click(screen.getByRole('checkbox', { name: 'Orders' }));
         await waitForDeploy();
         await userEvent.click(screen.getByRole('button', { name: 'Deploy' }));
-        const dialog = await screen.findByRole('alertdialog', {
-            name: 'Deploy data model to "existing-db" in "source-account"?',
+        expect(confirmNative).toHaveBeenLastCalledWith({
+            message: 'Deploy data model to "existing-db" in "source-account"?',
+            detail: 'Deploy 1 selected container(s): Users.\nMatching existing containers are left unchanged.',
         });
-        await userEvent.click(within(dialog).getByRole('button', { name: 'Deploy' }));
+        await confirmDeployment('existing-db');
         await userEvent.click(await screen.findByRole('button', { name: 'Open in Data Explorer' }));
         expect(onOpenDataExplorer).toHaveBeenCalledWith({ databaseId: 'existing-db', containerId: 'Users' });
         await userEvent.click(screen.getByRole('checkbox', { name: 'Orders' }));

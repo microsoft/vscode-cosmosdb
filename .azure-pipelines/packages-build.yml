@@ -103,7 +103,11 @@ extends:
                 inputs:
                   targetType: "inline"
                   script: |
-                    $cacheDir = (npm config get cache).Trim()
+                    # Do NOT shell out to `npm config get cache` here: that itself invokes
+                    # npm, which writes its own fresh debug log and would become the
+                    # "newest" file below, masking the log we actually want. Use npm's
+                    # well-known default Windows cache location directly instead.
+                    $cacheDir = Join-Path $env:LOCALAPPDATA "npm-cache"
                     $logsDir = Join-Path $cacheDir "_logs"
                     Write-Output "Looking for npm debug logs in: $logsDir"
                     if (Test-Path $logsDir) {
@@ -133,7 +137,11 @@ extends:
                 inputs:
                   targetType: "inline"
                   script: |
-                    $cacheDir = (npm config get cache).Trim()
+                    # Do NOT shell out to `npm config get cache` here: that itself invokes
+                    # npm, which writes its own fresh debug log and would become the
+                    # "newest" file below, masking the log we actually want. Use npm's
+                    # well-known default Windows cache location directly instead.
+                    $cacheDir = Join-Path $env:LOCALAPPDATA "npm-cache"
                     $logsDir = Join-Path $cacheDir "_logs"
                     Write-Output "Looking for npm debug logs in: $logsDir"
                     if (Test-Path $logsDir) {
@@ -206,7 +214,11 @@ extends:
                 inputs:
                   targetType: "inline"
                   script: |
-                    $cacheDir = (npm config get cache).Trim()
+                    # Do NOT shell out to `npm config get cache` here: that itself invokes
+                    # npm, which writes its own fresh debug log and would become the
+                    # "newest" file below, masking the log we actually want. Use npm's
+                    # well-known default Windows cache location directly instead.
+                    $cacheDir = Join-Path $env:LOCALAPPDATA "npm-cache"
                     $logsDir = Join-Path $cacheDir "_logs"
                     Write-Output "Looking for npm debug logs in: $logsDir"
                     if (Test-Path $logsDir) {
@@ -236,7 +248,11 @@ extends:
                 inputs:
                   targetType: "inline"
                   script: |
-                    $cacheDir = (npm config get cache).Trim()
+                    # Do NOT shell out to `npm config get cache` here: that itself invokes
+                    # npm, which writes its own fresh debug log and would become the
+                    # "newest" file below, masking the log we actually want. Use npm's
+                    # well-known default Windows cache location directly instead.
+                    $cacheDir = Join-Path $env:LOCALAPPDATA "npm-cache"
                     $logsDir = Join-Path $cacheDir "_logs"
                     Write-Output "Looking for npm debug logs in: $logsDir"
                     if (Test-Path $logsDir) {

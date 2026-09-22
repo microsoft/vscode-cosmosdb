@@ -62,14 +62,6 @@ extends:
       linuxEsrpSigning: true
       WindowsHostVersion:
         Version: 2022
-      # This build's plain `npm ci` (no internal-feed .npmrc override, unlike
-      # build.yml) resolves packages directly against registry.npmjs.org per
-      # package-lock.json. The pool's network isolation otherwise blocks that
-      # direct external traffic (observed as EACCES on every npmjs.org fetch);
-      # CFSClean is the documented policy that allow-lists core public package
-      # registries (npm, NuGet, PyPI, Maven, etc.) through the isolation layer.
-      networkisolation:
-        policy: DefaultDeny,CFSClean
 
     stages:
       - stage: BuildPackages
@@ -94,98 +86,40 @@ extends:
                   versionSource: fromFile
                   versionFilePath: .nvmrc
 
-              # Workspaces monorepo: install once at the repo root.
-              # --omit=optional: this repo carries root optionalDependencies (e.g. keytar)
-              # with native prebuild-install binaries that this build never needs to
-              # build/pack plain npm packages. Their install has been observed to trip a
-              # known npm 10/11 bug ("Exit handler never called!") that crashes the whole
-              # `npm ci` instead of gracefully skipping the failed optional dependency.
-              # --cache: the default npm cache under the container profile
-              # (%LOCALAPPDATA%\npm-cache, i.e. under ContainerAdministrator's
-              # profile) has been observed returning EACCES on cache writes during
-              # fetch in this Windows build container -- not a network/registry
-              # problem (registry.npmjs.org itself is reachable; the failure is a
-              # local file write). Point the cache at the agent temp directory,
-              # which is guaranteed writable for the build.
-              - script: npm ci --omit=optional --cache "$(Agent.TempDirectory)\npm-cache"
-                displayName: "Install dependencies (root)"
-                workingDirectory: $(Build.SourcesDirectory)
-
-              # npm ci/install failures on Windows sometimes crash before writing a
-              # useful message to the console (known npm 12 bug: "Exit handler never
-              # called!"). The real error (auth/network/404/etc.) still lands in npm's
-              # own debug log file, so dump it to the pipeline log when the previous
-              # step failed. This step always runs on failure only, and never fails
-              # the build itself.
-              - task: PowerShell@2
-                displayName: "Dump npm debug log on failure"
-                condition: failed()
+              # Workspaces monorepo: install once at the repo root, exactly like
+              # build.yml's '⬇️ Install Dependencies' step — authenticate to and
+              # install from the internal ADO npm feed (.azure-pipelines/.npmrc),
+              # not directly against registry.npmjs.org. A plain `npm ci` resolving
+              # straight to npmjs.org was hitting persistent EACCES failures on
+              # this Windows pool; going through the same internal feed as the
+              # proven build.yml pipeline avoids that path entirely.
+              - task: npmAuthenticate@0
+                displayName: "Authenticate to npm registry"
                 inputs:
-                  targetType: "inline"
-                  script: |
-                    # Do NOT shell out to `npm config get cache` here: that itself invokes
-                    # npm, which writes its own fresh debug log and would become the
-                    # "newest" file below, masking the log we actually want. This must
-                    # match the --cache path passed to npm ci/build above, not npm's
-                    # default Windows cache location.
-                    $cacheDir = "$(Agent.TempDirectory)\npm-cache"
-                    $logsDir = Join-Path $cacheDir "_logs"
-                    Write-Output "Looking for npm debug logs in: $logsDir"
-                    if (Test-Path $logsDir) {
-                      $latest = Get-ChildItem $logsDir -Filter "*-debug-0.log" |
-                        Sort-Object LastWriteTime -Descending | Select-Object -First 1
-                      if ($latest) {
-                        Write-Output "----- npm debug log: $($latest.FullName) -----"
-                        Get-Content $latest.FullName
-                      } else {
-                        Write-Output "No npm debug log found in $logsDir"
-                      }
-                    } else {
-                      Write-Output "npm cache logs directory not found at $logsDir"
-                    }
+                  workingFile: "$(Build.SourcesDirectory)/.azure-pipelines/.npmrc"
+
+              - task: Npm@1
+                displayName: "Install dependencies (root)"
+                inputs:
+                  command: custom
+                  customCommand: ci --userconfig $(Build.SourcesDirectory)/.azure-pipelines/.npmrc
+                  workingDir: $(Build.SourcesDirectory)
 
               # Build both publishable workspaces (schema-analyzer first: nosql depends on it).
-              - script: >-
-                  npm run build
-                  --workspace packages/schema-analyzer
-                  --workspace packages/nosql-language-service
+              - task: Npm@1
                 displayName: "Build packages"
-                workingDirectory: $(Build.SourcesDirectory)
-
-              - task: PowerShell@2
-                displayName: "Dump npm debug log on failure"
-                condition: failed()
                 inputs:
-                  targetType: "inline"
-                  script: |
-                    # Do NOT shell out to `npm config get cache` here: that itself invokes
-                    # npm, which writes its own fresh debug log and would become the
-                    # "newest" file below, masking the log we actually want. This must
-                    # match the --cache path passed to npm ci/build above, not npm's
-                    # default Windows cache location.
-                    $cacheDir = "$(Agent.TempDirectory)\npm-cache"
-                    $logsDir = Join-Path $cacheDir "_logs"
-                    Write-Output "Looking for npm debug logs in: $logsDir"
-                    if (Test-Path $logsDir) {
-                      $latest = Get-ChildItem $logsDir -Filter "*-debug-0.log" |
-                        Sort-Object LastWriteTime -Descending | Select-Object -First 1
-                      if ($latest) {
-                        Write-Output "----- npm debug log: $($latest.FullName) -----"
-                        Get-Content $latest.FullName
-                      } else {
-                        Write-Output "No npm debug log found in $logsDir"
-                      }
-                    } else {
-                      Write-Output "npm cache logs directory not found at $logsDir"
-                    }
+                  command: custom
+                  customCommand: run build --workspace packages/schema-analyzer --workspace packages/nosql-language-service
+                  workingDir: $(Build.SourcesDirectory)
 
               # Pack just this package's workspace straight into its artifact folder.
-              - script: >-
-                  npm pack
-                  --workspace packages/schema-analyzer
-                  --pack-destination "$(Build.ArtifactStagingDirectory)/build/azure-cosmosdb-schema-analyzer"
+              - task: Npm@1
                 displayName: "npm pack azure-cosmosdb-schema-analyzer"
-                workingDirectory: $(Build.SourcesDirectory)
+                inputs:
+                  command: custom
+                  customCommand: pack --workspace packages/schema-analyzer --pack-destination "$(Build.ArtifactStagingDirectory)/build/azure-cosmosdb-schema-analyzer"
+                  workingDir: $(Build.SourcesDirectory)
 
               # Also drop the resolved package.json next to the tgz so the release
               # pipeline can read/verify the version without cloning the source.
@@ -219,98 +153,40 @@ extends:
                   versionSource: fromFile
                   versionFilePath: .nvmrc
 
-              # Workspaces monorepo: install once at the repo root.
-              # --omit=optional: this repo carries root optionalDependencies (e.g. keytar)
-              # with native prebuild-install binaries that this build never needs to
-              # build/pack plain npm packages. Their install has been observed to trip a
-              # known npm 10/11 bug ("Exit handler never called!") that crashes the whole
-              # `npm ci` instead of gracefully skipping the failed optional dependency.
-              # --cache: the default npm cache under the container profile
-              # (%LOCALAPPDATA%\npm-cache, i.e. under ContainerAdministrator's
-              # profile) has been observed returning EACCES on cache writes during
-              # fetch in this Windows build container -- not a network/registry
-              # problem (registry.npmjs.org itself is reachable; the failure is a
-              # local file write). Point the cache at the agent temp directory,
-              # which is guaranteed writable for the build.
-              - script: npm ci --omit=optional --cache "$(Agent.TempDirectory)\npm-cache"
-                displayName: "Install dependencies (root)"
-                workingDirectory: $(Build.SourcesDirectory)
-
-              # npm ci/install failures on Windows sometimes crash before writing a
-              # useful message to the console (known npm 12 bug: "Exit handler never
-              # called!"). The real error (auth/network/404/etc.) still lands in npm's
-              # own debug log file, so dump it to the pipeline log when the previous
-              # step failed. This step always runs on failure only, and never fails
-              # the build itself.
-              - task: PowerShell@2
-                displayName: "Dump npm debug log on failure"
-                condition: failed()
+              # Workspaces monorepo: install once at the repo root, exactly like
+              # build.yml's '⬇️ Install Dependencies' step — authenticate to and
+              # install from the internal ADO npm feed (.azure-pipelines/.npmrc),
+              # not directly against registry.npmjs.org. A plain `npm ci` resolving
+              # straight to npmjs.org was hitting persistent EACCES failures on
+              # this Windows pool; going through the same internal feed as the
+              # proven build.yml pipeline avoids that path entirely.
+              - task: npmAuthenticate@0
+                displayName: "Authenticate to npm registry"
                 inputs:
-                  targetType: "inline"
-                  script: |
-                    # Do NOT shell out to `npm config get cache` here: that itself invokes
-                    # npm, which writes its own fresh debug log and would become the
-                    # "newest" file below, masking the log we actually want. This must
-                    # match the --cache path passed to npm ci/build above, not npm's
-                    # default Windows cache location.
-                    $cacheDir = "$(Agent.TempDirectory)\npm-cache"
-                    $logsDir = Join-Path $cacheDir "_logs"
-                    Write-Output "Looking for npm debug logs in: $logsDir"
-                    if (Test-Path $logsDir) {
-                      $latest = Get-ChildItem $logsDir -Filter "*-debug-0.log" |
-                        Sort-Object LastWriteTime -Descending | Select-Object -First 1
-                      if ($latest) {
-                        Write-Output "----- npm debug log: $($latest.FullName) -----"
-                        Get-Content $latest.FullName
-                      } else {
-                        Write-Output "No npm debug log found in $logsDir"
-                      }
-                    } else {
-                      Write-Output "npm cache logs directory not found at $logsDir"
-                    }
+                  workingFile: "$(Build.SourcesDirectory)/.azure-pipelines/.npmrc"
+
+              - task: Npm@1
+                displayName: "Install dependencies (root)"
+                inputs:
+                  command: custom
+                  customCommand: ci --userconfig $(Build.SourcesDirectory)/.azure-pipelines/.npmrc
+                  workingDir: $(Build.SourcesDirectory)
 
               # Build both publishable workspaces (schema-analyzer first: nosql depends on it).
-              - script: >-
-                  npm run build
-                  --workspace packages/schema-analyzer
-                  --workspace packages/nosql-language-service
+              - task: Npm@1
                 displayName: "Build packages"
-                workingDirectory: $(Build.SourcesDirectory)
-
-              - task: PowerShell@2
-                displayName: "Dump npm debug log on failure"
-                condition: failed()
                 inputs:
-                  targetType: "inline"
-                  script: |
-                    # Do NOT shell out to `npm config get cache` here: that itself invokes
-                    # npm, which writes its own fresh debug log and would become the
-                    # "newest" file below, masking the log we actually want. This must
-                    # match the --cache path passed to npm ci/build above, not npm's
-                    # default Windows cache location.
-                    $cacheDir = "$(Agent.TempDirectory)\npm-cache"
-                    $logsDir = Join-Path $cacheDir "_logs"
-                    Write-Output "Looking for npm debug logs in: $logsDir"
-                    if (Test-Path $logsDir) {
-                      $latest = Get-ChildItem $logsDir -Filter "*-debug-0.log" |
-                        Sort-Object LastWriteTime -Descending | Select-Object -First 1
-                      if ($latest) {
-                        Write-Output "----- npm debug log: $($latest.FullName) -----"
-                        Get-Content $latest.FullName
-                      } else {
-                        Write-Output "No npm debug log found in $logsDir"
-                      }
-                    } else {
-                      Write-Output "npm cache logs directory not found at $logsDir"
-                    }
+                  command: custom
+                  customCommand: run build --workspace packages/schema-analyzer --workspace packages/nosql-language-service
+                  workingDir: $(Build.SourcesDirectory)
 
               # Pack just this package's workspace straight into its artifact folder.
-              - script: >-
-                  npm pack
-                  --workspace packages/nosql-language-service
-                  --pack-destination "$(Build.ArtifactStagingDirectory)/build/azure-cosmosdb-nosql-language-service"
+              - task: Npm@1
                 displayName: "npm pack azure-cosmosdb-nosql-language-service"
-                workingDirectory: $(Build.SourcesDirectory)
+                inputs:
+                  command: custom
+                  customCommand: pack --workspace packages/nosql-language-service --pack-destination "$(Build.ArtifactStagingDirectory)/build/azure-cosmosdb-nosql-language-service"
+                  workingDir: $(Build.SourcesDirectory)
 
               # Also drop the resolved package.json next to the tgz so the release
               # pipeline can read/verify the version without cloning the source.

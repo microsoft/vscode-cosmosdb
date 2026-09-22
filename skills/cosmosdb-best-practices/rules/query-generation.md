@@ -126,9 +126,10 @@ heterogeneous container. For illustrative examples, state the assumed document s
 #### ORDER BY
 
 - Syntax: `ORDER BY expr [ASC|DESC] [, expr2 [ASC|DESC] ...]`. Default is `ASC`.
-- ORDER BY expressions must map to a direct document path (e.g. `c.propertyName`). Do NOT
-  order by computed columns, SELECT aliases, subquery aliases, or aggregate results, and
-  do NOT order by when the FROM clause is a subquery.
+- For ordinary property sorting, use a direct document path (e.g. `c.propertyName`),
+  not a SELECT alias or aggregate result. Vector similarity is a supported exception:
+  `ORDER BY VectorDistance(c.embedding, @query)` is valid. Do not generalize this
+  exception to arbitrary computed expressions or subquery results.
 - Multi-key sort is supported (`ORDER BY c.category ASC, c.price DESC`), but
   multi-property or mixed-direction ORDER BY requires a **composite index**. Prefer
   single-property ORDER BY; add a SQL comment noting the composite-index requirement when
@@ -145,7 +146,12 @@ heterogeneous container. For illustrative examples, state the assumed document s
   literals or `@parameter` (no floats).
 - Pagination: `SELECT ... FROM c ORDER BY c.createdAt DESC OFFSET @skip LIMIT @take`.
 
-#### Built-in function reference (use PascalCase exactly for the newer functions)
+#### Built-in function reference
+
+Use the documented function signatures and supported query contexts. The names below
+are a navigation aid, not a guarantee that every function or feature is available on
+every target. Check the target service's documentation and feature prerequisites;
+acceptance by an editor parser alone does not establish service support.
 
 - **Aggregate:** `COUNT`, `SUM`, `AVG`, `MIN`, `MAX`, `CountIf`, `MakeList`, `MakeSet`.
 - **String:** `Contains`, `StartsWith`, `EndsWith`, `StringEquals`, `ContainsAllCI`,
@@ -182,15 +188,20 @@ heterogeneous container. For illustrative examples, state the assumed document s
 - **Full-text search:** `FullTextContains`, `FullTextContainsAll`, `FullTextContainsAny`
   (boolean, used in `WHERE`); `FullTextScore(c.field, "term")` — usable ONLY inside
   `ORDER BY RANK`. Requires a full-text index on the field.
-- **Vector search:** `VectorDistance(c.embedding, @vec)` — usable in `SELECT` (projected
-  score) or inside `ORDER BY RANK`. Requires a vector index. `RRF(score1, score2, ...)`
-  combines score functions inside `ORDER BY RANK` for hybrid search.
+- **Vector search:** `VectorDistance(c.embedding, @vec)` is usable in `SELECT`, regular
+  `ORDER BY VectorDistance(...)`, or `ORDER BY RANK`. Its optional third argument
+  selects brute force when `true`; the default `false` uses a vector index if one
+  exists. A vector index improves search performance but is not a syntax prerequisite
+  for evaluating the function. Follow [vector-distance-query](vector-distance-query.md)
+  for query patterns and [vector-index-type](vector-index-type.md) for index guidance.
+  `RRF(score1, score2, ...)` combines scoring functions inside `ORDER BY RANK` for hybrid
+  search.
 
 #### Function usage rules
 
-- Use exact PascalCase for the newer functions: `StringEquals` (not `STRINGEQUALS`),
-  `DateTimeDiff`, `DateTimeAdd`, `GetCurrentDateTime`, `RegexMatch`, `CountIf`,
-  `MakeList`, `MakeSet`, `VectorDistance`, `FullTextScore`, etc.
+- Follow documented function names; do not treat PascalCase as a syntax requirement.
+  Both `StringEquals(...)` and the documented `STRINGEQUALS(...)` are valid. Property
+  names remain case-sensitive and must match the data regardless of function spelling.
 - Do **not** use T-SQL / PostgreSQL / MySQL functions that do not exist in Cosmos DB
   NoSQL: no `DATEDIFF`, `DATEADD`, `DATEPART`, `GETDATE`, `COALESCE` (use `??`), `ISNULL`,
   `NULLIF`, `CAST`/`CONVERT`, `LEN` (use `LENGTH`), `CHARINDEX`, `PATINDEX`, `FORMAT`.
@@ -247,6 +258,12 @@ SELECT TOP 10 c.id FROM c ORDER BY RANK VectorDistance(c.embedding, @query)
 ```
 
 ```sql
+SELECT TOP 10 c.id, VectorDistance(c.embedding, @query) AS similarityScore
+FROM c
+ORDER BY VectorDistance(c.embedding, @query)
+```
+
+```sql
 -- Full-text ranking
 SELECT TOP 10 c.id, c.title FROM c WHERE FullTextContains(c.title, "cosmos") ORDER BY RANK FullTextScore(c.title, "cosmos")
 ```
@@ -282,3 +299,8 @@ SELECT TOP 10 c.id FROM c ORDER BY RANK RRF(FullTextScore(c.body, "cosmos"), Vec
   ```sql
   SELECT * FROM c WHERE c.countryOfOrigin NOT IN ('USA', 'Canada', 'Mexico')
   ```
+
+### References
+
+- [VectorDistance syntax, ordering, and index options](https://learn.microsoft.com/en-us/cosmos-db/query/vectordistance)
+- [STRINGEQUALS syntax and case-sensitivity flag](https://learn.microsoft.com/en-us/cosmos-db/query/stringequals)

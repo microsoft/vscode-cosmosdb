@@ -113,6 +113,14 @@ extends:
                   customCommand: run build --workspace packages/schema-analyzer --workspace packages/nosql-language-service
                   workingDir: $(Build.SourcesDirectory)
 
+              # npm pack does not create --pack-destination itself; ensure it exists first.
+              - task: PowerShell@2
+                displayName: "Create artifact staging directory"
+                inputs:
+                  targetType: "inline"
+                  script: |
+                    New-Item -ItemType Directory -Force -Path "$(Build.ArtifactStagingDirectory)/build/azure-cosmosdb-schema-analyzer" | Out-Null
+
               # Pack just this package's workspace straight into its artifact folder.
               - task: Npm@1
                 displayName: "npm pack azure-cosmosdb-schema-analyzer"
@@ -179,6 +187,14 @@ extends:
                   command: custom
                   customCommand: run build --workspace packages/schema-analyzer --workspace packages/nosql-language-service
                   workingDir: $(Build.SourcesDirectory)
+
+              # npm pack does not create --pack-destination itself; ensure it exists first.
+              - task: PowerShell@2
+                displayName: "Create artifact staging directory"
+                inputs:
+                  targetType: "inline"
+                  script: |
+                    New-Item -ItemType Directory -Force -Path "$(Build.ArtifactStagingDirectory)/build/azure-cosmosdb-nosql-language-service" | Out-Null
 
               # Pack just this package's workspace straight into its artifact folder.
               - task: Npm@1

@@ -1,17 +1,8 @@
 ---
-name: cosmosdb-nosql-query-generation
-description: |
-  Generate, explain, edit, and fix Azure Cosmos DB for NoSQL (SQL API) queries. Use
-  whenever you need to produce a syntactically correct, safe Cosmos DB NoSQL query — for
-  example when the user asks to generate, write, edit, fix, or explain a Cosmos DB NoSQL
-  query. Provides the NoSQL dialect rules, safety rules, and few-shot examples. Covers
-  SELECT/VALUE/DISTINCT/TOP, array-unwind JOINs, subqueries, WHERE/BETWEEN/IN/LIKE,
-  GROUP BY and aggregates, ORDER BY and ORDER BY RANK, OFFSET/LIMIT, the full built-in
-  function reference, and how Cosmos DB NoSQL differs from T-SQL / PostgreSQL / MySQL.
-license: MIT
-metadata:
-  author: vscode-cosmosdb
-  version: "1.0.0"
+title: Generate Correct Cosmos DB NoSQL Queries
+impact: HIGH
+impactDescription: prevents invalid queries and schema mismatches
+tags: query, generation, syntax, schema
 ---
 
 # Azure Cosmos DB for NoSQL — Query Generation

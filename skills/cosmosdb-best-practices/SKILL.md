@@ -5,6 +5,8 @@ description: |
   partitioning, queries, and SDK usage. Use when writing, reviewing, or refactoring
   code that interacts with Azure Cosmos DB, designing data models, optimizing queries,
   or implementing high-performance database operations.
+  Also use when generating, explaining, editing, or fixing Azure Cosmos DB NoSQL queries,
+  including query syntax, built-in functions, and translating natural-language requests.
   USE FOR: Cosmos DB NoSQL, partition key design, RU optimization, point reads,
   cross-partition queries, SDK singleton, CosmosClient, container modeling,
   change feed, bulk operations, vector search, full-text search, hierarchical
@@ -28,7 +30,7 @@ Comprehensive performance optimization guide for Azure Cosmos DB applications, c
 Reference these guidelines when:
 - Designing data models for Cosmos DB
 - Choosing partition keys
-- Writing or optimizing queries
+- Generating, explaining, editing, fixing, or optimizing NoSQL queries
 - Implementing SDK patterns
 - Using the Cosmos DB Emulator for local development
 - Inspecting or managing Cosmos DB data with developer tooling
@@ -43,7 +45,7 @@ Reference these guidelines when:
 |----------|----------|--------|--------|
 | 1 | Data Modeling | CRITICAL | `model-` |
 | 2 | Partition Key Design | CRITICAL | `partition-` |
-| 3 | Query Optimization | HIGH | `query-` |
+| 3 | Query Generation and Optimization | HIGH | `query-` |
 | 4 | SDK Best Practices | HIGH | `sdk-` |
 | 5 | Indexing Strategies | MEDIUM-HIGH | `index-` |
 | 6 | Throughput & Scaling | MEDIUM | `throughput-` |
@@ -81,8 +83,9 @@ Reference these guidelines when:
 - [partition-20gb-limit](rules/partition-20gb-limit.md) - Plan for 20GB logical partition limit
 - [partition-rekey-migration](rules/partition-rekey-migration.md) - Re-key a misaligned container with the Change partition key feature
 
-### 3. Query Optimization (HIGH)
+### 3. Query Generation and Optimization (HIGH)
 
+- [query-generation](rules/query-generation.md) - Generate, explain, edit, and fix NoSQL queries using the dialect rules, function reference, and examples
 - [query-aggregate-single-pass](rules/query-aggregate-single-pass.md) - Compute min/max/avg with one scoped aggregate query
 - [query-avoid-cross-partition](rules/query-avoid-cross-partition.md) - Minimize cross-partition queries
 - [query-use-projections](rules/query-use-projections.md) - Project only needed fields; prefer dedicated result types for projections
@@ -209,6 +212,8 @@ Reference these guidelines when:
 - [fts-hybrid-query](rules/fts-hybrid-queries.md) - Combine FTS predicates with range/equality filters; put most selective filter first
 
 ## How to Use
+
+For NoSQL query generation, explanation, or editing, read [query-generation](rules/query-generation.md) before writing queries. It contains the query-language guidance and examples; use the other linked rules for optimization guidance.
 
 Use the linked rule files above for detailed explanations and code examples. The links give the agent direct paths to the relevant guidance instead of relying on folder scanning or inferred filenames.
 

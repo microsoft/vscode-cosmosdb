@@ -10,8 +10,8 @@ contributes tools and lets the Copilot agent orchestrate them.
 The Query Editor's AI actions ("Generate query", "Explain query") route a prompt to the general
 Copilot agent (`workbench.action.chat.open` in `agent` mode). The agent reads context, samples the
 schema when needed, writes the query back, and can run it — all through the tools registered here.
-Query-language rules live in the `cosmosdb-nosql-query-generation` skill; editor orchestration lives
-in the `cosmosdb-nosql-query-editor` skill.
+Query-language guidance lives in `skills/cosmosdb-best-practices/rules/query-generation.md`;
+editor orchestration lives in the `cosmosdb-nosql-query-editor` skill.
 
 ## Registered tools
 
@@ -43,6 +43,6 @@ their `onLanguageModelTool:*` activation events in `package.json`.
 
 ## Related
 
-- `skills/cosmosdb-nosql-query-generation/SKILL.md` — the NoSQL query-language rules and examples.
+- `skills/cosmosdb-best-practices/rules/query-generation.md` — the NoSQL query-language rules and examples.
 - `skills/cosmosdb-nosql-query-editor/SKILL.md` — how the agent drives the Query Editor tools.
 - `docs/ai-agent-migration.md` — background on moving from the hand-rolled loop to agent + tools.

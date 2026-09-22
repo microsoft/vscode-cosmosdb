@@ -66,6 +66,42 @@ await container.ReplaceThroughputAsync(
 // Now scales between 2,000-20,000 RU/s
 ```
 
+```python
+from azure.cosmos import PartitionKey, ThroughputProperties
+
+# Incorrect: fixed throughput for variable workload
+container = await database.create_container_if_not_exists(
+    id="orders",
+    partition_key=PartitionKey(path="/customerId"),
+    offer_throughput=10000,  # Fixed 10,000 RU/s, not autoscale
+)
+
+# Correct: autoscale throughput for variable workload
+container = await database.create_container_if_not_exists(
+    id="orders-autoscale",
+    partition_key=PartitionKey(path="/customerId"),
+    offer_throughput=ThroughputProperties(
+        auto_scale_max_throughput=10000,
+    ),
+)
+# Scales automatically between 1,000-10,000 RU/s
+```
+
+```python
+from azure.cosmos import ThroughputProperties
+
+# Read current throughput settings
+throughput = await container.get_throughput()
+print(f"Manual throughput: {throughput.offer_throughput}")
+print(f"Autoscale max: {throughput.auto_scale_max_throughput}")
+
+# Update autoscale max throughput
+await container.replace_throughput(
+    ThroughputProperties(auto_scale_max_throughput=20000)
+)
+# Now scales between 2,000-20,000 RU/s
+```
+
 Cost comparison example:
 - Fixed 10,000 RU/s: ~$584/month (always)
 - Autoscale 10,000 max: $58-$584/month (based on usage)
@@ -81,4 +117,4 @@ When to use fixed:
 - Steady, predictable workloads (utilization > 66%)
 - Cost-sensitive workloads with known patterns
 
-Reference: [Autoscale throughput](https://learn.microsoft.com/azure/cosmos-db/provision-throughput-autoscale)
+Reference: [Autoscale throughput](https://learn.microsoft.com/en-us/azure/cosmos-db/provision-throughput-autoscale)

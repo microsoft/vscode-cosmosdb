@@ -1,6 +1,6 @@
 # Schema Output Format
 
-This document describes the JSON Schema output produced by `@cosmosdb/schema-analyzer`, including all vendor `x-*` extensions.
+This document describes the JSON Schema output produced by `@azure/cosmosdb-schema-analyzer`, including all vendor `x-*` extensions.
 
 ## Overview
 

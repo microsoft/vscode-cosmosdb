@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type PartitionKeyDefinition, type PriorityLevel } from '@azure/cosmos';
-import { type JSONSchema } from '@cosmosdb/schema-analyzer';
+import { type JSONSchema } from '@azure/cosmosdb-schema-analyzer';
 import { DEFAULT_PAGE_SIZE, type SerializedQueryResult } from '../../../../cosmosdb/types/queryResult';
 import { isSelectStar } from '../../../../utils/queryAnalysis';
 

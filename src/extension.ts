@@ -5,8 +5,8 @@
 
 'use strict';
 
-import { SqlLanguageService } from '@cosmosdb/nosql-language-service';
-import { registerCosmosDbSql } from '@cosmosdb/nosql-language-service/vscode';
+import { SqlLanguageService } from '@azure/cosmosdb-nosql-language-service';
+import { registerCosmosDbSql } from '@azure/cosmosdb-nosql-language-service/vscode';
 import { registerAzureUtilsExtensionVariables } from '@microsoft/vscode-azext-azureutils';
 import {
     callWithTelemetryAndErrorHandling,

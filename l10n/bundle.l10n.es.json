@@ -902,7 +902,7 @@
   "Populate Sample Data": "Rellenar datos de ejemplo",
   "Port {0} is in use by another process. Configure a different MCP port in settings.": "El puerto {0} está en uso por otro proceso. Configure un puerto MCP diferente en la configuración.",
   "Port number is required": "Se requiere el número de puerto",
-  "Port number must be a number": "El número de puerto debe ser un número",
+  "Port number must be an integer": "El número de puerto debe ser un entero",
   "Port number must be between 1 and 65535": "El número de puerto debe ser entre 1 y 65535",
   "PostgreSQL Flexible Servers are no longer supported in Cosmos DB extension.": "Los servidores flexibles de PostgreSQL ya no se admiten en Cosmos DB extensión.",
   "PostgreSQL Single Servers are no longer supported in Cosmos DB extension.": "Los servidores únicos de PostgreSQL ya no se admiten en Cosmos DB extensión.",

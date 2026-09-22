@@ -158,18 +158,24 @@ export default ({ mode }) => {
             mainFields: ['browser', 'module', 'main'],
             conditions: ['browser', 'import', 'default'],
             alias: {
-                '@cosmosdb/schema-analyzer/json': path.resolve(__dirname, 'packages/schema-analyzer/src/json/index.ts'),
-                '@cosmosdb/schema-analyzer/bson': path.resolve(__dirname, 'packages/schema-analyzer/src/bson/index.ts'),
-                '@cosmosdb/schema-analyzer': path.resolve(__dirname, 'packages/schema-analyzer/src/index.ts'),
-                '@cosmosdb/nosql-language-service/monaco': path.resolve(
+                '@azure/cosmosdb-schema-analyzer/json': path.resolve(
+                    __dirname,
+                    'packages/schema-analyzer/src/json/index.ts',
+                ),
+                '@azure/cosmosdb-schema-analyzer/bson': path.resolve(
+                    __dirname,
+                    'packages/schema-analyzer/src/bson/index.ts',
+                ),
+                '@azure/cosmosdb-schema-analyzer': path.resolve(__dirname, 'packages/schema-analyzer/src/index.ts'),
+                '@azure/cosmosdb-nosql-language-service/monaco': path.resolve(
                     __dirname,
                     'packages/nosql-language-service/src/providers/monaco/index.ts',
                 ),
-                '@cosmosdb/nosql-language-service/services': path.resolve(
+                '@azure/cosmosdb-nosql-language-service/services': path.resolve(
                     __dirname,
                     'packages/nosql-language-service/src/services/index.ts',
                 ),
-                '@cosmosdb/nosql-language-service': path.resolve(
+                '@azure/cosmosdb-nosql-language-service': path.resolve(
                     __dirname,
                     'packages/nosql-language-service/src/index.ts',
                 ),

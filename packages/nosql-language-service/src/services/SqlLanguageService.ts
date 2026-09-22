@@ -49,7 +49,7 @@ import {
  *
  * @example
  * ```typescript
- * import { SqlLanguageService } from "@cosmosdb/nosql-language-service";
+ * import { SqlLanguageService } from "@azure/cosmosdb-nosql-language-service";
  *
  * const service = new SqlLanguageService({
  *   getSchema: () => myCollectionSchema,

@@ -902,7 +902,7 @@
   "Populate Sample Data": "Заполнить выборку данных",
   "Port {0} is in use by another process. Configure a different MCP port in settings.": "Порт {0} используется другим процессом. Настройте другой порт MCP в параметрах.",
   "Port number is required": "Требуется указать номер порта",
-  "Port number must be a number": "Номер порта должен быть числом",
+  "Port number must be an integer": "Номер порта должен быть числом",
   "Port number must be between 1 and 65535": "Номер порта должен быть в диапазоне от 1 до 65535",
   "PostgreSQL Flexible Servers are no longer supported in Cosmos DB extension.": "Гибкие серверы PostgreSQL больше не поддерживаются в расширении Cosmos DB.",
   "PostgreSQL Single Servers are no longer supported in Cosmos DB extension.": "Одиночные серверы PostgreSQL больше не поддерживаются в расширении Cosmos DB.",

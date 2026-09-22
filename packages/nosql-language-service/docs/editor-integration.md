@@ -1,4 +1,4 @@
-﻿# Editor Integration
+# Editor Integration
 
 ## Feature support matrix
 
@@ -16,7 +16,7 @@
 
 > **Legend:** ✅ = supported, — = not applicable or not yet implemented
 
-This guide shows how to wire `@cosmosdb/nosql-language-service` into an editor
+This guide shows how to wire `@azure/cosmosdb-nosql-language-service` into an editor
 explicitly, without relying only on the convenience
 `registerCosmosDbSql()` helpers.
 
@@ -31,7 +31,7 @@ The architecture is intentionally split into two layers:
 All integrations start the same way:
 
 ```typescript
-import { SqlLanguageService } from '@cosmosdb/nosql-language-service';
+import { SqlLanguageService } from '@azure/cosmosdb-nosql-language-service';
 
 const service = new SqlLanguageService({
   getSchema: () => collectionSchema,
@@ -85,8 +85,8 @@ than a classic `register*Provider()` interface.
 
 ```typescript
 import * as monaco from 'monaco-editor';
-import { SqlLanguageService } from '@cosmosdb/nosql-language-service';
-import { registerCosmosDbSql } from '@cosmosdb/nosql-language-service/monaco';
+import { SqlLanguageService } from '@azure/cosmosdb-nosql-language-service';
+import { registerCosmosDbSql } from '@azure/cosmosdb-nosql-language-service/monaco';
 
 const service = new SqlLanguageService({
   getSchema: () => collectionSchema,
@@ -106,7 +106,7 @@ const disposable = registerCosmosDbSql(monaco, service, {
 
 ```typescript
 import * as monaco from 'monaco-editor';
-import { SqlLanguageService } from '@cosmosdb/nosql-language-service';
+import { SqlLanguageService } from '@azure/cosmosdb-nosql-language-service';
 import {
   LANGUAGE_ID,
   MonacoCompletionProvider,
@@ -114,7 +114,7 @@ import {
   MonacoFormattingProvider,
   MonacoHoverProvider,
   MonacoSignatureHelpProvider,
-} from '@cosmosdb/nosql-language-service/monaco';
+} from '@azure/cosmosdb-nosql-language-service/monaco';
 
 const service = new SqlLanguageService({
   getSchema: () => collectionSchema,
@@ -139,7 +139,7 @@ const disposables = [
 If you only need squiggles / markers:
 
 ```typescript
-import { MonacoDiagnosticsProvider } from '@cosmosdb/nosql-language-service/monaco';
+import { MonacoDiagnosticsProvider } from '@azure/cosmosdb-nosql-language-service/monaco';
 
 const diagnostics = new MonacoDiagnosticsProvider(monaco, service, {
   languageId: 'cosmosdb-sql',
@@ -159,7 +159,7 @@ automatically registers:
 For explicit wiring:
 
 ```typescript
-import { MonacoFoldingRangeProvider, MonacoMultiQueryDecorator } from '@cosmosdb/nosql-language-service/monaco';
+import { MonacoFoldingRangeProvider, MonacoMultiQueryDecorator } from '@azure/cosmosdb-nosql-language-service/monaco';
 
 disposables.push(
   monaco.languages.registerFoldingRangeProvider(LANGUAGE_ID, new MonacoFoldingRangeProvider(service)),
@@ -175,8 +175,8 @@ disposables.push(
 
 ```typescript
 import * as vscode from 'vscode';
-import { SqlLanguageService } from '@cosmosdb/nosql-language-service';
-import { registerCosmosDbSql } from '@cosmosdb/nosql-language-service/vscode';
+import { SqlLanguageService } from '@azure/cosmosdb-nosql-language-service';
+import { registerCosmosDbSql } from '@azure/cosmosdb-nosql-language-service/vscode';
 
 export function activate(context: vscode.ExtensionContext) {
   const service = new SqlLanguageService({
@@ -198,14 +198,14 @@ export function activate(context: vscode.ExtensionContext) {
 
 ```typescript
 import * as vscode from 'vscode';
-import { SqlLanguageService } from '@cosmosdb/nosql-language-service';
+import { SqlLanguageService } from '@azure/cosmosdb-nosql-language-service';
 import {
   VSCodeCompletionProvider,
   VSCodeDiagnosticsProvider,
   VSCodeFormattingProvider,
   VSCodeHoverProvider,
   VSCodeSignatureHelpProvider,
-} from '@cosmosdb/nosql-language-service/vscode';
+} from '@azure/cosmosdb-nosql-language-service/vscode';
 
 export function activate(context: vscode.ExtensionContext) {
   const service = new SqlLanguageService({
@@ -241,7 +241,7 @@ export function activate(context: vscode.ExtensionContext) {
 ### VS Code diagnostics only
 
 ```typescript
-import { VSCodeDiagnosticsProvider } from '@cosmosdb/nosql-language-service/vscode';
+import { VSCodeDiagnosticsProvider } from '@azure/cosmosdb-nosql-language-service/vscode';
 
 const diagnostics = new VSCodeDiagnosticsProvider(vscode, service, {
   languageId: 'cosmosdb-sql',
@@ -261,7 +261,7 @@ automatically registers:
 For explicit wiring:
 
 ```typescript
-import { VSCodeFoldingRangeProvider, VSCodeMultiQueryDecorator } from '@cosmosdb/nosql-language-service/vscode';
+import { VSCodeFoldingRangeProvider, VSCodeMultiQueryDecorator } from '@azure/cosmosdb-nosql-language-service/vscode';
 
 context.subscriptions.push(
   vscode.languages.registerFoldingRangeProvider(selector, new VSCodeFoldingRangeProvider(vscode, service)),
@@ -282,12 +282,12 @@ explicit diagnostics integration is `createLintSource(service)`.
 import { autocompletion } from '@codemirror/autocomplete';
 import { linter } from '@codemirror/lint';
 import { hoverTooltip } from '@codemirror/view';
-import { SqlLanguageService } from '@cosmosdb/nosql-language-service';
+import { SqlLanguageService } from '@azure/cosmosdb-nosql-language-service';
 import {
   createCompletionSource,
   createHoverTooltipSource,
   createLintSource,
-} from '@cosmosdb/nosql-language-service/codemirror';
+} from '@azure/cosmosdb-nosql-language-service/codemirror';
 
 const service = new SqlLanguageService({
   getSchema: () => collectionSchema,
@@ -305,7 +305,7 @@ const extensions = [
 
 ```typescript
 import { linter } from '@codemirror/lint';
-import { createLintSource } from '@cosmosdb/nosql-language-service/codemirror';
+import { createLintSource } from '@azure/cosmosdb-nosql-language-service/codemirror';
 
 const diagnosticsExtension = linter(createLintSource(service));
 ```
@@ -314,7 +314,7 @@ const diagnosticsExtension = linter(createLintSource(service));
 
 ```typescript
 import { foldService } from '@codemirror/language';
-import { createMultiQueryFoldService } from '@cosmosdb/nosql-language-service/codemirror';
+import { createMultiQueryFoldService } from '@azure/cosmosdb-nosql-language-service/codemirror';
 
 const foldExtension = foldService.of(createMultiQueryFoldService(service));
 ```
@@ -323,7 +323,7 @@ const foldExtension = foldService.of(createMultiQueryFoldService(service));
 
 ```typescript
 import { StreamLanguage } from '@codemirror/language';
-import { cosmosDbSqlStreamParser } from '@cosmosdb/nosql-language-service/codemirror';
+import { cosmosDbSqlStreamParser } from '@azure/cosmosdb-nosql-language-service/codemirror';
 
 const langExtension = StreamLanguage.define(cosmosDbSqlStreamParser);
 // Pass `langExtension` as an extension to EditorState.create({ extensions: [langExtension] })
@@ -333,7 +333,7 @@ const langExtension = StreamLanguage.define(cosmosDbSqlStreamParser);
 
 ```typescript
 import { keymap } from '@codemirror/view';
-import { createFormatCommand } from '@cosmosdb/nosql-language-service/codemirror';
+import { createFormatCommand } from '@azure/cosmosdb-nosql-language-service/codemirror';
 
 const formatCommand = createFormatCommand(service);
 const ext = keymap.of([{ key: 'Shift-Alt-f', run: formatCommand }]);
@@ -342,7 +342,7 @@ const ext = keymap.of([{ key: 'Shift-Alt-f', run: formatCommand }]);
 ### CodeMirror signature help
 
 ```typescript
-import { createSignatureHelpSource } from '@cosmosdb/nosql-language-service/codemirror';
+import { createSignatureHelpSource } from '@azure/cosmosdb-nosql-language-service/codemirror';
 
 // Returns a Tooltip | null for the current cursor position.
 // Wire it into a StateField + showTooltip, or call it from

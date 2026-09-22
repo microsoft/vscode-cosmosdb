@@ -157,7 +157,15 @@ extends:
                 - input: pipelineArtifact
                   pipeline: build
                   targetPath: $(System.DefaultWorkingDirectory)
-                  artifactName: Build ${{ parameters.packageToPublish }}
+                  # OneBranch publishes pipeline artifacts as drop_<StageName>_<JobName>
+                  # regardless of the artifactName we request in packages-build.yml's
+                  # templateContext.outputs (observed: our "Build <pkg>" name was
+                  # silently ignored in favor of "drop_BuildPackages_<job>"). Match
+                  # that here rather than our originally intended name.
+                  ${{ if eq(parameters.packageToPublish, 'azure-cosmosdb-schema-analyzer') }}:
+                    artifactName: drop_BuildPackages_azure_cosmosdb_schema_analyzer
+                  ${{ else }}:
+                    artifactName: drop_BuildPackages_azure_cosmosdb_nosql_language_service
             pool:
               type: release
             variables:

@@ -2,7 +2,7 @@
 
 ## Overview
 
-`@cosmosdb/schema-analyzer` is a schema inference engine that analyzes JSON and BSON documents to produce enriched [JSON Schema (draft-07)](https://json-schema.org/draft-07/json-schema-release-notes.html) output with statistical vendor extensions (`x-*` properties).
+`@azure/cosmosdb-schema-analyzer` is a schema inference engine that analyzes JSON and BSON documents to produce enriched [JSON Schema (draft-07)](https://json-schema.org/draft-07/json-schema-release-notes.html) output with statistical vendor extensions (`x-*` properties).
 
 The package is designed to serve two primary use cases within the VS Code Cosmos DB extension:
 

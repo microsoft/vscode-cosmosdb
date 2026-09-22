@@ -10,7 +10,7 @@
  * document arrays returned by the server.
  */
 
-import { parse, type SqlObjectProperty, type SqlSelectItem } from '@cosmosdb/nosql-language-service';
+import { parse, type SqlObjectProperty, type SqlSelectItem } from '@azure/cosmosdb-nosql-language-service';
 import { type QueryResultRecord } from '../cosmosdb/types/queryResult';
 
 // ─── Query shape ─────────────────────────────────────────────────────────────

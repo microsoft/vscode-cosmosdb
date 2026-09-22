@@ -11,8 +11,8 @@
  * default partition-key candidate.
  */
 
-import { type JSONSchema, type JSONSchemaRef } from '@cosmosdb/schema-analyzer';
-import { getSchemaFromDocuments, type NoSQLDocument } from '@cosmosdb/schema-analyzer/json';
+import { type JSONSchema, type JSONSchemaRef } from '@azure/cosmosdb-schema-analyzer';
+import { getSchemaFromDocuments, type NoSQLDocument } from '@azure/cosmosdb-schema-analyzer/json';
 import { type DocumentShape, type PropertyRole, type PropertyType } from './models';
 
 export interface InferredProperty {

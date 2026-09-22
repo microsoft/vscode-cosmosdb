@@ -1,4 +1,4 @@
-﻿# Completion Engine
+# Completion Engine
 
 ## How It Works
 
@@ -75,7 +75,7 @@ lexicographically.
 ### Schema fields (after `c.`):
 
 Fields are sorted by `x-occurrence` from the `JSONSchema` type
-(provided by `@cosmosdb/schema-analyzer`). Higher occurrence =
+(provided by `@azure/cosmosdb-schema-analyzer`). Higher occurrence =
 appears earlier in the list.
 
 Formula: `sortText = pad(1000 - occurrence) + fieldName`
@@ -129,9 +129,9 @@ schema.properties.tags.items.properties
 ## Monaco Integration
 
 ```typescript
-import { getCompletions, type CompletionItemKind, type JSONSchema } from "@cosmosdb/nosql-language-service";
+import { getCompletions, type CompletionItemKind, type JSONSchema } from "@azure/cosmosdb-nosql-language-service";
 
-// Schema comes from @cosmosdb/schema-analyzer (extends JSONSchema7)
+// Schema comes from @azure/cosmosdb-schema-analyzer (extends JSONSchema7)
 const currentCollectionSchema: JSONSchema = { /* ... */ };
 
 monaco.languages.registerCompletionItemProvider("cosmosdb-sql", {

@@ -34,8 +34,8 @@ import {
     type SuccessfulDeployment,
     validateDeploymentDatabaseName,
 } from '../../../../dataModeling/deploymentModel';
-import { AlertDialog } from '../../../common/AlertDialog';
 import { MonacoEditor, type MonacoEditorType } from '../../../MonacoEditor';
+import { useNativeConfirmation } from '../useNativeConfirmation';
 
 /** Editable draft retained across step navigation. Only a successful deployment is saved in the modeling snapshot. */
 interface TemplateDraft {
@@ -200,7 +200,6 @@ const useStyles = makeStyles({
     },
     successMessage: { overflowWrap: 'anywhere', color: tokens.colorNeutralForeground2 },
     explorerButton: { alignSelf: 'flex-start', maxWidth: '100%' },
-    containerNames: { fontFamily: tokens.fontFamilyMonospace },
 });
 
 const EDITOR_OPTIONS: MonacoEditorType.editor.IStandaloneEditorConstructionOptions = {
@@ -273,6 +272,7 @@ export function DeployPage({
     onDeploymentChange,
 }: DeployPageProps) {
     const styles = useStyles();
+    const { confirm, confirmationError, confirming } = useNativeConfirmation();
     const databaseGroupId = useId('database-mode');
     const containersLabelId = useId('deployment-containers');
     const methodLabelId = useId('deployment-method');
@@ -288,10 +288,8 @@ export function DeployPage({
     const [templateError, setTemplateError] = useState('');
     const [regenerateKey, setRegenerateKey] = useState<string>();
     const [generationAttempt, setGenerationAttempt] = useState(0);
-    const [confirmRegenerate, setConfirmRegenerate] = useState(false);
     const regenerateButtonRef = useRef<HTMLButtonElement>(null);
     const restoreRegenerateFocus = useRef(false);
-    const [confirmDeploy, setConfirmDeploy] = useState(false);
     const [deploying, setDeploying] = useState(false);
     const deployingRef = useRef(false);
     const deployButtonRef = useRef<HTMLButtonElement>(null);
@@ -306,14 +304,14 @@ export function DeployPage({
     useEffect(() => {
         if (deploying) {
             deploymentStatusRef.current?.focus();
-        } else if (!confirmDeploy && restoreDeployFocus.current) {
+        } else if (!confirming && restoreDeployFocus.current) {
             deployButtonRef.current?.focus();
             restoreDeployFocus.current = false;
         }
-    }, [confirmDeploy, deploying]);
+    }, [confirming, deploying]);
 
     useEffect(() => {
-        if (!confirmRegenerate && !generating && restoreRegenerateFocus.current) {
+        if (!confirming && !generating && restoreRegenerateFocus.current) {
             const frame = requestAnimationFrame(() => {
                 regenerateButtonRef.current?.focus();
                 restoreRegenerateFocus.current = false;
@@ -321,7 +319,7 @@ export function DeployPage({
             return () => cancelAnimationFrame(frame);
         }
         return undefined;
-    }, [confirmRegenerate, generating]);
+    }, [confirming, generating]);
 
     useEffect(() => {
         let disposed = false;
@@ -395,7 +393,8 @@ export function DeployPage({
     const customized = templateDraft !== undefined && template !== templateDraft.generatedTemplate;
     const templateCurrent = templateDraft?.templateInputKey === inputKey;
     const generationKey = `${format}:${inputKey}`;
-    const canAttemptDeploy = !!options && !options.unavailableReason && !selectionError && !format && !deploying;
+    const canAttemptDeploy =
+        !!options && !options.unavailableReason && !selectionError && !format && !deploying && !confirming;
 
     useEffect(() => {
         let disposed = false;
@@ -465,7 +464,28 @@ export function DeployPage({
         setGenerationAttempt((attempt) => attempt + 1);
     };
 
-    const requestDeployment = () => {
+    const confirmRegeneration = async () => {
+        if (confirming) return;
+        if (!customized) {
+            requestRegeneration();
+            return;
+        }
+        restoreRegenerateFocus.current = true;
+        onBusyChange(true);
+        try {
+            const confirmed = await confirm(
+                l10n.t('Replace your code edits?'),
+                l10n.t(
+                    'Regenerating replaces your edits for this method with code for the selected database and containers.',
+                ),
+            );
+            if (confirmed === true) requestRegeneration();
+        } finally {
+            onBusyChange(false);
+        }
+    };
+
+    const requestDeployment = async () => {
         if (!canAttemptDeploy || deployingRef.current) return;
         setShowDatabaseValidation(true);
         if (nameError) {
@@ -476,7 +496,24 @@ export function DeployPage({
             }
             return;
         }
-        setConfirmDeploy(true);
+        restoreDeployFocus.current = true;
+        onBusyChange(true);
+        const confirmed = await confirm(
+            l10n.t('Deploy data model to "{database}" in "{account}"?', {
+                database: input.databaseName,
+                account: options?.accountName ?? l10n.t('this account'),
+            }),
+            l10n.t('Deploy {count} selected container(s):', { count: input.containers.length }) +
+                ' ' +
+                input.containers.map((container) => container.entity).join(', ') +
+                '.\n' +
+                l10n.t('Matching existing containers are left unchanged.'),
+        );
+        if (confirmed === true) {
+            await deploy();
+        } else {
+            onBusyChange(false);
+        }
     };
 
     const deploy = async () => {
@@ -526,10 +563,10 @@ export function DeployPage({
         () => ({
             ...EDITOR_OPTIONS,
             ariaLabel: exportMethod?.title,
-            readOnly: deploying || generating,
-            domReadOnly: deploying || generating,
+            readOnly: deploying || generating || confirming,
+            domReadOnly: deploying || generating || confirming,
         }),
-        [deploying, generating, exportMethod],
+        [deploying, generating, confirming, exportMethod],
     );
 
     const copyCode = async () => {
@@ -543,6 +580,7 @@ export function DeployPage({
 
     return (
         <div className={styles.stack}>
+            {confirmationError ? <Text role="alert">{confirmationError}</Text> : null}
             <section className={styles.targetStrip} aria-label={l10n.t('Deployment target')}>
                 <dl className={styles.targetDetails}>
                     <div className={styles.targetItem}>
@@ -584,7 +622,7 @@ export function DeployPage({
                     aria-labelledby={databaseGroupId}
                     layout="horizontal"
                     value={draft.databaseMode}
-                    disabled={deploying}
+                    disabled={deploying || confirming}
                     onChange={(_, data) => {
                         if (data.value === 'new' || data.value === 'existing') {
                             const databaseMode = data.value;
@@ -606,7 +644,7 @@ export function DeployPage({
                         <Input
                             ref={newDatabaseNameRef}
                             value={draft.newDatabaseName}
-                            disabled={deploying}
+                            disabled={deploying || confirming}
                             onChange={(_, data) => {
                                 setShowDatabaseValidation(true);
                                 onDraftChange((previous) => ({ ...previous, newDatabaseName: data.value }));
@@ -626,7 +664,7 @@ export function DeployPage({
                             value={draft.existingDatabaseName}
                             selectedOptions={draft.existingDatabaseName ? [draft.existingDatabaseName] : []}
                             placeholder={l10n.t('Select a database')}
-                            disabled={deploying || !options || options.databases.length === 0}
+                            disabled={deploying || confirming || !options || options.databases.length === 0}
                             onOptionSelect={(_, data) => {
                                 if (data.optionValue !== undefined) {
                                     const existingDatabaseName = data.optionValue;
@@ -659,7 +697,7 @@ export function DeployPage({
                                 key={container.entity}
                                 label={container.entity}
                                 checked={draft.selectedContainers.includes(container.entity)}
-                                disabled={deploying}
+                                disabled={deploying || confirming}
                                 onChange={(_, data) =>
                                     onDraftChange((previous) => ({
                                         ...previous,
@@ -684,7 +722,7 @@ export function DeployPage({
                     className={styles.methods}
                     layout="horizontal"
                     value={draft.deploymentMethod}
-                    disabled={deploying}
+                    disabled={deploying || confirming}
                     onChange={(_, data) => {
                         if (
                             data.value === 'direct' ||
@@ -725,7 +763,7 @@ export function DeployPage({
                                     size="small"
                                     appearance="primary"
                                     icon={<CopyRegular aria-hidden />}
-                                    disabled={!template || deploying || generating}
+                                    disabled={!template || deploying || generating || confirming}
                                     onClick={() => void copyCode()}
                                 >
                                     {l10n.t('Copy code')}
@@ -733,8 +771,8 @@ export function DeployPage({
                                 <Button
                                     size="small"
                                     ref={regenerateButtonRef}
-                                    disabled={!valid || deploying || generating}
-                                    onClick={() => (customized ? setConfirmRegenerate(true) : requestRegeneration())}
+                                    disabled={!valid || deploying || generating || confirming}
+                                    onClick={() => void confirmRegeneration()}
                                 >
                                     {l10n.t('Regenerate')}
                                 </Button>
@@ -794,7 +832,7 @@ export function DeployPage({
                                     appearance="primary"
                                     icon={<ArrowUploadRegular />}
                                     disabled={!canAttemptDeploy}
-                                    onClick={requestDeployment}
+                                    onClick={() => void requestDeployment()}
                                 >
                                     {l10n.t('Deploy')}
                                 </Button>
@@ -823,7 +861,7 @@ export function DeployPage({
                         className={styles.explorerButton}
                         appearance="secondary"
                         icon={<OpenRegular aria-hidden />}
-                        disabled={openingExplorer}
+                        disabled={openingExplorer || confirming}
                         aria-description={l10n.t('Open Data Explorer for this account in the Azure portal.')}
                         onClick={() => void openDataExplorer()}
                     >
@@ -833,47 +871,6 @@ export function DeployPage({
                 {explorerError ? <Text role="alert">{explorerError}</Text> : null}
                 {deploymentError ? <Text role="alert">{deploymentError}</Text> : null}
             </section>
-            <AlertDialog
-                isOpen={confirmRegenerate}
-                title={l10n.t('Replace your code edits?')}
-                confirmButtonText={l10n.t('Regenerate')}
-                cancelButtonText={l10n.t('Cancel')}
-                onClose={(confirmed) => {
-                    restoreRegenerateFocus.current = true;
-                    setConfirmRegenerate(false);
-                    if (confirmed) requestRegeneration();
-                }}
-            >
-                {l10n.t(
-                    'Regenerating replaces your edits for this method with code for the selected database and containers.',
-                )}
-            </AlertDialog>
-            <AlertDialog
-                isOpen={confirmDeploy}
-                title={l10n.t('Deploy data model to "{database}" in "{account}"?', {
-                    database: input.databaseName,
-                    account: options?.accountName ?? l10n.t('this account'),
-                })}
-                confirmButtonText={l10n.t('Deploy')}
-                cancelButtonText={l10n.t('Cancel')}
-                onClose={(confirmed) => {
-                    setConfirmDeploy(false);
-                    if (confirmed) {
-                        void deploy();
-                    } else {
-                        restoreDeployFocus.current = true;
-                    }
-                }}
-            >
-                <>
-                    {l10n.t('Deploy {count} selected container(s):', { count: input.containers.length })}{' '}
-                    <span className={styles.containerNames}>
-                        {input.containers.map((container) => container.entity).join(', ')}.
-                    </span>
-                    <br />
-                    {l10n.t('Matching existing containers are left unchanged.')}
-                </>
-            </AlertDialog>
         </div>
     );
 }

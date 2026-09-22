@@ -46,6 +46,9 @@ the workload header scrolls away (with a reduced-motion-aware fade), and the foo
 footer overflow elevation. The extension owns step state, navigation, page content, and localized
 labels, including the step-overflow button.
 
+The wizard header uses Fluent's decorative `DatabaseLinkRegular` icon in `ContainerHeader`'s `media` slot.
+The shared header supplies its sizing, alignment, and theme-aware accent color; the icon is hidden from screen readers.
+
 Until the package exposes a content-width prop, the Data Modeler scopes a
 `[data-header-behavior] > div { max-width: none; }` override under its own wrapper. This removes the package's
 760px content cap without changing padding or scroll behavior. The selector depends on the package's internal DOM;

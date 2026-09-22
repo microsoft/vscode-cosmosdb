@@ -63,6 +63,31 @@ function context(): DataModelingRouterContext {
 describe('data modeler deployment procedure', () => {
     beforeEach(() => vi.clearAllMocks());
 
+    it.each([
+        { choice: 'Yes', result: true },
+        { choice: 'No', result: false },
+        { choice: undefined, result: undefined },
+    ])('returns $result for native confirmation choice $choice', async ({ choice, result }) => {
+        vi.mocked(vscode.window.showWarningMessage).mockImplementation(async (_message, _options, ...items) =>
+            items.find((item) => item.title === choice),
+        );
+        const caller = dataModelingRouterDef.createCaller(context());
+        expect(await caller.confirm({ message: 'Remove this container?', detail: 'Remove Orders?' })).toBe(result);
+        expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
+            'Remove this container?',
+            { modal: true, detail: 'Remove Orders?' },
+            { title: 'Yes' },
+            { title: 'No' },
+        );
+    });
+
+    it('propagates native confirmation failures without confirming an action', async () => {
+        vi.mocked(vscode.window.showWarningMessage).mockRejectedValueOnce(new Error('Dialog unavailable'));
+        await expect(
+            dataModelingRouterDef.createCaller(context()).confirm({ message: 'Continue?', detail: '' }),
+        ).rejects.toThrow('Dialog unavailable');
+    });
+
     it('uses the host account and keeps recommendation content out of telemetry', async () => {
         const ctx = context();
         vi.mocked(deployDataModel).mockResolvedValue({ status: 'cancelled' });

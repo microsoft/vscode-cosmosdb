@@ -23,6 +23,7 @@ import { createInitialSnapshot } from './modelingAdvisorState';
 
 const client = vi.hoisted(() => ({
     dataModeling: {
+        confirm: { mutate: vi.fn() },
         loadState: { query: vi.fn() },
         saveState: { mutate: vi.fn() },
         requestRecommendation: { mutate: vi.fn() },
@@ -111,8 +112,22 @@ function render(element: ReactElement) {
     return renderReact(<FluentProvider theme={webLightTheme}>{element}</FluentProvider>);
 }
 
+let respondToConfirmation: ((result: boolean | undefined) => void) | undefined;
+
+async function answerConfirmation(message: string | RegExp, result: boolean | undefined) {
+    await waitFor(() => {
+        expect(respondToConfirmation).toBeTypeOf('function');
+        expect(client.dataModeling.confirm.mutate.mock.calls.at(-1)?.[0].message).toMatch(message);
+    });
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    await act(async () => {
+        respondToConfirmation!(result);
+        respondToConfirmation = undefined;
+    });
+}
+
 async function continueExisting() {
-    await userEvent.click(await screen.findByRole('button', { name: 'Continue existing' }));
+    await answerConfirmation('Continue your data model?', true);
 }
 
 async function enterDeployStep() {
@@ -127,18 +142,11 @@ async function enterDeployStep() {
 }
 
 async function confirmAdvance() {
-    const yes = within(await screen.findByRole('alertdialog', { name: 'Restart from this step?' })).getByRole(
-        'button',
-        { name: 'Yes' },
-    );
-    expect(yes).toHaveTextContent('Yes');
-    expect(yes).toHaveAccessibleName('Yes');
-    await userEvent.click(yes);
+    await answerConfirmation('Restart from this step?', true);
 }
 
 async function confirmDeployment() {
-    const dialog = await screen.findByRole('alertdialog', { name: /^Deploy data model to/ });
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Deploy' }));
+    await answerConfirmation(/^Deploy data model to/, true);
 }
 
 /**
@@ -156,6 +164,13 @@ function expectNoActionableDeployButton() {
 describe('data modeler saved-work choice and revisiting steps', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        respondToConfirmation = undefined;
+        client.dataModeling.confirm.mutate.mockImplementation(
+            () =>
+                new Promise<boolean | undefined>((resolve) => {
+                    respondToConfirmation = resolve;
+                }),
+        );
         client.dataModeling.loadState.query.mockResolvedValue(null);
         client.dataModeling.saveState.mutate.mockResolvedValue(undefined);
         client.dataModeling.requestRecommendation.mutate.mockResolvedValue(undefined);
@@ -182,7 +197,13 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         const content = scrollRegion?.firstElementChild;
         expect(content).toContainElement(navigation);
         expect(content).toHaveStyle({ maxWidth: 'none', padding: '24px' });
-        expect(scrollRegion).toContainElement(screen.getByRole('heading', { name: /^Workload:/ }));
+        const title = screen.getByRole('heading', { name: /^Workload:/ });
+        expect(scrollRegion).toContainElement(title);
+        expect(title).toHaveAccessibleName(title.textContent);
+        const titleIcon = title.parentElement?.parentElement?.querySelector('svg');
+        expect(titleIcon).toBeVisible();
+        expect(titleIcon).toHaveAttribute('aria-hidden', 'true');
+        expect(titleIcon).toHaveAttribute('focusable', 'false');
         expect(scrollRegion).toContainElement(screen.getByRole('heading', { name: 'Partition key recommendation' }));
         expect(scrollRegion).not.toContainElement(screen.getByRole('button', { name: 'Start Over' }));
         expect(within(navigation).getByRole('button', { name: 'Result' })).toHaveAttribute('aria-current', 'step');
@@ -515,22 +536,20 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
     });
 
-    it('shows an accessible choice on Workload without overwriting or resuming saved work', async () => {
+    it('opens a native saved-work choice and preserves it on dismissal until the choice is reopened', async () => {
         client.dataModeling.loadState.query.mockResolvedValue(restored(4));
         render(<DataModelingWizard />);
-        const dialog = await screen.findByRole('alertdialog', { name: 'Continue your data model?' });
+        const proceed = await screen.findByRole('button', { name: 'Continue your data model?' });
         expect(screen.getByText('Workload')).toBeInTheDocument();
-        const proceed = screen.getByRole('button', { name: 'Continue existing' });
-        expect(proceed).toHaveTextContent('Continue existing');
-        expect(proceed).toHaveAccessibleName('Continue existing');
-        expect(screen.getByRole('button', { name: 'Start new' })).toHaveTextContent('Start new');
-        expect(screen.getByRole('button', { name: 'Start new' })).toHaveAccessibleName('Start new');
-        await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
-        await userEvent.keyboard('{Escape}');
-        expect(dialog).toBeInTheDocument();
+        expect(proceed).toHaveTextContent('Continue your data model?');
+        expect(proceed).toHaveAccessibleName('Continue your data model?');
+        await answerConfirmation('Continue your data model?', undefined);
+        expect(proceed).toHaveFocus();
         expect(client.dataModeling.events.subscribe).not.toHaveBeenCalled();
         expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
+        expect(client.dataModeling.confirm.mutate).toHaveBeenCalledOnce();
         await userEvent.click(proceed);
+        await continueExisting();
         expect(await screen.findByText('Restored result')).toBeInTheDocument();
         expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
         expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
@@ -539,10 +558,42 @@ describe('data modeler saved-work choice and revisiting steps', () => {
     it('Start new replaces only the saved session and keeps the Workload page', async () => {
         client.dataModeling.loadState.query.mockResolvedValue(restored(4));
         render(<DataModelingWizard />);
-        await userEvent.click(await screen.findByRole('button', { name: 'Start new' }));
+        await answerConfirmation('Continue your data model?', false);
         expect(await screen.findByRole('button', { name: 'Start' })).toBeDisabled();
         expect(lastSave()).toEqual(createInitialSnapshot());
         expect(screen.queryByText('Restored result')).not.toBeInTheDocument();
+    });
+
+    it('reports a failed saved-work prompt and allows retry without overwriting the model', async () => {
+        client.dataModeling.loadState.query.mockResolvedValue(restored(4));
+        client.dataModeling.confirm.mutate.mockRejectedValueOnce(new Error('Host unavailable'));
+        render(<DataModelingWizard />);
+        expect(await screen.findByRole('alert')).toHaveTextContent('Could not open the confirmation dialog.');
+        expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
+        await userEvent.click(screen.getByRole('button', { name: 'Continue your data model?' }));
+        await continueExisting();
+        expect(await screen.findByText('Restored result')).toBeInTheDocument();
+    });
+
+    it.each([true, false, undefined])('removes a container only after native Yes (response: %s)', async (response) => {
+        const saved = restored();
+        saved.wizard.dataModel.containers.push(createBlankContainer('Users'));
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        render(<DataModelingWizard />);
+        await continueExisting();
+        const remove = screen.getByRole('button', { name: 'Remove this container' });
+        await userEvent.click(remove);
+        expect(client.dataModeling.confirm.mutate).toHaveBeenLastCalledWith({
+            message: 'Remove this container?',
+            detail: 'Remove the “Orders” container? This cannot be undone.',
+        });
+        expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
+        await answerConfirmation('Remove this container?', response);
+        expect(client.dataModeling.saveState.mutate).toHaveBeenCalledTimes(response === true ? 1 : 0);
+        expect((lastSave() ?? saved).wizard.dataModel.containers.map((container) => container.entity)).toEqual(
+            response === true ? ['Users'] : ['Orders', 'Users'],
+        );
+        expect(remove).toHaveProperty('disabled', response === true);
     });
 
     it('preserves inputs and cardinality, but does not save tabs, draft properties, or dialogs', async () => {
@@ -585,7 +636,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             .mockResolvedValue(restored());
         render(<DataModelingWizard />);
         await userEvent.click(await screen.findByRole('button', { name: 'Retry loading' }));
-        expect(await screen.findByRole('alertdialog')).toBeInTheDocument();
+        await waitFor(() => expect(client.dataModeling.confirm.mutate).toHaveBeenCalledOnce());
         expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
     });
 
@@ -593,7 +644,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         client.dataModeling.loadState.query.mockResolvedValue(restored());
         client.dataModeling.saveState.mutate.mockRejectedValueOnce(new Error('disk full'));
         render(<DataModelingWizard />);
-        await userEvent.click(await screen.findByRole('button', { name: 'Start new' }));
+        await answerConfirmation('Continue your data model?', false);
         const retry = await screen.findByRole('button', { name: 'Retry saving' });
         expect(screen.getByRole('alert')).toHaveTextContent('Could not save');
         await userEvent.click(retry);
@@ -763,7 +814,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(screen.getByText('The recommendation is invalid. Request a new recommendation.')).toBeInTheDocument();
     });
 
-    it.each(['Cancel', 'Escape'])(
+    it.each([false, undefined])(
         'keeps the result and restores focus when confirmation is dismissed with %s',
         async (dismissal) => {
             const user = userEvent.setup();
@@ -773,14 +824,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             await user.click(screen.getByRole('button', { name: 'Review' }));
             const next = screen.getByRole('button', { name: 'Get Recommendation' });
             await user.click(next);
-            const cancel = within(
-                await screen.findByRole('alertdialog', { name: 'Restart from this step?' }),
-            ).getByRole('button', { name: 'Cancel' });
-            expect(cancel).toHaveTextContent('Cancel');
-            expect(cancel).toHaveAccessibleName('Cancel');
-            await waitFor(() => expect(cancel).toHaveFocus());
-            if (dismissal === 'Escape') await user.keyboard('{Escape}');
-            else await user.click(cancel);
+            await answerConfirmation('Restart from this step?', dismissal);
             await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
             await waitFor(() => expect(next).toHaveFocus());
             await user.click(screen.getByRole('button', { name: 'Result' }));

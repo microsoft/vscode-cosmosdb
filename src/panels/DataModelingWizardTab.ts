@@ -7,6 +7,7 @@ import { TypedEventSink } from '@microsoft/vscode-ext-webview';
 import { attachTrpc } from '@microsoft/vscode-ext-webview/host';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
+import { ModelingTelemetry } from '../dataModeling/ModelingTelemetry';
 import { ext } from '../extensionVariables';
 import { DataModelerProjectService, type DataModelerAccount } from '../services/DataModelerProjectService';
 import { BaseTab } from './BaseTab';
@@ -24,6 +25,7 @@ export class DataModelingWizardTab extends BaseTab {
     public static readonly openTabs: Set<DataModelingWizardTab> = new Set<DataModelingWizardTab>();
 
     public readonly eventSink: TypedEventSink<DataModelingEvent>;
+    public readonly modelingTelemetry: ModelingTelemetry;
 
     protected constructor(
         panel: vscode.WebviewPanel,
@@ -34,6 +36,10 @@ export class DataModelingWizardTab extends BaseTab {
         DataModelingWizardTab.openTabs.add(this);
 
         this.eventSink = new TypedEventSink<DataModelingEvent>();
+        this.modelingTelemetry = new ModelingTelemetry(panel.visible, Date.now, this.id);
+        this.disposables.push(
+            panel.onDidChangeViewState(({ webviewPanel }) => this.modelingTelemetry.setVisible(webviewPanel.visible)),
+        );
 
         const { disposable } = attachTrpc(
             this.panel,
@@ -88,21 +94,30 @@ export class DataModelingWizardTab extends BaseTab {
     }
 
     /** Push a Copilot-produced recommendation to the webview's Result page. */
-    public reportRecommendation(recommendation: PartitionKeyRecommendation): void {
+    public reportRecommendation(recommendation: PartitionKeyRecommendation, requestId?: string): void {
+        if (!this.modelingTelemetry.recommendationReceived(recommendation, requestId)) return;
         ext.outputChannel.info(
             `[DataModelingWizardTab] emitting 'recommendationReceived' ` +
                 `(${recommendation.containers.length} container(s)) to the webview.`,
         );
-        this.eventSink.emit({ type: 'recommendationReceived', recommendation });
+        this.eventSink.emit({ type: 'recommendationReceived', recommendation, ...(requestId ? { requestId } : {}) });
     }
 
     /** Notify the webview that the recommendation could not be produced. */
-    public reportRecommendationError(message: string): void {
+    public reportRecommendationError(
+        message: string,
+        requestId?: string,
+        category: 'ai' | 'invalidResult' = 'ai',
+    ): void {
+        if (!this.modelingTelemetry.acceptsResponse(requestId)) return;
+        if (!this.modelingTelemetry.recommendationFailed(requestId, category)) return;
         ext.outputChannel.warn(`[DataModelingWizardTab] emitting 'recommendationError' to the webview.`);
-        this.eventSink.emit({ type: 'recommendationError', message });
+        this.eventSink.emit({ type: 'recommendationError', message, ...(requestId ? { requestId } : {}) });
     }
 
     public dispose(): void {
+        if (this.isDisposed) return;
+        this.modelingTelemetry.dispose();
         DataModelingWizardTab.openTabs.delete(this);
         this.eventSink.close();
         super.dispose();
@@ -116,6 +131,7 @@ export class DataModelingWizardTab extends BaseTab {
             panel: this.panel,
             eventSink: this.eventSink,
             wizardTabId: this.getId(),
+            modelingTelemetry: this.modelingTelemetry,
         };
     }
 }

@@ -16,6 +16,7 @@ import {
     type GenerateDeploymentTemplateInput,
     type ModelDeploymentResult,
 } from '../../dataModeling/deploymentModel';
+import { type ModelingDeploymentTelemetry } from '../../dataModeling/ModelingTelemetry';
 import { ext } from '../../extensionVariables';
 import { type CosmosModel } from '../../panels/migration/cosmosModel';
 import { buildBicepTemplate } from '../../panels/migration/helpers/bicepGenerator';
@@ -103,15 +104,27 @@ export async function deployDataModel(
     account: DataModelerAccount,
     request: DeploymentRequest,
     context: IActionContext,
+    reportTelemetry?: (result: ModelingDeploymentTelemetry) => void,
 ): Promise<ModelDeploymentResult> {
     context.telemetry.suppressAll = true;
     context.errorHandling.suppressDisplay = true;
-    const accountKey = new URL(account.endpoint).href.replace(/\/+$/, '');
-    if (deployingAccounts.has(accountKey))
-        throw new Error(l10n.t('A data model deployment is already in progress for this account.'));
-    deployingAccounts.add(accountKey);
+    const started = Date.now();
+    let accountKey: string | undefined;
+    let acquired = false;
     let writesStarted = false;
+    let createdCount = 0;
+    let existingCount = 0;
+    let outcome: ModelingDeploymentTelemetry['outcome'] = 'error';
+    let errorCategory: ModelingDeploymentTelemetry['errorCategory'] = 'validation';
     try {
+        context.valuesToMask.push(account.endpoint);
+        accountKey = new URL(account.endpoint).href.replace(/\/+$/, '');
+        if (deployingAccounts.has(accountKey)) {
+            errorCategory = 'concurrent';
+            throw new Error(l10n.t('A data model deployment is already in progress for this account.'));
+        }
+        deployingAccounts.add(accountKey);
+        acquired = true;
         const input = DeploymentRequestSchema.parse(request);
         const model = createDeploymentModel(input);
         context.valuesToMask.push(
@@ -121,6 +134,7 @@ export async function deployDataModel(
         );
         const plane = requireControlPlane(account);
         missingContainers(model, await checkDatabase(plane, input, true));
+        errorCategory = 'infrastructure';
         const created = await vscode.window.withProgress(
             {
                 location: vscode.ProgressLocation.Notification,
@@ -129,6 +143,7 @@ export async function deployDataModel(
             },
             async (progress) => {
                 const pending = missingContainers(model, await checkDatabase(plane, input, true));
+                existingCount = model.containers.length - pending.containers.length;
                 return provisionCosmosModel(
                     pending,
                     input.databaseName,
@@ -139,7 +154,9 @@ export async function deployDataModel(
                         },
                         createContainer: async (name, definition, maxThroughput) => {
                             writesStarted = true;
-                            return plane.createContainer(name, definition, undefined, maxThroughput);
+                            const container = await plane.createContainer(name, definition, undefined, maxThroughput);
+                            createdCount++;
+                            return container;
                         },
                     },
                     {
@@ -156,6 +173,7 @@ export async function deployDataModel(
             },
         );
         if (!created) throw new vscode.CancellationError();
+        outcome = 'success';
         const result: ModelDeploymentResult = {
             status: 'deployed',
             databaseName: input.databaseName,
@@ -171,6 +189,7 @@ export async function deployDataModel(
         );
         return result;
     } catch (error) {
+        if (error instanceof vscode.CancellationError) outcome = 'cancelled';
         const message = l10n.t('Data model deployment failed: {error}', { error: parseError(error).message });
         void vscode.window.showErrorMessage(
             writesStarted
@@ -183,7 +202,20 @@ export async function deployDataModel(
         );
         throw error;
     } finally {
-        deployingAccounts.delete(accountKey);
+        if (acquired && accountKey) deployingAccounts.delete(accountKey);
+        try {
+            reportTelemetry?.({
+                outcome,
+                databaseMode: request.databaseMode === 'new' ? 'new' : 'existing',
+                durationMs: Math.max(0, Date.now() - started),
+                writesStarted,
+                createdCount,
+                existingCount,
+                ...(outcome === 'error' ? { errorCategory } : {}),
+            });
+        } catch {
+            // Reporting must not replace the original deployment result or error.
+        }
         if (writesStarted) {
             ext.cosmosDBBranchDataProvider.refresh();
             ext.cosmosDBWorkspaceBranchDataProvider.refresh();

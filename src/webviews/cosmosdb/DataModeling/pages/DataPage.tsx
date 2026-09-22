@@ -20,7 +20,8 @@ import {
 } from '@fluentui/react-components';
 import { ArrowUploadRegular, DismissRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { type ChangeEvent, type KeyboardEvent, useRef, useState } from 'react';
+import { type ChangeEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react';
+import { type ModelingTelemetryEvent } from '../../../../dataModeling/modelingTelemetrySchema';
 import { FieldGroup, MythBox, SubPanel, TwoColumn } from '../components/primitives';
 import { type DataModel } from '../dataModel';
 import { inferSchemaFromJson } from '../jsonInference';
@@ -142,9 +143,10 @@ export interface DataPageProps {
     model: DataModel;
     scenarioLabel?: string;
     onChange: (next: DataModel) => void;
+    onTelemetry?: (event: ModelingTelemetryEvent) => void;
 }
 
-export function DataPage({ model, scenarioLabel, onChange }: DataPageProps) {
+export function DataPage({ model, scenarioLabel, onChange, onTelemetry }: DataPageProps) {
     const styles = useStyles();
     const [draftTag, setDraftTag] = useState('');
     const [uploadInfo, setUploadInfo] = useState<string>();
@@ -162,6 +164,12 @@ export function DataPage({ model, scenarioLabel, onChange }: DataPageProps) {
     const onChangeContainers = (next: ContainerModel[]) => onChange({ ...model, containers: next });
 
     const active = containers.find((c) => c.id === activeContainerId) ?? containers[0];
+    useEffect(() => {
+        const input = fileRef.current;
+        const onCancel = () => onTelemetry?.({ type: 'schemaImport', outcome: 'cancelled' });
+        input?.addEventListener('cancel', onCancel);
+        return () => input?.removeEventListener('cancel', onCancel);
+    }, [active?.id, onTelemetry]);
 
     const updateActive = (updater: (c: ContainerModel) => ContainerModel) => {
         onChangeContainers(containers.map((c) => (c.id === active?.id ? updater(c) : c)));
@@ -172,6 +180,7 @@ export function DataPage({ model, scenarioLabel, onChange }: DataPageProps) {
         if (!trimmed) {
             return;
         }
+        const willAdd = active && !active.properties.some((p) => p.name.toLowerCase() === trimmed.toLowerCase());
         updateActive((c) => {
             if (c.properties.some((p) => p.name.toLowerCase() === trimmed.toLowerCase())) {
                 return c;
@@ -185,6 +194,7 @@ export function DataPage({ model, scenarioLabel, onChange }: DataPageProps) {
             };
             return { ...c, properties: [...c.properties, prop] };
         });
+        if (willAdd) onTelemetry?.({ type: 'fieldAdded' });
     };
 
     const removeProperty = (id: string) =>
@@ -202,6 +212,7 @@ export function DataPage({ model, scenarioLabel, onChange }: DataPageProps) {
         }));
 
     const onUploadClick = () => {
+        onTelemetry?.({ type: 'control', control: 'schemaUpload' });
         setUploadError(undefined);
         fileRef.current?.click();
     };
@@ -222,6 +233,7 @@ export function DataPage({ model, scenarioLabel, onChange }: DataPageProps) {
             }),
         );
         if (result === true) await applyUpload(file);
+        else onTelemetry?.({ type: 'schemaImport', outcome: 'cancelled' });
         uploadButtonRef.current?.focus();
     };
 
@@ -238,7 +250,9 @@ export function DataPage({ model, scenarioLabel, onChange }: DataPageProps) {
             }));
             setUploadInfo(file.name);
             setUploadError(undefined);
+            onTelemetry?.({ type: 'schemaImport', outcome: 'success' });
         } catch {
+            onTelemetry?.({ type: 'schemaImport', outcome: 'error' });
             setUploadInfo(undefined);
             setUploadError(
                 l10n.t('Could not read {file}. Make sure it is a JSON object or an array of objects.', {

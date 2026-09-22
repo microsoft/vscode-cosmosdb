@@ -143,6 +143,32 @@ describe('findDataModelingWizardTab', () => {
 });
 
 describe('cosmosdb_reportPartitionKeyRecommendation', () => {
+    it('forwards attempt IDs separately from the recommendation and on failures', async () => {
+        const tab = {
+            getId: () => '1c70d73d-9d5d-415a-93f3-630d3e581d63',
+            reportRecommendation: vi.fn(),
+            reportRecommendationError: vi.fn(),
+        };
+        wizardTabs.add(tab);
+        const tool = captureRegisteredTool(registerReportPartitionKeyRecommendationTool);
+        const requestId = '12345678-1234-4123-8123-123456789001';
+        const recommendation = {
+            summary: 'PRIVATE SUMMARY',
+            containers: [{ entity: 'PRIVATE ENTITY', partitionKey: '/private', rationale: 'PRIVATE RATIONALE' }],
+        };
+        await tool.invoke({ input: { wizardTabId: tab.getId(), requestId, ...recommendation } }, {});
+        expect(tab.reportRecommendation).toHaveBeenCalledWith(recommendation, requestId);
+        await tool.invoke({ input: { wizardTabId: tab.getId(), requestId, error: 'PRIVATE FAILURE' } }, {});
+        expect(tab.reportRecommendationError).toHaveBeenCalledWith('PRIVATE FAILURE', requestId);
+        await tool.invoke({ input: { wizardTabId: tab.getId(), requestId, containers: [] } }, {});
+        expect(tab.reportRecommendationError).toHaveBeenLastCalledWith(
+            'The recommendation was not in the expected shape and could not be shown.',
+            requestId,
+            'invalidResult',
+        );
+        expect(JSON.stringify(actionContexts.map((ctx) => ctx.telemetry))).not.toContain('PRIVATE');
+    });
+
     afterEach(() => {
         wizardTabs.clear();
         actionContexts.length = 0;
@@ -175,6 +201,7 @@ describe('cosmosdb_reportPartitionKeyRecommendation', () => {
         expect(serializeToolResult(result)).toBe(`Recommendation failed: ${error}`);
         expect(actionContexts.at(-1)?.valuesToMask).toContain(error);
         expect(actionContexts.at(-1)?.telemetry).toEqual({
+            suppressAll: true,
             properties: { outcome: 'recommendationFailed' },
             measurements: {},
         });
@@ -215,6 +242,8 @@ describe('cosmosdb_reportPartitionKeyRecommendation', () => {
         expect(tab.reportRecommendation).not.toHaveBeenCalled();
         expect(tab.reportRecommendationError).toHaveBeenCalledWith(
             'The recommendation was not in the expected shape and could not be shown.',
+            undefined,
+            'invalidResult',
         );
     });
 
@@ -410,6 +439,8 @@ describe('cosmosdb_reportPartitionKeyRecommendation', () => {
 
         expect(wizardTab.reportRecommendationError).toHaveBeenCalledWith(
             'The recommendation was not in the expected shape and could not be shown.',
+            undefined,
+            'invalidResult',
         );
     });
 });

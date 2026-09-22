@@ -66,7 +66,8 @@ describe('DataPage native schema confirmation', () => {
         const container = createBlankContainer('Orders');
         const model: DataModel = { containers: [container], activeContainerId: container.id };
         const onChange = vi.fn<(next: DataModel) => void>();
-        const page = render(<DataPage model={model} onChange={onChange} />);
+        const onTelemetry = vi.fn();
+        const page = render(<DataPage model={model} onChange={onChange} onTelemetry={onTelemetry} />);
         const file = new File(['{"id":"1","amount":5}'], 'orders.json', { type: 'application/json' });
         const readFile = vi.fn().mockResolvedValue('{"id":"1","amount":5}');
         Object.defineProperty(file, 'text', { value: readFile });
@@ -87,6 +88,11 @@ describe('DataPage native schema confirmation', () => {
             response === true ? ['id', 'amount'] : undefined,
         );
         expect(screen.getByRole('button', { name: 'Upload JSON' })).toHaveFocus();
+        expect(onTelemetry).toHaveBeenCalledExactlyOnceWith({
+            type: 'schemaImport',
+            outcome: response === true ? 'success' : 'cancelled',
+        });
+        expect(JSON.stringify(onTelemetry.mock.calls)).not.toContain('orders.json');
     });
 
     it('reports confirmation failures and leaves the schema unchanged', async () => {
@@ -103,5 +109,63 @@ describe('DataPage native schema confirmation', () => {
             expect(screen.getByRole('alert')).toHaveTextContent('Could not open the confirmation dialog.'),
         );
         expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it('records an upload activation and a parse failure without file names or JSON contents', async () => {
+        confirm.mockResolvedValue(true);
+        const container = createBlankContainer('Private entity');
+        const onTelemetry = vi.fn();
+        const onChange = vi.fn();
+        const page = render(
+            <DataPage
+                model={{ containers: [container], activeContainerId: container.id }}
+                onChange={onChange}
+                onTelemetry={onTelemetry}
+            />,
+        );
+        await userEvent.click(screen.getByRole('button', { name: 'Upload JSON' }));
+        expect(onTelemetry).toHaveBeenCalledWith({ type: 'control', control: 'schemaUpload' });
+        const file = new File(['private-invalid-json'], 'private-file.json');
+        Object.defineProperty(file, 'text', { value: vi.fn().mockResolvedValue('private-invalid-json') });
+        fireEvent.change(page.container.querySelector('input[type="file"]')!, { target: { files: [file] } });
+        await waitFor(() => expect(onTelemetry).toHaveBeenCalledWith({ type: 'schemaImport', outcome: 'error' }));
+        expect(onChange).not.toHaveBeenCalled();
+        expect(JSON.stringify(onTelemetry.mock.calls)).not.toContain('private');
+    });
+
+    it('records a cancelled native file picker without applying a schema', () => {
+        const container = createBlankContainer();
+        const onTelemetry = vi.fn();
+        const onChange = vi.fn();
+        const page = render(
+            <DataPage
+                model={{ containers: [container], activeContainerId: container.id }}
+                onChange={onChange}
+                onTelemetry={onTelemetry}
+            />,
+        );
+        fireEvent(page.container.querySelector('input[type="file"]')!, new Event('cancel'));
+        expect(onTelemetry).toHaveBeenCalledExactlyOnceWith({ type: 'schemaImport', outcome: 'cancelled' });
+        expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it('records only successful new fields, not typing, empty submissions or duplicates', async () => {
+        const container = createBlankContainer();
+        const onTelemetry = vi.fn();
+        render(
+            <DataPage
+                model={{ containers: [container], activeContainerId: container.id }}
+                onChange={vi.fn()}
+                onTelemetry={onTelemetry}
+            />,
+        );
+        const user = userEvent.setup();
+        const input = screen.getByPlaceholderText('Add property…');
+        await user.type(input, 'id{Enter}   {Enter}');
+        expect(onTelemetry).not.toHaveBeenCalled();
+        await user.type(input, 'privateNewField');
+        expect(onTelemetry).not.toHaveBeenCalled();
+        await user.keyboard('{Enter}');
+        expect(onTelemetry).toHaveBeenCalledExactlyOnceWith({ type: 'fieldAdded' });
     });
 });

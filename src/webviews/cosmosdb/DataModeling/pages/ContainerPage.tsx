@@ -5,8 +5,11 @@
 
 import { makeStyles, Tab, TabList, tokens } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { modelingInputsEqual } from '../../../../dataModeling/modelingTelemetryMetrics';
+import { type ModelingSection, type ModelingTelemetryEvent } from '../../../../dataModeling/modelingTelemetrySchema';
 import { type DataModel } from '../dataModel';
+import { useModelingPageVisible } from '../useModelingTelemetry';
 import { DataPage } from './DataPage';
 import { QueriesPage } from './QueriesPage';
 import { ScalePage } from './ScalePage';
@@ -38,27 +41,70 @@ export interface ContainerPageProps {
     onChangeData: (next: DataModel) => void;
     /** Queries- and Scale-tab edits write their slice back unchanged. */
     onChange: (next: DataModel) => void;
+    active?: boolean;
+    containerId?: string;
+    onVisit?: (containerId: string, section: ModelingSection) => void;
+    onEdited?: (section: ModelingSection) => void;
+    onTelemetry?: (event: ModelingTelemetryEvent) => void;
 }
 
-export function ContainerPage({ model, scenarioLabel, onChangeData, onChange }: ContainerPageProps) {
+export function ContainerPage({
+    model,
+    scenarioLabel,
+    onChangeData,
+    onChange,
+    active = true,
+    containerId,
+    onVisit,
+    onEdited,
+    onTelemetry,
+}: ContainerPageProps) {
     const styles = useStyles();
     const [tab, setTab] = useState<ContainerTab>('data');
+    const visible = useModelingPageVisible();
+    useEffect(() => {
+        if (active && visible && containerId) {
+            onVisit?.(containerId, tab);
+        }
+    }, [active, visible, containerId, tab, onVisit]);
+    const change = (next: DataModel) => {
+        if (!modelingInputsEqual(next, model)) {
+            onEdited?.(tab);
+        }
+        if (tab === 'data') onChangeData(next);
+        else onChange(next);
+    };
 
     return (
         <div className={styles.stack}>
             <TabList
                 className={styles.tabList}
                 selectedValue={tab}
-                onTabSelect={(_, data) => setTab(data.value as ContainerTab)}
+                onTabSelect={(_, data) => {
+                    if (data.value === 'data' || data.value === 'queries' || data.value === 'scale') {
+                        setTab(data.value);
+                        onTelemetry?.({
+                            type: 'control',
+                            control:
+                                data.value === 'data'
+                                    ? 'containerDataTab'
+                                    : data.value === 'queries'
+                                      ? 'containerQueriesTab'
+                                      : 'containerScaleTab',
+                        });
+                    }
+                }}
             >
                 <Tab value="data">{l10n.t('Data')}</Tab>
                 <Tab value="queries">{l10n.t('Queries')}</Tab>
                 <Tab value="scale">{l10n.t('Scale')}</Tab>
             </TabList>
 
-            {tab === 'data' ? <DataPage model={model} scenarioLabel={scenarioLabel} onChange={onChangeData} /> : null}
-            {tab === 'queries' ? <QueriesPage model={model} onChange={onChange} /> : null}
-            {tab === 'scale' ? <ScalePage model={model} onChange={onChange} /> : null}
+            {tab === 'data' ? (
+                <DataPage model={model} scenarioLabel={scenarioLabel} onChange={change} onTelemetry={onTelemetry} />
+            ) : null}
+            {tab === 'queries' ? <QueriesPage model={model} onChange={change} /> : null}
+            {tab === 'scale' ? <ScalePage model={model} onChange={change} /> : null}
         </div>
     );
 }

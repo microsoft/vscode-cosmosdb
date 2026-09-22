@@ -52,6 +52,7 @@ import { ResultPage } from './pages/ResultPage';
 import { ReviewPage } from './pages/ReviewPage';
 import { WorkloadPage } from './pages/WorkloadPage';
 import { getScenarioList } from './scenarios';
+import { useModelingPageVisible, useModelingTelemetryReporter, useModelingUsage } from './useModelingTelemetry';
 import { useNativeConfirmation } from './useNativeConfirmation';
 
 /**
@@ -139,12 +140,20 @@ function footerHint(value: string): string {
 
 export const DataModelingWizard = () => {
     const trpcClient = useTrpcClient<DataModelingAppRouter>();
+    const report = useModelingTelemetryReporter();
+    const choiceMade = useRef(false);
     const load = useCallback(() => trpcClient.dataModeling.loadState.query(), [trpcClient]);
     const save = useCallback(
         (snapshot: ReturnType<typeof createInitialSnapshot>) => trpcClient.dataModeling.saveState.mutate(snapshot),
         [trpcClient],
     );
     const persistence = useModelingAdvisorPersistence({ load, save });
+    useEffect(() => {
+        if (persistence.loadStatus === 'ready' && !choiceMade.current) {
+            choiceMade.current = true;
+            report({ type: 'sessionChoice', choice: 'new' });
+        }
+    }, [persistence.loadStatus, report]);
     const loadMessage = l10n.t('Loading saved modeling advisor state…');
     const loadError = l10n.t('Could not load the modeling advisor state. Retry before making changes.');
     const saveError = l10n.t('Could not save the modeling advisor state. Keep this tab open and retry.');
@@ -163,7 +172,20 @@ export const DataModelingWizard = () => {
     }
 
     if (persistence.loadStatus === 'choice') {
-        return <SavedModelChoice onContinue={persistence.continueExisting} onStartNew={persistence.startNew} />;
+        return (
+            <SavedModelChoice
+                onContinue={() => {
+                    choiceMade.current = true;
+                    report({ type: 'sessionChoice', choice: 'continued' });
+                    persistence.continueExisting();
+                }}
+                onStartNew={() => {
+                    choiceMade.current = true;
+                    report({ type: 'sessionChoice', choice: 'replaced' });
+                    persistence.startNew();
+                }}
+            />
+        );
     }
 
     return (
@@ -223,10 +245,15 @@ const HydratedDataModelingWizard = ({
 }: Pick<ReturnType<typeof useModelingAdvisorPersistence>, 'snapshot' | 'setSnapshot' | 'flush'>) => {
     const styles = useStyles();
     const trpcClient = useTrpcClient<DataModelingAppRouter>();
+    const report = useModelingTelemetryReporter();
+    const visible = useModelingPageVisible();
     const { confirm, confirming, confirmationError } = useNativeConfirmation();
     const advanceButtonRef = useRef<HTMLButtonElement>(null);
     const removeButtonRef = useRef<HTMLButtonElement>(null);
     const requestGeneration = useRef(0);
+    const requestId = useRef<string | undefined>(undefined);
+    const deliveredRequestId = useRef<string | undefined>(undefined);
+    const requestPending = useRef(false);
     useEffect(
         () => () => {
             requestGeneration.current += 1;
@@ -234,6 +261,7 @@ const HydratedDataModelingWizard = ({
         [],
     );
     const state = snapshot.wizard;
+    const { visit, markEdited } = useModelingUsage(state, report);
     const setState = useCallback(
         (update: SetStateAction<WizardState>) =>
             setSnapshot((previous) => ({
@@ -252,6 +280,11 @@ const HydratedDataModelingWizard = ({
     const containerNameInputRef = useRef<HTMLInputElement>(null);
 
     const { status: recommendationStatus, value: recommendation, error: recommendationError } = snapshot.recommendation;
+    const [feedback, setFeedback] = useState<{
+        recommendation: typeof recommendation;
+        vote: 'up' | 'down';
+    }>();
+    const selectedFeedback = feedback?.recommendation === recommendation ? feedback?.vote : undefined;
     const [deployOwner, setDeployOwner] = useState<typeof recommendation>(
         snapshot.deployment ? recommendation : undefined,
     );
@@ -300,6 +333,21 @@ const HydratedDataModelingWizard = ({
     useEffect(() => {
         const subscription = trpcClient.dataModeling.events.subscribe(undefined, {
             onData: (event: DataModelingEvent) => {
+                if (event.requestId && event.requestId !== requestId.current) {
+                    return;
+                }
+                requestPending.current = false;
+                deliveredRequestId.current = event.requestId;
+                if (
+                    event.type === 'recommendationReceived' &&
+                    !PartitionKeyRecommendationSchema.safeParse(event.recommendation).success
+                ) {
+                    report({
+                        type: 'recommendationClientFailure',
+                        requestId: event.requestId,
+                        errorCategory: 'invalidResult',
+                    });
+                }
                 setSnapshot((previous) => {
                     // A queued event from the prior request must not undo Start Over.
                     if (previous.recommendation.status === 'idle') {
@@ -335,6 +383,14 @@ const HydratedDataModelingWizard = ({
                 });
             },
             onError: () => {
+                if (requestPending.current) {
+                    report({
+                        type: 'recommendationClientFailure',
+                        requestId: requestId.current,
+                        errorCategory: 'subscription',
+                    });
+                    requestPending.current = false;
+                }
                 setSnapshot((previous) =>
                     previous.recommendation.status !== 'waiting'
                         ? previous
@@ -350,7 +406,7 @@ const HydratedDataModelingWizard = ({
             },
         });
         return () => subscription.unsubscribe();
-    }, [trpcClient, setSnapshot]);
+    }, [trpcClient, setSnapshot, report]);
 
     useEffect(() => {
         if (editingContainerId) {
@@ -420,9 +476,10 @@ const HydratedDataModelingWizard = ({
 
     const pickScenario = useCallback(
         (scenario: ScenarioId) => {
+            report({ type: 'scenarioSelected', scenario });
             setState((prev) => applyScenario(prev, scenario));
         },
-        [setState],
+        [setState, report],
     );
 
     const scenarioLabel = useMemo(
@@ -450,6 +507,9 @@ const HydratedDataModelingWizard = ({
         if (!editingContainerId || !entity) {
             return;
         }
+        if (state.dataModel.containers.find((container) => container.id === editingContainerId)?.entity !== entity) {
+            markEdited('data');
+        }
 
         setState((previous) => ({
             ...previous,
@@ -474,6 +534,9 @@ const HydratedDataModelingWizard = ({
     // current step. The prompted name is trimmed; empty falls back to the default label.
     const addContainer = useCallback(
         (name: string) => {
+            if (state.dataModel.containers.length < MAX_CONTAINERS) {
+                markEdited('data');
+            }
             setState((prev) => {
                 if (prev.dataModel.containers.length >= MAX_CONTAINERS) {
                     return prev;
@@ -483,7 +546,7 @@ const HydratedDataModelingWizard = ({
                 return { ...prev, dataModel: { ...prev.dataModel, containers } };
             });
         },
-        [setState],
+        [setState, state.dataModel.containers.length, markEdited],
     );
 
     // Open the name prompt, disabled once at the container cap.
@@ -519,6 +582,13 @@ const HydratedDataModelingWizard = ({
 
     // Send the finished data model to Copilot Chat and wait for the tool callback.
     const requestRecommendation = useCallback(() => {
+        if (snapshot.recommendation.status !== 'idle') {
+            report({ type: 'action', action: 'retryRecommendation' });
+        }
+        const attemptId = crypto.randomUUID();
+        requestId.current = attemptId;
+        deliveredRequestId.current = undefined;
+        requestPending.current = true;
         const generation = ++requestGeneration.current;
         const next: typeof snapshot = {
             ...snapshot,
@@ -540,10 +610,14 @@ const HydratedDataModelingWizard = ({
                 if (generation !== requestGeneration.current) {
                     return;
                 }
-                await trpcClient.dataModeling.requestRecommendation.mutate(next.wizard);
+                await trpcClient.dataModeling.requestRecommendation.mutate({ ...next.wizard, requestId: attemptId });
             } catch {
                 if (generation !== requestGeneration.current) {
                     return;
+                }
+                requestPending.current = false;
+                if (!inputsSaved) {
+                    report({ type: 'recommendationClientFailure', requestId: attemptId, errorCategory: 'save' });
                 }
                 setSnapshot((previous) =>
                     previous.recommendation.status === 'waiting'
@@ -564,7 +638,7 @@ const HydratedDataModelingWizard = ({
             }
         };
         void run();
-    }, [trpcClient, snapshot, setSnapshot, flush]);
+    }, [trpcClient, snapshot, setSnapshot, flush, report]);
 
     const stepValues = buildStepValues(state.dataModel);
     const stepIndex = Math.min(Math.max(state.step, 1), stepValues.length);
@@ -573,6 +647,44 @@ const HydratedDataModelingWizard = ({
     const isReview = activeValue === REVIEW_STEP;
     const isResult = activeValue === RESULT_STEP;
     const isContainerStep = activeValue.startsWith(CONTAINER_PREFIX);
+    const previousStep = useRef<string | undefined>(undefined);
+    const displayedRecommendation = useRef<typeof recommendation>(undefined);
+    useEffect(() => {
+        if (!visible || previousStep.current === activeValue) {
+            return;
+        }
+        const previous = previousStep.current;
+        previousStep.current = activeValue;
+        report({
+            type: 'step',
+            step: isContainerStep
+                ? 'container'
+                : isWorkload
+                  ? 'workload'
+                  : isReview
+                    ? 'review'
+                    : isResult
+                      ? 'result'
+                      : 'deploy',
+        });
+        if (isDeploy) {
+            report({ type: 'action', action: 'enterDeploy' });
+        } else if (recommendation && (previous === RESULT_STEP || previous === DEPLOY_STEP) && !isResult) {
+            report({ type: 'action', action: 'returnToEditing' });
+        }
+    }, [visible, activeValue, isContainerStep, isWorkload, isReview, isResult, isDeploy, recommendation, report]);
+    useEffect(() => {
+        if (
+            visible &&
+            isResult &&
+            recommendationStatus === 'received' &&
+            recommendation?.containers.length &&
+            displayedRecommendation.current !== recommendation
+        ) {
+            displayedRecommendation.current = recommendation;
+            report({ type: 'recommendationDisplayed', requestId: deliveredRequestId.current });
+        }
+    }, [visible, isResult, recommendationStatus, recommendation, report]);
 
     const canAdvance = !isWorkload || !!state.scenario;
     const nextLabel = isWorkload ? l10n.t('Start') : isReview ? l10n.t('Get Recommendation') : l10n.t('Next');
@@ -586,6 +698,8 @@ const HydratedDataModelingWizard = ({
             requestRecommendation();
         } else {
             requestGeneration.current += 1;
+            requestId.current = undefined;
+            requestPending.current = false;
             setSnapshot((previous) => ({
                 ...previous,
                 wizard: { ...previous.wizard, reachedSteps: stepValues.slice(0, stepIndex + 1) },
@@ -623,8 +737,10 @@ const HydratedDataModelingWizard = ({
                 entity: state.dataModel.containers.find((c) => containerStep(c.id) === activeValue)?.entity ?? '',
             }),
         );
-        if (result === true) removeCurrentContainer();
-        else removeButtonRef.current?.focus();
+        if (result === true) {
+            markEdited('data');
+            removeCurrentContainer();
+        } else removeButtonRef.current?.focus();
     };
     const onBack = () => {
         if (isDeploy) {
@@ -637,6 +753,10 @@ const HydratedDataModelingWizard = ({
         }
     };
     const restart = () => {
+        report({ type: 'action', action: 'startOver' });
+        requestId.current = undefined;
+        deliveredRequestId.current = undefined;
+        requestPending.current = false;
         requestGeneration.current += 1;
         setAddOpen(false);
         setNewContainerName('');
@@ -651,15 +771,36 @@ const HydratedDataModelingWizard = ({
         isResult || isDeploy ? (
             <ContainerFooter>
                 {isResult ? (
-                    <Button appearance="primary" disabled={!canEnterDeploy} onClick={() => void onNext()}>
+                    <Button
+                        appearance="primary"
+                        disabled={!canEnterDeploy}
+                        onClick={() => {
+                            report({ type: 'control', control: 'footerDeploy' });
+                            void onNext();
+                        }}
+                    >
                         {l10n.t('Deploy')}
                     </Button>
                 ) : (
-                    <Button appearance="secondary" disabled={deploymentBusy} onClick={onBack}>
+                    <Button
+                        appearance="secondary"
+                        disabled={deploymentBusy}
+                        onClick={() => {
+                            report({ type: 'control', control: 'footerBack' });
+                            onBack();
+                        }}
+                    >
                         {l10n.t('Back')}
                     </Button>
                 )}
-                <Button appearance="secondary" disabled={deploymentBusy} onClick={restart}>
+                <Button
+                    appearance="secondary"
+                    disabled={deploymentBusy}
+                    onClick={() => {
+                        report({ type: 'control', control: 'footerStartOver' });
+                        restart();
+                    }}
+                >
                     {l10n.t('Start Over')}
                 </Button>
             </ContainerFooter>
@@ -674,7 +815,10 @@ const HydratedDataModelingWizard = ({
                                     appearance="secondary"
                                     icon={<AddRegular />}
                                     disabled={state.dataModel.containers.length >= MAX_CONTAINERS}
-                                    onClick={openAddDialog}
+                                    onClick={() => {
+                                        report({ type: 'control', control: 'footerAddContainer' });
+                                        openAddDialog();
+                                    }}
                                 >
                                     {l10n.t('Add container')}
                                 </Button>
@@ -684,7 +828,10 @@ const HydratedDataModelingWizard = ({
                                     className={styles.dangerButton}
                                     icon={<DeleteRegular />}
                                     disabled={state.dataModel.containers.length <= 1}
-                                    onClick={() => void onRemove()}
+                                    onClick={() => {
+                                        report({ type: 'control', control: 'footerRemoveContainer' });
+                                        void onRemove();
+                                    }}
                                 >
                                     {l10n.t('Remove this container')}
                                 </Button>
@@ -700,12 +847,24 @@ const HydratedDataModelingWizard = ({
                     ref={advanceButtonRef}
                     appearance="primary"
                     disabled={!canAdvance}
-                    onClick={() => void onNext()}
+                    onClick={() => {
+                        report({
+                            type: 'control',
+                            control: isWorkload ? 'footerStart' : isReview ? 'footerGetRecommendation' : 'footerNext',
+                        });
+                        void onNext();
+                    }}
                 >
                     {nextLabel}
                 </Button>
                 {stepIndex > 1 ? (
-                    <Button appearance="secondary" onClick={onBack}>
+                    <Button
+                        appearance="secondary"
+                        onClick={() => {
+                            report({ type: 'control', control: 'footerBack' });
+                            onBack();
+                        }}
+                    >
                         {l10n.t('Back')}
                     </Button>
                 ) : null}
@@ -816,6 +975,11 @@ const HydratedDataModelingWizard = ({
                     >
                         <ContainerPage
                             model={state.dataModel}
+                            active={activeValue === containerStep(c.id)}
+                            containerId={c.id}
+                            onVisit={visit}
+                            onEdited={markEdited}
+                            onTelemetry={report}
                             scenarioLabel={scenarioLabel}
                             onChangeData={onChangeData}
                             onChange={setDataModel}
@@ -852,6 +1016,13 @@ const HydratedDataModelingWizard = ({
                         recommendation={recommendation}
                         recommendationError={recommendationError}
                         onRetryRecommendation={requestRecommendation}
+                        feedback={selectedFeedback}
+                        onFeedback={(vote) => {
+                            if (selectedFeedback !== vote) {
+                                setFeedback({ recommendation, vote });
+                                report({ type: 'feedback', vote });
+                            }
+                        }}
                     />
                 </WizardStep>
                 <WizardStep
@@ -876,6 +1047,7 @@ const HydratedDataModelingWizard = ({
                             onOpenDataExplorer={(input) => trpcClient.dataModeling.openDataExplorer.mutate(input)}
                             onBusyChange={setDeploymentBusy}
                             onDeploymentChange={persistDeployment}
+                            onTelemetry={report}
                         />
                     ) : null}
                 </WizardStep>

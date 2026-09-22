@@ -104,6 +104,26 @@ Confirmations for restarting from a step, removing a container, replacing an upl
 code, and deploying also use native VS Code Yes/No dialogs. These actions run only after **Yes**; **No** or dismissal keeps the
 current state. The **Add container** name-entry form remains in the modeler.
 
+The Result page offers thumbs-up/down feedback for the recommendation, without a free-text prompt. Selecting the other
+thumb changes the vote; repeating the same vote does not send another event.
+
+With usage telemetry enabled, Data Modeler records wizard milestones, recommendation delivery/display latency and outcomes,
+deployment/export actions, persistence health, and feedback. Model customization is compared locally with the selected
+scenario defaults: current differences are separate from whether the user ever edited Data, Queries, or Scale in this open
+tab. Reverting an edit clears the current-difference flag but not the session's ever-edited flag. Generated UI IDs and
+navigation do not count as customization; no schemas, names, partition-key paths, queries, deployment code, or AI prose are
+included in these usage events.
+
+Data/Queries/Scale coverage counts distinct current containers whose section was actually displayed in this open tab,
+divided by the current container count (zero for an empty model). The initially displayed Data tab counts as viewed;
+hidden/mounted pages do not. Removed containers are excluded, new containers start unviewed, and restored sessions start with
+fresh visit tracking. The corresponding never-viewed count is the current container count minus the viewed count.
+Milestone snapshots and a best-effort close summary make skipped sections distinguishable from revisits without recording
+container identifiers. Correlation IDs and interaction history are session-only and are not saved with the model.
+Visible-tab time is not a measure of active attention; abrupt shutdown can prevent a final summary.
+See the [Data Modeler telemetry inventory](docs/data-modeler-telemetry.md) for event names, footer/tab activation tracking,
+schema-import and new-field counters, and the exact default-change and coverage calculations.
+
 Copilot uses the bundled [data model recommendation skill](skills/cosmosdb-data-model-recommendation/SKILL.md),
 which loads the Cosmos DB best-practices guidance, to provide candidate scores, verdicts, and per-rule assessments.
 The request carries the workload and verified scenario context rather than embedding the recommendation workflow.

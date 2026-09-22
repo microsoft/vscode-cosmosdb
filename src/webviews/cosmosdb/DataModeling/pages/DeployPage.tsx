@@ -34,6 +34,7 @@ import {
     type SuccessfulDeployment,
     validateDeploymentDatabaseName,
 } from '../../../../dataModeling/deploymentModel';
+import { type ModelingTelemetryEvent } from '../../../../dataModeling/modelingTelemetrySchema';
 import { MonacoEditor, type MonacoEditorType } from '../../../MonacoEditor';
 import { useNativeConfirmation } from '../useNativeConfirmation';
 
@@ -98,6 +99,7 @@ export interface DeployPageProps {
     onBusyChange: (busy: boolean) => void;
     /** Persist a successful deployment, or clear it (undefined) when a new deploy begins. */
     onDeploymentChange: (deployment: SuccessfulDeployment | undefined) => void;
+    onTelemetry?: (event: Extract<ModelingTelemetryEvent, { type: 'action' }>) => void;
 }
 
 const useStyles = makeStyles({
@@ -270,6 +272,7 @@ export function DeployPage({
     onOpenDataExplorer,
     onBusyChange,
     onDeploymentChange,
+    onTelemetry,
 }: DeployPageProps) {
     const styles = useStyles();
     const { confirm, confirmationError, confirming } = useNativeConfirmation();
@@ -460,6 +463,12 @@ export function DeployPage({
     }, [format, inputKey]);
 
     const requestRegeneration = () => {
+        onTelemetry?.({
+            type: 'action',
+            action: 'regenerateCode',
+            method: draft.deploymentMethod,
+            codeCustomized: customized,
+        });
         setRegenerateKey(generationKey);
         setGenerationAttempt((attempt) => attempt + 1);
     };
@@ -572,8 +581,22 @@ export function DeployPage({
     const copyCode = async () => {
         try {
             await navigator.clipboard.writeText(template);
+            onTelemetry?.({
+                type: 'action',
+                action: 'copyCode',
+                method: draft.deploymentMethod,
+                outcome: 'success',
+                codeCustomized: customized,
+            });
             setCopyMessage(l10n.t('Code copied.'));
         } catch (error) {
+            onTelemetry?.({
+                type: 'action',
+                action: 'copyCode',
+                method: draft.deploymentMethod,
+                outcome: 'error',
+                codeCustomized: customized,
+            });
             setTemplateError(l10n.t('Could not copy code. {error}', { error: deploymentErrorDetail(error) }));
         }
     };
@@ -731,6 +754,13 @@ export function DeployPage({
                             data.value === 'sdk'
                         ) {
                             const deploymentMethod = data.value;
+                            if (deploymentMethod !== draft.deploymentMethod) {
+                                onTelemetry?.({
+                                    type: 'action',
+                                    action: 'selectDeploymentMethod',
+                                    method: deploymentMethod,
+                                });
+                            }
                             onDraftChange((previous) => ({ ...previous, deploymentMethod }));
                         }
                     }}

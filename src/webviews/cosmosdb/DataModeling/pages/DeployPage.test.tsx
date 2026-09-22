@@ -60,6 +60,7 @@ const generateTemplate = vi.fn<(input: GenerateDeploymentTemplateInput) => Promi
 const onDeploy = vi.fn<(input: DeploymentRequest) => Promise<ModelDeploymentResult>>();
 const onOpenDataExplorer = vi.fn<(input: { databaseId: string; containerId: string }) => Promise<void>>();
 const onBusyChange = vi.fn();
+const onTelemetry = vi.fn();
 const onDeployed = vi.fn<(deployment: SuccessfulDeployment) => void>();
 let resolveConfirmation: (confirmed: boolean | undefined) => void;
 let rejectConfirmation: (error: Error) => void;
@@ -83,6 +84,7 @@ function Harness() {
                 onDeploy={onDeploy}
                 onOpenDataExplorer={onOpenDataExplorer}
                 onBusyChange={onBusyChange}
+                onTelemetry={onTelemetry}
                 onDeploymentChange={(next) => {
                     setDeployment(next);
                     if (next) {
@@ -411,6 +413,22 @@ describe('Deploy wizard page', () => {
         await user.click(copy);
         expect(writeText).toHaveBeenCalledWith('// customized Bicep\n// throughput = 1000');
         expect(screen.getByText('Code copied.')).toBeVisible();
+        expect(onTelemetry).toHaveBeenCalledWith({
+            type: 'action',
+            action: 'copyCode',
+            method: 'bicep',
+            outcome: 'success',
+            codeCustomized: true,
+        });
+        expect(onTelemetry).toHaveBeenCalledWith({
+            type: 'action',
+            action: 'selectDeploymentMethod',
+            method: 'bicep',
+        });
+        const telemetry = JSON.stringify(onTelemetry.mock.calls);
+        expect(telemetry).not.toContain('customized Bicep');
+        expect(telemetry).not.toContain('new-db');
+        expect(telemetry).not.toContain('Orders');
         expect(onDeploy).not.toHaveBeenCalled();
         await user.click(screen.getByRole('radio', { name: 'Direct' }));
         const button = screen.getByRole('button', { name: 'Deploy' });

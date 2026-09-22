@@ -84,6 +84,58 @@ beforeEach(() => {
 });
 
 describe('Data Modeler reuses migration provisioning', () => {
+    it('reports aggregate deployment success without resource names and tolerates a failing reporter', async () => {
+        const report = vi.fn();
+        await deployDataModel(account, request(), context(), report);
+        expect(report).toHaveBeenCalledWith({
+            outcome: 'success',
+            databaseMode: 'existing',
+            durationMs: expect.any(Number),
+            writesStarted: true,
+            createdCount: 1,
+            existingCount: 0,
+        });
+        const throwingReporter = () => {
+            throw new Error('Telemetry unavailable');
+        };
+        await expect(deployDataModel(account, request(), context(), throwingReporter)).resolves.toMatchObject({
+            status: 'deployed',
+        });
+    });
+
+    it('reports validation and partial-write failures while preserving the original errors', async () => {
+        const report = vi.fn();
+        await expect(deployDataModel(account, { ...request(), containers: [] }, context(), report)).rejects.toThrow();
+        expect(report).toHaveBeenLastCalledWith({
+            outcome: 'error',
+            databaseMode: 'existing',
+            durationMs: expect.any(Number),
+            writesStarted: false,
+            createdCount: 0,
+            existingCount: 0,
+            errorCategory: 'validation',
+        });
+        const error = new Error('PRIVATE RESOURCE OR SDK ERROR');
+        plane.createContainer.mockRejectedValueOnce(error);
+        await expect(deployDataModel(account, request(), context(), report)).rejects.toBe(error);
+        expect(report).toHaveBeenLastCalledWith({
+            outcome: 'error',
+            databaseMode: 'existing',
+            durationMs: expect.any(Number),
+            writesStarted: true,
+            createdCount: 0,
+            existingCount: 0,
+            errorCategory: 'infrastructure',
+        });
+        expect(JSON.stringify(report.mock.calls)).not.toContain('PRIVATE');
+        plane.createContainer.mockRejectedValueOnce(error);
+        await expect(
+            deployDataModel(account, request(), context(), () => {
+                throw new Error('Reporter failed');
+            }),
+        ).rejects.toBe(error);
+    });
+
     it.each([
         { name: 'Engineering', expected: 'Engineering' },
         { name: '', expected: 'subscription-id' },
@@ -289,6 +341,17 @@ describe('Data Modeler reuses migration provisioning', () => {
         );
         const pending = deployDataModel(account, value, context());
         await vi.waitFor(() => expect(vscode.window.withProgress).toHaveBeenCalledOnce());
+        const report = vi.fn();
+        await expect(deployDataModel(account, value, context(), report)).rejects.toThrow('already in progress');
+        expect(report).toHaveBeenCalledWith({
+            outcome: 'error',
+            databaseMode: 'existing',
+            durationMs: expect.any(Number),
+            writesStarted: false,
+            createdCount: 0,
+            existingCount: 0,
+            errorCategory: 'concurrent',
+        });
         await expect(deployDataModel(account, value, context())).rejects.toThrow('already in progress');
         finish();
         expect(await pending).toMatchObject({ status: 'deployed' });

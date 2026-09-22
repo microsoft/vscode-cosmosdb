@@ -269,6 +269,11 @@
               "type": "string",
               "description": "The wizardTabId included in the partition-key analysis request."
             },
+            "requestId": {
+              "type": "string",
+              "format": "uuid",
+              "description": "The requestId included in the analysis request. Include it in success and failure reports when supplied."
+            },
             "error": {
               "type": "string",
               "minLength": 1,

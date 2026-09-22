@@ -12,6 +12,7 @@ import {
     getDeploymentOptions,
 } from '../../../commands/dataModeling/deployDataModel';
 import { type AzureResourceMetadata } from '../../../cosmosdb/AzureResourceMetadata';
+import { type ModelingTelemetry } from '../../../dataModeling/ModelingTelemetry';
 import { openUrl } from '../../../utils/openUrl';
 import { applyScenario, createInitialState } from '../../../webviews/cosmosdb/DataModeling/dataModel';
 import { type DataModelingRouterContext } from '../appRouter';
@@ -92,7 +93,7 @@ describe('data modeler deployment procedure', () => {
         const ctx = context();
         vi.mocked(deployDataModel).mockResolvedValue({ status: 'cancelled' });
         expect(await dataModelingRouterDef.createCaller(ctx).deploy(request)).toEqual({ status: 'cancelled' });
-        expect(deployDataModel).toHaveBeenCalledWith(ctx.account, request, ctx.actionContext);
+        expect(deployDataModel).toHaveBeenCalledWith(ctx.account, request, ctx.actionContext, undefined);
         expect(ctx.actionContext?.telemetry.suppressAll).toBe(true);
     });
 
@@ -224,6 +225,101 @@ describe('data modeler deployment procedure', () => {
 });
 
 describe('recommendation prompt', () => {
+    it('preserves the ephemeral request ID through validation and the prompt, and starts tracking before Chat opens', async () => {
+        const ctx = context();
+        const beginRecommendation = vi.fn();
+        ctx.modelingTelemetry = { beginRecommendation } as unknown as ModelingTelemetry;
+        const requestId = '12345678-1234-4123-8123-123456789001';
+        const wizard = applyScenario(createInitialState(), 'chat');
+        const executeCommand = vi.spyOn(vscode.commands, 'executeCommand').mockImplementation(async () => {
+            expect(beginRecommendation).toHaveBeenCalledWith(
+                requestId,
+                wizard.dataModel.containers.map((c) => c.entity),
+                { ...wizard, requestId },
+            );
+        });
+        await dataModelingRouterDef.createCaller(ctx).requestRecommendation({ ...wizard, requestId });
+        expect(executeCommand.mock.calls[0][1].query).toContain(`requestId "${requestId}"`);
+        executeCommand.mockRestore();
+    });
+
+    it('reports bounded chat failures and rethrows the original operation error outside telemetry', async () => {
+        const ctx = context();
+        const recommendationFailed = vi.fn();
+        ctx.modelingTelemetry = { beginRecommendation: vi.fn(), recommendationFailed } as unknown as ModelingTelemetry;
+        const error = new Error('PRIVATE PROMPT OR RESOURCE');
+        const executeCommand = vi.spyOn(vscode.commands, 'executeCommand').mockRejectedValue(error);
+        const requestId = '12345678-1234-4123-8123-123456789001';
+        await expect(
+            dataModelingRouterDef.createCaller(ctx).requestRecommendation({
+                ...applyScenario(createInitialState(), 'chat'),
+                requestId,
+            }),
+        ).rejects.toMatchObject({ cause: error });
+        expect(recommendationFailed).toHaveBeenCalledWith(requestId, 'chat');
+        executeCommand.mockRestore();
+    });
+
+    it('validates telemetry payloads under the suppressed operational context', async () => {
+        const ctx = context();
+        const record = vi.fn();
+        ctx.modelingTelemetry = { record } as unknown as ModelingTelemetry;
+        const caller = dataModelingRouterDef.createCaller(ctx);
+        await caller.recordTelemetry({ type: 'feedback', vote: 'down' });
+        expect(record).toHaveBeenCalledWith({ type: 'feedback', vote: 'down' });
+        await expect(
+            caller.recordTelemetry({
+                type: 'feedback',
+                vote: 'up',
+                // @ts-expect-error Arbitrary user text is rejected rather than stripped and emitted.
+                explanation: 'PRIVATE RESPONSE',
+            }),
+        ).rejects.toThrow();
+        expect(record).toHaveBeenCalledTimes(1);
+        expect(ctx.actionContext?.telemetry.suppressAll).toBe(true);
+    });
+
+    it('records load outcomes and save rollups without passing persisted contents or errors', async () => {
+        const ctx = context();
+        const persistenceLoad = vi.fn();
+        const persistenceSave = vi.fn();
+        ctx.modelingTelemetry = { persistenceLoad, persistenceSave } as unknown as ModelingTelemetry;
+        const state = { wizard: createInitialState(), recommendation: { status: 'idle' as const } };
+        const error = new Error('PRIVATE PATH');
+        ctx.project = {
+            loadState: vi.fn().mockRejectedValueOnce(error).mockResolvedValueOnce(state),
+            saveState: vi.fn().mockRejectedValueOnce(error).mockResolvedValueOnce(undefined),
+        } as unknown as DataModelingRouterContext['project'];
+        const caller = dataModelingRouterDef.createCaller(ctx);
+        await expect(caller.loadState()).rejects.toMatchObject({ cause: error });
+        await expect(caller.loadState()).resolves.toEqual(state);
+        await expect(caller.saveState(state)).rejects.toMatchObject({ cause: error });
+        await expect(caller.saveState(state)).resolves.toBeUndefined();
+        expect(persistenceLoad.mock.calls).toEqual([[false], [true, true]]);
+        expect(persistenceSave.mock.calls).toEqual([[false], [true]]);
+    });
+
+    it('records export and explorer bounded outcomes without generated code or target names', async () => {
+        const ctx = context();
+        const exportTelemetry = vi.fn();
+        const openDataExplorer = vi.fn();
+        ctx.modelingTelemetry = { export: exportTelemetry, openDataExplorer } as unknown as ModelingTelemetry;
+        const caller = dataModelingRouterDef.createCaller(ctx);
+        vi.mocked(generateDeploymentTemplate).mockResolvedValueOnce('PRIVATE GENERATED CODE');
+        await expect(caller.generateDeploymentTemplate({ ...input, format: 'sdk' })).resolves.toBe(
+            'PRIVATE GENERATED CODE',
+        );
+        expect(exportTelemetry).toHaveBeenCalledWith('success', 'sdk', 'existing', expect.any(Number));
+        const error = new Error('PRIVATE RESOURCE');
+        vi.mocked(generateDeploymentTemplate).mockRejectedValueOnce(error);
+        await expect(caller.generateDeploymentTemplate(input)).rejects.toMatchObject({ cause: error });
+        expect(exportTelemetry).toHaveBeenLastCalledWith('error', 'bicep', 'existing', expect.any(Number));
+        await expect(
+            caller.openDataExplorer({ databaseId: 'PRIVATE DATABASE', containerId: 'PRIVATE CONTAINER' }),
+        ).rejects.toThrow();
+        expect(openDataExplorer).toHaveBeenCalledWith('error', expect.any(Number));
+    });
+
     it('delegates the workflow to the skill and includes verified default context and tool routing', async () => {
         const wizard = applyScenario(createInitialState(), 'ecommerce');
         const prompt = await buildRecommendationPrompt(wizard, 'wizard-id');

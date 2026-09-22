@@ -5,6 +5,7 @@
 
 import {
     Badge,
+    Button,
     Link,
     makeStyles,
     mergeClasses,
@@ -18,7 +19,9 @@ import {
     TableRow,
     Text,
     tokens,
+    Tooltip,
 } from '@fluentui/react-components';
+import { ThumbDislikeRegular, ThumbLikeRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useId, useState } from 'react';
 import { getPartitionKeyPaths } from '../../../../dataModeling/deploymentModel';
@@ -51,6 +54,10 @@ const useStyles = makeStyles({
     },
     summary: {
         color: tokens.colorNeutralForeground2,
+    },
+    feedback: {
+        display: 'flex',
+        gap: tokens.spacingHorizontalXS,
     },
     guardrails: {
         padding: tokens.spacingHorizontalM,
@@ -548,17 +555,30 @@ export interface ResultPageProps {
     recommendation?: PartitionKeyRecommendation;
     recommendationError?: string;
     onRetryRecommendation: () => void;
+    /** When supplied (including undefined), the parent owns the selection and resets it for new recommendations. */
+    feedback?: 'up' | 'down';
+    onFeedback?: (value: 'up' | 'down') => void;
 }
 
-export function ResultPage({
-    recommendationStatus,
-    recommendation,
-    recommendationError,
-    onRetryRecommendation,
-}: ResultPageProps) {
+export function ResultPage(props: ResultPageProps) {
+    const { recommendationStatus, recommendation, recommendationError, onRetryRecommendation, onFeedback } = props;
     const styles = useStyles();
     const containers = recommendation?.containers ?? [];
     const [activeEntity, setActiveEntity] = useState<string>();
+    const [feedback, setFeedback] = useState<{
+        recommendation: PartitionKeyRecommendation;
+        value: 'up' | 'down';
+    }>();
+
+    if (feedback && feedback.recommendation !== recommendation) {
+        setFeedback(undefined);
+    }
+    const selectedFeedback =
+        'feedback' in props
+            ? props.feedback
+            : feedback?.recommendation === recommendation
+              ? feedback?.value
+              : undefined;
 
     const active = containers.find((c) => c.entity === activeEntity) ?? containers[0];
 
@@ -607,6 +627,39 @@ export function ResultPage({
             ) : null}
 
             <ContainerResultView key={active.entity} container={active} />
+            <div
+                className={styles.feedback}
+                // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- Compact icon controls, not form fields.
+                role="group"
+                aria-label={l10n.t('Recommendation feedback')}
+            >
+                {(['up', 'down'] as const).map((value) => {
+                    const label =
+                        value === 'up' ? l10n.t('Helpful recommendation') : l10n.t('Unhelpful recommendation');
+                    return (
+                        <Tooltip key={value} content={label} relationship="inaccessible">
+                            <Button
+                                appearance={selectedFeedback === value ? 'secondary' : 'subtle'}
+                                aria-label={label}
+                                aria-pressed={selectedFeedback === value}
+                                icon={
+                                    value === 'up' ? (
+                                        <ThumbLikeRegular aria-hidden="true" />
+                                    ) : (
+                                        <ThumbDislikeRegular aria-hidden="true" />
+                                    )
+                                }
+                                onClick={() => {
+                                    if (selectedFeedback !== value) {
+                                        setFeedback({ recommendation, value });
+                                        onFeedback?.(value);
+                                    }
+                                }}
+                            />
+                        </Tooltip>
+                    );
+                })}
+            </div>
         </div>
     );
 }

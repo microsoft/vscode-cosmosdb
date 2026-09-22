@@ -235,4 +235,172 @@ describe('ResultPage', () => {
         expect(screen.getByRole('tab', { name: 'Container: User' })).toHaveAttribute('aria-selected', 'true');
         expect(MonacoEditor).not.toHaveBeenCalled();
     });
+
+    describe('recommendation feedback', () => {
+        const upLabel = 'Helpful recommendation';
+        const downLabel = 'Unhelpful recommendation';
+        const groupLabel = 'Recommendation feedback';
+
+        function feedbackProps(overrides: Partial<ResultPageProps> = {}): ResultPageProps {
+            return {
+                recommendationStatus: 'received',
+                recommendation,
+                onRetryRecommendation: vi.fn(),
+                onFeedback: vi.fn(),
+                ...overrides,
+            };
+        }
+
+        it('shows only two named icon buttons and allows feedback without a callback', async () => {
+            const user = userEvent.setup();
+            render(<ResultPage {...feedbackProps({ onFeedback: undefined })} />);
+            const group = screen.getByRole('group', { name: groupLabel });
+            expect(within(group).getAllByRole('button')).toHaveLength(2);
+            for (const label of [upLabel, downLabel]) {
+                const button = within(group).getByRole('button', { name: label });
+                expect(button).toHaveAccessibleName(label);
+                expect(button).toHaveAttribute('aria-pressed', 'false');
+                expect(button).toHaveTextContent('');
+                expect(button.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+            }
+            await user.click(within(group).getByRole('button', { name: upLabel }));
+            expect(within(group).getByRole('button', { name: upLabel })).toHaveAttribute('aria-pressed', 'true');
+        });
+
+        it('reports each changed vote, suppresses duplicates, and allows switching back', async () => {
+            const user = userEvent.setup();
+            const props = feedbackProps();
+            render(<ResultPage {...props} />);
+            const up = screen.getByRole('button', { name: upLabel });
+            const down = screen.getByRole('button', { name: downLabel });
+
+            await user.click(up);
+            await user.click(up);
+            expect(props.onFeedback).toHaveBeenCalledTimes(1);
+            expect(props.onFeedback).toHaveBeenLastCalledWith('up');
+            expect(up).toHaveAttribute('aria-pressed', 'true');
+            expect(down).toHaveAttribute('aria-pressed', 'false');
+
+            await user.click(down);
+            await user.click(down);
+            expect(props.onFeedback).toHaveBeenCalledTimes(2);
+            expect(props.onFeedback).toHaveBeenLastCalledWith('down');
+            expect(up).toHaveAttribute('aria-pressed', 'false');
+            expect(down).toHaveAttribute('aria-pressed', 'true');
+
+            await user.click(up);
+            expect(props.onFeedback).toHaveBeenCalledTimes(3);
+            expect(props.onFeedback).toHaveBeenLastCalledWith('up');
+        });
+
+        it('retains the vote across container tabs and rerenders but resets for another recommendation', async () => {
+            const user = userEvent.setup();
+            const props = feedbackProps();
+            const { rerender } = render(<ResultPage {...props} />);
+            await user.click(screen.getByRole('button', { name: upLabel }));
+            await user.click(screen.getByRole('tab', { name: 'Container: User' }));
+            rerender(<ResultPage {...props} />);
+            expect(screen.getByRole('button', { name: upLabel })).toHaveAttribute('aria-pressed', 'true');
+            expect(props.onFeedback).toHaveBeenCalledTimes(1);
+
+            const nextRecommendation = { ...recommendation, summary: 'New recommendation' };
+            rerender(<ResultPage {...props} recommendation={nextRecommendation} />);
+            for (const label of [upLabel, downLabel]) {
+                expect(screen.getByRole('button', { name: label })).toHaveAttribute('aria-pressed', 'false');
+            }
+            expect(props.onFeedback).toHaveBeenCalledTimes(1);
+            await user.click(screen.getByRole('button', { name: upLabel }));
+            expect(props.onFeedback).toHaveBeenCalledTimes(2);
+            expect(props.onFeedback).toHaveBeenLastCalledWith('up');
+
+            rerender(<ResultPage {...props} />);
+            expect(screen.getByRole('button', { name: upLabel })).toHaveAttribute('aria-pressed', 'false');
+        });
+
+        it('supports Tab navigation, Enter and Space activation, and keyboard tooltips', async () => {
+            // Fluent hides tooltips whose anchor is outside the viewport; jsdom has no layout.
+            const width = vi.spyOn(document.documentElement, 'clientWidth', 'get').mockReturnValue(1024);
+            const height = vi.spyOn(document.documentElement, 'clientHeight', 'get').mockReturnValue(768);
+            const bounds = vi
+                .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+                .mockImplementation(function (this: HTMLElement) {
+                    return this === document.documentElement || this === document.body
+                        ? new DOMRect(0, 0, 1024, 768)
+                        : new DOMRect(100, 100, 120, 32);
+                });
+            try {
+                const user = userEvent.setup();
+                const props = feedbackProps({
+                    recommendation: { summary: '', containers: [recommendation.containers[0]] },
+                });
+                render(<ResultPage {...props} />);
+                const up = screen.getByRole('button', { name: upLabel });
+                const down = screen.getByRole('button', { name: downLabel });
+
+                await user.tab();
+                expect(up).toHaveFocus();
+                expect(await screen.findByRole('tooltip', { name: upLabel })).toHaveTextContent(upLabel);
+                expect(up).toHaveAccessibleName(upLabel);
+                expect(up).not.toHaveAttribute('aria-describedby');
+                await user.keyboard('{Enter}{Enter}');
+                expect(props.onFeedback).toHaveBeenCalledTimes(1);
+                expect(props.onFeedback).toHaveBeenLastCalledWith('up');
+
+                await user.tab();
+                expect(down).toHaveFocus();
+                expect(await screen.findByRole('tooltip', { name: downLabel })).toHaveTextContent(downLabel);
+                await user.keyboard(' ');
+                expect(props.onFeedback).toHaveBeenCalledTimes(2);
+                expect(props.onFeedback).toHaveBeenLastCalledWith('down');
+                expect(down).toHaveAttribute('aria-pressed', 'true');
+            } finally {
+                bounds.mockRestore();
+                height.mockRestore();
+                width.mockRestore();
+            }
+        });
+
+        it('restores parent-owned feedback after remount and accepts controlled updates and resets', async () => {
+            const user = userEvent.setup();
+            const props = feedbackProps({ feedback: 'up' });
+            const firstMount = render(<ResultPage {...props} />);
+            expect(screen.getByRole('button', { name: upLabel })).toHaveAttribute('aria-pressed', 'true');
+            firstMount.unmount();
+
+            const { rerender } = render(<ResultPage {...props} />);
+            const up = screen.getByRole('button', { name: upLabel });
+            const down = screen.getByRole('button', { name: downLabel });
+            expect(up).toHaveAttribute('aria-pressed', 'true');
+            await user.click(up);
+            expect(props.onFeedback).not.toHaveBeenCalled();
+
+            await user.click(down);
+            expect(props.onFeedback).toHaveBeenCalledExactlyOnceWith('down');
+            rerender(<ResultPage {...props} feedback="down" />);
+            expect(up).toHaveAttribute('aria-pressed', 'false');
+            expect(down).toHaveAttribute('aria-pressed', 'true');
+            await user.click(down);
+            expect(props.onFeedback).toHaveBeenCalledTimes(1);
+
+            rerender(<ResultPage {...props} feedback={undefined} />);
+            expect(up).toHaveAttribute('aria-pressed', 'false');
+            expect(down).toHaveAttribute('aria-pressed', 'false');
+            expect(props.onFeedback).toHaveBeenCalledTimes(1);
+        });
+
+        it.each<Partial<ResultPageProps>>([
+            { recommendationStatus: 'idle' },
+            { recommendationStatus: 'waiting' },
+            { recommendationStatus: 'error', recommendationError: 'Try again' },
+            { recommendation: undefined },
+            { recommendation: { summary: '', containers: [] } },
+        ])('hides feedback for an unsuccessful or empty result (%j)', (overrides) => {
+            const props = feedbackProps(overrides);
+            render(<ResultPage {...props} />);
+            expect(screen.queryByRole('group', { name: groupLabel })).not.toBeInTheDocument();
+            expect(screen.queryByRole('button', { name: upLabel })).not.toBeInTheDocument();
+            expect(screen.queryByRole('button', { name: downLabel })).not.toBeInTheDocument();
+            expect(props.onFeedback).not.toHaveBeenCalled();
+        });
+    });
 });

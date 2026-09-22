@@ -14,10 +14,12 @@ export const DataModelingEventSchema = z.discriminatedUnion('type', [
     z.object({
         type: z.literal('recommendationReceived'),
         recommendation: PartitionKeyRecommendationSchema,
+        requestId: z.string().uuid().optional(),
     }),
     z.object({
         type: z.literal('recommendationError'),
         message: z.string(),
+        requestId: z.string().uuid().optional(),
     }),
 ]);
 
@@ -25,13 +27,21 @@ export type DataModelingEvent = z.infer<typeof DataModelingEventSchema>;
 
 export const dataModelingEventsRouterDef = dataModelingRouter({
     /** Streams recommendations from the extension to the originating wizard. */
-    events: dataModelingProcedure.subscription(async function* ({ ctx }) {
-        const sink: TypedEventSink<DataModelingEvent> = ctx.eventSink;
-        for await (const event of sink) {
-            if (ctx.signal?.aborted) {
-                return;
+    events: dataModelingProcedure
+        .use(({ ctx, next }) => {
+            if (ctx.actionContext) {
+                ctx.actionContext.telemetry.suppressAll = true;
+                ctx.actionContext.errorHandling.suppressDisplay = true;
             }
-            yield event;
-        }
-    }),
+            return next();
+        })
+        .subscription(async function* ({ ctx }) {
+            const sink: TypedEventSink<DataModelingEvent> = ctx.eventSink;
+            for await (const event of sink) {
+                if (ctx.signal?.aborted) {
+                    return;
+                }
+                yield event;
+            }
+        }),
 });

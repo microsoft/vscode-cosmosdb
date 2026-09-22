@@ -4,6 +4,26 @@ This guide explains how to add a new webview panel that communicates with the ex
 
 ## Architecture Overview
 
+### Data Modeler telemetry boundary
+
+Data Modeler operations deliberately retain `telemetry.suppressAll`: wizard state, AI responses, persistence errors,
+and generated deployment code must not enter generic request/error telemetry. The separate host-only
+`src/dataModeling/ModelingTelemetry.ts` tracker emits static `cosmosDB.dataModeler.*` events using best-effort
+wrappers that suppress display and rethrow. Webviews may send only the strict, bounded
+`ModelingTelemetryEventSchema` union through `dataModeling.recordTelemetry`.
+
+The tracker retains the current usage aggregates and autosave success/failure/recovery counters without emitting an
+event per edit or save. Closing the panel produces one summary containing visited steps, the last step, optional
+feedback, recommendation attempt counts, and visible time measured from host panel visibility transitions.
+No persisted model identifiers, entity names, property names, queries, code, prompts, or raw exceptions are emitted.
+
+Each recommendation request can carry an ephemeral UUID `requestId`, which is forwarded in the prompt, report-tool
+input, and recommendation event but is never persisted. Only the latest matching attempt is delivered; duplicate
+identified responses and stale responses are ignored. Request-to-result and result-to-display durations require
+that ID. Legacy no-ID report callers still work, but their delivery and restored result displays remain uncorrelated
+and do not count as a fresh correlated success. Pending attempts end explicitly on supersession, start-over, or close;
+the tracker does not invent AI timeouts.
+
 ```
 ┌───────────────┐   postMessage   ┌───────────────────┐
 │   Webview     │ ◄─────────────► │  Extension Host   │

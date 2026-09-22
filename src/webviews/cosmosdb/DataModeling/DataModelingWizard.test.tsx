@@ -16,6 +16,7 @@ import {
     ModelingAdvisorSnapshotSchema,
     type ModelingAdvisorSnapshot,
 } from '../../../dataModeling/modelingAdvisorSchema';
+import { type ModelingTelemetryEvent } from '../../../dataModeling/modelingTelemetrySchema';
 import { type DataModelingEvent } from '../../api/types';
 import { applyScenario, createBlankContainer } from './dataModel';
 import { DataModelingWizard } from './DataModelingWizard';
@@ -27,6 +28,7 @@ const client = vi.hoisted(() => ({
         loadState: { query: vi.fn() },
         saveState: { mutate: vi.fn() },
         requestRecommendation: { mutate: vi.fn() },
+        recordTelemetry: { mutate: vi.fn() },
         getDeploymentOptions: { query: vi.fn() },
         generateDeploymentTemplate: { query: vi.fn() },
         deploy: { mutate: vi.fn() },
@@ -92,6 +94,15 @@ function restored(step = 2): ModelingAdvisorSnapshot {
 
 function lastSave(): ModelingAdvisorSnapshot {
     return client.dataModeling.saveState.mutate.mock.calls.at(-1)?.[0] as ModelingAdvisorSnapshot;
+}
+
+function usage() {
+    const events = client.dataModeling.recordTelemetry.mutate.mock.calls.map(
+        ([event]) => event as ModelingTelemetryEvent,
+    );
+    const last = events.filter((event) => event.type === 'usage').at(-1);
+    if (!last) throw new Error('No usage summary received');
+    return last.usage;
 }
 
 function deployedSnapshot(): ModelingAdvisorSnapshot {
@@ -174,6 +185,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         client.dataModeling.loadState.query.mockResolvedValue(null);
         client.dataModeling.saveState.mutate.mockResolvedValue(undefined);
         client.dataModeling.requestRecommendation.mutate.mockResolvedValue(undefined);
+        client.dataModeling.recordTelemetry.mutate.mockResolvedValue(undefined);
         client.dataModeling.getDeploymentOptions.query.mockResolvedValue({
             accountName: 'source',
             databases: ['existing-db'],
@@ -536,6 +548,18 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
     });
 
+    it('does not emit workload selections when continuing saved work', async () => {
+        client.dataModeling.loadState.query.mockResolvedValue(restored(1));
+        render(<DataModelingWizard />);
+        await continueExisting();
+        expect(usage().scenario).toBe('other');
+        expect(
+            client.dataModeling.recordTelemetry.mutate.mock.calls.some(
+                ([event]) => (event as ModelingTelemetryEvent).type === 'scenarioSelected',
+            ),
+        ).toBe(false);
+    });
+
     it('opens a native saved-work choice and preserves it on dismissal until the choice is reopened', async () => {
         client.dataModeling.loadState.query.mockResolvedValue(restored(4));
         render(<DataModelingWizard />);
@@ -716,7 +740,10 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         const mounted = render(<DataModelingWizard />);
         await continueExisting();
         await userEvent.click(screen.getByRole('button', { name: 'Get Recommendation' }));
-        expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledWith(lastSave().wizard);
+        expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledWith({
+            ...lastSave().wizard,
+            requestId: expect.any(String),
+        });
         expect(lastSave().wizard.dataModel).toEqual(saved.wizard.dataModel);
         await userEvent.click(screen.getByRole('button', { name: 'Review' }));
         expect(screen.queryByRole('slider')).not.toBeInTheDocument();
@@ -858,7 +885,10 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
         }
         await userEvent.click(screen.getByRole('button', { name: 'Get Recommendation' }));
-        expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledWith(lastSave().wizard);
+        expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledWith({
+            ...lastSave().wizard,
+            requestId: expect.any(String),
+        });
         expect(lastSave().wizard.dataModel).toEqual(saved.wizard.dataModel);
     });
 
@@ -870,8 +900,170 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         await continueExisting();
         await userEvent.click(screen.getByRole('button', { name: 'Get Recommendation' }));
         await waitFor(() => expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledOnce());
-        expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledWith(lastSave().wizard);
+        expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledWith({
+            ...lastSave().wizard,
+            requestId: expect.any(String),
+        });
         expect(lastSave().wizard.scenario).toBe('inventory');
         expect(lastSave().wizard.dataModel).toEqual(saved.wizard.dataModel);
+    });
+
+    it('counts only displayed container tabs and keeps restored results uncorrelated', async () => {
+        client.dataModeling.loadState.query.mockResolvedValue(restored(4));
+        render(<DataModelingWizard />);
+        await continueExisting();
+        expect(usage()).toMatchObject({
+            containerCount: 1,
+            dataViewedCount: 0,
+            queriesNeverViewedCount: 1,
+            scaleNeverViewedCount: 1,
+        });
+        expect(client.dataModeling.recordTelemetry.mutate).toHaveBeenCalledWith({
+            type: 'recommendationDisplayed',
+            requestId: undefined,
+        });
+        await userEvent.click(screen.getByRole('button', { name: 'Container: Orders' }));
+        expect(usage()).toMatchObject({ dataViewedCount: 1, dataCoverage: 1, queriesViewedCount: 0 });
+        await userEvent.click(screen.getByRole('tab', { name: 'Queries' }));
+        expect(usage()).toMatchObject({ queriesViewedCount: 1, queriesNeverViewedCount: 0, scaleViewedCount: 0 });
+        await userEvent.click(screen.getByRole('tab', { name: 'Data' }));
+        await userEvent.click(screen.getByRole('tab', { name: 'Queries' }));
+        expect(usage().queriesViewedCount).toBe(1);
+        await userEvent.click(screen.getByRole('tab', { name: 'Scale' }));
+        expect(usage()).toMatchObject({ scaleViewedCount: 1, scaleCoverage: 1 });
+        const payloads = JSON.stringify(client.dataModeling.recordTelemetry.mutate.mock.calls);
+        expect(payloads).not.toContain('Orders');
+        expect(payloads).not.toContain('/orderId');
+        expect(payloads).not.toContain('Restored result');
+        const controls = client.dataModeling.recordTelemetry.mutate.mock.calls
+            .map(([event]) => event as ModelingTelemetryEvent)
+            .filter((event) => event.type === 'control');
+        expect(controls).toEqual([
+            { type: 'control', control: 'containerQueriesTab' },
+            { type: 'control', control: 'containerDataTab' },
+            { type: 'control', control: 'containerQueriesTab' },
+            { type: 'control', control: 'containerScaleTab' },
+        ]);
+    });
+
+    it.each([
+        { button: 'Start', control: 'footerStart', step: 1 },
+        { button: 'Next', control: 'footerNext', step: 2 },
+        { button: 'Back', control: 'footerBack', step: 2 },
+        { button: 'Get Recommendation', control: 'footerGetRecommendation', step: 3 },
+        { button: 'Add container', control: 'footerAddContainer', step: 2 },
+        { button: 'Remove this container', control: 'footerRemoveContainer', step: 2 },
+        { button: 'Start Over', control: 'footerStartOver', step: 4 },
+        { button: 'Deploy', control: 'footerDeploy', step: 4 },
+    ])('records footer $button activation, independently of completion', async ({ button, control, step }) => {
+        const saved = restored(step);
+        if (control === 'footerRemoveContainer') {
+            saved.wizard.dataModel.containers.push(createBlankContainer('PrivateSecondContainer'));
+        }
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        render(<DataModelingWizard />);
+        await continueExisting();
+        const footerButton = screen.getAllByRole('button', { name: button }).find((element) => !element.closest('nav'));
+        if (!footerButton) throw new Error('Missing footer button');
+        await userEvent.click(footerButton);
+        expect(client.dataModeling.recordTelemetry.mutate).toHaveBeenCalledWith({ type: 'control', control });
+    });
+
+    it('does not count a hidden container section until the document is visible', async () => {
+        const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+        try {
+            client.dataModeling.loadState.query.mockResolvedValue(restored(2));
+            render(<DataModelingWizard />);
+            await continueExisting();
+            expect(usage().dataViewedCount).toBe(0);
+            visibility.mockReturnValue('visible');
+            act(() => document.dispatchEvent(new Event('visibilitychange')));
+            expect(usage().dataViewedCount).toBe(1);
+        } finally {
+            visibility.mockRestore();
+        }
+    });
+
+    it('retains feedback across navigation, deduplicates votes, and resets for a new recommendation', async () => {
+        client.dataModeling.loadState.query.mockResolvedValue(restored(4));
+        render(<DataModelingWizard />);
+        await continueExisting();
+        const up = () => screen.getByRole('button', { name: 'Helpful recommendation' });
+        const down = () => screen.getByRole('button', { name: 'Unhelpful recommendation' });
+        await userEvent.click(up());
+        expect(up()).toHaveAttribute('aria-pressed', 'true');
+        await userEvent.click(screen.getByRole('button', { name: 'Review' }));
+        await userEvent.click(screen.getByRole('button', { name: 'Result' }));
+        expect(up()).toHaveAttribute('aria-pressed', 'true');
+        await userEvent.click(up());
+        await userEvent.click(down());
+        expect(down()).toHaveAttribute('aria-pressed', 'true');
+        const votes = client.dataModeling.recordTelemetry.mutate.mock.calls
+            .map(([event]) => event as ModelingTelemetryEvent)
+            .filter((event) => event.type === 'feedback');
+        expect(votes).toEqual([
+            { type: 'feedback', vote: 'up' },
+            { type: 'feedback', vote: 'down' },
+        ]);
+        await userEvent.click(screen.getByRole('button', { name: 'Review' }));
+        await userEvent.click(screen.getByRole('button', { name: 'Get Recommendation' }));
+        await confirmAdvance();
+        const callbacks = client.dataModeling.events.subscribe.mock.calls[0][1] as {
+            onData: (event: DataModelingEvent) => void;
+        };
+        act(() =>
+            callbacks.onData({ type: 'recommendationReceived', recommendation: restored().recommendation.value! }),
+        );
+        expect(up()).toHaveAttribute('aria-pressed', 'false');
+        expect(down()).toHaveAttribute('aria-pressed', 'false');
+        expect(lastSave()).not.toHaveProperty('feedback');
+        expect(lastSave().recommendation).not.toHaveProperty('feedback');
+    });
+
+    it('keeps telemetry bridge errors out of the modeling flow and never logs raw failures', async () => {
+        const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        client.dataModeling.recordTelemetry.mutate.mockRejectedValueOnce(new Error('private-transport-details'));
+        try {
+            render(<DataModelingWizard />);
+            await screen.findByRole('button', { name: 'Start' });
+            await waitFor(() =>
+                expect(warning).toHaveBeenCalledWith('[Data Modeler] Could not record usage telemetry.'),
+            );
+            expect(JSON.stringify(warning.mock.calls)).not.toContain('private-transport-details');
+            expect(screen.queryByRole('alert')).toBeEmptyDOMElement();
+        } finally {
+            warning.mockRestore();
+        }
+    });
+
+    it('ignores stale correlated results and records the displayed current attempt without persisting IDs', async () => {
+        const saved = restored(3);
+        saved.recommendation = { status: 'idle' };
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        render(<DataModelingWizard />);
+        await continueExisting();
+        await userEvent.click(screen.getByRole('button', { name: 'Get Recommendation' }));
+        const request = client.dataModeling.requestRecommendation.mutate.mock.calls.at(-1)?.[0] as {
+            requestId: string;
+        };
+        const callbacks = client.dataModeling.events.subscribe.mock.calls[0][1] as {
+            onData: (event: DataModelingEvent) => void;
+        };
+        const recommendation = restored().recommendation.value!;
+        act(() =>
+            callbacks.onData({
+                type: 'recommendationReceived',
+                requestId: crypto.randomUUID(),
+                recommendation,
+            }),
+        );
+        expect(lastSave().recommendation.status).toBe('waiting');
+        act(() => callbacks.onData({ type: 'recommendationReceived', requestId: request.requestId, recommendation }));
+        expect(lastSave().recommendation.status).toBe('received');
+        expect(client.dataModeling.recordTelemetry.mutate).toHaveBeenCalledWith({
+            type: 'recommendationDisplayed',
+            requestId: request.requestId,
+        });
+        expect(JSON.stringify(lastSave())).not.toContain(request.requestId);
     });
 });

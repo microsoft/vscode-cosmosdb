@@ -17,6 +17,10 @@ import { pickAppResource } from '../utils/pickItem/pickAppResource';
 import { DataModelingWizardTab } from './DataModelingWizardTab';
 import { type DataModelingRouterContext } from './trpc/appRouter';
 
+vi.mock('@microsoft/vscode-azext-utils', () => ({
+    callWithTelemetryAndErrorHandling: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock('../extensionVariables', () => ({
     ext: {
         context: {

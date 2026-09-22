@@ -19,16 +19,18 @@ import {
     tokens,
 } from '@fluentui/react-components';
 import { AddRegular, CheckmarkRegular, DeleteRegular, DismissRegular, EditRegular } from '@fluentui/react-icons';
+import {
+    ContainerFooter,
+    ContainerHeader,
+    Wizard,
+    WizardStep,
+} from '@microsoft/vscode-ext-webview-fluentui/components';
 import { useTrpcClient } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
 import { type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PartitionKeyRecommendationSchema } from '../../../dataModeling/recommendationSchema';
 import { type DataModelingAppRouter, type DataModelingEvent } from '../../api/types';
 import { AlertDialog } from '../../common/AlertDialog';
-import { ContainerFooter } from './components/Container/ContainerFooter';
-import { ContainerHeader } from './components/Container/ContainerHeader';
-import { Wizard } from './components/Wizard/Wizard';
-import { WizardStep } from './components/Wizard/WizardStep';
 import {
     applyScenario,
     createBlankContainer,
@@ -64,6 +66,8 @@ const REVIEW_STEP = 'review';
 const RESULT_STEP = 'result';
 const DEPLOY_STEP = 'deploy';
 const CONTAINER_PREFIX = 'container:';
+const overflowAriaLabel = (count: number): string =>
+    count === 1 ? l10n.t('1 more step') : l10n.t('{count} more steps', { count });
 
 /** The step value for a container, derived from its id. */
 const containerStep = (id: string): string => `${CONTAINER_PREFIX}${id}`;
@@ -74,9 +78,6 @@ function buildStepValues(model: DataModel): string[] {
 }
 
 const useStyles = makeStyles({
-    // Sticky mode bypasses ContainerBody's overflow probe, so the footer's own border never
-    // elevates. Force a persistent separator that mirrors the breadcrumb/content divider.
-    footerDivider: { borderTop: `1px solid ${tokens.colorNeutralStroke2}` },
     // The footer's contentEnd is a single slot, so give its buttons and the link their own gap.
     endGroup: { display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS },
     // Fluent 9 has no built-in danger appearance; tint the destructive action red.
@@ -631,7 +632,7 @@ const HydratedDataModelingWizard = ({
     // Only successful deployment details are persisted; editable drafts remain local to the open wizard.
     const footer =
         isResult || isDeploy ? (
-            <ContainerFooter className={styles.footerDivider}>
+            <ContainerFooter>
                 {isResult ? (
                     <Button appearance="primary" disabled={!canEnterDeploy} onClick={onNext}>
                         {l10n.t('Deploy')}
@@ -647,7 +648,6 @@ const HydratedDataModelingWizard = ({
             </ContainerFooter>
         ) : (
             <ContainerFooter
-                className={styles.footerDivider}
                 note={footerHint(activeValue)}
                 contentEnd={
                     <div className={styles.endGroup}>
@@ -695,7 +695,8 @@ const HydratedDataModelingWizard = ({
                 activeStep={activeValue}
                 onStepChange={onStepChange}
                 stepsAriaLabel={l10n.t('Data modeling steps')}
-                stickyChrome
+                overflowAriaLabel={overflowAriaLabel}
+                headerBehavior="sticky-navigation"
                 header={
                     <ContainerHeader
                         title={l10n.t('Workload: {name}', { name: scenarioLabel ?? l10n.t('Not selected') })}

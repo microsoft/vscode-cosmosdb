@@ -37,7 +37,14 @@ same-kind switches and `workbench.colorCustomizations`. Do not recreate a local 
 Importing the package root injects its adaptive stylesheet once per document, including overrides for portaled
 Fluent surfaces. The rules have zero specificity and intentionally affect existing Fluent controls. Do not copy
 the stylesheet or deep-import package internals. The current `style-src 'unsafe-inline'` policy already supports
-this and Griffel; no script-policy relaxation is needed. The optional `/components` entry is not used.
+this and Griffel; no script-policy relaxation is needed.
+
+The Data Modeler imports `Wizard`, `WizardStep`, `ContainerHeader`, and `ContainerFooter` from the public `/components`
+entry. Keep these components together so they share the package's layout, overflow, and focus context; do not copy their
+implementation into the extension. The wizard uses `headerBehavior="sticky-navigation"`: step navigation stays pinned,
+the workload header scrolls away (with a reduced-motion-aware fade), and the footer remains pinned. The package owns
+content sizing and footer overflow elevation. The extension owns step state, navigation, page content, and localized
+labels, including the step-overflow button.
 
 [MonacoEditor.tsx](../src/webviews/MonacoEditor.tsx) consumes `useVSCodeMonacoTheme` from the public `/monaco` entry.
 It registers the latest theme before editor creation, composes the caller's `beforeMount`, and reapplies changed

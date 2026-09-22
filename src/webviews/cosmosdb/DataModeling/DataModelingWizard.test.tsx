@@ -5,11 +5,11 @@
 
 // @vitest-environment jsdom
 
-import { FluentProvider } from '@fluentui/react-components';
+import { FluentProvider, tokens, webLightTheme } from '@fluentui/react-components';
 import { type EditorProps } from '@monaco-editor/react';
 import { act, fireEvent, render as renderReact, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Children, isValidElement, type ReactElement } from 'react';
+import { type ReactElement } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { type DeploymentTemplateInput } from '../../../dataModeling/deploymentModel';
 import {
@@ -17,7 +17,6 @@ import {
     type ModelingAdvisorSnapshot,
 } from '../../../dataModeling/modelingAdvisorSchema';
 import { type DataModelingEvent } from '../../api/types';
-import { type StepListItemProps, type StepListProps } from './components/StepList/StepList.types';
 import { applyScenario, createBlankContainer } from './dataModel';
 import { DataModelingWizard } from './DataModelingWizard';
 import { createInitialSnapshot } from './modelingAdvisorState';
@@ -55,25 +54,6 @@ vi.mock('../../MonacoEditor', () => ({
         />
     ),
 }));
-// jsdom has no layout callbacks to initialize Fluent's priority-overflow manager.
-vi.mock('./components/StepList/StepList', () => ({
-    StepList: ({ children, ariaLabel, onStepSelect }: StepListProps) => (
-        <nav aria-label={ariaLabel}>
-            {Children.map(children, (child) =>
-                isValidElement<StepListItemProps>(child) ? (
-                    <button
-                        disabled={!child.props.navigable}
-                        data-completed={child.props.completed}
-                        onClick={(event) => onStepSelect(event, { value: child.props.value })}
-                    >
-                        {child.props.children}
-                    </button>
-                ) : null,
-            )}
-        </nav>
-    ),
-}));
-
 function restored(step = 2): ModelingAdvisorSnapshot {
     const container = createBlankContainer('Orders');
     container.scale.candidates[0].distinctValues = 872;
@@ -128,7 +108,7 @@ function deployedSnapshot(): ModelingAdvisorSnapshot {
 }
 
 function render(element: ReactElement) {
-    return renderReact(<FluentProvider>{element}</FluentProvider>);
+    return renderReact(<FluentProvider theme={webLightTheme}>{element}</FluentProvider>);
 }
 
 async function continueExisting() {
@@ -161,6 +141,18 @@ async function confirmDeployment() {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Deploy' }));
 }
 
+/**
+ * Asserts that no Deploy affordance can be activated. The footer button is a Fluent `Button` and
+ * renders a plain `disabled`, while the breadcrumb step is `disabledFocusable`: it deliberately stays
+ * in the tab order and reports `aria-disabled` instead, so both mechanisms have to be accepted here.
+ */
+function expectNoActionableDeployButton() {
+    const deployButtons = screen.getAllByRole('button', { name: 'Deploy' });
+    expect(deployButtons.length).toBeGreaterThan(0);
+    const actionable = deployButtons.filter((button) => !button.matches(':disabled, [aria-disabled="true"]'));
+    expect(actionable.map((button) => button.textContent)).toEqual([]);
+}
+
 describe('data modeler saved-work choice and revisiting steps', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -178,6 +170,35 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         client.dataModeling.deploy.mutate.mockResolvedValue({ status: 'cancelled' });
         client.dataModeling.openDataExplorer.mutate.mockResolvedValue(undefined);
         client.dataModeling.events.subscribe.mockReturnValue({ unsubscribe: vi.fn() });
+    });
+
+    it('uses the shared sticky-navigation layout and keeps the footer outside its scroll region', async () => {
+        client.dataModeling.loadState.query.mockResolvedValue(restored(4));
+        render(<DataModelingWizard />);
+        await continueExisting();
+        const navigation = screen.getByRole('navigation', { name: 'Data modeling steps' });
+        const scrollRegion = navigation.closest('[data-header-behavior="sticky-navigation"]');
+        expect(scrollRegion).toHaveAttribute('tabindex', '0');
+        expect(scrollRegion).toContainElement(screen.getByRole('heading', { name: /^Workload:/ }));
+        expect(scrollRegion).toContainElement(screen.getByRole('heading', { name: 'Partition key recommendation' }));
+        expect(scrollRegion).not.toContainElement(screen.getByRole('button', { name: 'Start Over' }));
+        expect(within(navigation).getByRole('button', { name: 'Result' })).toHaveAttribute('aria-current', 'step');
+    });
+
+    it('supports keyboard step navigation, focuses its heading, and unmounts the previous content', async () => {
+        const user = userEvent.setup();
+        client.dataModeling.loadState.query.mockResolvedValue(restored(4));
+        render(<DataModelingWizard />);
+        await continueExisting();
+        const review = screen.getByRole('button', { name: 'Review' });
+        expect(review).toHaveTextContent('Review');
+        expect(review).toHaveAccessibleName('Review');
+        review.focus();
+        await user.keyboard('{Enter}');
+        await waitFor(() => expect(screen.getByRole('heading', { name: 'Review your inputs' })).toHaveFocus());
+        expect(screen.queryByRole('region', { name: 'Partition key recommendation' })).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Review' })).toHaveAttribute('aria-current', 'step');
+        expect(client.dataModeling.requestRecommendation.mutate).not.toHaveBeenCalled();
     });
 
     it('deploys directly from the final step without generating or submitting Bicep or saving deployment state', async () => {
@@ -310,10 +331,12 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         await continueExisting();
         expect(await screen.findByRole('region', { name: 'Deployment successful' })).toBeVisible();
         expect(
-            within(screen.getByRole('navigation', { name: 'Data modeling steps' })).getByRole('button', {
-                name: 'Deploy',
-            }),
-        ).toHaveAttribute('data-completed', 'true');
+            within(screen.getByRole('navigation', { name: 'Data modeling steps' }))
+                .getByRole('button', {
+                    name: 'Deploy',
+                })
+                .querySelector('svg'),
+        ).toHaveStyle({ color: tokens.colorPaletteGreenForeground1 });
         expect(
             screen.getByText('Data model deployed to "fresh-db": 1 container(s) created, 0 left unchanged.'),
         ).toBeVisible();
@@ -336,10 +359,12 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(client.dataModeling.deploy.mutate).toHaveBeenCalledOnce();
         await waitFor(() => expect(lastSave().deployment).toBeUndefined());
         expect(
-            within(screen.getByRole('navigation', { name: 'Data modeling steps' })).getByRole('button', {
-                name: 'Deploy',
-            }),
-        ).toHaveAttribute('data-completed', 'false');
+            within(screen.getByRole('navigation', { name: 'Data modeling steps' }))
+                .getByRole('button', {
+                    name: 'Deploy',
+                })
+                .querySelector('svg'),
+        ).not.toHaveStyle({ color: tokens.colorPaletteGreenForeground1 });
     });
 
     it('locks navigation during deployment and saves only its successful completion, not its template', async () => {
@@ -368,8 +393,12 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         await confirmDeployment();
         expect(screen.getByRole('button', { name: 'Back' })).toBeDisabled();
         expect(screen.getByRole('button', { name: 'Start Over' })).toBeDisabled();
-        for (const step of within(screen.getByRole('navigation')).getAllByRole('button')) {
-            expect(step).toBeDisabled();
+        const navigation = within(screen.getByRole('navigation'));
+        for (const name of ['Workload', 'Container: Orders', 'Review', 'Result']) {
+            const step = navigation.getByRole('button', { name });
+            expect(step).toHaveAttribute('aria-disabled', 'true');
+            await userEvent.click(step);
+            expect(screen.getByRole('region', { name: 'Deploy data model' })).toBeVisible();
         }
         await act(async () =>
             finish({ status: 'deployed', databaseName: 'fresh-db', createdCount: 1, existingCount: 0 }),
@@ -472,9 +501,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         client.dataModeling.loadState.query.mockResolvedValue(saved);
         render(<DataModelingWizard />);
         await continueExisting();
-        for (const button of screen.getAllByRole('button', { name: 'Deploy' })) {
-            expect(button).toBeDisabled();
-        }
+        expectNoActionableDeployButton();
         expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
     });
 
@@ -590,8 +617,8 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         await userEvent.click(screen.getByRole('button', { name: 'Start Over' }));
         act(() => callbacks.onData({ type: 'recommendationReceived', recommendation: saved.recommendation.value! }));
         expect(lastSave()).toEqual(createInitialSnapshot());
-        expect(screen.getByRole('button', { name: 'Review' })).toBeDisabled();
-        expect(screen.getByRole('button', { name: 'Result' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Review' })).toHaveAttribute('aria-disabled', 'true');
+        expect(screen.getByRole('button', { name: 'Result' })).toHaveAttribute('aria-disabled', 'true');
     });
 
     it('waits for the input save before opening Chat', async () => {
@@ -704,9 +731,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         act(() => callbacks.onData({ type: 'recommendationError', message }));
         expect(lastSave().recommendation).toEqual({ status: 'error', error: message });
         expect(screen.getByText(message)).toBeVisible();
-        for (const deploy of screen.getAllByRole('button', { name: 'Deploy' })) {
-            expect(deploy).toBeDisabled();
-        }
+        expectNoActionableDeployButton();
         expect(screen.queryByText('Restored result')).not.toBeInTheDocument();
         await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
         await waitFor(() => expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledTimes(2));
@@ -774,13 +799,13 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         await confirmAdvance();
         expect(lastSave().wizard.dataModel.containers).toEqual(saved.wizard.dataModel.containers);
         expect(lastSave().recommendation).toEqual({ status: 'idle' });
-        expect(screen.getByRole('button', { name: 'Result' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Result' })).toHaveAttribute('aria-disabled', 'true');
         const persisted = lastSave();
         mounted.unmount();
         client.dataModeling.loadState.query.mockResolvedValue(persisted);
         render(<DataModelingWizard />);
         await continueExisting();
-        expect(screen.getByRole('button', { name: 'Result' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Result' })).toHaveAttribute('aria-disabled', 'true');
         while (screen.queryByRole('button', { name: 'Next' })) {
             await userEvent.click(screen.getByRole('button', { name: 'Next' }));
             expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();

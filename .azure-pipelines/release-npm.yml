@@ -4,6 +4,12 @@
 # Tools / vscode-azuretools template — we run our own AME identity end to end
 # so the team can operate this pipeline independently).
 #
+# Extends the OneBranch GovernedTemplates (same template family as build.yml /
+# release-extension.yml in this repo, and the same one used by
+# vscode-documentdb's working npm release pipeline) — NOT the
+# 1ESPipelineTemplates/MicroBuildTemplate repo, which lives outside msdata and
+# is only needed for VSIX/MicroBuild signing scenarios, not plain npm releases.
+#
 # Prerequisites (see plan.md / project ESRP onboarding notes for full detail):
 #   1. ESRP Release registration approved in aka.ms/esrpportal for App
 #      Registration Client Id below (domain: AME).
@@ -15,9 +21,6 @@
 #      EsrpKeyVaultName.
 #   3. ESRP Request Signing (TSS) certificate generated in that Key Vault via
 #      OneCertV2-PublicCA, subject CN=<the AAD App Id below>.
-#
-# Still open before this can be validated end to end: ESRP registration Submit
-# is blocked on a portal backend bug (GetAADOwners) — see onboarding notes.
 # =============================================================================
 
 trigger: none # Only run this pipeline when manually triggered
@@ -67,10 +70,10 @@ resources:
     - pipeline: build # identifier used in pipeline resource variables
       source: '\VSCode Extensions\vscode-cosmosdb Build NPM' # pipeline that produces the .tgz artifacts
   repositories:
-    - repository: 1esPipelines
+    - repository: templates
       type: git
-      name: 1ESPipelineTemplates/MicroBuildTemplate
-      ref: refs/tags/release
+      name: OneBranch.Pipelines/GovernedTemplates
+      ref: refs/heads/main
 
 variables:
   TeamName: "Azure Cosmos DB - Desktop Tools"
@@ -106,12 +109,34 @@ variables:
   EsrpReleaseApprovers: "dshilov@microsoft.com,jawelton@microsoft.com"
 
 extends:
-  template: azure-pipelines/MicroBuild.1ES.Official.yml@1esPipelines
+  template: v2/OneBranch.Official.CrossPlat.yml@templates
   parameters:
-    pool:
-      name: AzurePipelines-EO
-      image: 1ESPT-Ubuntu22.04
-      os: linux
+    cloudvault:
+      enabled: false
+    globalSdl:
+      asyncSdl:
+        enabled: false
+      tsa:
+        enabled: false
+      credscan:
+        suppressionsFile: $(Build.SourcesDirectory)/.azure-pipelines/compliance/CredScanSuppressions.json
+      policheck:
+        break: true
+      suppression:
+        suppressionFile: $(Build.SourcesDirectory)/.config/guardian/.gdnsuppress
+      codeql:
+        compiled:
+          enabled: false
+        tsaEnabled: false
+      componentgovernance:
+        ignoreDirectories: $(Build.SourcesDirectory)/.vscode-test
+    featureFlags:
+      linuxEsrpSigning: true
+      WindowsHostVersion:
+        Version: 2022
+
+    release:
+      category: NonAzure
 
     stages:
       - stage: Release

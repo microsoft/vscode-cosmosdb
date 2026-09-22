@@ -80,11 +80,29 @@ extends:
                   targetPath: $(Build.ArtifactStagingDirectory)/build/azure-cosmosdb-schema-analyzer
                   artifactName: Build azure-cosmosdb-schema-analyzer
             steps:
-              - task: NodeTool@0
-                displayName: "Use Node.js (.nvmrc)"
+              # NodeTool@0 is deprecated; read .nvmrc manually and use UseNode@1
+              # instead, same pattern as build.yml's '🔢 Read Node.js version from
+              # .nvmrc' + '📦 Using Node.js' steps.
+              - task: PowerShell@2
+                displayName: "Read Node.js version from .nvmrc"
                 inputs:
-                  versionSource: fromFile
-                  versionFilePath: .nvmrc
+                  targetType: "inline"
+                  pwsh: true
+                  script: |
+                    $nvmrcPath = "$(Build.SourcesDirectory)/.nvmrc"
+                    if (-not (Test-Path $nvmrcPath)) {
+                      Write-Host "##vso[task.logissue type=error].nvmrc not found at $nvmrcPath"
+                      Write-Host "##vso[task.complete result=Failed;]"
+                      exit 1
+                    }
+                    $nodeVersion = (Get-Content $nvmrcPath -Raw).Trim().TrimStart('v')
+                    Write-Output "##vso[task.setvariable variable=nodeVersion]$nodeVersion"
+                    Write-Output "Node.js version from .nvmrc: $nodeVersion"
+
+              - task: UseNode@1
+                displayName: "Use Node.js"
+                inputs:
+                  version: "$(nodeVersion)"
 
               # Workspaces monorepo: install once at the repo root, exactly like
               # build.yml's '⬇️ Install Dependencies' step — authenticate to and
@@ -155,11 +173,29 @@ extends:
                   targetPath: $(Build.ArtifactStagingDirectory)/build/azure-cosmosdb-nosql-language-service
                   artifactName: Build azure-cosmosdb-nosql-language-service
             steps:
-              - task: NodeTool@0
-                displayName: "Use Node.js (.nvmrc)"
+              # NodeTool@0 is deprecated; read .nvmrc manually and use UseNode@1
+              # instead, same pattern as build.yml's '🔢 Read Node.js version from
+              # .nvmrc' + '📦 Using Node.js' steps.
+              - task: PowerShell@2
+                displayName: "Read Node.js version from .nvmrc"
                 inputs:
-                  versionSource: fromFile
-                  versionFilePath: .nvmrc
+                  targetType: "inline"
+                  pwsh: true
+                  script: |
+                    $nvmrcPath = "$(Build.SourcesDirectory)/.nvmrc"
+                    if (-not (Test-Path $nvmrcPath)) {
+                      Write-Host "##vso[task.logissue type=error].nvmrc not found at $nvmrcPath"
+                      Write-Host "##vso[task.complete result=Failed;]"
+                      exit 1
+                    }
+                    $nodeVersion = (Get-Content $nvmrcPath -Raw).Trim().TrimStart('v')
+                    Write-Output "##vso[task.setvariable variable=nodeVersion]$nodeVersion"
+                    Write-Output "Node.js version from .nvmrc: $nodeVersion"
+
+              - task: UseNode@1
+                displayName: "Use Node.js"
+                inputs:
+                  version: "$(nodeVersion)"
 
               # Workspaces monorepo: install once at the repo root, exactly like
               # build.yml's '⬇️ Install Dependencies' step — authenticate to and

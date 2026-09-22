@@ -102,18 +102,25 @@ Starting new replaces only that account's saved session.
 Copilot uses the bundled [data model recommendation skill](skills/cosmosdb-data-model-recommendation/SKILL.md),
 which loads the Cosmos DB best-practices guidance, to provide candidate scores, verdicts, and per-rule assessments.
 The request carries the workload and verified scenario context rather than embedding the recommendation workflow.
-For an unchanged built-in scenario, the skill uses the scenario hint's exact per-container default keys as the first
-recommendations, preserving hierarchical path order. Any modeling-input edit disables that automatic preference for the
+For an unchanged built-in scenario, the skill evaluates the scenario hint's exact per-container default keys first
+and prefers them only when suitable, preserving hierarchical path order. Any modeling-input edit disables that preference for the
 whole model; generated IDs and navigation do not count as edits. Custom models have no automatic hint preference.
 Known hard-constraint conflicts must be explained rather than hidden to preserve a hint. Results preserve Copilot's
 candidate ordering, recommended key, and workload analysis; the extension does not rewrite scores or force a winner.
+HPK recommendations must satisfy the skill's HPK rules, which point at the best-practices rules and official
+documentation through a small [HPK sources](skills/cosmosdb-data-model-recommendation/references/hpk-selection.md) file:
+compare a viable single-field baseline, demonstrate a workload-specific benefit, and explain prefix routing, write
+distribution, and transaction trade-offs. Default hints cannot bypass this check. When HPK has no demonstrated advantage,
+prefer a supported simpler key; missing compliance details alone do not justify adding levels or failing the recommendation.
+These selection rules live in the Data Modeler skill, so refreshing the pinned external best-practices skill does not overwrite them.
 The skill also supports direct Chat recommendations without a wizard.
 If required guidance or information is missing, or the recommendation cannot be justified, the skill fails rather than
 inventing a result. It reports the blocker and what is needed to proceed through the report tool's explicit error form,
 which puts the wizard in a retryable error state instead of returning provisional recommendations or fabricated scores.
-The skill derives applicable guardrails at request time solely from the loaded best-practices skill and its bundled local
-files, rather than duplicating a rule catalog or numeric limits. It does not fetch external documentation or search the web,
-including URLs cited by the bundled rules. Guardrail explanations identify the local rule actually read.
+The skill reads the best-practices rules first instead of duplicating their content. For missing, outdated, or conflicting
+guidance, it consults relevant Microsoft Learn documentation without sending workload data to external tools.
+The HPK reference links to those sources rather than maintaining a second rule catalog.
+Guardrail explanations identify the local rule or documentation section actually read.
 It distinguishes hard constraints, conditional requirements, and optimization advice, and checks candidates before scoring.
 Unresolved conflicts or missing evidence needed to establish applicability cause failure.
 Relevant hard constraints, their sources, and supporting evidence appear last under **Absolute rules (guardrails)** in each container's

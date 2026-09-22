@@ -5,16 +5,16 @@ description: |
   patterns, write rates, cardinality, and growth estimates. Use for Data Modeler
   recommendations or direct Chat requests to choose, compare, score, or explain
   partition keys, including hierarchical and synthetic keys. Reuses the
-  cosmosdb-best-practices skill and preserves scenario hints for unchanged defaults.
+  cosmosdb-best-practices skill and prefers suitable scenario hints for unchanged defaults.
 license: MIT
 metadata:
   author: vscode-cosmosdb
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # Cosmos DB data model recommendation
 
-Analyze every supplied container. This skill defines the procedure; domain guidance comes from bundled best practices.
+Analyze every supplied container. Use bundled best practices and this skill's local selection guidance.
 
 ## Evidence and failure policy
 
@@ -51,15 +51,19 @@ The recommendation is a partition-key design judgment, not a certification of ap
    Reading only the skill overview is not sufficient. Derive checks from shipped rules, not from a fixed topic checklist
    or memory. Do not require a standalone rule for a topic that the bundle does not cover.
    If an optional compiled guide such as AGENTS.md is absent, read the individual rules instead.
-3. Use the skill and bundled local references only for domain guidance; use the supplied workload for user-model facts.
-   If a required local rule is unavailable, report failure. Never claim to have read unavailable guidance.
+3. Use the best-practices skill first; do not duplicate its domain rules in this workflow.
+   Use the supplied workload for user-model facts. Never claim to have read unavailable guidance.
+4. Before recommending any hierarchical partition key (HPK), including a default hint, use
+   [HPK sources](references/hpk-selection.md) to locate the authoritative guidance, then read those rules
+   and, where needed, the linked documentation. Apply the HPK rules in section 4 of this skill before hint
+   preference or scoring; a general HPK benefit is not evidence of suitability for this workload.
 
-**Do not fetch external documentation or search the web.** This includes browser, documentation-search, URL-fetch,
-HTTP, and shell-network tools. External citations are references only: do not open them,
-even if a bundled rule suggests consulting the latest documentation or local guidance conflicts or seems outdated.
-Do not fill gaps from general model knowledge. Distinguish an unavailable required rule from an uncovered topic:
-label the latter outside the loaded guidance; fail only if it leaves a necessary correctness question unresolved
-for this workload, not merely because a topic sounds relevant.
+For gaps, outdated guidance, or conflicts, consult relevant Microsoft Learn documentation, starting with the links in
+the HPK reference or best-practices rule. Use documentation tools or fetch the official page; avoid broad web searches
+and unofficial sources. Do not send user schemas, queries, resource identifiers, or other workload data to external tools.
+Do not fill gaps from general model knowledge. Cite only sources actually read.
+If guidance remains unavailable or leaves a necessary correctness question unresolved, follow the evidence/failure policy;
+do not fail merely because an uncovered topic sounds relevant.
 
 For missing workload evidence, name the applicable rule and minimum input needed to check it, subject to the evidence policy.
 Do not infer identifier guarantees or quantitative bounds from field names or qualitative scale labels.
@@ -72,15 +76,18 @@ Data Modeler supplies computed context: `defaultsUnchanged`, a summary `hint`, a
 `containerHints` (only for unchanged defaults). Trust the flag, not a scenario name or similar-looking fields:
 any modeling-input edit disables the preference for the whole model; generated IDs/navigation do not count.
 
-When `defaultsUnchanged: true`, **use the hint as the first recommendation** for each container:
+When `defaultsUnchanged: true`, **use the hint as the first recommendation only if suitable** for that container:
 
-- Use its matching `containerHints` key exactly as the selected key and first candidate, with verdict `recommended`.
+- Evaluate its matching `containerHints` key first. If it satisfies the HPK rules in section 4 (when hierarchical) and
+  applicable hard constraints, use that exact key as the selected key and first candidate, with verdict `recommended`.
   A missing matching hint is a context failure, not permission to invent a key or silently substitute another.
 - Preserve hierarchical key order: `/customerId, /orderId` is two paths, not `/customerId/orderId`.
   A middle dot separates summary suggestions; `(+ HPK)` is explanatory. Never reuse a sibling container's hint.
 - Explain the baseline preference using workload/rule evidence; still assess alternatives, routing, hotspots, and trade-offs.
 - If the hint violates a hard constraint, explain the conflict and recommend an alternative only if justified;
   otherwise fail. Never hide violations or fabricate evidence to preserve the hint.
+- An unchanged scenario or `(+ HPK)` label does not justify HPK. If its benefit is unsupported, explain the departure
+  and recommend a supported simpler key; do not fail solely to preserve the hint or invent growth to justify it.
 
 When `defaultsUnchanged` is false or absent, evaluate actual inputs without automatic hint preference;
 the hinted key may still win on merit. Custom scenarios and direct Chat have no preference without verified default context.
@@ -91,7 +98,7 @@ Never recommend a key that violates an applicable hard constraint: neither a hig
 override it. Violating candidates may appear only as `avoid`, with the violation explained.
 Fail if no recommendation can be justified under the evidence policy above.
 
-Derive the applicable guardrails at request time from the loaded skill and bundled files.
+Derive the applicable guardrails at request time from the loaded skill and official documentation consulted under section 1.
 This skill does not maintain a separate rule catalog, numeric limits, or feature-support catalog.
 
 1. **Discover/classify:** extract each constraint's source, scope, applicability conditions, units, and exceptions.
@@ -100,8 +107,8 @@ This skill does not maintain a separate rule catalog, numeric limits, or feature
    CRITICAL alone does not establish that a rule is absolute.
 2. **Apply:** verify scope and conditions against the actual workload/configuration/capabilities.
    Do not apply limits globally or assume exceptions are enabled; apply the Wizard evidence policy to missing facts.
-3. **Resolve:** If sources conflict, resolve using bundled guidance only. Do not fetch documentation to resolve the gap
-   or choose the interpretation that makes a candidate pass. Fail on unresolved rules or evidence necessary for selection;
+3. **Resolve:** If sources conflict, check the relevant Microsoft Learn documentation and explain which guidance applies.
+   Do not choose the interpretation that makes a candidate pass. Fail on unresolved rules or evidence necessary for selection;
    missing wizard-unavailable compliance facts remain warnings under the evidence policy.
 4. **Check every candidate:** evaluate all applicable constraints before ranking; record workload evidence,
    reject known violations, and mark unknown compliance as warnings, not passes.
@@ -122,11 +129,14 @@ For each container:
    Cardinality alone does not prove balanced traffic; qualitative growth does not establish total data size.
 4. Compare 3-4 distinct realistic candidates where supported, including single-field and justified hierarchical/synthetic keys.
    Explain a smaller set when necessary. Never invent an existing property; explain any synthetic strategy's new derived field.
+   Start with the best viable single-field key. Do not include HPK merely to fill the candidate count.
+   Recommend HPK only when supplied evidence establishes a concrete advantage over that baseline and acceptable trade-offs.
+   Prefer the simpler key when no material HPK advantage is demonstrated; use the minimum justified number of levels.
 5. Score overall suitability from 0 to 100: 0 = unsuitable, 25 = major risks, 50 = substantial trade-offs,
    75 = good fit, 100 = excellent fit supported by the workload. These are consistent qualitative planning judgments,
    not measurements or probabilities. Unsupported choices/assessments require failure, not arbitrary scores.
 6. Order best first, subject to the hint rule. Keep the selected key, first candidate, verdicts, scores, and analyses consistent;
-   do not score an alternative above the selected key. Resolve close baseline choices toward the hint, not arbitrary precision.
+   do not score an alternative above the selected key. Resolve close suitable baseline choices toward the hint, not arbitrary precision.
    Give specific, honest reasons for weaker/avoid candidates.
 
 Do not introduce read/write/storage priority weights or component-score calculations.
@@ -138,6 +148,8 @@ For wizard requests, inspect the report tool's declared input schema: it is the 
 Only after every container succeeds, provide a concise overall summary and these per-container results:
 
 - Exact entity name, recommended `partitionKey`, and 1-2 sentence `rationale`.
+  For HPK, state the single-field baseline, evidenced advantage, purpose of each level, and main trade-off in the
+  rationale/assessments. Explain prefix routing and any departure from an unsuitable default hint.
 - Scored `candidates`: `verdict` (`recommended`, `alternative`, `avoid`), `score`, and decisive per-rule `assessments`,
   each with a short `label`, `status` (`pass`, `warn`, `fail`, `info`), and one-line `detail`.
 - Optional `hotPartitionRisk` comparisons: risk bands and numeric `pct` per row, distinguishing estimates from measurements.
@@ -146,9 +158,10 @@ Only after every container succeeds, provide a concise overall summary and these
   `routing` is `single` or `cross`; explain prefix targeting and limitations in `analysis`, without forcing a single-partition claim.
   For unsupported costs, use an explanatory string such as "Unknown without measurement".
 - `documentIdStrategy`: short access-pattern tag and recommendation consistent with the selected key.
-- Relevant `guardrails`: `{rule, detail}` entries naming the best-practices skill and local rule title/path actually read,
+- Relevant `guardrails`: `{rule, detail}` entries naming the best-practices skill and local rule title/path or
+  Microsoft Learn URL and section actually read,
   the constraint/scope, supporting evidence or exact unverified fact, and any alternative rejected for a violation.
-  Do not present linked external citations as sources read. Apply the evidence policy to unresolved guardrails.
+  A link alone is not evidence that its content was read. Apply the evidence policy to unresolved guardrails.
   The Result page displays **Absolute rules (guardrails)** as its last section; deployment code is in the Deploy step.
 
 Use the supplied wizard ID unchanged and call its report tool exactly once after analysis (success or failure).

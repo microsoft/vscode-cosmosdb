@@ -87,12 +87,7 @@ extends:
                   versionFilePath: .nvmrc
 
               # Workspaces monorepo: install once at the repo root.
-              # Our npm packages are open source and publish to registry.npmjs.org,
-              # not the internal ms-feed in .azure-pipelines/.npmrc (that feed is
-              # only relevant to non-published/internal tooling and requires
-              # vsts-npm-auth). Force the public registry explicitly so this build
-              # never depends on that feed or any agent-level npm config.
-              - script: npm ci --registry https://registry.npmjs.org/
+              - script: npm ci
                 displayName: "Install dependencies (root)"
                 workingDirectory: $(Build.SourcesDirectory)
 
@@ -195,12 +190,7 @@ extends:
                   versionFilePath: .nvmrc
 
               # Workspaces monorepo: install once at the repo root.
-              # Our npm packages are open source and publish to registry.npmjs.org,
-              # not the internal ms-feed in .azure-pipelines/.npmrc (that feed is
-              # only relevant to non-published/internal tooling and requires
-              # vsts-npm-auth). Force the public registry explicitly so this build
-              # never depends on that feed or any agent-level npm config.
-              - script: npm ci --registry https://registry.npmjs.org/
+              - script: npm ci
                 displayName: "Install dependencies (root)"
                 workingDirectory: $(Build.SourcesDirectory)
 

@@ -4,7 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type CosmosContainer, type CosmosModel } from '../cosmosModel';
-import { buildBicepParams, buildBicepTemplate, mergeBicepParams, parseBicepParams } from './bicepGenerator';
+import {
+    buildBicepParams,
+    buildBicepTemplate,
+    buildExistingDatabaseContainerBicep,
+    mergeBicepParams,
+    parseBicepParams,
+} from './bicepGenerator';
 
 function container(partial: Partial<CosmosContainer> & Pick<CosmosContainer, 'name'>): CosmosContainer {
     return { entities: [], ...partial };
@@ -15,6 +21,51 @@ function buildModel(partial: Partial<CosmosModel> = {}): CosmosModel {
 }
 
 describe('bicepGenerator', () => {
+    it('generates a complete selected-container template with safely escaped literal resource names', () => {
+        const template = buildBicepTemplate(
+            buildModel({
+                databaseName: "db'${literal}",
+                containers: [
+                    container({ name: "o'brien", partitionKeys: [{ path: '/id' }] }),
+                    container({ name: 'Users', partitionKeys: [{ path: '/tenant' }, { path: '/id' }] }),
+                ],
+            }),
+            { existingAccount: true, accountName: 'account' },
+        );
+        expect(template).toContain("param accountName string = 'account'");
+        expect(template).toContain("param databaseName string = 'db\\'\\${literal}'");
+        expect(template).toContain("name: 'o\\'brien'");
+        expect(template).toContain('resource container_0');
+        expect(template).toContain('resource container_1');
+        expect(template).not.toContain('resource container_2');
+        expect(template).toContain("kind: 'MultiHash'");
+        expect(template).toContain('parent: sqlDatabase');
+        expect(template).not.toContain('sqlRoleAssignments');
+        expect(template).not.toContain('disableLocalAuth');
+    });
+
+    it('builds a container-only template without redeploying the account, database or role assignments', () => {
+        const template = buildExistingDatabaseContainerBicep({
+            name: "o'brien${literal}",
+            partitionKeys: [{ path: '/tenantId' }, { path: '/id' }],
+        });
+        expect(template).toContain("resource account 'Microsoft.DocumentDB/databaseAccounts@2024-05-15' existing");
+        expect(template).toContain(
+            "resource sqlDatabase 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2024-05-15' existing",
+        );
+        expect(template).toContain(
+            "resource container_0 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-05-15'",
+        );
+        expect(template).toContain("name: 'o\\'brien\\${literal}'");
+        expect(template).toContain("paths: ['/tenantId', '/id']");
+        expect(template).toContain("kind: 'MultiHash'");
+        expect(template).toContain('version: 2');
+        expect(template).not.toContain('sqlRoleAssignments');
+        expect(template).not.toContain('capabilities');
+        expect(template).not.toContain('disableLocalAuth');
+        expect(template).not.toContain('autoscaleSettings');
+    });
+
     describe('buildBicepTemplate', () => {
         it('targets a resource group and declares the standard parameters', () => {
             const template = buildBicepTemplate(buildModel());
@@ -139,6 +190,15 @@ describe('bicepGenerator', () => {
     });
 
     describe('parseBicepParams', () => {
+        it('preserves escaped literal values through generation, parsing and repeated merging', () => {
+            const databaseName = "o'brien${literal}\\path\n\r\t";
+            const original = buildBicepParams({ databaseName });
+            expect(parseBicepParams(original).databaseName).toBe(databaseName);
+            const merged = mergeBicepParams(original, { accountName: 'acct' });
+            expect(parseBicepParams(merged).databaseName).toBe(databaseName);
+            expect(mergeBicepParams(merged, {})).toBe(merged);
+        });
+
         it('extracts the owned string and bool params', () => {
             const content = [
                 "using './main.bicep'",

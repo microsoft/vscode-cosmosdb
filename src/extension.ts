@@ -38,6 +38,7 @@ import {
     registerGetQueryEditorContextTool,
     registerListOpenConnectionsTool,
     registerOpenQueryEditorTool,
+    registerReportPartitionKeyRecommendationTool,
     registerSampleDataTool,
 } from './chat';
 import { registerE2eTestCommands } from './commands/e2eTestCommands/registerE2eTestCommands';
@@ -209,6 +210,9 @@ export async function activateInternal(
         registerOpenQueryEditorTool(context);
         registerListOpenConnectionsTool(context);
         registerFocusQueryEditorTool(context);
+
+        // Data Modeling wizard: receives Copilot's partition-key recommendation.
+        registerReportPartitionKeyRecommendationTool(context);
 
         // Suppress "Report an Issue" button for all errors in favor of the command
         registerErrorHandler((c) => (c.errorHandling.suppressReportIssue = true));

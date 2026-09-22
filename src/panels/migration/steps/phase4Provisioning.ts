@@ -3,17 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import {
-    type ContainerPartitionKey as ArmContainerPartitionKey,
-    type IndexingPolicy as ArmIndexingPolicy,
-    type CosmosDBManagementClient,
-} from '@azure/arm-cosmosdb';
-import {
-    PartitionKeyDefinitionVersion,
-    PartitionKeyKind,
-    type CosmosClient,
-    type IndexingPolicy as CosmosIndexingPolicy,
-} from '@azure/cosmos';
+import { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
+import { type CosmosClient } from '@azure/cosmos';
 import { VSCodeAzureSubscriptionProvider } from '@microsoft/vscode-azext-azureauth';
 import { getResourceGroupFromId } from '@microsoft/vscode-azext-azureutils';
 import { callWithTelemetryAndErrorHandling, parseError, type IActionContext } from '@microsoft/vscode-azext-utils';
@@ -41,7 +32,7 @@ import { validateCosmosDBAccountName } from '../../../utils/cosmosDBAccountName'
 import { getConfirmationAsInSettings } from '../../../utils/dialogs/getConfirmation';
 import { type MigrationEvent } from '../../trpc/routers/migrationEventsRouter';
 import { getCosmosDbBestPractices } from '../bestPractices';
-import { type CosmosModel, type IndexingPolicy } from '../cosmosModel';
+import { type CosmosModel } from '../cosmosModel';
 import {
     createMkDebug,
     getSelectedModel,
@@ -62,6 +53,11 @@ import {
     incrementRunCount,
     setMigrationTelemetryContext,
 } from '../helpers/migrationTelemetry';
+import {
+    armProvisioningOperations,
+    provisionCosmosModel,
+    sdkProvisioningOperations,
+} from '../helpers/provisionCosmosModel';
 import { generateSeedScript, type SampleDataResult } from '../helpers/seedScriptHelpers';
 import { Phase4SampleDataPrompt } from '../prompts';
 import { createToolExecutor, getBestPracticeTools } from '../tools/migrationTools';
@@ -437,106 +433,49 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
                 );
             }
 
-            await sendPhaseProgress(
-                channel,
-                'Provisioning',
-                'provisioningProgress',
-                progress(l10n.t('Creating database "{name}"…', { name: databaseName })),
-            );
-
-            if (token.isCancellationRequested) return;
-
-            if (armTarget) {
-                const mgmt = await getMgmtClient();
-                await mgmt.sqlResources.beginCreateUpdateSqlDatabaseAndWait(
-                    armTarget.resourceGroup,
-                    armTarget.accountName,
-                    databaseName,
-                    {
-                        resource: { id: databaseName },
-                        options: {},
-                    },
-                );
-            } else {
-                await withDataPlaneRbacRetry(
-                    () => client.databases.createIfNotExists({ id: databaseName }),
-                    token,
-                    async (_attempt, totalWaitedMs) => {
-                        await sendPhaseProgress(
-                            channel,
-                            'Provisioning',
-                            'provisioningProgress',
-                            progress(
-                                l10n.t(
-                                    'Waiting for data-plane role assignment to propagate ({0}s elapsed)…',
-                                    Math.round(totalWaitedMs / 1000),
+            const operations = armTarget
+                ? armProvisioningOperations(await getMgmtClient(), armTarget)
+                : sdkProvisioningOperations(client);
+            const createDatabase = operations.createDatabase;
+            if (!armTarget) {
+                operations.createDatabase = (name) =>
+                    withDataPlaneRbacRetry(
+                        () => createDatabase(name),
+                        token,
+                        async (_attempt, totalWaitedMs) => {
+                            await sendPhaseProgress(
+                                channel,
+                                'Provisioning',
+                                'provisioningProgress',
+                                progress(
+                                    l10n.t(
+                                        'Waiting for data-plane role assignment to propagate ({0}s elapsed)…',
+                                        Math.round(totalWaitedMs / 1000),
+                                    ),
                                 ),
-                            ),
-                        );
-                    },
-                );
-            }
-            // Data-plane handle used for item upserts below. Safe to obtain
-            // regardless of who created the database.
-            const database = client.database(databaseName);
-
-            // ─── Step 5: Create containers ──────────────────────────
-            context.telemetry.properties.lastStep = 'createContainers';
-            const containersCreated: string[] = [];
-
-            for (const container of model.containers) {
-                if (token.isCancellationRequested) return;
-
-                await sendPhaseProgress(
-                    channel,
-                    'Provisioning',
-                    'provisioningProgress',
-                    progress(l10n.t('Creating container "{name}"…', { name: container.name })),
-                );
-
-                const partitionKeyPaths = container.partitionKeys?.map((pk) => pk.path) ?? ['/id'];
-
-                if (armTarget) {
-                    const mgmt = await getMgmtClient();
-                    await mgmt.sqlResources.beginCreateUpdateSqlContainerAndWait(
-                        armTarget.resourceGroup,
-                        armTarget.accountName,
-                        databaseName,
-                        container.name,
-                        {
-                            resource: {
-                                id: container.name,
-                                partitionKey: toArmPartitionKey(partitionKeyPaths),
-                                indexingPolicy: container.indexingPolicy
-                                    ? toArmIndexingPolicy(container.indexingPolicy)
-                                    : undefined,
-                            },
-                            options:
-                                model.capacityMode === 'provisioned' && container.maxThroughput
-                                    ? { autoscaleSettings: { maxThroughput: container.maxThroughput } }
-                                    : {},
+                            );
                         },
                     );
-                } else {
-                    await database.containers.createIfNotExists({
-                        id: container.name,
-                        partitionKey: {
-                            paths: partitionKeyPaths,
-                            kind: partitionKeyPaths.length > 1 ? PartitionKeyKind.MultiHash : PartitionKeyKind.Hash,
-                            version: PartitionKeyDefinitionVersion.V2,
-                        },
-                        indexingPolicy: container.indexingPolicy
-                            ? toCosmosIndexingPolicy(container.indexingPolicy)
-                            : undefined,
-                        maxThroughput:
-                            model.capacityMode === 'provisioned' && container.maxThroughput
-                                ? container.maxThroughput
-                                : undefined,
-                    });
-                }
-
-                containersCreated.push(container.name);
             }
+            const containersCreated = await provisionCosmosModel(model, databaseName, operations, {
+                token,
+                onProgress: async (resource, name) => {
+                    context.telemetry.properties.lastStep =
+                        resource === 'database' ? 'createDatabase' : 'createContainers';
+                    await sendPhaseProgress(
+                        channel,
+                        'Provisioning',
+                        'provisioningProgress',
+                        progress(
+                            resource === 'database'
+                                ? l10n.t('Creating database "{name}"…', { name })
+                                : l10n.t('Creating container "{name}"…', { name }),
+                        ),
+                    );
+                },
+            });
+            if (!containersCreated) return;
+            const database = client.database(databaseName);
 
             // After creating databases/containers through ARM, the data plane
             // may still be catching up — our freshly-assigned Data Contributor
@@ -890,32 +829,6 @@ function resolveTargetConnection(target: NonNullable<ProjectJson['phases']['targ
 }
 
 /**
- * Sanitize indexing policy paths: replace non-terminal asterisk (invalid array
- * traversal) with bracket notation. Cosmos DB only accepts /[]/ for array
- * traversal; asterisk is valid only as the final (terminal) path segment.
- *
- * E.g. "/lineItems/STAR/productSnapshot/?" becomes "/lineItems/[]/productSnapshot/?"
- */
-function sanitizeIndexingPaths(paths: { path: string }[]): { path: string }[] {
-    return paths.map(({ path: p }) => ({
-        path: p.replace(/\/\*\//g, '/[]/'),
-    }));
-}
-
-/**
- * Convert our CosmosModel IndexingPolicy to the @azure/cosmos SDK format.
- */
-function toCosmosIndexingPolicy(policy: NonNullable<IndexingPolicy>): CosmosIndexingPolicy {
-    return {
-        indexingMode: (policy.indexingMode ?? 'consistent') as CosmosIndexingPolicy['indexingMode'],
-        automatic: policy.automatic ?? true,
-        includedPaths: sanitizeIndexingPaths(policy.includedPaths),
-        excludedPaths: sanitizeIndexingPaths(policy.excludedPaths),
-        compositeIndexes: policy.compositeIndexes,
-    };
-}
-
-/**
  * Check whether a database with `baseName` already exists. If it does,
  * prompt the user to either **replace** it or **create a new one** with an
  * incremented suffix (`-2`, `-3`, …).
@@ -1037,35 +950,6 @@ async function resolveUniqueDatabaseNameViaArm(
     }
 
     return undefined;
-}
-
-/**
- * Convert our CosmosModel IndexingPolicy to the @azure/arm-cosmosdb format.
- * The shape is nearly identical to the data-plane SDK's, but lives in a
- * different module so the types are structurally but not nominally compatible.
- */
-function toArmIndexingPolicy(policy: NonNullable<IndexingPolicy>): ArmIndexingPolicy {
-    return {
-        indexingMode: (policy.indexingMode ?? 'consistent') as ArmIndexingPolicy['indexingMode'],
-        automatic: policy.automatic ?? true,
-        includedPaths: sanitizeIndexingPaths(policy.includedPaths),
-        excludedPaths: sanitizeIndexingPaths(policy.excludedPaths),
-        compositeIndexes: policy.compositeIndexes,
-    };
-}
-
-/**
- * Build an ARM-side partition-key definition from the set of key paths we
- * collected during schema conversion. Uses MultiHash when more than one path
- * is present; otherwise falls back to Hash. Always emits version 2 (large
- * partition keys).
- */
-function toArmPartitionKey(paths: string[]): ArmContainerPartitionKey {
-    return {
-        paths,
-        kind: paths.length > 1 ? 'MultiHash' : 'Hash',
-        version: 2,
-    };
 }
 
 // ─── Bicep Export Refinement ────────────────────────────────────────

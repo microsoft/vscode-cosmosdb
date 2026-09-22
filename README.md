@@ -82,6 +82,138 @@ Learn more about assigning roles in [Azure role-based access control](https://le
 
 For the metrics, detections, and ARM endpoints behind the dashboard, see [`docs/account-overview-dashboard.md`](./docs/account-overview-dashboard.md).
 
+## Data Modeler
+
+Built-in workloads use scenario catalog 2.1 for container schemas, ordered partition keys (including hierarchical keys),
+query descriptions and filter predicates, peak QPS, and write distributions. Enumerated fields seed the Scale page's
+distinct-value counts. Document-size, write-rate, and growth estimates remain editable planning defaults where the catalog
+does not specify them. Updated defaults apply when selecting a workload for a new model; continuing a saved model preserves
+its inputs.
+
+The Data Modeler automatically saves a separate session for each Cosmos DB account in the extension's VS Code global storage
+directory (`ExtensionContext.globalStorageUri`), under `data-modeler/<account-hash>.json`. The account key is derived from its
+normalized endpoint, not its display name or credentials. No workspace folder is required. Opening from Account Overview
+uses that account; opening from the command palette prompts for an account.
+
+When saved work exists for the selected account, a native VS Code dialog asks whether to continue it. **Yes** restores
+modeling inputs, the current wizard step, and any saved Copilot recommendation/status. **No** starts a new model and replaces
+only that account's saved session. Dismissing the dialog leaves the saved session untouched; use **Continue your data model?**
+on the Workload screen to reopen the choice.
+
+Confirmations for restarting from a step, removing a container, replacing an uploaded schema, regenerating edited deployment
+code, and deploying also use native VS Code Yes/No dialogs. These actions run only after **Yes**; **No** or dismissal keeps the
+current state. The **Add container** name-entry form remains in the modeler.
+
+The Result page offers thumbs-up/down feedback for the recommendation, without a free-text prompt. Selecting the other
+thumb changes the vote; repeating the same vote does not send another event.
+
+With usage telemetry enabled, Data Modeler records wizard milestones, recommendation delivery/display latency and outcomes,
+deployment/export actions, persistence health, and feedback. Model customization is compared locally with the selected
+scenario defaults: current differences are separate from whether the user ever edited Data, Queries, or Scale in this open
+tab. Reverting an edit clears the current-difference flag but not the session's ever-edited flag. Generated UI IDs and
+navigation do not count as customization; no schemas, names, partition-key paths, queries, deployment code, or AI prose are
+included in these usage events.
+
+Data/Queries/Scale coverage counts distinct current containers whose section was actually displayed in this open tab,
+divided by the current container count (zero for an empty model). The initially displayed Data tab counts as viewed;
+hidden/mounted pages do not. Removed containers are excluded, new containers start unviewed, and restored sessions start with
+fresh visit tracking. The corresponding never-viewed count is the current container count minus the viewed count.
+Milestone snapshots and a best-effort close summary make skipped sections distinguishable from revisits without recording
+container identifiers. Correlation IDs and interaction history are session-only and are not saved with the model.
+Visible-tab time is not a measure of active attention; abrupt shutdown can prevent a final summary.
+See the [Data Modeler telemetry inventory](docs/data-modeler-telemetry.md) for event names, footer/tab activation tracking,
+schema-import and new-field counters, and the exact default-change and coverage calculations.
+
+Copilot uses the bundled [data model recommendation skill](skills/cosmosdb-data-model-recommendation/SKILL.md),
+which loads the Cosmos DB best-practices guidance, to provide candidate scores, verdicts, and per-rule assessments.
+The request carries the workload and verified scenario context rather than embedding the recommendation workflow.
+For an unchanged built-in scenario, the skill evaluates the scenario hint's exact per-container default keys first
+and prefers them only when suitable, preserving hierarchical path order. Any modeling-input edit disables that preference for the
+whole model; generated IDs and navigation do not count as edits. Custom models have no automatic hint preference.
+Known hard-constraint conflicts must be explained rather than hidden to preserve a hint. Results preserve Copilot's
+candidate ordering, recommended key, and workload analysis; the extension does not rewrite scores or force a winner.
+The skill owns the recommendation workflow, not a second set of Cosmos DB design rules. Evaluation criteria come from
+the bundled best-practices rules, which it reads rather than restates.
+**Recommendations are single-path partition keys.** Hierarchical (multi-path) keys are out of scope: several built-in
+scenarios ship multi-path defaults, and those are treated as the user's current model rather than a proposal to
+endorse. Such a key is split into its component paths, the one the workload best supports is recommended, and the
+others are offered as alternatives ranked on their own evidence. Multi-path keys are never recommended or scored.
+Default hints cannot stand in for workload evidence: a hinted key that the rules and supplied inputs do not support is
+replaced by one they do, with the departure explained. Each candidate is judged on its own evidence rather than on how
+its neighbours score, and scores and verdicts follow a candidate's own assessments, so a decisive failure cannot be
+averaged away against passing checks. Card text explains the user's data model only: the scenario-hint mechanism is
+internal and never appears in a rationale, assessment, or Chat reply.
+This workflow lives in the Data Modeler skill, so refreshing the pinned external best-practices skill does not overwrite it.
+The skill also supports direct Chat recommendations without a wizard.
+If required guidance or information is missing, or the recommendation cannot be justified, the skill fails rather than
+inventing a result. It reports the blocker and what is needed to proceed through the report tool's explicit error form,
+which puts the wizard in a retryable error state instead of returning provisional recommendations or fabricated scores.
+It works from the bundled rules and the supplied workload only: it does not fetch pages or search the web, so a
+recommendation never triggers a network-access prompt. Citations inside rule files are for maintainers, not sources to
+retrieve. When the bundled rules leave a necessary question unresolved, the skill reports that gap instead of guessing.
+Guardrail explanations identify the local rule actually read.
+It distinguishes hard constraints, conditional requirements, and optimization advice, and checks candidates before scoring.
+Unresolved conflicts or missing evidence needed to establish applicability cause failure.
+Relevant hard constraints, their sources, and supporting evidence appear last under **Absolute rules (guardrails)** in each container's
+result and in the Chat fallback. A known violation or missing evidence required to establish compliance cannot be overridden
+by a score or scenario hint.
+
+### Deploy a recommended model
+
+After receiving a recommendation on **Result**, select **Deploy** to open the **Deploy** step:
+
+- Check the compact subscription, resource group, and account summary at the top. Unavailable Azure context is marked
+  explicitly for local or attached connections.
+- Choose **New database** and enter a validated database name, or **Existing database** and choose from the dropdown.
+- Select the containers from the inline checkbox row. All recommended containers are checked by default.
+- Choose a **Deployment method**: **Direct** (the default), **Bicep**, **Terraform**, or **C# SDK**.
+  - **Direct** shows the Deploy button and does not generate or require code. Review the final confirmation;
+    while deploying, the button is replaced by a **Deploying...** spinner and controls/navigation are locked.
+    After success, **Open in Data Explorer** opens the first selected container in the extension's Query Editor,
+    using the same action as Account Overview. This also supports attached accounts and emulators.
+  - **Bicep**, **Terraform**, and **C# SDK** show editable code for the selected database and containers, with **Copy code**
+    and **Regenerate** actions. These are manual deployment exports, not automatic deployments from the wizard.
+    The editor shows the suggested filename and guidance for the selected method. All formats support single and
+    hierarchical partition keys; Bicep uses the same generator as the Migration Assistant.
+    The C# export uses the Azure management SDK with `DefaultAzureCredential`, requires management-plane permissions,
+    and targets Azure rather than the emulator. Terraform omits matching existing containers and includes state/import guidance.
+    Code previews are in **Deploy**, leaving **Result** focused on recommendations and guardrails.
+
+Built-in deployment reuses the Migration Assistant's resource provisioning pipeline: Azure management APIs for signed-in
+accounts, or the Cosmos SDK for emulator/attached connections. **Bicep CLI and Azure CLI are not required.** It provisions
+the selected model directly, leaves matching existing containers unchanged, and rejects conflicting partition keys.
+Account settings and unrelated containers are not changed, and no documents are uploaded. Azure usage may incur charges.
+The connection needs database/container creation permissions; ARM resource-group deployment permissions are not required.
+
+Switching to **Direct** uses only the selected model, never hidden code edits. Each code format keeps its own edits when
+switching methods or navigating between steps. Changing the database or containers regenerates unedited code only for
+the active method; outdated custom code is flagged, and replacing edits requires confirmation.
+Code-generation failures do not block direct deployment. Review authentication, prerequisites, and resource/state guidance
+in generated exports before running them with your own tools.
+
+An endpoint-only session without deployment access must be reopened from its connected account. Connection credentials
+stay in the extension host. The deployment page receives display labels and generated code with non-secret target
+identifiers, not connection secrets.
+
+Deployment drafts (method, database choices, checked containers, custom code, and in-progress status) survive navigation
+within the open wizard but are not persisted. They reset when it is reopened or the recommendation changes.
+A successful direct deployment's target and result are saved with the model and restored on reopening.
+After a partial failure, choose the existing database and review the selected containers before retrying.
+
+Saved states expire **30 days after their last save** (based on file modification time). Every successful save prunes expired
+state files for all endpoints, and opening an expired state treats it as a new model. Reading a state does not extend its
+lifetime. The endpoint is sufficient to identify a state; account metadata and display names are optional.
+
+The JSON project uses a versioned envelope (`version: 1`, `name`, and `state`). **Start Over** saves a fresh wizard state.
+Interrupted recommendation requests can be retried after reopening. Non-expired invalid or unsupported project files are not overwritten;
+correct the file and use the modeler's retry action.
+
+Temporary UI state (selected tabs, search filters, unfinished text, dialogs, and pending uploads) is not saved.
+Recommendations arriving after the wizard closes remain in Chat rather than being added to the saved session.
+The saved file can contain schema details, query patterns, and recommendation text. It is stored outside your project and is
+not added to source control. Existing workspace-local and unscoped global data modeler files are left untouched and are not
+automatically assigned to an account.
+
 ## Query Editor
 
 The Query Editor provides a focused workspace for writing, running, and tuning Azure Cosmos DB for NoSQL queries.

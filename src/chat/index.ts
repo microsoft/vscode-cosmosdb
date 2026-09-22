@@ -19,4 +19,8 @@ export { FOCUS_QUERY_EDITOR_TOOL_NAME, registerFocusQueryEditorTool } from './fo
 export { GET_QUERY_EDITOR_CONTEXT_TOOL_NAME, registerGetQueryEditorContextTool } from './getQueryEditorContextTool';
 export { LIST_OPEN_CONNECTIONS_TOOL_NAME, registerListOpenConnectionsTool } from './listOpenConnectionsTool';
 export { OPEN_QUERY_EDITOR_TOOL_NAME, registerOpenQueryEditorTool } from './openQueryEditorTool';
+export {
+    REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_NAME,
+    registerReportPartitionKeyRecommendationTool,
+} from './reportPartitionKeyRecommendationTool';
 export { registerSampleDataTool, SAMPLE_DATA_TOOL_NAME } from './sampleDataTool';

@@ -1,0 +1,224 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+import { parseError, type IActionContext } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
+import * as vscode from 'vscode';
+import { type CosmosDBControlPlane } from '../../cosmosdb/controlPlane';
+import {
+    DeploymentRequestSchema,
+    GenerateDeploymentTemplateInputSchema,
+    type DeploymentOptions,
+    type DeploymentRequest,
+    type DeploymentTemplateInput,
+    type GenerateDeploymentTemplateInput,
+    type ModelDeploymentResult,
+} from '../../dataModeling/deploymentModel';
+import { type ModelingDeploymentTelemetry } from '../../dataModeling/ModelingTelemetry';
+import { ext } from '../../extensionVariables';
+import { type CosmosModel } from '../../panels/migration/cosmosModel';
+import { buildBicepTemplate } from '../../panels/migration/helpers/bicepGenerator';
+import { provisionCosmosModel } from '../../panels/migration/helpers/provisionCosmosModel';
+import { type DataModelerAccount } from '../../services/DataModelerProjectService';
+import { type ContainerResource } from '../../tree/cosmosdb/models/CosmosDBTypes';
+import { buildSdkDeployment, buildTerraformDeployment } from './deploymentExports';
+import { createDeploymentModel, missingContainers } from './deploymentTemplate';
+
+const deployingAccounts = new Set<string>();
+const unavailableReason = () =>
+    l10n.t('Reopen the Data Modeler from the account in Explorer or Account Overview to deploy this model.');
+
+function requireControlPlane(account: DataModelerAccount): CosmosDBControlPlane {
+    if (!account.getControlPlane) throw new Error(unavailableReason());
+    return account.getControlPlane();
+}
+
+export async function getDeploymentOptions(account: DataModelerAccount): Promise<DeploymentOptions> {
+    const metadata = account.getDeploymentTarget?.();
+    const target = {
+        accountName: metadata?.accountName ?? account.name ?? account.endpoint,
+        ...(metadata
+            ? {
+                  subscriptionName: metadata.subscription.name || metadata.subscription.subscriptionId,
+                  resourceGroup: metadata.resourceGroup,
+              }
+            : {}),
+    };
+    if (!account.getControlPlane) {
+        return { ...target, databases: [], unavailableReason: unavailableReason() };
+    }
+    const databases = await account.getControlPlane().listDatabases();
+    return { ...target, databases: databases.map((database) => database.id) };
+}
+
+async function checkDatabase(
+    plane: CosmosDBControlPlane,
+    input: DeploymentTemplateInput,
+    enforceNewName: boolean,
+): Promise<ContainerResource[]> {
+    const databases = await plane.listDatabases();
+    const exists = databases.some((database) => database.id === input.databaseName);
+    if (input.databaseMode === 'new') {
+        if (exists && enforceNewName) {
+            throw new Error(
+                l10n.t('The database "{name}" already exists in the account.', { name: input.databaseName }),
+            );
+        }
+        return [];
+    }
+    if (!exists) throw new Error(l10n.t('The selected database no longer exists. Select a database again.'));
+    return plane.listContainers(input.databaseName);
+}
+
+function exportTemplate(account: DataModelerAccount, input: DeploymentTemplateInput, model: CosmosModel): string {
+    return buildBicepTemplate(model, {
+        existingAccount: true,
+        existingDatabase: input.databaseMode === 'existing',
+        accountName: account.getDeploymentTarget?.()?.accountName,
+    });
+}
+
+export async function generateDeploymentTemplate(
+    account: DataModelerAccount,
+    request: GenerateDeploymentTemplateInput,
+): Promise<string> {
+    const input = GenerateDeploymentTemplateInputSchema.parse(request);
+    const model = createDeploymentModel(input);
+    const format = input.format ?? 'bicep';
+    const existing = await checkDatabase(requireControlPlane(account), input, format !== 'bicep');
+    const pending = missingContainers(model, existing);
+    switch (format) {
+        case 'terraform':
+            return buildTerraformDeployment(pending, input.databaseMode, account.getDeploymentTarget?.());
+        case 'sdk':
+            return buildSdkDeployment(model, input.databaseMode, account.getDeploymentTarget?.());
+        default:
+            return exportTemplate(account, input, model);
+    }
+}
+
+/** Uses migration's resource pipeline. Bicep is an optional export, not the built-in deployment input. */
+export async function deployDataModel(
+    account: DataModelerAccount,
+    request: DeploymentRequest,
+    context: IActionContext,
+    reportTelemetry?: (result: ModelingDeploymentTelemetry) => void,
+): Promise<ModelDeploymentResult> {
+    context.telemetry.suppressAll = true;
+    context.errorHandling.suppressDisplay = true;
+    const started = Date.now();
+    let accountKey: string | undefined;
+    let acquired = false;
+    let writesStarted = false;
+    let createdCount = 0;
+    let existingCount = 0;
+    let outcome: ModelingDeploymentTelemetry['outcome'] = 'error';
+    let errorCategory: ModelingDeploymentTelemetry['errorCategory'] = 'validation';
+    try {
+        context.valuesToMask.push(account.endpoint);
+        accountKey = new URL(account.endpoint).href.replace(/\/+$/, '');
+        if (deployingAccounts.has(accountKey)) {
+            errorCategory = 'concurrent';
+            throw new Error(l10n.t('A data model deployment is already in progress for this account.'));
+        }
+        deployingAccounts.add(accountKey);
+        acquired = true;
+        const input = DeploymentRequestSchema.parse(request);
+        const model = createDeploymentModel(input);
+        context.valuesToMask.push(
+            account.endpoint,
+            input.databaseName,
+            ...input.containers.flatMap((container) => [container.entity, container.partitionKey]),
+        );
+        const plane = requireControlPlane(account);
+        missingContainers(model, await checkDatabase(plane, input, true));
+        errorCategory = 'infrastructure';
+        const created = await vscode.window.withProgress(
+            {
+                location: vscode.ProgressLocation.Notification,
+                title: l10n.t('Deploying data model'),
+                cancellable: false,
+            },
+            async (progress) => {
+                const pending = missingContainers(model, await checkDatabase(plane, input, true));
+                existingCount = model.containers.length - pending.containers.length;
+                return provisionCosmosModel(
+                    pending,
+                    input.databaseName,
+                    {
+                        createDatabase: async (name) => {
+                            writesStarted = true;
+                            return plane.createDatabase(name);
+                        },
+                        createContainer: async (name, definition, maxThroughput) => {
+                            writesStarted = true;
+                            const container = await plane.createContainer(name, definition, undefined, maxThroughput);
+                            createdCount++;
+                            return container;
+                        },
+                    },
+                    {
+                        createDatabase: input.databaseMode === 'new',
+                        onProgress: (resource, name) =>
+                            progress.report({
+                                message:
+                                    resource === 'database'
+                                        ? l10n.t('Creating database "{name}"…', { name })
+                                        : l10n.t('Creating container "{name}"…', { name }),
+                            }),
+                    },
+                );
+            },
+        );
+        if (!created) throw new vscode.CancellationError();
+        outcome = 'success';
+        const result: ModelDeploymentResult = {
+            status: 'deployed',
+            databaseName: input.databaseName,
+            createdCount: created.length,
+            existingCount: model.containers.length - created.length,
+        };
+        void vscode.window.showInformationMessage(
+            l10n.t('Data model deployed to "{database}": {created} container(s) created, {existing} left unchanged.', {
+                database: result.databaseName,
+                created: result.createdCount,
+                existing: result.existingCount,
+            }),
+        );
+        return result;
+    } catch (error) {
+        if (error instanceof vscode.CancellationError) outcome = 'cancelled';
+        const message = l10n.t('Data model deployment failed: {error}', { error: parseError(error).message });
+        void vscode.window.showErrorMessage(
+            writesStarted
+                ? message +
+                      '\n' +
+                      l10n.t(
+                          'Some resources may already have been created. Retry using the existing database. Matching containers will be left unchanged.',
+                      )
+                : message,
+        );
+        throw error;
+    } finally {
+        if (acquired && accountKey) deployingAccounts.delete(accountKey);
+        try {
+            reportTelemetry?.({
+                outcome,
+                databaseMode: request.databaseMode === 'new' ? 'new' : 'existing',
+                durationMs: Math.max(0, Date.now() - started),
+                writesStarted,
+                createdCount,
+                existingCount,
+                ...(outcome === 'error' ? { errorCategory } : {}),
+            });
+        } catch {
+            // Reporting must not replace the original deployment result or error.
+        }
+        if (writesStarted) {
+            ext.cosmosDBBranchDataProvider.refresh();
+            ext.cosmosDBWorkspaceBranchDataProvider.refresh();
+        }
+    }
+}

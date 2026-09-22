@@ -87,9 +87,42 @@ extends:
                   versionFilePath: .nvmrc
 
               # Workspaces monorepo: install once at the repo root.
-              - script: npm ci
+              # Our npm packages are open source and publish to registry.npmjs.org,
+              # not the internal ms-feed in .azure-pipelines/.npmrc (that feed is
+              # only relevant to non-published/internal tooling and requires
+              # vsts-npm-auth). Force the public registry explicitly so this build
+              # never depends on that feed or any agent-level npm config.
+              - script: npm ci --registry https://registry.npmjs.org/
                 displayName: "Install dependencies (root)"
                 workingDirectory: $(Build.SourcesDirectory)
+
+              # npm ci/install failures on Windows sometimes crash before writing a
+              # useful message to the console (known npm 12 bug: "Exit handler never
+              # called!"). The real error (auth/network/404/etc.) still lands in npm's
+              # own debug log file, so dump it to the pipeline log when the previous
+              # step failed. This step always runs on failure only, and never fails
+              # the build itself.
+              - task: PowerShell@2
+                displayName: "Dump npm debug log on failure"
+                condition: failed()
+                inputs:
+                  targetType: "inline"
+                  script: |
+                    $cacheDir = (npm config get cache).Trim()
+                    $logsDir = Join-Path $cacheDir "_logs"
+                    Write-Output "Looking for npm debug logs in: $logsDir"
+                    if (Test-Path $logsDir) {
+                      $latest = Get-ChildItem $logsDir -Filter "*-debug-0.log" |
+                        Sort-Object LastWriteTime -Descending | Select-Object -First 1
+                      if ($latest) {
+                        Write-Output "----- npm debug log: $($latest.FullName) -----"
+                        Get-Content $latest.FullName
+                      } else {
+                        Write-Output "No npm debug log found in $logsDir"
+                      }
+                    } else {
+                      Write-Output "npm cache logs directory not found at $logsDir"
+                    }
 
               # Build both publishable workspaces (schema-analyzer first: nosql depends on it).
               - script: >-
@@ -98,6 +131,28 @@ extends:
                   --workspace packages/nosql-language-service
                 displayName: "Build packages"
                 workingDirectory: $(Build.SourcesDirectory)
+
+              - task: PowerShell@2
+                displayName: "Dump npm debug log on failure"
+                condition: failed()
+                inputs:
+                  targetType: "inline"
+                  script: |
+                    $cacheDir = (npm config get cache).Trim()
+                    $logsDir = Join-Path $cacheDir "_logs"
+                    Write-Output "Looking for npm debug logs in: $logsDir"
+                    if (Test-Path $logsDir) {
+                      $latest = Get-ChildItem $logsDir -Filter "*-debug-0.log" |
+                        Sort-Object LastWriteTime -Descending | Select-Object -First 1
+                      if ($latest) {
+                        Write-Output "----- npm debug log: $($latest.FullName) -----"
+                        Get-Content $latest.FullName
+                      } else {
+                        Write-Output "No npm debug log found in $logsDir"
+                      }
+                    } else {
+                      Write-Output "npm cache logs directory not found at $logsDir"
+                    }
 
               # Pack just this package's workspace straight into its artifact folder.
               - script: >-
@@ -140,9 +195,42 @@ extends:
                   versionFilePath: .nvmrc
 
               # Workspaces monorepo: install once at the repo root.
-              - script: npm ci
+              # Our npm packages are open source and publish to registry.npmjs.org,
+              # not the internal ms-feed in .azure-pipelines/.npmrc (that feed is
+              # only relevant to non-published/internal tooling and requires
+              # vsts-npm-auth). Force the public registry explicitly so this build
+              # never depends on that feed or any agent-level npm config.
+              - script: npm ci --registry https://registry.npmjs.org/
                 displayName: "Install dependencies (root)"
                 workingDirectory: $(Build.SourcesDirectory)
+
+              # npm ci/install failures on Windows sometimes crash before writing a
+              # useful message to the console (known npm 12 bug: "Exit handler never
+              # called!"). The real error (auth/network/404/etc.) still lands in npm's
+              # own debug log file, so dump it to the pipeline log when the previous
+              # step failed. This step always runs on failure only, and never fails
+              # the build itself.
+              - task: PowerShell@2
+                displayName: "Dump npm debug log on failure"
+                condition: failed()
+                inputs:
+                  targetType: "inline"
+                  script: |
+                    $cacheDir = (npm config get cache).Trim()
+                    $logsDir = Join-Path $cacheDir "_logs"
+                    Write-Output "Looking for npm debug logs in: $logsDir"
+                    if (Test-Path $logsDir) {
+                      $latest = Get-ChildItem $logsDir -Filter "*-debug-0.log" |
+                        Sort-Object LastWriteTime -Descending | Select-Object -First 1
+                      if ($latest) {
+                        Write-Output "----- npm debug log: $($latest.FullName) -----"
+                        Get-Content $latest.FullName
+                      } else {
+                        Write-Output "No npm debug log found in $logsDir"
+                      }
+                    } else {
+                      Write-Output "npm cache logs directory not found at $logsDir"
+                    }
 
               # Build both publishable workspaces (schema-analyzer first: nosql depends on it).
               - script: >-
@@ -151,6 +239,28 @@ extends:
                   --workspace packages/nosql-language-service
                 displayName: "Build packages"
                 workingDirectory: $(Build.SourcesDirectory)
+
+              - task: PowerShell@2
+                displayName: "Dump npm debug log on failure"
+                condition: failed()
+                inputs:
+                  targetType: "inline"
+                  script: |
+                    $cacheDir = (npm config get cache).Trim()
+                    $logsDir = Join-Path $cacheDir "_logs"
+                    Write-Output "Looking for npm debug logs in: $logsDir"
+                    if (Test-Path $logsDir) {
+                      $latest = Get-ChildItem $logsDir -Filter "*-debug-0.log" |
+                        Sort-Object LastWriteTime -Descending | Select-Object -First 1
+                      if ($latest) {
+                        Write-Output "----- npm debug log: $($latest.FullName) -----"
+                        Get-Content $latest.FullName
+                      } else {
+                        Write-Output "No npm debug log found in $logsDir"
+                      }
+                    } else {
+                      Write-Output "npm cache logs directory not found at $logsDir"
+                    }
 
               # Pack just this package's workspace straight into its artifact folder.
               - script: >-

@@ -59,6 +59,8 @@ heterogeneous container. For illustrative examples, state the assumed document s
 - Refer to columns as `{alias}.{property}`. The default container alias is `c` (e.g.
   `SELECT c.name FROM c`). Rename with `FROM Products p` or `FROM Products AS p`.
 - Parameters are `@name` (e.g. `WHERE c.id = @id`, `TOP @n`, `OFFSET @skip LIMIT @take`).
+  Bind user-supplied values through the host or SDK's parameter support rather than
+  concatenating them into SQL. See [query-parameterize](query-parameterize.md).
 - Use `!=` for inequality (not `<>`, not `IS NOT`) and `=` for equality (not `==`).
 - String concatenation is `||`. Coalesce is `??` (right-associative): `c.discount ?? 0`.
   Ternary is `cond ? a : b`. Arithmetic: `+ - * / %`. Bitwise: `& | ^ ~ << >>`.
@@ -70,14 +72,17 @@ heterogeneous container. For illustrative examples, state the assumed document s
 - `SELECT VALUE expr` unwraps to a scalar/array stream. Use it for scalar projections and
   aggregates. Do NOT combine `AS` with `SELECT VALUE` (`SELECT VALUE c.name AS n` is
   invalid).
-- `SELECT DISTINCT ...` removes duplicate rows. For all unique values of a property use
-  `SELECT DISTINCT VALUE c.propertyName FROM c`, not `SELECT DISTINCT c.propertyName`.
+- `SELECT DISTINCT ...` removes duplicate projected results. Both
+  `SELECT DISTINCT VALUE c.propertyName FROM c` and `SELECT DISTINCT c.propertyName FROM c`
+  are valid: the former returns scalar values, the latter objects with that property.
+  Choose the result shape the caller needs; see [query-distinct-keyword](query-distinct-keyword.md).
 - `SELECT TOP n ...` limits returned rows. `n` must be an integer literal or `@parameter`
   — never a float or property reference. Combine: `SELECT DISTINCT TOP 3 c.category FROM c`.
+  Prefer a bound parameter for a user-supplied limit; see [query-top-literal](query-top-literal.md).
 - Object literals: `SELECT {"id": c.id, "label": c.name} FROM c`. Array literals:
   `SELECT [c.price, c.rating] FROM c`.
 - Alias projections with `AS aliasName` or `expr aliasName`; format aliases in camelCase.
-- To inspect the schema, show the first record: `SELECT TOP 1 * FROM c`.
+- `SELECT TOP 1 * FROM c` provides a small sample, not a complete container schema.
 
 #### FROM, JOIN, subqueries
 
@@ -107,20 +112,24 @@ heterogeneous container. For illustrative examples, state the assumed document s
 - Type checks: `IS_NULL`, `IS_DEFINED`, `IS_STRING`, `IS_NUMBER`, `IS_INTEGER`, `IS_BOOL`,
   `IS_ARRAY`, `IS_OBJECT`, `IS_PRIMITIVE`, `IS_DATETIME`, `IS_FINITE_NUMBER`. Use
   `NOT IS_DEFINED(c.brand)` for "missing property".
-- Unless the user says otherwise (or the filter is on `id`), assume string filters are
-  case-insensitive: pass the case-insensitivity flag to `Contains`, `StartsWith`,
-  `EndsWith`, `StringEquals`, etc., or use the `*CI` variants. Do **not** normalize with
-  `LOWER`/`UPPER` inside `CONTAINS`.
+- Match the user's intended comparison semantics. String equality and the default
+  `Contains`, `StartsWith`, `EndsWith`, and `StringEquals` behavior are case-sensitive.
+  For a requested case-insensitive comparison, explicitly pass the ignore-case flag
+  (for example, `STRINGEQUALS(c.name, @name, true)`) or use a documented `*CI` variant.
+  Do not silently change identifier matching to case-insensitive matching. Prefer the
+  supported ignore-case option over wrapping properties in `LOWER`/`UPPER`.
 
 #### GROUP BY / aggregates
 
 - `GROUP BY` groups by one or more expressions: `GROUP BY c.category, c.inStock`.
 - Cosmos DB NoSQL does **not** support `HAVING`.
 - Aggregates: `COUNT`, `SUM`, `AVG`, `MIN`, `MAX`, `CountIf`, `MakeList`, `MakeSet`.
-- To count all rows without GROUP BY use `SELECT VALUE COUNT(1) FROM c` (scalar). Do NOT
-  alias with `AS`, do NOT use `COUNT(*)` or `COUNT(c)` (both invalid). With GROUP BY,
-  `COUNT(1) AS cnt` is valid:
-  `SELECT c.category, COUNT(1) AS cnt FROM c GROUP BY c.category`.
+- To count rows, use `SELECT VALUE COUNT(1) FROM c` for a scalar result, or
+  `SELECT COUNT(1) AS count FROM c` for an object result. `AS` is not allowed after
+  `SELECT VALUE`, but is valid in an ordinary projection, with or without GROUP BY.
+  `COUNT(expr)` counts values produced by an expression; `COUNT(c.name)` excludes
+  missing names. Use `COUNT(1)` for row counts, not `COUNT(*)`.
+  With grouping: `SELECT c.category, COUNT(1) AS count FROM c GROUP BY c.category`.
 - Do NOT use `DISTINCT` inside `COUNT` (`COUNT(DISTINCT ...)` is unsupported).
 
 #### ORDER BY
@@ -130,10 +139,10 @@ heterogeneous container. For illustrative examples, state the assumed document s
   not a SELECT alias or aggregate result. Vector similarity is a supported exception:
   `ORDER BY VectorDistance(c.embedding, @query)` is valid. Do not generalize this
   exception to arbitrary computed expressions or subquery results.
-- Multi-key sort is supported (`ORDER BY c.category ASC, c.price DESC`), but
-  multi-property or mixed-direction ORDER BY requires a **composite index**. Prefer
-  single-property ORDER BY; add a SQL comment noting the composite-index requirement when
-  multi-property ORDER BY is necessary.
+- Multi-property sorting (`ORDER BY c.category ASC, c.price DESC`) requires a
+  **composite index** matching the sort paths and directions. Preserve the requested
+  sort keys and explain the index requirement rather than silently dropping keys.
+  See [index-composite](index-composite.md) and [index-composite-direction](index-composite-direction.md).
 - For nested properties use the full path: `ORDER BY c.shipping.address.city ASC`.
 - For relevance ordering use `ORDER BY RANK <scoreFunction>(...)` where the operand is a
   function call: `FullTextScore(c.body, "term")`, `VectorDistance(c.embedding, @query)`,
@@ -144,7 +153,12 @@ heterogeneous container. For illustrative examples, state the assumed document s
 
 - `OFFSET n LIMIT m` — both clauses are required together. `n` and `m` must be integer
   literals or `@parameter` (no floats).
-- Pagination: `SELECT ... FROM c ORDER BY c.createdAt DESC OFFSET @skip LIMIT @take`.
+- Bounded skip/take syntax: `SELECT ... FROM c ORDER BY c.createdAt DESC OFFSET @skip LIMIT @take`.
+  This is valid syntax, not the default recommendation for paging through large result
+  sets: skipped items still incur work and RU cost grows with the offset. For forward
+  paging, prefer the host or SDK's continuation-token support when available. Reserve
+  OFFSET/LIMIT for explicitly needed bounded skips or random access, and explain the
+  cost tradeoff. See [query-pagination](query-pagination.md).
 
 #### Built-in function reference
 
@@ -217,6 +231,27 @@ acceptance by an editor parser alone does not establish service support.
 
 ### Examples
 
+These are illustrative document shapes, not assumptions about a user's container.
+For the array examples, assume `items` is an array of objects with `name` and `quantity`.
+For vector examples, assume `embedding` is a numeric array compatible with the supplied
+query vector. Other examples assume the named properties with their illustrated types;
+adapt them to the real schema and bind all parameters before execution.
+
+**Incorrect (treating an array of objects as a single nested object):**
+
+```sql
+SELECT c.id FROM c WHERE c.items.quantity > 2
+```
+
+**Correct (test whether any array element matches without duplicating the parent):**
+
+```sql
+SELECT c.id FROM c
+WHERE EXISTS (SELECT VALUE item FROM item IN c.items WHERE item.quantity > 2)
+```
+
+#### Additional query shapes
+
 ```sql
 -- All documents
 SELECT * FROM c
@@ -243,7 +278,7 @@ SELECT c.category, AVG(c.rating) AS avgRating FROM c GROUP BY c.category
 ```
 
 ```sql
--- Pagination
+-- Bounded skip/take; prefer continuation tokens for forward paging
 SELECT * FROM c ORDER BY c.createdAt DESC OFFSET @skip LIMIT @take
 ```
 
@@ -289,13 +324,13 @@ SELECT TOP 10 c.id FROM c ORDER BY RANK RRF(FullTextScore(c.body, "cosmos"), Vec
   ```
 - "Give me each keyword in the dataset and how many times it occurred."
   ```sql
-  SELECT k.name AS keyword, COUNT(k) AS occurrence FROM c JOIN k IN c.keywords GROUP BY k.name
+  SELECT k.name AS keyword, COUNT(1) AS occurrence FROM c JOIN k IN c.keywords GROUP BY k.name
   ```
 - "How many movies did the production company Eon Productions make?"
   ```sql
   SELECT VALUE COUNT(1) FROM c WHERE EXISTS (SELECT VALUE t FROM t IN c.production_companies WHERE StringEquals(t.name, 'Eon Productions', true))
   ```
-- "Find items produced outside of the Americas."
+- "Find items whose country of origin is not USA, Canada, or Mexico."
   ```sql
   SELECT * FROM c WHERE c.countryOfOrigin NOT IN ('USA', 'Canada', 'Mexico')
   ```
@@ -304,3 +339,5 @@ SELECT TOP 10 c.id FROM c ORDER BY RANK RRF(FullTextScore(c.body, "cosmos"), Vec
 
 - [VectorDistance syntax, ordering, and index options](https://learn.microsoft.com/en-us/cosmos-db/query/vectordistance)
 - [STRINGEQUALS syntax and case-sensitivity flag](https://learn.microsoft.com/en-us/cosmos-db/query/stringequals)
+- [COUNT expression and row-count examples](https://learn.microsoft.com/en-us/cosmos-db/query/count)
+- [OFFSET LIMIT syntax](https://learn.microsoft.com/en-us/cosmos-db/query/offset-limit)

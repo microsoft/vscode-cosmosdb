@@ -93,7 +93,7 @@ Reference these guidelines when:
 - [query-avoid-scans](rules/query-avoid-scans.md) - Avoid full container scans
 - [query-parameterize](rules/query-parameterize.md) - Use parameterized queries
 - [query-order-filters](rules/query-order-filters.md) - Order filters by selectivity
-- [query-top-literal](rules/query-top-literal.md) - Use literal integers for TOP, never parameters
+- [query-top-literal](rules/query-top-literal.md) - Use literal or parameterized TOP values; bind user-supplied limits
 - [query-latest-by-timestamp](rules/query-latest-by-timestamp.md) - Query "latest" documents with explicit ORDER BY and TOP 1
 - [query-olap-detection](rules/query-olap-detection.md) - Detect and redirect analytical queries away from transactional containers
 - [query-point-reads](rules/query-point-reads.md) - Use point reads (ReadItem) instead of queries when id and partition key are known

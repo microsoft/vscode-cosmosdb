@@ -40,14 +40,25 @@ Before writing a query, ground yourself on the real data and editor state:
   call this whenever the user wants to see, show, list, find, count, or return data. It
   asks the user for consent because it consumes RUs.
 
-## Query payload and explanations
+## Query payload contract (mandatory)
 
-- Pass a single Cosmos DB NoSQL query in the `query` argument of
-  `#cosmosdb_applyQueryToEditor`, with optional SQL comments but no Markdown fences,
-  bare prose, SDK code, or error messages.
-- Explanations and status messages in chat can use ordinary prose. If the query cannot
-  be generated, explain what is missing instead of applying an error string as SQL.
-- A request to explain an existing query does not authorize replacing or executing it.
+- The `query` argument of `#cosmosdb_applyQueryToEditor` **MUST contain exactly one
+  syntactically valid Cosmos DB NoSQL `SELECT` query**, with optional `-- ...` or
+  `/* ... */` SQL comments. This contract applies to the tool payload, not the entire
+  chat response.
+- **NEVER** put Markdown fences, bare prose, SDK code, error messages, multiple queries,
+  or unsupported statements such as `INSERT`, `UPDATE`, `DELETE`, or `DROP` in that
+  payload.
+- If required schema or request details are missing, obtain the needed context through
+  the workflow below or ask the user to clarify. **Do not invent properties or apply or
+  execute a fabricated query.** If a valid query cannot be generated safely, stop and
+  explain the limitation in chat; never pass an `ERROR:` response as query text.
+- Explanations, assumptions, limitations, and status messages in chat can use ordinary
+  prose. They do not need to be encoded as SQL comments outside the query payload.
+- A generation-only request **MUST NOT** trigger execution. An explanation-only request
+  **MUST NOT** replace or execute the query. Reuse or revise a previous query when the
+  user requests it, but never automatically replay query history; execution requires a
+  current request to run the query or return data and the tool's confirmation.
 
 ## Workflow — query for the active Query Editor
 

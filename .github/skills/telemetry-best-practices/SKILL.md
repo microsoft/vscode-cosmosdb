@@ -81,7 +81,14 @@ adding another identifier when they already provide the required operation corre
 
 ## `context.valuesToMask` — Defense in Depth, Not a Substitute
 
-`IActionContext.valuesToMask` is a list of strings that the telemetry pipeline replaces with `---` in any **error message** that would otherwise be reported (stack traces, `error.message`, the GitHub issue body produced by `reportIssue`). It does **not** redact values from `telemetry.properties` / `telemetry.measurements` you set yourself — those are sent verbatim.
+`IActionContext.valuesToMask` supplies sensitive strings for sanitization by `@microsoft/vscode-azext-utils`.
+The library sanitizes string `telemetry.properties` before emission, using more aggressive masking for keys containing
+`error` or `exception`. Other string properties receive less aggressive masking but still use the registered values.
+Non-error `TelemetryTrustedValue` properties bypass this sanitization, and numeric `telemetry.measurements` are not masked.
+Registering a raw value does not mask its deterministic derivatives, such as hashes or normalized hash values.
+
+Masks belong to the action context on which they are registered. Nested telemetry calls and separate tRPC invocations
+must register their own masks before operations that can fail; caller or webview masks are not automatically inherited.
 
 Use it as a **safety net** for sensitive values that your code touches and might end up in a thrown error or log line you don't fully control:
 
@@ -102,7 +109,8 @@ telemetryContext.addMaskedValue([endpoint, databaseId, containerId]);
 - **Always** push a value to `valuesToMask` as soon as you obtain it if it could end up in an error path. This includes:
     - Strict secrets that must never appear in telemetry: connection strings, keys, tokens, query text, document contents, partition keys, user-entered names (database, container, resource).
     - The OII identifiers (`subscriptionId`, `tenantId`, `resourceId`, `accountName`) — even though they are emitted as-is under their predefined keys, they should still be masked from error messages.
-- This is **defense in depth**, not a license to put a strict secret into telemetry properties. Never do `properties.connectionString = cs` and rely on masking — only error-path strings are masked.
+- This is **defense in depth**, not a license to put a strict secret into telemetry properties.
+  Never do `properties.connectionString = cs` and rely on masking; emit only privacy-safe values by construction.
 - Push **non-empty** strings only. Empty/whitespace values match everything and corrupt logs (the central `Telemetry.ts` filter already drops falsy values; do not bypass it).
 - If a value has multiple equivalent forms a user might see (e.g. a partition key with and without a leading `/`), push **all** forms: `context.valuesToMask.push(partitionKey, partitionKey.slice(1));`
 - Wizard `prompt`/`validateInput` steps that capture user input should push the captured value before the step returns. See `CosmosDBContainerNameStep`, `CosmosDBConnectionStringStep`, `CosmosDBPartitionKeyStep` for the pattern.

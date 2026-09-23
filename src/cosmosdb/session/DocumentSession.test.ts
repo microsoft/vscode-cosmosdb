@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { type NoSqlQueryConnection } from '../NoSqlQueryConnection';
 
@@ -12,14 +13,26 @@ const cosmosMocks = vi.hoisted(() => ({
     replace: vi.fn(),
 }));
 
+const telemetryContexts = vi.hoisted(
+    () => [] as Pick<IActionContext, 'telemetry' | 'valuesToMask' | 'errorHandling'>[],
+);
+
 vi.mock('@microsoft/vscode-azext-utils', () => ({
     callWithTelemetryAndErrorHandling: vi.fn(
-        async (_eventName: string, callback: (context: unknown) => Promise<unknown>) =>
-            callback({
-                errorHandling: { rethrow: false, suppressDisplay: false, suppressReportIssue: false },
+        async (_eventName: string, callback: (context: unknown) => Promise<unknown>) => {
+            const context = {
+                errorHandling: {
+                    rethrow: false,
+                    suppressDisplay: false,
+                    suppressReportIssue: false,
+                    issueProperties: {},
+                },
                 telemetry: { measurements: {}, properties: {} },
                 valuesToMask: [],
-            }),
+            };
+            telemetryContexts.push(context);
+            return callback(context);
+        },
     ),
 }));
 vi.mock('../../extensionVariables', () => ({ ext: {} }));
@@ -57,6 +70,7 @@ const document = {
 describe('DocumentSession ETag conditions', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        telemetryContexts.length = 0;
         cosmosMocks.item.mockReturnValue({ delete: cosmosMocks.delete, replace: cosmosMocks.replace });
     });
 
@@ -83,5 +97,23 @@ describe('DocumentSession ETag conditions', () => {
                 accessCondition: { type: 'IfMatch', condition: 'loaded-etag' },
             }),
         );
+    });
+
+    it('masks connection names without emitting names or hashes for document writes and deletes', async () => {
+        cosmosMocks.replace.mockResolvedValue({ resource: document });
+        cosmosMocks.delete.mockResolvedValue({ statusCode: 204 });
+
+        await replaceDocument(connection, document, identifier, undefined, { paths: ['/pk'] }, 'loaded-etag');
+        await deleteDocument(connection, identifier, undefined, 'loaded-etag');
+
+        expect(telemetryContexts).toHaveLength(2);
+        for (const context of telemetryContexts) {
+            expect(context.telemetry.properties).toEqual({});
+            expect(context.telemetry.measurements).toEqual({});
+            expect(context.valuesToMask).toEqual(
+                expect.arrayContaining([connection.endpoint, connection.databaseId, connection.containerId]),
+            );
+            expect(context.valuesToMask).not.toContain('');
+        }
     });
 });

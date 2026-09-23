@@ -16,7 +16,6 @@ import {
 } from '@azure/cosmos';
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
-import * as crypto from 'crypto';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import { extractPartitionKey } from '../../utils/document';
@@ -146,15 +145,17 @@ export async function buildNewDocumentTemplate(
 // ─── Telemetry ──────────────────────────────────────────────────────────────
 
 /**
- * Set telemetry properties for masking and identification of document operations.
+ * Mask sensitive connection values for document operations; no file contents, paths, or names are emitted.
  */
 export function setDocumentTelemetryProperties(context: IActionContext, connection: NoSqlQueryConnection): void {
     const masterKey = getCosmosDBKeyCredential(connection.credentials)?.key ?? '';
-    context.valuesToMask.push(masterKey, connection.endpoint, connection.databaseId, connection.containerId);
+    context.valuesToMask.push(
+        ...[masterKey, connection.endpoint, connection.databaseId, connection.containerId].filter(
+            (value) => value.trim().length > 0,
+        ),
+    );
     context.errorHandling.suppressDisplay = true;
     context.errorHandling.suppressReportIssue = true;
-    context.telemetry.properties.databaseId = crypto.createHash('sha256').update(connection.databaseId).digest('hex');
-    context.telemetry.properties.containerId = crypto.createHash('sha256').update(connection.containerId).digest('hex');
 }
 
 // ─── Standalone utility functions for document operations ───────────────────

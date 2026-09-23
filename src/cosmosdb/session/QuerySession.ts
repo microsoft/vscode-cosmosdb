@@ -354,15 +354,16 @@ export class QuerySession {
     }
 
     private setTelemetryProperties(context: IActionContext): void {
-        context.valuesToMask.push(this.query, this.masterKey, this.endpoint, this.databaseId, this.containerId);
+        context.valuesToMask.push(
+            ...[this.query, this.masterKey, this.endpoint, this.databaseId, this.containerId].filter(
+                (value) => value.trim().length > 0,
+            ),
+        );
 
         context.errorHandling.suppressDisplay = true;
         context.errorHandling.suppressReportIssue = true;
 
         context.telemetry.properties.sessionId = this.id;
-        context.telemetry.properties.query = crypto.createHash('sha256').update(this.query).digest('hex');
-        context.telemetry.properties.databaseId = crypto.createHash('sha256').update(this.databaseId).digest('hex');
-        context.telemetry.properties.containerId = crypto.createHash('sha256').update(this.containerId).digest('hex');
         context.telemetry.properties.countPerPage = this.resultViewMetadata?.countPerPage?.toString() ?? '';
     }
 }

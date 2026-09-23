@@ -9,7 +9,6 @@ import { type JSONSchema } from '@azure/cosmosdb-schema-analyzer';
 import { type NoSQLDocument } from '@azure/cosmosdb-schema-analyzer/json';
 import { parseError } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
-import * as crypto from 'crypto';
 import * as vscode from 'vscode';
 import { z } from 'zod';
 import {
@@ -454,14 +453,9 @@ export const queryEditorRouterDef = queryEditorRouter({
         if (connection) {
             const { databaseId, containerId } = connection;
             if (ctx.actionContext) {
-                ctx.actionContext.telemetry.properties.databaseId = crypto
-                    .createHash('sha256')
-                    .update(databaseId)
-                    .digest('hex');
-                ctx.actionContext.telemetry.properties.containerId = crypto
-                    .createHash('sha256')
-                    .update(containerId)
-                    .digest('hex');
+                ctx.actionContext.valuesToMask.push(
+                    ...[databaseId, containerId].filter((value) => value.trim().length > 0),
+                );
                 ctx.actionContext.telemetry.properties.isEmulator = connection.isEmulator.toString();
             }
             return resolveConnectionState(ctx, connection);

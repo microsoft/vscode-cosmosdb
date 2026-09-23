@@ -26,7 +26,9 @@ The following must **never** appear in `telemetry.properties` or `telemetry.meas
 - User IDs, resource names (other than the Azure account name — see below), database names, container/collection names, connection strings, hostnames, endpoints, ports.
 - Query text, document contents, schema/DDL contents, error messages containing any of the above, free-form user input, prompts, AI responses.
 - Email addresses, user names, machine names, IP addresses.
-- Any string derived from the above (reversible hashes, prefixes, etc.).
+- Deterministic identifiers derived from the above, including hashes, truncated hashes, and normalized hash values.
+  Cryptographic hashes are not inherently reversible, but guessable inputs can be recovered by hashing candidate values,
+  and stable outputs permit correlation across sessions.
 
 **Not PII** (always allowed): the AI model identifiers `modelId`, `modelFamily`, `modelVendor` (vendor-published values from `vscode.LanguageModelChat`), bounded enums you control, durations, counts, and ratios.
 
@@ -60,6 +62,10 @@ Rules:
 - A **non-persistent, in-memory session id** generated with `crypto.randomUUID()` per session/operation.
 - A bounded enum (e.g. `'mongo' | 'postgres' | 'sqlserver'`), never a free-form string.
 - A boolean flag (e.g. `hasCustomInstructions`) instead of the actual value.
+
+Keep hashes needed for local storage keys or comparisons local. For cohort selection, report only the boolean selection
+result, not the underlying machine-ID hash or its normalized numeric value. Reuse existing random session IDs rather than
+adding another identifier when they already provide the required operation correlation.
 
 ### Red flags to look for in reviews
 

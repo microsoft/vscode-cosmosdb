@@ -19,7 +19,7 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import { extractPartitionKey } from '../../utils/document';
-import { getCosmosDBKeyCredential } from '../CosmosDBCredential';
+import { maskConnectionTelemetry } from '../maskConnectionTelemetry';
 import { type NoSqlQueryConnection } from '../NoSqlQueryConnection';
 import { resolveEffectivePriorityLevel } from '../priorityLevel';
 import { type CosmosDBRecord, type CosmosDBRecordIdentifier } from '../types/queryResult';
@@ -88,6 +88,7 @@ export async function getPartitionKey(
     }
 
     return callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.getPartitionKey', async (context) => {
+        maskConnectionTelemetry(context, connection);
         context.errorHandling.rethrow = true;
 
         const containerDef = await withContainer(connection, (c) => c.read());
@@ -148,12 +149,7 @@ export async function buildNewDocumentTemplate(
  * Mask sensitive connection values for document operations; no file contents, paths, or names are emitted.
  */
 export function setDocumentTelemetryProperties(context: IActionContext, connection: NoSqlQueryConnection): void {
-    const masterKey = getCosmosDBKeyCredential(connection.credentials)?.key ?? '';
-    context.valuesToMask.push(
-        ...[masterKey, connection.endpoint, connection.databaseId, connection.containerId].filter(
-            (value) => value.trim().length > 0,
-        ),
-    );
+    maskConnectionTelemetry(context, connection);
     context.errorHandling.suppressDisplay = true;
     context.errorHandling.suppressReportIssue = true;
 }

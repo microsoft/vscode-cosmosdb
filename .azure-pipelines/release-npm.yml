@@ -105,8 +105,8 @@ variables:
   # ';' is treated as part of a single address and rejected. Distribution
   # lists and security groups are not supported. List at least two people so
   # releases are not tied to a single person.
-  EsrpReleaseOwners: "dshilov@microsoft.com,jawelton@microsoft.com"
-  EsrpReleaseApprovers: "dshilov@microsoft.com,jawelton@microsoft.com"
+  EsrpReleaseOwners: "dshilov@microsoft.com,jawelton@microsoft.com,sevoku@microsoft.com,languye@microsoft.com"
+  EsrpReleaseApprovers: "dshilov@microsoft.com,jawelton@microsoft.com,sevoku@microsoft.com,languye@microsoft.com"
 
 extends:
   template: v2/OneBranch.Official.CrossPlat.yml@templates
@@ -150,8 +150,8 @@ extends:
             ${{ else }}:
               value: Test
         jobs:
-          - job: ReleaseValidation
-            displayName: "Validate Artifacts"
+          - job: Publishing
+            displayName: "Publishing"
             templateContext:
               inputs:
                 - input: pipelineArtifact

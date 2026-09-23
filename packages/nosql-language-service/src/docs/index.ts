@@ -1842,8 +1842,6 @@ Returns the natural logarithm of the specified numeric expression, or the logari
 
 Returns a numeric value.
 
-> ⚠️ **The argument must be greater than 0.** \`LOG(0)\` (or a negative value) evaluates to \`-Infinity\`, which is not representable in JSON. Azure Cosmos DB rejects such a result with **HTTP 400, error code 4001** (both on production and the emulator). Guard the input, e.g. \`WHERE c.value > 0\` or \`c.value > 0 ? LOG(c.value) : null\`.
-
 ---
 
 📖 **Documentation:** [LOG](https://learn.microsoft.com/en-us/cosmos-db/query/log)`],
@@ -1863,8 +1861,6 @@ Returns the base-10 logarithm of the specified numeric expression.
 ## Return Value
 
 Returns a numeric value.
-
-> ⚠️ **The argument must be greater than 0.** \`LOG10(0)\` (or a negative value) evaluates to \`-Infinity\`, which is not representable in JSON. Azure Cosmos DB rejects such a result with **HTTP 400, error code 4001** (both on production and the emulator). Guard the input, e.g. \`WHERE c.value > 0\` or \`c.value > 0 ? LOG10(c.value) : null\`.
 
 ---
 
@@ -2752,11 +2748,11 @@ Returns a Boolean indicating whether the first string matches the second.
 
 ## Parameters
 
-| Name         | Type    | Description                     |
-| ------------ | ------- | ------------------------------- |
-| \`string1\`    | string  | The first string.               |
-| \`string2\`    | string  | The second string.              |
-| \`ignoreCase\` | boolean | Optional case-insensitive flag. |
+| Name         | Type    | Description                                                    |
+| ------------ | ------- | -------------------------------------------------------------- |
+| \`string1\`    | string  | The first string.                                              |
+| \`string2\`    | string  | The second string.                                             |
+| \`ignoreCase\` | boolean | Optional. \`true\` ignores case; \`false\` (default) matches case. |
 
 ## Return Value
 
@@ -2764,6 +2760,7 @@ Returns \`true\` or \`false\`.
 
 ## Notes
 
+- Function names are case-insensitive: \`STRINGEQUALS\` and \`StringEquals\` are valid spellings.
 - Also available as \`STRING_EQUALS\`.
 
 ---
@@ -3180,22 +3177,38 @@ Returns the uppercase string.
     ["VECTORDISTANCE", `# VECTORDISTANCE
 
 **Category:** Vector/AI
-**Syntax:** \`VECTORDISTANCE(vector1, vector2 [, brute_force [, distanceFunction]])\`
+**Syntax:** \`VECTORDISTANCE(vector1, vector2 [, brute_force [, options]])\`
 
 Returns the similarity score between two vectors.
 
 ## Parameters
 
-| Name               | Type    | Description                                             |
-| ------------------ | ------- | ------------------------------------------------------- |
-| \`vector1\`          | array   | First vector (array of numbers).                        |
-| \`vector2\`          | array   | Second vector (array of numbers).                       |
-| \`brute_force\`      | boolean | Optional. Force brute-force search.                     |
-| \`distanceFunction\` | string  | Optional: \`'cosine'\`, \`'euclidean'\`, or \`'dotproduct'\`. |
+| Name          | Type    | Description                                                                                      |
+| ------------- | ------- | ------------------------------------------------------------------------------------------------ |
+| \`vector1\`     | array   | First vector (array of numbers).                                                                 |
+| \`vector2\`     | array   | Second vector (array of numbers).                                                                |
+| \`brute_force\` | boolean | Optional. \`true\` forces brute-force search; \`false\` (default) uses a vector index if one exists. |
+| \`options\`     | object  | Optional JSON object with distance and search options.                                           |
+
+The fourth argument is an object, not a distance-function string. Options include
+\`distanceFunction\` (\`'Cosine'\`, \`'Euclidean'\`, or \`'DotProduct'\`), \`dataType\`,
+\`searchListSizeMultiplier\`, \`quantizedVectorListMultiplier\`, and \`filterPriority\`.
 
 ## Return Value
 
 Returns a numeric similarity score.
+
+## Usage
+
+Project the score with \`SELECT\`, or sort with regular \`ORDER BY VectorDistance(...)\`
+or \`ORDER BY RANK VectorDistance(...)\`. A vector index improves search performance;
+it is not required for brute-force evaluation.
+
+\`\`\`sql
+SELECT TOP 10 c.id
+FROM c
+ORDER BY VectorDistance(c.embedding, @queryVector, false, {distanceFunction: 'Cosine', dataType: 'Float32'})
+\`\`\`
 
 ---
 
@@ -3539,6 +3552,10 @@ OFFSET n LIMIT m
 
 - Must be used together with LIMIT.
 - Can use parameters: \`OFFSET @skip LIMIT @take\`
+- RU cost increases with the number of skipped items. For forward paging through large
+  result sets, prefer the host or SDK's continuation-token support where available.
+- Use OFFSET/LIMIT when bounded skips or random page access are needed, with the cost
+  tradeoff in mind; valid syntax does not make it the default pagination strategy.
 
 ---
 
@@ -3577,12 +3594,26 @@ ORDER BY RANK score_function(...)
 
 ## Notes
 
-- Default sort order is ascending (ASC).
+- For regular property sorting, the default direction is ascending (ASC).
+- Multi-property sorting requires a composite index with the same property-path sequence.
+  Its directions can match the query or be reversed on every path; reversing only some
+  directions is not supported by that index. For example, \`(category ASC, price DESC)\`
+  also supports \`(category DESC, price ASC)\` without a separate inverse index.
 - \`ORDER BY RANK\` is used with full-text and vector search scoring functions.
+- Explicit \`ASC\` or \`DESC\` is not allowed with \`ORDER BY RANK\`. These clauses can parse,
+  but the language service reports a semantic error; omit the direction modifier.
+- Vector similarity also supports regular \`ORDER BY VectorDistance(...)\`.
+- **Not allowed inside a subquery.** Azure Cosmos DB rejects \`ORDER BY\` within any
+  subquery — \`FIRST(…)\`, \`LAST(…)\`, \`ARRAY(…)\`, \`EXISTS(…)\`, \`(SELECT …)\`, and
+  \`FROM (SELECT …)\`. Only the outermost query may sort. (The grammar accepts it, but
+  the engine returns HTTP 400.)
 
 ---
 
-📖 **Documentation:** [ORDER_BY](https://learn.microsoft.com/en-us/cosmos-db/query/order-by)`],
+📖 **Documentation:** [ORDER_BY](https://learn.microsoft.com/en-us/cosmos-db/query/order-by)
+
+- [ORDER BY RANK](https://learn.microsoft.com/en-us/cosmos-db/query/order-by-rank)
+- [Composite-index ordering](https://learn.microsoft.com/en-us/azure/cosmos-db/index-policy#order-by-queries-on-multiple-properties)`],
     ["SELECT", `# SELECT
 
 Specifies the fields or expressions to return from the query.

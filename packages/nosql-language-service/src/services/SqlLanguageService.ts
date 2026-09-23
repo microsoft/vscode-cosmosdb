@@ -12,6 +12,7 @@
 // ---------------------------------------------------------------------------
 
 import { type IToken, type TokenType } from 'chevrotain';
+import { type SqlProgram, SqlSortOrder } from '../ast/nodes.js';
 import { getCompletions, type CompletionItem, type JSONSchema } from '../completion/SqlCompletion.js';
 import { detectBetweenAmbiguity } from '../diagnostics/betweenAmbiguity.js';
 import { detectOrderByInSubquery } from '../diagnostics/orderByInSubquery.js';
@@ -226,6 +227,31 @@ export class SqlLanguageService {
         );
     }
 
+    private getRankedOrderByDiagnostics(ast: SqlProgram | undefined): Diagnostic[] {
+        const orderBy = ast?.query.orderBy;
+        if (!orderBy?.isRank || !orderBy.range || !orderBy.items.some((item) => item.sortOrder !== SqlSortOrder.None)) {
+            return [];
+        }
+
+        const { start, end } = orderBy.range;
+        return [
+            {
+                range: {
+                    startOffset: start.offset,
+                    endOffset: end.offset,
+                    startLine: start.line,
+                    startColumn: start.col,
+                    endLine: end.line,
+                    endColumn: end.col,
+                },
+                message: 'Specifying a sort order (ASC or DESC) in the ORDER BY RANK clause is not allowed.',
+                severity: DiagnosticSeverity.Error,
+                code: 'RANKED_ORDER_BY_SORT_ORDER',
+                source: 'cosmosdb-sql',
+            },
+        ];
+    }
+
     private getSingleQueryDiagnostics(query: string): Diagnostic[] {
         const { ast, errors } = parse(query);
         const diagnostics: Diagnostic[] = errors.map((e) => ({
@@ -297,6 +323,7 @@ export class SqlLanguageService {
             });
         }
 
+        diagnostics.push(...this.getRankedOrderByDiagnostics(ast));
         return this.filterSchemaDiagnostics(diagnostics);
     }
 
@@ -397,6 +424,17 @@ export class SqlLanguageService {
                     severity: DiagnosticSeverity.Error,
                     code: 'ORDER_BY_IN_SUBQUERY',
                     source: 'cosmosdb-sql',
+                });
+            }
+
+            for (const diagnostic of this.getRankedOrderByDiagnostics(region.parseResult.ast)) {
+                const startOffset = region.startOffset + diagnostic.range.startOffset;
+                const endOffset = region.startOffset + diagnostic.range.endOffset;
+                const { line: startLine, col: startColumn } = offsetToLineCol(query, startOffset);
+                const { line: endLine, col: endColumn } = offsetToLineCol(query, endOffset);
+                diagnostics.push({
+                    ...diagnostic,
+                    range: { startOffset, endOffset, startLine, startColumn, endLine, endColumn },
                 });
             }
         }

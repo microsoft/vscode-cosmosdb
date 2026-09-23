@@ -902,7 +902,7 @@
   "Populate Sample Data": "Naplnit ukázková data",
   "Port {0} is in use by another process. Configure a different MCP port in settings.": "Port {0} je používán jiným procesem. V nastavení nakonfigurujte jiný port MCP.",
   "Port number is required": "Číslo portu je povinné",
-  "Port number must be a number": "Číslo portu musí být číslo",
+  "Port number must be an integer": "Číslo portu musí být celé číslo",
   "Port number must be between 1 and 65535": "Číslo portu musí být hodnota v rozsahu 1 až 65535",
   "PostgreSQL Flexible Servers are no longer supported in Cosmos DB extension.": "Flexibilní servery PostgreSQL už nejsou v rozšíření Cosmos DB podporovány.",
   "PostgreSQL Single Servers are no longer supported in Cosmos DB extension.": "Samostatné servery PostgreSQL už nejsou v rozšíření Cosmos DB podporovány.",

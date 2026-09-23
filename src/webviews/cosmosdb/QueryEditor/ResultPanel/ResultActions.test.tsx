@@ -61,7 +61,9 @@ const actions = [
     {
         label: 'copy',
         Component: CopyToClipboardButton,
-        accessibleName: /Copy/,
+        allResultsAccessibleName: 'Copy all results from the current page to clipboard',
+        selectedItemsAccessibleName: 'Copy selected items to clipboard',
+        metricsAccessibleName: 'Copy query metrics to clipboard',
         csvSink: dispatcher.copyCSVToClipboard,
         csvPrefix: [],
         jsonSink: dispatcher.copyToClipboard,
@@ -71,7 +73,9 @@ const actions = [
     {
         label: 'export',
         Component: ExportButton,
-        accessibleName: /Export/,
+        allResultsAccessibleName: 'Export all results from the current page',
+        selectedItemsAccessibleName: 'Export selected items',
+        metricsAccessibleName: 'Export query metrics',
         csvSink: dispatcher.saveCSV,
         csvPrefix: ['database_container_query_result'],
         jsonSink: dispatcher.saveToFile,
@@ -80,7 +84,18 @@ const actions = [
     },
 ];
 
-for (const { label: action, Component, accessibleName, csvSink, csvPrefix, jsonSink, jsonSuffix, hotkey } of actions) {
+for (const {
+    label: action,
+    Component,
+    allResultsAccessibleName,
+    selectedItemsAccessibleName,
+    metricsAccessibleName,
+    csvSink,
+    csvPrefix,
+    jsonSink,
+    jsonSuffix,
+    hotkey,
+} of actions) {
     describe(`${action} query results`, () => {
         beforeEach(() => {
             vi.clearAllMocks();
@@ -99,7 +114,9 @@ for (const { label: action, Component, accessibleName, csvSink, csvPrefix, jsonS
                 state.selectedRows = rows;
                 renderAction();
                 const button = screen.getByRole('button');
-                expect(button).toHaveAccessibleName(accessibleName);
+                expect(button).toHaveAccessibleName(
+                    rows.length ? selectedItemsAccessibleName : allResultsAccessibleName,
+                );
                 fireEvent.click(button);
                 fireEvent.click(await screen.findByRole('menuitem', { name: 'CSV' }));
                 await waitFor(() =>
@@ -135,5 +152,16 @@ for (const { label: action, Component, accessibleName, csvSink, csvPrefix, jsonS
                 expect(jsonSink.mock.calls[0].slice(1)).toEqual(jsonSuffix);
             });
         }
+
+        it('describes query metrics on the Stats tab', () => {
+            state.selectedRows = [0, 1];
+            render(
+                <FluentProvider theme={webLightTheme}>
+                    <Component type="button" selectedTab="stats__tab" />
+                </FluentProvider>,
+            );
+
+            expect(screen.getByRole('button')).toHaveAccessibleName(metricsAccessibleName);
+        });
     });
 }

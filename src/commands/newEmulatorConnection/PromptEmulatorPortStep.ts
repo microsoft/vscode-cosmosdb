@@ -28,8 +28,9 @@ export class PromptEmulatorPortStep extends AzureWizardPromptStep<NewEmulatorCon
         });
 
         if (port && context.experience) {
-            context.port = Number(port);
-            context.connectionString = `AccountEndpoint=https://localhost:${port}/;AccountKey=${wellKnownEmulatorPassword};`;
+            const portNumber = Number(port.trim());
+            context.port = portNumber;
+            context.connectionString = `AccountEndpoint=https://localhost:${portNumber}/;AccountKey=${wellKnownEmulatorPassword};`;
         }
     }
 
@@ -38,18 +39,18 @@ export class PromptEmulatorPortStep extends AzureWizardPromptStep<NewEmulatorCon
         return context.mode === NewEmulatorConnectionMode.Preconfigured;
     }
 
-    private validateInput(port: string | undefined): string | undefined {
+    public validateInput(port: string | undefined): string | undefined {
         port = port ? port.trim() : '';
 
         if (!port) {
             return l10n.t('Port number is required');
         }
 
-        const portNumber = parseInt(port, 10);
-        if (isNaN(portNumber)) {
-            return l10n.t('Port number must be a number');
+        if (!/^\d+$/.test(port)) {
+            return l10n.t('Port number must be an integer');
         }
 
+        const portNumber = Number(port);
         if (portNumber <= 0 || portNumber > 65535) {
             return l10n.t('Port number must be between 1 and 65535');
         }

@@ -9,6 +9,8 @@ tags: throughput, container, database, allocation
 
 Decide between container-level (dedicated) and database-level (shared) throughput based on workload isolation needs and cost optimization.
 
+**Incorrect (using dedicated throughput everywhere without considering sharing patterns or cost):**
+
 **Container-level throughput (dedicated):**
 
 ```csharp
@@ -62,6 +64,8 @@ var logsContainer = await database.CreateContainerAsync(
 // - Containers accessed at different times
 // - Cost optimization is priority
 ```
+
+**Correct (matching throughput scope to workload isolation and utilization patterns):**
 
 **Hybrid approach:**
 

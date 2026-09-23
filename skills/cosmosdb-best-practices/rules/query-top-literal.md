@@ -1,52 +1,55 @@
 ---
-title: Use Literal Integers for TOP, Never Parameters
+title: Parameterize TOP Values Safely
 impact: HIGH
-impactDescription: prevents query failures at runtime
-tags: query, top, parameter, literal
+impactDescription: prevents incorrect query guidance and keeps parameterization secure
+tags: query, top, parameter, security
 ---
 
-## Use Literal Integers for TOP, Never Parameters
+## Parameterize TOP Values Safely
 
-The `TOP` keyword in Cosmos DB SQL requires a literal integer — it does **not** support parameterized values. Using `@param` in `SELECT TOP @param` will fail at runtime with a query syntax error.
+Cosmos DB SQL supports both literal and parameterized values for `TOP`. Prefer parameterized `TOP` values for consistency with secure query practices. Ensure the parameter value is an integer.
 
-**Incorrect (parameterized TOP — fails at runtime):**
-
-```python
-# This causes a 400 Bad Request or runtime error
-query = "SELECT TOP @top * FROM c ORDER BY c.score DESC"
-params = [{"name": "@top", "value": 10}]
-items = container.query_items(query, parameters=params, enable_cross_partition_query=True)
-```
-
-```csharp
-// This will also fail
-var query = new QueryDefinition("SELECT TOP @top * FROM c ORDER BY c.score DESC")
-    .WithParameter("@top", 10);
-```
-
-**Correct (literal integer in TOP clause):**
+**Incorrect (string interpolation for TOP):**
 
 ```python
-# Use a literal integer for TOP — validate and cast to int to prevent injection
-top = int(top)  # Ensures it's a safe integer
+# Avoid string interpolation when parameterization works
+top = int(top)
 query = f"SELECT TOP {top} * FROM c ORDER BY c.score DESC"
 items = container.query_items(query, enable_cross_partition_query=True)
 ```
 
 ```csharp
-// Interpolate a validated integer for TOP
+// Avoid interpolating TOP directly when parameters are available
 int topN = 10;
 var query = new QueryDefinition($"SELECT TOP {topN} * FROM c ORDER BY c.score DESC");
 ```
 
+**Correct (parameterized TOP):**
+
 ```python
-# Keep other values parameterized — only TOP must be literal
-top = int(top)
-query = f"SELECT TOP {top} * FROM c WHERE c.gameId = @gameId ORDER BY c.score DESC"
-params = [{"name": "@gameId", "value": game_id}]
+# TOP can be parameterized
+query = "SELECT TOP @top * FROM c ORDER BY c.score DESC"
+params = [{"name": "@top", "value": int(top)}]
 items = container.query_items(query, parameters=params, enable_cross_partition_query=True)
 ```
 
-Always cast the TOP value to `int` before interpolation to ensure it is a safe integer and prevent injection.
+```csharp
+var query = new QueryDefinition("SELECT TOP @top * FROM c ORDER BY c.score DESC")
+    .WithParameter("@top", 10);
+```
 
-Reference: [SQL query TOP keyword](https://learn.microsoft.com/azure/cosmos-db/nosql/query/select#top-keyword)
+```python
+# Keep all query values parameterized, including TOP
+query = "SELECT TOP @top * FROM c WHERE c.gameId = @gameId ORDER BY c.score DESC"
+params = [
+    {"name": "@top", "value": int(top)},
+    {"name": "@gameId", "value": game_id},
+]
+items = container.query_items(query, parameters=params, enable_cross_partition_query=True)
+```
+
+Use a literal integer in `TOP` only when it is genuinely constant at authoring time (for example, `TOP 10`).
+
+References:
+- [Parameterized queries](https://learn.microsoft.com/azure/cosmos-db/nosql/query/parameterized-queries)
+- [SQL query TOP keyword](https://learn.microsoft.com/azure/cosmos-db/nosql/query/select#top-keyword)

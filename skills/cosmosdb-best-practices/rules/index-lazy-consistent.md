@@ -9,6 +9,8 @@ tags: index, mode, consistent, lazy
 
 Choose the appropriate indexing mode based on your workload. Consistent mode ensures query results are current; None disables indexing entirely.
 
+**Incorrect (planning around deprecated lazy indexing mode or keeping default indexing when the workload only needs point reads):**
+
 **Indexing modes explained:**
 
 ```csharp
@@ -44,7 +46,7 @@ var nonePolicy = new IndexingPolicy
 // - Time-series data queried via external system (Synapse Link)
 ```
 
-**Correct (choosing mode based on workload):**
+**Correct (choosing between consistent and none based on actual query requirements):**
 
 ```csharp
 // Typical transactional workload - use Consistent

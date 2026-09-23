@@ -9,6 +9,8 @@ tags: global, consistency, tradeoffs, design
 
 Select the consistency level that matches your application's requirements. Each level has different tradeoffs for latency, availability, and consistency.
 
+**Incorrect (defaulting to the strongest consistency level for every workload without evaluating latency and availability needs):**
+
 **Consistency levels (strongest to weakest):**
 
 ```csharp
@@ -59,7 +61,7 @@ var client = new CosmosClient(connectionString, new CosmosClientOptions
 // Best performance, lowest cost
 ```
 
-**Correct (choosing based on requirements):**
+**Correct (selecting the weakest consistency level that still satisfies the application contract):**
 
 ```csharp
 // Example: E-commerce platform

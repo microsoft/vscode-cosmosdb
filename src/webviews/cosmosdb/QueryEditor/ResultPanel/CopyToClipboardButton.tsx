@@ -19,9 +19,12 @@ export const CopyToClipboardButton = (props: ToolbarOverflowItemProps<HTMLButton
 
     const { ref, selectedTab, type } = props;
     const hasSelection = state.selectedRows.length > 0;
-    const tooltipClipboardContent = hasSelection
-        ? l10n.t('Copy selected items to clipboard')
-        : l10n.t('Copy all results from the current page to clipboard');
+    const tooltipClipboardContent =
+        selectedTab === 'stats__tab'
+            ? l10n.t('Copy query metrics to clipboard')
+            : hasSelection
+              ? l10n.t('Copy selected items to clipboard')
+              : l10n.t('Copy all results from the current page to clipboard');
 
     const onSaveToClipboardAsCSV = useCallback(() => {
         if (selectedTab === 'result__tab') {

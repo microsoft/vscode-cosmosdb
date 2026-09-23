@@ -20,6 +20,7 @@ import {
     wrapUserDataForAgent,
 } from '../../../chat';
 import { getControlPlaneForConnection } from '../../../cosmosdb/controlPlane';
+import { maskConnectionTelemetry } from '../../../cosmosdb/maskConnectionTelemetry';
 import { getNoSqlQueryConnection, type NoSqlQueryConnection } from '../../../cosmosdb/NoSqlQueryConnection';
 import { bulkDeleteDocuments, deleteDocument, isDocumentId } from '../../../cosmosdb/session/DocumentSession';
 import { QuerySession } from '../../../cosmosdb/session/QuerySession';
@@ -451,11 +452,7 @@ export const queryEditorRouterDef = queryEditorRouter({
     connectToDatabase: queryEditorProcedure.mutation(async ({ ctx }) => {
         const connection = await getNoSqlQueryConnection();
         if (connection) {
-            const { databaseId, containerId } = connection;
             if (ctx.actionContext) {
-                ctx.actionContext.valuesToMask.push(
-                    ...[databaseId, containerId].filter((value) => value.trim().length > 0),
-                );
                 ctx.actionContext.telemetry.properties.isEmulator = connection.isEmulator.toString();
             }
             return resolveConnectionState(ctx, connection);
@@ -925,6 +922,10 @@ async function resolveConnectionState(
     }
 
     if (!conn) return undefined;
+
+    if (ctx.actionContext) {
+        maskConnectionTelemetry(ctx.actionContext, conn);
+    }
 
     const { databaseId, containerId } = conn;
     const container = await withClaimsChallengeHandling(conn, async (client) =>

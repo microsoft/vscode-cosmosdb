@@ -140,8 +140,12 @@ heterogeneous container. For illustrative examples, state the assumed document s
   `ORDER BY VectorDistance(c.embedding, @query)` is valid. Do not generalize this
   exception to arbitrary computed expressions or subquery results.
 - Multi-property sorting (`ORDER BY c.category ASC, c.price DESC`) requires a
-  **composite index** matching the sort paths and directions. Preserve the requested
-  sort keys and explain the index requirement rather than silently dropping keys.
+  **composite index** with the same property-path sequence as the sort clause. The
+  directions may match the index or be reversed on **all** paths; reversing only some
+  directions is not supported by that index. For example, an index on
+  `(category ASC, price DESC)` also supports `ORDER BY c.category DESC, c.price ASC`.
+  Preserve the requested sort keys and explain the index requirement rather than
+  silently dropping keys.
   See [index-composite](index-composite.md) and [index-composite-direction](index-composite-direction.md).
 - For nested properties use the full path: `ORDER BY c.shipping.address.city ASC`.
 - For relevance ordering use `ORDER BY RANK <scoreFunction>(...)` where the operand is a

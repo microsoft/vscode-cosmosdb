@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type OptionOnSelectData } from '@fluentui/react-combobox';
 import {
     Dropdown,
     Menu,
@@ -13,6 +12,7 @@ import {
     MenuTrigger,
     Option,
     Tooltip,
+    type OptionOnSelectData,
 } from '@fluentui/react-components';
 import { CheckmarkFilled, NumberSymbolSquareRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';

@@ -5,12 +5,16 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import * as vscode from 'vscode';
+import { AuthenticationMethod } from '../AuthenticationMethod';
+import { type CosmosDBCredential } from '../CosmosDBCredential';
 import { type NoSqlQueryConnection } from '../NoSqlQueryConnection';
 
 const mocks = vi.hoisted(() => ({
     contexts: [] as Pick<IActionContext, 'telemetry' | 'valuesToMask' | 'errorHandling'>[],
     query: vi.fn(),
     fetchNext: vi.fn(),
+    getCosmosClient: vi.fn(),
 }));
 
 vi.mock('@microsoft/vscode-azext-utils', () => ({
@@ -27,15 +31,10 @@ vi.mock('@microsoft/vscode-azext-utils', () => ({
     ),
 }));
 vi.mock('../../chat', () => ({ CosmosDbOperationsService: {} }));
-vi.mock('../../extensionVariables', () => ({ ext: {} }));
-vi.mock('../CosmosDBCredential', () => ({ getCosmosDBKeyCredential: () => undefined }));
+vi.mock('../../extensionVariables', () => ({ ext: { outputChannel: { error: vi.fn() } } }));
 vi.mock('../priorityLevel', () => ({ resolveEffectivePriorityLevel: () => 'Low' }));
 vi.mock('../getCosmosClient', () => ({
-    getCosmosClient: () => ({
-        database: () => ({
-            container: () => ({ items: { query: mocks.query } }),
-        }),
-    }),
+    getCosmosClient: mocks.getCosmosClient,
 }));
 vi.mock('./QuerySessionResult', () => ({
     QuerySessionResult: class {
@@ -61,6 +60,35 @@ const connection: NoSqlQueryConnection = {
 };
 const query = 'SELECT * FROM c WHERE c.secret = "private-value"';
 
+const credentialCases: { name: string; credentials: CosmosDBCredential[]; masks: string[] }[] = [
+    { name: 'no credentials', credentials: [], masks: [] },
+    {
+        name: 'account key',
+        credentials: [{ type: AuthenticationMethod.accountKey, key: 'private-key' }],
+        masks: ['private-key'],
+    },
+    {
+        name: 'Entra ID',
+        credentials: [{ type: AuthenticationMethod.entraId, tenantId: 'private-tenant' }],
+        masks: ['private-tenant'],
+    },
+    {
+        name: 'managed identity',
+        credentials: [{ type: AuthenticationMethod.managedIdentity, clientId: 'private-client' }],
+        masks: ['private-client'],
+    },
+    {
+        name: 'multiple credentials',
+        credentials: [
+            { type: AuthenticationMethod.entraId, tenantId: 'private-tenant' },
+            { type: AuthenticationMethod.managedIdentity, clientId: 'private-client' },
+            { type: AuthenticationMethod.entraId, tenantId: undefined },
+            { type: AuthenticationMethod.managedIdentity, clientId: ' ' },
+        ],
+        masks: ['private-tenant', 'private-client'],
+    },
+];
+
 import { QuerySession } from './QuerySession';
 
 describe('QuerySession telemetry privacy', () => {
@@ -69,31 +97,71 @@ describe('QuerySession telemetry privacy', () => {
         mocks.contexts.length = 0;
         mocks.query.mockReturnValue({ fetchNext: mocks.fetchNext });
         mocks.fetchNext.mockResolvedValue({});
+        mocks.getCosmosClient.mockReturnValue({
+            database: () => ({
+                container: () => ({ items: { query: mocks.query } }),
+            }),
+        });
+        vi.mocked(vscode.window.showErrorMessage).mockResolvedValue(undefined);
     });
 
-    it('retains random session correlation across pagination without emitting sensitive values or hashes', async () => {
-        const session = new QuerySession(connection, query, { countPerPage: 10 });
-        const otherSession = new QuerySession(connection, query, { countPerPage: 10 });
-        expect(session.id).not.toBe(otherSession.id);
+    it.each(credentialCases)(
+        'masks $name across pagination while retaining random session correlation',
+        async ({ credentials, masks }) => {
+            const sessionConnection = { ...connection, credentials };
+            const session = new QuerySession(sessionConnection, query, { countPerPage: 10 });
+            const otherSession = new QuerySession(sessionConnection, query, { countPerPage: 10 });
+            expect(session.id).not.toBe(otherSession.id);
 
-        await session.run();
-        await session.nextPage();
-        await session.prevPage();
-        await session.firstPage();
+            await session.run();
+            await session.nextPage();
+            await session.prevPage();
+            await session.firstPage();
 
-        expect(mocks.query).toHaveBeenCalledWith(query, expect.objectContaining({ maxItemCount: 10 }));
-        expect(mocks.contexts).toHaveLength(4);
-        for (const context of mocks.contexts) {
-            expect(context.telemetry.properties).toEqual({ sessionId: session.id, countPerPage: '10' });
-            expect(context.telemetry.measurements).toEqual({});
-            expect(context.valuesToMask).toEqual([
-                query,
-                connection.endpoint,
-                connection.databaseId,
-                connection.containerId,
-            ]);
-        }
-        session.dispose();
-        otherSession.dispose();
-    });
+            expect(mocks.query).toHaveBeenCalledWith(query, expect.objectContaining({ maxItemCount: 10 }));
+            expect(mocks.contexts).toHaveLength(4);
+            for (const context of mocks.contexts) {
+                expect(context.telemetry.properties).toEqual({ sessionId: session.id, countPerPage: '10' });
+                expect(context.telemetry.measurements).toEqual({});
+                expect(context.valuesToMask).toEqual([
+                    query,
+                    ...masks,
+                    connection.endpoint,
+                    connection.databaseId,
+                    connection.containerId,
+                ]);
+            }
+            session.dispose();
+            otherSession.dispose();
+        },
+    );
+
+    it.each(credentialCases.filter(({ masks }) => masks.length > 0))(
+        'registers $name masks before client creation can fail',
+        async ({ credentials, masks }) => {
+            const session = new QuerySession({ ...connection, credentials }, query, { countPerPage: 10 });
+            const error = new Error(`Authentication failed: ${masks.join(', ')}`);
+            mocks.getCosmosClient.mockImplementationOnce(() => {
+                expect(mocks.contexts[0].valuesToMask).toEqual([
+                    query,
+                    ...masks,
+                    connection.endpoint,
+                    connection.databaseId,
+                    connection.containerId,
+                ]);
+                throw error;
+            });
+
+            const result = await session.run();
+
+            expect(result).toMatchObject({ result: null, error: error.message });
+            expect(mocks.contexts[0].telemetry.properties).toEqual({ sessionId: session.id, countPerPage: '10' });
+            expect(mocks.contexts[0].errorHandling).toMatchObject({
+                suppressDisplay: true,
+                suppressReportIssue: true,
+                rethrow: true,
+            });
+            session.dispose();
+        },
+    );
 });

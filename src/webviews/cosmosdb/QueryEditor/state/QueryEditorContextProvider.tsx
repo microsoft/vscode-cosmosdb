@@ -522,6 +522,7 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
                 });
                 break;
             case 'schemaUpdated':
+                if (event.connectionVersion !== this.connectionVersion) break;
                 this.dispatch({
                     type: 'setContainerSchema',
                     containerSchema: event.containerSchema as JSONSchema | null,

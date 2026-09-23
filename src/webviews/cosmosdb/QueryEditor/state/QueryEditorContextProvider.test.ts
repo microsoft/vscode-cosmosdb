@@ -21,7 +21,9 @@ function deferred<T>() {
 }
 
 async function setup(initDelay?: Promise<void>) {
-    let onEvent: ((event: QueryEditorEvent) => void) | undefined;
+    let emitEvent: (event: QueryEditorEvent) => void = () => {
+        throw new Error('Query Editor event subscription is not ready');
+    };
     const routes = {
         init: {
             mutate: vi.fn().mockImplementation(async () => {
@@ -36,7 +38,6 @@ async function setup(initDelay?: Promise<void>) {
                 };
             }),
         },
-        events: { subscribe: vi.fn().mockReturnValue({ unsubscribe: vi.fn() }) },
         setConnection: { mutate: vi.fn() },
         disconnectFromDatabase: { mutate: vi.fn() },
         prepareQuery: { mutate: vi.fn().mockResolvedValue({ cleanQuery: 'SELECT * FROM c' }) },
@@ -58,7 +59,7 @@ async function setup(initDelay?: Promise<void>) {
                 ({ op }) =>
                     observable((observer) => {
                         if (op.type === 'subscription') {
-                            onEvent = (event) => observer.next({ result: { data: event } });
+                            emitEvent = (event) => observer.next({ result: { data: event } });
                             return;
                         }
                         const procedure = procedures.get(op.path);
@@ -87,18 +88,15 @@ async function setup(initDelay?: Promise<void>) {
         provider,
         dispatchAction,
         getState: () => state,
-        emit: (event: QueryEditorEvent) => {
-            expect(onEvent).toBeDefined();
-            onEvent!(event);
-        },
+        emitEvent: (event: QueryEditorEvent) => emitEvent(event),
     };
 }
 
 describe('query execution origin', () => {
     it('marks tool-created sessions and leaves subsequent manual runs unmarked', async () => {
-        const { provider, emit, routes } = await setup();
+        const { provider, emitEvent, routes } = await setup();
         const connection = { endpoint: 'https://localhost', databaseId: 'db', containerId: 'container' };
-        emit({
+        emitEvent({
             type: 'runActiveQueryRequested',
             requestId: 'request-1',
             query: 'SELECT * FROM c',
@@ -122,6 +120,51 @@ describe('query execution origin', () => {
 });
 
 describe('query editor connection transitions', () => {
+    for (const target of ['B', 'A', 'disconnected']) {
+        it(`ignores schema events from an old generation after switching to ${target}`, async () => {
+            const { provider, routes, getState, dispatchAction, emitEvent } = await setup();
+            const currentSchema = { type: 'object', properties: { current: { type: 'string' } } };
+            routes.setConnection.mutate.mockResolvedValue({
+                connectionVersion: 1,
+                dbName: 'db',
+                containerName: 'B',
+                containerSchema: currentSchema,
+            });
+            await provider.setConnection('db', 'B');
+            if (target === 'A') {
+                routes.setConnection.mutate.mockResolvedValue({
+                    connectionVersion: 2,
+                    dbName: 'db',
+                    containerName: 'A',
+                    containerSchema: currentSchema,
+                });
+                await provider.setConnection('db', 'A');
+            } else if (target === 'disconnected') {
+                routes.disconnectFromDatabase.mutate.mockResolvedValue({ connectionVersion: 2, disconnected: true });
+                await provider.disconnectFromDatabase();
+            }
+            dispatchAction.mockClear();
+            const previousSchema = getState().containerSchema;
+
+            emitEvent({ type: 'schemaUpdated', connectionVersion: 0, containerSchema: { type: 'string' } });
+            emitEvent({ type: 'schemaUpdated', connectionVersion: 0, containerSchema: null });
+
+            expect(getState().containerSchema).toEqual(previousSchema);
+            expect(dispatchAction).not.toHaveBeenCalled();
+            provider.dispose();
+        });
+    }
+
+    it('applies schema updates and removal for the current generation', async () => {
+        const { provider, getState, emitEvent } = await setup();
+        const schema = { type: 'object', properties: { current: { type: 'string' } } };
+        emitEvent({ type: 'schemaUpdated', connectionVersion: 0, containerSchema: schema });
+        expect(getState().containerSchema).toEqual(schema);
+        emitEvent({ type: 'schemaUpdated', connectionVersion: 0, containerSchema: null });
+        expect(getState().containerSchema).toBeNull();
+        provider.dispose();
+    });
+
     it('waits for initialization before changing connections', async () => {
         const init = deferred<void>();
         const { provider, routes, getState } = await setup(init.promise);

@@ -39,8 +39,9 @@ If core evidence or required guidance is contradictory, unavailable, or insuffic
 Do not invent facts, arbitrary scores, or provisional recommendations. Do not report partial success:
 identify affected containers, the blocker, and the specific information or clarification needed to proceed.
 
-- **Wizard failure:** call its report tool exactly once with only `wizardTabId` and a non-empty `error` explanation.
-  Omit `summary` and `containers`; never disguise failure as an empty recommendation.
+- **Wizard failure:** call its report tool exactly once with only `wizardTabId`, a non-empty `error` explanation, and
+  the correlation fields the wizard requested (`requestId`, `model`). Omit `summary` and `containers`; never disguise
+  failure as an empty recommendation.
 - **Chat failure:** explain why no recommendation is possible and what is needed. Never invent a wizard ID.
 - **Delivery failure:** if the report tool is unavailable or fails, say so in Chat; do not claim delivery succeeded.
 

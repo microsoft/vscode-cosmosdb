@@ -329,4 +329,52 @@ describe('ModelingTelemetry', () => {
         await Promise.resolve();
         expect(JSON.stringify(events)).not.toContain('PRIVATE');
     });
+
+    it('attaches the resolved model identity to result events and clears it for each new attempt', () => {
+        const model = {
+            modelSource: 'matched',
+            modelId: 'gpt-4o',
+            modelFamily: 'gpt-4o',
+            modelVendor: 'copilot',
+        } as const;
+        const tracker = new ModelingTelemetry(true);
+        tracker.beginRecommendation(first, ['Orders']);
+        expect(event('recommendationRequested')[0].context.telemetry.properties).not.toHaveProperty('modelSource');
+        tracker.recommendationReceived(result, first, model);
+        tracker.record({ type: 'recommendationDisplayed', requestId: first });
+        tracker.record({ type: 'feedback', vote: 'up' });
+        for (const name of ['recommendationReceived', 'recommendationDisplayed', 'feedback']) {
+            expect(event(name)[0].context.telemetry.properties).toMatchObject(model);
+        }
+
+        tracker.beginRecommendation(second, ['Orders']);
+        tracker.recommendationReceived(result, second);
+        expect(event('recommendationReceived')[1].context.telemetry.properties).toMatchObject({
+            modelSource: 'notReported',
+        });
+        expect(event('recommendationReceived')[1].context.telemetry.properties).not.toHaveProperty('modelId');
+        tracker.dispose();
+        expect(event('summary')[0].context.telemetry.properties).toMatchObject({ modelSource: 'notReported' });
+    });
+
+    it('reports model identity only for report-tool failures', () => {
+        const tracker = new ModelingTelemetry(true);
+        tracker.beginRecommendation(first, ['Orders']);
+        tracker.recommendationFailed(first, 'chat');
+        expect(event('recommendationOutcome')[0].context.telemetry.properties).not.toHaveProperty('modelSource');
+        tracker.beginRecommendation(second, ['Orders']);
+        tracker.recommendationFailed(second, 'ai', { modelSource: 'unmatched' });
+        expect(event('recommendationOutcome').at(-1)?.context.telemetry.properties).toMatchObject({
+            errorCategory: 'ai',
+            modelSource: 'unmatched',
+        });
+    });
+
+    it('does not attribute a model to a restored result', () => {
+        const tracker = new ModelingTelemetry(true);
+        tracker.record({ type: 'recommendationDisplayed' });
+        tracker.record({ type: 'feedback', vote: 'down' });
+        expect(event('recommendationDisplayed')[0].context.telemetry.properties).not.toHaveProperty('modelSource');
+        expect(event('feedback')[0].context.telemetry.properties).not.toHaveProperty('modelSource');
+    });
 });

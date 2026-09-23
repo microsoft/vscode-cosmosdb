@@ -8,6 +8,7 @@ import { attachTrpc } from '@microsoft/vscode-ext-webview/host';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { ModelingTelemetry } from '../dataModeling/ModelingTelemetry';
+import { type ResolvedModel } from '../dataModeling/reportedModel';
 import { ext } from '../extensionVariables';
 import { DataModelerProjectService, type DataModelerAccount } from '../services/DataModelerProjectService';
 import { BaseTab } from './BaseTab';
@@ -94,13 +95,23 @@ export class DataModelingWizardTab extends BaseTab {
     }
 
     /** Push a Copilot-produced recommendation to the webview's Result page. */
-    public reportRecommendation(recommendation: PartitionKeyRecommendation, requestId?: string): void {
-        if (!this.modelingTelemetry.recommendationReceived(recommendation, requestId)) return;
+    public reportRecommendation(
+        recommendation: PartitionKeyRecommendation,
+        requestId?: string,
+        model?: ResolvedModel,
+    ): void {
+        if (!this.modelingTelemetry.recommendationReceived(recommendation, requestId, model?.telemetry)) return;
+        // The display name travels only to the webview; telemetry receives the bounded identity above.
+        const displayed = model ? { ...recommendation, modelName: model.displayName } : recommendation;
         ext.outputChannel.info(
             `[DataModelingWizardTab] emitting 'recommendationReceived' ` +
                 `(${recommendation.containers.length} container(s)) to the webview.`,
         );
-        this.eventSink.emit({ type: 'recommendationReceived', recommendation, ...(requestId ? { requestId } : {}) });
+        this.eventSink.emit({
+            type: 'recommendationReceived',
+            recommendation: displayed,
+            ...(requestId ? { requestId } : {}),
+        });
     }
 
     /** Notify the webview that the recommendation could not be produced. */
@@ -108,9 +119,10 @@ export class DataModelingWizardTab extends BaseTab {
         message: string,
         requestId?: string,
         category: 'ai' | 'invalidResult' = 'ai',
+        model?: ResolvedModel,
     ): void {
         if (!this.modelingTelemetry.acceptsResponse(requestId)) return;
-        if (!this.modelingTelemetry.recommendationFailed(requestId, category)) return;
+        if (!this.modelingTelemetry.recommendationFailed(requestId, category, model?.telemetry)) return;
         ext.outputChannel.warn(`[DataModelingWizardTab] emitting 'recommendationError' to the webview.`);
         this.eventSink.emit({ type: 'recommendationError', message, ...(requestId ? { requestId } : {}) });
     }

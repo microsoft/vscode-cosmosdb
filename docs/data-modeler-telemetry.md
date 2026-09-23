@@ -19,26 +19,26 @@ separate interaction events. Their effect on the model is reflected in aggregate
 
 New feature events use the static prefix `cosmosDB.dataModeler.`.
 
-| Suffix                    | Meaning                                                                                   | Principal properties / measurements                                                                           |
-| ------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `opened`                  | A new modeler panel was created                                                           | `panelId`                                                                                                     |
-| `sessionChoice`           | New work, continuing saved work, or replacing saved work                                  | `sessionChoice`: `new`, `continued`, `replaced`                                                               |
-| `scenarioSelected`        | A workload card was explicitly selected in the first step                                 | `scenario`, `firstSelection`, `scenarioSelectionCount`                                                        |
-| `step`                    | A normalized wizard step was displayed                                                    | `step`, `firstVisit`                                                                                          |
-| `control`                 | An allowlisted footer button or container tab was activated, or Upload JSON was activated | `controlId`                                                                                                   |
-| `schemaImport`            | A selected JSON file was applied, could not be read/parsed, or was not confirmed          | `outcome`: `success`, `error`, `cancelled`                                                                    |
-| `fieldAdded`              | A new, nonempty, nonduplicate property was added with Enter                               | No property name or value                                                                                     |
-| `recommendationRequested` | Saved inputs reached the host for a recommendation                                        | `retry`, `attemptNumber`, `requestedContainerCount`, current model summary                                    |
-| `recommendationReceived`  | The report tool delivered a result                                                        | `source`, container coverage/completeness counts, `requestToReceivedMs` for correlated requests               |
-| `recommendationDisplayed` | The Result page displayed a nonempty result                                               | `source`, `requestToDisplayedMs`, `receivedToDisplayedMs` for correlated requests                             |
-| `recommendationOutcome`   | An error or an unfinished attempt ended                                                   | Bounded `outcome` / `errorCategory`, duration when correlated                                                 |
-| `feedback`                | The user chose thumbs up/down                                                             | `vote`: `up`, `down`                                                                                          |
-| `action`                  | A meaningful post-result or deployment-code action                                        | `action`, optional `method`, `outcome`, `codeCustomized`                                                      |
-| `deployment`              | Direct resource provisioning completed or failed                                          | `outcome`, `databaseMode`, `writesStarted`, duration, created/existing counts                                 |
-| `export`                  | Deployment code generation completed or failed                                            | `method`, `databaseMode`, `outcome`, duration                                                                 |
-| `openDataExplorer`        | Opening Data Explorer completed or failed                                                 | `outcome`, duration                                                                                           |
-| `persistenceLoad`         | Loading saved work completed or failed                                                    | `outcome`, `savedStateFound`, `recovered`                                                                     |
-| `summary`                 | Best-effort panel close rollup                                                            | Last/visited steps, latest usage, visible time, attempts/results, import/field counters, persistence counters |
+| Suffix                    | Meaning                                                                                   | Principal properties / measurements                                                                             |
+| ------------------------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `opened`                  | A new modeler panel was created                                                           | `panelId`                                                                                                       |
+| `sessionChoice`           | New work, continuing saved work, or replacing saved work                                  | `sessionChoice`: `new`, `continued`, `replaced`                                                                 |
+| `scenarioSelected`        | A workload card was explicitly selected in the first step                                 | `scenario`, `firstSelection`, `scenarioSelectionCount`                                                          |
+| `step`                    | A normalized wizard step was displayed                                                    | `step`, `firstVisit`                                                                                            |
+| `control`                 | An allowlisted footer button or container tab was activated, or Upload JSON was activated | `controlId`                                                                                                     |
+| `schemaImport`            | A selected JSON file was applied, could not be read/parsed, or was not confirmed          | `outcome`: `success`, `error`, `cancelled`                                                                      |
+| `fieldAdded`              | A new, nonempty, nonduplicate property was added with Enter                               | No property name or value                                                                                       |
+| `recommendationRequested` | Saved inputs reached the host for a recommendation                                        | `retry`, `attemptNumber`, `requestedContainerCount`, current model summary                                      |
+| `recommendationReceived`  | The report tool delivered a result                                                        | `source`, model identity, container coverage/completeness counts, `requestToReceivedMs` for correlated requests |
+| `recommendationDisplayed` | The Result page displayed a nonempty result                                               | `source`, `requestToDisplayedMs`, `receivedToDisplayedMs` for correlated requests                               |
+| `recommendationOutcome`   | An error or an unfinished attempt ended                                                   | Bounded `outcome` / `errorCategory`, duration when correlated                                                   |
+| `feedback`                | The user chose thumbs up/down                                                             | `vote`: `up`, `down`; model identity of the rated result                                                        |
+| `action`                  | A meaningful post-result or deployment-code action                                        | `action`, optional `method`, `outcome`, `codeCustomized`                                                        |
+| `deployment`              | Direct resource provisioning completed or failed                                          | `outcome`, `databaseMode`, `writesStarted`, duration, created/existing counts                                   |
+| `export`                  | Deployment code generation completed or failed                                            | `method`, `databaseMode`, `outcome`, duration                                                                   |
+| `openDataExplorer`        | Opening Data Explorer completed or failed                                                 | `outcome`, duration                                                                                             |
+| `persistenceLoad`         | Loading saved work completed or failed                                                    | `outcome`, `savedStateFound`, `recovered`                                                                       |
+| `summary`                 | Best-effort panel close rollup                                                            | Last/visited steps, latest usage, visible time, attempts/results, import/field counters, persistence counters   |
 
 Common enrichment includes the latest safe usage aggregates and the session choice when known. Numbers are measurements;
 enums and stringified booleans are properties. Autosaves and aggregate updates do not emit an event per save/edit.
@@ -149,6 +149,29 @@ Usage snapshots accompany milestones and the best-effort close summary. To answe
   wizard navigation, resets for a new recommendation, and is not persisted.
 - Closing with a pending result, starting over, and superseding a request have distinct outcomes. There is no inferred AI
   timeout merely because a response was not observed.
+
+### Model identity
+
+The prompt asks the model to set `model` to its own identifier when it calls the report tool. The self-reported string is
+**never** emitted. The host resolves it against the chat models published by VS Code (`vscode.lm.selectChatModels()`),
+matching the normalized ID, then family, then name, and preferring Copilot-hosted models.
+
+| Property      | Values                                                                     |
+| ------------- | -------------------------------------------------------------------------- |
+| `modelSource` | `matched`, `unmatched` (reported but not a published model), `notReported` |
+| `modelId`     | Vendor-published `LanguageModelChat.id`, only when `matched`               |
+| `modelFamily` | Vendor-published `LanguageModelChat.family`, only when `matched`           |
+| `modelVendor` | Vendor-published `LanguageModelChat.vendor`, only when `matched`           |
+
+These properties accompany `recommendationReceived`, report-tool failures in `recommendationOutcome` (`ai` and
+`invalidResult`), fresh or uncorrelated `recommendationDisplayed`, `feedback`, and the close `summary`. They are cleared
+for each new attempt and are not persisted, so restored results carry no model identity. The value is self-reported:
+models can misidentify themselves, so treat it as a strong hint rather than ground truth. A missing or malformed value never
+blocks delivery of the recommendation.
+
+The Result page shows a muted "Generated by …" caption beside the feedback buttons. It uses the published model name when
+matched, or the self-reported value otherwise. This display name is resolved by the host (a model-supplied `modelName` is
+discarded), saved with the local result so restored results still show it, and never sent to telemetry.
 
 ## Privacy and limitations
 

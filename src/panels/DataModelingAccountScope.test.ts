@@ -112,6 +112,23 @@ describe('data modeler account scope', () => {
     const render = DataModelingWizardTab.render.bind(DataModelingWizardTab);
     const open = openDataModelingWizard;
 
+    it('sends the model display name only to the webview and the bounded identity only to telemetry', () => {
+        const tab = render(firstAccount);
+        const emit = vi.spyOn(tab.eventSink, 'emit');
+        const received = vi.spyOn(tab.modelingTelemetry, 'recommendationReceived');
+        const recommendation = {
+            summary: 'Use customerId.',
+            containers: [{ entity: 'Orders', partitionKey: '/customerId', rationale: 'Co-located.' }],
+        };
+        const telemetry = { modelSource: 'unmatched' } as const;
+        tab.reportRecommendation(recommendation, undefined, { telemetry, displayName: 'PRIVATE model' });
+        expect(received).toHaveBeenCalledWith(recommendation, undefined, telemetry);
+        expect(emit).toHaveBeenCalledWith({
+            type: 'recommendationReceived',
+            recommendation: { ...recommendation, modelName: 'PRIVATE model' },
+        });
+    });
+
     it('reuses only the same account tab and binds each account to its own persistence service', () => {
         const first = render(firstAccount);
         const firstProject = lastContext().project;

@@ -4,20 +4,30 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
-import { getCosmosDBKeyCredential } from './CosmosDBCredential';
+import { AuthenticationMethod } from './AuthenticationMethod';
 import { type NoSqlQueryConnection } from './NoSqlQueryConnection';
 
 /**
- * Register sensitive connection values for masking on this action; no file contents, paths, or names are emitted.
+ * Register connection values and all credential keys/identifiers for masking on this action.
+ * No file contents, paths, or names are emitted.
  */
 export function maskConnectionTelemetry(
     context: Pick<IActionContext, 'valuesToMask'>,
     connection: NoSqlQueryConnection,
 ): void {
-    const masterKey = getCosmosDBKeyCredential(connection.credentials)?.key ?? '';
+    const credentialValues = connection.credentials.map((credential) => {
+        switch (credential.type) {
+            case AuthenticationMethod.accountKey:
+                return credential.key;
+            case AuthenticationMethod.entraId:
+                return credential.tenantId;
+            case AuthenticationMethod.managedIdentity:
+                return credential.clientId;
+        }
+    });
     context.valuesToMask.push(
-        ...[masterKey, connection.endpoint, connection.databaseId, connection.containerId].filter(
-            (value) => value.trim().length > 0,
+        ...[...credentialValues, connection.endpoint, connection.databaseId, connection.containerId].filter(
+            (value): value is string => value !== undefined && value.trim().length > 0,
         ),
     );
 }

@@ -35,10 +35,6 @@ vi.mock('@microsoft/vscode-azext-utils', () => ({
 vi.mock('../../../chat', () => ({}));
 vi.mock('../../../cosmosdb/controlPlane', () => ({}));
 vi.mock('../../../cosmosdb/NoSqlQueryConnection', () => ({ getNoSqlQueryConnection: mocks.pickConnection }));
-vi.mock('../../../cosmosdb/CosmosDBCredential', () => ({
-    getCosmosDBKeyCredential: (credentials: NoSqlQueryConnection['credentials']) =>
-        credentials.find((credential) => credential.type === AuthenticationMethod.accountKey),
-}));
 vi.mock('../../../cosmosdb/session/DocumentSession', () => ({}));
 vi.mock('../../../cosmosdb/session/QuerySession', () => ({}));
 vi.mock('../../../cosmosdb/throughputBuckets', () => ({}));

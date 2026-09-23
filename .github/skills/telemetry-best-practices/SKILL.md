@@ -90,6 +90,10 @@ Registering a raw value does not mask its deterministic derivatives, such as has
 Masks belong to the action context on which they are registered. Nested telemetry calls and separate tRPC invocations
 must register their own masks before operations that can fail; caller or webview masks are not automatically inherited.
 
+For NoSQL connections, reuse `maskConnectionTelemetry` to register connection values and every configured credential's
+account key, Entra tenant ID, or managed-identity client ID, including fallback credentials. Add operation-specific masks
+(such as query text) separately. Explicit identifier masks avoid relying solely on the sanitizer's GUID detection.
+
 Use it as a **safety net** for sensitive values that your code touches and might end up in a thrown error or log line you don't fully control:
 
 ```ts

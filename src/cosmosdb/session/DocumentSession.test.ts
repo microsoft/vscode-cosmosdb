@@ -6,7 +6,6 @@
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthenticationMethod } from '../AuthenticationMethod';
-import { getCosmosDBKeyCredential } from '../CosmosDBCredential';
 import { type NoSqlQueryConnection } from '../NoSqlQueryConnection';
 
 const cosmosMocks = vi.hoisted(() => ({
@@ -39,7 +38,6 @@ vi.mock('@microsoft/vscode-azext-utils', () => ({
     ),
 }));
 vi.mock('../../extensionVariables', () => ({ ext: {} }));
-vi.mock('../CosmosDBCredential', () => ({ getCosmosDBKeyCredential: vi.fn() }));
 vi.mock('../priorityLevel', () => ({ resolveEffectivePriorityLevel: vi.fn() }));
 vi.mock('../withClaimsChallengeHandling', () => ({
     withClaimsChallengeHandling: vi.fn(async (_connection, operation) =>
@@ -75,7 +73,6 @@ describe('DocumentSession ETag conditions', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         telemetryContexts.length = 0;
-        vi.mocked(getCosmosDBKeyCredential).mockReturnValue(undefined);
         cosmosMocks.item.mockReturnValue({ delete: cosmosMocks.delete, replace: cosmosMocks.replace });
     });
 
@@ -130,7 +127,6 @@ describe('partition-key lookup telemetry privacy', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         telemetryContexts.length = 0;
-        vi.mocked(getCosmosDBKeyCredential).mockReturnValue(keyCredential);
     });
 
     function expectLookupMasks(): void {
@@ -185,7 +181,6 @@ describe('partition-key lookup telemetry privacy', () => {
     });
 
     it('preserves successful lookup results and excludes blank masks without a key credential', async () => {
-        vi.mocked(getCosmosDBKeyCredential).mockReturnValue(undefined);
         const partitionKey = { paths: ['/pk'] };
         cosmosMocks.read.mockResolvedValueOnce({ resource: { partitionKey } });
 

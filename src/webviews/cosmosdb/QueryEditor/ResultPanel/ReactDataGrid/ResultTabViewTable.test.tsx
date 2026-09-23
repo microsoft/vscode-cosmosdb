@@ -49,17 +49,17 @@ describe('ResultTabViewTable keyboard selection', () => {
         vi.clearAllMocks();
     });
 
-    it('toggles the active row with Space', () => {
+    it('toggles the active row with Space without native scrolling', () => {
         renderTable();
         const cell = screen.getByRole('gridcell', { name: 'first' });
         fireEvent.mouseDown(cell);
         fireEvent.click(cell);
         expect(dispatcher.setSelectedRows).toHaveBeenLastCalledWith([0]);
 
-        fireEvent.keyDown(cell, { key: ' ' });
+        expect(fireEvent.keyDown(cell, { key: ' ' })).toBe(false);
         expect(dispatcher.setSelectedRows).toHaveBeenLastCalledWith([]);
 
-        fireEvent.keyDown(cell, { key: ' ' });
+        expect(fireEvent.keyDown(cell, { key: ' ' })).toBe(false);
         expect(dispatcher.setSelectedRows).toHaveBeenLastCalledWith([0]);
     });
 
@@ -79,7 +79,7 @@ describe('ResultTabViewTable keyboard selection', () => {
         expect(firstCell).toHaveFocus();
     });
 
-    it('selects a range from the anchor with Shift+Space', () => {
+    it('selects a range from the anchor with Shift+Space without native scrolling', () => {
         renderTable();
         const firstCell = screen.getByRole('gridcell', { name: 'first' });
         fireEvent.mouseDown(firstCell);
@@ -88,7 +88,7 @@ describe('ResultTabViewTable keyboard selection', () => {
         fireEvent.keyDown(firstCell, { key: 'ArrowDown' });
         const secondCell = screen.getByRole('gridcell', { name: 'second' });
         expect(secondCell).toHaveFocus();
-        fireEvent.keyDown(secondCell, { key: ' ', shiftKey: true });
+        expect(fireEvent.keyDown(secondCell, { key: ' ', shiftKey: true })).toBe(false);
         expect(dispatcher.setSelectedRows).toHaveBeenLastCalledWith([0, 1]);
     });
 

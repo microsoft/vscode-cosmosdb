@@ -199,7 +199,8 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
             const rowIdx = args.rowIdx;
 
             if (event.key === ' ') {
-                // Prevent the grid's own space-key behavior
+                // Prevent native scrolling and the grid's own space-key behavior.
+                event.preventDefault();
                 event.preventGridDefault();
 
                 if (event.shiftKey && anchorRowIdRef.current !== null) {

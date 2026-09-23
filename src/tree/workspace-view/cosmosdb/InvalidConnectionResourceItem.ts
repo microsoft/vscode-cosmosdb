@@ -17,6 +17,9 @@ export function getSavedConnectionError(item: StorageItem): string | undefined {
     if (typeof api !== 'string' || !api.trim()) {
         return l10n.t('The saved connection is missing its API type.');
     }
+    if (typeof item.name !== 'string' || !item.name.trim()) {
+        return l10n.t('The saved connection is missing its name.');
+    }
     if (typeof item.properties?.isEmulator !== 'boolean') {
         return l10n.t('The saved connection has an invalid emulator setting.');
     }
@@ -25,6 +28,8 @@ export function getSavedConnectionError(item: StorageItem): string | undefined {
     }
     return undefined;
 }
+
+const fallbackLabel = () => l10n.t('Unnamed connection');
 
 export class InvalidConnectionResourceItem implements TreeElement {
     public readonly id: string;
@@ -39,7 +44,9 @@ export class InvalidConnectionResourceItem implements TreeElement {
     ) {
         this.id = `${parentId}/${item.id}`;
         this.storageId = item.id;
-        this.account = { name: item.name };
+        // Persisted records are not shape-validated, so a malformed name would otherwise reach the tree label
+        // and the removal flow, which both expect a string.
+        this.account = { name: typeof item.name === 'string' && item.name.trim() ? item.name : fallbackLabel() };
         ext.outputChannel.error(reason);
     }
 

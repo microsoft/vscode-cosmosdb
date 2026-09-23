@@ -152,4 +152,21 @@ describe('saved connection resilience', () => {
         delete emulator.secrets;
         expect(getSavedConnectionError(emulator)).toBeUndefined();
     });
+
+    it.each([
+        { label: 'a missing name', name: undefined },
+        { label: 'a blank name', name: '  ' },
+        { label: 'a non-string name', name: 42 },
+    ])('reports $label and falls back to a generic label', async ({ name }) => {
+        const invalid = { ...makeItem('broken'), name } as unknown as StorageItem;
+        expect(getSavedConnectionError(invalid)).toBeDefined();
+        getItems.mockResolvedValue([makeItem('before'), invalid]);
+
+        const children = await new CosmosDBWorkspaceItem().getChildren();
+        const errorNode = children.find((child) => child instanceof InvalidConnectionResourceItem);
+        expect(errorNode?.storageId).toBe('broken');
+        // A malformed name must not reach the tree label or the removal flow, which both expect a string.
+        expect(errorNode?.account.name).toBe('Unnamed connection');
+        expect(errorNode?.getTreeItem().label).toBe('Unnamed connection');
+    });
 });

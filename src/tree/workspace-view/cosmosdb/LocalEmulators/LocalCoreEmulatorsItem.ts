@@ -58,9 +58,16 @@ export class LocalCoreEmulatorsItem implements TreeElement, TreeElementWithConte
                         if (validationError) {
                             return new InvalidConnectionResourceItem(this.id, item, validationError);
                         }
+
+                        // Migration rewrites the record and deletes the original, so records owned by another
+                        // experience have to be skipped before storage is touched.
+                        const experience = getExperienceFromApi(item.properties?.api as API);
+                        if (experience.api !== API.Core) {
+                            return undefined;
+                        }
+
                         try {
-                            const { id, name, properties, secrets } = await migrateRawEmulatorItemToHashed(item);
-                            const api = properties?.api as API;
+                            const { id, name, secrets } = await migrateRawEmulatorItemToHashed(item);
                             const isEmulator = true;
 
                             // Use stored connection string, or fallback to default emulator connection string
@@ -68,7 +75,6 @@ export class LocalCoreEmulatorsItem implements TreeElement, TreeElementWithConte
                                 secrets?.[0] ||
                                 `AccountEndpoint=https://localhost:8081/;AccountKey=${wellKnownEmulatorPassword};`;
 
-                            const experience = getExperienceFromApi(api);
                             const accountModel: CosmosDBAttachedAccountModel = {
                                 id: `${this.id}/${id}`, // To enable TreeView.reveal, we need to have a unique nested id
                                 storageId: id,
@@ -77,14 +83,9 @@ export class LocalCoreEmulatorsItem implements TreeElement, TreeElementWithConte
                                 isEmulator,
                             };
 
-                            if (experience?.api === API.Core) {
-                                return makeFilterable(
-                                    makeSortable(new NoSqlAccountAttachedResourceItem(accountModel, experience)),
-                                );
-                            }
-
-                            // Unknown experience
-                            return undefined;
+                            return makeFilterable(
+                                makeSortable(new NoSqlAccountAttachedResourceItem(accountModel, experience)),
+                            );
                         } catch {
                             return new InvalidConnectionResourceItem(
                                 this.id,

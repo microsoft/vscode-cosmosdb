@@ -192,4 +192,17 @@ describe('saved connection resilience', () => {
         const emulator = { ...makeItem('emulator', true), secrets: [] };
         expect(getSavedConnectionError(emulator)).toBeUndefined();
     });
+
+    it('skips emulators owned by another experience without migrating them', async () => {
+        const foreign = makeItem('mongo-emulator', true);
+        foreign.properties = { api: 'MongoDB', isEmulator: true };
+        getItems.mockResolvedValue([foreign, makeItem('core-emulator', true)]);
+
+        const children = await new LocalCoreEmulatorsItem('accounts').getChildren();
+        // Migration renames the stored record and deletes the original, so it must not run for foreign records.
+        expect(migrate).toHaveBeenCalledTimes(1);
+        expect(children.map((child) => child.id)).toContain('accounts/localEmulators/core-emulator');
+        expect(children.map((child) => child.id)).not.toContain('accounts/localEmulators/mongo-emulator');
+        expect(children.some((child) => child instanceof InvalidConnectionResourceItem)).toBe(false);
+    });
 });

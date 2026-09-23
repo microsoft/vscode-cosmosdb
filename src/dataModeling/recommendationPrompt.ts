@@ -17,7 +17,7 @@ export async function buildRecommendationPrompt(
         'Load the `cosmosdb-data-model-recommendation` skill and follow its workflow for EVERY container in this Data Modeler request.' +
         '\n' +
         'If required skills, guidance, or information are missing, or you are unsure which recommendation is supported, stop and report failure using only ' +
-        (requestId ? 'wizardTabId, requestId, model, and error. ' : 'wizardTabId, model, and error. ') +
+        (requestId ? 'wizardTabId, requestId, and error. ' : 'wizardTabId and error. ') +
         'Explain what is missing or uncertain and what is needed to proceed. Do not invent or return a provisional recommendation.' +
         '\n\n' +
         "Scenario context computed by Data Modeler (apply the skill's unchanged-default hint rule):\n" +
@@ -30,7 +30,6 @@ export async function buildRecommendationPrompt(
         (requestId
             ? `Include requestId "${requestId}" in both success and failure reports to correlate this attempt. `
             : '') +
-        'Set model to your own model identifier (for example, the model ID you are running as) in both success and failure reports. ' +
         'If the tool reports that the wizard is closed, show the complete recommendation or failure it returns in Chat instead.'
     );
 }

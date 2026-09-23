@@ -40,7 +40,6 @@ vi.mock('../panels/DataModelingWizardTab', () => ({
     },
 }));
 
-import * as vscode from 'vscode';
 import packageJson from '../../package.json';
 import { captureRegisteredTool, serializeToolResult } from './queryEditorToolTestUtils';
 import {
@@ -168,61 +167,6 @@ describe('cosmosdb_reportPartitionKeyRecommendation', () => {
             'invalidResult',
         );
         expect(JSON.stringify(actionContexts.map((ctx) => ctx.telemetry))).not.toContain('PRIVATE');
-    });
-
-    it('resolves the self-reported model without forwarding it or blocking delivery', async () => {
-        const lm = vscode.lm as unknown as { selectChatModels?: () => Promise<unknown[]> };
-        lm.selectChatModels = vi.fn(async () => [
-            { id: 'gpt-4o', family: 'gpt-4o', name: 'GPT-4o', vendor: 'copilot' },
-        ]);
-        const tab = {
-            getId: () => '1c70d73d-9d5d-415a-93f3-630d3e581d63',
-            reportRecommendation: vi.fn(),
-            reportRecommendationError: vi.fn(),
-        };
-        wizardTabs.add(tab);
-        const tool = captureRegisteredTool(registerReportPartitionKeyRecommendationTool);
-        const requestId = '12345678-1234-4123-8123-123456789001';
-        const recommendation = {
-            summary: 'Use customerId.',
-            containers: [{ entity: 'Orders', partitionKey: '/customerId', rationale: 'Co-located.' }],
-        };
-        const matched = {
-            telemetry: { modelSource: 'matched', modelId: 'gpt-4o', modelFamily: 'gpt-4o', modelVendor: 'copilot' },
-            displayName: 'GPT-4o',
-        };
-        try {
-            await tool.invoke(
-                { input: { wizardTabId: tab.getId(), requestId, model: 'gpt 4o', ...recommendation } },
-                {},
-            );
-            expect(tab.reportRecommendation).toHaveBeenLastCalledWith(recommendation, requestId, matched);
-            // Only the host may set the display name; a model-supplied value is discarded.
-            await tool.invoke({ input: { wizardTabId: tab.getId(), modelName: 'Spoofed', ...recommendation } }, {});
-            expect(tab.reportRecommendation).toHaveBeenLastCalledWith(recommendation);
-
-            await tool.invoke({ input: { wizardTabId: tab.getId(), model: 'PRIVATE MODEL', error: 'Blocked' } }, {});
-            expect(tab.reportRecommendationError).toHaveBeenLastCalledWith('Blocked', undefined, 'ai', {
-                telemetry: { modelSource: 'unmatched' },
-                displayName: 'PRIVATE MODEL',
-            });
-
-            await tool.invoke({ input: { wizardTabId: tab.getId(), model: 'x'.repeat(201), ...recommendation } }, {});
-            expect(tab.reportRecommendation).toHaveBeenLastCalledWith(recommendation);
-            await tool.invoke({ input: { wizardTabId: tab.getId(), model: 42, ...recommendation } }, {});
-            expect(tab.reportRecommendation).toHaveBeenLastCalledWith(recommendation);
-
-            await tool.invoke({ input: { wizardTabId: tab.getId(), model: 'gpt-4o', containers: [] } }, {});
-            expect(tab.reportRecommendationError).toHaveBeenLastCalledWith(
-                'The recommendation was not in the expected shape and could not be shown.',
-                undefined,
-                'invalidResult',
-                matched,
-            );
-            expect(JSON.stringify(actionContexts.map((ctx) => ctx.telemetry))).not.toContain('PRIVATE');
-        } finally {
-            delete lm.selectChatModels;
-        }
     });
 
     afterEach(() => {

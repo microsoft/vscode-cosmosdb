@@ -259,7 +259,7 @@
       {
         "name": "cosmosdb_reportPartitionKeyRecommendation",
         "displayName": "Report Partition Key Recommendation",
-        "modelDescription": "Displays a partition-key recommendation on the Result page of the open Cosmos DB Data Modeling wizard. Call this once after analyzing the data model the wizard sent, passing a structured recommendation: an overall summary and, for each container, the recommended partition key with a short rationale, scored candidate keys (with per-rule assessments), a hot-partition risk comparison, a query-routing analysis, and a document-id strategy. Include relevant absolute-rule guardrails as the final section. If required information or guidance is missing, or you are unsure which recommendation is supported, send only wizardTabId, model, and error explaining the blocker instead of inventing a recommendation. Pass the wizardTabId supplied with the analysis request so the recommendation reaches its originating wizard. Set model to the identifier of the language model producing the report.",
+        "modelDescription": "Displays a partition-key recommendation on the Result page of the open Cosmos DB Data Modeling wizard. Call this once after analyzing the data model the wizard sent, passing a structured recommendation: an overall summary and, for each container, the recommended partition key with a short rationale, scored candidate keys (with per-rule assessments), a hot-partition risk comparison, a query-routing analysis, and a document-id strategy. Include relevant absolute-rule guardrails as the final section. If required information or guidance is missing, or you are unsure which recommendation is supported, send only wizardTabId and error explaining the blocker instead of inventing a recommendation. Pass the wizardTabId supplied with the analysis request so the recommendation reaches its originating wizard.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "cosmosdb_reportPartitionKeyRecommendation",
         "inputSchema": {
@@ -273,11 +273,6 @@
               "type": "string",
               "format": "uuid",
               "description": "The requestId included in the analysis request. Include it in success and failure reports when supplied."
-            },
-            "model": {
-              "type": "string",
-              "maxLength": 200,
-              "description": "Identifier of the language model producing this report, such as its model ID (for example \"gpt-4o\"). Include it in success and failure reports."
             },
             "error": {
               "type": "string",

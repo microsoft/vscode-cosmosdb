@@ -7,7 +7,6 @@ import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { z } from 'zod';
-import { resolveReportedModel } from '../dataModeling/reportedModel';
 import { ext } from '../extensionVariables';
 import { DataModelingWizardTab } from '../panels/DataModelingWizardTab';
 import {
@@ -31,19 +30,13 @@ export const REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_DESCRIPTION =
     '(with per-rule assessments), a hot-partition risk comparison, a query-routing analysis, and a document-id ' +
     'strategy. Include relevant absolute-rule guardrails as the final section. ' +
     'If required information or guidance is missing, or you are unsure which recommendation is supported, ' +
-    'send only wizardTabId, model, and error explaining the blocker instead of inventing a recommendation. ' +
-    'Pass the wizardTabId supplied with the analysis request so the recommendation reaches its originating wizard. ' +
-    'Set model to the identifier of the language model producing the report.';
-
-// A missing or malformed model identifier must never block delivery of the recommendation itself.
-const ReportedModelInputSchema = z.string().max(200).optional().catch(undefined);
+    'send only wizardTabId and error explaining the blocker instead of inventing a recommendation. ' +
+    'Pass the wizardTabId supplied with the analysis request so the recommendation reaches its originating wizard.';
 
 const ReportPartitionKeyRecommendationSchema = z.union([
-    // The display name is resolved by the host; omitting it strips any model-supplied value.
-    PartitionKeyRecommendationSchema.omit({ modelName: true }).extend({
+    PartitionKeyRecommendationSchema.extend({
         wizardTabId: z.string().uuid(),
         requestId: z.string().uuid().optional(),
-        model: ReportedModelInputSchema,
         containers: PartitionKeyRecommendationSchema.shape.containers.min(1),
         error: z.never().optional(),
     }),
@@ -51,7 +44,6 @@ const ReportPartitionKeyRecommendationSchema = z.union([
         .object({
             wizardTabId: z.string().uuid(),
             requestId: z.string().uuid().optional(),
-            model: ReportedModelInputSchema,
             error: z.string().trim().min(1),
         })
         .strict(),
@@ -161,12 +153,6 @@ export const REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_INPUT_SCHEMA = {
             format: 'uuid',
             description:
                 'The requestId included in the analysis request. Include it in success and failure reports when supplied.',
-        },
-        model: {
-            type: 'string',
-            maxLength: 200,
-            description:
-                'Identifier of the language model producing this report, such as its model ID (for example "gpt-4o"). Include it in success and failure reports.',
         },
         error: {
             type: 'string',
@@ -385,17 +371,12 @@ export function registerReportPartitionKeyRecommendationTool(context: vscode.Ext
                         const parsed = ReportPartitionKeyRecommendationSchema.safeParse(options.input);
                         if (!parsed.success) {
                             actionContext.telemetry.properties.outcome = 'invalidInput';
-                            const partial = z
-                                .object({ requestId: z.string().uuid().optional(), model: ReportedModelInputSchema })
-                                .safeParse(options.input).data;
-                            const wizard = findOriginatingWizard(options.input);
-                            const model = wizard ? await resolveReportedModel(partial?.model) : undefined;
-                            const message = l10n.t(
-                                'The recommendation was not in the expected shape and could not be shown.',
+                            findOriginatingWizard(options.input)?.reportRecommendationError(
+                                l10n.t('The recommendation was not in the expected shape and could not be shown.'),
+                                z.object({ requestId: z.string().uuid().optional() }).safeParse(options.input).data
+                                    ?.requestId,
+                                'invalidResult',
                             );
-                            if (model)
-                                wizard?.reportRecommendationError(message, partial?.requestId, 'invalidResult', model);
-                            else wizard?.reportRecommendationError(message, partial?.requestId, 'invalidResult');
                             console.error(
                                 `[${REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_NAME}] input failed schema validation:`,
                                 parsed.error.issues,
@@ -416,9 +397,7 @@ export function registerReportPartitionKeyRecommendationTool(context: vscode.Ext
                             actionContext.valuesToMask.push(error);
                             actionContext.telemetry.properties.outcome = 'recommendationFailed';
                             const tab = findDataModelingWizardTab(wizardTabId);
-                            const model = tab ? await resolveReportedModel(parsed.data.model) : undefined;
-                            if (model) tab?.reportRecommendationError(error, requestId, 'ai', model);
-                            else if (requestId) tab?.reportRecommendationError(error, requestId);
+                            if (requestId) tab?.reportRecommendationError(error, requestId);
                             else tab?.reportRecommendationError(error);
                             return new vscode.LanguageModelToolResult([
                                 new vscode.LanguageModelTextPart(
@@ -432,7 +411,7 @@ export function registerReportPartitionKeyRecommendationTool(context: vscode.Ext
                             ]);
                         }
 
-                        const { wizardTabId, requestId, model: reportedModel, ...recommendation } = parsed.data;
+                        const { wizardTabId, requestId, ...recommendation } = parsed.data;
                         const tab = findDataModelingWizardTab(wizardTabId);
                         console.log(
                             `[${REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_NAME}] originating wizard tab found: ${!!tab}`,
@@ -455,9 +434,7 @@ export function registerReportPartitionKeyRecommendationTool(context: vscode.Ext
                             ]);
                         }
 
-                        const model = await resolveReportedModel(reportedModel);
-                        if (model) tab.reportRecommendation(recommendation, requestId, model);
-                        else if (requestId) tab.reportRecommendation(recommendation, requestId);
+                        if (requestId) tab.reportRecommendation(recommendation, requestId);
                         else tab.reportRecommendation(recommendation);
                         console.log(
                             `[${REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_NAME}] reportRecommendation() called with ` +

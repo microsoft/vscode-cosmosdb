@@ -14,7 +14,6 @@ import {
     type ModelingUsage,
 } from './modelingTelemetrySchema';
 import { type PartitionKeyRecommendation } from './recommendationSchema';
-import { NOT_REPORTED_MODEL, type ReportedModel } from './reportedModel';
 
 type EventName =
     | 'cosmosDB.dataModeler.opened'
@@ -66,8 +65,6 @@ export class ModelingTelemetry {
     private choice?: 'new' | 'continued' | 'replaced';
     private lastStep?: ModelingStep;
     private feedback?: 'up' | 'down';
-    /** Resolved identity of the model behind the latest accepted tool report; cleared with each new attempt. */
-    private model?: ReportedModel | typeof NOT_REPORTED_MODEL;
     private visibleSince?: number;
     private activeVisibleMs = 0;
     private disposed = false;
@@ -168,7 +165,7 @@ export class ModelingTelemetry {
             case 'feedback':
                 if (this.feedback === event.vote) return;
                 this.feedback = event.vote;
-                this.emit('cosmosDB.dataModeler.feedback', { vote: event.vote, ...this.model });
+                this.emit('cosmosDB.dataModeler.feedback', { vote: event.vote });
                 return;
             case 'action':
                 if (event.action === 'startOver') {
@@ -176,7 +173,6 @@ export class ModelingTelemetry {
                     this.uncorrelatedDisplayed = false;
                     this.uncorrelatedReceived = false;
                     this.feedback = undefined;
-                    this.model = undefined;
                     this.attempt = undefined;
                 }
                 this.emit('cosmosDB.dataModeler.action', {
@@ -219,7 +215,6 @@ export class ModelingTelemetry {
         this.uncorrelatedDisplayed = false;
         this.uncorrelatedReceived = false;
         this.feedback = undefined;
-        this.model = undefined;
         this.emit(
             'cosmosDB.dataModeler.recommendationRequested',
             { retry: String(this.attempts > 1) },
@@ -237,14 +232,9 @@ export class ModelingTelemetry {
         );
     }
 
-    public recommendationReceived(
-        recommendation: PartitionKeyRecommendation,
-        requestId?: string,
-        model?: ReportedModel,
-    ): boolean {
+    public recommendationReceived(recommendation: PartitionKeyRecommendation, requestId?: string): boolean {
         if (!this.acceptsResponse(requestId)) return false;
         this.feedback = undefined;
-        this.model = model ?? NOT_REPORTED_MODEL;
         const attempt = requestId && this.isCurrent(requestId) ? this.attempt : undefined;
         const returned = recommendation.containers;
         if (!requestId) this.uncorrelatedReceived = true;
@@ -272,7 +262,7 @@ export class ModelingTelemetry {
         }
         this.emit(
             'cosmosDB.dataModeler.recommendationReceived',
-            { source: attempt ? 'fresh' : 'uncorrelated', ...this.model },
+            { source: attempt ? 'fresh' : 'uncorrelated' },
             measurements,
         );
         return true;
@@ -281,24 +271,15 @@ export class ModelingTelemetry {
     public recommendationFailed(
         requestId: string | undefined,
         errorCategory: 'chat' | 'ai' | 'invalidResult' | 'save' | 'subscription',
-        model?: ReportedModel,
     ): boolean {
         if (this.disposed || (requestId && (!this.isCurrent(requestId) || this.attempt?.finished))) return false;
         const attempt = requestId && this.isCurrent(requestId) ? this.attempt : undefined;
         if (attempt) attempt.finished = true;
         else if (!requestId && this.attempt && !this.attempt.requestId) this.attempt.finished = true;
         this.failureCount++;
-        // Only report-tool failures come from a model; chat-launch and client failures have no model identity.
-        const fromTool = errorCategory === 'ai' || errorCategory === 'invalidResult';
-        if (fromTool) this.model = model ?? NOT_REPORTED_MODEL;
         this.emit(
             'cosmosDB.dataModeler.recommendationOutcome',
-            {
-                outcome: 'error',
-                errorCategory,
-                source: attempt ? 'fresh' : 'uncorrelated',
-                ...(fromTool ? this.model : {}),
-            },
+            { outcome: 'error', errorCategory, source: attempt ? 'fresh' : 'uncorrelated' },
             attempt ? { attemptNumber: attempt.number, durationMs: Math.max(0, this.now() - attempt.started) } : {},
         );
         return true;
@@ -359,7 +340,6 @@ export class ModelingTelemetry {
             {
                 ...(this.lastStep ? { lastStep: this.lastStep } : {}),
                 ...(this.feedback ? { feedback: this.feedback } : {}),
-                ...this.model,
                 ...(this.firstSelectedScenario ? { firstSelectedScenario: this.firstSelectedScenario } : {}),
                 ...(this.lastSelectedScenario ? { lastSelectedScenario: this.lastSelectedScenario } : {}),
                 visitedWorkload: String(this.visited.has('workload')),
@@ -401,7 +381,7 @@ export class ModelingTelemetry {
             this.displayedCount++;
             this.emit(
                 'cosmosDB.dataModeler.recommendationDisplayed',
-                { source: 'fresh', outcome: 'success', ...this.model },
+                { source: 'fresh', outcome: 'success' },
                 {
                     attemptNumber: attempt.number,
                     requestToDisplayedMs: Math.max(0, this.now() - attempt.started),
@@ -412,8 +392,6 @@ export class ModelingTelemetry {
             this.uncorrelatedDisplayed = true;
             this.emit('cosmosDB.dataModeler.recommendationDisplayed', {
                 source: this.uncorrelatedReceived ? 'uncorrelated' : 'restored',
-                // A restored result has no known model; its identity was never persisted.
-                ...(this.uncorrelatedReceived ? this.model : {}),
             });
         }
     }

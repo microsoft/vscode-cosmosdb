@@ -324,8 +324,7 @@ describe('recommendation prompt', () => {
         const wizard = applyScenario(createInitialState(), 'ecommerce');
         const prompt = await buildRecommendationPrompt(wizard, 'wizard-id');
         expect(prompt).toContain('Load the `cosmosdb-data-model-recommendation` skill');
-        expect(prompt).toContain('stop and report failure using only wizardTabId, model, and error');
-        expect(prompt).toContain('Set model to your own model identifier');
+        expect(prompt).toContain('stop and report failure using only wizardTabId and error');
         expect(prompt).toContain('Do not invent or return a provisional recommendation');
         expect(prompt).not.toContain('label the recommendation as provisional');
         expect(prompt).toContain('"scenario":"ecommerce","defaultsUnchanged":true');

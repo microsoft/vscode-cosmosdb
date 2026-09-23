@@ -106,8 +106,6 @@ export const PartitionKeyRecommendationSchema = z.object({
     summary: z.string(),
     /** Per-container recommendation. */
     containers: z.array(ContainerRecommendationSchema),
-    /** Host-resolved display name of the model that produced the result. Displayed only; never sent to telemetry. */
-    modelName: z.string().trim().min(1).max(200).optional(),
 });
 
 export type PartitionKeyRecommendation = z.infer<typeof PartitionKeyRecommendationSchema>;

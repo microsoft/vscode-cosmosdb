@@ -80,8 +80,9 @@ export const ConnectionButton = (props: ToolbarOverflowItemProps<HTMLDivElement>
         return (
             <div ref={ref} data-quickstart="connection" style={{ paddingLeft: '8px' }}>
                 <Dropdown
+                    disabled={state.isChangingConnection}
                     style={{ minWidth: '100px', maxWidth: '300px' }}
-                    aria-label={l10n.t('Connect to…')}
+                    aria-label={currentValue || l10n.t('Connect to…')}
                     placeholder={l10n.t('Connect to…')}
                     value={currentValue}
                     selectedOptions={selectedOptions}
@@ -125,7 +126,7 @@ export const ConnectionButton = (props: ToolbarOverflowItemProps<HTMLDivElement>
     return (
         <Menu hasCheckmarks={true} onOpenChange={onOpenChange} checkedValues={checkedValues}>
             <MenuTrigger>
-                <MenuItem aria-label={l10n.t('Connect to…')} icon={<DatabasePlugConnectedRegular />}>
+                <MenuItem disabled={state.isChangingConnection} icon={<DatabasePlugConnectedRegular />}>
                     {l10n.t('Connect to…')}
                 </MenuItem>
             </MenuTrigger>

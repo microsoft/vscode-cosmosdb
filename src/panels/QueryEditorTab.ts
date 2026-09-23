@@ -44,6 +44,8 @@ export class QueryEditorTab extends BaseTab {
 
         this.state = {
             connection,
+            connectionVersion: 0,
+            isChangingConnection: false,
             query: query ?? QueryEditorTab.DEFAULT_QUERY_VALUE,
             isLastQueryAIGenerated: false,
             lastAIGeneratedQuery: undefined,

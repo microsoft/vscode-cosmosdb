@@ -18,10 +18,12 @@ export const NewItemButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>
     const dispatcher = useQueryEditorDispatcher();
     const addNewItem = useCallback(() => dispatcher.openDocument('add'), [dispatcher]);
 
-    const isDisabled = state.isExecuting;
+    const isDisabled = !state.isConnected || state.isChangingConnection || state.isExecuting;
 
     const newItemHotkeyTooltip = useMemo(() => getShortcutDisplay(ResultPanelHotkeys, 'NewItem'), []);
-    useCommandHotkey<QueryEditorHotkeyScope, QueryEditorHotkeyCommand>('resultPanel', 'NewItem', addNewItem);
+    useCommandHotkey<QueryEditorHotkeyScope, QueryEditorHotkeyCommand>('resultPanel', 'NewItem', addNewItem, {
+        disabled: isDisabled,
+    });
 
     return (
         <ToolbarOverflowButton

@@ -39,6 +39,9 @@ type QueryExecutionResponse = {
 
 export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorAppRouter> {
     private eventSubscription?: { unsubscribe: () => void };
+    private connectionVersion = 0;
+    private isChangingConnection = false;
+    declare private initialization: Promise<void>;
 
     constructor(
         private readonly dispatch: (action: DispatchAction) => void,
@@ -49,6 +52,9 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
     }
 
     public async runQuery(query: string, options: QueryMetadata): Promise<void> {
+        await this.initialization;
+        if (this.isChangingConnection) return;
+        const connectionVersion = this.connectionVersion;
         // Validate and clean the query — may show confirmation dialogs for ambiguous
         // or syntactically invalid queries. Returns undefined when user cancels.
         const prepared = await this.safeMutate(() => this.trpcClient.queryEditor.prepareQuery.mutate({ query }));
@@ -57,9 +63,9 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
 
         // Update history with the clean query
         const historyResult = await this.safeMutate(() =>
-            this.trpcClient.queryEditor.updateQueryHistory.mutate({ query: cleanQuery }),
+            this.trpcClient.queryEditor.updateQueryHistory.mutate({ query: cleanQuery, connectionVersion }),
         );
-        if (historyResult?.queryHistory) {
+        if (historyResult?.queryHistory && connectionVersion === this.connectionVersion) {
             this.dispatch({ type: 'updateHistory', queryHistory: historyResult.queryHistory });
         }
 
@@ -67,6 +73,7 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
         const session = await this.safeMutate(() =>
             this.trpcClient.queryEditor.createQuerySession.mutate({
                 query: cleanQuery,
+                connectionVersion,
                 options: { ...DEFAULT_RESULT_VIEW_METADATA, ...options },
             }),
         );
@@ -75,6 +82,7 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
             // User canceled the confirmation dialog, no connection, or error
             return;
         }
+        if (connectionVersion !== this.connectionVersion) return;
 
         // Step 2: Show executing state with the real executionId (enables Cancel)
         this.dispatch({
@@ -90,7 +98,7 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
             }) as Promise<QueryExecutionResponse | undefined>
         )
             .then((result) => this.handleQueryExecutionResult(result))
-            .catch((error: unknown) => this.handleQueryExecutionError(error));
+            .catch((error: unknown) => this.handleQueryExecutionError(error, session.executionId));
     }
 
     /**
@@ -111,6 +119,9 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
         // previous session.
         let executedId: string | undefined;
         try {
+            await this.initialization;
+            const connectionVersion = this.connectionVersion;
+            if (this.isChangingConnection) return;
             const prepared = await this.safeMutate(() => this.trpcClient.queryEditor.prepareQuery.mutate({ query }));
             if (!prepared?.cleanQuery) return;
             const cleanQuery = prepared.cleanQuery;
@@ -118,20 +129,21 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
             const session = await this.safeMutate(() =>
                 this.trpcClient.queryEditor.createQuerySession.mutate({
                     query: cleanQuery,
+                    connectionVersion,
                     options: { ...DEFAULT_RESULT_VIEW_METADATA },
                     expectedConnection: connection,
                     preserveExistingSessions: true,
                     isLlmTool: true,
                 }),
             );
-            if (!session?.executionId) return;
+            if (!session?.executionId || connectionVersion !== this.connectionVersion) return;
             const shouldExecute = await this.safeMutate(() =>
                 this.trpcClient.queryEditor.reportActiveQueryStarted.mutate({
                     executionId: session.executionId,
                     requestId,
                 }),
             );
-            if (!shouldExecute) return;
+            if (!shouldExecute || connectionVersion !== this.connectionVersion) return;
 
             executedId = session.executionId;
             this.dispatch({
@@ -146,7 +158,7 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
                 })) as QueryExecutionResponse | undefined;
                 this.handleQueryExecutionResult(result);
             } catch (error: unknown) {
-                this.handleQueryExecutionError(error);
+                this.handleQueryExecutionError(error, session.executionId);
             }
         } finally {
             // Signal completion to the tool, passing the executionId only when a run was actually
@@ -170,7 +182,7 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
             // Stop the executing state locally.
             this.dispatch({
                 type: 'executionStopped',
-                executionId: '',
+                executionId,
                 endExecutionTime: Date.now(),
             });
         }
@@ -180,21 +192,21 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
 
         (this.trpcClient.queryEditor.nextPage.mutate({ executionId }) as Promise<QueryExecutionResponse | undefined>)
             .then((result) => this.handleQueryExecutionResult(result))
-            .catch((error: unknown) => this.handleQueryExecutionError(error));
+            .catch((error: unknown) => this.handleQueryExecutionError(error, executionId));
     }
     public prevPage(executionId: string): void {
         this.dispatch({ type: 'paginationStarted', startExecutionTime: Date.now() });
 
         (this.trpcClient.queryEditor.prevPage.mutate({ executionId }) as Promise<QueryExecutionResponse | undefined>)
             .then((result) => this.handleQueryExecutionResult(result))
-            .catch((error: unknown) => this.handleQueryExecutionError(error));
+            .catch((error: unknown) => this.handleQueryExecutionError(error, executionId));
     }
     public firstPage(executionId: string): void {
         this.dispatch({ type: 'paginationStarted', startExecutionTime: Date.now() });
 
         (this.trpcClient.queryEditor.firstPage.mutate({ executionId }) as Promise<QueryExecutionResponse | undefined>)
             .then((result) => this.handleQueryExecutionResult(result))
-            .catch((error: unknown) => this.handleQueryExecutionError(error));
+            .catch((error: unknown) => this.handleQueryExecutionError(error, executionId));
     }
 
     public async openFile(): Promise<void> {
@@ -225,22 +237,20 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
     }
 
     public async connectToDatabase(): Promise<void> {
-        const result = await this.safeMutate(() => this.trpcClient.queryEditor.connectToDatabase.mutate());
-        if (result) {
-            this.dispatch({
-                type: 'databaseConnected',
-                dbName: result.dbName,
-                containerName: result.containerName,
-                partitionKey: result.partitionKey as PartitionKeyDefinition | undefined,
-            });
-        }
+        await this.changeConnection(() => this.trpcClient.queryEditor.connectToDatabase.mutate());
     }
     public async disconnectFromDatabase(): Promise<void> {
-        await this.safeMutate(() => this.trpcClient.queryEditor.disconnectFromDatabase.mutate());
-        this.dispatch({ type: 'databaseDisconnected' });
+        await this.changeConnection(async () => {
+            const result = await this.trpcClient.queryEditor.disconnectFromDatabase.mutate();
+            this.connectionVersion = result.connectionVersion;
+            this.dispatch({ type: 'databaseDisconnected' });
+            return undefined;
+        });
     }
     public async getConnections(): Promise<void> {
+        const connectionVersion = this.connectionVersion;
         const result = await this.safeMutate(() => this.trpcClient.queryEditor.getConnections.query());
+        if (connectionVersion !== this.connectionVersion) return;
         // Always dispatch a list — on failure use an empty map so the dropdown
         // resolves out of the "Loading…" state. The errorLink middleware shows
         // the actual error as a toast.
@@ -250,16 +260,44 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
         });
     }
     public async setConnection(databaseId: string, containerId: string): Promise<void> {
-        const result = await this.safeMutate(() =>
+        await this.changeConnection(() =>
             this.trpcClient.queryEditor.setConnection.mutate({ databaseId, containerId }),
         );
-        if (result) {
-            this.dispatch({
-                type: 'databaseConnected',
-                dbName: result.dbName,
-                containerName: result.containerName,
-                partitionKey: result.partitionKey as PartitionKeyDefinition | undefined,
-            });
+    }
+
+    private async changeConnection(
+        change: () => Promise<
+            | {
+                  connectionVersion: number;
+                  dbName: string;
+                  containerName: string;
+                  partitionKey?: PartitionKeyDefinition;
+                  queryHistory?: string[];
+                  containerSchema?: Record<string, unknown> | null;
+                  throughputBuckets?: boolean[];
+              }
+            | undefined
+        >,
+    ): Promise<void> {
+        if (this.isChangingConnection) return;
+        this.isChangingConnection = true;
+        this.dispatch({ type: 'connectionChangeStarted' });
+        try {
+            await this.initialization;
+            const result = await this.safeMutate(change);
+            if (result) {
+                this.connectionVersion = result.connectionVersion;
+                this.dispatch({ type: 'databaseConnected', ...result });
+                this.dispatch({ type: 'updateHistory', queryHistory: result.queryHistory ?? [] });
+                this.dispatch({
+                    type: 'setContainerSchema',
+                    containerSchema: (result.containerSchema as JSONSchema | null) ?? null,
+                });
+                this.dispatch({ type: 'updateThroughputBuckets', throughputBuckets: result.throughputBuckets });
+            }
+        } finally {
+            this.isChangingConnection = false;
+            this.dispatch({ type: 'connectionChangeFinished' });
         }
     }
 
@@ -297,19 +335,31 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
         this.dispatch({ type: 'setSelectedRows', selectedRows });
     }
 
-    public async openDocument(mode: OpenDocumentMode, document?: CosmosDBRecordIdentifier): Promise<void> {
-        await this.safeMutate(() => this.trpcClient.queryEditor.openDocument.mutate({ mode, documentId: document }));
-    }
-    public async openDocuments(mode: OpenDocumentMode, documents: CosmosDBRecordIdentifier[]): Promise<void> {
-        await Promise.allSettled(
-            documents.map((documentId) => this.trpcClient.queryEditor.openDocument.mutate({ mode, documentId })),
+    public async openDocument(
+        mode: OpenDocumentMode,
+        document?: CosmosDBRecordIdentifier,
+        executionId?: string,
+    ): Promise<void> {
+        await this.safeMutate(() =>
+            this.trpcClient.queryEditor.openDocument.mutate({ mode, documentId: document, executionId }),
         );
     }
-    public async deleteDocument(document: CosmosDBRecordIdentifier): Promise<void> {
-        await this.safeMutate(() => this.trpcClient.queryEditor.deleteDocument.mutate({ documentId: document }));
+    public async openDocuments(
+        mode: OpenDocumentMode,
+        documents: CosmosDBRecordIdentifier[],
+        executionId: string,
+    ): Promise<void> {
+        await Promise.all(documents.map((documentId) => this.openDocument(mode, documentId, executionId)));
     }
-    public async deleteDocuments(documents: CosmosDBRecordIdentifier[]): Promise<void> {
-        await this.safeMutate(() => this.trpcClient.queryEditor.deleteDocuments.mutate({ documentIds: documents }));
+    public async deleteDocument(document: CosmosDBRecordIdentifier, executionId: string): Promise<void> {
+        await this.safeMutate(() =>
+            this.trpcClient.queryEditor.deleteDocument.mutate({ documentId: document, executionId }),
+        );
+    }
+    public async deleteDocuments(documents: CosmosDBRecordIdentifier[], executionId: string): Promise<void> {
+        await this.safeMutate(() =>
+            this.trpcClient.queryEditor.deleteDocuments.mutate({ documentIds: documents, executionId }),
+        );
     }
     public async provideFeedback(): Promise<void> {
         await this.safeMutate(() => this.trpcClient.queryEditor.provideFeedback.mutate());
@@ -404,9 +454,10 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
     }
 
     protected init(): void {
-        void this.trpcClient.queryEditor.init.mutate().then((result) => {
+        this.initialization = this.safeMutate(() => this.trpcClient.queryEditor.init.mutate()).then((result) => {
             if (!result) return;
 
+            this.connectionVersion = result.connectionVersion;
             if (result.connectionState) {
                 this.dispatch({
                     type: 'databaseConnected',
@@ -513,14 +564,13 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
         });
     }
 
-    private handleQueryExecutionError(error: unknown): void {
+    private handleQueryExecutionError(error: unknown, executionId: string): void {
         const message = error instanceof Error ? error.message : String(error);
         this.showToast(l10n.t('Query Error'), message, 'error');
 
-        // Stop the executing state; use currentExecutionId or empty string
         this.dispatch({
             type: 'executionStopped',
-            executionId: '',
+            executionId,
             endExecutionTime: Date.now(),
         });
     }

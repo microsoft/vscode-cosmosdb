@@ -82,6 +82,8 @@ export interface CosmosDBRouterContext extends BaseRouterContext {
 
 export type QueryEditorMutableState = {
     connection?: NoSqlQueryConnection;
+    connectionVersion: number;
+    isChangingConnection: boolean;
     query?: string;
     selectedQuery?: string;
     isLastQueryAIGenerated: boolean;

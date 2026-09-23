@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Prevented stale Query Editor results from deleting or opening items in another container after switching connections. Connection changes now clear results and invalidate their query sessions. (#3336)
 - Prevented command injection when opening Cosmos DB Shell at a database or container whose ID contains shell syntax or control characters. (#3313, #3315)
 - Fixed Cosmos DB Shell startup navigation across older and newer Shell versions, with compatibility guidance and consent-based update notifications that account for custom executable paths. (#3316)
 - Fixed cancelled Cosmos DB Shell install and update operations to exit silently instead of showing a misleading failure notification. (#3321)

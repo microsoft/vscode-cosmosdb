@@ -6,7 +6,7 @@
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import crypto from 'crypto';
-import { getExperienceFromApi, type API } from '../AzureDBExperiences';
+import { API, getExperienceFromApi } from '../AzureDBExperiences';
 import { wellKnownEmulatorPassword } from '../cosmosdb/cosmosdb-shared-constants';
 import { type ParsedCosmosDBConnectionString } from '../cosmosdb/cosmosDBConnectionStrings';
 import { StorageNames, StorageService, type StorageItem } from '../services/StorageService';
@@ -66,7 +66,9 @@ export async function migrateRawEmulatorItemToHashed(item: StorageItem): Promise
             }
 
             const api: API = nonNullValue(item.properties?.api, 'api') as API;
-            context.telemetry.properties.api = api;
+            // `api` is persisted user data, and telemetry properties are sent verbatim rather than masked,
+            // so report a bounded value: this migration only produces Core emulators.
+            context.telemetry.properties.api = api === API.Core ? API.Core : API.Common;
 
             // Extract port from name if possible
             const portMatch = item.name.match(/:[\s]*(\d+)$/);

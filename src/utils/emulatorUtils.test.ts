@@ -120,5 +120,48 @@ describe('emulatorUtils', () => {
             // The failure message itself must not carry the legacy id.
             await expect(migrateRawEmulatorItemToHashed(item)).rejects.not.toThrow(legacyId);
         });
+
+        it('reports only a bounded api value to telemetry', async () => {
+            // Telemetry properties are sent verbatim, so persisted free-form text must not reach them.
+            const item = {
+                id: 'raw-legacy-id',
+                name: 'Emulator : 8081',
+                properties: { api: 'private-free-form-api' },
+            } as unknown as StorageItem;
+            const context = {
+                telemetry: { properties: {} as Record<string, string>, measurements: {} },
+                errorHandling: {},
+                valuesToMask: [] as string[],
+            };
+
+            (callWithTelemetryAndErrorHandling as Mock).mockImplementation(
+                (_eventName: string, callback: (ctx: typeof context) => Promise<StorageItem>) => callback(context),
+            );
+            (StorageService.get as Mock).mockReturnValue({ push: vi.fn(), delete: vi.fn() });
+
+            await migrateRawEmulatorItemToHashed(item);
+            expect(context.telemetry.properties.api).toBe(API.Common);
+        });
+
+        it('reports Core unchanged to telemetry', async () => {
+            const item = {
+                id: 'raw-legacy-id',
+                name: 'Emulator : 8081',
+                properties: { api: API.Core },
+            } as unknown as StorageItem;
+            const context = {
+                telemetry: { properties: {} as Record<string, string>, measurements: {} },
+                errorHandling: {},
+                valuesToMask: [] as string[],
+            };
+
+            (callWithTelemetryAndErrorHandling as Mock).mockImplementation(
+                (_eventName: string, callback: (ctx: typeof context) => Promise<StorageItem>) => callback(context),
+            );
+            (StorageService.get as Mock).mockReturnValue({ push: vi.fn(), delete: vi.fn() });
+
+            await migrateRawEmulatorItemToHashed(item);
+            expect(context.telemetry.properties.api).toBe(API.Core);
+        });
     });
 });

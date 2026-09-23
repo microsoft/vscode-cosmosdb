@@ -169,4 +169,27 @@ describe('saved connection resilience', () => {
         expect(errorNode?.account.name).toBe('Unnamed connection');
         expect(errorNode?.getTreeItem().label).toBe('Unnamed connection');
     });
+
+    // Secrets are restored with `JSON.parse(...) as string[]`, so any JSON shape can reach this validator.
+    it.each([
+        { label: 'a scalar string', secrets: 'private-scalar', isEmulator: false },
+        { label: 'an object', secrets: { 0: 'private-value' }, isEmulator: false },
+        { label: 'a numeric first entry', secrets: [42], isEmulator: false },
+        { label: 'a numeric first entry on an emulator', secrets: [42], isEmulator: true },
+        { label: 'an object first entry on an emulator', secrets: [{}], isEmulator: true },
+    ])('reports $label as an invalid connection string', ({ secrets, isEmulator }) => {
+        const invalid = {
+            id: 'broken',
+            name: 'Broken',
+            properties: { api: API.Core, isEmulator },
+            secrets,
+        } as unknown as StorageItem;
+
+        expect(getSavedConnectionError(invalid)).toBeDefined();
+    });
+
+    it('accepts an empty secrets array for emulators', () => {
+        const emulator = { ...makeItem('emulator', true), secrets: [] };
+        expect(getSavedConnectionError(emulator)).toBeUndefined();
+    });
 });

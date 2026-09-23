@@ -1238,6 +1238,7 @@
   "The resource name must start with a letter or number, and can only contain a combination of alphanumeric characters, hyphens, and underscores.": "The resource name must start with a letter or number, and can only contain a combination of alphanumeric characters, hyphens, and underscores.",
   "The running Cosmos DB Shell was started without MCP. Please close it and try again.": "The running Cosmos DB Shell was started without MCP. Please close it and try again.",
   "The sampling context is no longer available. Read the Query Editor context again, then retry sampling.": "The sampling context is no longer available. Read the Query Editor context again, then retry sampling.",
+  "The saved connection has an invalid connection string.": "The saved connection has an invalid connection string.",
   "The saved connection has an invalid emulator setting.": "The saved connection has an invalid emulator setting.",
   "The saved connection is missing its API type.": "The saved connection is missing its API type.",
   "The saved connection is missing its connection string.": "The saved connection is missing its connection string.",

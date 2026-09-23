@@ -23,7 +23,18 @@ export function getSavedConnectionError(item: StorageItem): string | undefined {
     if (typeof item.properties?.isEmulator !== 'boolean') {
         return l10n.t('The saved connection has an invalid emulator setting.');
     }
-    if (!item.properties.isEmulator && (typeof item.secrets?.[0] !== 'string' || !item.secrets[0].trim())) {
+    // Secrets are restored with `JSON.parse(...) as string[]`, so the persisted value can be any JSON shape.
+    // A scalar string would even yield a string at index 0 and slip through a plain element check.
+    const secrets: unknown = item.secrets;
+    if (secrets !== undefined && !Array.isArray(secrets)) {
+        return l10n.t('The saved connection has an invalid connection string.');
+    }
+    const connectionString: unknown = (secrets as unknown[] | undefined)?.[0];
+    if (connectionString !== undefined && typeof connectionString !== 'string') {
+        return l10n.t('The saved connection has an invalid connection string.');
+    }
+    // An absent secret stays valid for emulators, which fall back to the well-known local connection string.
+    if (!item.properties.isEmulator && (typeof connectionString !== 'string' || !connectionString.trim())) {
         return l10n.t('The saved connection is missing its connection string.');
     }
     return undefined;

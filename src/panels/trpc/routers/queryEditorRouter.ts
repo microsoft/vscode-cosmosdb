@@ -434,6 +434,9 @@ export const queryEditorRouterDef = queryEditorRouter({
                 throw new Error(l10n.t('No connection to set'));
             }
             const connection = requireQueryConnection(ctx);
+            if (connection.databaseId === input.databaseId && connection.containerId === input.containerId) {
+                return undefined;
+            }
             return changeQueryConnection(ctx, () =>
                 resolveConnectionState(ctx, {
                     ...connection,

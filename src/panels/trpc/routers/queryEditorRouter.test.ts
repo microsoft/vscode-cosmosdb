@@ -161,6 +161,29 @@ describe('query editor connection ownership', () => {
         });
     }
 
+    it('preserves the connection generation and session when selecting the current container', async () => {
+        const ctx = createContext();
+        const session = addSession(ctx);
+        const resolve = vi.fn();
+        ctx.state.pendingRuns.set('request', { resolve, executionId: session.id });
+
+        const result = await queryEditorRouterDef.createCaller(ctx).setConnection({
+            databaseId: 'db',
+            containerId: 'A',
+        });
+
+        expect(result).toBeUndefined();
+        expect(ctx.state.connection).toBe(connectionA);
+        expect(ctx.state.connectionVersion).toBe(0);
+        expect(ctx.state.isChangingConnection).toBe(false);
+        expect(ctx.sessions.get(session.id)).toBe(session);
+        expect(session.isDisposed).toBe(false);
+        expect(ctx.state.pendingRuns.has('request')).toBe(true);
+        expect(resolve).not.toHaveBeenCalled();
+        expect(mocks.readContainer).not.toHaveBeenCalled();
+        expect(mocks.readSchema).not.toHaveBeenCalled();
+    });
+
     it('preserves the old connection and session when validation fails', async () => {
         const ctx = createContext();
         const session = addSession(ctx);

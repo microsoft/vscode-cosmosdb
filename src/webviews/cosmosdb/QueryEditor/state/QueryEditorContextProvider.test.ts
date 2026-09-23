@@ -149,6 +149,39 @@ describe('query editor connection transitions', () => {
         });
     }
 
+    it('keeps execution and selection when the host reports an unchanged connection', async () => {
+        const { provider, routes, getState, dispatchAction } = await setup();
+        dispatchAction({ type: 'executionStarted', executionId: 'A', startExecutionTime: 10 });
+        dispatchAction({
+            type: 'updateQueryResult',
+            executionId: 'A',
+            currentPage: 1,
+            result: {
+                documents: [{ id: 'first' }],
+                iteration: 1,
+                metadata: {},
+                indexMetrics: '',
+                requestCharge: 0,
+                roundTrips: 1,
+                hasMoreResults: false,
+                query: 'SELECT * FROM c',
+            },
+        });
+        dispatchAction({ type: 'setSelectedRows', selectedRows: [0] });
+        routes.setConnection.mutate.mockResolvedValue(undefined);
+        const previousState = getState();
+        dispatchAction.mockClear();
+
+        await provider.setConnection('db', 'A');
+
+        expect(getState()).toEqual(previousState);
+        expect(dispatchAction).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'databaseConnected' }));
+        await provider.runQuery('SELECT * FROM c', {});
+        expect(routes.createQuerySession.mutate).toHaveBeenCalledWith(
+            expect.objectContaining({ connectionVersion: 0 }),
+        );
+    });
+
     it('blocks overlapping switches and resets only after a successful response', async () => {
         const { provider, routes, getState, dispatchAction } = await setup();
         dispatchAction({ type: 'executionStarted', executionId: 'old', startExecutionTime: 10 });

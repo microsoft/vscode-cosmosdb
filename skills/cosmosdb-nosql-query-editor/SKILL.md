@@ -21,7 +21,7 @@ metadata:
 The VS Code integration layer for querying the active Cosmos DB NoSQL Query Editor. This
 skill only covers **how to drive the editor** with the tools below. For the query language
 itself — dialect rules, syntax, the built-in function reference, and examples — use the
-the [query-generation rule](../cosmosdb-best-practices/rules/query-generation.md) in the
+[query-generation rule](../cosmosdb-best-practices/rules/query-generation.md) in the
 `cosmosdb-best-practices` skill, including its schema-grounding and untrusted-data guidance.
 
 ## Tools to use first

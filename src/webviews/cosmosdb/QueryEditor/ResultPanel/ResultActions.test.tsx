@@ -118,7 +118,7 @@ for (const {
                     rows.length ? selectedItemsAccessibleName : allResultsAccessibleName,
                 );
                 fireEvent.click(button);
-                fireEvent.click(await screen.findByRole('menuitem', { name: 'CSV' }));
+                fireEvent.click(screen.getByRole('menuitem', { name: 'CSV' }));
                 await waitFor(() =>
                     expect(csvSink).toHaveBeenCalledWith(
                         ...csvPrefix,
@@ -133,7 +133,7 @@ for (const {
                 state.selectedRows = rows;
                 renderAction();
                 fireEvent.click(screen.getByRole('button'));
-                fireEvent.click(await screen.findByRole('menuitem', { name: 'JSON' }));
+                fireEvent.click(screen.getByRole('menuitem', { name: 'JSON' }));
                 await waitFor(() => expect(jsonSink).toHaveBeenCalledOnce());
                 expect(JSON.parse(jsonSink.mock.calls[0][0] as string)).toEqual(expected.map((id) => ({ id })));
                 expect(jsonSink.mock.calls[0].slice(1)).toEqual(jsonSuffix);

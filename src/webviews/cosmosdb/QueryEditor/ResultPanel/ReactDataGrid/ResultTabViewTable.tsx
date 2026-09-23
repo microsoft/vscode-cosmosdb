@@ -193,13 +193,14 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
     // Handle keyboard selection: Space toggles current row, Shift+Arrow extends range
     const handleCellKeyDown = useCallback(
         (args: CellKeyDownArgs<GridRow>, event: CellKeyboardEvent) => {
-            if (args.mode !== 'SELECT') return;
+            if (args.mode !== 'ACTIVE' || args.row === undefined) return;
 
             const rowId = args.row.__id;
             const rowIdx = args.rowIdx;
 
             if (event.key === ' ') {
-                // Prevent the grid's own space-key behavior
+                // Prevent native scrolling and the grid's own space-key behavior.
+                event.preventDefault();
                 event.preventGridDefault();
 
                 if (event.shiftKey && anchorRowIdRef.current !== null) {

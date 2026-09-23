@@ -12,9 +12,11 @@
 # lockfile), so we `npm ci` at the ROOT and build/pack individual workspaces.
 #
 # npm packages are source-only and are NOT code-signed (VSIX-only), so there is
-# no MicroBuild signing step here.
-#
-# ⚠️ DRAFT: validate in ADO before relying on it. Trigger is disabled until then.
+# no MicroBuild signing step here — this extends the OneBranch GovernedTemplates
+# (same template family as build.yml / release-extension.yml in this repo, and
+# the same one used by vscode-documentdb's working npm build pipeline), NOT the
+# 1ESPipelineTemplates/MicroBuildTemplate repo (that one lives outside msdata
+# and is only needed for VSIX/MicroBuild signing scenarios).
 # =============================================================================
 
 name: $(Date:yyyyMMdd).$(Rev:r)
@@ -22,102 +24,233 @@ name: $(Date:yyyyMMdd).$(Rev:r)
 trigger: none # TODO: switch to [main, rel/*] once validated in ADO
 pr: none
 
-parameters:
-  - name: isOfficialBuild
-    displayName: Official Build
-    type: boolean
-    default: true
-  # The workspace packages to build + pack. `name` is the .tgz filename prefix
-  # (scope '@azure/' -> 'azure-'); `dir` is the folder under packages/.
-  - name: packages
-    type: object
-    default:
-      - name: azure-cosmosdb-schema-analyzer
-        dir: schema-analyzer
-      - name: azure-cosmosdb-nosql-language-service
-        dir: nosql-language-service
-
 resources:
   repositories:
-    - repository: 1esPipelines
+    - repository: templates
       type: git
-      name: 1ESPipelineTemplates/MicroBuildTemplate
-      ref: refs/tags/release
+      name: OneBranch.Pipelines/GovernedTemplates
+      ref: refs/heads/main
 
 variables:
-  # Required by MicroBuild template
-  - name: TeamName
-    value: "Azure Cosmos DB - Desktop Tools"
+  # Needed for the onebranch.pipeline.version task.
+  # https://aka.ms/obpipelines/versioning
+  CDP_DEFINITION_BUILD_COUNT: $[counter('', 0)]
+  WindowsContainerImage: "onebranch.azurecr.io/windows/ltsc2022/vse2022:latest"
+  TeamName: "Azure Cosmos DB - Desktop Tools"
 
 extends:
-  ${{ if eq(parameters.isOfficialBuild, true) }}:
-    template: azure-pipelines/MicroBuild.1ES.Official.yml@1esPipelines
-  ${{ else }}:
-    template: azure-pipelines/MicroBuild.1ES.Unofficial.yml@1esPipelines
+  template: v2/OneBranch.Official.CrossPlat.yml@templates
   parameters:
-    sdl:
-      sourceAnalysisPool:
-        name: VSEngSS-MicroBuild2022-1ES
-        image: server2022-microbuildVS2022-1es
-        os: windows
+    cloudvault:
+      enabled: false
+    globalSdl:
+      asyncSdl:
+        enabled: false
+      tsa:
+        enabled: false
       credscan:
         suppressionsFile: $(Build.SourcesDirectory)/.azure-pipelines/compliance/CredScanSuppressions.json
+      policheck:
+        break: true
+      suppression:
+        suppressionFile: $(Build.SourcesDirectory)/.config/guardian/.gdnsuppress
+      codeql:
+        compiled:
+          enabled: false
+        tsaEnabled: false
       componentgovernance:
         ignoreDirectories: $(Build.SourcesDirectory)/.vscode-test
-      codeql:
-        excludePathPatterns: "**/.vscode-test, dist"
-
-    pool:
-      name: AzurePipelines-EO
-      image: 1ESPT-Ubuntu22.04
-      os: linux
+    featureFlags:
+      linuxEsrpSigning: true
+      WindowsHostVersion:
+        Version: 2022
 
     stages:
       - stage: BuildPackages
         displayName: Build & pack npm packages
         jobs:
-          - ${{ each pkg in parameters.packages }}:
-              # ADO job names allow alphanumerics + underscores only, so hyphens -> underscores.
-              - job: ${{ replace(pkg.name, '-', '_') }}
-                displayName: Pack ${{ pkg.name }}
-                templateContext:
-                  outputs:
-                    - output: pipelineArtifact
-                      displayName: "Publish Build ${{ pkg.name }}"
-                      targetPath: $(Build.ArtifactStagingDirectory)/build/${{ pkg.name }}
-                      artifactName: Build ${{ pkg.name }}
-                steps:
-                  - task: NodeTool@0
-                    displayName: "Use Node.js (.nvmrc)"
-                    inputs:
-                      versionSource: fromFile
-                      versionFilePath: .nvmrc
+          - job: azure_cosmosdb_schema_analyzer
+            displayName: Pack azure-cosmosdb-schema-analyzer
+            pool:
+              type: windows
+            variables:
+              ob_outputDirectory: "$(Build.ArtifactStagingDirectory)/build/azure-cosmosdb-schema-analyzer"
+            templateContext:
+              outputs:
+                - output: pipelineArtifact
+                  displayName: "Publish Build azure-cosmosdb-schema-analyzer"
+                  targetPath: $(Build.ArtifactStagingDirectory)/build/azure-cosmosdb-schema-analyzer
+                  artifactName: Build azure-cosmosdb-schema-analyzer
+            steps:
+              # NodeTool@0 is deprecated; read .nvmrc manually and use UseNode@1
+              # instead, same pattern as build.yml's '🔢 Read Node.js version from
+              # .nvmrc' + '📦 Using Node.js' steps.
+              - task: PowerShell@2
+                displayName: "Read Node.js version from .nvmrc"
+                inputs:
+                  targetType: "inline"
+                  pwsh: true
+                  script: |
+                    $nvmrcPath = "$(Build.SourcesDirectory)/.nvmrc"
+                    if (-not (Test-Path $nvmrcPath)) {
+                      Write-Host "##vso[task.logissue type=error].nvmrc not found at $nvmrcPath"
+                      Write-Host "##vso[task.complete result=Failed;]"
+                      exit 1
+                    }
+                    $nodeVersion = (Get-Content $nvmrcPath -Raw).Trim().TrimStart('v')
+                    Write-Output "##vso[task.setvariable variable=nodeVersion]$nodeVersion"
+                    Write-Output "Node.js version from .nvmrc: $nodeVersion"
 
-                  # Workspaces monorepo: install once at the repo root.
-                  - script: npm ci
-                    displayName: "Install dependencies (root)"
-                    workingDirectory: $(Build.SourcesDirectory)
+              - task: UseNode@1
+                displayName: "Use Node.js"
+                inputs:
+                  version: "$(nodeVersion)"
 
-                  # Build both publishable workspaces (schema-analyzer first: nosql depends on it).
-                  - script: >-
-                      npm run build
-                      --workspace packages/schema-analyzer
-                      --workspace packages/nosql-language-service
-                    displayName: "Build packages"
-                    workingDirectory: $(Build.SourcesDirectory)
+              # Workspaces monorepo: install once at the repo root, exactly like
+              # build.yml's '⬇️ Install Dependencies' step — authenticate to and
+              # install from the internal ADO npm feed (.azure-pipelines/.npmrc),
+              # not directly against registry.npmjs.org. A plain `npm ci` resolving
+              # straight to npmjs.org was hitting persistent EACCES failures on
+              # this Windows pool; going through the same internal feed as the
+              # proven build.yml pipeline avoids that path entirely.
+              - task: npmAuthenticate@0
+                displayName: "Authenticate to npm registry"
+                inputs:
+                  workingFile: "$(Build.SourcesDirectory)/.azure-pipelines/.npmrc"
 
-                  # Pack just this package's workspace straight into its artifact folder.
-                  - script: >-
-                      npm pack
-                      --workspace packages/${{ pkg.dir }}
-                      --pack-destination "$(Build.ArtifactStagingDirectory)/build/${{ pkg.name }}"
-                    displayName: "npm pack ${{ pkg.name }}"
-                    workingDirectory: $(Build.SourcesDirectory)
+              - task: Npm@1
+                displayName: "Install dependencies (root)"
+                inputs:
+                  command: custom
+                  customCommand: ci --userconfig $(Build.SourcesDirectory)/.azure-pipelines/.npmrc
+                  workingDir: $(Build.SourcesDirectory)
 
-                  # Also drop the resolved package.json next to the tgz so the release
-                  # pipeline can read/verify the version without cloning the source.
-                  - script: >-
-                      cp packages/${{ pkg.dir }}/package.json
-                      "$(Build.ArtifactStagingDirectory)/build/${{ pkg.name }}/package.json"
-                    displayName: "Stage package.json"
-                    workingDirectory: $(Build.SourcesDirectory)
+              # Build both publishable workspaces (schema-analyzer first: nosql depends on it).
+              - task: Npm@1
+                displayName: "Build packages"
+                inputs:
+                  command: custom
+                  customCommand: run build --workspace packages/schema-analyzer --workspace packages/nosql-language-service
+                  workingDir: $(Build.SourcesDirectory)
+
+              # npm pack does not create --pack-destination itself; ensure it exists first.
+              - task: PowerShell@2
+                displayName: "Create artifact staging directory"
+                inputs:
+                  targetType: "inline"
+                  script: |
+                    New-Item -ItemType Directory -Force -Path "$(Build.ArtifactStagingDirectory)/build/azure-cosmosdb-schema-analyzer" | Out-Null
+
+              # Pack just this package's workspace straight into its artifact folder.
+              - task: Npm@1
+                displayName: "npm pack azure-cosmosdb-schema-analyzer"
+                inputs:
+                  command: custom
+                  customCommand: pack --workspace packages/schema-analyzer --pack-destination "$(Build.ArtifactStagingDirectory)/build/azure-cosmosdb-schema-analyzer"
+                  workingDir: $(Build.SourcesDirectory)
+
+              # Also drop the resolved package.json next to the tgz so the release
+              # pipeline can read/verify the version without cloning the source.
+              # Windows pool (OneBranch build stage) — use PowerShell, not `cp`.
+              - task: PowerShell@2
+                displayName: "Stage package.json"
+                inputs:
+                  targetType: "inline"
+                  workingDirectory: $(Build.SourcesDirectory)
+                  script: |
+                    Copy-Item `
+                      "packages/schema-analyzer/package.json" `
+                      "$(Build.ArtifactStagingDirectory)/build/azure-cosmosdb-schema-analyzer/package.json"
+
+          - job: azure_cosmosdb_nosql_language_service
+            displayName: Pack azure-cosmosdb-nosql-language-service
+            pool:
+              type: windows
+            variables:
+              ob_outputDirectory: "$(Build.ArtifactStagingDirectory)/build/azure-cosmosdb-nosql-language-service"
+            templateContext:
+              outputs:
+                - output: pipelineArtifact
+                  displayName: "Publish Build azure-cosmosdb-nosql-language-service"
+                  targetPath: $(Build.ArtifactStagingDirectory)/build/azure-cosmosdb-nosql-language-service
+                  artifactName: Build azure-cosmosdb-nosql-language-service
+            steps:
+              # NodeTool@0 is deprecated; read .nvmrc manually and use UseNode@1
+              # instead, same pattern as build.yml's '🔢 Read Node.js version from
+              # .nvmrc' + '📦 Using Node.js' steps.
+              - task: PowerShell@2
+                displayName: "Read Node.js version from .nvmrc"
+                inputs:
+                  targetType: "inline"
+                  pwsh: true
+                  script: |
+                    $nvmrcPath = "$(Build.SourcesDirectory)/.nvmrc"
+                    if (-not (Test-Path $nvmrcPath)) {
+                      Write-Host "##vso[task.logissue type=error].nvmrc not found at $nvmrcPath"
+                      Write-Host "##vso[task.complete result=Failed;]"
+                      exit 1
+                    }
+                    $nodeVersion = (Get-Content $nvmrcPath -Raw).Trim().TrimStart('v')
+                    Write-Output "##vso[task.setvariable variable=nodeVersion]$nodeVersion"
+                    Write-Output "Node.js version from .nvmrc: $nodeVersion"
+
+              - task: UseNode@1
+                displayName: "Use Node.js"
+                inputs:
+                  version: "$(nodeVersion)"
+
+              # Workspaces monorepo: install once at the repo root, exactly like
+              # build.yml's '⬇️ Install Dependencies' step — authenticate to and
+              # install from the internal ADO npm feed (.azure-pipelines/.npmrc),
+              # not directly against registry.npmjs.org. A plain `npm ci` resolving
+              # straight to npmjs.org was hitting persistent EACCES failures on
+              # this Windows pool; going through the same internal feed as the
+              # proven build.yml pipeline avoids that path entirely.
+              - task: npmAuthenticate@0
+                displayName: "Authenticate to npm registry"
+                inputs:
+                  workingFile: "$(Build.SourcesDirectory)/.azure-pipelines/.npmrc"
+
+              - task: Npm@1
+                displayName: "Install dependencies (root)"
+                inputs:
+                  command: custom
+                  customCommand: ci --userconfig $(Build.SourcesDirectory)/.azure-pipelines/.npmrc
+                  workingDir: $(Build.SourcesDirectory)
+
+              # Build both publishable workspaces (schema-analyzer first: nosql depends on it).
+              - task: Npm@1
+                displayName: "Build packages"
+                inputs:
+                  command: custom
+                  customCommand: run build --workspace packages/schema-analyzer --workspace packages/nosql-language-service
+                  workingDir: $(Build.SourcesDirectory)
+
+              # npm pack does not create --pack-destination itself; ensure it exists first.
+              - task: PowerShell@2
+                displayName: "Create artifact staging directory"
+                inputs:
+                  targetType: "inline"
+                  script: |
+                    New-Item -ItemType Directory -Force -Path "$(Build.ArtifactStagingDirectory)/build/azure-cosmosdb-nosql-language-service" | Out-Null
+
+              # Pack just this package's workspace straight into its artifact folder.
+              - task: Npm@1
+                displayName: "npm pack azure-cosmosdb-nosql-language-service"
+                inputs:
+                  command: custom
+                  customCommand: pack --workspace packages/nosql-language-service --pack-destination "$(Build.ArtifactStagingDirectory)/build/azure-cosmosdb-nosql-language-service"
+                  workingDir: $(Build.SourcesDirectory)
+
+              # Also drop the resolved package.json next to the tgz so the release
+              # pipeline can read/verify the version without cloning the source.
+              # Windows pool (OneBranch build stage) — use PowerShell, not `cp`.
+              - task: PowerShell@2
+                displayName: "Stage package.json"
+                inputs:
+                  targetType: "inline"
+                  workingDirectory: $(Build.SourcesDirectory)
+                  script: |
+                    Copy-Item `
+                      "packages/nosql-language-service/package.json" `
+                      "$(Build.ArtifactStagingDirectory)/build/azure-cosmosdb-nosql-language-service/package.json"

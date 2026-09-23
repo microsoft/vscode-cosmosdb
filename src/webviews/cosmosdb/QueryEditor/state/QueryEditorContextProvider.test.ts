@@ -48,6 +48,7 @@ async function setup(initDelay?: Promise<void>) {
         runQuery: { mutate: vi.fn().mockResolvedValue(undefined) },
         nextPage: { mutate: vi.fn() },
         deleteDocument: { mutate: vi.fn().mockResolvedValue({ deleted: true }) },
+        refreshThroughputBuckets: { mutate: vi.fn() },
     };
     const procedures = new Map<string, (input: unknown) => unknown>();
     for (const [name, route] of Object.entries(routes)) {
@@ -120,6 +121,54 @@ describe('query execution origin', () => {
 });
 
 describe('query editor connection transitions', () => {
+    for (const target of ['B', 'A', 'disconnected']) {
+        it(`ignores a pending throughput refresh after switching to ${target}`, async () => {
+            const { provider, routes, getState, dispatchAction, emitEvent } = await setup();
+            const response = deferred<boolean[]>();
+            routes.refreshThroughputBuckets.mutate.mockReturnValue(response.promise);
+            emitEvent({ type: 'throughputBucketsRefreshRequested' });
+            expect(routes.refreshThroughputBuckets.mutate).toHaveBeenCalledOnce();
+            const currentBuckets = [false, true, false, false, false];
+            routes.setConnection.mutate.mockResolvedValue({
+                connectionVersion: 1,
+                dbName: 'db',
+                containerName: 'B',
+                throughputBuckets: currentBuckets,
+            });
+            await provider.setConnection('db', 'B');
+            if (target === 'A') {
+                routes.setConnection.mutate.mockResolvedValue({
+                    connectionVersion: 2,
+                    dbName: 'db',
+                    containerName: 'A',
+                    throughputBuckets: currentBuckets,
+                });
+                await provider.setConnection('db', 'A');
+            } else if (target === 'disconnected') {
+                routes.disconnectFromDatabase.mutate.mockResolvedValue({ connectionVersion: 2, disconnected: true });
+                await provider.disconnectFromDatabase();
+            }
+            dispatchAction.mockClear();
+            const previousBuckets = getState().throughputBuckets;
+
+            response.resolve([true, false, false, false, false]);
+            await new Promise<void>((resolve) => setImmediate(resolve));
+
+            expect(getState().throughputBuckets).toEqual(previousBuckets);
+            expect(dispatchAction).not.toHaveBeenCalled();
+            provider.dispose();
+        });
+    }
+
+    it('applies a throughput refresh for the current generation', async () => {
+        const { provider, routes, getState, emitEvent } = await setup();
+        const buckets = [true, false, true, false, false];
+        routes.refreshThroughputBuckets.mutate.mockResolvedValue(buckets);
+        emitEvent({ type: 'throughputBucketsRefreshRequested' });
+        await vi.waitFor(() => expect(getState().throughputBuckets).toEqual(buckets));
+        provider.dispose();
+    });
+
     for (const target of ['B', 'A', 'disconnected']) {
         it(`ignores schema events from an old generation after switching to ${target}`, async () => {
             const { provider, routes, getState, dispatchAction, emitEvent } = await setup();

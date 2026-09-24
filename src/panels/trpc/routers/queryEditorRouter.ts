@@ -164,6 +164,7 @@ export const queryEditorRouterDef = queryEditorRouter({
                     })
                     .optional(),
                 preserveExistingSessions: z.boolean().optional(),
+                isLlmTool: z.boolean().optional(),
             }),
         )
         .output(z.object({ executionId: z.string() }).optional())
@@ -218,7 +219,7 @@ export const queryEditorRouterDef = queryEditorRouter({
                 }
             }
 
-            const session = new QuerySession(ctx.state.connection, input.query, input.options);
+            const session = new QuerySession(ctx.state.connection, input.query, input.options, input.isLlmTool);
             if (ctx.actionContext) {
                 ctx.actionContext.telemetry.properties.executionId = session.id;
             }

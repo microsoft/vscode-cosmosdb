@@ -1,9 +1,52 @@
 # Account Overview Dashboard
 
-A read-only, at-a-glance dashboard for a single Cosmos DB (NoSQL) account, hosted as a VS Code webview.
+An at-a-glance dashboard for a single Cosmos DB (NoSQL) account, hosted as a VS Code webview.
 Open it from an account node in the Azure resources tree (**Open Account Overview**). All Azure Resource
 Manager (ARM) and Azure Monitor calls run on the extension host; the webview holds no tokens and talks to
 the host over tRPC.
+
+The incremental [Overview v2 specification](account-overview-v2-spec.md) describes a separate, opt-in
+presentation. Use **Preview** at the top of the panel to open the problem-first summary; **Original**
+remains the default. Both presentations share the loading, state, and action lifecycle in
+`src/webviews/cosmosdb/AccountOverview/useAccountOverview.ts`. Switching does not reset the metric
+window, database scope, refresh pause, or dismissed findings.
+
+Preview follows the compact mockup: an inline account-details disclosure, row-based health findings,
+three throughput cards (normalized-RU sparkline, 429 gauge, provisioned versus consumed), a resource
+table, four diagnostic cards, and row-based recommendations. Detailed evidence, source coverage,
+measurement windows and resource actions expand in place. **Metric details**, **Databases and Containers**,
+**Partition Key Distribution Health**, and **All findings** open the complete existing diagnostic
+widgets without starting another shared data lifecycle. **Back to summary** returns to the compact
+layout; keyboard focus moves to the destination heading.
+**Inspect requests**, **Inspect latency**, and **Inspect availability** open their corresponding metric
+charts directly, retaining the selected scope and time window. Other metrics remain selectable in detail.
+The status strip uses vertical separators between fields. Resource-table measurement notes are available
+from the information button beside its heading; incomplete coverage remains visible above the table.
+The Preview scope selector uses **All Databases** for account-wide metrics. Accounts with multiple distinct
+read/write regions also show **All regions** as a scope indicator, not a regional filter.
+
+Metric time/scope controls do not change every data source: inventory is account-wide, data growth
+uses seven days, alerts have their own window, and advisory detectors retain their own lookbacks.
+Preview labels statistics explicitly and does not invent latency percentiles, confidence scores,
+or estimated savings from the design. Missing data and incomplete diagnostic coverage stay visible.
+
+Preview also requests additional analytics through the existing router, only while opted in:
+the total-window 429 request percentage, peak bucket-average consumed RU/s, and per-resource versions
+of those statistics. All use complete buckets, and the exact window is displayed. No measured requests
+means an unavailable rate, not 0%. Resource ranking uses measured consumed RU/s and discloses incomplete
+split-query coverage. Index growth reuses seven-day history and is a first-to-last byte change, not WoW.
+Named rows use uniquely matched ARM inventory identities, including their original casing for actions.
+Empty or ambiguous metric dimensions cannot become container rows or take a top-five slot. Containers
+without matched consumption follow measured rows with unavailable values; account totals retain
+unattributed activity rather than assigning it to a missing container.
+The additional requests follow the shared refresh generation; they do not create another polling timer.
+
+**Add database**, **Add container**, and **Delete account** delegate to existing scoped extension flows,
+including deletion confirmation. Select a database in **Metric scope** before adding a container;
+empty databases are included. **View cost** opens the account's cost analysis and **JSON view** opens
+its ARM configuration. Resource creation reloads static inventory. Data Modeler is omitted because
+this repository has no corresponding capability. Account details expose backup retention/interval
+and automatic-failover configuration when ARM supplies them; configuration is not a resilience measurement.
 
 This document describes **what the dashboard ships today** — the metrics it renders, the detections it
 computes, where each one surfaces in the UI, and the ARM endpoints it calls. The broader detection
@@ -12,7 +55,7 @@ this page is _what we have_, not what CODA has.
 
 ## Layout
 
-The panel is two columns:
+The original presentation is two columns:
 
 - **Main column (left)** — account header, metric charts, the inventory table, and the partition-health
   heatmap. Several detections surface **inline** here (health badges, flagged tiles, throttling bands).

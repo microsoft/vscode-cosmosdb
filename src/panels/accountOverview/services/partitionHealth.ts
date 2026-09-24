@@ -85,6 +85,8 @@ export interface PartitionTile {
 }
 
 export interface PartitionHealthResult {
+    /** Requested snapshot window, used to distinguish results retained across range changes. */
+    timeRange?: TimeRange;
     /** False when Azure Monitor exposes no per-partition series for this API/SKU. */
     available: boolean;
     /** When `available` is false, why: `noData` | `unsupported` | `rbac`. */
@@ -248,6 +250,7 @@ export async function getPartitionHealth(
     const timespan = `${new Date(generatedAt - config.windowMs).toISOString()}/${new Date(generatedAt).toISOString()}`;
 
     const empty: PartitionHealthResult = {
+        timeRange,
         available: false,
         mode,
         databaseId,
@@ -293,6 +296,7 @@ export async function getPartitionHealth(
             hotPartition,
             partitionCount: tiles.length,
             topN: thresholds.topN,
+            timeRange,
             generatedAt,
         };
     }
@@ -338,6 +342,7 @@ export async function getPartitionHealth(
         topPartitionShare,
         partitionCount: tiles.length,
         topN: thresholds.topN,
+        timeRange,
         generatedAt,
     };
 }

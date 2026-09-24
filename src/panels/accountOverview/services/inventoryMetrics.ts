@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type MonitorClient } from '@azure/arm-monitor';
+import { namedMetricContainerKey } from './inventory';
 import {
     classifyUnavailable,
     firstValue,
@@ -12,7 +13,6 @@ import {
     lastValue,
     type ProvisioningState,
     RANGE_CONFIG,
-    seriesContainerKey,
     sustainedTimestamps,
     THROTTLING_SHARE_THRESHOLD,
     type TimeRange,
@@ -52,6 +52,8 @@ export interface ContainerMetrics {
     dataUsageBytes?: number;
     /** Latest `IndexUsage` in bytes, when reported (feeds the IndexingCostRisk rule). */
     indexUsageBytes?: number;
+    /** First-to-last `IndexUsage` delta over 7 days, in bytes; requires at least two distinct samples. */
+    indexGrowthBytes?: number;
     /** `DataUsage` delta between the first and last datapoint over 7 days, in bytes. */
     storageGrowthBytes?: number;
     /** `max(NormalizedRUConsumption)` over the selected window (percentage). */
@@ -68,6 +70,8 @@ export interface ContainerMetrics {
 }
 
 export interface InventoryMetricsResult {
+    /** Selected RU peak window. Storage/index history remains 7D and sustained throttling remains 1H. */
+    timeRange?: TimeRange;
     /** False when Azure Monitor returned no usable series for this API/SKU. */
     available: boolean;
     /** When `available` is false, why: `noData` | `unsupported` | `rbac`. */
@@ -141,6 +145,7 @@ export async function getInventoryMetrics(
 ): Promise<InventoryMetricsResult> {
     const generatedAt = Date.now();
     const empty = (available: boolean, hasThrottling: boolean, reason?: UnavailableReason): InventoryMetricsResult => ({
+        timeRange,
         available,
         reason,
         metrics: {},
@@ -249,6 +254,7 @@ export async function getInventoryMetrics(
             ...partial,
             dataUsageBytes: latestData,
             indexUsageBytes: latestIndex,
+            indexGrowthBytes: getIndexGrowthBytes(indexSeries),
             documentCount: docSeries ? lastValue(docSeries) : undefined,
             storageSparkline: toSparkline(dataSeries),
             ruSparkline: toSparkline(ruSeries),
@@ -257,11 +263,20 @@ export async function getInventoryMetrics(
     }
 
     return {
+        timeRange,
         available: true,
         metrics,
         accountHealth: deriveAccountHealth(provisioningState, throttledContainers.size > 0),
         generatedAt,
     };
+}
+
+/** First-to-last index growth needs two distinct, valid snapshot timestamps; a single sample is not zero growth. */
+export function getIndexGrowthBytes(series: ReadonlyMap<number, number> | undefined): number | undefined {
+    const points = [...(series ?? [])]
+        .filter(([timestamp, value]) => Number.isFinite(timestamp) && Number.isFinite(value) && value >= 0)
+        .sort(([left], [right]) => left - right);
+    return points.length >= 2 ? points[points.length - 1][1] - points[0][1] : undefined;
 }
 
 /**
@@ -289,7 +304,7 @@ async function querySplitSeries(
     const byContainer = new Map<string, Map<number, number>>();
     for (const metric of response.value ?? []) {
         for (const series of metric.timeseries ?? []) {
-            const key = seriesContainerKey(series.metadatavalues);
+            const key = namedMetricContainerKey(series.metadatavalues);
             if (!key) {
                 continue;
             }
@@ -352,7 +367,7 @@ async function queryThrottlingByContainer(
     const perContainer = new Map<string, Map<number, { total: number; throttled: number }>>();
     for (const metric of response.value ?? []) {
         for (const series of metric.timeseries ?? []) {
-            const key = seriesContainerKey(series.metadatavalues);
+            const key = namedMetricContainerKey(series.metadatavalues);
             if (!key) {
                 continue;
             }

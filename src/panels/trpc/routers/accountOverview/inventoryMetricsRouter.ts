@@ -41,6 +41,7 @@ export const inventoryMetricsProcedures = {
 
                 if (experience && experience.api !== API.Core) {
                     return {
+                        timeRange: input.timeRange,
                         available: false,
                         reason: 'unsupported',
                         metrics: {},
@@ -52,6 +53,7 @@ export const inventoryMetricsProcedures = {
                 const client = await metadata.getMonitorClient();
                 if (!client) {
                     return {
+                        timeRange: input.timeRange,
                         available: false,
                         reason: 'noData',
                         metrics: {},

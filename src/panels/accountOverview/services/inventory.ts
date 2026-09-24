@@ -9,7 +9,15 @@ import {
     type SqlDatabaseGetResults,
     type ThroughputSettingsGetResults,
 } from '@azure/arm-cosmosdb';
-import { classifyUnavailable, type UnavailableReason } from './shared';
+import { classifyUnavailable, seriesContainerKey, type UnavailableReason } from './shared';
+
+/** Azure's empty dimensions describe unattributable activity, not an inventory resource. */
+export function namedMetricContainerKey(metadata: Parameters<typeof seriesContainerKey>[0]): string | undefined {
+    const key = seriesContainerKey(metadata);
+    return key?.split('/').every((part) => part.trim().length > 0 && part.trim().toLowerCase() !== '<empty>')
+        ? key
+        : undefined;
+}
 
 // ─── Static databases/containers inventory ──────────────────────────────────────
 //
@@ -68,6 +76,15 @@ export async function getSqlInventory(
     accountName: string,
     isServerless: boolean,
 ): Promise<InventoryContainerRow[]> {
+    return (await getSqlInventorySnapshot(client, resourceGroup, accountName, isServerless)).rows;
+}
+
+async function getSqlInventorySnapshot(
+    client: CosmosDBManagementClient,
+    resourceGroup: string,
+    accountName: string,
+    isServerless: boolean,
+): Promise<{ rows: InventoryContainerRow[]; databases: string[] }> {
     const rows: InventoryContainerRow[] = [];
 
     const databases: SqlDatabaseGetResults[] = [];
@@ -150,7 +167,10 @@ export async function getSqlInventory(
         }
     }
 
-    return rows;
+    return {
+        rows,
+        databases: databases.map((database) => database.resource?.id ?? database.name ?? '').filter(Boolean),
+    };
 }
 
 /** The shaped inventory outcome the router surfaces: rows on success, or an explicit unavailable reason. */
@@ -160,11 +180,13 @@ export interface InventoryResult {
     /** When {@link available} is false, why the section could not load. See {@link UnavailableReason}. */
     reason?: UnavailableReason;
     rows: InventoryContainerRow[];
+    /** All databases from the same ARM walk, including databases with no containers. */
+    databases?: string[];
 }
 
 /**
- * Wraps {@link getSqlInventory} so an ARM failure degrades to an explicit empty-state instead of
- * bubbling up and hanging the whole dashboard. A 403 (or ARM `AuthorizationFailed`/`Forbidden`)
+ * Returns rows and all database names from one ARM walk, degrading failures to an explicit empty-state instead
+ * of bubbling up and hanging the whole dashboard. A 403 (or ARM `AuthorizationFailed`/`Forbidden`)
  * becomes `reason: 'rbac'`; any other failure becomes `reason: 'noData'`. Mirrors the shaped
  * `available`/`reason` contract the Azure Monitor service functions already return.
  */
@@ -175,9 +197,9 @@ export async function getInventoryResult(
     isServerless: boolean,
 ): Promise<InventoryResult> {
     try {
-        const rows = await getSqlInventory(client, resourceGroup, accountName, isServerless);
-        return { available: true, rows };
+        const inventory = await getSqlInventorySnapshot(client, resourceGroup, accountName, isServerless);
+        return { available: true, ...inventory };
     } catch (error) {
-        return { available: false, reason: classifyUnavailable(error), rows: [] };
+        return { available: false, reason: classifyUnavailable(error), rows: [], databases: [] };
     }
 }

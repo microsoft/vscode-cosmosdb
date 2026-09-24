@@ -145,11 +145,15 @@ export const MetricChart = ({
     series,
     loading,
     timeRange,
+    connectNulls = true,
+    compact = false,
 }: {
     descriptor: MetricViewDescriptor;
     series?: MetricSeriesResult;
     loading: boolean;
     timeRange: TimeRange;
+    connectNulls?: boolean;
+    compact?: boolean;
 }) => {
     const styles = useStyles();
 
@@ -181,7 +185,11 @@ export const MetricChart = ({
     }
 
     return (
-        <figure className={styles.chartArea} style={{ margin: 0 }}>
+        <figure
+            className={styles.chartArea}
+            style={{ margin: 0, ...(compact ? { height: 64 } : {}) }}
+            aria-label={compact ? l10n.t('{0} trend', descriptor.label) : undefined}
+        >
             <figcaption className={styles.srOnly}>
                 {l10n.t(
                     '{0} over the selected window, peak {1}.',
@@ -190,9 +198,10 @@ export const MetricChart = ({
                 )}
             </figcaption>
             <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={points} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
-                    <CartesianGrid stroke={GRID_COLOR} strokeDasharray="3 3" vertical={false} />
+                <LineChart data={points} margin={{ top: 8, right: compact ? 4 : 16, bottom: 8, left: compact ? 4 : 0 }}>
+                    {!compact && <CartesianGrid stroke={GRID_COLOR} strokeDasharray="3 3" vertical={false} />}
                     <XAxis
+                        hide={compact}
                         dataKey="timestamp"
                         type="number"
                         scale="time"
@@ -202,6 +211,7 @@ export const MetricChart = ({
                         tick={{ fill: AXIS_COLOR, fontSize: 11 }}
                     />
                     <YAxis
+                        hide={compact}
                         domain={yDomain}
                         tickFormatter={(v: number) => formatAxisTick(descriptor.unit, v)}
                         stroke={AXIS_COLOR}
@@ -219,28 +229,37 @@ export const MetricChart = ({
                             ifOverflow="extendDomain"
                         />
                     ))}
-                    {descriptor.referenceLines?.map((ref) => (
-                        <ReferenceLine
-                            key={ref.label}
-                            y={ref.value}
-                            stroke={REFERENCE_COLOR}
-                            strokeDasharray="6 4"
-                            label={{
-                                value: ref.label,
-                                position: 'insideTopRight',
-                                fill: AXIS_COLOR,
-                                fontSize: 11,
-                            }}
-                        />
-                    ))}
+                    {!compact &&
+                        descriptor.referenceLines?.map((ref) => (
+                            <ReferenceLine
+                                key={ref.label}
+                                y={ref.value}
+                                stroke={REFERENCE_COLOR}
+                                strokeDasharray="6 4"
+                                label={{
+                                    value: ref.label,
+                                    position: 'insideTopRight',
+                                    fill: AXIS_COLOR,
+                                    fontSize: 11,
+                                }}
+                            />
+                        ))}
                     <Line
                         type="monotone"
                         dataKey="value"
-                        stroke={SERIES_COLOR}
+                        stroke={
+                            compact ? 'var(--vscode-charts-yellow, var(--vscode-textLink-foreground))' : SERIES_COLOR
+                        }
                         strokeWidth={2}
-                        dot={false}
+                        dot={
+                            compact && points.length > 1 && points.every((point) => point.value !== undefined)
+                                ? false
+                                : !connectNulls || points.filter((point) => point.value !== undefined).length === 1
+                                  ? { r: 2 }
+                                  : false
+                        }
                         isAnimationActive={false}
-                        connectNulls
+                        connectNulls={connectNulls}
                     />
                 </LineChart>
             </ResponsiveContainer>

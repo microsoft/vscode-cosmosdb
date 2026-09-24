@@ -9,12 +9,56 @@ import {
     deriveAccountHealth,
     deriveRowHealth,
     getInventoryMetrics,
+    getIndexGrowthBytes,
     type HealthThresholds,
 } from './inventoryMetrics';
 import { containerKey } from './shared';
 import { dims, GB, iso, mockClient, type Point } from './testFixtures';
 
 const thresholds: HealthThresholds = DEFAULT_HEALTH_THRESHOLDS;
+
+describe('index history growth', () => {
+    it('computes a byte delta in timestamp order and preserves index shrinkage', () => {
+        expect(
+            getIndexGrowthBytes(
+                new Map([
+                    [3, 100],
+                    [1, 200],
+                    [2, 500],
+                ]),
+            ),
+        ).toBe(-100);
+        expect(
+            getIndexGrowthBytes(
+                new Map([
+                    [1, 100],
+                    [2, 300],
+                ]),
+            ),
+        ).toBe(200);
+        expect(
+            getIndexGrowthBytes(
+                new Map([
+                    [1, 100],
+                    [2, 100],
+                ]),
+            ),
+        ).toBe(0);
+    });
+
+    it('does not turn absent, single-sample, or invalid history into zero growth', () => {
+        expect(getIndexGrowthBytes(undefined)).toBeUndefined();
+        expect(getIndexGrowthBytes(new Map([[1, 100]]))).toBeUndefined();
+        expect(
+            getIndexGrowthBytes(
+                new Map([
+                    [1, 100],
+                    [2, Number.NaN],
+                ]),
+            ),
+        ).toBeUndefined();
+    });
+});
 
 describe('deriveRowHealth', () => {
     it('is Healthy when nothing crosses a threshold', () => {
@@ -66,10 +110,33 @@ describe('getInventoryMetrics', () => {
     const base = Date.now();
     const minute = 60 * 1000;
 
+    it('does not turn empty resource dimensions into named inventory telemetry', async () => {
+        const client = mockClient({
+            DataUsage: {
+                value: [
+                    {
+                        timeseries: [
+                            {
+                                metadatavalues: dims('<empty>', '<empty>'),
+                                data: [{ timeStamp: iso(base), maximum: 900 }],
+                            },
+                            { metadatavalues: dims('', 'orphan'), data: [{ timeStamp: iso(base), maximum: 800 }] },
+                            { metadatavalues: dims('test', 'test'), data: [{ timeStamp: iso(base), maximum: 100 }] },
+                        ],
+                    },
+                ],
+            },
+        });
+        const result = await getInventoryMetrics(client, '/sub/acct', '24H', 'Succeeded', thresholds);
+        expect(Object.keys(result.metrics)).toEqual(['test/test']);
+        expect(result.metrics['test/test'].storageBytes).toBe(100);
+    });
+
     it('returns available: false when storage and RU series are both empty', async () => {
         const client = mockClient({});
         const result = await getInventoryMetrics(client, '/sub/acct', '24H', 'Succeeded', thresholds);
         expect(result.available).toBe(false);
+        expect(result.timeRange).toBe('24H');
         expect(result.metrics).toEqual({});
         expect(result.accountHealth).toBe('Healthy');
     });
@@ -137,6 +204,7 @@ describe('getInventoryMetrics', () => {
 
         const result = await getInventoryMetrics(client, '/sub/acct', '24H', 'Succeeded', thresholds);
         expect(result.available).toBe(true);
+        expect(result.timeRange).toBe('24H');
 
         const c1 = result.metrics[containerKey('db', 'c1')];
         expect(c1.storageBytes).toBe(350);

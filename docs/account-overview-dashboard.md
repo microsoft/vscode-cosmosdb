@@ -11,28 +11,88 @@ remains the default. Both presentations share the loading, state, and action lif
 `src/webviews/cosmosdb/AccountOverview/useAccountOverview.ts`. Switching does not reset the metric
 window, database scope, refresh pause, or dismissed findings.
 
-Preview follows the compact mockup: an inline account-details disclosure, row-based health findings,
+Preview follows the compact mockup: an inline account-details disclosure, a three-row health table,
 three throughput cards (normalized-RU sparkline, 429 gauge, provisioned versus consumed), a resource
-table, four diagnostic cards, and row-based recommendations. Detailed evidence, source coverage,
-measurement windows and resource actions expand in place. **Metric details**, **Databases and Containers**,
-**Partition Key Distribution Health**, and **All findings** open the complete existing diagnostic
-widgets without starting another shared data lifecycle. **Back to summary** returns to the compact
-layout; keyboard focus moves to the destination heading.
-**Inspect requests**, **Inspect latency**, and **Inspect availability** open their corresponding metric
-charts directly, retaining the selected scope and time window. Other metrics remain selectable in detail.
+table, four diagnostic cards, and a matching three-row recommendations table. Each findings table shows
+at most three ranked entries. **Account health** includes derived findings about current problems and risks
+(such as hot partitions, throttling and storage skew), together with Azure Monitor alerts.
+**Prioritized recommendations** combines Azure Advisor guidance with derived optimization opportunities:
+over-provisioned throughput, idle containers, partition merges, autoscale/manual throughput changes and
+serverless candidates. It stays at the bottom even when empty. This semantic split is Preview-only:
+Original retains its separate source-based blocks. Advisor impact expresses importance, not alert severity.
+Health groups the same detector across resources before selecting the top
+three groups, with the most critical member determining each group's severity. **View all alerts** shows
+the individual resource findings without grouping. A compact group names its first affected container;
+when several are observed but the bounded scan cannot establish the total, it uses **+ others** rather
+than an exact count. The health table header shows severity status and counts of individual findings before
+grouping, excluding session-dismissed findings. Affected resources and estimated impact occupy separate
+cells. Impact descriptions are qualitative potential effects for known derived checks, not predicted
+percentages or savings; unknown effects are explicitly not estimated.
+**View all alerts** and **View all recommendations** open separate Preview
+dialogs over the summary, containing the complete corresponding list, evidence, source availability and
+actions. Diagnostic coverage is not a summary block: source-specific pills in the health table header
+and beside the recommendation heading
+flag missing access, disabled logs and unavailable sources. Hover or activate a pill to read the explanation
+and access role/diagnostic-settings guidance or refresh where applicable. Closing a dialog returns focus to its trigger.
+Both categories depend on derived checks; only health depends on Monitor alerts and log-based checks,
+and only recommendations depend on Advisor. Full lists retain session dismissal of derived findings in
+their respective categories.
+**Metric details**, **Databases and Containers**, and **Partition Key Distribution Health** open the existing
+diagnostic widgets without starting another shared data lifecycle. **Back to summary** returns to the
+compact layout; keyboard focus moves to the destination heading.
+**View RU consumption details** opens a dedicated Preview dialog, retaining the selected scope and
+time window. It shows the latest reported normalized RU, period peak, estimated time in complete
+intervals whose maximum exceeds 80%, and the measured 429 rate. Missing intervals are excluded from
+the estimate and its observed coverage is shown; bucket maxima do not establish continuous duration.
+The yellow chart includes an 80% guide and preserves missing intervals as gaps. Guidance distinguishes
+measured physical-partition skew from general investigation steps and never invents logical-key evidence.
+The ranked list shows the top three reported containers by peak normalized RU and matched container-level
+429 rates where available. Loaded physical-partition data is separately identified by container and p99,
+not presented as logical-key values or period peaks. **Review hot partitions** opens existing partition
+diagnostics in RU mode. Escape or Close returns focus to the dialog trigger.
+**View 429 throttling details** opens a dedicated dialog with current and previous-window rates, relative
+change (distinct from the summary's percentage-point delta), and the 5% investigation guide. Its distribution
+uses measured container-level throttled-request counts, not logical-key samples. Unattributed activity and
+incomplete coverage remain explicit. Individual request times, operations, partition-key values, retry delays,
+and retry outcomes are not available from these aggregate metrics; the affected-requests table says so.
+**Review capacity details** opens a capacity dialog with measured peak demand, reported provisioned/autoscale
+values, ranked resource demand, and illustrative linear traffic scenarios. Account/database maxima are not
+total allocated capacity, so headroom and capacity assessments are unavailable for incomparable scopes.
+Both dialogs use the same scrollable layout and **Review hot partitions** action as RU details.
+**Inspect latency** and **Inspect availability** still open their corresponding metric charts directly.
+Generic metric and inventory navigation remain available without opening throughput dialogs.
 The status strip uses vertical separators between fields. Resource-table measurement notes are available
 from the information button beside its heading; incomplete coverage remains visible above the table.
 The Preview scope selector uses **All Databases** for account-wide metrics. Accounts with multiple distinct
 read/write regions also show **All regions** as a scope indicator, not a regional filter.
+The Preview status strip labels the ARM provisioning state as **Status**, displaying `Succeeded` as
+**Online** to match Database Hub. Other states retain their names; missing state is **Unknown**.
+This display mapping does not change the source state or imply measured connectivity or workload health.
+Status uses a tinted pill with a decorative dot: Online is green; Creating, Updating, Deleting, and Canceled
+are yellow; Failed is red; Unknown is neutral. Colors follow the active VS Code theme and supplement the text.
 
 Metric time/scope controls do not change every data source: inventory is account-wide, data growth
 uses seven days, alerts have their own window, and advisory detectors retain their own lookbacks.
 Preview labels statistics explicitly and does not invent latency percentiles, confidence scores,
-or estimated savings from the design. Missing data and incomplete diagnostic coverage stay visible.
+or estimated savings from the design. Missing metric data stays visible; finding-source availability is
+explained by heading pills and in the full-list dialogs rather than in a diagnostic-coverage summary block.
+
+Throughput health follows the three-card layout: **Normalized RU Consumption**, **429 throttling rate**,
+and **Provisioned vs consumed**, with per-card detail actions aligned at the bottom.
+Normalized RU shows the latest usable reported sample separately from the selected period's peak;
+the yellow sparkline is still maximum utilization across partition-key ranges, not a share of consumed RU.
+Measurement notes identify the sample times and aggregation rather than implying an instantaneous reading.
+The 429 gauge uses **5% investigate** as a visual guide, not a new alert/detector threshold or an SLA.
+Its fill is capped at the guide while the number retains the actual measured rate. The displayed change
+is in **percentage points** versus the immediately preceding equal-length window, not relative percentage
+growth. No comparison is shown when the preceding rate cannot be established.
+Guidance about the typical 1-5% range is conditional on acceptable end-to-end latency and partition
+distribution; the overall rate alone does not prove retries succeed or throttling is confined to one partition.
 
 Preview also requests additional analytics through the existing router, only while opted in:
-the total-window 429 request percentage, peak bucket-average consumed RU/s, and per-resource versions
-of those statistics. All use complete buckets, and the exact window is displayed. No measured requests
+the current and preceding total-window 429 request percentages, peak bucket-average consumed RU/s,
+per-resource current statistics, and the latest reported maximum autoscale throughput.
+Rate and consumed-RU measurements use complete buckets, and exact windows are available in measurement notes. No measured requests
 means an unavailable rate, not 0%. Resource ranking uses measured consumed RU/s and discloses incomplete
 split-query coverage. Index growth reuses seven-day history and is a first-to-last byte change, not WoW.
 Named rows use uniquely matched ARM inventory identities, including their original casing for actions.
@@ -40,13 +100,32 @@ Empty or ambiguous metric dimensions cannot become container rows or take a top-
 without matched consumption follow measured rows with unavailable values; account totals retain
 unattributed activity rather than assigning it to a missing container.
 The additional requests follow the shared refresh generation; they do not create another polling timer.
+The capacity card shows **Consumed peak**, **Provisioned now**, and **Autoscale max**. Consumed peak is a
+peak bucket-average rate, not an instantaneous rate. Provisioned now is the latest reported
+`ProvisionedThroughput` Maximum for the selected scope, not the sum of shared/container allocations.
+Autoscale max comes from `AutoscaleMaxThroughput` Maximum, not the account throughput-limit setting or
+a value inferred from normalized RU. Neither maximum represents a summed account allocation. Serverless
+capacity is not applicable; absent autoscale measurements are not replaced by zero.
+
+These interpretations follow the Azure guidance on
+[normalized RU](https://learn.microsoft.com/azure/cosmos-db/monitor-normalized-request-units),
+[429 responses](https://learn.microsoft.com/azure/cosmos-db/troubleshoot-request-rate-too-large), and
+[supported metric definitions](https://learn.microsoft.com/azure/cosmos-db/monitor-reference).
 
 **Add database**, **Add container**, and **Delete account** delegate to existing scoped extension flows,
 including deletion confirmation. Select a database in **Metric scope** before adding a container;
 empty databases are included. **View cost** opens the account's cost analysis and **JSON view** opens
-its ARM configuration. Resource creation reloads static inventory. Data Modeler is omitted because
-this repository has no corresponding capability. Account details expose backup retention/interval
+its ARM configuration. Resource creation reloads static inventory. Preview includes a **Try Data Modeler**
+placeholder beside the account actions; it performs no action and explains on hover or keyboard focus
+that the feature is not implemented yet. Busy actions remain disabled without a separate progress message;
+action failures remain visible. Account details expose backup retention/interval
 and automatic-failover configuration when ARM supplies them; configuration is not a resilience measurement.
+Preview combines backup type and retention in **Backup policy**, adding the reported backup interval for
+Periodic mode. Additional account properties omit the duplicate retention and throughput-limit rows and
+the standalone interval row; the throughput limit remains in the status strip.
+**JSON view** fetches the account on demand and formats the original ARM response, not the flattened SDK
+model. It preserves the `properties` envelope, unmodeled fields, and timestamp strings. The request uses
+the extension's configured ARM API version, so the returned fields may differ from a portal API version.
 
 This document describes **what the dashboard ships today** — the metrics it renders, the detections it
 computes, where each one surfaces in the UI, and the ARM endpoints it calls. The broader detection

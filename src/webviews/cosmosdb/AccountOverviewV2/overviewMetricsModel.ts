@@ -9,6 +9,7 @@ import {
     type InventoryContainerRow,
     type InventoryMetricsResult,
     type MetricKey,
+    type MetricPoint,
     type MetricSeriesResult,
     type PartitionHealthResult,
     type TimeRange,
@@ -55,6 +56,17 @@ const METRICS: Record<
 
 export const isNonNegativeFinite = (value: number | undefined): value is number =>
     value !== undefined && Number.isFinite(value) && value >= 0;
+
+/** Keep unusable values as gaps so a chart never implies a measurement where none was reported. */
+export function metricSamples(series: MetricSeriesResult, percent: boolean): MetricPoint[] {
+    return series.points
+        .filter((point) => Number.isFinite(point.timestamp) && !Number.isNaN(new Date(point.timestamp).getTime()))
+        .map((point) => ({
+            ...point,
+            value: isNonNegativeFinite(point.value) && (!percent || point.value <= 100) ? point.value : undefined,
+        }))
+        .sort((a, b) => a.timestamp - b.timestamp);
+}
 
 export function summarizeOverviewAnalytics(
     analytics: OverviewAnalyticsState | undefined,
@@ -178,14 +190,7 @@ export function summarizeMetric(
     if (!series.available) {
         return { ...base, state: 'unavailable', detail: unavailableSummary(series.reason) };
     }
-    const points = series.points
-        .filter(
-            (point) =>
-                Number.isFinite(point.timestamp) &&
-                isNonNegativeFinite(point.value) &&
-                (definition.unit !== '%' || point.value <= 100),
-        )
-        .sort((a, b) => a.timestamp - b.timestamp);
+    const points = metricSamples(series, definition.unit === '%').filter((point) => point.value !== undefined);
     if (points.length === 0) {
         return {
             ...base,

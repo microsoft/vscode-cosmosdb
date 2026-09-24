@@ -5,8 +5,10 @@
 
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import * as DashboardChrome from '../AccountOverview/DashboardChrome';
 import { type AccountOverviewState } from '../AccountOverview/useAccountOverview';
 import { AccountOverviewV2 } from './AccountOverviewV2';
 import { OverviewActions } from './OverviewActions';
@@ -15,22 +17,43 @@ import { OverviewFindings } from './OverviewFindings';
 import { type OverviewSummaryProps } from './overviewFindingsModel';
 import { OverviewHeader } from './OverviewHeader';
 
+vi.mock('../AccountOverview/DashboardChrome', async (importOriginal) => {
+    const original = await importOriginal<typeof DashboardChrome>();
+    return { ...original, Pill: vi.fn(original.Pill) };
+});
+
 vi.mock('./OverviewMetrics', () => ({
     OverviewMetrics: ({ onInspect }: OverviewSummaryProps) => (
-        <button onClick={() => onInspect('metrics', 'serverLatency')}>Inspect latency</button>
+        <>
+            <button onClick={() => onInspect('metrics', 'serverLatency')}>Inspect latency</button>
+            <button onClick={() => onInspect('metrics', 'normalizedRu')}>View RU consumption details</button>
+        </>
     ),
 }));
 vi.mock('./OverviewDetails', async (importOriginal) => {
     const original = await importOriginal<{ OverviewDetails: typeof OverviewDetails }>();
     return {
-        detailTitles: { metrics: 'Metrics', inventory: 'Resources', partition: 'Partitions', findings: 'Findings' },
+        detailTitles: {
+            metrics: 'Metrics',
+            inventory: 'Resources',
+            partition: 'Partitions',
+            findings: 'Account health',
+            recommendations: 'Recommendations',
+        },
         OverviewDetails: vi.fn((props: Parameters<typeof OverviewDetails>[0]) =>
-            props.section === 'metrics' ? <original.OverviewDetails {...props} /> : <div>Detailed evidence</div>,
+            props.section === 'inventory' || props.section === 'partition' ? (
+                <div>Detailed evidence</div>
+            ) : (
+                <original.OverviewDetails {...props} />
+            ),
         ),
     };
 });
 
-afterEach(cleanup);
+afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+});
 
 function overviewState(): AccountOverviewState {
     return {
@@ -110,6 +133,117 @@ function overviewState(): AccountOverviewState {
 }
 
 describe('compact overview chrome', () => {
+    it('keeps derived opportunities below metrics in recommendations even when Advisor has no guidance', () => {
+        const overview = overviewState();
+        const advisory = overview.derivedAdvisories!.advisories[0];
+        overview.derivedAdvisories!.advisories = [
+            { ...advisory, id: 'idle', rule: 'IdleContainer', title: 'Idle container' },
+            { ...advisory, id: 'over', rule: 'OverProvisioning', title: 'Over-provisioning', scope: undefined },
+            {
+                ...advisory,
+                id: 'serverless',
+                rule: 'ServerlessCandidate',
+                title: 'Serverless candidate',
+                severity: 'Low',
+                scope: undefined,
+            },
+        ];
+        overview.recommendations = {
+            available: true,
+            recommendations: [],
+            hasHighImpactPerfCost: false,
+            generatedAt: 1,
+        };
+        render(<AccountOverviewV2 overview={overview} analytics={{ loading: false, failed: false }} />);
+        const health = screen.getByRole('region', { name: 'Account health' });
+        expect(within(health).queryByRole('row')).not.toBeInTheDocument();
+        const recommendations = screen.getByRole('region', { name: 'Prioritized recommendations' });
+        for (const title of ['Idle container', 'Over-provisioning', 'Serverless candidate']) {
+            expect(within(recommendations).getByRole('heading', { name: title })).toBeVisible();
+        }
+        expect(within(recommendations).getAllByRole('row')).toHaveLength(3);
+        const metrics = screen.getByRole('button', { name: 'Inspect latency' });
+        expect(health.compareDocumentPosition(metrics) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        expect(metrics.compareDocumentPosition(recommendations) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it.each([
+        ['Continuous', 720, undefined, 'Continuous (30 days retention)'],
+        ['Continuous', 168, undefined, 'Continuous (7 days retention)'],
+        ['Periodic', 16, 120, 'Periodic (16 hours retention); backup every 120 minutes'],
+        ['Periodic', undefined, 240, 'Periodic; backup every 240 minutes'],
+        ['Periodic', 8, undefined, 'Periodic (8 hours retention)'],
+        [undefined, undefined, undefined, 'Unknown'],
+    ] as const)(
+        'summarizes backup configuration without duplicate detail rows (%s, %s, %s)',
+        (backupPolicyType, backupRetentionHours, backupIntervalMinutes, expected) => {
+            const overview = overviewState();
+            render(
+                <OverviewHeader
+                    overview={{
+                        ...overview,
+                        summary: {
+                            ...overview.summary!,
+                            backupPolicyType,
+                            backupRetentionHours,
+                            backupIntervalMinutes,
+                        },
+                    }}
+                />,
+            );
+            fireEvent.click(screen.getByRole('button', { name: 'Account details' }));
+            fireEvent.click(screen.getByText('Additional account properties'));
+            const backupField = screen.getByText('Backup policy').parentElement;
+            expect(backupField).toHaveTextContent(`Backup policy${expected}`);
+            expect(backupField).toBeVisible();
+            expect(screen.queryByText('Backup retention')).not.toBeInTheDocument();
+            expect(screen.queryByText('Backup interval')).not.toBeInTheDocument();
+            expect(screen.queryByText('Total throughput limit')).not.toBeInTheDocument();
+            expect(screen.getByText('Total throughput limit: 4,000 RU/s')).toBeVisible();
+            expect(screen.getByText('API type')).toBeVisible();
+            expect(screen.getByText('Consistency')).toBeVisible();
+            expect(screen.getByText('Automatic failover')).toBeVisible();
+        },
+    );
+
+    it.each([
+        [false, 'Opted out'],
+        [true, 'Enabled'],
+    ] as const)('uses the Original Free tier label for enabled=%s', (freeTierEnabled, label) => {
+        const overview = overviewState();
+        render(<OverviewHeader overview={{ ...overview, summary: { ...overview.summary!, freeTierEnabled } }} />);
+        fireEvent.click(screen.getByRole('button', { name: 'Account details' }));
+        const field = screen.getByText('Free tier');
+        expect(field).toBeVisible();
+        expect(field.parentElement).toHaveTextContent(`Free tier${label}`);
+    });
+
+    it.each([
+        ['Succeeded', 'Online', 'success'],
+        ['Creating', 'Creating', 'warning'],
+        ['Updating', 'Updating', 'warning'],
+        ['Deleting', 'Deleting', 'warning'],
+        ['Failed', 'Failed', 'danger'],
+        ['Canceled', 'Canceled', 'warning'],
+        [undefined, 'Unknown', 'neutral'],
+    ] as const)('displays provisioning state %s as a %s status pill', (provisioningState, label, tone) => {
+        const overview = overviewState();
+        render(
+            <OverviewHeader
+                overview={{
+                    ...overview,
+                    summary: { ...overview.summary!, provisioningState },
+                }}
+            />,
+        );
+        const pill = screen.getByText(label, { selector: 'span' });
+        expect(pill).toBeVisible();
+        expect(screen.getByText('Status:').parentElement).toContainElement(pill);
+        expect(pill.querySelector('[aria-hidden="true"]')).toBeInTheDocument();
+        expect(DashboardChrome.Pill).toHaveBeenLastCalledWith(expect.objectContaining({ tone }), undefined);
+        expect(screen.queryByText(/^Provisioning:/)).not.toBeInTheDocument();
+    });
+
     it('passes the requested chart to details and resets it for generic metric navigation', () => {
         const overview = overviewState();
         render(<AccountOverviewV2 overview={overview} analytics={{ loading: false, failed: false }} />);
@@ -233,40 +367,234 @@ describe('compact overview chrome', () => {
             action: 'createContainer',
             databaseId: 'database',
         });
-        expect(screen.queryByText(/Data Modeler/)).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'View cost' })).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'JSON view' })).not.toBeInTheDocument();
     });
 
-    it('keeps incomplete coverage visible while evidence and coverage details are collapsed', () => {
+    it('shows the Data Modeler placeholder with a hover and keyboard explanation without invoking actions', () => {
+        vi.useFakeTimers();
         const overview = overviewState();
-        const { container, rerender } = render(<OverviewFindings overview={overview} onInspect={vi.fn()} />);
-        expect(screen.getByText(/Diagnostic coverage is incomplete/)).toBeVisible();
-        const disclosures = container.querySelectorAll('details');
-        expect(disclosures).toHaveLength(2);
-        for (const disclosure of disclosures) {
-            expect(disclosure).not.toHaveAttribute('open');
-        }
-        expect(screen.getByText('Threshold 90%')).not.toBeVisible();
-        fireEvent.click(screen.getByText('Details'));
-        expect(screen.getByText('Threshold 90%')).toBeVisible();
-        expect(screen.getByText('Review the partition key.')).toBeVisible();
-        expect(screen.getByText('Derived finding')).toBeVisible();
-        rerender(<OverviewFindings overview={{ ...overview, alertsLoading: true }} onInspect={vi.fn()} />);
-        expect(screen.getByText('Updating diagnostic coverage…')).toBeVisible();
+        render(<OverviewActions overview={overview} />);
+        expect(screen.getByText('Design containers, partition keys, and relationships visually.')).toBeVisible();
+        const modeler = screen.getByRole('button', { name: 'Try Data Modeler' });
+        expect(modeler).toHaveTextContent('Try Data Modeler');
+        expect(modeler).toHaveAccessibleName('Try Data Modeler');
+        expect(modeler).toHaveAttribute('aria-disabled', 'true');
+        expect(modeler).not.toBeDisabled();
+        expect(modeler).toHaveAccessibleDescription('Data Modeler is not implemented yet.');
+        fireEvent.pointerEnter(modeler);
+        act(() => vi.advanceTimersByTime(300));
+        expect(screen.getByRole('tooltip')).toHaveTextContent('Data Modeler is not implemented yet.');
+        fireEvent.pointerLeave(modeler);
+        act(() => vi.advanceTimersByTime(300));
+        expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+        fireEvent.focus(modeler);
+        act(() => vi.advanceTimersByTime(300));
+        expect(screen.getByRole('tooltip')).toHaveTextContent('Data Modeler is not implemented yet.');
+        fireEvent.click(modeler);
+        fireEvent.keyDown(modeler, { key: 'Enter' });
+        fireEvent.keyUp(modeler, { key: 'Enter' });
+        fireEvent.keyDown(modeler, { key: ' ' });
+        fireEvent.keyUp(modeler, { key: ' ' });
+        expect(overview.runAccountAction).not.toHaveBeenCalled();
+        expect(overview.actions.openUrl).not.toHaveBeenCalled();
+        expect(overview.handleOpenUrl).not.toHaveBeenCalled();
     });
 
-    it('focuses detail headings and returns to a visible summary fallback', () => {
+    it('hides action progress text while keeping busy actions disabled and failures visible', () => {
+        const overview = overviewState();
+        const { rerender } = render(
+            <OverviewActions
+                overview={{ ...overview, accountActionBusy: true, selectedContainer: { databaseId: 'database' } }}
+            />,
+        );
+        expect(screen.queryByText(/Account action in progress/)).not.toBeInTheDocument();
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+        for (const name of ['Add database', 'Add container', 'Delete account']) {
+            const button = screen.getByRole('button', { name });
+            expect(button).toBeDisabled();
+            fireEvent.click(button);
+        }
+        expect(overview.runAccountAction).not.toHaveBeenCalled();
+        rerender(<OverviewActions overview={{ ...overview, accountActionFailed: true }} />);
+        expect(screen.getByRole('alert')).toHaveTextContent('The account action could not be completed.');
+    });
+
+    it('keeps health summary evidence compact without inline disclosures', () => {
+        const overview = overviewState();
+        const { container } = render(<OverviewFindings overview={overview} onInspect={vi.fn()} />);
+        expect(screen.queryByText(/diagnostic coverage/i)).not.toBeInTheDocument();
+        expect(container.querySelector('details')).toBeNull();
+        expect(screen.getByRole('table')).toBeVisible();
+        expect(screen.queryByText('Threshold 90%')).not.toBeInTheDocument();
+    });
+
+    it.each([
+        ['View all alerts', 'Account health'],
+        ['View all recommendations', 'Recommendations'],
+    ])('opens %s over the summary and restores focus after closing', async (label, title) => {
+        const user = userEvent.setup();
         render(<AccountOverviewV2 overview={overviewState()} analytics={{ loading: false, failed: false }} />);
-        expect(screen.queryByRole('heading', { name: 'Account summary' })).not.toBeInTheDocument();
-        expect(screen.queryByText(/^Preview:/)).not.toBeInTheDocument();
-        expect(screen.getByRole('navigation', { name: 'Detailed diagnostics' })).toBeVisible();
-        const inspect = screen.getByRole('button', { name: 'Inspect evidence' });
-        inspect.focus();
-        fireEvent.click(inspect);
-        expect(screen.getByRole('heading', { name: 'Findings' })).toHaveFocus();
-        fireEvent.click(screen.getByRole('button', { name: 'Back to summary' }));
-        expect(screen.getByRole('main', { name: 'Account overview' })).toHaveFocus();
+        const trigger = screen.getByRole('button', { name: label });
+        expect(trigger).toHaveTextContent(label);
+        expect(trigger).toHaveAccessibleName(label);
+        await user.click(trigger);
+        const dialog = screen.getByRole('dialog', { name: title });
+        expect(dialog).toBeVisible();
+        await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
+        expect(screen.getByText('Inspect latency')).toBeInTheDocument();
+        expect(within(dialog).queryByText('Derived Advisories')).not.toBeInTheDocument();
+        const close = within(dialog).getByRole('button', { name: 'Close' });
+        close.focus();
+        await user.tab();
+        expect(dialog.contains(document.activeElement)).toBe(true);
+        await user.click(close);
+        await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+        expect(trigger).toHaveFocus();
         expect(screen.getByRole('heading', { name: 'Account health' })).toBeVisible();
+    });
+
+    it('retains alert-window controls and closes the health dialog with Escape', async () => {
+        const user = userEvent.setup();
+        const overview = overviewState();
+        render(<AccountOverviewV2 overview={overview} analytics={{ loading: false, failed: false }} />);
+        const trigger = screen.getByRole('button', { name: 'View all alerts' });
+        await user.click(trigger);
+        const dialog = screen.getByRole('dialog', { name: 'Account health' });
+        expect(within(dialog).getByText('Threshold 90%')).toBeVisible();
+        const windows = within(dialog).getByRole('group', { name: 'Azure alert window' });
+        expect(within(windows).getByRole('button', { name: '1d' })).toHaveAttribute('aria-pressed', 'true');
+        await user.click(within(windows).getByRole('button', { name: '7d' }));
+        expect(overview.setAlertTimeRange).toHaveBeenCalledWith('7d');
+        await user.keyboard('{Escape}');
+        await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+        expect(trigger).toHaveFocus();
+    });
+
+    it('opens the dedicated RU dialog, traps focus and returns to the trigger with Escape or Close', async () => {
+        const user = userEvent.setup();
+        render(<AccountOverviewV2 overview={overviewState()} analytics={{ loading: false, failed: false }} />);
+        const trigger = screen.getByRole('button', { name: 'View RU consumption details' });
+        await user.click(trigger);
+        const dialog = screen.getByRole('dialog', { name: 'Normalized RU Consumption' });
+        await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
+        expect(within(dialog).getByRole('heading', { name: 'Consumption over time' })).toBeVisible();
+        expect(within(dialog).getByRole('heading', { name: 'Highest-utilization ranges' })).toBeVisible();
+        const review = within(dialog).getByRole('button', { name: 'Review hot partitions' });
+        expect(review).toHaveTextContent('Review hot partitions');
+        expect(review).toHaveAccessibleName('Review hot partitions');
+        review.focus();
+        await user.tab();
+        expect(dialog.contains(document.activeElement)).toBe(true);
+        await user.keyboard('{Escape}');
+        await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+        expect(trigger).toHaveFocus();
+        await user.click(trigger);
+        await user.click(screen.getByRole('button', { name: 'Close' }));
+        await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+        expect(trigger).toHaveFocus();
+    });
+
+    it('opens hot-partition diagnostics in RU mode for the metric container and restores summary focus', async () => {
+        const user = userEvent.setup();
+        const overview = overviewState();
+        overview.selectedContainer = { databaseId: 'db', containerId: 'products' };
+        overview.partitionMode = 'storage';
+        render(<AccountOverviewV2 overview={overview} analytics={{ loading: false, failed: false }} />);
+        await user.click(screen.getByRole('button', { name: 'View RU consumption details' }));
+        await user.click(screen.getByRole('button', { name: 'Review hot partitions' }));
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        expect(overview.setPartitionMode).toHaveBeenCalledWith('ru');
+        expect(overview.handleSelectPartitionContainer).toHaveBeenCalledWith(overview.selectedContainer);
+        expect(screen.getByRole('heading', { name: 'Partitions' })).toHaveFocus();
+        await user.click(screen.getByRole('button', { name: 'Back to summary' }));
+        expect(screen.getByRole('main', { name: 'Account overview' })).toHaveFocus();
+    });
+
+    it('shows measured RU statistics, scoped guidance, ranked containers and no invented logical keys', () => {
+        const overview = overviewState();
+        overview.trends.normalizedRu = {
+            metric: 'normalizedRu',
+            available: true,
+            timeRange: '24H',
+            generatedAt: 86_400_000,
+            points: [
+                { timestamp: 0, value: 100 },
+                { timestamp: 300_000, value: 81 },
+            ],
+        };
+        overview.inventoryMetrics = {
+            available: true,
+            timeRange: '24H',
+            generatedAt: 86_400_000,
+            accountHealth: 'Healthy',
+            metrics: {
+                'db/events': {
+                    databaseId: 'db',
+                    containerId: 'events',
+                    peakRuPercent: 60,
+                    throttled: false,
+                    health: 'Healthy',
+                },
+                'db/products': {
+                    databaseId: 'db',
+                    containerId: 'products',
+                    peakRuPercent: 96,
+                    throttled: false,
+                    health: 'Healthy',
+                },
+            },
+        };
+        const analytics = {
+            loading: false,
+            failed: false,
+            data: {
+                timeRange: '24H' as const,
+                generatedAt: 86_400_000,
+                windowStart: 0,
+                windowEnd: 86_400_000,
+                throttling: { available: true, ratePercent: 1.8, totalRequests: 1000, throttledRequests: 18 },
+                consumedRu: { available: false, bucketSeconds: 300 },
+                resources: {},
+                resourcesComplete: true,
+            },
+        };
+        render(<AccountOverviewV2 overview={overview} analytics={analytics} />);
+        fireEvent.click(screen.getByRole('button', { name: 'View RU consumption details' }));
+        const dialog = screen.getByRole('dialog', { name: 'Normalized RU Consumption' });
+        expect(within(dialog).getByText('Current').parentElement).toHaveTextContent('81%');
+        expect(within(dialog).getByText('24-hour peak').parentElement).toHaveTextContent('100%');
+        expect(within(dialog).getByText('Time above 80% (estimated)').parentElement).toHaveTextContent('10m');
+        expect(within(dialog).getByText('429 throttling').parentElement).toHaveTextContent('1.8%');
+        const rows = within(within(dialog).getByRole('table', { name: 'Highest-utilization containers' })).getAllByRole(
+            'row',
+        );
+        expect(rows[1]).toHaveTextContent('db / products96%Unavailable');
+        expect(rows[2]).toHaveTextContent('db / events60%Unavailable');
+        expect(
+            within(dialog).getByText(/Logical partition-key values and per-key 429 rates are not available/),
+        ).toBeVisible();
+        expect(within(dialog).queryByText(/user_id=892/)).not.toBeInTheDocument();
+        expect(within(dialog).queryByText(/indicates saturation with headroom/)).not.toBeInTheDocument();
+    });
+
+    it('does not show old metric values after the scope changes', () => {
+        const overview = overviewState();
+        overview.selectedContainer = { databaseId: 'db', containerId: 'products' };
+        overview.trends.normalizedRu = {
+            metric: 'normalizedRu',
+            available: true,
+            timeRange: '24H',
+            generatedAt: 86_400_000,
+            points: [{ timestamp: 0, value: 81 }],
+        };
+        render(<AccountOverviewV2 overview={overview} analytics={{ loading: false, failed: false }} />);
+        fireEvent.click(screen.getByRole('button', { name: 'View RU consumption details' }));
+        const dialog = screen.getByRole('dialog', { name: 'Normalized RU Consumption' });
+        expect(within(dialog).getByText('Current').parentElement).not.toHaveTextContent('81%');
+        expect(within(dialog).getByText('Time above 80% (estimated)').parentElement).toHaveTextContent('Unavailable');
+        expect(
+            within(dialog).queryByRole('group', { name: 'Normalized RU consumption chart' }),
+        ).not.toBeInTheDocument();
     });
 });

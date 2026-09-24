@@ -91,14 +91,27 @@ describe('account overview actions', () => {
         }
     });
 
-    it('uses the account resource scope and the subscription cloud portal', () => {
-        const url = buildAccountCostsUrl(
-            'https://portal.azure.us/',
-            'tenant',
-            '/subscriptions/sub/resourceGroups/my rg',
-        );
-        expect(url).toBe(
-            'https://portal.azure.us/#@tenant/resource/subscriptions/sub/resourceGroups/my%20rg/costanalysis',
-        );
+    it.each(['https://portal.azure.com', 'https://portal.azure.us/', 'https://ms.portal.azure.com/'])(
+        'opens Cost Analysis with the encoded account scope on %s',
+        (portalUrl) => {
+            const url = buildAccountCostsUrl(
+                portalUrl,
+                'tenant',
+                '/subscriptions/sub/resourceGroups/my rg/providers/Microsoft.DocumentDb/databaseAccounts/account',
+            );
+            expect(url).toBe(
+                `${portalUrl.replace(/\/$/, '')}/#@tenant/view/Microsoft_Azure_CostManagement/CostAnalysis/scope/%2Fsubscriptions%2Fsub%2FresourceGroups%2Fmy%20rg%2Fproviders%2FMicrosoft.DocumentDb%2FdatabaseAccounts%2Faccount`,
+            );
+        },
+    );
+
+    it('encodes tenant and scope without allowing them to add route segments', () => {
+        const accountId =
+            '/subscriptions/sub/resourceGroups/rg %23/providers/Microsoft.DocumentDB/databaseAccounts/account';
+        const url = buildAccountCostsUrl('https://portal.azure.com/', 'tenant/name', accountId);
+        expect(url).toContain('/#@tenant%2Fname/view/Microsoft_Azure_CostManagement/CostAnalysis/scope/');
+        const scope = url.split('/scope/')[1];
+        expect(scope).not.toContain('/');
+        expect(decodeURIComponent(scope)).toBe(accountId);
     });
 });

@@ -8,6 +8,7 @@ import { ArrowClockwise16Regular, ChevronDown16Regular, ChevronUp16Regular } fro
 import * as l10n from '@vscode/l10n';
 import { useId, useState } from 'react';
 import { type ProvisioningState, type TimeRange } from '../../api/types';
+import { Pill, type PillTone } from '../AccountOverview/DashboardChrome';
 import { type AccountOverviewState } from '../AccountOverview/useAccountOverview';
 
 const useStyles = makeStyles({
@@ -50,6 +51,20 @@ const useStyles = makeStyles({
     },
     statusItems: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px 16px', flex: 1 },
     statusItem: { display: 'inline-flex', alignItems: 'center', gap: '16px' },
+    statusValue: { display: 'inline-flex', alignItems: 'center', gap: '6px' },
+    statusPill: {
+        backgroundColor: 'color-mix(in srgb, currentColor 15%, transparent)',
+        border: '1px solid var(--vscode-contrastBorder, transparent)',
+        fontWeight: 600,
+    },
+    statusDot: {
+        width: '6px',
+        height: '6px',
+        flexShrink: 0,
+        borderRadius: tokens.borderRadiusCircular,
+        backgroundColor: 'currentColor',
+        forcedColorAdjust: 'none',
+    },
     separator: { color: 'var(--vscode-panel-border)', flexShrink: 0 },
     details: {
         display: 'grid',
@@ -88,13 +103,13 @@ const useStyles = makeStyles({
 
 const cosmosIcon = new URL('../../../../resources/azurecosmosdb.png', import.meta.url).href;
 
-const provisioningLabels: Record<ProvisioningState, string> = {
-    Succeeded: l10n.t('Succeeded'),
-    Creating: l10n.t('Creating'),
-    Updating: l10n.t('Updating'),
-    Deleting: l10n.t('Deleting'),
-    Failed: l10n.t('Failed'),
-    Canceled: l10n.t('Canceled'),
+const statusPresentation: Record<ProvisioningState, { label: string; tone: PillTone }> = {
+    Succeeded: { label: l10n.t('Online'), tone: 'success' },
+    Creating: { label: l10n.t('Creating'), tone: 'warning' },
+    Updating: { label: l10n.t('Updating'), tone: 'warning' },
+    Deleting: { label: l10n.t('Deleting'), tone: 'warning' },
+    Failed: { label: l10n.t('Failed'), tone: 'danger' },
+    Canceled: { label: l10n.t('Canceled'), tone: 'warning' },
 };
 
 export function OverviewHeader({ overview: o }: { overview: AccountOverviewState }) {
@@ -107,6 +122,7 @@ export function OverviewHeader({ overview: o }: { overview: AccountOverviewState
         return null;
     }
     const unknown = l10n.t('Unknown');
+    const status = summary.provisioningState ? statusPresentation[summary.provisioningState] : undefined;
     const yesNo = (value: boolean) => (value ? l10n.t('Enabled') : l10n.t('Disabled'));
     const backupRetention =
         summary.backupRetentionHours === undefined
@@ -114,6 +130,12 @@ export function OverviewHeader({ overview: o }: { overview: AccountOverviewState
             : summary.backupRetentionHours % 24 === 0
               ? l10n.t('{days} days retention', { days: summary.backupRetentionHours / 24 })
               : l10n.t('{hours} hours retention', { hours: summary.backupRetentionHours });
+    const backupPolicy = backupRetention
+        ? l10n.t('{policy} ({retention})', {
+              policy: summary.backupPolicyType ?? unknown,
+              retention: backupRetention,
+          })
+        : (summary.backupPolicyType ?? unknown);
     const fields: [string, string][] = [
         [l10n.t('Resource group'), summary.resourceGroup],
         [l10n.t('URI'), summary.documentEndpoint],
@@ -123,40 +145,20 @@ export function OverviewHeader({ overview: o }: { overview: AccountOverviewState
         [l10n.t('Write locations'), summary.writeRegions.join(', ') || unknown],
         [
             l10n.t('Backup policy'),
-            backupRetention
-                ? l10n.t('{policy} ({retention})', {
-                      policy: summary.backupPolicyType ?? unknown,
-                      retention: backupRetention,
+            summary.backupPolicyType === 'Periodic' && summary.backupIntervalMinutes !== undefined
+                ? l10n.t('{policy}; backup every {minutes} minutes', {
+                      policy: backupPolicy,
+                      minutes: summary.backupIntervalMinutes,
                   })
-                : (summary.backupPolicyType ?? unknown),
+                : backupPolicy,
         ],
-        [l10n.t('Free tier'), yesNo(summary.freeTierEnabled)],
+        [l10n.t('Free tier'), summary.freeTierEnabled ? l10n.t('Enabled') : l10n.t('Opted out')],
     ];
     const additionalFields: [string, string][] = [
         [l10n.t('Consistency'), summary.consistencyLevel ?? unknown],
         [
-            l10n.t('Backup retention'),
-            summary.backupRetentionHours === undefined
-                ? (summary.continuousBackupTier ?? unknown)
-                : l10n.t('{hours} hours', { hours: summary.backupRetentionHours }),
-        ],
-        [
-            l10n.t('Backup interval'),
-            summary.backupIntervalMinutes === undefined
-                ? unknown
-                : l10n.t('{minutes} minutes', { minutes: summary.backupIntervalMinutes }),
-        ],
-        [
             l10n.t('Automatic failover'),
             summary.automaticFailoverEnabled === undefined ? unknown : yesNo(summary.automaticFailoverEnabled),
-        ],
-        [
-            l10n.t('Total throughput limit'),
-            summary.totalThroughputLimit === undefined
-                ? unknown
-                : summary.totalThroughputLimit === -1
-                  ? l10n.t('Unlimited')
-                  : `${summary.totalThroughputLimit.toLocaleString()} RU/s`,
         ],
     ];
     const databases = o.inventory?.databases ?? [...new Set(o.containers.map((c) => c.databaseId))];
@@ -243,11 +245,13 @@ export function OverviewHeader({ overview: o }: { overview: AccountOverviewState
                 <div className={styles.row}>
                     <div className={styles.statusItems}>
                         <span className={styles.statusItem}>
-                            {l10n.t('Provisioning: {state}', {
-                                state: summary.provisioningState
-                                    ? provisioningLabels[summary.provisioningState]
-                                    : unknown,
-                            })}
+                            <span className={styles.statusValue}>
+                                <span>{l10n.t('Status:')}</span>
+                                <Pill tone={status?.tone ?? 'neutral'} className={styles.statusPill}>
+                                    <span className={styles.statusDot} aria-hidden="true" />
+                                    {status?.label ?? unknown}
+                                </Pill>
+                            </span>
                             <span className={styles.separator} aria-hidden="true">
                                 |
                             </span>

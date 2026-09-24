@@ -69,6 +69,5 @@ export async function runAccountAction<T extends ActionNode>(
 }
 
 export function buildAccountCostsUrl(portalUrl: string, tenantId: string, accountId: string): string {
-    const resourcePath = accountId.split('/').map(encodeURIComponent).join('/');
-    return `${portalUrl.replace(/\/$/, '')}/#@${encodeURIComponent(tenantId)}/resource${resourcePath}/costanalysis`;
+    return `${portalUrl.replace(/\/$/, '')}/#@${encodeURIComponent(tenantId)}/view/Microsoft_Azure_CostManagement/CostAnalysis/scope/${encodeURIComponent(accountId)}`;
 }

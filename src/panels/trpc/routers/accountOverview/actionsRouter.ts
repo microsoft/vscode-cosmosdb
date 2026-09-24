@@ -18,6 +18,7 @@ import {
     buildAccountCostsUrl,
     runAccountAction,
 } from '../../../accountOverview/services/accountActions';
+import { openAccountJson } from '../../../accountOverview/services/accountJson';
 import { QueryEditorTab } from '../../../QueryEditorTab';
 import { type AccountOverviewRouterContext } from '../../appRouter';
 import { accountOverviewProcedure } from '../../trpc';
@@ -71,13 +72,7 @@ export const actionsProcedures = {
                         ),
                     ),
                 ),
-            openJson: async () => {
-                const document = await vscode.workspace.openTextDocument({
-                    language: 'json',
-                    content: JSON.stringify(metadata.databaseAccount, undefined, 2),
-                });
-                await vscode.window.showTextDocument(document);
-            },
+            openJson: async () => openAccountJson(metadata),
         });
     }),
 

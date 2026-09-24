@@ -24,20 +24,13 @@ import {
     rankResourceConsumers,
     rankResourcePeaks,
     summarizeMetric,
-    summarizeOverviewAnalytics,
     summarizePartition,
 } from './overviewMetricsModel';
-import { OverviewTrend } from './OverviewTrend';
+import { OverviewThroughput } from './OverviewThroughput';
 import { type OverviewAnalyticsState } from './useOverviewAnalytics';
 
 const useStyles = makeStyles({
     root: { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '22px', minWidth: 0 },
-    throughput: {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-        gap: '12px',
-        '@media (max-width: 760px)': { gridTemplateColumns: '1fr' },
-    },
     grid: {
         display: 'grid',
         gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
@@ -87,13 +80,6 @@ const useStyles = makeStyles({
         textAlign: 'left',
     },
     footer: { marginTop: 'auto', paddingTop: '6px', display: 'flex', flexWrap: 'wrap', gap: '8px' },
-    details: {
-        fontSize: '11px',
-        lineHeight: '1.5',
-        color: 'var(--vscode-descriptionForeground)',
-        '& > summary': { cursor: 'pointer', color: 'var(--vscode-textLink-foreground)' },
-        '& > p': { margin: '6px 0' },
-    },
     pairs: {
         display: 'grid',
         gridTemplateColumns: 'minmax(0, 1fr) auto',
@@ -103,11 +89,12 @@ const useStyles = makeStyles({
         '& dt': { color: 'var(--vscode-descriptionForeground)' },
         '& dd': { margin: 0, textAlign: 'right' },
     },
-    scale: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        fontSize: '10px',
+    details: {
+        fontSize: '11px',
+        lineHeight: '1.5',
         color: 'var(--vscode-descriptionForeground)',
+        '& > summary': { cursor: 'pointer', color: 'var(--vscode-textLink-foreground)' },
+        '& > p': { margin: '6px 0' },
     },
     tableFrame: { minWidth: 0, border: '1px solid var(--vscode-panel-border)', borderRadius: '8px', overflowX: 'auto' },
     table: {
@@ -158,16 +145,6 @@ export function OverviewMetrics({
         loading: overview.trendsLoading,
     };
     const metric = (key: Parameters<typeof summarizeMetric>[0]) => summarizeMetric(key, overview.trends[key], context);
-    const normalized = metric('normalizedRu');
-    const provisioned = overview.summary?.isServerless
-        ? {
-              ...metric('provisionedThroughput'),
-              state: 'unavailable' as const,
-              value: undefined,
-              detail: l10n.t('Serverless accounts do not have provisioned throughput.'),
-          }
-        : metric('provisionedThroughput');
-    const { throttling, consumed, window } = summarizeOverviewAnalytics(analytics, context);
     const latency = metric('serverLatency');
     const storage = metric('dataIndexUsage');
     const availability = metric('serviceAvailability');
@@ -195,12 +172,6 @@ export function OverviewMetrics({
             <summary>{label}</summary>
             {content}
         </details>
-    );
-    const statistic = (summary: MetricSummary) => (
-        <dl className={styles.statistic}>
-            <dt className={styles.label}>{summary.label}</dt>
-            <dd className={styles.value}>{formatSummaryValue(summary)}</dd>
-        </dl>
     );
     const explanation = (summary: MetricSummary) =>
         ready(summary) ? (
@@ -343,88 +314,7 @@ export function OverviewMetrics({
 
     return (
         <div className={styles.root}>
-            <section aria-labelledby={`${id}-throughput`}>
-                <div className={styles.heading}>
-                    <h2 id={`${id}-throughput`} className={styles.title}>
-                        {l10n.t('Throughput health')}
-                    </h2>
-                    {action(l10n.t('Inspect full metrics'), 'metrics')}
-                </div>
-                <p className={styles.subtitle}>
-                    {l10n.t('Saturation and rate limiting must be interpreted together.')} {scope} ·{' '}
-                    {overview.timeRange}
-                </p>
-                <div className={styles.throughput}>
-                    <article className={styles.card} aria-label={l10n.t('Normalized RU')}>
-                        {statistic(normalized)}
-                        <OverviewTrend
-                            metric="normalizedRu"
-                            series={overview.trends.normalizedRu}
-                            summary={normalized}
-                            timeRange={overview.timeRange}
-                        />
-                        <p className={styles.detail}>
-                            {l10n.t(
-                                'Maximum utilization across partition key ranges; not consumed RU or traffic share.',
-                            )}
-                        </p>
-                        {ready(normalized) && explanation(normalized)}
-                    </article>
-                    <article className={styles.card} aria-label={l10n.t('429 throttling rate')}>
-                        {statistic(throttling)}
-                        {ready(throttling) && (
-                            <>
-                                <OverviewBar value={throttling.value!} maximum={100} warning />
-                                <div className={styles.scale}>
-                                    <span>0%</span>
-                                    <span>100%</span>
-                                </div>
-                            </>
-                        )}
-                        <p className={styles.detail}>{throttling.detail}</p>
-                        {details(
-                            l10n.t('Measurement details'),
-                            <>
-                                <p>
-                                    {l10n.t(
-                                        'Window total of 429 requests divided by total requests; no requests means no measured rate.',
-                                    )}
-                                </p>
-                                {window && <p>{window}</p>}
-                            </>,
-                        )}
-                        <div className={styles.footer}>
-                            {action(l10n.t('Inspect requests'), 'metrics', 'totalRequests')}
-                        </div>
-                    </article>
-                    <article className={styles.card} aria-label={l10n.t('Provisioned vs consumed')}>
-                        <h3 className={styles.cardTitle}>{l10n.t('Provisioned vs consumed')}</h3>
-                        {statistic(consumed)}
-                        <dl className={styles.pairs}>
-                            <dt>{l10n.t('Reported provisioned maximum')}</dt>
-                            <dd>{formatSummaryValue(provisioned)}</dd>
-                            <dt>{l10n.t('Consumed RU in window')}</dt>
-                            <dd>{formatSummaryValue(metric('totalRequestUnits'))}</dd>
-                        </dl>
-                        {!ready(consumed) && <p className={styles.detail}>{consumed.detail}</p>}
-                        {!ready(provisioned) && <p className={styles.detail}>{provisioned.detail}</p>}
-                        {details(
-                            l10n.t('Measurement details'),
-                            <>
-                                <p>{consumed.detail}</p>
-                                <p>{provisioned.detail}</p>
-                                <p>
-                                    {l10n.t(
-                                        'Provisioned throughput is a reported maximum, not an autoscale ceiling or a sum of container allocations.',
-                                    )}
-                                </p>
-                                {window && <p>{window}</p>}
-                            </>,
-                        )}
-                        <div className={styles.footer}>{action(l10n.t('Review capacity'), 'inventory')}</div>
-                    </article>
-                </div>
-            </section>
+            <OverviewThroughput overview={overview} onInspect={onInspect} analytics={analytics} />
             <section aria-labelledby={`${id}-resources`}>
                 <div className={styles.heading}>
                     <div className={styles.headingTitle}>

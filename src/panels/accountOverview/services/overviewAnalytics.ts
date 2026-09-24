@@ -10,8 +10,10 @@ import { querySeries } from './ruTrends';
 import {
     classifyUnavailable,
     containerFilter,
+    effectiveInterval,
     escapeODataLiteral,
     isThrottledStatusCode,
+    MINUTE,
     RANGE_CONFIG,
     type TimeRange,
     type UnavailableReason,
@@ -47,6 +49,16 @@ export interface OverviewAnalyticsResult extends MetricScope {
     windowStart: number;
     windowEnd: number;
     throttling: ThrottlingAnalytics;
+    previousThrottling?: ThrottlingAnalytics;
+    previousWindowStart?: number;
+    previousWindowEnd?: number;
+    /** Latest complete bucket's reported maximum, not a sum of resource allocations or a window peak. */
+    autoscaleMaxThroughput?: {
+        available: boolean;
+        reason?: UnavailableReason;
+        value?: number;
+        timestamp?: number;
+    };
     consumedRu: ConsumedRuAnalytics;
     resources: Record<string, ResourceOverviewAnalytics>;
     /** False when a split query failed, lacked resource dimensions, or reached its series limit. */
@@ -121,6 +133,10 @@ export function unavailableOverviewAnalytics(
         windowStart: windowEnd - config.windowMs,
         windowEnd,
         throttling: { available: false, reason },
+        previousThrottling: { available: false, reason },
+        previousWindowStart: windowEnd - 2 * config.windowMs,
+        previousWindowEnd: windowEnd - config.windowMs,
+        autoscaleMaxThroughput: { available: false, reason },
         consumedRu: { available: false, reason, bucketSeconds: config.bucketMs / 1000 },
         resources: {},
         resourcesComplete: false,
@@ -150,7 +166,8 @@ function totalBuckets(series: readonly TimeSeriesElement[]): Map<number, number>
 
 /**
  * Opt-in analytics. Separate unsplit queries keep the scoped headline accurate even when a large inventory
- * reaches Azure Monitor's split-series limit. Every query uses the same closed-bucket window.
+ * reaches Azure Monitor's split-series limit. Previous throttling uses the adjacent equal-duration window;
+ * autoscale uses complete buckets within the current window at its supported granularity.
  */
 export async function getOverviewAnalytics(
     client: MonitorClient,
@@ -161,16 +178,28 @@ export async function getOverviewAnalytics(
     const result = unavailableOverviewAnalytics(scope, timeRange, 'noData');
     const config = RANGE_CONFIG[timeRange];
     const timespan = `${new Date(result.windowStart).toISOString()}/${new Date(result.windowEnd).toISOString()}`;
+    const previousWindowStart = result.windowStart - config.windowMs;
+    const previousWindowEnd = result.windowStart;
+    const autoscaleInterval = effectiveInterval(config.interval, 'PT5M');
+    const autoscaleBucketMs = Math.max(config.bucketMs, 5 * MINUTE);
+    const autoscaleWindowStart = Math.ceil(result.windowStart / autoscaleBucketMs) * autoscaleBucketMs;
+    const autoscaleWindowEnd = Math.floor(result.windowEnd / autoscaleBucketMs) * autoscaleBucketMs;
+    const autoscaleTimespan = `${new Date(autoscaleWindowStart).toISOString()}/${new Date(autoscaleWindowEnd).toISOString()}`;
     const filter = containerFilter(scope.databaseId, scope.containerId);
     const splitFilter = [
         `DatabaseName eq '${scope.databaseId ? escapeODataLiteral(scope.databaseId) : '*'}'`,
         `CollectionName eq '${scope.containerId ? escapeODataLiteral(scope.containerId) : '*'}'`,
     ].join(' and ');
-    const query = async (metricnames: string, metricFilter: string): Promise<TimeSeriesElement[]> => {
+    const query = async (
+        metricnames: string,
+        metricFilter: string,
+        windowStart = result.windowStart,
+        windowEnd = result.windowEnd,
+    ): Promise<TimeSeriesElement[]> => {
         const response = await client.metrics.list(resourceUri, {
             metricnames,
             aggregation: 'Total',
-            timespan,
+            timespan: `${new Date(windowStart).toISOString()}/${new Date(windowEnd).toISOString()}`,
             interval: config.interval,
             filter: metricFilter,
             top: SPLIT_SERIES_LIMIT,
@@ -181,17 +210,62 @@ export async function getOverviewAnalytics(
                 ...series,
                 data: series.data?.filter((point) => {
                     const timestamp = new Date(point.timeStamp).getTime();
-                    return timestamp >= result.windowStart && timestamp < result.windowEnd;
+                    return timestamp >= windowStart && timestamp < windowEnd;
                 }),
             }));
     };
 
-    const [requests, consumed, resourceRequests, resourceConsumed] = await Promise.allSettled([
-        query('TotalRequests', filter ? `${filter} and StatusCode eq '*'` : `StatusCode eq '*'`),
-        querySeries(client, resourceUri, 'TotalRequestUnits', 'Total', timespan, config.interval, filter),
-        query('TotalRequests', `${splitFilter} and StatusCode eq '*'`),
-        query('TotalRequestUnits', splitFilter),
-    ]);
+    const statusFilter = filter ? `${filter} and StatusCode eq '*'` : `StatusCode eq '*'`;
+    const [requests, consumed, resourceRequests, resourceConsumed, previousRequests, autoscale] =
+        await Promise.allSettled([
+            query('TotalRequests', statusFilter),
+            querySeries(client, resourceUri, 'TotalRequestUnits', 'Total', timespan, config.interval, filter),
+            query('TotalRequests', `${splitFilter} and StatusCode eq '*'`),
+            query('TotalRequestUnits', splitFilter),
+            query('TotalRequests', statusFilter, previousWindowStart, previousWindowEnd),
+            querySeries(
+                client,
+                resourceUri,
+                'AutoscaleMaxThroughput',
+                'Maximum',
+                autoscaleTimespan,
+                autoscaleInterval,
+                filter,
+            ),
+        ]);
+
+    result.previousThrottling =
+        previousRequests.status === 'fulfilled' && previousRequests.value.length < SPLIT_SERIES_LIMIT
+            ? aggregateThrottling(
+                  previousRequests.value.map((series) => ({
+                      ...series,
+                      data: series.data?.filter(
+                          (point) => new Date(point.timeStamp).getTime() + config.bucketMs <= previousWindowEnd,
+                      ),
+                  })),
+              )
+            : {
+                  available: false,
+                  reason:
+                      previousRequests.status === 'rejected' ? classifyUnavailable(previousRequests.reason) : 'noData',
+              };
+    if (autoscale.status === 'fulfilled') {
+        for (const [timestamp, value] of autoscale.value) {
+            if (
+                Number.isFinite(timestamp) &&
+                timestamp >= autoscaleWindowStart &&
+                timestamp + autoscaleBucketMs <= autoscaleWindowEnd &&
+                Number.isFinite(value) &&
+                value >= 0 &&
+                (result.autoscaleMaxThroughput?.timestamp === undefined ||
+                    timestamp > result.autoscaleMaxThroughput.timestamp)
+            ) {
+                result.autoscaleMaxThroughput = { available: true, value, timestamp };
+            }
+        }
+    } else {
+        result.autoscaleMaxThroughput = { available: false, reason: classifyUnavailable(autoscale.reason) };
+    }
 
     result.throttling =
         requests.status === 'fulfilled' && requests.value.length < SPLIT_SERIES_LIMIT

@@ -121,6 +121,7 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
                     options: { ...DEFAULT_RESULT_VIEW_METADATA },
                     expectedConnection: connection,
                     preserveExistingSessions: true,
+                    isLlmTool: true,
                 }),
             );
             if (!session?.executionId) return;

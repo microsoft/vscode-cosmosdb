@@ -9,26 +9,7 @@ import * as l10n from '@vscode/l10n';
 import { useRef, useState } from 'react';
 import { type HealthState, type ProvisioningState } from '../../api/types';
 import { Pill, type PillTone } from './DashboardChrome';
-
-export type AccountSummary = {
-    accountName: string;
-    resourceGroup: string;
-    subscriptionId: string;
-    subscriptionName: string;
-    apiType: string;
-    documentEndpoint: string;
-    isServerless: boolean;
-    provisioningState?: ProvisioningState;
-    consistencyLevel?: string;
-    freeTierEnabled: boolean;
-    backupPolicyType?: string;
-    totalThroughputLimit?: number;
-    writeRegions: string[];
-    readRegions: string[];
-    writeRegionCount: number;
-    readRegionCount: number;
-    lastRefreshedAt: number;
-};
+import { type AccountSummary } from './types';
 
 const useStyles = makeStyles({
     root: {

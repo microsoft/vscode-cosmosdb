@@ -157,6 +157,7 @@ describe('getPartitionHealth', () => {
         const client = mockClient({});
         const result = await getPartitionHealth(client, '/sub/acct', 'ru', '7D', 'db', 'c1', partitionThresholds);
         expect(result.available).toBe(false);
+        expect(result.timeRange).toBe('7D');
         expect(result.tiles).toEqual([]);
     });
 
@@ -187,6 +188,7 @@ describe('getPartitionHealth', () => {
         const result = await getPartitionHealth(client, '/sub/acct', 'ru', '7D', 'db', 'c1', partitionThresholds);
         expect(result.available).toBe(true);
         expect(result.mode).toBe('ru');
+        expect(result.timeRange).toBe('7D');
         expect(result.partitionCount).toBe(3);
         expect(result.tiles[0].partitionId).toBe('0');
         expect(result.tiles[0].sharePercent).toBeCloseTo(95);
@@ -250,6 +252,7 @@ describe('getPartitionHealth', () => {
         const result = await getPartitionHealth(client, '/sub/acct', 'storage', '24H', 'db', 'c1', partitionThresholds);
         expect(result.available).toBe(true);
         expect(result.mode).toBe('storage');
+        expect(result.timeRange).toBe('24H');
         // Latest sizes 50 / 50 → even 50% shares; a balanced split is never flagged as skewed.
         expect(result.topPartitionShare).toBeCloseTo(50);
         expect(result.tiles.every((t) => !t.hot)).toBe(true);

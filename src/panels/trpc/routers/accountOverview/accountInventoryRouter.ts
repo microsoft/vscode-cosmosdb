@@ -6,6 +6,7 @@
 import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
 import * as l10n from '@vscode/l10n';
 import { API, tryGetExperience } from '../../../../AzureDBExperiences';
+import { getAccountConfiguration } from '../../../accountOverview/services/accountConfiguration';
 import { getInventoryResult, type InventoryContainerRow } from '../../../accountOverview/services/inventory';
 import { type ProvisioningState } from '../../../accountOverview/services/shared';
 import { type AccountOverviewRouterContext } from '../../appRouter';
@@ -37,6 +38,7 @@ export const accountInventoryProcedures = {
             consistencyLevel: account.consistencyPolicy?.defaultConsistencyLevel,
             freeTierEnabled: account.enableFreeTier ?? false,
             backupPolicyType: account.backupPolicy?.type,
+            ...getAccountConfiguration(account),
             // `-1` means "no cap"; `undefined` means the property was absent on this api-version (preview-only field).
             totalThroughputLimit: account.capacity?.totalThroughputLimit,
             writeRegions: (account.writeLocations ?? []).map((l) => l.locationName ?? '').filter(Boolean),
@@ -55,7 +57,12 @@ export const accountInventoryProcedures = {
         // (see `NoSqlAccountResourceItem`); other APIs get an explicit
         // "not supported" empty-state on the webview side instead of rows.
         if (experience && experience.api !== API.Core) {
-            return { supported: false as const, available: true as const, rows: [] as InventoryContainerRow[] };
+            return {
+                supported: false as const,
+                available: true as const,
+                rows: [] as InventoryContainerRow[],
+                databases: [] as string[],
+            };
         }
 
         const client = await metadata.getClient();
@@ -67,6 +74,7 @@ export const accountInventoryProcedures = {
                 available: false as const,
                 reason: 'rbac' as const,
                 rows: [] as InventoryContainerRow[],
+                databases: [] as string[],
             };
         }
 

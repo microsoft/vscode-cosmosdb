@@ -120,6 +120,7 @@ export const MetricsSection = ({
     containers,
     selectedContainer,
     onSelectContainer,
+    initialMetric = 'normalizedRu',
 }: {
     order: readonly MetricKey[];
     seriesByMetric: Partial<Record<MetricKey, MetricSeriesResult>>;
@@ -129,9 +130,10 @@ export const MetricsSection = ({
     containers: ContainerRef[];
     selectedContainer?: MetricScope;
     onSelectContainer: (scope?: MetricScope) => void;
+    initialMetric?: MetricKey;
 }) => {
     const styles = useStyles();
-    const [selectedMetric, setSelectedMetric] = useState<MetricKey>('normalizedRu');
+    const [selectedMetric, setSelectedMetric] = useState<MetricKey>(initialMetric);
 
     const activeDescriptor = METRIC_VIEWS[selectedMetric];
     const activeSeries = seriesByMetric[selectedMetric];

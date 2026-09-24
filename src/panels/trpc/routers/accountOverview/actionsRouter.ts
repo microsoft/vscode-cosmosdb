@@ -9,7 +9,16 @@ import * as vscode from 'vscode';
 import { z } from 'zod';
 import { getCosmosDBCredentials } from '../../../../cosmosdb/CosmosDBCredential';
 import { type NoSqlQueryConnection } from '../../../../cosmosdb/NoSqlQueryConnection';
+import { ext } from '../../../../extensionVariables';
+import { CosmosDBAccountResourceItem } from '../../../../tree/cosmosdb/CosmosDBAccountResourceItem';
+import { CosmosDBDatabaseResourceItem } from '../../../../tree/cosmosdb/CosmosDBDatabaseResourceItem';
 import { revealAzureResourceInExplorer } from '../../../../vscodeUriHandler';
+import {
+    accountActionInput,
+    buildAccountCostsUrl,
+    runAccountAction,
+} from '../../../accountOverview/services/accountActions';
+import { openAccountJson } from '../../../accountOverview/services/accountJson';
 import { QueryEditorTab } from '../../../QueryEditorTab';
 import { type AccountOverviewRouterContext } from '../../appRouter';
 import { accountOverviewProcedure } from '../../trpc';
@@ -21,6 +30,52 @@ import { accountOverviewProcedure } from '../../trpc';
 // services and carry no dashboard-metrics logic.
 
 export const actionsProcedures = {
+    runAccountAction: accountOverviewProcedure.input(accountActionInput).mutation(async ({ ctx, input }) => {
+        const { metadata } = ctx;
+        for (const value of [
+            metadata.accountId,
+            metadata.accountName,
+            metadata.resourceGroup,
+            metadata.documentEndpoint,
+            metadata.subscription.subscriptionId,
+            metadata.subscription.tenantId,
+            input.action === 'createContainer' ? input.databaseId : undefined,
+        ]) {
+            if (value) {
+                ctx.actionContext?.valuesToMask.push(value);
+            }
+        }
+        await runAccountAction<CosmosDBAccountResourceItem | CosmosDBDatabaseResourceItem>(input, {
+            accountId: metadata.accountId,
+            resolveAccount: async () => {
+                const node = await ext.cosmosDBBranchDataProvider.findNodeById(metadata.accountId);
+                return node instanceof CosmosDBAccountResourceItem ? node : undefined;
+            },
+            resolveDatabase: async (account, databaseId) => {
+                if (!(account instanceof CosmosDBAccountResourceItem)) {
+                    return undefined;
+                }
+                const children = await account.getChildren();
+                return children.find(
+                    (node): node is CosmosDBDatabaseResourceItem =>
+                        node instanceof CosmosDBDatabaseResourceItem && node.model.database.id === databaseId,
+                );
+            },
+            executeCommand: async (command, node) => vscode.commands.executeCommand(command, node),
+            openCosts: async () =>
+                vscode.env.openExternal(
+                    vscode.Uri.parse(
+                        buildAccountCostsUrl(
+                            metadata.subscription.environment.portalUrl,
+                            metadata.subscription.tenantId,
+                            metadata.accountId,
+                        ),
+                    ),
+                ),
+            openJson: async () => openAccountJson(metadata),
+        });
+    }),
+
     /**
      * Opens an external URL (e.g. an Azure portal deep link from the Active
      * Alerts aside or an Advisor "Learn more" link) in the user's browser.

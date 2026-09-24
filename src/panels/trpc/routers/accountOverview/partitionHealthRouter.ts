@@ -49,6 +49,7 @@ export const partitionHealthProcedures = {
             }): Promise<PartitionHealthResult> => {
                 const { metadata } = ctx;
                 const unavailable = (reason: UnavailableReason): PartitionHealthResult => ({
+                    timeRange: input.timeRange,
                     available: false,
                     reason,
                     mode: input.mode,

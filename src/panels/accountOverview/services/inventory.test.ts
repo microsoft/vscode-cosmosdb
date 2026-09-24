@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
-import { describe, expect, it } from 'vitest';
-import { getInventoryResult } from './inventory';
+import { describe, expect, it, vi } from 'vitest';
+import { getInventoryResult, getSqlInventory } from './inventory';
 
 /** A CosmosDBManagementClient whose first `sqlResources` read rejects with the given error. */
 function throwingCosmosClient(error: unknown): CosmosDBManagementClient {
@@ -36,6 +36,30 @@ describe('getInventoryResult', () => {
         expect(result.available).toBe(true);
         expect(result.reason).toBeUndefined();
         expect(result.rows).toEqual([]);
+        expect(result.databases).toEqual([]);
+    });
+
+    it('returns empty databases from the existing enumeration without another ARM walk', async () => {
+        const listSqlDatabases = vi.fn(async function* () {
+            yield { resource: { id: 'empty-database' } };
+            yield { resource: { id: 'populated-database' } };
+        });
+        const listSqlContainers = vi.fn(async function* (_rg: string, _account: string, database: string) {
+            if (database === 'populated-database') {
+                yield { resource: { id: 'container' } };
+            }
+        });
+        const client = {
+            sqlResources: { listSqlDatabases, listSqlContainers },
+        } as unknown as CosmosDBManagementClient;
+
+        const result = await getInventoryResult(client, 'rg', 'acct', true);
+        expect(result.databases).toEqual(['empty-database', 'populated-database']);
+        expect(result.rows.map((row) => row.databaseId)).toEqual(['populated-database']);
+        expect(listSqlDatabases).toHaveBeenCalledOnce();
+        expect(listSqlContainers).toHaveBeenCalledTimes(2);
+
+        expect(await getSqlInventory(client, 'rg', 'acct', true)).toEqual(result.rows);
     });
 
     it('degrades a 403 to an rbac empty-state instead of throwing', async () => {
@@ -43,6 +67,7 @@ describe('getInventoryResult', () => {
         expect(result.available).toBe(false);
         expect(result.reason).toBe('rbac');
         expect(result.rows).toEqual([]);
+        expect(result.databases).toEqual([]);
     });
 
     it('degrades any other ARM failure to a noData empty-state', async () => {
@@ -50,5 +75,6 @@ describe('getInventoryResult', () => {
         expect(result.available).toBe(false);
         expect(result.reason).toBe('noData');
         expect(result.rows).toEqual([]);
+        expect(result.databases).toEqual([]);
     });
 });

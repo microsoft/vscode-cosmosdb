@@ -3,10 +3,16 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
 import { z } from 'zod';
+import { API, tryGetExperience } from '../../../../AzureDBExperiences';
 import { METRIC_KEYS, type MetricKey, type MetricSeriesResult } from '../../../accountOverview/metrics/contracts';
 import { fetchMetricSeries } from '../../../accountOverview/metrics/hostFetchers';
 import { type TimeRange } from '../../../accountOverview/services';
+import {
+    getOverviewAnalytics,
+    unavailableOverviewAnalytics,
+} from '../../../accountOverview/services/overviewAnalytics';
 import { type AccountOverviewRouterContext } from '../../appRouter';
 import { accountOverviewProcedure } from '../../trpc';
 
@@ -22,6 +28,33 @@ import { accountOverviewProcedure } from '../../trpc';
 const METRIC_KEY_ENUM = z.enum(METRIC_KEYS as [MetricKey, ...MetricKey[]]);
 
 export const metricSeriesProcedures = {
+    getOverviewAnalytics: accountOverviewProcedure
+        .input(
+            z
+                .object({
+                    timeRange: z.enum(['1H', '24H', '7D']),
+                    databaseId: z.string().min(1).optional(),
+                    containerId: z.string().min(1).optional(),
+                })
+                .refine((input) => !input.containerId || !!input.databaseId),
+        )
+        .query(async ({ ctx, input }) => {
+            const scope = { databaseId: input.databaseId, containerId: input.containerId };
+            for (const value of [ctx.metadata.accountId, scope.databaseId, scope.containerId]) {
+                if (value) {
+                    ctx.actionContext?.valuesToMask.push(value);
+                }
+            }
+            const experience = tryGetExperience(ctx.metadata.databaseAccount as DatabaseAccountGetResults);
+            if (experience && experience.api !== API.Core) {
+                return unavailableOverviewAnalytics(scope, input.timeRange, 'unsupported');
+            }
+            const client = await ctx.metadata.getMonitorClient();
+            return client
+                ? getOverviewAnalytics(client, ctx.metadata.accountId, scope, input.timeRange)
+                : unavailableOverviewAnalytics(scope, input.timeRange, 'noData');
+        }),
+
     getMetricSeries: accountOverviewProcedure
         .input(
             z.object({

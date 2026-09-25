@@ -237,6 +237,39 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(client.dataModeling.requestRecommendation.mutate).not.toHaveBeenCalled();
     });
 
+    it('bolds only the selected step while preserving green completion checks when revisiting a step', async () => {
+        const user = userEvent.setup();
+        client.dataModeling.loadState.query.mockResolvedValue(restored(4));
+        render(<DataModelingWizard />);
+        await continueExisting();
+        const navigation = screen.getByRole('navigation', { name: 'Data modeling steps' });
+        const result = within(navigation).getByRole('button', { name: 'Result' });
+        const review = within(navigation).getByRole('button', { name: 'Review' });
+        // jsdom does not resolve selector specificity like a browser; inspect the scoped override directly.
+        const selectedRule = Array.from(document.styleSheets)
+            .flatMap((sheet) => Array.from(sheet.cssRules))
+            .find(
+                (rule): rule is CSSStyleRule =>
+                    rule instanceof CSSStyleRule &&
+                    rule.selectorText.endsWith('[aria-current="step"]') &&
+                    rule.style.getPropertyValue('font-weight') === tokens.fontWeightBold,
+            );
+        expect(selectedRule).toBeDefined();
+        expect(result.matches(selectedRule!.selectorText)).toBe(true);
+        expect(review.matches(selectedRule!.selectorText)).toBe(false);
+        expect(review.querySelector('svg')).toHaveStyle({ color: tokens.colorPaletteGreenForeground1 });
+
+        await user.click(review);
+
+        expect(navigation.querySelectorAll('[aria-current="step"]')).toHaveLength(1);
+        expect(review).toHaveAttribute('aria-current', 'step');
+        expect(review.matches(selectedRule!.selectorText)).toBe(true);
+        expect(result).not.toHaveAttribute('aria-current');
+        expect(result.matches(selectedRule!.selectorText)).toBe(false);
+        expect(review.querySelector('svg')).toHaveStyle({ color: tokens.colorPaletteGreenForeground1 });
+        expect(result.querySelector('svg')).toHaveStyle({ color: tokens.colorPaletteGreenForeground1 });
+    });
+
     it('deploys directly from the final step without generating or submitting Bicep or saving deployment state', async () => {
         client.dataModeling.loadState.query.mockResolvedValue(restored(4));
         render(<DataModelingWizard />);

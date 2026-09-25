@@ -92,6 +92,12 @@ const useStyles = makeStyles({
         minWidth: 0,
         // Temporary package DOM override until Wizard exposes a content-width prop.
         '& [data-header-behavior] > div': { maxWidth: 'none' },
+        '& [aria-current="step"]': {
+            fontWeight: tokens.fontWeightBold,
+        },
+        '& [aria-current="step"] .fui-Text': {
+            fontWeight: 'inherit',
+        },
     },
     // The footer's contentEnd is a single slot, so give its buttons and the link their own gap.
     endGroup: { display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS },

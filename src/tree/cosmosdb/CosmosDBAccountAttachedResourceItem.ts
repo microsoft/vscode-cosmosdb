@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { RestError, type CosmosClient } from '@azure/cosmos';
+import { type CosmosClient } from '@azure/cosmos';
 import { createGenericElement } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
@@ -143,21 +143,6 @@ export abstract class CosmosDBAccountAttachedResourceItem
                         ext.outputChannel.error(e);
                         ext.outputChannel.show();
                     }
-                }
-                if (this.account.isEmulator && e instanceof RestError && e.code === 'DEPTH_ZERO_SELF_SIGNED_CERT') {
-                    const message = l10n.t(
-                        "The Cosmos DB emulator is using a self-signed certificate. To connect to the emulator, you must import the emulator's TLS/SSL certificate.", // or disable the 'http.proxyStrictSSL' setting but we don't recommend this for security reasons.
-                    );
-                    const readMoreItem = l10n.t('Learn more');
-                    void vscode.window.showErrorMessage(message, readMoreItem).then((item) => {
-                        if (item === readMoreItem) {
-                            void vscode.env.openExternal(
-                                vscode.Uri.parse(
-                                    'https://learn.microsoft.com/azure/cosmos-db/how-to-develop-emulator?tabs=docker-linux%2Ccsharp&pivots=api-nosql#import-the-emulators-tlsssl-certificate',
-                                ),
-                            );
-                        }
-                    });
                 }
             }
             throw e; // rethrowing tells the resources extension to show the exception message in the tree

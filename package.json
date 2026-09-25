@@ -492,6 +492,11 @@
       },
       {
         "category": "Cosmos DB",
+        "command": "cosmosDB.copyTreeError",
+        "title": "%cosmosdb.command.error.copy%"
+      },
+      {
+        "category": "Cosmos DB",
         "command": "cosmosDB.deleteAccount",
         "title": "%cosmosdb.command.account.delete%"
       },
@@ -714,6 +719,11 @@
       ],
       "view/item/context": [
         {
+          "command": "cosmosDB.copyTreeError",
+          "when": "view =~ /azure(ResourceGroups|FocusView|Workspace)|vscode-fabric.view/ && viewItem =~ /cosmosDB[.]/i && viewItem =~ /item[.]error(?![a-z.\\/])/i",
+          "group": "2@1"
+        },
+        {
           "command": "azureDatabases.createServer",
           "when": "view == azureResourceGroups && viewItem =~ /(AzureCosmosDb)/i && viewItem =~ /azureResourceTypeGroup/i",
           "group": "1@1"
@@ -927,6 +937,10 @@
         }
       ],
       "commandPalette": [
+        {
+          "command": "cosmosDB.copyTreeError",
+          "when": "never"
+        },
         {
           "command": "cosmosDB.migration.open",
           "when": "cosmosDB.migration.enabled"

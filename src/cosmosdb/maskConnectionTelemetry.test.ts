@@ -19,10 +19,10 @@ const connection: NoSqlQueryConnection = {
 };
 
 describe('maskConnectionTelemetry', () => {
-    it('registers every credential value without changing telemetry or error handling', () => {
+    it('masks keys and client IDs while preserving tenant OII and error handling', () => {
         const context = {
             valuesToMask: ['existing-mask'],
-            telemetry: { properties: { sessionId: 'random-session' }, measurements: {} },
+            telemetry: { properties: { sessionId: 'random-session', tenantId: 'first-tenant' }, measurements: {} },
             errorHandling: { rethrow: true, suppressDisplay: false, suppressReportIssue: false },
         };
         const original = structuredClone(context);
@@ -44,10 +44,8 @@ describe('maskConnectionTelemetry', () => {
             valuesToMask: [
                 'existing-mask',
                 'first-key',
-                'first-tenant',
                 'first-client',
                 'second-key',
-                'second-tenant',
                 'second-client',
                 connection.endpoint,
                 connection.databaseId,
@@ -87,6 +85,6 @@ describe('maskConnectionTelemetry', () => {
             ],
         });
 
-        expect(context.valuesToMask).toEqual([' key ', ' tenant ', ' client ', ' container ']);
+        expect(context.valuesToMask).toEqual([' key ', ' client ', ' container ']);
     });
 });

@@ -55,7 +55,10 @@ Rules:
 - Use **exactly** these key names. Logging the same value under any other key (`subId`, `accountId`, `armId`, `cosmosAccount`, …) bypasses the special handling and counts as PII.
 - `resourceId` must be wrapped in `new vscode.TelemetryTrustedValue(...)`.
 - Do **not** decompose the resource id and emit its parts (`resourceGroup`, `databaseName`, `containerName`, …) under separate properties — only the four keys above are allowed; everything else is PII.
-- Still push these values to `context.valuesToMask` so they are redacted from any error messages emitted alongside the event.
+- `tenantId` is allowed OII, not personal data. Do not remove its predefined telemetry property or explicitly add tenant IDs
+  to `context.valuesToMask`. The library's built-in error sanitization may still redact GUIDs.
+- Still push the other listed values to `context.valuesToMask` so they are redacted from error messages emitted alongside
+  the event.
 
 ### Safe alternatives when you need to correlate or categorize
 
@@ -91,8 +94,9 @@ Masks belong to the action context on which they are registered. Nested telemetr
 must register their own masks before operations that can fail; caller or webview masks are not automatically inherited.
 
 For NoSQL connections, reuse `maskConnectionTelemetry` to register connection values and every configured credential's
-account key, Entra tenant ID, or managed-identity client ID, including fallback credentials. Add operation-specific masks
-(such as query text) separately. Explicit identifier masks avoid relying solely on the sanitizer's GUID detection.
+account key or managed-identity client ID, including fallback credentials. Entra tenant IDs are allowed OII and are not
+registered as masks. Add operation-specific masks (such as query text) separately. Explicit client-ID masks avoid relying
+solely on the sanitizer's GUID detection.
 
 Use it as a **safety net** for sensitive values that your code touches and might end up in a thrown error or log line you don't fully control:
 
@@ -112,7 +116,7 @@ telemetryContext.addMaskedValue([endpoint, databaseId, containerId]);
 
 - **Always** push a value to `valuesToMask` as soon as you obtain it if it could end up in an error path. This includes:
     - Strict secrets that must never appear in telemetry: connection strings, keys, tokens, query text, document contents, partition keys, user-entered names (database, container, resource).
-    - The OII identifiers (`subscriptionId`, `tenantId`, `resourceId`, `accountName`) — even though they are emitted as-is under their predefined keys, they should still be masked from error messages.
+    - The OII identifiers `subscriptionId`, `resourceId`, and `accountName` — even though they are emitted as-is under their predefined keys, they should still be masked from error messages. Tenant IDs are exempt from explicit masking.
 - This is **defense in depth**, not a license to put a strict secret into telemetry properties.
   Never do `properties.connectionString = cs` and rely on masking; emit only privacy-safe values by construction.
 - Push **non-empty** strings only. Empty/whitespace values match everything and corrupt logs (the central `Telemetry.ts` filter already drops falsy values; do not bypass it).
@@ -177,5 +181,5 @@ When reviewing a diff that touches telemetry, confirm each item:
 - [ ] Property/measurement keys use existing `camelCase` names where the meaning matches an existing key.
 - [ ] Best-effort sub-events set `suppressDisplay = true` and `rethrow = false`.
 - [ ] Errors are categorized via an enum, not raw messages.
-- [ ] Any sensitive value the action touches (connection strings, keys, tokens, OII identifiers, resource/database/container names, endpoints, user-entered names, query text, partition keys) is pushed to `context.valuesToMask` as soon as it is obtained.
+- [ ] Any sensitive value the action touches (connection strings, keys, tokens, OII identifiers other than tenant IDs, resource/database/container names, endpoints, user-entered names, query text, partition keys) is pushed to `context.valuesToMask` as soon as it is obtained.
 - [ ] JSDoc on any new `report*` / `track*` helper explicitly states "no file contents, paths, or names are emitted".

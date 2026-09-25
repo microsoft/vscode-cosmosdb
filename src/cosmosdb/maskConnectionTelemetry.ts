@@ -8,7 +8,7 @@ import { AuthenticationMethod } from './AuthenticationMethod';
 import { type NoSqlQueryConnection } from './NoSqlQueryConnection';
 
 /**
- * Register connection values and all credential keys/identifiers for masking on this action.
+ * Register connection values, account keys, and managed-identity client IDs for masking on this action.
  * No file contents, paths, or names are emitted.
  */
 export function maskConnectionTelemetry(
@@ -20,7 +20,7 @@ export function maskConnectionTelemetry(
             case AuthenticationMethod.accountKey:
                 return credential.key;
             case AuthenticationMethod.entraId:
-                return credential.tenantId;
+                return undefined;
             case AuthenticationMethod.managedIdentity:
                 return credential.clientId;
         }

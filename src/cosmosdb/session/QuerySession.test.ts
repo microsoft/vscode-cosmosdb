@@ -69,8 +69,8 @@ const credentialCases: { name: string; credentials: CosmosDBCredential[]; masks:
     },
     {
         name: 'Entra ID',
-        credentials: [{ type: AuthenticationMethod.entraId, tenantId: 'private-tenant' }],
-        masks: ['private-tenant'],
+        credentials: [{ type: AuthenticationMethod.entraId, tenantId: 'organization-tenant' }],
+        masks: [],
     },
     {
         name: 'managed identity',
@@ -80,12 +80,12 @@ const credentialCases: { name: string; credentials: CosmosDBCredential[]; masks:
     {
         name: 'multiple credentials',
         credentials: [
-            { type: AuthenticationMethod.entraId, tenantId: 'private-tenant' },
+            { type: AuthenticationMethod.entraId, tenantId: 'organization-tenant' },
             { type: AuthenticationMethod.managedIdentity, clientId: 'private-client' },
             { type: AuthenticationMethod.entraId, tenantId: undefined },
             { type: AuthenticationMethod.managedIdentity, clientId: ' ' },
         ],
-        masks: ['private-tenant', 'private-client'],
+        masks: ['private-client'],
     },
 ];
 
@@ -106,7 +106,7 @@ describe('QuerySession telemetry privacy', () => {
     });
 
     it.each(credentialCases)(
-        'masks $name across pagination while retaining random session correlation',
+        'registers connection masks for $name across pagination while retaining random session correlation',
         async ({ credentials, masks }) => {
             const sessionConnection = { ...connection, credentials };
             const session = new QuerySession(sessionConnection, query, { countPerPage: 10 });
@@ -136,8 +136,8 @@ describe('QuerySession telemetry privacy', () => {
         },
     );
 
-    it.each(credentialCases.filter(({ masks }) => masks.length > 0))(
-        'registers $name masks before client creation can fail',
+    it.each(credentialCases.filter(({ credentials }) => credentials.length > 0))(
+        'registers connection masks for $name before client creation can fail',
         async ({ credentials, masks }) => {
             const session = new QuerySession({ ...connection, credentials }, query, { countPerPage: 10 });
             const error = new Error(`Authentication failed: ${masks.join(', ')}`);

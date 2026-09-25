@@ -36,7 +36,7 @@ vi.mock('@microsoft/vscode-azext-utils', () => ({
 }));
 vi.mock('../../extensionVariables', () => ({
     ext: {
-        settingsKeys: { vsCode: { proxyStrictSSL: 'http.proxyStrictSSL' }, enableEndpointDiscovery: 'discovery' },
+        settingsKeys: { enableEndpointDiscovery: 'discovery' },
         outputChannel: { error: vi.fn() },
     },
 }));

@@ -10,13 +10,14 @@ import { ensureE2eIsolationContext } from './test/e2e/helpers/e2eIsolation';
 const isolation = ensureE2eIsolationContext();
 
 /**
- * Playwright config for **webview-only** e2e tests.
+ * Playwright config for webview e2e tests and isolated proxy/TLS tests.
  *
  * Scope: We launch a real VS Code (downloaded by `@vscode/test-electron`) via
  * Playwright's Electron API and drive only the webview iframes inside it. We
  * do **not** assert against the VS Code shell (tree view, status bar, etc.) —
  * that's the job of the Extension-Host integration tests under
  * [`test/`](./test/) run via `npm run test`.
+ * The proxy spec reuses the downloaded executable with separate test profiles, without the webview fixtures.
  *
  * Why a real VS Code instead of Chromium?
  *   - Real `acquireVsCodeApi()`, real CSP, real `--vscode-*` CSS variables,

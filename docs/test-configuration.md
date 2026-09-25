@@ -164,7 +164,7 @@ The script:
 ### Testing proxy routing locally
 
 Prerequisites: the project's npm dependencies and **OpenSSL** on `PATH`. No Azure account or Docker emulator
-is required.
+is required. The VS Code runtime must support Node's `tls.setDefaultCACertificates` API.
 
 ```bash
 npm run test:proxy
@@ -177,62 +177,16 @@ To use an installed or cached editor instead:
 npm run test:proxy -- "/absolute/path/to/editor-executable"
 ```
 
-This diagnostic harness bundles the installed Cosmos SDK and the source HTTP adapter into an isolated test
-extension. Unlike the full-extension integration and e2e suites, it compares transports directly; it does not
-activate the complete Cosmos DB extension or exercise its Query Editor UI.
+The launcher creates isolated VS Code profiles, local proxy/HTTPS servers, and temporary test certificates,
+then removes them afterward. It does not change your normal VS Code settings or install certificates in the
+system trust store. The tests exercise the Cosmos SDK and HTTP adapter, not the complete extension UI.
 
-The launcher creates temporary profiles, a local HTTPS destination with a generated test certificate, and an
-HTTP proxy, then removes them afterward. It does not modify your normal VS Code settings. The
-[host runner](../scripts/test-proxy-host.mjs) asserts routing outcomes and exits with non-zero status on failure.
+Coverage includes proxy-support modes, settings and environment variables, bypass rules, emulator connections,
+and TLS validation. Proxy authentication, PAC, and remote extension hosts are not covered.
 
-The 112-case matrix covers:
-
-- `http.proxySupport` values `off`, `on`, `fallback`, and `override`.
-- Explicit `http.proxy` and environment proxy settings.
-- `http.noProxy` precedence over `NO_PROXY`, including fallback when the settings list is empty.
-- Localhost bypass and self-signed local emulator TLS handling for `localhost` and `127.0.0.1`.
-- The original explicit-agent SDK transport and the VS Code-managed adapter.
-
-For normal connections with a proxy configured and no matching bypass rule:
-
-| `http.proxySupport` | Original transport | VS Code-managed transport |
-| ------------------- | ------------------ | ------------------------- |
-| `off`               | Direct             | Direct                    |
-| `on`                | Direct             | Proxy                     |
-| `fallback`          | Proxy              | Proxy                     |
-| `override`          | Proxy              | Proxy                     |
-
-A direct request receives a successful SDK response; a proxied request receives a deliberate HTTP 407 from
-the test proxy. This verifies routing, not successful proxy authentication, PAC discovery, or remote
-extension-host behavior. It does not reproduce a proxy-routing failure in the original transport under
-the default `override` setting.
-
-An additional 24-case TLS matrix uses an HTTPS forwarding proxy with a separate generated certificate.
-It tests both values of `http.proxyStrictSSL` under all four `http.proxySupport` modes:
-
-- Trusted proxy and destination: the SDK request succeeds, including through a successful CONNECT tunnel.
-- Untrusted proxy, trusted destination: proxy-enabled requests fail before CONNECT for either value of
-  `http.proxyStrictSSL`. With proxy support off, the direct request succeeds.
-- Trusted proxy, untrusted destination: the request fails destination certificate validation with
-  `http.proxyStrictSSL: true` and succeeds with `false`. Proxy-enabled requests establish CONNECT in both cases.
-
-The TLS fixture requires a VS Code runtime providing Node's `tls.setDefaultCACertificates` API. It changes
-trust only inside the isolated test host and restores the original defaults afterward; no certificates are
-installed in the operating system. `http.systemCertificates` is disabled in the fixture profiles to isolate
-the generated certificate trust from the machine's certificate store.
-
-In the tested extension-host transport, `http.proxyStrictSSL: false` does not disable HTTPS proxy certificate
-verification. This is an observation about this transport, not a claim that every VS Code networking layer
-ignores the setting. Trust the appropriate CA rather than treating this setting as a certificate bypass.
-The extension explicitly applies the setting to destination TLS options to preserve the compatibility
-behavior introduced by [#568](https://github.com/microsoft/vscode-cosmosdb/pull/568) for
-[#562](https://github.com/microsoft/vscode-cosmosdb/issues/562). Without that request-level option, the tested
-extension-host wrapper does not implement the destination opt-out itself.
-
-The [adapter](../src/cosmosdb/createCosmosHttpClient.ts) clears the final Node request's explicit agent so
-VS Code can manage normal connections even with `http.proxySupport: "on"`. Clearing only the Cosmos SDK
-agent is insufficient because Azure's HTTP transport also supplies a default agent. Emulator agents and
-explicitly supplied custom agents/HTTP clients retain their existing transport path.
+These tests also run as part of `npm run e2e` and the **E2E Tests** CI workflow. The
+[proxy spec](../test/e2e/specs/proxy.spec.ts) reuses the executable downloaded by E2E setup, keeps its profiles
+separate from the webview tests, and attaches launcher output to the Playwright report.
 
 ### End-to-end tests (slow, real VS Code + Docker emulator)
 

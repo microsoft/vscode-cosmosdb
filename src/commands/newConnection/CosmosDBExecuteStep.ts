@@ -10,6 +10,12 @@ import { parseCosmosDBConnectionString } from '../../cosmosdb/cosmosDBConnection
 import { ext } from '../../extensionVariables';
 import { type StorageItem, StorageNames, StorageService } from '../../services/StorageService';
 import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
+import {
+    getEmulatorItemLabelForApi,
+    getEmulatorItemUniqueId,
+    getIsEmulatorConnection,
+} from '../../utils/emulatorUtils';
+import { revealAttachedAccounts } from '../../utils/revealAttachedAccounts';
 import { type NewConnectionWizardContext } from './NewConnectionWizardContext';
 
 export class CosmosDBExecuteStep extends AzureWizardExecuteStep<NewConnectionWizardContext> {
@@ -20,13 +26,17 @@ export class CosmosDBExecuteStep extends AzureWizardExecuteStep<NewConnectionWiz
         const api = CoreExperience.api;
         const shortName = CoreExperience.shortName;
         const connectionString = context.connectionString!;
-        const parentId = context.parentId;
-
         const parsedCS = parseCosmosDBConnectionString(connectionString);
-        const label = `${parsedCS.accountId} (${shortName})`;
+        const isEmulator = getIsEmulatorConnection(parsedCS);
+        const parentId = isEmulator ? `${WorkspaceResourceType.AttachedAccounts}/localEmulators` : context.parentId;
+        const label = isEmulator
+            ? getEmulatorItemLabelForApi(api, parsedCS.port)
+            : `${parsedCS.accountId} (${shortName})`;
 
         // Use tenantId from context (set by tenant prompt or connection string parsing)
         const tenantId = context.tenantId ?? parsedCS.tenantId;
+
+        await revealAttachedAccounts(parentId);
 
         return ext.state.showCreatingChild(
             parentId,
@@ -35,10 +45,10 @@ export class CosmosDBExecuteStep extends AzureWizardExecuteStep<NewConnectionWiz
                 await new Promise((resolve) => setTimeout(resolve, 250));
 
                 const storageItem: StorageItem = {
-                    id: parsedCS.accountId,
+                    id: isEmulator ? getEmulatorItemUniqueId(connectionString) : parsedCS.accountId,
                     name: label,
                     properties: {
-                        isEmulator: false,
+                        isEmulator,
                         api,
                         ...(tenantId && { tenantId }),
                     },

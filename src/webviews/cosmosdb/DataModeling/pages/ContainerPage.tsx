@@ -36,7 +36,6 @@ const useStyles = makeStyles({
 
 export interface ContainerPageProps {
     model: DataModel;
-    scenarioLabel?: string;
     /** Data-tab edits change the schema, so the wizard re-derives partition-key candidates. */
     onChangeData: (next: DataModel) => void;
     /** Queries- and Scale-tab edits write their slice back unchanged. */
@@ -50,7 +49,6 @@ export interface ContainerPageProps {
 
 export function ContainerPage({
     model,
-    scenarioLabel,
     onChangeData,
     onChange,
     active = true,
@@ -100,9 +98,7 @@ export function ContainerPage({
                 <Tab value="scale">{l10n.t('Scale')}</Tab>
             </TabList>
 
-            {tab === 'data' ? (
-                <DataPage model={model} scenarioLabel={scenarioLabel} onChange={change} onTelemetry={onTelemetry} />
-            ) : null}
+            {tab === 'data' ? <DataPage model={model} onChange={change} onTelemetry={onTelemetry} /> : null}
             {tab === 'queries' ? <QueriesPage model={model} onChange={change} /> : null}
             {tab === 'scale' ? <ScalePage model={model} onChange={change} /> : null}
         </div>

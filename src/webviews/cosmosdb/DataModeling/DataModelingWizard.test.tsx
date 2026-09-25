@@ -221,6 +221,25 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(within(navigation).getByRole('button', { name: 'Result' })).toHaveAttribute('aria-current', 'step');
     });
 
+    it('keeps a single merged template subtitle above all container tabs', async () => {
+        const user = userEvent.setup();
+        const saved = createInitialSnapshot();
+        saved.wizard = { ...applyScenario(saved.wizard, 'chat'), step: 2 };
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        render(<DataModelingWizard />);
+        await continueExisting();
+        const subtitle =
+            'Pre-filled a Chat & Sessions sample template. Switch tabs to edit this container’s data, queries and scale to match your app. Each container gets its own partition-key recommendation.';
+        const notice = screen.getByText(subtitle);
+        const tabs = screen.getByRole('tablist');
+        expect(notice.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        for (const tab of ['Data', 'Queries', 'Scale']) {
+            await user.click(screen.getByRole('tab', { name: tab }));
+            expect(screen.getAllByText(/Pre-filled/)).toHaveLength(1);
+            expect(notice).toBeVisible();
+        }
+    });
+
     it('supports keyboard step navigation, focuses its heading, and unmounts the previous content', async () => {
         const user = userEvent.setup();
         client.dataModeling.loadState.query.mockResolvedValue(restored(4));

@@ -92,6 +92,12 @@ const useStyles = makeStyles({
     subPanelTitle: {
         fontWeight: tokens.fontWeightSemibold,
     },
+    subPanelHeading: {
+        display: 'flex',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: tokens.spacingHorizontalS,
+    },
     subPanelSub: {
         color: tokens.colorNeutralForeground3,
         fontSize: tokens.fontSizeBase200,
@@ -141,7 +147,32 @@ const useStyles = makeStyles({
         flexWrap: 'wrap',
         gap: tokens.spacingHorizontalS,
     },
+    guidance: {
+        color: tokens.colorNeutralForeground2,
+        fontSize: tokens.fontSizeBase200,
+        marginBottom: tokens.spacingVerticalS,
+    },
+    guidanceSummary: {
+        cursor: 'pointer',
+        color: tokens.colorBrandForeground1,
+        width: 'fit-content',
+        borderRadius: tokens.borderRadiusSmall,
+        ':focus-visible': {
+            outline: `2px solid ${tokens.colorStrokeFocus2}`,
+            outlineOffset: '2px',
+        },
+    },
 });
+
+export function InlineGuidance({ title, children }: PropsWithChildren<{ title: string }>) {
+    const styles = useStyles();
+    return (
+        <details className={styles.guidance}>
+            <summary className={styles.guidanceSummary}>{title}</summary>
+            {children}
+        </details>
+    );
+}
 
 export function TwoColumn({ children, reverseOnNarrow }: PropsWithChildren<{ reverseOnNarrow?: boolean }>) {
     const styles = useStyles();
@@ -180,11 +211,19 @@ export function MythBox({ icon = '💡', children }: PropsWithChildren<{ icon?: 
     );
 }
 
-export function SubPanel({ title, subtitle, children }: PropsWithChildren<{ title: string; subtitle?: ReactNode }>) {
+export function SubPanel({
+    title,
+    subtitle,
+    count,
+    children,
+}: PropsWithChildren<{ title: string; subtitle?: ReactNode; count?: string }>) {
     const styles = useStyles();
     return (
         <section className={styles.subPanel}>
-            <Text className={styles.subPanelTitle}>{title}</Text>
+            <div className={styles.subPanelHeading}>
+                <Text className={styles.subPanelTitle}>{title}</Text>
+                {count ? <span className={styles.countBadge}>{count}</span> : null}
+            </div>
             {subtitle ? <Text className={styles.subPanelSub}>{subtitle}</Text> : null}
             {children}
         </section>

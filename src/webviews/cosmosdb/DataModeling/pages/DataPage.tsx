@@ -22,7 +22,7 @@ import { ArrowUploadRegular, DismissRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { type ChangeEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { type ModelingTelemetryEvent } from '../../../../dataModeling/modelingTelemetrySchema';
-import { FieldGroup, MythBox, SubPanel, TwoColumn } from '../components/primitives';
+import { InlineGuidance, MythBox, SubPanel } from '../components/primitives';
 import { type DataModel } from '../dataModel';
 import { inferSchemaFromJson } from '../jsonInference';
 import {
@@ -45,13 +45,10 @@ import { getRoleOptions } from '../wizardState';
  */
 
 const useStyles = makeStyles({
-    sidebar: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: tokens.spacingVerticalM,
-    },
     tagBox: {
         display: 'flex',
+        flex: '1 1 280px',
+        minWidth: 0,
         flexWrap: 'wrap',
         gap: tokens.spacingHorizontalXS,
         alignItems: 'center',
@@ -96,6 +93,7 @@ const useStyles = makeStyles({
     },
     kvGrid: {
         display: 'grid',
+        maxWidth: '560px',
         gridTemplateColumns: 'minmax(160px, 1fr) minmax(0, 140px)',
         gap: tokens.spacingVerticalS,
         alignItems: 'center',
@@ -116,23 +114,14 @@ const useStyles = makeStyles({
     stack: {
         display: 'flex',
         flexDirection: 'column',
+        minWidth: 0,
         gap: tokens.spacingVerticalM,
     },
-    uploadPanel: {
+    propertyInputRow: {
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between',
         gap: tokens.spacingHorizontalM,
-        padding: tokens.spacingHorizontalM,
-        borderRadius: tokens.borderRadiusMedium,
-        backgroundColor: tokens.colorNeutralBackground2,
-        border: `1px solid ${tokens.colorNeutralStroke2}`,
         flexWrap: 'wrap',
-    },
-    uploadText: {
-        flex: '1 1 240px',
-        minWidth: 0,
-        color: tokens.colorNeutralForeground2,
     },
     uploadError: {
         color: tokens.colorPaletteRedForeground1,
@@ -141,12 +130,11 @@ const useStyles = makeStyles({
 
 export interface DataPageProps {
     model: DataModel;
-    scenarioLabel?: string;
     onChange: (next: DataModel) => void;
     onTelemetry?: (event: ModelingTelemetryEvent) => void;
 }
 
-export function DataPage({ model, scenarioLabel, onChange, onTelemetry }: DataPageProps) {
+export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
     const styles = useStyles();
     const [draftTag, setDraftTag] = useState('');
     const [uploadInfo, setUploadInfo] = useState<string>();
@@ -281,231 +269,211 @@ export function DataPage({ model, scenarioLabel, onChange, onTelemetry }: DataPa
     }
 
     return (
-        <div>
-            <TwoColumn>
-                <aside className={styles.sidebar}>
-                    <SubPanel title={l10n.t('Why this matters')}>
-                        <ul style={{ margin: 0, paddingLeft: 18 }}>
-                            <li>{l10n.t('PK must exist on every document')}</li>
-                            <li>{l10n.t('High-cardinality = better distribution')}</li>
-                            <li>{l10n.t('Avoid mutable fields like status')}</li>
-                        </ul>
-                    </SubPanel>
-                    {scenarioLabel ? (
-                        <MythBox icon="✨">
-                            {l10n.t('Pre-filled a {scenario} sample template. Edit the properties to match your app.', {
-                                scenario: scenarioLabel,
-                            })}
-                        </MythBox>
-                    ) : null}
-                </aside>
-
-                <div className={styles.stack}>
-                    <div className={styles.uploadPanel}>
-                        <Text className={styles.uploadText}>
-                            {l10n.t('Upload your JSON documents to infer the schema for this container')}
-                        </Text>
-                        <Button
-                            ref={uploadButtonRef}
-                            appearance="primary"
-                            icon={<ArrowUploadRegular />}
-                            onClick={onUploadClick}
-                        >
-                            {l10n.t('Upload JSON')}
-                        </Button>
-                        <input
-                            ref={fileRef}
-                            type="file"
-                            accept="application/json,.json"
-                            style={{ display: 'none' }}
-                            onChange={(event) => void onFileSelected(event)}
-                        />
-                    </div>
-                    {uploadInfo ? (
-                        <MythBox icon="📄">
-                            {l10n.t('Inferred schema from {file}. Review the properties below and edit as needed.', {
-                                file: uploadInfo,
-                            })}
-                        </MythBox>
-                    ) : null}
-                    {uploadError ? <Text className={styles.uploadError}>{uploadError}</Text> : null}
-                    {confirmationError ? <Text role="alert">{confirmationError}</Text> : null}
-
-                    <FieldGroup
-                        label={l10n.t('Key & filter properties')}
-                        hint={l10n.t(
-                            'Add the business/unique key identifiers and the attributes you filter queries by. Press Enter to add.',
-                        )}
-                    >
-                        <div className={styles.tagBox}>
-                            {active.properties.map((p) => (
-                                <span key={p.id} className={styles.tag}>
-                                    {p.name}
-                                    <button
-                                        type="button"
-                                        className={styles.tagRemove}
-                                        aria-label={l10n.t('Remove {name}', { name: p.name })}
-                                        onClick={() => removeProperty(p.id)}
-                                    >
-                                        <DismissRegular fontSize={12} />
-                                    </button>
-                                </span>
-                            ))}
-                            <input
-                                className={styles.tagInput}
-                                placeholder={l10n.t('Add property…')}
-                                value={draftTag}
-                                onChange={(e) => setDraftTag(e.target.value)}
-                                onKeyDown={onTagKeyDown}
-                            />
-                        </div>
-                    </FieldGroup>
-
-                    <div className={styles.tableWrap}>
-                        <Table size="small" aria-label={l10n.t('Schema properties')}>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHeaderCell>{l10n.t('Property')}</TableHeaderCell>
-                                    <TableHeaderCell>{l10n.t('Type')}</TableHeaderCell>
-                                    <TableHeaderCell>{l10n.t('Role')}</TableHeaderCell>
-                                    <TableHeaderCell />
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {active.properties.map((p) => (
-                                    <TableRow key={p.id}>
-                                        <TableCell>{p.name}</TableCell>
-                                        <TableCell>
-                                            <Select
-                                                className={styles.cellSelect}
-                                                aria-label={l10n.t('Type for {name}', { name: p.name })}
-                                                value={p.type}
-                                                onChange={(_, data) =>
-                                                    patchProperty(p.id, { type: data.value as PropertyType })
-                                                }
-                                            >
-                                                {PROPERTY_TYPES.map((t) => (
-                                                    <option key={t} value={t}>
-                                                        {t === 'string (ISO)'
-                                                            ? l10n.t('Date/time (ISO 8601 string)')
-                                                            : t}
-                                                    </option>
-                                                ))}
-                                            </Select>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Select
-                                                className={styles.cellSelect}
-                                                value={p.role}
-                                                onChange={(_, data) =>
-                                                    patchProperty(p.id, { role: data.value as PropertyRole })
-                                                }
-                                            >
-                                                {roleOptions.map((o) => (
-                                                    <option key={o.value} value={o.value}>
-                                                        {o.label}
-                                                    </option>
-                                                ))}
-                                            </Select>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Button
-                                                icon={<DismissRegular />}
-                                                appearance="subtle"
-                                                size="small"
-                                                aria-label={l10n.t('Remove {name}', { name: p.name })}
-                                                onClick={() => removeProperty(p.id)}
-                                            />
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-
-                    <SubPanel
-                        title={l10n.t('📐 Document shape & size')}
-                        subtitle={l10n.t(
-                            'RU cost and the 20 GB partition limit scale with document size. Estimate the overall shape here instead of listing every property.',
-                        )}
-                    >
-                        <div className={styles.kvGrid}>
-                            <Text>{l10n.t('Total attributes per document')}</Text>
-                            <Input
-                                className={styles.kvInput}
-                                type="number"
-                                aria-label={l10n.t('Total attributes per document')}
-                                value={String(active.document.attributeCount)}
-                                onChange={(_, data) => patchDocument({ attributeCount: Number(data.value) || 0 })}
-                            />
-                            <Text>{l10n.t('Average document size')}</Text>
-                            <div className={styles.unit}>
-                                <Input
-                                    className={styles.kvInput}
-                                    type="number"
-                                    aria-label={l10n.t('Average document size')}
-                                    value={String(active.document.avgSizeKb)}
-                                    onChange={(_, data) => patchDocument({ avgSizeKb: Number(data.value) || 0 })}
-                                />
-                                <Text>{'KB'}</Text>
-                            </div>
-                            <Text>{l10n.t('Maximum document size')}</Text>
-                            <div className={styles.unit}>
-                                <Input
-                                    className={styles.kvInput}
-                                    type="number"
-                                    aria-label={l10n.t('Maximum document size')}
-                                    value={String(active.document.maxSizeKb)}
-                                    onChange={(_, data) => patchDocument({ maxSizeKb: Number(data.value) || 0 })}
-                                />
-                                <Text>{'KB'}</Text>
-                            </div>
-                        </div>
-                    </SubPanel>
-
-                    <SubPanel
-                        title={l10n.t('📚 Arrays & nested collections')}
-                        subtitle={l10n.t(
-                            'Large or frequently-patched arrays inflate document size and RU cost, and can trigger the 2 MB item limit.',
-                        )}
-                    >
-                        <Checkbox
-                            checked={active.arrays.hasArrays}
-                            label={l10n.t('This container has arrays / nested collections')}
-                            onChange={(_, data) => patchArrays({ hasArrays: !!data.checked })}
-                        />
-                        {active.arrays.hasArrays ? (
-                            <div className={styles.kvGrid}>
-                                <Text>{l10n.t('Average items per array')}</Text>
-                                <Input
-                                    type="number"
-                                    value={String(active.arrays.avgItems)}
-                                    onChange={(_, data) => patchArrays({ avgItems: Number(data.value) || 0 })}
-                                />
-                                <Text>{l10n.t('Maximum items per array')}</Text>
-                                <Input
-                                    type="number"
-                                    value={String(active.arrays.maxItems)}
-                                    onChange={(_, data) => patchArrays({ maxItems: Number(data.value) || 0 })}
-                                />
-                                <Text>{l10n.t('Array update pattern')}</Text>
-                                <Select
-                                    value={active.arrays.updatePattern}
-                                    onChange={(_, data) =>
-                                        patchArrays({ updatePattern: data.value as ArrayUpdatePattern })
-                                    }
+        <div className={styles.stack}>
+            <SubPanel
+                title={l10n.t('Key & filter properties')}
+                subtitle={l10n.t(
+                    'Add the business/unique key identifiers and the attributes you filter queries by. Press Enter to add.',
+                )}
+            >
+                <InlineGuidance title={l10n.t('Partition-key guidance')}>
+                    <ul>
+                        <li>{l10n.t('PK must exist on every document')}</li>
+                        <li>{l10n.t('High-cardinality = better distribution')}</li>
+                        <li>{l10n.t('Avoid mutable fields like status')}</li>
+                    </ul>
+                </InlineGuidance>
+                <div className={styles.propertyInputRow}>
+                    <div className={styles.tagBox}>
+                        {active.properties.map((p) => (
+                            <span key={p.id} className={styles.tag}>
+                                {p.name}
+                                <button
+                                    type="button"
+                                    className={styles.tagRemove}
+                                    aria-label={l10n.t('Remove {name}', { name: p.name })}
+                                    onClick={() => removeProperty(p.id)}
                                 >
-                                    {arrayOptions.map((o) => (
-                                        <option key={o.value} value={o.value}>
-                                            {o.label}
-                                        </option>
-                                    ))}
-                                </Select>
-                            </div>
-                        ) : null}
-                    </SubPanel>
+                                    <DismissRegular fontSize={12} />
+                                </button>
+                            </span>
+                        ))}
+                        <input
+                            className={styles.tagInput}
+                            aria-label={l10n.t('Add property…')}
+                            placeholder={l10n.t('Add property…')}
+                            value={draftTag}
+                            onChange={(e) => setDraftTag(e.target.value)}
+                            onKeyDown={onTagKeyDown}
+                        />
+                    </div>
+                    <Button
+                        ref={uploadButtonRef}
+                        appearance="primary"
+                        icon={<ArrowUploadRegular aria-hidden />}
+                        aria-description={l10n.t('Upload your JSON documents to infer the schema for this container')}
+                        onClick={onUploadClick}
+                    >
+                        {l10n.t('Upload JSON')}
+                    </Button>
+                    <input
+                        ref={fileRef}
+                        type="file"
+                        accept="application/json,.json"
+                        style={{ display: 'none' }}
+                        onChange={(event) => void onFileSelected(event)}
+                    />
                 </div>
-            </TwoColumn>
+                {uploadInfo ? (
+                    <MythBox icon="📄">
+                        {l10n.t('Inferred schema from {file}. Review the properties below and edit as needed.', {
+                            file: uploadInfo,
+                        })}
+                    </MythBox>
+                ) : null}
+                {uploadError ? <Text className={styles.uploadError}>{uploadError}</Text> : null}
+                {confirmationError ? <Text role="alert">{confirmationError}</Text> : null}
+
+                <div className={styles.tableWrap}>
+                    <Table size="small" aria-label={l10n.t('Schema properties')}>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHeaderCell>{l10n.t('Property')}</TableHeaderCell>
+                                <TableHeaderCell>{l10n.t('Type')}</TableHeaderCell>
+                                <TableHeaderCell>{l10n.t('Role')}</TableHeaderCell>
+                                <TableHeaderCell />
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {active.properties.map((p) => (
+                                <TableRow key={p.id}>
+                                    <TableCell>{p.name}</TableCell>
+                                    <TableCell>
+                                        <Select
+                                            className={styles.cellSelect}
+                                            aria-label={l10n.t('Type for {name}', { name: p.name })}
+                                            value={p.type}
+                                            onChange={(_, data) =>
+                                                patchProperty(p.id, { type: data.value as PropertyType })
+                                            }
+                                        >
+                                            {PROPERTY_TYPES.map((t) => (
+                                                <option key={t} value={t}>
+                                                    {t === 'string (ISO)' ? l10n.t('Date/time (ISO 8601 string)') : t}
+                                                </option>
+                                            ))}
+                                        </Select>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Select
+                                            className={styles.cellSelect}
+                                            value={p.role}
+                                            onChange={(_, data) =>
+                                                patchProperty(p.id, { role: data.value as PropertyRole })
+                                            }
+                                        >
+                                            {roleOptions.map((o) => (
+                                                <option key={o.value} value={o.value}>
+                                                    {o.label}
+                                                </option>
+                                            ))}
+                                        </Select>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Button
+                                            icon={<DismissRegular />}
+                                            appearance="subtle"
+                                            size="small"
+                                            aria-label={l10n.t('Remove {name}', { name: p.name })}
+                                            onClick={() => removeProperty(p.id)}
+                                        />
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
+            </SubPanel>
+
+            <SubPanel
+                title={l10n.t('📐 Document shape & size')}
+                subtitle={l10n.t(
+                    'RU cost and the 20 GB partition limit scale with document size. Estimate the overall shape here instead of listing every property.',
+                )}
+            >
+                <div className={styles.kvGrid}>
+                    <Text>{l10n.t('Total attributes per document')}</Text>
+                    <Input
+                        className={styles.kvInput}
+                        type="number"
+                        aria-label={l10n.t('Total attributes per document')}
+                        value={String(active.document.attributeCount)}
+                        onChange={(_, data) => patchDocument({ attributeCount: Number(data.value) || 0 })}
+                    />
+                    <Text>{l10n.t('Average document size')}</Text>
+                    <div className={styles.unit}>
+                        <Input
+                            className={styles.kvInput}
+                            type="number"
+                            aria-label={l10n.t('Average document size')}
+                            value={String(active.document.avgSizeKb)}
+                            onChange={(_, data) => patchDocument({ avgSizeKb: Number(data.value) || 0 })}
+                        />
+                        <Text>{'KB'}</Text>
+                    </div>
+                    <Text>{l10n.t('Maximum document size')}</Text>
+                    <div className={styles.unit}>
+                        <Input
+                            className={styles.kvInput}
+                            type="number"
+                            aria-label={l10n.t('Maximum document size')}
+                            value={String(active.document.maxSizeKb)}
+                            onChange={(_, data) => patchDocument({ maxSizeKb: Number(data.value) || 0 })}
+                        />
+                        <Text>{'KB'}</Text>
+                    </div>
+                </div>
+            </SubPanel>
+
+            <SubPanel
+                title={l10n.t('📚 Arrays & nested collections')}
+                subtitle={l10n.t(
+                    'Large or frequently-patched arrays inflate document size and RU cost, and can trigger the 2 MB item limit.',
+                )}
+            >
+                <Checkbox
+                    checked={active.arrays.hasArrays}
+                    label={l10n.t('This container has arrays / nested collections')}
+                    onChange={(_, data) => patchArrays({ hasArrays: !!data.checked })}
+                />
+                {active.arrays.hasArrays ? (
+                    <div className={styles.kvGrid}>
+                        <Text>{l10n.t('Average items per array')}</Text>
+                        <Input
+                            type="number"
+                            value={String(active.arrays.avgItems)}
+                            onChange={(_, data) => patchArrays({ avgItems: Number(data.value) || 0 })}
+                        />
+                        <Text>{l10n.t('Maximum items per array')}</Text>
+                        <Input
+                            type="number"
+                            value={String(active.arrays.maxItems)}
+                            onChange={(_, data) => patchArrays({ maxItems: Number(data.value) || 0 })}
+                        />
+                        <Text>{l10n.t('Array update pattern')}</Text>
+                        <Select
+                            value={active.arrays.updatePattern}
+                            onChange={(_, data) => patchArrays({ updatePattern: data.value as ArrayUpdatePattern })}
+                        >
+                            {arrayOptions.map((o) => (
+                                <option key={o.value} value={o.value}>
+                                    {o.label}
+                                </option>
+                            ))}
+                        </Select>
+                    </div>
+                ) : null}
+            </SubPanel>
         </div>
     );
 }

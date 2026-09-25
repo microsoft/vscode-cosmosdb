@@ -16,7 +16,8 @@ import {
     tokens,
 } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
-import { FieldGroup, MetricPill, MythBox, PillRow, SidebarInfo, SubPanel, TwoColumn } from '../components/primitives';
+import { useId } from 'react';
+import { MetricPill, MythBox, PillRow, SubPanel } from '../components/primitives';
 import { SelectableCard } from '../components/SelectableCard';
 import { getActiveContainer, getAvgDocSizeKb, type DataModel, updateActiveContainer } from '../dataModel';
 import { type DataGrowth, type ItemsPerPartition, type ScaleProfile, type WriteDistribution } from '../models';
@@ -31,18 +32,51 @@ const useStyles = makeStyles({
     stack: {
         display: 'flex',
         flexDirection: 'column',
+        minWidth: 0,
         gap: tokens.spacingVerticalL,
     },
     cards: {
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))',
         gap: tokens.spacingHorizontalS,
     },
     distinctInput: {
         maxWidth: '160px',
     },
+    tableWrap: {
+        overflowX: 'auto',
+    },
     warn: {
         color: tokens.colorPaletteDarkOrangeForeground1,
+    },
+    limits: {
+        alignSelf: 'flex-start',
+        maxWidth: '400px',
+    },
+    limitsContent: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: tokens.spacingVerticalM,
+    },
+    limitsHeading: {
+        margin: 0,
+        fontSize: tokens.fontSizeBase400,
+        fontWeight: tokens.fontWeightSemibold,
+    },
+    limitsList: {
+        margin: 0,
+        paddingLeft: tokens.spacingHorizontalL,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: tokens.spacingVerticalS,
+        color: tokens.colorNeutralForeground2,
+        '& li::marker': {
+            color: tokens.colorBrandForeground1,
+        },
+    },
+    limitsWarning: {
+        margin: 0,
+        color: tokens.colorNeutralForeground2,
     },
 });
 
@@ -89,6 +123,7 @@ export interface ScalePageProps {
 
 export function ScalePage({ model, onChange }: ScalePageProps) {
     const styles = useStyles();
+    const limitsHeadingId = useId();
 
     // Scale is per-container: edit the active container's scale profile.
     const active = getActiveContainer(model);
@@ -108,126 +143,132 @@ export function ScalePage({ model, onChange }: ScalePageProps) {
     const overLimit = projectedGb > 20;
 
     return (
-        <div>
-            <TwoColumn>
-                <SidebarInfo
-                    title={l10n.t('Partition limits')}
-                    items={[
-                        l10n.t('20 GB per logical partition'),
-                        l10n.t('10K RU/s per physical partition'),
-                        l10n.t('50 GB per physical partition'),
-                    ]}
-                    note={l10n.t('Even with 100K RU/s provisioned, one hot partition caps at 10K RU/s.')}
-                />
-
-                <div className={styles.stack}>
-                    <FieldGroup
-                        label={l10n.t('Partition-key candidates — estimated distinct values')}
-                        hint={l10n.t(
-                            'These are the key & filter attributes from the Data screen. Cardinality (distinct values) drives distribution; higher is better.',
-                        )}
-                    >
-                        <Table size="small" aria-label={l10n.t('Partition-key candidates')}>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHeaderCell>{l10n.t('Attribute')}</TableHeaderCell>
-                                    <TableHeaderCell>{l10n.t('Role')}</TableHeaderCell>
-                                    <TableHeaderCell>{l10n.t('Estimated distinct values')}</TableHeaderCell>
+        <div className={styles.stack}>
+            <SubPanel
+                title={l10n.t('Partition-key candidates — estimated distinct values')}
+                subtitle={l10n.t(
+                    'These are the key & filter attributes from the Data screen. Cardinality (distinct values) drives distribution; higher is better.',
+                )}
+            >
+                <div className={styles.tableWrap}>
+                    <Table size="small" aria-label={l10n.t('Partition-key candidates')}>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHeaderCell>{l10n.t('Attribute')}</TableHeaderCell>
+                                <TableHeaderCell>{l10n.t('Role')}</TableHeaderCell>
+                                <TableHeaderCell>{l10n.t('Estimated distinct values')}</TableHeaderCell>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {scale.candidates.map((c) => (
+                                <TableRow key={c.id}>
+                                    <TableCell>{c.attribute}</TableCell>
+                                    <TableCell>{c.role}</TableCell>
+                                    <TableCell>
+                                        <Input
+                                            aria-label={l10n.t('Estimated distinct values for {attribute}', {
+                                                attribute: c.attribute,
+                                            })}
+                                            className={styles.distinctInput}
+                                            type="number"
+                                            value={String(c.distinctValues)}
+                                            onChange={(_, data) => setDistinct(c.id, Number(data.value) || 0)}
+                                        />
+                                    </TableCell>
                                 </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {scale.candidates.map((c) => (
-                                    <TableRow key={c.id}>
-                                        <TableCell>{c.attribute}</TableCell>
-                                        <TableCell>{c.role}</TableCell>
-                                        <TableCell>
-                                            <Input
-                                                className={styles.distinctInput}
-                                                type="number"
-                                                value={String(c.distinctValues)}
-                                                onChange={(_, data) => setDistinct(c.id, Number(data.value) || 0)}
-                                            />
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                        <MythBox icon="💰">
-                            {l10n.t(
-                                'Myth: “1M partition key values will be expensive.” False. Provisioned RU/s is shared across physical partitions and is unrelated to how many logical partition key values you have.',
-                            )}
-                        </MythBox>
-                    </FieldGroup>
-
-                    <FieldGroup label={l10n.t('Items per partition key value')}>
-                        <div
-                            className={styles.cards}
-                            role="radiogroup"
-                            aria-label={l10n.t('Items per partition key value')}
-                        >
-                            {ITEMS_OPTIONS.map((o) => (
-                                <SelectableCard
-                                    key={o.value}
-                                    selected={scale.items === o.value}
-                                    onSelect={() => onChangeScale({ ...scale, items: o.value })}
-                                    title={<span className={o.warn ? styles.warn : undefined}>{o.title}</span>}
-                                    description={o.desc}
-                                    ariaLabel={o.title}
-                                />
                             ))}
-                        </div>
-                    </FieldGroup>
-
-                    <FieldGroup label={l10n.t('Write distribution')}>
-                        <div className={styles.cards} role="radiogroup" aria-label={l10n.t('Write distribution')}>
-                            {WRITE_OPTIONS.map((o) => (
-                                <SelectableCard
-                                    key={o.value}
-                                    selected={scale.writes === o.value}
-                                    onSelect={() => onChangeScale({ ...scale, writes: o.value })}
-                                    title={o.title}
-                                    description={o.desc}
-                                    ariaLabel={o.title}
-                                />
-                            ))}
-                        </div>
-                    </FieldGroup>
-
-                    <FieldGroup label={l10n.t('Data growth per PK value')}>
-                        <div className={styles.cards} role="radiogroup" aria-label={l10n.t('Data growth per PK value')}>
-                            {GROWTH_OPTIONS.map((o) => (
-                                <SelectableCard
-                                    key={o.value}
-                                    selected={scale.growth === o.value}
-                                    onSelect={() => onChangeScale({ ...scale, growth: o.value })}
-                                    title={<span className={o.warn ? styles.warn : undefined}>{o.title}</span>}
-                                    description={o.desc}
-                                    ariaLabel={o.title}
-                                />
-                            ))}
-                        </div>
-                        <SubPanel
-                            title={l10n.t('📦 Projected logical-partition size')}
-                            subtitle={l10n.t(
-                                'Estimated from your avg document size × items per partition key value. The hard limit is 20 GB.',
-                            )}
-                        >
-                            <PillRow>
-                                <MetricPill>{l10n.t('avg doc {n} KB', { n: avgDocSizeKb })}</MetricPill>
-                                <MetricPill>{l10n.t('× items ~{n}', { n: formatCount(itemsCount) })}</MetricPill>
-                                <MetricPill>{l10n.t('≈ {n} GB / partition', { n: projectedGb.toFixed(2) })}</MetricPill>
-                            </PillRow>
-                            {overLimit ? (
-                                <Text className={styles.warn}>
-                                    {l10n.t(
-                                        '⚠️ Projected size exceeds the 20 GB limit — consider a hierarchical partition key or time-bucketing.',
-                                    )}
-                                </Text>
-                            ) : null}
-                        </SubPanel>
-                    </FieldGroup>
+                        </TableBody>
+                    </Table>
                 </div>
-            </TwoColumn>
+            </SubPanel>
+
+            <SubPanel title={l10n.t('Items per partition key value')}>
+                <div className={styles.cards} role="radiogroup" aria-label={l10n.t('Items per partition key value')}>
+                    {ITEMS_OPTIONS.map((o) => (
+                        <SelectableCard
+                            key={o.value}
+                            selected={scale.items === o.value}
+                            onSelect={() => onChangeScale({ ...scale, items: o.value })}
+                            title={<span className={o.warn ? styles.warn : undefined}>{o.title}</span>}
+                            description={o.desc}
+                            ariaLabel={o.title}
+                        />
+                    ))}
+                </div>
+            </SubPanel>
+
+            <SubPanel title={l10n.t('Write distribution')}>
+                <div className={styles.cards} role="radiogroup" aria-label={l10n.t('Write distribution')}>
+                    {WRITE_OPTIONS.map((o) => (
+                        <SelectableCard
+                            key={o.value}
+                            selected={scale.writes === o.value}
+                            onSelect={() => onChangeScale({ ...scale, writes: o.value })}
+                            title={o.title}
+                            description={o.desc}
+                            ariaLabel={o.title}
+                        />
+                    ))}
+                </div>
+            </SubPanel>
+
+            <SubPanel title={l10n.t('Data growth per PK value')}>
+                <div className={styles.cards} role="radiogroup" aria-label={l10n.t('Data growth per PK value')}>
+                    {GROWTH_OPTIONS.map((o) => (
+                        <SelectableCard
+                            key={o.value}
+                            selected={scale.growth === o.value}
+                            onSelect={() => onChangeScale({ ...scale, growth: o.value })}
+                            title={<span className={o.warn ? styles.warn : undefined}>{o.title}</span>}
+                            description={o.desc}
+                            ariaLabel={o.title}
+                        />
+                    ))}
+                </div>
+            </SubPanel>
+            <SubPanel
+                title={l10n.t('📦 Projected logical-partition size')}
+                subtitle={l10n.t(
+                    'Estimated from your avg document size × items per partition key value. The hard limit is 20 GB.',
+                )}
+            >
+                <PillRow>
+                    <MetricPill>{l10n.t('avg doc {n} KB', { n: avgDocSizeKb })}</MetricPill>
+                    <MetricPill>{l10n.t('× items ~{n}', { n: formatCount(itemsCount) })}</MetricPill>
+                    <MetricPill>{l10n.t('≈ {n} GB / partition', { n: projectedGb.toFixed(2) })}</MetricPill>
+                </PillRow>
+                {overLimit ? (
+                    <Text className={styles.warn}>
+                        {l10n.t(
+                            '⚠️ Projected size exceeds the 20 GB limit — consider a hierarchical partition key or time-bucketing.',
+                        )}
+                    </Text>
+                ) : null}
+            </SubPanel>
+            <section className={styles.limits} aria-labelledby={limitsHeadingId}>
+                <MythBox icon="✨">
+                    <div className={styles.limitsContent}>
+                        <h3 id={limitsHeadingId} className={styles.limitsHeading}>
+                            {l10n.t('Partition limits')}
+                        </h3>
+                        <ul className={styles.limitsList}>
+                            <li>
+                                <strong>{'20 GB'}</strong> {l10n.t('per logical partition')}
+                            </li>
+                            <li>
+                                <strong>{'10K RU/s'}</strong> {l10n.t('per physical partition')}
+                            </li>
+                            <li>
+                                <strong>{'50 GB'}</strong> {l10n.t('per physical partition')}
+                            </li>
+                        </ul>
+                        <p className={styles.limitsWarning}>
+                            <span aria-hidden="true">{'⚠️ '}</span>
+                            {l10n.t('Even with 100K RU/s provisioned, one hot partition caps at 10K RU/s.')}
+                        </p>
+                    </div>
+                </MythBox>
+            </section>
         </div>
     );
 }

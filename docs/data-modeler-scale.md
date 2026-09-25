@@ -5,6 +5,21 @@ The categories are planning inputs selected by the user or prefilled by a scenar
 They are not calculated from live data or automatically classified from document counts.
 Each container has its own scale profile.
 
+## Container tab layout
+
+Data, Queries, and Scale use a single vertical content flow without a guidance sidebar.
+Related controls can still sit side by side within a section.
+The container-step subtitle combines the selected template notice with tab guidance, visible across all three tabs.
+
+- **Data:** a key/filter properties card, document shape/size, then arrays.
+  The properties card groups the tag input, adjacent Upload JSON button, import feedback, and property table.
+  Optional partition-key guidance expands beside the property inputs.
+- **Queries:** separate cards for reads with expandable query-alignment guidance, write rates, and estimated request cost.
+- **Scale:** separate cards for candidate cardinality, items per key, write distribution, growth, and projected partition size.
+  A compact Partition limits callout follows the estimate, using the Review rules callout's sparkle icon and styling,
+  with a bulleted list and a visible hot-partition warning.
+  Capacity warnings remain visible, not behind a disclosure.
+
 ## Source of truth
 
 - [ScalePage.tsx](../src/webviews/cosmosdb/DataModeling/pages/ScalePage.tsx):

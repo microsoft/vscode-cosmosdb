@@ -987,9 +987,16 @@ const HydratedDataModelingWizard = ({
                                 </span>
                             )
                         }
-                        subtitle={l10n.t(
-                            'Switch tabs to define this container’s data, queries and scale. Each container gets its own partition-key recommendation.',
-                        )}
+                        subtitle={
+                            scenarioLabel
+                                ? l10n.t(
+                                      'Pre-filled a {scenario} sample template. Switch tabs to edit this container’s data, queries and scale to match your app. Each container gets its own partition-key recommendation.',
+                                      { scenario: scenarioLabel },
+                                  )
+                                : l10n.t(
+                                      'Switch tabs to define this container’s data, queries and scale. Each container gets its own partition-key recommendation.',
+                                  )
+                        }
                     >
                         <ContainerPage
                             model={state.dataModel}
@@ -998,7 +1005,6 @@ const HydratedDataModelingWizard = ({
                             onVisit={visit}
                             onEdited={markEdited}
                             onTelemetry={report}
-                            scenarioLabel={scenarioLabel}
                             onChangeData={onChangeData}
                             onChange={setDataModel}
                         />

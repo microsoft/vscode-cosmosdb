@@ -44,7 +44,7 @@ export const QUERY_TOOLBAR = {
     duplicate: 'Duplicate',
     learn: 'Learn more',
     schema: 'Schema',
-    /** The connection picker is a Fluent `Dropdown` (role `combobox`). */
+    /** Disconnected picker / overflow label; the connected picker is named after its database/container. */
     connection: 'Connect to',
     /** Overflow menu trigger, present only when the toolbar is overflowing. */
     moreItems: 'More items',
@@ -57,7 +57,8 @@ export type ToolbarControlRole = 'button' | 'combobox';
  * Descriptor for a single query-toolbar control, capturing the two faces it can
  * present depending on the available width:
  *
- *   - inline in the `Toolbar` — located by `role` + accessible name `toolbarName`;
+ *   - inline in the `Toolbar` — located by `role` + accessible name `toolbarName`, except for the
+ *     connection picker, whose name follows its value and which is scoped to its connection wrapper;
  *   - collapsed into the "More items" overflow menu — a `MenuItem` whose visible
  *     label is `menuText` (menu items expose different text/roles than their
  *     toolbar form — submenu triggers in particular are NOT matched by the
@@ -387,6 +388,9 @@ export class QueryEditorPage {
      * never matches the same control's overflow-menu counterpart.
      */
     inlineControl(control: ToolbarControl) {
+        if (control === QUERY_CONTROLS.connection) {
+            return this.connectionPicker();
+        }
         return this.toolbar()
             .getByRole(control.role, { name: control.toolbarName, exact: control.exact ?? false })
             .first();
@@ -434,7 +438,7 @@ export class QueryEditorPage {
 
     /** Locator for the connection picker combobox (inline form). */
     connectionPicker() {
-        return this.frame.getByRole('combobox', { name: QUERY_TOOLBAR.connection });
+        return this.toolbar().locator('[data-quickstart="connection"]').getByRole('combobox');
     }
 
     // ─── Run history ──────────────────────────────────────────────────────

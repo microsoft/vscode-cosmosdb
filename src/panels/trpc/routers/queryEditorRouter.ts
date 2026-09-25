@@ -42,6 +42,13 @@ import * as vscodeUtil from '../../../utils/vscodeUtils';
 import { DocumentTab } from '../../DocumentTab';
 import { QueryEditorTab } from '../../QueryEditorTab';
 import { type QueryEditorRouterContext } from '../appRouter';
+import {
+    changeQueryConnection,
+    commitQueryConnection,
+    isCurrentQuerySession,
+    requireQueryConnection,
+    requireQuerySession,
+} from '../queryEditorConnectionState';
 import { matchesQueryConnection, storeQuerySession } from '../querySessionIsolation';
 import {
     CosmosDBRecordIdentifierSchema,
@@ -84,9 +91,13 @@ type HistoryItem = StorageItem & {
  * Connection state returned by init and connection mutations.
  */
 type ConnectionState = {
+    connectionVersion: number;
     dbName: string;
     containerName: string;
     partitionKey?: PartitionKeyDefinition;
+    queryHistory?: string[];
+    containerSchema?: Record<string, unknown> | null;
+    throughputBuckets?: boolean[];
 };
 
 // ─── Query Editor Router ────────────────────────────────────────────────────
@@ -135,6 +146,7 @@ export const queryEditorRouterDef = queryEditorRouter({
         const throughputBuckets = await getEnabledThroughputBuckets(ctx.state.connection, ctx.actionContext);
 
         return {
+            connectionVersion: ctx.state.connectionVersion,
             connectionState,
             queryHistory,
             throughputBuckets,
@@ -155,6 +167,7 @@ export const queryEditorRouterDef = queryEditorRouter({
         .input(
             z.object({
                 query: z.string(),
+                connectionVersion: z.number().int().nonnegative(),
                 options: QueryMetadataSchema,
                 expectedConnection: z
                     .object({
@@ -169,10 +182,8 @@ export const queryEditorRouterDef = queryEditorRouter({
         )
         .output(z.object({ executionId: z.string() }).optional())
         .mutation(async ({ input, ctx }) => {
-            if (!ctx.state.connection) {
-                throw new Error(l10n.t('No connection'));
-            }
-            if (!matchesQueryConnection(ctx.state.connection, input.expectedConnection)) {
+            const connection = requireQueryConnection(ctx, input.connectionVersion);
+            if (!matchesQueryConnection(connection, input.expectedConnection)) {
                 return undefined;
             }
 
@@ -219,7 +230,8 @@ export const queryEditorRouterDef = queryEditorRouter({
                 }
             }
 
-            const session = new QuerySession(ctx.state.connection, input.query, input.options, input.isLlmTool);
+            requireQueryConnection(ctx, input.connectionVersion);
+            const session = new QuerySession(connection, input.query, input.options, input.isLlmTool);
             if (ctx.actionContext) {
                 ctx.actionContext.telemetry.properties.executionId = session.id;
             }
@@ -236,20 +248,11 @@ export const queryEditorRouterDef = queryEditorRouter({
             if (ctx.actionContext) {
                 ctx.actionContext.telemetry.properties.executionId = input.executionId;
             }
-            if (!ctx.state.connection) {
-                throw new Error(l10n.t('No connection'));
-            }
-            const session = ctx.sessions.get(input.executionId);
-            if (!session) {
-                throw new Error(
-                    l10n.t('No session found for executionId: {executionId}', {
-                        executionId: input.executionId,
-                    }),
-                );
-            }
+            const session = requireQuerySession(ctx, input.executionId);
             const result = await session.run();
+            if (!isCurrentQuerySession(ctx, session)) return undefined;
             // Merge results into stored schema if setting is enabled and query is SELECT *
-            void mergeQueryResultsIntoSchema(result, ctx.state.connection);
+            void mergeQueryResultsIntoSchema(result, session.connection);
             void promptAfterActionEventually(
                 ExperienceKind.NoSQL,
                 UsageImpact.High,
@@ -285,7 +288,7 @@ export const queryEditorRouterDef = queryEditorRouter({
         }
 
         const result = session.stop();
-        ctx.sessions.delete(session.id);
+        // Keep ownership of already displayed results until the next query or connection change.
         return result;
     }),
 
@@ -296,15 +299,11 @@ export const queryEditorRouterDef = queryEditorRouter({
             if (ctx.actionContext) {
                 ctx.actionContext.telemetry.properties.executionId = input.executionId;
             }
-            if (!ctx.state.connection) throw new Error(l10n.t('No connection'));
-            const session = ctx.sessions.get(input.executionId);
-            if (!session)
-                throw new Error(
-                    l10n.t('No session found for executionId: {executionId}', { executionId: input.executionId }),
-                );
+            const session = requireQuerySession(ctx, input.executionId);
             const result = await session.nextPage();
+            if (!isCurrentQuerySession(ctx, session)) return undefined;
             // Merge results into stored schema if setting is enabled and query is SELECT *
-            void mergeQueryResultsIntoSchema(result, ctx.state.connection);
+            void mergeQueryResultsIntoSchema(result, session.connection);
             void promptAfterActionEventually(
                 ExperienceKind.NoSQL,
                 UsageImpact.Medium,
@@ -320,13 +319,9 @@ export const queryEditorRouterDef = queryEditorRouter({
             if (ctx.actionContext) {
                 ctx.actionContext.telemetry.properties.executionId = input.executionId;
             }
-            if (!ctx.state.connection) throw new Error(l10n.t('No connection'));
-            const session = ctx.sessions.get(input.executionId);
-            if (!session)
-                throw new Error(
-                    l10n.t('No session found for executionId: {executionId}', { executionId: input.executionId }),
-                );
+            const session = requireQuerySession(ctx, input.executionId);
             const result = await session.prevPage();
+            if (!isCurrentQuerySession(ctx, session)) return undefined;
             void promptAfterActionEventually(
                 ExperienceKind.NoSQL,
                 UsageImpact.Medium,
@@ -342,13 +337,9 @@ export const queryEditorRouterDef = queryEditorRouter({
             if (ctx.actionContext) {
                 ctx.actionContext.telemetry.properties.executionId = input.executionId;
             }
-            if (!ctx.state.connection) throw new Error(l10n.t('No connection'));
-            const session = ctx.sessions.get(input.executionId);
-            if (!session)
-                throw new Error(
-                    l10n.t('No session found for executionId: {executionId}', { executionId: input.executionId }),
-                );
+            const session = requireQuerySession(ctx, input.executionId);
             const result = await session.firstPage();
+            if (!isCurrentQuerySession(ctx, session)) return undefined;
             void promptAfterActionEventually(
                 ExperienceKind.NoSQL,
                 UsageImpact.Medium,
@@ -442,43 +433,57 @@ export const queryEditorRouterDef = queryEditorRouter({
             if (!ctx.state.connection) {
                 throw new Error(l10n.t('No connection to set'));
             }
-            return resolveConnectionState(ctx, {
-                ...ctx.state.connection,
-                databaseId: input.databaseId,
-                containerId: input.containerId,
-            });
+            const connection = requireQueryConnection(ctx);
+            if (connection.databaseId === input.databaseId && connection.containerId === input.containerId) {
+                return undefined;
+            }
+            return changeQueryConnection(ctx, () =>
+                resolveConnectionState(ctx, {
+                    ...connection,
+                    databaseId: input.databaseId,
+                    containerId: input.containerId,
+                }),
+            );
         }),
 
-    connectToDatabase: queryEditorProcedure.mutation(async ({ ctx }) => {
-        const connection = await getNoSqlQueryConnection();
-        if (connection) {
-            if (ctx.actionContext) {
-                ctx.actionContext.telemetry.properties.isEmulator = connection.isEmulator.toString();
+    connectToDatabase: queryEditorProcedure.mutation(({ ctx }) =>
+        changeQueryConnection(ctx, async () => {
+            const connection = await getNoSqlQueryConnection();
+            if (connection) {
+                if (ctx.actionContext) {
+                    ctx.actionContext.telemetry.properties.isEmulator = connection.isEmulator.toString();
+                }
+                return resolveConnectionState(ctx, connection);
             }
-            return resolveConnectionState(ctx, connection);
-        }
-        return undefined;
-    }),
+            return undefined;
+        }),
+    ),
 
     refreshThroughputBuckets: queryEditorProcedure.mutation(async ({ ctx }) => {
         return getEnabledThroughputBuckets(ctx.state.connection, ctx.actionContext);
     }),
 
-    disconnectFromDatabase: queryEditorProcedure.mutation(({ ctx }) => {
-        ctx.state.connection = undefined;
-        ctx.panel.title = QueryEditorTab.title;
-        return { disconnected: true } as const;
-    }),
+    disconnectFromDatabase: queryEditorProcedure.mutation(({ ctx }) =>
+        changeQueryConnection(ctx, async () => {
+            commitQueryConnection(ctx);
+            ctx.panel.title = QueryEditorTab.title;
+            return { disconnected: true, connectionVersion: ctx.state.connectionVersion } as const;
+        }),
+    ),
 
     openDocument: queryEditorProcedure
         .input(
             z.object({
                 mode: OpenDocumentModeSchema,
                 documentId: CosmosDBRecordIdentifierSchema.optional(),
+                executionId: z.string().min(1).optional(),
             }),
         )
         .mutation(({ input, ctx }) => {
-            if (!ctx.state.connection) throw new Error(l10n.t('No connection'));
+            const connection =
+                input.mode === 'add'
+                    ? requireQueryConnection(ctx)
+                    : requireQuerySession(ctx, input.executionId).connection;
             if (!input.documentId && input.mode !== 'add') {
                 throw new Error(l10n.t('Impossible to open an item without an id'));
             }
@@ -489,7 +494,7 @@ export const queryEditorRouterDef = queryEditorRouter({
             } else {
                 viewColumn += 1;
             }
-            DocumentTab.render(ctx.state.connection, input.mode, input.documentId, viewColumn);
+            DocumentTab.render(connection, input.mode, input.documentId, viewColumn);
             void promptAfterActionEventually(
                 ExperienceKind.NoSQL,
                 UsageImpact.Medium,
@@ -498,9 +503,9 @@ export const queryEditorRouterDef = queryEditorRouter({
         }),
 
     deleteDocument: queryEditorProcedure
-        .input(z.object({ documentId: CosmosDBRecordIdentifierSchema }))
+        .input(z.object({ documentId: CosmosDBRecordIdentifierSchema, executionId: z.string().min(1) }))
         .mutation(async ({ input, ctx }) => {
-            if (!ctx.state.connection) throw new Error(l10n.t('No connection'));
+            const session = requireQuerySession(ctx, input.executionId);
             if (!input.documentId) throw new Error(l10n.t('Impossible to delete an item without an id'));
 
             const confirmation = await getConfirmationAsInSettings(
@@ -513,7 +518,8 @@ export const queryEditorRouterDef = queryEditorRouter({
                 return { deleted: false } as const;
             }
 
-            const deleted = await deleteDocument(ctx.state.connection, input.documentId);
+            requireQuerySession(ctx, input.executionId);
+            const deleted = await deleteDocument(session.connection, input.documentId);
             void promptAfterActionEventually(
                 ExperienceKind.NoSQL,
                 UsageImpact.Medium,
@@ -523,9 +529,9 @@ export const queryEditorRouterDef = queryEditorRouter({
         }),
 
     deleteDocuments: queryEditorProcedure
-        .input(z.object({ documentIds: z.array(CosmosDBRecordIdentifierSchema) }))
+        .input(z.object({ documentIds: z.array(CosmosDBRecordIdentifierSchema), executionId: z.string().min(1) }))
         .mutation(async ({ input, ctx }) => {
-            if (!ctx.state.connection) throw new Error(l10n.t('No connection'));
+            const session = requireQuerySession(ctx, input.executionId);
 
             const validCount = input.documentIds.filter((d) => isDocumentId(d)).length;
             const confirmation = await getConfirmationAsInSettings(
@@ -547,7 +553,8 @@ export const queryEditorRouterDef = queryEditorRouter({
                 };
             }
 
-            const result = await bulkDeleteDocuments(ctx.state.connection, input.documentIds);
+            requireQuerySession(ctx, input.executionId);
+            const result = await bulkDeleteDocuments(session.connection, input.documentIds);
             void promptAfterActionEventually(
                 ExperienceKind.NoSQL,
                 UsageImpact.Medium,
@@ -617,12 +624,12 @@ export const queryEditorRouterDef = queryEditorRouter({
         }),
 
     updateQueryHistory: queryEditorProcedure
-        .input(z.object({ query: z.string().optional() }))
+        .input(z.object({ query: z.string().optional(), connectionVersion: z.number().int().nonnegative() }))
         .mutation(async ({ input, ctx }) => {
             if (ctx.actionContext) {
                 ctx.actionContext.telemetry.suppressIfSuccessful = true;
             }
-            if (!ctx.state.connection) throw new Error(l10n.t('No connection'));
+            requireQueryConnection(ctx, input.connectionVersion);
 
             return { queryHistory: await persistQueryHistory(ctx, input.query) };
         }),
@@ -909,17 +916,14 @@ export const queryEditorRouterDef = queryEditorRouter({
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 /**
- * Resolve connection state: sets the connection on the context, reads the
- * container definition, updates the panel title, and returns the state.
+ * Validate the container and load its metadata before committing a new connection.
+ * Without a candidate, resolve the existing connection without invalidating sessions.
  */
 async function resolveConnectionState(
     ctx: QueryEditorRouterContext,
     connection?: NoSqlQueryConnection,
 ): Promise<ConnectionState | undefined> {
     const conn = connection ?? ctx.state.connection;
-    if (connection) {
-        ctx.state.connection = connection;
-    }
 
     if (!conn) return undefined;
 
@@ -936,9 +940,25 @@ async function resolveConnectionState(
         throw new Error(l10n.t('Container {0} not found', containerId));
     }
 
+    let connectionMetadata: Pick<ConnectionState, 'queryHistory' | 'containerSchema' | 'throughputBuckets'> = {};
+    if (connection) {
+        const [queryHistory, containerSchema, throughputBuckets] = await Promise.all([
+            getQueryHistory(ctx, connection),
+            readSchemaForConnection(connection),
+            getEnabledThroughputBuckets(connection, ctx.actionContext),
+        ]);
+        connectionMetadata = {
+            queryHistory,
+            containerSchema: containerSchema as Record<string, unknown> | null,
+            throughputBuckets,
+        };
+        commitQueryConnection(ctx, connection);
+    }
     ctx.panel.title = `${databaseId}/${containerId}`;
 
     return {
+        ...connectionMetadata,
+        connectionVersion: ctx.state.connectionVersion,
         dbName: databaseId,
         containerName: containerId,
         partitionKey: container.resource.partitionKey,
@@ -948,11 +968,11 @@ async function resolveConnectionState(
 /**
  * Get query history for the current connection (read-only).
  */
-async function getQueryHistory(ctx: QueryEditorRouterContext): Promise<string[]> {
-    if (!ctx.state.connection) return [];
+async function getQueryHistory(ctx: QueryEditorRouterContext, connection = ctx.state.connection): Promise<string[]> {
+    if (!connection) return [];
 
     const storage = StorageService.get(StorageNames.Default);
-    const containerId = `${ctx.state.connection.databaseId}/${ctx.state.connection.containerId}`;
+    const containerId = `${connection.databaseId}/${connection.containerId}`;
     const historyItems = (await storage.getItems(HISTORY_STORAGE_KEY)) as HistoryItem[];
     const historyData = historyItems.find((item) => item.id === containerId);
 

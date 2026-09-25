@@ -3,166 +3,353 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type IActionContext } from '@microsoft/vscode-azext-utils';
-import { TypedEventSink } from '@microsoft/vscode-ext-webview';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { AuthenticationMethod } from '../../../cosmosdb/AuthenticationMethod';
+import { vi } from 'vitest';
+import * as vscode from 'vscode';
 import { type NoSqlQueryConnection } from '../../../cosmosdb/NoSqlQueryConnection';
-import { TelemetryContext } from '../../../Telemetry';
+import { QuerySession, type QueryExecutionResult } from '../../../cosmosdb/session/QuerySession';
 import { type QueryEditorRouterContext } from '../appRouter';
-import { type QueryEditorEvent } from './queryEditorEventsRouter';
 import { queryEditorRouterDef } from './queryEditorRouter';
 
 const mocks = vi.hoisted(() => ({
-    contexts: [] as Pick<IActionContext, 'telemetry' | 'valuesToMask' | 'errorHandling'>[],
-    read: vi.fn(),
+    deleteDocument: vi.fn(),
+    bulkDeleteDocuments: vi.fn(),
+    confirm: vi.fn(),
+    readContainer: vi.fn(),
     pickConnection: vi.fn(),
+    openDocument: vi.fn(),
+    readSchema: vi.fn(),
 }));
 
-vi.mock('@microsoft/vscode-azext-utils', () => ({
-    callWithTelemetryAndErrorHandling: vi.fn(
-        async (_event: string, callback: (context: unknown) => Promise<unknown>) => {
-            const context = {
-                errorHandling: { issueProperties: {} },
-                telemetry: { measurements: {}, properties: {} },
-                valuesToMask: [],
-            };
-            mocks.contexts.push(context);
-            return callback(context);
-        },
-    ),
-}));
 vi.mock('../../../chat', () => ({}));
+vi.mock('../../../cosmosdb/CosmosDBCredential', () => ({ getCosmosDBKeyCredential: () => undefined }));
+vi.mock('../../../cosmosdb/getCosmosClient', () => ({}));
 vi.mock('../../../cosmosdb/controlPlane', () => ({}));
 vi.mock('../../../cosmosdb/NoSqlQueryConnection', () => ({ getNoSqlQueryConnection: mocks.pickConnection }));
-vi.mock('../../../cosmosdb/session/DocumentSession', () => ({}));
-vi.mock('../../../cosmosdb/session/QuerySession', () => ({}));
-vi.mock('../../../cosmosdb/throughputBuckets', () => ({}));
-vi.mock('../../../cosmosdb/withClaimsChallengeHandling', () => ({
-    withClaimsChallengeHandling: vi.fn(async (_connection, operation) =>
-        operation({ database: () => ({ container: () => ({ read: mocks.read }) }) }),
-    ),
+vi.mock('../../../cosmosdb/session/DocumentSession', () => ({
+    deleteDocument: mocks.deleteDocument,
+    bulkDeleteDocuments: mocks.bulkDeleteDocuments,
+    isDocumentId: (document: { id?: string }) => !!document.id,
 }));
-vi.mock('../../../extensionVariables', () => ({
-    ext: { outputChannel: { debug: vi.fn(), warn: vi.fn() } },
+vi.mock('../../../cosmosdb/throughputBuckets', () => ({ getEnabledThroughputBuckets: async () => undefined }));
+vi.mock('../../../cosmosdb/withClaimsChallengeHandling', () => ({ withClaimsChallengeHandling: mocks.readContainer }));
+vi.mock('../../../services/SchemaService', () => ({
+    SchemaService: { getInstance: () => ({ readSchema: mocks.readSchema }) },
 }));
 vi.mock('../../../services/SchemaFileStorage', () => ({}));
-vi.mock('../../../services/SchemaService', () => ({}));
-vi.mock('../../../services/StorageService', () => ({}));
+vi.mock('../../../services/StorageService', () => ({
+    StorageNames: { Default: 'default' },
+    StorageService: { get: () => ({ getItems: async () => [] }) },
+}));
 vi.mock('../../../utils/aiUtils', () => ({}));
-vi.mock('../../../utils/dialogs/getConfirmation', () => ({}));
-vi.mock('../../../utils/survey', () => ({}));
+vi.mock('../../../utils/dialogs/getConfirmation', () => ({ getConfirmationAsInSettings: mocks.confirm }));
+vi.mock('../../../utils/survey', () => ({ promptAfterActionEventually: vi.fn() }));
 vi.mock('../../../utils/vscodeUtils', () => ({}));
-vi.mock('../../DocumentTab', () => ({}));
-vi.mock('../../QueryEditorTab', () => ({}));
+vi.mock('../../DocumentTab', () => ({ DocumentTab: { render: mocks.openDocument } }));
+vi.mock('../../QueryEditorTab', () => ({ QueryEditorTab: { title: 'Query Editor' } }));
+vi.mock('@vscode/l10n', () => ({ t: (message: string) => message }));
+vi.mock('@microsoft/vscode-azext-utils', () => ({
+    callWithTelemetryAndErrorHandling: vi.fn(
+        async (_eventName: string, callback: (context: unknown) => Promise<unknown>) =>
+            callback({
+                errorHandling: { rethrow: false, suppressDisplay: false },
+                telemetry: { measurements: {}, properties: {} },
+                valuesToMask: [],
+            }),
+    ),
+}));
 
-const keyCredential = { type: AuthenticationMethod.accountKey, key: 'private-account-key' } as const;
-const connection: NoSqlQueryConnection = {
-    endpoint: 'https://private-account.documents.azure.com',
-    databaseId: 'private-database',
-    containerId: 'private-container',
-    credentials: [keyCredential],
+const connectionA: NoSqlQueryConnection = {
+    endpoint: 'https://account.documents.azure.com',
+    databaseId: 'db',
+    containerId: 'A',
+    credentials: [],
     isEmulator: false,
 };
+const documentId = { id: 'same', _rid: 'rid', partitionKey: 'shared' };
+
+function deferred<T>() {
+    let resolve!: (value: T) => void;
+    const promise = new Promise<T>((resolvePromise) => {
+        resolve = resolvePromise;
+    });
+    return { promise, resolve };
+}
 
 function createContext(): QueryEditorRouterContext {
     return {
-        webviewName: 'cosmosDbQueryEditor',
+        state: {
+            connection: connectionA,
+            connectionVersion: 0,
+            isChangingConnection: false,
+            isLastQueryAIGenerated: false,
+            pendingRuns: new Map(),
+        },
         sessions: new Map(),
-        telemetryContext: new TelemetryContext('queryEditor'),
-        panel: { title: 'Query Editor' } as QueryEditorRouterContext['panel'],
-        eventSink: new TypedEventSink<QueryEditorEvent>(),
-        state: { connection, isLastQueryAIGenerated: false, pendingRuns: new Map() },
+        panel: { title: 'db/A' } as QueryEditorRouterContext['panel'],
+        telemetryContext: {} as QueryEditorRouterContext['telemetryContext'],
+        eventSink: {} as QueryEditorRouterContext['eventSink'],
+        webviewName: 'cosmosDbQuery',
     };
 }
 
-describe('queryEditor connection telemetry privacy', () => {
+function addSession(ctx: QueryEditorRouterContext) {
+    const session = new QuerySession(ctx.state.connection!, 'SELECT * FROM c', {});
+    ctx.sessions.set(session.id, session);
+    return session;
+}
+
+describe('query editor connection ownership', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        mocks.contexts.length = 0;
-        mocks.pickConnection.mockResolvedValue(connection);
+        mocks.confirm.mockResolvedValue(true);
+        mocks.readContainer.mockResolvedValue({ resource: { partitionKey: { paths: ['/pk'] } } });
+        mocks.readSchema.mockResolvedValue(null);
+        mocks.deleteDocument.mockResolvedValue(true);
+        mocks.bulkDeleteDocuments.mockResolvedValue({
+            valid: [],
+            invalid: [],
+            deleted: [],
+            throttled: [],
+            failed: [],
+            aborted: false,
+        });
     });
 
-    for (const method of ['setConnection', 'connectToDatabase'] as const) {
-        for (const failure of ['missingContainer', 'sdkError'] as const) {
-            it(`masks ${failure} in ${method} before the container read`, async () => {
-                const context = createContext();
-                context.state.connection = { ...connection, databaseId: 'old-database', containerId: 'old-container' };
-                const error = new Error(
-                    `${connection.endpoint} ${connection.databaseId} ${connection.containerId} ${keyCredential.key}`,
-                );
-                mocks.read.mockImplementationOnce(async () => {
-                    expect(mocks.contexts).toHaveLength(1);
-                    expect(mocks.contexts[0].valuesToMask).toEqual([
-                        keyCredential.key,
-                        connection.endpoint,
-                        connection.databaseId,
-                        connection.containerId,
-                    ]);
-                    if (failure === 'sdkError') throw error;
-                    return { resource: undefined };
-                });
-                const caller = queryEditorRouterDef.createCaller(context);
-                const operation =
-                    method === 'setConnection'
-                        ? caller.setConnection({
-                              databaseId: connection.databaseId,
-                              containerId: connection.containerId,
-                          })
-                        : caller.connectToDatabase();
+    for (const bulk of [false, true]) {
+        const deleteItems = (caller: ReturnType<typeof queryEditorRouterDef.createCaller>, executionId: string) =>
+            bulk
+                ? caller.deleteDocuments({ documentIds: [documentId, { ...documentId, id: 'second' }], executionId })
+                : caller.deleteDocument({ documentId, executionId });
 
-                await expect(operation).rejects.toThrow(
-                    failure === 'sdkError' ? error.message : `Container ${connection.containerId} not found`,
-                );
-                expect(mocks.read).toHaveBeenCalledOnce();
-                expect(context.panel.title).toBe('Query Editor');
-                expect(mocks.contexts[0].errorHandling.suppressDisplay).toBe(true);
-                expect(mocks.contexts[0].errorHandling.suppressReportIssue).toBeUndefined();
-            });
-        }
+        it(`rejects stale ${bulk ? 'bulk' : 'single'} deletes after A -> B -> A`, async () => {
+            const ctx = createContext();
+            const session = addSession(ctx);
+            const caller = queryEditorRouterDef.createCaller(ctx);
+            await caller.setConnection({ databaseId: 'db', containerId: 'B' });
+            await expect(deleteItems(caller, session.id)).rejects.toThrow('no longer current');
+            await caller.setConnection({ databaseId: 'db', containerId: 'A' });
+            await expect(deleteItems(caller, session.id)).rejects.toThrow('no longer current');
+            expect(session.isDisposed).toBe(true);
+            expect(mocks.confirm).not.toHaveBeenCalled();
+            expect(mocks.deleteDocument).not.toHaveBeenCalled();
+            expect(mocks.bulkDeleteDocuments).not.toHaveBeenCalled();
+        });
+
+        it(`rechecks ${bulk ? 'bulk' : 'single'} deletes after confirmation`, async () => {
+            const ctx = createContext();
+            const session = addSession(ctx);
+            const caller = queryEditorRouterDef.createCaller(ctx);
+            const confirmation = deferred<boolean>();
+            mocks.confirm.mockReturnValue(confirmation.promise);
+            const deletion = deleteItems(caller, session.id);
+            await vi.waitFor(() => expect(mocks.confirm).toHaveBeenCalled());
+            await caller.setConnection({ databaseId: 'db', containerId: 'B' });
+            confirmation.resolve(true);
+            await expect(deletion).rejects.toThrow('no longer current');
+            expect(mocks.deleteDocument).not.toHaveBeenCalled();
+            expect(mocks.bulkDeleteDocuments).not.toHaveBeenCalled();
+        });
+
+        it(`allows current ${bulk ? 'bulk' : 'single'} deletes using the session connection`, async () => {
+            const ctx = createContext();
+            const session = addSession(ctx);
+            await deleteItems(queryEditorRouterDef.createCaller(ctx), session.id);
+            expect(bulk ? mocks.bulkDeleteDocuments : mocks.deleteDocument).toHaveBeenCalledWith(
+                connectionA,
+                bulk ? [documentId, { ...documentId, id: 'second' }] : documentId,
+            );
+        });
     }
 
-    it('preserves successful connection results and uses independent masks for each invocation', async () => {
-        const context = createContext();
-        const partitionKey = { paths: ['/pk'] };
-        mocks.read.mockResolvedValue({ resource: { partitionKey } });
-        const caller = queryEditorRouterDef.createCaller(context);
+    it('preserves the connection generation and session when selecting the current container', async () => {
+        const ctx = createContext();
+        const session = addSession(ctx);
+        const resolve = vi.fn();
+        ctx.state.pendingRuns.set('request', { resolve, executionId: session.id });
 
-        expect(await caller.connectToDatabase()).toEqual({
-            dbName: connection.databaseId,
-            containerName: connection.containerId,
-            partitionKey,
-        });
-        expect(await caller.setConnection({ databaseId: 'next-database', containerId: 'next-container' })).toEqual({
-            dbName: 'next-database',
-            containerName: 'next-container',
-            partitionKey,
+        const result = await queryEditorRouterDef.createCaller(ctx).setConnection({
+            databaseId: 'db',
+            containerId: 'A',
         });
 
-        expect(context.panel.title).toBe('next-database/next-container');
-        expect(mocks.contexts).toHaveLength(2);
-        expect(mocks.contexts[0].valuesToMask).toEqual([
-            keyCredential.key,
-            connection.endpoint,
-            connection.databaseId,
-            connection.containerId,
-        ]);
-        expect(mocks.contexts[1].valuesToMask).toEqual([
-            keyCredential.key,
-            connection.endpoint,
-            'next-database',
-            'next-container',
-        ]);
-        expect(mocks.contexts[0].telemetry.properties.isEmulator).toBe('false');
+        expect(result).toBeUndefined();
+        expect(ctx.state.connection).toBe(connectionA);
+        expect(ctx.state.connectionVersion).toBe(0);
+        expect(ctx.state.isChangingConnection).toBe(false);
+        expect(ctx.sessions.get(session.id)).toBe(session);
+        expect(session.isDisposed).toBe(false);
+        expect(ctx.state.pendingRuns.has('request')).toBe(true);
+        expect(resolve).not.toHaveBeenCalled();
+        expect(mocks.readContainer).not.toHaveBeenCalled();
+        expect(mocks.readSchema).not.toHaveBeenCalled();
     });
 
-    it('does not resolve or mutate the connection when the picker is cancelled', async () => {
-        const context = createContext();
-        mocks.pickConnection.mockResolvedValueOnce(undefined);
+    it('preserves the old connection and session when validation fails', async () => {
+        const ctx = createContext();
+        const session = addSession(ctx);
+        mocks.readContainer.mockRejectedValueOnce(new Error('Forbidden'));
+        await expect(
+            queryEditorRouterDef.createCaller(ctx).setConnection({ databaseId: 'db', containerId: 'B' }),
+        ).rejects.toThrow('Forbidden');
+        expect(ctx.state.connection).toBe(connectionA);
+        expect(ctx.state.connectionVersion).toBe(0);
+        expect(ctx.panel.title).toBe('db/A');
+        expect(ctx.sessions.get(session.id)).toBe(session);
+        expect(session.isDisposed).toBe(false);
+        expect(ctx.state.isChangingConnection).toBe(false);
+    });
 
-        expect(await queryEditorRouterDef.createCaller(context).connectToDatabase()).toBeUndefined();
-        expect(context.state.connection).toBe(connection);
-        expect(mocks.read).not.toHaveBeenCalled();
-        expect(mocks.contexts[0].valuesToMask).toEqual([]);
+    it('rejects overlapping switches and result actions until validation finishes', async () => {
+        const ctx = createContext();
+        const session = addSession(ctx);
+        const caller = queryEditorRouterDef.createCaller(ctx);
+        const read = deferred<{ resource: { partitionKey: { paths: string[] } } }>();
+        mocks.readContainer.mockReturnValueOnce(read.promise);
+        const switching = caller.setConnection({ databaseId: 'db', containerId: 'B' });
+        await vi.waitFor(() => expect(mocks.readContainer).toHaveBeenCalled());
+        expect(ctx.state.connection).toBe(connectionA);
+        await expect(caller.setConnection({ databaseId: 'db', containerId: 'C' })).rejects.toThrow(
+            'connection is changing',
+        );
+        await expect(caller.deleteDocument({ documentId, executionId: session.id })).rejects.toThrow(
+            'connection is changing',
+        );
+        read.resolve({ resource: { partitionKey: { paths: ['/pk'] } } });
+        await switching;
+        expect(ctx.state.connection?.containerId).toBe('B');
+        expect(ctx.state.connectionVersion).toBe(1);
+        expect(mocks.deleteDocument).not.toHaveBeenCalled();
+    });
+
+    it('leaves the connection unchanged when the picker is cancelled', async () => {
+        const ctx = createContext();
+        const session = addSession(ctx);
+        mocks.pickConnection.mockResolvedValueOnce(undefined);
+        await queryEditorRouterDef.createCaller(ctx).connectToDatabase();
+        expect(ctx.state.connection).toBe(connectionA);
+        expect(ctx.sessions.get(session.id)).toBe(session);
+        expect(ctx.state.connectionVersion).toBe(0);
+    });
+
+    it('invalidates sessions and settles waiting tools on disconnect', async () => {
+        const ctx = createContext();
+        const session = addSession(ctx);
+        const resolve = vi.fn();
+        ctx.state.pendingRuns.set('request', { resolve, executionId: session.id });
+        await queryEditorRouterDef.createCaller(ctx).disconnectFromDatabase();
+        expect(resolve).toHaveBeenCalledWith(undefined);
+        expect(ctx.state.pendingRuns.size).toBe(0);
+        expect(ctx.sessions.size).toBe(0);
+        expect(session.isDisposed).toBe(true);
+        expect(ctx.state.connection).toBeUndefined();
+    });
+
+    it('preserves ownership of stopped results until switching connections', async () => {
+        const ctx = createContext();
+        const session = addSession(ctx);
+        const caller = queryEditorRouterDef.createCaller(ctx);
+        await caller.stopQuery({ executionId: session.id });
+        for (const mode of ['view', 'edit'] as const) {
+            await caller.openDocument({ mode, documentId, executionId: session.id });
+            expect(mocks.openDocument).toHaveBeenLastCalledWith(connectionA, mode, documentId, expect.any(Number));
+        }
+        await caller.deleteDocument({ documentId, executionId: session.id });
+        expect(mocks.deleteDocument).toHaveBeenCalledWith(connectionA, documentId);
+        await caller.setConnection({ databaseId: 'db', containerId: 'B' });
+        await expect(caller.deleteDocument({ documentId, executionId: session.id })).rejects.toThrow(
+            'no longer current',
+        );
+        expect(mocks.deleteDocument).toHaveBeenCalledOnce();
+    });
+
+    it('keeps the old state if candidate metadata cannot be loaded', async () => {
+        const ctx = createContext();
+        const session = addSession(ctx);
+        mocks.readSchema.mockRejectedValueOnce(new Error('Schema unavailable'));
+        await expect(
+            queryEditorRouterDef.createCaller(ctx).setConnection({ databaseId: 'db', containerId: 'B' }),
+        ).rejects.toThrow('Schema unavailable');
+        expect(ctx.state.connection).toBe(connectionA);
+        expect(ctx.state.connectionVersion).toBe(0);
+        expect(ctx.sessions.get(session.id)).toBe(session);
+        expect(ctx.panel.title).toBe('db/A');
+        expect(ctx.state.isChangingConnection).toBe(false);
+    });
+
+    it('rejects session creation if the connection changes during the reload confirmation', async () => {
+        const ctx = createContext();
+        const session = addSession(ctx);
+        const confirmation = deferred<void>();
+        const warning = vi
+            .spyOn(vscode.window, 'showWarningMessage')
+            .mockImplementationOnce(async (_message, _options, ...items) => {
+                await confirmation.promise;
+                return items[0];
+            });
+        const caller = queryEditorRouterDef.createCaller(ctx);
+        const creation = caller.createQuerySession({
+            query: 'SELECT * FROM c',
+            options: { sessionId: session.id },
+            connectionVersion: 0,
+        });
+        await vi.waitFor(() => expect(warning).toHaveBeenCalled());
+        await caller.setConnection({ databaseId: 'db', containerId: 'B' });
+        confirmation.resolve();
+        await expect(creation).rejects.toThrow('no longer current');
+        expect(ctx.sessions.size).toBe(0);
+    });
+
+    it('rejects old results when connecting to another account with the same database and container names', async () => {
+        const ctx = createContext();
+        const session = addSession(ctx);
+        mocks.pickConnection.mockResolvedValueOnce({ ...connectionA, endpoint: 'https://other.documents.azure.com' });
+        const caller = queryEditorRouterDef.createCaller(ctx);
+        await caller.connectToDatabase();
+        await expect(caller.deleteDocument({ documentId, executionId: session.id })).rejects.toThrow(
+            'no longer current',
+        );
+        expect(mocks.deleteDocument).not.toHaveBeenCalled();
+    });
+
+    for (const operation of ['runQuery', 'nextPage', 'prevPage', 'firstPage'] as const) {
+        it(`drops ${operation} responses completing after a switch`, async () => {
+            const ctx = createContext();
+            const session = addSession(ctx);
+            const result = deferred<QueryExecutionResult>();
+            const method = operation === 'runQuery' ? 'run' : operation;
+            vi.spyOn(session, method).mockReturnValueOnce(result.promise);
+            const caller = queryEditorRouterDef.createCaller(ctx);
+            const execution = caller[operation]({ executionId: session.id });
+            await vi.waitFor(() => expect(session[method]).toHaveBeenCalled());
+            await caller.setConnection({ databaseId: 'db', containerId: 'B' });
+            result.resolve({ executionId: session.id, startTime: 0, endTime: 1, currentPage: 1, result: null });
+            expect(await execution).toBeUndefined();
+            await expect(caller[operation]({ executionId: session.id })).rejects.toThrow('no longer current');
+        });
+    }
+
+    it('rejects stale session creation and result-based opens, but permits adding a new item', async () => {
+        const ctx = createContext();
+        const session = addSession(ctx);
+        const caller = queryEditorRouterDef.createCaller(ctx);
+        await caller.setConnection({ databaseId: 'db', containerId: 'B' });
+        await expect(
+            caller.createQuerySession({ query: 'SELECT * FROM c', options: {}, connectionVersion: 0 }),
+        ).rejects.toThrow('no longer current');
+        for (const mode of ['view', 'edit'] as const) {
+            await expect(caller.openDocument({ mode, documentId, executionId: session.id })).rejects.toThrow(
+                'no longer current',
+            );
+            await expect(caller.openDocument({ mode, documentId })).rejects.toThrow('no longer current');
+        }
+        expect(mocks.openDocument).not.toHaveBeenCalled();
+        await caller.openDocument({ mode: 'add' });
+        expect(mocks.openDocument.mock.calls[0][0]).toBe(ctx.state.connection);
+        const created = await caller.createQuerySession({
+            query: 'SELECT * FROM c',
+            options: {},
+            connectionVersion: 1,
+        });
+        expect(ctx.sessions.get(created!.executionId)?.connection).toBe(ctx.state.connection);
     });
 });

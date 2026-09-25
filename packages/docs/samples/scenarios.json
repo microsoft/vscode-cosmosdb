@@ -1,0 +1,73 @@
+[
+  {
+    "id": "nested",
+    "name": "Nested documents",
+    "description": "Nested objects and arrays. Try completing c.address. or hover over c.name.",
+    "query": "SELECT c.name, c.address.city\nFROM c\nWHERE c.address.country = \"US\"",
+    "documents": [
+      {
+        "id": "customer-1",
+        "name": "Avery",
+        "address": { "city": "Seattle", "country": "US" },
+        "orders": [{ "sku": "notebook", "quantity": 2 }],
+        "active": true
+      },
+      {
+        "id": "customer-2",
+        "name": "Morgan",
+        "address": { "city": "Prague", "country": "CZ" },
+        "orders": [{ "sku": "pencil", "quantity": 4 }],
+        "active": false
+      }
+    ]
+  },
+  {
+    "id": "heterogeneous",
+    "name": "Heterogeneous documents",
+    "description": "Optional fields, mixed value types, and null values demonstrate inference from varied documents.",
+    "query": "SELECT c.id, c.value, c.metadata\nFROM c\nWHERE IS_DEFINED(c.metadata)",
+    "documents": [
+      {
+        "id": "event-1",
+        "value": 42,
+        "metadata": { "source": "sensor", "quality": 0.98 }
+      },
+      { "id": "event-2", "value": "offline", "tags": ["maintenance"] },
+      {
+        "id": "event-3",
+        "value": null,
+        "metadata": { "source": "manual", "note": "Waiting" }
+      }
+    ]
+  },
+  {
+    "id": "invalid-sql",
+    "name": "Invalid SQL",
+    "description": "Deliberate syntax errors appear in the editor and diagnostic list. Format does not repair SQL.",
+    "query": "SELECT c.name FORM c\nWHERE c.price >",
+    "documents": [
+      { "id": "product-1", "name": "Notebook", "price": 8.5 },
+      { "id": "product-2", "name": "Pencil", "price": 1.25 }
+    ]
+  },
+  {
+    "id": "multi-query",
+    "name": "Multiple queries",
+    "description": "Semicolon-separated statements share the inferred schema. Diagnostics use document-level positions.",
+    "query": "SELECT c.id, c.category FROM c;\n\nSELECT VALUE COUNT(1) FROM c WHERE c.available = true;\n\nSELECT c. FROM c",
+    "documents": [
+      {
+        "id": "book-1",
+        "category": "reference",
+        "available": true,
+        "rating": 4.8
+      },
+      {
+        "id": "book-2",
+        "category": "fiction",
+        "available": false,
+        "rating": 4.3
+      }
+    ]
+  }
+]

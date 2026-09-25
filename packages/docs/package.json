@@ -1,0 +1,35 @@
+{
+  "name": "cosmosdb-package-docs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "dev": "vitepress dev",
+    "typecheck": "vue-tsc --noEmit",
+    "build": "npm run typecheck && vitepress build",
+    "preview": "vitepress preview"
+  },
+  "dependencies": {
+    "@azure/cosmosdb-nosql-language-service": "1.0.0",
+    "@azure/cosmosdb-schema-analyzer": "1.0.0",
+    "@codemirror/autocomplete": "6.20.3",
+    "@codemirror/commands": "6.11.1",
+    "@codemirror/language": "6.12.4",
+    "@codemirror/lint": "6.9.7",
+    "@codemirror/state": "6.7.6",
+    "@codemirror/view": "6.43.13",
+    "codemirror": "6.0.2",
+    "monaco-editor": "0.52.2",
+    "vue": "3.5.43"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.7",
+    "@types/vscode": "1.109.0",
+    "typescript": "5.9.3",
+    "vitepress": "2.0.0-alpha.20",
+    "vue-tsc": "3.3.11"
+  }
+}

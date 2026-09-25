@@ -11,8 +11,8 @@ import * as vscode from 'vscode';
 import { CosmosDbOperationsService } from '../../chat';
 import { ext } from '../../extensionVariables';
 import { getErrorMessage } from '../../utils/getErrorMessage';
-import { getCosmosDBKeyCredential } from '../CosmosDBCredential';
 import { getCosmosClient } from '../getCosmosClient';
+import { maskConnectionTelemetry } from '../maskConnectionTelemetry';
 import { type NoSqlQueryConnection } from '../NoSqlQueryConnection';
 import { resolveEffectivePriorityLevel } from '../priorityLevel';
 import {
@@ -43,9 +43,7 @@ export class QuerySession {
     private readonly containerId: string;
     private readonly resultViewMetadata: QueryMetadata = {};
     private readonly query: string;
-    // For telemetry
     private readonly endpoint: string;
-    private readonly masterKey: string;
 
     public readonly sessionResult: QuerySessionResult;
 
@@ -60,14 +58,13 @@ export class QuerySession {
         resultViewMetadata: QueryMetadata,
         private readonly isLlmTool = false,
     ) {
-        const { databaseId, containerId, endpoint, credentials } = connection;
+        const { databaseId, containerId, endpoint } = connection;
 
         this.id = crypto.randomUUID();
         this.connection = connection;
         this.databaseId = databaseId;
         this.containerId = containerId;
         this.endpoint = endpoint;
-        this.masterKey = getCosmosDBKeyCredential(credentials)?.key ?? '';
         this.resultViewMetadata = resultViewMetadata;
         this.query = query;
 
@@ -354,15 +351,15 @@ export class QuerySession {
     }
 
     private setTelemetryProperties(context: IActionContext): void {
-        context.valuesToMask.push(this.query, this.masterKey, this.endpoint, this.databaseId, this.containerId);
+        if (this.query.trim().length > 0) {
+            context.valuesToMask.push(this.query);
+        }
+        maskConnectionTelemetry(context, this.connection);
 
         context.errorHandling.suppressDisplay = true;
         context.errorHandling.suppressReportIssue = true;
 
         context.telemetry.properties.sessionId = this.id;
-        context.telemetry.properties.query = crypto.createHash('sha256').update(this.query).digest('hex');
-        context.telemetry.properties.databaseId = crypto.createHash('sha256').update(this.databaseId).digest('hex');
-        context.telemetry.properties.containerId = crypto.createHash('sha256').update(this.containerId).digest('hex');
         context.telemetry.properties.countPerPage = this.resultViewMetadata?.countPerPage?.toString() ?? '';
     }
 }

@@ -54,12 +54,16 @@ const previousPatchExtensionVersion = '1.1.0';
 const previousMinorExtensionVersion = '1.0.0';
 const previousMajorExtensionVersion = '0.1.1';
 
+const telemetryProperties = vi.hoisted(() => [] as Record<string, string>[]);
+
 vi.mock('@microsoft/vscode-azext-utils', () => {
     return {
         // Only mock the callWithTelemetryAndErrorHandling function that we need
         callWithTelemetryAndErrorHandling: vi.fn(async (_eventName, callback: (context: any) => Promise<void>) => {
+            const properties: Record<string, string> = {};
+            telemetryProperties.push(properties);
             await callback({
-                telemetry: { properties: {}, measurements: {} },
+                telemetry: { properties, measurements: {} },
                 errorHandling: { issueProperties: {} },
                 ui: {
                     showWarningMessage: vi.fn(),
@@ -89,6 +93,7 @@ beforeAll(() => {
  */
 describe('Survey Initialization', () => {
     beforeEach(() => {
+        telemetryProperties.length = 0;
         globalState = {
             get: vi.fn(),
             update: vi.fn(),
@@ -448,6 +453,12 @@ describe('Survey Initialization', () => {
                 createHashDigestMock(hashInt);
 
                 expect(await getIsSurveyCandidate()).toBe(expected);
+                expect(telemetryProperties.at(-1)).toMatchObject({
+                    acceptedForABTest: String(expected),
+                    isCandidate: String(expected),
+                });
+                expect(telemetryProperties.at(-1)).not.toHaveProperty('normalizedValue');
+                expect(JSON.stringify(telemetryProperties)).not.toContain(machineId);
             },
         );
 
@@ -487,6 +498,11 @@ describe('Survey Initialization', () => {
 
             vi.spyOn(Math, 'random').mockReturnValue(randomValue);
             expect(await getIsSurveyCandidate()).toBe(expected);
+            expect(telemetryProperties.at(-1)).toMatchObject({
+                abTestError: 'hashCalculationFailed',
+                usedFallbackSelection: 'true',
+            });
+            expect(JSON.stringify(telemetryProperties)).not.toContain('hash failure');
         });
 
         test('should select approximately the target percentage of users with random machine IDs', async () => {

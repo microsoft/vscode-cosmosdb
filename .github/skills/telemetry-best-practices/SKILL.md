@@ -26,7 +26,9 @@ The following must **never** appear in `telemetry.properties` or `telemetry.meas
 - User IDs, resource names (other than the Azure account name — see below), database names, container/collection names, connection strings, hostnames, endpoints, ports.
 - Query text, document contents, schema/DDL contents, error messages containing any of the above, free-form user input, prompts, AI responses.
 - Email addresses, user names, machine names, IP addresses.
-- Any string derived from the above (reversible hashes, prefixes, etc.).
+- Deterministic identifiers derived from the above, including hashes, truncated hashes, and normalized hash values.
+  Cryptographic hashes are not inherently reversible, but guessable inputs can be recovered by hashing candidate values,
+  and stable outputs permit correlation across sessions.
 
 **Not PII** (always allowed): the AI model identifiers `modelId`, `modelFamily`, `modelVendor` (vendor-published values from `vscode.LanguageModelChat`), bounded enums you control, durations, counts, and ratios.
 
@@ -53,13 +55,20 @@ Rules:
 - Use **exactly** these key names. Logging the same value under any other key (`subId`, `accountId`, `armId`, `cosmosAccount`, …) bypasses the special handling and counts as PII.
 - `resourceId` must be wrapped in `new vscode.TelemetryTrustedValue(...)`.
 - Do **not** decompose the resource id and emit its parts (`resourceGroup`, `databaseName`, `containerName`, …) under separate properties — only the four keys above are allowed; everything else is PII.
-- Still push these values to `context.valuesToMask` so they are redacted from any error messages emitted alongside the event.
+- `tenantId` is allowed OII, not personal data. Do not remove its predefined telemetry property or explicitly add tenant IDs
+  to `context.valuesToMask`. The library's built-in error sanitization may still redact GUIDs.
+- Still push the other listed values to `context.valuesToMask` so they are redacted from error messages emitted alongside
+  the event.
 
 ### Safe alternatives when you need to correlate or categorize
 
 - A **non-persistent, in-memory session id** generated with `crypto.randomUUID()` per session/operation.
 - A bounded enum (e.g. `'mongo' | 'postgres' | 'sqlserver'`), never a free-form string.
 - A boolean flag (e.g. `hasCustomInstructions`) instead of the actual value.
+
+Keep hashes needed for local storage keys or comparisons local. For cohort selection, report only the boolean selection
+result, not the underlying machine-ID hash or its normalized numeric value. Reuse existing random session IDs rather than
+adding another identifier when they already provide the required operation correlation.
 
 ### Red flags to look for in reviews
 
@@ -75,7 +84,19 @@ Rules:
 
 ## `context.valuesToMask` — Defense in Depth, Not a Substitute
 
-`IActionContext.valuesToMask` is a list of strings that the telemetry pipeline replaces with `---` in any **error message** that would otherwise be reported (stack traces, `error.message`, the GitHub issue body produced by `reportIssue`). It does **not** redact values from `telemetry.properties` / `telemetry.measurements` you set yourself — those are sent verbatim.
+`IActionContext.valuesToMask` supplies sensitive strings for sanitization by `@microsoft/vscode-azext-utils`.
+The library sanitizes string `telemetry.properties` before emission, using more aggressive masking for keys containing
+`error` or `exception`. Other string properties receive less aggressive masking but still use the registered values.
+Non-error `TelemetryTrustedValue` properties bypass this sanitization, and numeric `telemetry.measurements` are not masked.
+Registering a raw value does not mask its deterministic derivatives, such as hashes or normalized hash values.
+
+Masks belong to the action context on which they are registered. Nested telemetry calls and separate tRPC invocations
+must register their own masks before operations that can fail; caller or webview masks are not automatically inherited.
+
+For NoSQL connections, reuse `maskConnectionTelemetry` to register connection values and every configured credential's
+account key or managed-identity client ID, including fallback credentials. Entra tenant IDs are allowed OII and are not
+registered as masks. Add operation-specific masks (such as query text) separately. Explicit client-ID masks avoid relying
+solely on the sanitizer's GUID detection.
 
 Use it as a **safety net** for sensitive values that your code touches and might end up in a thrown error or log line you don't fully control:
 
@@ -95,8 +116,9 @@ telemetryContext.addMaskedValue([endpoint, databaseId, containerId]);
 
 - **Always** push a value to `valuesToMask` as soon as you obtain it if it could end up in an error path. This includes:
     - Strict secrets that must never appear in telemetry: connection strings, keys, tokens, query text, document contents, partition keys, user-entered names (database, container, resource).
-    - The OII identifiers (`subscriptionId`, `tenantId`, `resourceId`, `accountName`) — even though they are emitted as-is under their predefined keys, they should still be masked from error messages.
-- This is **defense in depth**, not a license to put a strict secret into telemetry properties. Never do `properties.connectionString = cs` and rely on masking — only error-path strings are masked.
+    - The OII identifiers `subscriptionId`, `resourceId`, and `accountName` — even though they are emitted as-is under their predefined keys, they should still be masked from error messages. Tenant IDs are exempt from explicit masking.
+- This is **defense in depth**, not a license to put a strict secret into telemetry properties.
+  Never do `properties.connectionString = cs` and rely on masking; emit only privacy-safe values by construction.
 - Push **non-empty** strings only. Empty/whitespace values match everything and corrupt logs (the central `Telemetry.ts` filter already drops falsy values; do not bypass it).
 - If a value has multiple equivalent forms a user might see (e.g. a partition key with and without a leading `/`), push **all** forms: `context.valuesToMask.push(partitionKey, partitionKey.slice(1));`
 - Wizard `prompt`/`validateInput` steps that capture user input should push the captured value before the step returns. See `CosmosDBContainerNameStep`, `CosmosDBConnectionStringStep`, `CosmosDBPartitionKeyStep` for the pattern.
@@ -159,5 +181,5 @@ When reviewing a diff that touches telemetry, confirm each item:
 - [ ] Property/measurement keys use existing `camelCase` names where the meaning matches an existing key.
 - [ ] Best-effort sub-events set `suppressDisplay = true` and `rethrow = false`.
 - [ ] Errors are categorized via an enum, not raw messages.
-- [ ] Any sensitive value the action touches (connection strings, keys, tokens, OII identifiers, resource/database/container names, endpoints, user-entered names, query text, partition keys) is pushed to `context.valuesToMask` as soon as it is obtained.
+- [ ] Any sensitive value the action touches (connection strings, keys, tokens, OII identifiers other than tenant IDs, resource/database/container names, endpoints, user-entered names, query text, partition keys) is pushed to `context.valuesToMask` as soon as it is obtained.
 - [ ] JSDoc on any new `report*` / `track*` helper explicitly states "no file contents, paths, or names are emitted".

@@ -10,12 +10,21 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { vi } from 'vitest';
 import { type SerializedQueryResult } from '../../../../cosmosdb/types/queryResult';
 import { CopyToClipboardButton } from './CopyToClipboardButton';
+import { DeleteItemButton } from './DeleteItemButton';
+import { EditItemButton } from './EditItemButton';
 import { ExportButton } from './ExportButton';
+import { NewItemButton } from './NewItemButton';
+import { ReloadQueryButton } from './ReloadQueryButton';
+import { ViewItemButton } from './ViewItemButton';
 
-const { state, dispatcher, hotkeys } = vi.hoisted(() => ({
+const { state, dispatcher, hotkeys, hotkeyDisabled } = vi.hoisted(() => ({
     state: {
         selectedRows: [] as number[],
         isConnected: true,
+        isChangingConnection: false,
+        isExecuting: false,
+        isEditMode: true,
+        currentExecutionId: 'execution-A',
         dbName: 'database',
         containerName: 'container',
         partitionKey: undefined,
@@ -35,8 +44,12 @@ const { state, dispatcher, hotkeys } = vi.hoisted(() => ({
         copyToClipboard: vi.fn(),
         saveCSV: vi.fn(),
         saveToFile: vi.fn(),
+        deleteDocument: vi.fn(),
+        deleteDocuments: vi.fn(),
+        openDocuments: vi.fn(),
     },
     hotkeys: new Map<string, () => Promise<unknown>>(),
+    hotkeyDisabled: new Map<string, boolean>(),
 }));
 
 vi.mock('../state/QueryEditorContext', () => ({
@@ -46,8 +59,14 @@ vi.mock('../state/QueryEditorContext', () => ({
 
 vi.mock('../../../common/hotkeys', () => ({
     getShortcutDisplay: () => undefined,
-    useCommandHotkey: (_scope: string, command: string, callback: () => Promise<unknown>) => {
+    useCommandHotkey: (
+        _scope: string,
+        command: string,
+        callback: () => Promise<unknown>,
+        options?: { disabled?: boolean },
+    ) => {
         hotkeys.set(command, callback);
+        hotkeyDisabled.set(command, options?.disabled ?? false);
     },
 }));
 
@@ -165,3 +184,91 @@ for (const {
         });
     });
 }
+
+describe('result actions connection ownership', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        hotkeys.clear();
+        hotkeyDisabled.clear();
+        state.selectedRows = [0];
+        state.isChangingConnection = false;
+        state.isConnected = true;
+    });
+
+    for (const { Component, label, command } of [
+        { Component: DeleteItemButton, label: 'Delete item', command: 'DeleteItem' },
+        { Component: EditItemButton, label: 'Edit item', command: 'EditItem' },
+        { Component: ViewItemButton, label: 'View item', command: 'ViewItem' },
+        { Component: NewItemButton, label: 'Add new item', command: 'NewItem' },
+        { Component: ReloadQueryButton, label: 'Refresh', command: 'Refresh' },
+    ]) {
+        it(`${label} is disabled during switching and after disconnect`, () => {
+            state.isChangingConnection = true;
+            const { rerender } = render(
+                <FluentProvider theme={webLightTheme}>
+                    <Component type="button" />
+                </FluentProvider>,
+            );
+            expect(screen.getByRole('button')).toBeDisabled();
+            expect(hotkeyDisabled.get(command)).toBe(true);
+            state.isChangingConnection = false;
+            state.isConnected = false;
+            rerender(
+                <FluentProvider theme={webLightTheme}>
+                    <Component type="button" />
+                </FluentProvider>,
+            );
+            expect(screen.getByRole('button')).toBeDisabled();
+            expect(hotkeyDisabled.get(command)).toBe(true);
+        });
+
+        it(`${label} retains its visible name in the overflow menu`, () => {
+            render(
+                <FluentProvider theme={webLightTheme}>
+                    <Component type="menuitem" />
+                </FluentProvider>,
+            );
+            expect(screen.getByRole('menuitem')).toHaveTextContent(label);
+            expect(screen.getByRole('menuitem')).toHaveAccessibleName(`${label}.`);
+        });
+    }
+
+    it('sends the originating execution ID for single and bulk deletion', () => {
+        const { rerender } = render(
+            <FluentProvider theme={webLightTheme}>
+                <DeleteItemButton type="button" />
+            </FluentProvider>,
+        );
+        fireEvent.click(screen.getByRole('button'));
+        expect(dispatcher.deleteDocument).toHaveBeenCalledWith(expect.objectContaining({ id: 'first' }), 'execution-A');
+        state.selectedRows = [0, 1];
+        rerender(
+            <FluentProvider theme={webLightTheme}>
+                <DeleteItemButton type="button" />
+            </FluentProvider>,
+        );
+        fireEvent.click(screen.getByRole('button'));
+        expect(dispatcher.deleteDocuments).toHaveBeenCalledWith(
+            expect.arrayContaining([
+                expect.objectContaining({ id: 'first' }),
+                expect.objectContaining({ id: 'second' }),
+            ]),
+            'execution-A',
+        );
+    });
+
+    for (const { Component, mode } of [
+        { Component: EditItemButton, mode: 'edit' },
+        { Component: ViewItemButton, mode: 'view' },
+    ]) {
+        it(`sends the originating execution ID for ${mode}`, () => {
+            render(
+                <FluentProvider theme={webLightTheme}>
+                    <Component type="button" />
+                </FluentProvider>,
+            );
+            fireEvent.click(screen.getByRole('button'));
+            expect(dispatcher.openDocuments).toHaveBeenCalledWith(mode, expect.any(Array), 'execution-A');
+        });
+    }
+});

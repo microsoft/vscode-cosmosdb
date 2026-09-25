@@ -18,7 +18,8 @@ export const ReloadQueryButton = (props: ToolbarOverflowItemProps<HTMLButtonElem
     const dispatcher = useQueryEditorDispatcher();
     const { ref, type } = props;
 
-    const isDisabled = !state.isConnected || !state.currentExecutionId;
+    const isDisabled = !state.isConnected || state.isChangingConnection || !state.currentExecutionId;
+    const label = l10n.t('Refresh');
 
     const reloadData = useCallback(() => {
         void dispatcher.runQuery(state.queryHistory[0], {
@@ -36,8 +37,8 @@ export const ReloadQueryButton = (props: ToolbarOverflowItemProps<HTMLButtonElem
     return (
         <>
             <ToolbarOverflowButton
-                ariaLabel={l10n.t('Reload query results')}
-                content={l10n.t('Refresh')}
+                ariaLabel={type === 'menuitem' ? label : l10n.t('Reload query results')}
+                content={label}
                 disabled={isDisabled}
                 icon={<ArrowClockwiseFilled />}
                 hotkey={hotkey}

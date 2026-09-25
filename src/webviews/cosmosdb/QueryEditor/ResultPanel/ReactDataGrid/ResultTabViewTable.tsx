@@ -146,16 +146,24 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
     // Handle row double-click
     const handleCellDoubleClick = useCallback(
         (args: { row: GridRow }) => {
-            if (!state.isEditMode) return;
+            if (!state.isConnected || state.isChangingConnection || state.isExecuting || !state.isEditMode) return;
 
             globalThis.getSelection()?.removeAllRanges();
 
             const documentId = rowFieldGetter(args.row, '__documentId') as CosmosDBRecordIdentifier | undefined;
             if (documentId) {
-                void dispatcher.openDocument('view', documentId);
+                void dispatcher.openDocument('view', documentId, state.currentExecutionId);
             }
         },
-        [state.isEditMode, rowFieldGetter, dispatcher],
+        [
+            state.isConnected,
+            state.isChangingConnection,
+            state.isExecuting,
+            state.isEditMode,
+            state.currentExecutionId,
+            rowFieldGetter,
+            dispatcher,
+        ],
     );
 
     // Handle cell click for row selection (click / ctrl+click / shift+click)

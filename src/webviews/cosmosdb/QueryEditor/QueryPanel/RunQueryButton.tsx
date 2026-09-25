@@ -95,7 +95,7 @@ SplitButtonTrigger.displayName = 'SplitButtonTrigger';
 export const RunQueryButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
-    const isDisabled = !state.isConnected || state.isExecuting;
+    const isDisabled = !state.isConnected || state.isChangingConnection || state.isExecuting;
 
     // Capabilities depend on the live connection: emulator vs cloud and whether
     // the Cosmos DB account has priority-based execution enabled at the ARM
@@ -112,7 +112,7 @@ export const RunQueryButton = (props: ToolbarOverflowItemProps<HTMLButtonElement
         currentPriorityLevel: 'Low' as PriorityLevel,
     });
     useEffect(() => {
-        if (!state.isConnected) {
+        if (!state.isConnected || state.isChangingConnection) {
             setCapabilities({
                 isEmulator: false,
                 isPriorityLevelEnabled: false,
@@ -129,7 +129,7 @@ export const RunQueryButton = (props: ToolbarOverflowItemProps<HTMLButtonElement
         return () => {
             cancelled = true;
         };
-    }, [dispatcher, state.isConnected]);
+    }, [dispatcher, state.isConnected, state.isChangingConnection]);
 
     // Seed the picker from the persisted value the first time the feature
     // becomes available for this panel. We only seed when `state.priorityLevel`

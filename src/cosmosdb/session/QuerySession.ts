@@ -38,7 +38,7 @@ export type QueryExecutionResult = {
 
 export class QuerySession {
     public readonly id: string;
-    private readonly connection: NoSqlQueryConnection;
+    public readonly connection: NoSqlQueryConnection;
     private readonly databaseId: string;
     private readonly containerId: string;
     private readonly resultViewMetadata: QueryMetadata = {};

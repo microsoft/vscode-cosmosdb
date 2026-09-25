@@ -16,6 +16,7 @@ import {
 import * as l10n from '@vscode/l10n';
 import { useId, type ReactNode } from 'react';
 import { AssessmentIcon } from '../components/AssessmentIcon';
+import { MythBox } from '../components/primitives';
 import { type ContainerModel, type DataGrowth, type ItemsPerPartition, type WriteDistribution } from '../models';
 
 /**
@@ -142,15 +143,25 @@ const useStyles = makeStyles({
         color: tokens.colorNeutralForeground2,
         overflowWrap: 'anywhere',
     },
+    rulesPanel: {
+        alignSelf: 'flex-start',
+        maxWidth: '100%',
+    },
+    rulesContent: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: tokens.spacingVerticalM,
+    },
     rulesHeading: {
-        margin: `0 0 ${tokens.spacingVerticalM}`,
+        margin: 0,
         fontSize: tokens.fontSizeBase400,
         fontWeight: tokens.fontWeightSemibold,
     },
     rules: {
         display: 'flex',
         flexWrap: 'wrap',
-        gap: tokens.spacingHorizontalS,
+        columnGap: tokens.spacingHorizontalXL,
+        rowGap: tokens.spacingVerticalM,
         margin: 0,
         padding: 0,
         listStyleType: 'none',
@@ -159,10 +170,6 @@ const useStyles = makeStyles({
         display: 'inline-flex',
         alignItems: 'center',
         gap: tokens.spacingHorizontalS,
-        padding: `${tokens.spacingVerticalSNudge} ${tokens.spacingHorizontalM}`,
-        borderRadius: tokens.borderRadiusCircular,
-        border: `1px solid ${tokens.colorNeutralStroke2}`,
-        backgroundColor: tokens.colorNeutralBackground2,
         fontSize: tokens.fontSizeBase200,
     },
 });
@@ -324,18 +331,22 @@ export function ReviewPage({ workloadLabel, containers, onEditWorkload, onEditCo
                 ))}
             </ul>
 
-            <section aria-labelledby={rulesHeadingId}>
-                <h3 id={rulesHeadingId} className={styles.rulesHeading}>
-                    {l10n.t("Rules we'll evaluate")}
-                </h3>
-                <ul className={styles.rules}>
-                    {rules.map((rule) => (
-                        <li key={rule} className={styles.rule}>
-                            <AssessmentIcon status="pass" decorative />
-                            {rule}
-                        </li>
-                    ))}
-                </ul>
+            <section className={styles.rulesPanel} aria-labelledby={rulesHeadingId}>
+                <MythBox icon="✨">
+                    <div className={styles.rulesContent}>
+                        <h3 id={rulesHeadingId} className={styles.rulesHeading}>
+                            {l10n.t("Rules we'll evaluate")}
+                        </h3>
+                        <ul className={styles.rules}>
+                            {rules.map((rule) => (
+                                <li key={rule} className={styles.rule}>
+                                    <AssessmentIcon status="pass" decorative />
+                                    {rule}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                </MythBox>
             </section>
         </div>
     );

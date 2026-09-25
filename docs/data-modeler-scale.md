@@ -20,11 +20,11 @@ This means documents sharing one partition-key value, not all documents in the c
 It is also different from cardinality, which counts distinct partition-key values.
 
 | Stored value | Review label | Range displayed on the Scale page | Representative count for storage estimate |
-| --- | --- | --- | --- |
-| `low` | Low | < 1,000 items | 500 |
-| `medium` | Medium | 1K - 100K items | 50,000 |
-| `high` | High | 100K - 1M items | 500,000 |
-| `very-high` | Very high | > 1M items | 2,000,000 |
+| ------------ | ------------ | --------------------------------- | ----------------------------------------- |
+| `low`        | Low          | < 1,000 items                     | 500                                       |
+| `medium`     | Medium       | 1K - 100K items                   | 50,000                                    |
+| `high`       | High         | 100K - 1M items                   | 500,000                                   |
+| `very-high`  | Very high    | > 1M items                        | 2,000,000                                 |
 
 The range labels overlap at 100,000. There is no numeric classifier resolving this boundary:
 selecting a card directly stores its category in `container.scale.items`.
@@ -32,11 +32,11 @@ The representative counts are illustrative values, not measured counts or upper 
 
 ## Growth per partition-key value
 
-| Stored value | Review label | Guidance displayed on the Scale page |
-| --- | --- | --- |
-| `bounded` | Bounded | Size stabilizes over time |
-| `slow` | Slow | Approximately 500 items/year per entity |
-| `rapid` | Rapid | 1,000+ items/day |
+| Stored value | Review label | Guidance displayed on the Scale page    |
+| ------------ | ------------ | --------------------------------------- |
+| `bounded`    | Bounded      | Size stabilizes over time               |
+| `slow`       | Slow         | Approximately 500 items/year per entity |
+| `rapid`      | Rapid        | 1,000+ items/day                        |
 
 These are qualitative selections stored in `container.scale.growth`, not a complete set of
 growth-rate thresholds. The UI does not define how to classify intermediate rates.

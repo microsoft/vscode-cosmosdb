@@ -104,6 +104,10 @@ describe('ReviewPage', () => {
     it('lists every evaluated rule with the decorative pass checkmark used for good result reasons', () => {
         renderReview();
         const rules = within(screen.getByRole('region', { name: "Rules we'll evaluate" })).getAllByRole('listitem');
+        const heading = screen.getByRole('heading', { name: "Rules we'll evaluate" });
+        expect(heading).toHaveAccessibleName("Rules we'll evaluate");
+        const panel = screen.getByRole('region', { name: "Rules we'll evaluate" });
+        expect(within(panel).getByText('✨')).toHaveAttribute('aria-hidden', 'true');
         expect(rules.map((rule) => rule.textContent)).toEqual([
             '✓High cardinality',
             '✓Query alignment',

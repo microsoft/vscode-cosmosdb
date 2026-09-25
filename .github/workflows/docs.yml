@@ -1,0 +1,123 @@
+name: Documentation
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'packages/docs/**'
+      - 'test/docs/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/docs.yml'
+      - '.nvmrc'
+  push:
+    branches:
+      - main
+    paths:
+      - 'packages/docs/**'
+      - 'test/docs/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/docs.yml'
+      - '.nvmrc'
+
+permissions:
+  contents: read
+
+# Keep main builds and deployments in order; superseded PR builds can be cancelled.
+concurrency:
+  group: docs-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    name: Build and test documentation
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DOCS_BASE: /${{ github.event.repository.name }}/
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            packages/docs/package-lock.json
+
+      - name: Install test dependencies
+        run: npm ci
+
+      - name: Install documentation dependencies
+        run: npm ci --workspaces=false
+        working-directory: packages/docs
+
+      - name: Run documentation unit tests
+        run: npx vitest run --config test/docs/vitest.config.ts
+
+      - name: Install Chromium and system dependencies
+        run: npx playwright install --with-deps chromium
+
+      - name: Type-check and build static site
+        run: npm run build
+        working-directory: packages/docs
+
+      - name: Test the static site
+        id: browser-tests
+        # Unlike the VS Code/Electron suite, headless Chromium needs no Xvfb display.
+        run: npm run docs:test
+
+      - name: Upload browser failure details
+        if: ${{ !cancelled() && steps.browser-tests.outcome == 'failure' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: docs-browser-results-${{ github.run_attempt }}
+          path: test/e2e/.results/docs/**
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload Pages artifact
+        if: >-
+          github.repository == 'microsoft/vscode-cosmosdb' &&
+          github.ref == 'refs/heads/main' &&
+          (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
+        with:
+          path: packages/docs/.vitepress/dist
+
+  deploy:
+    name: Deploy documentation
+    needs: build
+    if: >-
+      github.repository == 'microsoft/vscode-cosmosdb' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+
+    steps:
+      - name: Configure Pages
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

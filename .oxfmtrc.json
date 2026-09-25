@@ -36,6 +36,18 @@
       "options": {
         "tabWidth": 2
       }
+    },
+    {
+      "files": ["packages/docs/**"],
+      "options": {
+        "printWidth": 80
+      }
+    },
+    {
+      "files": ["packages/docs/**/*.md"],
+      "options": {
+        "embeddedLanguageFormatting": "auto"
+      }
     }
   ],
   "ignorePatterns": [
@@ -57,6 +69,9 @@
     "skills",
     "NOTICE.html",
     "package-lock.json",
+    "packages/docs/package-lock.json",
+    "packages/docs/.vitepress/cache",
+    "packages/docs/.vitepress/dist",
     "package.nls.*.json"
   ]
 }

@@ -83,7 +83,7 @@ test.describe('queryEditor-query-toolbar', { tag: '@queryEditor' }, () => {
             // Inline Dropdown renders the current connection as its value.
             const picker = qe.connectionPicker().first();
             await expect(picker).toHaveText('nosql-test-db/products');
-            await expect(picker).toHaveAccessibleName('nosql-test-db/products');
+            await expect(picker).toHaveAccessibleName('Connect to nosql-test-db/products');
         } else {
             // Collapsed: open the Connect submenu and assert it lists the
             // seeded database (its containers live in a further nested submenu).

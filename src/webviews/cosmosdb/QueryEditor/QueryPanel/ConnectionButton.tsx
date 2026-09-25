@@ -82,7 +82,7 @@ export const ConnectionButton = (props: ToolbarOverflowItemProps<HTMLDivElement>
                 <Dropdown
                     disabled={state.isChangingConnection}
                     style={{ minWidth: '100px', maxWidth: '300px' }}
-                    aria-label={currentValue || l10n.t('Connect to…')}
+                    aria-label={currentValue ? l10n.t('Connect to {0}', currentValue) : l10n.t('Connect to…')}
                     placeholder={l10n.t('Connect to…')}
                     value={currentValue}
                     selectedOptions={selectedOptions}

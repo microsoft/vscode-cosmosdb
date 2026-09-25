@@ -253,6 +253,7 @@
   "Complete": "Complete",
   "Confirm the application genuinely needs this consistency level; if not, relax it to Session (or Bounded Staleness) after validating the application's tolerance.": "Confirm the application genuinely needs this consistency level; if not, relax it to Session (or Bounded Staleness) after validating the application's tolerance.",
   "Confirm the partition key spreads new data across partitions, archive or delete cold data, and ensure large logical keys stay well under the 20 GiB per-key cap so partitions split cleanly.": "Confirm the partition key spreads new data across partitions, archive or delete cold data, and ensure large logical keys stay well under the 20 GiB per-key cap so partitions split cleanly.",
+  "Connect to {0}": "Connect to {0}",
   "Connect to a container first": "Connect to a container first",
   "Connect to a container to generate a schema": "Connect to a container to generate a schema",
   "Connect to…": "Connect to…",

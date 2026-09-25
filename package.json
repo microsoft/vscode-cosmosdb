@@ -328,7 +328,7 @@
                         },
                         "assessments": {
                           "type": "array",
-                          "description": "Per-rule breakdown explaining the score.",
+                          "description": "Decisive reasons explaining the score, selected by importance and ordered pass, warn, then fail. Preserve importance order within each category. Include 4-5 reasons for recommended candidates and at most 2 for avoid candidates.",
                           "items": {
                             "type": "object",
                             "properties": {
@@ -341,10 +341,9 @@
                                 "enum": [
                                   "pass",
                                   "warn",
-                                  "fail",
-                                  "info"
+                                  "fail"
                                 ],
-                                "description": "How the candidate fares on this rule."
+                                "description": "Classify as pass (supported strength, green check), warn (trade-off or unverified constraint, yellow exclamation), or fail (known weakness or violation, red cross)."
                               },
                               "detail": {
                                 "type": "string",

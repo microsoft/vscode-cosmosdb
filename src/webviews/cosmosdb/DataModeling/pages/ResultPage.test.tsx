@@ -122,6 +122,90 @@ describe('ResultPage', () => {
     }
 
     describe('candidate cards', () => {
+        it.each(['recommended', 'alternative'] as const)(
+            'orders %s reasons by status, preserving order within each category',
+            (verdict) => {
+                const recommendation = structuredClone(scoredRecommendation);
+                const candidate = recommendation.containers[0].candidates![0];
+                candidate.verdict = verdict;
+                candidate.assessments = [
+                    { label: 'Violation', status: 'fail', detail: 'Known violation.' },
+                    { label: 'Legacy warning', status: 'info', detail: 'Unverified limit.' },
+                    { label: 'First strength', status: 'pass', detail: 'Supported strength.' },
+                    { label: 'Warning', status: 'warn', detail: 'Trade-off.' },
+                    { label: 'Second strength', status: 'pass', detail: 'Another strength.' },
+                ];
+                const original = structuredClone(candidate.assessments);
+                renderScores({ recommendation });
+                expect(screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent)).toEqual([
+                    '✓First strength',
+                    '✓Second strength',
+                    '!Legacy warning',
+                    '!Warning',
+                    '✗Violation',
+                ]);
+                expect(candidate.assessments).toEqual(original);
+            },
+        );
+
+        it('uses only check, exclamation, and cross categories, including for legacy information', () => {
+            const recommendation = structuredClone(scoredRecommendation);
+            recommendation.containers[0].candidates![1].assessments = [
+                { label: 'Query alignment', status: 'pass', detail: 'Reads target one partition.' },
+                { label: 'Write distribution', status: 'warn', detail: 'Some keys receive more writes.' },
+                { label: 'Cardinality', status: 'fail', detail: 'Too few distinct values.' },
+                { label: 'Capacity', status: 'info', detail: 'Per-key retention needs verification.' },
+            ];
+            renderScores({ recommendation });
+            expect(screen.getByRole('img', { name: 'Pass' })).toHaveTextContent('✓');
+            expect(screen.getByRole('img', { name: 'Fail' })).toHaveTextContent('✗');
+            const warnings = screen.getAllByRole('img', { name: 'Warning' });
+            expect(warnings).toHaveLength(2);
+            for (const warning of warnings) {
+                expect(warning).toHaveTextContent('!');
+                expect(warning).toHaveAccessibleName('Warning');
+            }
+            expect(warnings[0].className).toBe(warnings[1].className);
+            expect(screen.queryByRole('img', { name: 'Information' })).not.toBeInTheDocument();
+        });
+
+        it.each([4, 5, 6])('shows up to five supplied reasons for a recommendation with %i reasons', (count) => {
+            const recommendation = structuredClone(scoredRecommendation);
+            recommendation.containers[0].candidates![0].assessments = Array.from({ length: count }, (_, index) => ({
+                label: `Rule ${index}`,
+                status: 'pass',
+                detail: `Evidence ${index}`,
+            }));
+            renderScores({ recommendation });
+            expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(Math.min(count, 5));
+            expect(screen.getByText(`Evidence ${Math.min(count, 5) - 1}`)).toBeVisible();
+            expect(screen.queryByText('Evidence 5')).not.toBeInTheDocument();
+        });
+
+        it.each([
+            { count: 1, details: ['Too few distinct values.'] },
+            { count: 2, details: ['Verify retention.', 'Too few distinct values.'] },
+            { count: 4, details: ['Too few distinct values.', 'Writes concentrate on one key.'] },
+        ])('shows at most two decisive reasons for Avoid with $count supplied reasons', ({ count, details }) => {
+            const recommendation = structuredClone(scoredRecommendation);
+            const candidate = recommendation.containers[0].candidates![2];
+            candidate.assessments = [
+                { label: 'Cardinality', status: 'fail', detail: 'Too few distinct values.' },
+                { label: 'Capacity', status: 'warn', detail: 'Verify retention.' },
+                { label: 'Query alignment', status: 'pass', detail: 'Some reads are targeted.' },
+                { label: 'Write distribution', status: 'fail', detail: 'Writes concentrate on one key.' },
+            ];
+            candidate.assessments = candidate.assessments.slice(0, count);
+            const original = structuredClone(candidate.assessments);
+            renderScores({ recommendation });
+            expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(Math.min(count, 2));
+            expect(screen.getByText('Too few distinct values.')).toBeVisible();
+            expect(
+                screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.nextElementSibling?.textContent),
+            ).toEqual(details);
+            expect(candidate.assessments).toEqual(original);
+        });
+
         it('rounds display values upward without changing source scores or rankings', () => {
             const recommendation = structuredClone(scoredRecommendation);
             const candidates = recommendation.containers[0].candidates!;

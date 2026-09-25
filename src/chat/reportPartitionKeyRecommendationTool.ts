@@ -39,6 +39,32 @@ const ReportPartitionKeyRecommendationSchema = z.union([
         requestId: z.string().uuid().optional(),
         containers: PartitionKeyRecommendationSchema.shape.containers.min(1),
         error: z.never().optional(),
+    }).superRefine((recommendation, context) => {
+        for (const [containerIndex, container] of recommendation.containers.entries()) {
+            for (const [candidateIndex, candidate] of (container.candidates ?? []).entries()) {
+                const path = ['containers', containerIndex, 'candidates', candidateIndex, 'assessments'];
+                const count = candidate.assessments.length;
+                if (
+                    (candidate.verdict === 'recommended' && (count < 4 || count > 5)) ||
+                    (candidate.verdict === 'avoid' && count > 2)
+                ) {
+                    context.addIssue({
+                        code: 'custom',
+                        path,
+                        message: 'Recommended candidates require 4-5 reasons; Avoid candidates allow at most 2.',
+                    });
+                }
+                for (const [index, assessment] of candidate.assessments.entries()) {
+                    if (assessment.status === 'info') {
+                        context.addIssue({
+                            code: 'custom',
+                            path: [...path, index, 'status'],
+                            message: 'Classify each reason as pass, warn, or fail.',
+                        });
+                    }
+                }
+            }
+        }
     }),
     z
         .object({
@@ -200,7 +226,8 @@ export const REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_INPUT_SCHEMA = {
                                 },
                                 assessments: {
                                     type: 'array',
-                                    description: 'Per-rule breakdown explaining the score.',
+                                    description:
+                                        'Decisive reasons explaining the score, selected by importance and ordered pass, warn, then fail. Preserve importance order within each category. Include 4-5 reasons for recommended candidates and at most 2 for avoid candidates.',
                                     items: {
                                         type: 'object',
                                         properties: {
@@ -210,8 +237,9 @@ export const REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_INPUT_SCHEMA = {
                                             },
                                             status: {
                                                 type: 'string',
-                                                enum: ['pass', 'warn', 'fail', 'info'],
-                                                description: 'How the candidate fares on this rule.',
+                                                enum: ['pass', 'warn', 'fail'],
+                                                description:
+                                                    'Classify as pass (supported strength, green check), warn (trade-off or unverified constraint, yellow exclamation), or fail (known weakness or violation, red cross).',
                                             },
                                             detail: { type: 'string', description: 'One-line explanation.' },
                                         },

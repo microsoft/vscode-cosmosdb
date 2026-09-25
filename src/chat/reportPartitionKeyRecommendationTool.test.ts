@@ -54,7 +54,12 @@ const scoredCandidate = {
     partitionKey: '/customerId',
     verdict: 'recommended',
     score: 95,
-    assessments: [{ label: 'Query alignment', status: 'pass', detail: 'Customer reads are targeted.' }],
+    assessments: [
+        { label: 'Query alignment', status: 'pass', detail: 'Customer reads are targeted.' },
+        { label: 'Cardinality', status: 'pass', detail: 'Many distinct customers distribute the data.' },
+        { label: 'Write distribution', status: 'pass', detail: 'Writes are spread across customers.' },
+        { label: 'Capacity', status: 'warn', detail: 'Confirm the maximum retained data per customer.' },
+    ],
 };
 
 it('keeps the registered tool schema and description in sync with the manifest', () => {
@@ -340,7 +345,13 @@ describe('cosmosdb_reportPartitionKeyRecommendation', () => {
                     candidates: [
                         { ...scoredCandidate, score: 89.25 },
                         { ...scoredCandidate, partitionKey: '/id', verdict: 'alternative', score: 92.5 },
-                        { ...scoredCandidate, partitionKey: '/status', verdict: 'avoid', score: 20 },
+                        {
+                            ...scoredCandidate,
+                            partitionKey: '/status',
+                            verdict: 'avoid',
+                            score: 20,
+                            assessments: [{ label: 'Cardinality', status: 'fail', detail: 'Too few distinct values.' }],
+                        },
                     ],
                     queryRouting: {
                         headline: 'Customer reads are single-partition.',
@@ -376,6 +387,45 @@ describe('cosmosdb_reportPartitionKeyRecommendation', () => {
     });
 
     it.each([
+        { verdict: 'recommended', count: 4 },
+        { verdict: 'recommended', count: 5 },
+        { verdict: 'avoid', count: 1 },
+        { verdict: 'avoid', count: 2 },
+    ])('accepts $count reasons for $verdict candidates', async ({ verdict, count }) => {
+        const tab = {
+            getId: () => '1c70d73d-9d5d-415a-93f3-630d3e581d63',
+            reportRecommendation: vi.fn(),
+            reportRecommendationError: vi.fn(),
+        };
+        wizardTabs.add(tab);
+        const tool = captureRegisteredTool(registerReportPartitionKeyRecommendationTool);
+        const assessments = Array.from({ length: count }, (_, index) => ({
+            label: `Rule ${index}`,
+            status: verdict === 'avoid' ? 'fail' : 'pass',
+            detail: `Evidence ${index}`,
+        }));
+        await tool.invoke(
+            {
+                input: {
+                    wizardTabId: tab.getId(),
+                    summary: 'Use customerId.',
+                    containers: [
+                        {
+                            entity: 'Orders',
+                            partitionKey: '/customerId',
+                            rationale: 'Customer-scoped workload.',
+                            candidates: [{ ...scoredCandidate, verdict, assessments }],
+                        },
+                    ],
+                },
+            },
+            {},
+        );
+        expect(tab.reportRecommendation).toHaveBeenCalledOnce();
+        expect(tab.reportRecommendationError).not.toHaveBeenCalled();
+    });
+
+    it.each([
         { ...scoredCandidate, score: undefined },
         { ...scoredCandidate, score: '95' },
         { ...scoredCandidate, score: Number.NaN },
@@ -383,6 +433,15 @@ describe('cosmosdb_reportPartitionKeyRecommendation', () => {
         { ...scoredCandidate, verdict: 'best' },
         { ...scoredCandidate, assessments: undefined },
         { ...scoredCandidate, assessments: [{ label: 'Query match', status: 'unknown', detail: 'Invalid status.' }] },
+        { ...scoredCandidate, assessments: [] },
+        { ...scoredCandidate, assessments: scoredCandidate.assessments.slice(0, 3) },
+        { ...scoredCandidate, assessments: [...scoredCandidate.assessments, ...scoredCandidate.assessments] },
+        { ...scoredCandidate, verdict: 'avoid', assessments: scoredCandidate.assessments.slice(0, 3) },
+        {
+            ...scoredCandidate,
+            verdict: 'alternative',
+            assessments: [{ label: 'Capacity', status: 'info', detail: 'Use a warning for unverified capacity.' }],
+        },
         {
             partitionKey: '/customerId',
             priorityScores: { read: 95, write: 80, storage: 70 },

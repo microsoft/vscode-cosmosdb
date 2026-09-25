@@ -191,12 +191,19 @@ const useStyles = makeStyles({
         borderRadius: tokens.borderRadiusCircular,
         fontSize: tokens.fontSizeBase100,
         fontWeight: tokens.fontWeightBold,
-        color: tokens.colorNeutralForegroundOnBrand,
     },
-    iconPass: { backgroundColor: tokens.colorPaletteGreenBackground3 },
-    iconFail: { backgroundColor: tokens.colorPaletteRedBackground3 },
-    iconInfo: { backgroundColor: tokens.colorBrandBackground },
-    iconWarn: { backgroundColor: tokens.colorPaletteDarkOrangeBackground3 },
+    iconPass: {
+        backgroundColor: tokens.colorPaletteGreenBackground1,
+        color: tokens.colorPaletteGreenForeground1,
+    },
+    iconFail: {
+        backgroundColor: tokens.colorPaletteRedBackground1,
+        color: tokens.colorPaletteRedForeground1,
+    },
+    iconWarn: {
+        backgroundColor: tokens.colorPaletteYellowBackground1,
+        color: tokens.colorPaletteYellowForeground2,
+    },
     assessReason: {
         margin: 0,
         color: tokens.colorNeutralForeground2,
@@ -254,7 +261,7 @@ const useStyles = makeStyles({
     },
 });
 
-const ASSESS_GLYPH: Record<CandidateAssessment['status'], string> = { pass: '✓', fail: '✗', info: 'i', warn: '!' };
+const ASSESS_GLYPH: Record<CandidateAssessment['status'], string> = { pass: '✓', fail: '✗', info: '!', warn: '!' };
 
 /** Azure Cosmos DB hierarchical (multi-level) partition keys documentation. */
 const HIERARCHICAL_PARTITION_KEY_DOCS_URL = 'https://learn.microsoft.com/azure/cosmos-db/hierarchical-partition-keys';
@@ -309,6 +316,20 @@ function ScoreRing({ candidate, context, color }: { candidate: PkCandidate; cont
 function CandidateCard({ candidate, entity }: { candidate: PkCandidate; entity: string }) {
     const styles = useStyles();
     const assessmentId = useId();
+    // Saved results may predate the reason limits. Prioritize the decisive problems on Avoid cards.
+    const selectedAssessments =
+        candidate.verdict === 'avoid'
+            ? candidate.assessments
+                  .toSorted((a, b) => {
+                      const priority = { fail: 0, warn: 1, info: 1, pass: 2 };
+                      return priority[a.status] - priority[b.status];
+                  })
+                  .slice(0, 2)
+            : candidate.verdict === 'recommended'
+              ? candidate.assessments.slice(0, 5)
+              : candidate.assessments;
+    const statusOrder: Record<CandidateAssessment['status'], number> = { pass: 0, warn: 1, info: 1, fail: 2 };
+    const assessments = selectedAssessments.toSorted((a, b) => statusOrder[a.status] - statusOrder[b.status]);
 
     // Two or more paths means Cosmos DB treats this as a hierarchical partition key.
     const partitionKeyPaths = getPartitionKeyPaths(candidate.partitionKey);
@@ -338,13 +359,13 @@ function CandidateCard({ candidate, entity }: { candidate: PkCandidate; entity: 
     const iconTone: Record<CandidateAssessment['status'], string> = {
         pass: styles.iconPass,
         fail: styles.iconFail,
-        info: styles.iconInfo,
+        info: styles.iconWarn,
         warn: styles.iconWarn,
     };
     const statusText: Record<CandidateAssessment['status'], string> = {
         pass: l10n.t('Pass'),
         fail: l10n.t('Fail'),
-        info: l10n.t('Information'),
+        info: l10n.t('Warning'),
         warn: l10n.t('Warning'),
     };
 
@@ -377,7 +398,7 @@ function CandidateCard({ candidate, entity }: { candidate: PkCandidate; entity: 
                 />
             </div>
             <div className={styles.assessList}>
-                {candidate.assessments.map((a, i) => (
+                {assessments.map((a, i) => (
                     <section key={i} className={styles.assessRow} aria-labelledby={`${assessmentId}-${i}`}>
                         <h3 className={styles.assessHeading} id={`${assessmentId}-${i}`}>
                             <span

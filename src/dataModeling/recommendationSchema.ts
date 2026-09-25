@@ -19,7 +19,7 @@ const CandidateNoteSchema = z.object({
 const CandidateAssessmentSchema = z.object({
     /** Short rule name, e.g. "Query match", "Cardinality", "Write dist.". */
     label: z.string(),
-    /** How the candidate fares on this rule. */
+    /** How the candidate fares on this rule. Legacy saved "info" assessments display as warnings. */
     status: z.enum(['pass', 'warn', 'fail', 'info']),
     /** One-line explanation of the verdict. */
     detail: z.string(),

@@ -55,7 +55,8 @@ to justify the choice, in which case fail.
 This exception takes precedence over fail-closed compliance checks: when the wizard omits maximum encoded partition-key lengths,
 the large-partition-key setting, document-ID length/character guarantees, or per-key retention/count/byte bounds,
 **do not fail, request a retry, or withhold a recommendation solely for those omissions**. These are not wizard inputs.
-Rank using the supplied workload; add a `warn` assessment and `guardrails` entry for each applicable unverified limit.
+Rank using the supplied workload; summarize applicable unverified limits in `warn` assessments within the reason limits
+below, and add a `guardrails` entry for each applicable unverified limit.
 Do not reject a candidate, mark it `fail`, invent score inputs, or use the error-only report shape for these omissions.
 Reject for such a constraint only when the supplied workload establishes a violation.
 The recommendation is a partition-key design judgment, not a certification of application/configuration/retention compliance.
@@ -180,7 +181,15 @@ Only after every container succeeds, provide a concise overall summary and these
 
 - Exact entity name, recommended `partitionKey`, and 1-2 sentence `rationale`.
 - Scored `candidates`: `verdict` (`recommended`, `alternative`, `avoid`), `score`, and decisive per-rule `assessments`,
-  each with a short `label`, `status` (`pass`, `warn`, `fail`, `info`), and one-line `detail`.
+  each with a short `label`, `status` (`pass`, `warn`, `fail`), and one-line `detail`.
+  Classify every reason as `pass` (supported strength, green check), `warn` (trade-off or unverified constraint,
+  yellow exclamation mark), or `fail` (known weakness or violation, red cross). There is no information-only category.
+  Include **4-5 reasons for each recommended candidate** and **at most 2 reasons for each avoid candidate**.
+  Select reasons by importance; for avoid candidates, select the decisive failures or warnings rather than incidental
+  strengths. Display selected reasons in this order: `pass` (checks), `warn` (warnings), then `fail` (violations),
+  preserving importance order within each category.
+  Combine related findings when necessary, retaining relevant unverified limits in guardrails.
+  Never invent supporting evidence to reach the reason count.
   Every assessment describes the user's data model; none describes this skill's own procedure.
 - Optional `hotPartitionRisk` comparisons: risk bands and numeric `pct` per row, distinguishing estimates from measurements.
   If percentages cannot be justified, omit the section and describe qualitative risks in assessments.

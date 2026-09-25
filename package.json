@@ -67,6 +67,7 @@
     "prettier-fix": "oxfmt",
     "pretest": "rimraf out && tsc -p tsconfig.test.json && node -e \"require('fs').writeFileSync('out/package.json', JSON.stringify({type:'module'}))\"",
     "test": "node scripts/run-integration-tests.mjs",
+    "test:proxy": "node scripts/test-proxy.mjs",
     "vitest": "vitest run",
     "vitest:coverage": "vitest run --coverage",
     "vitest:ui": "vitest --ui",

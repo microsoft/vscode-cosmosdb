@@ -26,6 +26,8 @@ vscode-cosmosdb/
 │       └── README.md             # Detailed e2e architecture notes
 ├── scripts/
 │   ├── run-integration-tests.mjs # Downloads VS Code + launches the integration host
+│   ├── test-proxy.mjs            # Isolated proxy-routing matrix launcher
+│   ├── test-proxy-host.mjs       # SDK/adapter comparison inside the Extension Host
 │   └── import-seed.mjs           # Seeds the Cosmos DB emulator for integration & e2e tests
 ├── docker-compose.e2e.yml        # Dedicated emulator (ports 8082/1235, project cosmosdb-e2e)
 ├── playwright.config.ts          # Playwright configuration (single worker, retries on CI)
@@ -158,6 +160,33 @@ The script:
 4. `out/test/index.js` globs `out/test/**/*.test.js` and runs them via
    `@vitest/runner.startTests()`.
 5. Exits with non-zero status if any test fails.
+
+### Testing proxy routing locally
+
+Prerequisites: the project's npm dependencies and **OpenSSL** on `PATH`. No Azure account or Docker emulator
+is required. The VS Code runtime must support Node's `tls.setDefaultCACertificates` API.
+
+```bash
+npm run test:proxy
+```
+
+The [launcher](../scripts/test-proxy.mjs) downloads stable VS Code through `@vscode/test-electron`.
+To use an installed or cached editor instead:
+
+```bash
+npm run test:proxy -- "/absolute/path/to/editor-executable"
+```
+
+The launcher creates isolated VS Code profiles, local proxy/HTTPS servers, and temporary test certificates,
+then removes them afterward. It does not change your normal VS Code settings or install certificates in the
+system trust store. The tests exercise the Cosmos SDK and HTTP adapter, not the complete extension UI.
+
+Coverage includes proxy-support modes, settings and environment variables, bypass rules, emulator connections,
+and TLS validation. Proxy authentication, PAC, and remote extension hosts are not covered.
+
+These tests also run as part of `npm run e2e` and the **E2E Tests** CI workflow. The
+[proxy spec](../test/e2e/specs/proxy.spec.ts) reuses the executable downloaded by E2E setup, keeps its profiles
+separate from the webview tests, and attaches launcher output to the Playwright report.
 
 ### End-to-end tests (slow, real VS Code + Docker emulator)
 

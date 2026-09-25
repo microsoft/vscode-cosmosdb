@@ -144,9 +144,18 @@ export abstract class CosmosDBAccountAttachedResourceItem
                         ext.outputChannel.show();
                     }
                 }
-                if (this.account.isEmulator && e instanceof RestError && e.code === 'DEPTH_ZERO_SELF_SIGNED_CERT') {
+                if (
+                    this.account.isEmulator &&
+                    e instanceof RestError &&
+                    [
+                        'DEPTH_ZERO_SELF_SIGNED_CERT',
+                        'SELF_SIGNED_CERT_IN_CHAIN',
+                        'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+                        'UNABLE_TO_GET_ISSUER_CERT_LOCALLY',
+                    ].includes(e.code ?? '')
+                ) {
                     const message = l10n.t(
-                        "The Cosmos DB emulator is using a self-signed certificate. To connect to the emulator, you must import the emulator's TLS/SSL certificate.", // or disable the 'http.proxyStrictSSL' setting but we don't recommend this for security reasons.
+                        "Unable to verify a TLS certificate while connecting to the Cosmos DB emulator. Trust the emulator's certificate and, if using a proxy, its certificate authority in the environment where VS Code's extension host runs.",
                     );
                     const readMoreItem = l10n.t('Learn more');
                     void vscode.window.showErrorMessage(message, readMoreItem).then((item) => {

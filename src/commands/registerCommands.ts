@@ -43,6 +43,7 @@ import { openUnsupportedAccount } from './openUnsupportedAccount/openUnsupported
 import { resetQuickStart } from './quickStart/resetQuickStart';
 import { refreshTreeElement } from './refreshTreeElement/refreshTreeElement';
 import { cosmosDBRemoveConnection } from './removeConnection/removeConnection';
+import { copyTreeError, showTreeError } from './showTreeError';
 import { sortTreeItems } from './sortTreeItems/sortTreeItems';
 import { cosmosDBViewContainerOffer, cosmosDBViewDatabaseOffer } from './viewOffer/viewOffer';
 
@@ -66,6 +67,8 @@ export function registerCommands(): void {
     registerTriggerCommands();
 
     registerCommandWithTreeNodeUnwrapping('azureDatabases.refresh', refreshTreeElement);
+    registerCommand('cosmosDB.showTreeError', showTreeError);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.copyTreeError', copyTreeError);
 
     // For Cosmos DB FileSystem
     registerCommandWithTreeNodeUnwrapping(

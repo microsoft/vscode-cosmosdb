@@ -20,6 +20,7 @@ import * as vscode from 'vscode';
 import { API } from '../AzureDBExperiences';
 import { ext } from '../extensionVariables';
 import { type FabricArtifact } from './fabric/models/FabricArtifact';
+import { getTreeErrorMessage } from './getTreeErrorMessage';
 import { type TreeElement } from './TreeElement';
 import { isTreeElementWithContextValue, TreeElementWithContextValue } from './TreeElementWithContextValue';
 import { isTreeElementWithExperience } from './TreeElementWithExperience';
@@ -155,8 +156,9 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
         } catch (error) {
             return [
                 this.createErrorElement(
-                    l10n.t('Error: {0}', parseError(error).message),
+                    l10n.t('Error: {0}', getTreeErrorMessage(error)),
                     `${element.id}/error-${Date.now()}`,
+                    error,
                 ),
             ];
         }
@@ -206,8 +208,9 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
                         return undefined as unknown as TreeElement;
                     } catch (error) {
                         return this.createErrorElement(
-                            l10n.t('Error creating resource: {0}', parseError(error).message),
+                            l10n.t('Error creating resource: {0}', getTreeErrorMessage(error)),
                             `error-${Date.now()}`,
+                            error,
                         );
                     }
                 },
@@ -384,11 +387,18 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
         return wrappedElement ?? element; // Fallback to the original element if wrapping fails
     }
 
-    private createErrorElement(message: string, id: string): TreeElement {
+    private createErrorElement(message: string, id: string, error?: unknown): TreeElement {
+        ext.outputChannel.error(message);
+        if (error instanceof Error && error.stack) {
+            ext.outputChannel.debug(error.stack);
+        }
+
         return createGenericElement({
             contextValue: TreeElementWithContextValue.createContextValue([this.contextValue, 'item.error']),
             label: message,
             id: id,
+            tooltip: `${message}\n\n${l10n.t('Select to show the output log. Right-click and select "Copy Error" to copy the message.')}`,
+            commandId: 'cosmosDB.showTreeError',
         }) as TreeElement;
     }
 

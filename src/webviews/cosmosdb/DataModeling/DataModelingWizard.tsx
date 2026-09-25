@@ -206,10 +206,13 @@ export const DataModelingWizard = () => {
 };
 
 function SavedModelChoice({ onContinue, onStartNew }: { onContinue: () => void; onStartNew: () => void }) {
-    const { confirm, confirming, confirmationError } = useNativeConfirmation();
+    const { confirm, confirmationError } = useNativeConfirmation();
     const prompted = useRef(false);
     const buttonRef = useRef<HTMLButtonElement>(null);
+    // Only the title is shown while the native dialog is open; the reopen button appears once it is dismissed.
+    const [awaitingAnswer, setAwaitingAnswer] = useState(true);
     const choose = useCallback(async () => {
+        setAwaitingAnswer(true);
         const result = await confirm(
             l10n.t('Continue your data model?'),
             l10n.t(
@@ -218,7 +221,7 @@ function SavedModelChoice({ onContinue, onStartNew }: { onContinue: () => void; 
         );
         if (result === true) onContinue();
         else if (result === false) onStartNew();
-        else buttonRef.current?.focus();
+        else setAwaitingAnswer(false);
     }, [confirm, onContinue, onStartNew]);
     useEffect(() => {
         if (!prompted.current) {
@@ -226,14 +229,23 @@ function SavedModelChoice({ onContinue, onStartNew }: { onContinue: () => void; 
             void choose();
         }
     }, [choose]);
+    useEffect(() => {
+        if (!awaitingAnswer) buttonRef.current?.focus();
+    }, [awaitingAnswer]);
 
     return (
         <div>
-            <Text as="h2">{l10n.t('Workload')}</Text>
-            {confirmationError ? <Text role="alert">{confirmationError}</Text> : null}
-            <Button ref={buttonRef} aria-busy={confirming} onClick={() => void choose()}>
-                {l10n.t('Continue your data model?')}
-            </Button>
+            <Text as="h2" size={700} weight="semibold">
+                {l10n.t('Data Modeler')}
+            </Text>
+            {awaitingAnswer ? null : (
+                <>
+                    {confirmationError ? <Text role="alert">{confirmationError}</Text> : null}
+                    <Button ref={buttonRef} onClick={() => void choose()}>
+                        {l10n.t('Continue your data model?')}
+                    </Button>
+                </>
+            )}
         </div>
     );
 }
@@ -993,7 +1005,6 @@ const HydratedDataModelingWizard = ({
                     navigable={!deploymentBusy && reachedSteps.includes(REVIEW_STEP)}
                     label={l10n.t('Review')}
                     title={l10n.t('Review your inputs')}
-                    subtitle={l10n.t('Click Edit to change any selection before analysis.')}
                 >
                     <ReviewPage
                         workloadLabel={scenarioLabel ?? l10n.t('Not selected')}

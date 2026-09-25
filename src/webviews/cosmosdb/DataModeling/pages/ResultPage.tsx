@@ -32,6 +32,7 @@ import {
     type PartitionKeyRecommendation,
     type PkCandidate,
 } from '../../../api/types';
+import { AssessmentIcon } from '../components/AssessmentIcon';
 import { CopilotRecommendation, type RecommendationStatus } from '../components/CopilotRecommendation';
 import { InfoBox, SubPanel } from '../components/primitives';
 
@@ -181,29 +182,6 @@ const useStyles = makeStyles({
         fontSize: tokens.fontSizeBase300,
         fontWeight: tokens.fontWeightSemibold,
     },
-    assessIcon: {
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: '18px',
-        height: '18px',
-        flexShrink: 0,
-        borderRadius: tokens.borderRadiusCircular,
-        fontSize: tokens.fontSizeBase100,
-        fontWeight: tokens.fontWeightBold,
-    },
-    iconPass: {
-        backgroundColor: tokens.colorPaletteGreenBackground1,
-        color: tokens.colorPaletteGreenForeground1,
-    },
-    iconFail: {
-        backgroundColor: tokens.colorPaletteRedBackground1,
-        color: tokens.colorPaletteRedForeground1,
-    },
-    iconWarn: {
-        backgroundColor: tokens.colorPaletteYellowBackground1,
-        color: tokens.colorPaletteYellowForeground2,
-    },
     assessReason: {
         margin: 0,
         color: tokens.colorNeutralForeground2,
@@ -260,8 +238,6 @@ const useStyles = makeStyles({
         marginBottom: tokens.spacingVerticalS,
     },
 });
-
-const ASSESS_GLYPH: Record<CandidateAssessment['status'], string> = { pass: '✓', fail: '✗', info: '!', warn: '!' };
 
 /** Azure Cosmos DB hierarchical (multi-level) partition keys documentation. */
 const HIERARCHICAL_PARTITION_KEY_DOCS_URL = 'https://learn.microsoft.com/azure/cosmos-db/hierarchical-partition-keys';
@@ -356,18 +332,6 @@ function CandidateCard({ candidate, entity }: { candidate: PkCandidate; entity: 
         alternative: tokens.colorBrandForeground1,
         avoid: tokens.colorPaletteRedForeground1,
     };
-    const iconTone: Record<CandidateAssessment['status'], string> = {
-        pass: styles.iconPass,
-        fail: styles.iconFail,
-        info: styles.iconWarn,
-        warn: styles.iconWarn,
-    };
-    const statusText: Record<CandidateAssessment['status'], string> = {
-        pass: l10n.t('Pass'),
-        fail: l10n.t('Fail'),
-        info: l10n.t('Warning'),
-        warn: l10n.t('Warning'),
-    };
 
     return (
         <div className={mergeClasses(styles.card, cardTone[candidate.verdict])}>
@@ -401,14 +365,7 @@ function CandidateCard({ candidate, entity }: { candidate: PkCandidate; entity: 
                 {assessments.map((a, i) => (
                     <section key={i} className={styles.assessRow} aria-labelledby={`${assessmentId}-${i}`}>
                         <h3 className={styles.assessHeading} id={`${assessmentId}-${i}`}>
-                            <span
-                                className={mergeClasses(styles.assessIcon, iconTone[a.status])}
-                                // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- Text glyph, not an image file.
-                                role="img"
-                                aria-label={statusText[a.status]}
-                            >
-                                <span aria-hidden="true">{ASSESS_GLYPH[a.status]}</span>
-                            </span>
+                            <AssessmentIcon status={a.status} />
                             {a.label}
                         </h3>
                         <p className={styles.assessReason}>{a.detail}</p>

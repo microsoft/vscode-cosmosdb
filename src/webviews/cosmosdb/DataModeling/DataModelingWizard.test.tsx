@@ -560,15 +560,18 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         ).toBe(false);
     });
 
-    it('opens a native saved-work choice and preserves it on dismissal until the choice is reopened', async () => {
+    it('shows only the title while the native saved-work choice is open and offers reopening after dismissal', async () => {
         client.dataModeling.loadState.query.mockResolvedValue(restored(4));
         render(<DataModelingWizard />);
+        await waitFor(() => expect(client.dataModeling.confirm.mutate).toHaveBeenCalledOnce());
+        expect(screen.getByRole('heading', { name: 'Data Modeler', level: 2 })).toBeVisible();
+        expect(screen.queryByRole('button')).not.toBeInTheDocument();
+        expect(screen.queryByText('Workload')).not.toBeInTheDocument();
+        await answerConfirmation('Continue your data model?', undefined);
         const proceed = await screen.findByRole('button', { name: 'Continue your data model?' });
-        expect(screen.getByText('Workload')).toBeInTheDocument();
         expect(proceed).toHaveTextContent('Continue your data model?');
         expect(proceed).toHaveAccessibleName('Continue your data model?');
-        await answerConfirmation('Continue your data model?', undefined);
-        expect(proceed).toHaveFocus();
+        await waitFor(() => expect(proceed).toHaveFocus());
         expect(client.dataModeling.events.subscribe).not.toHaveBeenCalled();
         expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
         expect(client.dataModeling.confirm.mutate).toHaveBeenCalledOnce();

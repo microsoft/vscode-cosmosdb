@@ -10,7 +10,6 @@ import { getThemeAgnosticIconPath } from '../../../../constants';
 import { wellKnownEmulatorPassword } from '../../../../cosmosdb/cosmosdb-shared-constants';
 import { type StorageItem, StorageNames, StorageService } from '../../../../services/StorageService';
 import { migrateRawEmulatorItemToHashed } from '../../../../utils/emulatorUtils';
-import { nonNullValue } from '../../../../utils/nonNull';
 import { makeFilterable } from '../../../mixins/Filterable';
 import { makeSortable } from '../../../mixins/Sortable';
 import { NoSqlAccountAttachedResourceItem } from '../../../nosql/NoSqlAccountAttachedResourceItem';
@@ -18,6 +17,7 @@ import { type TreeElement } from '../../../TreeElement';
 import { type TreeElementWithContextValue } from '../../../TreeElementWithContextValue';
 import { WorkspaceResourceType } from '../../../workspace-api/SharedWorkspaceResourceProvider';
 import { type CosmosDBAttachedAccountModel } from '../CosmosDBAttachedAccountModel';
+import { getSavedConnectionError, InvalidConnectionResourceItem } from '../InvalidConnectionResourceItem';
 import { NewCoreEmulatorConnectionItem } from './NewCoreEmulatorConnectionItem';
 
 export class LocalCoreEmulatorsItem implements TreeElement, TreeElementWithContextValue {
@@ -52,34 +52,47 @@ export class LocalCoreEmulatorsItem implements TreeElement, TreeElementWithConte
         return (
             await Promise.all(
                 items
-                    .filter((item) => item.properties?.isEmulator) // only show emulators
+                    .filter((item) => item.properties?.isEmulator === true) // only show emulators
                     .map(async (item) => {
-                        const { id, name, properties, secrets } = await migrateRawEmulatorItemToHashed(item);
-                        const api: API = nonNullValue(properties?.api, 'api') as API;
-                        const isEmulator: boolean = !!nonNullValue(properties?.isEmulator, 'isEmulator');
+                        const validationError = getSavedConnectionError(item);
+                        if (validationError) {
+                            return new InvalidConnectionResourceItem(this.id, item, validationError);
+                        }
 
-                        // Use stored connection string, or fallback to default emulator connection string
-                        const connectionString: string =
-                            secrets?.[0] ||
-                            `AccountEndpoint=https://localhost:8081/;AccountKey=${wellKnownEmulatorPassword};`;
+                        // Migration rewrites the record and deletes the original, so records owned by another
+                        // experience have to be skipped before storage is touched.
+                        const experience = getExperienceFromApi(item.properties?.api as API);
+                        if (experience.api !== API.Core) {
+                            return undefined;
+                        }
 
-                        const experience = getExperienceFromApi(api);
-                        const accountModel: CosmosDBAttachedAccountModel = {
-                            id: `${this.id}/${id}`, // To enable TreeView.reveal, we need to have a unique nested id
-                            storageId: id,
-                            name,
-                            connectionString,
-                            isEmulator,
-                        };
+                        try {
+                            const { id, name, secrets } = await migrateRawEmulatorItemToHashed(item);
+                            const isEmulator = true;
 
-                        if (experience?.api === API.Core) {
+                            // Use stored connection string, or fallback to default emulator connection string
+                            const connectionString: string =
+                                secrets?.[0] ||
+                                `AccountEndpoint=https://localhost:8081/;AccountKey=${wellKnownEmulatorPassword};`;
+
+                            const accountModel: CosmosDBAttachedAccountModel = {
+                                id: `${this.id}/${id}`, // To enable TreeView.reveal, we need to have a unique nested id
+                                storageId: id,
+                                name,
+                                connectionString,
+                                isEmulator,
+                            };
+
                             return makeFilterable(
                                 makeSortable(new NoSqlAccountAttachedResourceItem(accountModel, experience)),
                             );
+                        } catch {
+                            return new InvalidConnectionResourceItem(
+                                this.id,
+                                item,
+                                l10n.t('Unable to load the saved emulator connection.'),
+                            );
                         }
-
-                        // Unknown experience
-                        return undefined;
                     }),
             )
         ).filter((item) => item !== undefined); // Explicitly filter out undefined values

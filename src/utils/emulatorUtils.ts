@@ -6,7 +6,7 @@
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import crypto from 'crypto';
-import { getExperienceFromApi, type API } from '../AzureDBExperiences';
+import { API, getExperienceFromApi } from '../AzureDBExperiences';
 import { wellKnownEmulatorPassword } from '../cosmosdb/cosmosdb-shared-constants';
 import { type ParsedCosmosDBConnectionString } from '../cosmosdb/cosmosDBConnectionStrings';
 import { StorageNames, StorageService, type StorageItem } from '../services/StorageService';
@@ -32,64 +32,73 @@ import { nonNullValue } from './nonNull';
  *    - Stores the new item in shared workspace storage for the appropriate API type
  *    - Deletes the old item after successful migration
  *
- * If any error occurs during migration, the original item is returned unchanged and the error is logged.
+ * Migration failures are reported through the telemetry boundary and propagated to the caller, which
+ * renders the record as an invalid connection. Returning the original item instead would keep a legacy
+ * record whose id is still the raw connection string.
  *
  * @param item - The emulator item to migrate
- * @returns A Promise that resolves to the migrated item, or the original item if migration fails
+ * @returns A Promise that resolves to the migrated item
+ * @throws When the item needs migration and migrating it fails
  */
 export async function migrateRawEmulatorItemToHashed(item: StorageItem): Promise<StorageItem> {
-    try {
-        // Check if the item is already in the new format
-        if (item.id.startsWith('emulator-')) {
-            // Already in new format, add to result as-is
-            return item;
-        }
-
-        // Process emulator items that need migration
-        return (await callWithTelemetryAndErrorHandling(
-            'CosmosDBWorkspaceItem.migrateRawEmulatorItemsToHashed',
-            async (context) => {
-                context.telemetry.suppressIfSuccessful = true;
-                context.errorHandling.rethrow = true;
-
-                const api: API = nonNullValue(item.properties?.api, 'api') as API;
-
-                // very old versions didn't have secrets, the connection string was stored in the id
-                const connectionString: string = item.secrets?.[0] ?? item.id;
-                context.telemetry.properties.api = api;
-
-                // Extract port from name if possible
-                const portMatch = item.name.match(/:[\s]*(\d+)$/);
-                const port = portMatch ? Number(portMatch[1]) : undefined;
-
-                const newName = getEmulatorItemLabelForApi(api, port);
-                const newId = getEmulatorItemUniqueId(connectionString);
-                const newItem: StorageItem = {
-                    ...item,
-                    id: newId,
-                    name: newName,
-                    secrets: [connectionString],
-                };
-
-                const workspaceType = WorkspaceResourceType.AttachedAccounts;
-
-                try {
-                    // Store the new item, or abort if it already exists which would be unexpected at this point
-                    await StorageService.get(StorageNames.Workspace).push(workspaceType, newItem, false);
-                } catch (error) {
-                    throw new Error(`Failed to migrate emulator item "${item.id}": ${String(error)}`, { cause: error });
-                }
-                // Delete old item after successful migration
-                await StorageService.get(StorageNames.Workspace).delete(workspaceType, item.id);
-
-                return newItem;
-            },
-        )) as StorageItem;
-    } catch {
-        // the error has already been logged by callWithTelemetryAndErrorHandling
-        // If migration fails, keep the original item
+    // Check if the item is already in the new format
+    if (item.id.startsWith('emulator-')) {
+        // Already in new format, return as-is
         return item;
     }
+
+    // Process emulator items that need migration
+    const migratedItem = await callWithTelemetryAndErrorHandling(
+        'CosmosDBWorkspaceItem.migrateRawEmulatorItemsToHashed',
+        async (context) => {
+            context.telemetry.suppressIfSuccessful = true;
+            context.errorHandling.rethrow = true;
+
+            // very old versions didn't have secrets, the connection string was stored in the id
+            const connectionString: string = item.secrets?.[0] ?? item.id;
+
+            // The legacy id and the name are user data and can carry the connection string itself,
+            // so mask them before anything in this boundary can report a failure.
+            for (const value of [item.id, item.name, connectionString]) {
+                if (typeof value === 'string' && value.trim()) {
+                    context.valuesToMask.push(value);
+                }
+            }
+
+            const api: API = nonNullValue(item.properties?.api, 'api') as API;
+            // `api` is persisted user data, and telemetry properties are sent verbatim rather than masked,
+            // so report a bounded value: this migration only produces Core emulators.
+            context.telemetry.properties.api = api === API.Core ? API.Core : API.Common;
+
+            // Extract port from name if possible
+            const portMatch = item.name.match(/:[\s]*(\d+)$/);
+            const port = portMatch ? Number(portMatch[1]) : undefined;
+
+            const newName = getEmulatorItemLabelForApi(api, port);
+            const newId = getEmulatorItemUniqueId(connectionString);
+            const newItem: StorageItem = {
+                ...item,
+                id: newId,
+                name: newName,
+                secrets: [connectionString],
+            };
+
+            const workspaceType = WorkspaceResourceType.AttachedAccounts;
+
+            try {
+                // Store the new item, or abort if it already exists which would be unexpected at this point
+                await StorageService.get(StorageNames.Workspace).push(workspaceType, newItem, false);
+            } catch (error) {
+                throw new Error('Failed to store the migrated emulator item.', { cause: error });
+            }
+            // Delete old item after successful migration
+            await StorageService.get(StorageNames.Workspace).delete(workspaceType, item.id);
+
+            return newItem;
+        },
+    );
+
+    return nonNullValue(migratedItem, 'migratedEmulatorItem');
 }
 
 /**

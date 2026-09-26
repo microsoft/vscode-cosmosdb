@@ -213,6 +213,9 @@
       },
       {
         "path": "./skills/cosmosdb-nosql-query-editor/SKILL.md"
+      },
+      {
+        "path": "./skills/cosmosdb-shell/SKILL.md"
       }
     ],
     "x-azResources": {

@@ -10,6 +10,7 @@ import { getCosmosDBKeyCredential } from '../cosmosdb/CosmosDBCredential';
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { type CosmosDBRecordIdentifier } from '../cosmosdb/types/queryResult';
 import { BaseTab } from './BaseTab';
+import { isSameDocumentTab } from './documentTabIdentity';
 import { documentAppRouter, documentCallerFactory, type DocumentRouterContext } from './trpc/appRouter';
 
 type DocumentTabMode = 'add' | 'edit' | 'view';
@@ -74,22 +75,7 @@ export class DocumentTab extends BaseTab {
                     return false;
                 }
 
-                if (documentId._rid && openTab.documentId._rid && openTab.documentId._rid === documentId._rid) {
-                    return true;
-                }
-
-                if (documentId.partitionKey !== undefined && openTab.documentId.partitionKey !== undefined) {
-                    const openTabPK = Array.isArray(openTab.documentId.partitionKey)
-                        ? openTab.documentId.partitionKey.join(',')
-                        : openTab.documentId.partitionKey?.toString();
-                    const pk = Array.isArray(documentId.partitionKey)
-                        ? documentId.partitionKey.join(',')
-                        : documentId.partitionKey?.toString();
-
-                    return documentId.id === openTab.documentId.id && openTabPK === pk;
-                }
-
-                return documentId.id === openTab.documentId.id;
+                return isSameDocumentTab(connection, documentId, openTab.connection, openTab.documentId);
             });
 
             if (openTab) {
@@ -99,7 +85,8 @@ export class DocumentTab extends BaseTab {
             }
         }
 
-        const title = `${documentId?.id ? documentId.id : l10n.t('New Item')}.json`;
+        const documentTitle = `${documentId?.id ? documentId.id : l10n.t('New Item')}.json`;
+        const title = `${documentTitle} - ${connection.databaseId}/${connection.containerId}`;
         const panel = vscode.window.createWebviewPanel(DocumentTab.viewType, title, column, {
             enableScripts: true,
             retainContextWhenHidden: true,

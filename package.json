@@ -209,9 +209,6 @@
         "path": "./skills/cosmosdb-best-practices/SKILL.md"
       },
       {
-        "path": "./skills/cosmosdb-nosql-query-generation/SKILL.md"
-      },
-      {
         "path": "./skills/cosmosdb-nosql-query-editor/SKILL.md"
       }
     ],

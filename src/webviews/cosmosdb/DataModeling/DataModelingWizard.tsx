@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import {
+    Badge,
     Button,
     Dialog,
     DialogActions,
@@ -241,9 +242,11 @@ function SavedModelChoice({ onContinue, onStartNew }: { onContinue: () => void; 
 
     return (
         <div>
-            <Text as="h2" size={700} weight="semibold">
-                {l10n.t('Data Modeler')}
-            </Text>
+            <ContainerHeader
+                headingLevel={2}
+                title={l10n.t('Data Modeler')}
+                action={<Badge appearance="tint">{l10n.t('Preview')}</Badge>}
+            />
             {awaitingAnswer ? null : (
                 <>
                     {confirmationError ? <Text role="alert">{confirmationError}</Text> : null}
@@ -902,6 +905,7 @@ const HydratedDataModelingWizard = ({
                     <ContainerHeader
                         media={<DatabaseLinkRegular aria-hidden="true" focusable="false" />}
                         title={l10n.t('Workload: {name}', { name: scenarioLabel ?? l10n.t('Not selected') })}
+                        action={<Badge appearance="tint">{l10n.t('Preview')}</Badge>}
                     />
                 }
                 footer={footer}

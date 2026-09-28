@@ -93,7 +93,7 @@ export const DashboardFooter = ({
                     aria-describedby={DATA_MODELER_HINT_ID}
                     onClick={onOpenDataModeler}
                 >
-                    {l10n.t('Try Data Modeler')}
+                    {l10n.t('Try Data Modeler (preview)')}
                 </Link>
             </div>
         </footer>

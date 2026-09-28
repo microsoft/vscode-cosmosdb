@@ -202,6 +202,8 @@ describe('data modeler saved-work choice and revisiting steps', () => {
     it('uses the shared sticky-navigation layout and keeps the footer outside its scroll region', async () => {
         client.dataModeling.loadState.query.mockResolvedValue(restored(4));
         render(<DataModelingWizard />);
+        const savedTitle = await screen.findByRole('heading', { name: 'Data Modeler' });
+        expect(savedTitle.parentElement?.parentElement).toContainElement(screen.getByText('Preview'));
         await continueExisting();
         const navigation = screen.getByRole('navigation', { name: 'Data modeling steps' });
         const scrollRegion = navigation.closest('[data-header-behavior="sticky-navigation"]');
@@ -212,6 +214,11 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         const title = screen.getByRole('heading', { name: /^Workload:/ });
         expect(scrollRegion).toContainElement(title);
         expect(title).toHaveAccessibleName(title.textContent);
+        const preview = screen.getByText('Preview');
+        expect(preview).toHaveClass('fui-Badge');
+        expect(preview).toBeVisible();
+        expect(title.parentElement?.parentElement).toContainElement(preview);
+        expect(preview.parentElement).toHaveStyle({ marginInlineStart: 'auto', flexShrink: '0' });
         const titleIcon = title.parentElement?.parentElement?.querySelector('svg');
         expect(titleIcon).toBeVisible();
         expect(titleIcon).toHaveAttribute('aria-hidden', 'true');

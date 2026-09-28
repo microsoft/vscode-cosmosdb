@@ -15,7 +15,12 @@ import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEdi
 export const GoToFirstPageButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
-    const isDisabled = state.pageNumber === 1 || !state.isConnected || state.isExecuting || !state.currentExecutionId;
+    const isDisabled =
+        state.pageNumber === 1 ||
+        !state.isConnected ||
+        state.isChangingConnection ||
+        state.isExecuting ||
+        !state.currentExecutionId;
     const { ref, type } = props;
 
     const firstPage = useCallback(() => dispatcher.firstPage(state.currentExecutionId), [dispatcher, state]);

@@ -37,6 +37,8 @@ Exclude paths from indexing that you never query. Every indexed path adds write 
 // Write cost includes indexing auditLog array - wasted RU
 ```
 
+> ⚠️ **CreateContainerIfNotExists warning:** Custom indexing policies supplied to `CreateContainerIfNotExists` (or `createIfNotExists`) are applied only when the container is created. If the container already exists, the call succeeds, the indexing policy argument is ignored, and the existing indexing policy remains unchanged. To apply new included or excluded paths to an existing container, update the container's `IndexingPolicy` and replace the container resource using the SDK's container replace operation. After deployment, read the container definition back and verify that the expected included and excluded paths are present.
+
 **Correct (exclude-all-first, then include back):**
 
 ```csharp

@@ -9,7 +9,7 @@ tags: sdk, concurrency, etag, consistency, read-modify-write
 
 When performing read-modify-write operations (read a document, update a field, write it back), always use ETags to prevent lost updates from concurrent writes. Without ETags, the last writer silently overwrites changes from other operations.
 
-**Problem: Lost updates without ETag checks**
+**Incorrect (performing read-modify-write updates without an ETag precondition):**
 
 ```csharp
 // Anti-pattern: Read-modify-write without concurrency control
@@ -36,7 +36,7 @@ public async Task UpdatePlayerStatsAsync(string playerId, int newScore)
 }
 ```
 
-**Solution: ETag-based optimistic concurrency with retry**
+**Correct (using ETag-based optimistic concurrency and retrying on HTTP 412):**
 
 ```csharp
 // Correct: Use ETag to detect concurrent modifications and retry
@@ -144,6 +144,44 @@ except CosmosHttpResponseError as e:
 - **Always use** when updating denormalized data (see below)
 - **Skip** for append-only operations (new document creation with unique IDs)
 - **Skip** for idempotent overwrites where last-writer-wins is acceptable
+
+**Rust (`azure_data_cosmos`) equivalent:**
+
+```rust
+use azure_data_cosmos::{ItemOptions, PartitionKey};
+use azure_core::http::StatusCode;
+
+// Read document and capture ETag from response headers
+let container = cosmos.database_client("db").container_client("orders").await;
+let pk = PartitionKey::from(customer_id.to_string());
+
+// Read the current document
+let response = container.read_item::<serde_json::Value>(pk.clone(), &order_id, None)
+    .await
+    .map_err(|e| format!("read failed: {}", e))?;
+
+let etag = response.etag().map(|e| e.to_string());
+let mut order: Order = serde_json::from_value(response.into_body())?;
+
+// Modify the document
+order.status = "shipped".to_string();
+
+// Write with ETag condition — fails if document changed since read
+// Note: Pass the ETag as an If-Match header for conditional writes.
+// The azure_data_cosmos SDK (v0.31+) supports this via ItemOptions;
+// check your SDK version for the exact method name.
+let options = ItemOptions::default();
+// options = options.with_if_match_etag(etag.unwrap());
+
+let item = serde_json::to_value(&order)?;
+match container.replace_item(pk, &order.id, item, Some(options)).await {
+    Ok(_) => { /* Success */ }
+    Err(e) if e.http_status() == Some(StatusCode::PreconditionFailed) => {
+        // HTTP 412: Document was modified — retry from read
+    }
+    Err(e) => return Err(e.into()),
+}
+```
 
 ### ⚠️ Critical: ETags for Denormalized Data Updates
 

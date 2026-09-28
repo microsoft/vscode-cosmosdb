@@ -9,6 +9,10 @@ tags: model, schema, versioning, migration
 
 Include schema version in documents to handle evolution gracefully. This enables safe migrations and backward-compatible reads.
 
+For multi-entity or event-heavy workloads, apply this to **every persisted document type** (for example: metadata documents, events, telemetry records, and denormalized read models), not just top-level business entities.
+
+Use a consistent field name such as `schemaVersion` (camelCase) and set it at write time so raw document checks, migrations, and mixed-version readers all work reliably.
+
 **Incorrect (no version tracking):**
 
 ```csharp

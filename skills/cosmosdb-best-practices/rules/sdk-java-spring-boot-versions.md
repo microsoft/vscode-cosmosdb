@@ -9,7 +9,7 @@ tags: java, spring-boot, sdk, version-requirements, compatibility
 
 The Azure Cosmos DB Java SDK works with various Spring Boot versions, but each Spring Boot version has **strict Java version requirements** that must be met for the project to build successfully.
 
-**Problem:**
+**Incorrect (combining Spring Boot and Java versions that do not satisfy each other's requirements):**
 
 Developers may encounter build failures with cryptic error messages when the Java version doesn't match Spring Boot requirements:
 
@@ -23,7 +23,7 @@ These errors occur when:
 - The JAVA_HOME environment variable points to an incompatible Java version
 - Maven/Gradle is configured to use a different Java version than expected
 
-**Solution:**
+**Correct (pinning compatible Spring Boot, Java, and build-tool versions together):**
 
 Always match your Java version to your Spring Boot requirements:
 

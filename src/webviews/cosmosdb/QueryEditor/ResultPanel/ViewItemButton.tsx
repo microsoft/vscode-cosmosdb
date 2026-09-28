@@ -17,8 +17,14 @@ import { getSelectedDocumentIds } from './getSelectedDocumentIds';
 export const ViewItemButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
+    const label = l10n.t('View item');
 
-    const isEditDisabled = !state.isEditMode || state.selectedRows.length === 0 || state.isExecuting;
+    const isEditDisabled =
+        !state.isConnected ||
+        state.isChangingConnection ||
+        !state.isEditMode ||
+        state.selectedRows.length === 0 ||
+        state.isExecuting;
 
     const getSelectedDocuments = useCallback(
         () => getSelectedDocumentIds(state.selectedRows, state.currentQueryResult, state.partitionKey),
@@ -26,8 +32,8 @@ export const ViewItemButton = (props: ToolbarOverflowItemProps<HTMLButtonElement
     );
 
     const viewSelectedItem = useCallback(
-        () => dispatcher.openDocuments('view', getSelectedDocuments()),
-        [dispatcher, getSelectedDocuments],
+        () => dispatcher.openDocuments('view', getSelectedDocuments(), state.currentExecutionId),
+        [dispatcher, getSelectedDocuments, state.currentExecutionId],
     );
 
     const viewItemHotkeyTooltip = useMemo(() => getShortcutDisplay(ResultPanelHotkeys, 'ViewItem'), []);
@@ -38,8 +44,8 @@ export const ViewItemButton = (props: ToolbarOverflowItemProps<HTMLButtonElement
 
     return (
         <ToolbarOverflowButton
-            ariaLabel={l10n.t('View selected item')}
-            content={l10n.t('View item')}
+            ariaLabel={props.type === 'menuitem' ? label : l10n.t('View selected item')}
+            content={label}
             disabled={isEditDisabled}
             icon={<EyeRegular />}
             hotkey={viewItemHotkeyTooltip}

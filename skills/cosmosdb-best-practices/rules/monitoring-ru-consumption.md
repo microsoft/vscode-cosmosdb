@@ -133,6 +133,86 @@ var client = new CosmosClient(connectionString, new CosmosClientOptions
 });
 ```
 
+### Node.js / TypeScript (@azure/cosmos v4)
+
+Every `@azure/cosmos` operation exposes `requestCharge` as a top-level numeric property on the response. Capture it on every call — point reads, queries, writes, and bulk operations.
+
+**Incorrect (discarding requestCharge — no visibility into cost):**
+
+```typescript
+// ❌ requestCharge available but never captured
+const { resource } = await container.item(orderId, userId).read();
+return resource;
+// Is this costing 1 RU or 100 RU? Unknown!
+```
+
+**Correct (capturing requestCharge on reads and writes):**
+
+```typescript
+import { Container, FeedResponse } from '@azure/cosmos';
+
+// ✅ Point read — capture requestCharge
+export async function getOrder(container: Container, id: string, userId: string) {
+  const response = await container.item(id, userId).read();
+  logger.debug({
+    op: 'ReadItem',
+    container: container.id,
+    ru: response.requestCharge,
+    statusCode: response.statusCode,
+    activityId: response.activityId,
+  }, 'cosmos.readItem');
+  return response.resource;
+}
+
+// ✅ Write — create/upsert/replace/patch/delete all expose requestCharge
+export async function createOrder(container: Container, order: Order) {
+  const response = await container.items.create(order);
+  logger.debug({ op: 'CreateItem', ru: response.requestCharge }, 'cosmos.createItem');
+  return response.resource;
+}
+```
+
+**Correct (accumulating RU across query pages — single-page tracking undercounts paged results):**
+
+```typescript
+// ✅ Query — sum requestCharge across all pages
+export async function getCustomerOrders(container: Container, userId: string) {
+  const iterator = container.items.query<OrderSummary>({
+    query: 'SELECT c.id, c.userId, c.status, c.total, c.createdAt FROM c WHERE c.userId = @u ORDER BY c.createdAt DESC',
+    parameters: [{ name: '@u', value: userId }],
+  }, { partitionKey: userId });
+
+  const results: OrderSummary[] = [];
+  let totalRU = 0;
+
+  while (iterator.hasMoreResults()) {
+    const page: FeedResponse<OrderSummary> = await iterator.fetchNext();
+    results.push(...page.resources);
+    totalRU += page.requestCharge;
+  }
+
+  logger.info({ op: 'Query', container: container.id, count: results.length, totalRU }, 'cosmos.query.total');
+  if (totalRU > 100) {
+    logger.warn({ totalRU, count: results.length }, 'cosmos.query.expensive');
+  }
+  return results;
+}
+```
+
+**`requestCharge` API surface in `@azure/cosmos` v4:**
+
+| Operation | Response type | RU property |
+|-----------|---------------|-------------|
+| `container.item(id, pk).read()` | `ItemResponse<T>` | `response.requestCharge` |
+| `container.items.create(doc)` | `ItemResponse<T>` | `response.requestCharge` |
+| `container.items.upsert(doc)` | `ItemResponse<T>` | `response.requestCharge` |
+| `container.item(id, pk).replace(doc)` | `ItemResponse<T>` | `response.requestCharge` |
+| `container.item(id, pk).patch(ops)` | `ItemResponse<T>` | `response.requestCharge` |
+| `container.item(id, pk).delete()` | `ItemResponse<T>` | `response.requestCharge` |
+| `container.items.query(...).fetchAll()` | `FeedResponse<T>` | `response.requestCharge` |
+| `container.items.query(...).fetchNext()` | `FeedResponse<T>` per page | sum across pages |
+| `container.items.bulk(ops)` | `OperationResponse[]` | `op.requestCharge` per operation |
+
 Azure Monitor queries for RU analysis:
 ```kusto
 // Top expensive operations

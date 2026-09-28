@@ -302,10 +302,9 @@ async function initSurvey(): Promise<void> {
 
                 return setCandidateStatus(acceptedForABTest, '07_not_in_ab_test_group', {
                     acceptedForABTest: acceptedForABTest.toString(),
-                    normalizedValue: normalized.toFixed(6),
                 });
-            } catch (error) {
-                context.telemetry.properties.abTestError = error instanceof Error ? error.message : String(error);
+            } catch {
+                context.telemetry.properties.abTestError = 'hashCalculationFailed';
             }
         }
         const fallbackSelection = Math.random() < SurveyConfig.settings.PROBABILITY;

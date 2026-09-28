@@ -9,6 +9,8 @@ tags: index, range, equality, types
 
 Understand when to use different index types. Range indexes support equality, range, and ORDER BY; Hash indexes are deprecated.
 
+**Incorrect (manually reasoning about deprecated hash indexes or over-specifying index kinds for standard queries):**
+
 **Understanding index types:**
 
 ```csharp
@@ -36,7 +38,7 @@ Understand when to use different index types. Range indexes support equality, ra
 }
 ```
 
-**Correct (modern indexing approach):**
+**Correct (letting modern Cosmos DB indexing defaults handle standard paths and adding special indexes only when needed):**
 
 ```csharp
 // Modern Cosmos DB automatically uses optimal index types
@@ -45,23 +47,20 @@ var indexingPolicy = new IndexingPolicy
 {
     IndexingMode = IndexingMode.Consistent,
     Automatic = true,
-
+    
     // Just specify paths - Cosmos DB handles index types
-    // NOTE on path syntax: /? = scalar, /* = terminal wildcard (everything below),
-    //   /[] = array traversal. NEVER use * mid-path for arrays.
-    //   See index-path-syntax rule for details.
     IncludedPaths =
     {
         new IncludedPath { Path = "/category/?" },    // Equality queries
         new IncludedPath { Path = "/price/?" },       // Range queries
         new IncludedPath { Path = "/createdAt/?" },   // ORDER BY
-        new IncludedPath { Path = "/tags/*" }         // Terminal wildcard — everything under /tags
+        new IncludedPath { Path = "/tags/*" }         // Array elements
     },
-
+    
     ExcludedPaths =
     {
         new ExcludedPath { Path = "/description/?" },  // Large text, not queried
-        new ExcludedPath { Path = "/metadata/*" }      // Terminal wildcard — everything under /metadata
+        new ExcludedPath { Path = "/metadata/*" }      // Nested object, not queried
     }
 };
 ```
@@ -76,7 +75,7 @@ var indexingPolicy = new IndexingPolicy
     {
         new IncludedPath { Path = "/*" }  // Index everything by default
     },
-
+    
     // Composite indexes for multi-property ORDER BY
     CompositeIndexes =
     {
@@ -86,7 +85,7 @@ var indexingPolicy = new IndexingPolicy
             new CompositePath { Path = "/price", Order = CompositePathSortOrder.Descending }
         }
     },
-
+    
     // Spatial indexes for geo queries
     SpatialIndexes =
     {

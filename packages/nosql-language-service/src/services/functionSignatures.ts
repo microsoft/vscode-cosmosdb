@@ -186,6 +186,23 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionMeta> = {
             },
         ],
     },
+    STRINGEQUALS: {
+        category: 'String',
+        description: 'Returns a Boolean indicating whether two strings are equal.',
+        signatures: [
+            {
+                label: 'STRINGEQUALS(string1, string2 [, ignoreCase])',
+                parameters: [
+                    { label: 'string1', documentation: 'The first string.' },
+                    { label: 'string2', documentation: 'The second string.' },
+                    {
+                        label: 'ignoreCase',
+                        documentation: 'Optional Boolean. true ignores case; false (default) matches case.',
+                    },
+                ],
+            },
+        ],
+    },
     CONCAT: {
         category: 'String',
         description: 'Returns a string that is the result of concatenating two or more string values.',
@@ -474,12 +491,20 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionMeta> = {
         description: 'Returns the similarity score between two vectors.',
         signatures: [
             {
-                label: 'VECTORDISTANCE(vector1, vector2 [, brute_force] [, distanceFunction])',
+                label: 'VECTORDISTANCE(vector1, vector2 [, brute_force [, options]])',
                 parameters: [
                     { label: 'vector1' },
                     { label: 'vector2' },
-                    { label: 'brute_force', documentation: 'Optional Boolean to force brute-force search.' },
-                    { label: 'distanceFunction', documentation: 'Optional: "cosine", "euclidean", or "dotproduct".' },
+                    {
+                        label: 'brute_force',
+                        documentation:
+                            'Optional Boolean. true forces brute-force search; false (default) uses a vector index if one exists.',
+                    },
+                    {
+                        label: 'options',
+                        documentation:
+                            'Optional JSON object, for example { distanceFunction: "Cosine", dataType: "Float32" }.',
+                    },
                 ],
             },
         ],

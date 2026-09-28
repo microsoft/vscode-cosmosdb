@@ -81,3 +81,5 @@ Cosmos DB indexing paths use specific notation for scalars, arrays, and wildcard
 - `/*` is a terminal wildcard — it means "all descendants" and must be the LAST segment in the path
 - **NEVER** use `*` in the middle of a path (e.g., `/items/*/name/?` is INVALID)
 - For composite indexes, paths do NOT use `/?` or `/*` — they have an implicit `/?` at the end. Use `/[]` for array traversal in composite paths (e.g., `/children/[]/age`)
+
+Reference: [Indexing policy path syntax](https://learn.microsoft.com/azure/cosmos-db/index-policy#include-exclude-paths)

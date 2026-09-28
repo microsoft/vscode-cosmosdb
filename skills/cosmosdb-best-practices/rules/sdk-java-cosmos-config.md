@@ -244,6 +244,19 @@ public class CosmosDbConfig extends AbstractCosmosConfiguration {
 - Always call `createDatabaseIfNotExists()` before `createContainerIfNotExists()`
 - When extending `AbstractCosmosConfiguration`, use `@Bean` (not `@Override`) on `cosmosClientBuilder()`
 
+**Global Jackson fallback for Cosmos system metadata:**
+
+When entity classes miss `@JsonIgnoreProperties(ignoreUnknown = true)`, reads can fail with `UnrecognizedPropertyException` on Cosmos system fields (for example `_rid`, `_self`, `_etag`, `_ts`). Add a global fallback in Spring Boot:
+
+```yaml
+spring:
+    jackson:
+        deserialization:
+            fail-on-unknown-properties: false
+```
+
+This is a defense-in-depth safety net and does not replace correct entity annotations.
+
 References:
 - [Spring Framework @Bean documentation](https://docs.spring.io/spring-framework/reference/core/beans/java/bean-annotation.html)
 - [`CosmosAsyncClient.createDatabaseIfNotExists()` Javadoc](https://learn.microsoft.com/java/api/com.azure.cosmos.cosmosasyncclient?view=azure-java-stable)

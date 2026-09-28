@@ -16,6 +16,9 @@ export type DispatchAction =
           queryValue: string;
       }
     | {
+          type: 'connectionChangeStarted' | 'connectionChangeFinished';
+      }
+    | {
           type: 'databaseConnected';
           dbName: string;
           containerName: string;
@@ -111,6 +114,7 @@ export type QueryEditorState = {
     querySelectedValue: string;
     currentQueryBlock: string; // The query block text under the cursor (persisted across focus loss)
     isConnected: boolean;
+    isChangingConnection: boolean;
     isExecuting: boolean;
     isEditMode: boolean; // Query or selected query is start select (select * from c)
     startExecutionTime: number; // Time when the query execution started
@@ -148,6 +152,7 @@ export const defaultState: QueryEditorState = {
     querySelectedValue: '',
     currentQueryBlock: '',
     isConnected: false,
+    isChangingConnection: false,
     isExecuting: false,
     isEditMode: false,
     startExecutionTime: 0,
@@ -173,6 +178,22 @@ export const defaultState: QueryEditorState = {
     isAIFeaturesEnabled: false, // Default to false, will be updated from extension when Copilot is available
 };
 
+const clearedConnectionResults = {
+    currentQueryResult: null,
+    selectedRows: [],
+    currentExecutionId: '',
+    pageNumber: 1,
+    isEditMode: false,
+    isExecuting: false,
+    startExecutionTime: 0,
+    endExecutionTime: 0,
+    containerSchema: null,
+    queryHistory: [],
+    throughputBuckets: undefined,
+    selectedThroughputBucket: undefined,
+    connectionList: undefined,
+};
+
 export function dispatch(state: QueryEditorState, action: DispatchAction): QueryEditorState {
     switch (action.type) {
         case 'insertText':
@@ -183,16 +204,29 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
                 ...state,
                 queryValue: action.queryValue,
             };
+        case 'connectionChangeStarted':
+            return { ...state, isChangingConnection: true };
+        case 'connectionChangeFinished':
+            return { ...state, isChangingConnection: false };
         case 'databaseConnected':
             return {
                 ...state,
+                ...clearedConnectionResults,
                 isConnected: true,
                 dbName: action.dbName,
                 containerName: action.containerName,
                 partitionKey: action.partitionKey,
             };
         case 'databaseDisconnected':
-            return { ...state, isConnected: false, dbName: '', containerName: '' };
+            return {
+                ...state,
+                ...clearedConnectionResults,
+                isConnected: false,
+                dbName: '',
+                containerName: '',
+                partitionKey: undefined,
+                connectionList: undefined,
+            };
         case 'executionStarted':
             return {
                 ...state,
@@ -200,6 +234,7 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
                 currentExecutionId: action.executionId,
                 pageNumber: 1,
                 currentQueryResult: null,
+                selectedRows: [],
                 startExecutionTime: action.startExecutionTime,
                 isEditMode: isSelectStar(state.querySelectedValue || state.queryValue || ''),
             };
@@ -210,9 +245,8 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
                 startExecutionTime: action.startExecutionTime,
             };
         case 'executionStopped': {
-            // Allow empty executionId to match any current execution (used for error recovery)
-            if (action.executionId !== '' && action.executionId !== state.currentExecutionId) {
-                // TODO: send telemetry. It should not happen
+            // Ignore unowned or stale stop events so an older failure cannot stop a newer execution.
+            if (!action.executionId || action.executionId !== state.currentExecutionId) {
                 return state;
             }
             return { ...state, isExecuting: false, endExecutionTime: action.endExecutionTime };
@@ -222,11 +256,8 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
         case 'setPageSize':
             return { ...state, pageSize: action.pageSize };
         case 'updateQueryResult':
-            // Drop results from a superseded execution so a late-arriving older result cannot
-            // overwrite the grid once a newer execution has started. An empty executionId matches
-            // any current execution (used for error recovery), mirroring `executionStopped`.
-            if (action.executionId !== '' && action.executionId !== state.currentExecutionId) {
-                // TODO: send telemetry. It should not happen
+            // A cleared execution ID also rejects results from a previous connection.
+            if (!action.executionId || action.executionId !== state.currentExecutionId) {
                 return state;
             }
             // `isEditMode` describes the query that produced `currentQueryResult` and is
@@ -235,6 +266,7 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
             return {
                 ...state,
                 currentQueryResult: action.result,
+                selectedRows: [],
                 pageNumber: action.currentPage,
                 pageSize: action.result.metadata.countPerPage || DEFAULT_PAGE_SIZE,
             };

@@ -2,7 +2,7 @@
 title: Configure SSL and connection mode for Cosmos DB Emulator
 impact: MEDIUM
 impactDescription: enables local development with all SDKs
-tags: sdk, emulator, ssl, local-development, certificate, gateway-mode
+tags: sdk, emulator, ssl, local-development, certificate, gateway-mode, java, netty, truststore
 ---
 
 ## Configure SSL and Connection Mode for Cosmos DB Emulator
@@ -21,6 +21,8 @@ The Azure Cosmos DB Emulator uses a self-signed SSL certificate that requires sp
 **Well-known emulator key:** `C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==`
 
 ---
+
+**Incorrect (using emulator defaults without gateway mode or trusted local SSL handling):**
 
 ### .NET SDK
 
@@ -84,7 +86,16 @@ const client = new CosmosClient({
 
 ---
 
+**Correct (configuring emulator-specific gateway mode and certificate handling per SDK):**
+
 ### Java SDK (Detailed)
+
+> **Which emulator are you on?**
+> - **Windows desktop emulator** → follow this section.
+> - **Linux (vNext) emulator** (`...azure-cosmos-emulator:vnext-latest`, `--protocol https`) → see
+>   [Java SDK + Linux (vNext) Emulator over HTTPS](#java-sdk--linux-vnext-emulator-over-https) below.
+>   In addition to trusting the cert, the Linux emulator requires connecting via a **SAN-matching
+>   host** (`localhost`/`127.0.0.1`) and setting **`endpointDiscoveryEnabled(false)`** — details there.
 
 When using the Azure Cosmos DB Emulator with the Java SDK, you must import the emulator's self-signed SSL certificate into the JDK truststore and use Gateway connection mode. Direct mode has persistent SSL issues with the emulator.
 
@@ -209,5 +220,159 @@ System.setProperty("COSMOS.EMULATOR_SSL_TRUST_ALL", "true");  // INEFFECTIVE!
 - The custom truststore approach avoids needing administrator access
 - The emulator's well-known key is: `C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==`
 - For production, switch back to Direct mode and use your actual Cosmos DB endpoint
+
+---
+
+### Java SDK + Linux (vNext) Emulator over HTTPS
+
+The steps above target the **Windows desktop emulator**. The **Linux (vNext) emulator**
+(`mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-latest`) run with
+`--protocol https` needs two things for the Java SDK that are easy to miss: the emulator's
+certificate must be **trusted** (a trust-all `SSLContext` in code is ignored), and you must
+connect via a host in the certificate **SAN** (`localhost`/`127.0.0.1`).
+
+**Symptoms (three distinct failures):**
+
+```text
+# (a) Cert not trusted, surfaced through Netty's native OpenSSL provider
+#     (netty-tcnative). This is the same trust failure as (b), just wrapped
+#     by the OpenSSL engine rather than the JDK SSL engine:
+com.azure.cosmos.CosmosException: ... General OpenSslEngine problem
+
+# (b) Cert not trusted, surfaced through the JDK SSL provider:
+javax.net.ssl.SSLHandshakeException: PKIX path building failed:
+  sun.security.provider.certpath.SunCertPathBuilderException:
+  unable to find valid certification path to requested target
+
+# (c) Cert trusted, but connecting via a host outside the cert SAN —
+#     the Java SDK enforces strict TLS hostname verification:
+javax.net.ssl.SSLPeerUnverifiedException:
+  No subject alternative DNS name matching <host> found. SANs in the cert: localhost, 127.0.0.1
+```
+
+> Note: `(a)` and `(b)` are the **same** underlying trust failure reported by whichever SSL
+> provider is active (`netty-tcnative` OpenSSL vs. the JDK). Importing the emulator certificate
+> resolves both; the provider does not change the fix.
+
+**⚠️ A programmatic trust-all `SSLContext` does NOT work** — the Java SDK builds its own
+Netty `SslContext` from the configured truststore and does **not** honor the JVM-default
+`SSLContext`, so an all-trusting `TrustManager` installed via `SSLContext.setDefault(...)` is
+silently ignored and the handshake still fails (`PKIX path building failed`). Unlike the
+Go/Node/.NET/Python SDKs, the Java SDK has no direct "disable certificate validation" switch —
+trust the emulator certificate explicitly via the truststore instead.
+
+**Recommended pattern:**
+
+**Step 1 (primary fix) — Export and import the emulator certificate into the JDK truststore:**
+This is sufficient on its own with current SDK builds (verified with `azure-cosmos` 4.65.0 on
+Windows and Linux): the native OpenSSL provider (`netty-tcnative`) honors the certificates in
+the configured truststore.
+
+```bash
+# Export the cert presented by the Linux emulator:
+openssl s_client -connect localhost:8081 -servername localhost </dev/null 2>/dev/null \
+  | openssl x509 -outform PEM > emulator.crt
+
+# Import it into the JDK truststore (cacerts):
+keytool -importcert -trustcacerts -alias cosmos-emulator \
+  -file emulator.crt -keystore "$JAVA_HOME/lib/security/cacerts" \
+  -storepass changeit -noprompt
+```
+
+**Step 2 — Connect via a host that is in the certificate SAN** (`localhost` or `127.0.0.1`).
+Any other host name (a container/service alias, for example) fails strict SAN verification
+with `No subject alternative DNS name matching <host> found`:
+
+```bash
+COSMOS_ENDPOINT=https://localhost:8081
+```
+
+**Step 3 — Use Gateway mode, pin the endpoint, and disable endpoint discovery.**
+`endpointDiscoveryEnabled(false)` stops the SDK from following the advertised `127.0.0.1`
+loopback; do **not** rely on a trust-all `SSLContext`:
+
+```java
+CosmosClient client = new CosmosClientBuilder()
+    .endpoint(System.getenv("COSMOS_ENDPOINT"))   // https://localhost:8081 (SAN-matching host)
+    .key(System.getenv("COSMOS_KEY"))             // well-known emulator key
+    .gatewayMode()                                 // required for the emulator
+    .endpointDiscoveryEnabled(false)               // don't follow the advertised 127.0.0.1 loopback
+    .buildClient();
+```
+
+**Step 4 (fallback) — If the imported cert is not honored on your Netty/tcnative build,**
+force the JDK SSL provider so the JDK truststore (`cacerts`) is consulted directly. Some
+older `netty-tcnative` builds keep separate trust material; this switch sidesteps that:
+
+```bash
+# As a JVM system property:
+-Dio.netty.handler.ssl.noOpenSsl=true
+
+# Equivalently, exclude netty-tcnative-boringssl-static from the dependency tree.
+```
+
+**Verify:**
+
+```bash
+# With the emulator cert imported into the truststore -> connects over HTTPS:
+mvn -q compile exec:java -Dexec.mainClass=com.example.Main
+
+# If your build still fails with "General OpenSslEngine problem", add the JDK-SSL-provider switch:
+MAVEN_OPTS="-Dio.netty.handler.ssl.noOpenSsl=true" \
+  mvn -q compile exec:java -Dexec.mainClass=com.example.Main
+```
+
+**Key Points (Linux vNext + Java):**
+- Importing the emulator certificate into the truststore (`cacerts` or a custom truststore via `-Djavax.net.ssl.trustStore`) is the primary fix — with current builds the `netty-tcnative` OpenSSL provider honors it (verified with `azure-cosmos` 4.65.0).
+- A programmatic trust-all `SSLContext` is ignored — the SDK builds its own `SslContext` from the configured truststore, not the JVM-default `SSLContext`. Trust the cert explicitly instead.
+- The emulator's self-signed cert has SAN = `localhost, 127.0.0.1` only — connect via one of those hosts or strict TLS hostname verification fails.
+- Use `gatewayMode()` and `endpointDiscoveryEnabled(false)`; pin the endpoint to the SAN-matching host.
+- Fallback: if a particular `netty-tcnative` build does not honor the imported cert, set `-Dio.netty.handler.ssl.noOpenSsl=true` (or exclude `netty-tcnative-boringssl-static`) to force the JDK SSL provider.
+
+Reference: [Azure Cosmos DB Java SDK v4](https://learn.microsoft.com/azure/cosmos-db/sdk-java-v4)
+
+---
+
+### Rust SDK (`azure_data_cosmos`)
+
+The Rust SDK provides a built-in method to accept the emulator's self-signed certificate:
+
+```rust
+use azure_data_cosmos::{
+    CosmosAccountEndpoint, CosmosAccountReference, CosmosClient, CosmosClientBuilder,
+};
+use azure_core::credentials::Secret;
+
+// ✅ Emulator configuration — accepts invalid certificates
+let endpoint: CosmosAccountEndpoint = "https://localhost:8081"
+    .parse()
+    .expect("valid endpoint");
+
+let account = CosmosAccountReference::with_master_key(
+    endpoint,
+    Secret::from("C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==".to_string()),
+);
+
+let client = CosmosClientBuilder::new()
+    .with_allow_emulator_invalid_certificates(true)  // Accept self-signed cert
+    .build(account)
+    .await
+    .expect("build client");
+
+// For production, omit with_allow_emulator_invalid_certificates:
+// CosmosClientBuilder::new().build(account).await
+```
+
+**Required Cargo.toml features:**
+```toml
+[dependencies]
+azure_data_cosmos = { version = "0.31", features = ["key_auth", "hmac_rust", "allow_invalid_certificates"] }
+azure_core = "0.32"
+```
+
+> **Note:** The `allow_invalid_certificates` feature must be enabled in Cargo.toml for
+> `with_allow_emulator_invalid_certificates(true)` to compile.
+
+---
 
 Reference: [Use the Azure Cosmos DB Emulator for local development](https://learn.microsoft.com/azure/cosmos-db/emulator)

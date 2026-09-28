@@ -36,8 +36,10 @@ public class Owner {
 import com.azure.spring.data.cosmos.core.mapping.Container;
 import com.azure.spring.data.cosmos.core.mapping.PartitionKey;
 import com.azure.spring.data.cosmos.core.mapping.GeneratedValue;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.springframework.data.annotation.Id;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 @Container(containerName = "owners")
 public class Owner {
 
@@ -56,6 +58,8 @@ public class Owner {
     }
 }
 ```
+
+Add `@JsonIgnoreProperties(ignoreUnknown = true)` to every Cosmos entity class so deserialization ignores Cosmos DB system metadata (`_rid`, `_self`, `_etag`, `_ts`, `_lsn`). This reinforces the serialization safety guidance from `model-json-serialization` at the point where entities are usually generated.
 
 **Key annotation mappings:**
 

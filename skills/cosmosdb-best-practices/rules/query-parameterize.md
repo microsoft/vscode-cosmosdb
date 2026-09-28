@@ -87,4 +87,35 @@ Benefits:
 - Performance: Query plan caching and reuse
 - Maintainability: Cleaner, type-safe code
 
+**Rust (`azure_data_cosmos`):**
+
+```rust
+use azure_data_cosmos::Query;
+
+// ✅ Parameterized query — safe and cacheable
+let query = Query::from("SELECT * FROM c WHERE c.customerId = @customerId")
+    .with_parameter("@customerId", customer_id)
+    .unwrap();
+
+// Multiple parameters
+let query = Query::from(
+    "SELECT * FROM c WHERE c.customerId = @cid AND c.status = @status ORDER BY c.createdAt DESC"
+)
+    .with_parameter("@cid", customer_id).unwrap()
+    .with_parameter("@status", "active").unwrap();
+
+// Aggregate query with parameters
+let query = Query::from(
+    "SELECT COUNT(1) AS totalOrders, SUM(c.total) AS totalSpent FROM c WHERE c.customerId = @cid"
+)
+    .with_parameter("@cid", customer_id).unwrap();
+```
+
+```rust
+// ❌ Anti-pattern: String interpolation (no plan caching, injection risk)
+let query = Query::from(format!(
+    "SELECT * FROM c WHERE c.customerId = '{}'", customer_id
+));
+```
+
 Reference: [Parameterized queries](https://learn.microsoft.com/azure/cosmos-db/nosql/query/parameterized-queries)

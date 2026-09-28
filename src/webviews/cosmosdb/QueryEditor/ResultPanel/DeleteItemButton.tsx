@@ -16,8 +16,14 @@ import { getSelectedDocumentIds } from './getSelectedDocumentIds';
 export const DeleteItemButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
+    const label = l10n.t('Delete item');
 
-    const isEditDisabled = !state.isEditMode || state.selectedRows.length === 0 || state.isExecuting;
+    const isEditDisabled =
+        !state.isConnected ||
+        state.isChangingConnection ||
+        !state.isEditMode ||
+        state.selectedRows.length === 0 ||
+        state.isExecuting;
 
     const getSelectedDocuments = useCallback(
         () => getSelectedDocumentIds(state.selectedRows, state.currentQueryResult, state.partitionKey),
@@ -27,11 +33,11 @@ export const DeleteItemButton = (props: ToolbarOverflowItemProps<HTMLButtonEleme
     const deleteSelectedItem = useCallback(() => {
         const selectedDocuments = getSelectedDocuments();
         if (selectedDocuments.length === 1) {
-            void dispatcher.deleteDocument(selectedDocuments[0]);
+            void dispatcher.deleteDocument(selectedDocuments[0], state.currentExecutionId);
         } else {
-            void dispatcher.deleteDocuments(selectedDocuments);
+            void dispatcher.deleteDocuments(selectedDocuments, state.currentExecutionId);
         }
-    }, [dispatcher, getSelectedDocuments]);
+    }, [dispatcher, getSelectedDocuments, state.currentExecutionId]);
 
     const deleteItemHotkeyTooltip = useMemo(() => getShortcutDisplay(ResultPanelHotkeys, 'DeleteItem'), []);
 
@@ -44,8 +50,8 @@ export const DeleteItemButton = (props: ToolbarOverflowItemProps<HTMLButtonEleme
 
     return (
         <ToolbarOverflowButton
-            ariaLabel={l10n.t('Delete selected item(s)')}
-            content={l10n.t('Delete item')}
+            ariaLabel={props.type === 'menuitem' ? label : l10n.t('Delete selected item(s)')}
+            content={label}
             disabled={isEditDisabled}
             icon={<DeleteRegular />}
             hotkey={deleteItemHotkeyTooltip}

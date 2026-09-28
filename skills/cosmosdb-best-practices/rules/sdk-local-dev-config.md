@@ -9,7 +9,7 @@ tags: sdk, local-development, emulator, configuration, environment-variables
 
 When developing locally with the Cosmos DB Emulator, system-level environment variables pointing to Azure cloud accounts can override your local configuration, causing unexpected connections to production resources instead of the emulator.
 
-**Problem - System environment variables override local config:**
+**Incorrect (letting ambient environment variables silently override local emulator settings):**
 
 ```python
 # Your .env file (local config)
@@ -24,7 +24,7 @@ from dotenv import load_dotenv
 load_dotenv()  # ❌ System COSMOS_ENDPOINT wins - connects to production!
 ```
 
-**Solution - Force override of environment variables:**
+**Correct (using profile-specific config and explicit override behavior for local development):**
 
 **Python:**
 

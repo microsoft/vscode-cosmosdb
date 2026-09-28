@@ -18,9 +18,12 @@ export const ExportButton = (props: ToolbarOverflowItemProps<HTMLButtonElement> 
     const dispatcher = useQueryEditorDispatcher();
     const { selectedTab, ref } = props;
     const hasSelection = state.selectedRows.length > 0;
-    const tooltipExportContent = hasSelection
-        ? l10n.t('Export selected items')
-        : l10n.t('Export all results from the current page');
+    const tooltipExportContent =
+        selectedTab === 'stats__tab'
+            ? l10n.t('Export query metrics')
+            : hasSelection
+              ? l10n.t('Export selected items')
+              : l10n.t('Export all results from the current page');
 
     const onSaveAsCSV = useCallback(async () => {
         const filename = `${state.dbName}_${state.containerName}_${state.currentQueryResult?.activityId ?? 'query'}`;
@@ -74,14 +77,14 @@ export const ExportButton = (props: ToolbarOverflowItemProps<HTMLButtonElement> 
                         <ToolbarButton
                             ref={ref}
                             data-quickstart="export-results"
-                            aria-label={l10n.t('Export')}
+                            aria-label={tooltipExportContent}
                             icon={<ArrowDownloadRegular />}
                             disabled={!state.isConnected}
                         />
                     </Tooltip>
                 ) : (
                     <MenuItem
-                        aria-label="Export"
+                        aria-label={l10n.t('Export')}
                         secondaryContent={exportHotkeyMenu}
                         icon={<ArrowDownloadRegular />}
                         disabled={!state.isConnected}

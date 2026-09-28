@@ -9,7 +9,7 @@ tags: pattern, ranking, leaderboard, performance, query-optimization
 
 When implementing leaderboards or rankings, avoid scanning an entire partition to determine a single player's rank. Full partition scans for rank lookups are an anti-pattern that becomes unsustainable at scale.
 
-**Problem: Full partition scan to find rank**
+**Incorrect (scanning an entire partition to calculate one player's rank):**
 
 ```csharp
 // Anti-pattern: Reads ALL entries in a partition to find one player's rank
@@ -40,6 +40,8 @@ This approach:
 - Consumes thousands of RU per request
 - Has multi-second latency
 - Loads all entries into memory
+
+**Correct (using count-based, cached, or bucketed approaches to avoid full scans):**
 
 **Solution 1: COUNT-based rank query (simplest)**
 

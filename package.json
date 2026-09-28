@@ -103,11 +103,12 @@
     "cosmosdb-best-practices": {
       "repo": "AzureCosmosDB/cosmosdb-agent-kit",
       "path": "skills/cosmosdb-best-practices",
-      "commit": "2c9ca5a7f10cec855352e63382960381bdc5c751",
+      "commit": "a7a7c2c23214edd36a06d13b674ed392b1fefae8",
       "exclude": [
         "metadata.json",
         "README.md",
         "AGENTS.md",
+        "agents/openai.yaml",
         "rules/_sections.md",
         "rules/_template.md"
       ]

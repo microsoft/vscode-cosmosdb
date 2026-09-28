@@ -44,6 +44,8 @@ export class QueryEditorTab extends BaseTab {
 
         this.state = {
             connection,
+            connectionVersion: 0,
+            isChangingConnection: false,
             query: query ?? QueryEditorTab.DEFAULT_QUERY_VALUE,
             isLastQueryAIGenerated: false,
             lastAIGeneratedQuery: undefined,
@@ -160,18 +162,24 @@ export class QueryEditorTab extends BaseTab {
     }
 
     public async sendSchemaToWebview(): Promise<void> {
+        const connectionVersion = this.state.connectionVersion;
         if (!this.state.connection) {
-            this.eventSink.emit({ type: 'schemaUpdated', containerSchema: null });
+            this.eventSink.emit({ type: 'schemaUpdated', connectionVersion, containerSchema: null });
             return;
         }
 
         const schemaId = SchemaFileStorage.getSchemaIdForConnection(this.state.connection);
         const schemaStorage = SchemaFileStorage.getInstance();
         const schemaJson = await schemaStorage.readSchema(schemaId);
+        if (connectionVersion !== this.state.connectionVersion) return;
 
         const schema: JSONSchema | null = schemaJson ? (JSON.parse(schemaJson) as JSONSchema) : null;
 
-        this.eventSink.emit({ type: 'schemaUpdated', containerSchema: schema as Record<string, unknown> | null });
+        this.eventSink.emit({
+            type: 'schemaUpdated',
+            connectionVersion,
+            containerSchema: schema as Record<string, unknown> | null,
+        });
     }
 
     private buildRouterContext(): QueryEditorRouterContext {

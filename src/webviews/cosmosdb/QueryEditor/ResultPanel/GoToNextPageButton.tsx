@@ -16,11 +16,13 @@ import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEdi
 export const GoToNextPageButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
+    const label = l10n.t('Go to next page');
     const hasMoreResults = state.currentQueryResult?.hasMoreResults ?? false;
     const { ref, type } = props;
     const isDisabled =
         state.pageSize === -1 || // Disable if page size is set to 'All'
         !state.isConnected ||
+        state.isChangingConnection ||
         state.isExecuting ||
         !state.currentExecutionId ||
         !hasMoreResults;
@@ -34,8 +36,8 @@ export const GoToNextPageButton = (props: ToolbarOverflowItemProps<HTMLButtonEle
 
     return (
         <ToolbarOverflowButton
-            ariaLabel={l10n.t('Go to next page (Load more)')}
-            content={l10n.t('Go to next page')}
+            ariaLabel={type === 'menuitem' ? label : l10n.t('Go to next page (Load more)')}
+            content={label}
             disabled={isDisabled}
             icon={<ArrowRightFilled />}
             hotkey={hotkey}

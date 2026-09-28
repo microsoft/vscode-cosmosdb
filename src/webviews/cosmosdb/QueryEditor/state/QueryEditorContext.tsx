@@ -3,8 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Toaster, useId, useToastController } from '@fluentui/react-components';
+import { Toaster, useAnnounce, useId, useToastController } from '@fluentui/react-components';
 import { useRpcEvents, useTrpcClient } from '@microsoft/vscode-ext-webview/react';
+import * as l10n from '@vscode/l10n';
 import { type ReactNode, createContext, useContext, useEffect, useMemo, useReducer, useRef } from 'react';
 import { type QueryEditorAppRouter } from '../../../../panels/trpc/appRouter';
 import { type BaseContextProvider } from '../../../utils/context/BaseContextProvider';
@@ -42,6 +43,15 @@ export const WithQueryEditorContext = ({ children }: { children: ReactNode }) =>
     const toasterId = useId('toaster');
     const { dispatchToast } = useToastController(toasterId);
     const [state, dispatch] = useReducer(QueryEditorDispatch, { ...defaultState });
+    const { announce } = useAnnounce();
+
+    useEffect(() => {
+        if (state.isChangingConnection) {
+            announce(l10n.t('Changing connection. Result actions are temporarily unavailable.'), {
+                polite: true,
+            });
+        }
+    }, [announce, state.isChangingConnection]);
 
     // Use a ref so the central error subscriber can forward errors to the
     // provider once it's created (the provider is built below from

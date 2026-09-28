@@ -146,16 +146,24 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
     // Handle row double-click
     const handleCellDoubleClick = useCallback(
         (args: { row: GridRow }) => {
-            if (!state.isEditMode) return;
+            if (!state.isConnected || state.isChangingConnection || state.isExecuting || !state.isEditMode) return;
 
             globalThis.getSelection()?.removeAllRanges();
 
             const documentId = rowFieldGetter(args.row, '__documentId') as CosmosDBRecordIdentifier | undefined;
             if (documentId) {
-                void dispatcher.openDocument('view', documentId);
+                void dispatcher.openDocument('view', documentId, state.currentExecutionId);
             }
         },
-        [state.isEditMode, rowFieldGetter, dispatcher],
+        [
+            state.isConnected,
+            state.isChangingConnection,
+            state.isExecuting,
+            state.isEditMode,
+            state.currentExecutionId,
+            rowFieldGetter,
+            dispatcher,
+        ],
     );
 
     // Handle cell click for row selection (click / ctrl+click / shift+click)
@@ -193,13 +201,14 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
     // Handle keyboard selection: Space toggles current row, Shift+Arrow extends range
     const handleCellKeyDown = useCallback(
         (args: CellKeyDownArgs<GridRow>, event: CellKeyboardEvent) => {
-            if (args.mode !== 'SELECT') return;
+            if (args.mode !== 'ACTIVE' || args.row === undefined) return;
 
             const rowId = args.row.__id;
             const rowIdx = args.rowIdx;
 
             if (event.key === ' ') {
-                // Prevent the grid's own space-key behavior
+                // Prevent native scrolling and the grid's own space-key behavior.
+                event.preventDefault();
                 event.preventGridDefault();
 
                 if (event.shiftKey && anchorRowIdRef.current !== null) {

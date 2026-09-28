@@ -4,7 +4,147 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { beforeEach, describe, expect, it } from 'vitest';
+import { parse } from '../index.js';
+import { getFunctionDoc, getKeywordDoc } from './docLoader.js';
 import { SqlLanguageService } from './SqlLanguageService.js';
+import { DiagnosticSeverity } from './types.js';
+
+describe('SqlLanguageService ranked ORDER BY diagnostics', () => {
+    const message = 'Specifying a sort order (ASC or DESC) in the ORDER BY RANK clause is not allowed.';
+
+    it.each([
+        ['VectorDistance(c.embedding, @query)', 'ASC'],
+        ['VectorDistance(c.embedding, @query)', 'DESC'],
+        ['FullTextScore(c.text, "cosmos")', 'ASC'],
+        ['FullTextScore(c.text, "cosmos")', 'DESC'],
+        ['RRF(FullTextScore(c.text, "cosmos"), VectorDistance(c.embedding, @query))', 'DESC'],
+    ])('reports an explicit direction on %s %s without changing parsing', (score, direction) => {
+        const query = `SELECT TOP 10 c.id FROM c ORDER BY RANK ${score} ${direction}`;
+        expect(parse(query).errors).toEqual([]);
+        const diagnostics = new SqlLanguageService().getDiagnostics(query);
+        expect(diagnostics).toEqual([
+            expect.objectContaining({
+                code: 'RANKED_ORDER_BY_SORT_ORDER',
+                severity: DiagnosticSeverity.Error,
+                message,
+            }),
+        ]);
+        const range = diagnostics[0].range;
+        expect(query.slice(range.startOffset, range.endOffset)).toBe(`ORDER BY RANK ${score} ${direction}`);
+    });
+
+    it.each([
+        'SELECT TOP 10 c.id FROM c ORDER BY RANK VectorDistance(c.embedding, @query)',
+        'SELECT TOP 10 c.id FROM c ORDER BY RANK FullTextScore(c.text, "cosmos")',
+        'SELECT TOP 10 c.id FROM c ORDER BY RANK RRF(FullTextScore(c.text, "cosmos"), VectorDistance(c.embedding, @query))',
+        'SELECT TOP 10 c.id FROM c ORDER BY VectorDistance(c.embedding, @query)',
+        'SELECT c.id FROM c ORDER BY c.id ASC',
+        'SELECT c.id FROM c ORDER BY c.id DESC',
+    ])('keeps supported ordering free of rank-direction diagnostics: %s', (query) => {
+        expect(new SqlLanguageService().getDiagnostics(query)).toEqual([]);
+    });
+
+    it('maps rank-direction ranges to the multi-query document', () => {
+        const query = 'SELECT 1;\n\nSELECT c.id FROM c\nORDER BY RANK VectorDistance(c.embedding, @query) ASC;';
+        const diagnostics = new SqlLanguageService({ multiQuery: true }).getDiagnostics(query);
+        expect(diagnostics).toEqual([
+            expect.objectContaining({
+                code: 'RANKED_ORDER_BY_SORT_ORDER',
+                severity: DiagnosticSeverity.Error,
+                message,
+                range: {
+                    startOffset: query.indexOf('ORDER BY'),
+                    endOffset: query.indexOf(' ASC') + 4,
+                    startLine: 4,
+                    startColumn: 1,
+                    endLine: 4,
+                    endColumn: 'ORDER BY RANK VectorDistance(c.embedding, @query) ASC'.length + 1,
+                },
+            }),
+        ]);
+    });
+
+    it('reports both invalid query blocks without flagging comment text', () => {
+        const query = [
+            '-- ORDER BY RANK VectorDistance(c.embedding, @query) ASC',
+            'SELECT c.id FROM c ORDER BY RANK FullTextScore(c.text, "cosmos") DESC;',
+            'SELECT c.id FROM c ORDER BY RANK VectorDistance(c.embedding, @query) ASC;',
+        ].join('\n');
+        const diagnostics = new SqlLanguageService({ multiQuery: true }).getDiagnostics(query);
+        expect(diagnostics.map((diagnostic) => diagnostic.code)).toEqual([
+            'RANKED_ORDER_BY_SORT_ORDER',
+            'RANKED_ORDER_BY_SORT_ORDER',
+        ]);
+        expect(diagnostics.map((diagnostic) => diagnostic.range.startLine)).toEqual([2, 3]);
+        for (const diagnostic of diagnostics) {
+            expect(query.slice(diagnostic.range.startOffset, diagnostic.range.endOffset)).toMatch(/^ORDER BY RANK /);
+        }
+    });
+
+    it.each(['SELECT c.id FROM c ORDER BY RANK', 'SELECT c.id FROM c ORDER BY RANK VectorDistance('])(
+        'does not throw while a ranked query is incomplete: %s',
+        (query) => {
+            for (const multiQuery of [false, true]) {
+                expect(() => new SqlLanguageService({ multiQuery }).getDiagnostics(query)).not.toThrow();
+            }
+        },
+    );
+
+    it('retains the existing nested ORDER BY diagnostic', () => {
+        const query =
+            'SELECT VALUE ARRAY(SELECT VALUE item FROM item IN c.items ORDER BY RANK FullTextScore(item.text, "cosmos") ASC) FROM c';
+        expect(new SqlLanguageService().getDiagnostics(query)).toEqual([
+            expect.objectContaining({ code: 'ORDER_BY_IN_SUBQUERY', severity: DiagnosticSeverity.Error }),
+        ]);
+    });
+});
+
+describe('SqlLanguageService query guidance', () => {
+    it.each(['STRINGEQUALS', 'StringEquals', 'stringequals'])(
+        'provides signature help for %s with the ignore-case default',
+        (name) => {
+            const query = `SELECT VALUE ${name}(c.name, @name, true)`;
+            const help = new SqlLanguageService().getSignatureHelp(query, query.indexOf('true') + 1);
+            expect(help?.activeParameter).toBe(2);
+            expect(help?.signatures[0].label).toBe('STRINGEQUALS(string1, string2 [, ignoreCase])');
+            expect(help?.signatures[0].parameters[2].documentation).toContain('false (default)');
+        },
+    );
+
+    it('describes vector options consistently in signature help and hover', () => {
+        const query = 'SELECT VectorDistance(c.embedding, @queryVector, false, {}) FROM c';
+        const service = new SqlLanguageService();
+        const help = service.getSignatureHelp(query, query.indexOf('{}') + 1);
+        expect(help?.activeParameter).toBe(3);
+        expect(help?.signatures[0].label).toBe('VECTORDISTANCE(vector1, vector2 [, brute_force [, options]])');
+        expect(help?.signatures[0].parameters[3].label).toBe('options');
+        expect(help?.signatures[0].parameters[3].documentation).toContain('JSON object');
+        expect(help?.signatures[0].parameters[2].documentation).toContain('if one exists');
+        const hover = service.getHoverInfo(query, query.indexOf('VectorDistance'))?.contents.join('\n');
+        expect(hover).toContain('fourth argument is an object');
+        expect(hover).toContain('regular `ORDER BY VectorDistance(...)`');
+    });
+
+    it('keeps embedded ordering and pagination guidance consistent', () => {
+        expect(getKeywordDoc('ORDER_BY')).toContain('reversed on every path');
+        expect(getKeywordDoc('ORDER_BY')).toContain('Explicit `ASC` or `DESC` is not allowed');
+        expect(getKeywordDoc('OFFSET')).toContain('continuation-token');
+        expect(getFunctionDoc('StringEquals')).toContain('false` (default)');
+    });
+
+    it.each([
+        'SELECT COUNT(1) AS count FROM c',
+        'SELECT VALUE COUNT(1) FROM c',
+        'SELECT DISTINCT c.category FROM c',
+        'SELECT DISTINCT VALUE c.category FROM c',
+        'SELECT TOP @limit c.id FROM c',
+        'SELECT c.id FROM c ORDER BY c.id OFFSET @skip LIMIT @take',
+        'SELECT c.category, c.price FROM c ORDER BY c.category DESC, c.price ASC',
+        'SELECT TOP 10 c.id FROM c ORDER BY VectorDistance(c.embedding, @query, false, {distanceFunction: "Cosine"})',
+    ])('accepts the supported query form: %s', (query) => {
+        expect(new SqlLanguageService().getDiagnostics(query)).toEqual([]);
+    });
+});
 
 describe('SqlLanguageService.getFoldableRegions', () => {
     let service: SqlLanguageService;

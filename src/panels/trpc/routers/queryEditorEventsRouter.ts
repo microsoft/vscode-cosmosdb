@@ -31,6 +31,7 @@ export const QueryEditorEventSchema = z.discriminatedUnion('type', [
     }),
     z.object({
         type: z.literal('schemaUpdated'),
+        connectionVersion: z.number(),
         containerSchema: z.record(z.string(), z.unknown()).nullable(),
     }),
     z.object({

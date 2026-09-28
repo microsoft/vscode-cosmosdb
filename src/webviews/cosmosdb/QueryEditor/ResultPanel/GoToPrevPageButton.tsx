@@ -15,7 +15,12 @@ import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEdi
 export const GoToPrevPageButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
-    const isDisabled = state.pageNumber === 1 || !state.isConnected || state.isExecuting || !state.currentExecutionId;
+    const isDisabled =
+        state.pageNumber === 1 ||
+        !state.isConnected ||
+        state.isChangingConnection ||
+        state.isExecuting ||
+        !state.currentExecutionId;
     const { ref, type } = props;
 
     const prevPage = useCallback(() => dispatcher.prevPage(state.currentExecutionId), [dispatcher, state]);

@@ -112,12 +112,10 @@ describe('saved connection resilience', () => {
         invalid.properties = { isEmulator: true };
         getItems.mockResolvedValue([makeItem('before', true), invalid, makeItem('after', true)]);
         const children = await new LocalCoreEmulatorsItem('accounts').getChildren();
-        expect(children.map((child) => child.id)).toEqual([
-            'accounts/localEmulators/before',
-            'accounts/localEmulators/broken',
-            'accounts/localEmulators/after',
-            undefined,
-        ]);
+        expect(children[0].id).toBe('accounts/localEmulators/before');
+        expect(children[1].id).toMatch(/^accounts\/localEmulators\/invalid-[a-f0-9]{64}$/);
+        expect(children[2].id).toBe('accounts/localEmulators/after');
+        expect(children[3].id).toBeUndefined();
         expect(migrate).toHaveBeenCalledTimes(2);
         expect(children[1]).toBeInstanceOf(InvalidConnectionResourceItem);
     });
@@ -144,6 +142,21 @@ describe('saved connection resilience', () => {
         expect(children[0]).toBeInstanceOf(InvalidConnectionResourceItem);
         expect(children[1].id).toBe('accounts/localEmulators/valid');
         expect(JSON.stringify(logError.mock.calls)).not.toContain('private-connection-string');
+    });
+
+    it('keeps a legacy connection string out of invalid tree IDs while retaining it for removal', async () => {
+        const rawId = 'AccountEndpoint=https://localhost:8081/;AccountKey=private-key;';
+        const broken = makeItem(rawId, true);
+        migrate.mockRejectedValue(new Error('migration failed'));
+        getItems.mockResolvedValue([broken]);
+
+        const [node] = await new LocalCoreEmulatorsItem('accounts').getChildren();
+        expect(node).toBeInstanceOf(InvalidConnectionResourceItem);
+        expect(node.id).toMatch(/^accounts\/localEmulators\/invalid-[a-f0-9]{64}$/);
+        expect(node.id).not.toContain(rawId);
+        expect((node as InvalidConnectionResourceItem).getTreeItem().id).toBe(node.id);
+        expect((node as InvalidConnectionResourceItem).storageId).toBe(rawId);
+        expect((await new LocalCoreEmulatorsItem('accounts').getChildren())[0].id).toBe(node.id);
     });
 
     it('accepts valid attached connections and legacy emulator secrets', () => {

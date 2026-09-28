@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
+import crypto from 'crypto';
 import * as vscode from 'vscode';
 import { API, getExperienceFromApi } from '../../../AzureDBExperiences';
 import { ext } from '../../../extensionVariables';
@@ -53,7 +54,7 @@ export class InvalidConnectionResourceItem implements TreeElement {
         item: StorageItem,
         private readonly reason: string,
     ) {
-        this.id = `${parentId}/${item.id}`;
+        this.id = `${parentId}/invalid-${crypto.createHash('sha256').update(item.id).digest('hex')}`;
         this.storageId = item.id;
         // Persisted records are not shape-validated, so a malformed name would otherwise reach the tree label
         // and the removal flow, which both expect a string.

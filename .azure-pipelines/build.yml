@@ -194,12 +194,18 @@ extends:
 
                         - task: OneLocBuild@3
                           displayName: '🌍 Build Localized Files'
-                          condition: eq(variables['Build.SourceBranch'], 'refs/heads/main')
+                          condition: or(
+                              eq(variables['Build.SourceBranch'], 'refs/heads/main'),
+                              eq(
+                                  variables['Build.SourceBranch'],
+                                  'refs/heads/copilot/validate-oneloc-l10n-path-873263186'
+                              )
+                          )
                           inputs:
                               locProj: 'l10n/LocProject.json'
                               outDir: '$(Build.ArtifactStagingDirectory)'
                               isEnablePseudoLanguagesSelected: true
-                              isCreatePrSelected: true
+                              isCreatePrSelected: false
                               isShouldReusePrSelected: true
                               isAutoCompletePrSelected: false
                               isSetAutoCompletePrSelected: true

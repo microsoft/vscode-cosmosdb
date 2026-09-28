@@ -198,7 +198,8 @@
     "@prantlf/jsonlint": {
       "ajv": "~8.18.0"
     },
-    "glob": "~13.0.6"
+    "glob": "~13.0.6",
+    "nwsapi": "2.2.24"
   },
   "extensionDependencies": [
     "ms-azuretools.vscode-azureresourcegroups"

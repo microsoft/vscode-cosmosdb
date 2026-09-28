@@ -7,6 +7,7 @@ name: $(Date:yyyyMMdd).$(Rev:r)
 trigger:
     - main
     - rel/*
+    - copilot/validate-oneloc-l10n-path-873263186
 
 # Disable PR trigger
 pr: none

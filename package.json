@@ -37,7 +37,8 @@
   "main": "./main.mjs",
   "l10n": "./l10n",
   "workspaces": [
-    "packages/*"
+    "packages/nosql-language-service",
+    "packages/schema-analyzer"
   ],
   "activationEvents": [
     "onFileSystem:azureDatabases",
@@ -56,6 +57,11 @@
     "workspaceContains:.cosmosdb-migration"
   ],
   "scripts": {
+    "docs:install": "npm --prefix packages/docs ci --workspaces=false",
+    "docs:dev": "npm --prefix packages/docs run dev",
+    "docs:build": "npm --prefix packages/docs run build",
+    "docs:preview": "npm --prefix packages/docs run preview",
+    "docs:test": "playwright test --config test/docs/playwright.config.ts",
     "build": "concurrently -n tsc,vitest,test -c cyan,magenta,yellow \"tsc --noEmit\" \"tsc -p tsconfig.vitest.json --noEmit\" \"tsc -p tsconfig.test.json --noEmit\"",
     "build:go": "concurrently -n tsgo,vitest,test -c cyan,magenta,yellow \"tsgo --noEmit\" \"tsgo -p tsconfig.vitest.json --noEmit\" \"tsgo -p tsconfig.test.json --noEmit\"",
     "clean": "git clean -dfx",

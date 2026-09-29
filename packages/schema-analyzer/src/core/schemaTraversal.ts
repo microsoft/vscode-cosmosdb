@@ -203,14 +203,18 @@ function ensureTypeEntry<TType extends string>(
     fieldValue: unknown,
     adapter: TypeAdapter<TType>,
 ): JSONSchema {
-    if (!parentSchema.properties![fieldName]) {
-        parentSchema.properties![fieldName] = {
-            anyOf: [],
-            'x-occurrence': 0,
-        } as JSONSchema;
+    const properties = parentSchema.properties!;
+    if (!Object.hasOwn(properties, fieldName) || !properties[fieldName]) {
+        // Define an own data property so "__proto__" and inherited setters cannot intercept the write.
+        Object.defineProperty(properties, fieldName, {
+            value: { anyOf: [], 'x-occurrence': 0 } satisfies JSONSchema,
+            enumerable: true,
+            configurable: true,
+            writable: true,
+        });
     }
 
-    const propertySchema = parentSchema.properties![fieldName] as JSONSchema;
+    const propertySchema = properties[fieldName] as JSONSchema;
     propertySchema['x-occurrence'] = (propertySchema['x-occurrence'] ?? 0) + 1;
 
     const datatype = adapter.inferType(fieldValue);

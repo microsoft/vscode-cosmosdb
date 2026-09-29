@@ -6,6 +6,7 @@
   "cosmosdb.command.account.overview.open": "Open Account Overview",
   "cosmosdb.command.connection.add": "New Connection…",
   "cosmosdb.command.connection.copy": "Copy Connection String",
+  "cosmosdb.command.error.copy": "Copy Error",
   "cosmosdb.command.connection.emulator.add": "New Emulator Connection…",
   "cosmosdb.command.connection.remove": "Remove Connection…",
   "cosmosdb.command.container.create": "Create Container…",

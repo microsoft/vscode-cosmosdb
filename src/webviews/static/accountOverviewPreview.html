@@ -1,0 +1,569 @@
+<!doctype html>
+<!--
+    Dev-only harness: renders the Account Overview webview in a plain browser against a fake extension host.
+    Start `npm run vite-serve:views`, then open http://127.0.0.1:18080/src/webviews/static/accountOverviewPreview.html
+    Query parameters: ?variant=1|2|3|original|preview  ·  &theme=light  ·  &scenario=empty|serverless
+-->
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Account Overview preview</title>
+        <style id="theme-dark">
+            :root {
+                --vscode-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                --vscode-font-size: 13px;
+                --vscode-font-weight: normal;
+                --vscode-editor-font-family: Consolas, 'Courier New', monospace;
+                --vscode-editor-font-size: 13px;
+                --vscode-foreground: #cccccc;
+                --vscode-descriptionForeground: #9d9d9d;
+                --vscode-disabledForeground: #6e7681;
+                --vscode-errorForeground: #f85149;
+                --vscode-focusBorder: #0078d4;
+                --vscode-contrastBorder: transparent;
+                --vscode-editor-background: #1f1f1f;
+                --vscode-editor-foreground: #cccccc;
+                --vscode-sideBar-background: #181818;
+                --vscode-editorWidget-background: #202020;
+                --vscode-editorWidget-border: #313131;
+                --vscode-editorHoverWidget-background: #202020;
+                --vscode-editorHoverWidget-border: #454545;
+                --vscode-editorWarning-foreground: #cca700;
+                --vscode-editorError-foreground: #f85149;
+                --vscode-editorInfo-foreground: #3794ff;
+                --vscode-panel-border: #2b2b2b;
+                --vscode-widget-border: #313131;
+                --vscode-button-background: #0078d4;
+                --vscode-button-foreground: #ffffff;
+                --vscode-button-hoverBackground: #026ec1;
+                --vscode-button-secondaryBackground: #313131;
+                --vscode-button-secondaryForeground: #cccccc;
+                --vscode-button-secondaryHoverBackground: #3c3c3c;
+                --vscode-input-background: #313131;
+                --vscode-input-foreground: #cccccc;
+                --vscode-input-border: #3c3c3c;
+                --vscode-input-placeholderForeground: #989898;
+                --vscode-dropdown-background: #313131;
+                --vscode-dropdown-border: #3c3c3c;
+                --vscode-dropdown-foreground: #cccccc;
+                --vscode-list-hoverBackground: #2a2d2e;
+                --vscode-list-activeSelectionBackground: #04395e;
+                --vscode-list-activeSelectionForeground: #ffffff;
+                --vscode-list-inactiveSelectionBackground: #37373d;
+                --vscode-textLink-foreground: #4daafc;
+                --vscode-textLink-activeForeground: #4daafc;
+                --vscode-textCodeBlock-background: #2b2b2b;
+                --vscode-badge-background: #616161;
+                --vscode-badge-foreground: #f8f8f8;
+                --vscode-checkbox-background: #313131;
+                --vscode-checkbox-border: #3c3c3c;
+                --vscode-progressBar-background: #0078d4;
+                --vscode-tab-activeBorderTop: #0078d4;
+                --vscode-charts-foreground: #cccccc;
+                --vscode-charts-lines: rgba(204, 204, 204, 0.5);
+                --vscode-charts-red: #f14c4c;
+                --vscode-charts-blue: #3794ff;
+                --vscode-charts-yellow: #cca700;
+                --vscode-charts-orange: #d18616;
+                --vscode-charts-green: #89d185;
+                --vscode-charts-purple: #b180d7;
+                --vscode-testing-iconPassed: #73c991;
+                --vscode-scrollbarSlider-background: rgba(121, 121, 121, 0.4);
+                --vscode-menu-background: #1f1f1f;
+                --vscode-menu-foreground: #cccccc;
+                --vscode-menu-selectionBackground: #0078d4;
+                --vscode-menu-border: #454545;
+            }
+        </style>
+        <style id="theme-light">
+            :root {
+                --vscode-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                --vscode-font-size: 13px;
+                --vscode-font-weight: normal;
+                --vscode-editor-font-family: Consolas, 'Courier New', monospace;
+                --vscode-editor-font-size: 13px;
+                --vscode-foreground: #3b3b3b;
+                --vscode-descriptionForeground: #717171;
+                --vscode-disabledForeground: rgba(97, 97, 97, 0.5);
+                --vscode-errorForeground: #f85149;
+                --vscode-focusBorder: #005fb8;
+                --vscode-contrastBorder: transparent;
+                --vscode-editor-background: #ffffff;
+                --vscode-editor-foreground: #3b3b3b;
+                --vscode-sideBar-background: #f8f8f8;
+                --vscode-editorWidget-background: #f8f8f8;
+                --vscode-editorWidget-border: #c8c8c8;
+                --vscode-editorHoverWidget-background: #f8f8f8;
+                --vscode-editorHoverWidget-border: #c8c8c8;
+                --vscode-editorWarning-foreground: #bf8803;
+                --vscode-editorError-foreground: #e51400;
+                --vscode-editorInfo-foreground: #1a85ff;
+                --vscode-panel-border: #e5e5e5;
+                --vscode-widget-border: #e5e5e5;
+                --vscode-button-background: #005fb8;
+                --vscode-button-foreground: #ffffff;
+                --vscode-button-hoverBackground: #0258a8;
+                --vscode-button-secondaryBackground: #e5e5e5;
+                --vscode-button-secondaryForeground: #3b3b3b;
+                --vscode-button-secondaryHoverBackground: #cccccc;
+                --vscode-input-background: #ffffff;
+                --vscode-input-foreground: #3b3b3b;
+                --vscode-input-border: #cecece;
+                --vscode-input-placeholderForeground: #767676;
+                --vscode-dropdown-background: #ffffff;
+                --vscode-dropdown-border: #cecece;
+                --vscode-dropdown-foreground: #3b3b3b;
+                --vscode-list-hoverBackground: #f2f2f2;
+                --vscode-list-activeSelectionBackground: #e8e8e8;
+                --vscode-list-activeSelectionForeground: #000000;
+                --vscode-list-inactiveSelectionBackground: #e4e6f1;
+                --vscode-textLink-foreground: #005fb8;
+                --vscode-textLink-activeForeground: #005fb8;
+                --vscode-textCodeBlock-background: #f2f2f2;
+                --vscode-badge-background: #cccccc;
+                --vscode-badge-foreground: #3b3b3b;
+                --vscode-checkbox-background: #f8f8f8;
+                --vscode-checkbox-border: #cecece;
+                --vscode-progressBar-background: #005fb8;
+                --vscode-tab-activeBorderTop: #005fb8;
+                --vscode-charts-foreground: #3b3b3b;
+                --vscode-charts-lines: rgba(59, 59, 59, 0.5);
+                --vscode-charts-red: #e51400;
+                --vscode-charts-blue: #1a85ff;
+                --vscode-charts-yellow: #bf8803;
+                --vscode-charts-orange: #d18616;
+                --vscode-charts-green: #388a34;
+                --vscode-charts-purple: #652d90;
+                --vscode-testing-iconPassed: #388a34;
+                --vscode-scrollbarSlider-background: rgba(100, 100, 100, 0.4);
+                --vscode-menu-background: #ffffff;
+                --vscode-menu-foreground: #3b3b3b;
+                --vscode-menu-selectionBackground: #005fb8;
+                --vscode-menu-border: #cecece;
+            }
+        </style>
+        <style>
+            html,
+            body,
+            #root {
+                margin: 0;
+                min-height: 100%;
+            }
+            body {
+                padding: 0 20px;
+                background: var(--vscode-editor-background);
+                color: var(--vscode-foreground);
+                font-family: var(--vscode-font-family);
+                font-size: var(--vscode-font-size);
+            }
+        </style>
+    </head>
+    <body data-vscode-theme-kind="vscode-dark">
+        <div id="root"></div>
+        <script type="module">
+            const params = new URLSearchParams(decodeURIComponent(location.search));
+            const light = params.get('theme') === 'light';
+            document.getElementById(light ? 'theme-dark' : 'theme-light').remove();
+            document.body.dataset.vscodeThemeKind = light ? 'vscode-light' : 'vscode-dark';
+            const scenario = params.get('scenario') ?? 'default';
+
+            // ─── Fake data ────────────────────────────────────────────────────────────
+            const GB = 1024 ** 3;
+            const MB = 1024 ** 2;
+            const now = () => Date.now();
+            // Deterministic noise so each refresh drifts a little ("live") without jumping around.
+            const wobble = (seed, amplitude) => {
+                const t = now() / 60000;
+                return Math.sin(t / 3 + seed) * amplitude + Math.sin(t * 1.7 + seed * 3) * amplitude * 0.3;
+            };
+
+            const containers = [
+                { databaseId: 'orders', containerId: 'orders', mode: 'autoscale', ru: 10000, pk: ['/customerId'], docs: 18_400_000, data: 38 * GB, index: 9.4 * GB, peak: 96, health: 'Critical', throttled: true },
+                { databaseId: 'orders', containerId: 'orderItems', mode: 'dedicated', ru: 4000, pk: ['/orderId'], docs: 52_100_000, data: 61 * GB, index: 14 * GB, peak: 71, health: 'Healthy', throttled: false },
+                { databaseId: 'orders', containerId: 'leases', mode: 'dedicated', ru: 400, pk: ['/id'], docs: 64, data: 1.2 * MB, index: 0.3 * MB, peak: 12, health: 'Healthy', throttled: false },
+                { databaseId: 'catalog', containerId: 'products', mode: 'shared', ru: 1000, pk: ['/categoryId'], docs: 412_000, data: 2.1 * GB, index: 3.9 * GB, peak: 43, health: 'Healthy', throttled: false },
+                { databaseId: 'catalog', containerId: 'categories', mode: 'shared', ru: 1000, pk: ['/tenantId'], docs: 1_280, data: 14 * MB, index: 6 * MB, peak: 3, health: 'Healthy', throttled: false },
+                { databaseId: 'catalog', containerId: 'inventory', mode: 'shared', ru: 1000, pk: ['/sku'], docs: 412_000, data: 0.8 * GB, index: 0.4 * GB, peak: 84, health: 'Needs Attention', throttled: false },
+                { databaseId: 'telemetry', containerId: 'events', mode: 'autoscale', ru: 20000, pk: ['/deviceId', '/day'], docs: 402_000_000, data: 412 * GB, index: 188 * GB, peak: 88, health: 'Needs Attention', throttled: false },
+                { databaseId: 'telemetry', containerId: 'aggregates', mode: 'dedicated', ru: 800, pk: ['/deviceId'], docs: 2_300_000, data: 5.6 * GB, index: 1.1 * GB, peak: 22, health: 'Healthy', throttled: false },
+                { databaseId: 'sessions', containerId: 'carts', mode: 'serverless', ru: undefined, pk: ['/userId'], docs: 91_000, data: 0.3 * GB, index: 0.1 * GB, peak: 5, health: 'Healthy', throttled: false },
+            ].filter(() => scenario !== 'empty');
+
+            const summary = () => ({
+                accountName: 'contoso-orders-prod',
+                resourceGroup: 'rg-contoso-commerce',
+                subscriptionId: '8f3c2a1e-5d4b-4c1a-9b7e-2f6d0e1a3c4b',
+                subscriptionName: 'Contoso Commerce Production',
+                apiType: 'NoSQL',
+                documentEndpoint: 'https://contoso-orders-prod.documents.azure.com:443/',
+                isServerless: scenario === 'serverless',
+                provisioningState: 'Succeeded',
+                consistencyLevel: 'Session',
+                freeTierEnabled: false,
+                backupPolicyType: 'Continuous',
+                automaticFailoverEnabled: true,
+                continuousBackupTier: 'Continuous30Days',
+                totalThroughputLimit: -1,
+                writeRegions: ['East US 2'],
+                readRegions: ['East US 2', 'West Europe', 'Southeast Asia'],
+                writeRegionCount: 1,
+                readRegionCount: 3,
+                lastRefreshedAt: now(),
+            });
+
+            const inventory = () => ({
+                supported: true,
+                available: true,
+                rows: containers.map((c) => ({
+                    databaseId: c.databaseId,
+                    containerId: c.containerId,
+                    throughputMode: c.mode,
+                    throughputRU: c.ru,
+                    partitionKeyPaths: c.pk,
+                    indexingMode: 'consistent',
+                    excludedPathCount: c.containerId === 'events' ? 0 : 2,
+                    compositeIndexCount: c.containerId === 'orders' ? 3 : 0,
+                    health: 'Healthy',
+                })),
+                databases: [...new Set(containers.map((c) => c.databaseId)), 'archive'],
+            });
+
+            const sparkline = (base, amp, seed, n = 24) =>
+                Array.from({ length: n }, (_, i) => Math.max(0, base + Math.sin(i / 3 + seed) * amp + i * amp * 0.02));
+
+            const inventoryMetrics = ({ timeRange }) => ({
+                timeRange,
+                available: true,
+                accountHealth: 'Needs Attention',
+                generatedAt: now(),
+                metrics: Object.fromEntries(
+                    containers.map((c, i) => [
+                        `${c.databaseId}/${c.containerId}`,
+                        {
+                            databaseId: c.databaseId,
+                            containerId: c.containerId,
+                            storageBytes: c.data + c.index,
+                            dataUsageBytes: c.data,
+                            indexUsageBytes: c.index,
+                            indexGrowthBytes: c.index * 0.04,
+                            storageGrowthBytes: c.data * (0.02 + (i % 3) * 0.03),
+                            peakRuPercent: Math.min(100, Math.max(0, c.peak + wobble(i, 3))),
+                            documentCount: Math.round(c.docs + wobble(i, c.docs * 0.001)),
+                            storageSparkline: sparkline(c.data, c.data * 0.05, i),
+                            ruSparkline: sparkline(c.peak * 0.6, c.peak * 0.3, i),
+                            throttled: c.throttled,
+                            health: c.health,
+                        },
+                    ]),
+                ),
+            });
+
+            const RANGE = { '1H': [60, 60_000], '24H': [96, 15 * 60_000], '7D': [168, 3_600_000] };
+            const METRIC_SHAPE = {
+                normalizedRu: { base: 58, amp: 30, clamp: 100 },
+                totalRequests: { base: 42_000, amp: 18_000 },
+                totalRequestUnits: { base: 310_000, amp: 120_000 },
+                metadataRequests: { base: 900, amp: 300 },
+                serverLatency: { base: 6, amp: 3 },
+                serviceAvailability: { base: 99.995, amp: 0.004, clamp: 100 },
+                dataIndexUsage: { base: 720 * GB, amp: 6 * GB, trend: 0.3 },
+                provisionedThroughput: { base: 37_200, amp: 0, step: true },
+                documentCount: { base: 475_000_000, amp: 400_000, trend: 0.2 },
+            };
+            const metricSeries = ({ metric, timeRange, databaseId, containerId }) => {
+                const shape = METRIC_SHAPE[metric];
+                const [n, step] = RANGE[timeRange];
+                const scale = databaseId && !shape.clamp ? 0.45 : 1;
+                const end = Math.floor(now() / step) * step;
+                const seed = metric.length;
+                const points = Array.from({ length: n }, (_, i) => {
+                    const x = i / n;
+                    let value =
+                        shape.base * scale +
+                        Math.sin(i / 5 + seed) * shape.amp * scale +
+                        Math.sin(i / 1.7 + seed * 2) * shape.amp * 0.25 * scale +
+                        (shape.trend ? x * shape.base * 0.02 * shape.trend : 0) +
+                        wobble(seed + i, shape.amp * 0.05);
+                    if (metric === 'normalizedRu' && i > n * 0.7 && i < n * 0.78) {
+                        value = 100;
+                    }
+                    if (shape.clamp) {
+                        value = Math.min(shape.clamp, value);
+                    }
+                    const throttled =
+                        (metric === 'normalizedRu' || metric === 'totalRequests') && i > n * 0.7 && i < n * 0.78;
+                    return { timestamp: end - (n - 1 - i) * step, value: Math.max(0, value), throttled };
+                });
+                const available = !(scenario === 'serverless' && metric === 'provisionedThroughput');
+                return {
+                    metric,
+                    available,
+                    reason: available ? undefined : 'unsupported',
+                    points: available ? points : [],
+                    peak: available ? Math.max(...points.map((p) => p.value)) : undefined,
+                    timeRange,
+                    databaseId,
+                    containerId,
+                    generatedAt: now(),
+                };
+            };
+
+            const partitionHealth = ({ databaseId, containerId, mode, timeRange }) => {
+                const shares =
+                    mode === 'ru' ? [97, 44, 38, 35, 31, 28, 22, 19, 15, 11] : [24, 14, 12, 11, 10, 9, 8, 6, 4, 2];
+                const tiles = shares.map((share, i) => {
+                    const v = Math.max(0, Math.min(100, share + wobble(i, 2)));
+                    const hot = mode === 'ru' ? i === 0 : i === 0;
+                    return {
+                        partitionId: String(i),
+                        sharePercent: v,
+                        level: hot ? 5 : Math.max(1, Math.min(4, Math.ceil(v / 25))),
+                        hot,
+                    };
+                });
+                return {
+                    timeRange,
+                    available: true,
+                    mode,
+                    databaseId,
+                    containerId,
+                    tiles,
+                    skewScore: mode === 'ru' ? 31 : 24,
+                    topPartitionShare: tiles[0].sharePercent,
+                    maxSaturationPercent: mode === 'ru' ? tiles[0].sharePercent : undefined,
+                    minSaturationPercent: mode === 'ru' ? tiles.at(-1).sharePercent : undefined,
+                    hotPartition: true,
+                    partitionCount: tiles.length,
+                    topN: 5,
+                    generatedAt: now(),
+                };
+            };
+
+            const alerts = ({ timeRange }) => ({
+                available: true,
+                timeRange,
+                generatedAt: now(),
+                criticalCount: 0,
+                warningCount: 1,
+                alerts: [
+                    {
+                        id: 'alert-1',
+                        name: 'Normalized RU consumption above 90%',
+                        severity: 'Warning',
+                        rawSeverity: 'Sev2',
+                        monitorCondition: 'Fired',
+                        alertState: 'New',
+                        alertRule: 'cosmos-ru-saturation',
+                        targetResource: 'contoso-orders-prod',
+                        startedAt: now() - 42 * 60_000,
+                        portalUrl: 'https://portal.azure.com/#blade/alert-1',
+                    },
+                    {
+                        id: 'alert-2',
+                        name: 'Replication latency elevated (West Europe)',
+                        severity: 'Informational',
+                        rawSeverity: 'Sev4',
+                        monitorCondition: 'Fired',
+                        alertRule: 'cosmos-replication-latency',
+                        targetResource: 'contoso-orders-prod',
+                        startedAt: now() - 5 * 3_600_000,
+                        portalUrl: 'https://portal.azure.com/#blade/alert-2',
+                    },
+                ],
+            });
+
+            const recommendations = () => ({
+                available: true,
+                generatedAt: now(),
+                hasHighImpactPerfCost: true,
+                recommendations: [
+                    {
+                        id: 'adv-1',
+                        category: 'Cost',
+                        impact: 'High',
+                        problem: 'Consider autoscale on container telemetry/events to lower idle cost',
+                        solution: 'Switch the container to autoscale throughput with a lower minimum',
+                        potentialBenefit: 'Up to 38% lower monthly throughput cost',
+                        learnMoreLink: 'https://learn.microsoft.com/azure/cosmos-db/provision-throughput-autoscale',
+                    },
+                    {
+                        id: 'adv-2',
+                        category: 'OperationalExcellence',
+                        impact: 'Medium',
+                        problem: 'Enable diagnostic settings to capture data plane requests',
+                        solution: 'Route CDBDataPlaneRequests to a Log Analytics workspace',
+                        learnMoreLink: 'https://learn.microsoft.com/azure/cosmos-db/monitor-resource-logs',
+                    },
+                ],
+            });
+
+            const derivedAdvisories = () => ({
+                available: true,
+                generatedAt: now(),
+                logSource: { available: false, reason: 'logAnalyticsDisabled' },
+                advisories: [
+                    {
+                        id: 'HotPartitionRisk:orders/orders',
+                        rule: 'HotPartitionRisk',
+                        severity: 'High',
+                        title: 'Hot partition in orders/orders',
+                        rationale:
+                            'Physical partition PKR-0 peaked at 97% normalized RU while the coolest partition stayed at 11%. Requests concentrate on a few customerId values.',
+                        suggestedAction:
+                            'Review the partition key. A hierarchical key such as /tenantId/customerId spreads hot customers across partitions.',
+                        thresholdReference: 'hotPartition.saturationPercent ≥ 90',
+                        scope: 'orders/orders',
+                    },
+                    {
+                        id: 'IndexingCostRisk:telemetry/events',
+                        rule: 'IndexingCostRisk',
+                        severity: 'Medium',
+                        title: 'Index storage is 46% of data in telemetry/events',
+                        rationale:
+                            'The default indexing policy indexes every path. Index storage grew 7.5 GB in 7 days on an append-only container.',
+                        suggestedAction: 'Exclude unused paths (for example /payload/*) from the indexing policy.',
+                        thresholdReference: 'indexing.indexToDataRatio ≥ 0.4',
+                        scope: 'telemetry/events',
+                    },
+                    {
+                        id: 'SharedThroughputStarvation:catalog',
+                        rule: 'SharedThroughputStarvation',
+                        severity: 'Medium',
+                        title: 'catalog/inventory dominates shared database throughput',
+                        rationale: 'catalog/inventory consumed 84% of the 1,000 RU/s shared by three containers.',
+                        suggestedAction: 'Give catalog/inventory dedicated throughput.',
+                        thresholdReference: 'sharedThroughput.dominantSharePercent ≥ 75',
+                        scope: 'catalog/inventory',
+                    },
+                    {
+                        id: 'OverProvisioning:orders/leases',
+                        rule: 'OverProvisioning',
+                        severity: 'Low',
+                        title: 'orders/leases uses 12% of its provisioned throughput',
+                        rationale: 'Peak normalized RU stayed at or below 12% for 7 days.',
+                        suggestedAction: 'Lower provisioned throughput or move the container to shared throughput.',
+                        thresholdReference: 'overProvisioning.peakPercent ≤ 20',
+                        scope: 'orders/leases',
+                    },
+                    {
+                        id: 'AutoscaleCandidate:orders/orderItems',
+                        rule: 'AutoscaleCandidate',
+                        severity: 'Low',
+                        title: 'orders/orderItems has bursty demand',
+                        rationale: 'Demand peaks at 71% for short periods and idles near 15% otherwise.',
+                        suggestedAction: 'Consider autoscale with a 4,000 RU/s maximum.',
+                        thresholdReference: 'autoscale.peakToAverage ≥ 3',
+                        scope: 'orders/orderItems',
+                    },
+                ].filter(() => scenario !== 'empty'),
+            });
+
+            const overviewAnalytics = ({ timeRange, databaseId, containerId }) => {
+                const [n, step] = RANGE[timeRange];
+                const windowEnd = Math.floor(now() / step) * step;
+                const windowStart = windowEnd - n * step;
+                const bucketSeconds = step / 1000;
+                const resourceEntries = containers
+                    .filter((c) => (!databaseId || c.databaseId === databaseId) && (!containerId || c.containerId === containerId))
+                    .map((c, i) => {
+                        const total = Math.round(c.docs / 800 + 5_000);
+                        const throttledRequests = c.throttled ? Math.round(total * 0.031) : c.peak > 80 ? Math.round(total * 0.002) : 0;
+                        return [
+                            `${c.databaseId}/${c.containerId}`,
+                            {
+                                databaseId: c.databaseId,
+                                containerId: c.containerId,
+                                throttling: {
+                                    available: true,
+                                    ratePercent: (throttledRequests / total) * 100,
+                                    totalRequests: total,
+                                    throttledRequests,
+                                },
+                                consumedRu: {
+                                    available: true,
+                                    peakBucketAverageRuPerSecond: Math.max(0, (c.ru ?? 900) * (c.peak / 100) * 0.8 + wobble(i, 40)),
+                                    bucketSeconds,
+                                },
+                            },
+                        ];
+                    });
+                const totalRequests = resourceEntries.reduce((s, [, r]) => s + r.throttling.totalRequests, 0);
+                const throttledRequests = resourceEntries.reduce((s, [, r]) => s + r.throttling.throttledRequests, 0);
+                return {
+                    databaseId,
+                    containerId,
+                    timeRange,
+                    generatedAt: now(),
+                    windowStart,
+                    windowEnd,
+                    throttling: {
+                        available: true,
+                        ratePercent: totalRequests ? (throttledRequests / totalRequests) * 100 : 0,
+                        totalRequests,
+                        throttledRequests,
+                    },
+                    previousThrottling: {
+                        available: true,
+                        ratePercent: 0.42,
+                        totalRequests: Math.round(totalRequests * 0.9),
+                        throttledRequests: Math.round(totalRequests * 0.9 * 0.0042),
+                    },
+                    previousWindowStart: windowStart - (windowEnd - windowStart),
+                    previousWindowEnd: windowStart,
+                    autoscaleMaxThroughput:
+                        scenario === 'serverless'
+                            ? { available: false, reason: 'unsupported' }
+                            : { available: true, value: 30_000, timestamp: windowEnd - step },
+                    consumedRu: {
+                        available: true,
+                        peakBucketAverageRuPerSecond: 21_400 + wobble(1, 900),
+                        bucketSeconds,
+                    },
+                    resources: Object.fromEntries(resourceEntries),
+                    resourcesComplete: true,
+                };
+            };
+
+            const handlers = {
+                'accountOverview.getAccountSummary': summary,
+                'accountOverview.getInventory': inventory,
+                'accountOverview.getInventoryMetrics': inventoryMetrics,
+                'accountOverview.getMetricSeries': metricSeries,
+                'accountOverview.getPartitionHealth': partitionHealth,
+                'accountOverview.getAlerts': alerts,
+                'accountOverview.getRecommendations': recommendations,
+                'accountOverview.getDerivedAdvisories': derivedAdvisories,
+                'accountOverview.getOverviewAnalytics': overviewAnalytics,
+            };
+
+            // ─── Fake extension host (tRPC wire protocol) ─────────────────────────────
+            const state = {};
+            const reply = (id, result) => window.postMessage({ id, result }, '*');
+            const complete = (id) => window.postMessage({ id, complete: true }, '*');
+            window.__hostLog = [];
+            const fakeHost = {
+                postMessage(message) {
+                    const { id, op } = message ?? {};
+                    if (!id || !op || op.type === 'subscription.stop' || op.type === 'abort') {
+                        return;
+                    }
+                    window.__hostLog.push({ path: op.path, input: op.input });
+                    const handler = handlers[op.path];
+                    setTimeout(
+                        () => {
+                            reply(id, handler ? handler(op.input ?? {}) : null);
+                            complete(id);
+                        },
+                        150 + Math.random() * 450,
+                    );
+                },
+                getState: () => state,
+                setState: (next) => Object.assign(state, next),
+            };
+
+            globalThis.l10n_bundle = {};
+            const { render } = await import('/src/webviews/index.tsx');
+            render('cosmosDbAccountOverview', fakeHost);
+        </script>
+    </body>
+</html>

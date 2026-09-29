@@ -1,0 +1,993 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+// Ported from the DocumentDB extension's cluster dashboard (`clusterDashboard.scss`) so both products share one
+// dashboard grammar: shaded identity band, action toolbar, metric cards, tabbed investigation area, inventory.
+
+$focus-outline-inset: 4px;
+$content-gutter: var(--spacingHorizontalMNudge); // 10px
+
+.accountDashboard {
+    display: flex;
+    flex-direction: column;
+    // The page scrolls inside this element, not the body, so the full-bleed width never includes a body scrollbar.
+    height: 100vh;
+    overflow-y: auto;
+    position: relative;
+    background-color: var(--colorNeutralBackground1);
+    // Full-bleed: break out of the webview body's default horizontal padding.
+    margin-inline: calc(50% - 50vw);
+    padding-inline: $focus-outline-inset;
+    overflow-x: hidden;
+    box-sizing: border-box;
+
+    .progressBar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1;
+    }
+
+    // ---- Prototype switcher (not part of the design) -------------------------
+
+    .prototypeBar {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: var(--spacingHorizontalS);
+        margin-inline: calc(-1 * #{$focus-outline-inset});
+        padding: var(--spacingVerticalXS) calc(#{$focus-outline-inset} + 10px);
+        font-size: var(--fontSizeBase200);
+        color: var(--colorNeutralForeground3);
+        border-bottom: var(--strokeWidthThin) dashed var(--colorNeutralStroke2);
+    }
+
+    // ---- Shaded header band ----------------------------------------------------
+
+    .dashboardHeaderBand {
+        background-color: var(--colorNeutralBackground2);
+        border-bottom: var(--strokeWidthThin) solid var(--colorNeutralStroke2);
+        box-sizing: border-box;
+        flex-shrink: 0;
+        min-width: 0;
+        margin-inline: calc(-1 * #{$focus-outline-inset});
+        padding-inline: $focus-outline-inset;
+        padding-block: var(--spacingVerticalS);
+        margin-bottom: var(--spacingVerticalS);
+        container-type: inline-size;
+        container-name: dashboardBand;
+    }
+
+    .dashboardHeader {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--spacingVerticalXS) 12px;
+        min-width: 0;
+        flex-shrink: 0;
+        padding-inline: $content-gutter;
+    }
+
+    .dashboardHeaderIcon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+        width: 36px;
+        height: 36px;
+        border-radius: var(--borderRadiusMedium);
+        background-color: var(--colorNeutralBackground3);
+
+        img {
+            width: 24px;
+            height: 24px;
+        }
+    }
+
+    .dashboardHeaderIdentityGroup {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+        flex: 1000 1 auto;
+    }
+
+    .dashboardHeaderIdentity {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0;
+        min-width: 0;
+    }
+
+    .dashboardHeaderTitle {
+        margin: 0;
+        min-width: 0;
+        font-size: 18px;
+        font-weight: var(--fontWeightSemibold);
+        line-height: 24px;
+        max-width: 100%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .dashboardHeaderSubtitle {
+        font-size: var(--fontSizeBase200);
+        line-height: var(--lineHeightBase200);
+        color: var(--colorNeutralForeground3);
+    }
+
+    .dashboardHeaderStatus {
+        display: flex;
+        flex-direction: row-reverse;
+        flex-wrap: wrap;
+        align-items: start;
+        flex: 1 0 max-content;
+        max-width: 100%;
+        min-width: 0;
+        gap: 8px 12px;
+    }
+
+    .dashboardHeaderItems {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        flex: 1 1 0;
+        min-width: min-content;
+        gap: 8px;
+    }
+
+    .dashboardStatusBadge,
+    .dashboardResilienceBadge {
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+
+    // Fixed-width, tabular: the "updated" figure is rewritten on every poll.
+    .dashboardHeaderLive {
+        display: inline-flex;
+        align-items: center;
+        align-self: center;
+        gap: var(--spacingHorizontalXXS);
+        min-width: 9ch;
+        height: 20px;
+        font-size: var(--fontSizeBase200);
+        line-height: var(--lineHeightBase200);
+        color: var(--colorNeutralForeground3);
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+        border-radius: var(--borderRadiusSmall);
+
+        &:focus-visible {
+            outline: var(--strokeWidthThick) solid var(--colorStrokeFocus2);
+            outline-offset: 1px;
+        }
+    }
+
+    .dashboardLiveDot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background-color: var(--colorPaletteGreenForeground1, var(--vscode-charts-green));
+        animation: dashboardPulse 2s ease-in-out infinite;
+        forced-color-adjust: none;
+
+        &[data-paused='true'] {
+            background-color: var(--colorNeutralForeground3);
+            animation: none;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .dashboardLiveDot {
+            animation: none;
+        }
+    }
+
+    .dashboardFactSegment,
+    .dashboardFactName {
+        display: inline-flex;
+        align-items: baseline;
+        gap: var(--spacingHorizontalSNudge);
+    }
+
+    .dashboardFactSegment {
+        flex: 0 0 auto;
+        min-width: 0;
+        max-width: 100%;
+        flex-wrap: wrap;
+        font-size: var(--fontSizeBase200);
+        line-height: var(--lineHeightBase300);
+
+        &:focus-visible {
+            border-radius: var(--borderRadiusSmall);
+            outline: var(--strokeWidthThick) solid var(--colorStrokeFocus2);
+            outline-offset: 1px;
+        }
+    }
+
+    .dashboardFactLabel {
+        color: var(--colorNeutralForeground3);
+    }
+
+    .dashboardFactValue {
+        color: var(--colorNeutralForeground1);
+        font-weight: var(--fontWeightSemibold);
+        overflow-wrap: anywhere;
+    }
+
+    .dashboardFactSeparator {
+        color: var(--colorNeutralStroke1);
+        user-select: none;
+    }
+
+    .dashboardDisclosure {
+        flex: 0 0 auto;
+        order: -1;
+        margin-inline-start: auto;
+        white-space: nowrap;
+        font-size: var(--fontSizeBase200);
+        font-weight: var(--fontWeightSemibold);
+        transform: translateY(-2px);
+    }
+
+    .dashboardDisclosureLabel {
+        display: grid;
+        justify-items: start;
+
+        > * {
+            grid-area: 1 / 1;
+        }
+
+        > [data-inactive='true'] {
+            visibility: hidden;
+        }
+    }
+
+    @container dashboardBand (max-width: 400px) {
+        .dashboardHeaderIcon {
+            display: none;
+        }
+    }
+
+    // ---- Disclosed details ----------------------------------------------------
+
+    .dashboardDetailsRegion {
+        padding-block: var(--spacingVerticalS) var(--spacingVerticalXS);
+    }
+
+    .dashboardDetailsPanel {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacingVerticalM);
+        margin-inline: $content-gutter;
+    }
+
+    .dashboardDetailsGroups {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+        column-gap: 48px;
+        row-gap: var(--spacingVerticalM);
+    }
+
+    .dashboardDetailsFooter {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--spacingHorizontalS);
+        padding-top: var(--spacingVerticalXS);
+        border-top: var(--strokeWidthThin) solid var(--colorNeutralStroke2);
+    }
+
+    .dashboardDetailsGroupTitle {
+        margin: 0 0 var(--spacingVerticalXS);
+        font-size: var(--fontSizeBase200);
+        font-weight: var(--fontWeightSemibold);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--colorNeutralForeground3);
+    }
+
+    .dashboardDetailsGrid {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        column-gap: var(--spacingHorizontalXXL);
+        row-gap: var(--spacingVerticalXXS);
+        margin: 0;
+        font-size: var(--fontSizeBase200);
+    }
+
+    .dashboardDetailLabel {
+        color: var(--colorNeutralForeground3);
+        min-width: 0;
+    }
+
+    .dashboardDetailValue {
+        display: flex;
+        align-items: center;
+        gap: var(--spacingHorizontalXXS);
+        margin: 0;
+        min-width: 0;
+    }
+
+    .dashboardDetailText {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .dashboardDetailCopy {
+        flex: 0 0 auto;
+        min-width: 20px;
+        height: 20px;
+        padding: 0;
+    }
+
+    // ---- Action bar -------------------------------------------------------------
+
+    .primaryActionBar {
+        box-sizing: border-box;
+        flex-shrink: 0;
+        min-height: 32px;
+        text-wrap: nowrap;
+        margin-top: var(--spacingVerticalXS);
+    }
+
+    .dashboardToolbar {
+        column-gap: var(--spacingHorizontalXS);
+        padding-inline: $content-gutter;
+        width: 100%;
+        flex-wrap: nowrap;
+        min-width: 0;
+        overflow: hidden;
+
+        .fui-ToolbarButton,
+        .fui-Button {
+            flex-shrink: 0;
+        }
+    }
+
+    .toolbarRightGroupStart {
+        margin-inline-start: auto;
+    }
+
+    // ---- Body -------------------------------------------------------------------
+
+    .dashboardContent {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        min-width: 0;
+        padding-inline: $content-gutter;
+        padding-block: 20px;
+        container-type: inline-size;
+        container-name: dashboardMain;
+    }
+
+    .dashboardFooter {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: var(--spacingHorizontalL);
+        margin-top: auto;
+        padding: var(--spacingVerticalS) $content-gutter var(--spacingVerticalXS);
+        font-size: var(--fontSizeBase200);
+        color: var(--colorNeutralForeground3);
+    }
+
+    // ---- Metric cards -------------------------------------------------------------
+
+    .statusStrip .metricsRow {
+        grid-template-columns: 1fr;
+    }
+
+    @container dashboardMain (min-width: 380px) {
+        .statusStrip .metricsRow {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @container dashboardMain (min-width: 860px) {
+        .statusStrip .metricsRow {
+            grid-template-columns: repeat(4, 1fr);
+        }
+    }
+
+    // A metric card value with a trend beneath it. The sparkline is a quiet signal, not a chart: no axes.
+    .tileValue {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+    }
+
+    .tileValueRow {
+        display: flex;
+        align-items: baseline;
+        flex-wrap: wrap;
+        gap: 2px 8px;
+        min-width: 0;
+    }
+
+    .tileSecondary {
+        font-size: var(--fontSizeBase200);
+        line-height: var(--lineHeightBase200);
+        font-weight: var(--fontWeightRegular);
+        color: var(--colorNeutralForeground3);
+        white-space: nowrap;
+
+        &[data-tone='warning'] {
+            color: var(--colorStatusWarningForeground1, var(--vscode-editorWarning-foreground));
+        }
+
+        &[data-tone='danger'] {
+            color: var(--colorStatusDangerForeground1, var(--vscode-errorForeground));
+        }
+
+        &[data-tone='success'] {
+            color: var(--colorStatusSuccessForeground1, var(--vscode-charts-green));
+        }
+    }
+
+    .tileSparkline {
+        height: 28px;
+        margin-top: 2px;
+
+        figure {
+            height: 28px !important;
+        }
+    }
+
+    // A selected metric card (it drives the chart below it).
+    .selectableTile {
+        border-radius: var(--borderRadiusMedium);
+        cursor: pointer;
+        outline: none;
+
+        &[aria-pressed='true'] > * {
+            box-shadow: 0 0 0 var(--strokeWidthThick) var(--colorBrandStroke1);
+        }
+
+        &:focus-visible > * {
+            box-shadow: 0 0 0 var(--strokeWidthThick) var(--colorStrokeFocus2);
+        }
+    }
+
+    // ---- Investigation tabs ---------------------------------------------------------
+    //
+    // The DocumentDB design plans a TabList between the metric cards and the inventory. The tab strip sits on a
+    // hairline rule and the panel carries no card of its own, like the Collection View's tabs.
+
+    .investigationArea {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacingVerticalM);
+        min-width: 0;
+    }
+
+    .investigationTabs {
+        border-bottom: var(--strokeWidthThin) solid var(--colorNeutralStroke2);
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding: 2px;
+    }
+
+    .tabCount {
+        margin-inline-start: var(--spacingHorizontalXS);
+    }
+
+    .tabPanel {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacingVerticalM);
+        min-width: 0;
+    }
+
+    .panelToolbar {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: var(--spacingHorizontalS);
+        min-height: 32px;
+    }
+
+    .panelToolbarEnd {
+        margin-inline-start: auto;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: var(--spacingHorizontalS);
+    }
+
+    .panelCaption {
+        font-size: var(--fontSizeBase200);
+        color: var(--colorNeutralForeground3);
+    }
+
+    .sectionTitle {
+        margin: 0;
+        font-size: var(--fontSizeBase400);
+        line-height: var(--lineHeightBase400);
+        font-weight: var(--fontWeightSemibold);
+    }
+
+    .twoColumn {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: var(--spacingHorizontalL);
+        align-items: start;
+    }
+
+    @container dashboardMain (min-width: 900px) {
+        .twoColumn {
+            grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+        }
+    }
+
+    // ---- Summary card (Query Insights "Query Efficiency Analysis") ------------------
+
+    .summaryCard {
+        flex-shrink: 0;
+    }
+
+    .summaryGrid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+    }
+
+    .summaryCardTitle {
+        display: block;
+        margin-bottom: 8px;
+    }
+
+    .summaryGridWide {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 16px;
+    }
+
+    .scopeLine {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: var(--spacingHorizontalXS);
+        min-height: 24px;
+        margin-bottom: calc(-1 * var(--spacingVerticalS));
+    }
+
+    // A setting read as part of a sentence: looks like text, reveals itself as a control on hover and focus.
+    .inlineSetting {
+        min-width: 0;
+        padding-inline: var(--spacingHorizontalXS);
+        font-weight: var(--fontWeightSemibold);
+        text-decoration: underline dotted var(--colorNeutralForeground3);
+        text-underline-offset: 3px;
+
+        &:hover {
+            background-color: var(--colorSubtleBackgroundHover);
+        }
+    }
+
+    // ---- Finding cards (Query Insights optimization cards) --------------------------
+
+    .findingList {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacingVerticalM);
+    }
+
+    .findingCard {
+        display: flex;
+        gap: 16px;
+        min-width: 0;
+    }
+
+    .findingIcon {
+        flex: 0 0 auto;
+        font-size: 32px;
+        color: var(--colorBrandForeground1);
+
+        &[data-tone='danger'] {
+            color: var(--colorStatusDangerForeground1, var(--vscode-errorForeground));
+        }
+
+        &[data-tone='warning'] {
+            color: var(--colorStatusWarningForeground1, var(--vscode-editorWarning-foreground));
+        }
+    }
+
+    .findingBody {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacingVerticalXS);
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .findingTitleRow {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: var(--spacingHorizontalS);
+    }
+
+    .findingMeta {
+        font-size: var(--fontSizeBase200);
+        color: var(--colorNeutralForeground3);
+    }
+
+    .findingText {
+        margin: 0;
+        font-size: var(--fontSizeBase300);
+        line-height: var(--lineHeightBase300);
+        overflow-wrap: anywhere;
+    }
+
+    .findingAction {
+        margin: 0;
+        padding: 6px 10px;
+        border-inline-start: var(--strokeWidthThick) solid var(--colorBrandStroke1);
+        background-color: var(--colorNeutralBackground2);
+        border-radius: var(--borderRadiusSmall);
+        font-size: var(--fontSizeBase300);
+    }
+
+    .findingFooter {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: var(--spacingHorizontalS);
+        margin-top: var(--spacingVerticalXS);
+    }
+
+    .findingImpact {
+        font-size: var(--fontSizeBase200);
+        color: var(--colorStatusSuccessForeground1, var(--vscode-charts-green));
+    }
+
+    // Compact finding rows (the "Needs attention" strip above the tabs).
+    .attentionList {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacingVerticalS);
+    }
+
+    // ---- Chart panel ----------------------------------------------------------------
+
+    .chartCard {
+        min-width: 0;
+    }
+
+    .chartHeader {
+        display: flex;
+        align-items: baseline;
+        flex-wrap: wrap;
+        gap: var(--spacingHorizontalS);
+    }
+
+    // Single-choice toggles (the DocumentDB index list's quick-filter toolbar); the row wraps instead of overflowing.
+    .choiceGroup {
+        flex-wrap: wrap;
+        gap: var(--spacingHorizontalXXS);
+        padding: 0;
+    }
+
+    // ---- Partition bars ---------------------------------------------------------------
+
+    .partitionBars {
+        display: flex;
+        align-items: flex-end;
+        gap: 4px;
+        height: 120px;
+        padding-top: var(--spacingVerticalS);
+        border-bottom: var(--strokeWidthThin) solid var(--colorNeutralStroke2);
+    }
+
+    .partitionBar {
+        position: relative;
+        flex: 1 1 0;
+        min-width: 6px;
+        border-radius: var(--borderRadiusSmall) var(--borderRadiusSmall) 0 0;
+        background-color: var(--vscode-charts-blue, var(--colorBrandBackground));
+        forced-color-adjust: none;
+
+        &[data-hot='true'] {
+            background-color: var(--colorStatusDangerForeground1, var(--vscode-errorForeground));
+        }
+    }
+
+    .partitionAxis {
+        display: flex;
+        gap: 4px;
+        font-size: var(--fontSizeBase100);
+        color: var(--colorNeutralForeground3);
+
+        > span {
+            flex: 1 1 0;
+            min-width: 6px;
+            text-align: center;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+    }
+
+    // ---- Tables -----------------------------------------------------------------------
+
+    th,
+    .fui-TableHeaderCell__button {
+        font-weight: var(--fontWeightSemibold);
+    }
+
+    .fui-TableHeaderCell__button {
+        background-color: transparent;
+    }
+
+    .tableScroller {
+        width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+        padding: $focus-outline-inset;
+        overflow-x: auto;
+    }
+
+    .dataTable {
+        width: 100%;
+        table-layout: fixed;
+        min-width: 760px;
+
+        .fui-TableCell,
+        .fui-TableHeaderCell {
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .colName {
+            width: auto;
+        }
+
+        .colSize {
+            width: 124px;
+        }
+
+        .colBar {
+            width: 132px;
+        }
+
+        .colNumber {
+            width: 96px;
+        }
+
+        .colWide {
+            width: 150px;
+        }
+
+        .colThroughput {
+            width: 190px;
+        }
+
+        .colNarrow {
+            width: 72px;
+        }
+
+        .colActions {
+            width: 84px;
+        }
+    }
+
+    .dataRow:hover {
+        background-color: var(--colorNeutralBackground1Hover);
+    }
+
+    .dataRowClickable {
+        cursor: pointer;
+    }
+
+    .nameCell {
+        display: flex;
+        align-items: center;
+        gap: var(--spacingHorizontalS);
+        min-width: 0;
+
+        > span:last-child {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    }
+
+    .srOnly {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+
+    .nameIcon {
+        flex: 0 0 auto;
+        font-size: 16px;
+        color: var(--colorNeutralForeground3);
+    }
+
+    .rowActions {
+        display: flex;
+        align-items: center;
+        gap: var(--spacingHorizontalXXS);
+    }
+
+    .numberCell {
+        display: block;
+        width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .mutedCell {
+        color: var(--colorNeutralForeground3);
+        font-size: var(--fontSizeBase200);
+    }
+
+    .monoCell {
+        font-family: var(--vscode-editor-font-family, monospace);
+        font-size: var(--fontSizeBase200);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    // Size figure + relative bar (the Collection View index list's Size column).
+    .relativeSizeCell {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+    }
+
+    .relativeSizeText {
+        flex: 0 0 62px;
+        overflow: hidden;
+        text-align: right;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .relativeSizeTrack {
+        display: inline-flex;
+        flex: 0 0 40px;
+        align-items: center;
+        height: 8px;
+    }
+
+    .relativeSizeBar {
+        display: block;
+        min-width: 2px;
+        height: 4px;
+        border-radius: var(--borderRadiusMedium);
+        background-color: var(--vscode-focusBorder);
+        forced-color-adjust: none;
+
+        &[data-tone='warning'] {
+            background-color: var(--colorStatusWarningForeground1, var(--vscode-editorWarning-foreground));
+        }
+
+        &[data-tone='danger'] {
+            background-color: var(--colorStatusDangerForeground1, var(--vscode-errorForeground));
+        }
+    }
+
+    // ---- Inventory ---------------------------------------------------------------------
+
+    .inventoryPanel {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacingVerticalMNudge);
+        min-width: 0;
+    }
+
+    .inventoryToolbar {
+        min-height: 32px;
+        padding-inline: 0;
+        gap: 8px;
+        overflow: hidden;
+
+        .fui-Breadcrumb {
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .fui-BreadcrumbItem:first-of-type,
+        .fui-BreadcrumbDivider,
+        > .fui-Divider,
+        .fui-ToolbarButton {
+            flex-shrink: 0;
+        }
+
+        .inventoryFilterInput {
+            flex: 0 1 280px;
+            min-width: 120px;
+            margin-inline-start: auto;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .inventoryToolbar {
+            flex-wrap: wrap;
+            overflow: visible;
+
+            .inventoryFilterInput {
+                order: 1;
+                flex: 1 0 100%;
+                margin-inline-start: 0;
+            }
+        }
+    }
+
+    .listFooter {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px 4px;
+    }
+
+    .listFooterStart {
+        display: flex;
+        justify-self: start;
+    }
+
+    .listCount {
+        text-align: center;
+        color: var(--colorNeutralForeground2);
+        font-size: var(--fontSizeBase300);
+    }
+
+    .emptyState {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: var(--spacingVerticalS);
+        min-height: 120px;
+        padding: 24px 10px;
+        text-align: center;
+        color: var(--colorNeutralForeground2);
+        font-size: var(--fontSizeBase300);
+    }
+
+    .emptyStateHeading {
+        margin: 0;
+        color: var(--colorNeutralForeground1);
+        font-size: var(--fontSizeBase400);
+        font-weight: var(--fontWeightSemibold);
+    }
+
+    .emptyStateDescription {
+        margin: 0;
+        max-width: 560px;
+    }
+}
+
+@keyframes dashboardPulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.35;
+    }
+}

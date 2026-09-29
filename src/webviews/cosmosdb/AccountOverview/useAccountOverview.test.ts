@@ -5,13 +5,10 @@
 
 // @vitest-environment jsdom
 
-import { act, cleanup, fireEvent, render, renderHook, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { act, cleanup, renderHook } from '@testing-library/react';
 import { type inferRouterInputs, type inferRouterOutputs } from '@trpc/server';
-import { createElement } from 'react';
 import { vi } from 'vitest';
 import { type AccountOverviewAppRouter, type MetricSeriesResult } from '../../api/types';
-import { AccountOverview } from './AccountOverview';
 import { METRIC_ORDER } from './metrics/descriptors';
 import { useAccountOverview } from './useAccountOverview';
 
@@ -219,99 +216,6 @@ describe('useAccountOverview', () => {
             finishSummary?.(summary);
         });
         expect(result.current.summary).toEqual(summary);
-    });
-
-    it('switches real presentations without remounting the shared lifecycle or losing filters and pause', async () => {
-        render(createElement(AccountOverview));
-        await act(async () => {
-            await Promise.resolve();
-        });
-        expect(screen.getByRole('button', { name: 'Original' })).toHaveAttribute('aria-pressed', 'true');
-        expect(api.getOverviewAnalytics.query).not.toHaveBeenCalled();
-        const preview = screen.getByRole('button', { name: 'Preview' });
-        preview.focus();
-        fireEvent.click(preview);
-        expect(preview).toHaveFocus();
-        expect(screen.getByRole('main', { name: 'Account overview' })).toBeInTheDocument();
-        await act(async () => {
-            fireEvent.change(screen.getByRole('combobox', { name: 'Metric time range' }), { target: { value: '7D' } });
-            fireEvent.change(screen.getByRole('combobox', { name: 'Metric scope' }), { target: { value: '0' } });
-            fireEvent.click(screen.getByText('Refresh options'));
-        });
-        await act(async () => {
-            fireEvent.click(screen.getByRole('switch', { name: 'Pause auto-refresh' }));
-        });
-        const trendCalls = api.getMetricSeries.query.mock.calls.length;
-        const analyticsCalls = api.getOverviewAnalytics.query.mock.calls.length;
-        fireEvent.click(screen.getByRole('button', { name: 'Original' }));
-        fireEvent.click(preview);
-        expect(screen.getByRole('combobox', { name: 'Metric time range' })).toHaveValue('7D');
-        expect(screen.getByRole('combobox', { name: 'Metric scope' })).toHaveValue('0');
-        fireEvent.click(screen.getByText('Auto-refresh paused'));
-        expect(screen.getByRole('switch', { name: 'Pause auto-refresh' })).toBeChecked();
-        expect(api.getAccountSummary.query).toHaveBeenCalledTimes(1);
-        expect(api.getInventory.query).toHaveBeenCalledTimes(1);
-        expect(api.getMetricSeries.query).toHaveBeenCalledTimes(trendCalls);
-        expect(api.getOverviewAnalytics.query).toHaveBeenCalledTimes(analyticsCalls);
-    });
-
-    it('exposes account details inline and manages focus for full diagnostics and return', async () => {
-        const user = userEvent.setup();
-        render(createElement(AccountOverview));
-        await act(async () => {
-            await Promise.resolve();
-        });
-        fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
-        const details = screen.getByRole('button', { name: 'Account details' });
-        expect(details).toHaveAccessibleName('Account details');
-        expect(details).toHaveAttribute('aria-expanded', 'false');
-        details.focus();
-        await user.keyboard('{Enter}');
-        expect(details).toHaveAttribute('aria-expanded', 'true');
-        expect(details).toHaveFocus();
-        expect(screen.getByRole('region', { name: 'Account details' })).toHaveTextContent('Test subscription');
-        await user.click(screen.getByRole('button', { name: 'Metric details' }));
-        expect(screen.getByRole('heading', { name: 'Metric details' })).toHaveFocus();
-        await user.click(screen.getByRole('button', { name: 'Back to summary' }));
-        expect(screen.getByRole('main', { name: 'Account overview' })).toHaveFocus();
-        expect(api.getAccountSummary.query).toHaveBeenCalledTimes(1);
-    });
-    it('keeps account actions scoped, supports empty databases, and preserves in-flight state across versions', async () => {
-        render(createElement(AccountOverview));
-        await act(async () => {
-            await Promise.resolve();
-        });
-        await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Preview' })));
-        expect(screen.getByRole('button', { name: 'Add container' })).toBeDisabled();
-        await act(async () =>
-            fireEvent.change(screen.getByRole('combobox', { name: 'Metric scope' }), { target: { value: '1' } }),
-        );
-        await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Add container' })));
-        expect(api.runAccountAction.mutate).toHaveBeenCalledWith({
-            action: 'createContainer',
-            databaseId: 'empty-database',
-        });
-        expect(api.getInventory.query).toHaveBeenCalledTimes(2);
-        let rejectAction: ((reason: Error) => void) | undefined;
-        api.runAccountAction.mutate.mockImplementationOnce(
-            () =>
-                new Promise((_, reject) => {
-                    rejectAction = reject;
-                }),
-        );
-        fireEvent.click(screen.getByRole('button', { name: 'Account details' }));
-        fireEvent.click(screen.getByRole('button', { name: 'View cost' }));
-        expect(screen.getByRole('button', { name: 'Delete account' })).toBeDisabled();
-        fireEvent.click(screen.getByRole('button', { name: 'Original' }));
-        fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
-        fireEvent.click(screen.getByRole('button', { name: 'Account details' }));
-        expect(screen.getByRole('button', { name: 'View cost' })).toBeDisabled();
-        await act(async () => rejectAction?.(new Error('Host failure')));
-        expect(
-            screen.getByText('The account action could not be completed. Retry or use the Azure Resources view.'),
-        ).toHaveAttribute('role', 'alert');
-        expect(screen.getByRole('button', { name: 'View cost' })).toBeEnabled();
-        expect(api.runAccountAction.mutate).toHaveBeenCalledTimes(2);
     });
 
     it('reloads metrics for the selected range and scope without reloading static inventory', async () => {

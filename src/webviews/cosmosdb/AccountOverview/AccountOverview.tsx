@@ -3,9 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Button, makeStyles, Spinner, tokens } from '@fluentui/react-components';
+import { makeStyles, Spinner, ToggleButton, tokens } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
 import { useState } from 'react';
+import { CombinedVariant } from '../AccountDashboard/CombinedVariant';
+import { MonitorVariant } from '../AccountDashboard/MonitorVariant';
+import { TriageVariant } from '../AccountDashboard/TriageVariant';
 import { AccountOverviewV2 } from '../AccountOverviewV2/AccountOverviewV2';
 import { useOverviewAnalytics } from '../AccountOverviewV2/useOverviewAnalytics';
 import { AccountHeader } from './AccountHeader';
@@ -70,40 +73,50 @@ const useStyles = makeStyles({
         justifyContent: 'center',
         minHeight: '100vh',
     },
-    selector: {
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: tokens.spacingHorizontalS,
-        padding: tokens.spacingHorizontalM,
-        margin: 0,
-        border: 0,
-        minWidth: 0,
-        borderBottom: '1px solid var(--vscode-panel-border)',
-    },
 });
 
+type Variant = '1' | '2' | '3' | 'original' | 'preview';
+const VARIANTS: Variant[] = ['1', '2', '3', 'original', 'preview'];
+
+function initialVariant(): Variant {
+    const requested = new URLSearchParams(decodeURIComponent(globalThis.location?.search ?? '')).get('variant');
+    return VARIANTS.includes(requested as Variant) ? (requested as Variant) : '3';
+}
+
 export const AccountOverview = () => {
-    const styles = useStyles();
     const overview = useAccountOverview();
-    const [preview, setPreview] = useState(false);
-    const analytics = useOverviewAnalytics(preview, overview);
+    const [variant, setVariant] = useState<Variant>(initialVariant);
+    const analytics = useOverviewAnalytics(variant !== '1' && variant !== 'original', overview);
+    const labels: Record<Variant, string> = {
+        '1': l10n.t('Option 1 · Monitor'),
+        '2': l10n.t('Option 2 · Triage'),
+        '3': l10n.t('Option 3 · Combined'),
+        original: l10n.t('Before: Original'),
+        preview: l10n.t('Before: Preview'),
+    };
 
     return (
-        <>
-            <fieldset className={styles.selector} aria-label={l10n.t('Overview version')}>
-                <Button aria-pressed={!preview} onClick={() => setPreview(false)}>
-                    {l10n.t('Original')}
-                </Button>
-                <Button aria-pressed={preview} onClick={() => setPreview(true)}>
-                    {l10n.t('Preview')}
-                </Button>
-            </fieldset>
-            {preview ? (
-                <AccountOverviewV2 overview={overview} analytics={analytics} />
-            ) : (
-                <OriginalAccountOverview overview={overview} />
-            )}
-        </>
+        <div className="accountDashboard">
+            <div className="prototypeBar" role="toolbar" aria-label={l10n.t('Design option')}>
+                <span>{l10n.t('Design prototype:')}</span>
+                {VARIANTS.map((key) => (
+                    <ToggleButton
+                        key={key}
+                        size="small"
+                        appearance={variant === key ? 'primary' : 'subtle'}
+                        checked={variant === key}
+                        onClick={() => setVariant(key)}
+                    >
+                        {labels[key]}
+                    </ToggleButton>
+                ))}
+            </div>
+            {variant === '1' && <MonitorVariant overview={overview} />}
+            {variant === '2' && <TriageVariant overview={overview} analytics={analytics} />}
+            {variant === '3' && <CombinedVariant overview={overview} analytics={analytics} />}
+            {variant === 'original' && <OriginalAccountOverview overview={overview} />}
+            {variant === 'preview' && <AccountOverviewV2 overview={overview} analytics={analytics} />}
+        </div>
     );
 };
 

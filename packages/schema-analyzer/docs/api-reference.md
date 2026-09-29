@@ -56,6 +56,7 @@ Returns sorted property names at the given nesting level. `_id` is always sorted
 #### `getSchemaAtPath(schema, path): JSONSchema | undefined`
 
 Navigates into the schema following the given path segments. At each level, if the property has `anyOf`, it picks the `object` entry to descend into.
+Only own entries in `properties` are considered; inherited names are treated as missing path segments.
 
 #### `simplifySchema(schema): void`
 
@@ -97,6 +98,10 @@ type NoSQLDocument = Record<string, unknown>;
 #### `getSchemaFromDocument(document): JSONSchema`
 
 Creates a new schema from a single document.
+
+JSON and BSON analysis includes only own enumerable string-keyed document fields, including names such as
+`__proto__`, `constructor`, and `toString`. These names are stored as ordinary schema properties without changing
+object prototypes. Inherited, non-enumerable, and symbol-keyed document fields are not analyzed.
 
 #### `getSchemaFromDocuments(documents): JSONSchema`
 

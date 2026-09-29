@@ -706,6 +706,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(screen.getByRole('tab', { name: 'Data' })).toHaveAttribute('aria-selected', 'true');
         expect(screen.getByPlaceholderText('Add property…')).toHaveValue('');
         await user.click(screen.getByRole('button', { name: 'Next' }));
+        await answerConfirmation('Configure queries and scale?', false);
         expect(lastSave().wizard).toEqual({
             ...saved.wizard,
             step: 3,
@@ -714,6 +715,154 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         const { deployment, ...modelingState } = lastSave();
         expect(deployment).toBeUndefined();
         expect(Object.keys(modelingState).sort()).toEqual(['recommendation', 'wizard']);
+    });
+
+    it('prompts before leaving unvisited container tabs and focuses Queries when choosing Configure', async () => {
+        const saved = restored();
+        saved.recommendation = { status: 'idle' };
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        render(<DataModelingWizard />);
+        await continueExisting();
+        client.dataModeling.confirm.mutate.mockClear();
+        const next = screen.getByRole('button', { name: 'Next' });
+        expect(next).toHaveTextContent('Next');
+        expect(next).toHaveAccessibleName('Next');
+        await userEvent.click(next);
+        expect(client.dataModeling.confirm.mutate).toHaveBeenCalledExactlyOnceWith({
+            message: 'Configure queries and scale?',
+            detail: 'You have not visited the Queries or Scale tabs for this container. Configure them now, or go to the next step?',
+            buttons: { primary: 'Configure', secondary: 'Next' },
+        });
+        expect(screen.getByRole('tab', { name: 'Data' })).toHaveAttribute('aria-selected', 'true');
+        expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
+        await userEvent.click(next);
+        expect(client.dataModeling.confirm.mutate).toHaveBeenCalledOnce();
+        await answerConfirmation('Configure queries and scale?', true);
+        const queries = screen.getByRole('tab', { name: 'Queries' });
+        expect(queries).toHaveTextContent('Queries');
+        expect(queries).toHaveAccessibleName('Queries');
+        expect(queries).toHaveAttribute('aria-selected', 'true');
+        expect(queries).toHaveFocus();
+        expect(screen.getByRole('textbox', { name: 'Query pattern for read 1' })).toBeVisible();
+        expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
+        await userEvent.click(screen.getByRole('tab', { name: 'Data' }));
+        await userEvent.click(next);
+        expect(client.dataModeling.confirm.mutate).toHaveBeenCalledOnce();
+        expect(screen.getByRole('button', { name: 'Get Recommendation' })).toBeVisible();
+    });
+
+    it('stays on Data after dismissal, then advances to Review when choosing Next', async () => {
+        const saved = restored();
+        saved.recommendation = { status: 'idle' };
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        render(<DataModelingWizard />);
+        await continueExisting();
+        const next = screen.getByRole('button', { name: 'Next' });
+        await userEvent.click(next);
+        await answerConfirmation('Configure queries and scale?', undefined);
+        expect(screen.getByRole('tab', { name: 'Data' })).toHaveAttribute('aria-selected', 'true');
+        expect(next).toHaveFocus();
+        expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
+        await userEvent.click(next);
+        await answerConfirmation('Configure queries and scale?', false);
+        expect(screen.getByRole('button', { name: 'Get Recommendation' })).toBeVisible();
+        expect(lastSave().wizard.dataModel).toEqual(saved.wizard.dataModel);
+    });
+
+    it.each([
+        { tab: 'Queries', returnToData: false },
+        { tab: 'Queries', returnToData: true },
+        { tab: 'Scale', returnToData: false },
+        { tab: 'Scale', returnToData: true },
+    ])('does not prompt after visiting $tab (return to Data: $returnToData)', async ({ tab, returnToData }) => {
+        const saved = restored();
+        saved.recommendation = { status: 'idle' };
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        render(<DataModelingWizard />);
+        await continueExisting();
+        client.dataModeling.confirm.mutate.mockClear();
+        const user = userEvent.setup();
+        screen.getByRole('tab', { name: tab }).focus();
+        await user.keyboard('{Enter}');
+        if (returnToData) {
+            await user.click(screen.getByRole('tab', { name: 'Data' }));
+        }
+        await user.click(screen.getByRole('button', { name: 'Next' }));
+        expect(client.dataModeling.confirm.mutate).not.toHaveBeenCalled();
+        expect(screen.getByRole('button', { name: 'Get Recommendation' })).toBeVisible();
+    });
+
+    it('tracks visits per container and remembers them when revisiting a step', async () => {
+        const saved = restored();
+        saved.recommendation = { status: 'idle' };
+        saved.wizard.dataModel.containers.push(createBlankContainer('Users'));
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        render(<DataModelingWizard />);
+        await continueExisting();
+        await userEvent.click(screen.getByRole('tab', { name: 'Scale' }));
+        await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+        expect(screen.getByRole('tab', { name: 'Data' })).toHaveAttribute('aria-selected', 'true');
+        await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+        await answerConfirmation('Configure queries and scale?', undefined);
+        await userEvent.click(screen.getByRole('button', { name: 'Back' }));
+        expect(screen.getByRole('tab', { name: 'Data' })).toHaveAttribute('aria-selected', 'true');
+        await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+        await confirmAdvance();
+        await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+        await answerConfirmation('Configure queries and scale?', false);
+        expect(screen.getByRole('button', { name: 'Get Recommendation' })).toBeVisible();
+        expect(lastSave().wizard.dataModel.containers).toEqual(saved.wizard.dataModel.containers);
+    });
+
+    it('advances to the next container when choosing Next in the reminder', async () => {
+        const saved = restored();
+        saved.recommendation = { status: 'idle' };
+        const users = createBlankContainer('Users');
+        saved.wizard.dataModel.containers.push(users);
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        render(<DataModelingWizard />);
+        await continueExisting();
+        await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+        await answerConfirmation('Configure queries and scale?', false);
+        expect(lastSave().wizard.step).toBe(3);
+        expect(lastSave().wizard.dataModel.activeContainerId).toBe(users.id);
+        expect(screen.getByRole('tab', { name: 'Data' })).toHaveAttribute('aria-selected', 'true');
+        await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+        await answerConfirmation('Configure queries and scale?', true);
+        expect(screen.getByRole('tab', { name: 'Queries' })).toHaveFocus();
+        expect(lastSave().wizard.step).toBe(3);
+    });
+
+    it('preserves the existing recommendation when choosing Configure instead of advancing', async () => {
+        client.dataModeling.loadState.query.mockResolvedValue(restored());
+        render(<DataModelingWizard />);
+        await continueExisting();
+        await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+        await answerConfirmation('Configure queries and scale?', true);
+        expect(screen.getByRole('tab', { name: 'Queries' })).toHaveAttribute('aria-selected', 'true');
+        expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
+        await userEvent.click(screen.getByRole('button', { name: 'Result' }));
+        expect(screen.getByText('Restored result')).toBeVisible();
+    });
+
+    it('keeps Data selected after a reminder failure and allows retry', async () => {
+        const saved = restored();
+        saved.recommendation = { status: 'idle' };
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        render(<DataModelingWizard />);
+        await continueExisting();
+        client.dataModeling.confirm.mutate.mockRejectedValueOnce(new Error('Dialog unavailable'));
+        const next = screen.getByRole('button', { name: 'Next' });
+        await userEvent.click(next);
+        const message = 'Could not open the confirmation dialog. Please try again.';
+        expect(await screen.findByText(message)).toHaveAttribute('role', 'alert');
+        expect(screen.getByRole('tab', { name: 'Data' })).toHaveAttribute('aria-selected', 'true');
+        expect(next).toHaveFocus();
+        expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
+        await userEvent.click(next);
+        await answerConfirmation('Configure queries and scale?', false);
+        expect(screen.queryByText(message)).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Get Recommendation' })).toBeVisible();
     });
 
     it('reports load failures without enabling edits or saving, and retries detection', async () => {
@@ -932,6 +1081,9 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         await continueExisting();
         await userEvent.click(screen.getByRole('button', { name: step }));
         await userEvent.click(screen.getByRole('button', { name: next }));
+        if (next === 'Next') {
+            await answerConfirmation('Configure queries and scale?', false);
+        }
         await confirmAdvance();
         expect(lastSave().wizard.dataModel.containers).toEqual(saved.wizard.dataModel.containers);
         expect(lastSave().recommendation).toEqual({ status: 'idle' });
@@ -944,6 +1096,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(screen.getByRole('button', { name: 'Result' })).toHaveAttribute('aria-disabled', 'true');
         while (screen.queryByRole('button', { name: 'Next' })) {
             await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+            await answerConfirmation('Configure queries and scale?', false);
             expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
         }
         await userEvent.click(screen.getByRole('button', { name: 'Get Recommendation' }));

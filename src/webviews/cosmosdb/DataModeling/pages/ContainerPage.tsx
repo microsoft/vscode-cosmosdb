@@ -5,7 +5,7 @@
 
 import { makeStyles, Tab, TabList, tokens } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
-import { useEffect, useState } from 'react';
+import { type Ref, useEffect } from 'react';
 import { modelingInputsEqual } from '../../../../dataModeling/modelingTelemetryMetrics';
 import { type ModelingSection, type ModelingTelemetryEvent } from '../../../../dataModeling/modelingTelemetrySchema';
 import { type DataModel } from '../dataModel';
@@ -17,11 +17,11 @@ import { ScalePage } from './ScalePage';
 /**
  * One container step of the wizard. A container is modeled across three tabs —
  * **Data**, **Queries** and **Scale** — which are the former standalone pages. This
- * component owns only the tab selection; each tab remains a self-contained page fed
+ * component receives its tab selection from the wizard; each tab remains a self-contained page fed
  * the {@link DataModel} plus change callbacks, so they can be reused elsewhere.
  */
 
-type ContainerTab = 'data' | 'queries' | 'scale';
+export type ContainerTab = 'data' | 'queries' | 'scale';
 
 const useStyles = makeStyles({
     stack: {
@@ -36,6 +36,9 @@ const useStyles = makeStyles({
 
 export interface ContainerPageProps {
     model: DataModel;
+    tab: ContainerTab;
+    onTabChange: (tab: ContainerTab) => void;
+    queriesTabRef?: Ref<HTMLButtonElement>;
     /** Data-tab edits change the schema, so the wizard re-derives partition-key candidates. */
     onChangeData: (next: DataModel) => void;
     /** Queries- and Scale-tab edits write their slice back unchanged. */
@@ -49,6 +52,9 @@ export interface ContainerPageProps {
 
 export function ContainerPage({
     model,
+    tab,
+    onTabChange,
+    queriesTabRef,
     onChangeData,
     onChange,
     active = true,
@@ -58,7 +64,6 @@ export function ContainerPage({
     onTelemetry,
 }: ContainerPageProps) {
     const styles = useStyles();
-    const [tab, setTab] = useState<ContainerTab>('data');
     const visible = useModelingPageVisible();
     useEffect(() => {
         if (active && visible && containerId) {
@@ -80,7 +85,7 @@ export function ContainerPage({
                 selectedValue={tab}
                 onTabSelect={(_, data) => {
                     if (data.value === 'data' || data.value === 'queries' || data.value === 'scale') {
-                        setTab(data.value);
+                        onTabChange(data.value);
                         onTelemetry?.({
                             type: 'control',
                             control:
@@ -94,7 +99,9 @@ export function ContainerPage({
                 }}
             >
                 <Tab value="data">{l10n.t('Data')}</Tab>
-                <Tab value="queries">{l10n.t('Queries')}</Tab>
+                <Tab value="queries" ref={queriesTabRef}>
+                    {l10n.t('Queries')}
+                </Tab>
                 <Tab value="scale">{l10n.t('Scale')}</Tab>
             </TabList>
 

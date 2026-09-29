@@ -47,7 +47,7 @@ import {
 } from './dataModel';
 import { createInitialSnapshot, useModelingAdvisorPersistence } from './modelingAdvisorState';
 import { MAX_CONTAINERS, type ScenarioId } from './models';
-import { ContainerPage } from './pages/ContainerPage';
+import { ContainerPage, type ContainerTab } from './pages/ContainerPage';
 import { createDeploymentDraft, DeployPage, type DeploymentDraft } from './pages/DeployPage';
 import { ResultPage } from './pages/ResultPage';
 import { ReviewPage } from './pages/ReviewPage';
@@ -270,6 +270,8 @@ const HydratedDataModelingWizard = ({
     const visible = useModelingPageVisible();
     const { confirm, confirming, confirmationError } = useNativeConfirmation();
     const advanceButtonRef = useRef<HTMLButtonElement>(null);
+    const queriesTabRef = useRef<HTMLButtonElement>(null);
+    const [containerTab, setContainerTab] = useState<ContainerTab>('data');
     const removeButtonRef = useRef<HTMLButtonElement>(null);
     const requestGeneration = useRef(0);
     const requestId = useRef<string | undefined>(undefined);
@@ -282,7 +284,7 @@ const HydratedDataModelingWizard = ({
         [],
     );
     const state = snapshot.wizard;
-    const { visit, markEdited } = useModelingUsage(state, report);
+    const { visit, markEdited, visits } = useModelingUsage(state, report);
     const setState = useCallback(
         (update: SetStateAction<WizardState>) =>
             setSnapshot((previous) => ({
@@ -439,6 +441,7 @@ const HydratedDataModelingWizard = ({
     // container step without changing any user-entered cardinalities.
     const goToStep = useCallback(
         (step: number) => {
+            setContainerTab('data');
             setState((prev) => {
                 const values = buildStepValues(prev.dataModel);
                 const clamped = Math.min(Math.max(step, 1), values.length);
@@ -459,6 +462,7 @@ const HydratedDataModelingWizard = ({
     // Jump straight to a container's step (used by Review's per-container Edit).
     const goToContainer = useCallback(
         (id: string) => {
+            setContainerTab('data');
             setState((prev) => {
                 const values = buildStepValues(prev.dataModel);
                 const index = values.indexOf(containerStep(id));
@@ -583,6 +587,7 @@ const HydratedDataModelingWizard = ({
 
     // Remove the container of the current step and land on the previous container step.
     const removeCurrentContainer = useCallback(() => {
+        setContainerTab('data');
         setState((prev) => {
             if (prev.dataModel.containers.length <= 1) {
                 return prev;
@@ -737,6 +742,25 @@ const HydratedDataModelingWizard = ({
             }
             return;
         }
+        const visitedTabs = isContainerStep ? visits.get(activeValue.slice(CONTAINER_PREFIX.length)) : undefined;
+        if (isContainerStep && containerTab === 'data' && !visitedTabs?.has('queries') && !visitedTabs?.has('scale')) {
+            const result = await confirm(
+                l10n.t('Configure queries and scale?'),
+                l10n.t(
+                    'You have not visited the Queries or Scale tabs for this container. Configure them now, or go to the next step?',
+                ),
+                { primary: l10n.t('Configure'), secondary: l10n.t('Next') },
+            );
+            if (result === true) {
+                setContainerTab('queries');
+                queriesTabRef.current?.focus();
+                return;
+            }
+            if (result !== false) {
+                advanceButtonRef.current?.focus();
+                return;
+            }
+        }
         if (recommendation || reachedSteps.some((value) => stepValues.indexOf(value) >= stepIndex)) {
             const result = await confirm(
                 l10n.t('Restart from this step?'),
@@ -784,6 +808,7 @@ const HydratedDataModelingWizard = ({
         cancelEditingContainerName();
         setDeployOwner(undefined);
         setDeploymentDraft(undefined);
+        setContainerTab('data');
         setSnapshot(createInitialSnapshot());
     };
 
@@ -1004,6 +1029,9 @@ const HydratedDataModelingWizard = ({
                     >
                         <ContainerPage
                             model={state.dataModel}
+                            tab={containerTab}
+                            onTabChange={setContainerTab}
+                            queriesTabRef={queriesTabRef}
                             active={activeValue === containerStep(c.id)}
                             containerId={c.id}
                             onVisit={visit}

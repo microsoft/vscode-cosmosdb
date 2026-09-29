@@ -7,9 +7,10 @@
 
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { createBlankContainer } from '../dataModel';
-import { ContainerPage } from './ContainerPage';
+import { ContainerPage, type ContainerTab } from './ContainerPage';
 
 vi.mock('./DataPage', () => ({ DataPage: () => null }));
 vi.mock('./QueriesPage', () => ({ QueriesPage: () => null }));
@@ -19,14 +20,20 @@ describe('container tab activation telemetry', () => {
     it('records repeated mouse and keyboard activations but not the initially displayed tab', async () => {
         const onTelemetry = vi.fn();
         const container = createBlankContainer('Private container');
-        render(
-            <ContainerPage
-                model={{ containers: [container], activeContainerId: container.id }}
-                onChange={vi.fn()}
-                onChangeData={vi.fn()}
-                onTelemetry={onTelemetry}
-            />,
-        );
+        function Container() {
+            const [tab, setTab] = useState<ContainerTab>('data');
+            return (
+                <ContainerPage
+                    model={{ containers: [container], activeContainerId: container.id }}
+                    tab={tab}
+                    onTabChange={setTab}
+                    onChange={vi.fn()}
+                    onChangeData={vi.fn()}
+                    onTelemetry={onTelemetry}
+                />
+            );
+        }
+        render(<Container />);
         expect(onTelemetry).not.toHaveBeenCalled();
         const user = userEvent.setup();
         await user.click(screen.getByRole('tab', { name: 'Data' }));

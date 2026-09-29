@@ -89,6 +89,28 @@ describe('data modeler deployment procedure', () => {
         ).rejects.toThrow('Dialog unavailable');
     });
 
+    it.each([
+        { choice: 'Configure', result: true },
+        { choice: 'Next', result: false },
+        { choice: undefined, result: undefined },
+    ])('returns $result for the container reminder choice $choice', async ({ choice, result }) => {
+        vi.mocked(vscode.window.showWarningMessage).mockImplementation(async (_message, _options, ...items) =>
+            items.find((item) => item.title === choice),
+        );
+        const prompt = {
+            message: 'Configure queries and scale?',
+            detail: 'Configure them now, or go to the next step?',
+            buttons: { primary: 'Configure', secondary: 'Next' },
+        };
+        expect(await dataModelingRouterDef.createCaller(context()).confirm(prompt)).toBe(result);
+        expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
+            prompt.message,
+            { modal: true, detail: prompt.detail },
+            { title: 'Configure' },
+            { title: 'Next' },
+        );
+    });
+
     it('uses the host account and keeps recommendation content out of telemetry', async () => {
         const ctx = context();
         vi.mocked(deployDataModel).mockResolvedValue({ status: 'cancelled' });

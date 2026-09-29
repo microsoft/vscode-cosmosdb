@@ -70,5 +70,5 @@ export function useModelingUsage(wizard: WizardState, report: ReturnType<typeof 
             report({ type: 'usage', usage });
         }
     }, [usageKey, usage, report]);
-    return { visit, markEdited };
+    return { visit, markEdited, visits };
 }

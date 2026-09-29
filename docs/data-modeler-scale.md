@@ -20,6 +20,12 @@ The container-step subtitle combines the selected template notice with tab guida
   with a bulleted list and a visible hot-partition warning.
   Capacity warnings remain visible, not behind a disclosure.
 
+Selecting **Next** from Data before visiting either Queries or Scale for that container opens a native VS Code dialog.
+**Configure** opens and focuses Queries; **Next** continues through the normal next-step flow.
+Dismissing the dialog keeps Data selected and returns focus to Next.
+Visits are tracked separately for each container during the open wizard session, including when revisiting a step,
+but are not saved when the wizard is closed. Visiting either Queries or Scale suppresses the reminder for that container.
+
 ## Source of truth
 
 - [ScalePage.tsx](../src/webviews/cosmosdb/DataModeling/pages/ScalePage.tsx):

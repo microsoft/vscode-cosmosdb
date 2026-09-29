@@ -51,4 +51,20 @@ describe('native modeler confirmations', () => {
         });
         expect(result.current.confirmationError).toBe('');
     });
+
+    it('passes custom button labels to the native dialog and preserves the secondary choice', async () => {
+        client.dataModeling.confirm.mutate.mockResolvedValue(false);
+        const { result } = renderHook(useNativeConfirmation);
+        const buttons = { primary: 'Configure', secondary: 'Next' };
+        await act(async () => {
+            expect(await result.current.confirm('Configure queries and scale?', 'Configure them now?', buttons)).toBe(
+                false,
+            );
+        });
+        expect(client.dataModeling.confirm.mutate).toHaveBeenCalledWith({
+            message: 'Configure queries and scale?',
+            detail: 'Configure them now?',
+            buttons,
+        });
+    });
 });

@@ -23,13 +23,17 @@ export function useNativeConfirmation() {
     }, []);
 
     const confirm = useCallback(
-        async (message: string, detail: string): Promise<boolean | undefined> => {
+        async (
+            message: string,
+            detail: string,
+            buttons?: { primary: string; secondary: string },
+        ): Promise<boolean | undefined> => {
             if (pending.current || !mounted.current) return undefined;
             pending.current = true;
             setConfirming(true);
             setConfirmationError('');
             try {
-                const result = await client.dataModeling.confirm.mutate({ message, detail });
+                const result = await client.dataModeling.confirm.mutate({ message, detail, buttons });
                 return mounted.current ? result : undefined;
             } catch {
                 if (mounted.current) {

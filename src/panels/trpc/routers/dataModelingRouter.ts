@@ -42,10 +42,16 @@ export const dataModelingRouterDef = dataModelingRouter({
         ctx.modelingTelemetry?.record(input);
     }),
     confirm: stateProcedure
-        .input(z.object({ message: z.string().min(1), detail: z.string() }))
+        .input(
+            z.object({
+                message: z.string().min(1),
+                detail: z.string(),
+                buttons: z.object({ primary: z.string().min(1), secondary: z.string().min(1) }).optional(),
+            }),
+        )
         .mutation(async ({ input }) => {
-            const yes = { title: l10n.t('Yes') };
-            const no = { title: l10n.t('No') };
+            const yes = { title: input.buttons?.primary ?? l10n.t('Yes') };
+            const no = { title: input.buttons?.secondary ?? l10n.t('No') };
             const choice = await vscode.window.showWarningMessage(
                 input.message,
                 { modal: true, detail: input.detail },

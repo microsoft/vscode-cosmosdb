@@ -102,7 +102,20 @@ on the Workload screen to reopen the choice.
 
 Confirmations for restarting from a step, removing a container, replacing an uploaded schema, regenerating edited deployment
 code, and deploying also use native VS Code Yes/No dialogs. These actions run only after **Yes**; **No** or dismissal keeps the
-current state. The **Add container** name-entry form remains in the modeler.
+current state. **Add container** opens a native VS Code input box with naming guidance and inline error messages.
+Pressing Enter with an empty, invalid, or duplicate name, or one with a leading or trailing space, displays an error.
+The same input box stays open with the entered text unchanged. Correcting the name clears the error; only a valid name
+closes the box and adds a container. Cancelling the input box leaves the model unchanged.
+
+New database names in **Deploy**, and container names when adding or renaming, reuse the extension's resource-name
+validation. Names are validated exactly as typed and never silently trimmed. They are required and limited to
+[255 characters](https://learn.microsoft.com/azure/cosmos-db/concepts-limits#per-container-limits).
+The [documented forbidden characters](https://learn.microsoft.com/dotnet/api/microsoft.azure.cosmos.containerproperties.id#remarks)
+are `/`, `\`, `?`, and `#`; the extension also rejects `=` in database names. Names cannot end with whitespace,
+matching [Data Explorer](https://github.com/Azure/cosmos-explorer/blob/master/src/Utils/ValidationUtils.ts). The
+modeler's deployment safety checks also reject leading whitespace, `%`, control characters, and the names `.` and `..`.
+Container names must be unique within the model (case-sensitive).
+Invalid input shows a validation error and cannot be added, saved, deployed, or used to generate a deployment export.
 
 The Result page offers thumbs-up/down feedback for the recommendation, without a free-text prompt. Selecting the other
 thumb changes the vote; repeating the same vote does not send another event.

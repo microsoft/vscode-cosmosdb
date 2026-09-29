@@ -3,22 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import {
-    Badge,
-    Button,
-    Dialog,
-    DialogActions,
-    DialogBody,
-    DialogContent,
-    DialogSurface,
-    DialogTitle,
-    Field,
-    Input,
-    Link,
-    makeStyles,
-    Text,
-    tokens,
-} from '@fluentui/react-components';
+import { Badge, Button, Field, Input, Link, makeStyles, Text, tokens } from '@fluentui/react-components';
 import {
     AddRegular,
     CheckmarkRegular,
@@ -36,6 +21,7 @@ import {
 import { useTrpcClient } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
 import { type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { validateDeploymentContainerName } from '../../../dataModeling/deploymentModel';
 import { PartitionKeyRecommendationSchema } from '../../../dataModeling/recommendationSchema';
 import { type DataModelingAppRouter, type DataModelingEvent } from '../../api/types';
 import {
@@ -277,9 +263,12 @@ const HydratedDataModelingWizard = ({
     const requestId = useRef<string | undefined>(undefined);
     const deliveredRequestId = useRef<string | undefined>(undefined);
     const requestPending = useRef(false);
+    const containerNameRequest = useRef(0);
+    const containerNamePending = useRef(false);
     useEffect(
         () => () => {
             requestGeneration.current += 1;
+            containerNameRequest.current += 1;
         },
         [],
     );
@@ -296,11 +285,21 @@ const HydratedDataModelingWizard = ({
     const reachedSteps =
         state.reachedSteps ??
         buildStepValues(state.dataModel).slice(0, snapshot.recommendation.value ? undefined : state.step);
-    const [addOpen, setAddOpen] = useState(false);
-    const [newContainerName, setNewContainerName] = useState('');
+    const [addingContainer, setAddingContainer] = useState(false);
+    const [addContainerError, setAddContainerError] = useState('');
+    const currentDataModel = useRef(state.dataModel);
+    useEffect(() => {
+        currentDataModel.current = state.dataModel;
+    }, [state.dataModel]);
     const [editingContainerId, setEditingContainerId] = useState<string>();
     const [containerNameDraft, setContainerNameDraft] = useState('');
     const containerNameInputRef = useRef<HTMLInputElement>(null);
+    const containerNameError = validateDeploymentContainerName(
+        containerNameDraft,
+        state.dataModel.containers
+            .filter((container) => container.id !== editingContainerId)
+            .map((container) => container.entity),
+    );
 
     const { status: recommendationStatus, value: recommendation, error: recommendationError } = snapshot.recommendation;
     const [feedback, setFeedback] = useState<{
@@ -528,8 +527,8 @@ const HydratedDataModelingWizard = ({
     };
 
     const saveContainerName = () => {
-        const entity = containerNameDraft.trim();
-        if (!editingContainerId || !entity) {
+        const entity = containerNameDraft;
+        if (!editingContainerId || containerNameError) {
             return;
         }
         if (state.dataModel.containers.find((container) => container.id === editingContainerId)?.entity !== entity) {
@@ -555,35 +554,49 @@ const HydratedDataModelingWizard = ({
         [setDataModel],
     );
 
-    // Append a fresh, named container to the end of the list without navigating away from the
-    // current step. The prompted name is trimmed; empty falls back to the default label.
-    const addContainer = useCallback(
-        (name: string) => {
-            if (state.dataModel.containers.length < MAX_CONTAINERS) {
-                markEdited('data');
-            }
-            setState((prev) => {
-                if (prev.dataModel.containers.length >= MAX_CONTAINERS) {
-                    return prev;
-                }
-                const container = createBlankContainer(name.trim() || undefined);
-                const containers = [...prev.dataModel.containers, container];
-                return { ...prev, dataModel: { ...prev.dataModel, containers } };
+    const openAddDialog = async () => {
+        if (containerNamePending.current || state.dataModel.containers.length >= MAX_CONTAINERS) return;
+        containerNamePending.current = true;
+        const request = ++containerNameRequest.current;
+        setAddingContainer(true);
+        setAddContainerError('');
+        try {
+            const value = await trpcClient.dataModeling.promptContainerName.mutate({
+                existingNames: state.dataModel.containers.map((container) => container.entity),
             });
-        },
-        [setState, state.dataModel.containers.length, markEdited],
-    );
-
-    // Open the name prompt, disabled once at the container cap.
-    const openAddDialog = useCallback(() => {
-        setNewContainerName('');
-        setAddOpen(true);
-    }, []);
-
-    const confirmAddContainer = useCallback(() => {
-        addContainer(newContainerName);
-        setAddOpen(false);
-    }, [addContainer, newContainerName, setAddOpen]);
+            if (request !== containerNameRequest.current || value === undefined) return;
+            const model = currentDataModel.current;
+            const error = validateDeploymentContainerName(
+                value,
+                model.containers.map((container) => container.entity),
+            );
+            if (error) {
+                setAddContainerError(error);
+                return;
+            }
+            if (model.containers.length >= MAX_CONTAINERS) {
+                setAddContainerError(l10n.t('The maximum number of containers has been reached.'));
+                return;
+            }
+            markEdited('data');
+            setState((previous) => ({
+                ...previous,
+                dataModel: {
+                    ...previous.dataModel,
+                    containers: [...previous.dataModel.containers, createBlankContainer(value)],
+                },
+            }));
+        } catch {
+            if (request === containerNameRequest.current) {
+                setAddContainerError(l10n.t('Could not add the container. Please try again.'));
+            }
+        } finally {
+            if (request === containerNameRequest.current) {
+                containerNamePending.current = false;
+                setAddingContainer(false);
+            }
+        }
+    };
 
     // Remove the container of the current step and land on the previous container step.
     const removeCurrentContainer = useCallback(() => {
@@ -803,8 +816,10 @@ const HydratedDataModelingWizard = ({
         deliveredRequestId.current = undefined;
         requestPending.current = false;
         requestGeneration.current += 1;
-        setAddOpen(false);
-        setNewContainerName('');
+        containerNameRequest.current += 1;
+        containerNamePending.current = false;
+        setAddingContainer(false);
+        setAddContainerError('');
         cancelEditingContainerName();
         setDeployOwner(undefined);
         setDeploymentDraft(undefined);
@@ -860,10 +875,10 @@ const HydratedDataModelingWizard = ({
                                 <Button
                                     appearance="secondary"
                                     icon={<AddRegular />}
-                                    disabled={state.dataModel.containers.length >= MAX_CONTAINERS}
+                                    disabled={addingContainer || state.dataModel.containers.length >= MAX_CONTAINERS}
                                     onClick={() => {
                                         report({ type: 'control', control: 'footerAddContainer' });
-                                        openAddDialog();
+                                        void openAddDialog();
                                     }}
                                 >
                                     {l10n.t('Add container')}
@@ -918,8 +933,9 @@ const HydratedDataModelingWizard = ({
         );
 
     return (
-        <div className={styles.fullWidthWizard} aria-busy={confirming}>
+        <div className={styles.fullWidthWizard} aria-busy={confirming || addingContainer}>
             {confirmationError ? <Text role="alert">{confirmationError}</Text> : null}
+            {addContainerError ? <Text role="alert">{addContainerError}</Text> : null}
             <Wizard
                 activeStep={activeValue}
                 onStepChange={onStepChange}
@@ -966,40 +982,45 @@ const HydratedDataModelingWizard = ({
                         }
                         title={
                             editingContainerId === c.id ? (
-                                <Input
-                                    aria-label={l10n.t('Container name')}
-                                    className={styles.containerNameInput}
-                                    contentAfter={
-                                        <div className={styles.containerNameActions}>
-                                            <Button
-                                                appearance="transparent"
-                                                aria-label={l10n.t('Save container name')}
-                                                icon={<CheckmarkRegular />}
-                                                size="small"
-                                                disabled={!containerNameDraft.trim()}
-                                                onClick={saveContainerName}
-                                            />
-                                            <Button
-                                                appearance="transparent"
-                                                aria-label={l10n.t('Cancel editing container name')}
-                                                icon={<DismissRegular />}
-                                                size="small"
-                                                onClick={cancelEditingContainerName}
-                                            />
-                                        </div>
-                                    }
-                                    ref={containerNameInputRef}
-                                    value={containerNameDraft}
-                                    onChange={(_, data) => setContainerNameDraft(data.value)}
-                                    onKeyDown={(event) => {
-                                        if (event.key === 'Enter') {
-                                            event.preventDefault();
-                                            saveContainerName();
-                                        } else if (event.key === 'Escape') {
-                                            cancelEditingContainerName();
+                                <Field
+                                    validationMessage={containerNameError}
+                                    validationState={containerNameError ? 'error' : 'none'}
+                                >
+                                    <Input
+                                        aria-label={l10n.t('Container name')}
+                                        className={styles.containerNameInput}
+                                        contentAfter={
+                                            <div className={styles.containerNameActions}>
+                                                <Button
+                                                    appearance="transparent"
+                                                    aria-label={l10n.t('Save container name')}
+                                                    icon={<CheckmarkRegular />}
+                                                    size="small"
+                                                    disabled={!!containerNameError}
+                                                    onClick={saveContainerName}
+                                                />
+                                                <Button
+                                                    appearance="transparent"
+                                                    aria-label={l10n.t('Cancel editing container name')}
+                                                    icon={<DismissRegular />}
+                                                    size="small"
+                                                    onClick={cancelEditingContainerName}
+                                                />
+                                            </div>
                                         }
-                                    }}
-                                />
+                                        ref={containerNameInputRef}
+                                        value={containerNameDraft}
+                                        onChange={(_, data) => setContainerNameDraft(data.value)}
+                                        onKeyDown={(event) => {
+                                            if (event.key === 'Enter') {
+                                                event.preventDefault();
+                                                saveContainerName();
+                                            } else if (event.key === 'Escape') {
+                                                cancelEditingContainerName();
+                                            }
+                                        }}
+                                    />
+                                </Field>
                             ) : (
                                 <span className={styles.containerTitle}>
                                     <Text font="monospace" size={500} weight="semibold">
@@ -1107,38 +1128,6 @@ const HydratedDataModelingWizard = ({
                     ) : null}
                 </WizardStep>
             </Wizard>
-
-            <Dialog open={addOpen} onOpenChange={(_, data) => setAddOpen(data.open)}>
-                <DialogSurface>
-                    <form
-                        onSubmit={(e) => {
-                            e.preventDefault();
-                            confirmAddContainer();
-                        }}
-                    >
-                        <DialogBody>
-                            <DialogTitle>{l10n.t('Add container')}</DialogTitle>
-                            <DialogContent>
-                                <Field label={l10n.t('Container name')}>
-                                    <Input
-                                        value={newContainerName}
-                                        placeholder={l10n.t('e.g., Orders')}
-                                        onChange={(_, data) => setNewContainerName(data.value)}
-                                    />
-                                </Field>
-                            </DialogContent>
-                            <DialogActions>
-                                <Button appearance="secondary" type="button" onClick={() => setAddOpen(false)}>
-                                    {l10n.t('Cancel')}
-                                </Button>
-                                <Button appearance="primary" type="submit" disabled={!newContainerName.trim()}>
-                                    {l10n.t('Add')}
-                                </Button>
-                            </DialogActions>
-                        </DialogBody>
-                    </form>
-                </DialogSurface>
-            </Dialog>
         </div>
     );
 };

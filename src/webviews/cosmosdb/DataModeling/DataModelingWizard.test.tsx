@@ -25,6 +25,7 @@ import { createInitialSnapshot } from './modelingAdvisorState';
 const client = vi.hoisted(() => ({
     dataModeling: {
         confirm: { mutate: vi.fn() },
+        promptContainerName: { mutate: vi.fn() },
         loadState: { query: vi.fn() },
         saveState: { mutate: vi.fn() },
         requestRecommendation: { mutate: vi.fn() },
@@ -183,6 +184,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
                 }),
         );
         client.dataModeling.loadState.query.mockResolvedValue(null);
+        client.dataModeling.promptContainerName.mutate.mockResolvedValue(undefined);
         client.dataModeling.saveState.mutate.mockResolvedValue(undefined);
         client.dataModeling.requestRecommendation.mutate.mockResolvedValue(undefined);
         client.dataModeling.recordTelemetry.mutate.mockResolvedValue(undefined);
@@ -682,6 +684,134 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(remove).toHaveProperty('disabled', response === true);
     });
 
+    it('adds a validated name from the native input box without rendering a modal', async ({ onTestFinished }) => {
+        // jsdom's zero-width navigation triggers Fluent's synchronous test-only overflow path when adding a step.
+        const width = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1024);
+        onTestFinished(() => width.mockRestore());
+        client.dataModeling.loadState.query.mockResolvedValue(restored());
+        let submitName: (value: string | undefined) => void = () => {
+            throw new Error('Input not opened');
+        };
+        client.dataModeling.promptContainerName.mutate.mockImplementationOnce(
+            () =>
+                new Promise<string | undefined>((resolve) => {
+                    submitName = resolve;
+                }),
+        );
+        render(<DataModelingWizard />);
+        await continueExisting();
+        const add = screen.getByRole('button', { name: 'Add container' });
+        expect(add).toHaveTextContent('Add container');
+        expect(add).toHaveAccessibleName('Add container');
+        await userEvent.click(add);
+        expect(client.dataModeling.promptContainerName.mutate).toHaveBeenCalledWith({ existingNames: ['Orders'] });
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        expect(screen.queryByRole('textbox', { name: 'Container name' })).not.toBeInTheDocument();
+        expect(add).toBeDisabled();
+        fireEvent.click(add);
+        expect(client.dataModeling.promptContainerName.mutate).toHaveBeenCalledOnce();
+        expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
+        await act(async () => submitName('New Orders=1'));
+        await waitFor(() =>
+            expect(lastSave().wizard.dataModel.containers.map((container) => container.entity)).toEqual([
+                'Orders',
+                'New Orders=1',
+            ]),
+        );
+    });
+
+    it.each([undefined, '', ' ', 'bad/name', ' Orders ', 'New Orders ', 'Orders', 'x'.repeat(256)])(
+        'does not add or save cancelled or invalid native input %j',
+        async (name) => {
+            client.dataModeling.loadState.query.mockResolvedValue(restored());
+            client.dataModeling.promptContainerName.mutate.mockResolvedValueOnce(name);
+            render(<DataModelingWizard />);
+            await continueExisting();
+            const add = screen.getByRole('button', { name: 'Add container' });
+            await userEvent.click(add);
+            await waitFor(() => expect(add).toBeEnabled());
+            expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
+            const errors = screen.queryAllByRole('alert').filter((element) => element.textContent);
+            expect(errors).toHaveLength(name === undefined ? 0 : 1);
+        },
+    );
+
+    it('surfaces native input failures and allows retrying', async () => {
+        client.dataModeling.loadState.query.mockResolvedValue(restored());
+        client.dataModeling.promptContainerName.mutate.mockRejectedValueOnce(new Error('Input unavailable'));
+        render(<DataModelingWizard />);
+        await continueExisting();
+        const add = screen.getByRole('button', { name: 'Add container' });
+        await userEvent.click(add);
+        expect(await screen.findByText('Could not add the container. Please try again.')).toHaveAttribute(
+            'role',
+            'alert',
+        );
+        expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
+        await userEvent.click(add);
+        expect(client.dataModeling.promptContainerName.mutate).toHaveBeenCalledTimes(2);
+        expect(screen.queryByText('Could not add the container. Please try again.')).not.toBeInTheDocument();
+    });
+
+    it('rechecks duplicate names against model edits made while the native input is open', async () => {
+        client.dataModeling.loadState.query.mockResolvedValue(restored());
+        let submitName: (value: string) => void = () => {
+            throw new Error('Input not opened');
+        };
+        client.dataModeling.promptContainerName.mutate.mockImplementationOnce(
+            () =>
+                new Promise<string>((resolve) => {
+                    submitName = resolve;
+                }),
+        );
+        render(<DataModelingWizard />);
+        await continueExisting();
+        await userEvent.click(screen.getByRole('button', { name: 'Add container' }));
+        await userEvent.click(screen.getByRole('button', { name: 'Edit Orders' }));
+        fireEvent.change(screen.getByRole('textbox', { name: 'Container name' }), { target: { value: 'Users' } });
+        await userEvent.click(screen.getByRole('button', { name: 'Save container name' }));
+        await waitFor(() => expect(lastSave().wizard.dataModel.containers[0].entity).toBe('Users'));
+        client.dataModeling.saveState.mutate.mockClear();
+        await act(async () => submitName('Users'));
+        expect(screen.getByText('A container with this name already exists in the model.')).toHaveAttribute(
+            'role',
+            'alert',
+        );
+        expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
+    });
+
+    it('validates container renaming on both Save and Enter and allows the unchanged name', async () => {
+        const saved = restored();
+        saved.wizard.dataModel.containers.push(createBlankContainer('Users'));
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        render(<DataModelingWizard />);
+        await continueExisting();
+        await userEvent.click(screen.getByRole('button', { name: 'Edit Orders' }));
+        const nameInput = screen.getByRole('textbox', { name: 'Container name' });
+        const save = screen.getByRole('button', { name: 'Save container name' });
+        expect(save).toBeEnabled();
+        for (const name of [
+            'bad/name',
+            'Users',
+            ' Users ',
+            'Updated Orders ',
+            ' Updated Orders',
+            '',
+            'x'.repeat(256),
+        ]) {
+            fireEvent.change(nameInput, { target: { value: name } });
+            expect(nameInput).toHaveAttribute('aria-invalid', 'true');
+            expect(nameInput).toHaveAccessibleDescription();
+            expect(save).toBeDisabled();
+            fireEvent.keyDown(nameInput, { key: 'Enter' });
+            expect(nameInput).toBeVisible();
+            expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
+        }
+        fireEvent.change(nameInput, { target: { value: 'Updated Orders' } });
+        fireEvent.keyDown(nameInput, { key: 'Enter' });
+        await waitFor(() => expect(lastSave().wizard.dataModel.containers[0].entity).toBe('Updated Orders'));
+    });
+
     it('preserves inputs and cardinality, but does not save tabs, draft properties, or dialogs', async () => {
         const user = userEvent.setup();
         const saved = restored();
@@ -694,12 +824,21 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
         await user.click(screen.getByRole('tab', { name: 'Data' }));
         fireEvent.change(screen.getByPlaceholderText('Add property…'), { target: { value: 'draft' } });
+        let submitName: (value: string) => void = () => {
+            throw new Error('Input not opened');
+        };
+        client.dataModeling.promptContainerName.mutate.mockImplementationOnce(
+            () =>
+                new Promise<string>((resolve) => {
+                    submitName = resolve;
+                }),
+        );
         fireEvent.click(screen.getByRole('button', { name: 'Add container' }));
-        fireEvent.change(await screen.findByRole('textbox', { name: 'Container name' }), {
-            target: { value: 'unsaved name' },
-        });
+        expect(client.dataModeling.promptContainerName.mutate).toHaveBeenCalledOnce();
         expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
         mounted.unmount();
+        await act(async () => submitName('unsaved name'));
+        expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
         render(<DataModelingWizard />);
         await continueExisting();
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();

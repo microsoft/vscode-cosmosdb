@@ -8,12 +8,12 @@ import * as l10n from '@vscode/l10n';
 import {
     DeploymentTemplateInputSchema,
     getPartitionKeyPaths,
+    validateDeploymentContainerName,
     validateDeploymentDatabaseName,
     type DeploymentTemplateInput,
 } from '../../dataModeling/deploymentModel';
 import { type CosmosModel } from '../../panels/migration/cosmosModel';
 import { type ContainerResource } from '../../tree/cosmosdb/models/CosmosDBTypes';
-import { CosmosDBContainerNameStep } from '../createContainer/CosmosDBContainerNameStep';
 
 /** Adapt the recommendation to the same model consumed by migration provisioning and Bicep generation. */
 export function createDeploymentModel(input: DeploymentTemplateInput): CosmosModel {
@@ -23,22 +23,12 @@ export function createDeploymentModel(input: DeploymentTemplateInput): CosmosMod
     const databaseError = validateDeploymentDatabaseName(input.databaseName);
     if (databaseError) throw new Error(databaseError);
     const names = new Set<string>();
-    const validator = new CosmosDBContainerNameStep();
     return {
         version: 1,
         domain: '',
         databaseName: input.databaseName,
         containers: input.containers.map(({ entity, partitionKey }) => {
-            if (
-                !entity.trim() ||
-                entity !== entity.trim() ||
-                validator.validateInput(entity) ||
-                entity.includes('%') ||
-                entity.split('').some((character) => character.charCodeAt(0) < 32) ||
-                entity === '.' ||
-                entity === '..' ||
-                names.has(entity)
-            ) {
+            if (validateDeploymentContainerName(entity) || names.has(entity)) {
                 throw new Error(l10n.t('Select containers with valid, distinct names.'));
             }
             names.add(entity);

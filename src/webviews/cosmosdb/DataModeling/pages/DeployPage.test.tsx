@@ -221,7 +221,7 @@ describe('Deploy wizard page', () => {
     });
 
     it.each([
-        ['bad/name', /cannot contain path separators/],
+        ['bad/name', /cannot contain the characters/],
         ['x'.repeat(256), /cannot be longer than 255/],
         ['existing-db', /This database already exists/],
         ['   ', /Database name is required/],
@@ -246,9 +246,13 @@ describe('Deploy wizard page', () => {
         expect(nameInput).toHaveFocus();
         expect(nameInput).toHaveAttribute('aria-invalid', 'true');
         expect(nameInput).toHaveAccessibleDescription('Database name is required.');
-        changeName('bad/name');
-        expect(nameInput).toHaveAttribute('aria-invalid', 'true');
-        await userEvent.click(deployButton);
+        for (const name of ['bad/name', 'bad\\name', 'bad?name', 'bad#name', 'bad=name', 'bad%name', '.', '..']) {
+            changeName(name);
+            expect(nameInput).toHaveAttribute('aria-invalid', 'true');
+            expect(nameInput).toHaveAccessibleName('New database name');
+            expect(nameInput).toHaveAccessibleDescription(/cannot contain/);
+            await userEvent.click(deployButton);
+        }
         changeName('x'.repeat(256));
         expect(screen.getByText(/cannot be longer than 255/)).toBeVisible();
         await userEvent.click(deployButton);
@@ -257,7 +261,16 @@ describe('Deploy wizard page', () => {
         await userEvent.click(deployButton);
         expect(onDeploy).not.toHaveBeenCalled();
         expect(onBusyChange).not.toHaveBeenCalled();
-        changeName(' valid-db ');
+        changeName('x'.repeat(255));
+        expect(nameInput).not.toHaveAttribute('aria-invalid', 'true');
+        for (const name of ['valid-db ', ' valid-db', ' valid-db ']) {
+            changeName(name);
+            expect(nameInput).toHaveAttribute('aria-invalid', 'true');
+            expect(nameInput).toHaveAccessibleDescription('Database name cannot start or end with whitespace.');
+            await userEvent.click(deployButton);
+        }
+        expect(onDeploy).not.toHaveBeenCalled();
+        changeName('valid-db');
         expect(nameInput).not.toHaveAttribute('aria-invalid', 'true');
         expect(
             screen.queryByText('This database already exists. Select Existing database to use it.'),
@@ -272,6 +285,26 @@ describe('Deploy wizard page', () => {
             containers,
         });
         expect(generateTemplate).not.toHaveBeenCalled();
+    });
+
+    it('does not generate deployment exports for invalid database names', async () => {
+        render(<Harness />);
+        await waitForDeploy();
+        changeName('bad/name');
+        for (const method of ['Bicep', 'Terraform', 'C# SDK']) {
+            await userEvent.click(screen.getByRole('radio', { name: method }));
+            expect(screen.getByRole('textbox', { name: 'New database name' })).toHaveAttribute('aria-invalid', 'true');
+            expect(generateTemplate).not.toHaveBeenCalled();
+        }
+        changeName('valid-db');
+        await waitFor(() =>
+            expect(generateTemplate).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    databaseName: 'valid-db',
+                    format: 'sdk',
+                }),
+            ),
+        );
     });
 
     it('defers existing database errors until deployment and focuses the invalid dropdown', async () => {

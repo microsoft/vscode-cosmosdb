@@ -4,11 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { PartitionKeyKind } from '@azure/cosmos';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { createDeploymentModel, missingContainers } from './deploymentTemplate';
-
-vi.mock('@microsoft/vscode-azext-utils', () => ({ AzureWizardPromptStep: class {} }));
-vi.mock('../../cosmosdb/withClaimsChallengeHandling', () => ({ withClaimsChallengeHandling: vi.fn() }));
 
 const input = {
     databaseMode: 'existing' as const,
@@ -26,12 +23,48 @@ describe('modeler migration-model adapter', () => {
         });
     });
 
-    it.each(['', 'db/name', '..', ' bad ', 'x'.repeat(256)])('rejects invalid database name %j', (databaseName) => {
+    it.each([
+        '',
+        'db/name',
+        'db\\name',
+        'db?name',
+        'db#name',
+        'db=name',
+        'db%name',
+        'db\u0000name',
+        '.',
+        '..',
+        ' bad ',
+        'x'.repeat(256),
+    ])('rejects invalid database name %j', (databaseName) => {
         expect(() => createDeploymentModel({ ...input, databaseName })).toThrow();
     });
 
-    it.each(['', 'Orders/name', '..', ' Orders ', 'x'.repeat(256)])('rejects invalid container name %j', (entity) => {
+    it.each([
+        '',
+        'Orders/name',
+        'Orders\\name',
+        'Orders?name',
+        'Orders#name',
+        'Orders%name',
+        'Orders\u0000name',
+        '.',
+        '..',
+        ' Orders ',
+        'x'.repeat(256),
+    ])('rejects invalid container name %j', (entity) => {
         expect(() => createDeploymentModel({ ...input, containers: [{ entity, partitionKey: '/id' }] })).toThrow();
+    });
+
+    it('accepts names at the documented length boundary', () => {
+        const name = 'x'.repeat(255);
+        expect(
+            createDeploymentModel({
+                ...input,
+                databaseName: name,
+                containers: [{ entity: name, partitionKey: '/id' }],
+            }),
+        ).toMatchObject({ databaseName: name, containers: [{ name }] });
     });
 
     it.each(['', 'id', '/id,', '/a, /a', '/a,/b,/c,/d', '/a//b'])(

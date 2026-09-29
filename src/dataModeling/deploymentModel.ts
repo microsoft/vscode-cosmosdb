@@ -5,6 +5,7 @@
 
 import * as l10n from '@vscode/l10n';
 import { z } from 'zod';
+import { validateContainerName, validateDatabaseName } from '../cosmosdb/utils/validateResourceName';
 import { MAX_CONTAINERS } from '../webviews/cosmosdb/DataModeling/models';
 
 export const DeploymentContainersSchema = z
@@ -59,19 +60,41 @@ export function getPartitionKeyPaths(partitionKey: string): string[] {
     return partitionKey.split(',').map((path) => path.trim());
 }
 
+// The modeler validates exactly what the user typed; it never trims silently, so rejected names stay visible to fix.
 export function validateDeploymentDatabaseName(name: string): string | undefined {
-    if (!name.trim()) return l10n.t('Database name is required.');
-    if (name !== name.trim()) return l10n.t('Database name cannot have surrounding whitespace.');
-    if (name.length > 255) return l10n.t('Database name cannot be longer than 255 characters');
-    if (
-        /[/\\?#=%]/.test(name) ||
+    if (name.trim() && name !== name.trim()) {
+        return l10n.t('Database name cannot start or end with whitespace.');
+    }
+    const error = validateDatabaseName(name);
+    if (error) return error;
+    if (hasUnsafeDeploymentName(name)) {
+        return l10n.t('Database name cannot contain control characters or "%", or be "." or "..".');
+    }
+    return undefined;
+}
+
+export function validateDeploymentContainerName(
+    name: string,
+    existingNames: readonly string[] = [],
+): string | undefined {
+    if (name.trim() && name !== name.trim()) {
+        return l10n.t('Container name cannot start or end with whitespace.');
+    }
+    const error = validateContainerName(name);
+    if (error) return error;
+    if (hasUnsafeDeploymentName(name)) {
+        return l10n.t('Container name cannot contain control characters or "%", or be "." or "..".');
+    }
+    if (existingNames.includes(name)) return l10n.t('A container with this name already exists in the model.');
+    return undefined;
+}
+
+// Deployment names also become URL path segments in the provisioning and export pipelines.
+function hasUnsafeDeploymentName(name: string): boolean {
+    return (
+        name.includes('%') ||
         name.split('').some((character) => character.charCodeAt(0) < 32) ||
         name === '.' ||
         name === '..'
-    ) {
-        return l10n.t(
-            'Database name cannot contain path separators, control characters, "#", "?", "=", or "%", or be "." or "..".',
-        );
-    }
-    return undefined;
+    );
 }

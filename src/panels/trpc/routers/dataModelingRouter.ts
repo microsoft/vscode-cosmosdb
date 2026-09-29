@@ -11,11 +11,16 @@ import {
     generateDeploymentTemplate,
     getDeploymentOptions,
 } from '../../../commands/dataModeling/deployDataModel';
-import { DeploymentRequestSchema, GenerateDeploymentTemplateInputSchema } from '../../../dataModeling/deploymentModel';
+import {
+    DeploymentRequestSchema,
+    GenerateDeploymentTemplateInputSchema,
+    validateDeploymentContainerName,
+} from '../../../dataModeling/deploymentModel';
 import { ModelingAdvisorSnapshotSchema, WizardStateSchema } from '../../../dataModeling/modelingAdvisorSchema';
 import { ModelingTelemetryEventSchema } from '../../../dataModeling/modelingTelemetrySchema';
 import { buildRecommendationPrompt } from '../../../dataModeling/recommendationPrompt';
 import { openUrl } from '../../../utils/openUrl';
+import { MAX_CONTAINERS } from '../../../webviews/cosmosdb/DataModeling/models';
 import { dataModelingProcedure, dataModelingRouter } from '../trpc';
 
 export { buildRecommendationPrompt } from '../../../dataModeling/recommendationPrompt';
@@ -59,6 +64,43 @@ export const dataModelingRouterDef = dataModelingRouter({
                 no,
             );
             return choice === yes ? true : choice === no ? false : undefined;
+        }),
+    promptContainerName: stateProcedure
+        .input(z.object({ existingNames: z.array(z.string()).max(MAX_CONTAINERS - 1) }))
+        .mutation(async ({ input }) => {
+            const validateInput = (value: string): vscode.InputBoxValidationMessage | undefined => {
+                const message = validateDeploymentContainerName(value, input.existingNames);
+                return message ? { message, severity: vscode.InputBoxValidationSeverity.Error } : undefined;
+            };
+            const inputBox = vscode.window.createInputBox();
+            const subscriptions: vscode.Disposable[] = [];
+            try {
+                inputBox.title = l10n.t('Add container');
+                inputBox.prompt = l10n.t(
+                    'Enter a unique container name (1-255 characters). Names cannot start or end with whitespace, contain /, \\, ?, #, %, or control characters, or be "." or "..".',
+                );
+                inputBox.placeholder = l10n.t('e.g., Orders');
+                inputBox.ignoreFocusOut = true;
+                return await new Promise<string | undefined>((resolve) => {
+                    subscriptions.push(
+                        inputBox.onDidChangeValue((value) => {
+                            inputBox.validationMessage = validateInput(value);
+                        }),
+                        inputBox.onDidAccept(() => {
+                            const error = validateInput(inputBox.value);
+                            inputBox.validationMessage = error;
+                            if (!error) resolve(inputBox.value);
+                        }),
+                        inputBox.onDidHide(() => resolve(undefined)),
+                    );
+                    inputBox.show();
+                });
+            } finally {
+                for (const subscription of subscriptions) {
+                    subscription.dispose();
+                }
+                inputBox.dispose();
+            }
         }),
     loadState: stateProcedure.query(async ({ ctx }) => {
         try {

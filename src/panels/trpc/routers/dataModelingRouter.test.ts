@@ -15,6 +15,7 @@ import { type AzureResourceMetadata } from '../../../cosmosdb/AzureResourceMetad
 import { type ModelingTelemetry } from '../../../dataModeling/ModelingTelemetry';
 import { openUrl } from '../../../utils/openUrl';
 import { applyScenario, createInitialState } from '../../../webviews/cosmosdb/DataModeling/dataModel';
+import { MAX_CONTAINERS } from '../../../webviews/cosmosdb/DataModeling/models';
 import { type DataModelingRouterContext } from '../appRouter';
 import { buildRecommendationPrompt, dataModelingRouterDef } from './dataModelingRouter';
 
@@ -36,6 +37,54 @@ vi.mock('../trpc', async () => {
 const containers = [{ entity: 'Orders', partitionKey: '/tenantId, /id' }];
 const input = { containers, databaseName: 'db', databaseMode: 'existing' as const };
 const request = input;
+
+function mockContainerNameInput() {
+    let changeValue: (value: string) => void = () => {};
+    let accept: () => void = () => {};
+    let hide: () => void = () => {};
+    const disposeSubscription = vi.fn();
+    const inputBox: vscode.InputBox = {
+        title: undefined,
+        step: undefined,
+        totalSteps: undefined,
+        enabled: true,
+        busy: false,
+        ignoreFocusOut: false,
+        value: '',
+        valueSelection: undefined,
+        placeholder: undefined,
+        password: false,
+        buttons: [],
+        prompt: undefined,
+        validationMessage: undefined,
+        onDidChangeValue: (listener) => {
+            changeValue = listener;
+            return { dispose: disposeSubscription };
+        },
+        onDidAccept: (listener) => {
+            accept = listener;
+            return { dispose: disposeSubscription };
+        },
+        onDidHide: (listener) => {
+            hide = listener;
+            return { dispose: disposeSubscription };
+        },
+        onDidTriggerButton: () => ({ dispose: disposeSubscription }),
+        show: vi.fn(),
+        hide: vi.fn(() => hide()),
+        dispose: vi.fn(),
+    };
+    vi.mocked(vscode.window.createInputBox).mockReturnValueOnce(inputBox);
+    return {
+        inputBox,
+        disposeSubscription,
+        accept: () => accept(),
+        changeValue: (value: string) => {
+            inputBox.value = value;
+            changeValue(value);
+        },
+    };
+}
 
 function context(): DataModelingRouterContext {
     return {
@@ -109,6 +158,110 @@ describe('data modeler deployment procedure', () => {
             { title: 'Configure' },
             { title: 'Next' },
         );
+    });
+
+    it('keeps the native input open on invalid Enter and accepts a corrected name in the same box', async () => {
+        const { inputBox, accept, changeValue, disposeSubscription } = mockContainerNameInput();
+        const settled = vi.fn();
+        const result = dataModelingRouterDef.createCaller(context()).promptContainerName({ existingNames: ['Orders'] });
+        void result.then(settled);
+        await vi.waitFor(() => expect(inputBox.show).toHaveBeenCalledOnce());
+        expect(inputBox).toMatchObject({
+            title: 'Add container',
+            prompt: 'Enter a unique container name (1-255 characters). Names cannot start or end with whitespace, contain /, \\, ?, #, %, or control characters, or be "." or "..".',
+            ignoreFocusOut: true,
+        });
+        for (const name of [
+            '',
+            ' ',
+            'bad/name',
+            'bad\\name',
+            'bad?name',
+            'bad#name',
+            'bad%name',
+            '.',
+            '..',
+            'bad\u0000name',
+            'x'.repeat(256),
+            ' Orders ',
+            'Orders ',
+            'New Orders ',
+            ' New Orders',
+        ]) {
+            changeValue(name);
+            expect(inputBox.validationMessage).toEqual({
+                message: expect.any(String),
+                severity: vscode.InputBoxValidationSeverity.Error,
+            });
+            accept();
+            accept();
+            await Promise.resolve();
+            expect(inputBox.value).toBe(name);
+            expect(inputBox.hide).not.toHaveBeenCalled();
+            expect(inputBox.dispose).not.toHaveBeenCalled();
+            expect(disposeSubscription).not.toHaveBeenCalled();
+            expect(settled).not.toHaveBeenCalled();
+        }
+        for (const name of ['x'.repeat(255), 'orders', 'New Orders=1']) {
+            changeValue(name);
+            expect(inputBox.validationMessage).toBeUndefined();
+        }
+        accept();
+        expect(await result).toBe('New Orders=1');
+        expect(vscode.window.createInputBox).toHaveBeenCalledOnce();
+        expect(inputBox.dispose).toHaveBeenCalledOnce();
+        expect(disposeSubscription).toHaveBeenCalledTimes(3);
+    });
+
+    it.each([
+        ['', 'Container name is required.'],
+        ['bad/name', "Container name cannot contain the characters '\\', '/', '#', '?'"],
+        [' Orders ', 'Container name cannot start or end with whitespace.'],
+        ['New Orders ', 'Container name cannot start or end with whitespace.'],
+        ['Orders', 'A container with this name already exists in the model.'],
+        ['x'.repeat(256), 'Container name cannot be longer than 255 characters'],
+    ])('validates %j on Enter even without a change event', async (name, message) => {
+        const { inputBox, accept } = mockContainerNameInput();
+        const result = dataModelingRouterDef.createCaller(context()).promptContainerName({ existingNames: ['Orders'] });
+        await vi.waitFor(() => expect(inputBox.show).toHaveBeenCalledOnce());
+        inputBox.value = name;
+        accept();
+        expect(inputBox.validationMessage).toEqual({ message, severity: vscode.InputBoxValidationSeverity.Error });
+        expect(inputBox.hide).not.toHaveBeenCalled();
+        expect(inputBox.dispose).not.toHaveBeenCalled();
+        inputBox.hide();
+        expect(await result).toBeUndefined();
+    });
+
+    it('returns no name and disposes the input and subscriptions on cancellation', async () => {
+        const { inputBox, disposeSubscription } = mockContainerNameInput();
+        const result = dataModelingRouterDef.createCaller(context()).promptContainerName({ existingNames: [] });
+        await vi.waitFor(() => expect(inputBox.show).toHaveBeenCalledOnce());
+        inputBox.hide();
+        expect(await result).toBeUndefined();
+        expect(inputBox.dispose).toHaveBeenCalledOnce();
+        expect(disposeSubscription).toHaveBeenCalledTimes(3);
+    });
+
+    it('propagates input-box failures and disposes resources', async () => {
+        const { inputBox, disposeSubscription } = mockContainerNameInput();
+        vi.mocked(inputBox.show).mockImplementationOnce(() => {
+            throw new Error('Input unavailable');
+        });
+        await expect(
+            dataModelingRouterDef.createCaller(context()).promptContainerName({ existingNames: [] }),
+        ).rejects.toThrow('Input unavailable');
+        expect(inputBox.dispose).toHaveBeenCalledOnce();
+        expect(disposeSubscription).toHaveBeenCalledTimes(3);
+    });
+
+    it('does not prompt when the container limit is reached', async () => {
+        await expect(
+            dataModelingRouterDef.createCaller(context()).promptContainerName({
+                existingNames: Array.from({ length: MAX_CONTAINERS }, (_, index) => `Container${index}`),
+            }),
+        ).rejects.toThrow();
+        expect(vscode.window.createInputBox).not.toHaveBeenCalled();
     });
 
     it('uses the host account and keeps recommendation content out of telemetry', async () => {

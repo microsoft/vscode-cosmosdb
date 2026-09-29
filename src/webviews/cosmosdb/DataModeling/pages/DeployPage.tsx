@@ -352,7 +352,7 @@ export function DeployPage({
     const input = useMemo<DeploymentTemplateInput>(
         () => ({
             databaseMode: draft.databaseMode,
-            databaseName: draft.databaseMode === 'new' ? draft.newDatabaseName.trim() : draft.existingDatabaseName,
+            databaseName: draft.databaseMode === 'new' ? draft.newDatabaseName : draft.existingDatabaseName,
             containers: containers
                 .filter((container) => draft.selectedContainers.includes(container.entity))
                 .map(({ entity, partitionKey }) => ({ entity, partitionKey })),

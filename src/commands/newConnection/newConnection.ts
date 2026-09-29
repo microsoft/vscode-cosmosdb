@@ -5,7 +5,7 @@
 
 import { AzureWizard, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
-import { ext } from '../../extensionVariables';
+import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
 import { type CosmosDBAttachAccountResourceItem } from '../../tree/workspace-view/cosmosdb/CosmosDBAttachAccountResourceItem';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
 import { CosmosDBConnectionStringStep } from './CosmosDBConnectionStringStep';
@@ -14,7 +14,7 @@ import { CosmosDBTenantStep } from './CosmosDBTenantStep';
 import { type NewConnectionWizardContext } from './NewConnectionWizardContext';
 
 export async function newConnection(context: IActionContext, node?: CosmosDBAttachAccountResourceItem): Promise<void> {
-    const parentId: string = node?.parentId ?? ext.cosmosDBWorkspaceBranchDataResource?.id ?? '';
+    const parentId = node?.parentId ?? WorkspaceResourceType.AttachedAccounts;
 
     const wizardContext: NewConnectionWizardContext = {
         ...context,

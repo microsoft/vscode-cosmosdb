@@ -11,6 +11,7 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import { isEmulatorSupported } from '../../constants';
+import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
 import { type NewCoreEmulatorConnectionItem } from '../../tree/workspace-view/cosmosdb/LocalEmulators/NewCoreEmulatorConnectionItem';
 import { ExecuteStep } from './ExecuteStep';
 import { type NewEmulatorConnectionWizardContext } from './NewEmulatorConnectionWizardContext';
@@ -19,10 +20,6 @@ import { PromptEmulatorPortStep } from './PromptEmulatorPortStep';
 import { PromptEmulatorTypeStep } from './PromptEmulatorTypeStep';
 
 export async function newEmulatorConnection(context: IActionContext, node?: NewCoreEmulatorConnectionItem) {
-    if (!node) {
-        return undefined;
-    }
-
     if (!isEmulatorSupported) {
         context.errorHandling.suppressReportIssue = true;
         throw new Error(l10n.t('The Azure Cosmos DB emulator is only supported on Windows, Linux and MacOS (Intel).'));
@@ -30,7 +27,7 @@ export async function newEmulatorConnection(context: IActionContext, node?: NewC
 
     const wizardContext: NewEmulatorConnectionWizardContext = {
         ...context,
-        parentTreeElementId: node.parentId,
+        parentTreeElementId: node?.parentId ?? `${WorkspaceResourceType.AttachedAccounts}/localEmulators`,
     };
 
     const title: string = l10n.t('New Emulator Connection');

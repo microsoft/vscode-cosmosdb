@@ -1,5 +1,5 @@
 ---
-description: Register Cosmos DB for NoSQL language features in Monaco Editor.
+description: Register Cosmos DB query language features in Monaco Editor.
 ---
 
 # Monaco
@@ -21,7 +21,7 @@ providers and editor resources when the editor is closed. Comments explain each 
 
 The sample uses Vite's `?worker` import and the docs package's shared `EditorOptions` / `PlaygroundEditor` types. In another host, adapt those imports to your bundler and lifecycle. It deliberately uses a unique language ID, owns tokenizer registration explicitly, disables query decorations, and selects a `150` ms diagnostic delay; these are sample choices, not package defaults.
 
-Create browser-dependent editors only after a DOM container exists. In a server-rendered shell such as VitePress, load the component client-side and mount the editor inside its lifecycle. Monaco worker URLs are a bundler concern; registering SQL providers does not configure workers for other Monaco languages.
+Create browser-dependent editors only after a DOM container exists. In a server-rendered shell such as VitePress, load the component client-side and mount the editor inside its lifecycle. Monaco worker URLs are a bundler concern; registering the Cosmos DB query language providers does not configure workers for other Monaco languages.
 
 ## Registration API
 
@@ -67,19 +67,19 @@ Active-block highlighting only takes effect when query decorations are enabled.
 
 ### Language and syntax coloring
 
-**`languageId`** selects the models that receive SQL features. It must match the language passed to
+**`languageId`** selects the models that receive Cosmos DB query language features. It must match the language passed to
 `monaco.editor.createModel(query, languageId)` or assigned with `monaco.editor.setModelLanguage(model, languageId)`.
-If the ID does not exist, the helper registers it with the `.nosql` extension and a `CosmosDB NoSQL` alias.
+If the ID does not exist, the published 1.0.0 helper registers it with the `.nosql` extension and the legacy display alias `CosmosDB NoSQL`.
 Registration is language-wide, not limited to one editor. Use separate IDs when editors need different service/schema setups.
 
-**`monarchTokenizer`** installs both SQL syntax tokenization and the language configuration: comment syntax, brackets,
+**`monarchTokenizer`** installs both Cosmos DB query language syntax tokenization and the language configuration: comment syntax, brackets,
 and auto-closing pairs. This is separate from completion, diagnostics, and other service-backed features.
 Set it to `false` if you install your own tokenizer/configuration, or want to retain their disposable handles yourself,
 as the integration sample does. In version `1.0.0`, the registration's disposable does not retain these two handles.
 
 ### Suggestions and documentation
 
-**`completions`** registers suggestions for SQL keywords, functions, aliases, and schema fields.
+**`completions`** registers suggestions for Cosmos DB query language keywords, functions, aliases, and schema fields.
 Schema-derived suggestions use the service's `getSchema` callback; registration does not infer a schema itself.
 The provider declares `.`, space, `,`, and newline as trigger characters. Monaco's editor settings still control whether
 suggestions open automatically. Set this flag to `false` when the host supplies its own completion provider.

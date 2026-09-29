@@ -1,10 +1,17 @@
 ---
-description: Practical API reference for the Cosmos DB for NoSQL SQL language service.
+description: Practical language service API reference for the Cosmos DB query language.
 ---
 
 # Language service
 
 `@azure/cosmosdb-nosql-language-service` separates the parser, an editor-independent service, and editor adapters. No database connection is involved.
+
+This page documents the **package API**, not the query language. For the Cosmos DB query language,
+see the [Microsoft Learn query reference](https://learn.microsoft.com/en-us/cosmos-db/query/),
+[query clauses](https://learn.microsoft.com/en-us/cosmos-db/query/clauses), and
+[built-in functions](https://learn.microsoft.com/en-us/cosmos-db/query/#system-functions).
+The package's function hover documentation also links to individual Learn reference pages.
+Learn describes service behavior; the package's supported diagnostics are documented [separately](./diagnostics.md).
 
 ## Parse and inspect a query
 
@@ -61,12 +68,14 @@ Fetch data outside these callbacks. Return your current in-memory schema rather 
 | `getCompletions(query, offset)`   | `CompletionItem[]`                            | Keywords, functions, aliases, and schema fields.              |
 | `getHoverInfo(query, offset)`     | `HoverInfo` or `null`                         | Documentation blocks and an optional range.                   |
 | `getSignatureHelp(query, offset)` | `SignatureHelpResult` or `null`               | Function signatures and active parameter index.               |
-| `format(query)`                   | `string`                                      | Canonical SQL from the parsed AST.                            |
+| `format(query)`                   | `string`                                      | Canonical query text from the parsed AST.                     |
 | `getFormatEdits(query)`           | `TextEdit[]`                                  | No edit if unchanged; otherwise a whole-document replacement. |
 | `parseDocument(query)`            | `MultiQueryDocument`                          | Parse regions explicitly, even when `multiQuery` is off.      |
 | `getActiveRegion(query, offset)`  | Query region or `undefined`                   | Find the statement under the cursor.                          |
 
 Diagnostic ranges use zero-based offsets and one-based lines/columns; ends are exclusive. Severity values are `1` (error), `2` (warning), `3` (information), and `4` (hint). Editor adapters perform the necessary position and severity conversion.
+
+See [Diagnostics](./diagnostics.md) for the codes emitted by version 1.0.0, examples, suggested corrections, and checks the package does not perform.
 
 ## Cursor-sensitive features
 

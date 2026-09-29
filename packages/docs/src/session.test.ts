@@ -89,7 +89,7 @@ describe('playground service session', () => {
         expect(session.schema?.properties).toHaveProperty('newField');
     });
 
-    it('reports invalid SQL and document-relative positions for multiple queries', () => {
+    it('reports invalid queries and document-relative positions for multiple queries', () => {
         const { service } = createSession();
         expect(service.getDiagnostics('SELECT * FROM c')).toEqual([]);
         const diagnostics = service.getDiagnostics(
@@ -101,7 +101,7 @@ describe('playground service session', () => {
         ).toBe(true);
     });
 
-    it('formats valid SQL without repairing invalid SQL', () => {
+    it('formats valid queries without repairing invalid queries', () => {
         const { service } = createSession();
         expect(service.format('select * from c')).toContain('SELECT');
         const invalid = 'SELECT * FORM c';

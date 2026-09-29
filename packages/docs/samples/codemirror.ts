@@ -61,7 +61,7 @@ export function createCodeMirrorEditor(
             extensions: [
                 lineNumbers(),
                 history(),
-                // The stream parser recognizes SQL tokens; HighlightStyle
+                // The stream parser recognizes query tokens; HighlightStyle
                 // controls their appearance using the host's CSS variables.
                 StreamLanguage.define(cosmosDbSqlStreamParser),
                 syntaxHighlighting(
@@ -72,7 +72,7 @@ export function createCodeMirrorEditor(
                         })),
                     ),
                 ),
-                // Override CodeMirror's sources with schema-aware SQL
+                // Override CodeMirror's sources with schema-aware query
                 // completions. Field names and types come from the service.
                 autocompletion({
                     override: [
@@ -120,7 +120,7 @@ export function createCodeMirrorEditor(
                 ]),
                 EditorView.lineWrapping,
                 EditorView.contentAttributes.of({
-                    'aria-label': 'Cosmos DB SQL query',
+                    'aria-label': 'Cosmos DB query',
                     'aria-describedby':
                         options.container.getAttribute('aria-describedby') ??
                         '',
@@ -169,7 +169,7 @@ export function createCodeMirrorEditor(
 // #endregion codemirror-editor
 
 function editorTheme(dark: boolean) {
-    // Host styling, not part of the SQL adapter. Replace these CSS variables
+    // Host styling, not part of the language adapter. Replace these CSS variables
     // with your application's theme when copying the integration.
     return EditorView.theme(
         {

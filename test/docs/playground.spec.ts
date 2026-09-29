@@ -16,6 +16,7 @@ test('documentation navigation and theme work without browser errors', async ({ 
     for (const name of [
         'Getting started',
         'Language Service API',
+        'Diagnostics',
         'Schema Analyzer API',
         'Monaco',
         'CodeMirror',
@@ -28,6 +29,21 @@ test('documentation navigation and theme work without browser errors', async ({ 
         await expect(page.locator('main')).not.toContainText('PAGE NOT FOUND');
     }
     expect(errors).toEqual([]);
+});
+
+test('language reference links and diagnostic guidance are discoverable', async ({ page }) => {
+    for (const route of ['./', './language-service', './playground', './limitations']) {
+        await page.goto(route);
+        await expect(
+            page.locator('main').getByRole('link', { name: 'Microsoft Learn query reference', exact: true }),
+        ).toHaveAttribute('href', 'https://learn.microsoft.com/en-us/cosmos-db/query/');
+        await page.locator('main').getByRole('link', { name: 'Diagnostics', exact: true }).first().click();
+        await expect(page.locator('main h1')).toHaveText('Diagnostics');
+        await expect(page.locator('main')).toContainText('RANKED_ORDER_BY_SORT_ORDER');
+        await expect(
+            page.locator('main').getByRole('heading', { name: /^What is not validated/, level: 2 }),
+        ).toBeVisible();
+    }
 });
 
 test('mobile navigation stays within the viewport', async ({ page }) => {
@@ -49,6 +65,10 @@ for (const editor of ['monaco', 'codemirror'] as const) {
         }
 
         const sample = page.getByRole('combobox', { name: 'Sample', exact: true });
+        await expect(page.locator('h3', { hasText: /^Cosmos DB query$/ })).toBeVisible();
+        await expect(
+            page.locator(editor === 'monaco' ? '.monaco-editor textarea' : '.cm-content').first(),
+        ).toHaveAccessibleName(/^Cosmos DB query/);
         const documents = page.getByLabel('Documents to analyze (a non-empty JSON array of objects)');
         const inferredSchema = page.getByRole('region', { name: 'Inferred schema', exact: true });
         const diagnostics = page.getByRole('region', { name: 'Diagnostics', exact: true });
@@ -81,7 +101,7 @@ for (const editor of ['monaco', 'codemirror'] as const) {
             if (scenario.id === 'invalid-sql') {
                 await expect(diagnostics.locator('li').first()).toBeVisible();
             } else if (scenario.id === 'nested') {
-                await expect(diagnostics).toContainText('No SQL syntax issues found.');
+                await expect(diagnostics).toContainText('No Cosmos DB query syntax issues found.');
             }
         }
 

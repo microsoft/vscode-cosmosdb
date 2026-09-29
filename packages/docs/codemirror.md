@@ -1,5 +1,5 @@
 ---
-description: Compose Cosmos DB for NoSQL language features with CodeMirror 6 extensions.
+description: Compose Cosmos DB query language features with CodeMirror 6 extensions.
 ---
 
 # CodeMirror 6

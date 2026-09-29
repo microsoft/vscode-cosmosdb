@@ -9,7 +9,7 @@ import packageJson from '../package.json' with { type: 'json' };
 export default defineConfig({
     title: 'Cosmos DB developer tools',
     description:
-        'Schema inference and SQL language tooling for Monaco, CodeMirror, and VS Code.',
+        'Schema inference and Cosmos DB query language tooling for Monaco, CodeMirror, and VS Code.',
     lang: 'en-US',
     base: process.env.DOCS_BASE ?? '/',
     appearance: false,
@@ -48,6 +48,7 @@ export default defineConfig({
             { text: 'Overview', link: '/' },
             { text: 'Getting started', link: '/getting-started' },
             { text: 'Language Service API', link: '/language-service' },
+            { text: 'Diagnostics', link: '/diagnostics' },
             { text: 'Schema Analyzer API', link: '/schema-analyzer' },
             { text: 'Monaco', link: '/monaco' },
             { text: 'CodeMirror', link: '/codemirror' },

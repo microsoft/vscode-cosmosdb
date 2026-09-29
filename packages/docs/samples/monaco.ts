@@ -24,11 +24,11 @@ const availableLanguageIds: string[] = [];
 // #region monaco-editor
 /**
  * Import dynamically after the container mounts: Monaco requires the DOM.
- * options.service supplies SQL features; onChange preserves the host's text.
+ * options.service supplies query language features; onChange preserves the host's text.
  */
 export function createMonacoEditor(options: EditorOptions): PlaygroundEditor {
     // Configure Monaco's editor worker without replacing an existing host
-    // configuration. Our SQL service still runs on the main thread.
+    // configuration. Our language service still runs on the main thread.
     self.MonacoEnvironment ??= { getWorker: () => new EditorWorker() };
 
     // Providers are registered by language, not editor instance.
@@ -69,7 +69,7 @@ export function createMonacoEditor(options: EditorOptions): PlaygroundEditor {
         model,
         automaticLayout: true,
         minimap: { enabled: false },
-        ariaLabel: 'Cosmos DB SQL query',
+        ariaLabel: 'Cosmos DB query',
         accessibilitySupport: 'on',
         theme: options.dark ? 'vs-dark' : 'vs',
         scrollBeyondLastLine: false,

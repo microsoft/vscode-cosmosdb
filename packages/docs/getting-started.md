@@ -1,5 +1,5 @@
 ---
-description: Install the published packages and connect inferred JSON fields to SQL completions.
+description: Install the published packages and use inferred JSON fields in Cosmos DB query completions.
 ---
 
 # Getting started

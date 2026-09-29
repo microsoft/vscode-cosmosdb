@@ -71,7 +71,7 @@ function applySchema(): void {
         status.value = 'Schema applied. Field completions and diagnostics have been refreshed.';
     } catch (error) {
         schemaError.value = `Cannot apply schema: ${errorMessage(error)}`;
-        status.value = 'Schema removed. SQL syntax features remain available without document fields.';
+        status.value = 'Schema removed. Query syntax features remain available without document fields.';
     }
 
     try {
@@ -134,7 +134,7 @@ function formatQuery(): void {
         status.value =
             before !== query.value
                 ? 'Query formatted. Undo in the editor to restore the previous text.'
-                : 'No formatting changes. Invalid SQL is not repaired automatically.';
+                : 'No formatting changes. Invalid queries are not repaired automatically.';
         editor.focus();
     } catch (error) {
         editorError.value = `Formatting failed: ${errorMessage(error)}`;
@@ -185,7 +185,7 @@ onBeforeUnmount(() => {
 
 <template>
     <section class="playground" :aria-labelledby="`${id}-heading`">
-        <h2 :id="`${id}-heading`">SQL and schema playground</h2>
+        <h2 :id="`${id}-heading`">Cosmos DB query and schema playground</h2>
 
         <div class="toolbar">
             <div class="field">
@@ -236,7 +236,7 @@ onBeforeUnmount(() => {
             Retry editor
         </button>
 
-        <h3 :id="`${id}-query-heading`">SQL query</h3>
+        <h3 :id="`${id}-query-heading`">Cosmos DB query</h3>
         <div
             ref="container"
             class="editor-host"
@@ -251,7 +251,7 @@ onBeforeUnmount(() => {
             <p role="status" aria-live="polite" aria-atomic="true">
                 {{ diagnostics.length }}
                 {{ diagnostics.length === 1 ? 'diagnostic' : 'diagnostics' }}.
-                {{ !diagnostics.length && ready ? 'No SQL syntax issues found.' : '' }}
+                {{ !diagnostics.length && ready ? 'No Cosmos DB query syntax issues found.' : '' }}
             </p>
             <ul v-if="diagnostics.length" class="diagnostics">
                 <li v-for="(diagnostic, index) in diagnostics" :key="index">
@@ -264,8 +264,8 @@ onBeforeUnmount(() => {
                 </li>
             </ul>
             <p class="help">
-                Diagnostics check SQL syntax, not query results or whether every
-                field exists in your data.
+                Diagnostics check Cosmos DB query syntax, not query results or
+                whether every field exists in your data.
             </p>
         </section>
 

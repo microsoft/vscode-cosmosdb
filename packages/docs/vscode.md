@@ -28,7 +28,7 @@ Merge this contribution into your extension's `package.json`:
     "languages": [
       {
         "id": "cosmosdb-sql",
-        "aliases": ["Cosmos DB SQL"],
+        "aliases": ["Cosmos DB query language"],
         "extensions": [".nosql"]
       }
     ]

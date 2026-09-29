@@ -6,7 +6,7 @@ description: Understand parser, schema inference, editor integration, and safe e
 
 ## Parsing is not execution
 
-The language service analyzes Cosmos DB for NoSQL SQL. It is not a database SDK, SQL execution engine, query planner, or general-purpose SQL dialect parser.
+The language service analyzes the Cosmos DB query language. It is not a database SDK, query execution engine, query planner, or parser for other query languages.
 
 - Syntax acceptance does not verify account capabilities, indexes, permissions, parameter values, UDF availability, or runtime semantics.
 - Error recovery can produce an AST for invalid input. Check the error list rather than testing only whether `ast` exists.
@@ -14,6 +14,9 @@ The language service analyzes Cosmos DB for NoSQL SQL. It is not a database SDK,
 - Multi-query support is an editor document model. It does not submit a batch, implement a transaction, or share runtime variables between statements.
 
 Test production queries with the appropriate Cosmos DB SDK and service configuration separately.
+
+See [Diagnostics](./diagnostics.md) for the checks implemented in the published package.
+The [Microsoft Learn query reference](https://learn.microsoft.com/en-us/cosmos-db/query/) describes the language and service behavior, not a guarantee of package coverage.
 
 ## Schema inference observes a sample
 
@@ -38,7 +41,7 @@ Monaco and VS Code have registration helpers; CodeMirror uses manually composed 
 The CodeMirror sample includes an explicit compatibility wrapper for 1.0.0 function snippet placeholders.
 See the [CodeMirror integration](./codemirror.md#integration-sample) before copying only the raw completion factory.
 
-Formatting reconstructs SQL from the AST. It may remove comments and original spacing, and formatting edits may replace the whole document. Always preserve undo and avoid automatic formatting as a source-preservation mechanism.
+Formatting reconstructs query text from the AST. It may remove comments and original spacing, and formatting edits may replace the whole document. Always preserve undo and avoid automatic formatting as a source-preservation mechanism.
 
 Language services run synchronously. Large inputs or repeated parsing on every keystroke can block the UI; bound input size and use debounce or your own worker integration where appropriate. A registration helper is not a worker architecture.
 
@@ -57,7 +60,7 @@ during static server rendering.
 
 ## Local processing and safe rendering
 
-The playground analyzes JSON and SQL in the browser without submitting them to a database. Loading static assets and following external links still use the network. Local processing is not permission to paste sensitive content into a demo.
+The playground analyzes JSON documents and Cosmos DB queries in the browser without submitting them to a database. Loading static assets and following external links still use the network. Local processing is not permission to paste sensitive content into a demo.
 
 - Use fabricated documents and queries. Avoid credentials, personal data, customer schema names, and private identifiers.
 - Treat document values, property names, queries, and diagnostics as untrusted text.

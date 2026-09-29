@@ -42,8 +42,8 @@
   },
   {
     "id": "invalid-sql",
-    "name": "Invalid SQL",
-    "description": "Deliberate syntax errors appear in the editor and diagnostic list. Format does not repair SQL.",
+    "name": "Invalid query",
+    "description": "Deliberate syntax errors appear in the editor and diagnostic list. Format does not repair invalid queries.",
     "query": "SELECT c.name FORM c\nWHERE c.price >",
     "documents": [
       { "id": "product-1", "name": "Notebook", "price": 8.5 },

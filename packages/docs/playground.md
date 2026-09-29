@@ -1,6 +1,6 @@
 ---
 title: Playground
-description: Explore SQL language features and JSON schema inference locally in your browser.
+description: Explore Cosmos DB query language features and JSON schema inference locally in your browser.
 aside: false
 outline: false
 ---
@@ -13,16 +13,20 @@ const Playground = defineClientComponent(() => import('./components/Playground.v
 
 # Playground
 
-Explore the published language service and JSON schema analyzer with synthetic documents. Query analysis runs locally in your browser: **SQL is parsed, not executed**, and no Cosmos DB connection or credentials are needed.
+Explore the published language service and JSON schema analyzer with synthetic documents. Query analysis runs locally in your browser: **queries are parsed, not executed**, and no Cosmos DB connection or credentials are needed.
+
+Need help writing a query? Open the [Microsoft Learn query reference](https://learn.microsoft.com/en-us/cosmos-db/query/)
+or [built-in function reference](https://learn.microsoft.com/en-us/cosmos-db/query/#system-functions).
+For editor errors and warnings, see [Diagnostics](./diagnostics.md).
 
 <Playground />
 
 ## Try a focused experiment
 
-Selecting a sample immediately loads its SQL query without replacing your JSON documents or applied schema.
+Selecting a sample immediately loads its query without replacing your JSON documents or applied schema.
 Unapplied document edits are preserved too; use **Apply schema** when you want to update field suggestions.
 Sample queries may reference fields absent from your schema. This does not prevent syntax analysis; suggestions use
-your applied schema, and SQL is not executed.
+your applied schema, and queries are not executed.
 
 - Request field completion after `c.` in `SELECT c. FROM c`.
 - Hover a built-in function; in Monaco, also place the cursor inside its argument list for signature help.

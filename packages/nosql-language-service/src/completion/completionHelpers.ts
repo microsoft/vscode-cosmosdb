@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 // ---------------------------------------------------------------------------
-// Completion item helper factories for CosmosDB NoSQL SQL
+// Completion item helper factories for the Cosmos DB query language
 // ---------------------------------------------------------------------------
 
 import { FUNCTION_CATEGORIES } from './builtinFunctions.js';

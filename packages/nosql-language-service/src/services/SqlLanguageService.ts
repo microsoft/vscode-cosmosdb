@@ -40,7 +40,7 @@ import {
 // ========================== Language service ==================================
 
 /**
- * High-level, IDE-agnostic language service for CosmosDB NoSQL SQL.
+ * High-level, IDE-agnostic language service for the Cosmos DB query language.
  *
  * Aggregates parsing, completion, diagnostics, hover, signature help,
  * and formatting behind a single stateless API. Each method takes a
@@ -96,7 +96,7 @@ export class SqlLanguageService {
 
     /**
      * Strip line comments (`--`) and block comments (`/* … *\/`) from a
-     * query string, returning only the executable SQL text.
+     * query string, returning only the executable query text.
      *
      * Delegates to the standalone {@link stripComments} function.
      */
@@ -505,7 +505,7 @@ export class SqlLanguageService {
             };
         }
 
-        // 2. SQL keyword — try .md doc file first, then inline map
+        // 2. Query keyword — try .md doc file first, then inline map
         const kwDoc = getKeywordDoc(token.image.toUpperCase());
         if (kwDoc) {
             return { contents: [kwDoc], range };
@@ -802,7 +802,7 @@ function getKeywordHover(token: IToken): string | null {
 
 /**
  * Strip line comments (`--`) and block comments (`/* … *\/`) from a query
- * string, returning only the executable SQL text.
+ * string, returning only the executable query text.
  *
  * Uses the lexer to locate token boundaries — comments are already classified
  * as `SKIPPED` tokens, so they never appear in the token list. The gaps

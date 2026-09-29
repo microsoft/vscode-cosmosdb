@@ -1,6 +1,6 @@
 # @azure/cosmosdb-schema-analyzer
 
-Schema inference and statistical analysis for JSON / NoSQL and BSON / MongoDB documents.
+Schema inference and statistical analysis for JSON and BSON documents.
 
 Inspects one or more documents and produces a **JSON Schema** (draft-07 compatible) enriched with `x-*` vendor extensions that capture structural and statistical metadata:
 
@@ -10,11 +10,11 @@ Inspects one or more documents and produces a **JSON Schema** (draft-07 compatib
 
 ## Sub-modules
 
-| Import path                            | Use case                               | Dependencies               |
-| -------------------------------------- | -------------------------------------- | -------------------------- |
-| `@azure/cosmosdb-schema-analyzer`      | Shared `JSONSchema` types only         | None                       |
-| `@azure/cosmosdb-schema-analyzer/json` | Plain JSON / CosmosDB NoSQL documents  | `denque`                   |
-| `@azure/cosmosdb-schema-analyzer/bson` | MongoDB API / DocumentDB API documents | `denque`, `mongodb` (peer) |
+| Import path                            | Use case                       | Dependencies               |
+| -------------------------------------- | ------------------------------ | -------------------------- |
+| `@azure/cosmosdb-schema-analyzer`      | Shared `JSONSchema` types only | None                       |
+| `@azure/cosmosdb-schema-analyzer/json` | JSON documents                 | `denque`                   |
+| `@azure/cosmosdb-schema-analyzer/bson` | BSON documents                 | `denque`, `mongodb` (peer) |
 
 ## Installation
 
@@ -67,7 +67,7 @@ const fields = analyzer.getKnownFields();
 | `simplifySchema(schema)`                | Unwrap single-element `anyOf` arrays                   |
 | `getPropertyNamesAtLevel(schema, path)` | List property names at a given nesting level           |
 | `buildFullPaths(path, names)`           | Build dot-separated full paths                         |
-| `inferNoSqlType(value)`                 | Infer the NoSQL type of a JS value                     |
+| `inferNoSqlType(value)`                 | Infer the JSON analyzer's type tag for a JS value      |
 
 ## BSON API
 

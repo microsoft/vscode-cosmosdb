@@ -82,7 +82,7 @@ export function generateDocsIndexContent() {
 
     lines.push(']);', '');
 
-    lines.push('/** Hover documentation for SQL keywords (key = uppercase keyword name). */');
+    lines.push('/** Hover documentation for query keywords (key = uppercase keyword name). */');
     lines.push('export const keywordDocs = new Map<string, string>([');
 
     for (const [name, content] of sortedKeywords) {

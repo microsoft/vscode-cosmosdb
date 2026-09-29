@@ -27,7 +27,7 @@ and a partial AST.
 When there is doubt, use these in order:
 
 1. `{...}/sql/sql.y`
-2. native backend tests that exercise emitted/accepted SQL
+2. native backend tests that exercise emitted and accepted queries
 3. `tests/parser/parser.test.ts`
 4. this document
 

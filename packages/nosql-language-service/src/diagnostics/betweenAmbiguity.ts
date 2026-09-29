@@ -6,7 +6,7 @@
 // ---------------------------------------------------------------------------
 // BETWEEN + AND ambiguity detection.
 //
-// The CosmosDB NoSQL parser (mirroring the native C++ sql.y grammar) treats
+// The Cosmos DB query language parser (mirroring the native C++ sql.y grammar) treats
 // the AND keyword greedily inside a BETWEEN expression:
 //
 //   a BETWEEN low AND high AND b = 3

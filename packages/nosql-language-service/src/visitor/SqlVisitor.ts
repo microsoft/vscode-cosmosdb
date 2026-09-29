@@ -6,7 +6,7 @@
 /**
  * @module visitor/SqlVisitor
  *
- * Visitor pattern for traversing the CosmosDB SQL AST.
+ * Visitor pattern for traversing the Cosmos DB query language AST.
  * Implement {@link SqlVisitor} to process each node type,
  * or use {@link visitNode} to dispatch dynamically by `kind`.
  *

@@ -90,7 +90,7 @@ Type-system-agnostic functions for querying and transforming schemas:
 - `getPropertyNamesAtLevel()` — list property names at a given path
 - `buildFullPaths()` — construct dot-notated paths
 
-### `json/` — JSON / CosmosDB NoSQL Analyzer
+### `json/` — JSON Document Analyzer
 
 Provides a **functional API** for plain JSON documents:
 
@@ -100,9 +100,9 @@ Provides a **functional API** for plain JSON documents:
 
 Uses `x-dataType` as the type extension key. Type inference handles JS primitives (`string`, `number`, `boolean`, `null`, `undefined`) plus `array` and `object`.
 
-### `bson/` — BSON / MongoDB Analyzer
+### `bson/` — BSON Document Analyzer
 
-Provides a **class-based API** (`SchemaAnalyzer`) for MongoDB/DocumentDB documents:
+Provides a **class-based API** (`SchemaAnalyzer`) for BSON documents:
 
 - Incremental analysis with `addDocument()` / `addDocuments()`
 - Version tracking for cache invalidation

@@ -2,7 +2,7 @@
   "name": "@azure/cosmosdb-schema-analyzer",
   "version": "1.0.0",
   "type": "module",
-  "description": "Schema inference and analysis for JSON/NoSQL and BSON/MongoDB documents — extracts structure, types, and statistics from document collections",
+  "description": "Schema inference and analysis for JSON and BSON documents — extracts structure, types, and statistics from document collections",
   "main": "dist/esm/index.js",
   "types": "dist/types/index.d.ts",
   "exports": {

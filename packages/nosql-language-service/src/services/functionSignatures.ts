@@ -20,7 +20,7 @@ export interface FunctionMeta {
 }
 
 /**
- * Registry of all built-in CosmosDB NoSQL functions.
+ * Registry of all built-in Cosmos DB query language functions.
  * Key = uppercase function name.
  */
 export const FUNCTION_SIGNATURES: Record<string, FunctionMeta> = {

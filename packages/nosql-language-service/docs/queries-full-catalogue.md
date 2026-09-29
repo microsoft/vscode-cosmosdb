@@ -1,4 +1,4 @@
-# NoSQL SELECT Query Catalogue
+# Cosmos DB SELECT Query Catalogue
 
 All queries planned for the test suite, grouped by feature.
 Containers: **Products** (flat), **Orders** (nested + arrays), **Events** (sparse, time-series).
@@ -418,7 +418,7 @@ Criteria: **maximum feature diversity**, **simple → complex**, independently m
 - **W-10** — compound WHERE covers `AND`, two comparisons, and `>` / `<`.
 - **S-04 + O-03** — `DISTINCT` flag + `OrderByClause` both present in the same AST.
 - **B-08** — `BetweenScalarExpression` + `InScalarExpression` inside a compound `AND`. Parentheses around BETWEEN are mandatory.
-- **J-03** — `JoinCollectionExpression` (array iterator) with a `WHERE` that references the iterator variable — the most common NoSQL "flatten" pattern.
+- **J-03** — `JoinCollectionExpression` (array iterator) with a `WHERE` that references the iterator variable — the most common array-flattening pattern in Cosmos DB queries.
 - **G-03** — `GroupByClause` + `FunctionCallScalarExpression` (AVG) as a SELECT item.
 - **E-01** — `ExistsScalarExpression` wrapping a full nested `SqlQuery` — deepest nesting in the AST for most queries.
 - **SQ-01** — `ArraySubqueryScalarExpression` in the SELECT projection — orthogonal to WHERE-based tests.

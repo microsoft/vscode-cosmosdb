@@ -64,7 +64,7 @@ export const fixtures: QueryFixture[] = [
         },
     },
     {
-        // SQ-05/SQ-06 cover the real restriction: Azure Cosmos DB NoSQL does not
+        // SQ-05/SQ-06 cover the real restriction: the Cosmos DB query language does not
         // support ORDER BY inside ANY subquery — a language limitation, not an
         // emulator gap. The scalar subquery itself works (SQ-01..SQ-04 pass); only
         // the nested ORDER BY is rejected (HTTP 400 on both production and the
@@ -87,7 +87,7 @@ export const fixtures: QueryFixture[] = [
             },
         },
         knownLimitation:
-            'ORDER BY inside a subquery is not supported by Azure Cosmos DB NoSQL (rejected with HTTP 400)',
+            'ORDER BY inside a subquery is not supported in the Cosmos DB query language (rejected with HTTP 400)',
     },
     {
         id: 'SQ-06',
@@ -103,7 +103,7 @@ export const fixtures: QueryFixture[] = [
             },
         },
         knownLimitation:
-            'ORDER BY inside a subquery is not supported by Azure Cosmos DB NoSQL (rejected with HTTP 400)',
+            'ORDER BY inside a subquery is not supported in the Cosmos DB query language (rejected with HTTP 400)',
     },
 
     // ── OP series: operators ────────────────────────────────────────────────

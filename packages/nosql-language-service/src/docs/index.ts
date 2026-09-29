@@ -676,7 +676,7 @@ SELECT COUNTIF(c.status = "active") FROM c
 
 ---
 
-⚠️ **Documentation:** No public documentation available yet. This is an internal Cosmos DB SQL function.`],
+⚠️ **Documentation:** No public documentation available yet. This is an internal function in the Cosmos DB query language.`],
     ["DATETIMEADD", `# DATETIMEADD
 
 **Category:** Date/Time
@@ -1216,7 +1216,7 @@ Returns a numeric hash value.
 
 ---
 
-⚠️ **Documentation:** No public documentation available yet. This is an internal Cosmos DB SQL function.`],
+⚠️ **Documentation:** No public documentation available yet. This is an internal function in the Cosmos DB query language.`],
     ["IIF", `# IIF
 
 **Category:** Other
@@ -1761,7 +1761,7 @@ Returns a string.
 
 ---
 
-⚠️ **Documentation:** No public documentation available yet. This is an internal Cosmos DB SQL function.`],
+⚠️ **Documentation:** No public documentation available yet. This is an internal function in the Cosmos DB query language.`],
     ["LASTSUBSTRINGBEFORE", `# LASTSUBSTRINGBEFORE
 
 **Category:** String
@@ -1782,7 +1782,7 @@ Returns a string.
 
 ---
 
-⚠️ **Documentation:** No public documentation available yet. This is an internal Cosmos DB SQL function.`],
+⚠️ **Documentation:** No public documentation available yet. This is an internal function in the Cosmos DB query language.`],
     ["LEFT", `# LEFT
 
 **Category:** String
@@ -1933,7 +1933,7 @@ GROUP BY c.category
 
 ---
 
-⚠️ **Documentation:** No public documentation available yet. This is an internal Cosmos DB SQL function.`],
+⚠️ **Documentation:** No public documentation available yet. This is an internal function in the Cosmos DB query language.`],
     ["MAKESET", `# MAKESET
 
 **Category:** Aggregate
@@ -1965,7 +1965,7 @@ GROUP BY c.category
 
 ---
 
-⚠️ **Documentation:** No public documentation available yet. This is an internal Cosmos DB SQL function.`],
+⚠️ **Documentation:** No public documentation available yet. This is an internal function in the Cosmos DB query language.`],
     ["MAX", `# MAX
 
 **Category:** Aggregate
@@ -2978,7 +2978,7 @@ Returns a string.
 
 ---
 
-⚠️ **Documentation:** No public documentation available yet. This is an internal Cosmos DB SQL function.`],
+⚠️ **Documentation:** No public documentation available yet. This is an internal function in the Cosmos DB query language.`],
     ["SUBSTRINGBEFORE", `# SUBSTRINGBEFORE
 
 **Category:** String
@@ -2999,7 +2999,7 @@ Returns a string.
 
 ---
 
-⚠️ **Documentation:** No public documentation available yet. This is an internal Cosmos DB SQL function.`],
+⚠️ **Documentation:** No public documentation available yet. This is an internal function in the Cosmos DB query language.`],
     ["SUM", `# SUM
 
 **Category:** Aggregate
@@ -3235,7 +3235,7 @@ Returns an integer.
 📖 **Documentation:** [YEAR](https://learn.microsoft.com/en-us/cosmos-db/query/year)`],
 ]);
 
-/** Hover documentation for SQL keywords (key = uppercase keyword name). */
+/** Hover documentation for query keywords (key = uppercase keyword name). */
 export const keywordDocs = new Map<string, string>([
     ["AND", `# AND
 

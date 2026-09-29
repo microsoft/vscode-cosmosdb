@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 // ---------------------------------------------------------------------------
-// Built-in functions for CosmosDB NoSQL SQL
+// Built-in functions for the Cosmos DB query language
 // Source: SqlStringTokens.txt — "System Built-in Functions" section.
 // Uses the underscore-separated canonical forms (ARRAY_LENGTH not ARRAYLENGTH).
 // Grouped by category for priority ranking.

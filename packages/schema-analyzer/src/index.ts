@@ -9,8 +9,8 @@
  * Public API entry point for `@azure/cosmosdb-schema-analyzer`.
  *
  * Provides two sub-modules:
- * - `@azure/cosmosdb-schema-analyzer/json` — for plain JSON / NoSQL documents
- * - `@azure/cosmosdb-schema-analyzer/bson` — for MongoDB API / DocumentDB API documents (requires `mongodb` peer dependency)
+ * - `@azure/cosmosdb-schema-analyzer/json` — for JSON documents
+ * - `@azure/cosmosdb-schema-analyzer/bson` — for BSON documents (requires `mongodb` peer dependency)
  *
  * The shared `JSONSchema` type is re-exported from the root for convenience.
  *

@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 // ---------------------------------------------------------------------------
-// Post-parse typo detection for near-miss SQL keywords.
+// Post-parse typo detection for near-miss query keywords.
 //
 // Scans tokens for identifiers that look like misspelled keywords
 // (e.g. "FORM" → "FROM", "WHER" → "WHERE") and emits warnings.
@@ -156,7 +156,7 @@ function isClauseBoundaryPosition(tokens: IToken[], index: number): boolean {
 // ========================== Main entry point ==================================
 
 /**
- * Scan a query for identifiers that look like misspelled SQL keywords.
+ * Scan a query for identifiers that look like misspelled query keywords.
  *
  * Returns an array of warnings (never errors). Only flags identifiers:
  * - At least 3 characters long (avoids false positives on `c`, `d`, `id`)
@@ -164,7 +164,7 @@ function isClauseBoundaryPosition(tokens: IToken[], index: number): boolean {
  * - In a clause-boundary position (not after `.`, not after `AS`)
  * - Not an exact match of any keyword (those are already tokenized correctly)
  *
- * @param query - The SQL query string
+ * @param query - The query text
  * @returns Array of typo warnings (empty if none found)
  */
 export function detectTypos(query: string): TypoWarning[] {

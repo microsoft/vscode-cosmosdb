@@ -19,7 +19,7 @@ Query String
 ┌────────────┐
 │  Consumer  │──→ One of:
 └────────────┘
-    ├── SqlPrinter           → SQL string (round-trip)
+    ├── SqlPrinter           → query text (round-trip)
     ├── SqlVisitor           → custom traversal
     ├── SqlCompletion        → CompletionItem[] (generic)
     ├── SqlLanguageService   → IDE-agnostic facade ①
@@ -87,7 +87,7 @@ The library is organized in three layers:
 - `lexer/` — tokenizer
 - `parser/` — grammar → AST
 - `ast/` — node type definitions
-- `printer/` — AST → SQL string
+- `printer/` — AST → query text
 - `visitor/` — visitor pattern
 - `errors/` — error types
 - `diagnostics/` — post-parse warnings (typo detection)
@@ -159,7 +159,7 @@ dependencies and tree-shakes cleanly.
 | `parser/SqlParser.ts`               | Full grammar — the core        |
 | `lexer/tokens.ts`                   | Token definitions (50+ tokens) |
 | `completion/SqlCompletion.ts`       | Autocomplete engine            |
-| `printer/SqlPrinter.ts`             | AST → SQL serializer           |
+| `printer/SqlPrinter.ts`             | AST → query text serializer    |
 | `visitor/SqlVisitor.ts`             | Visitor pattern dispatch       |
 | `errors/SqlError.ts`                | Error types + source locations |
 | `errors/SqlErrorMessageProvider.ts` | Human-friendly error messages  |

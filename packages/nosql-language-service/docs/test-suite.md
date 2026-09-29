@@ -1,4 +1,4 @@
-# NoSQL Query Test Suite
+# Cosmos DB Query Test Suite
 
 ## Overview
 

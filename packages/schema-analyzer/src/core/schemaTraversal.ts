@@ -8,8 +8,7 @@ import { type JSONSchema7TypeName } from 'json-schema';
 import { type JSONSchema } from '../JSONSchema.js';
 
 /**
- * Adapter interface that abstracts the type system differences between
- * JSON (NoSQL) and BSON (MongoDB) analyzers.
+ * Adapter interface that abstracts the type system differences between JSON and BSON analyzers.
  *
  * The generic BFS traversal delegates all type-specific decisions to this adapter.
  */

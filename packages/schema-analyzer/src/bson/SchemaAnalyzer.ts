@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 /**
- * Schema inference for MongoDB API / DocumentDB API documents (BSON).
+ * Schema inference for BSON documents, including DocumentDB documents.
  *
  * Uses the shared core traversal with a BSON-specific type adapter.
  * Schema output uses `x-bsonType` for the original BSON type tag.
@@ -119,7 +119,7 @@ const bsonTypeAdapter: TypeAdapter<BSONType> = {
 // ── SchemaAnalyzer class ───────────────────────────────────────────────
 
 /**
- * Incremental schema analyzer for documents from the MongoDB API / DocumentDB API.
+ * Incremental schema analyzer for BSON documents.
  *
  * Analyzes documents one at a time (or in batches) and builds a cumulative
  * JSON Schema with statistical extensions (x-occurrence, x-bsonType, etc.).

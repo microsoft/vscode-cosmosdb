@@ -1,14 +1,18 @@
 # @azure/cosmosdb-nosql-language-service
 
-TypeScript parser for CosmosDB NoSQL SQL with error recovery,
+TypeScript parser for the Cosmos DB query language with error recovery,
 autocomplete, and AST transformation.
 
 Built on [Chevrotain](https://chevrotain.io/) — works in
 Node.js and browsers (including Electron).
 
+For the query language itself, see the [Microsoft Learn query reference](https://learn.microsoft.com/en-us/cosmos-db/query/)
+and [built-in functions](https://learn.microsoft.com/en-us/cosmos-db/query/#system-functions).
+This README describes the package API, not the complete language or server validation rules.
+
 ## Features
 
-- ✅ **Full grammar** — all CosmosDB NoSQL: SELECT, FROM,
+- ✅ **Full grammar** — Cosmos DB query language constructs: SELECT, FROM,
   WHERE, JOIN, GROUP BY, ORDER BY, OFFSET/LIMIT, TOP,
   DISTINCT, VALUE, UDF, BETWEEN, IN, LIKE,
   EXISTS, ARRAY, subqueries, ternary, coalesce, bitwise operators
@@ -18,7 +22,7 @@ Node.js and browsers (including Electron).
   AST node for editor integration
 - ✅ **Autocomplete** — context-aware suggestions with schema
   field navigation and priority ranking
-- ✅ **Round-trip** — parse → modify AST → print back to SQL
+- ✅ **Round-trip** — parse → modify AST → print back to query text
 - ✅ **Visitor pattern** — type-safe AST traversal
 - ✅ **IDE-agnostic** — pure API with zero editor dependencies
 - ✅ **Ready-made providers** — plug-and-play adapters for
@@ -74,7 +78,7 @@ if (errors.length === 0) {
   console.log(ast.query.select.spec.kind); // "SelectStarSpec"
 }
 
-// Round-trip: AST → SQL string
+// Round-trip: AST → query text
 const sql = sqlToString(ast!);
 console.log(sql); // "SELECT * FROM c WHERE c.age > 21"
 
@@ -171,11 +175,11 @@ const extensions = [
 
 #### `parse(query: string): ParseResult`
 
-Parse a SQL string. Returns `{ ast?, errors[] }`.
+Parse query text. Returns `{ ast?, errors[] }`.
 
 #### `sqlToString(program: SqlProgram): string`
 
-Serialize an AST back to a canonical SQL string.
+Serialize an AST back to canonical query text.
 
 #### `getCompletions(request: CompletionRequest): CompletionItem[]`
 
@@ -232,7 +236,7 @@ Returns active function signature and parameter index.
 
 #### `service.format(query): string`
 
-Returns formatted SQL (parse → reprint).
+Returns formatted query text (parse → reprint).
 
 #### `service.getFormatEdits(query): TextEdit[]`
 

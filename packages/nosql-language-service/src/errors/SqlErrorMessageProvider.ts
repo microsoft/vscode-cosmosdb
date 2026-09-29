@@ -141,7 +141,7 @@ function formatExpectedList(labels: string[], maxItems = 5): string {
 // ---------------------------------------------------------------------------
 
 /**
- * Custom error message provider for the CosmosDB NoSQL SQL parser.
+ * Custom error message provider for the Cosmos DB query language parser.
  *
  * Implements Chevrotain's `IParserErrorMessageProvider` to produce
  * user-friendly error messages instead of raw token type names.

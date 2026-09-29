@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 // ---------------------------------------------------------------------------
-// Chevrotain EmbeddedActionsParser for CosmosDB NoSQL SQL
+// Chevrotain EmbeddedActionsParser for the Cosmos DB query language
 // Directly builds immutable AST nodes (no intermediate CST).
 // Translates the grammar from sql.y almost 1-to-1.
 // ---------------------------------------------------------------------------

@@ -20,8 +20,8 @@ import {
 } from 'mongodb';
 
 /**
- * Represents the different data types that can be stored in a DocumentDB API / MongoDB API document.
- * The string representation is case-sensitive and should match the MongoDB API documentation.
+ * Represents the case-sensitive type tags used by the BSON document analyzer.
+ * For the underlying BSON types, see:
  * https://www.mongodb.com/docs/manual/reference/bson-types/
  */
 export type BSONType =
@@ -134,8 +134,8 @@ export function bsonTypeToJSONType(type: BSONType): string {
 }
 
 /**
- * Accepts a value from a MongoDB API `Document` object and returns the inferred BSON type.
- * @param value - The value of a field in a MongoDB API `Document` object
+ * Accepts a value from a BSON document and returns the inferred type.
+ * @param value - The value of a field in a BSON document
  */
 export function inferBsonType(value: unknown): BSONType {
     if (value === null) return 'null';

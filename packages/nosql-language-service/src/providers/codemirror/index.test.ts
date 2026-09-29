@@ -121,7 +121,7 @@ describe('createLintSource', () => {
         expect(typeof source).toBe('function');
     });
 
-    it('returns diagnostics for invalid SQL', () => {
+    it('returns diagnostics for an invalid query', () => {
         const source = createLintSource(service);
         const view = createViewMock('SELECT * FORM c');
         const diags = source(view);
@@ -133,7 +133,7 @@ describe('createLintSource', () => {
         expect(typeof diags[0].to).toBe('number');
     });
 
-    it('returns empty array for valid SQL', () => {
+    it('returns empty array for a valid query', () => {
         const source = createLintSource(service);
         const view = createViewMock('SELECT * FROM c');
         const diags = source(view);

@@ -1,8 +1,8 @@
 {
   "name": "@azure/cosmosdb-nosql-language-service",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
-  "description": "CosmosDB NoSQL language service — parser, AST, autocomplete, hover docs, formatting, and editor providers",
+  "description": "Language service for the Cosmos DB query language — parser, AST, autocomplete, hover docs, formatting, and editor providers",
   "main": "dist/esm/index.js",
   "types": "dist/types/index.d.ts",
   "exports": {

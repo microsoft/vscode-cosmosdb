@@ -16,7 +16,7 @@ interface NoSqlTokenState {
 }
 
 /**
- * A CodeMirror 6 `StreamParser` for CosmosDB NoSQL query syntax.
+ * A CodeMirror 6 `StreamParser` for the Cosmos DB query language.
  * Compatible with `StreamLanguage.define()`.
  */
 export const cosmosDbSqlStreamParser: StreamParser<NoSqlTokenState> = {

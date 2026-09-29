@@ -15,7 +15,7 @@
  * // Parse a query
  * const { ast, errors } = parse("SELECT * FROM c WHERE c.age > 21");
  *
- * // Round-trip: AST → SQL string
+ * // Round-trip: AST → query text
  * const sql = sqlToString(ast!);
  *
  * // Get autocomplete suggestions
@@ -69,7 +69,7 @@ export type {
 // ---------------------------------------------------------------------------
 
 /**
- * The result of parsing a CosmosDB NoSQL SQL query.
+ * The result of parsing a query written in the Cosmos DB query language.
  * Always contains an `errors` array; `ast` is present even when
  * errors occur (partial AST via Chevrotain error recovery).
  */
@@ -107,13 +107,13 @@ function offsetToPosition(text: string, offset: number): SourcePosition {
 }
 
 /**
- * Parse a CosmosDB NoSQL SQL query string into a typed AST.
+ * Parse a query written in the Cosmos DB query language into a typed AST.
  *
  * The parser uses Chevrotain's built-in error recovery, so it will
  * attempt to build a partial AST even when the query is invalid.
  * Check `result.errors` to determine validity.
  *
- * @param query - The SQL query string to parse.
+ * @param query - The query text to parse.
  * @returns A {@link ParseResult} with the AST and any errors.
  *
  * @example

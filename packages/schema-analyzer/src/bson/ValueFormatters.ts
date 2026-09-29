@@ -7,10 +7,10 @@ import { type Binary, type BSONRegExp, type ObjectId } from 'mongodb';
 import { type BSONType } from './BSONTypes.js';
 
 /**
- * Converts a MongoDB API value to its display string representation based on its type.
+ * Converts a BSON value to its display string representation based on its type.
  *
  * @param value - The value to be converted to a display string.
- * @param type - The MongoDB API data type of the value.
+ * @param type - The BSON type tag of the value.
  * @returns The string representation of the value.
  */
 export function valueToDisplayString(value: unknown, type: BSONType): string {

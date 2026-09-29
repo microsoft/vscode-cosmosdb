@@ -108,15 +108,15 @@ Incrementally adds a document to an existing schema. **Mutates** the schema.
 
 #### `inferNoSqlType(value): NoSQLTypes`
 
-Returns the NoSQL type tag for a JavaScript value.
+Returns the JSON analyzer's type tag for a JavaScript value.
 
 #### `noSqlTypeToJSONType(type): string`
 
-Maps a NoSQL type to its JSON Schema `type` value.
+Maps a JSON analyzer type tag to its JSON Schema `type` value.
 
 #### `noSqlTypeToDisplayString(type): string`
 
-Maps a NoSQL type to a human-readable display string (e.g., `'string'` → `'String'`).
+Maps a JSON analyzer type tag to a human-readable display string (e.g., `'string'` → `'String'`).
 
 #### `simplifySchema(schema): void`
 

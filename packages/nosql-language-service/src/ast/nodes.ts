@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 // ---------------------------------------------------------------------------
-// CosmosDB NoSQL SQL — Abstract Syntax Tree node types
+// Cosmos DB query language — Abstract Syntax Tree node types
 // Mirrors C++ SQL*.h classes from queryLanguages/sql/
 // All nodes are immutable plain objects with a discriminant `kind` field.
 // ---------------------------------------------------------------------------

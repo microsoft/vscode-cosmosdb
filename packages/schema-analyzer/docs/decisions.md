@@ -11,8 +11,8 @@ This document records key architectural decisions for `@azure/cosmosdb-schema-an
 **Context:**
 The package must support two fundamentally different type systems:
 
-- **JSON (NoSQL)** — 7 types (`string`, `number`, `boolean`, `object`, `array`, `null`, `undefined`)
-- **BSON (MongoDB)** — 23+ types (`objectid`, `int32`, `long`, `double`, `decimal128`, `date`, `binary`, `uuid`, etc.)
+- **JSON analyzer** — 7 inferred types (`string`, `number`, `boolean`, `object`, `array`, `null`, `undefined`)
+- **BSON analyzer** — 23+ inferred types (`objectid`, `int32`, `long`, `double`, `decimal128`, `date`, `binary`, `uuid`, etc.)
 
 Both share the same traversal logic (BFS over document properties and array items), but diverge in type inference, JSON Schema mapping, and statistics collection.
 
@@ -129,7 +129,7 @@ The two sub-modules have different usage patterns:
 **Status:** Accepted
 
 **Context:**
-The `mongodb` driver is a heavy dependency (~2MB). Projects that only need JSON schema analysis (e.g., CosmosDB NoSQL) should not be forced to install it.
+The `mongodb` driver is a heavy dependency (~2MB). Projects that only need JSON schema analysis (e.g., for Cosmos DB JSON documents) should not be forced to install it.
 
 **Decision:**
 Three entry points via `package.json` `exports`:

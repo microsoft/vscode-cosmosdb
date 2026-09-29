@@ -151,19 +151,21 @@ export function buildDataModel(scenario: ScenarioId): DataModel {
 }
 
 /**
- * A fresh, minimally-populated container for the "Add Container" action. Seeded with a single
- * `id` key property so it is immediately valid on the Data, Queries and Scale tabs.
+ * A fresh container for the "Add Container" action, seeded with an `id` key and
+ * `type` and `createdAt` filter properties.
  */
 export function createBlankContainer(entity = 'NewContainer'): ContainerModel {
-    const properties = [
-        { id: nextId('prop'), name: 'id', type: 'string' as const, role: 'key' as const, pkCandidate: true },
+    const properties: ContainerModel['properties'] = [
+        { id: nextId('prop'), name: 'id', type: 'string', role: 'key', pkCandidate: true },
+        { id: nextId('prop'), name: 'type', type: 'string', role: 'filter', pkCandidate: false },
+        { id: nextId('prop'), name: 'createdAt', type: 'string (ISO)', role: 'filter', pkCandidate: false },
     ];
     return {
         id: nextId('container'),
         entity,
         partitionKey: '/id',
         properties,
-        document: { attributeCount: 8, avgSizeKb: 1, maxSizeKb: 4 },
+        document: { attributeCount: 3, avgSizeKb: 1, maxSizeKb: 4 },
         arrays: { hasArrays: false, avgItems: 10, maxItems: 100, updatePattern: 'none' },
         reads: [{ id: nextId('read'), pattern: '', filters: 'id', qps: 100 }],
         writes: { insertsPerSec: 0, updatesPerSec: 0, deletesPerSec: 0 },

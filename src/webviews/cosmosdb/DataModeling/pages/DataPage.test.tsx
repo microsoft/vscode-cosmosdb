@@ -21,6 +21,27 @@ beforeEach(() => {
 });
 
 describe('DataPage property types', () => {
+    it('shows three default attributes for a new container and keeps the count editable', () => {
+        const container = createBlankContainer();
+        const model: DataModel = { containers: [container], activeContainerId: container.id };
+        const onChange = vi.fn<(next: DataModel) => void>();
+        render(<DataPage model={model} onChange={onChange} />);
+        const count = screen.getByRole('spinbutton', { name: 'Total attributes per document' });
+        expect(screen.getByText('Total attributes per document')).toBeVisible();
+        expect(count).toHaveAccessibleName('Total attributes per document');
+        expect(count).toHaveValue(3);
+        const table = within(screen.getByRole('table', { name: 'Schema properties' }));
+        expect(table.getAllByRole('row')).toHaveLength(4);
+        for (const name of ['id', 'type', 'createdAt']) {
+            expect(table.getByText(name)).toBeVisible();
+        }
+        expect(table.getByRole('combobox', { name: 'Type for type' })).toHaveValue('string');
+        expect(table.getByRole('combobox', { name: 'Type for createdAt' })).toHaveValue('string (ISO)');
+        expect(onChange).not.toHaveBeenCalled();
+        fireEvent.change(count, { target: { value: '7' } });
+        expect(onChange.mock.calls[0][0].containers[0].document.attributeCount).toBe(7);
+    });
+
     it('displays the descriptive date/time label and preserves the stored type when editing', async () => {
         const user = userEvent.setup();
         const container = createBlankContainer();

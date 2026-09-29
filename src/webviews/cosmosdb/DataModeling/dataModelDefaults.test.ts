@@ -6,11 +6,64 @@
 import { describe, expect, it } from 'vitest';
 import { getPartitionKeyPaths } from '../../../dataModeling/deploymentModel';
 import { ModelingAdvisorSnapshotSchema } from '../../../dataModeling/modelingAdvisorSchema';
-import { buildDataModel, createInitialState, withDerivedCandidates } from './dataModel';
+import { buildDataModel, createBlankContainer, createInitialState, withDerivedCandidates } from './dataModel';
 import { DATA_MODEL_DEFAULTS } from './dataModelDefaults';
 import { getScenarioList } from './scenarios';
 
 const scenarios = getScenarioList().filter((scenario) => scenario.id !== 'other');
+
+describe('new container defaults', () => {
+    it('seeds three attributes with matching properties and derived scale candidates', () => {
+        const container = createBlankContainer('New orders');
+        expect(container.entity).toBe('New orders');
+        expect(container.partitionKey).toBe('/id');
+        expect(container.document).toEqual({ attributeCount: 3, avgSizeKb: 1, maxSizeKb: 4 });
+        expect(container.properties).toHaveLength(container.document.attributeCount);
+        expect(
+            container.properties.map(({ name, type, role, pkCandidate }) => ({ name, type, role, pkCandidate })),
+        ).toEqual([
+            { name: 'id', type: 'string', role: 'key', pkCandidate: true },
+            { name: 'type', type: 'string', role: 'filter', pkCandidate: false },
+            { name: 'createdAt', type: 'string (ISO)', role: 'filter', pkCandidate: false },
+        ]);
+        expect(
+            container.scale.candidates.map(({ attribute, role, distinctValues }) => ({
+                attribute,
+                role,
+                distinctValues,
+            })),
+        ).toEqual([
+            { attribute: 'id', role: 'key', distinctValues: 500000 },
+            { attribute: 'type', role: 'filter', distinctValues: 25 },
+            { attribute: 'createdAt', role: 'filter', distinctValues: 3650 },
+        ]);
+        expect(
+            ModelingAdvisorSnapshotSchema.safeParse({
+                wizard: {
+                    ...createInitialState(),
+                    dataModel: { containers: [container], activeContainerId: container.id },
+                },
+                recommendation: { status: 'idle' },
+            }).success,
+        ).toBe(true);
+    });
+
+    it('gives each added container independent properties, IDs, and document settings', () => {
+        const first = createBlankContainer();
+        const second = createBlankContainer();
+        first.properties[1].name = 'customType';
+        first.document.attributeCount = 12;
+        expect(second.entity).toBe('NewContainer');
+        expect(second.properties.map((property) => property.name)).toEqual(['id', 'type', 'createdAt']);
+        expect(second.document.attributeCount).toBe(3);
+        const ids = [first, second].flatMap((container) => [
+            container.id,
+            ...container.properties.map((property) => property.id),
+            ...container.scale.candidates.map((candidate) => candidate.id),
+        ]);
+        expect(new Set(ids).size).toBe(ids.length);
+    });
+});
 
 describe('scenario defaults', () => {
     it('covers all built-in scenarios and containers', () => {

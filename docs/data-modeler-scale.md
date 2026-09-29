@@ -26,6 +26,10 @@ Dismissing the dialog keeps Data selected and returns focus to Next.
 Visits are tracked separately for each container during the open wizard session, including when revisiting a step,
 but are not saved when the wizard is closed. Visiting either Queries or Scale suppresses the reminder for that container.
 
+Containers created with **Add container** start with **Total attributes per document** set to 3:
+an `id` key, a `type` string filter, and a `createdAt` date/time filter. The count and properties remain editable.
+Workload templates and previously saved containers retain their own configuration.
+
 ## Source of truth
 
 - [ScalePage.tsx](../src/webviews/cosmosdb/DataModeling/pages/ScalePage.tsx):

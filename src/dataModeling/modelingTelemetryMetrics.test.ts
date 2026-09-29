@@ -146,7 +146,7 @@ describe('modeling usage metrics', () => {
             queriesChanged: true,
             scaleChanged: true,
             containerCount: baseline.containerCount + 1,
-            propertyCount: baseline.propertyCount + 1,
+            propertyCount: baseline.propertyCount + 3,
             queryCount: baseline.queryCount + 1,
             customizedContainerCount: 1,
         });
@@ -193,7 +193,7 @@ describe('modeling usage metrics', () => {
             queriesChanged: true,
             scaleChanged: true,
             containerCount: 1,
-            propertyCount: 1,
+            propertyCount: 3,
             queryCount: 1,
             customizedContainerCount: 1,
         });

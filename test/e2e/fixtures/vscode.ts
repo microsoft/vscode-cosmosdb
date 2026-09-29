@@ -75,7 +75,7 @@ interface E2eConfig {
     emulator?: EmulatorConfig;
 }
 
-function readE2eConfig(): E2eConfig {
+export function readE2eConfig(): E2eConfig {
     const configPath = path.resolve(repoRoot, '.vscode-test', 'e2e-config.json');
     return JSON.parse(readFileSync(configPath, 'utf-8')) as E2eConfig;
 }

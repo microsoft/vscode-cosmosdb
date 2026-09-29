@@ -140,6 +140,17 @@ Attach the Azure Cosmos DB Emulator to work with a local instance of Azure Cosmo
 
 For local setup instructions and connection details, see [Azure Cosmos DB Emulator](docs/cosmosdb-emulator.md).
 
+## Corporate proxies
+
+Normal Cosmos DB for NoSQL connections delegate proxy handling to VS Code. See
+[VS Code network configuration](https://code.visualstudio.com/docs/setup/network) for proxy, authentication,
+and certificate guidance.
+
+**Emulator exception:** local `localhost` and `127.0.0.1` emulators remain direct and retain their self-signed
+certificate handling. Emulator connections supply an explicit TLS agent, so `http.proxySupport: "on"` does not
+add proxy routing for them. A remotely hosted emulator requiring a proxy needs `fallback` or `override`
+and appropriate certificate trust.
+
 ## Known Issues
 
 > [!WARNING]

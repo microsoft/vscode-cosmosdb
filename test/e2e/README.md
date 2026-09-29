@@ -6,6 +6,12 @@ shell (tree view, status bar, settings UI) — that's the job of the
 Extension-Host integration tests next door under
 [`test/`](../) (run via `npm run test`).
 
+The suite also includes [proxy/TLS tests](specs/proxy.spec.ts), run locally and in the E2E CI workflow.
+They reuse the downloaded VS Code executable but launch isolated profiles through the
+[proxy launcher](../../scripts/test-proxy.mjs). See
+[Testing proxy routing locally](../../docs/test-configuration.md#testing-proxy-routing-locally) for prerequisites
+and standalone commands. Launcher output is attached to the Playwright report.
+
 The scaffold borrows heavily from the sibling `vs-code-postgresql` project's
 `test/e2e/` setup. We kept the patterns that pay off immediately and skipped
 the ones we don't yet need (multi-editor adapter, reusable auth profile,

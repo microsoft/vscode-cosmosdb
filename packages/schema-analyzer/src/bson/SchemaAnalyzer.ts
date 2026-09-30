@@ -136,19 +136,25 @@ export class SchemaAnalyzer {
     }
 
     addDocument(document: Document): void {
-        updateSchemaGeneric(this._schema, document, bsonTypeAdapter);
-        this._version++;
+        try {
+            updateSchemaGeneric(this._schema, document, bsonTypeAdapter);
+        } finally {
+            this._version++;
+        }
     }
 
     addDocuments(documents: ReadonlyArray<Document>): void {
-        for (const doc of documents) {
-            updateSchemaGeneric(this._schema, doc, bsonTypeAdapter);
+        try {
+            for (const doc of documents) {
+                updateSchemaGeneric(this._schema, doc, bsonTypeAdapter);
+            }
+        } finally {
+            this._version++;
         }
-        this._version++;
     }
 
     getSchema(): JSONSchema {
-        return this._schema;
+        return structuredClone(this._schema);
     }
 
     getDocumentCount(): number {
@@ -171,7 +177,7 @@ export class SchemaAnalyzer {
             this._knownFieldsCache = getKnownFieldsBson(this._schema);
             this._knownFieldsCacheVersion = this._version;
         }
-        return this._knownFieldsCache;
+        return structuredClone(this._knownFieldsCache);
     }
 
     static fromDocument(document: Document): SchemaAnalyzer {

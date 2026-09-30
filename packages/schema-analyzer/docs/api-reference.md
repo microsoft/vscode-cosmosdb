@@ -29,10 +29,10 @@ precision when converted for min/max statistics. Neither analyzer is a lossless 
 
 Inputs are read, not deliberately mutated, but enumeration and BSON operations can invoke getters,
 coercion, or value methods. Exceptions propagate. Updates are not transactional and can leave partial
-progress. BSON updates advance `version` and invalidate cached fields only on success.
+progress; BSON updates also advance `version` and invalidate cached fields on failure.
 `getSchemaFromDocuments([])` throws; an empty BSON batch is allowed.
-JSON update/simplification functions mutate their schema arguments. BSON read methods expose the live schema
-and cached field list, whereas `getSchemaAtPath()` returns a node belonging to the supplied schema.
+JSON update/simplification functions mutate their schema arguments. BSON read methods return independent
+mutable snapshots, whereas `getSchemaAtPath()` returns a node belonging to the supplied schema.
 
 For ESM, Node.js, browser boundaries and entry-point dependencies, see
 [Supported environments](../README.md#supported-environments).
@@ -96,7 +96,7 @@ Traverses the schema (BFS) and collects all leaf field paths with their most com
 Import this function from the package root, not `/bson`. Pass `"x-dataType"` for JSON schemas
 or `"x-bsonType"` for BSON schemas. BSON analyzer instances also provide the cached
 `analyzer.getKnownFields()` method without arguments.
-The root function returns a new field list; the analyzer method exposes its cached representation.
+Both return caller-owned field lists; the analyzer keeps its cached representation private.
 
 #### `getPropertyNamesAtLevel(schema, path): string[]`
 
@@ -256,32 +256,36 @@ Batch methods accept `ReadonlyArray<Document>`.
 
 **Properties:**
 
-| Property  | Type                | Description                                                               |
-| --------- | ------------------- | ------------------------------------------------------------------------- |
-| `version` | `number` (readonly) | Incremented on successful `addDocument()`, `addDocuments()`, or `reset()` |
+| Property  | Type                | Description                                                          |
+| --------- | ------------------- | -------------------------------------------------------------------- |
+| `version` | `number` (readonly) | Incremented on every `addDocument()`, `addDocuments()`, or `reset()` |
 
 **Methods:**
 
-| Method               | Returns          | Description                                      |
-| -------------------- | ---------------- | ------------------------------------------------ |
-| `addDocument(doc)`   | `void`           | Analyze a single BSON `Document`                 |
-| `addDocuments(docs)` | `void`           | Analyze multiple documents (single version bump) |
-| `getSchema()`        | `JSONSchema`     | Get the current live cumulative schema           |
-| `getDocumentCount()` | `number`         | Documents whose analysis has started             |
-| `getKnownFields()`   | `FieldEntry[]`   | Cached field list (recomputed on version change) |
-| `reset()`            | `void`           | Clear the schema and start fresh                 |
-| `clone()`            | `SchemaAnalyzer` | Deep-copy the analyzer state                     |
+| Method               | Returns          | Description                                       |
+| -------------------- | ---------------- | ------------------------------------------------- |
+| `addDocument(doc)`   | `void`           | Analyze a single BSON `Document`                  |
+| `addDocuments(docs)` | `void`           | Analyze multiple documents (single version bump)  |
+| `getSchema()`        | `JSONSchema`     | Get a deep snapshot of the current schema         |
+| `getDocumentCount()` | `number`         | Documents whose analysis has started              |
+| `getKnownFields()`   | `FieldEntry[]`   | Deep snapshot of the internally cached field list |
+| `reset()`            | `void`           | Clear the schema and start fresh                  |
+| `clone()`            | `SchemaAnalyzer` | Deep-copy the analyzer state                      |
 
 **Ownership and errors:**
 
-- `getSchema()` returns the live schema and `getKnownFields()` returns the shared cached field list.
-  Treat these results as read-only: caller mutations do not advance `version` or invalidate cached fields.
+- `getSchema()` and `getKnownFields()` return independent, mutable deep snapshots. Modifying any nested value
+  does not affect the analyzer, its version, other snapshots, or clones. Previously returned snapshots do not
+  change when more documents are analyzed or the analyzer is reset.
+- Each read returns a new object/array, even when the version is unchanged. Schema reads copy the schema;
+  field reads copy the cached list without repeating schema traversal.
+- This replaces the former live-schema / shared-field-array behavior. Re-read after an update; do not use
+  reference equality to detect changes. Use `version` instead.
 - `addDocument()` and `addDocuments()` mutate internal state and are **not transactional**. Getter, conversion,
   or other analysis errors propagate; preceding documents and any partial work on the failing document remain.
   The count includes a failing document once its analysis has started, not only fully processed documents.
-- Each successful update call increments `version` once, including empty batches, invalidating cached fields.
-  A batch stops at the first error without advancing `version`; cached fields can then be stale.
-  Call `reset()` and reanalyze valid documents if partial state is unwanted.
+- Each update call increments `version` once on exit, including failure and empty batches, invalidating cached
+  fields. A batch stops at the first error. Call `reset()` and reanalyze valid documents if partial state is unwanted.
 - `reset()` clears accumulated state and increments the version. `clone()` creates an independent analyzer
   with version zero.
 

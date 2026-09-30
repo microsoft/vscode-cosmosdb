@@ -1,6 +1,6 @@
 {
   "name": "@azure/cosmosdb-schema-analyzer",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "type": "module",
   "description": "Schema inference and analysis for JSON and BSON documents — extracts structure, types, and statistics from document collections",
   "main": "dist/esm/index.js",
@@ -30,6 +30,7 @@
     }
   },
   "files": [
+    "CHANGELOG.md",
     "dist/esm",
     "dist/types"
   ],
@@ -42,6 +43,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@types/json-schema": "~7.0.15",
     "denque": "~2.1.0"
   },
   "peerDependencies": {
@@ -53,7 +55,6 @@
     }
   },
   "devDependencies": {
-    "@types/json-schema": "~7.0.15",
     "bson": "~7.3.2",
     "mongodb": "~7.3.0",
     "vitest": "~4.1.11"

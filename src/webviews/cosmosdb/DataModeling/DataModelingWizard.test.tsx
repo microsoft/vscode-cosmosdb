@@ -352,7 +352,9 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             target: { value: '// unsaved Bicep' },
         });
         await userEvent.click(screen.getByRole('button', { name: 'Back' }));
-        expect(screen.getByText('Restored result')).toBeVisible();
+        expect(screen.getByRole('img', { name: 'Score 100 out of 100 for Orders /orderId' })).toBeVisible();
+        expect(screen.queryByText("Copilot's analysis of your workload profile.")).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /^(Show|Hide) details$/ })).not.toBeInTheDocument();
         await enterDeployStep();
         expect(screen.getByRole('radio', { name: 'Bicep' })).toBeChecked();
         expect(screen.getByRole('textbox', { name: 'New database name' })).toHaveValue('unsaved-db');
@@ -362,7 +364,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         mounted.unmount();
         render(<DataModelingWizard />);
         await continueExisting();
-        expect(screen.getByText('Restored result')).toBeVisible();
+        expect(screen.getByRole('img', { name: 'Score 100 out of 100 for Orders /orderId' })).toBeVisible();
         expect(screen.queryByRole('textbox', { name: 'Bicep deployment template' })).not.toBeInTheDocument();
         await enterDeployStep();
         expect(screen.getByRole('textbox', { name: 'New database name' })).toHaveValue('');
@@ -638,7 +640,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(client.dataModeling.confirm.mutate).toHaveBeenCalledOnce();
         await userEvent.click(proceed);
         await continueExisting();
-        expect(await screen.findByText('Restored result')).toBeInTheDocument();
+        expect(await screen.findByRole('img', { name: 'Score 100 out of 100 for Orders /orderId' })).toBeVisible();
         expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
         expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
     });
@@ -649,7 +651,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         await answerConfirmation('Continue your data model?', false);
         expect(await screen.findByRole('button', { name: 'Start' })).toBeDisabled();
         expect(lastSave()).toEqual(createInitialSnapshot());
-        expect(screen.queryByText('Restored result')).not.toBeInTheDocument();
+        expect(screen.queryByRole('img', { name: 'Score 100 out of 100 for Orders /orderId' })).not.toBeInTheDocument();
     });
 
     it('reports a failed saved-work prompt and allows retry without overwriting the model', async () => {
@@ -660,7 +662,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
         await userEvent.click(screen.getByRole('button', { name: 'Continue your data model?' }));
         await continueExisting();
-        expect(await screen.findByText('Restored result')).toBeInTheDocument();
+        expect(await screen.findByRole('img', { name: 'Score 100 out of 100 for Orders /orderId' })).toBeVisible();
     });
 
     it.each([true, false, undefined])('removes a container only after native Yes (response: %s)', async (response) => {
@@ -981,7 +983,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(screen.getByRole('tab', { name: 'Queries' })).toHaveAttribute('aria-selected', 'true');
         expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
         await userEvent.click(screen.getByRole('button', { name: 'Result' }));
-        expect(screen.getByText('Restored result')).toBeVisible();
+        expect(screen.getByRole('img', { name: 'Score 100 out of 100 for Orders /orderId' })).toBeVisible();
     });
 
     it('keeps Data selected after a reminder failure and allows retry', async () => {
@@ -1079,7 +1081,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
         await userEvent.click(screen.getByRole('button', { name: 'Back' }));
         await userEvent.click(screen.getByRole('button', { name: 'Result' }));
-        expect(screen.getByText('Restored result')).toBeInTheDocument();
+        expect(screen.getByRole('img', { name: 'Score 100 out of 100 for Orders /orderId' })).toBeVisible();
         expect(client.dataModeling.requestRecommendation.mutate).not.toHaveBeenCalled();
     });
 
@@ -1163,7 +1165,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(lastSave().recommendation).toEqual({ status: 'error', error: message });
         expect(screen.getByText(message)).toBeVisible();
         expectNoActionableDeployButton();
-        expect(screen.queryByText('Restored result')).not.toBeInTheDocument();
+        expect(screen.queryByRole('img', { name: 'Score 100 out of 100 for Orders /orderId' })).not.toBeInTheDocument();
         await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
         await waitFor(() => expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledTimes(2));
         expect(lastSave().recommendation).toEqual({ status: 'waiting' });
@@ -1205,7 +1207,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
             await waitFor(() => expect(next).toHaveFocus());
             await user.click(screen.getByRole('button', { name: 'Result' }));
-            expect(screen.getByText('Restored result')).toBeInTheDocument();
+            expect(screen.getByRole('img', { name: 'Score 100 out of 100 for Orders /orderId' })).toBeVisible();
             expect(client.dataModeling.requestRecommendation.mutate).not.toHaveBeenCalled();
         },
     );

@@ -179,9 +179,14 @@ Use supported measurements or justified estimates only; never invent exact RU co
 For wizard requests, inspect the report tool's declared input schema: it is the authoritative machine-readable contract.
 Only after every container succeeds, provide a concise overall summary and these per-container results:
 
-- Exact entity name, recommended `partitionKey`, and 1-2 sentence `rationale`.
+- Write for a compact result page, not a report. Use one sentence of at most 20 words for the overall summary and each
+  `rationale`. Do not repeat the selected key, verdict, or score in prose when the structured fields already show them.
+  Keep evidence, uncertainty, and required qualifications; omit introductions, generic advice, and repeated conclusions.
+- Exact entity name, recommended `partitionKey`, and the brief `rationale`.
 - Scored `candidates`: `verdict` (`recommended`, `alternative`, `avoid`), `score`, and decisive per-rule `assessments`,
-  each with a short `label`, `status` (`pass`, `warn`, `fail`), and one-line `detail`.
+  each with a specific 2-5 word `label`, `status` (`pass`, `warn`, `fail`), and one short sentence of `detail`
+  (aim for 12 words; use more only to preserve essential evidence or qualifications). Put the finding in the label,
+  such as "Reads target one partition", rather than a generic topic such as "Query alignment".
   Classify every reason as `pass` (supported strength, green check), `warn` (trade-off or unverified constraint,
   yellow exclamation mark), or `fail` (known weakness or violation, red cross). There is no information-only category.
   Include **4-5 reasons for each recommended candidate** and **at most 2 reasons for each avoid candidate**.
@@ -195,11 +200,13 @@ Only after every container succeeds, provide a concise overall summary and these
   If percentages cannot be justified, omit the section and describe qualitative risks in assessments.
 - `queryRouting`: headline, one route per read pattern with filters/QPS/routing/estimated cost, and source-grounded analysis.
   Map findings to the tool's `single`/`cross` enum; use `analysis` for qualifications the enum cannot express.
-  For unsupported costs, use an explanatory string such as "Unknown without measurement".
-- `documentIdStrategy`: short access-pattern tag and recommendation consistent with the selected key.
+  Keep the headline to one short sentence. Use an empty `analysis` unless it adds a qualification missing from the table;
+  when needed, use at most two short sentences. For unsupported costs, use "Not measured".
+- `documentIdStrategy`: short access-pattern tag and one-sentence recommendation consistent with the selected key.
 - Relevant `guardrails`: `{rule, detail}` entries naming the best-practices skill and the local rule title/path
   actually read, the constraint/scope, supporting evidence or exact unverified fact, and any alternative rejected
   for a violation. Do not cite an external page as a source read, even when a bundled rule links to one.
+  Use compact clauses; do not repeat candidate assessments or explain the same constraint more than once.
   Apply the evidence policy to unresolved guardrails.
   The Result page displays **Absolute rules (guardrails)** as its last section; deployment code is in the Deploy step.
 

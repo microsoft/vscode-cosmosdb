@@ -121,6 +121,87 @@ describe('ResultPage', () => {
         );
     }
 
+    it('shows card and query details directly without a toggle or redundant summary', () => {
+        const value = structuredClone(scoredRecommendation);
+        const container = value.containers[0];
+        container.candidates![0].assessments = [
+            { label: 'Targeted reads', status: 'pass', detail: 'Queries filter on the conversation key.' },
+            { label: 'Uneven writes', status: 'warn', detail: 'Busy conversations may receive more writes.' },
+            { label: 'Capacity unverified', status: 'info', detail: 'Verify per-conversation retention.' },
+        ];
+        container.candidates![2].assessments = [
+            { label: 'Low cardinality', status: 'fail', detail: 'Too few distinct status values.' },
+        ];
+        container.queryRouting = {
+            headline: 'Conversation reads target one partition.',
+            routes: [
+                {
+                    pattern: 'Read conversation',
+                    filters: 'conversationId',
+                    qps: '200/s',
+                    routing: 'single',
+                    estCost: 'Not measured',
+                },
+            ],
+            analysis: 'Other read patterns require cross-partition queries.',
+        };
+        container.guardrails = [{ rule: 'Storage limit', detail: 'Verify that retention stays within the limit.' }];
+        renderScores({ recommendation: value });
+
+        const supportingText = [container.candidates![0].assessments[0].detail, container.queryRouting.analysis];
+        expect(screen.queryByText(value.summary)).not.toBeInTheDocument();
+        expect(screen.queryByText(container.rationale)).not.toBeInTheDocument();
+        for (const text of supportingText) {
+            expect(screen.getByText(text)).toBeVisible();
+        }
+        for (const text of [
+            'Targeted reads',
+            'Busy conversations may receive more writes.',
+            'Verify per-conversation retention.',
+            'Too few distinct status values.',
+            'Verify that retention stays within the limit.',
+        ]) {
+            expect(screen.getByText(text)).toBeVisible();
+        }
+        expect(screen.getByRole('table', { name: 'Query routing' })).toBeVisible();
+        expect(screen.getAllByRole('img', { name: /^Score / })).toHaveLength(3);
+        expect(screen.queryByRole('button', { name: 'Show details' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Hide details' })).not.toBeInTheDocument();
+    });
+
+    it('shows the selected container details when switching tabs', async () => {
+        const user = userEvent.setup();
+        const value = structuredClone(recommendation);
+        value.containers[0] = structuredClone(scoredRecommendation.containers[0]);
+        value.containers[0].candidates![0].assessments = [
+            { label: 'Targeted reads', status: 'pass', detail: 'Conversation reads use one partition.' },
+        ];
+        value.containers[1] = {
+            ...structuredClone(scoredRecommendation.containers[0]),
+            entity: 'User',
+            rationale: 'User-specific rationale.',
+        };
+        value.containers[1].candidates![0].assessments = [
+            { label: 'Targeted reads', status: 'pass', detail: 'User reads use one partition.' },
+        ];
+        renderResult(value);
+        expect(screen.getByText('Conversation reads use one partition.')).toBeVisible();
+        await user.click(screen.getByRole('tab', { name: 'Container: User' }));
+        expect(screen.getByText('User reads use one partition.')).toBeVisible();
+        expect(screen.queryByText('Conversation reads use one partition.')).not.toBeInTheDocument();
+        expect(screen.queryByText('User-specific rationale.')).not.toBeInTheDocument();
+        await user.click(screen.getByRole('tab', { name: 'Container: Message' }));
+        expect(screen.getByText('Conversation reads use one partition.')).toBeVisible();
+        expect(screen.queryByText('User reads use one partition.')).not.toBeInTheDocument();
+    });
+
+    it('keeps the rationale visible for saved results without candidate cards', () => {
+        const value = structuredClone(recommendation);
+        value.containers[0].rationale = 'Use conversationId to target conversation reads.';
+        renderResult(value);
+        expect(screen.getByText(value.containers[0].rationale)).toBeVisible();
+    });
+
     describe('candidate cards', () => {
         it.each(['recommended', 'alternative'] as const)(
             'orders %s reasons by status, preserving order within each category',
@@ -221,7 +302,7 @@ describe('ResultPage', () => {
             expect(candidates.map((candidate) => candidate.score)).toEqual([92.41, 83, 0]);
         });
 
-        it('renders each assessment as a heading with a separate full-width description', () => {
+        it('renders assessments with a separate full-width description', () => {
             const recommendation = structuredClone(scoredRecommendation);
             recommendation.containers[0].candidates![0].assessments = [
                 { label: 'Query alignment', status: 'pass', detail: 'Queries can target one logical partition.' },

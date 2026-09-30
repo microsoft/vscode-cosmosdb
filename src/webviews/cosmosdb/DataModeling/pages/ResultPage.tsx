@@ -404,7 +404,9 @@ function ContainerResultView({ container }: { container: ContainerRecommendation
 
     return (
         <div className={styles.stack}>
-            {container.rationale ? <Text className={styles.summary}>{container.rationale}</Text> : null}
+            {container.rationale && !container.candidates?.length ? (
+                <Text className={styles.summary}>{container.rationale}</Text>
+            ) : null}
 
             {container.candidates && container.candidates.length > 0 ? (
                 <div className={styles.cards}>
@@ -416,10 +418,7 @@ function ContainerResultView({ container }: { container: ContainerRecommendation
 
             <div className={styles.twoCol}>
                 {container.hotPartitionRisk && container.hotPartitionRisk.length > 0 ? (
-                    <SubPanel
-                        title={l10n.t('🔥 Hot-partition risk — candidates compared')}
-                        subtitle={l10n.t('Measured from sampled logical-partition skew. Lower is better.')}
-                    >
+                    <SubPanel title={'🔥 ' + l10n.t('Hot-partition risk')} subtitle={l10n.t('Lower is better.')}>
                         <div className={styles.rankList}>
                             {container.hotPartitionRisk.map((r, i) => {
                                 const band = riskBand(r.risk);
@@ -452,7 +451,7 @@ function ContainerResultView({ container }: { container: ContainerRecommendation
                 ) : null}
 
                 {container.documentIdStrategy ? (
-                    <SubPanel title={l10n.t('🆔 Document id strategy')}>
+                    <SubPanel title={'🆔 ' + l10n.t('Document ID')}>
                         <div className={styles.strategyTag}>
                             <Badge appearance="tint" color="informative">
                                 {container.documentIdStrategy.tag}
@@ -464,7 +463,7 @@ function ContainerResultView({ container }: { container: ContainerRecommendation
             </div>
 
             {container.queryRouting ? (
-                <SubPanel title={l10n.t('🧭 Query routing')} subtitle={container.queryRouting.headline}>
+                <SubPanel title={'🧭 ' + l10n.t('Query routing')} subtitle={container.queryRouting.headline}>
                     <div className={styles.tableWrap}>
                         <Table size="small" aria-label={l10n.t('Query routing')}>
                             <TableHeader>
@@ -583,8 +582,6 @@ export function ResultPage(props: ResultPageProps) {
 
     return (
         <div className={styles.stack}>
-            {recommendation.summary ? <Text className={styles.summary}>{recommendation.summary}</Text> : null}
-
             {containers.length > 1 ? (
                 <TabList
                     className={styles.tabList}

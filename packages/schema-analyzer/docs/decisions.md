@@ -129,19 +129,23 @@ The two sub-modules have different usage patterns:
 **Status:** Accepted
 
 **Context:**
-The `mongodb` driver is a heavy dependency (~2MB). Projects that only need JSON schema analysis (e.g., for Cosmos DB JSON documents) should not be forced to install it.
+Schema analysis needs BSON values, not database connections or the `mongodb` driver.
+Projects that only need JSON schema analysis should not be forced to install BSON either.
 
 **Decision:**
 Three entry points via `package.json` `exports`:
 
-- `@azure/cosmosdb-schema-analyzer` — shared types only, zero dependencies
+- `@azure/cosmosdb-schema-analyzer` — shared types and schema utilities, depends only on `denque`
 - `@azure/cosmosdb-schema-analyzer/json` — JSON analyzer, depends only on `denque`
-- `@azure/cosmosdb-schema-analyzer/bson` — BSON analyzer, requires `mongodb` as a peer dependency
+- `@azure/cosmosdb-schema-analyzer/bson` — BSON analyzer, uses `bson` as an optional peer dependency
+- BSON inputs use `Document` from `bson`, without requiring an `_id` or any driver-specific types
 
 **Consequences:**
 
 - Tree-shaking friendly: importing `json/` never touches BSON code
-- `mongodb` is a peer dependency with `optional: true` — no install error if not needed
+- `bson` 6 or 7 is a peer dependency with `optional: true` — JSON-only consumers do not need it
+- `mongodb` is only a development dependency for driver interoperability tests, not a consumer dependency
+- Structural BSON recognition accepts compatible driver values and independent BSON module copies
 - Consumers must use the specific sub-path import, not the bare package name, for analyzers
 
 ---

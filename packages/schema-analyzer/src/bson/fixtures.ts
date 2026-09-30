@@ -18,16 +18,15 @@ import {
     Timestamp,
     UUID,
     type Document,
-    type WithId,
-} from 'mongodb';
+} from 'bson';
 
 /** Helper to create a document with a fresh ObjectId. */
-export function makeDoc(fields: Record<string, unknown> = {}): WithId<Document> {
+export function makeDoc(fields: Record<string, unknown> = {}): Document {
     return { _id: new ObjectId(), ...fields };
 }
 
 /** A flat document exercising every BSON type the analyzer knows about. */
-export const flatDocument: WithId<Document> = {
+export const flatDocument: Document = {
     _id: new ObjectId(),
     stringField: 'Example String',
     int32Field: new Int32(42),
@@ -56,7 +55,7 @@ export const flatDocument: WithId<Document> = {
 };
 
 /** A document made entirely of embedded sub-documents. */
-export const embeddedDocumentOnly: WithId<Document> = {
+export const embeddedDocumentOnly: Document = {
     _id: new ObjectId(),
     personalInfo: {
         name: 'John Doe',
@@ -68,7 +67,7 @@ export const embeddedDocumentOnly: WithId<Document> = {
 };
 
 /** A document with arrays of many different element types. */
-export const arraysWithDifferentDataTypes: WithId<Document> = {
+export const arraysWithDifferentDataTypes: Document = {
     _id: new ObjectId(),
     integersArray: [1, 2, 3, 4, 5],
     stringsArray: ['one', 'two', 'three'],
@@ -78,7 +77,7 @@ export const arraysWithDifferentDataTypes: WithId<Document> = {
 };
 
 /** A deeply nested document with objects in arrays in objects. */
-export const complexDocument: WithId<Document> = {
+export const complexDocument: Document = {
     _id: new ObjectId(),
     user: {
         username: 'john_doe',
@@ -121,7 +120,7 @@ export const complexDocument: WithId<Document> = {
 };
 
 /** A document where a normally-object field is a primitive (schema traversal edge-case). */
-export const complexDocumentWithOddTypes: WithId<Document> = {
+export const complexDocumentWithOddTypes: Document = {
     _id: new ObjectId(),
     user: true,
     history: {
@@ -135,7 +134,7 @@ export const complexDocumentWithOddTypes: WithId<Document> = {
 };
 
 /** All complex fixtures combined for multi-document tests. */
-export const complexDocumentsArray: WithId<Document>[] = [
+export const complexDocumentsArray: Document[] = [
     flatDocument,
     embeddedDocumentOnly,
     arraysWithDifferentDataTypes,
@@ -143,7 +142,7 @@ export const complexDocumentsArray: WithId<Document>[] = [
 ];
 
 /** A set of sparse documents ΓÇö each has a different subset of fields. */
-export const sparseDocumentsArray: WithId<Document>[] = [
+export const sparseDocumentsArray: Document[] = [
     { _id: new ObjectId(), name: 'Alice', age: 25, email: 'alice@example.com', isActive: true, score: 87 },
     { _id: new ObjectId(), name: 'Bob', age: 30, email: 'bob@example.com', isActive: false },
     { _id: new ObjectId(), name: 'Charlie', description: 'Loves hiking and outdoor adventures.' },

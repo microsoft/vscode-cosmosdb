@@ -10,10 +10,11 @@
  * Schema output uses `x-bsonType` for the original BSON type tag.
  */
 
-import { type Document, type WithId } from 'mongodb';
+import { type Document } from 'bson';
 import { type TypeAdapter, updateSchemaWithDocument as updateSchemaGeneric } from '../core/schemaTraversal.js';
 import { type FieldEntry, getKnownFields as getKnownFieldsGeneric } from '../core/schemaUtils.js';
 import { type JSONSchema } from '../JSONSchema.js';
+import { getBinaryLength } from './binaryUtils.js';
 import { type BSONType, bsonTypeToJSONType, inferBsonType } from './BSONTypes.js';
 
 export { buildFullPaths, getPropertyNamesAtLevel, simplifySchema } from '../core/schemaUtils.js';
@@ -64,7 +65,7 @@ const bsonTypeAdapter: TypeAdapter<BSONType> = {
                 break;
             }
             case 'binary': {
-                const len = (value as Buffer).length;
+                const len = getBinaryLength(value);
                 entry['x-maxLength'] = len;
                 entry['x-minLength'] = len;
                 break;
@@ -105,7 +106,7 @@ const bsonTypeAdapter: TypeAdapter<BSONType> = {
                 break;
             }
             case 'binary': {
-                const len = (value as Buffer).length;
+                const len = getBinaryLength(value);
                 if (entry['x-minLength'] === undefined || len < entry['x-minLength']) entry['x-minLength'] = len;
                 if (entry['x-maxLength'] === undefined || len > entry['x-maxLength']) entry['x-maxLength'] = len;
                 break;
@@ -134,12 +135,12 @@ export class SchemaAnalyzer {
         return this._version;
     }
 
-    addDocument(document: WithId<Document>): void {
+    addDocument(document: Document): void {
         updateSchemaGeneric(this._schema, document, bsonTypeAdapter);
         this._version++;
     }
 
-    addDocuments(documents: ReadonlyArray<WithId<Document>>): void {
+    addDocuments(documents: ReadonlyArray<Document>): void {
         for (const doc of documents) {
             updateSchemaGeneric(this._schema, doc, bsonTypeAdapter);
         }
@@ -173,13 +174,13 @@ export class SchemaAnalyzer {
         return this._knownFieldsCache;
     }
 
-    static fromDocument(document: WithId<Document>): SchemaAnalyzer {
+    static fromDocument(document: Document): SchemaAnalyzer {
         const analyzer = new SchemaAnalyzer();
         analyzer.addDocument(document);
         return analyzer;
     }
 
-    static fromDocuments(documents: ReadonlyArray<WithId<Document>>): SchemaAnalyzer {
+    static fromDocuments(documents: ReadonlyArray<Document>): SchemaAnalyzer {
         const analyzer = new SchemaAnalyzer();
         analyzer.addDocuments(documents);
         return analyzer;

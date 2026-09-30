@@ -3,9 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Binary, BSONRegExp, ObjectId, Timestamp } from 'mongodb';
+import { Binary, BSONRegExp, Code, ObjectId, Timestamp } from 'bson';
 import { describe, expect, it } from 'vitest';
-import { valueToDisplayString } from './ValueFormatters.js';
+import { flatDocument } from './fixtures.js';
+import { inferBsonType, valueToDisplayString } from './index.js';
 
 describe('valueToDisplayString', () => {
     it('returns strings unchanged', () => {
@@ -48,6 +49,44 @@ describe('valueToDisplayString', () => {
         expect(valueToDisplayString(binary, 'binary')).toBe('Binary[4]');
     });
 
+    it.each([Buffer.alloc(0), Buffer.from([1, 2, 3, 4])])('formats an inferred Buffer: %j', (value) => {
+        expect(inferBsonType(value)).toBe('binary');
+        expect(valueToDisplayString(value, inferBsonType(value))).toBe(`Binary[${value.length}]`);
+    });
+
+    it.each([/^abc$/gim, /abc/, new RegExp('')])('formats an inferred JavaScript regexp: %s', (value) => {
+        expect(inferBsonType(value)).toBe('regexp');
+        expect(valueToDisplayString(value, inferBsonType(value))).toBe(`${value.source} ${value.flags}`);
+    });
+
+    it('formats inferred undefined as a string', () => {
+        expect(inferBsonType(undefined)).toBe('undefined');
+        expect(valueToDisplayString(undefined, inferBsonType(undefined))).toBe('undefined');
+    });
+
+    it.each([new BSONRegExp('^abc$', 'im'), new BSONRegExp('', '')])('formats an inferred BSON regexp: %j', (value) => {
+        expect(inferBsonType(value)).toBe('regexp');
+        expect(valueToDisplayString(value, inferBsonType(value))).toBe(`${value.pattern} ${value.options}`);
+    });
+
+    it('formats an inferred JavaScript symbol', () => {
+        const value = Symbol('s');
+        expect(inferBsonType(value)).toBe('symbol');
+        expect(valueToDisplayString(value, inferBsonType(value))).toBe('Symbol(s)');
+    });
+
+    it('formats the used Binary length rather than its buffer capacity', () => {
+        const value = new Binary();
+        expect(valueToDisplayString(value, inferBsonType(value))).toBe('Binary[0]');
+        value.put(1);
+        expect(valueToDisplayString(value, inferBsonType(value))).toBe('Binary[1]');
+    });
+
+    it('formats only the bytes in a Buffer view', () => {
+        const value = Buffer.alloc(16).subarray(4, 7);
+        expect(valueToDisplayString(value, inferBsonType(value))).toBe('Binary[3]');
+    });
+
     it('stringifies symbols', () => {
         expect(valueToDisplayString(Symbol('s'), 'symbol')).toBe('Symbol(s)');
     });
@@ -73,5 +112,29 @@ describe('valueToDisplayString', () => {
         expect(valueToDisplayString({ k: 'v' }, 'map')).toBe('{"k":"v"}');
         expect(valueToDisplayString({ $ref: 'c' }, 'dbref')).toBe('{"$ref":"c"}');
         expect(valueToDisplayString({ x: 1 }, '_unknown_')).toBe('{"x":1}');
+    });
+
+    it.each([
+        ...Object.entries(flatDocument),
+        ['array', [1, 'two']],
+        ['object', { a: 1 }],
+        ['map', new Map([['a', 1]])],
+        ['scoped code', new Code('return x;', { x: 1 })],
+    ])('returns a string for inferred %s', (_name, value) => {
+        expect(typeof valueToDisplayString(value, inferBsonType(value))).toBe('string');
+    });
+
+    it.each([
+        ['function', () => 1],
+        ['bigint', 1n],
+        ['non-serializable object', { toJSON: () => undefined }],
+    ])('rejects unsupported JSON serialization for %s', (_name, value) => {
+        expect(() => valueToDisplayString(value, inferBsonType(value))).toThrow(TypeError);
+    });
+
+    it('propagates circular JSON serialization errors', () => {
+        const value: Record<string, unknown> = {};
+        value['self'] = value;
+        expect(() => valueToDisplayString(value, inferBsonType(value))).toThrow(TypeError);
     });
 });

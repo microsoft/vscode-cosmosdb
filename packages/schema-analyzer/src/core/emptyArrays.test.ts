@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ObjectId } from 'mongodb';
 import { describe, expect, it } from 'vitest';
 import { SchemaAnalyzer } from '../bson/index.js';
 import { getKnownFields, simplifySchema, type JSONSchema, type JSONSchemaRef } from '../index.js';
@@ -46,18 +45,8 @@ describe.each([
         name: 'BSON',
         numberType: 'double',
         typeKey: 'x-bsonType',
-        batch: (documents: Record<string, unknown>[]) =>
-            SchemaAnalyzer.fromDocuments(
-                documents.map((document) => ({ _id: new ObjectId(), ...document })),
-            ).getSchema(),
-        create: (document: Record<string, unknown>) => {
-            const analyzer = SchemaAnalyzer.fromDocument({ _id: new ObjectId(), ...document });
-            return {
-                getSchema: () => analyzer.getSchema(),
-                addDocument: (next: Record<string, unknown>) => analyzer.addDocument({ _id: new ObjectId(), ...next }),
-                getKnownFields: () => analyzer.getKnownFields().filter((field) => field.path !== '_id'),
-            };
-        },
+        batch: (documents: Record<string, unknown>[]) => SchemaAnalyzer.fromDocuments(documents).getSchema(),
+        create: (document: Record<string, unknown>) => SchemaAnalyzer.fromDocument(document),
     },
 ])('$name empty arrays', ({ create, batch, numberType, typeKey }) => {
     it('leaves item types unconstrained until an element is observed', () => {

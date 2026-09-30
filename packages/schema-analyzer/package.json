@@ -45,15 +45,16 @@
     "denque": "~2.1.0"
   },
   "peerDependencies": {
-    "mongodb": ">=6.0.0"
+    "bson": ">=6.0.0 <8.0.0"
   },
   "peerDependenciesMeta": {
-    "mongodb": {
+    "bson": {
       "optional": true
     }
   },
   "devDependencies": {
     "@types/json-schema": "~7.0.15",
+    "bson": "~7.3.2",
     "mongodb": "~7.3.0",
     "vitest": "~4.1.11"
   },

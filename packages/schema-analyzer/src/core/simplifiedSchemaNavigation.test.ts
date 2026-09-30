@@ -103,7 +103,43 @@ describe.each([
         });
         // The singular accessor prefers a direct object over an object reached through array items.
         expect(Object.keys(getSchemaAtPath(schema, ['mixed'])!.properties!)).toEqual(['shared', 'objectBranch']);
+        expect(Object.keys(getSchemaAtPath(schema, ['mixed', 'shared'])!.properties!)).toEqual(['objectOnly']);
     });
+
+    it.each([false, true])(
+        'prefers direct targets across all parent variants (reverse document order: %s)',
+        (reverse) => {
+            const documents = [
+                { mixed: { target: [{ arrayOnly: { leaf: true } }] } },
+                { mixed: [{ target: { directOnly: { leaf: false } } }] },
+            ];
+            const schema = create(reverse ? documents.toReversed() : documents);
+            const before = structuredClone(schema);
+
+            expect(Object.keys(getSchemaAtPath(schema, ['mixed', 'target'])!.properties!)).toEqual(['directOnly']);
+            expect(getPropertyNamesAtLevel(schema, ['mixed', 'target'])).toEqual(['arrayOnly', 'directOnly']);
+            expect(getPropertyNamesAtLevel(schema, ['mixed', 'target', 'arrayOnly'])).toEqual(['leaf']);
+            expect(getSchemaAtPath(schema, ['mixed', 'target', 'arrayOnly'])).toMatchObject({
+                type: 'object',
+                properties: { leaf: expect.any(Object) },
+            });
+            expect(schema).toEqual(before);
+        },
+    );
+
+    it.each([false, true])(
+        'prefers shallower array targets across all parent variants (reverse document order: %s)',
+        (reverse) => {
+            const documents = [
+                { mixed: { target: [[{ deepOnly: true }]] } },
+                { mixed: [{ target: [{ shallowOnly: false }] }] },
+            ];
+            const schema = create(reverse ? documents.toReversed() : documents);
+
+            expect(Object.keys(getSchemaAtPath(schema, ['mixed', 'target'])!.properties!)).toEqual(['shallowOnly']);
+            expect(getPropertyNamesAtLevel(schema, ['mixed', 'target'])).toEqual(['deepOnly', 'shallowOnly']);
+        },
+    );
 
     it('returns no object for terminal scalar or empty-array paths and retains useful missing-path errors', () => {
         const schema = create([{ user: { scalar: 1 }, empty: [], scalars: ['text'], matrix: [[]] }]);

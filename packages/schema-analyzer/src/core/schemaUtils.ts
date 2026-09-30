@@ -200,7 +200,8 @@ function simplifySchemaNode(node: JSONSchema): void {
 // ── getSchemaAtPath ────────────────────────────────────────────────────
 
 /**
- * Returns the first object matching the complete path, preferring direct objects over array items.
+ * Returns the first object matching the complete path. At each segment, objects reached through fewer
+ * array levels take priority across all parent variants; equally deep matches retain traversal order.
  * A terminal field with no object variant returns undefined; a missing path segment throws.
  */
 export function getSchemaAtPath(schema: JSONSchema, path: string[]): JSONSchema | undefined {
@@ -216,27 +217,25 @@ function getObjectSchemasAtPath(schema: JSONSchema, path: string[]): JSONSchema[
 
     for (let i = 0; i < path.length; i++) {
         const key = path[i];
-        const nextNodes: JSONSchema[] = [];
-        let propertyFound = false;
+        const propertySchemas: JSONSchema[] = [];
 
         for (const currentNode of currentNodes) {
             if (currentNode.properties && Object.hasOwn(currentNode.properties, key)) {
-                propertyFound = true;
-                nextNodes.push(...getObjectVariants(currentNode.properties[key] as JSONSchema));
+                propertySchemas.push(currentNode.properties[key] as JSONSchema);
             }
         }
-        if (!propertyFound) {
+        if (propertySchemas.length === 0) {
             throw new Error(`No properties found in the schema at path "${path.slice(0, i + 1).join('/')}"`);
         }
-        currentNodes = nextNodes;
+        currentNodes = getObjectVariants(propertySchemas);
     }
 
     return currentNodes;
 }
 
-function getObjectVariants(schema: JSONSchema): JSONSchema[] {
+function getObjectVariants(schemas: JSONSchema[]): JSONSchema[] {
     const objects: JSONSchema[] = [];
-    const queue = new Denque<JSONSchema>([schema]);
+    const queue = new Denque<JSONSchema>(schemas);
     while (queue.length > 0) {
         const node = queue.shift();
         if (!node) continue;

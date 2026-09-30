@@ -67,7 +67,10 @@ elements produces an empty list; a missing path segment throws.
 #### `getSchemaAtPath(schema, path): JSONSchema | undefined`
 
 Navigates expanded or simplified schemas using property-name segments, traversing arrays and union alternatives.
-Returns the first object matching the complete path, preferring direct object variants over array-item objects.
+Returns the first object matching the complete path. At each path segment, candidates from all reachable parent
+variants are ordered by the number of array levels traversed at that segment: direct objects first, then objects
+in progressively deeper arrays. Equally deep matches retain traversal order; other candidates remain available
+for resolving later segments.
 A terminal field with no object variant returns `undefined`; a missing path segment throws.
 An empty path returns the root. The returned node belongs to the input schema, not a copy.
 Only own entries in `properties` are considered; inherited names are treated as missing path segments.

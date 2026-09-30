@@ -6,6 +6,14 @@ Detailed API reference for `@azure/cosmosdb-schema-analyzer`.
 
 Shared types and utilities that do not depend on JSON or BSON.
 
+### Supported schema inputs
+
+Update and traversal utilities support analyzer-produced schemas (including serialized copies), in expanded,
+simplified, or mixed form. Preserve their type tags and statistical extensions when passing results between
+operations. The JSON update function expects JSON-analyzer output; it does not convert BSON type tags.
+These utilities are not an importer/interpreter for arbitrary JSON Schema: `$ref`, `oneOf`, tuple items,
+boolean schemas and custom compositions are not supported as accumulator inputs.
+
 ### Types
 
 #### `JSONSchema`
@@ -52,15 +60,25 @@ Traverses the schema (BFS) and collects all leaf field paths with their most com
 #### `getPropertyNamesAtLevel(schema, path): string[]`
 
 Returns sorted property names at the given nesting level. `_id` is always sorted first.
+Paths contain property names, not array indexes; array items are traversed automatically, including nested arrays.
+Names are combined across all reachable object variants. A terminal scalar or array without observed object
+elements produces an empty list; a missing path segment throws.
 
 #### `getSchemaAtPath(schema, path): JSONSchema | undefined`
 
-Navigates into the schema following the given path segments. At each level, if the property has `anyOf`, it picks the `object` entry to descend into.
+Navigates expanded or simplified schemas using property-name segments, traversing arrays and union alternatives.
+Returns the first object matching the complete path. At each path segment, candidates from all reachable parent
+variants are ordered by the number of array levels traversed at that segment: direct objects first, then objects
+in progressively deeper arrays. Equally deep matches retain traversal order; other candidates remain available
+for resolving later segments.
+A terminal field with no object variant returns `undefined`; a missing path segment throws.
+An empty path returns the root. The returned node belongs to the input schema, not a copy.
 Only own entries in `properties` are considered; inherited names are treated as missing path segments.
 
 #### `simplifySchema(schema): void`
 
 **Mutates** the schema in place. Unwraps single-element `anyOf` arrays by merging the entry's properties directly into the parent node. Applied recursively.
+Simplified analyzer output remains a supported input for subsequent updates and traversal.
 
 #### `buildFullPaths(path, names): string[]`
 
@@ -110,6 +128,12 @@ Creates a merged schema from multiple documents, then applies `simplifySchema()`
 #### `updateSchemaWithDocument(schema, document): void`
 
 Incrementally adds a document to an existing schema. **Mutates** the schema.
+Both expanded single-document output and automatically simplified batch output are supported. Touched simplified
+nodes are expanded into `anyOf` as needed, preserving observed types and their statistics; untouched nodes can remain
+simplified. Call `simplifySchema()` to normalize the final presentation. Batch generation continues to simplify
+automatically.
+
+Errors propagate without rollback, so the supplied schema can contain partial work from the failing document.
 
 #### `inferNoSqlType(value): NoSQLTypes`
 

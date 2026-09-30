@@ -165,6 +165,9 @@ It works from the bundled rules and the supplied workload only: it does not fetc
 recommendation never triggers a network-access prompt. Citations inside rule files are for maintainers, not sources to
 retrieve. When the bundled rules leave a necessary question unresolved, the skill reports that gap instead of guessing.
 Guardrail explanations identify the local rule actually read.
+The Result page shows scores, card explanations, and query analysis directly, without a Show/Hide control or a separate
+summary or rationale repeating the cards. Saved results without candidate cards still show their rationale.
+Warnings, violations, and guardrails remain visible.
 It distinguishes hard constraints, conditional requirements, and optimization advice, and checks candidates before scoring.
 Unresolved conflicts or missing evidence needed to establish applicability cause failure.
 Relevant hard constraints, their sources, and supporting evidence appear last under **Absolute rules (guardrails)** in each container's

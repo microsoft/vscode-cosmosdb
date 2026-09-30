@@ -1085,7 +1085,6 @@ const HydratedDataModelingWizard = ({
                     navigable={!deploymentBusy && reachedSteps.includes(RESULT_STEP)}
                     label={l10n.t('Result')}
                     title={l10n.t('Partition key recommendation')}
-                    subtitle={l10n.t("Copilot's analysis of your workload profile.")}
                 >
                     <ResultPage
                         recommendationStatus={recommendationStatus}

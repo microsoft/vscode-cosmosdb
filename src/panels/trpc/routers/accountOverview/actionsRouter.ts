@@ -11,6 +11,7 @@ import { type AzureResourceMetadata } from '../../../../cosmosdb/AzureResourceMe
 import { ArmCosmosDBControlPlane } from '../../../../cosmosdb/controlPlane/ArmCosmosDBControlPlane';
 import { getCosmosDBCredentials } from '../../../../cosmosdb/CosmosDBCredential';
 import { type NoSqlQueryConnection } from '../../../../cosmosdb/NoSqlQueryConnection';
+import { ext } from '../../../../extensionVariables';
 import { revealAzureResourceInExplorer } from '../../../../vscodeUriHandler';
 import { QueryEditorTab } from '../../../QueryEditorTab';
 import { type AccountOverviewRouterContext } from '../../appRouter';
@@ -46,6 +47,14 @@ async function getQueryConnection(
 // services and carry no dashboard-metrics logic.
 
 export const actionsProcedures = {
+    aiFeaturesEnabled: accountOverviewProcedure.subscription(async function* ({ ctx }) {
+        yield ext.isAIFeaturesEnabled ?? false;
+        for await (const event of ctx.aiFeaturesChanged) {
+            if (ctx.signal?.aborted) return;
+            yield event.isEnabled;
+        }
+    }),
+
     /**
      * Opens an external URL (e.g. an Azure portal deep link from the Active
      * Alerts aside or an Advisor "Learn more" link) in the user's browser.

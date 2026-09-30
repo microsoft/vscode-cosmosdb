@@ -947,6 +947,7 @@
         "category": "Cosmos DB",
         "command": "cosmosDB.dataModeling.open",
         "title": "%cosmosdb.command.dataModeling.open%",
+        "enablement": "cosmosDB.aiFeaturesEnabled",
         "icon": "$(type-hierarchy)"
       },
       {
@@ -1255,6 +1256,10 @@
         }
       ],
       "commandPalette": [
+        {
+          "command": "cosmosDB.dataModeling.open",
+          "when": "cosmosDB.aiFeaturesEnabled"
+        },
         {
           "command": "cosmosDB.migration.open",
           "when": "cosmosDB.migration.enabled"

@@ -165,8 +165,11 @@ export type MigrationRouterContext = CosmosDBRouterContext & {
     dispatchCommand: MigrationCommandDispatcher;
 };
 
+export type AccountOverviewEvent = { type: 'aiFeaturesEnabledChanged'; isEnabled: boolean };
+
 export type AccountOverviewRouterContext = CosmosDBRouterContext & {
     metadata: AzureResourceMetadata;
+    aiFeaturesChanged: TypedEventSink<AccountOverviewEvent>;
     /**
      * The account tree node the overview was opened from, when available. Footer
      * actions (create database / delete account) pass it to their commands so the

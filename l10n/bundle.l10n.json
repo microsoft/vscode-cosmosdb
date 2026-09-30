@@ -187,6 +187,7 @@
   "AI": "AI",
   "AI consent is required to use Auto-Detect.": "AI consent is required to use Auto-Detect.",
   "AI features are currently unavailable. Please ensure GitHub Copilot is active.": "AI features are currently unavailable. Please ensure GitHub Copilot is active.",
+  "AI features require GitHub Copilot to be available and the chat.disableAIFeatures setting to be off.": "AI features require GitHub Copilot to be available and the chat.disableAIFeatures setting to be off.",
   "AI knowledge bases, document search, vectors": "AI knowledge bases, document search, vectors",
   "AI Model": "AI Model",
   "Alert time range": "Alert time range",

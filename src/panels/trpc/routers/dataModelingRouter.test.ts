@@ -13,6 +13,7 @@ import {
 } from '../../../commands/dataModeling/deployDataModel';
 import { type AzureResourceMetadata } from '../../../cosmosdb/AzureResourceMetadata';
 import { type ModelingTelemetry } from '../../../dataModeling/ModelingTelemetry';
+import { ensureAIFeaturesEnabled } from '../../../utils/copilotUtils';
 import { openUrl } from '../../../utils/openUrl';
 import { applyScenario, createInitialState } from '../../../webviews/cosmosdb/DataModeling/dataModel';
 import { MAX_CONTAINERS } from '../../../webviews/cosmosdb/DataModeling/models';
@@ -25,6 +26,7 @@ vi.mock('../../../commands/dataModeling/deployDataModel', () => ({
     getDeploymentOptions: vi.fn(),
 }));
 vi.mock('../../../utils/openUrl', () => ({ openUrl: vi.fn() }));
+vi.mock('../../../utils/copilotUtils', () => ({ ensureAIFeaturesEnabled: vi.fn() }));
 vi.mock('../../../chat/reportPartitionKeyRecommendationTool', () => ({
     REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_NAME: 'cosmosdb_reportPartitionKeyRecommendation',
 }));
@@ -400,6 +402,23 @@ describe('data modeler deployment procedure', () => {
 });
 
 describe('recommendation prompt', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.mocked(ensureAIFeaturesEnabled).mockReset().mockResolvedValue(undefined);
+    });
+
+    it('rejects recommendations from an already-open wizard when AI becomes unavailable', async () => {
+        vi.mocked(ensureAIFeaturesEnabled).mockRejectedValueOnce(new Error('AI unavailable'));
+        const executeCommand = vi.spyOn(vscode.commands, 'executeCommand');
+        await expect(
+            dataModelingRouterDef
+                .createCaller(context())
+                .requestRecommendation(applyScenario(createInitialState(), 'chat')),
+        ).rejects.toThrow('AI unavailable');
+        expect(executeCommand).not.toHaveBeenCalled();
+        executeCommand.mockRestore();
+    });
+
     it('preserves the ephemeral request ID through validation and the prompt, and starts tracking before Chat opens', async () => {
         const ctx = context();
         const beginRecommendation = vi.fn();

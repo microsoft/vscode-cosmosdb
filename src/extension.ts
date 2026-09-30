@@ -59,6 +59,7 @@ import {
 } from './cosmosDBShell/CosmosDBShellExtension';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { ext } from './extensionVariables';
+import { AccountOverviewTab } from './panels/AccountOverviewTab';
 import { MigrationAssistantTab } from './panels/MigrationAssistantTab';
 import { QueryEditorTab } from './panels/QueryEditorTab';
 import { FabricService } from './services/FabricService';
@@ -71,7 +72,11 @@ import {
 } from './tree/workspace-api/SharedWorkspaceResourceProvider';
 import { CosmosDBWorkspaceBranchDataProvider } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceBranchDataProvider';
 import { MigrationWorkspaceBranchDataProvider } from './tree/workspace-view/migration/MigrationWorkspaceBranchDataProvider';
-import { areAIFeaturesEnabled, onCopilotAvailabilityChanged } from './utils/copilotUtils';
+import {
+    AI_FEATURES_ENABLED_CONTEXT_KEY,
+    areAIFeaturesEnabled,
+    onCopilotAvailabilityChanged,
+} from './utils/copilotUtils';
 import { globalUriHandler } from './vscodeUriHandler';
 
 export async function activateInternal(
@@ -184,23 +189,23 @@ export async function activateInternal(
             },
         );
 
-        // Track Copilot availability for the Query Editor and Migration Assistant.
+        // Share Copilot availability across AI entry points and open webviews.
+        const updateAIFeaturesEnabled = (available: boolean): void => {
+            ext.isAIFeaturesEnabled = available;
+            void vscode.commands.executeCommand('setContext', AI_FEATURES_ENABLED_CONTEXT_KEY, available);
+            QueryEditorTab.notifyAIFeaturesChanged(available);
+            AccountOverviewTab.notifyAIFeaturesChanged(available);
+            void MigrationAssistantTab.notifyAIFeaturesChanged(available);
+        };
 
         // Register the availability-change listener BEFORE the initial async check.
         // This prevents a race where Copilot finishes initializing (fires
         // onDidChangeChatModels) during the `await areAIFeaturesEnabled()` below —
         // without the listener in place that event would be lost and
         // `ext.isAIFeaturesEnabled` would stay `false` forever.
-        context.subscriptions.push(
-            onCopilotAvailabilityChanged((available) => {
-                ext.isAIFeaturesEnabled = available;
-                // Notify all open QueryEditorTabs about the change
-                QueryEditorTab.notifyAIFeaturesChanged(available);
-                void MigrationAssistantTab.notifyAIFeaturesChanged(available);
-            }),
-        );
+        context.subscriptions.push(onCopilotAvailabilityChanged(updateAIFeaturesEnabled));
 
-        ext.isAIFeaturesEnabled = await areAIFeaturesEnabled();
+        updateAIFeaturesEnabled(await areAIFeaturesEnabled());
 
         // Register language model tools for the query editor AI agent
         registerSampleDataTool(context);

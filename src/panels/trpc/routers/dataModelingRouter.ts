@@ -19,6 +19,7 @@ import {
 import { ModelingAdvisorSnapshotSchema, WizardStateSchema } from '../../../dataModeling/modelingAdvisorSchema';
 import { ModelingTelemetryEventSchema } from '../../../dataModeling/modelingTelemetrySchema';
 import { buildRecommendationPrompt } from '../../../dataModeling/recommendationPrompt';
+import { ensureAIFeaturesEnabled } from '../../../utils/copilotUtils';
 import { openUrl } from '../../../utils/openUrl';
 import { MAX_CONTAINERS } from '../../../webviews/cosmosdb/DataModeling/models';
 import { dataModelingProcedure, dataModelingRouter } from '../trpc';
@@ -178,6 +179,7 @@ export const dataModelingRouterDef = dataModelingRouter({
      * report tool, whose result is streamed back to the Result page.
      */
     requestRecommendation: stateProcedure.input(RecommendationRequestSchema).mutation(async ({ input, ctx }) => {
+        await ensureAIFeaturesEnabled();
         if (ctx.actionContext) {
             ctx.actionContext.valuesToMask.push(JSON.stringify(input.dataModel));
         }

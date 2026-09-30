@@ -126,6 +126,18 @@ type Inventory = {
 export const AccountOverview = () => {
     const styles = useStyles();
     const trpcClient = useTrpcClient<AccountOverviewAppRouter>();
+    const [isAIFeaturesEnabled, setAIFeaturesEnabled] = useState(false);
+
+    useEffect(() => {
+        const subscription = trpcClient.accountOverview.aiFeaturesEnabled.subscribe(undefined, {
+            onData: setAIFeaturesEnabled,
+            onError: (error) => {
+                setAIFeaturesEnabled(false);
+                console.error('Failed to track AI feature availability', error);
+            },
+        });
+        return () => subscription.unsubscribe();
+    }, [trpcClient]);
 
     const [summary, setSummary] = useState<AccountSummary | undefined>(undefined);
     const [inventory, setInventory] = useState<Inventory | undefined>(undefined);
@@ -575,6 +587,7 @@ export const AccountOverview = () => {
                         </DashboardCard>
 
                         <DashboardFooter
+                            isAIFeaturesEnabled={isAIFeaturesEnabled}
                             onAddDatabase={handleAddDatabase}
                             onAddContainer={handleAddContainer}
                             onDeleteAccount={handleDeleteAccount}

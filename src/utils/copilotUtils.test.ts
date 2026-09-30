@@ -3,11 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { readFileSync } from 'node:fs';
 import { type Mock } from 'vitest';
 import * as vscode from 'vscode';
 import {
     areAIFeaturesEnabled,
     areCopilotModelsAvailable,
+    AI_FEATURES_ENABLED_CONTEXT_KEY,
+    ensureAIFeaturesEnabled,
     isAIFeaturesDisabledBySetting,
     isCopilotChatExtensionInstalled,
     onCopilotAvailabilityChanged,
@@ -145,6 +148,38 @@ describe('copilotUtils', () => {
             (vscode.lm.selectChatModels as Mock).mockResolvedValue([]);
 
             await expect(areAIFeaturesEnabled()).resolves.toBe(false);
+        });
+    });
+
+    describe('AI feature entry points', () => {
+        it('hides and disables the Data Modeler command with the shared context key', () => {
+            const manifest = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
+            expect(
+                manifest.contributes.commands.find(
+                    (command: { command: string }) => command.command === 'cosmosDB.dataModeling.open',
+                ).enablement,
+            ).toBe(AI_FEATURES_ENABLED_CONTEXT_KEY);
+            expect(manifest.contributes.menus.commandPalette).toContainEqual({
+                command: 'cosmosDB.dataModeling.open',
+                when: AI_FEATURES_ENABLED_CONTEXT_KEY,
+            });
+        });
+
+        it.each([
+            { disabled: true, models: [{ id: 'copilot' }] },
+            { disabled: false, models: [] },
+        ])('rejects requests when disabled=$disabled and models=$models', async ({ disabled, models }) => {
+            mockConfigGet.mockReturnValue(disabled);
+            (vscode.lm.selectChatModels as Mock).mockResolvedValue(models);
+            await expect(ensureAIFeaturesEnabled()).rejects.toThrow('AI features require GitHub Copilot');
+            expect(vscode.lm.selectChatModels).toHaveBeenCalledTimes(disabled ? 0 : 1);
+        });
+
+        it('allows requests with available models even if the Copilot extension is not detectable', async () => {
+            mockConfigGet.mockReturnValue(false);
+            (vscode.extensions.getExtension as Mock).mockReturnValue(undefined);
+            (vscode.lm.selectChatModels as Mock).mockResolvedValue([{ id: 'copilot' }]);
+            await expect(ensureAIFeaturesEnabled()).resolves.toBeUndefined();
         });
     });
 

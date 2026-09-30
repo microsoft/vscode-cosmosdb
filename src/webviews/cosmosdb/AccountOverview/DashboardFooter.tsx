@@ -52,6 +52,7 @@ const useStyles = makeStyles({
 });
 
 export interface DashboardFooterProps {
+    isAIFeaturesEnabled: boolean;
     onAddDatabase: () => void;
     onAddContainer: () => void;
     onDeleteAccount: () => void;
@@ -59,6 +60,7 @@ export interface DashboardFooterProps {
 }
 
 export const DashboardFooter = ({
+    isAIFeaturesEnabled,
     onAddDatabase,
     onAddContainer,
     onDeleteAccount,
@@ -83,19 +85,21 @@ export const DashboardFooter = ({
                 </Link>
             </div>
 
-            <div className={styles.modeler}>
-                <Text id={DATA_MODELER_HINT_ID} className={styles.hint}>
-                    {l10n.t('Design containers, partition keys, and relationships visually.')}
-                </Text>
-                <Link
-                    as="button"
-                    className={styles.link}
-                    aria-describedby={DATA_MODELER_HINT_ID}
-                    onClick={onOpenDataModeler}
-                >
-                    {l10n.t('Try Data Modeler (preview)')}
-                </Link>
-            </div>
+            {isAIFeaturesEnabled && (
+                <div className={styles.modeler}>
+                    <Text id={DATA_MODELER_HINT_ID} className={styles.hint}>
+                        {l10n.t('Design containers, partition keys, and relationships visually.')}
+                    </Text>
+                    <Link
+                        as="button"
+                        className={styles.link}
+                        aria-describedby={DATA_MODELER_HINT_ID}
+                        onClick={onOpenDataModeler}
+                    >
+                        {l10n.t('Try Data Modeler (preview)')}
+                    </Link>
+                </div>
+            )}
         </footer>
     );
 };

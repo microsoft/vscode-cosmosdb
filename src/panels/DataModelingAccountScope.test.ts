@@ -13,9 +13,11 @@ import { getControlPlane } from '../cosmosdb/controlPlane';
 import { DataModelerProjectService } from '../services/DataModelerProjectService';
 import { getAccountInfo } from '../tree/cosmosdb/AccountInfo';
 import { type CosmosDBAccountResourceItem } from '../tree/cosmosdb/CosmosDBAccountResourceItem';
+import { ensureAIFeaturesEnabled } from '../utils/copilotUtils';
 import { pickAppResource } from '../utils/pickItem/pickAppResource';
+import { AccountOverviewTab } from './AccountOverviewTab';
 import { DataModelingWizardTab } from './DataModelingWizardTab';
-import { type DataModelingRouterContext } from './trpc/appRouter';
+import { type AccountOverviewRouterContext, type DataModelingRouterContext } from './trpc/appRouter';
 
 vi.mock('@microsoft/vscode-azext-utils', () => ({
     callWithTelemetryAndErrorHandling: vi.fn().mockResolvedValue(undefined),
@@ -35,7 +37,13 @@ vi.mock('@microsoft/vscode-ext-webview/host', () => {
     const host = { attachTrpc: vi.fn(() => ({ disposable: { dispose: vi.fn() } })) };
     return { ...host, default: host };
 });
-vi.mock('./trpc/appRouter', () => ({ dataModelingAppRouter: {}, dataModelingCallerFactory: vi.fn() }));
+vi.mock('./trpc/appRouter', () => ({
+    dataModelingAppRouter: {},
+    dataModelingCallerFactory: vi.fn(),
+    accountOverviewAppRouter: {},
+    accountOverviewCallerFactory: vi.fn(),
+}));
+vi.mock('../utils/copilotUtils', () => ({ ensureAIFeaturesEnabled: vi.fn() }));
 vi.mock('@microsoft/vscode-azureresources-api', () => ({
     AzExtResourceType: { AzureCosmosDb: 'Microsoft.DocumentDB/databaseAccounts' },
 }));
@@ -101,16 +109,59 @@ function actionContext(): IActionContext {
 
 beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(ensureAIFeaturesEnabled).mockReset().mockResolvedValue(undefined);
     vi.spyOn(vscode.window, 'createWebviewPanel').mockImplementation(() => panel());
 });
 afterEach(() => {
     for (const tab of DataModelingWizardTab.openTabs) tab.dispose();
+    for (const tab of AccountOverviewTab.openTabs) tab.dispose();
     vi.restoreAllMocks();
 });
 
 describe('data modeler account scope', () => {
     const render = DataModelingWizardTab.render.bind(DataModelingWizardTab);
     const open = openDataModelingWizard;
+
+    it.each([undefined, firstAccount])(
+        'rejects direct opens before resolving an account when AI is unavailable',
+        async (source) => {
+            vi.mocked(ensureAIFeaturesEnabled).mockRejectedValueOnce(new Error('AI unavailable'));
+            await expect(open(actionContext(), source)).rejects.toThrow('AI unavailable');
+            expect(pickAppResource).not.toHaveBeenCalled();
+            expect(getAccountInfo).not.toHaveBeenCalled();
+            expect(vscode.window.createWebviewPanel).not.toHaveBeenCalled();
+        },
+    );
+
+    it('rechecks availability before rendering after account resolution', async () => {
+        vi.mocked(ensureAIFeaturesEnabled)
+            .mockResolvedValueOnce(undefined)
+            .mockRejectedValueOnce(new Error('AI unavailable'));
+        await expect(open(actionContext(), firstAccount)).rejects.toThrow('AI unavailable');
+        expect(vscode.window.createWebviewPanel).not.toHaveBeenCalled();
+    });
+
+    it('notifies an open Account Overview when AI availability changes and closes its stream on disposal', async () => {
+        const tab = AccountOverviewTab.render({ accountId: 'account' } as AzureResourceMetadata);
+        const ctx = vi.mocked(attachTrpc).mock.calls.at(-1)?.[1] as AccountOverviewRouterContext;
+        const iterator = ctx.aiFeaturesChanged[Symbol.asyncIterator]();
+        const enabled = iterator.next();
+        AccountOverviewTab.notifyAIFeaturesChanged(true);
+        expect(await enabled).toEqual({
+            value: { type: 'aiFeaturesEnabledChanged', isEnabled: true },
+            done: false,
+        });
+        const disabled = iterator.next();
+        AccountOverviewTab.notifyAIFeaturesChanged(false);
+        expect(await disabled).toEqual({
+            value: { type: 'aiFeaturesEnabledChanged', isEnabled: false },
+            done: false,
+        });
+        const closed = iterator.next();
+        tab.dispose();
+        expect((await closed).done).toBe(true);
+        expect(AccountOverviewTab.openTabs.has(tab)).toBe(false);
+    });
 
     it('reuses only the same account tab and binds each account to its own persistence service', () => {
         const first = render(firstAccount);

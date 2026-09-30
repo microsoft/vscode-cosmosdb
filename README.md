@@ -84,6 +84,11 @@ For the metrics, detections, and ARM endpoints behind the dashboard, see [`docs/
 
 ## Data Modeler
 
+Data Modeler (Preview) uses the same AI availability checks as natural-language query assistance. Its Command Palette
+command and Account Overview entry are hidden when `chat.disableAIFeatures` is enabled or GitHub Copilot models are
+unavailable. Visibility updates when availability changes; direct command invocations and recommendation requests also
+check availability before running.
+
 Built-in workloads use scenario catalog 2.1 for container schemas, ordered partition keys (including hierarchical keys),
 query descriptions and filter predicates, peak QPS, and write distributions. Enumerated fields seed the Scale page's
 distinct-value counts. Document-size, write-rate, and growth estimates remain editable planning defaults where the catalog

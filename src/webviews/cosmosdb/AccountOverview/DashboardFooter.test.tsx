@@ -14,6 +14,7 @@ it('labels the Data Modeler preview accessibly and opens it on activation', asyn
     const onOpenDataModeler = vi.fn();
     render(
         <DashboardFooter
+            isAIFeaturesEnabled
             onAddDatabase={vi.fn()}
             onAddContainer={vi.fn()}
             onDeleteAccount={vi.fn()}
@@ -27,4 +28,26 @@ it('labels the Data Modeler preview accessibly and opens it on activation', asyn
     expect(button).toHaveAccessibleDescription('Design containers, partition keys, and relationships visually.');
     await userEvent.click(button);
     expect(onOpenDataModeler).toHaveBeenCalledOnce();
+});
+
+it('hides the Data Modeler control and hint when AI is unavailable and responds to availability changes', () => {
+    const props = {
+        onAddDatabase: vi.fn(),
+        onAddContainer: vi.fn(),
+        onDeleteAccount: vi.fn(),
+        onOpenDataModeler: vi.fn(),
+    };
+    const { rerender } = render(<DashboardFooter {...props} isAIFeaturesEnabled={false} />);
+    expect(screen.queryByRole('button', { name: 'Try Data Modeler (preview)' })).not.toBeInTheDocument();
+    expect(
+        screen.queryByText('Design containers, partition keys, and relationships visually.'),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add database' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Add container' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Delete account' })).toBeEnabled();
+
+    rerender(<DashboardFooter {...props} isAIFeaturesEnabled />);
+    expect(screen.getByRole('button', { name: 'Try Data Modeler (preview)' })).toBeEnabled();
+    rerender(<DashboardFooter {...props} isAIFeaturesEnabled={false} />);
+    expect(screen.queryByRole('button', { name: 'Try Data Modeler (preview)' })).not.toBeInTheDocument();
 });

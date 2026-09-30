@@ -209,3 +209,28 @@ describe('JSON property safety with existing schemas', () => {
         expect(inherited).toEqual({ anyOf: [{ type: 'number', 'x-dataType': 'number', 'x-typeOccurrence': 1 }] });
     });
 });
+
+describe('BSON property safety with snapshots', () => {
+    it.each(reservedNames)('isolates "%s" fields in snapshots and clones', (name) => {
+        const analyzer = SchemaAnalyzer.fromDocument({ [name]: 1 });
+        const snapshot = analyzer.getSchema();
+        const clone = analyzer.clone();
+        analyzer.addDocument({ [name]: 2 });
+
+        expect((snapshot.properties![name] as JSONSchema)['x-occurrence']).toBe(1);
+        expect((clone.getSchema().properties![name] as JSONSchema)['x-occurrence']).toBe(1);
+        expect((analyzer.getSchema().properties![name] as JSONSchema)['x-occurrence']).toBe(2);
+
+        simplifySchema(snapshot);
+        (snapshot.properties![name] as JSONSchema)['x-occurrence'] = 100;
+        clone.addDocument({ [name]: 3 });
+
+        const schema = analyzer.getSchema();
+        expect(Object.hasOwn(schema.properties!, name)).toBe(true);
+        expect(schema.properties![name]).toMatchObject({
+            'x-occurrence': 2,
+            anyOf: [{ type: 'number', 'x-typeOccurrence': 2, 'x-minValue': 1, 'x-maxValue': 2 }],
+        });
+        expect(analyzer.getKnownFields()).toEqual([{ path: name, type: 'number', dataType: 'double' }]);
+    });
+});

@@ -36,12 +36,13 @@ output. Regenerate persisted schemas from source documents rather than mixing ol
 ## Supported environments
 
 Use in Node.js or bundle for modern browsers/Electron; no `Buffer` polyfill is needed.
+Snapshots use the standard `structuredClone` API.
 Runtime and dependency requirements are declared in [package.json](package.json).
 
 ## Input and ownership contracts
 
 Pass acyclic document objects, not JSON text. JSON update utilities mutate the supplied schema;
-BSON analyzer reads expose the live schema and cached fields. See the [API reference](docs/api-reference.md)
+BSON analyzer reads return independent snapshots. See the [API reference](docs/api-reference.md)
 for input limitations and ownership details.
 
 ## Quick start — JSON

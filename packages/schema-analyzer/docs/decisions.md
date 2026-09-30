@@ -71,7 +71,9 @@ The JSON module exposes this as a free function. The BSON module wraps it in a `
 
 - Supports streaming/paging without re-analyzing previous documents
 - The BSON `SchemaAnalyzer` can cache derived data (e.g., `getKnownFields()`) and invalidate on version change
-- Schema object is mutable — consumers should not hold references across `addDocument()` calls without awareness
+- JSON update functions mutate the caller's schema; BSON read methods return independent mutable deep snapshots
+- BSON snapshots do not change after later updates; the internal field-list cache is never exposed directly
+- Updates do not roll back on failure; the BSON version increments and cached fields are invalidated on failure too
 
 ---
 

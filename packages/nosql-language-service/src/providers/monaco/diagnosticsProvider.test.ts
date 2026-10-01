@@ -91,6 +91,23 @@ describe('MonacoDiagnosticsProvider', () => {
         expect(monaco.editor.setModelMarkers).not.toHaveBeenCalled();
     });
 
+    it('preserves 1-based UTF-16 positions and zero-width EOF markers', () => {
+        const model = makeModel('SELECT VALUE "\uD83D\uDE00"\r\nFROM');
+        const monaco = createMonacoMock([model]);
+        const provider = new MonacoDiagnosticsProvider(monaco, service);
+        const markers = monaco.editor.setModelMarkers.mock.calls[0][2];
+        expect(markers).toContainEqual(
+            expect.objectContaining({
+                code: 'UNEXPECTED_EOF',
+                startLineNumber: 2,
+                startColumn: 5,
+                endLineNumber: 2,
+                endColumn: 5,
+            }),
+        );
+        provider.dispose();
+    });
+
     it('observes models created after construction', () => {
         const monaco = createMonacoMock([]);
         new MonacoDiagnosticsProvider(monaco, service);

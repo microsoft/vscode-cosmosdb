@@ -72,6 +72,13 @@ npm install --save-dev @types/vscode
 The `/vscode` adapter runs in a VS Code extension host, which supplies the `vscode` API.
 Align `@types/vscode` with your extension's target and keep `vscode` external when bundling.
 
+## Debugging the published package
+
+See the [changelog](CHANGELOG.md) for release changes and compatibility notes.
+
+JavaScript source maps include the original TypeScript for debugging. Declaration maps are also included;
+navigating from declarations to source requires a separate source checkout.
+
 ## Architecture — Three Layers
 
 ```

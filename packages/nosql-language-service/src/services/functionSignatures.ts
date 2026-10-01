@@ -23,7 +23,7 @@ export interface FunctionMeta {
  * Registry of all built-in Cosmos DB query language functions.
  * Key = uppercase function name.
  */
-export const FUNCTION_SIGNATURES: Record<string, FunctionMeta> = {
+const functionSignatures: Record<string, FunctionMeta> = {
     // ─── Aggregate ─────────────────────────────────────────
     COUNT: {
         category: 'Aggregate',
@@ -523,9 +523,25 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionMeta> = {
     },
 };
 
+type DeepReadonly<T> = T extends object ? { readonly [K in keyof T]: DeepReadonly<T[K]> } : T;
+
+for (const meta of Object.values(functionSignatures)) {
+    for (const signature of meta.signatures) {
+        signature.parameters.forEach(Object.freeze);
+        Object.freeze(signature.parameters);
+        Object.freeze(signature);
+    }
+    Object.freeze(meta.signatures);
+    Object.freeze(meta);
+}
+
+/** Deeply frozen built-in metadata. Use getFunctionMeta() for an independently mutable copy. */
+export const FUNCTION_SIGNATURES: DeepReadonly<Record<string, FunctionMeta>> = Object.freeze(functionSignatures);
+
 /**
- * Look up function metadata by name (case-insensitive).
+ * Return an independently mutable snapshot of function metadata (case-insensitive).
  */
 export function getFunctionMeta(name: string): FunctionMeta | undefined {
-    return FUNCTION_SIGNATURES[name.toUpperCase()];
+    const key = name.toUpperCase();
+    return Object.hasOwn(functionSignatures, key) ? structuredClone(functionSignatures[key]) : undefined;
 }

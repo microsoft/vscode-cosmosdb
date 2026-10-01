@@ -13,7 +13,7 @@ Query String
     ▼
 ┌────────────┐    Chevrotain EmbeddedActionsParser
 │  SqlParser │──→ SqlProgram (AST root)
-└────────────┘    with SourceRange on every node
+└────────────┘    with optional SourceRange on nodes
     │
     ▼
 ┌────────────┐
@@ -29,7 +29,7 @@ Query String
     │
     ▼
 ┌──────────────────────┐
-│ SqlLanguageService   │ IDE-agnostic, zero deps
+│ SqlLanguageService   │ IDE-agnostic, no editor dependencies
 │  .getDiagnostics()   │
 │  .getCompletions()   │
 │  .getHoverInfo()     │
@@ -41,9 +41,9 @@ Query String
 ┌─────────────────────────┐
 │  Provider Adapters      │  (optional — pick one)
 ├─────────────────────────┤
-│ providers/monaco.ts     │  → Monaco Editor
-│ providers/vscode.ts     │  → VS Code Extension
-│ providers/codemirror.ts │  → CodeMirror 6
+│ providers/monaco/       │  → Monaco Editor
+│ providers/vscode/       │  → VS Code Extension
+│ providers/codemirror/   │  → CodeMirror 6
 │ (write your own)        │  → any editor / custom UI
 └─────────────────────────┘
 ```
@@ -73,16 +73,16 @@ index.ts  (public API: parse, sqlToString, getCompletions, SqlLanguageService, t
         ├── SqlLanguageService.ts (facade)
         └── functionSignatures.ts (hover/signature metadata)
 
-providers/monaco.ts     ──→ services/SqlLanguageService
-providers/vscode.ts     ──→ services/SqlLanguageService
-providers/codemirror.ts ──→ services/SqlLanguageService
+providers/monaco/     ──→ services/SqlLanguageService
+providers/vscode/     ──→ services/SqlLanguageService
+providers/codemirror/ ──→ services/SqlLanguageService
 ```
 
 ## Layered Architecture
 
 The library is organized in three layers:
 
-### Layer 1: Core (zero dependencies beyond Chevrotain)
+### Layer 1: Core (Chevrotain and schema-analyzer, no editor dependencies)
 
 - `lexer/` — tokenizer
 - `parser/` — grammar → AST
@@ -101,21 +101,24 @@ The library is organized in three layers:
   (`Diagnostic`, `HoverInfo`, `TextRange`, etc.)
 - `services/functionSignatures.ts` — built-in function metadata
 
-### Layer 3: Provider Adapters (no runtime dep on editor SDK)
+### Layer 3: Provider Adapters (editor-specific runtime integration)
 
-- `providers/monaco.ts` — accepts `monaco` namespace at runtime
-- `providers/vscode.ts` — accepts `vscode` module at runtime
-- `providers/codemirror.ts` — returns CM6-compatible sources
+- `providers/monaco/` — accepts the `monaco` namespace at runtime
+- `providers/vscode/` — accepts the host-provided `vscode` API at runtime
+- `providers/codemirror/` — returns sources/commands composed with CodeMirror runtime extensions;
+  the separator factory also accepts CodeMirror dependencies
 
-Each provider accepts the editor API as a **runtime argument**
-(not an import), so the core library stays free of editor
-dependencies and tree-shakes cleanly.
+Editor SDK type references in adapters do not make the whole integration type-only.
+Consumer wiring imports CodeMirror extensions and the VS Code host API at runtime.
+Only the root and `/services` entry points are editor-independent; import the chosen adapter
+explicitly and supply its editor environment. The core does not require editor peers.
 
 ## Design Principles
 
-1. **Immutable AST** — nodes are plain readonly objects with a
-   `kind` discriminant. No mutation; create new nodes to
-   transform.
+1. **Readonly AST contract** — nodes are plain objects with readonly TypeScript fields and a
+   `kind` discriminant, not runtime-frozen objects. Create replacement nodes to transform a tree.
+   Multi-query regions lazily memoize `parseResult`; repeated reads share that result and its AST.
+   Do not infer independent copies from the snapshot contract of function metadata/signature help.
 
 2. **Error recovery** — syntax errors are reported in `ParseResult.errors`;
    recovery may return a partial AST. More than 512 active parser rules
@@ -133,23 +136,28 @@ dependencies and tree-shakes cleanly.
    compilation. Trade-off: harder to diff against `sql.y`, but
    no build-time dependency on a parser generator.
 
-5. **Schema-agnostic parser** — the parser knows nothing about
-   collection schemas. The completion module accepts a JSON
-   Schema externally and uses the parser only for context
-   detection.
+5. **Schema-agnostic parser** — the parser knows nothing about collection schemas.
+   Completion consumes a field projection using `properties`, `type`, single-schema array `items`
+   and optional `x-occurrence`, not full JSON Schema validation or reference/composition resolution.
+   Host schema objects are read, not cloned or frozen. See the
+   [schema input contract](../README.md#schema-input-and-ownership), including field-hover limitations.
+   Local parsing and diagnostics are not a substitute for Cosmos DB server validation.
 
-6. **IDE-agnostic** — the core API and `SqlLanguageService` have
-   zero editor dependencies. Provider adapters accept the editor
-   SDK as a runtime argument, never as an import. This means:
-   - The library works in Node.js, browsers, Electron, Deno
-   - No `monaco-editor` or `vscode` in `dependencies`
-   - Users can write their own adapter for any editor
+6. **IDE-agnostic core** — the core API and `SqlLanguageService` have zero editor dependencies.
+   Monaco and CodeMirror SDKs are optional peers; the VS Code API is supplied by the extension host.
+   Users can write their own adapters without installing these editor SDKs.
 
 ## Package Exports
 
+All public exports are **ESM-only**, with `import` and `types` entries and no CommonJS `require` entry.
+The manifest declares **Node >=22**; editor peers and tooling may require newer runtimes.
+Browser/Electron renderer consumers need a modern ESM-capable npm bundler and suitable runtime,
+not raw browser imports of bare npm specifiers. The VS Code adapter requires the actual extension host.
+See [installation and editor requirements](../README.md#install) for peer versions and recipes.
+
 ```
 @azure/cosmosdb-nosql-language-service            → Core API + LanguageService
-@azure/cosmosdb-nosql-language-service/services   → LanguageService + types only
+@azure/cosmosdb-nosql-language-service/services   → LanguageService + runtime helpers, enums and types
 @azure/cosmosdb-nosql-language-service/monaco     → Monaco adapter
 @azure/cosmosdb-nosql-language-service/vscode     → VS Code adapter
 @azure/cosmosdb-nosql-language-service/codemirror → CodeMirror 6 adapter
@@ -171,9 +179,9 @@ dependencies and tree-shakes cleanly.
 | `services/SqlLanguageService.ts`    | IDE-agnostic facade            |
 | `services/types.ts`                 | Generic language service types |
 | `services/functionSignatures.ts`    | Function hover/sig metadata    |
-| `providers/monaco.ts`               | Monaco editor adapter          |
-| `providers/vscode.ts`               | VS Code extension adapter      |
-| `providers/codemirror.ts`           | CodeMirror 6 adapter           |
+| `providers/monaco/index.ts`         | Monaco editor adapter          |
+| `providers/vscode/index.ts`         | VS Code extension adapter      |
+| `providers/codemirror/index.ts`     | CodeMirror 6 adapter           |
 | `index.ts`                          | Public API surface             |
 
 ## Grammar Origin

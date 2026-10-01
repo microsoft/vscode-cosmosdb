@@ -132,9 +132,12 @@ describe('single-column container tabs', () => {
         expect(within(estimate).getByText(/Projected size exceeds the 20 GB limit/)).toBeVisible();
         await user.click(screen.getByRole('radio', { name: 'Grows slowly' }));
         expect(screen.getByRole('radio', { name: 'Grows slowly' })).toHaveAttribute('aria-checked', 'true');
-        fireEvent.change(screen.getByRole('spinbutton', { name: 'Estimated distinct values for id' }), {
-            target: { value: '1234' },
-        });
-        expect(screen.getByRole('spinbutton', { name: 'Estimated distinct values for id' })).toHaveValue(1234);
+        const distinctValues = screen.getByRole('combobox', { name: 'Estimated distinct values for id' });
+        expect(within(distinctValues).getByRole('option', { name: '< 100 — low ⚠️' })).toHaveValue('50');
+        expect(within(distinctValues).getByRole('option', { name: 'Hundreds – thousands' })).toHaveValue('1000');
+        expect(within(distinctValues).getByRole('option', { name: 'Millions+ — excellent' })).toHaveValue('1000000');
+        expect(distinctValues).toHaveValue('1000');
+        await user.selectOptions(distinctValues, '1000000');
+        expect(distinctValues).toHaveValue('1000000');
     });
 });

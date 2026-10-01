@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import {
-    Input,
     makeStyles,
+    Select,
     Table,
     TableBody,
     TableCell,
@@ -40,8 +40,9 @@ const useStyles = makeStyles({
         gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))',
         gap: tokens.spacingHorizontalS,
     },
-    distinctInput: {
-        maxWidth: '160px',
+    distinctSelect: {
+        width: 'max-content',
+        minWidth: '240px',
     },
     tableWrap: {
         overflowX: 'auto',
@@ -99,6 +100,16 @@ const GROWTH_OPTIONS: { value: DataGrowth; title: string; desc: string; warn?: b
     { value: 'rapid', title: 'Grows rapidly ⚠️', desc: '1000+/day — needs HPK or bucketing', warn: true },
 ];
 
+const DISTINCT_VALUE_OPTIONS = [
+    { value: 50, maxExclusive: 100, getLabel: () => l10n.t('< 100 — low') + ' ⚠️' },
+    { value: 1_000, maxExclusive: 1_000_000, getLabel: () => l10n.t('Hundreds – thousands') },
+    {
+        value: 1_000_000,
+        maxExclusive: Number.POSITIVE_INFINITY,
+        getLabel: () => l10n.t('Millions+ — excellent'),
+    },
+] as const;
+
 const ITEMS_MULTIPLIER: Record<ItemsPerPartition, number> = {
     low: 500,
     medium: 50000,
@@ -114,6 +125,10 @@ function formatCount(n: number): string {
         return `${Math.round(n / 1_000)}K`;
     }
     return String(n);
+}
+
+function distinctValueOption(value: number): (typeof DISTINCT_VALUE_OPTIONS)[number] {
+    return DISTINCT_VALUE_OPTIONS.find((option) => value < option.maxExclusive) ?? DISTINCT_VALUE_OPTIONS[2];
 }
 
 export interface ScalePageProps {
@@ -165,15 +180,20 @@ export function ScalePage({ model, onChange }: ScalePageProps) {
                                     <TableCell>{c.attribute}</TableCell>
                                     <TableCell>{c.role}</TableCell>
                                     <TableCell>
-                                        <Input
+                                        <Select
                                             aria-label={l10n.t('Estimated distinct values for {attribute}', {
                                                 attribute: c.attribute,
                                             })}
-                                            className={styles.distinctInput}
-                                            type="number"
-                                            value={String(c.distinctValues)}
-                                            onChange={(_, data) => setDistinct(c.id, Number(data.value) || 0)}
-                                        />
+                                            className={styles.distinctSelect}
+                                            value={String(distinctValueOption(c.distinctValues).value)}
+                                            onChange={(_, data) => setDistinct(c.id, Number(data.value))}
+                                        >
+                                            {DISTINCT_VALUE_OPTIONS.map((option) => (
+                                                <option key={option.value} value={option.value}>
+                                                    {option.getLabel()}
+                                                </option>
+                                            ))}
+                                        </Select>
                                     </TableCell>
                                 </TableRow>
                             ))}

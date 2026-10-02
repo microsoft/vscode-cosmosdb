@@ -325,7 +325,8 @@ describe('BSON SchemaAnalyzer — class methods', () => {
         original.addDocument(arraysWithDifferentDataTypes);
         expect(original.getDocumentCount()).toBe(2);
         expect(cloned.getDocumentCount()).toBe(1);
-        expect(Object.keys(schemaOrigin.properties || {})).toContain('integersArray');
+        expect(Object.keys(original.getSchema().properties || {})).toContain('integersArray');
+        expect(Object.keys(schemaOrigin.properties || {})).not.toContain('integersArray');
         expect(Object.keys(schemaClone.properties || {})).not.toContain('integersArray');
     });
 
@@ -421,9 +422,10 @@ describe('BSON SchemaAnalyzer — getKnownFields cache', () => {
         expect(fields.map((f) => f.path)).toEqual(expect.arrayContaining(['_id', 'name', 'age']));
     });
 
-    it('returns the same reference when version is unchanged', () => {
+    it('returns equal independent snapshots when version is unchanged', () => {
         const a = SchemaAnalyzer.fromDocument(makeDoc({ name: 'Alice' }));
-        expect(a.getKnownFields()).toBe(a.getKnownFields());
+        expect(a.getKnownFields()).toEqual(a.getKnownFields());
+        expect(a.getKnownFields()).not.toBe(a.getKnownFields());
     });
 
     it('invalidates on addDocument()', () => {

@@ -452,7 +452,7 @@ function ContainerResultView({ container }: { container: ContainerRecommendation
                 ) : null}
 
                 {container.documentIdStrategy ? (
-                    <SubPanel title={'🆔 ' + l10n.t('Document ID')}>
+                    <SubPanel title={'🆔 ' + l10n.t('Document ID strategy')}>
                         <div className={styles.strategyTag}>
                             <Badge appearance="tint" color="informative">
                                 {container.documentIdStrategy.tag}

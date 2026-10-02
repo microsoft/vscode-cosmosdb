@@ -530,7 +530,6 @@
   "Dismiss advisory for {scope}": "Dismiss advisory for {scope}",
   "Do you mind taking a quick feedback survey about Azure Cosmos DB for VS Code?": "Do you mind taking a quick feedback survey about Azure Cosmos DB for VS Code?",
   "Document count": "Document count",
-  "Document ID": "Document ID",
   "Document ID strategy": "Document ID strategy",
   "Document load time": "Document load time",
   "Document must be an object.": "Document must be an object.",

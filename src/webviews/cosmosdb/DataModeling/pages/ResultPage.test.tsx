@@ -414,6 +414,7 @@ describe('ResultPage', () => {
         };
         renderResult(value);
         expect(screen.getByText('Message ID')).toHaveClass('fui-Badge');
+        expect(screen.getByText('🆔 Document ID strategy')).toBeVisible();
         expect(screen.getByText('Use a unique message ID.')).toBeVisible();
     });
 

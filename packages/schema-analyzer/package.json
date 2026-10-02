@@ -44,16 +44,15 @@
   "dependencies": {
     "denque": "~2.1.0"
   },
-  "peerDependencies": {
-    "mongodb": ">=6.0.0"
-  },
-  "peerDependenciesMeta": {
-    "mongodb": {
-      "optional": true
-    }
-  },
   "devDependencies": {
     "@types/json-schema": "~7.0.15",
+    "bson": "~7.3.2",
+    "bson-v4": "npm:bson@4.7.2",
+    "bson-v5-0": "npm:bson@5.0.0",
+    "bson-v5-5": "npm:bson@5.5.1",
+    "bson-v6-0": "npm:bson@6.0.0",
+    "bson-v6-10": "npm:bson@6.10.4",
+    "bson-v7-0": "npm:bson@7.0.0",
     "mongodb": "~7.3.0",
     "vitest": "~4.1.11"
   },

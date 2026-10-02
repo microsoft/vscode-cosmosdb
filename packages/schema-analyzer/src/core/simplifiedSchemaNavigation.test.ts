@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ObjectId } from 'mongodb';
 import { describe, expect, it } from 'vitest';
 import { SchemaAnalyzer } from '../bson/index.js';
 import { getKnownFields, getPropertyNamesAtLevel, getSchemaAtPath, simplifySchema, type JSONSchema } from '../index.js';
@@ -32,19 +31,14 @@ describe.each([
     { name: 'batch JSON', create: getSchemaFromDocuments, typeKey: 'x-dataType', numberType: 'number' },
     {
         name: 'expanded BSON',
-        create: (documents: Record<string, unknown>[]) =>
-            SchemaAnalyzer.fromDocuments(
-                documents.map((document) => ({ _id: new ObjectId(), ...document })),
-            ).getSchema(),
+        create: (documents: Record<string, unknown>[]) => SchemaAnalyzer.fromDocuments(documents).getSchema(),
         typeKey: 'x-bsonType',
         numberType: 'double',
     },
     {
         name: 'simplified BSON',
         create: (documents: Record<string, unknown>[]) => {
-            const schema = SchemaAnalyzer.fromDocuments(
-                documents.map((document) => ({ _id: new ObjectId(), ...document })),
-            ).getSchema();
+            const schema = SchemaAnalyzer.fromDocuments(documents).getSchema();
             simplifySchema(schema);
             return schema;
         },
@@ -57,11 +51,7 @@ describe.each([
         const before = structuredClone(schema);
 
         expect(getSchemaAtPath(schema, [])).toBe(schema);
-        expect(getPropertyNamesAtLevel(schema, [])).toEqual([
-            ...(typeKey === 'x-bsonType' ? ['_id'] : []),
-            'rootOnly',
-            'user',
-        ]);
+        expect(getPropertyNamesAtLevel(schema, [])).toEqual(['rootOnly', 'user']);
         expect(getPropertyNamesAtLevel(schema, ['user'])).toEqual(['profile']);
         expect(getPropertyNamesAtLevel(schema, ['user', 'profile'])).toEqual(['_id', 'age', 'name']);
         expect(getSchemaAtPath(schema, ['user', 'profile'])).toMatchObject({
@@ -180,7 +170,6 @@ describe.each([
             },
         ]);
         expect(getKnownFields(schema, typeKey)).toEqual([
-            ...(typeKey === 'x-bsonType' ? [{ path: '_id', type: 'string', dataType: 'objectid' }] : []),
             { path: 'empty', type: 'array', dataType: 'array' },
             { path: 'mixed', type: 'array', dataType: 'array', arrayItemDataType: 'string' },
             { path: 'nested', type: 'array', dataType: 'array', arrayItemDataType: 'array' },

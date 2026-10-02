@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ObjectId } from 'mongodb';
 import { afterEach, describe, expect, it } from 'vitest';
 import { SchemaAnalyzer } from '../bson/index.js';
 import { getKnownFields, getPropertyNamesAtLevel, getSchemaAtPath, simplifySchema, type JSONSchema } from '../index.js';
@@ -49,10 +48,10 @@ describe.each([
     {
         name: 'BSON',
         create(document: Record<string, unknown>) {
-            const analyzer = SchemaAnalyzer.fromDocument({ _id: new ObjectId(), ...document });
+            const analyzer = SchemaAnalyzer.fromDocument(document);
             return {
                 getSchema: () => analyzer.getSchema(),
-                update: (next: Record<string, unknown>) => analyzer.addDocument({ _id: new ObjectId(), ...next }),
+                update: (next: Record<string, unknown>) => analyzer.addDocument(next),
                 fields: () => analyzer.getKnownFields(),
             };
         },

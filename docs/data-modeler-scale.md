@@ -1,0 +1,118 @@
+# Data Modeler scale categories
+
+This note documents the current implementation, not a new set of Cosmos DB sizing recommendations.
+The categories are planning inputs selected by the user or prefilled by a scenario.
+They are not calculated from live data or automatically classified from document counts.
+Each container has its own scale profile.
+
+## Container tab layout
+
+Data, Queries, and Scale use a single vertical content flow without a guidance sidebar.
+Related controls can still sit side by side within a section.
+The container-step subtitle combines the selected template notice with tab guidance, visible across all three tabs.
+
+- **Data:** a key/filter properties card, document shape/size, then arrays.
+  The properties card groups the tag input, adjacent Upload JSON button, import feedback, and property table.
+  Optional partition-key guidance expands beside the property inputs.
+- **Queries:** separate cards for reads with expandable query-alignment guidance, write rates, and estimated request cost.
+  Each read exposes all four scenario-catalog fields: **Description**, **Peak QPS**, full SQL (**Query**),
+  and filter properties (**Filters on**). Query uses a single-line input with a Fluent UI multiselect dropdown to its right.
+  The dropdown lists the active container's properties. Selecting properties never rewrites SQL.
+  Editing valid SQL adds explicitly referenced properties to the selection; existing selections remain so missing
+  references can be flagged with a non-blocking warning. Parameters, comments, and string values do not count as references.
+  Incomplete SQL temporarily suspends automatic selection and shows a validation hint.
+  Selections are saved as property-name arrays. Older filter predicates remain readable and seed the initial selection;
+  older models without SQL text open with an empty Query field. Removed properties remain visible for deselection with a warning.
+- **Scale:** separate cards for candidate cardinality, items per key, write distribution, growth, and projected partition size.
+  A compact Partition limits callout follows the estimate, using the Review rules callout's sparkle icon and styling,
+  with a bulleted list and a visible hot-partition warning.
+  Capacity warnings remain visible, not behind a disclosure.
+
+Selecting **Next** from Data before visiting either Queries or Scale for that container opens a native VS Code dialog.
+**Configure** opens and focuses Queries; **Next** continues through the normal next-step flow.
+Dismissing the dialog keeps Data selected and returns focus to Next.
+Visits are tracked separately for each container during the open wizard session, including when revisiting a step,
+but are not saved when the wizard is closed. Visiting either Queries or Scale suppresses the reminder for that container.
+
+Containers created with **Add container** start with **Total attributes per document** set to 3:
+an `id` key, a `type` string filter, and a `createdAt` date/time filter. The count and properties remain editable.
+Workload templates and previously saved containers retain their own configuration.
+
+## Source of truth
+
+The Result page's **Query routing → Filters on** column displays a comma-separated list of property names,
+matching the Queries tab rather than showing SQL predicates. New recommendations provide property-name arrays;
+older saved string predicates are converted for display using the same property extraction as the Queries tab.
+The chat fallback uses the same formatting.
+
+- [ScalePage.tsx](../src/webviews/cosmosdb/DataModeling/pages/ScalePage.tsx):
+  `ITEMS_OPTIONS`, `GROWTH_OPTIONS`, `ITEMS_MULTIPLIER`, and the storage estimate.
+- [models.ts](../src/webviews/cosmosdb/DataModeling/models.ts):
+  `ItemsPerPartition`, `DataGrowth`, and `ScaleProfile`.
+- [ReviewPage.tsx](../src/webviews/cosmosdb/DataModeling/pages/ReviewPage.tsx):
+  maps the selected categories to readable labels in each container summary.
+
+## Items per partition-key value
+
+This means documents sharing one partition-key value, not all documents in the container.
+It is also different from cardinality, which counts distinct partition-key values.
+
+| Stored value | Review label | Range displayed on the Scale page | Representative count for storage estimate |
+| ------------ | ------------ | --------------------------------- | ----------------------------------------- |
+| `low`        | Low          | < 1,000 items                     | 500                                       |
+| `medium`     | Medium       | 1K - 100K items                   | 50,000                                    |
+| `high`       | High         | 100K - 1M items                   | 500,000                                   |
+| `very-high`  | Very high    | > 1M items                        | 2,000,000                                 |
+
+The range labels overlap at 100,000. There is no numeric classifier resolving this boundary:
+selecting a card directly stores its category in `container.scale.items`.
+The representative counts are illustrative values, not measured counts or upper bounds.
+
+## Growth per partition-key value
+
+| Stored value | Review label | Guidance displayed on the Scale page    |
+| ------------ | ------------ | --------------------------------------- |
+| `bounded`    | Bounded      | Size stabilizes over time               |
+| `slow`       | Slow         | Approximately 500 items/year per entity |
+| `rapid`      | Rapid        | 1,000+ items/day                        |
+
+These are qualitative selections stored in `container.scale.growth`, not a complete set of
+growth-rate thresholds. The UI does not define how to classify intermediate rates.
+The input group is labeled "Data growth per PK value"; the slow-growth description uses
+"per entity" wording.
+
+Growth is shown in the Review summary but is **not used in the local storage-estimate formula**.
+There is no time horizon or extrapolation of annual/daily growth in that estimate.
+
+## Illustrative storage estimate
+
+The current calculation in `ScalePage.tsx` is:
+
+```ts
+const ITEMS_MULTIPLIER: Record<ItemsPerPartition, number> = {
+    low: 500,
+    medium: 50000,
+    high: 500000,
+    'very-high': 2000000,
+};
+
+const itemsCount = ITEMS_MULTIPLIER[scale.items];
+const projectedGb = (avgDocSizeKb * itemsCount) / (1024 * 1024);
+const overLimit = projectedGb > 20;
+```
+
+`avgDocSizeKb` is the active container's supplied average document size.
+The UI displays the result to two decimal places and warns only when the unrounded value
+is strictly greater than 20. For example, 1 KB and `medium` yield approximately 0.05 GB
+using 50,000 items.
+
+The UI labels the units KB and GB while the calculation uses powers of 1024.
+This is an approximate planning display, not a compliance guarantee or a measurement of actual storage.
+
+## Existing warning copy
+
+The very-high item and rapid-growth cards contain wording about hierarchical partition keys (HPK)
+or bucketing. That wording is guidance displayed by the Scale page, not a guarantee of the
+recommendation engine's output. The current
+[recommendation skill](../skills/cosmosdb-data-model-recommendation/SKILL.md) limits recommendations
+to single-path keys.

@@ -3,8 +3,8 @@
 TypeScript parser for the Cosmos DB query language with error recovery,
 autocomplete, and AST transformation.
 
-Built on [Chevrotain](https://chevrotain.io/) — works in
-Node.js and browsers (including Electron).
+Built on [Chevrotain](https://chevrotain.io/) — for Node.js and
+modern browser/Electron applications using an ESM-capable bundler.
 
 For the query language itself, see the [Microsoft Learn query reference](https://learn.microsoft.com/en-us/cosmos-db/query/)
 and [built-in functions](https://learn.microsoft.com/en-us/cosmos-db/query/#system-functions).
@@ -27,13 +27,50 @@ This README describes the package API, not the complete language or server valid
 - ✅ **IDE-agnostic** — pure API with zero editor dependencies
 - ✅ **Ready-made providers** — plug-and-play adapters for
   Monaco, VS Code, and CodeMirror 6
-- ✅ **Zero runtime deps** — only Chevrotain (~45KB)
+- ✅ **Editor-independent core** — runtime dependencies are Chevrotain
+  and `@azure/cosmosdb-schema-analyzer`; editor SDKs are optional peers
 
 ## Install
+
+Runtime and dependency requirements are declared in [package.json](package.json).
+For browser/Electron applications, configure editor workers and assets through your bundler.
+
+| Entry point         | Additional editor requirements                                                                                  |
+| ------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Root or `/services` | None; no editor peers needed                                                                                    |
+| `/monaco`           | `monaco-editor`                                                                                                 |
+| `/codemirror`       | `@codemirror/autocomplete`, `@codemirror/language`, `@codemirror/lint`, `@codemirror/state`, `@codemirror/view` |
+| `/vscode`           | Actual VS Code extension host; host-provided `vscode` API and `@types/vscode` for TypeScript development        |
+
+Editor peers are optional for core users, but install the peers for the adapter you use.
+
+Core or language service only:
 
 ```bash
 npm install @azure/cosmosdb-nosql-language-service
 ```
+
+Monaco:
+
+```bash
+npm install @azure/cosmosdb-nosql-language-service monaco-editor
+```
+
+CodeMirror 6 (all five peers):
+
+```bash
+npm install @azure/cosmosdb-nosql-language-service @codemirror/autocomplete @codemirror/language @codemirror/lint @codemirror/state @codemirror/view
+```
+
+VS Code extension:
+
+```bash
+npm install @azure/cosmosdb-nosql-language-service
+npm install --save-dev @types/vscode
+```
+
+The `/vscode` adapter runs in a VS Code extension host, which supplies the `vscode` API.
+Align `@types/vscode` with your extension's target and keep `vscode` external when bundling.
 
 ## Architecture — Three Layers
 
@@ -61,15 +98,19 @@ npm install @azure/cosmosdb-nosql-language-service
   and wire up your own editor integration.
 - **Layer 2** — use `SqlLanguageService` for a unified API
   that returns generic types (no editor deps).
-- **Layer 3** — use a ready-made provider to register all
-  language features in one line.
+- **Layer 3** — use a registration helper for Monaco/VS Code, or compose CodeMirror extensions.
 
 ## Quick Start
 
 ### Option A: Use the Core API directly
 
 ```typescript
-import { parse, sqlToString, getCompletions } from "@azure/cosmosdb-nosql-language-service";
+import { parse, sqlToString, getCompletions, type JSONSchema } from "@azure/cosmosdb-nosql-language-service";
+
+const schema: JSONSchema = {
+  type: "object",
+  properties: { age: { type: "number" }, name: { type: "string" } },
+};
 
 // Parse a query
 const { ast, errors } = parse("SELECT * FROM c WHERE c.age > 21");
@@ -89,7 +130,12 @@ const items = getCompletions({ query: "SELECT c.", offset: 9, schema });
 ### Option B: Use the Language Service
 
 ```typescript
-import { SqlLanguageService } from "@azure/cosmosdb-nosql-language-service";
+import { DiagnosticSeverity, SqlLanguageService, type JSONSchema } from "@azure/cosmosdb-nosql-language-service";
+
+const collectionSchema: JSONSchema = {
+  type: "object",
+  properties: { id: { type: "string" }, name: { type: "string" } },
+};
 
 const service = new SqlLanguageService({
   getSchema: () => collectionSchema,
@@ -97,29 +143,43 @@ const service = new SqlLanguageService({
 
 // All features through a single object
 const diagnostics = service.getDiagnostics("SELECT * FORM c");
+const errors = diagnostics.filter(diagnostic => diagnostic.severity === DiagnosticSeverity.Error);
 const completions = service.getCompletions("SELECT c.", 9);
 const hover       = service.getHoverInfo("SELECT COUNT(c.id) FROM c", 7);
-const sigHelp     = service.getSignatureHelp("CONTAINS(c.name, ", 18);
+const signatureQuery = "CONTAINS(c.name, ";
+const sigHelp     = service.getSignatureHelp(signatureQuery, signatureQuery.length);
 const formatted   = service.format("SELECT  *  FROM  c");
 ```
 
 ### Option C: Use a Provider (Monaco)
+
+Run in a browser/Electron renderer with the Monaco install and bundler setup above.
 
 ```typescript
 import * as monaco from "monaco-editor";
 import { SqlLanguageService } from "@azure/cosmosdb-nosql-language-service";
 import { registerCosmosDbSql } from "@azure/cosmosdb-nosql-language-service/monaco";
 
-const service = new SqlLanguageService({
-  getSchema: () => collectionSchema,
-});
+const service = new SqlLanguageService();
 
 // One line — registers completions, diagnostics, hover,
 // signature help, and formatting
 const disposable = registerCosmosDbSql(monaco, service);
+
+const container = document.createElement("div");
+container.style.height = "300px";
+document.body.appendChild(container);
+const model = monaco.editor.createModel("SELECT * FROM c", "cosmosdb-sql");
+const editor = monaco.editor.create(container, { model });
+
+// On application teardown: editor.dispose(); model.dispose(); disposable.dispose();
 ```
 
 ### Option D: Use a Provider (VS Code Extension)
+
+This is an extension entry point, loaded by VS Code, not a standalone script. Configure your
+extension manifest's entry point, activation and language contribution for `cosmosdb-sql`;
+open a document with that language ID. Registration below is disposed through `context.subscriptions`.
 
 ```typescript
 import * as vscode from "vscode";
@@ -127,9 +187,7 @@ import { SqlLanguageService } from "@azure/cosmosdb-nosql-language-service";
 import { registerCosmosDbSql } from "@azure/cosmosdb-nosql-language-service/vscode";
 
 export function activate(context: vscode.ExtensionContext) {
-  const service = new SqlLanguageService({
-    getSchema: () => collectionSchema,
-  });
+  const service = new SqlLanguageService();
 
   registerCosmosDbSql(vscode, service, context);
 }
@@ -137,10 +195,13 @@ export function activate(context: vscode.ExtensionContext) {
 
 ### Option E: Use a Provider (CodeMirror 6)
 
+Run in a browser/Electron renderer with all five CodeMirror peers installed.
+
 ```typescript
 import { autocompletion } from "@codemirror/autocomplete";
 import { linter } from "@codemirror/lint";
-import { hoverTooltip } from "@codemirror/view";
+import { EditorState } from "@codemirror/state";
+import { EditorView, hoverTooltip } from "@codemirror/view";
 import { SqlLanguageService } from "@azure/cosmosdb-nosql-language-service";
 import {
   createCompletionSource,
@@ -148,26 +209,31 @@ import {
   createHoverTooltipSource,
 } from "@azure/cosmosdb-nosql-language-service/codemirror";
 
-const service = new SqlLanguageService({
-  getSchema: () => collectionSchema,
-});
+const service = new SqlLanguageService();
 
 const extensions = [
   autocompletion({ override: [createCompletionSource(service)] }),
   linter(createLintSource(service)),
   hoverTooltip(createHoverTooltipSource(service)),
 ];
+
+const editor = new EditorView({
+  state: EditorState.create({ doc: "SELECT * FROM c", extensions }),
+  parent: document.body,
+});
+
+// On application teardown: editor.destroy();
 ```
 
 ## Package Exports
 
-| Import path                                         | What you get                                |
-| --------------------------------------------------- | ------------------------------------------- |
-| `@azure/cosmosdb-nosql-language-service`            | Core API + `SqlLanguageService` + all types |
-| `@azure/cosmosdb-nosql-language-service/services`   | `SqlLanguageService` + types only           |
-| `@azure/cosmosdb-nosql-language-service/monaco`     | Monaco adapter                              |
-| `@azure/cosmosdb-nosql-language-service/vscode`     | VS Code adapter                             |
-| `@azure/cosmosdb-nosql-language-service/codemirror` | CodeMirror 6 adapter                        |
+| Import path                                         | What you get                                                                                      |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `@azure/cosmosdb-nosql-language-service`            | Core API + language service + runtime enums and public types                                      |
+| `@azure/cosmosdb-nosql-language-service/services`   | Language service, `DiagnosticSeverity`, function metadata, multi-query helpers, and service types |
+| `@azure/cosmosdb-nosql-language-service/monaco`     | Monaco adapter                                                                                    |
+| `@azure/cosmosdb-nosql-language-service/vscode`     | VS Code adapter                                                                                   |
+| `@azure/cosmosdb-nosql-language-service/codemirror` | CodeMirror 6 adapter                                                                              |
 
 ## API Reference
 
@@ -201,6 +267,7 @@ For example, a supplementary Unicode character such as an emoji occupies two cod
 The same units apply to completion cursor offsets, AST/error ranges, hover ranges, and formatting edits.
 Multi-query regions use document offsets, while their `parseResult` ranges are local to the region's text;
 the language service maps diagnostics and editor-facing results back to document coordinates.
+See [editor coordinate mapping](docs/editor-integration.md#coordinate-contract).
 
 #### `sqlToString(program: SqlProgram): string`
 
@@ -213,14 +280,14 @@ Get autocomplete suggestions for a cursor position.
 ```typescript
 interface CompletionRequest {
   query: string;           // the full query text
-  offset: number;          // 0-based cursor offset
+  offset: number;          // 0-based UTF-16 code-unit cursor offset
   schema?: JSONSchema;     // collection schema (optional)
   aliases?: string[];      // override auto-detected aliases
 }
 
 interface CompletionItem {
   label: string;
-  kind: "keyword" | "field" | "function" | "snippet" | "alias";
+  kind: "keyword" | "field" | "function" | "snippet" | "parameter" | "alias";
   detail?: string;         // e.g., field type
   sortText?: string;       // for priority ordering
   insertText?: string;     // text to insert (e.g., "COUNT($0)")
@@ -238,12 +305,39 @@ configuration:
 interface LanguageServiceHost {
   getSchema?(): JSONSchema | undefined;
   getAliases?(): string[] | undefined;
+  multiQuery?: boolean;
 }
 ```
+
+#### Schema input and ownership
+
+`JSONSchema` is re-exported from `@azure/cosmosdb-schema-analyzer`. The language service uses a
+**field projection**, not a general JSON Schema validator: supply the collection document shape
+with a root `properties` map and object-valued property schemas. Nested objects use `properties`;
+array navigation uses `type: "array"` with a single object-valued `items` schema, not tuple items.
+Field `type` supplies display text (completion uses the first entry of a type array), and optional
+`x-occurrence` percentages rank completions. `$ref`, `allOf`/`anyOf`/`oneOf`, boolean schemas and
+validation keywords are not resolved into fields. Normalize such schemas to this projection first.
+
+Completion paths remove the collection alias before navigating this shape. Field hover currently walks
+the literal dotted prefix, including an alias such as `c`; it is not a general alias/schema resolver,
+so a collection-shaped schema does not guarantee hover for every aliased field.
+
+The host and its schema remain caller-owned: the service reads callbacks as features are requested;
+it does not clone or freeze the supplied schema. Keep it stable during a call, and return the current
+schema when your collection changes. No schema is required for parsing or built-in function help.
+Schema-assisted suggestions and local diagnostics do not establish that the Cosmos DB server will accept a query.
+
+AST nodes are readonly by TypeScript convention, not runtime-frozen. Create replacement nodes when
+transforming a tree. In particular, `QueryRegion.parseResult` is lazy and memoized: repeated reads of
+one region return the same result/AST, not independent copies. The mutable snapshots for function
+metadata and signature help described below do not imply a blanket copy guarantee for all API results.
 
 #### `service.getDiagnostics(query): Diagnostic[]`
 
 Returns structured diagnostics with range, severity, code.
+`DiagnosticSeverity` is a runtime enum available from both the root and `/services`:
+`Error = 1`, `Warning = 2`, `Information = 3`, `Hint = 4`.
 
 #### `service.getCompletions(query, offset): CompletionItem[]`
 
@@ -258,6 +352,17 @@ fields.
 #### `service.getSignatureHelp(query, offset): SignatureHelpResult | null`
 
 Returns active function signature and parameter index.
+The result is an independently mutable snapshot, including nested signatures and parameters.
+Changes to it do not affect subsequent calls or other language service instances.
+
+#### `getFunctionMeta(name)` and `FUNCTION_SIGNATURES`
+
+Available from the root and `/services`. `getFunctionMeta()` performs a case-insensitive lookup and returns
+an independent mutable metadata snapshot, or `undefined` for an unknown function.
+`FUNCTION_SIGNATURES` is the shared built-in registry and is deeply read-only in both TypeScript and JavaScript.
+Its entries, signature arrays, signatures, parameter arrays and parameters are frozen; it is not a registration API.
+Code that previously edited the registry must instead modify a snapshot returned by `getFunctionMeta()`;
+those local changes do not customize the language service's built-ins.
 
 #### `service.format(query): string`
 
@@ -269,9 +374,8 @@ Returns text edits for incremental formatting.
 
 ### Provider Adapters
 
-Each provider adapter ships with **standalone provider
-classes** for fine-grained control, plus a convenience
-`registerCosmosDbSql()` that wires everything up at once.
+Monaco and VS Code ship **standalone provider classes** for fine-grained control, plus a convenience
+`registerCosmosDbSql()` helper. CodeMirror exposes source/extension factories that you compose yourself.
 
 For full, explicit wiring examples — including diagnostics-only
 setup and standalone adapter usage for Monaco, VS Code, and
@@ -283,13 +387,15 @@ CodeMirror — see [Editor Integration](docs/editor-integration.md).
 | VS Code      | `registerCosmosDbSql(vscode, service, context)` | `VSCodeDiagnosticsProvider`  |
 | CodeMirror 6 | compose extensions manually                     | `createLintSource(service)`  |
 
-All providers accept an options object to enable/disable
-individual features (completions, diagnostics, hover,
-signatureHelp, formatting).
+The Monaco and VS Code registration helpers accept options to enable/disable individual features
+(completions, diagnostics, hover, signatureHelp, formatting). For CodeMirror, select the factories
+and extensions you need.
 
 ## Error Handling
 
 ```typescript
+import { parse } from "@azure/cosmosdb-nosql-language-service";
+
 const { ast, errors } = parse("SELECT * FORM c");
 
 for (const err of errors) {
@@ -297,7 +403,7 @@ for (const err of errors) {
   console.log(err.message); // "expecting FROM but found..."
   console.log(err.range);   // { start: { offset, line, col }, end: ... }
 }
-// ast is still present (partial, via error recovery)
+// ast may be present as a recovered partial tree; check before use.
 ```
 
 ## Writing a Custom Provider

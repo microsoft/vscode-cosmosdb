@@ -86,7 +86,7 @@ describe('modeling usage metrics', () => {
                 section: 'queries',
                 edit: (container) => (container.reads[0].pattern += 'Changed'),
             },
-            { name: 'read filter', section: 'queries', edit: (container) => (container.reads[0].filters += 'Changed') },
+            { name: 'read filter', section: 'queries', edit: (container) => (container.reads[0].filters = ['id']) },
             { name: 'read rate', section: 'queries', edit: (container) => container.reads[0].qps++ },
             { name: 'query removal', section: 'queries', edit: (container) => container.reads.pop() },
             { name: 'insert rate', section: 'queries', edit: (container) => container.writes.insertsPerSec++ },
@@ -203,6 +203,7 @@ describe('modeling usage metrics', () => {
         const wizard = applyScenario(createInitialState(), 'chat');
         wizard.dataModel.containers[0].entity = 'private name';
         wizard.dataModel.containers[0].reads[0].pattern = 'private query';
+        wizard.dataModel.containers[0].reads[0].query = 'SELECT * FROM c WHERE c.secret = "private"';
         const summary = summarizeModel(wizard);
         expect(Object.values(summary).every((value) => typeof value !== 'string' || value === 'chat')).toBe(true);
         expect(Object.keys(summary)).toHaveLength(9);
@@ -227,6 +228,7 @@ describe('modeling input equality', () => {
         const read = second.containers[0].reads[0];
         second.containers[0].reads[0] = {
             qps: read.qps,
+            query: read.query,
             filters: read.filters,
             pattern: read.pattern,
             id: 'replacement',

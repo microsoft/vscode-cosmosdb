@@ -109,9 +109,10 @@ describe('scenario defaults', () => {
             expect(container.document.attributeCount).toBe(source.properties.length);
             expect(container.arrays).toEqual(source.arrays);
             expect(container.arrays.hasArrays).toBe(source.properties.some((field) => field.type === 'array'));
-            expect(container.reads.map(({ pattern, filters, qps }) => ({ pattern, filters, qps }))).toEqual(
-                source.reads,
-            );
+            expect(
+                container.reads.map(({ pattern, query, filters, qps }) => ({ pattern, query, filters, qps })),
+            ).toEqual(source.reads);
+            expect(container.reads.every((read) => read.query?.startsWith('SELECT '))).toBe(true);
             expect(container.writes).toEqual(source.writes);
             expect(container.scale).toMatchObject(source.scale);
             for (const field of source.properties.filter((entry) => entry.distinctValues !== undefined)) {
@@ -139,6 +140,7 @@ describe('scenario defaults', () => {
         expect(getPartitionKeyPaths(movement.partitionKey)).toEqual(['/skuId', '/movementId']);
         expect(movement.reads[0]).toMatchObject({
             pattern: 'Get movement history for a SKU in a bounded time range',
+            query: 'SELECT * FROM c WHERE skuId = @skuId AND occurredAt >= @startDate AND occurredAt < @endDate ORDER BY c.occurredAt DESC OFFSET 0 LIMIT 100',
             filters: 'skuId = @skuId AND occurredAt >= @startDate AND occurredAt < @endDate',
             qps: 80,
         });
@@ -150,9 +152,22 @@ describe('scenario defaults', () => {
     it('does not invent a filter for a query over the whole catalog', () => {
         expect(buildDataModel('catalog').containers[0].reads[2]).toMatchObject({
             pattern: 'List all products',
+            query: 'SELECT * FROM c',
             filters: '',
             qps: 10,
         });
+    });
+
+    it('preserves projections, aggregates, and ordering independently of filter predicates', () => {
+        expect(buildDataModel('social').containers[2].reads[1].query).toBe(
+            'SELECT c.lastMessageId FROM c WHERE conversationId = @conversationId',
+        );
+        expect(buildDataModel('analytics').containers[0].reads[2].query).toBe(
+            'SELECT VALUE COUNT(1) FROM c WHERE c.eventName = @eventName',
+        );
+        expect(
+            buildDataModel('gaming').containers[0].reads.find((read) => read.filters === 'season = @season')?.query,
+        ).toBe('SELECT * FROM c WHERE season = @season ORDER BY c.score DESC OFFSET 0 LIMIT 100');
     });
 
     it('preserves planning baselines that the catalog does not replace', () => {

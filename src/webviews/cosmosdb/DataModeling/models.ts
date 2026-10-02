@@ -90,7 +90,10 @@ export interface ContainerModel {
 export interface ReadQuery {
     id: string;
     pattern: string;
-    filters: string;
+    /** Full SQL query text. Absent in models saved before the query editor field was added. */
+    query?: string;
+    /** Selected property names; older models and catalog defaults may contain a filter predicate. */
+    filters: string[] | string;
     /** Peak queries per second. */
     qps: number;
 }

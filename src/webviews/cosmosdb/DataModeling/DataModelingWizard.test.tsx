@@ -884,7 +884,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(queries).toHaveAccessibleName('Queries');
         expect(queries).toHaveAttribute('aria-selected', 'true');
         expect(queries).toHaveFocus();
-        expect(screen.getByRole('textbox', { name: 'Query pattern for read 1' })).toBeVisible();
+        expect(screen.getByRole('textbox', { name: 'Description for read 1' })).toBeVisible();
         expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
         await userEvent.click(screen.getByRole('tab', { name: 'Data' }));
         await userEvent.click(next);
@@ -1023,6 +1023,15 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         await answerConfirmation('Continue your data model?', false);
         const retry = await screen.findByRole('button', { name: 'Retry saving' });
         expect(screen.getByRole('alert')).toHaveTextContent('Could not save');
+        // Status rows share one viewport-height column with the wizard so they cannot add a document scrollbar.
+        const viewport = retry.parentElement!.parentElement!;
+        expect(viewport).toHaveStyle({ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' });
+        expect(viewport).toContainElement(screen.getByRole('alert'));
+        const wizardHost = screen
+            .getByRole('navigation', { name: 'Data modeling steps' })
+            .closest('[data-header-behavior]')!.parentElement!.parentElement!;
+        expect(viewport).toContainElement(wizardHost);
+        expect(wizardHost).toHaveStyle({ flex: '1 1 auto' });
         await userEvent.click(retry);
         await waitFor(() => expect(screen.queryByRole('button', { name: 'Retry saving' })).not.toBeInTheDocument());
         expect(lastSave()).toEqual(createInitialSnapshot());

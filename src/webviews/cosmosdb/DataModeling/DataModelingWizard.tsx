@@ -72,9 +72,24 @@ function buildStepValues(model: DataModel): string[] {
     return [WORKLOAD_STEP, ...model.containers.map((c) => containerStep(c.id)), REVIEW_STEP, RESULT_STEP];
 }
 
+// Separate from useStyles so the outer shell does not change the insertion order of the Wizard overrides.
+const useViewportStyles = makeStyles({
+    // Status rows share the viewport with the wizard instead of pushing its full-height surface below the fold.
+    viewport: {
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100vh',
+        minHeight: 0,
+        overflow: 'hidden',
+    },
+    statusRow: { flex: 'none' },
+});
+
 const useStyles = makeStyles({
     fullWidthWizard: {
-        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        flex: '1 1 auto',
         minHeight: 0,
         minWidth: 0,
         // Temporary package DOM override until Wizard exposes a content-width prop.
@@ -85,6 +100,12 @@ const useStyles = makeStyles({
         '& [aria-current="step"] .fui-Text': {
             fontWeight: 'inherit',
         },
+    },
+    // The package Container root is sized to 100vh; fit it to the remaining space below status rows.
+    wizardHost: {
+        flex: '1 1 auto',
+        minHeight: 0,
+        '& > div': { height: '100%' },
     },
     // The footer's contentEnd is a single slot, so give its buttons and the link their own gap.
     endGroup: { display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS },
@@ -132,6 +153,7 @@ function footerHint(value: string): string {
 }
 
 export const DataModelingWizard = () => {
+    const styles = useViewportStyles();
     const trpcClient = useTrpcClient<DataModelingAppRouter>();
     const report = useModelingTelemetryReporter();
     const choiceMade = useRef(false);
@@ -182,10 +204,12 @@ export const DataModelingWizard = () => {
     }
 
     return (
-        <>
-            <div role="alert">{persistence.saveFailed ? <Text>{saveError}</Text> : null}</div>
+        <div className={styles.viewport}>
+            <div role="alert" className={styles.statusRow}>
+                {persistence.saveFailed ? <Text>{saveError}</Text> : null}
+            </div>
             {persistence.saveFailed ? (
-                <div>
+                <div className={styles.statusRow}>
                     <Button onClick={persistence.retrySave}>{l10n.t('Retry saving')}</Button>
                 </div>
             ) : null}
@@ -194,7 +218,7 @@ export const DataModelingWizard = () => {
                 setSnapshot={persistence.setSnapshot}
                 flush={persistence.flush}
             />
-        </>
+        </div>
     );
 };
 
@@ -251,6 +275,7 @@ const HydratedDataModelingWizard = ({
     flush,
 }: Pick<ReturnType<typeof useModelingAdvisorPersistence>, 'snapshot' | 'setSnapshot' | 'flush'>) => {
     const styles = useStyles();
+    const viewportStyles = useViewportStyles();
     const trpcClient = useTrpcClient<DataModelingAppRouter>();
     const report = useModelingTelemetryReporter();
     const visible = useModelingPageVisible();
@@ -934,199 +959,210 @@ const HydratedDataModelingWizard = ({
 
     return (
         <div className={styles.fullWidthWizard} aria-busy={confirming || addingContainer}>
-            {confirmationError ? <Text role="alert">{confirmationError}</Text> : null}
-            {addContainerError ? <Text role="alert">{addContainerError}</Text> : null}
-            <Wizard
-                activeStep={activeValue}
-                onStepChange={onStepChange}
-                stepsAriaLabel={l10n.t('Data modeling steps')}
-                overflowAriaLabel={overflowAriaLabel}
-                headerBehavior="sticky-navigation"
-                header={
-                    <ContainerHeader
-                        media={<DatabaseLinkRegular aria-hidden="true" focusable="false" />}
-                        title={l10n.t('Workload: {name}', { name: scenarioLabel ?? l10n.t('Not selected') })}
-                        action={<Badge appearance="tint">{l10n.t('Preview')}</Badge>}
-                    />
-                }
-                footer={footer}
-            >
-                <WizardStep
-                    value={WORKLOAD_STEP}
-                    completed={reachedSteps.includes(WORKLOAD_STEP) && reachedSteps.at(-1) !== WORKLOAD_STEP}
-                    navigable={!deploymentBusy && reachedSteps.includes(WORKLOAD_STEP)}
-                    label={l10n.t('Workload')}
-                    title={l10n.t('What kind of workload are you building?')}
-                    subtitle={l10n.t(
-                        "Pick the closest pattern. We'll pre-fill typical partition key (PK) candidates and defaults.",
-                    )}
+            {confirmationError ? (
+                <Text role="alert" className={viewportStyles.statusRow}>
+                    {confirmationError}
+                </Text>
+            ) : null}
+            {addContainerError ? (
+                <Text role="alert" className={viewportStyles.statusRow}>
+                    {addContainerError}
+                </Text>
+            ) : null}
+            <div className={styles.wizardHost}>
+                <Wizard
+                    activeStep={activeValue}
+                    onStepChange={onStepChange}
+                    stepsAriaLabel={l10n.t('Data modeling steps')}
+                    overflowAriaLabel={overflowAriaLabel}
+                    headerBehavior="sticky-navigation"
+                    header={
+                        <ContainerHeader
+                            media={<DatabaseLinkRegular aria-hidden="true" focusable="false" />}
+                            title={l10n.t('Workload: {name}', { name: scenarioLabel ?? l10n.t('Not selected') })}
+                            action={<Badge appearance="tint">{l10n.t('Preview')}</Badge>}
+                        />
+                    }
+                    footer={footer}
                 >
-                    <WorkloadPage scenario={state.scenario} onPickScenario={pickScenario} />
-                </WizardStep>
-
-                {state.dataModel.containers.map((c, index) => (
                     <WizardStep
-                        key={c.id}
-                        value={containerStep(c.id)}
-                        completed={
-                            reachedSteps.includes(containerStep(c.id)) && reachedSteps.at(-1) !== containerStep(c.id)
-                        }
-                        navigable={!deploymentBusy && reachedSteps.includes(containerStep(c.id))}
-                        label={
-                            <span className={styles.stepLabel}>
-                                <span>{l10n.t('Container:')}</span>
-                                <Text as="span" font="monospace">
-                                    {c.entity || l10n.t('Container {n}', { n: index + 1 })}
-                                </Text>
-                            </span>
-                        }
-                        title={
-                            editingContainerId === c.id ? (
-                                <Field
-                                    validationMessage={containerNameError}
-                                    validationState={containerNameError ? 'error' : 'none'}
-                                >
-                                    <Input
-                                        aria-label={l10n.t('Container name')}
-                                        className={styles.containerNameInput}
-                                        contentAfter={
-                                            <div className={styles.containerNameActions}>
-                                                <Button
-                                                    appearance="transparent"
-                                                    aria-label={l10n.t('Save container name')}
-                                                    icon={<CheckmarkRegular />}
-                                                    size="small"
-                                                    disabled={!!containerNameError}
-                                                    onClick={saveContainerName}
-                                                />
-                                                <Button
-                                                    appearance="transparent"
-                                                    aria-label={l10n.t('Cancel editing container name')}
-                                                    icon={<DismissRegular />}
-                                                    size="small"
-                                                    onClick={cancelEditingContainerName}
-                                                />
-                                            </div>
-                                        }
-                                        ref={containerNameInputRef}
-                                        value={containerNameDraft}
-                                        onChange={(_, data) => setContainerNameDraft(data.value)}
-                                        onKeyDown={(event) => {
-                                            if (event.key === 'Enter') {
-                                                event.preventDefault();
-                                                saveContainerName();
-                                            } else if (event.key === 'Escape') {
-                                                cancelEditingContainerName();
-                                            }
-                                        }}
-                                    />
-                                </Field>
-                            ) : (
-                                <span className={styles.containerTitle}>
-                                    <Text font="monospace" size={500} weight="semibold">
-                                        {l10n.t('Model:')} {c.entity}
-                                    </Text>
-                                    <Button
-                                        appearance="transparent"
-                                        className={styles.containerTitleEdit}
-                                        icon={<EditRegular />}
-                                        size="small"
-                                        aria-label={l10n.t('Edit {name}', { name: c.entity })}
-                                        onClick={() => startEditingContainerName(c.id, c.entity)}
-                                    />
-                                </span>
-                            )
-                        }
-                        subtitle={
-                            scenarioLabel
-                                ? l10n.t(
-                                      'Pre-filled a {scenario} sample template. Switch tabs to edit this container’s data, queries and scale to match your app. Each container gets its own partition-key recommendation.',
-                                      { scenario: scenarioLabel },
-                                  )
-                                : l10n.t(
-                                      'Switch tabs to define this container’s data, queries and scale. Each container gets its own partition-key recommendation.',
-                                  )
-                        }
+                        value={WORKLOAD_STEP}
+                        completed={reachedSteps.includes(WORKLOAD_STEP) && reachedSteps.at(-1) !== WORKLOAD_STEP}
+                        navigable={!deploymentBusy && reachedSteps.includes(WORKLOAD_STEP)}
+                        label={l10n.t('Workload')}
+                        title={l10n.t('What kind of workload are you building?')}
+                        subtitle={l10n.t(
+                            "Pick the closest pattern. We'll pre-fill typical partition key (PK) candidates and defaults.",
+                        )}
                     >
-                        <ContainerPage
-                            model={state.dataModel}
-                            tab={containerTab}
-                            onTabChange={setContainerTab}
-                            queriesTabRef={queriesTabRef}
-                            active={activeValue === containerStep(c.id)}
-                            containerId={c.id}
-                            onVisit={visit}
-                            onEdited={markEdited}
-                            onTelemetry={report}
-                            onChangeData={onChangeData}
-                            onChange={setDataModel}
+                        <WorkloadPage scenario={state.scenario} onPickScenario={pickScenario} />
+                    </WizardStep>
+
+                    {state.dataModel.containers.map((c, index) => (
+                        <WizardStep
+                            key={c.id}
+                            value={containerStep(c.id)}
+                            completed={
+                                reachedSteps.includes(containerStep(c.id)) &&
+                                reachedSteps.at(-1) !== containerStep(c.id)
+                            }
+                            navigable={!deploymentBusy && reachedSteps.includes(containerStep(c.id))}
+                            label={
+                                <span className={styles.stepLabel}>
+                                    <span>{l10n.t('Container:')}</span>
+                                    <Text as="span" font="monospace">
+                                        {c.entity || l10n.t('Container {n}', { n: index + 1 })}
+                                    </Text>
+                                </span>
+                            }
+                            title={
+                                editingContainerId === c.id ? (
+                                    <Field
+                                        validationMessage={containerNameError}
+                                        validationState={containerNameError ? 'error' : 'none'}
+                                    >
+                                        <Input
+                                            aria-label={l10n.t('Container name')}
+                                            className={styles.containerNameInput}
+                                            contentAfter={
+                                                <div className={styles.containerNameActions}>
+                                                    <Button
+                                                        appearance="transparent"
+                                                        aria-label={l10n.t('Save container name')}
+                                                        icon={<CheckmarkRegular />}
+                                                        size="small"
+                                                        disabled={!!containerNameError}
+                                                        onClick={saveContainerName}
+                                                    />
+                                                    <Button
+                                                        appearance="transparent"
+                                                        aria-label={l10n.t('Cancel editing container name')}
+                                                        icon={<DismissRegular />}
+                                                        size="small"
+                                                        onClick={cancelEditingContainerName}
+                                                    />
+                                                </div>
+                                            }
+                                            ref={containerNameInputRef}
+                                            value={containerNameDraft}
+                                            onChange={(_, data) => setContainerNameDraft(data.value)}
+                                            onKeyDown={(event) => {
+                                                if (event.key === 'Enter') {
+                                                    event.preventDefault();
+                                                    saveContainerName();
+                                                } else if (event.key === 'Escape') {
+                                                    cancelEditingContainerName();
+                                                }
+                                            }}
+                                        />
+                                    </Field>
+                                ) : (
+                                    <span className={styles.containerTitle}>
+                                        <Text font="monospace" size={500} weight="semibold">
+                                            {l10n.t('Model:')} {c.entity}
+                                        </Text>
+                                        <Button
+                                            appearance="transparent"
+                                            className={styles.containerTitleEdit}
+                                            icon={<EditRegular />}
+                                            size="small"
+                                            aria-label={l10n.t('Edit {name}', { name: c.entity })}
+                                            onClick={() => startEditingContainerName(c.id, c.entity)}
+                                        />
+                                    </span>
+                                )
+                            }
+                            subtitle={
+                                scenarioLabel
+                                    ? l10n.t(
+                                          'Pre-filled a {scenario} sample template. Switch tabs to edit this container’s data, queries and scale to match your app. Each container gets its own partition-key recommendation.',
+                                          { scenario: scenarioLabel },
+                                      )
+                                    : l10n.t(
+                                          'Switch tabs to define this container’s data, queries and scale. Each container gets its own partition-key recommendation.',
+                                      )
+                            }
+                        >
+                            <ContainerPage
+                                model={state.dataModel}
+                                tab={containerTab}
+                                onTabChange={setContainerTab}
+                                queriesTabRef={queriesTabRef}
+                                active={activeValue === containerStep(c.id)}
+                                containerId={c.id}
+                                onVisit={visit}
+                                onEdited={markEdited}
+                                onTelemetry={report}
+                                onChangeData={onChangeData}
+                                onChange={setDataModel}
+                            />
+                        </WizardStep>
+                    ))}
+
+                    <WizardStep
+                        value={REVIEW_STEP}
+                        completed={reachedSteps.includes(REVIEW_STEP) && reachedSteps.at(-1) !== REVIEW_STEP}
+                        navigable={!deploymentBusy && reachedSteps.includes(REVIEW_STEP)}
+                        label={l10n.t('Review')}
+                        title={l10n.t('Review your inputs')}
+                    >
+                        <ReviewPage
+                            workloadLabel={scenarioLabel ?? l10n.t('Not selected')}
+                            containers={state.dataModel.containers}
+                            onEditWorkload={() => goToStep(1)}
+                            onEditContainer={goToContainer}
                         />
                     </WizardStep>
-                ))}
 
-                <WizardStep
-                    value={REVIEW_STEP}
-                    completed={reachedSteps.includes(REVIEW_STEP) && reachedSteps.at(-1) !== REVIEW_STEP}
-                    navigable={!deploymentBusy && reachedSteps.includes(REVIEW_STEP)}
-                    label={l10n.t('Review')}
-                    title={l10n.t('Review your inputs')}
-                >
-                    <ReviewPage
-                        workloadLabel={scenarioLabel ?? l10n.t('Not selected')}
-                        containers={state.dataModel.containers}
-                        onEditWorkload={() => goToStep(1)}
-                        onEditContainer={goToContainer}
-                    />
-                </WizardStep>
-
-                <WizardStep
-                    value={RESULT_STEP}
-                    completed={recommendationStatus === 'received'}
-                    navigable={!deploymentBusy && reachedSteps.includes(RESULT_STEP)}
-                    label={l10n.t('Result')}
-                    title={l10n.t('Partition key recommendation')}
-                >
-                    <ResultPage
-                        recommendationStatus={recommendationStatus}
-                        recommendation={recommendation}
-                        recommendationError={recommendationError}
-                        onRetryRecommendation={requestRecommendation}
-                        feedback={selectedFeedback}
-                        onFeedback={(vote) => {
-                            if (selectedFeedback !== vote) {
-                                setFeedback({ recommendation, vote });
-                                report({ type: 'feedback', vote });
-                            }
-                        }}
-                    />
-                </WizardStep>
-                <WizardStep
-                    value={DEPLOY_STEP}
-                    completed={canEnterDeploy && !!snapshot.deployment}
-                    navigable={canEnterDeploy && !deploymentBusy}
-                    label={l10n.t('Deploy')}
-                    title={l10n.t('Deploy data model')}
-                    subtitle={l10n.t(
-                        'Create resources directly or prepare deployment code for your preferred tooling.',
-                    )}
-                >
-                    {recommendation ? (
-                        <DeployPage
-                            containers={recommendation.containers}
-                            draft={currentDeploymentDraft}
-                            deployment={snapshot.deployment}
-                            onDraftChange={updateDeploymentDraft}
-                            loadOptions={loadDeploymentOptions}
-                            generateTemplate={generateDeploymentTemplate}
-                            onDeploy={(input) => trpcClient.dataModeling.deploy.mutate(input)}
-                            onOpenDataExplorer={(input) => trpcClient.dataModeling.openDataExplorer.mutate(input)}
-                            onBusyChange={setDeploymentBusy}
-                            onDeploymentChange={persistDeployment}
-                            onTelemetry={report}
+                    <WizardStep
+                        value={RESULT_STEP}
+                        completed={recommendationStatus === 'received'}
+                        navigable={!deploymentBusy && reachedSteps.includes(RESULT_STEP)}
+                        label={l10n.t('Result')}
+                        title={l10n.t('Partition key recommendation')}
+                    >
+                        <ResultPage
+                            recommendationStatus={recommendationStatus}
+                            recommendation={recommendation}
+                            recommendationError={recommendationError}
+                            onRetryRecommendation={requestRecommendation}
+                            feedback={selectedFeedback}
+                            onFeedback={(vote) => {
+                                if (selectedFeedback !== vote) {
+                                    setFeedback({ recommendation, vote });
+                                    report({ type: 'feedback', vote });
+                                }
+                            }}
                         />
-                    ) : null}
-                </WizardStep>
-            </Wizard>
+                    </WizardStep>
+                    <WizardStep
+                        value={DEPLOY_STEP}
+                        completed={canEnterDeploy && !!snapshot.deployment}
+                        navigable={canEnterDeploy && !deploymentBusy}
+                        label={l10n.t('Deploy')}
+                        title={l10n.t('Deploy data model')}
+                        subtitle={l10n.t(
+                            'Create resources directly or prepare deployment code for your preferred tooling.',
+                        )}
+                    >
+                        {recommendation ? (
+                            <DeployPage
+                                containers={recommendation.containers}
+                                draft={currentDeploymentDraft}
+                                deployment={snapshot.deployment}
+                                onDraftChange={updateDeploymentDraft}
+                                loadOptions={loadDeploymentOptions}
+                                generateTemplate={generateDeploymentTemplate}
+                                onDeploy={(input) => trpcClient.dataModeling.deploy.mutate(input)}
+                                onOpenDataExplorer={(input) => trpcClient.dataModeling.openDataExplorer.mutate(input)}
+                                onBusyChange={setDeploymentBusy}
+                                onDeploymentChange={persistDeployment}
+                                onTelemetry={report}
+                            />
+                        ) : null}
+                    </WizardStep>
+                </Wizard>
+            </div>
         </div>
     );
 };

@@ -84,7 +84,13 @@ function instantiateContainer(def: ContainerDefault): ContainerModel {
         properties,
         document: { ...def.document },
         arrays: { ...def.arrays },
-        reads: def.reads.map((r) => ({ id: nextId('read'), pattern: r.pattern, filters: r.filters, qps: r.qps })),
+        reads: def.reads.map((r) => ({
+            id: nextId('read'),
+            pattern: r.pattern,
+            query: r.query,
+            filters: r.filters,
+            qps: r.qps,
+        })),
         writes: { ...def.writes },
         scale: {
             candidates: buildCandidates({ properties }).map((candidate) => ({
@@ -167,7 +173,7 @@ export function createBlankContainer(entity = 'NewContainer'): ContainerModel {
         properties,
         document: { attributeCount: 3, avgSizeKb: 1, maxSizeKb: 4 },
         arrays: { hasArrays: false, avgItems: 10, maxItems: 100, updatePattern: 'none' },
-        reads: [{ id: nextId('read'), pattern: '', filters: 'id', qps: 100 }],
+        reads: [{ id: nextId('read'), pattern: '', query: '', filters: 'id', qps: 100 }],
         writes: { insertsPerSec: 0, updatesPerSec: 0, deletesPerSec: 0 },
         scale: {
             candidates: buildCandidates({ properties }),

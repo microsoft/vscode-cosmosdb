@@ -30,7 +30,15 @@ const ContainerModelSchema: z.ZodType<ContainerModel> = z.object({
         maxItems: z.number(),
         updatePattern: z.enum(['none', 'append', 'patch', 'replace']),
     }),
-    reads: z.array(z.object({ id: z.string().min(1), pattern: z.string(), filters: z.string(), qps: z.number() })),
+    reads: z.array(
+        z.object({
+            id: z.string().min(1),
+            pattern: z.string(),
+            query: z.string().optional(),
+            filters: z.union([z.string(), z.array(z.string())]),
+            qps: z.number(),
+        }),
+    ),
     writes: z.object({ insertsPerSec: z.number(), updatesPerSec: z.number(), deletesPerSec: z.number() }),
     scale: z.object({
         candidates: z.array(

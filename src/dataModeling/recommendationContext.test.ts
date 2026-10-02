@@ -152,6 +152,12 @@ describe('recommendation scenario context', () => {
             },
         },
         {
+            name: 'query SQL',
+            edit: (state) => {
+                state.dataModel.containers[0].reads[0].query = 'SELECT TOP 1 * FROM c';
+            },
+        },
+        {
             name: 'query filter',
             edit: (state) => {
                 state.dataModel.containers[0].reads[0].filters = 'id = @id';

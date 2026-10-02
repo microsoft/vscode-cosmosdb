@@ -139,4 +139,11 @@ describe('ReviewPage', () => {
         renderReview([createBlankContainer('Orders')]);
         expect(screen.getByText('Read by id')).toBeVisible();
     });
+
+    it('summarizes multiselect property names when the read has no description', () => {
+        const container = createBlankContainer('Orders');
+        container.reads[0].filters = ['id', 'type'];
+        renderReview([container]);
+        expect(screen.getByText('Read by id, type')).toBeVisible();
+    });
 });

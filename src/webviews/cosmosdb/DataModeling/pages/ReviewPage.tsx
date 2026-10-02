@@ -224,10 +224,11 @@ function ContainerCard({ container, onEdit }: { container: ContainerModel; onEdi
     };
 
     const topRead = container.reads.toSorted((a, b) => b.qps - a.qps)[0];
+    const topReadFilters = Array.isArray(topRead?.filters) ? topRead.filters.join(', ') : topRead?.filters.trim();
     const topReadText = topRead?.pattern.trim()
         ? topRead.pattern.trim()
-        : topRead?.filters.trim()
-          ? l10n.t('Read by {filters}', { filters: topRead.filters.trim() })
+        : topReadFilters
+          ? l10n.t('Read by {filters}', { filters: topReadFilters })
           : l10n.t('No read pattern defined');
     const readQps = container.reads.reduce((sum, read) => sum + read.qps, 0);
     const { insertsPerSec, updatesPerSec, deletesPerSec } = container.writes;

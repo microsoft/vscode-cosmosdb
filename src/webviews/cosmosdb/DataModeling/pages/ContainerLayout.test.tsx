@@ -78,7 +78,7 @@ describe('single-column container tabs', () => {
         await user.click(summary);
         expect(screen.getByText('Optimize for the 80% case')).toBeVisible();
         await user.click(summary);
-        const pattern = screen.getByRole('textbox', { name: 'Query pattern for read 1' });
+        const pattern = screen.getByRole('textbox', { name: 'Description for read 1' });
         const readsCard = screen.getByText('📖 Reads').closest('section')!;
         const writesCard = screen.getByText('✍️ Writes').closest('section')!;
         expect(readsCard).toContainElement(pattern);
@@ -91,9 +91,9 @@ describe('single-column container tabs', () => {
         fireEvent.change(screen.getByRole('spinbutton', { name: 'Inserts / sec' }), { target: { value: '42' } });
         expect(screen.getByText('42 TPS')).toBeVisible();
         await user.click(screen.getByRole('button', { name: 'Add read query' }));
-        expect(screen.getByRole('textbox', { name: 'Query pattern for read 2' })).toBeVisible();
+        expect(screen.getByRole('textbox', { name: 'Description for read 2' })).toBeVisible();
         await user.click(screen.getAllByRole('button', { name: 'Remove read query' })[1]);
-        expect(screen.queryByRole('textbox', { name: 'Query pattern for read 2' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('textbox', { name: 'Description for read 2' })).not.toBeInTheDocument();
         expect(screen.getByText('Estimated request cost')).toBeVisible();
     });
 

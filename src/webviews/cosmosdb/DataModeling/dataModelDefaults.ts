@@ -13,7 +13,7 @@
  * read patterns, write rates, and scale characteristics. Entries are id-less; runtime ids are
  * assigned when the model is instantiated.
  *
- * Schemas, ordered partition keys, query predicates/QPS, and write distributions follow scenario
+ * Schemas, ordered partition keys, full SQL queries, query predicates/QPS, and write distributions follow scenario
  * catalog 2.1. Enumerated fields supply cardinality defaults. Size, write-rate, and growth estimates
  * retain the prototype baselines where the catalog does not supply replacements.
  */
@@ -44,6 +44,7 @@ export interface PropertyDefault {
 /** A read-query default (no runtime id). */
 export interface ReadDefault {
     pattern: string;
+    query: string;
     filters: string;
     qps: number;
 }
@@ -95,9 +96,24 @@ export const DATA_MODEL_DEFAULTS: Record<ScenarioId, DataModelDefaults> = {
                 document: { attributeCount: 7, avgSizeKb: 1, maxSizeKb: 4 },
                 arrays: { hasArrays: false, avgItems: 10, maxItems: 100, updatePattern: 'none' },
                 reads: [
-                    { pattern: l10n.t('Get a session by sessionId'), filters: 'sessionId = @sessionId', qps: 200 },
-                    { pattern: l10n.t("List a user's recent sessions"), filters: 'userId = @userId', qps: 60 },
-                    { pattern: l10n.t('List sessions for a model'), filters: 'model = @model', qps: 10 },
+                    {
+                        query: 'SELECT * FROM c WHERE sessionId = @sessionId',
+                        pattern: l10n.t('Get a session by sessionId'),
+                        filters: 'sessionId = @sessionId',
+                        qps: 200,
+                    },
+                    {
+                        query: 'SELECT * FROM c WHERE userId = @userId ORDER BY c.lastActivityAt DESC',
+                        pattern: l10n.t("List a user's recent sessions"),
+                        filters: 'userId = @userId',
+                        qps: 60,
+                    },
+                    {
+                        query: 'SELECT * FROM c WHERE model = @model ORDER BY c.lastActivityAt DESC',
+                        pattern: l10n.t('List sessions for a model'),
+                        filters: 'model = @model',
+                        qps: 10,
+                    },
                 ],
                 writes: { insertsPerSec: 40, updatesPerSec: 25, deletesPerSec: 5 },
                 scale: { items: 'medium', writes: 'even', growth: 'slow' },
@@ -120,11 +136,17 @@ export const DATA_MODEL_DEFAULTS: Record<ScenarioId, DataModelDefaults> = {
                 arrays: { hasArrays: false, avgItems: 10, maxItems: 100, updatePattern: 'none' },
                 reads: [
                     {
+                        query: 'SELECT * FROM c WHERE sessionId = @sessionId',
                         pattern: l10n.t('Get all messages for a sessionId'),
                         filters: 'sessionId = @sessionId',
                         qps: 200,
                     },
-                    { pattern: l10n.t('Get all Messages by userId'), filters: 'userId = @userId', qps: 60 },
+                    {
+                        query: 'SELECT * FROM c WHERE userId = @userId',
+                        pattern: l10n.t('Get all Messages by userId'),
+                        filters: 'userId = @userId',
+                        qps: 60,
+                    },
                 ],
                 writes: { insertsPerSec: 40, updatesPerSec: 25, deletesPerSec: 5 },
                 scale: { items: 'medium', writes: 'even', growth: 'slow' },
@@ -143,8 +165,18 @@ export const DATA_MODEL_DEFAULTS: Record<ScenarioId, DataModelDefaults> = {
                 document: { attributeCount: 6, avgSizeKb: 1, maxSizeKb: 4 },
                 arrays: { hasArrays: false, avgItems: 10, maxItems: 100, updatePattern: 'none' },
                 reads: [
-                    { pattern: l10n.t('Get all user records for a userId'), filters: 'userId = @userId', qps: 200 },
-                    { pattern: l10n.t('Get a User by displayName'), filters: 'displayName = @displayName', qps: 60 },
+                    {
+                        query: 'SELECT * FROM c WHERE userId = @userId',
+                        pattern: l10n.t('Get all user records for a userId'),
+                        filters: 'userId = @userId',
+                        qps: 200,
+                    },
+                    {
+                        query: 'SELECT * FROM c WHERE displayName = @displayName',
+                        pattern: l10n.t('Get a User by displayName'),
+                        filters: 'displayName = @displayName',
+                        qps: 60,
+                    },
                 ],
                 writes: { insertsPerSec: 40, updatesPerSec: 25, deletesPerSec: 5 },
                 scale: { items: 'medium', writes: 'even', growth: 'slow' },
@@ -168,9 +200,24 @@ export const DATA_MODEL_DEFAULTS: Record<ScenarioId, DataModelDefaults> = {
                 document: { attributeCount: 7, avgSizeKb: 3, maxSizeKb: 12 },
                 arrays: { hasArrays: true, avgItems: 10, maxItems: 100, updatePattern: 'none' },
                 reads: [
-                    { pattern: l10n.t('Get all orders for a customer'), filters: 'customerId = @customerId', qps: 200 },
-                    { pattern: l10n.t('Get order by orderId'), filters: 'orderId = @orderId', qps: 60 },
-                    { pattern: l10n.t('All pending orders (admin dashboard)'), filters: 'status = @status', qps: 10 },
+                    {
+                        query: 'SELECT * FROM c WHERE customerId = @customerId ORDER BY c.orderDate DESC',
+                        pattern: l10n.t('Get all orders for a customer'),
+                        filters: 'customerId = @customerId',
+                        qps: 200,
+                    },
+                    {
+                        query: 'SELECT * FROM c WHERE orderId = @orderId',
+                        pattern: l10n.t('Get order by orderId'),
+                        filters: 'orderId = @orderId',
+                        qps: 60,
+                    },
+                    {
+                        query: 'SELECT * FROM c WHERE status = @status ORDER BY c.orderDate DESC',
+                        pattern: l10n.t('All pending orders (admin dashboard)'),
+                        filters: 'status = @status',
+                        qps: 10,
+                    },
                 ],
                 writes: { insertsPerSec: 40, updatesPerSec: 25, deletesPerSec: 5 },
                 scale: { items: 'medium', writes: 'even', growth: 'slow' },
@@ -190,11 +237,17 @@ export const DATA_MODEL_DEFAULTS: Record<ScenarioId, DataModelDefaults> = {
                 arrays: { hasArrays: false, avgItems: 10, maxItems: 100, updatePattern: 'none' },
                 reads: [
                     {
+                        query: 'SELECT * FROM c WHERE customerId = @customerId ORDER BY c.createdAt DESC',
                         pattern: l10n.t('Get all customer records for a customerId'),
                         filters: 'customerId = @customerId',
                         qps: 200,
                     },
-                    { pattern: l10n.t('Get customer by customerId'), filters: 'customerId = @customerId', qps: 60 },
+                    {
+                        query: 'SELECT * FROM c WHERE customerId = @customerId',
+                        pattern: l10n.t('Get customer by customerId'),
+                        filters: 'customerId = @customerId',
+                        qps: 60,
+                    },
                 ],
                 writes: { insertsPerSec: 40, updatesPerSec: 25, deletesPerSec: 5 },
                 scale: { items: 'medium', writes: 'even', growth: 'slow' },
@@ -217,12 +270,19 @@ export const DATA_MODEL_DEFAULTS: Record<ScenarioId, DataModelDefaults> = {
                 arrays: { hasArrays: false, avgItems: 10, maxItems: 100, updatePattern: 'none' },
                 reads: [
                     {
+                        query: 'SELECT * FROM c WHERE orderId = @orderId',
                         pattern: l10n.t('Get all line item records for an orderId'),
                         filters: 'orderId = @orderId',
                         qps: 200,
                     },
-                    { pattern: l10n.t('Get line item by lineItemId'), filters: 'lineItemId = @lineItemId', qps: 60 },
                     {
+                        query: 'SELECT * FROM c WHERE lineItemId = @lineItemId',
+                        pattern: l10n.t('Get line item by lineItemId'),
+                        filters: 'lineItemId = @lineItemId',
+                        qps: 60,
+                    },
+                    {
+                        query: 'SELECT * FROM c WHERE createdAt = @createdAt ORDER BY c.createdAt DESC',
                         pattern: l10n.t('Get all line items for a createdAt timestamp'),
                         filters: 'createdAt = @createdAt',
                         qps: 10,
@@ -251,12 +311,19 @@ export const DATA_MODEL_DEFAULTS: Record<ScenarioId, DataModelDefaults> = {
                 arrays: { hasArrays: false, avgItems: 10, maxItems: 100, updatePattern: 'append' },
                 reads: [
                     {
+                        query: 'SELECT * FROM c WHERE deviceId = @deviceId AND timestamp >= @startTime AND timestamp <= @endTime',
                         pattern: l10n.t('Get telemetry for a device (optionally in a time range)'),
                         filters: 'deviceId = @deviceId AND timestamp >= @startTime AND timestamp <= @endTime',
                         qps: 80,
                     },
-                    { pattern: l10n.t('Latest reading per device'), filters: 'deviceId = @deviceId', qps: 20 },
                     {
+                        query: 'SELECT TOP 1 * FROM c WHERE deviceId = @deviceId ORDER BY c.timestamp DESC',
+                        pattern: l10n.t('Latest reading per device'),
+                        filters: 'deviceId = @deviceId',
+                        qps: 20,
+                    },
+                    {
+                        query: 'SELECT VALUE AVG(c.reading) FROM c WHERE location = @location AND metricName = @metricName',
                         pattern: l10n.t('Aggregate readings across a site for one metric'),
                         filters: 'location = @location AND metricName = @metricName',
                         qps: 5,
@@ -283,8 +350,14 @@ export const DATA_MODEL_DEFAULTS: Record<ScenarioId, DataModelDefaults> = {
                 document: { attributeCount: 6, avgSizeKb: 2, maxSizeKb: 8 },
                 arrays: { hasArrays: false, avgItems: 10, maxItems: 100, updatePattern: 'none' },
                 reads: [
-                    { pattern: l10n.t('Get all records for a tenant'), filters: 'tenantId = @tenantId', qps: 200 },
                     {
+                        query: 'SELECT * FROM c WHERE tenantId = @tenantId',
+                        pattern: l10n.t('Get all records for a tenant'),
+                        filters: 'tenantId = @tenantId',
+                        qps: 200,
+                    },
+                    {
+                        query: 'SELECT * FROM c WHERE id = @id AND tenantId = @tenantId',
                         pattern: l10n.t('Get a record by ID within a tenant'),
                         filters: 'id = @id AND tenantId = @tenantId',
                         qps: 60,
@@ -312,16 +385,23 @@ export const DATA_MODEL_DEFAULTS: Record<ScenarioId, DataModelDefaults> = {
                 arrays: { hasArrays: true, avgItems: 10, maxItems: 100, updatePattern: 'none' },
                 reads: [
                     {
+                        query: 'SELECT * FROM c WHERE sourceId = @sourceId',
                         pattern: l10n.t('Get all chunks for a source document'),
                         filters: 'sourceId = @sourceId',
                         qps: 800,
                     },
                     {
+                        query: 'SELECT * FROM c WHERE category = @category',
                         pattern: l10n.t('Vector search within a source or category'),
                         filters: 'category = @category',
                         qps: 150,
                     },
-                    { pattern: l10n.t('Get a chunk by ID'), filters: 'id = @id AND sourceId = @sourceId', qps: 20 },
+                    {
+                        query: 'SELECT * FROM c WHERE id = @id AND sourceId = @sourceId',
+                        pattern: l10n.t('Get a chunk by ID'),
+                        filters: 'id = @id AND sourceId = @sourceId',
+                        qps: 20,
+                    },
                 ],
                 writes: { insertsPerSec: 5, updatesPerSec: 3, deletesPerSec: 1 },
                 scale: { items: 'medium', writes: 'even', growth: 'bounded' },
@@ -346,16 +426,23 @@ export const DATA_MODEL_DEFAULTS: Record<ScenarioId, DataModelDefaults> = {
                 arrays: { hasArrays: true, avgItems: 10, maxItems: 100, updatePattern: 'none' },
                 reads: [
                     {
+                        query: 'SELECT * FROM c WHERE conversationId = @conversationId',
                         pattern: l10n.t('Get messages in a conversation'),
                         filters: 'conversationId = @conversationId',
                         qps: 200,
                     },
                     {
+                        query: 'SELECT * FROM c WHERE conversationId = @conversationId AND messageId = @messageId',
                         pattern: l10n.t('Get a message within a conversation'),
                         filters: 'conversationId = @conversationId AND messageId = @messageId',
                         qps: 20,
                     },
-                    { pattern: l10n.t("Get a user's message"), filters: 'userId = @userId', qps: 60 },
+                    {
+                        query: 'SELECT * FROM c WHERE userId = @userId',
+                        pattern: l10n.t("Get a user's message"),
+                        filters: 'userId = @userId',
+                        qps: 60,
+                    },
                 ],
                 writes: { insertsPerSec: 40, updatesPerSec: 25, deletesPerSec: 5 },
                 scale: { items: 'medium', writes: 'skewed', growth: 'slow' },
@@ -374,13 +461,24 @@ export const DATA_MODEL_DEFAULTS: Record<ScenarioId, DataModelDefaults> = {
                 document: { attributeCount: 6, avgSizeKb: 1, maxSizeKb: 4 },
                 arrays: { hasArrays: false, avgItems: 10, maxItems: 100, updatePattern: 'none' },
                 reads: [
-                    { pattern: l10n.t('Get a record for a userId'), filters: 'userId = @userId', qps: 200 },
                     {
+                        query: 'SELECT * FROM c WHERE userId = @userId',
+                        pattern: l10n.t('Get a record for a userId'),
+                        filters: 'userId = @userId',
+                        qps: 200,
+                    },
+                    {
+                        query: 'SELECT * FROM c WHERE followerCount >= @followerCount',
                         pattern: l10n.t('Get all users with followerCount greater than a specified value'),
                         filters: 'followerCount >= @followerCount',
                         qps: 60,
                     },
-                    { pattern: l10n.t('Get a userId by handle'), filters: 'handle = @handle', qps: 60 },
+                    {
+                        query: 'SELECT * FROM c WHERE handle = @handle',
+                        pattern: l10n.t('Get a userId by handle'),
+                        filters: 'handle = @handle',
+                        qps: 60,
+                    },
                 ],
                 writes: { insertsPerSec: 40, updatesPerSec: 25, deletesPerSec: 5 },
                 scale: { items: 'medium', writes: 'skewed', growth: 'slow' },
@@ -399,11 +497,17 @@ export const DATA_MODEL_DEFAULTS: Record<ScenarioId, DataModelDefaults> = {
                 arrays: { hasArrays: true, avgItems: 10, maxItems: 100, updatePattern: 'none' },
                 reads: [
                     {
+                        query: 'SELECT * FROM c WHERE conversationId = @conversationId',
                         pattern: l10n.t('Get all Conversation records for a conversationId'),
                         filters: 'conversationId = @conversationId',
                         qps: 200,
                     },
-                    { pattern: l10n.t('Get the last message'), filters: 'conversationId = @conversationId', qps: 50 },
+                    {
+                        query: 'SELECT c.lastMessageId FROM c WHERE conversationId = @conversationId',
+                        pattern: l10n.t('Get the last message'),
+                        filters: 'conversationId = @conversationId',
+                        qps: 50,
+                    },
                 ],
                 writes: { insertsPerSec: 40, updatesPerSec: 25, deletesPerSec: 5 },
                 scale: { items: 'medium', writes: 'skewed', growth: 'slow' },
@@ -427,9 +531,19 @@ export const DATA_MODEL_DEFAULTS: Record<ScenarioId, DataModelDefaults> = {
                 document: { attributeCount: 7, avgSizeKb: 1, maxSizeKb: 4 },
                 arrays: { hasArrays: false, avgItems: 10, maxItems: 100, updatePattern: 'none' },
                 reads: [
-                    { pattern: l10n.t('List products in a category'), filters: 'categoryId = @categoryId', qps: 800 },
-                    { pattern: l10n.t('Get product by productId'), filters: 'productId = @productId', qps: 150 },
-                    { pattern: l10n.t('List all products'), filters: '', qps: 10 },
+                    {
+                        query: 'SELECT * FROM c WHERE categoryId = @categoryId',
+                        pattern: l10n.t('List products in a category'),
+                        filters: 'categoryId = @categoryId',
+                        qps: 800,
+                    },
+                    {
+                        query: 'SELECT * FROM c WHERE productId = @productId',
+                        pattern: l10n.t('Get product by productId'),
+                        filters: 'productId = @productId',
+                        qps: 150,
+                    },
+                    { query: 'SELECT * FROM c', pattern: l10n.t('List all products'), filters: '', qps: 10 },
                 ],
                 writes: { insertsPerSec: 5, updatesPerSec: 3, deletesPerSec: 1 },
                 scale: { items: 'medium', writes: 'skewed', growth: 'slow' },
@@ -448,11 +562,13 @@ export const DATA_MODEL_DEFAULTS: Record<ScenarioId, DataModelDefaults> = {
                 arrays: { hasArrays: false, avgItems: 10, maxItems: 100, updatePattern: 'none' },
                 reads: [
                     {
+                        query: 'SELECT * FROM c WHERE categoryId = @categoryId',
                         pattern: l10n.t('Get all Category records for a categoryId'),
                         filters: 'categoryId = @categoryId',
                         qps: 800,
                     },
                     {
+                        query: 'SELECT c.parentCategoryId FROM c WHERE categoryId = @categoryId',
                         pattern: l10n.t('Get the cateogry parent for a categoryId'),
                         filters: 'categoryId = @categoryId',
                         qps: 150,
@@ -475,11 +591,13 @@ export const DATA_MODEL_DEFAULTS: Record<ScenarioId, DataModelDefaults> = {
                 arrays: { hasArrays: false, avgItems: 10, maxItems: 100, updatePattern: 'none' },
                 reads: [
                     {
+                        query: 'SELECT * FROM c WHERE warehouseId = @warehouseId AND sku = @sku',
                         pattern: l10n.t('Get all Inventory records for a warehouseId and sku'),
                         filters: 'warehouseId = @warehouseId AND sku = @sku',
                         qps: 800,
                     },
                     {
+                        query: 'SELECT * FROM c WHERE warehouseId = @warehouseId',
                         pattern: l10n.t('Get a Inventory by warehouseId'),
                         filters: 'warehouseId = @warehouseId',
                         qps: 150,
@@ -507,16 +625,23 @@ export const DATA_MODEL_DEFAULTS: Record<ScenarioId, DataModelDefaults> = {
                 arrays: { hasArrays: false, avgItems: 10, maxItems: 100, updatePattern: 'none' },
                 reads: [
                     {
+                        query: 'SELECT * FROM c WHERE playerId = @playerId ORDER BY c.updatedAt DESC',
                         pattern: l10n.t("Get a player's state and current match score"),
                         filters: 'playerId = @playerId',
                         qps: 200,
                     },
                     {
+                        query: 'SELECT * FROM c WHERE id = @id and playerId = @playerId',
                         pattern: l10n.t('Get player by ID (point read)'),
                         filters: 'id = @id and playerId = @playerId',
                         qps: 60,
                     },
-                    { pattern: l10n.t('Top-N global leaderboard (precomputed)'), filters: 'season = @season', qps: 10 },
+                    {
+                        query: 'SELECT * FROM c WHERE season = @season ORDER BY c.score DESC OFFSET 0 LIMIT 100',
+                        pattern: l10n.t('Top-N global leaderboard (precomputed)'),
+                        filters: 'season = @season',
+                        qps: 10,
+                    },
                 ],
                 writes: { insertsPerSec: 40, updatesPerSec: 25, deletesPerSec: 5 },
                 scale: { items: 'medium', writes: 'even', growth: 'slow' },
@@ -540,9 +665,24 @@ export const DATA_MODEL_DEFAULTS: Record<ScenarioId, DataModelDefaults> = {
                 document: { attributeCount: 7, avgSizeKb: 2, maxSizeKb: 8 },
                 arrays: { hasArrays: false, avgItems: 10, maxItems: 100, updatePattern: 'none' },
                 reads: [
-                    { pattern: l10n.t('Get a profile by userId (point read)'), filters: 'userId = @userId', qps: 800 },
-                    { pattern: l10n.t('Look up profile by email'), filters: 'email = @email', qps: 150 },
-                    { pattern: l10n.t('List users in a segment (admin)'), filters: 'segment = @segment', qps: 20 },
+                    {
+                        query: 'SELECT * FROM c WHERE userId = @userId',
+                        pattern: l10n.t('Get a profile by userId (point read)'),
+                        filters: 'userId = @userId',
+                        qps: 800,
+                    },
+                    {
+                        query: 'SELECT * FROM c WHERE email = @email',
+                        pattern: l10n.t('Look up profile by email'),
+                        filters: 'email = @email',
+                        qps: 150,
+                    },
+                    {
+                        query: 'SELECT * FROM c WHERE segment = @segment',
+                        pattern: l10n.t('List users in a segment (admin)'),
+                        filters: 'segment = @segment',
+                        qps: 20,
+                    },
                 ],
                 writes: { insertsPerSec: 5, updatesPerSec: 3, deletesPerSec: 1 },
                 scale: { items: 'low', writes: 'even', growth: 'bounded' },
@@ -566,12 +706,19 @@ export const DATA_MODEL_DEFAULTS: Record<ScenarioId, DataModelDefaults> = {
                 arrays: { hasArrays: false, avgItems: 10, maxItems: 100, updatePattern: 'append' },
                 reads: [
                     {
+                        query: 'SELECT * FROM c WHERE streamId = @streamId ORDER BY c.sequence ASC',
                         pattern: l10n.t('Replay all events for an aggregate/stream'),
                         filters: 'streamId = @streamId',
                         qps: 80,
                     },
-                    { pattern: l10n.t('Get an event by ID'), filters: 'id = @id AND streamId = @streamId', qps: 20 },
                     {
+                        query: 'SELECT * FROM c WHERE id = @id AND streamId = @streamId',
+                        pattern: l10n.t('Get an event by ID'),
+                        filters: 'id = @id AND streamId = @streamId',
+                        qps: 20,
+                    },
+                    {
+                        query: 'SELECT * FROM c WHERE occurredAt >= @startDate AND occurredAt <= @endDate',
                         pattern: l10n.t('Audit query over a time range (compliance)'),
                         filters: 'occurredAt >= @startDate AND occurredAt <= @endDate',
                         qps: 5,
@@ -598,9 +745,20 @@ export const DATA_MODEL_DEFAULTS: Record<ScenarioId, DataModelDefaults> = {
                 document: { attributeCount: 6, avgSizeKb: 1, maxSizeKb: 4 },
                 arrays: { hasArrays: false, avgItems: 10, maxItems: 100, updatePattern: 'append' },
                 reads: [
-                    { pattern: l10n.t('Get all events in a session'), filters: 'sessionId = @sessionId', qps: 80 },
-                    { pattern: l10n.t("Reconstruct a user's funnel"), filters: 'userId = @userId', qps: 20 },
                     {
+                        query: 'SELECT * FROM c WHERE sessionId = @sessionId',
+                        pattern: l10n.t('Get all events in a session'),
+                        filters: 'sessionId = @sessionId',
+                        qps: 80,
+                    },
+                    {
+                        query: 'SELECT * FROM c WHERE userId = @userId ORDER BY c.ts ASC',
+                        pattern: l10n.t("Reconstruct a user's funnel"),
+                        filters: 'userId = @userId',
+                        qps: 20,
+                    },
+                    {
+                        query: 'SELECT VALUE COUNT(1) FROM c WHERE c.eventName = @eventName',
                         pattern: l10n.t('Global aggregates / rollups (batch)'),
                         filters: 'eventName = @eventName',
                         qps: 5,
@@ -628,9 +786,20 @@ export const DATA_MODEL_DEFAULTS: Record<ScenarioId, DataModelDefaults> = {
                 document: { attributeCount: 7, avgSizeKb: 1, maxSizeKb: 4 },
                 arrays: { hasArrays: false, avgItems: 10, maxItems: 100, updatePattern: 'none' },
                 reads: [
-                    { pattern: l10n.t('List content for a site/space'), filters: 'siteId = @siteId', qps: 800 },
-                    { pattern: l10n.t('Get a content item by contentId'), filters: 'contentId = @contentId', qps: 150 },
                     {
+                        query: 'SELECT * FROM c WHERE siteId = @siteId',
+                        pattern: l10n.t('List content for a site/space'),
+                        filters: 'siteId = @siteId',
+                        qps: 800,
+                    },
+                    {
+                        query: 'SELECT * FROM c WHERE contentId = @contentId',
+                        pattern: l10n.t('Get a content item by contentId'),
+                        filters: 'contentId = @contentId',
+                        qps: 150,
+                    },
+                    {
+                        query: 'SELECT * FROM c WHERE status = @status AND contentType = @contentType',
                         pattern: l10n.t('Search published content across sites'),
                         filters: 'status = @status AND contentType = @contentType',
                         qps: 20,
@@ -659,12 +828,23 @@ export const DATA_MODEL_DEFAULTS: Record<ScenarioId, DataModelDefaults> = {
                 arrays: { hasArrays: false, avgItems: 10, maxItems: 100, updatePattern: 'none' },
                 reads: [
                     {
+                        query: 'SELECT * FROM c WHERE accountId = @accountId',
                         pattern: l10n.t('Get all transactions for an account'),
                         filters: 'accountId = @accountId',
                         qps: 200,
                     },
-                    { pattern: l10n.t('Get a transaction by ledgerId'), filters: 'ledgerId = @ledgerId', qps: 60 },
-                    { pattern: l10n.t('Daily reconciliation report (batch)'), filters: 'type = @type', qps: 10 },
+                    {
+                        query: 'SELECT * FROM c WHERE ledgerId = @ledgerId',
+                        pattern: l10n.t('Get a transaction by ledgerId'),
+                        filters: 'ledgerId = @ledgerId',
+                        qps: 60,
+                    },
+                    {
+                        query: 'SELECT *FROM c WHERE type = @type',
+                        pattern: l10n.t('Daily reconciliation report (batch)'),
+                        filters: 'type = @type',
+                        qps: 10,
+                    },
                 ],
                 writes: { insertsPerSec: 40, updatesPerSec: 25, deletesPerSec: 5 },
                 scale: { items: 'high', writes: 'skewed', growth: 'slow' },
@@ -688,13 +868,20 @@ export const DATA_MODEL_DEFAULTS: Record<ScenarioId, DataModelDefaults> = {
                 document: { attributeCount: 7, avgSizeKb: 1, maxSizeKb: 4 },
                 arrays: { hasArrays: false, avgItems: 10, maxItems: 100, updatePattern: 'none' },
                 reads: [
-                    { pattern: l10n.t('Get stock for a SKU across warehouses'), filters: 'skuId = @skuId', qps: 200 },
                     {
+                        query: 'SELECT * FROM c WHERE skuId = @skuId',
+                        pattern: l10n.t('Get stock for a SKU across warehouses'),
+                        filters: 'skuId = @skuId',
+                        qps: 200,
+                    },
+                    {
+                        query: 'SELECT * FROM c WHERE skuId = @skuId AND warehouseId = @warehouseId',
                         pattern: l10n.t('Get stock for a SKU in one warehouse'),
                         filters: 'skuId = @skuId AND warehouseId = @warehouseId',
                         qps: 60,
                     },
                     {
+                        query: 'SELECT * FROM c WHERE quantity <= @threshold AND warehouseId = @warehouseId OFFSET 0 LIMIT 10000',
                         pattern: l10n.t('Low-stock report per warehouse (batch)'),
                         filters: 'quantity <= @threshold AND warehouseId = @warehouseId',
                         qps: 10,
@@ -720,17 +907,20 @@ export const DATA_MODEL_DEFAULTS: Record<ScenarioId, DataModelDefaults> = {
                 arrays: { avgItems: 10, maxItems: 100, updatePattern: 'none', hasArrays: false },
                 reads: [
                     {
+                        query: 'SELECT * FROM c WHERE skuId = @skuId AND occurredAt >= @startDate AND occurredAt < @endDate ORDER BY c.occurredAt DESC OFFSET 0 LIMIT 100',
                         pattern: l10n.t('Get movement history for a SKU in a bounded time range'),
                         filters: 'skuId = @skuId AND occurredAt >= @startDate AND occurredAt < @endDate',
                         qps: 80,
                     },
                     {
+                        query: 'SELECT * FROM c WHERE skuId = @skuId AND warehouseId = @warehouseId AND occurredAt >= @startDate AND occurredAt < @endDate ORDER BY c.occurredAt DESC OFFSET 0 LIMIT 100',
                         pattern: l10n.t('Get movement history for a SKU in one warehouse'),
                         filters:
                             'skuId = @skuId AND warehouseId = @warehouseId AND occurredAt >= @startDate AND occurredAt < @endDate',
                         qps: 30,
                     },
                     {
+                        query: 'SELECT * FROM c WHERE id = @id AND skuId = @skuId',
                         pattern: l10n.t('Get an inventory movement by ID within its SKU'),
                         filters: 'id = @id AND skuId = @skuId',
                         qps: 20,
@@ -759,16 +949,19 @@ export const DATA_MODEL_DEFAULTS: Record<ScenarioId, DataModelDefaults> = {
                 arrays: { hasArrays: false, avgItems: 10, maxItems: 100, updatePattern: 'none' },
                 reads: [
                     {
+                        query: 'SELECT * FROM c WHERE propertyId = @propertyId',
                         pattern: l10n.t('Get reservations for a property/resource'),
                         filters: 'propertyId = @propertyId',
                         qps: 200,
                     },
                     {
+                        query: 'SELECT * FROM c WHERE reservationId = @reservationId',
                         pattern: l10n.t('Get a reservation by reservationId'),
                         filters: 'reservationId = @reservationId',
                         qps: 60,
                     },
                     {
+                        query: 'SELECT * FROM c WHERE propertyId = @propertyId AND checkOut > @startDate AND checkIn < @endDate',
                         pattern: l10n.t('Availability across a date range'),
                         filters: 'propertyId = @propertyId AND checkOut > @startDate AND checkIn < @endDate',
                         qps: 10,
@@ -792,7 +985,7 @@ export const DATA_MODEL_DEFAULTS: Record<ScenarioId, DataModelDefaults> = {
                 ],
                 document: { attributeCount: 6, avgSizeKb: 2, maxSizeKb: 8 },
                 arrays: { hasArrays: false, avgItems: 10, maxItems: 100, updatePattern: 'none' },
-                reads: [{ pattern: l10n.t('Describe your dominant query'), filters: 'id', qps: 200 }],
+                reads: [{ query: '', pattern: l10n.t('Describe your dominant query'), filters: 'id', qps: 200 }],
                 writes: { insertsPerSec: 40, updatesPerSec: 25, deletesPerSec: 5 },
                 scale: { items: 'medium', writes: 'even', growth: 'slow' },
             },

@@ -15,6 +15,14 @@ The container-step subtitle combines the selected template notice with tab guida
   The properties card groups the tag input, adjacent Upload JSON button, import feedback, and property table.
   Optional partition-key guidance expands beside the property inputs.
 - **Queries:** separate cards for reads with expandable query-alignment guidance, write rates, and estimated request cost.
+  Each read exposes all four scenario-catalog fields: **Description**, **Peak QPS**, full SQL (**Query**),
+  and filter properties (**Filters on**). Query uses a single-line input with a Fluent UI multiselect dropdown to its right.
+  The dropdown lists the active container's properties. Selecting properties never rewrites SQL.
+  Editing valid SQL adds explicitly referenced properties to the selection; existing selections remain so missing
+  references can be flagged with a non-blocking warning. Parameters, comments, and string values do not count as references.
+  Incomplete SQL temporarily suspends automatic selection and shows a validation hint.
+  Selections are saved as property-name arrays. Older filter predicates remain readable and seed the initial selection;
+  older models without SQL text open with an empty Query field. Removed properties remain visible for deselection with a warning.
 - **Scale:** separate cards for candidate cardinality, items per key, write distribution, growth, and projected partition size.
   A compact Partition limits callout follows the estimate, using the Review rules callout's sparkle icon and styling,
   with a bulleted list and a visible hot-partition warning.

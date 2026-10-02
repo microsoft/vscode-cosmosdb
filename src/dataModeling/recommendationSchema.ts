@@ -50,8 +50,8 @@ const HotPartitionRiskSchema = z.object({
 const QueryRouteSchema = z.object({
     /** Read pattern description, e.g. "Get messages in a conversation". */
     pattern: z.string(),
-    /** Attribute(s) the query filters on. */
-    filters: z.string(),
+    /** Property names matching the Queries tab. Strings are accepted for older saved recommendations. */
+    filters: z.union([z.array(z.string()), z.string()]),
     /** Peak queries per second as displayed, e.g. "200/s". */
     qps: z.string(),
     /** Whether it is served from a single logical partition or fans out. */

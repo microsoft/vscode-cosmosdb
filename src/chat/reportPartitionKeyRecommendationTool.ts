@@ -13,6 +13,7 @@ import {
     type PartitionKeyRecommendation,
     PartitionKeyRecommendationSchema,
 } from '../panels/trpc/routers/dataModelingEventsRouter';
+import { readFilterProperties } from '../webviews/cosmosdb/DataModeling/queryFilterProperties';
 
 /**
  * Tool name for the report-partition-key-recommendation tool.
@@ -138,7 +139,7 @@ export function formatRecommendationForChat(recommendation: PartitionKeyRecommen
                 container.queryRouting.headline,
                 ...container.queryRouting.routes.map(
                     (route) =>
-                        `- ${route.pattern}: ${route.routing} partition; ${route.filters}; ${route.qps}; ${route.estCost}`,
+                        `- ${route.pattern}: ${route.routing} partition; ${readFilterProperties(route).join(', ')}; ${route.qps}; ${route.estCost}`,
                 ),
                 container.queryRouting.analysis,
             );
@@ -287,7 +288,12 @@ export const REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_INPUT_SCHEMA = {
                                     type: 'object',
                                     properties: {
                                         pattern: { type: 'string', description: 'Read pattern description.' },
-                                        filters: { type: 'string', description: 'Attribute(s) it filters on.' },
+                                        filters: {
+                                            type: 'array',
+                                            items: { type: 'string' },
+                                            description:
+                                                'Property names from the matching read in the Queries tab, e.g. ["customerId", "status"]. Use [] for no filters. Do not include SQL predicates, operators, parameter names, or values.',
+                                        },
                                         qps: { type: 'string', description: 'Peak QPS as displayed, e.g. "200/s".' },
                                         routing: {
                                             type: 'string',

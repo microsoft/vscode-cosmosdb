@@ -426,8 +426,11 @@
                               "description": "Read pattern description."
                             },
                             "filters": {
-                              "type": "string",
-                              "description": "Attribute(s) it filters on."
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              },
+                              "description": "Property names from the matching read in the Queries tab, e.g. [\"customerId\", \"status\"]. Use [] for no filters. Do not include SQL predicates, operators, parameter names, or values."
                             },
                             "qps": {
                               "type": "string",

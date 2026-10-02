@@ -40,6 +40,11 @@ Workload templates and previously saved containers retain their own configuratio
 
 ## Source of truth
 
+The Result page's **Query routing → Filters on** column displays a comma-separated list of property names,
+matching the Queries tab rather than showing SQL predicates. New recommendations provide property-name arrays;
+older saved string predicates are converted for display using the same property extraction as the Queries tab.
+The chat fallback uses the same formatting.
+
 - [ScalePage.tsx](../src/webviews/cosmosdb/DataModeling/pages/ScalePage.tsx):
   `ITEMS_OPTIONS`, `GROWTH_OPTIONS`, `ITEMS_MULTIPLIER`, and the storage estimate.
 - [models.ts](../src/webviews/cosmosdb/DataModeling/models.ts):

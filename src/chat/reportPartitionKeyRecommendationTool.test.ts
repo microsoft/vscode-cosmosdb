@@ -71,6 +71,32 @@ it('keeps the registered tool schema and description in sync with the manifest',
 });
 
 describe('formatRecommendationForChat', () => {
+    it.each([{ filters: ['customerId', 'status'] }, { filters: 'customerId = @customerId AND status = "pending"' }])(
+        'formats routing filters as property names for $filters',
+        ({ filters }) => {
+            const text = formatRecommendationForChat({
+                summary: '',
+                containers: [
+                    {
+                        entity: 'Orders',
+                        partitionKey: '/customerId',
+                        rationale: '',
+                        queryRouting: {
+                            headline: '',
+                            analysis: '',
+                            routes: [
+                                { pattern: 'List orders', filters, qps: '100/s', routing: 'single', estCost: '3 RU' },
+                            ],
+                        },
+                    },
+                ],
+            });
+            expect(text).toContain('List orders: single partition; customerId, status; 100/s; 3 RU');
+            expect(text).not.toContain('@customerId');
+            expect(text).not.toContain('pending');
+        },
+    );
+
     it('includes the complete recommendation when the Data Modeling wizard is unavailable', () => {
         const text = formatRecommendationForChat({
             summary: 'Use customerId to keep customer operations co-located.',
@@ -159,7 +185,26 @@ describe('cosmosdb_reportPartitionKeyRecommendation', () => {
         const requestId = '12345678-1234-4123-8123-123456789001';
         const recommendation = {
             summary: 'PRIVATE SUMMARY',
-            containers: [{ entity: 'PRIVATE ENTITY', partitionKey: '/private', rationale: 'PRIVATE RATIONALE' }],
+            containers: [
+                {
+                    entity: 'PRIVATE ENTITY',
+                    partitionKey: '/private',
+                    rationale: 'PRIVATE RATIONALE',
+                    queryRouting: {
+                        headline: 'Routing',
+                        analysis: '',
+                        routes: [
+                            {
+                                pattern: 'Read',
+                                filters: ['customerId', 'status'],
+                                qps: '100/s',
+                                routing: 'single',
+                                estCost: '3 RU',
+                            },
+                        ],
+                    },
+                },
+            ],
         };
         await tool.invoke({ input: { wizardTabId: tab.getId(), requestId, ...recommendation } }, {});
         expect(tab.reportRecommendation).toHaveBeenCalledWith(recommendation, requestId);

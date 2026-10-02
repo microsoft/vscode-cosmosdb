@@ -9,6 +9,7 @@ import { type EditorProps } from '@monaco-editor/react';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { PartitionKeyRecommendationSchema } from '../../../../dataModeling/recommendationSchema';
 import { type PartitionKeyRecommendation } from '../../../api/types';
 import { MonacoEditor } from '../../../MonacoEditor';
 import { ResultPage, type ResultPageProps } from './ResultPage';
@@ -36,6 +37,31 @@ function renderResult(value = recommendation) {
 describe('ResultPage', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+    });
+
+    it.each([
+        { filters: ['customerId', 'status'], expected: 'customerId, status' },
+        { filters: 'customerId = @customerId AND status = "pending"', expected: 'customerId, status' },
+        { filters: 'customerId, status', expected: 'customerId, status' },
+        { filters: 'c["tenant-id"] = @tenant AND c.id = @id', expected: 'tenant-id, id' },
+        { filters: [], expected: '' },
+        { filters: '', expected: '' },
+    ])('shows property names in query routing for $filters', ({ filters, expected }) => {
+        const value = structuredClone(recommendation);
+        value.containers[0].queryRouting = {
+            headline: 'Read routing',
+            analysis: '',
+            routes: [{ pattern: 'List records', filters, qps: '100/s', routing: 'single', estCost: '3 RU' }],
+        };
+        const restored = PartitionKeyRecommendationSchema.parse(JSON.parse(JSON.stringify(value)));
+        renderResult(restored);
+        const table = screen.getByRole('table', { name: 'Query routing' });
+        expect(within(table).getByRole('columnheader', { name: 'Filters on' })).toBeVisible();
+        const row = within(table).getAllByRole('row')[1];
+        const cells = within(row).getAllByRole('cell');
+        expect(cells[1].textContent).toBe(expected);
+        expect(cells[0]).toHaveTextContent('List records');
+        expect(cells[2]).toHaveTextContent('100/s');
     });
 
     it('shows relevant absolute rules as the final named section for each container', async () => {

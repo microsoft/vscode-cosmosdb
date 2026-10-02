@@ -35,6 +35,7 @@ import {
 import { AssessmentIcon } from '../components/AssessmentIcon';
 import { CopilotRecommendation, type RecommendationStatus } from '../components/CopilotRecommendation';
 import { InfoBox, SubPanel } from '../components/primitives';
+import { readFilterProperties } from '../queryFilterProperties';
 
 /**
  * Result step. One tab per container, each showing Copilot's partition-key recommendation:
@@ -479,7 +480,7 @@ function ContainerResultView({ container }: { container: ContainerRecommendation
                                 {container.queryRouting.routes.map((route, i) => (
                                     <TableRow key={i}>
                                         <TableCell>{route.pattern}</TableCell>
-                                        <TableCell>{route.filters}</TableCell>
+                                        <TableCell>{readFilterProperties(route).join(', ')}</TableCell>
                                         <TableCell>{route.qps}</TableCell>
                                         <TableCell>
                                             <span

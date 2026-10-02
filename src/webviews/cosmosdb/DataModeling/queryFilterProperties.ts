@@ -51,7 +51,7 @@ export function queryPropertyNames(query: string): { names: string[]; valid: boo
 }
 
 /** Preserve saved selections and derive the initial selection from legacy/catalog predicates. */
-export function readFilterProperties(read: ReadQuery): string[] {
+export function readFilterProperties(read: Pick<ReadQuery, 'filters'>): string[] {
     return Array.isArray(read.filters)
         ? read.filters
         : queryPropertyNames(read.filters.trim() ? `SELECT ${read.filters} FROM c` : '').names;

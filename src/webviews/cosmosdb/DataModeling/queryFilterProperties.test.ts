@@ -31,7 +31,7 @@ describe('query property references', () => {
         for (const scenario of Object.values(DATA_MODEL_DEFAULTS)) {
             for (const container of scenario.containers) {
                 for (const read of container.reads) {
-                    const selected = readFilterProperties({ ...read, id: 'read' });
+                    const selected = readFilterProperties(read);
                     expect(
                         selected.every((name) => container.properties.some((property) => property.name === name)),
                     ).toBe(true);
@@ -43,10 +43,7 @@ describe('query property references', () => {
     });
 
     it('retains explicit empty selections and names containing punctuation', () => {
-        expect(readFilterProperties({ id: 'r', pattern: '', filters: [], qps: 0 })).toEqual([]);
-        expect(readFilterProperties({ id: 'r', pattern: '', filters: ['a,b', 'tenant-id'], qps: 0 })).toEqual([
-            'a,b',
-            'tenant-id',
-        ]);
+        expect(readFilterProperties({ filters: [] })).toEqual([]);
+        expect(readFilterProperties({ filters: ['a,b', 'tenant-id'] })).toEqual(['a,b', 'tenant-id']);
     });
 });

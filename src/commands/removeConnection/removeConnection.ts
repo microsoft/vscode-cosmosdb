@@ -15,7 +15,9 @@ import { pickWorkspaceResource } from '../../utils/pickItem/pickAppResource';
 
 export async function cosmosDBRemoveConnection(
     context: IActionContext,
-    node?: CosmosDBAccountAttachedResourceItem,
+    node?: Pick<CosmosDBAccountAttachedResourceItem, 'id' | 'storageId' | 'experience'> & {
+        account: Pick<CosmosDBAccountAttachedResourceItem['account'], 'name'>;
+    },
 ): Promise<void> {
     if (!node) {
         node = await pickWorkspaceResource<CosmosDBAccountAttachedResourceItem>(context, {
@@ -31,6 +33,11 @@ export async function cosmosDBRemoveConnection(
     context.telemetry.properties.experience = node.experience.api;
     let confirmed = false;
     const connectionName = node.account.name;
+    for (const value of [node.storageId, connectionName]) {
+        if (value?.trim()) {
+            context.valuesToMask.push(value);
+        }
+    }
     const storageType = WorkspaceResourceType.AttachedAccounts;
     const refreshProvider = ext.cosmosDBWorkspaceBranchDataProvider;
 

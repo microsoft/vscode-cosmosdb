@@ -9,10 +9,11 @@ import { vi } from 'vitest';
 import { BaseCachedBranchDataProvider } from './BaseCachedBranchDataProvider';
 import { type TreeElement } from './TreeElement';
 
-const { failures, contexts, logError } = vi.hoisted(() => ({
+const { failures, contexts, logError, parseError } = vi.hoisted(() => ({
     failures: [] as unknown[],
     contexts: [] as IActionContext[],
     logError: vi.fn(),
+    parseError: vi.fn(),
 }));
 
 vi.mock('@microsoft/vscode-azext-utils', () => ({
@@ -37,7 +38,7 @@ vi.mock('@microsoft/vscode-azext-utils', () => ({
         id: options.id,
         getTreeItem: () => ({ label: options.label, command: { command: options.commandId } }),
     }),
-    parseError: (error: Error) => error,
+    parseError,
 }));
 
 vi.mock('../extensionVariables', () => ({
@@ -66,6 +67,7 @@ describe('BaseCachedBranchDataProvider error boundary', () => {
         failures.length = 0;
         contexts.length = 0;
         logError.mockClear();
+        parseError.mockReset();
     });
 
     it('reports construction failures before returning an actionable error node', async () => {
@@ -86,6 +88,22 @@ describe('BaseCachedBranchDataProvider error boundary', () => {
             command: { command: 'cosmosDB.showOutput' },
         });
         expect(logError.mock.calls[0]).not.toContain('private-');
+        provider.dispose();
+    });
+
+    it('preserves the message from a structured Azure error', async () => {
+        const provider = new TestProvider();
+        const failure = { error: { code: 'BadRequest', message: 'Required resource metadata is missing' } };
+        parseError.mockReturnValue({ message: failure.error.message });
+        provider.createItem.mockImplementation(() => {
+            // oxlint-disable-next-line typescript/only-throw-error -- Reproduce a structured Azure error payload.
+            throw failure;
+        });
+
+        await provider.getResourceItem({ id: 'private-id', name: 'private-name' } as AzureResource);
+
+        expect(parseError).toHaveBeenCalledWith(failure);
+        expect(logError).toHaveBeenLastCalledWith(new Error('Required resource metadata is missing'));
         provider.dispose();
     });
 

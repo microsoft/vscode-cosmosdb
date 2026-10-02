@@ -10,11 +10,15 @@ import { wellKnownEmulatorPassword } from '../cosmosdb/cosmosdb-shared-constants
 import { type ParsedCosmosDBConnectionString } from '../cosmosdb/cosmosDBConnectionStrings';
 import { StorageService, type StorageItem } from '../services/StorageService';
 
+const { parseError, logError } = vi.hoisted(() => ({ parseError: vi.fn(), logError: vi.fn() }));
+
 // StorageService statically imports `../extensionVariables`, which transitively `require('vscode')`
 // from CJS telemetry deps. The pure helpers under test don't touch storage, so stub it out.
 vi.mock('@microsoft/vscode-azext-utils', () => ({
     callWithTelemetryAndErrorHandling: vi.fn(),
+    parseError,
 }));
+vi.mock('../extensionVariables', () => ({ ext: { outputChannel: { error: logError } } }));
 vi.mock('../services/StorageService', () => ({
     StorageNames: { Workspace: 'Workspace' },
     StorageService: { get: vi.fn() },
@@ -113,12 +117,40 @@ describe('emulatorUtils', () => {
                 push: vi.fn().mockRejectedValue(new Error('storage rejected')),
                 delete: vi.fn(),
             });
+            parseError.mockReturnValue({ message: 'storage rejected' });
 
             await expect(migrateRawEmulatorItemToHashed(item)).rejects.toThrow();
             expect(context.valuesToMask).toContain(legacyId);
             expect(context.valuesToMask).toContain(legacyName);
             // The failure message itself must not carry the legacy id.
             await expect(migrateRawEmulatorItemToHashed(item)).rejects.not.toThrow(legacyId);
+        });
+
+        it('preserves the original storage failure and redacts parsed output diagnostics', async () => {
+            const connectionString = 'AccountEndpoint=https://localhost/;AccountKey=private-key;';
+            const item = {
+                id: connectionString,
+                name: 'private-emulator-name',
+                properties: { api: API.Core },
+            } as unknown as StorageItem;
+            const context = {
+                telemetry: { properties: {} as Record<string, string>, measurements: {} },
+                errorHandling: {},
+                valuesToMask: [] as string[],
+            };
+            const failure = { error: { message: `Storage rejected ${connectionString} for ${item.name}` } };
+            parseError.mockReturnValue({ message: failure.error.message });
+            logError.mockClear();
+            (callWithTelemetryAndErrorHandling as Mock).mockImplementation(
+                (_eventName: string, callback: (ctx: typeof context) => Promise<StorageItem>) => callback(context),
+            );
+            (StorageService.get as Mock).mockReturnValue({ push: vi.fn().mockRejectedValue(failure) });
+
+            await expect(migrateRawEmulatorItemToHashed(item)).rejects.toBe(failure);
+
+            expect(parseError).toHaveBeenCalledWith(failure);
+            expect(logError).toHaveBeenLastCalledWith(new Error('Storage rejected --- for ---'));
+            expect(context.telemetry.properties).not.toHaveProperty('errorCause');
         });
 
         it('reports only a bounded api value to telemetry', async () => {

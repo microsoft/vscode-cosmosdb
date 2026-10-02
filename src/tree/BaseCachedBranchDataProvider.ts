@@ -8,6 +8,7 @@ import {
     callWithTelemetryAndErrorHandlingSync,
     createGenericElement,
     type IActionContext,
+    parseError,
 } from '@microsoft/vscode-azext-utils';
 import {
     type AzureResource,
@@ -23,7 +24,7 @@ import { type TreeElement } from './TreeElement';
 import { isTreeElementWithContextValue, TreeElementWithContextValue } from './TreeElementWithContextValue';
 import { isTreeElementWithExperience } from './TreeElementWithExperience';
 
-const toError = (error: unknown): Error => (error instanceof Error ? error : new Error(String(error)));
+const toError = (error: unknown): Error => (error instanceof Error ? error : new Error(parseError(error).message));
 
 /**
  * Abstract base class that implements a cached tree data provider for Visual Studio Code extensions.

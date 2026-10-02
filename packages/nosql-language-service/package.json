@@ -1,6 +1,6 @@
 {
   "name": "@azure/cosmosdb-nosql-language-service",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "type": "module",
   "description": "Language service for the Cosmos DB query language — parser, AST, autocomplete, hover docs, formatting, and editor providers",
   "main": "dist/esm/index.js",
@@ -44,6 +44,7 @@
     }
   },
   "files": [
+    "CHANGELOG.md",
     "dist/esm",
     "dist/types",
     "syntaxes",
@@ -76,12 +77,12 @@
     "vitest": "^4.1.11"
   },
   "peerDependencies": {
-    "@codemirror/autocomplete": "^6.0.0",
-    "@codemirror/language": "^6.0.0",
-    "@codemirror/lint": "^6.0.0",
-    "@codemirror/state": "^6.0.0",
-    "@codemirror/view": "^6.0.0",
-    "monaco-editor": ">=0.30.0"
+    "@codemirror/autocomplete": ">=6.0.0 <7.0.0",
+    "@codemirror/language": ">=6.0.0 <7.0.0",
+    "@codemirror/lint": ">=6.0.0 <7.0.0",
+    "@codemirror/state": ">=6.0.0 <7.0.0",
+    "@codemirror/view": ">=6.0.0 <7.0.0",
+    "monaco-editor": ">=0.30.0 <1.0.0"
   },
   "peerDependenciesMeta": {
     "@codemirror/autocomplete": {

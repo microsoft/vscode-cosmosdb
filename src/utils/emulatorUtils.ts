@@ -3,13 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { callWithTelemetryAndErrorHandling, parseError } from '@microsoft/vscode-azext-utils';
+import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import crypto from 'crypto';
 import { API, getExperienceFromApi } from '../AzureDBExperiences';
 import { wellKnownEmulatorPassword } from '../cosmosdb/cosmosdb-shared-constants';
 import { type ParsedCosmosDBConnectionString } from '../cosmosdb/cosmosDBConnectionStrings';
-import { ext } from '../extensionVariables';
 import { StorageNames, StorageService, type StorageItem } from '../services/StorageService';
 import { WorkspaceResourceType } from '../tree/workspace-api/SharedWorkspaceResourceProvider';
 import { nonNullValue } from './nonNull';
@@ -86,13 +85,8 @@ export async function migrateRawEmulatorItemToHashed(item: StorageItem): Promise
 
             const workspaceType = WorkspaceResourceType.AttachedAccounts;
 
-            try {
-                // Store the new item, or abort if it already exists which would be unexpected at this point
-                await StorageService.get(StorageNames.Workspace).push(workspaceType, newItem, false);
-            } catch (error) {
-                ext.outputChannel.error(new Error(parseError(error).message));
-                throw error;
-            }
+            // Store the new item, or abort if it already exists which would be unexpected at this point
+            await StorageService.get(StorageNames.Workspace).push(workspaceType, newItem, false);
             // Delete old item after successful migration
             await StorageService.get(StorageNames.Workspace).delete(workspaceType, item.id);
 

@@ -17,6 +17,9 @@ const { getItems, migrate, logError } = vi.hoisted(() => ({
 }));
 
 vi.mock('../../../extensionVariables', () => ({ ext: { outputChannel: { error: logError } } }));
+vi.mock('@microsoft/vscode-azext-utils', () => ({
+    parseError: (error: unknown) => ({ message: error instanceof Error ? error.message : String(error) }),
+}));
 vi.mock('../../../services/StorageService', () => ({
     StorageNames: { Workspace: 'workspace' },
     StorageService: { get: () => ({ getItems }) },
@@ -32,6 +35,7 @@ vi.mock('../../nosql/NoSqlAccountAttachedResourceItem', () => ({
     NoSqlAccountAttachedResourceItem: class {
         public readonly id: string;
         constructor(public readonly account: { id: string; name: string; connectionString: string }) {
+            if (account.name === 'throws') throw new Error('account construction failed');
             this.id = account.id;
         }
         getTreeItem() {
@@ -131,17 +135,25 @@ describe('saved connection resilience', () => {
         expect(logError).not.toHaveBeenCalled();
     });
 
-    it('isolates unexpected per-emulator failures without logging raw errors', async () => {
+    it('logs unexpected per-emulator failures to the output channel', async () => {
         const broken = makeItem('broken', true);
         migrate.mockImplementation(async (item) => {
-            if (item === broken) throw new Error('private-connection-string');
+            if (item === broken) throw new Error('migration failed');
             return item;
         });
         getItems.mockResolvedValue([broken, makeItem('valid', true)]);
         const children = await new LocalCoreEmulatorsItem('accounts').getChildren();
         expect(children[0]).toBeInstanceOf(InvalidConnectionResourceItem);
         expect(children[1].id).toBe('accounts/localEmulators/valid');
-        expect(JSON.stringify(logError.mock.calls)).not.toContain('private-connection-string');
+        expect(logError).toHaveBeenCalledWith(new Error('migration failed'));
+    });
+
+    it('logs unexpected attached-connection failures to the output channel', async () => {
+        getItems.mockResolvedValue([makeItem('throws'), makeItem('valid')]);
+        const children = await new CosmosDBWorkspaceItem().getChildren();
+        expect(children.some((child) => child instanceof InvalidConnectionResourceItem)).toBe(true);
+        expect(children.map((child) => child.id)).toContain('accounts/valid');
+        expect(logError).toHaveBeenCalledWith(new Error('account construction failed'));
     });
 
     it('keeps a legacy connection string out of invalid tree IDs while retaining it for removal', async () => {

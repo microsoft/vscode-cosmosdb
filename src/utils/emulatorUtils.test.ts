@@ -10,15 +10,11 @@ import { wellKnownEmulatorPassword } from '../cosmosdb/cosmosdb-shared-constants
 import { type ParsedCosmosDBConnectionString } from '../cosmosdb/cosmosDBConnectionStrings';
 import { StorageService, type StorageItem } from '../services/StorageService';
 
-const { parseError, logError } = vi.hoisted(() => ({ parseError: vi.fn(), logError: vi.fn() }));
-
 // StorageService statically imports `../extensionVariables`, which transitively `require('vscode')`
 // from CJS telemetry deps. The pure helpers under test don't touch storage, so stub it out.
 vi.mock('@microsoft/vscode-azext-utils', () => ({
     callWithTelemetryAndErrorHandling: vi.fn(),
-    parseError,
 }));
-vi.mock('../extensionVariables', () => ({ ext: { outputChannel: { error: logError } } }));
 vi.mock('../services/StorageService', () => ({
     StorageNames: { Workspace: 'Workspace' },
     StorageService: { get: vi.fn() },
@@ -117,7 +113,6 @@ describe('emulatorUtils', () => {
                 push: vi.fn().mockRejectedValue(new Error('storage rejected')),
                 delete: vi.fn(),
             });
-            parseError.mockReturnValue({ message: 'storage rejected' });
 
             await expect(migrateRawEmulatorItemToHashed(item)).rejects.toThrow();
             expect(context.valuesToMask).toContain(legacyId);
@@ -126,10 +121,9 @@ describe('emulatorUtils', () => {
             await expect(migrateRawEmulatorItemToHashed(item)).rejects.not.toThrow(legacyId);
         });
 
-        it('preserves the original storage failure and logs the parsed message', async () => {
-            const connectionString = 'AccountEndpoint=https://localhost/;AccountKey=private-key;';
+        it('propagates the original storage failure', async () => {
             const item = {
-                id: connectionString,
+                id: 'AccountEndpoint=https://localhost/;AccountKey=private-key;',
                 name: 'private-emulator-name',
                 properties: { api: API.Core },
             } as unknown as StorageItem;
@@ -138,18 +132,13 @@ describe('emulatorUtils', () => {
                 errorHandling: {},
                 valuesToMask: [] as string[],
             };
-            const failure = { error: { message: `Storage rejected ${connectionString} for ${item.name}` } };
-            parseError.mockReturnValue({ message: failure.error.message });
-            logError.mockClear();
+            const failure = { error: { message: 'Storage rejected the item' } };
             (callWithTelemetryAndErrorHandling as Mock).mockImplementation(
                 (_eventName: string, callback: (ctx: typeof context) => Promise<StorageItem>) => callback(context),
             );
             (StorageService.get as Mock).mockReturnValue({ push: vi.fn().mockRejectedValue(failure) });
 
             await expect(migrateRawEmulatorItemToHashed(item)).rejects.toBe(failure);
-
-            expect(parseError).toHaveBeenCalledWith(failure);
-            expect(logError).toHaveBeenLastCalledWith(new Error(failure.error.message));
             expect(context.telemetry.properties).not.toHaveProperty('errorCause');
         });
 

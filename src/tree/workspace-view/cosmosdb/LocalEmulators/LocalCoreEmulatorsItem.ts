@@ -3,11 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { parseError } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { API, getExperienceFromApi } from '../../../../AzureDBExperiences';
 import { getThemeAgnosticIconPath } from '../../../../constants';
 import { wellKnownEmulatorPassword } from '../../../../cosmosdb/cosmosdb-shared-constants';
+import { ext } from '../../../../extensionVariables';
 import { type StorageItem, StorageNames, StorageService } from '../../../../services/StorageService';
 import { migrateRawEmulatorItemToHashed } from '../../../../utils/emulatorUtils';
 import { makeFilterable } from '../../../mixins/Filterable';
@@ -86,7 +88,8 @@ export class LocalCoreEmulatorsItem implements TreeElement, TreeElementWithConte
                             return makeFilterable(
                                 makeSortable(new NoSqlAccountAttachedResourceItem(accountModel, experience)),
                             );
-                        } catch {
+                        } catch (error) {
+                            ext.outputChannel.error(new Error(parseError(error).message));
                             return new InvalidConnectionResourceItem(
                                 this.id,
                                 item,

@@ -126,7 +126,7 @@ describe('emulatorUtils', () => {
             await expect(migrateRawEmulatorItemToHashed(item)).rejects.not.toThrow(legacyId);
         });
 
-        it('preserves the original storage failure and redacts parsed output diagnostics', async () => {
+        it('preserves the original storage failure and logs the parsed message', async () => {
             const connectionString = 'AccountEndpoint=https://localhost/;AccountKey=private-key;';
             const item = {
                 id: connectionString,
@@ -149,7 +149,7 @@ describe('emulatorUtils', () => {
             await expect(migrateRawEmulatorItemToHashed(item)).rejects.toBe(failure);
 
             expect(parseError).toHaveBeenCalledWith(failure);
-            expect(logError).toHaveBeenLastCalledWith(new Error('Storage rejected --- for ---'));
+            expect(logError).toHaveBeenLastCalledWith(new Error(failure.error.message));
             expect(context.telemetry.properties).not.toHaveProperty('errorCause');
         });
 

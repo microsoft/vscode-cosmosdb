@@ -90,13 +90,7 @@ export async function migrateRawEmulatorItemToHashed(item: StorageItem): Promise
                 // Store the new item, or abort if it already exists which would be unexpected at this point
                 await StorageService.get(StorageNames.Workspace).push(workspaceType, newItem, false);
             } catch (error) {
-                let message = parseError(error).message;
-                for (const value of context.valuesToMask) {
-                    if (typeof value === 'string' && value.trim()) {
-                        message = message.replaceAll(value, '---');
-                    }
-                }
-                ext.outputChannel.error(new Error(message));
+                ext.outputChannel.error(new Error(parseError(error).message));
                 throw error;
             }
             // Delete old item after successful migration

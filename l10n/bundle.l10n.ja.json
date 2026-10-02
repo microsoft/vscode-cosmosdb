@@ -1343,7 +1343,7 @@
   "Unable to parse execution result": "実行結果を解析できません",
   "Unable to reach emulator. Please ensure it is started and connected to the port specified by the 'cosmosDB.emulator.port' setting, then try again.": "エミュレーターに到達できません。起動しており、cosmosDB.emulator.port 設定で指定されたポートに接続されていることを確認してから、もう一度お試しください。",
   "Unable to sample the container schema. Query generation will continue without schema information, which may affect accuracy.": "コンテナー スキーマをサンプリングできません。クエリの生成はスキーマ情報なしで続行され、精度に影響を与える可能性があります。",
-  "Unable to verify a TLS certificate while connecting to the Cosmos DB emulator. Trust the emulator's certificate and, if using a proxy, its certificate authority in the environment where VS Code's extension host runs.": "Unable to verify a TLS certificate while connecting to the Cosmos DB emulator. Trust the emulator's certificate and, if using a proxy, its certificate authority in the environment where VS Code's extension host runs.",
+  "Unable to verify a TLS certificate while connecting to the Cosmos DB emulator. Trust the emulator's certificate and, if using a proxy, its certificate authority in the environment where VS Code's extension host runs.": "Cosmos DB エミュレーターへの接続中に TLS 証明書を確認できませんでした。エミュレーターの証明書を信頼し、プロキシを使用している場合であれば、VS Code の拡張機能ホストが実行されている環境内で、その認証局を信頼してください。",
   "Unable to verify resource group \"{0}\" in subscription \"{1}\" due to a lack of permissions.": "アクセス許可がないため、サブスクリプション \"{1}\" のリソース グループ \"{0}\" を確認できません。",
   "Uncontrolled ingestion": "制御されていないインジェスト",
   "Uncontrolled ingestion in {container}": "{container} での制御されていないインジェスト",

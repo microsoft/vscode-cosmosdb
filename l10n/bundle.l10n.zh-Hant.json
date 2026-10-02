@@ -1343,7 +1343,7 @@
   "Unable to parse execution result": "無法剖析執行結果",
   "Unable to reach emulator. Please ensure it is started and connected to the port specified by the 'cosmosDB.emulator.port' setting, then try again.": "無法連線到模擬器。請確認模擬器已啟動並連接至 'cosmosDB.emulator.port' 設定指定的連接埠，然後再試一次。",
   "Unable to sample the container schema. Query generation will continue without schema information, which may affect accuracy.": "無法取樣容器結構描述。查詢產生將繼續進行，但不包含結構描述資訊，這可能會影響準確性。",
-  "Unable to verify a TLS certificate while connecting to the Cosmos DB emulator. Trust the emulator's certificate and, if using a proxy, its certificate authority in the environment where VS Code's extension host runs.": "Unable to verify a TLS certificate while connecting to the Cosmos DB emulator. Trust the emulator's certificate and, if using a proxy, its certificate authority in the environment where VS Code's extension host runs.",
+  "Unable to verify a TLS certificate while connecting to the Cosmos DB emulator. Trust the emulator's certificate and, if using a proxy, its certificate authority in the environment where VS Code's extension host runs.": "連線至 Cosmos DB 模擬器時，無法驗證 TLS 憑證。信任模擬器的憑證，如果使用 Proxy，則信任其在 VS Code 延伸主機執行環境中的憑證授權單位。",
   "Unable to verify resource group \"{0}\" in subscription \"{1}\" due to a lack of permissions.": "由於缺少權限而無法在訂用帳戶 \"{1}\" 驗證資源群組 \"{0}\"。",
   "Uncontrolled ingestion": "不受控制的擷取",
   "Uncontrolled ingestion in {container}": "{container} 中的不受控制的擷取",

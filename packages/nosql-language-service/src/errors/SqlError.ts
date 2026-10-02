@@ -15,17 +15,18 @@
  * Used as the start/end of a {@link SourceRange}.
  */
 export interface SourcePosition {
-    /** 0-based byte offset in the input string */
+    /** 0-based UTF-16 code-unit offset in the input string */
     offset: number;
     /** 1-based line number */
     line: number;
-    /** 1-based column number */
+    /** 1-based UTF-16 code-unit column number (tabs count as one unit) */
     col: number;
 }
 
 /**
  * A contiguous range of text within the source query.
- * Stored on every AST node and every parse error.
+ * Optional on AST nodes and present on every parse error. The end is exclusive;
+ * an EOF error has a zero-width range at the input length.
  */
 export interface SourceRange {
     /** Inclusive start position */
@@ -48,7 +49,7 @@ export enum SqlErrorCode {
     UnexpectedEof = 'UNEXPECTED_EOF',
     /** A literal value could not be parsed (e.g. malformed number) */
     InvalidLiteral = 'INVALID_LITERAL',
-    /** Nesting depth exceeded safe limits */
+    /** Parser rule nesting or AST depth exceeded the supported limits */
     QueryTooComplex = 'QUERY_TOO_COMPLEX',
 }
 

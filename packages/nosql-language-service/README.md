@@ -16,10 +16,10 @@ This README describes the package API, not the complete language or server valid
   WHERE, JOIN, GROUP BY, ORDER BY, OFFSET/LIMIT, TOP,
   DISTINCT, VALUE, UDF, BETWEEN, IN, LIKE,
   EXISTS, ARRAY, subqueries, ternary, coalesce, bitwise operators
-- ✅ **Error recovery** — never throws; returns partial AST +
-  structured errors with typed codes
-- ✅ **Source positions** — `{ offset, line, col }` on every
-  AST node for editor integration
+- ✅ **Error recovery** — reports syntax errors with typed codes;
+  recovers a partial AST when possible and rejects excessive complexity
+- ✅ **Source positions** — optional `{ offset, line, col }` ranges on
+  AST nodes for editor integration
 - ✅ **Autocomplete** — context-aware suggestions with schema
   field navigation and priority ranking
 - ✅ **Round-trip** — parse → modify AST → print back to query text
@@ -74,13 +74,13 @@ import { parse, sqlToString, getCompletions } from "@azure/cosmosdb-nosql-langua
 // Parse a query
 const { ast, errors } = parse("SELECT * FROM c WHERE c.age > 21");
 
-if (errors.length === 0) {
+if (ast && errors.length === 0) {
   console.log(ast.query.select.spec.kind); // "SelectStarSpec"
-}
 
-// Round-trip: AST → query text
-const sql = sqlToString(ast!);
-console.log(sql); // "SELECT * FROM c WHERE c.age > 21"
+  // Round-trip: AST → query text
+  const sql = sqlToString(ast);
+  console.log(sql); // "SELECT * FROM c WHERE c.age > 21"
+}
 
 // Autocomplete
 const items = getCompletions({ query: "SELECT c.", offset: 9, schema });
@@ -176,6 +176,31 @@ const extensions = [
 #### `parse(query: string): ParseResult`
 
 Parse query text. Returns `{ ast?, errors[] }`.
+
+Syntax errors are reported in `errors`; recovery may return a partial AST, but its presence and
+completeness are not guaranteed. Check both `errors` and `ast` before printing or evaluating a result.
+
+To bound stack usage, parsing allows at most **512 simultaneously active grammar rules**, and the
+returned AST at most **256 node levels**, counting the `Program` root as level 1 (arrays of children
+do not add a level). These are structural limits, not a character or parenthesis count: unary,
+coalesce and conditional chains also consume the budget. Exceeding either limit returns
+`QUERY_TOO_COMPLEX` with no AST. Subsequent calls, including other regions in a multi-query document,
+remain usable. Formatting preserves the text of rejected query regions.
+
+This is not an unconditional "never throws" guarantee: unexpected implementation errors and runtime
+resource failures propagate. These limits do not bound total query length, token count, or execution time.
+
+#### Source coordinates
+
+Offsets and columns count **UTF-16 code units**, matching JavaScript string indexing (not bytes,
+Unicode code points, or rendered graphemes). Offsets are 0-based; lines and columns are 1-based.
+Tabs count as one code unit. LF, CRLF and CR each advance one line.
+Ranges include the start and exclude the end; EOF errors have an empty range at `query.length`.
+For example, a supplementary Unicode character such as an emoji occupies two code units.
+
+The same units apply to completion cursor offsets, AST/error ranges, hover ranges, and formatting edits.
+Multi-query regions use document offsets, while their `parseResult` ranges are local to the region's text;
+the language service maps diagnostics and editor-facing results back to document coordinates.
 
 #### `sqlToString(program: SqlProgram): string`
 

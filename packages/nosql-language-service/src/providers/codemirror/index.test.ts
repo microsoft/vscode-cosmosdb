@@ -116,6 +116,18 @@ describe('createLintSource', () => {
         service = new SqlLanguageService();
     });
 
+    it('preserves UTF-16 offsets and a zero-width EOF range after Unicode text', () => {
+        const query = 'SELECT VALUE "\uD83D\uDE00"\r\nFROM';
+        const diagnostics = createLintSource(service)(createViewMock(query));
+        expect(diagnostics).toContainEqual(
+            expect.objectContaining({
+                from: query.length,
+                to: query.length,
+                severity: 'error',
+            }),
+        );
+    });
+
     it('returns a function', () => {
         const source = createLintSource(service);
         expect(typeof source).toBe('function');

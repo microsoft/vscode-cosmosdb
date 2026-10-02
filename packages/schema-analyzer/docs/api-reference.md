@@ -37,6 +37,29 @@ and cached field list, whereas `getSchemaAtPath()` returns a node belonging to t
 For ESM, Node.js, browser boundaries and entry-point dependencies, see
 [Supported environments](../README.md#supported-environments).
 
+### BSON transport and module resolution
+
+`structuredClone()` and `postMessage()` do not preserve raw BSON wrapper prototypes, so cloned values
+can lose their BSON identity and be inferred as ordinary documents. Transport canonical Extended JSON
+and reconstruct wrappers before analysis:
+
+```typescript
+import { EJSON } from "bson";
+
+// Sender: send this string, not the raw BSON document.
+const payload = EJSON.stringify(document, { relaxed: false });
+// Receiver: parse using its own supported BSON library.
+const restored = EJSON.parse(payload, { relaxed: false });
+```
+
+This concerns raw BSON inputs, not cloning analyzer-produced schema snapshots, which contain schema data
+rather than BSON wrapper instances.
+
+Static BSON imports avoid the observed conditional-exports CJS/ESM mismatch from mixing import paths,
+but do not guarantee a single BSON instance or deduplicate dependencies. Align runtime, bundler, and test
+resolution conditions, and use the same BSON source as the producing driver when serializing its values.
+The analyzer itself recognizes compatible values from independent supported copies.
+
 ## Root Entry Point: `@azure/cosmosdb-schema-analyzer`
 
 Shared types and utilities that do not depend on JSON or BSON.
@@ -248,9 +271,11 @@ See [`FieldEntry`](#fieldentry).
 
 Incremental schema analyzer with version tracking and caching.
 
-Input documents use `Document` from `bson`, not the MongoDB driver's `WithId<Document>`.
-The `_id` field is optional and may have any supported value type. Existing driver documents remain accepted.
-Batch methods accept `ReadonlyArray<Document>`.
+Input documents use a local `Document` interface with the same `[key: string]: any` index signature as
+`bson.Document`, not the MongoDB driver's `WithId<Document>`. The `_id` field is optional and may have any
+supported value type. Existing driver documents remain accepted. Batch methods accept `ReadonlyArray<Document>`.
+Neither runtime dependencies nor public type declarations require consumers to install `bson` or `mongodb`;
+a BSON library is needed only when the consumer creates or parses BSON values.
 
 **Constructor:** `new SchemaAnalyzer()`
 
@@ -296,47 +321,59 @@ Batch methods accept `ReadonlyArray<Document>`.
 
 #### `inferBsonType(value): BSONType`
 
-Returns a BSON type tag for JavaScript and BSON/MongoDB values. Recognition uses the value's structure,
-so values from separate BSON module copies are supported. This identifies a type; it does not validate the value.
+Returns a BSON type tag for JavaScript and BSON/MongoDB values. BSON 5, 6, and 7 are supported using
+`Symbol.for('@@mdb.bson.version')`, inherited `_bsontype` tags, and the fields/methods consumed for each type.
+Supported markers do not require `toExtendedJSON`. Equivalent supported values have source-invariant
+inference, display, and statistics across separate BSON copies and driver exports, including ESM/CJS imports.
+This identifies an interface-compatible type; it does not validate the value or establish authenticity.
 See [type inference details](./type-systems.md#type-inference-priority) for the recognition rules.
 
 Supported representations:
 
-| Type               | JavaScript / Node.js   | BSON / MongoDB wrapper | Inferred tag    |
-| ------------------ | ---------------------- | ---------------------- | --------------- |
-| String             | `string`               | -                      | `string`        |
-| Boolean            | `boolean`              | -                      | `boolean`       |
-| Array              | `Array`                | -                      | `array`         |
-| Object             | Plain object           | -                      | `object`        |
-| Null               | `null`                 | -                      | `null`          |
-| Undefined          | `undefined`            | -                      | `undefined`     |
-| Double             | `number`               | `Double`               | `double`        |
-| 32-bit integer     | -                      | `Int32`                | `int32`         |
-| 64-bit integer     | -                      | `Long`                 | `long`          |
-| Decimal            | -                      | `Decimal128`           | `decimal128`    |
-| Date               | `Date`                 | -                      | `date`          |
-| Object ID          | -                      | `ObjectId`             | `objectid`      |
-| Timestamp          | -                      | `Timestamp`            | `timestamp`     |
-| Binary             | `Uint8Array`, `Buffer` | `Binary`               | `binary`        |
-| Regular expression | `RegExp`               | `BSONRegExp`           | `regexp`        |
-| Symbol             | `Symbol`               | `BSONSymbol`           | `symbol`        |
-| UUID               | -                      | `UUID` (subtype 4)     | `uuid`          |
-| Legacy UUID        | -                      | `UUID` (subtype 3)     | `uuid-legacy`   |
-| Min key            | -                      | `MinKey`               | `minkey`        |
-| Max key            | -                      | `MaxKey`               | `maxkey`        |
-| Database reference | -                      | `DBRef`                | `dbref`         |
-| Code               | -                      | `Code` without scope   | `code`          |
-| Code with scope    | -                      | `Code` with scope      | `codewithscope` |
-| Map                | `Map`                  | -                      | `map`           |
+| Type               | JavaScript / Node.js   | BSON / MongoDB wrapper                       | Inferred tag    |
+| ------------------ | ---------------------- | -------------------------------------------- | --------------- |
+| String             | `string`               | -                                            | `string`        |
+| Boolean            | `boolean`              | -                                            | `boolean`       |
+| Array              | `Array`                | -                                            | `array`         |
+| Object             | Plain object           | -                                            | `object`        |
+| Null               | `null`                 | -                                            | `null`          |
+| Undefined          | `undefined`            | -                                            | `undefined`     |
+| Double             | `number`               | `Double`                                     | `double`        |
+| 32-bit integer     | -                      | `Int32`                                      | `int32`         |
+| 64-bit integer     | -                      | `Long`                                       | `long`          |
+| Decimal            | -                      | `Decimal128`                                 | `decimal128`    |
+| Date               | `Date`                 | -                                            | `date`          |
+| Object ID          | -                      | `ObjectId`                                   | `objectid`      |
+| Timestamp          | -                      | `Timestamp`                                  | `timestamp`     |
+| Binary             | `Uint8Array`, `Buffer` | `Binary`                                     | `binary`        |
+| Regular expression | `RegExp`               | `BSONRegExp`                                 | `regexp`        |
+| BSON symbol        | -                      | `BSONSymbol`                                 | `symbol`        |
+| UUID               | -                      | `Binary` / `UUID` (subtype 4, 16 used bytes) | `uuid`          |
+| Legacy UUID        | -                      | `Binary` (subtype 3, 16 used bytes)          | `uuid-legacy`   |
+| Min key            | -                      | `MinKey`                                     | `minkey`        |
+| Max key            | -                      | `MaxKey`                                     | `maxkey`        |
+| Database reference | -                      | `DBRef`                                      | `dbref`         |
+| Code               | -                      | `Code` without scope                         | `code`          |
+| Code with scope    | -                      | `Code` with scope                            | `codewithscope` |
+| Map                | `Map`                  | -                                            | `map`           |
 
 The wrapper column lists BSON classes, not BSON storage support; strings, dates and other shared values use
 their JavaScript representations.
 
-Other objects are classified as `object`; unsupported primitives and functions as `_unknown_`.
+Ordinary documents remain `object`, including objects with an own `_bsontype` property; that property is
+not read for inference. Objects with `null` or `Object.prototype` prototypes are not BSON wrappers.
+Eligible wrappers have an inherited string tag and either a numeric version marker or callable `toExtendedJSON`.
+Recognizable wrappers with unknown tags, unsupported numeric versions, or incompatible shapes are `_unknown_`
+leaves, not traversable objects. Markerless inherited-tag wrappers with `toExtendedJSON` are also unknown
+(BSON 4 is unsupported). Not all unsupported objects are guaranteed to be detected as wrappers.
+Existing `DBRef` and `CodeWithScope` object traversal is unchanged.
+
+JavaScript `Symbol`, `bigint`, and functions are `_unknown_`, not BSON symbols.
 Other typed arrays (such as `Uint16Array`) and `DataView` are not implicitly interpreted as binary data.
-Plain `Binary` instances retain the `binary` tag even when their subtype is a UUID subtype.
-UUID recognition additionally requires 16 used bytes and the UUID `toHexString()` / `toJSON()` methods.
-Inference does not guarantee that a value can be JSON-serialized.
+Compatible `Binary` values need 16 used bytes (`position === 16`) and subtype 3 or 4 for UUID recognition,
+not UUID-specific methods. Other sizes remain `binary`.
+Eligible getters can throw during inference; ordinary own-tag getters can still throw during document traversal.
+Inference does not guarantee JSON serializability.
 
 #### `bsonTypeToJSONType(type): string`
 
@@ -357,26 +394,30 @@ Maps a BSON type to a human-readable display string (e.g., `'objectid'` → `'Ob
 Converts a BSON value to a human-readable string representation for display in UI.
 
 Pass the matching type tag, normally from `inferBsonType(value)`. A successful call returns a string.
+The `_unknown_` tag always displays as `Unknown`, without JSON serialization, including JavaScript symbols,
+`bigint`, functions, and recognizable unsupported BSON wrappers.
 JSON-backed cases retain `JSON.stringify` semantics (including driver `toJSON()` methods); this is not
-a lossless BSON serializer. Serialization errors, such as circular references or unsupported `bigint`
-values, propagate. A value whose JSON serialization produces no string (for example, a function or an
-object whose `toJSON()` returns `undefined`) causes a `TypeError`.
+a lossless BSON serializer. Other formatting and serialization errors still propagate, including circular
+references or nested `bigint` in JSON-backed cases. JSON serialization that produces no string
+(for example, an object whose `toJSON()` returns `undefined`) causes a `TypeError`.
 
-| Type                                                                              | Output example                                         |
-| --------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| `string`                                                                          | `"hello"` (raw string)                                 |
-| `number`, `int32`, `double`, `decimal128`, `long`                                 | `"42"`                                                 |
-| `boolean`                                                                         | `"true"`                                               |
-| `date`                                                                            | `"2024-01-15T00:00:00.000Z"` (ISO string)              |
-| `objectid`                                                                        | `"507f1f77bcf86cd799439011"` (hex)                     |
-| `null`                                                                            | `"null"`                                               |
-| `undefined`                                                                       | `"undefined"`                                          |
-| `binary`                                                                          | `"Binary[16]"`                                         |
-| `regexp`                                                                          | `"pattern options"`                                    |
-| `symbol`                                                                          | `"Symbol(s)"` for JavaScript; raw symbol text for BSON |
-| `minkey`                                                                          | `"MinKey"`                                             |
-| `maxkey`                                                                          | `"MaxKey"`                                             |
-| `object`, `array`, `map`, `dbref`, `code`, `codewithscope`, `uuid`, `uuid-legacy` | JSON.stringify output                                  |
+| Type                                                       | Output example                                                 |
+| ---------------------------------------------------------- | -------------------------------------------------------------- |
+| `string`                                                   | `"hello"` (raw string)                                         |
+| `number`, `int32`, `double`, `decimal128`, `long`          | `"42"`                                                         |
+| `boolean`                                                  | `"true"`                                                       |
+| `date`                                                     | `"2024-01-15T00:00:00.000Z"` (ISO string), or `"Invalid Date"` |
+| `objectid`                                                 | `"507f1f77bcf86cd799439011"` (hex)                             |
+| `null`                                                     | `"null"`                                                       |
+| `undefined`                                                | `"undefined"`                                                  |
+| `binary`                                                   | `"Binary[16]"`                                                 |
+| `regexp`                                                   | `"pattern options"`                                            |
+| `symbol`                                                   | Raw BSON symbol text                                           |
+| `minkey`                                                   | `"MinKey"`                                                     |
+| `maxkey`                                                   | `"MaxKey"`                                                     |
+| `uuid`, `uuid-legacy`                                      | JSON-quoted dashed lowercase hex                               |
+| `_unknown_`                                                | `"Unknown"`                                                    |
+| `object`, `array`, `map`, `dbref`, `code`, `codewithscope` | JSON.stringify output                                          |
 
 For `regexp`, JavaScript values use `source` and `flags`; BSON values use `pattern` and `options`.
 The separating space is retained even when there are no flags or options.
@@ -386,6 +427,15 @@ bytes: `Uint8Array.byteLength` for a byte view (including `Buffer`) and `Binary.
 not the backing buffer capacity. Empty values have length zero, and mixed `Uint8Array` / `Buffer` / `Binary`
 observations update the same statistics.
 Invalid binary-length method results (non-integer, negative or beyond the backing buffer) cause a `TypeError`.
+
+For `uuid` and `uuid-legacy`, display is a JSON-quoted dashed lowercase hex string of the raw 16 bytes
+in their original order, such as `"00112233-4455-6677-8899-aabbccddeeff"` (quotes included).
+No driver-specific legacy byte-order convention is guessed, and UUID-specific methods are not used.
+Display still validates the binary length; UUID categories do not collect binary-length statistics.
+
+Invalid `Date` values display as `Invalid Date` and retain the `date` tag and occurrence counts.
+They are omitted from `x-minDate` / `x-maxDate`; the first later valid observation initializes both
+bounds if none exist yet.
 
 #### `getPropertyNamesAtLevel(schema, path): string[]`
 

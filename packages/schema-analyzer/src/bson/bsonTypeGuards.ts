@@ -5,6 +5,10 @@
 
 import { type BSONType } from './BSONTypes.js';
 
+interface BsonValue extends Record<PropertyKey, unknown> {
+    readonly _bsontype: string;
+}
+
 interface BsonBinaryValue {
     readonly buffer: Uint8Array;
     readonly position: number;
@@ -28,8 +32,9 @@ interface NativeRegExpValue {
 
 const uuidSubtype = 4;
 const legacyUuidSubtype = 3;
+const bsonVersion = Symbol.for('@@mdb.bson.version');
 
-function isObject(value: unknown): value is Record<string, unknown> {
+function isObject(value: unknown): value is Record<PropertyKey, unknown> {
     return value !== null && typeof value === 'object';
 }
 
@@ -37,14 +42,27 @@ export function isByteArray(value: unknown): value is Uint8Array {
     return ArrayBuffer.isView(value) && Object.prototype.toString.call(value) === '[object Uint8Array]';
 }
 
-// The tag alone is ordinary document data. Require the BSON protocol and each type's consumed shape.
-function isBsonValue(value: unknown): value is Record<string, unknown> {
-    return isObject(value) && typeof value._bsontype === 'string' && typeof value.toExtendedJSON === 'function';
+function isBsonValue(value: unknown): value is BsonValue {
+    if (!isObject(value) || Object.hasOwn(value, '_bsontype')) return false;
+    const prototype: unknown = Object.getPrototypeOf(value);
+    if (prototype === null || prototype === Object.prototype) return false;
+
+    // An own tag is document data. Inherited tags need a BSON protocol marker, including legacy wrappers.
+    return (
+        typeof value._bsontype === 'string' &&
+        (typeof value[bsonVersion] === 'number' || typeof value.toExtendedJSON === 'function')
+    );
+}
+
+function isSupportedBsonValue(value: BsonValue): boolean {
+    const version = value[bsonVersion];
+    return version === 5 || version === 6 || version === 7;
 }
 
 export function isBsonBinary(value: unknown): value is BsonBinaryValue {
     return (
         isBsonValue(value) &&
+        isSupportedBsonValue(value) &&
         value._bsontype === 'Binary' &&
         isByteArray(value.buffer) &&
         typeof value.position === 'number' &&
@@ -60,7 +78,14 @@ export function isBsonBinary(value: unknown): value is BsonBinaryValue {
 }
 
 export function isBsonObjectId(value: unknown): value is BsonObjectIdValue {
-    if (!isBsonValue(value) || value._bsontype !== 'ObjectId' || typeof value.toHexString !== 'function') return false;
+    if (
+        !isBsonValue(value) ||
+        !isSupportedBsonValue(value) ||
+        value._bsontype !== 'ObjectId' ||
+        typeof value.toHexString !== 'function'
+    ) {
+        return false;
+    }
     const id = value.id;
     return isByteArray(id) && id.byteLength === 12;
 }
@@ -68,6 +93,7 @@ export function isBsonObjectId(value: unknown): value is BsonObjectIdValue {
 export function isBsonRegExp(value: unknown): value is BsonRegExpValue {
     return (
         isBsonValue(value) &&
+        isSupportedBsonValue(value) &&
         value._bsontype === 'BSONRegExp' &&
         typeof value.pattern === 'string' &&
         typeof value.options === 'string'
@@ -105,10 +131,11 @@ export function isNativeMap(value: unknown): boolean {
 
 export function inferBsonObjectType(value: unknown): BSONType | undefined {
     if (!isBsonValue(value)) return undefined;
+    if (!isSupportedBsonValue(value)) return '_unknown_';
 
     switch (value._bsontype) {
         case 'ObjectId':
-            return isBsonObjectId(value) ? 'objectid' : undefined;
+            return isBsonObjectId(value) ? 'objectid' : '_unknown_';
         case 'Int32':
         case 'Double':
             return typeof value.value === 'number' &&
@@ -118,7 +145,7 @@ export function inferBsonObjectType(value: unknown): BSONType | undefined {
                 ? value._bsontype === 'Int32'
                     ? 'int32'
                     : 'double'
-                : undefined;
+                : '_unknown_';
         case 'Long':
         case 'Timestamp':
             return Number.isInteger(value.low) &&
@@ -129,26 +156,22 @@ export function inferBsonObjectType(value: unknown): BSONType | undefined {
                 ? value._bsontype === 'Long'
                     ? 'long'
                     : 'timestamp'
-                : undefined;
+                : '_unknown_';
         case 'Decimal128':
             return isByteArray(value.bytes) && value.bytes.byteLength === 16 && typeof value.toString === 'function'
                 ? 'decimal128'
-                : undefined;
+                : '_unknown_';
         case 'Binary':
-            if (!isBsonBinary(value)) return undefined;
-            if (
-                value.position === 16 &&
-                typeof value.toHexString === 'function' &&
-                typeof value.toJSON === 'function'
-            ) {
+            if (!isBsonBinary(value)) return '_unknown_';
+            if (value.position === 16) {
                 if (value.sub_type === uuidSubtype) return 'uuid';
                 if (value.sub_type === legacyUuidSubtype) return 'uuid-legacy';
             }
             return 'binary';
         case 'BSONRegExp':
-            return isBsonRegExp(value) ? 'regexp' : undefined;
+            return isBsonRegExp(value) ? 'regexp' : '_unknown_';
         case 'BSONSymbol':
-            return typeof value.value === 'string' && typeof value.toString === 'function' ? 'symbol' : undefined;
+            return typeof value.value === 'string' && typeof value.toString === 'function' ? 'symbol' : '_unknown_';
         case 'Code':
             return typeof value.code === 'string' &&
                 (value.scope === undefined || value.scope === null || isObject(value.scope)) &&
@@ -156,19 +179,19 @@ export function inferBsonObjectType(value: unknown): BSONType | undefined {
                 ? value.scope
                     ? 'codewithscope'
                     : 'code'
-                : undefined;
+                : '_unknown_';
         case 'DBRef':
             return typeof value.collection === 'string' &&
                 'oid' in value &&
                 (value.db === undefined || typeof value.db === 'string') &&
                 typeof value.toJSON === 'function'
                 ? 'dbref'
-                : undefined;
+                : '_unknown_';
         case 'MinKey':
             return 'minkey';
         case 'MaxKey':
             return 'maxkey';
         default:
-            return undefined;
+            return '_unknown_';
     }
 }

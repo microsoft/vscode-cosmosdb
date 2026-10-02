@@ -52,11 +52,11 @@ Reference: [MongoDB BSON Types](https://www.mongodb.com/docs/manual/reference/bs
 | `undefined`     | `null`           | —                                  | JavaScript undefined                 |
 | `date`          | `string`         | `Date`                             | JavaScript Date                      |
 | `objectid`      | `string`         | `ObjectId`                         | 12-byte ObjectId                     |
-| `uuid`          | `string`         | `UUID` (subtype 4)                 | RFC 4122 UUID                        |
-| `uuid-legacy`   | `string`         | `UUID` (subtype 3)                 | Legacy UUID encoding                 |
+| `uuid`          | `string`         | `Binary` / `UUID` (subtype 4)      | UUID with 16 used bytes              |
+| `uuid-legacy`   | `string`         | `Binary` (subtype 3)               | Legacy UUID with 16 used bytes       |
 | `regexp`        | `string`         | `BSONRegExp` / native `RegExp`     | Regular expression                   |
 | `binary`        | `string`         | `Binary` / `Uint8Array` / `Buffer` | Binary data                          |
-| `symbol`        | `string`         | `BSONSymbol` / native `Symbol`     | BSON or JavaScript symbol            |
+| `symbol`        | `string`         | `BSONSymbol`                       | BSON symbol                          |
 | `timestamp`     | `string`         | `Timestamp`                        | Internal MongoDB timestamp           |
 | `code`          | `string`         | `Code` (no scope)                  | JavaScript code                      |
 | `codewithscope` | `object`         | `Code` (with scope)                | JavaScript code + scope object       |
@@ -68,9 +68,9 @@ Reference: [MongoDB BSON Types](https://www.mongodb.com/docs/manual/reference/bs
 
 ### Type Inference Priority
 
-`null` and `undefined` are recognized first. Native strings, booleans and symbols receive their corresponding
-tags; native JavaScript numbers receive `double`, not the legacy `number` tag. Unsupported primitives and
-functions receive `_unknown_`.
+`null` and `undefined` are recognized first. Native strings and booleans receive their corresponding tags;
+native JavaScript numbers receive `double`, not the legacy `number` tag. JavaScript `Symbol`, `bigint`,
+and functions receive `_unknown_`; only compatible `BSONSymbol` wrappers receive `symbol`.
 
 Non-null objects are checked in this order, without `instanceof` or constructor-name comparisons:
 
@@ -79,26 +79,39 @@ Non-null objects are checked in this order, without `instanceof` or constructor-
 3. Native `Date` shape returns `date`.
 4. Native `Map` shape returns `map`.
 5. Native `RegExp` shape returns `regexp`.
-6. Compatible BSON shapes are classified by `_bsontype` and type-specific members.
-7. Other objects, including incompatible BSON-like shapes, return `object`.
+6. Eligible BSON wrappers are classified by their version marker, inherited `_bsontype`, and type-specific members.
+   Recognizable but unsupported wrappers return `_unknown_`.
+7. Other objects return `object`, including ordinary documents with an own `_bsontype` property.
 
 Native dates, maps and regular expressions are recognized using `Object.prototype.toString.call(value)` and
 the required fields and methods. This supports values from other JavaScript realms.
 Byte arrays require an `ArrayBuffer` view with the `Uint8Array` tag; other typed arrays and `DataView` are not binary.
 
-BSON recognition requires a known `_bsontype`, a callable `toExtendedJSON` member, and the data and methods
-consumed for that type. For example, `ObjectId` requires a 12-byte ID and `toHexString()`;
-`BSONRegExp` requires string `pattern` and `options` fields. Recognition works across independent BSON copies,
-including ESM/CJS imports, rather than depending on constructor identity.
+BSON wrapper eligibility excludes objects with an own `_bsontype` property or a prototype of `null` or
+`Object.prototype`. An own tag is document data and is not read for inference. Eligible wrappers have an inherited
+string `_bsontype` and either a numeric `Symbol.for('@@mdb.bson.version')` marker or callable `toExtendedJSON`.
+Only markers 5, 6, and 7 are supported; they do not require `toExtendedJSON`.
 
-UUID recognition additionally requires a compatible `Binary` shape, 16 used bytes, and the UUID
-`toHexString()` / `toJSON()` methods. Subtype 4 produces `uuid`; subtype 3 produces `uuid-legacy`.
-Plain `Binary` values remain `binary`, even with those subtypes. Compatible `Code` values produce
-`codewithscope` when a scope object is present and `code` otherwise.
+Supported wrappers must also have a known tag and the fields and methods consumed for that type.
+For example, `ObjectId` requires a 12-byte ID and `toHexString()`; `BSONRegExp` requires string `pattern`
+and `options` fields. Unknown tags, unsupported numeric markers, or incompatible shapes on recognizable
+wrappers produce `_unknown_`, preserved as leaves rather than traversed as objects. Markerless inherited-tag
+wrappers with `toExtendedJSON` are also unknown: BSON 4 is not supported. This is not a guarantee that
+every unsupported object will be recognized as a wrapper.
 
-A `_bsontype` field alone is insufficient. These checks establish interface compatibility, not authenticity
-or a security boundary. Inference does not invoke serialization, coercion or binary-length methods to
-validate their results; errors from property getters propagate. See the
+Equivalent supported values have source-invariant inference, display, and statistics across independent
+BSON copies, ESM/CJS imports, and MongoDB driver exports. Compatibility tests target the lower versions
+5.0, 6.0, and 7.0, plus recent 5/6 and current 7 releases.
+
+Compatible `Binary` values with 16 used bytes (`position === 16`) produce `uuid` for subtype 4 and
+`uuid-legacy` for subtype 3. UUID-specific `toHexString()` / `toJSON()` methods are not required.
+Other sizes remain `binary`. Compatible `Code` values produce `codewithscope` when a scope object is
+present and `code` otherwise. Existing object traversal for `DBRef` and `CodeWithScope` is retained;
+BSON wrappers are not all opaque.
+
+These checks establish interface compatibility, not authenticity or a security boundary. Inference does not invoke
+serialization, coercion or binary-length methods to validate their results; errors from eligible getters propagate.
+Ordinary document getters can still run during traversal, including an own `_bsontype` getter. See the
 [API reference](./api-reference.md#inferbsontypevalue-bsontype) for supported representations and limitations.
 
 ### Statistics Collected by BSON Type
@@ -113,6 +126,10 @@ validate their results; errors from property getters propagate. See the
 | `object`                                          | `x-minProperties`, `x-maxProperties`, `x-documentsInspected` |
 | `array`                                           | `x-minItems`, `x-maxItems`                                   |
 | All others                                        | No additional statistics                                     |
+
+Invalid JavaScript dates retain the `date` tag and count toward occurrences, but do not contribute to
+`x-minDate` / `x-maxDate`. If the first observations are invalid, the first later valid date initializes
+both bounds. UUID categories have no binary-length statistics; those remain exclusive to `binary`.
 
 ## Adding a New Type System
 

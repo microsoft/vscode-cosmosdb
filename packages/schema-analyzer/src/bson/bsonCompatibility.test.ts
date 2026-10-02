@@ -27,8 +27,7 @@ const browserBson = runInNewContext(
 ) as typeof standaloneBson;
 
 function samples(bson: typeof standaloneBson.BSON): { name: string; value: unknown; type: BSONType }[] {
-    const legacyUuid = new bson.UUID('00112233-4455-6677-8899-aabbccddeeff');
-    Object.defineProperty(legacyUuid, 'sub_type', { value: 3 });
+    const legacyUuid = new bson.Binary(new Uint8Array(16), 3);
     const referenceWithId = (id: unknown): unknown => {
         const document: Record<string, unknown> = bson.deserialize(bson.serialize({ ref: { $ref: 'c', $id: id } }));
         return document.ref;
@@ -44,7 +43,7 @@ function samples(bson: typeof standaloneBson.BSON): { name: string; value: unkno
         { name: 'empty Binary', value: new bson.Binary(), type: 'binary' },
         { name: 'UUID', value: new bson.UUID('00112233-4455-6677-8899-aabbccddeeff'), type: 'uuid' },
         { name: 'legacy UUID', value: legacyUuid, type: 'uuid-legacy' },
-        { name: 'plain UUID Binary', value: new bson.Binary(new Uint8Array(16), 4), type: 'binary' },
+        { name: 'plain UUID Binary', value: new bson.Binary(new Uint8Array(16), 4), type: 'uuid' },
         { name: 'BSONRegExp', value: new bson.BSONRegExp('abc', 'i'), type: 'regexp' },
         { name: 'BSONSymbol', value: new bson.BSONSymbol('s'), type: 'symbol' },
         { name: 'Code', value: new bson.Code('return 1;'), type: 'code' },
@@ -251,13 +250,23 @@ describe('BSON-looking ordinary objects', () => {
         expect(inferBsonType({ [Symbol.toStringTag]: tag })).toBe('object');
     });
 
-    it('propagates errors from property access instead of hiding them as unknown types', () => {
-        const failure = new Error('Unreadable BSON tag');
-        const value = Object.defineProperty({}, '_bsontype', {
-            get: () => {
-                throw failure;
-            },
+    it('does not read an ordinary document tag during inference', () => {
+        const readTag = vi.fn(() => {
+            throw new Error('Document data must not be read during inference');
         });
+        const value = Object.defineProperty({}, '_bsontype', { get: readTag });
+        expect(inferBsonType(value)).toBe('object');
+        expect(readTag).not.toHaveBeenCalled();
+    });
+
+    it('propagates errors from wrapper property access instead of hiding them as unknown types', () => {
+        const failure = new Error('Unreadable BSON tag');
+        class UnreadableValue {
+            get _bsontype(): string {
+                throw failure;
+            }
+        }
+        const value = new UnreadableValue();
         expect(() => inferBsonType(value)).toThrow(failure);
     });
 });

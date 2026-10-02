@@ -10,7 +10,10 @@
  *
  * Provides two sub-modules:
  * - `@azure/cosmosdb-schema-analyzer/json` — for JSON documents
- * - `@azure/cosmosdb-schema-analyzer/bson` — for BSON documents (uses the optional `bson` peer dependency)
+ * - `@azure/cosmosdb-schema-analyzer/bson` — for BSON documents (no runtime `bson` or `mongodb` dependency)
+ *
+ * BSON 5, 6, and 7 wrappers are recognized by version markers and compatible shapes across module copies.
+ * Consumers need a BSON library only to create or parse BSON values, not to run the analyzer.
  *
  * The shared `JSONSchema` type is re-exported from the root for convenience.
  *
@@ -19,7 +22,7 @@
  * // JSON documents (no bson dependency needed)
  * import { getSchemaFromDocuments } from "@azure/cosmosdb-schema-analyzer/json";
  *
- * // BSON documents (uses bson, no MongoDB driver required)
+ * // BSON documents (no BSON library or MongoDB driver required by the analyzer)
  * import { SchemaAnalyzer } from "@azure/cosmosdb-schema-analyzer/bson";
  *
  * // Shared types

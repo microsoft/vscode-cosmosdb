@@ -136,8 +136,6 @@ export function inferBsonType(value: unknown): BSONType {
             return 'double';
         case 'boolean':
             return 'boolean';
-        case 'symbol':
-            return 'symbol';
         case 'object':
             if (Array.isArray(value)) {
                 return 'array';

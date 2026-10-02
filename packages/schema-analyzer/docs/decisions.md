@@ -124,28 +124,40 @@ The two sub-modules have different usage patterns:
 
 ---
 
-## ADR-006: Separate sub-module entry points to avoid mandatory `mongodb` dependency
+## ADR-006: Separate sub-module entry points without runtime BSON dependencies
 
 **Status:** Accepted
 
 **Context:**
-Schema analysis needs BSON values, not database connections or the `mongodb` driver.
-Projects that only need JSON schema analysis should not be forced to install BSON either.
+Schema analysis needs BSON values, not database connections or BSON constructors.
+Requiring a particular BSON installation couples inference to module resolution and excludes compatible
+values from other copies or majors.
 
 **Decision:**
 Three entry points via `package.json` `exports`:
 
 - `@azure/cosmosdb-schema-analyzer` — shared types and schema utilities, depends only on `denque`
 - `@azure/cosmosdb-schema-analyzer/json` — JSON analyzer, depends only on `denque`
-- `@azure/cosmosdb-schema-analyzer/bson` — BSON analyzer, uses `bson` as an optional peer dependency
-- BSON inputs use `Document` from `bson`, without requiring an `_id` or any driver-specific types
+- `@azure/cosmosdb-schema-analyzer/bson` — BSON analyzer, with no runtime `bson` or `mongodb` dependency
+- BSON inputs use a local `Document` equivalent to `bson.Document` (`[key: string]: any`),
+  without requiring an `_id` or any driver-specific types
+- Recognize inherited `_bsontype` tags with `Symbol.for('@@mdb.bson.version')` equal to 5, 6, or 7,
+  then check the fields and methods consumed for that type; supported markers do not require `toExtendedJSON`
+- Own `_bsontype` properties and plain objects are document data, not wrapper identities.
+  Recognizable but unsupported wrappers become `_unknown_` leaves rather than exposing wrapper internals
 
 **Consequences:**
 
 - Tree-shaking friendly: importing `json/` never touches BSON code
-- `bson` 6 or 7 is a peer dependency with `optional: true` — JSON-only consumers do not need it
-- `mongodb` is only a development dependency for driver interoperability tests, not a consumer dependency
-- Structural BSON recognition accepts compatible driver values and independent BSON module copies
+- There is no BSON peer requirement; consumers install a BSON library only when creating or parsing values
+- BSON libraries and `mongodb` are development dependencies for compatibility tests, not consumer dependencies
+- Inference, display, and statistics are source-invariant for equivalent supported values from independent
+  BSON copies, ESM/CJS imports, and driver exports. Compatibility tests target 5.0, 6.0, and 7.0,
+  plus recent 5/6 and current 7 releases
+- Markerless inherited-tag wrappers with `toExtendedJSON` are unknown; BSON 4 is not supported.
+  These checks do not promise to detect every unsupported object or establish authenticity.
+  See [recognition rules](./type-systems.md#type-inference-priority) for the exact boundary
+- Unknown wrappers remain leaves; existing `DBRef` and `CodeWithScope` object traversal is unchanged
 - Consumers must use the specific sub-path import, not the bare package name, for analyzers
 
 ---

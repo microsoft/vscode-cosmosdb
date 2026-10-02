@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Binary, BSONRegExp, Code, ObjectId, Timestamp } from 'bson';
+import { Binary, BSONRegExp, BSONSymbol, Code, ObjectId, Timestamp, UUID } from 'bson';
 import { describe, expect, it } from 'vitest';
 import { flatDocument } from './fixtures.js';
 import { inferBsonType, valueToDisplayString } from './index.js';
@@ -29,6 +29,10 @@ describe('valueToDisplayString', () => {
     it('formats dates as ISO strings', () => {
         const date = new Date('2024-01-02T03:04:05.000Z');
         expect(valueToDisplayString(date, 'date')).toBe('2024-01-02T03:04:05.000Z');
+    });
+
+    it('formats invalid dates explicitly', () => {
+        expect(valueToDisplayString(new Date(NaN), 'date')).toBe('Invalid Date');
     });
 
     it('formats ObjectId as a hex string', () => {
@@ -69,10 +73,9 @@ describe('valueToDisplayString', () => {
         expect(valueToDisplayString(value, inferBsonType(value))).toBe(`${value.pattern} ${value.options}`);
     });
 
-    it('formats an inferred JavaScript symbol', () => {
-        const value = Symbol('s');
-        expect(inferBsonType(value)).toBe('symbol');
-        expect(valueToDisplayString(value, inferBsonType(value))).toBe('Symbol(s)');
+    it.each([Symbol('s'), 1n, () => 1])('formats unsupported primitives and functions explicitly: %s', (value) => {
+        expect(inferBsonType(value)).toBe('_unknown_');
+        expect(valueToDisplayString(value, inferBsonType(value))).toBe('Unknown');
     });
 
     it('formats the used Binary length rather than its buffer capacity', () => {
@@ -87,8 +90,40 @@ describe('valueToDisplayString', () => {
         expect(valueToDisplayString(value, inferBsonType(value))).toBe('Binary[3]');
     });
 
-    it('stringifies symbols', () => {
-        expect(valueToDisplayString(Symbol('s'), 'symbol')).toBe('Symbol(s)');
+    it('stringifies BSON symbols', () => {
+        const value = new BSONSymbol('s');
+        expect(inferBsonType(value)).toBe('symbol');
+        expect(valueToDisplayString(value, 'symbol')).toBe('s');
+    });
+
+    it.each([3, 4])('formats subtype %s from raw bytes without depending on UUID methods', (subtype) => {
+        const uuid = new UUID('00112233-4455-6677-8899-aabbccddeeff');
+        const binary = new Binary(uuid.buffer, subtype);
+        expect(valueToDisplayString(binary, inferBsonType(binary))).toBe('"00112233-4455-6677-8899-aabbccddeeff"');
+        expect(valueToDisplayString(binary, inferBsonType(binary))).toBe(valueToDisplayString(uuid, 'uuid'));
+    });
+
+    it('formats only the used UUID bytes within a larger backing allocation', () => {
+        const uuid = new UUID('00112233-4455-6677-8899-aabbccddeeff');
+        const value = new Binary(new Uint8Array(32).fill(255), 4);
+        value.buffer.set(uuid.buffer);
+        value.position = 16;
+        expect(valueToDisplayString(value, inferBsonType(value))).toBe('"00112233-4455-6677-8899-aabbccddeeff"');
+    });
+
+    it.each([new Binary(new Uint8Array(16), 0), new Binary(new Uint8Array(15), 3), new Uint8Array(16)])(
+        'rejects incompatible values explicitly formatted as UUIDs',
+        (value) => {
+            expect(() => valueToDisplayString(value, 'uuid')).toThrow(TypeError);
+            expect(() => valueToDisplayString(value, 'uuid-legacy')).toThrow(TypeError);
+        },
+    );
+
+    it('rejects a UUID whose length method disagrees with its position', () => {
+        const value = new Binary(new Uint8Array(16), 4);
+        Object.defineProperty(value, 'length', { value: () => 15 });
+        expect(inferBsonType(value)).toBe('uuid');
+        expect(() => valueToDisplayString(value, 'uuid')).toThrow(TypeError);
     });
 
     it('stringifies timestamps via toString', () => {
@@ -111,7 +146,16 @@ describe('valueToDisplayString', () => {
         expect(valueToDisplayString({ a: 1 }, 'object')).toBe('{"a":1}');
         expect(valueToDisplayString({ k: 'v' }, 'map')).toBe('{"k":"v"}');
         expect(valueToDisplayString({ $ref: 'c' }, 'dbref')).toBe('{"$ref":"c"}');
-        expect(valueToDisplayString({ x: 1 }, '_unknown_')).toBe('{"x":1}');
+    });
+
+    it('does not serialize unknown values or expose their internals', () => {
+        const value = {
+            internal: 1,
+            toJSON() {
+                throw new Error('Unknown values must not be serialized');
+            },
+        };
+        expect(valueToDisplayString(value, '_unknown_')).toBe('Unknown');
     });
 
     it.each([
@@ -124,11 +168,8 @@ describe('valueToDisplayString', () => {
         expect(typeof valueToDisplayString(value, inferBsonType(value))).toBe('string');
     });
 
-    it.each([
-        ['function', () => 1],
-        ['bigint', 1n],
-        ['non-serializable object', { toJSON: () => undefined }],
-    ])('rejects unsupported JSON serialization for %s', (_name, value) => {
+    it('rejects unsupported JSON serialization for ordinary objects', () => {
+        const value = { toJSON: () => undefined };
         expect(() => valueToDisplayString(value, inferBsonType(value))).toThrow(TypeError);
     });
 

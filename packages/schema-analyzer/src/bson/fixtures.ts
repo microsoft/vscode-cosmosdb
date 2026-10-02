@@ -47,11 +47,7 @@ export const flatDocument: Document = {
     minKeyField: new MinKey(),
     undefinedField: undefined,
     uuidField: new UUID(),
-    uuidLegacyField: (() => {
-        const u = new UUID();
-        (u as unknown as { sub_type: number }).sub_type = Binary.SUBTYPE_UUID_OLD;
-        return u;
-    })(),
+    uuidLegacyField: new Binary(new Uint8Array(16), Binary.SUBTYPE_UUID_OLD),
 };
 
 /** A document made entirely of embedded sub-documents. */

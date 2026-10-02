@@ -10,7 +10,6 @@
  * Schema output uses `x-bsonType` for the original BSON type tag.
  */
 
-import { type Document } from 'bson';
 import { type TypeAdapter, updateSchemaWithDocument as updateSchemaGeneric } from '../core/schemaTraversal.js';
 import { type FieldEntry, getKnownFields as getKnownFieldsGeneric } from '../core/schemaUtils.js';
 import { type JSONSchema } from '../JSONSchema.js';
@@ -21,6 +20,9 @@ export { buildFullPaths, getPropertyNamesAtLevel, simplifySchema } from '../core
 
 // Re-export getKnownFields pre-bound to BSON's type extension key
 export type { FieldEntry } from '../core/schemaUtils.js';
+
+// oxlint-disable-next-line typescript/no-explicit-any -- Preserve BSON Document's acceptance of named interfaces.
+type Document = Record<string, any>;
 
 function getKnownFieldsBson(schema: JSONSchema): FieldEntry[] {
     return getKnownFieldsGeneric(schema, 'x-bsonType');
@@ -60,6 +62,7 @@ const bsonTypeAdapter: TypeAdapter<BSONType> = {
             }
             case 'date': {
                 const d = (value as Date).getTime();
+                if (Number.isNaN(d)) break;
                 entry['x-maxDate'] = d;
                 entry['x-minDate'] = d;
                 break;
@@ -101,6 +104,7 @@ const bsonTypeAdapter: TypeAdapter<BSONType> = {
             }
             case 'date': {
                 const d = (value as Date).getTime();
+                if (Number.isNaN(d)) break;
                 if (entry['x-minDate'] === undefined || d < entry['x-minDate']) entry['x-minDate'] = d;
                 if (entry['x-maxDate'] === undefined || d > entry['x-maxDate']) entry['x-maxDate'] = d;
                 break;

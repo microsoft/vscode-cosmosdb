@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { getBinaryLength } from './binaryUtils.js';
+import { getBinaryLength, getUuidString } from './binaryUtils.js';
 import { isBsonObjectId, isBsonRegExp, isNativeRegExp } from './bsonTypeGuards.js';
 import { type BSONType } from './BSONTypes.js';
 
@@ -31,7 +31,8 @@ export function valueToDisplayString(value: unknown, type: BSONType): string {
             return (value as boolean).toString();
         }
         case 'date': {
-            return (value as Date).toISOString();
+            const date = value as Date;
+            return Number.isNaN(date.getTime()) ? 'Invalid Date' : date.toISOString();
         }
         case 'objectid': {
             if (!isBsonObjectId(value)) throw new TypeError('Expected a BSON ObjectId value.');
@@ -63,15 +64,17 @@ export function valueToDisplayString(value: unknown, type: BSONType): string {
         case 'maxkey': {
             return 'MaxKey';
         }
+        case 'uuid':
+        case 'uuid-legacy':
+            return JSON.stringify(getUuidString(value, type));
+        case '_unknown_':
+            return 'Unknown';
         case 'code':
         case 'codewithscope':
         case 'array':
         case 'object':
         case 'map':
         case 'dbref':
-        case 'uuid':
-        case 'uuid-legacy':
-        case '_unknown_':
         default: {
             const serialized = JSON.stringify(value);
             if (serialized === undefined) {

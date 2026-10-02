@@ -21,12 +21,17 @@ Inspects one or more documents and produces a **JSON Schema** (draft-07 compatib
 ```bash
 npm install @azure/cosmosdb-schema-analyzer
 
-# If using the BSON sub-module, also install bson:
+# Only if your application creates or parses BSON values:
 npm install bson
 ```
 
-Recognizes BSON values from `bson` and the MongoDB driver by their structure, including values from
-separate module copies. The MongoDB driver is not required.
+The analyzer has no runtime `bson` or `mongodb` dependency or BSON peer requirement. It recognizes
+BSON 5, 6, and 7 values from `bson` or the MongoDB driver, including independent module copies,
+using version markers and compatible shapes rather than constructor identity.
+See [BSON recognition](docs/type-systems.md#type-inference-priority) for the supported contract.
+
+**Compatibility note:** Corrected unknown, symbol, UUID, and invalid-date handling changes analyzer
+output. Regenerate persisted schemas from source documents rather than mixing old and new results.
 
 ## Supported environments
 
@@ -73,6 +78,8 @@ const fields = analyzer.getKnownFields();
 ```
 
 Documents do not require an `_id` field. If present, it is analyzed like any other field.
+For worker transport, use canonical Extended JSON rather than cloning raw BSON values;
+see [BSON transport and module resolution](docs/api-reference.md#bson-transport-and-module-resolution).
 
 ## Root API
 

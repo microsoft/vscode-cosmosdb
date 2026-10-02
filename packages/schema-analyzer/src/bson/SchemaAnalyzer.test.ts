@@ -3,7 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Binary, BSONRegExp, Int32 } from 'bson';
+import { Binary, BSONRegExp, Int32, ObjectId } from 'bson';
+import { type Document, type WithId } from 'mongodb';
 import { describe, expect, it } from 'vitest';
 import { type JSONSchema, type JSONSchemaMap, type JSONSchemaRef } from '../index.js';
 import {
@@ -21,6 +22,20 @@ import { getPropertyNamesAtLevel, SchemaAnalyzer } from './index.js';
 // ── Basic schema inference ─────────────────────────────────────────────
 
 describe('BSON SchemaAnalyzer — basic inference', () => {
+    it('accepts named document interfaces and driver document types without a BSON type dependency', () => {
+        interface Customer {
+            name: string;
+        }
+        const customer: Customer = { name: 'Alice' };
+        const driverDocument: Document = { name: 'Bob' };
+        const identifiedDocument: WithId<Customer> = { name: 'Charlie', _id: new ObjectId() };
+        const analyzer = SchemaAnalyzer.fromDocument(customer);
+        analyzer.addDocument(driverDocument);
+        analyzer.addDocuments([customer, identifiedDocument]);
+        expect(analyzer.getDocumentCount()).toBe(4);
+        expect(SchemaAnalyzer.fromDocuments([customer, identifiedDocument]).getDocumentCount()).toBe(2);
+    });
+
     it('accepts BSON documents without an _id through every ingestion method', () => {
         const document = { score: new Int32(42) };
         const analyzer = SchemaAnalyzer.fromDocument(document);
@@ -242,24 +257,18 @@ describe('BSON binary length statistics', () => {
 });
 
 describe('BSON native and driver representations', () => {
-    it('treats both regexp representations and both symbol representations as scalar strings', () => {
+    it('merges regexp representations but distinguishes native symbols from BSON symbols', () => {
         const analyzer = SchemaAnalyzer.fromDocuments([
             makeDoc({ regexp: /abc/i, symbol: Symbol('s') }),
             makeDoc({ regexp: new BSONRegExp('abc', 'i'), symbol: flatDocument['symbolField'] }),
         ]);
-        for (const [name, tag] of [
-            ['regexp', 'regexp'],
-            ['symbol', 'symbol'],
-        ]) {
-            const field = analyzer.getSchema().properties![name] as JSONSchema;
-            expect(field.anyOf).toHaveLength(1);
-            expect(field.anyOf![0]).toMatchObject({
-                type: 'string',
-                'x-bsonType': tag,
-                'x-typeOccurrence': 2,
-            });
-            expect(field.anyOf![0]).not.toHaveProperty('properties');
-        }
+        const regexp = analyzer.getSchema().properties!['regexp'] as JSONSchema;
+        expect(regexp.anyOf).toEqual([{ type: 'string', 'x-bsonType': 'regexp', 'x-typeOccurrence': 2 }]);
+        const symbol = analyzer.getSchema().properties!['symbol'] as JSONSchema;
+        expect(symbol.anyOf).toEqual([
+            { type: 'string', 'x-bsonType': '_unknown_', 'x-typeOccurrence': 1 },
+            { type: 'string', 'x-bsonType': 'symbol', 'x-typeOccurrence': 1 },
+        ]);
     });
 });
 

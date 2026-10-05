@@ -286,3 +286,6 @@ junit.xml
 **/junit.xml
 
 coverage/
+
+# Vally evaluation trajectories and reports
+vally-results/

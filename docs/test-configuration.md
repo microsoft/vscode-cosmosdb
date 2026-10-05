@@ -139,6 +139,141 @@ npm run vitest         # one-shot
 npm run vitest:ui      # watch with UI
 ```
 
+### NL2Query generation and explanation evaluations (Vally)
+
+The [NL2Query evaluation spec](../evals/nl2query/eval.yaml) uses
+[Vally](https://aka.ms/vally) and the Copilot SDK executor to evaluate query generation using the shipped
+[NoSQL query-generation skill](../skills/cosmosdb-nosql-query-generation/SKILL.md), and query explanation without
+requiring that skill.
+It runs four prompts against a shared synthetic product schema:
+
+- Return complete products priced strictly above 100, sorted by ascending price.
+- Return a scalar count of products whose `inStock` property is `true`.
+- Explain the complete-document projection, exclusive price boundary, and ascending ordering of the filter query.
+- Explain a selected in-stock count query, including its scalar result and zero-match behavior, without confusing
+  it with the unselected price query in the editor.
+
+This is a **headless generation and explanation evaluation**, not an end-to-end test of the editor buttons.
+It does not cover editor context resolution, schema sampling, applying queries, or executing queries.
+The explain prompts supply synthetic `currentQuery`, `selectedQuery`, and `activeQuery` fields in place of a live
+context-tool response, following the Explain Query flow's instruction to explain `activeQuery`.
+No Azure credentials, Cosmos DB account, emulator, or real customer data are needed.
+Each trial receives the synthetic schema in a temporary workspace. Only generation trials load and require the
+query-generation skill. Explanation trials evaluate the answer's semantics and session completion, not skill usage.
+
+Install the repository dependencies with `npm install`. Static validation and grader tests run offline:
+
+```bash
+npm run eval:nl2query:lint
+npm run eval:nl2query:test
+```
+
+The grader tests exercise Vally's actual grading pipeline with passing and failing outputs. They cover wrong
+comparison boundaries, sort direction, property casing, scalar-count shape, Markdown/prose, multiple statements,
+and missing skill activation or session completion. These commands do not call a model or require Copilot authentication.
+For explanations, offline tests stub the judge's verdict and verify rubric/evidence delivery and pass/fail
+aggregation, including passing explanations with no skill activation. They do not validate the judge's semantic
+accuracy; that requires a live evaluation.
+
+For a live evaluation including explanations, use `GITHUB_TOKEN` in the process environment so both the agent
+and the LLM judge receive authentication. A fine-grained personal access token needs the **Copilot Requests** account permission;
+see [Copilot CLI authentication](https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/authenticate-copilot-cli).
+Never put tokens in the spec or commit them. Vally isolates the Copilot configuration home by default, so do not rely
+on an editor sign-in or locally saved CLI settings being inherited. Then run:
+
+```bash
+npm run eval:nl2query
+npm run eval:nl2query -- --model <model-id> --runs 3
+npm run eval:nl2query -- --tag feature=explain --judge-model <judge-model-id>
+npm run eval:nl2query -- --tag feature=generate
+```
+
+**Vally 0.17 judge authentication:** the agent and judge use separate SDK clients. The judge explicitly forwards
+`GITHUB_COPILOT_API_TOKEN` (if set) or `GITHUB_TOKEN`, and its restricted `mode: "empty"` disables credential-store
+access. `EVALUATE_USE_HOST_COPILOT_HOME=1` changes the agent's configuration isolation, not the judge's restricted mode.
+Consequently, a saved CLI login can work for the agent while the judge still reports
+`No GitHub OAuth token or Copilot HMAC key provided`. The agent also supports `COPILOT_GITHUB_TOKEN` and `GH_TOKEN`,
+but those are not explicitly forwarded as the judge's SDK token in this version.
+
+You can reuse a GitHub CLI OAuth login instead of creating a separate personal access token. In Git Bash,
+authenticate with `gh auth login` if needed, then supply its token only to the evaluation process:
+
+```bash
+token="$(gh auth token)" &&
+  GITHUB_TOKEN="$token" npm run eval:nl2query -- --tag feature=explain
+unset token
+```
+
+The signed-in account must have Copilot access. Do not echo the token or run these commands with shell tracing enabled.
+If `GITHUB_COPILOT_API_TOKEN` is already set, it takes precedence for the judge; remove it from the process environment
+if it is not the credential you intend to use.
+
+The default model is selected by the Copilot SDK; use `--model` to compare a specific model across runs.
+Live evaluations consume model requests. Generation uses deterministic graders, without a judge model.
+Explanation additionally uses Vally's `prompt` LLM grader, so it makes judge-model requests and is not deterministic.
+Use `--judge-model` to select an available judge model; otherwise Vally uses its built-in default.
+Every grader must pass, and all trials must complete successfully. Generation trials must additionally activate
+the query-generation skill and pass the query-shape checks, which accept keyword casing, whitespace, dot/bracket
+property access, and implicit ascending order, but enforce exact schema property casing. These checks cover the
+requested simple query forms, not every semantically equivalent SQL rewrite.
+
+Explanations are judged against per-prompt rubrics with binary scoring and a 100% threshold. They must explain all
+required semantics without contradictory statements, invented results, or claims of executing or changing the query.
+Equivalent wording and formatting are accepted; explanations do not inherit the generation skill's SQL-only output
+contract. A query alone is not a passing explanation.
+
+The run command includes `--require-pass`, so a failed evaluation returns a nonzero exit code.
+An error such as `No GitHub OAuth token or Copilot HMAC key provided` means the failing client did not reach its model.
+When the error appears under `prompt` after `completed` passes, the agent produced an answer but the judge could not
+evaluate it. This is a grading infrastructure error, not a verdict that the explanation is incorrect.
+Timestamped results, trajectories, and Markdown reports are saved under the gitignored
+`vally-results/nl2query/` directory. The npm commands opt out of Vally usage telemetry; detailed evaluation artifacts
+remain local unless uploaded by CI. Live evaluations are separate from the normal unit tests and build workflow.
+
+After fixing judge authentication, re-grade a saved run instead of paying for agent execution again. Replace
+`<timestamp>` with the run directory printed by Vally; the original result file is left unchanged:
+
+```bash
+token="$(gh auth token)" &&
+  GITHUB_TOKEN="$token" VALLY_TELEMETRY_OPTOUT=1 npx --no-install vally grade \
+    --eval-spec evals/nl2query/eval.yaml --require-pass \
+    < "vally-results/nl2query/<timestamp>/results.jsonl"
+unset token
+```
+
+Re-grading explanations still consumes judge-model requests. Add `--judge-model <judge-model-id>` if needed.
+
+#### GitHub Actions
+
+The [Evaluations workflow](../.github/workflows/evals.yml) runs when any evaluation suite, skill, dependency manifest,
+Node version, or the workflow changes. It currently runs NL2Query; additional suites, such as data-modeler, can be
+added to the validation and live jobs.
+
+- **Pull requests:** validate the spec and run the offline grader tests, without Copilot permissions or model requests.
+- **Pushes to `main` or `rel/*`:** run those checks, then evaluate all four prompts using Copilot.
+- **Manual runs:** use **Actions > Evaluations > Run workflow** to run both jobs on a selected trusted branch.
+
+Live evaluation is deliberately disabled for pull requests, including forks: agents execute instructions from the
+checked-out files, and requests consume organization credits. Maintainers can manually evaluate a reviewed branch.
+Superseded runs for the same branch or pull request are cancelled. Each live run uses one trial per prompt, one worker,
+no automatic execution retries, and a 20-minute job timeout.
+
+An organization administrator must enable the Copilot policy **Allow use of Copilot CLI billed to the organization**
+for the Microsoft organization. GitHub enables this by default when the existing **Copilot CLI** policy is enabled,
+but the workflow cannot configure or verify that organization setting. See
+[Using Copilot CLI in GitHub Actions with GITHUB_TOKEN](https://docs.github.com/copilot/how-tos/copilot-cli/use-copilot-cli-in-actions).
+
+Only the live job requests `contents: read` and `copilot-requests: write`. It passes the built-in `${{ github.token }}`
+as both `COPILOT_GITHUB_TOKEN` for the agent and `GITHUB_TOKEN` for Vally's separate judge. No personal access token,
+repository secret, or interactive login is required in Actions. Model usage is billed to the organization; its
+Copilot policies, model availability, and budgets still apply.
+
+Both jobs use the repository's Node version and `npm ci`, including the pinned Vally CLI, rather than a global
+installation. Skills remain scoped by the evaluation spec; the workflow does not pass a global `--skill-dir`.
+Failed verdicts or authentication/grading errors fail the live job through `--require-pass`. Reports and trajectories
+from all suites under `vally-results/` are uploaded even after a failed run as `eval-results-<attempt>` artifacts,
+retained for 14 days.
+
 ### Integration tests (slow, real VS Code)
 
 ```bash

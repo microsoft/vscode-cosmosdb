@@ -71,6 +71,9 @@
     "vitest": "vitest run",
     "vitest:coverage": "vitest run --coverage",
     "vitest:ui": "vitest --ui",
+    "eval:nl2query": "cross-env VALLY_TELEMETRY_OPTOUT=1 vally eval --eval-spec evals/nl2query/eval.yaml --output-dir vally-results/nl2query --workers 1 --require-pass",
+    "eval:nl2query:lint": "cross-env VALLY_TELEMETRY_OPTOUT=1 vally lint --eval-spec evals/nl2query/eval.yaml",
+    "eval:nl2query:test": "node --test evals/nl2query/graders.test.mjs",
     "vite-dev": "rimraf ./dist && concurrently -n ext,views -c redBright,whiteBright \"npm run vite-dev-ext\" \"npm run vite-dev-wv\"",
     "vite-prod": "rimraf ./dist && concurrently -n ext,views -c redBright,whiteBright \"npm run vite-prod-ext\" \"npm run vite-prod-wv\"",
     "vite-dev-ext": "vite build --mode development --config ./vite.config.ext.mjs",
@@ -116,6 +119,8 @@
     }
   },
   "devDependencies": {
+    "@microsoft/vally": "0.17.0",
+    "@microsoft/vally-cli": "0.17.0",
     "@playwright/test": "~1.61.0",
     "@testing-library/jest-dom": "~6.9.1",
     "@testing-library/react": "~16.3.2",

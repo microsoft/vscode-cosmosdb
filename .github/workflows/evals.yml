@@ -1,0 +1,100 @@
+name: Evaluations
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+
+  push:
+    branches:
+      - main
+      - rel/*
+    paths:
+      - 'evals/**'
+      - 'skills/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.nvmrc'
+      - '.github/workflows/evals.yml'
+
+  pull_request:
+    types: [opened, reopened, synchronize]
+    paths:
+      - 'evals/**'
+      - 'skills/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.nvmrc'
+      - '.github/workflows/evals.yml'
+
+concurrency:
+  group: evals-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate evaluation specs and graders
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate evaluation spec
+        run: npm run eval:nl2query:lint
+
+      - name: Test graders offline
+        run: npm run eval:nl2query:test
+
+  eval:
+    name: Run evaluations
+    needs: validate
+    # Live agents execute instructions from the checkout and consume organization-billed model requests.
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      copilot-requests: write
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Vally
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ github.token }}
+          # Vally 0.17's separate LLM judge explicitly forwards GITHUB_TOKEN.
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npm run eval:nl2query -- --max-retries 0
+
+      - name: Upload evaluation reports and trajectories
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: eval-results-${{ github.run_attempt }}
+          path: vally-results/
+          if-no-files-found: warn
+          retention-days: 14

@@ -227,7 +227,12 @@ export function getSchemaAtPath(schema: JSONSchema, path: string[]): JSONSchema 
     for (let i = 0; i < path.length; i++) {
         const key = path[i];
 
-        if (currentNode && currentNode.properties && currentNode.properties[key]) {
+        if (
+            currentNode &&
+            currentNode.properties &&
+            Object.hasOwn(currentNode.properties, key) &&
+            currentNode.properties[key]
+        ) {
             const nextNode: JSONSchema = currentNode.properties[key] as JSONSchema;
 
             if (nextNode.anyOf && nextNode.anyOf.length > 0) {

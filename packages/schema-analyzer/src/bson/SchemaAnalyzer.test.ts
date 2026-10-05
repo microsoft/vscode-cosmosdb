@@ -3,6 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { Binary, BSONRegExp, Int32, ObjectId } from 'bson';
+import { type Document, type WithId } from 'mongodb';
 import { describe, expect, it } from 'vitest';
 import { type JSONSchema, type JSONSchemaMap, type JSONSchemaRef } from '../index.js';
 import {
@@ -20,6 +22,38 @@ import { getPropertyNamesAtLevel, SchemaAnalyzer } from './index.js';
 // ── Basic schema inference ─────────────────────────────────────────────
 
 describe('BSON SchemaAnalyzer — basic inference', () => {
+    it('accepts named document interfaces and driver document types without a BSON type dependency', () => {
+        interface Customer {
+            name: string;
+        }
+        const customer: Customer = { name: 'Alice' };
+        const driverDocument: Document = { name: 'Bob' };
+        const identifiedDocument: WithId<Customer> = { name: 'Charlie', _id: new ObjectId() };
+        const analyzer = SchemaAnalyzer.fromDocument(customer);
+        analyzer.addDocument(driverDocument);
+        analyzer.addDocuments([customer, identifiedDocument]);
+        expect(analyzer.getDocumentCount()).toBe(4);
+        expect(SchemaAnalyzer.fromDocuments([customer, identifiedDocument]).getDocumentCount()).toBe(2);
+    });
+
+    it('accepts BSON documents without an _id through every ingestion method', () => {
+        const document = { score: new Int32(42) };
+        const analyzer = SchemaAnalyzer.fromDocument(document);
+        analyzer.addDocument(document);
+        analyzer.addDocuments([document]);
+
+        expect(analyzer.getDocumentCount()).toBe(3);
+        expect(analyzer.getSchema()).toEqual(SchemaAnalyzer.fromDocuments([document, document, document]).getSchema());
+        expect(analyzer.getSchema().properties).not.toHaveProperty('_id');
+        expect(analyzer.getKnownFields()).toContainEqual({ path: 'score', type: 'number', dataType: 'int32' });
+    });
+
+    it.each(['customer-123', 123, { tenant: 'a', key: 1 }])('accepts a non-ObjectId identifier: %j', (_id) => {
+        const analyzer = SchemaAnalyzer.fromDocument({ _id });
+        expect(analyzer.getDocumentCount()).toBe(1);
+        expect(analyzer.getSchema().properties).toHaveProperty('_id');
+    });
+
     it('produces a schema from a single document', () => {
         const analyzer = SchemaAnalyzer.fromDocument(embeddedDocumentOnly);
         const schema = analyzer.getSchema();
@@ -164,6 +198,77 @@ describe('BSON SchemaAnalyzer — basic inference', () => {
         const priceParent = ((orderItems?.anyOf?.[0] as JSONSchema)?.items as JSONSchema)?.anyOf?.[0] as JSONSchema;
         const priceField = priceParent?.properties?.['price'] as JSONSchema;
         expect((priceField?.anyOf?.[0] as JSONSchema)?.['x-bsonType']).toBe('decimal128');
+    });
+});
+
+describe('BSON binary length statistics', () => {
+    it.each([
+        { name: 'Binary', create: (length: number) => new Binary(Buffer.alloc(length)) },
+        { name: 'Buffer', create: (length: number) => Buffer.alloc(length) },
+    ])('tracks numeric byte lengths for $name', ({ create }) => {
+        const analyzer = SchemaAnalyzer.fromDocument(makeDoc({ binary: create(4) }));
+        const binaryType = () => (analyzer.getSchema().properties!['binary'] as JSONSchema).anyOf![0] as JSONSchema;
+
+        expect(binaryType()).toMatchObject({ 'x-bsonType': 'binary', 'x-minLength': 4, 'x-maxLength': 4 });
+
+        analyzer.addDocument(makeDoc({ binary: create(8) }));
+        expect(binaryType()).toMatchObject({ 'x-minLength': 4, 'x-maxLength': 8 });
+
+        analyzer.addDocument(makeDoc({ binary: create(2) }));
+        expect(binaryType()).toMatchObject({ 'x-minLength': 2, 'x-maxLength': 8 });
+
+        analyzer.addDocument(makeDoc({ binary: create(0) }));
+        expect(binaryType()).toMatchObject({ 'x-minLength': 0, 'x-maxLength': 8 });
+    });
+
+    it.each([
+        [Buffer.alloc(4), new Binary(Buffer.alloc(8)), new Binary()],
+        [new Binary(Buffer.alloc(4)), Buffer.alloc(8), Buffer.alloc(0)],
+    ])('merges Buffer and Binary observations: %j', (first, second, third) => {
+        const analyzer = SchemaAnalyzer.fromDocuments([first, second, third].map((binary) => makeDoc({ binary })));
+        const field = analyzer.getSchema().properties!['binary'] as JSONSchema;
+        expect(field.anyOf).toHaveLength(1);
+        expect(field.anyOf![0]).toMatchObject({
+            type: 'string',
+            'x-bsonType': 'binary',
+            'x-typeOccurrence': 3,
+            'x-minLength': 0,
+            'x-maxLength': 8,
+        });
+        expect(analyzer.clone().getSchema()).toEqual(analyzer.getSchema());
+        expect(JSON.parse(JSON.stringify(analyzer.getSchema()))).toEqual(analyzer.getSchema());
+    });
+
+    it('uses byte lengths for binary array elements rather than backing buffer capacities', () => {
+        const binary = new Binary();
+        binary.put(1);
+        const buffer = Buffer.alloc(16).subarray(4, 7);
+        const analyzer = SchemaAnalyzer.fromDocument(makeDoc({ values: [binary, buffer] }));
+        const field = analyzer.getSchema().properties!['values'] as JSONSchema;
+        const array = field.anyOf![0] as JSONSchema;
+        const items = array.items as JSONSchema;
+        expect(items.anyOf).toHaveLength(1);
+        expect(items.anyOf![0]).toMatchObject({
+            'x-bsonType': 'binary',
+            'x-minLength': 1,
+            'x-maxLength': 3,
+        });
+    });
+});
+
+describe('BSON native and driver representations', () => {
+    it('merges regexp representations but distinguishes native symbols from BSON symbols', () => {
+        const analyzer = SchemaAnalyzer.fromDocuments([
+            makeDoc({ regexp: /abc/i, symbol: Symbol('s') }),
+            makeDoc({ regexp: new BSONRegExp('abc', 'i'), symbol: flatDocument['symbolField'] }),
+        ]);
+        const regexp = analyzer.getSchema().properties!['regexp'] as JSONSchema;
+        expect(regexp.anyOf).toEqual([{ type: 'string', 'x-bsonType': 'regexp', 'x-typeOccurrence': 2 }]);
+        const symbol = analyzer.getSchema().properties!['symbol'] as JSONSchema;
+        expect(symbol.anyOf).toEqual([
+            { type: 'string', 'x-bsonType': '_unknown_', 'x-typeOccurrence': 1 },
+            { type: 'string', 'x-bsonType': 'symbol', 'x-typeOccurrence': 1 },
+        ]);
     });
 });
 

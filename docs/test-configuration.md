@@ -249,14 +249,20 @@ The [Evaluations workflow](../.github/workflows/evals.yml) runs when any evaluat
 Node version, or the workflow changes. It currently runs NL2Query; additional suites, such as data-modeler, can be
 added to the validation and live jobs.
 
-- **Pull requests:** validate the spec and run the offline grader tests, without Copilot permissions or model requests.
+- **Pull requests from this repository:** validate the spec, run the offline grader tests, then run live evaluations.
+- **Pull requests from forks:** run only the offline checks, without Copilot permissions or model requests.
 - **Pushes to `main` or `rel/*`:** run those checks, then evaluate all four prompts using Copilot.
 - **Manual runs:** use **Actions > Evaluations > Run workflow** to run both jobs on a selected trusted branch.
 
-Live evaluation is deliberately disabled for pull requests, including forks: agents execute instructions from the
-checked-out files, and requests consume organization credits. Maintainers can manually evaluate a reviewed branch.
+Live evaluation is disabled for fork pull requests: agents execute instructions from the checked-out files, and
+requests consume organization credits. Maintainers can manually evaluate a reviewed branch in this repository.
 Superseded runs for the same branch or pull request are cancelled. Each live run uses one trial per prompt, one worker,
 no automatic execution retries, and a 20-minute job timeout.
+
+To test a workflow change before merging, push it to a branch in this repository with an open pull request.
+This triggers a new run using the changed workflow; re-running an older run does not pick up the new revision.
+Manual dispatch is also available once the workflow exists on the default branch; select the branch to evaluate
+from the **Run workflow** menu. Live evaluation still requires the offline validation job to pass first.
 
 An organization administrator must enable the Copilot policy **Allow use of Copilot CLI billed to the organization**
 for the Microsoft organization. GitHub enables this by default when the existing **Copilot CLI** policy is enabled,

@@ -61,8 +61,10 @@ jobs:
   eval:
     name: Run evaluations
     needs: validate
-    # Live agents execute instructions from the checkout and consume organization-billed model requests.
-    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+    # Fork contributions must not execute agents with organization-billed model access.
+    if: >-
+      ${{ github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:

@@ -11,9 +11,13 @@ This directory contains standalone packages that are part of the monorepo.
 
 ## Package releases
 
-Packages are versioned independently from the extension using SemVer: patch for compatible fixes, minor for
+Packages are versioned independently from the extension, normally following SemVer: patch for compatible fixes, minor for
 compatible additions, and major for incompatible public API changes. Compatibility includes behavior and
 types, not only exported function names. Each package maintains a `CHANGELOG.md` with upgrade notes.
+
+The package owner explicitly approved retaining 1.1.0 for the current internally consumed packages, including
+incompatible schema, snapshot, and frozen-registry changes. This is a release-specific exception, not a claim of
+backward compatibility or a general exemption from SemVer; the package changelogs document the required migration.
 
 Peer dependency ranges use an inclusive lower bound and an exclusive next-major upper bound.
 Node.js requirements have no upper bound. Package manifests define the supported versions, not an exhaustive

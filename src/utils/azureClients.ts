@@ -7,7 +7,7 @@ import { type AdvisorManagementClient } from '@azure/arm-advisor';
 import { type AlertsManagementClient } from '@azure/arm-alertsmanagement';
 import { CosmosDBManagementClient, type CosmosDBManagementClientOptionalParams } from '@azure/arm-cosmosdb';
 import { type FeatureClient } from '@azure/arm-features';
-import { type MonitorClient } from '@azure/arm-monitor';
+import { type MonitorClient, type MonitorClientOptionalParams } from '@azure/arm-monitor';
 import { type PostgreSQLManagementClient } from '@azure/arm-postgresql';
 import { type PostgreSQLManagementFlexibleServerClient } from '@azure/arm-postgresql-flexible';
 import { type TokenCredential } from '@azure/core-auth';
@@ -108,9 +108,15 @@ export async function createMonitorClient(
     context: IActionContext,
     subscription: AzureSubscription,
 ): Promise<MonitorClient> {
+    context.valuesToMask.push(subscription.subscriptionId);
     const subContext = createSubscriptionContext(subscription);
     const { MonitorClient } = await import('@azure/arm-monitor');
-    return createAzureClient([context, subContext], MonitorClient);
+    class SubscriptionClient extends MonitorClient {
+        constructor(credential: TokenCredential, options?: MonitorClientOptionalParams) {
+            super(credential, subscription.subscriptionId, options);
+        }
+    }
+    return createAzureSubscriptionClient([context, subContext], SubscriptionClient);
 }
 
 // `@azure/monitor-query-logs` is the data-plane Log Analytics client for the Account Overview dashboard's Tier-2

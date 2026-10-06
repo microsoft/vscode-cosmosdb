@@ -10,13 +10,20 @@
  *
  * @example
  * ```typescript
- * import { parse, sqlToString, getCompletions } from "@azure/cosmosdb-nosql-language-service";
+ * import { parse, sqlToString, getCompletions, type JSONSchema } from "@azure/cosmosdb-nosql-language-service";
+ *
+ * const schema: JSONSchema = {
+ *   type: "object",
+ *   properties: { age: { type: "number" } },
+ * };
  *
  * // Parse a query
  * const { ast, errors } = parse("SELECT * FROM c WHERE c.age > 21");
  *
  * // Round-trip: AST → query text
- * const sql = sqlToString(ast!);
+ * if (ast && errors.length === 0) {
+ *   console.log(sqlToString(ast));
+ * }
  *
  * // Get autocomplete suggestions
  * const items = getCompletions({ query: "SELECT c.", offset: 9, schema });
@@ -29,8 +36,10 @@
 
 import { MismatchedTokenException, NotAllInputParsedException } from 'chevrotain';
 import { type SqlProgram } from './ast/nodes.js';
-import { SqlErrorCode, type SourcePosition, type SqlParseError } from './errors/SqlError.js';
+import { createPositionResolver, tokenToSourceRange } from './errors/sourcePositions.js';
+import { SqlErrorCode, type SqlParseError } from './errors/SqlError.js';
 import { SqlLexer } from './lexer/SqlLexer.js';
+import { exceedsAstDepth, MAX_AST_DEPTH, QueryTooComplexError } from './parser/queryComplexity.js';
 import { SqlParser } from './parser/SqlParser.js';
 
 // Re-export everything consumers need
@@ -51,9 +60,9 @@ export type { FunctionMeta } from './services/functionSignatures.js';
 export { parseMultiQueryDocument } from './services/MultiQueryDocument.js';
 export type { MultiQueryDocument, QueryRegion } from './services/MultiQueryDocument.js';
 export { SqlLanguageService, stripComments } from './services/SqlLanguageService.js';
+export { DiagnosticSeverity } from './services/types.js';
 export type {
     Diagnostic,
-    DiagnosticSeverity,
     Disposable,
     HoverInfo,
     LanguageServiceHost,
@@ -70,11 +79,11 @@ export type {
 
 /**
  * The result of parsing a query written in the Cosmos DB query language.
- * Always contains an `errors` array; `ast` is present even when
- * errors occur (partial AST via Chevrotain error recovery).
+ * Always contains an `errors` array. Recovery may produce a partial AST for
+ * invalid input; an AST is not guaranteed and is omitted for complexity errors.
  */
 export interface ParseResult {
-    /** The AST, present even on error (partial AST via error recovery) */
+    /** Complete or recovered partial AST, if available and within complexity limits */
     ast?: SqlProgram;
     /** List of parse errors (empty if query is valid) */
     errors: SqlParseError[];
@@ -88,30 +97,13 @@ export interface ParseResult {
 const parserInstance = new SqlParser();
 
 /**
- * Convert a 0-based byte offset to a 1-based line/col {@link SourcePosition}.
- * Used as a fallback when Chevrotain doesn't provide line/col (e.g. EOF token).
- */
-function offsetToPosition(text: string, offset: number): SourcePosition {
-    let line = 1;
-    let col = 1;
-    const end = Math.min(offset, text.length);
-    for (let i = 0; i < end; i++) {
-        if (text[i] === '\n') {
-            line++;
-            col = 1;
-        } else {
-            col++;
-        }
-    }
-    return { offset, line, col };
-}
-
-/**
  * Parse a query written in the Cosmos DB query language into a typed AST.
  *
  * The parser uses Chevrotain's built-in error recovery, so it will
  * attempt to build a partial AST even when the query is invalid.
- * Check `result.errors` to determine validity.
+ * Check `result.errors` to determine validity and `result.ast` before using it.
+ * Excessive parser rule nesting or AST depth yields QUERY_TOO_COMPLEX without an AST.
+ * Unexpected implementation errors are not suppressed.
  *
  * @param query - The query text to parse.
  * @returns A {@link ParseResult} with the AST and any errors.
@@ -131,45 +123,37 @@ function offsetToPosition(text: string, offset: number): SourcePosition {
 export function parse(query: string): ParseResult {
     // 1. Lex
     const lexResult = SqlLexer.tokenize(query);
+    const positionAt = createPositionResolver(query);
 
     // Collect lexer errors
     const errors: SqlParseError[] = lexResult.errors.map((e) => ({
         code: SqlErrorCode.UnexpectedToken,
         message: e.message,
         range: {
-            start: { offset: e.offset, line: e.line ?? 1, col: e.column ?? 1 },
-            end: { offset: e.offset + (e.length ?? 1), line: e.line ?? 1, col: (e.column ?? 1) + (e.length ?? 1) },
+            start: positionAt(e.offset),
+            end: positionAt(e.offset + (e.length ?? 1)),
         },
     }));
 
     // 2. Parse
     parserInstance.input = lexResult.tokens;
-    const ast = parserInstance.program();
+    let ast: SqlProgram | undefined;
+    try {
+        ast = parserInstance.program();
+    } catch (error) {
+        if (!(error instanceof QueryTooComplexError)) throw error;
+        errors.push({
+            code: SqlErrorCode.QueryTooComplex,
+            message: error.message,
+            range: tokenToSourceRange(query, error.token, positionAt),
+        });
+        return { errors };
+    }
 
     // Collect parser errors
     for (const e of parserInstance.errors) {
-        const token = e.token;
-
-        // Chevrotain returns NaN for virtual EOF tokens — treat NaN as missing
-        const safeOffset = (v: number | undefined, fallback: number) => (v !== undefined && !isNaN(v) ? v : fallback);
-
-        const startOffset = safeOffset(token.startOffset, query.length);
-        const endOffset = safeOffset(token.endOffset, startOffset) + 1;
-        const startLine = safeOffset(token.startLine, undefined as unknown as number);
-        const startCol = safeOffset(token.startColumn, undefined as unknown as number);
-
-        // If Chevrotain didn't provide line/col (EOF token), compute from offset
-        const computedStart =
-            startLine !== undefined
-                ? { offset: startOffset, line: startLine, col: startCol ?? 1 }
-                : offsetToPosition(query, startOffset);
-
-        const endLine = safeOffset(token.endLine, undefined as unknown as number);
-        const endCol = safeOffset(token.endColumn, undefined as unknown as number);
-        const computedEnd =
-            endLine !== undefined
-                ? { offset: endOffset, line: endLine, col: (endCol ?? 0) + 1 }
-                : offsetToPosition(query, endOffset);
+        const range = tokenToSourceRange(query, e.token, positionAt);
+        const startOffset = range.start.offset;
 
         let code = SqlErrorCode.UnexpectedToken;
         if (startOffset >= query.length) {
@@ -183,12 +167,19 @@ export function parse(query: string): ParseResult {
         errors.push({
             code,
             message: e.message,
-            range: { start: computedStart, end: computedEnd },
+            range,
         });
     }
 
-    return {
-        ast: parserInstance.errors.length === 0 && lexResult.errors.length === 0 ? ast : ast, // Return AST even on error (partial via recovery)
-        errors,
-    };
+    // Iterative parsing can still create a deep AST (for example, a long left-associative operator chain).
+    if (exceedsAstDepth(ast)) {
+        errors.push({
+            code: SqlErrorCode.QueryTooComplex,
+            message: `Query exceeds the maximum AST depth of ${MAX_AST_DEPTH}.`,
+            range: { start: positionAt(0), end: positionAt(query.length) },
+        });
+        ast = undefined;
+    }
+
+    return { ast, errors };
 }

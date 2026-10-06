@@ -91,13 +91,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Validate evaluation spec
+      - name: Validate evaluation specs
         id: spec-validation
-        run: npm run eval:nl2query:lint
+        run: npm run eval:lint
 
       - name: Test graders offline
         id: grader-tests
-        run: npm run eval:nl2query:test
+        run: npm run eval:test
 
   eval:
     name: Run evaluations
@@ -134,7 +134,7 @@ jobs:
           COPILOT_GITHUB_TOKEN: ${{ github.token }}
           # Vally 0.17's separate LLM judge explicitly forwards GITHUB_TOKEN.
           GITHUB_TOKEN: ${{ github.token }}
-        run: npm run eval:nl2query -- --max-retries 0
+        run: npm run eval -- --max-retries 0
 
       - name: Upload evaluation reports and trajectories
         id: upload-results

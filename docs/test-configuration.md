@@ -204,14 +204,20 @@ These runs are separate from the normal unit tests and build.
 
 #### NL2Query suite
 
-The [spec](../evals/nl2query/eval.yaml) contains four prompts against a synthetic product schema:
+The [spec](../evals/nl2query/eval.yaml) contains three Generate and three paired Explain prompts against a synthetic
+product schema:
 
-- **Generate:** filter products priced above 100 and sort ascending; count in-stock products as a scalar.
-- **Explain:** explain the filter/sort query; explain a selected count query without confusing it with unselected SQL.
+- **Array JOIN:** expand each product's tags, preserving duplicates and excluding empty arrays.
+- **Nested ARRAY/SELECT VALUE:** return case-insensitive prefix matches as strings, keeping products with no matches.
+- **Conditional JSON projection:** use a ternary expression and SELECT VALUE; Explain also tests selected-query precedence.
 
 It pins `gpt-5.6-luna` for lower-cost execution and `gpt-5.6-terra` for mid-range explanation judging.
 Generation requires the [query-generation skill](../skills/cosmosdb-nosql-query-generation/SKILL.md) and uses
-deterministic query-shape graders; explanation uses binary LLM rubrics without requiring skill activation.
+deterministic query-shape graders for the requested forms, not every equivalent SQL rewrite. Explain uses binary LLM
+rubrics and makes the entire [best-practices skill directory](../skills/cosmosdb-best-practices) available without
+requiring activation, matching production's optional skill use. Omitted skills do not automatically load this
+repository's skills: discovery runs in Vally's isolated trial workspace, which otherwise contains only the schema.
+The evaluations explicitly provide skill directories, including their supporting files.
 Every grader must pass (100% threshold). Generation accepts plain SQL or one complete unlabeled/`sql` code fence,
 but rejects prose, comments, extra statements, and incorrect query shapes.
 

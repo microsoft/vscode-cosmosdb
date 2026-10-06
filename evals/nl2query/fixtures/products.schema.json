@@ -6,8 +6,9 @@
     "id": { "type": "string" },
     "name": { "type": "string" },
     "price": { "type": "number" },
-    "inStock": { "type": "boolean" }
+    "inStock": { "type": "boolean" },
+    "tags": { "type": "array", "items": { "type": "string" } }
   },
-  "required": ["id", "name", "price", "inStock"],
+  "required": ["id", "name", "price", "inStock", "tags"],
   "additionalProperties": false
 }

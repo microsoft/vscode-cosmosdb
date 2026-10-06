@@ -62,7 +62,7 @@
     "demo": "node scripts/demo.mjs"
   },
   "dependencies": {
-    "@azure/cosmosdb-schema-analyzer": "~1.0.0",
+    "@azure/cosmosdb-schema-analyzer": "~1.1.0",
     "chevrotain": "^12.0.0"
   },
   "devDependencies": {

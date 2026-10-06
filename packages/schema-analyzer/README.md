@@ -10,20 +10,40 @@ Inspects one or more documents and produces a **JSON Schema** (draft-07 compatib
 
 ## Sub-modules
 
-| Import path                            | Use case                       | Dependencies               |
-| -------------------------------------- | ------------------------------ | -------------------------- |
-| `@azure/cosmosdb-schema-analyzer`      | Shared `JSONSchema` types only | None                       |
-| `@azure/cosmosdb-schema-analyzer/json` | JSON documents                 | `denque`                   |
-| `@azure/cosmosdb-schema-analyzer/bson` | BSON documents                 | `denque`, `mongodb` (peer) |
+| Import path                            | Use case                          |
+| -------------------------------------- | --------------------------------- |
+| `@azure/cosmosdb-schema-analyzer`      | Shared types and schema utilities |
+| `@azure/cosmosdb-schema-analyzer/json` | JSON documents                    |
+| `@azure/cosmosdb-schema-analyzer/bson` | BSON documents                    |
 
 ## Installation
 
 ```bash
-pnpm add @azure/cosmosdb-schema-analyzer
+npm install @azure/cosmosdb-schema-analyzer
 
-# If using the BSON sub-module, also install mongodb:
-pnpm add mongodb
+# Only if your application creates or parses BSON values:
+npm install bson
 ```
+
+The analyzer has no runtime `bson` or `mongodb` dependency or BSON peer requirement. It recognizes
+BSON 5, 6, and 7 values from `bson` or the MongoDB driver, including independent module copies,
+using version markers and compatible shapes rather than constructor identity.
+See [BSON recognition](docs/type-systems.md#type-inference-priority) for the supported contract.
+
+**Compatibility note:** Corrected unknown, symbol, UUID, and invalid-date handling changes analyzer
+output. Regenerate persisted schemas from source documents rather than mixing old and new results.
+
+## Supported environments
+
+Use in Node.js or bundle for modern browsers/Electron; no `Buffer` polyfill is needed.
+Snapshots use the standard `structuredClone` API.
+Runtime and dependency requirements are declared in [package.json](package.json).
+
+## Input and ownership contracts
+
+Pass acyclic document objects, not JSON text. JSON update utilities mutate the supplied schema;
+BSON analyzer reads return independent snapshots. See the [API reference](docs/api-reference.md)
+for input limitations and ownership details.
 
 ## Quick start — JSON
 
@@ -46,6 +66,7 @@ const props = getPropertyNamesAtLevel(schema, []);
 ## Quick start — BSON
 
 ```typescript
+import { Int32, ObjectId } from "bson";
 import { SchemaAnalyzer } from "@azure/cosmosdb-schema-analyzer/bson";
 
 const analyzer = new SchemaAnalyzer();
@@ -54,8 +75,24 @@ analyzer.addDocument({ _id: new ObjectId(), name: "Bob", score: new Int32(42) })
 
 const schema = analyzer.getSchema();
 const fields = analyzer.getKnownFields();
-// → [{ path: "_id", type: "string", bsonType: "objectid" }, ...]
+// → [{ path: "_id", type: "string", dataType: "objectid" }, ...]
 ```
+
+Documents do not require an `_id` field. If present, it is analyzed like any other field.
+For worker transport, use canonical Extended JSON rather than cloning raw BSON values;
+see [BSON transport and module resolution](docs/api-reference.md#bson-transport-and-module-resolution).
+
+## Root API
+
+Shared schema utilities:
+
+| Export                                     | Description                                                                           |
+| ------------------------------------------ | ------------------------------------------------------------------------------------- |
+| `getKnownFields(schema, typeExtensionKey)` | Collect field paths and types; use `"x-dataType"` for JSON or `"x-bsonType"` for BSON |
+| `getSchemaAtPath(schema, path)`            | Navigate a schema by property path segments                                           |
+| `getPropertyNamesAtLevel(schema, path)`    | List property names at a given nesting level                                          |
+| `buildFullPaths(path, names)`              | Build dot-separated full paths                                                        |
+| `simplifySchema(schema)`                   | Unwrap single-element `anyOf` arrays in place                                         |
 
 ## JSON API
 
@@ -68,17 +105,22 @@ const fields = analyzer.getKnownFields();
 | `getPropertyNamesAtLevel(schema, path)` | List property names at a given nesting level           |
 | `buildFullPaths(path, names)`           | Build dot-separated full paths                         |
 | `inferNoSqlType(value)`                 | Infer the JSON analyzer's type tag for a JS value      |
+| `noSqlTypeToJSONType(type)`             | Map a JSON analyzer type tag to a JSON Schema type     |
+| `noSqlTypeToDisplayString(type)`        | Format a JSON analyzer type tag for display            |
 
 ## BSON API
 
-| Export                                  | Description                                                              |
-| --------------------------------------- | ------------------------------------------------------------------------ |
-| `SchemaAnalyzer`                        | Class-based incremental analyzer with versioning and caching             |
-| `BSONTypes`                             | Enum + namespace with `inferType()`, `toJSONType()`, `toDisplayString()` |
-| `getKnownFields(schema)`                | Traverse schema to collect all leaf fields with types                    |
-| `getPropertyNamesAtLevel(schema, path)` | List property names at a given nesting level                             |
-| `buildFullPaths(path, names)`           | Build dot-separated full paths                                           |
-| `valueToDisplayString(value, type)`     | Convert a BSON value to a human-readable string                          |
+| Export                                  | Description                                                  |
+| --------------------------------------- | ------------------------------------------------------------ |
+| `SchemaAnalyzer`                        | Class-based incremental analyzer with versioning and caching |
+| `inferBsonType(value)`                  | Infer a BSON type tag                                        |
+| `bsonTypeToJSONType(type)`              | Map a BSON type tag to a JSON Schema type                    |
+| `bsonTypeToDisplayString(type)`         | Format a BSON type tag for display                           |
+| `getPropertyNamesAtLevel(schema, path)` | List property names at a given nesting level                 |
+| `buildFullPaths(path, names)`           | Build dot-separated full paths                               |
+| `valueToDisplayString(value, type)`     | Convert a BSON value to a human-readable string              |
+
+See the [API reference](docs/api-reference.md) for full signatures and behavior.
 
 ## License
 

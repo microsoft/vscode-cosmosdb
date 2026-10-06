@@ -6,6 +6,7 @@
 import Denque from 'denque';
 import { type JSONSchema7TypeName } from 'json-schema';
 import { type JSONSchema } from '../JSONSchema.js';
+import { expandTypeEntries } from './schemaVariants.js';
 
 /**
  * Adapter interface that abstracts the type system differences between JSON and BSON analyzers.
@@ -125,14 +126,14 @@ export function updateSchemaWithDocument<TType extends string>(
                 updateMinMax(item.propertySchema, 'x-minItems', 'x-maxItems', arrayLength);
 
                 if (!item.propertySchema.items) {
-                    item.propertySchema.items = { anyOf: [] };
+                    item.propertySchema.items = {};
                 }
 
                 const itemsSchema = item.propertySchema.items as JSONSchema;
 
                 for (const element of arrayValue) {
                     const elementType = adapter.inferType(element);
-                    const anyOfArray = (itemsSchema.anyOf ?? []) as JSONSchema[];
+                    const anyOfArray = expandTypeEntries(itemsSchema);
                     let itemEntry = findTypeEntry(anyOfArray, elementType, adapter.typeExtensionKey);
                     const isNew = !itemEntry;
 
@@ -142,10 +143,7 @@ export function updateSchemaWithDocument<TType extends string>(
                             adapter.typeExtensionKey,
                             elementType,
                         );
-                        if (!itemsSchema.anyOf) {
-                            itemsSchema.anyOf = [];
-                        }
-                        (itemsSchema.anyOf as JSONSchema[]).push(itemEntry);
+                        anyOfArray.push(itemEntry);
                     }
 
                     itemEntry['x-typeOccurrence'] = (itemEntry['x-typeOccurrence'] ?? 0) + 1;
@@ -203,26 +201,27 @@ function ensureTypeEntry<TType extends string>(
     fieldValue: unknown,
     adapter: TypeAdapter<TType>,
 ): JSONSchema {
-    if (!parentSchema.properties![fieldName]) {
-        parentSchema.properties![fieldName] = {
-            anyOf: [],
-            'x-occurrence': 0,
-        } as JSONSchema;
+    const properties = parentSchema.properties!;
+    if (!Object.hasOwn(properties, fieldName) || !properties[fieldName]) {
+        // Define an own data property so "__proto__" and inherited setters cannot intercept the write.
+        Object.defineProperty(properties, fieldName, {
+            value: { anyOf: [], 'x-occurrence': 0 } satisfies JSONSchema,
+            enumerable: true,
+            configurable: true,
+            writable: true,
+        });
     }
 
-    const propertySchema = parentSchema.properties![fieldName] as JSONSchema;
+    const propertySchema = properties[fieldName] as JSONSchema;
     propertySchema['x-occurrence'] = (propertySchema['x-occurrence'] ?? 0) + 1;
 
     const datatype = adapter.inferType(fieldValue);
-    const anyOfArray = (propertySchema.anyOf ?? []) as JSONSchema[];
+    const anyOfArray = expandTypeEntries(propertySchema);
     let typeEntry = findTypeEntry(anyOfArray, datatype, adapter.typeExtensionKey);
 
     if (!typeEntry) {
         typeEntry = createTypeEntry(adapter.toJSONType(datatype), adapter.typeExtensionKey, datatype);
-        if (!propertySchema.anyOf) {
-            propertySchema.anyOf = [];
-        }
-        (propertySchema.anyOf as JSONSchema[]).push(typeEntry);
+        anyOfArray.push(typeEntry);
     }
 
     typeEntry['x-typeOccurrence'] = (typeEntry['x-typeOccurrence'] ?? 0) + 1;

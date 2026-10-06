@@ -10,16 +10,19 @@
  * Schema output uses `x-bsonType` for the original BSON type tag.
  */
 
-import { type Document, type WithId } from 'mongodb';
 import { type TypeAdapter, updateSchemaWithDocument as updateSchemaGeneric } from '../core/schemaTraversal.js';
 import { type FieldEntry, getKnownFields as getKnownFieldsGeneric } from '../core/schemaUtils.js';
 import { type JSONSchema } from '../JSONSchema.js';
+import { getBinaryLength } from './binaryUtils.js';
 import { type BSONType, bsonTypeToJSONType, inferBsonType } from './BSONTypes.js';
 
 export { buildFullPaths, getPropertyNamesAtLevel, simplifySchema } from '../core/schemaUtils.js';
 
 // Re-export getKnownFields pre-bound to BSON's type extension key
 export type { FieldEntry } from '../core/schemaUtils.js';
+
+// oxlint-disable-next-line typescript/no-explicit-any -- Preserve BSON Document's acceptance of named interfaces.
+type Document = Record<string, any>;
 
 function getKnownFieldsBson(schema: JSONSchema): FieldEntry[] {
     return getKnownFieldsGeneric(schema, 'x-bsonType');
@@ -59,12 +62,13 @@ const bsonTypeAdapter: TypeAdapter<BSONType> = {
             }
             case 'date': {
                 const d = (value as Date).getTime();
+                if (Number.isNaN(d)) break;
                 entry['x-maxDate'] = d;
                 entry['x-minDate'] = d;
                 break;
             }
             case 'binary': {
-                const len = (value as Buffer).length;
+                const len = getBinaryLength(value);
                 entry['x-maxLength'] = len;
                 entry['x-minLength'] = len;
                 break;
@@ -100,12 +104,13 @@ const bsonTypeAdapter: TypeAdapter<BSONType> = {
             }
             case 'date': {
                 const d = (value as Date).getTime();
+                if (Number.isNaN(d)) break;
                 if (entry['x-minDate'] === undefined || d < entry['x-minDate']) entry['x-minDate'] = d;
                 if (entry['x-maxDate'] === undefined || d > entry['x-maxDate']) entry['x-maxDate'] = d;
                 break;
             }
             case 'binary': {
-                const len = (value as Buffer).length;
+                const len = getBinaryLength(value);
                 if (entry['x-minLength'] === undefined || len < entry['x-minLength']) entry['x-minLength'] = len;
                 if (entry['x-maxLength'] === undefined || len > entry['x-maxLength']) entry['x-maxLength'] = len;
                 break;
@@ -134,20 +139,26 @@ export class SchemaAnalyzer {
         return this._version;
     }
 
-    addDocument(document: WithId<Document>): void {
-        updateSchemaGeneric(this._schema, document, bsonTypeAdapter);
-        this._version++;
+    addDocument(document: Document): void {
+        try {
+            updateSchemaGeneric(this._schema, document, bsonTypeAdapter);
+        } finally {
+            this._version++;
+        }
     }
 
-    addDocuments(documents: ReadonlyArray<WithId<Document>>): void {
-        for (const doc of documents) {
-            updateSchemaGeneric(this._schema, doc, bsonTypeAdapter);
+    addDocuments(documents: ReadonlyArray<Document>): void {
+        try {
+            for (const doc of documents) {
+                updateSchemaGeneric(this._schema, doc, bsonTypeAdapter);
+            }
+        } finally {
+            this._version++;
         }
-        this._version++;
     }
 
     getSchema(): JSONSchema {
-        return this._schema;
+        return structuredClone(this._schema);
     }
 
     getDocumentCount(): number {
@@ -170,16 +181,16 @@ export class SchemaAnalyzer {
             this._knownFieldsCache = getKnownFieldsBson(this._schema);
             this._knownFieldsCacheVersion = this._version;
         }
-        return this._knownFieldsCache;
+        return structuredClone(this._knownFieldsCache);
     }
 
-    static fromDocument(document: WithId<Document>): SchemaAnalyzer {
+    static fromDocument(document: Document): SchemaAnalyzer {
         const analyzer = new SchemaAnalyzer();
         analyzer.addDocument(document);
         return analyzer;
     }
 
-    static fromDocuments(documents: ReadonlyArray<WithId<Document>>): SchemaAnalyzer {
+    static fromDocuments(documents: ReadonlyArray<Document>): SchemaAnalyzer {
         const analyzer = new SchemaAnalyzer();
         analyzer.addDocuments(documents);
         return analyzer;

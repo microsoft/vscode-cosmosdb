@@ -448,7 +448,7 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
 
             if (armTarget) {
                 const mgmt = await getMgmtClient();
-                await mgmt.sqlResources.beginCreateUpdateSqlDatabaseAndWait(
+                await mgmt.sqlResources.createUpdateSqlDatabase(
                     armTarget.resourceGroup,
                     armTarget.accountName,
                     databaseName,
@@ -498,7 +498,7 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
 
                 if (armTarget) {
                     const mgmt = await getMgmtClient();
-                    await mgmt.sqlResources.beginCreateUpdateSqlContainerAndWait(
+                    await mgmt.sqlResources.createUpdateSqlContainer(
                         armTarget.resourceGroup,
                         armTarget.accountName,
                         databaseName,
@@ -1018,11 +1018,7 @@ async function resolveUniqueDatabaseNameViaArm(
         if (!confirmed) {
             return undefined;
         }
-        await mgmtClient.sqlResources.beginDeleteSqlDatabaseAndWait(
-            armTarget.resourceGroup,
-            armTarget.accountName,
-            baseName,
-        );
+        await mgmtClient.sqlResources.deleteSqlDatabase(armTarget.resourceGroup, armTarget.accountName, baseName);
         return baseName;
     }
 
@@ -1254,7 +1250,7 @@ export async function provisionAccount(
                 const cancellationListener = token?.onCancellationRequested(() => abortController.abort());
 
                 const result = await mgmtClient.databaseAccounts
-                    .beginCreateOrUpdateAndWait(
+                    .createOrUpdate(
                         resourceGroup,
                         accountName,
                         {

@@ -18,7 +18,7 @@ export async function deleteCosmosDBAccount(context: IActionContext, node: Cosmo
     const resourceGroup = getResourceGroupFromId(node.account.id);
     const accountName = node.account.name;
 
-    const deletePromise = client.databaseAccounts.beginDeleteAndWait(resourceGroup, accountName);
+    const deletePromise = client.databaseAccounts.delete(resourceGroup, accountName).pollUntilDone();
 
     if (!activityContext.suppressNotification) {
         const deletingMessage = l10n.t('Deleting account "{accountName}"…', { accountName });

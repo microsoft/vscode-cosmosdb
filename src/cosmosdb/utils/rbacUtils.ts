@@ -122,10 +122,10 @@ export async function addRbacContributorPermission(
 
     const roleAssignmentId = globalThis.crypto.randomUUID();
     const client = await createCosmosDBManagementClient(context, subscription);
-    const create = await client.sqlResources.beginCreateUpdateSqlRoleAssignmentAndWait(
-        roleAssignmentId,
+    const create = await client.sqlResources.createUpdateSqlRoleAssignment(
         resourceGroup,
         databaseAccount,
+        roleAssignmentId,
         createUpdateSqlRoleAssignmentParameters,
     );
 

@@ -305,6 +305,11 @@ A separate reporting job runs after validation and live evaluation, including wh
 It writes an Actions job summary with both job statuses, the offline check results, links to the run and artifact,
 and the generated Vally Markdown reports when available. Missing or oversized reports are called out explicitly;
 the artifact retains the full reports. Fork skips are distinguished from passing live evaluations.
+Above the detailed reports, a **Suite scores** table shows Vally's aggregate score, required threshold, and verdict
+from the `run-summary` records in the artifact's `results.jsonl` files. Scores are displayed as percentages;
+they are not trial pass rates. The verdict is taken from Vally rather than inferred from the rounded score.
+Missing, incomplete, or unreadable summaries are reported as unavailable; ungraded suites show `N/A` instead of
+an invented score. This is display-only and does not change grading or make additional model requests.
 
 For same-repository pull requests, the reporting job also creates or updates a compact **Evaluations** comment,
 identified by `<!-- ci-summary:evals -->`, with statuses and links to the detailed summary and artifact.

@@ -178,6 +178,62 @@ jobs:
               report_count=0
               if gh run download "$GITHUB_RUN_ID" --repo "$REPO" \
                       --name "eval-results-${RUN_ATTEMPT}" --dir "$REPORT_DIR"; then
+                  if ! node --input-type=commonjs - "$REPORT_DIR" > "$RUNNER_TEMP/eval-scores.md" <<'NODE'
+          const { readdirSync, readFileSync } = require('node:fs');
+          const { basename, join } = require('node:path');
+
+          function percent(value) {
+              if (!Number.isFinite(value) || value < 0 || value > 1) {
+                  throw new Error('Invalid Vally score or threshold.');
+              }
+              return `${(value * 100).toFixed(2)}%`;
+          }
+          function cell(value) {
+              return value.replace(/[&<>|`*_[\]\\\r\n]/g, char => `&#${char.codePointAt(0)};`);
+          }
+
+          const rows = [];
+          let incomplete = false;
+          for (const file of readdirSync(process.argv[2], { recursive: true }).sort()) {
+              if (basename(file) !== 'results.jsonl') continue;
+              const records = readFileSync(join(process.argv[2], file), 'utf8')
+                  .split(/\r?\n/).filter(line => line.trim()).map(line => JSON.parse(line));
+              const summary = records.find(record => record.type === 'run-summary');
+              if (!summary) {
+                  incomplete = true;
+                  continue;
+              }
+              for (const suite of summary.evals) {
+                  if (typeof suite.name !== 'string' || typeof suite.passed !== 'boolean' ||
+                      typeof suite.scoringApplied !== 'boolean') {
+                      throw new Error('Invalid Vally suite summary.');
+                  }
+                  const name = [suite.name, suite.variant !== 'main' && suite.variant, suite.model].filter(Boolean).join(' / ');
+                  const score = suite.scoringApplied ? percent(suite.overallScore) : 'N/A';
+                  const threshold = suite.scoringApplied ? percent(suite.threshold) : 'N/A';
+                  const verdict = suite.error ? 'Error' : !suite.scoringApplied ? 'Not graded' : suite.passed ? 'Pass' : 'Fail';
+                  rows.push(`| ${cell(name)} | ${score} | ${threshold} | ${verdict} |`);
+              }
+          }
+          if (rows.length === 0) {
+              throw new Error('No completed Vally suite summaries found.');
+          }
+          console.log('\n## Suite scores\n');
+          console.log('| Suite | Score | Required threshold | Verdict |');
+          console.log('| --- | --- | --- | --- |');
+          console.log(rows.join('\n'));
+          console.log('\nScores and verdicts are reported by Vally, not calculated from trial pass rates.');
+          if (incomplete) {
+              console.warn('::warning::Some Vally result files have no final run summary.');
+              console.log('\nSome result files have no final run summary; their suite scores are unavailable.');
+          }
+          NODE
+                  then
+                      echo "::warning::Unable to read Vally suite scores from the evaluation artifact."
+                      printf '\n## Suite scores\n\nScores are unavailable. See the artifact and run logs for details.\n' \
+                          > "$RUNNER_TEMP/eval-scores.md"
+                  fi
+                  cat "$RUNNER_TEMP/eval-scores.md" >> "$GITHUB_STEP_SUMMARY"
                   while IFS= read -r -d '' report; do
                       report_count=$((report_count + 1))
                       # GitHub limits each step summary to 1 MiB. Leave room for headings and warnings.

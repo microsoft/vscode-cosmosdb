@@ -257,21 +257,27 @@ Re-grading explanations still consumes judge-model requests. Add `--judge-model 
 
 #### GitHub Actions
 
-The [Evaluations workflow](../.github/workflows/evals.yml) currently runs NL2Query. Automatic runs are filtered to:
+The [Evaluations workflow](../.github/workflows/evals.yml) currently runs NL2Query.
+Every pull request starts the workflow so the **Evaluations gate** check always reports a result.
+A change-detection job compares the PR merge commit with its base-branch parent and runs validation and live
+evaluations only when the PR changes any of these inputs:
 
-- `evals/nl2query/**`: evaluation prompts, rubrics, schema fixtures, and offline grader tests.
-- `skills/cosmosdb-nosql-query-generation/**`: the generation skill's `SKILL.md` and any supporting files.
+- `evals/**`: evaluation prompts, rubrics, schema fixtures, and offline grader tests.
+- `skills/**`: shipped skills and their supporting files.
 - `package.json` and `package-lock.json`: evaluation commands and dependencies.
 - `.nvmrc`: the Node runtime version.
 - `.github/workflows/evals.yml`: the workflow itself.
 
-Changes only to extension source code, unrelated skills/evaluation suites, or general documentation do not trigger
-this workflow. Filtering only on `.md` would miss changes to the YAML prompts/rubrics, JSON schema, and test harness.
-When adding a suite such as data-modeler, add its inputs to both the push and pull-request path filters and wire its
-commands into the validation and live jobs. Manual runs bypass the path filters.
+Changes only to extension source code or general documentation produce a passing gate without installing
+dependencies or calling a model. Deletions and moves out of the watched paths also trigger evaluation.
+Pushes to `main` and `rel/*` keep workflow-level path filters for the same inputs; manual runs always evaluate.
+Keep the push filters and PR change-detection patterns in sync. Filtering only on `.md` would miss changes to
+the YAML prompts/rubrics, JSON schema, and test harness. When adding a suite such as data-modeler, wire its
+commands into the validation and live jobs; the directory filters do not automatically discover suites to execute.
 
-- **Pull requests from this repository:** validate the spec, run the offline grader tests, then run live evaluations.
-- **Pull requests from forks:** run only the offline checks, without Copilot permissions or model requests.
+- **Relevant pull requests from this repository:** validate the spec, run offline grader tests, then run live evaluations.
+- **Relevant pull requests from forks:** run only offline checks, without Copilot permissions or model requests.
+- **Pull requests without relevant changes:** skip both validation and live evaluation; the gate passes.
 - **Pushes to `main` or `rel/*`:** run those checks, then evaluate all four prompts using Copilot.
 - **Manual runs:** use **Actions > Evaluations > Run workflow** to run validation and live evaluation on a selected trusted branch.
 
@@ -279,6 +285,17 @@ Live evaluation is disabled for fork pull requests: agents execute instructions 
 requests consume organization credits. Maintainers can manually evaluate a reviewed branch in this repository.
 Superseded runs for the same branch or pull request are cancelled. Each live run uses one trial per prompt, one worker,
 no automatic execution retries, and a 20-minute job timeout.
+
+The **Evaluations gate** job always checks the upstream outcomes. Relevant same-repository PRs require successful
+validation and live evaluation; relevant fork PRs require successful validation and a skipped live job.
+Change-detection failures, missing decisions, and failed, cancelled, or skipped required jobs fail the gate.
+It has no token permissions and does not check out or execute contribution code.
+
+The gate is **advisory until configured as a required status check**. It reports failures normally, but this
+workflow does not change repository rules or block merging by itself. To enforce it later, add
+**Evaluations gate** to the target branch's required checks in branch protection or a ruleset. Require this
+aggregate check, not the conditional **Run evaluations** job or the reporting job. No workflow change is needed
+to switch from advisory to required. Under this policy, fork PRs can merge after offline checks without a live run.
 
 To test a workflow change before merging, push it to a branch in this repository with an open pull request.
 This triggers a new run using the changed workflow; re-running an older run does not pick up the new revision.
@@ -301,8 +318,9 @@ Failed verdicts or authentication/grading errors fail the live job through `--re
 from all suites under `vally-results/` are uploaded even after a failed run as `eval-results-<attempt>` artifacts,
 retained for 14 days.
 
-A separate reporting job runs after validation and live evaluation, including when either fails or is skipped.
-It writes an Actions job summary with both job statuses, the offline check results, links to the run and artifact,
+A separate reporting job runs after the gate, including when upstream jobs fail or are skipped.
+It writes an Actions job summary with the gate, change-detection, and job statuses, the offline check results,
+links to the run and artifact,
 and the generated Vally Markdown reports when available. Missing or oversized reports are called out explicitly;
 the artifact retains the full reports. Fork skips are distinguished from passing live evaluations.
 Above the detailed reports, a **Suite scores** table shows Vally's aggregate score, required threshold, and verdict
@@ -313,7 +331,9 @@ an invented score. This is display-only and does not change grading or make addi
 
 For same-repository pull requests, the reporting job also creates or updates a compact **Evaluations** comment,
 identified by `<!-- ci-summary:evals -->`, with statuses and links to the detailed summary and artifact.
-Like the other CI workflows, a run with no completed checks does not overwrite an existing results comment.
+Pull requests without relevant changes never create a new comment. If an earlier run already posted one, it is
+updated with the passing gate and skip notice so stale evaluation results are not left behind.
+Like the other CI workflows, a cancelled run with no completed checks does not overwrite an existing results comment.
 Fork pull requests still receive an Actions summary, but no PR comment is attempted with their read-only token.
 Only the reporting job requests `pull-requests: write` and `actions: read`; it does not check out or execute
 contribution code, and the live agent does not receive comment-write permission. Comment API errors are reported

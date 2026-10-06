@@ -18,23 +18,59 @@ on:
       - '.nvmrc'
       - '.github/workflows/evals.yml'
 
+  # No path filter: every PR reports the Evaluations gate; the changes job skips unrelated PRs.
   pull_request:
     types: [opened, reopened, synchronize]
-    paths:
-      - 'evals/**'
-      - 'skills/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.nvmrc'
-      - '.github/workflows/evals.yml'
 
 concurrency:
   group: evals-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect evaluation changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      relevant: ${{ steps.filter.outputs.relevant }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: github.event_name == 'pull_request'
+        with:
+          persist-credentials: false
+          # The PR checkout is a merge commit; its first parent is the base branch.
+          fetch-depth: 2
+
+      - name: Check evaluation inputs
+        id: filter
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        shell: bash
+        run: |
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+              echo "relevant=true" >> "$GITHUB_OUTPUT"
+              exit 0
+          fi
+
+          # Disable rename detection so moving a file out of a watched directory still counts.
+          git diff --no-renames --name-only -z HEAD^1 HEAD -- > "$RUNNER_TEMP/eval-changed-files"
+          relevant=false
+          while IFS= read -r -d '' path; do
+              # Keep these inputs in sync with the push path filters.
+              case "$path" in
+                  evals/*|skills/*|package.json|package-lock.json|.nvmrc|.github/workflows/evals.yml)
+                      relevant=true
+                      break
+                      ;;
+              esac
+          done < "$RUNNER_TEMP/eval-changed-files"
+          echo "relevant=$relevant" >> "$GITHUB_OUTPUT"
+
   validate:
     name: Validate evaluation specs and graders
+    needs: changes
+    if: needs.changes.outputs.relevant == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
@@ -65,7 +101,8 @@ jobs:
 
   eval:
     name: Run evaluations
-    needs: validate
+    needs: [changes, validate]
+    # Skipped automatically when validation is skipped or fails.
     # Fork contributions must not execute agents with organization-billed model access.
     if: >-
       ${{ github.event_name != 'pull_request' ||
@@ -109,9 +146,62 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  gate:
+    name: Evaluations gate
+    needs: [changes, validate, eval]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+
+    steps:
+      - name: Check evaluation outcomes
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          RELEVANT_CHANGES: ${{ needs.changes.outputs.relevant }}
+          VALIDATION_RESULT: ${{ needs.validate.result }}
+          EVAL_RESULT: ${{ needs.eval.result }}
+          IS_FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        shell: bash
+        run: |
+          fail() {
+              echo "::error::$1"
+              printf '%s\n' "$1" >> "$GITHUB_STEP_SUMMARY"
+              exit 1
+          }
+
+          if [ "$CHANGES_RESULT" != "success" ]; then
+              fail "Evaluation change detection did not succeed ($CHANGES_RESULT)."
+          fi
+          case "$RELEVANT_CHANGES" in
+              false)
+                  echo "No relevant changes; validation and live evaluations were intentionally skipped." \
+                      >> "$GITHUB_STEP_SUMMARY"
+                  exit 0
+                  ;;
+              true) ;;
+              *) fail "Evaluation change detection returned no valid decision." ;;
+          esac
+
+          if [ "$VALIDATION_RESULT" != "success" ]; then
+              fail "Offline evaluation validation did not succeed ($VALIDATION_RESULT)."
+          fi
+          if [ "$IS_FORK" = "true" ]; then
+              if [ "$EVAL_RESULT" != "skipped" ]; then
+                  fail "Live evaluations must be skipped for fork pull requests."
+              fi
+              echo "Offline checks passed. Live evaluations were intentionally skipped for a fork pull request." \
+                  >> "$GITHUB_STEP_SUMMARY"
+          else
+              if [ "$EVAL_RESULT" != "success" ]; then
+                  fail "Live evaluations did not succeed ($EVAL_RESULT)."
+              fi
+              echo "Offline checks and live evaluations passed." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
   report:
     name: Summarize evaluations
-    needs: [validate, eval]
+    needs: [changes, validate, eval, gate]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -130,6 +220,9 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           IS_FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          RELEVANT_CHANGES: ${{ needs.changes.outputs.relevant }}
+          GATE_RESULT: ${{ needs.gate.result }}
           VALIDATION_RESULT: ${{ needs.validate.result }}
           SPEC_RESULT: ${{ needs.validate.outputs.spec-result || 'skipped' }}
           GRADERS_RESULT: ${{ needs.validate.outputs.graders-result || 'skipped' }}
@@ -148,6 +241,8 @@ jobs:
           # Evaluations
 
           ## Results
+          - **Evaluations gate:** ${GATE_RESULT}
+          - **Change detection:** ${CHANGES_RESULT}
           - **Validation job:** ${VALIDATION_RESULT}
           - **Spec validation:** ${SPEC_RESULT}
           - **Offline grader tests:** ${GRADERS_RESULT}
@@ -156,7 +251,13 @@ jobs:
           [View run and detailed job summary](${RUN_URL})
           SUMMARY_EOF
 
-          if [ "${IS_FORK}" = "true" ]; then
+          if [ "${CHANGES_RESULT}" != "success" ]; then
+              printf '\nEvaluation change detection did not succeed; required checks could not be determined.\n' \
+                  >> "$GITHUB_STEP_SUMMARY"
+          elif [ "${RELEVANT_CHANGES}" = "false" ]; then
+              printf '\nNo relevant changes; offline checks and live evaluations were intentionally skipped.\n' \
+                  >> "$GITHUB_STEP_SUMMARY"
+          elif [ "${IS_FORK}" = "true" ]; then
               printf '\nLive evaluations are disabled for fork pull requests; only offline checks run.\n' \
                   >> "$GITHUB_STEP_SUMMARY"
           elif [ "${EVAL_RESULT}" = "skipped" ] && [ "${VALIDATION_RESULT}" != "success" ]; then
@@ -166,6 +267,9 @@ jobs:
 
           if [ -n "${ARTIFACT_URL}" ]; then
               printf '\n[Download evaluation reports and trajectories](%s)\n' "${ARTIFACT_URL}" \
+                  >> "$GITHUB_STEP_SUMMARY"
+          elif [ "${EVAL_RESULT}" = "skipped" ]; then
+              printf '\nNo evaluation artifact was produced because live evaluations were skipped.\n' \
                   >> "$GITHUB_STEP_SUMMARY"
           else
               printf '\nNo evaluation artifact was uploaded. See the run logs for details.\n' >> "$GITHUB_STEP_SUMMARY"
@@ -273,9 +377,14 @@ jobs:
           fi
           existing_id=$(printf '%s\n' "$existing_id" | head -1)
 
-          # Preserve prior results when a superseded run produced no completed checks.
+          # Unrelated PRs only replace stale results; they never start a new comment.
+          if [ "${RELEVANT_CHANGES}" = "false" ] && [ -z "$existing_id" ]; then
+              exit 0
+          fi
+
+          # A no-change gate verdict replaces stale results; cancelled runs do not.
           meaningful=false
-          for result in "$VALIDATION_RESULT" "$EVAL_RESULT"; do
+          for result in "$GATE_RESULT" "$VALIDATION_RESULT" "$EVAL_RESULT"; do
               case "$result" in
                   success|failure) meaningful=true ;;
               esac

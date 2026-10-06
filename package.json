@@ -131,7 +131,7 @@
     "@vitest/coverage-v8": "~4.1.11",
     "@vscode/l10n-dev": "~0.0.35",
     "@vscode/test-electron": "~3.1.0",
-    "@vscode/vsce": "~3.9.1",
+    "@vscode/vsce": "~4.0.0",
     "concurrently": "~10.0.4",
     "cross-env": "~10.1.0",
     "diff": "~9.0.0",

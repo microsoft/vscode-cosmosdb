@@ -9,6 +9,20 @@ This directory contains standalone packages that are part of the monorepo.
 | `@azure/cosmosdb-nosql-language-service` | Cosmos DB query language support — parser, AST, autocomplete, hover, formatting, and editor providers | ✅ Active |
 | `@azure/cosmosdb-schema-analyzer`        | Schema inference from sampled documents                                                               | ✅ Active |
 
+## Package releases
+
+Packages are versioned independently from the extension, normally following SemVer: patch for compatible fixes, minor for
+compatible additions, and major for incompatible public API changes. Compatibility includes behavior and
+types, not only exported function names. Each package maintains a `CHANGELOG.md` with upgrade notes.
+
+The package owner explicitly approved retaining 1.1.0 for the current internally consumed packages, including
+incompatible schema, snapshot, and frozen-registry changes. This is a release-specific exception, not a claim of
+backward compatibility or a general exemption from SemVer; the package changelogs document the required migration.
+
+Peer dependency ranges use an inclusive lower bound and an exclusive next-major upper bound.
+Node.js requirements have no upper bound. Package manifests define the supported versions, not an exhaustive
+historical-version test matrix; pre-1.0 dependencies such as Monaco can also change incompatibly in minor releases.
+
 ## Planned Packages
 
 | Package                    | Description                                   | Status  |

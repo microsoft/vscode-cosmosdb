@@ -139,7 +139,7 @@ npm run vitest         # one-shot
 npm run vitest:ui      # watch with UI
 ```
 
-### NL2Query generation and explanation evaluations (Vally)
+### NL2Query generation and explanation evaluations ([Vally](https://aka.ms/vally))
 
 The [NL2Query evaluation spec](../evals/nl2query/eval.yaml) uses
 [Vally](https://aka.ms/vally) and the Copilot SDK executor to evaluate query generation using the shipped

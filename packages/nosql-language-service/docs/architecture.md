@@ -117,12 +117,16 @@ dependencies and tree-shakes cleanly.
    `kind` discriminant. No mutation; create new nodes to
    transform.
 
-2. **Error recovery** — the parser never throws on invalid input.
-   It returns a `ParseResult` with a partial AST and an error
-   list.
+2. **Error recovery** — syntax errors are reported in `ParseResult.errors`;
+   recovery may return a partial AST. More than 512 active parser rules
+   or 256 AST node levels produces `QUERY_TOO_COMPLEX` without an AST.
+   Parser depth is restored on every rule exit; AST depth is checked iteratively.
+   Only the dedicated complexity exception is handled; unexpected exceptions propagate.
 
 3. **Position tracking** — every AST node carries an optional
    `SourceRange` with `{ offset, line, col }` at start and end.
+   Offsets are 0-based UTF-16 code units, lines/columns are 1-based,
+   and ends are exclusive. EOF errors have zero-width ranges.
 
 4. **No codegen step** — the grammar lives in TypeScript code
    (Chevrotain rules), not in a `.y` or `.ne` file that requires

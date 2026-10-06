@@ -17,6 +17,7 @@ import { getCompletions, type CompletionItem, type JSONSchema } from '../complet
 import { detectBetweenAmbiguity } from '../diagnostics/betweenAmbiguity.js';
 import { detectOrderByInSubquery } from '../diagnostics/orderByInSubquery.js';
 import { detectTypos } from '../diagnostics/typoDetection.js';
+import { offsetToPosition as offsetToLineCol } from '../errors/sourcePositions.js';
 import { parse, type ParseResult } from '../index.js';
 import { SqlLexer } from '../lexer/SqlLexer.js';
 import * as T from '../lexer/tokens.js';
@@ -622,8 +623,7 @@ export class SqlLanguageService {
         if (formatted === query) return [];
         // For simplicity, return a single whole-document replacement.
         // A smarter diff could minimize edits.
-        const lines = query.split('\n');
-        const lastLine = lines[lines.length - 1];
+        const end = offsetToLineCol(query, query.length);
         return [
             {
                 range: {
@@ -631,8 +631,8 @@ export class SqlLanguageService {
                     endOffset: query.length,
                     startLine: 1,
                     startColumn: 1,
-                    endLine: lines.length,
-                    endColumn: lastLine.length + 1,
+                    endLine: end.line,
+                    endColumn: end.col,
                 },
                 newText: formatted,
             },
@@ -706,23 +706,6 @@ export class SqlLanguageService {
 // ========================== Utilities ========================================
 
 /**
- * Convert a 0-based byte offset into 1-based line and column numbers.
- */
-function offsetToLineCol(text: string, offset: number): { line: number; col: number } {
-    let line = 1;
-    let col = 1;
-    for (let i = 0; i < offset && i < text.length; i++) {
-        if (text[i] === '\n') {
-            line++;
-            col = 1;
-        } else {
-            col++;
-        }
-    }
-    return { line, col };
-}
-
-/**
  * Shift a local-region {@link TextRange} to document-level coordinates.
  */
 function shiftRange(range: TextRange, regionStartOffset: number, fullText: string): TextRange {
@@ -756,7 +739,7 @@ function tokenToRange(token: IToken): TextRange {
         startLine: token.startLine ?? 1,
         startColumn: token.startColumn ?? 1,
         endLine: token.endLine ?? token.startLine ?? 1,
-        endColumn: (token.endColumn ?? token.startColumn ?? 0) + 2,
+        endColumn: (token.endColumn ?? token.startColumn ?? 0) + 1,
     };
 }
 

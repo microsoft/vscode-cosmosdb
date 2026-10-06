@@ -9,18 +9,42 @@
 // Translates the grammar from sql.y almost 1-to-1.
 // ---------------------------------------------------------------------------
 
-import { EmbeddedActionsParser, EOF } from 'chevrotain';
+import { EmbeddedActionsParser, EOF, type IRuleConfig, type ParserMethod } from 'chevrotain';
 import * as AST from '../ast/nodes.js';
 import { SqlErrorMessageProvider } from '../errors/SqlErrorMessageProvider.js';
 import * as T from '../lexer/tokens.js';
 import { allTokens } from '../lexer/tokens.js';
 import { pos, posEnd, range, rangeFromNodes, rangeStartEnd } from './parserHelpers.js';
+import { MAX_PARSER_RULE_DEPTH, QueryTooComplexError } from './queryComplexity.js';
 
 // ---------------------------------------------------------------------------
 // Parser
 // ---------------------------------------------------------------------------
 
 export class SqlParser extends EmbeddedActionsParser {
+    private ruleDepth = 0;
+
+    protected override RULE<Args extends unknown[], Result>(
+        name: string,
+        implementation: (...args: Args) => Result,
+        config?: IRuleConfig<Result>,
+    ): ParserMethod<Args, Result> {
+        return super.RULE(
+            name,
+            (...args: Args): Result => {
+                if (this.RECORDING_PHASE) return implementation(...args);
+                if (this.ruleDepth >= MAX_PARSER_RULE_DEPTH) throw new QueryTooComplexError(this.LA(1));
+                this.ruleDepth++;
+                try {
+                    return implementation(...args);
+                } finally {
+                    this.ruleDepth--;
+                }
+            },
+            config,
+        );
+    }
+
     private isBetweenExpressionAhead(startLookahead = 1): boolean {
         let depth = 0;
 

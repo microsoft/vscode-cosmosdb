@@ -37,6 +37,9 @@ jobs:
     name: Validate evaluation specs and graders
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      spec-result: ${{ steps.spec-validation.outcome }}
+      graders-result: ${{ steps.grader-tests.outcome }}
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -53,9 +56,11 @@ jobs:
         run: npm ci
 
       - name: Validate evaluation spec
+        id: spec-validation
         run: npm run eval:nl2query:lint
 
       - name: Test graders offline
+        id: grader-tests
         run: npm run eval:nl2query:test
 
   eval:
@@ -70,6 +75,8 @@ jobs:
     permissions:
       contents: read
       copilot-requests: write
+    outputs:
+      artifact-url: ${{ steps.upload-results.outputs.artifact-url }}
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -93,6 +100,7 @@ jobs:
         run: npm run eval:nl2query -- --max-retries 0
 
       - name: Upload evaluation reports and trajectories
+        id: upload-results
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -100,3 +108,132 @@ jobs:
           path: vally-results/
           if-no-files-found: warn
           retention-days: 14
+
+  report:
+    name: Summarize evaluations
+    needs: [validate, eval]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Keep comment-write access off the runner that executes the live agent.
+    permissions:
+      actions: read
+      pull-requests: write
+
+    steps:
+      - name: Generate job summary and PR comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SERVER_URL: ${{ github.server_url }}
+          REPO: ${{ github.repository }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          IS_FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+          VALIDATION_RESULT: ${{ needs.validate.result }}
+          SPEC_RESULT: ${{ needs.validate.outputs.spec-result || 'skipped' }}
+          GRADERS_RESULT: ${{ needs.validate.outputs.graders-result || 'skipped' }}
+          EVAL_RESULT: ${{ needs.eval.result }}
+          ARTIFACT_URL: ${{ needs.eval.outputs.artifact-url }}
+        shell: bash
+        run: |
+          # Use the same stable-marker comment pattern as the test and E2E workflows.
+          MARKER="<!-- ci-summary:evals -->"
+          RUN_URL="${SERVER_URL}/${REPO}/actions/runs/${GITHUB_RUN_ID}/attempts/${RUN_ATTEMPT}"
+          COMMENT_FILE="${RUNNER_TEMP}/evals-comment.md"
+          REPORT_DIR="${RUNNER_TEMP}/eval-reports"
+
+          cat >> "$GITHUB_STEP_SUMMARY" << SUMMARY_EOF
+          ${MARKER}
+          # Evaluations
+
+          ## Results
+          - **Validation job:** ${VALIDATION_RESULT}
+          - **Spec validation:** ${SPEC_RESULT}
+          - **Offline grader tests:** ${GRADERS_RESULT}
+          - **Live evaluations job:** ${EVAL_RESULT}
+
+          [View run and detailed job summary](${RUN_URL})
+          SUMMARY_EOF
+
+          if [ "${IS_FORK}" = "true" ]; then
+              printf '\nLive evaluations are disabled for fork pull requests; only offline checks run.\n' \
+                  >> "$GITHUB_STEP_SUMMARY"
+          elif [ "${EVAL_RESULT}" = "skipped" ] && [ "${VALIDATION_RESULT}" != "success" ]; then
+              printf '\nLive evaluations did not run because offline validation did not succeed.\n' \
+                  >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if [ -n "${ARTIFACT_URL}" ]; then
+              printf '\n[Download evaluation reports and trajectories](%s)\n' "${ARTIFACT_URL}" \
+                  >> "$GITHUB_STEP_SUMMARY"
+          else
+              printf '\nNo evaluation artifact was uploaded. See the run logs for details.\n' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          # Keep PR comments compact; the job summary includes the full Vally tables.
+          cp "$GITHUB_STEP_SUMMARY" "$COMMENT_FILE"
+          if [ -n "${ARTIFACT_URL}" ]; then
+              mkdir -p "$REPORT_DIR"
+              report_count=0
+              if gh run download "$GITHUB_RUN_ID" --repo "$REPO" \
+                      --name "eval-results-${RUN_ATTEMPT}" --dir "$REPORT_DIR"; then
+                  while IFS= read -r -d '' report; do
+                      report_count=$((report_count + 1))
+                      # GitHub limits each step summary to 1 MiB. Leave room for headings and warnings.
+                      if [ $(( $(wc -c < "$GITHUB_STEP_SUMMARY") + $(wc -c < "$report") )) -gt 900000 ]; then
+                          echo "::warning::A Vally report is too large for the job summary; use the artifact."
+                          printf '\nA Vally report was omitted due to the summary size limit; download the artifact.\n' \
+                              >> "$GITHUB_STEP_SUMMARY"
+                          continue
+                      fi
+                      printf '\n---\n\n' >> "$GITHUB_STEP_SUMMARY"
+                      cat "$report" >> "$GITHUB_STEP_SUMMARY"
+                  done < <(find "$REPORT_DIR" -type f -name eval-results.md -print0 | sort -z)
+                  if [ "$report_count" -eq 0 ]; then
+                      echo "::warning::The evaluation artifact contains no Vally Markdown report."
+                      printf '\nNo Vally Markdown report was found in the artifact. See the run logs.\n' \
+                          >> "$GITHUB_STEP_SUMMARY"
+                  fi
+              else
+                  echo "::warning::Unable to download the Vally reports for the job summary."
+                  printf '\nReports could not be downloaded for this summary; use the artifact link above.\n' \
+                      >> "$GITHUB_STEP_SUMMARY"
+              fi
+          fi
+
+          if [ "${EVENT_NAME}" != "pull_request" ] || [ -z "${PR_NUMBER}" ]; then
+              exit 0
+          fi
+          if [ "${IS_FORK}" = "true" ]; then
+              echo "::notice::Fork PR: job summary is available, but the read-only token cannot post a PR comment."
+              exit 0
+          fi
+
+          if ! existing_id=$(gh api --paginate "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+                  --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | startswith(\"${MARKER}\"))) | .id"); then
+              echo "::warning::Unable to look up the Evaluations PR comment; not creating a possible duplicate."
+              exit 0
+          fi
+          existing_id=$(printf '%s\n' "$existing_id" | head -1)
+
+          # Preserve prior results when a superseded run produced no completed checks.
+          meaningful=false
+          for result in "$VALIDATION_RESULT" "$EVAL_RESULT"; do
+              case "$result" in
+                  success|failure) meaningful=true ;;
+              esac
+          done
+          if [ "$meaningful" = "false" ] && [ -n "$existing_id" ]; then
+              echo "No completed checks; keeping the existing Evaluations PR comment."
+              exit 0
+          fi
+
+          if [ -n "$existing_id" ]; then
+              if ! gh api --method PATCH "repos/${REPO}/issues/comments/${existing_id}" \
+                      --field body=@"${COMMENT_FILE}" >/dev/null; then
+                  echo "::warning::Unable to update the Evaluations PR comment."
+              fi
+          elif ! gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file "$COMMENT_FILE"; then
+              echo "::warning::Unable to post the Evaluations PR comment."
+          fi

@@ -269,7 +269,7 @@ commands into the validation and live jobs. Manual runs bypass the path filters.
 - **Pull requests from this repository:** validate the spec, run the offline grader tests, then run live evaluations.
 - **Pull requests from forks:** run only the offline checks, without Copilot permissions or model requests.
 - **Pushes to `main` or `rel/*`:** run those checks, then evaluate all four prompts using Copilot.
-- **Manual runs:** use **Actions > Evaluations > Run workflow** to run both jobs on a selected trusted branch.
+- **Manual runs:** use **Actions > Evaluations > Run workflow** to run validation and live evaluation on a selected trusted branch.
 
 Live evaluation is disabled for fork pull requests: agents execute instructions from the checked-out files, and
 requests consume organization credits. Maintainers can manually evaluate a reviewed branch in this repository.
@@ -286,16 +286,29 @@ for the Microsoft organization. GitHub enables this by default when the existing
 but the workflow cannot configure or verify that organization setting. See
 [Using Copilot CLI in GitHub Actions with GITHUB_TOKEN](https://docs.github.com/copilot/how-tos/copilot-cli/use-copilot-cli-in-actions).
 
-Only the live job requests `contents: read` and `copilot-requests: write`. It passes the built-in `${{ github.token }}`
+Only the live job requests `copilot-requests: write`, alongside `contents: read`. It passes the built-in `${{ github.token }}`
 as both `COPILOT_GITHUB_TOKEN` for the agent and `GITHUB_TOKEN` for Vally's separate judge. No personal access token,
 repository secret, or interactive login is required in Actions. Model usage is billed to the organization; its
 Copilot policies, model availability, and budgets still apply.
 
-Both jobs use the repository's Node version and `npm ci`, including the pinned Vally CLI, rather than a global
+The validation and live jobs use the repository's Node version and `npm ci`, including the pinned Vally CLI, rather than a global
 installation. Skills remain scoped by the evaluation spec; the workflow does not pass a global `--skill-dir`.
 Failed verdicts or authentication/grading errors fail the live job through `--require-pass`. Reports and trajectories
 from all suites under `vally-results/` are uploaded even after a failed run as `eval-results-<attempt>` artifacts,
 retained for 14 days.
+
+A separate reporting job runs after validation and live evaluation, including when either fails or is skipped.
+It writes an Actions job summary with both job statuses, the offline check results, links to the run and artifact,
+and the generated Vally Markdown reports when available. Missing or oversized reports are called out explicitly;
+the artifact retains the full reports. Fork skips are distinguished from passing live evaluations.
+
+For same-repository pull requests, the reporting job also creates or updates a compact **Evaluations** comment,
+identified by `<!-- ci-summary:evals -->`, with statuses and links to the detailed summary and artifact.
+Like the other CI workflows, a run with no completed checks does not overwrite an existing results comment.
+Fork pull requests still receive an Actions summary, but no PR comment is attempted with their read-only token.
+Only the reporting job requests `pull-requests: write` and `actions: read`; it does not check out or execute
+contribution code, and the live agent does not receive comment-write permission. Comment API errors are reported
+as warnings without changing the validation or evaluation verdicts.
 
 ### Integration tests (slow, real VS Code)
 

@@ -7,8 +7,8 @@
   "displayName": "Azure Cosmos DB",
   "description": "Connect Azure CosmosDB databases in Azure, inspect and edit your data and run powerful queries with the visual query editor.",
   "engines": {
-    "vscode": "^1.109.0",
-    "node": ">=22.18.0"
+    "vscode": "^1.125.0",
+    "node": ">=24.15"
   },
   "galleryBanner": {
     "color": "#3c3c3c",
@@ -121,11 +121,11 @@
     "@testing-library/react": "~16.3.2",
     "@testing-library/user-event": "~14.6.1",
     "@types/json-schema": "~7.0.15",
-    "@types/node": "~25.9.1",
+    "@types/node": "~26.6.4",
     "@types/react": "~19.3.0",
     "@types/react-dom": "~19.3.0",
     "@types/semver": "~7.8.0",
-    "@types/vscode": "~1.109.0",
+    "@types/vscode": "~1.125.0",
     "@types/vscode-webview": "~1.57.5",
     "@vitejs/plugin-react": "~6.1.0",
     "@vitest/coverage-v8": "~4.1.11",

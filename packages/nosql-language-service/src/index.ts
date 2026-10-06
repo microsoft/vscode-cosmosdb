@@ -60,9 +60,9 @@ export type { FunctionMeta } from './services/functionSignatures.js';
 export { parseMultiQueryDocument } from './services/MultiQueryDocument.js';
 export type { MultiQueryDocument, QueryRegion } from './services/MultiQueryDocument.js';
 export { SqlLanguageService, stripComments } from './services/SqlLanguageService.js';
+export { DiagnosticSeverity } from './services/types.js';
 export type {
     Diagnostic,
-    DiagnosticSeverity,
     Disposable,
     HoverInfo,
     LanguageServiceHost,

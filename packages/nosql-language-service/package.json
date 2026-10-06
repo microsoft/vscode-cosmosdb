@@ -64,7 +64,7 @@
   },
   "dependencies": {
     "@azure/cosmosdb-schema-analyzer": "~1.1.0",
-    "chevrotain": "^12.0.0"
+    "chevrotain": "~13.2.0"
   },
   "devDependencies": {
     "@codemirror/autocomplete": "~6.20.0",

@@ -164,7 +164,7 @@
     "@azure/arm-monitor": "~7.0.0",
     "@azure/arm-postgresql": "~6.1.0",
     "@azure/arm-postgresql-flexible": "~9.0.0",
-    "@azure/arm-resources": "~7.0.0",
+    "@azure/arm-resources": "~8.0.0",
     "@azure/core-rest-pipeline": "~1.25.0",
     "@azure/cosmos": "~4.10.0",
     "@azure/identity": "~4.13.0",

@@ -25,8 +25,10 @@ stimuli:
       Generate an Azure Cosmos DB for NoSQL query returning every complete product
       document with a price strictly greater than 100, ordered by price from
       cheapest to most expensive. Use the container alias c.
-      Return only the query, without comments or Markdown. Do not execute it,
-      connect to a database, or create any files.
+      Return only the query, without comments or explanatory text. Prefer plain
+      SQL; this evaluation also accepts one complete enclosing Markdown code
+      block, either unlabeled or labeled sql. Do not execute it, connect to a
+      database, or create any files.
     graders:
       - type: completed
       - type: skill-invocation
@@ -35,7 +37,7 @@ stimuli:
             - cosmosdb-nosql-query-generation
       - type: output-matches
         config:
-          pattern: '(?i)^\s*SELECT\s+\*\s+FROM\s+c\s+WHERE\s+c(?:\.price|\[\s*"price"\s*\])\s*>\s*100(?:\.0+)?\s+ORDER\s+BY\s+c(?:\.price|\[\s*"price"\s*\])(?:\s+ASC)?\s*$'
+          pattern: '(?i)^\s*(?:SELECT\s+\*\s+FROM\s+c\s+WHERE\s+c(?:\.price|\[\s*"price"\s*\])\s*>\s*100(?:\.0+)?\s+ORDER\s+BY\s+c(?:\.price|\[\s*"price"\s*\])(?:\s+ASC)?|```(?:sql)?[ \t]*\r?\n\s*SELECT\s+\*\s+FROM\s+c\s+WHERE\s+c(?:\.price|\[\s*"price"\s*\])\s*>\s*100(?:\.0+)?\s+ORDER\s+BY\s+c(?:\.price|\[\s*"price"\s*\])(?:\s+ASC)?\s*\r?\n[ \t]*```)\s*$'
       - type: output-not-matches
         config:
           pattern: '\bC\b|\bc(?:\.(?!price\b)|\[\s*"(?!price"))'
@@ -51,8 +53,10 @@ stimuli:
       The synthetic container schema is in products.schema.json. Read it first.
       Generate an Azure Cosmos DB for NoSQL query that returns a single scalar
       count of products whose inStock property is true. Use the container alias c.
-      Return only the query, without comments or Markdown. Do not execute it,
-      connect to a database, or create any files.
+      Return only the query, without comments or explanatory text. Prefer plain
+      SQL; this evaluation also accepts one complete enclosing Markdown code
+      block, either unlabeled or labeled sql. Do not execute it, connect to a
+      database, or create any files.
     graders:
       - type: completed
       - type: skill-invocation
@@ -61,7 +65,7 @@ stimuli:
             - cosmosdb-nosql-query-generation
       - type: output-matches
         config:
-          pattern: '(?i)^\s*SELECT\s+VALUE\s+COUNT\s*\(\s*1\s*\)\s+FROM\s+c\s+WHERE\s+c(?:\.inStock|\[\s*"inStock"\s*\])(?:\s*=\s*true)?\s*$'
+          pattern: '(?i)^\s*(?:SELECT\s+VALUE\s+COUNT\s*\(\s*1\s*\)\s+FROM\s+c\s+WHERE\s+c(?:\.inStock|\[\s*"inStock"\s*\])(?:\s*=\s*true)?|```(?:sql)?[ \t]*\r?\n\s*SELECT\s+VALUE\s+COUNT\s*\(\s*1\s*\)\s+FROM\s+c\s+WHERE\s+c(?:\.inStock|\[\s*"inStock"\s*\])(?:\s*=\s*true)?\s*\r?\n[ \t]*```)\s*$'
       - type: output-not-matches
         config:
           pattern: '\bC\b|\bc(?:\.(?!inStock\b)|\[\s*"(?!inStock"))'

@@ -23,6 +23,13 @@ const completedEvents = [
 ];
 const explainCompletedEvents = completedEvents.filter((event) => event.type !== 'skill_activation');
 
+const queryFormats = [
+    (query) => query,
+    (query) => `\`\`\`sql\n${query}\n\`\`\``,
+    (query) => `\`\`\`\n${query}\n\`\`\``,
+    (query) => ` \r\n\`\`\`sql \t\r\n${query.replace(/\r?\n/g, '\r\n')}\r\n \`\`\`\r\n`,
+];
+
 const cases = [
     {
         name: 'filter-and-sort-products',
@@ -133,7 +140,7 @@ for (const entry of cases) {
     const stimulus = spec.stimuli.find((candidate) => candidate.name === entry.name);
     assert.ok(stimulus, `Missing stimulus: ${entry.name}`);
 
-    for (const output of entry.accepted) {
+    for (const output of entry.accepted.flatMap((query) => queryFormats.map((format) => format(query)))) {
         test(`${entry.name} accepts ${JSON.stringify(output)}`, async () => {
             const { result, passed } = await grade(stimulus, output);
             assert.equal(passed, true, result.evidence);
@@ -142,14 +149,35 @@ for (const entry of cases) {
     }
 
     const reference = entry.accepted[0];
-    const rejected = [
+    const rejectedQueries = [
         ...entry.rejected,
         '',
         'ERROR: Cannot generate a query.',
         `Here is your query:\n${reference}`,
-        `\`\`\`sql\n${reference}\n\`\`\``,
+        `${reference}\nHere is your query.`,
+        `-- Query\n${reference}`,
+        `${reference} /* Query */`,
         `${reference}\nSELECT * FROM c`,
         `${reference}; DROP TABLE c`,
+    ];
+    const fencedReference = `\`\`\`sql\n${reference}\n\`\`\``;
+    const rejected = [
+        ...rejectedQueries.flatMap((query) => queryFormats.map((format) => format(query))),
+        `\`\`\`sql\n${reference}`,
+        `\`\`\`\n${reference}`,
+        `${reference}\n\`\`\``,
+        `\`\`\`sql ${reference}\n\`\`\``,
+        `\`\`\`sql\n${reference}\`\`\``,
+        `\`\`\`sql\n${reference}\n\`\``,
+        `\`\`\`sql\n${reference}\n\`\`\`\``,
+        `\`\`\`\`sql\n${reference}\n\`\`\`\``,
+        `\`\`\`javascript\n${reference}\n\`\`\``,
+        `Here is your query:\n${fencedReference}`,
+        `${fencedReference}\nHere is your query.`,
+        `${fencedReference}\n${fencedReference}`,
+        `${fencedReference}\nSELECT * FROM c`,
+        `SELECT * FROM c\n${fencedReference}`,
+        `\`\`\`sql\n${fencedReference}\n\`\`\``,
     ];
     for (const output of rejected) {
         test(`${entry.name} rejects ${JSON.stringify(output)}`, async () => {
@@ -159,31 +187,33 @@ for (const entry of cases) {
         });
     }
 
-    test(`${entry.name} rejects correct SQL when the skill was not invoked`, async () => {
-        const { passed } = await grade(
-            stimulus,
-            reference,
-            completedEvents.filter((event) => event.type !== 'skill_activation'),
-        );
-        assert.equal(passed, false);
-    });
+    for (const output of [reference, fencedReference]) {
+        test(`${entry.name} rejects ${JSON.stringify(output)} when the skill was not invoked`, async () => {
+            const { passed } = await grade(
+                stimulus,
+                output,
+                completedEvents.filter((event) => event.type !== 'skill_activation'),
+            );
+            assert.equal(passed, false);
+        });
 
-    test(`${entry.name} rejects correct SQL from an incomplete session`, async () => {
-        const { passed } = await grade(
-            stimulus,
-            reference,
-            completedEvents.filter((event) => event.type !== 'turn_end'),
-        );
-        assert.equal(passed, false);
-    });
+        test(`${entry.name} rejects ${JSON.stringify(output)} from an incomplete session`, async () => {
+            const { passed } = await grade(
+                stimulus,
+                output,
+                completedEvents.filter((event) => event.type !== 'turn_end'),
+            );
+            assert.equal(passed, false);
+        });
 
-    test(`${entry.name} rejects correct SQL when the session reports an error`, async () => {
-        const { passed } = await grade(stimulus, reference, [
-            ...completedEvents,
-            { type: 'error', data: { message: 'Synthetic executor failure' } },
-        ]);
-        assert.equal(passed, false);
-    });
+        test(`${entry.name} rejects ${JSON.stringify(output)} when the session reports an error`, async () => {
+            const { passed } = await grade(stimulus, output, [
+                ...completedEvents,
+                { type: 'error', data: { message: 'Synthetic executor failure' } },
+            ]);
+            assert.equal(passed, false);
+        });
+    }
 }
 
 for (const entry of explainCases) {

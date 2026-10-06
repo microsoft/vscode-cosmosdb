@@ -154,7 +154,8 @@ It runs four prompts against a shared synthetic product schema:
   it with the unselected price query in the editor.
 
 This is a **headless generation and explanation evaluation**, not an end-to-end test of the editor buttons.
-It does not cover editor context resolution, schema sampling, applying queries, or executing queries.
+It does not import or execute the extension's NL2Query implementation. It does not cover editor context resolution,
+schema sampling, applying queries, or executing queries.
 The explain prompts supply synthetic `currentQuery`, `selectedQuery`, and `activeQuery` fields in place of a live
 context-tool response, following the Explain Query flow's instruction to explain `activeQuery`.
 No Azure credentials, Cosmos DB account, emulator, or real customer data are needed.
@@ -168,9 +169,10 @@ npm run eval:nl2query:lint
 npm run eval:nl2query:test
 ```
 
-The grader tests exercise Vally's actual grading pipeline with passing and failing outputs. They cover wrong
-comparison boundaries, sort direction, property casing, scalar-count shape, Markdown/prose, multiple statements,
-and missing skill activation or session completion. These commands do not call a model or require Copilot authentication.
+The grader tests exercise Vally's actual grading pipeline with passing and failing outputs. They cover plain and
+fenced queries, malformed or multiple code blocks, wrong comparison boundaries, sort direction, property casing,
+scalar-count shape, comments/prose, multiple statements, and missing skill activation or session completion.
+These commands do not call a model or require Copilot authentication.
 For explanations, offline tests stub the judge's verdict and verify rubric/evidence delivery and pass/fail
 aggregation, including passing explanations with no skill activation. They do not validate the judge's semantic
 accuracy; that requires a live evaluation.
@@ -216,6 +218,12 @@ Every grader must pass, and all trials must complete successfully. Generation tr
 the query-generation skill and pass the query-shape checks, which accept keyword casing, whitespace, dot/bracket
 property access, and implicit ascending order, but enforce exact schema property casing. These checks cover the
 requested simple query forms, not every semantically equivalent SQL rewrite.
+Generation accepts plain SQL or exactly one enclosing triple-backtick code block, either unlabeled or labeled `sql`,
+with opening and closing fences on their own lines. Surrounding whitespace and LF/CRLF line endings are accepted;
+comments, explanatory text, incomplete fences, other language labels, multiple blocks, and extra statements are rejected.
+This deliberately tolerates the code-fence wrapper that the editor removes, rather than enforcing the skill's strict
+raw-output formatting contract. It does not execute the editor's sanitization code or change the shipped skill.
+The raw response remains in Vally's artifacts, and every grader must still pass.
 
 Explanations are judged against per-prompt rubrics with binary scoring and a 100% threshold. They must explain all
 required semantics without contradictory statements, invented results, or claims of executing or changing the query.
@@ -245,9 +253,18 @@ Re-grading explanations still consumes judge-model requests. Add `--judge-model 
 
 #### GitHub Actions
 
-The [Evaluations workflow](../.github/workflows/evals.yml) runs when any evaluation suite, skill, dependency manifest,
-Node version, or the workflow changes. It currently runs NL2Query; additional suites, such as data-modeler, can be
-added to the validation and live jobs.
+The [Evaluations workflow](../.github/workflows/evals.yml) currently runs NL2Query. Automatic runs are filtered to:
+
+- `evals/nl2query/**`: evaluation prompts, rubrics, schema fixtures, and offline grader tests.
+- `skills/cosmosdb-nosql-query-generation/**`: the generation skill's `SKILL.md` and any supporting files.
+- `package.json` and `package-lock.json`: evaluation commands and dependencies.
+- `.nvmrc`: the Node runtime version.
+- `.github/workflows/evals.yml`: the workflow itself.
+
+Changes only to extension source code, unrelated skills/evaluation suites, or general documentation do not trigger
+this workflow. Filtering only on `.md` would miss changes to the YAML prompts/rubrics, JSON schema, and test harness.
+When adding a suite such as data-modeler, add its inputs to both the push and pull-request path filters and wire its
+commands into the validation and live jobs. Manual runs bypass the path filters.
 
 - **Pull requests from this repository:** validate the spec, run the offline grader tests, then run live evaluations.
 - **Pull requests from forks:** run only the offline checks, without Copilot permissions or model requests.

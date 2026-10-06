@@ -123,6 +123,12 @@ test('the suite has exactly the four tested prompts and requires every grader to
     assert.equal(spec.scoring.threshold, 1);
 });
 
+test('the suite pins a lower-cost GPT executor model and a mid-range GPT judge model', () => {
+    assert.equal(spec.defaults.executor, 'copilot-sdk');
+    assert.equal(spec.defaults.model, 'gpt-5.6-luna');
+    assert.equal(spec.defaults.judge_model, 'gpt-5.6-terra');
+});
+
 test('only generation stimuli load and request the query-generation skill', () => {
     assert.deepEqual(spec.environment?.skills ?? [], []);
     for (const stimulus of spec.stimuli) {

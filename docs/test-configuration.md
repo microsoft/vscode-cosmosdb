@@ -210,10 +210,14 @@ The signed-in account must have Copilot access. Do not echo the token or run the
 If `GITHUB_COPILOT_API_TOKEN` is already set, it takes precedence for the judge; remove it from the process environment
 if it is not the credential you intend to use.
 
-The default model is selected by the Copilot SDK; use `--model` to compare a specific model across runs.
+The spec pins **GPT-5.6 Luna** (`gpt-5.6-luna`) for agent execution and **GPT-5.6 Terra** (`gpt-5.6-terra`) for
+LLM judging in both local and CI runs. These provide a lower-cost GPT executor and a mid-range GPT judge rather
+than relying on changing runtime defaults. Both models must be enabled by the account or organization's Copilot policy.
+See [GitHub's model pricing](https://docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing)
+for current rates. Use `--model` to override the execution model when comparing results.
 Live evaluations consume model requests. Generation uses deterministic graders, without a judge model.
 Explanation additionally uses Vally's `prompt` LLM grader, so it makes judge-model requests and is not deterministic.
-Use `--judge-model` to select an available judge model; otherwise Vally uses its built-in default.
+Use `--judge-model` to override the pinned judge model. Model selection does not make live evaluations deterministic.
 Every grader must pass, and all trials must complete successfully. Generation trials must additionally activate
 the query-generation skill and pass the query-shape checks, which accept keyword casing, whitespace, dot/bracket
 property access, and implicit ascending order, but enforce exact schema property casing. These checks cover the

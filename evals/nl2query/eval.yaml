@@ -9,6 +9,8 @@ agent_environment:
 
 defaults:
   executor: copilot-sdk
+  model: gpt-5.6-luna
+  judge_model: gpt-5.6-terra
   runs: 1
   timeout: 2m
 

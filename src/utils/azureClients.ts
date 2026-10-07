@@ -10,7 +10,6 @@ import { type FeatureClient } from '@azure/arm-features';
 import { type MonitorClient } from '@azure/arm-monitor';
 import { type PostgreSQLManagementClient } from '@azure/arm-postgresql';
 import { type PostgreSQLManagementFlexibleServerClient } from '@azure/arm-postgresql-flexible';
-import { type TokenCredential } from '@azure/core-auth';
 import { type KnownMonitorLogsQueryAudience, type LogsQueryClient } from '@azure/monitor-query-logs';
 import { createAzureClient } from '@microsoft/vscode-azext-azureutils';
 import { createSubscriptionContext, type IActionContext } from '@microsoft/vscode-azext-utils';
@@ -127,7 +126,7 @@ export async function createLogsQueryClient(
     const subContext = createSubscriptionContext(subscription);
     const { LogsQueryClient, KnownMonitorLogsQueryAudience } = await import('@azure/monitor-query-logs');
     const audience = logAnalyticsAudience(subscription.environment?.name, KnownMonitorLogsQueryAudience);
-    return new LogsQueryClient(subContext.credentials as TokenCredential, audience ? { audience } : undefined);
+    return new LogsQueryClient(subContext.credentials, audience ? { audience } : undefined);
 }
 
 /**
@@ -174,7 +173,7 @@ export async function createAlertsManagementClient(subscription: AzureSubscripti
     const subContext = createSubscriptionContext(subscription);
     const { AlertsManagementClient } = await import('@azure/arm-alertsmanagement');
     const endpoint = subscription.environment?.resourceManagerEndpointUrl;
-    return new AlertsManagementClient(subContext.credentials as TokenCredential, endpoint ? { endpoint } : undefined);
+    return new AlertsManagementClient(subContext.credentials, endpoint ? { endpoint } : undefined);
 }
 
 export async function createPostgreSQLClient(

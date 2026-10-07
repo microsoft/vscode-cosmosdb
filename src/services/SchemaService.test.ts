@@ -156,7 +156,7 @@ beforeEach(() => {
         has: vi.fn(),
         inspect: vi.fn(),
         update: vi.fn(),
-    } as unknown as vscode.WorkspaceConfiguration);
+    });
 });
 
 afterEach(() => {
@@ -344,8 +344,7 @@ describe('SchemaService.deleteSchema', () => {
         const showWarning = vi
             .spyOn(vscode.window, 'showWarningMessage')
             .mockImplementation(
-                (async (_message: string, _options: unknown, ...items: vscode.MessageItem[]) =>
-                    items[0]) as unknown as typeof vscode.window.showWarningMessage,
+                async (_message: string, _options: unknown, ...items: vscode.MessageItem[]) => items[0],
             );
 
         const ok = await service.deleteSchema(connection, { source: 'manualDelete' });
@@ -359,8 +358,8 @@ describe('SchemaService.deleteSchema', () => {
         const id = seedSchema();
         const service = new SchemaService();
         vi.spyOn(vscode.window, 'showWarningMessage').mockImplementation(
-            (async (_message: string, _options: unknown, _confirm: vscode.MessageItem, cancel: vscode.MessageItem) =>
-                cancel) as unknown as typeof vscode.window.showWarningMessage,
+            async (_message: string, _options: unknown, _confirm: vscode.MessageItem, cancel: vscode.MessageItem) =>
+                cancel,
         );
 
         const ok = await service.deleteSchema(connection, { source: 'manualDelete' });
@@ -615,7 +614,7 @@ describe('aggressivelySimplify (pure helper)', () => {
             'x-minProperties': 1,
             'x-maxProperties': 99,
             properties: { name: { type: 'string', 'x-occurrence': 10, 'x-minLength': 2 } },
-        } as unknown as JSONSchema;
+        };
 
         const result = aggressivelySimplify(schema, {
             targetSizeBytes: 10 * 1024,
@@ -650,7 +649,7 @@ describe('aggressivelySimplify (pure helper)', () => {
                     },
                 },
             },
-        } as unknown as JSONSchema;
+        };
 
         const result = aggressivelySimplify(schema, {
             targetSizeBytes: 120,
@@ -676,14 +675,14 @@ describe('aggressivelySimplify (pure helper)', () => {
         // `rootKeepTopN = 5`, the simplified root keeps exactly the 3 stable
         // fields plus 2 of the rare ones (chosen by stable insertion order).
         const properties: Record<string, JSONSchema> = {
-            id: { type: 'string', 'x-occurrence': 1000 } as JSONSchema,
-            _partitionKey: { type: 'string', 'x-occurrence': 1000 } as JSONSchema,
-            status: { type: 'string', 'x-occurrence': 1000 } as JSONSchema,
+            id: { type: 'string', 'x-occurrence': 1000 },
+            _partitionKey: { type: 'string', 'x-occurrence': 1000 },
+            status: { type: 'string', 'x-occurrence': 1000 },
         };
         for (let i = 0; i < 47; i++) {
-            properties[`rare_${String(i).padStart(3, '0')}`] = { type: 'string', 'x-occurrence': 1 } as JSONSchema;
+            properties[`rare_${String(i).padStart(3, '0')}`] = { type: 'string', 'x-occurrence': 1 };
         }
-        const schema: JSONSchema = { type: 'object', properties } as unknown as JSONSchema;
+        const schema: JSONSchema = { type: 'object', properties };
 
         const result = aggressivelySimplify(schema, {
             // Force the popularity loop to need a root trim by setting a tiny
@@ -696,7 +695,7 @@ describe('aggressivelySimplify (pure helper)', () => {
             popularityKey: 'x-occurrence',
         });
 
-        const kept = Object.keys((result.schema.properties ?? {}) as Record<string, JSONSchema>).sort();
+        const kept = Object.keys(result.schema.properties ?? {}).sort();
         expect(result.popularityKeyHit).toBe(true);
         expect(result.wasSimplified).toBe(true);
         expect(kept).toHaveLength(5);
@@ -738,7 +737,7 @@ describe('stripSchemaStatistics (confidentiality boundary)', () => {
                 salary: { type: 'number', 'x-occurrence': 5, 'x-minValue': 42, 'x-maxValue': 987654 },
                 name: { type: 'string', 'x-occurrence': 5, 'x-minLength': 1, 'x-maxLength': 40 },
             },
-        } as unknown as JSONSchema;
+        };
 
         const stripped = stripSchemaStatistics(schema) as unknown as Record<string, unknown>;
         const props = stripped.properties as Record<string, Record<string, unknown>>;
@@ -770,7 +769,7 @@ describe('stripSchemaStatistics (confidentiality boundary)', () => {
                     ],
                 },
             },
-        } as unknown as JSONSchema;
+        };
 
         expect(findConfidentialStatKeys(stripSchemaStatistics(schema))).toEqual([]);
     });
@@ -779,7 +778,7 @@ describe('stripSchemaStatistics (confidentiality boundary)', () => {
         const schema: JSONSchema = {
             type: 'object',
             properties: { salary: { type: 'number', 'x-minValue': 1, 'x-maxValue': 2 } },
-        } as unknown as JSONSchema;
+        };
 
         const stripped = stripSchemaStatistics(schema);
         const original = (schema.properties as Record<string, Record<string, unknown>>).salary;
@@ -1366,9 +1365,7 @@ describe('SchemaService.mergeDocumentsIntoSchema — over-limit messaging', () =
         { timeout: 60_000 },
         async () => {
             const service = new SchemaService();
-            const showInfo = vi
-                .spyOn(vscode.window, 'showInformationMessage')
-                .mockResolvedValue(undefined as unknown as vscode.MessageItem);
+            const showInfo = vi.spyOn(vscode.window, 'showInformationMessage').mockResolvedValue(undefined);
             showInfo.mockClear();
 
             await service.mergeDocumentsIntoSchema(connection, buildOversizedDocuments(), {
@@ -1398,9 +1395,7 @@ describe('SchemaService.mergeDocumentsIntoSchema — over-limit messaging', () =
         { timeout: 60_000 },
         async () => {
             const service = new SchemaService();
-            const showInfo = vi
-                .spyOn(vscode.window, 'showInformationMessage')
-                .mockResolvedValue(undefined as unknown as vscode.MessageItem);
+            const showInfo = vi.spyOn(vscode.window, 'showInformationMessage').mockResolvedValue(undefined);
             showInfo.mockClear();
 
             await service.mergeDocumentsIntoSchema(connection, buildOversizedDocuments(), {

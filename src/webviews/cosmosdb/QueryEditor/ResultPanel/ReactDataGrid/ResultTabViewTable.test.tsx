@@ -37,7 +37,8 @@ const renderTable = () => {
 
     // jsdom lacks the grid's CSS nesting selector syntax and scrollIntoView.
     const grid = screen.getByRole('grid', { name: 'Query results table' });
-    const querySelector = grid.querySelector.bind(grid);
+    const queryRoot: { querySelector: (selector: string) => Element | null } = grid;
+    const querySelector = queryRoot.querySelector.bind(grid);
     vi.spyOn(grid, 'querySelector').mockImplementation((selector) => querySelector(selector.replace(/^&/, ':scope')));
     for (const cell of [...screen.getAllByRole('gridcell'), ...screen.getAllByRole('columnheader')]) {
         cell.scrollIntoView = vi.fn();

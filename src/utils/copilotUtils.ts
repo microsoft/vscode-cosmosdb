@@ -3,7 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
+
+export const AI_FEATURES_ENABLED_CONTEXT_KEY = 'cosmosDB.aiFeaturesEnabled';
 
 /**
  * GitHub Copilot extension IDs
@@ -71,6 +74,16 @@ export async function areAIFeaturesEnabled(): Promise<boolean> {
         return false;
     }
     return areCopilotModelsAvailable();
+}
+
+export async function ensureAIFeaturesEnabled(): Promise<void> {
+    if (!(await areAIFeaturesEnabled())) {
+        throw new Error(
+            l10n.t(
+                'AI features require GitHub Copilot to be available and the chat.disableAIFeatures setting to be off.',
+            ),
+        );
+    }
 }
 
 /**

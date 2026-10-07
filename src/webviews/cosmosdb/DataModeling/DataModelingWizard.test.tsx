@@ -822,7 +822,11 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         const mounted = render(<DataModelingWizard />);
         await continueExisting();
         await user.click(screen.getByRole('tab', { name: 'Scale' }));
-        expect(screen.getByDisplayValue('872')).toBeInTheDocument();
+        const distinctValues = screen.getByRole('combobox', { name: 'Estimated distinct values for id' });
+        expect(distinctValues).toHaveValue('1000');
+        expect(within(distinctValues).getByRole('option', { selected: true })).toHaveTextContent(
+            'Hundreds – thousands',
+        );
         expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
         await user.click(screen.getByRole('tab', { name: 'Data' }));
         fireEvent.change(screen.getByPlaceholderText('Add property…'), { target: { value: 'draft' } });

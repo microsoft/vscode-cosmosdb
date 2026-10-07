@@ -16,6 +16,10 @@ defaults:
 
 stimuli:
   - name: product-tag-rows
+    # Expected query (one accepted form):
+    # SELECT c.id, t AS tag
+    # FROM c
+    # JOIN t IN c.tags
     tags:
       feature: generate
     agent_environment:
@@ -50,6 +54,12 @@ stimuli:
           pattern: '\b[CT]\b|\bc(?:\.(?!(?:id|tags)\b)|\[\s*"(?!(?:id|tags)"))|\b[Aa][Ss]\s+(?!(?:id|tag)\b)'
 
   - name: product-eco-tags
+    # Expected query (one accepted form):
+    # SELECT c.id, ARRAY(
+    #     SELECT VALUE t FROM t IN c.tags
+    #     WHERE StartsWith(t, "eco", true)
+    # ) AS matchingTags
+    # FROM c
     tags:
       feature: generate
     agent_environment:
@@ -84,6 +94,9 @@ stimuli:
           pattern: '\b[CT]\b|\bc(?:\.(?!(?:id|tags)\b)|\[\s*"(?!(?:id|tags)"))|\b[Aa][Ss]\s+(?!(?:id|matchingTags)\b)'
 
   - name: product-availability
+    # Expected query (one accepted form):
+    # SELECT VALUE {"id": c.id, "availability": c.inStock ? "available" : "unavailable"}
+    # FROM c
     tags:
       feature: generate
     agent_environment:

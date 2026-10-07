@@ -220,10 +220,13 @@ repository's skills: discovery runs in Vally's isolated trial workspace, which o
 The evaluations explicitly provide skill directories, including their supporting files.
 Every grader must pass (100% threshold). Generation accepts plain SQL or one complete unlabeled/`sql` code fence,
 but rejects prose, comments, extra statements, and incorrect query shapes.
+Explain rubrics list only the required behavior. The judge grades meaning rather than wording and fails any missing
+criterion or incorrect claim.
 
-The [offline tests](../evals/nl2query/graders.test.mjs) cover grader behavior with stubbed judge verdicts, not the
-judge's semantic accuracy. Editor context resolution, schema sampling, applying queries, and query execution
-are outside this suite's scope.
+The [offline tests](../evals/nl2query/graders.test.mjs) check the generation query-shape graders against accepted and
+rejected queries. For Explain, they stub the judge and only verify that its verdict decides the result; the live run
+covers whether the judge grades accurately. Editor context resolution, schema sampling, applying queries, and query
+execution are outside this suite's scope.
 
 #### GitHub Actions
 

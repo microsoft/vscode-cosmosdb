@@ -143,11 +143,10 @@ stimuli:
       tags and empty arrays in English.
       Do not execute or modify the query, connect to a database, or create files.
     rubric:
-      - Explains that JOIN t IN c.tags expands each product's own tags array, not another table, document, or container.
-      - Explains that each result is an object with the product id and one tag string, not a full product or an array of tags.
-      - Explains that a product produces one result per tag element; duplicate tag values produce duplicate results and are not deduplicated.
-      - Explains that a product with an empty tags array produces no results, unlike a left outer join.
-      - Does not invent returned rows, row counts, measured request charges, or claims that the query was executed or modified.
+      - JOIN expands each product's own tags array.
+      - Each result contains the product id and a single tag string.
+      - Duplicate tags produce duplicate results.
+      - Products with an empty tags array produce no results.
     graders: &explanation-graders
       - type: completed
       - type: prompt
@@ -155,11 +154,12 @@ stimuli:
           scoring: binary
           threshold: 1.0
           prompt: |
-            Judge the final explanation against every rubric criterion, not merely
-            the query quoted in the input. Return an overall score of 1 only if all
-            criteria are met without contradictory claims; otherwise return 0.
-            Accept equivalent wording and formatting.
-            A query alone, a refusal, or a rewritten query is not an explanation.
+            Return an overall score of 1 only if the explanation conveys every
+            rubric criterion and makes no incorrect claims; otherwise return 0.
+            Judge meaning, not wording: paraphrases, examples, and result shapes
+            count. Hypothetical examples are fine, but claiming the query was run
+            or reporting actual results is incorrect. Quoting or rewriting the
+            query without explaining it is not an explanation.
 
   - name: explain-product-eco-tags
     tags:
@@ -182,12 +182,10 @@ stimuli:
       happens to products with no matching tags, in English.
       Do not execute or modify the query, connect to a database, or create files.
     rubric:
-      - Explains that the outer query returns one object per product with its id and a nested matchingTags array, not one outer result per matching tag.
-      - Explains that ARRAY constructs an array from the correlated subquery and SELECT VALUE t makes its elements tag strings, not objects wrapping t.
-      - Explains that StartsWith tests the eco prefix and its true argument makes matching case-insensitive, not case-sensitive or a substring search.
-      - Explains that products without matching tags, including products with empty tags arrays, remain in the results with matchingTags equal to an empty array.
-      - Explains that duplicate matching tag strings are preserved; the query does not apply DISTINCT.
-      - Does not invent actual counts, returned documents, measured request charges, or claims that the query was executed or modified.
+      - Each product produces one result with its id and a matchingTags array of tag strings.
+      - Tags match when they start with "eco", ignoring case.
+      - Products with no matching tags are kept with an empty matchingTags array.
+      - Duplicate matching tags are kept.
     graders: *explanation-graders
 
   - name: explain-selected-product-availability
@@ -212,11 +210,9 @@ stimuli:
       of the conditional expression in English.
       Do not execute or modify the query, connect to a database, or create files.
     rubric:
-      - Explains the selected activeQuery, not the unselected array JOIN; does not attribute tag expansion to the selected query.
-      - Explains that SELECT VALUE returns each constructed object directly with id and availability, without an extra wrapper, rather than returning all product fields.
-      - 'Explains that the ternary ? : expression chooses available when inStock is Boolean true and unavailable when false.'
-      - Explains that both in-stock and out-of-stock products remain, with one result per product; the conditional computes a label rather than filtering documents.
-      - Does not invent actual product availability, returned rows, measured request charges, or claims that the query was executed or modified.
+      - Explains the selected availability query, not the JOIN query.
+      - Each product produces one object containing only id and availability.
+      - availability is "available" when inStock is true and "unavailable" otherwise.
     graders: *explanation-graders
 
 scoring:

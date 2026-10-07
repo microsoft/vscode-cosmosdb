@@ -463,7 +463,7 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
                     type: 'databaseConnected',
                     dbName: result.connectionState.dbName,
                     containerName: result.connectionState.containerName,
-                    partitionKey: result.connectionState.partitionKey as PartitionKeyDefinition | undefined,
+                    partitionKey: result.connectionState.partitionKey,
                 });
             } else {
                 this.dispatch({ type: 'databaseDisconnected' });

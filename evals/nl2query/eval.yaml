@@ -17,6 +17,8 @@ defaults:
 stimuli:
   # Production accepts Markdown wrappers to avoid breaking otherwise valid responses.
   # Generation tests intentionally reject them to keep output pattern matching simple.
+  # Capture aliases from the source and reuse them case-sensitively; only keywords/functions ignore case.
+  # Character classes keep keyword matching compatible with Node 22 without scoped regex flags.
   - name: 'Generate query: product tag rows'
     # Expected query (one accepted form):
     # SELECT c.id, t AS tag
@@ -44,10 +46,8 @@ stimuli:
             - cosmosdb-nosql-query-generation
       - type: output-matches
         config:
-          pattern: '(?i)^\s*SELECT\s+c(?:\.id|\[\s*"id"\s*\])(?:\s+AS\s+id)?\s*,\s*t\s+AS\s+tag\s+FROM\s+c\s+JOIN\s+t\s+IN\s+c(?:\.tags|\[\s*"tags"\s*\])\s*$'
-      - type: output-not-matches
-        config:
-          pattern: '\b[CT]\b|\bc(?:\.(?!(?:id|tags)\b)|\[\s*"(?!(?:id|tags)"))|\b[Aa][Ss]\s+(?!(?:id|tag)\b)'
+          pattern: >-
+            ^(?=[\s\S]*\s(?<source>[Ff][Rr][Oo][Mm]\s+(?<container>[A-Za-z_][A-Za-z0-9_]*)\s+[Jj][Oo][Ii][Nn]\s+(?!\k<container>\b)(?<tag>[A-Za-z_][A-Za-z0-9_]*)\s+[Ii][Nn]\s+\k<container>(?:\.tags|\[\s*"tags"\s*\]))\s*$)\s*[Ss][Ee][Ll][Ee][Cc][Tt]\s+(?:\k<container>(?:\.id|\[\s*"id"\s*\])(?:\s+[Aa][Ss]\s+id)?\s*,\s*(?:\k<tag>\s+[Aa][Ss]\s+tag|(?=tag\b)\k<tag>)|(?:\k<tag>\s+[Aa][Ss]\s+tag|(?=tag\b)\k<tag>)\s*,\s*\k<container>(?:\.id|\[\s*"id"\s*\])(?:\s+[Aa][Ss]\s+id)?|[Vv][Aa][Ll][Uu][Ee]\s*\{\s*(?:(?:"id"|'id'|id)\s*:\s*\k<container>(?:\.id|\[\s*"id"\s*\])\s*,\s*(?:"tag"|'tag'|tag)\s*:\s*\k<tag>|(?:"tag"|'tag'|tag)\s*:\s*\k<tag>\s*,\s*(?:"id"|'id'|id)\s*:\s*\k<container>(?:\.id|\[\s*"id"\s*\]))\s*\})\s+\k<source>\s*$
 
   - name: 'Generate query: product eco tags'
     # Expected query (one accepted form):
@@ -79,11 +79,9 @@ stimuli:
             - cosmosdb-nosql-query-generation
       - type: output-matches
         config:
+          # Reuse the complete array expression to allow flat object and named projections in either order.
           pattern: >-
-            (?i)^\s*SELECT\s+c(?:\.id|\[\s*"id"\s*\])(?:\s+AS\s+id)?\s*,\s*ARRAY\s*\(\s*SELECT\s+VALUE\s+t\s+FROM\s+t\s+IN\s+c(?:\.tags|\[\s*"tags"\s*\])\s+WHERE\s+StartsWith\s*\(\s*t\s*,\s*(?:"eco"|'eco')\s*,\s*true\s*\)\s*\)\s+AS\s+matchingTags\s+FROM\s+c\s*$
-      - type: output-not-matches
-        config:
-          pattern: '\b[CT]\b|\bc(?:\.(?!(?:id|tags)\b)|\[\s*"(?!(?:id|tags)"))|\b[Aa][Ss]\s+(?!(?:id|matchingTags)\b)'
+            ^(?=[\s\S]*\s(?<source>[Ff][Rr][Oo][Mm]\s+(?<container>[A-Za-z_][A-Za-z0-9_]*))\s*$)(?=[\s\S]*?(?<matches>[Aa][Rr][Rr][Aa][Yy]\s*\(\s*[Ss][Ee][Ll][Ee][Cc][Tt]\s+[Vv][Aa][Ll][Uu][Ee]\s+(?!\k<container>\b)(?<tag>[A-Za-z_][A-Za-z0-9_]*)\s+[Ff][Rr][Oo][Mm]\s+\k<tag>\s+[Ii][Nn]\s+\k<container>(?:\.tags|\[\s*"tags"\s*\])\s+[Ww][Hh][Ee][Rr][Ee]\s+[Ss][Tt][Aa][Rr][Tt][Ss][Ww][Ii][Tt][Hh]\s*\(\s*\k<tag>\s*,\s*(?:"[Ee][Cc][Oo]"|'[Ee][Cc][Oo]')\s*,\s*true\s*\)\s*\)))\s*[Ss][Ee][Ll][Ee][Cc][Tt]\s+(?:\k<container>(?:\.id|\[\s*"id"\s*\])(?:\s+[Aa][Ss]\s+id)?\s*,\s*\k<matches>\s+[Aa][Ss]\s+matchingTags|\k<matches>\s+[Aa][Ss]\s+matchingTags\s*,\s*\k<container>(?:\.id|\[\s*"id"\s*\])(?:\s+[Aa][Ss]\s+id)?|[Vv][Aa][Ll][Uu][Ee]\s*\{\s*(?:(?:"id"|'id'|id)\s*:\s*\k<container>(?:\.id|\[\s*"id"\s*\])\s*,\s*(?:"matchingTags"|'matchingTags'|matchingTags)\s*:\s*\k<matches>|(?:"matchingTags"|'matchingTags'|matchingTags)\s*:\s*\k<matches>\s*,\s*(?:"id"|'id'|id)\s*:\s*\k<container>(?:\.id|\[\s*"id"\s*\]))\s*\})\s+\k<source>\s*$
 
   - name: 'Generate query: product availability'
     # Expected query (one accepted form):
@@ -112,15 +110,9 @@ stimuli:
             - cosmosdb-nosql-query-generation
       - type: output-matches
         config:
+          # Capture the complete conditional once, then check the exact flat projection in either property order.
           pattern: >-
-            (?i)^\s*SELECT\s+VALUE\s*\{\s*(?:(?:"id"|'id'|id)\s*:\s*c(?:\.id|\[\s*"id"\s*\])\s*,\s*(?:"availability"|'availability'|availability)\s*:\s*(?:c(?:\.inStock|\[\s*"inStock"\s*\])(?:\s*=\s*true)?|\(\s*c(?:\.inStock|\[\s*"inStock"\s*\])(?:\s*=\s*true)?\s*\))\s*\?\s*(?:"available"|'available')\s*:\s*(?:"unavailable"|'unavailable')|(?:"availability"|'availability'|availability)\s*:\s*(?:c(?:\.inStock|\[\s*"inStock"\s*\])(?:\s*=\s*true)?|\(\s*c(?:\.inStock|\[\s*"inStock"\s*\])(?:\s*=\s*true)?\s*\))\s*\?\s*(?:"available"|'available')\s*:\s*(?:"unavailable"|'unavailable')\s*,\s*(?:"id"|'id'|id)\s*:\s*c(?:\.id|\[\s*"id"\s*\]))\s*\}\s+FROM\s+c\s*$
-      - type: output-not-matches
-        config:
-          pattern: '\bC\b|\bc(?:\.(?!(?:id|inStock)\b)|\[\s*"(?!(?:id|inStock)"))'
-      - type: output-matches
-        config:
-          pattern: >-
-            ^(?=[\s\S]*(?:"id"|'id'|\bid)\s*:)(?=[\s\S]*(?:"availability"|'availability'|\bavailability)\s*:)[\s\S]*\?\s*(?:"available"|'available')\s*:\s*(?:"unavailable"|'unavailable')
+            ^(?=[\s\S]*\s(?<source>[Ff][Rr][Oo][Mm]\s+(?<container>[A-Za-z_][A-Za-z0-9_]*))\s*$)(?=[\s\S]*?(?<availability>(?:\k<container>(?:\.inStock|\[\s*"inStock"\s*\])(?:\s*=\s*true)?|\(\s*\k<container>(?:\.inStock|\[\s*"inStock"\s*\])(?:\s*=\s*true)?\s*\))\s*\?\s*(?:"available"|'available')\s*:\s*(?:"unavailable"|'unavailable')|[Ii][Ii][Ff]\s*\(\s*(?:\k<container>(?:\.inStock|\[\s*"inStock"\s*\])(?:\s*=\s*true)?|\(\s*\k<container>(?:\.inStock|\[\s*"inStock"\s*\])(?:\s*=\s*true)?\s*\))\s*,\s*(?:"available"|'available')\s*,\s*(?:"unavailable"|'unavailable')\s*\)))\s*[Ss][Ee][Ll][Ee][Cc][Tt]\s+(?:[Vv][Aa][Ll][Uu][Ee]\s*\{\s*(?:(?:"id"|'id'|id)\s*:\s*\k<container>(?:\.id|\[\s*"id"\s*\])\s*,\s*(?:"availability"|'availability'|availability)\s*:\s*\k<availability>|(?:"availability"|'availability'|availability)\s*:\s*\k<availability>\s*,\s*(?:"id"|'id'|id)\s*:\s*\k<container>(?:\.id|\[\s*"id"\s*\]))\s*\}|\k<container>(?:\.id|\[\s*"id"\s*\])(?:\s+[Aa][Ss]\s+id)?\s*,\s*\k<availability>\s+[Aa][Ss]\s+availability|\k<availability>\s+[Aa][Ss]\s+availability\s*,\s*\k<container>(?:\.id|\[\s*"id"\s*\])(?:\s+[Aa][Ss]\s+id)?)\s+\k<source>\s*$
 
   - name: 'Explain query: product tag rows'
     tags:

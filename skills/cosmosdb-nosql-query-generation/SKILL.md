@@ -87,15 +87,19 @@ language itself. Apply these rules whenever you produce a Cosmos DB NoSQL query.
 
 - `SELECT *` returns the full document and is valid only when the FROM clause declares
   exactly one alias. **Never** use `SELECT *` with a JOIN — project specific properties.
-- `SELECT VALUE expr` unwraps to a scalar/array stream. Use it for scalar projections and
-  aggregates. Do NOT combine `AS` with `SELECT VALUE` (`SELECT VALUE c.name AS n` is
-  invalid).
+- `SELECT VALUE expr` returns the expression directly, including scalars, arrays, and
+  objects. Use `SELECT VALUE {"id": c.id, "label": c.name} FROM c` for one object per
+  document with top-level `id` and `label` fields. `SELECT {"id": c.id, "label": c.name}
+  FROM c` instead nests that object under a generated `$1` property; do not use it when
+  the requested fields must be at the top level.
+  Do NOT combine `AS` with `SELECT VALUE` (`SELECT VALUE c.name AS n` is invalid).
 - `SELECT DISTINCT ...` removes duplicate rows. For all unique values of a property use
   `SELECT DISTINCT VALUE c.propertyName FROM c`, not `SELECT DISTINCT c.propertyName`.
 - `SELECT TOP n ...` limits returned rows. `n` must be an integer literal or `@parameter`
   — never a float or property reference. Combine: `SELECT DISTINCT TOP 3 c.category FROM c`.
-- Object literals: `SELECT {"id": c.id, "label": c.name} FROM c`. Array literals:
-  `SELECT [c.price, c.rating] FROM c`.
+- Named projections such as `SELECT c.id, c.name AS label FROM c` also return flat
+  objects. For arrays without a generated wrapper, use `SELECT VALUE [c.price, c.rating]
+  FROM c`.
 - Alias projections with `AS aliasName` or `expr aliasName`; format aliases in camelCase.
 - To inspect the schema, show the first record: `SELECT TOP 1 * FROM c`.
 

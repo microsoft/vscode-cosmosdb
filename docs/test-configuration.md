@@ -218,7 +218,8 @@ product schema, named `Generate query: ...` and `Explain query: ...` so reports 
 
 - **Array JOIN:** expand each product's tags, preserving duplicates and excluding empty arrays.
 - **Nested ARRAY/SELECT VALUE:** return case-insensitive prefix matches as strings, keeping products with no matches.
-- **Conditional JSON projection:** use a ternary expression and SELECT VALUE; Explain also tests selected-query precedence.
+- **Conditional JSON projection:** return flat objects with availability derived from `inStock`;
+  Explain also tests selected-query precedence.
 
 It pins `gpt-5.6-luna` for lower-cost execution and `gpt-5.6-terra` for mid-range explanation judging.
 Generation requires the [query-generation skill](../skills/cosmosdb-nosql-query-generation/SKILL.md) and uses
@@ -230,6 +231,10 @@ The evaluations explicitly provide skill directories, including their supporting
 Every grader must pass (100% threshold). Generation requires plain-text NoSQL queries and rejects Markdown wrappers,
 prose, comments, extra statements, and incorrect query shapes. Production still accepts Markdown wrappers for compatibility;
 the evaluations intentionally reject them to keep pattern matching simple.
+Generation graders allow different container and element aliases, but require consistent case-sensitive references
+and exact property names. They accept `SELECT VALUE` objects or named projections, in either property order.
+Availability accepts either a ternary or `IIF`. An object literal projected without `VALUE` is still rejected because
+it introduces an extra `$1` wrapper.
 Explain rubrics list only the required behavior. The judge grades meaning rather than wording and fails any missing
 criterion or incorrect claim.
 

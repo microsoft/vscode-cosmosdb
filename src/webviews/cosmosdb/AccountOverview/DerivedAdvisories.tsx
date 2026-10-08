@@ -18,6 +18,7 @@ import {
     Text,
     tokens,
     Tooltip,
+    useRestoreFocusTarget,
 } from '@fluentui/react-components';
 import { ChevronRight16Regular, Dismiss16Regular, Sparkle16Regular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
@@ -29,14 +30,7 @@ import {
     type DerivedAdvisoriesResult,
     type UnavailableReason,
 } from '../../api/types';
-import {
-    DIAGNOSTIC_SETTINGS_URL,
-    EmptyState,
-    Pill,
-    type PillTone,
-    RBAC_LEARN_MORE_URL,
-    useDashboardActions,
-} from './DashboardChrome';
+import { DIAGNOSTIC_SETTINGS_URL, EmptyState, Pill, type PillTone, useDashboardActions } from './DashboardChrome';
 
 const SEVERITY_TONE: Record<DerivedAdvisorySeverity, PillTone> = {
     High: 'danger',
@@ -100,6 +94,13 @@ const useStyles = makeStyles({
         fontSize: tokens.fontSizeBase200,
         color: 'var(--vscode-descriptionForeground)',
     },
+    noticeActions: {
+        display: 'flex',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: tokens.spacingHorizontalM,
+        marginTop: tokens.spacingVerticalS,
+    },
     scrollBody: {
         flexGrow: 1,
         minHeight: 0,
@@ -154,30 +155,36 @@ const useStyles = makeStyles({
     dialogList: {
         display: 'flex',
         flexDirection: 'column',
-        gap: tokens.spacingVerticalS,
+        listStyleType: 'none',
+        padding: 0,
+        marginBottom: 0,
         maxHeight: '60vh',
         overflowY: 'auto',
     },
     detailItem: {
         display: 'flex',
-        flexDirection: 'column',
-        gap: '2px',
-        padding: tokens.spacingHorizontalM,
-        borderRadius: tokens.borderRadiusMedium,
-        border: '1px solid var(--vscode-widget-border, var(--vscode-panel-border))',
-        backgroundColor: 'var(--vscode-editor-background)',
-    },
-    detailHeader: {
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
+        alignItems: 'flex-start',
         gap: tokens.spacingHorizontalS,
+        paddingTop: tokens.spacingVerticalS,
+        paddingBottom: tokens.spacingVerticalS,
+        borderBottom: '1px solid var(--vscode-widget-border, var(--vscode-panel-border))',
+    },
+    detailContent: {
+        flexGrow: 1,
+        minWidth: 0,
+    },
+    detailDescription: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: tokens.spacingVerticalXS,
+        marginTop: tokens.spacingVerticalS,
     },
     detailScope: {
         fontWeight: tokens.fontWeightSemibold,
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap',
+        overflowWrap: 'anywhere',
+    },
+    detailToggle: {
+        cursor: 'pointer',
     },
     item: {
         display: 'flex',
@@ -267,7 +274,7 @@ function ruleMeta(rule: DerivedAdvisoryRule): { name: string; description: strin
             return {
                 name: l10n.t('Sustained throttling'),
                 description: l10n.t(
-                    'Every physical partition is at capacity, so the container is uniformly under-provisioned and throttling requests.',
+                    'A physical partition is saturated and no sibling has sufficient headroom, indicating uniform capacity pressure while requests are throttled.',
                 ),
             };
         case 'OverProvisioning':
@@ -288,7 +295,7 @@ function ruleMeta(rule: DerivedAdvisoryRule): { name: string; description: strin
             return {
                 name: l10n.t('Storage growth risk'),
                 description: l10n.t(
-                    'A physical partition is on track to reach the 50 GiB split ceiling soon at its current storage growth rate.',
+                    'A physical partition has reached the 50 GiB split ceiling or is on track to reach it soon.',
                 ),
             };
         case 'StorageSkewRisk':
@@ -354,6 +361,16 @@ function ruleMeta(rule: DerivedAdvisoryRule): { name: string; description: strin
                     'The account consumption pattern is intermittent enough that serverless may cost less than provisioned throughput.',
                 ),
             };
+        case 'ServerlessThrottling':
+            return {
+                name: l10n.t('Serverless throttling'),
+                description:
+                    l10n.t('A serverless container is throttling requests.') +
+                    ' ' +
+                    l10n.t(
+                        'There is no provisioned RU/s setting to raise; consider provisioned capacity for sustained demand.',
+                    ),
+            };
         case 'CrossPartitionQuery':
             return {
                 name: l10n.t('Cross-partition queries'),
@@ -399,7 +416,7 @@ interface AdvisoryGroup {
 
 /**
  * Collapses the flat advisory list into one entry per detector. At scale a per-container list can run to tens of
- * thousands of rows; grouping keeps the card to at most one row per detector (18) and defers the container list to
+ * thousands of rows; grouping keeps the card to at most one row per detector and defers the container list to
  * an on-demand dialog, so the DOM never holds every finding at once.
  */
 function groupAdvisories(advisories: readonly DerivedAdvisory[]): AdvisoryGroup[] {
@@ -446,24 +463,39 @@ function logCoverageNotice(reason: UnavailableReason | undefined): {
     switch (reason) {
         case 'logAnalyticsDisabled':
             return {
-                body: l10n.t(
-                    "Log-based checks (cross-partition queries, ingestion, shared-throughput) didn't run because diagnostic settings aren't exporting logs to a Log Analytics workspace.",
-                ),
+                body:
+                    l10n.t('Some required CDB log tables could not be queried.') +
+                    ' ' +
+                    l10n.t(
+                        'Check that DataPlaneRequests and QueryRuntimeStatistics are exported to Log Analytics in resource-specific mode, not only AzureDiagnostics.',
+                    ) +
+                    ' ' +
+                    l10n.t('Missing tables can also reflect access restrictions or delayed ingestion.'),
                 linkLabel: l10n.t('Learn how to enable diagnostic settings'),
                 linkUrl: DIAGNOSTIC_SETTINGS_URL,
             };
         case 'rbac':
             return {
-                body: l10n.t("Log-based checks didn't run: your role is missing Log Analytics Reader."),
-                linkLabel: l10n.t('Learn more about Azure roles'),
-                linkUrl: RBAC_LEARN_MORE_URL,
+                body:
+                    l10n.t('Some log-based checks were denied access.') +
+                    ' ' +
+                    l10n.t(
+                        'Check the signed-in identity, resource log permissions, and the workspace access-control mode and table permissions.',
+                    ) +
+                    ' ' +
+                    l10n.t('Enabling diagnostic settings does not grant query access.'),
+                linkLabel: l10n.t('Learn about Log Analytics access'),
+                linkUrl: 'https://learn.microsoft.com/azure/azure-monitor/logs/manage-access',
             };
         case 'noData':
         default:
             return {
-                body: l10n.t(
-                    "Log-based checks didn't run: there's no log telemetry in the window yet, or logs were enabled recently.",
-                ),
+                body:
+                    l10n.t('Some log-based queries failed or returned incomplete results.') +
+                    ' ' +
+                    l10n.t(
+                        'Available checks still contribute recommendations; this does not mean Log Analytics is disabled.',
+                    ),
             };
     }
 }
@@ -479,7 +511,7 @@ function groupCountLabel(group: AdvisoryGroup): string {
 /**
  * One summary card per detector. Shows the detector's name, description, headline severity, and how many containers
  * matched — but not the containers themselves. Activating it opens the drill-in dialog with the full per-container
- * list, so the section stays at ≤ 18 rows no matter how many findings the account has.
+ * list, so the section stays at one row per detector no matter how many findings the account has.
  */
 const AdvisoryGroupCard = ({
     group,
@@ -491,6 +523,7 @@ const AdvisoryGroupCard = ({
     buttonRef: (el: HTMLButtonElement | null) => void;
 }) => {
     const styles = useStyles();
+    const restoreFocusTargetAttributes = useRestoreFocusTarget();
     const count = groupCountLabel(group);
     return (
         <button
@@ -499,6 +532,7 @@ const AdvisoryGroupCard = ({
             className={styles.groupCard}
             onClick={() => onOpen(group.rule)}
             aria-label={l10n.t('{name}. {count}. Show affected containers.', { name: group.name, count })}
+            {...restoreFocusTargetAttributes}
         >
             <div className={styles.titleRow}>
                 <div className={styles.titleGroup}>
@@ -518,9 +552,8 @@ const AdvisoryGroupCard = ({
 };
 
 /**
- * Drill-in dialog for a single detector: the per-container advisories the card summarized. Each row keeps the
- * detector's original per-container rationale, suggested action, threshold, and its own dismiss button. Rendered
- * on demand (only for the open group), so the tens-of-thousands-of-findings worst case never all hit the DOM.
+ * Shared guidance appears once above a compact resource list. Resource-specific evidence stays in disclosures,
+ * so different measurements and recommendations remain available without repeating the common description.
  */
 const AdvisoryDetailDialog = ({
     group,
@@ -540,6 +573,16 @@ const AdvisoryDetailDialog = ({
         return null;
     }
     const rows = group.advisories.filter((advisory) => !dismissedIds.has(advisory.id));
+    const detailFields = [
+        { key: 'rationale', className: styles.rationale },
+        { key: 'suggestedAction', className: styles.action },
+        { key: 'thresholdReference', className: styles.threshold },
+    ] as const;
+    const first = rows[0];
+    const sharedFields = detailFields.filter(
+        ({ key }) => first && rows.every((advisory) => advisory[key] === first[key]),
+    );
+    const resourceFields = detailFields.filter((field) => !sharedFields.includes(field));
     return (
         <Dialog open={open} onOpenChange={(_, data) => onOpenChange(data.open)}>
             <DialogSurface className={styles.dialogSurface}>
@@ -549,32 +592,52 @@ const AdvisoryDetailDialog = ({
                         <Text className={styles.groupDescription} block>
                             {group.description}
                         </Text>
-                        <div className={styles.dialogList}>
+                        <div className={styles.detailDescription}>
+                            {first &&
+                                sharedFields.map(({ key, className }) => (
+                                    <Text key={key} className={className}>
+                                        {first[key]}
+                                    </Text>
+                                ))}
+                        </div>
+                        {/* Safari needs the explicit role when list-style is none. */}
+                        {/* oxlint-disable-next-line jsx-a11y/no-redundant-roles */}
+                        <ul className={styles.dialogList} aria-label={group.name} role="list">
                             {rows.map((advisory) => {
                                 const scopeLabel = advisory.scope ?? l10n.t('Account-wide');
                                 return (
-                                    <div key={advisory.id} className={styles.detailItem}>
-                                        <div className={styles.detailHeader}>
-                                            <Text className={styles.detailScope} title={scopeLabel}>
-                                                {scopeLabel}
+                                    <li key={advisory.id} className={styles.detailItem}>
+                                        {resourceFields.length > 0 ? (
+                                            <details className={styles.detailContent}>
+                                                <summary className={styles.detailToggle}>
+                                                    <span className={styles.detailScope}>{scopeLabel}</span>
+                                                </summary>
+                                                <div className={styles.detailDescription}>
+                                                    {resourceFields.map(({ key, className }) => (
+                                                        <Text key={key} className={className}>
+                                                            {advisory[key]}
+                                                        </Text>
+                                                    ))}
+                                                </div>
+                                            </details>
+                                        ) : (
+                                            <Text className={styles.detailContent}>
+                                                <span className={styles.detailScope}>{scopeLabel}</span>
                                             </Text>
-                                            <Button
-                                                size="small"
-                                                appearance="subtle"
-                                                icon={<Dismiss16Regular />}
-                                                onClick={() => onDismiss(advisory.id)}
-                                                aria-label={l10n.t('Dismiss advisory for {scope}', {
-                                                    scope: scopeLabel,
-                                                })}
-                                            />
-                                        </div>
-                                        <Text className={styles.rationale}>{advisory.rationale}</Text>
-                                        <Text className={styles.action}>{advisory.suggestedAction}</Text>
-                                        <Text className={styles.threshold}>{advisory.thresholdReference}</Text>
-                                    </div>
+                                        )}
+                                        <Button
+                                            size="small"
+                                            appearance="subtle"
+                                            icon={<Dismiss16Regular />}
+                                            onClick={() => onDismiss(advisory.id)}
+                                            aria-label={l10n.t('Dismiss advisory for {scope}', {
+                                                scope: scopeLabel,
+                                            })}
+                                        />
+                                    </li>
                                 );
                             })}
-                        </div>
+                        </ul>
                     </DialogContent>
                     <DialogActions>
                         <DialogTrigger disableButtonEnhancement>
@@ -610,18 +673,21 @@ export const DerivedAdvisories = ({
     // Collapse the flat advisory list (worst case: tens of thousands of container-scoped findings) into one group per
     // detector. Memoized on the raw list + dismissals so a card re-render never re-buckets the whole account.
     const groups = useMemo(() => {
-        const visible = (result?.advisories ?? []).filter((advisory) => !dismissedIds.has(advisory.id));
+        const visible = (result?.advisories ?? []).filter(
+            (advisory) => !advisory.supersededBy && !dismissedIds.has(advisory.id),
+        );
         return groupAdvisories(visible);
     }, [result?.advisories, dismissedIds]);
     const visibleCount = groups.reduce((total, group) => total + group.advisories.length, 0);
     const openGroup = groups.find((group) => group.rule === openRule) ?? null;
 
-    // Partial coverage: the section itself is available (Tier-1 ran) but the Log Analytics (Tier-2) analyzers were
-    // skipped. We keep rendering the Tier-1 advisories and surface Tier-2's degradation explicitly, rather than
+    // Partial coverage: the section itself is available (Tier-1 ran) but some Log Analytics (Tier-2) checks failed.
+    // We keep rendering all available advisories and surface Tier-2's degradation explicitly, rather than
     // blanking the card with an all-or-nothing empty-state.
     const logSource = result?.logSource;
     const partialCoverage = !!result?.available && !!logSource && logSource.available === false;
     const coverageReason = logSource?.reason;
+    const metricPartialCoverage = !!result?.available && result.metricSource?.available === false;
 
     useEffect(() => {
         if (partialCoverage) {
@@ -655,24 +721,22 @@ export const DerivedAdvisories = ({
         </Badge>
     );
 
-    const coverageBadge = partialCoverage ? (
-        <Tooltip
-            content={l10n.t('Some log-based analyzers were unavailable, so coverage is partial.')}
-            relationship="description"
-        >
-            <Badge
-                className={styles.coveragePill}
-                tabIndex={0}
-                appearance="tint"
-                color="warning"
-                aria-label={l10n.t(
-                    'Partial coverage. Some log-based analyzers were unavailable, so coverage is partial.',
-                )}
-            >
-                <span aria-hidden="true">{l10n.t('Partial coverage')}</span>
-            </Badge>
-        </Tooltip>
-    ) : null;
+    const coverageLabel = l10n.t('Partial coverage');
+    const coverageDescription = l10n.t('Some analyzers could not run, so coverage is partial.');
+    const coverageBadge =
+        partialCoverage || metricPartialCoverage ? (
+            <Tooltip content={coverageDescription} relationship="description">
+                <Badge
+                    className={styles.coveragePill}
+                    tabIndex={0}
+                    appearance="tint"
+                    color="warning"
+                    aria-label={`${coverageLabel}. ${coverageDescription}`}
+                >
+                    <span aria-hidden="true">{coverageLabel}</span>
+                </Badge>
+            </Tooltip>
+        ) : null;
 
     let body: ReactNode;
     if (loading && !result) {
@@ -680,7 +744,13 @@ export const DerivedAdvisories = ({
     } else if (!result || !result.available) {
         body = <EmptyState reason={result?.reason ?? 'noData'} requiredRole={l10n.t('Monitoring Reader')} />;
     } else if (groups.length === 0) {
-        body = <Text className={styles.emptyState}>{l10n.t('No advisories from your telemetry right now.')}</Text>;
+        body = (
+            <Text className={styles.emptyState}>
+                {partialCoverage || metricPartialCoverage
+                    ? l10n.t('No advisories from the checks that completed.')
+                    : l10n.t('No advisories from your telemetry right now.')}
+            </Text>
+        );
     } else {
         body = (
             <div className={styles.list}>
@@ -712,7 +782,8 @@ export const DerivedAdvisories = ({
                 {coverageBadge}
             </div>
             <div className={styles.scrollBody}>
-                {partialCoverage && <PartialCoverageNotice reason={coverageReason} />}
+                {partialCoverage && <PartialCoverageNotice source={logSource} />}
+                {metricPartialCoverage && <MetricCoverageNotice source={result?.metricSource} />}
                 {body}
             </div>
             <AdvisoryDetailDialog
@@ -730,23 +801,87 @@ export const DerivedAdvisories = ({
     );
 };
 
-/**
- * Inline, reason-specific notice explaining that the Log Analytics ("Tier-2") analyzers were skipped, shown inside
- * the card above the Tier-1 advisories (which still render). Names the fix and links to guidance where actionable.
- */
-const PartialCoverageNotice = ({ reason }: { reason?: UnavailableReason }) => {
+const MetricCoverageNotice = ({ source }: { source: DerivedAdvisoriesResult['metricSource'] }) => {
     const styles = useStyles();
-    const { openUrl } = useDashboardActions();
-    const { body, linkLabel, linkUrl } = logCoverageNotice(reason);
+    const reasons: Record<UnavailableReason, string> = {
+        noData: l10n.t('Metric data unavailable or incomplete'),
+        rbac: l10n.t('Access denied'),
+        unsupported: l10n.t('Not supported for this account'),
+        logAnalyticsDisabled: l10n.t('Required table unavailable'),
+    };
+    const failures = new Map((source?.failures ?? []).map((failure) => [`${failure.rule}:${failure.reason}`, failure]));
+    return (
+        <output className={styles.notice}>
+            <Text className={styles.noticeTitle}>{l10n.t('Incomplete workload analysis')}</Text>
+            <Text className={styles.noticeBody}>
+                {l10n.t(
+                    'Some workload checks could not run. Missing or failed metric queries are not treated as zero usage.',
+                ) +
+                    ' ' +
+                    l10n.t('Configuration checks and successful analyses still contribute recommendations.')}
+            </Text>
+            <ul>
+                {[...failures].map(([key, failure]) => (
+                    <li key={key}>{`${ruleMeta(failure.rule).name}: ${reasons[failure.reason]}`}</li>
+                ))}
+            </ul>
+        </output>
+    );
+};
+
+/**
+ * Inline notice explaining which Log Analytics ("Tier-2") checks failed, above findings from successful checks.
+ * Names the failure category and links to guidance where actionable.
+ */
+const PartialCoverageNotice = ({ source }: { source: DerivedAdvisoriesResult['logSource'] }) => {
+    const styles = useStyles();
+    const { openUrl, showOutput } = useDashboardActions();
+    const { body, linkLabel, linkUrl } = logCoverageNotice(source?.reason);
+    const operations = {
+        probeDataPlane: l10n.t('DataPlaneRequests availability'),
+        probeQueryRuntime: l10n.t('QueryRuntimeStatistics availability'),
+        crossPartition: l10n.t('Query fan-out'),
+        ingestionSummary: l10n.t('Ingestion totals'),
+        ingestionBurst: l10n.t('Ingestion bursts'),
+        ingestionUserAgent: l10n.t('Ingestion clients'),
+        sharedThroughput: l10n.t('Shared throughput'),
+        client: l10n.t('Log Analytics client'),
+    };
+    const kinds = {
+        accessDenied: l10n.t('Access denied'),
+        missingTable: l10n.t('Required table unavailable'),
+        queryError: l10n.t('Query error'),
+        partialFailure: l10n.t('Incomplete query result'),
+        transient: l10n.t('Temporary service failure'),
+        unknown: l10n.t('Unknown query failure'),
+        clientUnavailable: l10n.t('Client unavailable'),
+    };
     return (
         <output className={styles.notice}>
             <Text className={styles.noticeTitle}>{l10n.t('Partial coverage')}</Text>
             <Text className={styles.noticeBody}>{body}</Text>
-            {linkLabel && linkUrl && (
-                <Link as="button" onClick={() => openUrl(linkUrl)}>
-                    {linkLabel}
-                </Link>
+            {!!source?.failures?.length && (
+                <ul>
+                    {source.failures.map((failure) => (
+                        <li key={`${failure.operation}-${failure.kind}`}>
+                            {`${operations[failure.operation]}: ${kinds[failure.kind]}`}
+                        </li>
+                    ))}
+                </ul>
             )}
+            <Text className={styles.noticeBody}>
+                {l10n.t('See the extension Output channel for the HTTP status, service error details, and request ID.')}
+            </Text>
+            <div className={styles.noticeActions}>
+                <Button size="small" onClick={showOutput}>
+                    {l10n.t('Show Output')}
+                </Button>
+                {linkLabel && linkUrl && (
+                    <Link as="button" onClick={() => openUrl(linkUrl)}>
+                        {linkLabel}
+                    </Link>
+                )}
+            </div>
         </output>
     );
 };

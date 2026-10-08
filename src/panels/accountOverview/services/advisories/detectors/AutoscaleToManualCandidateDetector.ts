@@ -6,7 +6,8 @@
 import * as l10n from '@vscode/l10n';
 import { containerKey } from '../../shared';
 import { Detector, type DetectorContext } from '../core/Detector';
-import { clampRationale } from '../core/helpers';
+import { clampRationale, hasMinimumKnownResourceAge } from '../core/helpers';
+import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import { type AutoscaleUtilizationInput, type DerivedAdvisory } from '../core/types';
 
 /**
@@ -21,7 +22,11 @@ function evaluateAutoscaleToManualCandidate(
     avgFloorPercent: number,
     peakToAvgCeiling: number,
 ): DerivedAdvisory | undefined {
-    if (input.sampleCount === 0 || input.avgPercent <= 0) {
+    if (
+        input.sampleCount < DIAGNOSTIC_POLICY.autoscaleUtilization.minSamples ||
+        input.avgPercent <= 0 ||
+        !hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.autoscaleUtilization.minResourceAgeDays)
+    ) {
         return undefined;
     }
     const peakToAvg = input.peakPercent / input.avgPercent;
@@ -39,9 +44,15 @@ function evaluateAutoscaleToManualCandidate(
         title: l10n.t('Autoscale container looks steady: manual may be cheaper'),
         rationale: clampRationale(
             l10n.t(
-                'Autoscale on "{container}" averaged {avg}% of its max with a peak of {peak}%, a {ratio}× peak-to-average, so the load is steady and high with little spikiness. Autoscale carries a per-RU premium over manual, and a workload that stays high does not benefit from scaling.',
+                'Autoscale on "{container}" averaged {avg}% of its max with a peak of {peak}%, a {ratio}× peak-to-average.',
                 { container: input.containerId, avg, peak, ratio },
-            ),
+            ) +
+                ' ' +
+                l10n.t('The load is steady and high with little spikiness.') +
+                ' ' +
+                l10n.t(
+                    'Autoscale carries a per-RU premium over manual, and a workload that stays high does not benefit from scaling.',
+                ),
         ),
         suggestedAction: l10n.t(
             'Consider converting "{container}" to manual throughput at a fixed RU/s near the sustained level to drop the autoscale premium.',

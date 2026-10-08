@@ -30,6 +30,7 @@ export * from './detectors/PartitionMergeCandidateDetector';
 export * from './detectors/AutoscaleMaxOverProvisionedDetector';
 export * from './detectors/AutoscaleToManualCandidateDetector';
 export * from './detectors/ServerlessCandidateDetector';
+export * from './detectors/ServerlessThrottlingDetector';
 export * from './detectors/CrossPartitionQueryDetector';
 export * from './detectors/ShardKeyMisalignmentDetector';
 export * from './detectors/UncontrolledIngestionDetector';

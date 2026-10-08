@@ -4,31 +4,33 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type PartitionStorageSample } from '../../partitionHealth';
+import { DAY, GIB } from '../../units';
 import { mean } from '../core/helpers';
+import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import { type StoragePartitionSeries } from '../core/types';
 
-export const GIB = 1024 ** 3;
-export const MS_PER_DAY = 24 * 60 * 60 * 1000;
+export { GIB } from '../../units';
+export const MS_PER_DAY = DAY;
 
 // Physical-partition storage split ceiling (50 GiB) — the wall StorageGrowthRisk projects to. Azure platform
 // limit, not a heuristic:
 // https://learn.microsoft.com/azure/cosmos-db/partitioning#physical-partitions
 export const PARTITION_STORAGE_LIMIT_BYTES = 50 * GIB;
 /** Below this current size a partition is immaterial and ignored (a tiny partition near the wall is not a concern). */
-export const STORAGE_GROWTH_MIN_MATERIAL_BYTES = 1 * GIB;
+export const STORAGE_GROWTH_MIN_MATERIAL_BYTES = DIAGNOSTIC_POLICY.storageGrowth.minMaterialBytes;
 /** Below this slope the growth is noise, not a trend — avoids projecting a wall from flat/jittery series. */
-export const STORAGE_GROWTH_MIN_SLOPE_BYTES_PER_DAY = 0.1 * GIB;
+export const STORAGE_GROWTH_MIN_SLOPE_BYTES_PER_DAY = DIAGNOSTIC_POLICY.storageGrowth.minSlopeBytesPerDay;
 /** Days-to-limit at or below which StorageGrowthRisk ranks High. */
-export const STORAGE_GROWTH_HIGH_DAYS = 30;
+export const STORAGE_GROWTH_HIGH_DAYS = DIAGNOSTIC_POLICY.storageGrowth.highDays;
 /** Days-to-limit at or below which StorageGrowthRisk ranks Medium (above it, up to the horizon, Low). */
-export const STORAGE_GROWTH_MEDIUM_DAYS = 90;
+export const STORAGE_GROWTH_MEDIUM_DAYS = DIAGNOSTIC_POLICY.storageGrowth.mediumDays;
 
 /** Below this busiest-partition size, storage skew is immaterial (a balanced-but-tiny split is not a concern). */
-export const STORAGE_SKEW_MIN_BUSIEST_BYTES = 1 * GIB;
+export const STORAGE_SKEW_MIN_BUSIEST_BYTES = DIAGNOSTIC_POLICY.storageSkew.minBusiestBytes;
 /** Busiest-partition size (≥ 80% of the 50 GiB ceiling) at or above which StorageSkewRisk ranks High. */
-export const STORAGE_SKEW_HIGH_BYTES = 40 * GIB;
+export const STORAGE_SKEW_HIGH_BYTES = DIAGNOSTIC_POLICY.storageSkew.highBytes;
 /** Busiest-partition size (≥ 50% of the 50 GiB ceiling) at or above which StorageSkewRisk ranks Medium. */
-export const STORAGE_SKEW_MEDIUM_BYTES = 25 * GIB;
+export const STORAGE_SKEW_MEDIUM_BYTES = DIAGNOSTIC_POLICY.storageSkew.mediumBytes;
 
 /** Latest (newest-timestamp) size in bytes of a partition's series, or undefined when it has no samples. Pure. */
 export function latestBytes(series: StoragePartitionSeries): number | undefined {
@@ -52,7 +54,7 @@ export function latestBytes(series: StoragePartitionSeries): number | undefined 
  */
 export function storageGrowthSlopeBytesPerDay(samples: readonly PartitionStorageSample[]): number | undefined {
     const clean = samples.filter((s) => Number.isFinite(s.timestamp) && Number.isFinite(s.bytes));
-    if (clean.length < 2) {
+    if (clean.length < DIAGNOSTIC_POLICY.storageGrowth.minSamples) {
         return undefined;
     }
     const xsDays = clean.map((s) => s.timestamp / MS_PER_DAY);
@@ -100,7 +102,7 @@ export function daysToStorageLimit(
  */
 export function balanceRatio(sizesBytes: readonly number[]): number | undefined {
     const clean = sizesBytes.filter((v) => Number.isFinite(v) && v >= 0);
-    if (clean.length < 2) {
+    if (clean.length < DIAGNOSTIC_POLICY.storageSkew.minPartitions) {
         return undefined;
     }
     const max = Math.max(...clean);

@@ -3,8 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type LogsQueryResult, type LogsTable } from '@azure/monitor-query-logs';
-import { describe, expect, it } from 'vitest';
+import { createHttpHeaders } from '@azure/core-rest-pipeline';
+import {
+    LogsQueryClient,
+    LogsQueryResultStatus,
+    type LogsQueryResult,
+    type LogsTable,
+} from '@azure/monitor-query-logs';
+import { describe, expect, it, vi } from 'vitest';
 import {
     classifyLogsError,
     cleanQueryText,
@@ -17,6 +23,7 @@ import {
     type LogsQueryExecutor,
     type LogsTimespan,
 } from './logs';
+import { LogsFetchError, type LogsDiagnostic, type LogsOperation } from './logsDiagnostics';
 
 const RESOURCE = '/subscriptions/s/resourceGroups/rg/providers/Microsoft.DocumentDB/databaseAccounts/acct';
 const SPAN: LogsTimespan = logWindow(Date.parse('2024-01-02T00:00:00Z'));
@@ -59,20 +66,6 @@ describe('tableToRecords', () => {
     it('returns an empty array for a missing table', () => {
         expect(tableToRecords(undefined)).toEqual([]);
     });
-
-    it('reads rows from a partial (partialTables) result', () => {
-        const partial = {
-            status: 'PartialFailure',
-            partialTables: [table(['n'], [[1], [2]])],
-        } as unknown as LogsQueryResult;
-        // firstTable is internal; exercise it through a fetcher that reads partialTables.
-        expect(partial).toBeDefined();
-        // tableToRecords itself only takes a table, so assert the shape it produces from that partial table.
-        expect(tableToRecords((partial as unknown as { partialTables: LogsTable[] }).partialTables[0])).toEqual([
-            { n: 1 },
-            { n: 2 },
-        ]);
-    });
 });
 
 describe('classifyLogsError', () => {
@@ -94,6 +87,28 @@ describe('classifyLogsError', () => {
         expect(classifyLogsError({ statusCode: 403, message: 'Forbidden' })).toBe('rbac');
     });
 
+    it('recognizes authorization failures inside a Log Analytics error envelope', () => {
+        expect(
+            classifyLogsError({
+                code: 'PartialError',
+                details: [{ code: 'InsufficientAccessError', message: 'Insufficient access to query the resource.' }],
+            }),
+        ).toBe('rbac');
+    });
+
+    it('does not label a query syntax or column error as disabled Log Analytics', () => {
+        expect(
+            classifyLogsError({
+                code: 'BadArgumentError',
+                message: 'The request had some invalid properties',
+                innererror: {
+                    code: 'SemanticError',
+                    message: "Failed to resolve scalar expression named 'MissingColumn'",
+                },
+            }),
+        ).not.toBe('logAnalyticsDisabled');
+    });
+
     it('degrades anything else to noData', () => {
         expect(classifyLogsError({ statusCode: 503, message: 'Service unavailable' })).toBe('noData');
         expect(classifyLogsError(new Error('socket hang up'))).toBe('noData');
@@ -101,6 +116,19 @@ describe('classifyLogsError', () => {
 });
 
 describe('probeCdbLogs', () => {
+    it.each(['CDBDataPlaneRequests', 'CDBQueryRuntimeStatistics'] as const)(
+        'probes only the schema of %s using the normalized Cosmos ARM resource ID',
+        async (tableName) => {
+            const queryResource = vi.fn().mockResolvedValue(success(table(['x'], [])));
+            const onDiagnostic = vi.fn();
+            await expect(
+                probeCdbLogs({ queryResource }, RESOURCE, SPAN, { table: tableName, onDiagnostic }),
+            ).resolves.toEqual({ available: true });
+            expect(queryResource).toHaveBeenCalledExactlyOnceWith(RESOURCE.slice(1), `${tableName} | take 0`, SPAN);
+            expect(onDiagnostic).not.toHaveBeenCalled();
+        },
+    );
+
     it('reports available when the probe query succeeds (even with zero rows)', async () => {
         const executor: LogsQueryExecutor = {
             queryResource: () => Promise.resolve(success(table(['x'], []))),
@@ -127,6 +155,60 @@ describe('probeCdbLogs', () => {
         };
         await expect(probeCdbLogs(executor, RESOURCE, SPAN)).resolves.toEqual({ available: false, reason: 'rbac' });
     });
+
+    it('does not report a partial authorization failure as a successful probe', async () => {
+        const executor: LogsQueryExecutor = {
+            queryResource: async () => ({
+                status: LogsQueryResultStatus.PartialFailure,
+                partialTables: [],
+                partialError: {
+                    code: 'InsufficientAccessError',
+                    message: 'Insufficient access to query the resource.',
+                },
+            }),
+        };
+        await expect(probeCdbLogs(executor, RESOURCE, SPAN)).resolves.toMatchObject({
+            available: false,
+            reason: 'rbac',
+        });
+    });
+
+    it('defaults to the data-plane schema and reports a partial error even with rows', async () => {
+        const queryResource = vi.fn().mockResolvedValue({
+            status: 'PartialFailure',
+            partialTables: [table(['document'], [['PRIVATE_DOCUMENT']])],
+            partialError: { code: 'PartialError', message: 'Query exceeded its memory limit.' },
+        });
+        const onDiagnostic = vi.fn();
+        await expect(probeCdbLogs({ queryResource }, RESOURCE, SPAN, { onDiagnostic })).resolves.toEqual({
+            available: false,
+            reason: 'noData',
+        });
+        expect(queryResource).toHaveBeenCalledExactlyOnceWith(RESOURCE.slice(1), 'CDBDataPlaneRequests | take 0', SPAN);
+        expect(onDiagnostic).toHaveBeenCalledExactlyOnceWith(
+            expect.objectContaining({
+                operation: 'probeDataPlane',
+                kind: 'partialFailure',
+                codes: ['PartialError'],
+                messages: ['Query exceeded its memory limit.'],
+            }),
+        );
+        expect(JSON.stringify(onDiagnostic.mock.calls)).not.toContain('PRIVATE_DOCUMENT');
+    });
+
+    it.each([undefined, {}, { status: 'Success', tables: [] }, { status: 'Success', tables: [{}] }])(
+        'does not report malformed results as available: %j',
+        async (result) => {
+            const onDiagnostic = vi.fn();
+            await expect(
+                probeCdbLogs({ queryResource: vi.fn().mockResolvedValue(result) }, RESOURCE, SPAN, {
+                    onDiagnostic,
+                }),
+            ).resolves.toEqual({ available: false, reason: 'noData' });
+            expect(onDiagnostic).toHaveBeenCalledOnce();
+            expect(onDiagnostic.mock.calls[0][0].messages).toEqual(['Log query returned no valid result table.']);
+        },
+    );
 });
 
 describe('cleanQueryText', () => {
@@ -140,6 +222,44 @@ describe('cleanQueryText', () => {
 });
 
 describe('fetchCrossPartitionShapes', () => {
+    it.each([
+        table(['QueryText', 'executions', 'avgFanout', 'maxFanout'], [['SELECT p1', 1000, 100]]),
+        table(['QueryText', 'executions', 'avgFanout'], [['SELECT p1', 1000, 100]]),
+    ])('rejects incomplete rows and schemas instead of fabricating zero counts', async (resultTable) => {
+        const onDiagnostic = vi.fn();
+        await expect(
+            fetchCrossPartitionShapes(
+                { queryResource: async () => success(resultTable) },
+                RESOURCE,
+                'db',
+                'coll',
+                SPAN,
+                onDiagnostic,
+            ),
+        ).rejects.toMatchObject({ name: 'LogsFetchError', reason: 'noData' });
+        expect(onDiagnostic).toHaveBeenCalledOnce();
+    });
+
+    it('uses only the first successful table and emits no diagnostics', async () => {
+        const onDiagnostic = vi.fn();
+        const executor: LogsQueryExecutor = {
+            queryResource: async () =>
+                ({
+                    status: 'Success',
+                    tables: [
+                        table([], []),
+                        table(['QueryText', 'executions', 'avgFanout', 'maxFanout'], [['ignored', 1, 1, 1]]),
+                    ],
+                }) as unknown as LogsQueryResult,
+        };
+        await expect(
+            fetchCrossPartitionShapes(executor, RESOURCE, 'db', 'coll', SPAN, onDiagnostic),
+        ).resolves.toMatchObject({
+            shapes: [],
+        });
+        expect(onDiagnostic).not.toHaveBeenCalled();
+    });
+
     it('maps rows into query shapes and drops empty QueryText', async () => {
         const executor = executorByQuery([
             {
@@ -177,6 +297,35 @@ describe('fetchCrossPartitionShapes', () => {
 });
 
 describe('fetchUncontrolledIngestion', () => {
+    it('waits for all failed queries to report before rejecting the batch', async () => {
+        let rejectBurst!: (reason: unknown) => void;
+        const burst = new Promise<LogsQueryResult>((_resolve, reject) => {
+            rejectBurst = reject;
+        });
+        const onDiagnostic = vi.fn();
+        const executor: LogsQueryExecutor = {
+            queryResource: async (_resourceId, query) => {
+                if (query.includes('peak =')) {
+                    return burst;
+                }
+                throw sdkError({ code: 'Forbidden' });
+            },
+        };
+        let settled = false;
+        const result = fetchUncontrolledIngestion(executor, RESOURCE, 'db', 'coll', SPAN, onDiagnostic);
+        const observed = result.catch(() => {
+            settled = true;
+        });
+        await vi.waitFor(() => expect(onDiagnostic).toHaveBeenCalledTimes(2));
+        expect(settled).toBe(false);
+        rejectBurst({ code: 'TimeoutError' });
+        await observed;
+        expect(onDiagnostic).toHaveBeenCalledTimes(3);
+        expect(
+            onDiagnostic.mock.calls.map(([diagnostic]) => diagnostic.operation).sort((a, b) => a.localeCompare(b)),
+        ).toEqual(['ingestionBurst', 'ingestionSummary', 'ingestionUserAgent']);
+    });
+
     it('folds the agg/burst/ua queries into the ingestion input', async () => {
         const executor = executorByQuery([
             {
@@ -239,5 +388,156 @@ describe('fetchSharedThroughputTraffic', () => {
             { containerId: 'hot', requests: 10_000, throttledRequests: 500, ruConsumed: 900_000 },
             { containerId: 'cold', requests: 1_000, throttledRequests: 300, ruConsumed: 50_000 },
         ]);
+    });
+});
+
+const detectorCalls: {
+    operation: LogsOperation;
+    match: string;
+    run: (executor: LogsQueryExecutor, report: (diagnostic: LogsDiagnostic) => void) => Promise<unknown>;
+}[] = [
+    {
+        operation: 'crossPartition',
+        match: 'CDBQueryRuntimeStatistics',
+        run: (executor, report) =>
+            fetchCrossPartitionShapes(executor, RESOURCE, 'privateDatabase', 'privateContainer', SPAN, report),
+    },
+    ...(['ingestionSummary', 'ingestionBurst', 'ingestionUserAgent'] as const).map((operation, index) => ({
+        operation,
+        match: ['totalRu =', 'peak =', 'by UserAgent'][index],
+        run: (executor: LogsQueryExecutor, report: (diagnostic: LogsDiagnostic) => void) =>
+            fetchUncontrolledIngestion(executor, RESOURCE, 'privateDatabase', 'privateContainer', SPAN, report),
+    })),
+    {
+        operation: 'sharedThroughput',
+        match: 'isnotempty(CollectionName)',
+        run: (executor, report) =>
+            fetchSharedThroughputTraffic(executor, RESOURCE, 'privateDatabase', 4000, SPAN, report),
+    },
+];
+
+describe.each(detectorCalls)('$operation diagnostics', ({ operation, match, run }) => {
+    it.each(['throw', 'partial', 'malformed'] as const)(
+        'rejects %s with exactly one safe diagnostic',
+        async (failure) => {
+            const onDiagnostic = vi.fn();
+            const executor: LogsQueryExecutor = {
+                queryResource: async (resourceId, query) => {
+                    expect(resourceId).toBe(RESOURCE.replace(/^\/+/, ''));
+                    if (!query.includes(match)) {
+                        return success(table([], []));
+                    }
+                    const error = {
+                        code: 'BadArgumentError',
+                        details: {
+                            error: {
+                                innererror: {
+                                    code: 'InsufficientAccessError',
+                                    message: `Insufficient access for privateDatabase 'privateContainer' acct. ${query}`,
+                                },
+                            },
+                        },
+                    };
+                    if (failure === 'throw') {
+                        throw Object.assign(new Error('Invalid properties.'), error);
+                    }
+                    if (failure === 'malformed') {
+                        return success(undefined as unknown as LogsTable);
+                    }
+                    return {
+                        status: 'PartialFailure',
+                        partialError: error,
+                        partialTables: [table(['QueryText', 'executions'], [['PRIVATE_DOCUMENT', 100]])],
+                    } as unknown as LogsQueryResult;
+                },
+            };
+            const result = run(executor, onDiagnostic);
+            await expect(result).rejects.toBeInstanceOf(LogsFetchError);
+            await expect(result).rejects.toMatchObject({
+                reason: failure === 'malformed' ? 'noData' : 'rbac',
+                kind: failure === 'partial' ? 'partialFailure' : failure === 'throw' ? 'accessDenied' : 'unknown',
+            });
+            expect(onDiagnostic).toHaveBeenCalledOnce();
+            expect(onDiagnostic.mock.calls[0][0].operation).toBe(operation);
+            expect(JSON.stringify(onDiagnostic.mock.calls)).not.toMatch(
+                /privateDatabase|privateContainer|PRIVATE_DOCUMENT|summarize|acct/,
+            );
+            const error: unknown = await result.catch((caught: unknown) => caught);
+            expect(JSON.stringify(error)).not.toMatch(/privateDatabase|privateContainer|PRIVATE_DOCUMENT|summarize/);
+            expect(error).not.toHaveProperty('cause');
+        },
+    );
+});
+
+describe('logs SDK transport shapes', () => {
+    it.each([200, 400, 403])('classifies actual SDK responses with HTTP %s without network access', async (status) => {
+        const client = new LogsQueryClient(
+            {
+                getToken: async () => ({
+                    token: 'fake-offline-test-token',
+                    expiresOnTimestamp: Date.now() + 60_000,
+                }),
+            },
+            {
+                retryOptions: { maxRetries: 0 },
+                httpClient: {
+                    sendRequest: async (request) => ({
+                        request,
+                        status,
+                        headers: createHttpHeaders({
+                            'content-type': 'application/json',
+                            'x-ms-request-id': '11111111-2222-3333-4444-555555555555',
+                            authorization: 'PRIVATE_HEADER',
+                        }),
+                        bodyAsText: JSON.stringify({
+                            tables: [
+                                {
+                                    name: 'PrimaryResult',
+                                    columns: [{ name: 'x', type: 'string' }],
+                                    rows: [['secret']],
+                                },
+                            ],
+                            error: {
+                                code: 'BadArgumentError',
+                                message: 'Invalid properties.',
+                                innererror: { code: 'InsufficientAccessError', message: 'Insufficient access.' },
+                            },
+                        }),
+                    }),
+                },
+            },
+        );
+        const onDiagnostic = vi.fn();
+        await expect(probeCdbLogs(client, RESOURCE, SPAN, { onDiagnostic })).resolves.toEqual({
+            available: false,
+            reason: 'rbac',
+        });
+        expect(onDiagnostic).toHaveBeenCalledOnce();
+        expect(onDiagnostic.mock.calls[0][0]).toMatchObject({
+            codes: ['BadArgumentError', 'InsufficientAccessError'],
+            kind: status === 200 ? 'partialFailure' : 'accessDenied',
+        });
+        expect(JSON.stringify(onDiagnostic.mock.calls)).not.toContain('secret');
+        expect(JSON.stringify(onDiagnostic.mock.calls)).not.toContain('PRIVATE_HEADER');
+        expect(onDiagnostic.mock.calls[0][0].requestId).toBe(
+            status === 200 ? undefined : '11111111-2222-3333-4444-555555555555',
+        );
+    });
+
+    it('does not allow reporter failures to expose their raw errors', async () => {
+        const report = vi.fn(() => {
+            throw new Error('PRIVATE_REPORTER_ERROR');
+        });
+        await expect(
+            fetchCrossPartitionShapes(
+                { queryResource: async () => Promise.reject(sdkError({ code: 'Forbidden' })) },
+                RESOURCE,
+                'db',
+                'coll',
+                SPAN,
+                report,
+            ),
+        ).rejects.toMatchObject({ name: 'LogsFetchError', reason: 'rbac' });
+        expect(report).toHaveBeenCalledOnce();
     });
 });

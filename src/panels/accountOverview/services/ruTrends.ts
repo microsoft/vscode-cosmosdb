@@ -8,11 +8,13 @@ import {
     classifyUnavailable,
     containerFilter,
     isThrottledStatusCode,
+    parseMonitorTimestamp,
     pickPointValue,
     RANGE_CONFIG,
     sustainedTimestamps,
     THROTTLING_SHARE_THRESHOLD,
     type MetricAggregation,
+    type RangeConfig,
     type TimeRange,
     type UnavailableReason,
 } from './shared';
@@ -56,6 +58,7 @@ export interface RuTrendsResult {
  * derived from `TotalRequests` split by `StatusCode`. Any Azure Monitor failure
  * (unsupported API/SKU, missing dimension) resolves to `available: false` so the
  * webview can render an explicit empty-state rather than surfacing an error.
+ * Diagnostic callers supply `config` to decouple their observation window/grain from chart presets.
  */
 export async function getRuTrends(
     client: MonitorClient,
@@ -63,8 +66,8 @@ export async function getRuTrends(
     timeRange: TimeRange,
     databaseId: string | undefined,
     containerId: string | undefined,
+    config: RangeConfig = RANGE_CONFIG[timeRange],
 ): Promise<RuTrendsResult> {
-    const config = RANGE_CONFIG[timeRange];
     const end = Date.now();
     const start = end - config.windowMs;
     const timespan = `${new Date(start).toISOString()}/${new Date(end).toISOString()}`;
@@ -134,7 +137,7 @@ export async function getRuTrends(
  * the former max-only reader: the aggregation selects both the Azure Monitor
  * `aggregation` parameter and, via {@link pickPointValue}, which datapoint field
  * to read. Buckets that collide across series are merged by the aggregation's
- * natural combiner (`Total` sums, everything else takes the max — account/
+ * natural combiner (`Total`/`Count` sum, everything else takes the max — account/
  * container-scoped queries return a single series, so collisions are rare).
  */
 export async function querySeries(
@@ -156,18 +159,27 @@ export async function querySeries(
 
     const buckets = new Map<number, number>();
     for (const metric of response.value ?? []) {
+        if (metric.errorCode && metric.errorCode !== 'Success') {
+            throw new Error(metric.errorMessage ?? metric.errorCode);
+        }
         for (const series of metric.timeseries ?? []) {
             for (const point of series.data ?? []) {
                 const value = pickPointValue(point, aggregation);
                 if (value === undefined) {
                     continue;
                 }
-                const ts = new Date(point.timeStamp).getTime();
+                const ts = parseMonitorTimestamp(point.timeStamp);
+                if (ts === undefined) {
+                    continue;
+                }
                 const prev = buckets.get(ts);
                 if (prev === undefined) {
                     buckets.set(ts, value);
                 } else {
-                    buckets.set(ts, aggregation === 'Total' ? prev + value : Math.max(prev, value));
+                    buckets.set(
+                        ts,
+                        aggregation === 'Total' || aggregation === 'Count' ? prev + value : Math.max(prev, value),
+                    );
                 }
             }
         }
@@ -177,10 +189,11 @@ export async function querySeries(
 
 /**
  * Aggregate 429 throttle rate for a container (or account) over a window:
- * `sum(429 TotalRequests) / sum(TotalRequests)`, as a percentage, plus the total request count. Unlike
+ * `sum(429 TotalRequests Count) / sum(TotalRequests Count)`, as a percentage, plus the total request count. Unlike
  * {@link queryThrottlingWindows} (which flags sustained *buckets* for the RU-chart overlay), this is the single
  * fleet-comparable rate CODA DX-005 / DX-006 key on. Returns `{ ratePercent: 0, totalRequests: 0 }` when the
  * account/container served no requests in the window. Any Monitor failure propagates to the caller.
+ * Diagnostic callers supply `config`; chart callers keep the time-range preset.
  */
 export async function getThrottleRate(
     client: MonitorClient,
@@ -188,8 +201,8 @@ export async function getThrottleRate(
     timeRange: TimeRange,
     databaseId: string | undefined,
     containerId: string | undefined,
+    config: RangeConfig = RANGE_CONFIG[timeRange],
 ): Promise<{ ratePercent: number; totalRequests: number }> {
-    const config = RANGE_CONFIG[timeRange];
     const end = Date.now();
     const start = end - config.windowMs;
     const timespan = `${new Date(start).toISOString()}/${new Date(end).toISOString()}`;
@@ -198,7 +211,7 @@ export async function getThrottleRate(
 
     const response = await client.metrics.list(resourceUri, {
         metricnames: 'TotalRequests',
-        aggregation: 'Total',
+        aggregation: 'Count',
         timespan,
         interval: config.interval,
         filter: statusFilter,
@@ -211,8 +224,11 @@ export async function getThrottleRate(
             const statusCode = series.metadatavalues?.find((m) => m.name?.value?.toLowerCase() === 'statuscode')?.value;
             const isThrottle = isThrottledStatusCode(statusCode);
             for (const point of series.data ?? []) {
-                const count = point.total ?? 0;
-                if (count === 0) {
+                const count = pickPointValue(point, 'Count');
+                if (count === undefined) {
+                    continue;
+                }
+                if (parseMonitorTimestamp(point.timeStamp) === undefined) {
                     continue;
                 }
                 total += count;
@@ -228,7 +244,7 @@ export async function getThrottleRate(
 
 /**
  * Derives sustained-throttling timestamps from `TotalRequests` split by
- * `StatusCode`: per bucket, `429 share = 429 count / total count`. Buckets over
+ * `StatusCode`: per bucket, `429 Count share = 429 count / total count`. Buckets over
  * the threshold that form a contiguous run of at least
  * {@link MIN_THROTTLING_DURATION_MS} are reported.
  */
@@ -243,7 +259,7 @@ export async function queryThrottlingWindows(
     const statusFilter = filter ? `${filter} and StatusCode eq '*'` : `StatusCode eq '*'`;
     const response = await client.metrics.list(resourceUri, {
         metricnames: 'TotalRequests',
-        aggregation: 'Total',
+        aggregation: 'Count',
         timespan,
         interval,
         filter: statusFilter,
@@ -255,11 +271,14 @@ export async function queryThrottlingWindows(
             const statusCode = series.metadatavalues?.find((m) => m.name?.value?.toLowerCase() === 'statuscode')?.value;
             const isThrottle = isThrottledStatusCode(statusCode);
             for (const point of series.data ?? []) {
-                const count = point.total ?? 0;
-                if (count === 0) {
+                const count = pickPointValue(point, 'Count');
+                if (count === undefined) {
                     continue;
                 }
-                const ts = new Date(point.timeStamp).getTime();
+                const ts = parseMonitorTimestamp(point.timeStamp);
+                if (ts === undefined) {
+                    continue;
+                }
                 const entry = totals.get(ts) ?? { total: 0, throttled: 0 };
                 entry.total += count;
                 if (isThrottle) {

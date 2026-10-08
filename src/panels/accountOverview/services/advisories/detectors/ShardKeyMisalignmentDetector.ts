@@ -7,6 +7,7 @@ import * as l10n from '@vscode/l10n';
 import { containerKey } from '../../shared';
 import { Detector, type DetectorContext } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
+import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import {
     type CrossPartitionInput,
     type DerivedAdvisory,
@@ -47,13 +48,22 @@ function evaluateShardKeyMisalignment(
     input: CrossPartitionInput,
     thresholds: ShardKeyThresholds,
     crossPartitionFanoutThreshold: number,
+    minQueries: number = DIAGNOSTIC_POLICY.crossPartition.minQueries,
 ): DerivedAdvisory | undefined {
-    const { containerPartitions, crossPartitionPct } = crossPartitionStats(input.shapes, crossPartitionFanoutThreshold);
-    if (crossPartitionPct < thresholds.structuralPct || containerPartitions < thresholds.minPartitions) {
+    const { totalQueries, containerPartitions, crossPartitionPct } = crossPartitionStats(
+        input.shapes,
+        crossPartitionFanoutThreshold,
+    );
+    const roundedCrossPartitionPct = Math.round(crossPartitionPct * 10) / 10;
+    if (
+        totalQueries < minQueries ||
+        roundedCrossPartitionPct < thresholds.structuralPct ||
+        containerPartitions < thresholds.minPartitions
+    ) {
         return undefined;
     }
-    const severity: DerivedAdvisorySeverity = crossPartitionPct >= thresholds.highPct ? 'High' : 'Medium';
-    const pct = Math.round(crossPartitionPct);
+    const severity: DerivedAdvisorySeverity = roundedCrossPartitionPct >= thresholds.highPct ? 'High' : 'Medium';
+    const pct = Math.round(roundedCrossPartitionPct);
     return {
         id: `ShardKeyMisalignment/${containerKey(input.databaseId, input.containerId)}`,
         rule: 'ShardKeyMisalignment',
@@ -61,14 +71,25 @@ function evaluateShardKeyMisalignment(
         scope: containerKey(input.databaseId, input.containerId),
         title: l10n.t('Partition key misaligned in {container}', { container: input.containerId }),
         rationale: clampRationale(
+            l10n.t("{pct}% of this container's query executions fan out across ~{partitions} physical partitions.", {
+                pct,
+                partitions: containerPartitions,
+            }) +
+                ' ' +
+                l10n.t(
+                    'The partition key is structurally misaligned with the workload (the data model, not a single bad query).',
+                ),
+        ),
+        suggestedAction:
+            l10n.t('Re-key the container so the dominant query filter becomes the partition key.') +
+            ' ' +
             l10n.t(
-                "{pct}% of this container's query executions fan out across ~{partitions} physical partitions. The partition key is structurally misaligned with the workload (the data model, not a single bad query).",
-                { pct, partitions: containerPartitions },
+                'This is migration-class: create a new container with the corrected key, backfill the data, and cut over.',
+            ) +
+            ' ' +
+            l10n.t(
+                'Per-query fixes cannot resolve a fundamentally mismatched key, and the cost grows as the container adds partitions.',
             ),
-        ),
-        suggestedAction: l10n.t(
-            'Re-key the container so the dominant query filter becomes the partition key. This is migration-class: create a new container with the corrected key, backfill the data, and cut over. Per-query fixes cannot resolve a fundamentally mismatched key, and the cost grows as the container adds partitions.',
-        ),
         thresholdReference: l10n.t('Threshold: ≥ {pct}% of executions fan out across ≥ {partitions} partitions', {
             pct: thresholds.structuralPct,
             partitions: thresholds.minPartitions,
@@ -78,7 +99,7 @@ function evaluateShardKeyMisalignment(
 
 export class ShardKeyMisalignmentDetector extends Detector {
     readonly rule = 'ShardKeyMisalignment' as const;
-    readonly suppresses = ['CrossPartitionQuery'] as const;
+    readonly supersedes = ['CrossPartitionQuery'] as const;
     evaluate = evaluateShardKeyMisalignment;
     run(ctx: DetectorContext): DerivedAdvisory[] {
         const t = ctx.thresholds;
@@ -88,10 +109,11 @@ export class ShardKeyMisalignmentDetector extends Detector {
                 input,
                 {
                     structuralPct: t.shardKeyStructuralPct,
-                    minPartitions: 2,
+                    minPartitions: DIAGNOSTIC_POLICY.shardKey.minPartitions,
                     highPct: t.shardKeyHighPct,
                 },
                 t.crossPartitionFanoutThreshold,
+                t.crossPartitionMinQueries,
             );
             if (a) {
                 out.push(a);

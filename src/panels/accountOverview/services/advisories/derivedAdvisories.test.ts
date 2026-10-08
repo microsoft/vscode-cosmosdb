@@ -22,6 +22,7 @@ import {
     OverProvisioningDetector,
     PartitionMergeCandidateDetector,
     ServerlessCandidateDetector,
+    ServerlessThrottlingDetector,
     storageGrowthSlopeBytesPerDay,
     StorageGrowthRiskDetector,
     StorageSkewRiskDetector,
@@ -32,10 +33,13 @@ import {
     type ContainerStorageInput,
     type DerivedAdvisoryInputs,
     type IdleContainerInput,
+    type ManualThroughputInput,
     type PartitionMergeInput,
     type PartitionSaturationInput,
     type ServerlessCandidateInput,
+    type ServerlessThrottlingInput,
 } from '.';
+import { API } from '../../../../AzureDBExperiences';
 import { containerKey, percentile } from '../shared';
 
 // Detector classes expose the same `evaluate` signature as the old free functions (a bound field delegating to
@@ -51,6 +55,7 @@ const evaluateMultiRegionWrites = new MultiRegionWriteAntipatternDetector().eval
 const evaluateOverProvisioning = new OverProvisioningDetector().evaluate;
 const evaluatePartitionMergeCandidate = new PartitionMergeCandidateDetector().evaluate;
 const evaluateServerlessCandidate = new ServerlessCandidateDetector().evaluate;
+const evaluateServerlessThrottling = new ServerlessThrottlingDetector().evaluate;
 const evaluateStorageGrowthRisk = new StorageGrowthRiskDetector().evaluate;
 const evaluateStorageSkewRisk = new StorageSkewRiskDetector().evaluate;
 const evaluateUnderProvisioning = new UnderProvisioningDetector().evaluate;
@@ -67,6 +72,28 @@ function partInput(overrides: Partial<PartitionSaturationInput> = {}): Partition
         totalRequests: 5_000,
         throughputMode: 'dedicated',
         provisionedRu: 1_000,
+        ...overrides,
+    };
+}
+
+function manualInput(overrides: Partial<ManualThroughputInput> = {}): ManualThroughputInput {
+    return {
+        databaseId: 'db',
+        containerId: 'orders',
+        ruPercents: [...Array<number>(24).fill(5)],
+        peakPercent: 5,
+        provisionedRu: 1_000,
+        resourceAgeDays: 30,
+        ...overrides,
+    };
+}
+
+function serverlessThrottleInput(overrides: Partial<ServerlessThrottlingInput> = {}): ServerlessThrottlingInput {
+    return {
+        databaseId: 'db',
+        containerId: 'orders',
+        totalRequests: 5_000,
+        throttleRatePercent: 8,
         ...overrides,
     };
 }
@@ -107,6 +134,10 @@ describe('evaluateHotPartitionRisk', () => {
     it('does not fire for a single-partition container', () => {
         expect(evaluateHotPartitionRisk(partInput({ partitionCount: 1 }), 90, 70, 1)).toBeUndefined();
     });
+
+    it('abstains on known-young resources', () => {
+        expect(evaluateHotPartitionRisk(partInput({ resourceAgeDays: 0.5 }), 90, 70, 1)).toBeUndefined();
+    });
 });
 
 describe('evaluateUnderProvisioning', () => {
@@ -143,6 +174,17 @@ describe('evaluateUnderProvisioning', () => {
     it('does not fire when it is not throttling', () => {
         expect(evaluateUnderProvisioning(partInput({ minP99: 80, throttleRatePercent: 0 }), 90, 70, 1)).toBeUndefined();
     });
+
+    it('abstains on known-young resources', () => {
+        expect(
+            evaluateUnderProvisioning(
+                partInput({ minP99: 80, throttleRatePercent: 25, resourceAgeDays: 0.5 }),
+                90,
+                70,
+                1,
+            ),
+        ).toBeUndefined();
+    });
 });
 
 describe('evaluateOverProvisioning', () => {
@@ -174,6 +216,99 @@ describe('evaluateOverProvisioning', () => {
     it('is suppressed by the peak-saturation guard (a recurring batch needs its peak)', () => {
         expect(evaluateOverProvisioning(10, 95, 30, true, 100_000)).toBeUndefined();
     });
+
+    it('scopes manual-throughput findings per offer when manualThroughput inputs are available', () => {
+        const advisories = computeDerivedAdvisories(
+            {
+                weeklyRuPercents: [5, 5, 5],
+                hasManualThroughput: true,
+                manualProvisionedRuTotal: 1_400,
+                manualThroughput: [
+                    manualInput({ containerId: 'cold', provisionedRu: 1_000 }),
+                    manualInput({
+                        containerId: 'hot',
+                        ruPercents: [...Array<number>(24).fill(95)],
+                        peakPercent: 95,
+                        provisionedRu: 400,
+                    }),
+                ],
+                partitions: [],
+                storage: [],
+                indexing: [],
+            },
+            DEFAULT_ADVISORY_THRESHOLDS,
+        );
+        expect(advisories.filter((a) => a.rule === 'OverProvisioning').map((a) => a.scope)).toEqual(['db/cold']);
+    });
+
+    it('does not fall back to account-level weekly data when manualThroughput is present but empty', () => {
+        const rules = computeDerivedAdvisories(
+            {
+                weeklyRuPercents: [...Array<number>(48).fill(5)],
+                weeklyPeakPercent: 5,
+                hasManualThroughput: true,
+                manualProvisionedRuTotal: 1_000,
+                manualThroughput: [],
+                partitions: [],
+                storage: [],
+                indexing: [],
+            },
+            DEFAULT_ADVISORY_THRESHOLDS,
+        ).map((a) => a.rule);
+        expect(rules).not.toContain('OverProvisioning');
+        expect(rules).not.toContain('AutoscaleCandidate');
+    });
+
+    it.each([100_000, undefined])(
+        'does not substitute manual-only capacity for account capacity (%s)',
+        (scopeProvisionedRuTotal) => {
+            const advisories = computeDerivedAdvisories(
+                {
+                    weeklyRuPercents: [],
+                    hasManualThroughput: true,
+                    manualProvisionedRuTotal: 1000,
+                    scopeProvisionedRuTotal,
+                    manualThroughput: [
+                        manualInput({ provisionedRu: 1000, ruPercents: Array<number>(24).fill(10), peakPercent: 10 }),
+                    ],
+                    partitions: [],
+                    storage: [],
+                    indexing: [],
+                },
+                DEFAULT_ADVISORY_THRESHOLDS,
+            );
+            expect(advisories.find((advisory) => advisory.rule === 'OverProvisioning')?.severity).toBe('Low');
+        },
+    );
+
+    it('gates manual-throughput right-sizing on minimum samples and known-young age', () => {
+        const sparse = computeDerivedAdvisories(
+            {
+                weeklyRuPercents: [],
+                hasManualThroughput: true,
+                manualProvisionedRuTotal: 1_000,
+                manualThroughput: [manualInput({ ruPercents: [...Array<number>(23).fill(5)] })],
+                partitions: [],
+                storage: [],
+                indexing: [],
+            },
+            DEFAULT_ADVISORY_THRESHOLDS,
+        );
+        const young = computeDerivedAdvisories(
+            {
+                weeklyRuPercents: [],
+                hasManualThroughput: true,
+                manualProvisionedRuTotal: 1_000,
+                manualThroughput: [manualInput({ resourceAgeDays: 6 })],
+                partitions: [],
+                storage: [],
+                indexing: [],
+            },
+            DEFAULT_ADVISORY_THRESHOLDS,
+        );
+        expect(sparse).toEqual([]);
+        expect(young).toEqual([]);
+    });
 });
 
 describe('evaluateAutoscaleCandidate', () => {
@@ -195,6 +330,11 @@ describe('evaluateAutoscaleCandidate', () => {
     it('does not fire when the peak is too low to need capacity, or without manual throughput', () => {
         expect(evaluateAutoscaleCandidate(30, 3, dutyCycle, true)).toBeUndefined();
         expect(evaluateAutoscaleCandidate(80, 10, dutyCycle, false)).toBeUndefined();
+    });
+
+    it('includes the CODA-style recommended autoscale max when provisioned RU is known', () => {
+        const advisory = evaluateAutoscaleCandidate(64, 8, dutyCycle, true, 4_000, 'db/orders', 'orders');
+        expect(advisory?.suggestedAction).toContain('4,000');
     });
 });
 
@@ -513,7 +653,7 @@ describe('evaluateExpensiveConsistency', () => {
             regionCount: 2,
             multiRegionWritesEnabled: false,
             writeRegionCount: 1,
-            apiKind: 'core',
+            api: API.Core,
             ...overrides,
         };
     }
@@ -549,7 +689,7 @@ describe('evaluateMultiRegionWrites', () => {
             regionCount: 2,
             multiRegionWritesEnabled: true,
             writeRegionCount: 2,
-            apiKind: 'core',
+            api: API.Core,
             ...overrides,
         };
     }
@@ -558,10 +698,19 @@ describe('evaluateMultiRegionWrites', () => {
         expect(evaluateMultiRegionWrites(config({ multiRegionWritesEnabled: false }))).toBeUndefined();
     });
 
-    it('fires High on a non-SQL API account (wrong-API misconfiguration)', () => {
-        const advisory = evaluateMultiRegionWrites(config({ apiKind: 'mongo' }));
+    it.each([
+        { api: API.Cassandra, label: 'Cassandra' },
+        { api: API.Graph, label: 'Gremlin' },
+        { api: API.Table, label: 'Table' },
+    ])('fires High on a $label account (wrong-API misconfiguration)', ({ api, label }) => {
+        const advisory = evaluateMultiRegionWrites(config({ api }));
         expect(advisory?.rule).toBe('MultiRegionWriteAntipattern');
         expect(advisory?.severity).toBe('High');
+        expect(advisory?.title).toBe(`Multi-region writes on a ${label} account`);
+    });
+
+    it('does not classify an unknown API as a wrong-API misconfiguration', () => {
+        expect(evaluateMultiRegionWrites(config({ api: undefined }))).toBeUndefined();
     });
 
     it('fires Low as a single-write-region tripwire regardless of environment', () => {
@@ -598,7 +747,7 @@ describe('computeDerivedAdvisories with accountConfig', () => {
                     regionCount: 2,
                     multiRegionWritesEnabled: true,
                     writeRegionCount: 2,
-                    apiKind: 'core',
+                    api: API.Core,
                 },
             },
             DEFAULT_ADVISORY_THRESHOLDS,
@@ -655,6 +804,10 @@ describe('evaluateIdleContainer', () => {
         expect(
             evaluateIdleContainer(idleInput({ throughputMode: 'serverless', provisionedRu: undefined }), 50),
         ).toBeUndefined();
+    });
+
+    it('abstains on known-young resources', () => {
+        expect(evaluateIdleContainer(idleInput({ resourceAgeDays: 6 }), 50, 1_000)).toBeUndefined();
     });
 });
 
@@ -729,9 +882,21 @@ describe('evaluateAutoscaleMaxOverProvisioned', () => {
         expect(evaluateAutoscaleMaxOverProvisioned(autoUtil({ peakPercent: 95 }), 30, 10_000)).toBeUndefined();
     });
 
-    it('abstains without samples or a configured max', () => {
+    it('abstains without enough samples, with a young resource, or without a configured max', () => {
         expect(evaluateAutoscaleMaxOverProvisioned(autoUtil({ sampleCount: 0 }), 30)).toBeUndefined();
+        expect(evaluateAutoscaleMaxOverProvisioned(autoUtil({ sampleCount: 23 }), 30)).toBeUndefined();
+        expect(evaluateAutoscaleMaxOverProvisioned(autoUtil({ resourceAgeDays: 6 }), 30)).toBeUndefined();
         expect(evaluateAutoscaleMaxOverProvisioned(autoUtil({ configuredMaxRu: undefined }), 30)).toBeUndefined();
+    });
+
+    it('preserves CODA integer-ceiling sizing and unrounded idle-floor materiality', () => {
+        const advisory = evaluateAutoscaleMaxOverProvisioned(
+            autoUtil({ configuredMaxRu: 20_000, peakPercent: 20 }),
+            30,
+            29_000,
+        );
+        expect(advisory?.suggestedAction).toContain('5200');
+        expect(advisory?.severity).toBe('High');
     });
 });
 
@@ -750,6 +915,19 @@ describe('evaluateAutoscaleToManualCandidate', () => {
     it('does not fire when the average is below the floor', () => {
         expect(
             evaluateAutoscaleToManualCandidate(autoUtil({ avgPercent: 40, peakPercent: 45 }), 66, 1.3),
+        ).toBeUndefined();
+    });
+
+    it('abstains without enough samples or on a known-young resource', () => {
+        expect(
+            evaluateAutoscaleToManualCandidate(autoUtil({ sampleCount: 23, avgPercent: 80, peakPercent: 90 }), 66, 1.3),
+        ).toBeUndefined();
+        expect(
+            evaluateAutoscaleToManualCandidate(
+                autoUtil({ resourceAgeDays: 6, avgPercent: 80, peakPercent: 90 }),
+                66,
+                1.3,
+            ),
         ).toBeUndefined();
     });
 });
@@ -805,6 +983,19 @@ describe('evaluateServerlessCandidate', () => {
     });
 });
 
+describe('evaluateServerlessThrottling', () => {
+    it('fires independently of partition saturation and recommends provisioned throughput', () => {
+        const advisory = evaluateServerlessThrottling(serverlessThrottleInput({ throttleRatePercent: 25 }));
+        expect(advisory).toMatchObject({ rule: 'ServerlessThrottling', severity: 'High', scope: 'db/orders' });
+        expect(advisory?.suggestedAction).toContain('provisioned throughput');
+    });
+
+    it('abstains below the request floor and does not fire below the throttle floor', () => {
+        expect(evaluateServerlessThrottling(serverlessThrottleInput({ totalRequests: 999 }))).toBeUndefined();
+        expect(evaluateServerlessThrottling(serverlessThrottleInput({ throttleRatePercent: 0.5 }))).toBeUndefined();
+    });
+});
+
 describe('computeDerivedAdvisories with Batch 2 metrics inputs', () => {
     it('surfaces the metrics-based Tier-1 detectors alongside the rest', () => {
         const rules = computeDerivedAdvisories(
@@ -818,6 +1009,7 @@ describe('computeDerivedAdvisories with Batch 2 metrics inputs', () => {
                 partitionMerges: [mergeInput({ actualPartitions: 4 })],
                 autoscaleUtilizations: [autoUtil({ avgPercent: 80, peakPercent: 90 })],
                 serverless: serverlessInput(),
+                serverlessThrottling: [serverlessThrottleInput()],
                 scopeProvisionedRuTotal: 1_000,
             },
             DEFAULT_ADVISORY_THRESHOLDS,
@@ -826,6 +1018,7 @@ describe('computeDerivedAdvisories with Batch 2 metrics inputs', () => {
         expect(rules).toContain('PartitionMergeCandidate');
         expect(rules).toContain('AutoscaleToManualCandidate');
         expect(rules).toContain('ServerlessCandidate');
+        expect(rules).toContain('ServerlessThrottling');
     });
 
     it('surfaces nothing from the new inputs when they are absent', () => {
@@ -873,7 +1066,10 @@ describe('computeDerivedAdvisories Tier-2 wiring', () => {
             },
             DEFAULT_ADVISORY_THRESHOLDS,
         ).filter((a) => a.scope === 'db/orders');
-        expect(rules.map((a) => a.rule)).toEqual(['ShardKeyMisalignment']);
+        expect(rules.map((a) => `${a.rule}:${a.supersededBy ?? ''}`).sort()).toEqual([
+            'CrossPartitionQuery:ShardKeyMisalignment',
+            'ShardKeyMisalignment:',
+        ]);
     });
 
     it('keeps the cross-partition advisory when the fan-out share is below the structural threshold', () => {
@@ -896,5 +1092,80 @@ describe('computeDerivedAdvisories Tier-2 wiring', () => {
         ).filter((a) => a.scope === 'db/orders');
         expect(rules).toHaveLength(1);
         expect(rules[0]).toMatchObject({ rule: 'CrossPartitionQuery', severity: 'Medium' });
+    });
+
+    it('marks manual right-sizing as superseded when the same container is idle or better suited for autoscale', () => {
+        const idleRules = computeDerivedAdvisories(
+            {
+                ...tier1Base,
+                manualProvisionedRuTotal: 1_000,
+                manualThroughput: [manualInput()],
+                idleContainers: [idleInput({ resourceAgeDays: 30 })],
+            },
+            DEFAULT_ADVISORY_THRESHOLDS,
+        )
+            .filter((a) => a.scope === 'db/orders')
+            .map((a) => `${a.rule}:${a.supersededBy ?? ''}`);
+        expect(idleRules).toContain('OverProvisioning:IdleContainer');
+
+        const burstyRules = computeDerivedAdvisories(
+            {
+                ...tier1Base,
+                manualProvisionedRuTotal: 1_000,
+                manualThroughput: [
+                    manualInput({
+                        ruPercents: [...Array<number>(99).fill(5), 64],
+                        peakPercent: 64,
+                    }),
+                ],
+            },
+            DEFAULT_ADVISORY_THRESHOLDS,
+        )
+            .filter((a) => a.scope === 'db/orders')
+            .map((a) => `${a.rule}:${a.supersededBy ?? ''}`);
+        expect(burstyRules).toContain('OverProvisioning:AutoscaleCandidate');
+    });
+
+    it('uses storageSkew inputs when provided and preserves peak-only skew cases', () => {
+        const advisories = computeDerivedAdvisories(
+            {
+                ...tier1Base,
+                storage: [
+                    {
+                        databaseId: 'db',
+                        containerId: 'orders',
+                        partitions: [storageSeries('a', [40, 10]), storageSeries('b', [10, 10])],
+                        resourceAgeDays: 30,
+                    },
+                ],
+                storageSkew: [
+                    {
+                        databaseId: 'db',
+                        containerId: 'orders',
+                        partitions: [storageSeries('a', [40, 10]), storageSeries('b', [10, 10])],
+                        resourceAgeDays: 30,
+                    },
+                ],
+            },
+            DEFAULT_ADVISORY_THRESHOLDS,
+        ).filter((a) => a.rule === 'StorageSkewRisk');
+        expect(advisories[0]).toMatchObject({ severity: 'High', scope: 'db/orders' });
+    });
+
+    it('treats a full but flat partition as urgent storage growth', () => {
+        const advisories = computeDerivedAdvisories(
+            {
+                ...tier1Base,
+                storage: [
+                    {
+                        databaseId: 'db',
+                        containerId: 'orders',
+                        partitions: [storageSeries('0', [51])],
+                    },
+                ],
+            },
+            DEFAULT_ADVISORY_THRESHOLDS,
+        ).filter((a) => a.rule === 'StorageGrowthRisk');
+        expect(advisories[0]).toMatchObject({ severity: 'High', scope: 'db/orders' });
     });
 });

@@ -224,7 +224,7 @@ describe('getPartitionHealth', () => {
         expect(result.tiles.every((t) => !t.hot)).toBe(true);
     });
 
-    it('ranks storage partitions by their latest reported size', async () => {
+    it('ranks storage partitions by their peak reported size over the window', async () => {
         const client = mockClient({
             PhysicalPartitionSizeInfo: {
                 value: [
@@ -233,13 +233,13 @@ describe('getPartitionHealth', () => {
                             {
                                 metadatavalues: pdims('db', 'c1', 'PhysicalPartitionId', 'p0'),
                                 data: [
-                                    { timeStamp: iso(base - 60_000), maximum: 10 },
-                                    { timeStamp: iso(base), maximum: 50 },
+                                    { timeStamp: iso(base - 60_000), maximum: 60 * GIB },
+                                    { timeStamp: iso(base), maximum: 10 * GIB },
                                 ],
                             },
                             {
                                 metadatavalues: pdims('db', 'c1', 'PhysicalPartitionId', 'p1'),
-                                data: [{ timeStamp: iso(base), maximum: 50 }],
+                                data: [{ timeStamp: iso(base), maximum: 20 * GIB }],
                             },
                         ],
                     },
@@ -250,9 +250,38 @@ describe('getPartitionHealth', () => {
         const result = await getPartitionHealth(client, '/sub/acct', 'storage', '24H', 'db', 'c1', partitionThresholds);
         expect(result.available).toBe(true);
         expect(result.mode).toBe('storage');
-        // Latest sizes 50 / 50 → even 50% shares; a balanced split is never flagged as skewed.
-        expect(result.topPartitionShare).toBeCloseTo(50);
-        expect(result.tiles.every((t) => !t.hot)).toBe(true);
+        expect(result.tiles[0].partitionId).toBe('p0');
+        expect(result.topPartitionShare).toBeCloseTo(75);
+        expect(result.tiles[0].hot).toBe(true);
         expect(result.skewScore).toBeCloseTo(result.topPartitionShare);
+    });
+
+    it('ignores invalid timestamps and null storage points without dropping true zeros', async () => {
+        const client = mockClient({
+            PhysicalPartitionSizeInfo: {
+                value: [
+                    {
+                        timeseries: [
+                            {
+                                metadatavalues: pdims('db', 'c1', 'PhysicalPartitionId', 'p0'),
+                                data: [
+                                    { timeStamp: iso(base - 60_000), maximum: 0 },
+                                    { timeStamp: 'invalid', maximum: 999 },
+                                ],
+                            },
+                            {
+                                metadatavalues: pdims('db', 'c1', 'PhysicalPartitionId', 'p1'),
+                                data: [{ timeStamp: iso(base), maximum: null }],
+                            },
+                        ],
+                    },
+                ],
+            },
+        });
+
+        const result = await getPartitionHealth(client, '/sub/acct', 'storage', '24H', 'db', 'c1', partitionThresholds);
+        expect(result.available).toBe(true);
+        expect(result.partitionCount).toBe(1);
+        expect(result.tiles).toEqual([expect.objectContaining({ partitionId: 'p0', sharePercent: 0, hot: false })]);
     });
 });

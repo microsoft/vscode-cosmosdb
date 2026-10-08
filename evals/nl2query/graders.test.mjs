@@ -20,11 +20,14 @@ const skillActivated = { type: 'skill_activation', data: { name: 'cosmosdb-nosql
 const turnEnd = { type: 'turn_end', data: { turnId: 'test-turn' } };
 const sessionError = { type: 'error', data: { message: 'Synthetic executor failure' } };
 
-const queryFormats = [
-    (query) => query,
+const queryFormats = [(query) => query, (query) => ` \r\n${query.replace(/\r?\n/g, '\r\n')}\r\n\t`];
+
+const markdownQueryFormats = [
     (query) => `\`\`\`sql\n${query}\n\`\`\``,
     (query) => `\`\`\`\n${query}\n\`\`\``,
     (query) => ` \r\n\`\`\`sql \t\r\n${query.replace(/\r?\n/g, '\r\n')}\r\n \`\`\`\r\n`,
+    (query) => `\`${query}\``,
+    (query) => `~~~\n${query}\n~~~`,
 ];
 
 const generateCases = {
@@ -131,6 +134,7 @@ for (const [name, { accepted, rejected }] of Object.entries(generateCases)) {
 
     const badOutputs = [
         ...rejected.flatMap((query) => queryFormats.map((format) => format(query))),
+        ...accepted.flatMap((query) => markdownQueryFormats.map((format) => format(query))),
         '',
         `Here is your query:\n${reference}`,
         `-- Query\n${reference}`,

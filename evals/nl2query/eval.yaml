@@ -15,6 +15,8 @@ defaults:
   timeout: 2m
 
 stimuli:
+  # Production accepts Markdown wrappers to avoid breaking otherwise valid responses.
+  # Generation tests intentionally reject them to keep output pattern matching simple.
   - name: product-tag-rows
     # Expected query (one accepted form):
     # SELECT c.id, t AS tag
@@ -29,26 +31,20 @@ stimuli:
       Use the cosmosdb-nosql-query-generation skill.
       The synthetic container schema is in products.schema.json. Read it first.
       Generate an Azure Cosmos DB for NoSQL query returning one result per product
-      tag, with fields id (the product ID) and tag (the tag string). Expand each
-      document's tags array using JOIN, with container alias c and element alias t.
+      tag, with fields id (the product ID) and tag (the tag string).
       Preserve duplicate tags. Products with empty tags arrays should return no rows.
-      Return only the query, without comments or explanatory text. Prefer plain
-      SQL; this evaluation also accepts one complete enclosing Markdown code
-      block, either unlabeled or labeled sql. Do not execute it, connect to a
-      database, or create any files.
+      Return only the NoSQL query as plain text, without comments or explanatory text.
+      Do not use Markdown, code fences, or backticks. Markdown-formatted responses
+      will fail this evaluation. Do not execute it, connect to a database, or create any files.
     graders:
       - type: completed
       - type: skill-invocation
         config:
           required:
             - cosmosdb-nosql-query-generation
-      - &query-format
-        type: output-matches
-        config:
-          pattern: '(?i)^\s*(?:[^`]+|```(?:sql)?[ \t]*\r?\n[^`]+\r?\n[ \t]*```)\s*$'
       - type: output-matches
         config:
-          pattern: '(?i)^\s*(?:```(?:sql)?[ \t]*\r?\n\s*)?SELECT\s+c(?:\.id|\[\s*"id"\s*\])(?:\s+AS\s+id)?\s*,\s*t\s+AS\s+tag\s+FROM\s+c\s+JOIN\s+t\s+IN\s+c(?:\.tags|\[\s*"tags"\s*\])(?:\s*\r?\n[ \t]*```)?\s*$'
+          pattern: '(?i)^\s*SELECT\s+c(?:\.id|\[\s*"id"\s*\])(?:\s+AS\s+id)?\s*,\s*t\s+AS\s+tag\s+FROM\s+c\s+JOIN\s+t\s+IN\s+c(?:\.tags|\[\s*"tags"\s*\])\s*$'
       - type: output-not-matches
         config:
           pattern: '\b[CT]\b|\bc(?:\.(?!(?:id|tags)\b)|\[\s*"(?!(?:id|tags)"))|\b[Aa][Ss]\s+(?!(?:id|tag)\b)'
@@ -71,24 +67,20 @@ stimuli:
       Generate an Azure Cosmos DB for NoSQL query returning every product's id and
       matchingTags, an array of tag strings beginning with "eco", ignoring case.
       Keep products with no matching tags and return an empty matchingTags array
-      for them. Preserve duplicate matching tags. Use ARRAY with a SELECT VALUE
-      subquery and StartsWith with its case-insensitive argument, container alias c,
-      and array element alias t.
-      Return only the query, without comments or explanatory text. Prefer plain
-      SQL; this evaluation also accepts one complete enclosing Markdown code
-      block, either unlabeled or labeled sql. Do not execute it, connect to a
-      database, or create any files.
+      for them. Preserve duplicate matching tags.
+      Return only the NoSQL query as plain text, without comments or explanatory text.
+      Do not use Markdown, code fences, or backticks. Markdown-formatted responses
+      will fail this evaluation. Do not execute it, connect to a database, or create any files.
     graders:
       - type: completed
       - type: skill-invocation
         config:
           required:
             - cosmosdb-nosql-query-generation
-      - *query-format
       - type: output-matches
         config:
           pattern: >-
-            (?i)^\s*(?:```(?:sql)?[ \t]*\r?\n\s*)?SELECT\s+c(?:\.id|\[\s*"id"\s*\])(?:\s+AS\s+id)?\s*,\s*ARRAY\s*\(\s*SELECT\s+VALUE\s+t\s+FROM\s+t\s+IN\s+c(?:\.tags|\[\s*"tags"\s*\])\s+WHERE\s+StartsWith\s*\(\s*t\s*,\s*(?:"eco"|'eco')\s*,\s*true\s*\)\s*\)\s+AS\s+matchingTags\s+FROM\s+c(?:\s*\r?\n[ \t]*```)?\s*$
+            (?i)^\s*SELECT\s+c(?:\.id|\[\s*"id"\s*\])(?:\s+AS\s+id)?\s*,\s*ARRAY\s*\(\s*SELECT\s+VALUE\s+t\s+FROM\s+t\s+IN\s+c(?:\.tags|\[\s*"tags"\s*\])\s+WHERE\s+StartsWith\s*\(\s*t\s*,\s*(?:"eco"|'eco')\s*,\s*true\s*\)\s*\)\s+AS\s+matchingTags\s+FROM\s+c\s*$
       - type: output-not-matches
         config:
           pattern: '\b[CT]\b|\bc(?:\.(?!(?:id|tags)\b)|\[\s*"(?!(?:id|tags)"))|\b[Aa][Ss]\s+(?!(?:id|matchingTags)\b)'
@@ -107,24 +99,21 @@ stimuli:
       The synthetic container schema is in products.schema.json. Read it first.
       Generate an Azure Cosmos DB for NoSQL query returning one JSON object per
       product, directly without an extra wrapper. Each object must contain only
-      id and availability. Use SELECT VALUE and the ternary ? : operator on the
-      Boolean inStock property: availability is "available" when true and
-      "unavailable" when false. Do not filter out either group. Use container alias c.
-      Return only the query, without comments or explanatory text. Prefer plain
-      SQL; this evaluation also accepts one complete enclosing Markdown code
-      block, either unlabeled or labeled sql. Do not execute it, connect to a
-      database, or create any files.
+      id and availability. Based on the Boolean inStock property, availability is
+      "available" when true and "unavailable" when false. Do not filter out either group.
+      Return only the NoSQL query as plain text, without comments or explanatory text.
+      Do not use Markdown, code fences, or backticks. Markdown-formatted responses
+      will fail this evaluation. Do not execute it, connect to a database, or create any files.
     graders:
       - type: completed
       - type: skill-invocation
         config:
           required:
             - cosmosdb-nosql-query-generation
-      - *query-format
       - type: output-matches
         config:
           pattern: >-
-            (?i)^\s*(?:```(?:sql)?[ \t]*\r?\n\s*)?SELECT\s+VALUE\s*\{\s*(?:(?:"id"|'id'|id)\s*:\s*c(?:\.id|\[\s*"id"\s*\])\s*,\s*(?:"availability"|'availability'|availability)\s*:\s*(?:c(?:\.inStock|\[\s*"inStock"\s*\])(?:\s*=\s*true)?|\(\s*c(?:\.inStock|\[\s*"inStock"\s*\])(?:\s*=\s*true)?\s*\))\s*\?\s*(?:"available"|'available')\s*:\s*(?:"unavailable"|'unavailable')|(?:"availability"|'availability'|availability)\s*:\s*(?:c(?:\.inStock|\[\s*"inStock"\s*\])(?:\s*=\s*true)?|\(\s*c(?:\.inStock|\[\s*"inStock"\s*\])(?:\s*=\s*true)?\s*\))\s*\?\s*(?:"available"|'available')\s*:\s*(?:"unavailable"|'unavailable')\s*,\s*(?:"id"|'id'|id)\s*:\s*c(?:\.id|\[\s*"id"\s*\]))\s*\}\s+FROM\s+c(?:\s*\r?\n[ \t]*```)?\s*$
+            (?i)^\s*SELECT\s+VALUE\s*\{\s*(?:(?:"id"|'id'|id)\s*:\s*c(?:\.id|\[\s*"id"\s*\])\s*,\s*(?:"availability"|'availability'|availability)\s*:\s*(?:c(?:\.inStock|\[\s*"inStock"\s*\])(?:\s*=\s*true)?|\(\s*c(?:\.inStock|\[\s*"inStock"\s*\])(?:\s*=\s*true)?\s*\))\s*\?\s*(?:"available"|'available')\s*:\s*(?:"unavailable"|'unavailable')|(?:"availability"|'availability'|availability)\s*:\s*(?:c(?:\.inStock|\[\s*"inStock"\s*\])(?:\s*=\s*true)?|\(\s*c(?:\.inStock|\[\s*"inStock"\s*\])(?:\s*=\s*true)?\s*\))\s*\?\s*(?:"available"|'available')\s*:\s*(?:"unavailable"|'unavailable')\s*,\s*(?:"id"|'id'|id)\s*:\s*c(?:\.id|\[\s*"id"\s*\]))\s*\}\s+FROM\s+c\s*$
       - type: output-not-matches
         config:
           pattern: '\bC\b|\bc(?:\.(?!(?:id|inStock)\b)|\[\s*"(?!(?:id|inStock)"))'

@@ -71,6 +71,9 @@
     "vitest": "vitest run",
     "vitest:coverage": "vitest run --coverage",
     "vitest:ui": "vitest --ui",
+    "eval": "cross-env VALLY_TELEMETRY_OPTOUT=1 vally eval --tag status!=disabled --output-dir vally-results --workers 1 --require-pass",
+    "eval:lint": "cross-env VALLY_TELEMETRY_OPTOUT=1 vally lint --eval-spec evals",
+    "eval:test": "node --test \"evals/**/*.test.mjs\"",
     "vite-dev": "rimraf ./dist && concurrently -n ext,views -c redBright,whiteBright \"npm run vite-dev-ext\" \"npm run vite-dev-wv\"",
     "vite-prod": "rimraf ./dist && concurrently -n ext,views -c redBright,whiteBright \"npm run vite-prod-ext\" \"npm run vite-prod-wv\"",
     "vite-dev-ext": "vite build --mode development --config ./vite.config.ext.mjs",
@@ -116,6 +119,8 @@
     }
   },
   "devDependencies": {
+    "@microsoft/vally": "0.17.0",
+    "@microsoft/vally-cli": "0.17.0",
     "@playwright/test": "~1.61.0",
     "@testing-library/jest-dom": "~6.9.1",
     "@testing-library/react": "~16.3.2",

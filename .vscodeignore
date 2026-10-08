@@ -8,6 +8,7 @@
 .vscode/**
 build/**
 dist/test/**
+evals/**
 grammar/*.g4
 grammar/*.md
 node_modules/**
@@ -16,6 +17,7 @@ src/**
 test/**
 testOutput/**
 testWorkspace/**
+vally-results/**
 **/*.gif
 **/*.map
 *.mongo

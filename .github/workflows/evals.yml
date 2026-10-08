@@ -1,0 +1,404 @@
+name: Evaluations
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+
+  push:
+    branches:
+      - main
+      - rel/*
+    paths:
+      - 'evals/**'
+      - 'skills/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.nvmrc'
+      - '.github/workflows/evals.yml'
+
+  # No path filter: every PR reports the Evaluations gate; the changes job skips unrelated PRs.
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+concurrency:
+  group: evals-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: Detect evaluation changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      relevant: ${{ steps.filter.outputs.relevant }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: github.event_name == 'pull_request'
+        with:
+          persist-credentials: false
+          # The PR checkout is a merge commit; its first parent is the base branch.
+          fetch-depth: 2
+
+      - name: Check evaluation inputs
+        id: filter
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        shell: bash
+        run: |
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+              echo "relevant=true" >> "$GITHUB_OUTPUT"
+              exit 0
+          fi
+
+          # Disable rename detection so moving a file out of a watched directory still counts.
+          git diff --no-renames --name-only -z HEAD^1 HEAD -- > "$RUNNER_TEMP/eval-changed-files"
+          relevant=false
+          while IFS= read -r -d '' path; do
+              # Keep these inputs in sync with the push path filters.
+              case "$path" in
+                  evals/*|skills/*|package.json|package-lock.json|.nvmrc|.github/workflows/evals.yml)
+                      relevant=true
+                      break
+                      ;;
+              esac
+          done < "$RUNNER_TEMP/eval-changed-files"
+          echo "relevant=$relevant" >> "$GITHUB_OUTPUT"
+
+  validate:
+    name: Validate evaluation specs and graders
+    needs: changes
+    if: needs.changes.outputs.relevant == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      spec-result: ${{ steps.spec-validation.outcome }}
+      graders-result: ${{ steps.grader-tests.outcome }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate evaluation specs
+        id: spec-validation
+        run: npm run eval:lint
+
+      - name: Test graders offline
+        id: grader-tests
+        run: npm run eval:test
+
+  eval:
+    name: Run evaluations
+    needs: [changes, validate]
+    # Skipped automatically when validation is skipped or fails.
+    # Fork contributions must not execute agents with organization-billed model access.
+    if: >-
+      ${{ github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      copilot-requests: write
+    outputs:
+      artifact-url: ${{ steps.upload-results.outputs.artifact-url }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Vally
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ github.token }}
+          # Vally 0.17's separate LLM judge explicitly forwards GITHUB_TOKEN.
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npm run eval -- --max-retries 0 --verbose
+
+      - name: Upload evaluation reports and trajectories
+        id: upload-results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: eval-results-${{ github.run_attempt }}
+          path: vally-results/
+          if-no-files-found: warn
+          retention-days: 14
+
+  gate:
+    name: Evaluations gate
+    needs: [changes, validate, eval]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+
+    steps:
+      - name: Check evaluation outcomes
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          RELEVANT_CHANGES: ${{ needs.changes.outputs.relevant }}
+          VALIDATION_RESULT: ${{ needs.validate.result }}
+          EVAL_RESULT: ${{ needs.eval.result }}
+          IS_FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        shell: bash
+        run: |
+          fail() {
+              echo "::error::$1"
+              printf '%s\n' "$1" >> "$GITHUB_STEP_SUMMARY"
+              exit 1
+          }
+
+          if [ "$CHANGES_RESULT" != "success" ]; then
+              fail "Evaluation change detection did not succeed ($CHANGES_RESULT)."
+          fi
+          case "$RELEVANT_CHANGES" in
+              false)
+                  echo "No relevant changes; validation and live evaluations were intentionally skipped." \
+                      >> "$GITHUB_STEP_SUMMARY"
+                  exit 0
+                  ;;
+              true) ;;
+              *) fail "Evaluation change detection returned no valid decision." ;;
+          esac
+
+          if [ "$VALIDATION_RESULT" != "success" ]; then
+              fail "Offline evaluation validation did not succeed ($VALIDATION_RESULT)."
+          fi
+          if [ "$IS_FORK" = "true" ]; then
+              if [ "$EVAL_RESULT" != "skipped" ]; then
+                  fail "Live evaluations must be skipped for fork pull requests."
+              fi
+              echo "Offline checks passed. Live evaluations were intentionally skipped for a fork pull request." \
+                  >> "$GITHUB_STEP_SUMMARY"
+          else
+              if [ "$EVAL_RESULT" != "success" ]; then
+                  fail "Live evaluations did not succeed ($EVAL_RESULT)."
+              fi
+              echo "Offline checks and live evaluations passed." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  report:
+    name: Summarize evaluations
+    needs: [changes, validate, eval, gate]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Keep comment-write access off the runner that executes the live agent.
+    permissions:
+      actions: read
+      pull-requests: write
+
+    steps:
+      - name: Generate job summary and PR comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SERVER_URL: ${{ github.server_url }}
+          REPO: ${{ github.repository }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          IS_FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          RELEVANT_CHANGES: ${{ needs.changes.outputs.relevant }}
+          GATE_RESULT: ${{ needs.gate.result }}
+          VALIDATION_RESULT: ${{ needs.validate.result }}
+          SPEC_RESULT: ${{ needs.validate.outputs.spec-result || 'skipped' }}
+          GRADERS_RESULT: ${{ needs.validate.outputs.graders-result || 'skipped' }}
+          EVAL_RESULT: ${{ needs.eval.result }}
+          ARTIFACT_URL: ${{ needs.eval.outputs.artifact-url }}
+        shell: bash
+        run: |
+          # Use the same stable-marker comment pattern as the test and E2E workflows.
+          MARKER="<!-- ci-summary:evals -->"
+          RUN_URL="${SERVER_URL}/${REPO}/actions/runs/${GITHUB_RUN_ID}/attempts/${RUN_ATTEMPT}"
+          COMMENT_FILE="${RUNNER_TEMP}/evals-comment.md"
+          REPORT_DIR="${RUNNER_TEMP}/eval-reports"
+
+          cat >> "$GITHUB_STEP_SUMMARY" << SUMMARY_EOF
+          ${MARKER}
+          # Evaluations
+
+          ## Results
+          - **Evaluations gate:** ${GATE_RESULT}
+          - **Change detection:** ${CHANGES_RESULT}
+          - **Validation job:** ${VALIDATION_RESULT}
+          - **Spec validation:** ${SPEC_RESULT}
+          - **Offline grader tests:** ${GRADERS_RESULT}
+          - **Live evaluations job:** ${EVAL_RESULT}
+
+          [View run and detailed job summary](${RUN_URL})
+          SUMMARY_EOF
+
+          if [ "${CHANGES_RESULT}" != "success" ]; then
+              printf '\nEvaluation change detection did not succeed; required checks could not be determined.\n' \
+                  >> "$GITHUB_STEP_SUMMARY"
+          elif [ "${RELEVANT_CHANGES}" = "false" ]; then
+              printf '\nNo relevant changes; offline checks and live evaluations were intentionally skipped.\n' \
+                  >> "$GITHUB_STEP_SUMMARY"
+          elif [ "${IS_FORK}" = "true" ]; then
+              printf '\nLive evaluations are disabled for fork pull requests; only offline checks run.\n' \
+                  >> "$GITHUB_STEP_SUMMARY"
+          elif [ "${EVAL_RESULT}" = "skipped" ] && [ "${VALIDATION_RESULT}" != "success" ]; then
+              printf '\nLive evaluations did not run because offline validation did not succeed.\n' \
+                  >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if [ -n "${ARTIFACT_URL}" ]; then
+              printf '\n[Download evaluation reports and trajectories](%s)\n' "${ARTIFACT_URL}" \
+                  >> "$GITHUB_STEP_SUMMARY"
+          elif [ "${EVAL_RESULT}" = "skipped" ]; then
+              printf '\nNo evaluation artifact was produced because live evaluations were skipped.\n' \
+                  >> "$GITHUB_STEP_SUMMARY"
+          else
+              printf '\nNo evaluation artifact was uploaded. See the run logs for details.\n' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          # Keep PR comments compact; the job summary includes the full Vally tables.
+          cp "$GITHUB_STEP_SUMMARY" "$COMMENT_FILE"
+          if [ -n "${ARTIFACT_URL}" ]; then
+              mkdir -p "$REPORT_DIR"
+              report_count=0
+              if gh run download "$GITHUB_RUN_ID" --repo "$REPO" \
+                      --name "eval-results-${RUN_ATTEMPT}" --dir "$REPORT_DIR"; then
+                  if ! node --input-type=commonjs - "$REPORT_DIR" > "$RUNNER_TEMP/eval-scores.md" <<'NODE'
+          const { readdirSync, readFileSync } = require('node:fs');
+          const { basename, join } = require('node:path');
+
+          function percent(value) {
+              if (!Number.isFinite(value) || value < 0 || value > 1) {
+                  throw new Error('Invalid Vally score or threshold.');
+              }
+              return `${(value * 100).toFixed(2)}%`;
+          }
+          function cell(value) {
+              return value.replace(/[&<>|`*_[\]\\\r\n]/g, char => `&#${char.codePointAt(0)};`);
+          }
+
+          const rows = [];
+          let incomplete = false;
+          for (const file of readdirSync(process.argv[2], { recursive: true }).sort()) {
+              if (basename(file) !== 'results.jsonl') continue;
+              const records = readFileSync(join(process.argv[2], file), 'utf8')
+                  .split(/\r?\n/).filter(line => line.trim()).map(line => JSON.parse(line));
+              const summary = records.find(record => record.type === 'run-summary');
+              if (!summary) {
+                  incomplete = true;
+                  continue;
+              }
+              for (const suite of summary.evals) {
+                  if (typeof suite.name !== 'string' || typeof suite.passed !== 'boolean' ||
+                      typeof suite.scoringApplied !== 'boolean') {
+                      throw new Error('Invalid Vally suite summary.');
+                  }
+                  const name = [suite.name, suite.variant !== 'main' && suite.variant, suite.model].filter(Boolean).join(' / ');
+                  const score = suite.scoringApplied ? percent(suite.overallScore) : 'N/A';
+                  const threshold = suite.scoringApplied ? percent(suite.threshold) : 'N/A';
+                  const verdict = suite.error ? 'Error' : !suite.scoringApplied ? 'Not graded' : suite.passed ? 'Pass' : 'Fail';
+                  rows.push(`| ${cell(name)} | ${score} | ${threshold} | ${verdict} |`);
+              }
+          }
+          if (rows.length === 0) {
+              throw new Error('No completed Vally suite summaries found.');
+          }
+          console.log('\n## Suite scores\n');
+          console.log('| Suite | Score | Required threshold | Verdict |');
+          console.log('| --- | --- | --- | --- |');
+          console.log(rows.join('\n'));
+          console.log('\nScores and verdicts are reported by Vally, not calculated from trial pass rates.');
+          if (incomplete) {
+              console.warn('::warning::Some Vally result files have no final run summary.');
+              console.log('\nSome result files have no final run summary; their suite scores are unavailable.');
+          }
+          NODE
+                  then
+                      echo "::warning::Unable to read Vally suite scores from the evaluation artifact."
+                      printf '\n## Suite scores\n\nScores are unavailable. See the artifact and run logs for details.\n' \
+                          > "$RUNNER_TEMP/eval-scores.md"
+                  fi
+                  cat "$RUNNER_TEMP/eval-scores.md" >> "$GITHUB_STEP_SUMMARY"
+                  while IFS= read -r -d '' report; do
+                      report_count=$((report_count + 1))
+                      # GitHub limits each step summary to 1 MiB. Leave room for headings and warnings.
+                      if [ $(( $(wc -c < "$GITHUB_STEP_SUMMARY") + $(wc -c < "$report") )) -gt 900000 ]; then
+                          echo "::warning::A Vally report is too large for the job summary; use the artifact."
+                          printf '\nA Vally report was omitted due to the summary size limit; download the artifact.\n' \
+                              >> "$GITHUB_STEP_SUMMARY"
+                          continue
+                      fi
+                      printf '\n---\n\n' >> "$GITHUB_STEP_SUMMARY"
+                      cat "$report" >> "$GITHUB_STEP_SUMMARY"
+                  done < <(find "$REPORT_DIR" -type f -name eval-results.md -print0 | sort -z)
+                  if [ "$report_count" -eq 0 ]; then
+                      echo "::warning::The evaluation artifact contains no Vally Markdown report."
+                      printf '\nNo Vally Markdown report was found in the artifact. See the run logs.\n' \
+                          >> "$GITHUB_STEP_SUMMARY"
+                  fi
+              else
+                  echo "::warning::Unable to download the Vally reports for the job summary."
+                  printf '\nReports could not be downloaded for this summary; use the artifact link above.\n' \
+                      >> "$GITHUB_STEP_SUMMARY"
+              fi
+          fi
+
+          if [ "${EVENT_NAME}" != "pull_request" ] || [ -z "${PR_NUMBER}" ]; then
+              exit 0
+          fi
+          if [ "${IS_FORK}" = "true" ]; then
+              echo "::notice::Fork PR: job summary is available, but the read-only token cannot post a PR comment."
+              exit 0
+          fi
+
+          if ! existing_id=$(gh api --paginate "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+                  --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | startswith(\"${MARKER}\"))) | .id"); then
+              echo "::warning::Unable to look up the Evaluations PR comment; not creating a possible duplicate."
+              exit 0
+          fi
+          existing_id=$(printf '%s\n' "$existing_id" | head -1)
+
+          # Unrelated PRs only replace stale results; they never start a new comment.
+          if [ "${RELEVANT_CHANGES}" = "false" ] && [ -z "$existing_id" ]; then
+              exit 0
+          fi
+
+          # A no-change gate verdict replaces stale results; cancelled runs do not.
+          meaningful=false
+          for result in "$GATE_RESULT" "$VALIDATION_RESULT" "$EVAL_RESULT"; do
+              case "$result" in
+                  success|failure) meaningful=true ;;
+              esac
+          done
+          if [ "$meaningful" = "false" ] && [ -n "$existing_id" ]; then
+              echo "No completed checks; keeping the existing Evaluations PR comment."
+              exit 0
+          fi
+
+          if [ -n "$existing_id" ]; then
+              if ! gh api --method PATCH "repos/${REPO}/issues/comments/${existing_id}" \
+                      --field body=@"${COMMENT_FILE}" >/dev/null; then
+                  echo "::warning::Unable to update the Evaluations PR comment."
+              fi
+          elif ! gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file "$COMMENT_FILE"; then
+              echo "::warning::Unable to post the Evaluations PR comment."
+          fi

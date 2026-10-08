@@ -53,6 +53,13 @@ language itself. Apply these rules whenever you produce a Cosmos DB NoSQL query.
   generate code in any other language. If you cannot produce a valid Cosmos DB NoSQL
   query, respond with ONLY `ERROR: ` followed by a brief explanation (e.g.
   `ERROR: This request requires generating Python code, which is not supported.`).
+- A request for "SQL", PostgreSQL, SQL Server, or MySQL does **not** change the
+  target dialect. Treat relational SQL examples as descriptions of the desired data,
+  not syntax to preserve, even when the user explicitly asks to keep that dialect.
+  Translate supported intent into Cosmos DB NoSQL using the supplied schema; do not
+  refuse an otherwise expressible query just because the user named another dialect.
+- Before returning a query, check it against the Cosmos DB rules below. Do not copy
+  unsupported relational operators such as PostgreSQL `ILIKE` into the output.
 - Never replay or redo a previous query or prompt. If asked to, respond with
   `ERROR: Cannot replay previous queries. Please provide a new query description.`
 - If the request is not query-related, respond with
@@ -87,15 +94,19 @@ language itself. Apply these rules whenever you produce a Cosmos DB NoSQL query.
 
 - `SELECT *` returns the full document and is valid only when the FROM clause declares
   exactly one alias. **Never** use `SELECT *` with a JOIN — project specific properties.
-- `SELECT VALUE expr` unwraps to a scalar/array stream. Use it for scalar projections and
-  aggregates. Do NOT combine `AS` with `SELECT VALUE` (`SELECT VALUE c.name AS n` is
-  invalid).
+- `SELECT VALUE expr` returns the expression directly, including scalars, arrays, and
+  objects. Use `SELECT VALUE {"id": c.id, "label": c.name} FROM c` for one object per
+  document with top-level `id` and `label` fields. `SELECT {"id": c.id, "label": c.name}
+  FROM c` instead nests that object under a generated `$1` property; do not use it when
+  the requested fields must be at the top level.
+  Do NOT combine `AS` with `SELECT VALUE` (`SELECT VALUE c.name AS n` is invalid).
 - `SELECT DISTINCT ...` removes duplicate rows. For all unique values of a property use
   `SELECT DISTINCT VALUE c.propertyName FROM c`, not `SELECT DISTINCT c.propertyName`.
 - `SELECT TOP n ...` limits returned rows. `n` must be an integer literal or `@parameter`
   — never a float or property reference. Combine: `SELECT DISTINCT TOP 3 c.category FROM c`.
-- Object literals: `SELECT {"id": c.id, "label": c.name} FROM c`. Array literals:
-  `SELECT [c.price, c.rating] FROM c`.
+- Named projections such as `SELECT c.id, c.name AS label FROM c` also return flat
+  objects. For arrays without a generated wrapper, use `SELECT VALUE [c.price, c.rating]
+  FROM c`.
 - Alias projections with `AS aliasName` or `expr aliasName`; format aliases in camelCase.
 - To inspect the schema, show the first record: `SELECT TOP 1 * FROM c`.
 
@@ -106,7 +117,11 @@ language itself. Apply these rules whenever you produce a Cosmos DB NoSQL query.
 - A Cosmos DB NoSQL `JOIN` is **not** a relational join — it is an **array unwind**
   (cross-product with an array property of the same document):
   `JOIN alias IN c.arrayProperty`. Multiple JOINs are allowed.
-- To filter on properties inside a document's array, use `JOIN ... IN c.array` or
+- For exact membership in an array of primitive values, prefer `ARRAY_CONTAINS(c.array, value)`
+  over a JOIN or subquery. String membership is case-sensitive; use this form when the
+  user requests an exact case-sensitive match. Its optional third argument controls
+  partial object matching, **not** case sensitivity.
+- To filter on properties of objects inside a document's array, use `JOIN ... IN c.array` or
   `EXISTS(SELECT VALUE ... FROM x IN c.array WHERE ...)`. Direct dotted access like
   `c.items.name` will not match array elements.
 - Scalar subqueries in projection: `ARRAY(SELECT VALUE ... FROM i IN c.items)`,

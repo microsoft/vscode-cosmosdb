@@ -17,102 +17,65 @@ defaults:
 stimuli:
   # Production accepts Markdown wrappers to avoid breaking otherwise valid responses.
   # Generation tests intentionally reject them to keep output pattern matching simple.
-  # Capture aliases from the source and reuse them case-sensitively; only keywords/functions ignore case.
-  # Character classes keep keyword matching compatible with Node 22 without scoped regex flags.
-  - name: 'Generate query: product tag rows'
-    # Expected query (one accepted form):
-    # SELECT c.id, t AS tag
-    # FROM c
-    # JOIN t IN c.tags
+  # Check one Cosmos-specific WHERE predicate per case, not complete projections or every equivalent rewrite.
+  # Character classes ignore keyword/function casing while keeping property names and exact string values sensitive.
+  - name: 'Generate query: array membership'
+    # Expected predicate: WHERE ARRAY_CONTAINS(c.tags, "eco") (any alias).
     tags:
       feature: generate
-    agent_environment:
+    agent_environment: &generate-environment
       skills:
         - ../../skills/cosmosdb-nosql-query-generation
     prompt: |
       Use the cosmosdb-nosql-query-generation skill.
       The synthetic container schema is in products.schema.json. Read it first.
-      Generate an Azure Cosmos DB for NoSQL query returning one result per product
-      tag, with fields id (the product ID) and tag (the tag string).
-      Preserve duplicate tags. Products with empty tags arrays should return no rows.
+      Generate an Azure Cosmos DB for NoSQL query to find products whose tags
+      contain the exact string "eco". Match the tag case-sensitively.
       Return only the NoSQL query as plain text, without comments or explanatory text.
       Do not use Markdown, code fences, or backticks. Markdown-formatted responses
       will fail this evaluation. Do not execute it, connect to a database, or create any files.
     graders:
       - type: completed
-      - type: skill-invocation
+      - &generation-skill
+        type: skill-invocation
         config:
           required:
             - cosmosdb-nosql-query-generation
+      - &query-format
+        type: output-matches
+        config:
+          pattern: '(?i)^\s*SELECT\b[^`;]*\bFROM\b[^`;]*\bWHERE\b[^`;]*$'
+      - &no-comments-or-extra-statements
+        type: output-not-matches
+        config:
+          pattern: '(?i)--|/\*|\bSELECT\b[\s\S]*\bSELECT\b'
       - type: output-matches
         config:
           pattern: >-
-            ^(?=[\s\S]*\s(?<source>[Ff][Rr][Oo][Mm]\s+(?<container>[A-Za-z_][A-Za-z0-9_]*)\s+[Jj][Oo][Ii][Nn]\s+(?!\k<container>\b)(?<tag>[A-Za-z_][A-Za-z0-9_]*)\s+[Ii][Nn]\s+\k<container>(?:\.tags|\[\s*"tags"\s*\]))\s*$)\s*[Ss][Ee][Ll][Ee][Cc][Tt]\s+(?:\k<container>(?:\.id|\[\s*"id"\s*\])(?:\s+[Aa][Ss]\s+id)?\s*,\s*(?:\k<tag>\s+[Aa][Ss]\s+tag|(?=tag\b)\k<tag>)|(?:\k<tag>\s+[Aa][Ss]\s+tag|(?=tag\b)\k<tag>)\s*,\s*\k<container>(?:\.id|\[\s*"id"\s*\])(?:\s+[Aa][Ss]\s+id)?|[Vv][Aa][Ll][Uu][Ee]\s*\{\s*(?:(?:"id"|'id'|id)\s*:\s*\k<container>(?:\.id|\[\s*"id"\s*\])\s*,\s*(?:"tag"|'tag'|tag)\s*:\s*\k<tag>|(?:"tag"|'tag'|tag)\s*:\s*\k<tag>\s*,\s*(?:"id"|'id'|id)\s*:\s*\k<container>(?:\.id|\[\s*"id"\s*\]))\s*\})\s+\k<source>\s*$
+            \b[Ww][Hh][Ee][Rr][Ee]\s+[Aa][Rr][Rr][Aa][Yy]_[Cc][Oo][Nn][Tt][Aa][Ii][Nn][Ss]\s*\(\s*[A-Za-z_]\w*(?:\.tags|\[\s*"tags"\s*\])\s*,\s*(?:"eco"|'eco')\s*\)\s*$
 
-  - name: 'Generate query: product eco tags'
-    # Expected query (one accepted form):
-    # SELECT c.id, ARRAY(
-    #     SELECT VALUE t FROM t IN c.tags
-    #     WHERE StartsWith(t, "eco", true)
-    # ) AS matchingTags
-    # FROM c
+  - name: 'Generate query: case-insensitive prefix'
+    # Expected predicate: WHERE STARTSWITH(c.name, "eco", true) (any alias).
     tags:
       feature: generate
-    agent_environment:
-      skills:
-        - ../../skills/cosmosdb-nosql-query-generation
+    agent_environment: *generate-environment
     prompt: |
       Use the cosmosdb-nosql-query-generation skill.
       The synthetic container schema is in products.schema.json. Read it first.
-      Generate an Azure Cosmos DB for NoSQL query returning every product's id and
-      matchingTags, an array of tag strings beginning with "eco", ignoring case.
-      Keep products with no matching tags and return an empty matchingTags array
-      for them. Preserve duplicate matching tags.
+      Generate an Azure Cosmos DB for NoSQL query to find products whose name
+      begins with "eco", ignoring case.
       Return only the NoSQL query as plain text, without comments or explanatory text.
       Do not use Markdown, code fences, or backticks. Markdown-formatted responses
       will fail this evaluation. Do not execute it, connect to a database, or create any files.
     graders:
       - type: completed
-      - type: skill-invocation
-        config:
-          required:
-            - cosmosdb-nosql-query-generation
+      - *generation-skill
+      - *query-format
+      - *no-comments-or-extra-statements
       - type: output-matches
         config:
-          # Reuse the complete array expression to allow flat object and named projections in either order.
           pattern: >-
-            ^(?=[\s\S]*\s(?<source>[Ff][Rr][Oo][Mm]\s+(?<container>[A-Za-z_][A-Za-z0-9_]*))\s*$)(?=[\s\S]*?(?<matches>[Aa][Rr][Rr][Aa][Yy]\s*\(\s*[Ss][Ee][Ll][Ee][Cc][Tt]\s+[Vv][Aa][Ll][Uu][Ee]\s+(?!\k<container>\b)(?<tag>[A-Za-z_][A-Za-z0-9_]*)\s+[Ff][Rr][Oo][Mm]\s+\k<tag>\s+[Ii][Nn]\s+\k<container>(?:\.tags|\[\s*"tags"\s*\])\s+[Ww][Hh][Ee][Rr][Ee]\s+[Ss][Tt][Aa][Rr][Tt][Ss][Ww][Ii][Tt][Hh]\s*\(\s*\k<tag>\s*,\s*(?:"[Ee][Cc][Oo]"|'[Ee][Cc][Oo]')\s*,\s*true\s*\)\s*\)))\s*[Ss][Ee][Ll][Ee][Cc][Tt]\s+(?:\k<container>(?:\.id|\[\s*"id"\s*\])(?:\s+[Aa][Ss]\s+id)?\s*,\s*\k<matches>\s+[Aa][Ss]\s+matchingTags|\k<matches>\s+[Aa][Ss]\s+matchingTags\s*,\s*\k<container>(?:\.id|\[\s*"id"\s*\])(?:\s+[Aa][Ss]\s+id)?|[Vv][Aa][Ll][Uu][Ee]\s*\{\s*(?:(?:"id"|'id'|id)\s*:\s*\k<container>(?:\.id|\[\s*"id"\s*\])\s*,\s*(?:"matchingTags"|'matchingTags'|matchingTags)\s*:\s*\k<matches>|(?:"matchingTags"|'matchingTags'|matchingTags)\s*:\s*\k<matches>\s*,\s*(?:"id"|'id'|id)\s*:\s*\k<container>(?:\.id|\[\s*"id"\s*\]))\s*\})\s+\k<source>\s*$
-
-  - name: 'Generate query: product availability'
-    # Expected query (one accepted form):
-    # SELECT VALUE {"id": c.id, "availability": c.inStock ? "available" : "unavailable"}
-    # FROM c
-    tags:
-      feature: generate
-    agent_environment:
-      skills:
-        - ../../skills/cosmosdb-nosql-query-generation
-    prompt: |
-      Use the cosmosdb-nosql-query-generation skill.
-      The synthetic container schema is in products.schema.json. Read it first.
-      Generate an Azure Cosmos DB for NoSQL query returning one JSON object per
-      product, directly without an extra wrapper. Each object must contain only
-      id and availability. Based on the Boolean inStock property, availability is
-      "available" when true and "unavailable" when false. Do not filter out either group.
-      Return only the NoSQL query as plain text, without comments or explanatory text.
-      Do not use Markdown, code fences, or backticks. Markdown-formatted responses
-      will fail this evaluation. Do not execute it, connect to a database, or create any files.
-    graders:
-      - type: completed
-      - type: skill-invocation
-        config:
-          required:
-            - cosmosdb-nosql-query-generation
-      - type: output-matches
-        config:
-          # Capture the complete conditional once, then check the exact flat projection in either property order.
-          pattern: >-
-            ^(?=[\s\S]*\s(?<source>[Ff][Rr][Oo][Mm]\s+(?<container>[A-Za-z_][A-Za-z0-9_]*))\s*$)(?=[\s\S]*?(?<availability>(?:\k<container>(?:\.inStock|\[\s*"inStock"\s*\])(?:\s*=\s*true)?|\(\s*\k<container>(?:\.inStock|\[\s*"inStock"\s*\])(?:\s*=\s*true)?\s*\))\s*\?\s*(?:"available"|'available')\s*:\s*(?:"unavailable"|'unavailable')|[Ii][Ii][Ff]\s*\(\s*(?:\k<container>(?:\.inStock|\[\s*"inStock"\s*\])(?:\s*=\s*true)?|\(\s*\k<container>(?:\.inStock|\[\s*"inStock"\s*\])(?:\s*=\s*true)?\s*\))\s*,\s*(?:"available"|'available')\s*,\s*(?:"unavailable"|'unavailable')\s*\)))\s*[Ss][Ee][Ll][Ee][Cc][Tt]\s+(?:[Vv][Aa][Ll][Uu][Ee]\s*\{\s*(?:(?:"id"|'id'|id)\s*:\s*\k<container>(?:\.id|\[\s*"id"\s*\])\s*,\s*(?:"availability"|'availability'|availability)\s*:\s*\k<availability>|(?:"availability"|'availability'|availability)\s*:\s*\k<availability>\s*,\s*(?:"id"|'id'|id)\s*:\s*\k<container>(?:\.id|\[\s*"id"\s*\]))\s*\}|\k<container>(?:\.id|\[\s*"id"\s*\])(?:\s+[Aa][Ss]\s+id)?\s*,\s*\k<availability>\s+[Aa][Ss]\s+availability|\k<availability>\s+[Aa][Ss]\s+availability\s*,\s*\k<container>(?:\.id|\[\s*"id"\s*\])(?:\s+[Aa][Ss]\s+id)?)\s+\k<source>\s*$
+            \b[Ww][Hh][Ee][Rr][Ee]\s+[Ss][Tt][Aa][Rr][Tt][Ss][Ww][Ii][Tt][Hh]\s*\(\s*[A-Za-z_]\w*(?:\.name|\[\s*"name"\s*\])\s*,\s*(?:"[Ee][Cc][Oo]"|'[Ee][Cc][Oo]')\s*,\s*true\s*\)\s*$
 
   - name: 'Explain query: product tag rows'
     tags:

@@ -110,7 +110,11 @@ language itself. Apply these rules whenever you produce a Cosmos DB NoSQL query.
 - A Cosmos DB NoSQL `JOIN` is **not** a relational join — it is an **array unwind**
   (cross-product with an array property of the same document):
   `JOIN alias IN c.arrayProperty`. Multiple JOINs are allowed.
-- To filter on properties inside a document's array, use `JOIN ... IN c.array` or
+- For exact membership in an array of primitive values, prefer `ARRAY_CONTAINS(c.array, value)`
+  over a JOIN or subquery. String membership is case-sensitive; use this form when the
+  user requests an exact case-sensitive match. Its optional third argument controls
+  partial object matching, **not** case sensitivity.
+- To filter on properties of objects inside a document's array, use `JOIN ... IN c.array` or
   `EXISTS(SELECT VALUE ... FROM x IN c.array WHERE ...)`. Direct dotted access like
   `c.items.name` will not match array elements.
 - Scalar subqueries in projection: `ARRAY(SELECT VALUE ... FROM i IN c.items)`,

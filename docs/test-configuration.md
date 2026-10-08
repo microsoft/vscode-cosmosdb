@@ -208,38 +208,40 @@ For a completed CI run, download the `eval-results-<attempt>` artifact from the 
 directory, each trial record in `results.jsonl` includes the case name in `stimulus`, the actual response in
 `trajectory.output`, and the grading evidence in `gradeResult`. Per-trial `events.jsonl` files contain the
 conversation and tool calls. Compare the response with the prompt and grader, not just the failed regex:
-valid aliases or equivalent expressions can still fail an intentionally narrow query-shape grader.
+equivalent rewrites can still fail a smoke test targeting a specific Cosmos DB predicate.
 Offline grader tests validate known examples; they do not rerun the LLM or guarantee a live evaluation passes.
 
 #### NL2Query suite
 
-The [spec](../evals/nl2query/eval.yaml) contains three Generate and three paired Explain prompts against a synthetic
+The [spec](../evals/nl2query/eval.yaml) contains two Generate and three Explain prompts against a synthetic
 product schema, named `Generate query: ...` and `Explain query: ...` so reports identify the feature under test:
 
-- **Array JOIN:** expand each product's tags, preserving duplicates and excluding empty arrays.
-- **Nested ARRAY/SELECT VALUE:** return case-insensitive prefix matches as strings, keeping products with no matches.
-- **Conditional JSON projection:** return flat objects with availability derived from `inStock`;
-  Explain also tests selected-query precedence.
+- **Generate — array membership:** find products with the exact, case-sensitive tag `"eco"`, exercising `ARRAY_CONTAINS`.
+- **Generate — case-insensitive prefix:** find product names beginning with `"eco"`, exercising `STARTSWITH` with
+  its case-insensitivity argument.
+- **Explain:** cover array JOINs, nested ARRAY/SELECT VALUE projections, and conditional JSON projection with
+  selected-query precedence.
 
 It pins `gpt-5.6-luna` for lower-cost execution and `gpt-5.6-terra` for mid-range explanation judging.
 Generation requires the [query-generation skill](../skills/cosmosdb-nosql-query-generation/SKILL.md) and uses
-deterministic query-shape graders for the requested forms, not every equivalent NoSQL query rewrite. Explain uses binary LLM
+small deterministic predicate checks. Generation prompts describe the desired data without function or syntax hints.
+Explain uses binary LLM
 rubrics and makes the entire [best-practices skill directory](../skills/cosmosdb-best-practices) available without
 requiring activation, matching production's optional skill use. Omitted skills do not automatically load this
 repository's skills: discovery runs in Vally's isolated trial workspace, which otherwise contains only the schema.
 The evaluations explicitly provide skill directories, including their supporting files.
 Every grader must pass (100% threshold). Generation requires plain-text NoSQL queries and rejects Markdown wrappers,
-prose, comments, extra statements, and incorrect query shapes. Production still accepts Markdown wrappers for compatibility;
+prose, comments, and extra statements. Production still accepts Markdown wrappers for compatibility;
 the evaluations intentionally reject them to keep pattern matching simple.
-Generation graders allow different container and element aliases, but require consistent case-sensitive references
-and exact property names. They accept `SELECT VALUE` objects or named projections, in either property order.
-Availability accepts either a ternary or `IIF`. An object literal projected without `VALUE` is still rejected because
-it introduces an extra `$1` wrapper.
+Generation graders check a single positive `WHERE` predicate with the required property and arguments, allowing different
+aliases, projections, whitespace, function casing, and string quote styles. They do not parse or validate the complete
+query, resolve alias bindings, or enumerate equivalent rewrites. These are focused Cosmos DB syntax smoke tests, not
+end-to-end semantic correctness tests.
 Explain rubrics list only the required behavior. The judge grades meaning rather than wording and fails any missing
 criterion or incorrect claim.
 
-The [offline tests](../evals/nl2query/graders.test.mjs) check the generation query-shape graders against accepted and
-rejected queries. For Explain, they stub the judge and only verify that its verdict decides the result; the live run
+The [offline tests](../evals/nl2query/graders.test.mjs) check generation predicates, incorrect arguments, negation, and
+output formatting. For Explain, they stub the judge and only verify that its verdict decides the result; the live run
 covers whether the judge grades accurately. Editor context resolution, schema sampling, applying queries, and query
 execution are outside this suite's scope.
 

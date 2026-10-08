@@ -17,7 +17,7 @@ defaults:
 stimuli:
   # Production accepts Markdown wrappers to avoid breaking otherwise valid responses.
   # Generation tests intentionally reject them to keep output pattern matching simple.
-  - name: product-tag-rows
+  - name: 'Generate query: product tag rows'
     # Expected query (one accepted form):
     # SELECT c.id, t AS tag
     # FROM c
@@ -49,7 +49,7 @@ stimuli:
         config:
           pattern: '\b[CT]\b|\bc(?:\.(?!(?:id|tags)\b)|\[\s*"(?!(?:id|tags)"))|\b[Aa][Ss]\s+(?!(?:id|tag)\b)'
 
-  - name: product-eco-tags
+  - name: 'Generate query: product eco tags'
     # Expected query (one accepted form):
     # SELECT c.id, ARRAY(
     #     SELECT VALUE t FROM t IN c.tags
@@ -85,7 +85,7 @@ stimuli:
         config:
           pattern: '\b[CT]\b|\bc(?:\.(?!(?:id|tags)\b)|\[\s*"(?!(?:id|tags)"))|\b[Aa][Ss]\s+(?!(?:id|matchingTags)\b)'
 
-  - name: product-availability
+  - name: 'Generate query: product availability'
     # Expected query (one accepted form):
     # SELECT VALUE {"id": c.id, "availability": c.inStock ? "available" : "unavailable"}
     # FROM c
@@ -122,7 +122,7 @@ stimuli:
           pattern: >-
             ^(?=[\s\S]*(?:"id"|'id'|\bid)\s*:)(?=[\s\S]*(?:"availability"|'availability'|\bavailability)\s*:)[\s\S]*\?\s*(?:"available"|'available')\s*:\s*(?:"unavailable"|'unavailable')
 
-  - name: explain-product-tag-rows
+  - name: 'Explain query: product tag rows'
     tags:
       feature: explain
     agent_environment: &explain-environment
@@ -163,7 +163,7 @@ stimuli:
             or reporting actual results is incorrect. Quoting or rewriting the
             query without explaining it is not an explanation.
 
-  - name: explain-product-eco-tags
+  - name: 'Explain query: product eco tags'
     tags:
       feature: explain
     agent_environment: *explain-environment
@@ -190,7 +190,7 @@ stimuli:
       - Duplicate matching tags are kept.
     graders: *explanation-graders
 
-  - name: explain-selected-product-availability
+  - name: 'Explain query: selected product availability'
     tags:
       feature: explain
     agent_environment: *explain-environment

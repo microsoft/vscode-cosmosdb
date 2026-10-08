@@ -31,7 +31,7 @@ const markdownQueryFormats = [
 ];
 
 const generateCases = {
-    'product-tag-rows': {
+    'Generate query: product tag rows': {
         accepted: [
             'SELECT c.id, t AS tag FROM c JOIN t IN c.tags',
             'select c.id as id, t as tag from c join t in c.tags',
@@ -53,7 +53,7 @@ const generateCases = {
             'SELECT c.id, t AS tag FROM c JOIN t IN c.tags WHERE t != ""',
         ],
     },
-    'product-eco-tags': {
+    'Generate query: product eco tags': {
         accepted: [
             'SELECT c.id, ARRAY(SELECT VALUE t FROM t IN c.tags WHERE StartsWith(t, "eco", true)) AS matchingTags FROM c',
             "select c.id as id, array(select value t from t in c.tags where startswith(t, 'ECO', true)) as matchingTags from c",
@@ -72,7 +72,7 @@ const generateCases = {
             'SELECT c.id, ARRAY(SELECT VALUE T FROM t IN c.tags WHERE StartsWith(t, "eco", true)) AS matchingTags FROM c',
         ],
     },
-    'product-availability': {
+    'Generate query: product availability': {
         accepted: [
             'SELECT VALUE {"id": c.id, "availability": c.inStock ? "available" : "unavailable"} FROM c',
             "select value {'availability': c.inStock ? 'available' : 'unavailable', 'id': c.id} from c",

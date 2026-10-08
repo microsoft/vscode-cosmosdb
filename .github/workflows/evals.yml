@@ -134,7 +134,7 @@ jobs:
           COPILOT_GITHUB_TOKEN: ${{ github.token }}
           # Vally 0.17's separate LLM judge explicitly forwards GITHUB_TOKEN.
           GITHUB_TOKEN: ${{ github.token }}
-        run: npm run eval -- --max-retries 0
+        run: npm run eval -- --max-retries 0 --verbose
 
       - name: Upload evaluation reports and trajectories
         id: upload-results

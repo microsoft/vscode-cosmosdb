@@ -159,6 +159,7 @@ npm run eval -- --eval-spec evals/nl2query/eval.yaml  # one suite
 npm run eval -- --tag feature=explain               # matching stimuli across suites
 npm run eval -- --model <model-id> --runs 3          # execution model and trial count
 npm run eval -- --judge-model <judge-model-id>       # LLM judge model
+npm run eval -- --tag feature=generate --verbose    # full agent output for generation cases
 ```
 
 **Why `VALLY_TELEMETRY_OPTOUT=1`?** Vally enables optional CLI usage analytics by default (for example, command,
@@ -202,10 +203,18 @@ model requests, including separate judge requests for LLM graders, and are not d
 Markdown reports for all selected suites are written to gitignored `vally-results/<timestamp>/`.
 These runs are separate from the normal unit tests and build.
 
+To troubleshoot a failed grader, use `--verbose` to include the agent response in the console output.
+For a completed CI run, download the `eval-results-<attempt>` artifact from the Actions run. In its timestamped
+directory, each trial record in `results.jsonl` includes the case name in `stimulus`, the actual response in
+`trajectory.output`, and the grading evidence in `gradeResult`. Per-trial `events.jsonl` files contain the
+conversation and tool calls. Compare the response with the prompt and grader, not just the failed regex:
+valid aliases or equivalent expressions can still fail an intentionally narrow query-shape grader.
+Offline grader tests validate known examples; they do not rerun the LLM or guarantee a live evaluation passes.
+
 #### NL2Query suite
 
 The [spec](../evals/nl2query/eval.yaml) contains three Generate and three paired Explain prompts against a synthetic
-product schema:
+product schema, named `Generate query: ...` and `Explain query: ...` so reports identify the feature under test:
 
 - **Array JOIN:** expand each product's tags, preserving duplicates and excluding empty arrays.
 - **Nested ARRAY/SELECT VALUE:** return case-insensitive prefix matches as strings, keeping products with no matches.
@@ -213,13 +222,14 @@ product schema:
 
 It pins `gpt-5.6-luna` for lower-cost execution and `gpt-5.6-terra` for mid-range explanation judging.
 Generation requires the [query-generation skill](../skills/cosmosdb-nosql-query-generation/SKILL.md) and uses
-deterministic query-shape graders for the requested forms, not every equivalent SQL rewrite. Explain uses binary LLM
+deterministic query-shape graders for the requested forms, not every equivalent NoSQL query rewrite. Explain uses binary LLM
 rubrics and makes the entire [best-practices skill directory](../skills/cosmosdb-best-practices) available without
 requiring activation, matching production's optional skill use. Omitted skills do not automatically load this
 repository's skills: discovery runs in Vally's isolated trial workspace, which otherwise contains only the schema.
 The evaluations explicitly provide skill directories, including their supporting files.
-Every grader must pass (100% threshold). Generation accepts plain SQL or one complete unlabeled/`sql` code fence,
-but rejects prose, comments, extra statements, and incorrect query shapes.
+Every grader must pass (100% threshold). Generation requires plain-text NoSQL queries and rejects Markdown wrappers,
+prose, comments, extra statements, and incorrect query shapes. Production still accepts Markdown wrappers for compatibility;
+the evaluations intentionally reject them to keep pattern matching simple.
 Explain rubrics list only the required behavior. The judge grades meaning rather than wording and fails any missing
 criterion or incorrect claim.
 
@@ -247,6 +257,7 @@ An administrator must enable **Allow use of Copilot CLI billed to the organizati
 No PAT or repository secret is needed. See
 [Copilot CLI in GitHub Actions](https://docs.github.com/copilot/how-tos/copilot-cli/use-copilot-cli-in-actions).
 
+The live CI step enables `--verbose` so its log includes agent responses alongside grader results.
 Actions summaries show suite scores, thresholds, recorded verdicts, and detailed reports. Artifacts
 (`eval-results-<attempt>`) retain available results for 14 days, including failed runs. A separate reporting job,
 without checkout or contribution-code execution, owns PR-comment permissions; live agents do not receive them.

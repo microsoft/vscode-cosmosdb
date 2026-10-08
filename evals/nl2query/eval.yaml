@@ -72,10 +72,37 @@ stimuli:
       - *generation-skill
       - *query-format
       - *no-comments-or-extra-statements
-      - type: output-matches
+      - &case-insensitive-prefix
+        type: output-matches
         config:
           pattern: >-
             \b[Ww][Hh][Ee][Rr][Ee]\s+[Ss][Tt][Aa][Rr][Tt][Ss][Ww][Ii][Tt][Hh]\s*\(\s*[A-Za-z_]\w*(?:\.name|\[\s*"name"\s*\])\s*,\s*(?:"[Ee][Cc][Oo]"|'[Ee][Cc][Oo]')\s*,\s*true\s*\)\s*$
+
+  - name: 'Generate query: ambiguous SQL request'
+    # Expected predicate: WHERE STARTSWITH(c.name, "eco", true) (any alias), despite the generic request for SQL.
+    # Unwanted PostgreSQL query: SELECT * FROM products WHERE name ILIKE 'eco%'
+    # ILIKE is not supported by Cosmos DB for NoSQL.
+    tags:
+      feature: generate
+      scenario: ambiguous-sql-request
+    agent_environment: *generate-environment
+    prompt: |
+      Use the cosmosdb-nosql-query-generation skill.
+      The synthetic product schema is in products.schema.json. Read it first.
+      Write a SQL query to find products whose name starts with "eco",
+      ignoring case.
+      Return only the SQL query as plain text, without comments or explanatory text.
+      Do not use Markdown, code fences, or backticks. Markdown-formatted responses
+      will fail this evaluation. Do not execute it, connect to a database, or create any files.
+    graders:
+      - type: completed
+      - *generation-skill
+      - *query-format
+      - *no-comments-or-extra-statements
+      - *case-insensitive-prefix
+      - type: output-not-matches
+        config:
+          pattern: '(?i)\bILIKE\b'
 
   - name: 'Explain query: product tag rows'
     tags:

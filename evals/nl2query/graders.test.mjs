@@ -70,6 +70,24 @@ const generateCases = {
             'SELECT * FROM c WHERE STARTSWITH(c.name, "eco", true) OR true',
         ],
     },
+    'Generate query: ambiguous SQL request': {
+        accepted: [
+            'SELECT * FROM c WHERE STARTSWITH(c.name, "eco", true)',
+            "select p.id, p.name from products p where startswith(p.name, 'ECO', true)",
+        ],
+        rejected: [
+            "SELECT * FROM products WHERE name ILIKE 'eco%'",
+            "select * from products p where p.name ilike 'eco%'",
+            "SELECT * FROM products WHERE name LIKE 'eco%'",
+            'SELECT * FROM c WHERE STARTSWITH(c.name, "eco")',
+            'SELECT * FROM c WHERE STARTSWITH(c.name, "eco", false)',
+            'SELECT * FROM c WHERE STARTSWITH(c.name, "eco%", true)',
+            'SELECT * FROM c WHERE STARTSWITH(c.Name, "eco", true)',
+            'SELECT * FROM c WHERE NOT STARTSWITH(c.name, "eco", true)',
+            'SELECT c.name ILIKE \'eco%\' FROM c WHERE STARTSWITH(c.name, "eco", true)',
+            'ERROR: SQL queries are not supported.',
+        ],
+    },
 };
 
 async function grade(stimulus, output, events, registry) {
@@ -96,6 +114,17 @@ test('every stimulus has offline coverage', () => {
     assert.deepEqual(
         spec.stimuli.map((stimulus) => stimulus.name),
         [...Object.keys(generateCases), ...explain],
+    );
+});
+
+test('ambiguous SQL prompt requests SQL without dialect or syntax hints', () => {
+    const stimulus = spec.stimuli.find((candidate) => candidate.tags.scenario === 'ambiguous-sql-request');
+    assert.ok(stimulus);
+    assert.match(stimulus.prompt, /Write a SQL query/);
+    const request = stimulus.prompt.replace('Use the cosmosdb-nosql-query-generation skill.', '');
+    assert.doesNotMatch(
+        request,
+        /\b(?:PostgreSQL|MySQL|T-SQL|SQL Server|Cosmos|NoSQL|ILIKE|LIKE|SELECT|STARTSWITH)\b/i,
     );
 });
 

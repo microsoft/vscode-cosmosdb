@@ -213,18 +213,24 @@ Offline grader tests validate known examples; they do not rerun the LLM or guara
 
 #### NL2Query suite
 
-The [spec](../evals/nl2query/eval.yaml) contains two Generate and three Explain prompts against a synthetic
+The [spec](../evals/nl2query/eval.yaml) contains three Generate and three Explain prompts against a synthetic
 product schema, named `Generate query: ...` and `Explain query: ...` so reports identify the feature under test:
 
 - **Generate — array membership:** find products with the exact, case-sensitive tag `"eco"`, exercising `ARRAY_CONTAINS`.
 - **Generate — case-insensitive prefix:** find product names beginning with `"eco"`, exercising `STARTSWITH` with
   its case-insensitivity argument.
+- **Generate — ambiguous SQL request:** ask for a "SQL query" to find names starting with `"eco"`, ignoring case,
+  without specifying a dialect or providing query syntax. The skill should still produce the Cosmos DB `STARTSWITH`
+  predicate, not relational-only syntax or a refusal.
+  Run this case alone with `npm run eval -- --tag scenario=ambiguous-sql-request --verbose`.
 - **Explain:** cover array JOINs, nested ARRAY/SELECT VALUE projections, and conditional JSON projection with
   selected-query precedence.
 
 It pins `gpt-5.6-luna` for lower-cost execution and `gpt-5.6-terra` for mid-range explanation judging.
 Generation requires the [query-generation skill](../skills/cosmosdb-nosql-query-generation/SKILL.md) and uses
 small deterministic predicate checks. Generation prompts describe the desired data without function or syntax hints.
+The separate ambiguous SQL request uses generic SQL wording, leaving the skill to establish the NoSQL dialect rather
+than testing an explicit request to override it.
 Explain uses binary LLM
 rubrics and makes the entire [best-practices skill directory](../skills/cosmosdb-best-practices) available without
 requiring activation, matching production's optional skill use. Omitted skills do not automatically load this

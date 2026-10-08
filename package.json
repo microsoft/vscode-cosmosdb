@@ -165,6 +165,7 @@
     "@azure/identity": "~4.13.0",
     "@fluentui/react-components": "~9.74.1",
     "@fluentui/react-icons": "~2.0.313",
+    "@modelcontextprotocol/sdk": "~1.32.1",
     "@microsoft/vscode-azext-azureauth": "~5.1.1",
     "@microsoft/vscode-azext-azureutils": "~4.3.0",
     "@microsoft/vscode-azext-utils": "~4.1.0",

@@ -171,7 +171,8 @@ function numeric(value, percent = false) {
     if (/^(?:N\/A|unknown)$/iu.test(value)) return;
     const cleaned = value.replace(/\s*\(estimated\)\s*$/iu, '').replace(/,/gu, '');
     if (!(percent ? /^\d+(?:\.\d+)?%?$/u : /^\d+(?:\.\d+)?$/u).test(cleaned)) throw new Error(`Expected non-negative value or explicit unknown: ${value}`);
-    if (!Number.isFinite(Number(cleaned.replace('%', '')))) throw new Error('Non-finite numeric value');
+    const numericText = cleaned.endsWith('%') ? cleaned.slice(0, -1) : cleaned;
+    if (!Number.isFinite(Number(numericText))) throw new Error('Non-finite numeric value');
 }
 
 export function validateTemplates(volumetrics, accessPatterns, inventory, comparisons = []) {

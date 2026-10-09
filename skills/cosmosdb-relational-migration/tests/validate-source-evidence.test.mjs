@@ -111,6 +111,27 @@ test('validates complete templates and rejects invalid numeric, table and patter
     assert(validateTemplates(volumetrics, patterns.replace('R001', 'R1'), inventory).length);
 });
 
+test('accepts growth rates with an optional percent suffix and explicit unknowns', () => {
+    for (const value of ['0%', '5', '5%', '5.5%', '1,000%', '5% (estimated)', 'unknown', 'N/A']) {
+        const errors = validateTemplates(volumetrics.replace('| 5% |', `| ${value} |`), patterns, inventory);
+        assert.deepEqual(errors, [], value);
+    }
+});
+
+test('rejects repeated or misplaced percent characters in growth rates', () => {
+    for (const value of ['5%%', '%5', '5%5', '5%25', '%%', '5%% (estimated)', '5% (estimated)%']) {
+        const errors = validateTemplates(volumetrics.replace('| 5% |', `| ${value} |`), patterns, inventory);
+        assert.deepEqual(
+            errors,
+            [{
+                path: 'volumetrics/volumetrics.md',
+                message: `Expected non-negative value or explicit unknown: ${value}`,
+            }],
+            value,
+        );
+    }
+});
+
 test('preserves source-specific quoted names and rejects unknown source references', () => {
     assert.equal(resolveSource('PUBLIC.ORDERS', inventory).name, 'public.orders');
     assert.throws(() => resolveSource('"PUBLIC".orders', inventory), /missing/);

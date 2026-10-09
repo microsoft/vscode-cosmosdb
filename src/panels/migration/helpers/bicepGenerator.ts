@@ -250,7 +250,7 @@ function emitContainerResource(
     const partitionKeyPaths = container.partitionKeys?.map((pk) => pk.path) ?? ['/id'];
     const partitionKeyKind = partitionKeyPaths.length > 1 ? 'MultiHash' : 'Hash';
 
-    lines.push(`resource ${symbolName} 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-05-15' = {`);
+    lines.push(`resource ${symbolName} 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2025-10-15' = {`);
     lines.push('  parent: sqlDatabase');
     lines.push(`  name: '${escapeBicepString(container.name)}'`);
     lines.push('  properties: {');
@@ -261,6 +261,20 @@ function emitContainerResource(
     lines.push(`        kind: '${partitionKeyKind}'`);
     lines.push('        version: 2');
     lines.push('      }');
+    if (container.fullTextPolicy) {
+        lines.push('      fullTextPolicy: {');
+        lines.push(`        defaultLanguage: '${escapeBicepString(container.fullTextPolicy.defaultLanguage)}'`);
+        lines.push('        fullTextPaths: [');
+        for (const entry of container.fullTextPolicy.fullTextPaths) {
+            lines.push('          {');
+            lines.push(`            path: '${escapeBicepString(entry.path)}'`);
+            if (entry.language !== undefined) {
+                lines.push(`            language: '${escapeBicepString(entry.language)}'`);
+            }
+            lines.push('          }');
+        }
+        lines.push('        ]', '      }');
+    }
     if (container.uniqueKeyPolicy) {
         lines.push('      uniqueKeyPolicy: {', '        uniqueKeys: [');
         for (const key of container.uniqueKeyPolicy.uniqueKeys) {
@@ -309,6 +323,16 @@ function emitIndexingPolicy(lines: string[], policy: IndexingPolicy, indent: str
         lines.push(`${indent}    }`);
     }
     lines.push(`${indent}  ]`);
+
+    if (policy.fullTextIndexes?.length) {
+        lines.push(`${indent}  fullTextIndexes: [`);
+        for (const entry of policy.fullTextIndexes) {
+            lines.push(`${indent}    {`);
+            lines.push(`${indent}      path: '${escapeBicepString(entry.path)}'`);
+            lines.push(`${indent}    }`);
+        }
+        lines.push(`${indent}  ]`);
+    }
 
     if (policy.compositeIndexes && policy.compositeIndexes.length > 0) {
         lines.push(`${indent}  compositeIndexes: [`);

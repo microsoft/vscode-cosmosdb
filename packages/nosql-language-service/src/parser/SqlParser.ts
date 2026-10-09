@@ -156,7 +156,7 @@ export class SqlParser extends EmbeddedActionsParser {
 
     private topSpec = this.RULE('topSpec', (): AST.SqlTopSpec => {
         const topTok = this.CONSUME(T.Top);
-        const value = this.OR<AST.SqlLiteralScalarExpression | AST.SqlParameterRefScalarExpression>([
+        const value = this.OR([
             { ALT: () => this.SUBRULE(this.numberLitExpr) },
             { ALT: () => this.SUBRULE(this.parameterRefExpr) },
         ]);
@@ -168,7 +168,7 @@ export class SqlParser extends EmbeddedActionsParser {
     });
 
     private selection = this.RULE('selection', (): AST.SqlSelectSpec => {
-        return this.OR<AST.SqlSelectSpec>([
+        return this.OR([
             { ALT: () => this.SUBRULE(this.selectValueSpec) },
             { ALT: () => this.SUBRULE(this.selectStarSpec) },
             { ALT: () => this.SUBRULE(this.selectListSpec) },
@@ -217,7 +217,7 @@ export class SqlParser extends EmbeddedActionsParser {
     });
 
     private selectItemAlias = this.RULE('selectItemAlias', (): AST.SqlSelectItemAlias => {
-        return this.OR<AST.SqlSelectItemAlias>([
+        return this.OR([
             {
                 ALT: () => {
                     this.OPTION(() => this.CONSUME(T.As));
@@ -269,7 +269,7 @@ export class SqlParser extends EmbeddedActionsParser {
     });
 
     private primaryCollectionExpression = this.RULE('primaryCollectionExpression', (): AST.SqlCollectionExpression => {
-        return this.OR<AST.SqlCollectionExpression>([
+        return this.OR([
             {
                 // id IN input_collection
                 GATE: () => {
@@ -309,7 +309,7 @@ export class SqlParser extends EmbeddedActionsParser {
     });
 
     private inputCollection = this.RULE('inputCollection', (): AST.SqlCollection => {
-        return this.OR<AST.SqlCollection>([
+        return this.OR([
             {
                 ALT: () => {
                     const identifier = this.SUBRULE(this.id);
@@ -535,7 +535,7 @@ export class SqlParser extends EmbeddedActionsParser {
 
     private offsetSpec = this.RULE('offsetSpec', (): AST.SqlOffsetSpec => {
         const tok = this.CONSUME(T.Offset);
-        const value = this.OR<AST.SqlLiteralScalarExpression | AST.SqlParameterRefScalarExpression>([
+        const value = this.OR([
             { ALT: () => this.SUBRULE(this.integerLitExpr) },
             { ALT: () => this.SUBRULE(this.parameterRefExpr) },
         ]);
@@ -548,7 +548,7 @@ export class SqlParser extends EmbeddedActionsParser {
 
     private limitSpec = this.RULE('limitSpec', (): AST.SqlLimitSpec => {
         const tok = this.CONSUME(T.Limit);
-        const value = this.OR<AST.SqlLiteralScalarExpression | AST.SqlParameterRefScalarExpression>([
+        const value = this.OR([
             { ALT: () => this.SUBRULE(this.integerLitExpr) },
             { ALT: () => this.SUBRULE(this.parameterRefExpr) },
         ]);
@@ -659,7 +659,7 @@ export class SqlParser extends EmbeddedActionsParser {
     private betweenExpression = this.RULE('betweenExpression', (): AST.SqlScalarExpression => {
         let expr = this.SUBRULE(this.comparisonExpression);
 
-        expr = this.OR<AST.SqlScalarExpression>([
+        expr = this.OR([
             {
                 // BETWEEN binary_expression AND binary_expression
                 ALT: () => {
@@ -705,12 +705,12 @@ export class SqlParser extends EmbeddedActionsParser {
         let expr = this.SUBRULE(this.comparisonExpression);
 
         this.OPTION(() => {
-            expr = this.OR<AST.SqlScalarExpression>([
+            expr = this.OR([
                 {
                     // NOT IN / NOT LIKE
                     ALT: () => {
                         this.CONSUME(T.Not);
-                        return this.OR2<AST.SqlScalarExpression>([
+                        return this.OR2([
                             {
                                 ALT: () => {
                                     this.CONSUME(T.In);
@@ -1067,7 +1067,7 @@ export class SqlParser extends EmbeddedActionsParser {
 
     // Primary expression: literals, identifiers, parens, function calls, etc.
     private primaryExpression = this.RULE('primaryExpression', (): AST.SqlScalarExpression => {
-        return this.OR<AST.SqlScalarExpression>([
+        return this.OR([
             // EXISTS (query)
             {
                 ALT: () => {
@@ -1133,7 +1133,7 @@ export class SqlParser extends EmbeddedActionsParser {
                     this.CONSUME5(T.LParen);
                     // Try: is this an aggregate subquery? (ALL, FIRST, LAST with SELECT inside)
                     // We use OR with backtracking — if internal query fails, treat as normal function.
-                    return this.OR2<AST.SqlScalarExpression>([
+                    return this.OR2([
                         {
                             GATE: () => {
                                 const nameUpper = name?.value?.toUpperCase() ?? '';
@@ -1389,7 +1389,7 @@ export class SqlParser extends EmbeddedActionsParser {
     });
 
     private literalExpr = this.RULE('literalExpr', (): AST.SqlLiteralScalarExpression => {
-        const literal: AST.SqlLiteral = this.OR<AST.SqlLiteral>([
+        const literal: AST.SqlLiteral = this.OR([
             {
                 ALT: () => {
                     const tok = this.CONSUME(T.StringLiteral);

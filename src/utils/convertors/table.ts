@@ -90,7 +90,7 @@ export const buildTableHeadersFromObjectDocuments = (
             partitionKeyPaths.unshift('id');
         }
 
-        partitionKeyPaths.forEach((path) => resultColumns.push(path));
+        partitionKeyPaths.forEach((path) => resultColumns.push(path.startsWith('/') ? path.slice(1) : path));
     }
 
     if (options.Sorting === 'ascending') {
@@ -274,6 +274,29 @@ export const queryResultToTable = async (
         partitionKey,
         effectiveOptions,
     );
+
+    const unnamedColumnIndexes = queryColumns
+        .map((column, index) => (column === null ? index : -1))
+        .filter((index) => index >= 0);
+
+    if (unnamedColumnIndexes.length > 0) {
+        dataset.forEach((row) => {
+            const rowKeys = Object.keys(row).filter((key) => key !== '__id' && key !== '__documentId');
+            unnamedColumnIndexes.forEach((columnIndex) => {
+                const syntheticHeader = headers[columnIndex];
+                if (syntheticHeader in row) {
+                    return;
+                }
+
+                const sourceKey = rowKeys[columnIndex];
+                if (sourceKey === undefined) {
+                    throw new Error(`Missing projected value for unnamed column "${syntheticHeader}".`);
+                }
+
+                row[syntheticHeader] = row[sourceKey];
+            });
+        });
+    }
 
     return { headers, dataset };
 };

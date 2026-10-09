@@ -44,6 +44,7 @@ describe('queryResultToTable', () => {
         const result = makeResult({ query: 'SELECT c.a + c.b FROM c', documents: [{ result: 5 }] });
         const table = await queryResultToTable(result, undefined);
         expect(table.headers).toEqual(['_value1']);
+        expect(table.dataset[0]._value1).toBe(5);
     });
 
     it('throws QueryResultMismatchError when an object query returns primitive data', async () => {
@@ -60,10 +61,10 @@ describe('queryResultToTable', () => {
         const partitionKey: PartitionKeyDefinition = { paths: ['/pk'] };
         const result = makeResult({ query: 'SELECT * FROM c', documents: [{ id: '1', pk: 'tenant-a' }] });
         const table = await queryResultToTable(result, partitionKey);
-        // partition-key path column is shown (prefixed with /), id first
-        expect(table.headers).toContain('/pk');
+        // partition-key path column is shown under the same key used by row data, id first
+        expect(table.headers).toContain('pk');
         expect(table.headers[0]).toBe('id');
-        expect(table.dataset[0]['pk']).toBe('tenant-a');
+        expect(table.dataset[0][table.headers[1]]).toBe('tenant-a');
     });
 
     it('honours descending sort and trailing service columns for SELECT *', async () => {

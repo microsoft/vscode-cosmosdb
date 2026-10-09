@@ -1,5 +1,15 @@
 # Change Log
 
+## 0.36.3
+
+### Fixed
+
+- Fixed detection of Cosmos DB Shell MCP servers using Streamable HTTP while preserving compatibility with legacy SSE servers. (#3398)
+
+### Changed
+
+- Added a `/llm-tool` user-agent suffix to queries executed through GitHub Copilot tools, including subsequent result pages, to distinguish them from user-initiated queries. (#3399)
+
 ## 0.36.2
 
 ### Fixed

@@ -35,8 +35,11 @@ async function* readEvents(response: Response): AsyncGenerator<{ event: string; 
     const lines = createInterface({ input, crlfDelay: Infinity });
     let event = 'message';
     let data: string[] = [];
+    let firstLine = true;
     try {
-        for await (const line of lines) {
+        for await (const rawLine of lines) {
+            const line = firstLine ? rawLine.replace(/^\uFEFF/, '') : rawLine;
+            firstLine = false;
             if (line === '') {
                 if (data.length) {
                     yield { event, data: data.join('\n') };

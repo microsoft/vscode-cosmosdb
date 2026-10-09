@@ -45,7 +45,7 @@ describe('Shell MCP identity probe', () => {
 
     afterEach(async () => {
         tokenSource.dispose();
-        if (server) {
+        if (server?.listening) {
             server.closeAllConnections();
             await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
         }
@@ -150,6 +150,46 @@ describe('Shell MCP identity probe', () => {
     });
 
     const validResponse = initializeResult(1);
+    it.each([
+        { scenario: 'leading BOM in root SSE', legacy: false, prefix: '\uFEFF', expected: true },
+        { scenario: 'leading BOM in legacy SSE', legacy: true, prefix: '\uFEFF', expected: true },
+        { scenario: 'two leading BOMs', legacy: false, prefix: '\uFEFF\uFEFF', expected: false },
+        { scenario: 'BOM after the first line', legacy: false, prefix: '\n\uFEFF', expected: false },
+        {
+            scenario: 'BOM inside server identity',
+            legacy: false,
+            prefix: '\uFEFF',
+            name: 'Cosmos\uFEFFDBShell',
+            expected: false,
+        },
+    ])('handles $scenario with split byte chunks', async ({ legacy, prefix, name, expected }) => {
+        const result = JSON.stringify(initializeResult(1, name));
+        const bytes = Buffer.from(
+            prefix + (legacy ? 'event: endpoint\ndata: /messages\n\n' : '') + `data: ${result}\n\n`,
+        );
+        const response = new Response(
+            new ReadableStream<Uint8Array>({
+                start(controller) {
+                    controller.enqueue(bytes.subarray(0, 1));
+                    controller.enqueue(bytes.subarray(1, 2));
+                    controller.enqueue(bytes.subarray(2));
+                    controller.close();
+                },
+            }),
+            { headers: { 'Content-Type': 'text/event-stream' } },
+        );
+        const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 202 }));
+        if (legacy) {
+            fetchMock.mockResolvedValueOnce(new Response(null, { status: 404 }));
+        }
+        fetchMock.mockResolvedValueOnce(response);
+        try {
+            expect(await isMcpShellServer('12345', tokenSource.token, log)).toBe(expected);
+        } finally {
+            fetchMock.mockRestore();
+        }
+    });
+
     it.each([
         ['mismatched response ID', initializeResult(2)],
         ['missing JSON-RPC version', { ...validResponse, jsonrpc: undefined }],

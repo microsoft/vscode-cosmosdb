@@ -1,10 +1,11 @@
 # CosmosDB emulator
 # Documentation: https://learn.microsoft.com/en-us/azure/cosmos-db/emulator-linux
+# Keep the image pin aligned with docker-compose.e2e.yml; see docs/test-configuration.md.
 
 services:
   # Init container: sets correct permissions on the mounted data directory
   cosmosdb-init:
-    image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
+    image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-EN20260907@sha256:2db1f9e74c506bcf6fc347aa937aea1c00fa756061296a5a9efba530ce86ec02
     user: root
     entrypoint:
       - sh
@@ -18,7 +19,7 @@ services:
       - ./.cosmosdb-logs:/logs
 
   cosmosdb-emulator:
-    image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
+    image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-EN20260907@sha256:2db1f9e74c506bcf6fc347aa937aea1c00fa756061296a5a9efba530ce86ec02
     depends_on:
       cosmosdb-init:
         condition: service_completed_successfully

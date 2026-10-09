@@ -18,10 +18,11 @@
 #   - `npm run e2e:emulator:up` / `e2e:emulator:down` for manual debugging
 #
 # Documentation: https://learn.microsoft.com/en-us/azure/cosmos-db/emulator-linux
+# Keep the image pin aligned with docker-compose.yml; see docs/test-configuration.md.
 
 services:
   cosmosdb-emulator:
-    image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
+    image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-EN20260907@sha256:2db1f9e74c506bcf6fc347aa937aea1c00fa756061296a5a9efba530ce86ec02
     ports:
       - '8082:8081' # Main endpoint (mapped off the default to avoid clashes)
       - '1235:1234' # Additional service port (mapped off the default)

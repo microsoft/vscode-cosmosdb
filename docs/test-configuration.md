@@ -201,6 +201,13 @@ container (`docker compose -f docker-compose.e2e.yml -p cosmosdb-e2e up -d`)
 on ports `8082` / `1235`, so the developer's local emulator on `8081` is
 untouched.
 
+Both `docker-compose.yml` (local development and NoSQL integration CI) and `docker-compose.e2e.yml` pin the emulator
+to `vnext-EN20260907` using a multi-architecture manifest digest (Linux amd64 and arm64).
+The floating `vnext-preview` image published on 2026-10-08 returns undefined for UDF calls instead of rejecting
+an unregistered UDF, breaking the negative integration fixture I-07. The pin keeps that assertion intact.
+Update all three image references together, and run the NoSQL integration suite and E2E suite before accepting
+a new digest. Changes to `docker-compose.yml` trigger the NoSQL integration workflow.
+
 ```bash
 npm run e2e            # full suite — globalSetup brings up + seeds the emulator
 npm run e2e:ui         # Playwright UI mode (pick & rerun specs interactively)

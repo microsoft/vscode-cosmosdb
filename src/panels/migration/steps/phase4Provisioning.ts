@@ -603,7 +603,7 @@ export async function runProvisioning(ctx: Phase4Context, authorization: Provisi
 
             if (armTarget) {
                 const mgmt = await getMgmtClient();
-                await mgmt.sqlResources.beginCreateUpdateSqlDatabaseAndWait(
+                await mgmt.sqlResources.createUpdateSqlDatabase(
                     armTarget.resourceGroup,
                     armTarget.accountName,
                     databaseName,
@@ -659,7 +659,7 @@ export async function runProvisioning(ctx: Phase4Context, authorization: Provisi
 
                 if (armTarget) {
                     const mgmt = await getMgmtClient();
-                    await mgmt.sqlResources.beginCreateUpdateSqlContainerAndWait(
+                    await mgmt.sqlResources.createUpdateSqlContainer(
                         armTarget.resourceGroup,
                         armTarget.accountName,
                         databaseName,
@@ -1399,7 +1399,7 @@ export async function provisionAccount(
                 const cancellationListener = token?.onCancellationRequested(() => abortController.abort());
 
                 const result = await mgmtClient.databaseAccounts
-                    .beginCreateOrUpdateAndWait(
+                    .createOrUpdate(
                         resourceGroup,
                         accountName,
                         {

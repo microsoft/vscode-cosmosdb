@@ -1131,8 +1131,7 @@ export class SqlParser extends EmbeddedActionsParser {
                 ALT: () => {
                     const name = this.SUBRULE3(this.idOrKeywordFuncName);
                     this.CONSUME5(T.LParen);
-                    // Try: is this an aggregate subquery? (ALL, FIRST, LAST with SELECT inside)
-                    // We use OR with backtracking — if internal query fails, treat as normal function.
+                    // Select aggregate-subquery parsing only for ALL, FIRST, or LAST followed by SELECT.
                     return this.OR2([
                         {
                             GATE: () => {

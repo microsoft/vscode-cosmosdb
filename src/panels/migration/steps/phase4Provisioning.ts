@@ -1657,7 +1657,7 @@ async function reportConnectionTestFailure(
         errorMessage = rawMessage;
     }
 
-    void vscode.window.showErrorMessage(l10n.t('Connection test failed: {0}', rawMessage));
+    void vscode.window.showErrorMessage(l10n.t('Connection test failed: {0}', errorMessage));
     channel.emit({
         type: 'event',
         name: 'connectionTestResult',

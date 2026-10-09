@@ -77,6 +77,26 @@ describe('SqlParser — basic queries', () => {
         expect(errors).toHaveLength(0);
     });
 
+    it('parses FIRST with a non-subquery argument as a function call', () => {
+        const { ast, errors } = parse('SELECT FIRST(c.foo) FROM c');
+        expect(errors).toHaveLength(0);
+        const spec = ast!.query.select.spec;
+        if (spec.kind !== 'SelectListSpec') return;
+        expect(spec.items[0].expression.kind).toBe('FunctionCallScalarExpression');
+    });
+
+    it('includes the opening parenthesis in a subquery collection range', () => {
+        const query = 'SELECT * FROM (SELECT * FROM c) AS items';
+        const { ast, errors } = parse(query);
+        expect(errors).toHaveLength(0);
+        const collection = ast!.query.from!.collection;
+        if (collection.kind !== 'AliasedCollectionExpression' || collection.collection.kind !== 'SubqueryCollection') {
+            throw new Error('Expected a subquery collection');
+        }
+        expect(collection.collection.range?.start.offset).toBe(query.indexOf('('));
+        expect(collection.collection.range?.end.offset).toBe(query.indexOf(')') + 1);
+    });
+
     it('parses UDF call', () => {
         const { ast, errors } = parse('SELECT udf.myFunc(c.id) FROM c');
         expect(errors).toHaveLength(0);

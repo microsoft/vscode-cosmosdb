@@ -82,12 +82,14 @@ async function setup(initDelay?: Promise<void>) {
     const dispatchAction = vi.fn((action: DispatchAction) => {
         state = dispatch(state, action);
     });
-    const provider = new QueryEditorContextProvider(dispatchAction, vi.fn(), client);
+    const dispatchToast = vi.fn();
+    const provider = new QueryEditorContextProvider(dispatchAction, dispatchToast, client);
     if (!initDelay) await vi.waitUntil(() => state.isConnected);
     return {
         routes,
         provider,
         dispatchAction,
+        dispatchToast,
         getState: () => state,
         emitEvent: (event: QueryEditorEvent) => emitEvent(event),
     };
@@ -116,6 +118,28 @@ describe('query execution origin', () => {
         await provider.runQuery('SELECT * FROM c', {});
         expect(routes.createQuerySession.mutate).toHaveBeenCalledTimes(2);
         expect(routes.createQuerySession.mutate.mock.lastCall?.[0]).not.toHaveProperty('isLlmTool');
+        provider.dispose();
+    });
+});
+
+describe('query execution results', () => {
+    it('shows an error returned in a successful mutation response and stops execution', async () => {
+        const { provider, routes, dispatchToast, dispatchAction } = await setup();
+        routes.runQuery.mutate.mockResolvedValue({
+            executionId: 'A',
+            startTime: 1,
+            endTime: 2,
+            result: null,
+            currentPage: 1,
+            error: 'Server-side execution failed',
+        });
+
+        await provider.runQuery('SELECT * FROM c', {});
+
+        await vi.waitFor(() => expect(dispatchToast).toHaveBeenCalledOnce());
+        expect(dispatchAction).toHaveBeenCalledWith(
+            expect.objectContaining({ type: 'executionStopped', executionId: 'A' }),
+        );
         provider.dispose();
     });
 });

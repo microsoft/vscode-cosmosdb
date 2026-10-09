@@ -105,6 +105,27 @@ describe('bicepGenerator', () => {
             expect(template).toContain("order: 'descending'");
         });
 
+        it('preserves container unique-key policies in exported Bicep', () => {
+            const template = buildBicepTemplate(
+                buildModel({
+                    containers: [
+                        container({
+                            name: 'Items',
+                            uniqueKeyPolicy: {
+                                uniqueKeys: [{ paths: ['/docType', '/email'] }, { paths: ['/profile/code'] }],
+                            },
+                        }),
+                    ],
+                }),
+            );
+            expect(template).toContain('uniqueKeyPolicy: {');
+            expect(template).toContain("paths: ['/docType', '/email']");
+            expect(template).toContain("paths: ['/profile/code']");
+            expect(buildBicepTemplate(buildModel({ containers: [container({ name: 'Items' })] }))).not.toContain(
+                'uniqueKeyPolicy:',
+            );
+        });
+
         it('references the data contributor role definition and emits outputs', () => {
             const template = buildBicepTemplate(buildModel());
             expect(template).toContain('00000000-0000-0000-0000-000000000002');

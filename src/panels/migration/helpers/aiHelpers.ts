@@ -53,6 +53,7 @@ export function getSelectedModel(options?: GetSelectedModelOptions): Promise<vsc
     return getSelectedModelShared({
         ...options,
         stateKey: options?.stateKey ?? MIGRATION_SELECTED_MODEL_KEY,
+        excludeAuto: true,
     });
 }
 

@@ -65,6 +65,7 @@ const MOCK_DOMAIN = 'SalesDomain';
 /** A small but structurally complete CosmosModel reused across Phase 3 calls. */
 const MOCK_COSMOS_MODEL = {
     version: 1,
+    databaseName: 'E2E Migration',
     domain: MOCK_DOMAIN,
     sourceType: 'SQL Server',
     capacityMode: 'serverless',
@@ -90,6 +91,11 @@ const MOCK_COSMOS_MODEL = {
                             source: { table: 'Orders', column: 'CustomerID', type: 'int' },
                             type: 'string',
                             isPartitionKey: true,
+                        },
+                        {
+                            target: 'orderId',
+                            source: { table: 'Orders', column: 'OrderID', type: 'int' },
+                            type: 'number',
                         },
                         {
                             target: 'total',
@@ -127,12 +133,60 @@ const FAST_CONVERSION_RESPONSE = `${COSMOS_MODEL_JSON}
 ===SUMMARY===
 # Schema Conversion Summary
 
+## Overview
+The Sales domain maps to one Cosmos DB database.
+
+## Database Overview
+The migration database contains the orders container.
+
+## Container Inventory
+The orders container stores order documents.
+
+## Tables to Container Mapping
+Orders maps to orders.
+
+## Container Mappings
+Orders maps to orders.
+
 ## Container Summary
 - **orders** — partition key \`/customerId\`, single entity \`Order\`.
 
-## Example JSON Documents
+## Partition Key Decisions
+Use /customerId to route customer order access.
+
+## Embedding Strategy
+No embedded entities are required.
+
+## Access Pattern Mappings
+Customer order reads route to the orders container.
+
+## Cross-Partition Queries
+No cross-partition queries are required.
+
+## Indexing Policies
+Use the canonical indexing policy from the model.
+
+## Optimization Recommendations
+Use point reads where both id and customerId are available.
+
+## Throughput & Storage Recommendations
+Capacity inputs: [access patterns] [default assumed].
+
+## Cross-Domain Relationships
+No cross-domain relationships are required.
+
+## Conflict Resolutions
+No merge conflicts were found.
+
+## Deployment Notes
+Deploy the validated canonical model.
+
+## Per-Domain References
+See the SalesDomain conversion artifacts.
+
+## Example Documents
 \`\`\`json
-{ "id": "order-1", "customerId": "c1", "total": 100, "docType": "order" }
+${JSON.stringify({ id: 'order-1', customerId: 'c1', orderId: 1, total: 100, docType: 'order' }, null, 2)}
 \`\`\`
 `;
 
@@ -153,7 +207,7 @@ const ACCESS_PATTERN_EXTRACTION_JSON = JSON.stringify({
             tables: ['Orders'],
             frequency: 'high',
             codeReferences: ['OrderRepository.cs'],
-            filterFields: ['CustomerID'],
+            filterFields: 'CustomerID',
             singleOrBatch: 'batch',
         },
     ],
@@ -232,9 +286,36 @@ No cross-partition queries are required for this domain in the e2e mock.
 const DOMAIN_SUMMARY_MARKDOWN = `## Container Summary
 - **orders** — partition key \`/customerId\`.
 
-## Example JSON Documents
+## Overview
+The Sales domain maps to the orders container.
+
+## Tables to Container Mapping
+Orders maps to orders.
+
+## Partition Key Decisions
+Use /customerId.
+
+## Embedding Strategy
+No embedded entities are required.
+
+## Access Pattern Mappings
+Customer reads route to orders.
+
+## Cross-Partition Queries
+None.
+
+## Indexing Policies
+Use the canonical policy.
+
+## Optimization Recommendations
+Use point reads where possible.
+
+## Throughput & Storage Recommendations
+Capacity inputs: [access patterns] [default assumed].
+
+## Example Documents
 \`\`\`json
-{ "id": "order-1", "customerId": "c1", "total": 100, "docType": "order" }
+${JSON.stringify({ id: 'order-1', customerId: 'c1', orderId: 1, total: 100, docType: 'order' }, null, 2)}
 \`\`\`
 `;
 
@@ -243,8 +324,8 @@ const SAMPLE_DATA_JSON = JSON.stringify({
         {
             containerName: 'orders',
             items: [
-                { id: 'order-1', customerId: 'c1', total: 100, docType: 'order' },
-                { id: 'order-2', customerId: 'c2', total: 250, docType: 'order' },
+                { id: 'order-1', customerId: 'c1', orderId: 1, total: 100, docType: 'order' },
+                { id: 'order-2', customerId: 'c2', orderId: 2, total: 250, docType: 'order' },
             ],
         },
     ],
@@ -367,7 +448,11 @@ function delay(ms: number, token?: vscode.CancellationToken): Promise<void> {
  * text to `capture.jsonl` in {@link CAPTURE_DIR_ENV_KEY}. Lets e2e tests assert
  * that user-entered phase instructions actually reach the model prompt.
  */
-export function capturePrompt(route: string | undefined, promptText: string): void {
+export function capturePrompt(
+    route: string | undefined,
+    promptText: string,
+    chat?: { newSession: boolean; modelSelector: { vendor: string; id: string } },
+): void {
     const dir = process.env[CAPTURE_DIR_ENV_KEY];
     if (!dir) {
         return;
@@ -376,7 +461,10 @@ export function capturePrompt(route: string | undefined, promptText: string): vo
         if (!existsSync(dir)) {
             mkdirSync(dir, { recursive: true });
         }
-        appendFileSync(path.join(dir, 'capture.jsonl'), JSON.stringify({ route: route ?? null, promptText }) + '\n');
+        appendFileSync(
+            path.join(dir, 'capture.jsonl'),
+            JSON.stringify({ route: route ?? null, promptText, chat }) + '\n',
+        );
     } catch {
         // Capture is diagnostic-only; never let it break the mock.
     }

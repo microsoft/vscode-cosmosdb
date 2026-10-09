@@ -261,6 +261,17 @@ function emitContainerResource(
     lines.push(`        kind: '${partitionKeyKind}'`);
     lines.push('        version: 2');
     lines.push('      }');
+    if (container.uniqueKeyPolicy) {
+        lines.push('      uniqueKeyPolicy: {', '        uniqueKeys: [');
+        for (const key of container.uniqueKeyPolicy.uniqueKeys) {
+            lines.push('          {');
+            lines.push(
+                `            paths: [${key.paths.map((uniquePath) => `'${escapeBicepString(uniquePath)}'`).join(', ')}]`,
+            );
+            lines.push('          }');
+        }
+        lines.push('        ]', '      }');
+    }
     if (container.indexingPolicy) {
         emitIndexingPolicy(lines, container.indexingPolicy, '      ');
     }

@@ -3,7 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { assignAccessPatternsToDomains, type ParsedAccessPattern } from './migrationHelpers';
+import {
+    assignAccessPatternsToDomains,
+    normalizeParsedAccessPatterns,
+    type ParsedAccessPattern,
+} from './migrationHelpers';
 
 const SAMPLE_ACCESS_PATTERNS: ParsedAccessPattern[] = [
     {
@@ -92,5 +96,18 @@ describe('assignAccessPatternsToDomains', () => {
         const assigned = assignAccessPatternsToDomains(domainsLowerCase, SAMPLE_ACCESS_PATTERNS);
         expect(assigned[0].accessPatterns).toHaveLength(1);
         expect(assigned[0].accessPatterns[0].name).toBe('AP-15: Product CRUD with Category and Model');
+    });
+});
+
+describe('normalizeParsedAccessPatterns', () => {
+    it('normalizes legacy array-shaped filter fields to the version 1 string contract', () => {
+        const patterns = [
+            {
+                ...SAMPLE_ACCESS_PATTERNS[0],
+                filterFields: ['CustomerID', 'Status'],
+            },
+        ] as unknown as ParsedAccessPattern[];
+
+        expect(normalizeParsedAccessPatterns(patterns)[0].filterFields).toBe('CustomerID, Status');
     });
 });

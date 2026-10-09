@@ -35,6 +35,7 @@ import { sanitizeStepName } from '../helpers/debugPromptHelpers';
 import {
     assignAccessPatternsToDomains,
     formatDomainMarkdown,
+    normalizeParsedAccessPatterns,
     type ParsedAccessPattern,
     sendPhaseEvent,
     sendPhaseProgress,
@@ -381,7 +382,7 @@ export async function runAssessment(ctx: Phase2Context): Promise<void> {
                 throw new Error(l10n.t('Invalid extraction response: missing accessPatterns array.'));
             }
 
-            const parsedAccessPatterns = extractionResult.accessPatterns;
+            const parsedAccessPatterns = normalizeParsedAccessPatterns(extractionResult.accessPatterns);
             ext.outputChannel.appendLog(
                 `[Assessment] Extracted ${parsedAccessPatterns.length} access patterns from discovery report`,
             );
@@ -660,7 +661,7 @@ export async function runAssessment(ctx: Phase2Context): Promise<void> {
                 const deps = crossDomainResult.crossDomainDependencies
                     .filter((d) => d.relationship.includes(domain.name))
                     .map((d) => `${d.relationship}: ${d.strategy}`);
-                const pathToRoot = path.relative(path.join(assessmentPath, 'domains'), workspaceRoot);
+                const pathToRoot = path.relative(path.dirname(domainFilePath), workspaceRoot);
 
                 // Re-estimate tokens on finalized content (now includes cross-domain deps + recommendations)
                 const preliminaryMarkdown = formatDomainMarkdown(
@@ -689,6 +690,7 @@ export async function runAssessment(ctx: Phase2Context): Promise<void> {
                     pathToRoot,
                     detectedLanguage,
                 );
+                await vscode.workspace.fs.createDirectory(vscode.Uri.file(path.dirname(domainFilePath)));
                 await vscode.workspace.fs.writeFile(
                     vscode.Uri.file(domainFilePath),
                     Buffer.from(domainContent, 'utf-8'),
@@ -788,6 +790,7 @@ export async function runAssessment(ctx: Phase2Context): Promise<void> {
 
             // Update project.json
             project.phases.assessment = {
+                ...project.phases.assessment,
                 status: 'complete',
                 domains: domainsWithTokens.map((d) => ({
                     name: d.name,

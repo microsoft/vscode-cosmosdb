@@ -68,8 +68,9 @@
     "pretest": "rimraf out && tsc -p tsconfig.test.json && node -e \"require('fs').writeFileSync('out/package.json', JSON.stringify({type:'module'}))\"",
     "test": "node scripts/run-integration-tests.mjs",
     "test:proxy": "node scripts/test-proxy.mjs",
-    "vitest": "vitest run",
-    "vitest:coverage": "vitest run --coverage",
+    "test:migration-skill": "node --test skills/cosmosdb-relational-migration/tests/*.test.mjs",
+    "vitest": "concurrently -n vitest,migration-skill -c magenta,cyan \"vitest run\" \"npm run test:migration-skill\"",
+    "vitest:coverage": "concurrently -n vitest,migration-skill -c magenta,cyan \"vitest run --coverage\" \"npm run test:migration-skill\"",
     "vitest:ui": "vitest --ui",
     "vite-dev": "rimraf ./dist && concurrently -n ext,views -c redBright,whiteBright \"npm run vite-dev-ext\" \"npm run vite-dev-wv\"",
     "vite-prod": "rimraf ./dist && concurrently -n ext,views -c redBright,whiteBright \"npm run vite-prod-ext\" \"npm run vite-prod-wv\"",
@@ -219,6 +220,9 @@
       },
       {
         "path": "./skills/cosmosdb-nosql-query-editor/SKILL.md"
+      },
+      {
+        "path": "./skills/cosmosdb-relational-migration/SKILL.md"
       }
     ],
     "x-azResources": {
@@ -666,6 +670,16 @@
         "category": "Cosmos DB",
         "command": "cosmosDB.e2e.openMigrationFresh",
         "title": "[E2E Test] Open Empty Migration Assistant"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.e2e.useMigrationSkill",
+        "title": "[E2E Test] Use Skill Migration Flow"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.e2e.useProgrammaticMigration",
+        "title": "[E2E Test] Use Programmatic Migration Flow"
       }
     ],
     "submenus": [
@@ -983,6 +997,14 @@
         },
         {
           "command": "cosmosDB.e2e.openMigrationFresh",
+          "when": "cosmosDB.e2eTestMode"
+        },
+        {
+          "command": "cosmosDB.e2e.useMigrationSkill",
+          "when": "cosmosDB.e2eTestMode"
+        },
+        {
+          "command": "cosmosDB.e2e.useProgrammaticMigration",
           "when": "cosmosDB.e2eTestMode"
         }
       ]
@@ -1321,6 +1343,14 @@
             "type": "boolean",
             "default": false,
             "markdownDescription": "%cosmosdb.configuration.experimental.migration.showTokenEstimate%",
+            "tags": [
+              "experimental"
+            ]
+          },
+          "cosmosDB.experimental.migration.useProgrammaticFlow": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "%cosmosdb.configuration.experimental.migration.useProgrammaticFlow%",
             "tags": [
               "experimental"
             ]

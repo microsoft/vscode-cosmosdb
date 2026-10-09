@@ -246,6 +246,20 @@ export function registerE2eTestCommands(): void {
         MigrationAssistantTab.render(workspacePath);
     });
 
+    registerCommand('cosmosDB.e2e.useMigrationSkill', async (context: IActionContext): Promise<void> => {
+        context.telemetry.properties.isE2eTest = 'true';
+        await vscode.workspace
+            .getConfiguration('cosmosDB')
+            .update('experimental.migration.useProgrammaticFlow', false, vscode.ConfigurationTarget.Workspace);
+    });
+
+    registerCommand('cosmosDB.e2e.useProgrammaticMigration', async (context: IActionContext): Promise<void> => {
+        context.telemetry.properties.isE2eTest = 'true';
+        await vscode.workspace
+            .getConfiguration('cosmosDB')
+            .update('experimental.migration.useProgrammaticFlow', true, vscode.ConfigurationTarget.Workspace);
+    });
+
     registerCommand('cosmosDB.e2e.openQueryEditor', (context: IActionContext, args?: Partial<EmulatorEnv>): void => {
         context.telemetry.properties.isE2eTest = 'true';
         const env = readEmulatorEnv(args);

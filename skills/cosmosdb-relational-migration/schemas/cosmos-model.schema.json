@@ -1,0 +1,287 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/microsoft/vscode-cosmosdb/schemas/cosmos-model.schema.json",
+  "title": "Azure Cosmos DB Relational Migration Model",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "domain", "containers"],
+  "properties": {
+    "version": { "const": 1 },
+    "databaseName": { "$ref": "#/$defs/resourceName" },
+    "capacityMode": { "enum": ["serverless", "provisioned"] },
+    "domain": { "type": "string", "minLength": 1 },
+    "sourceType": { "type": "string", "minLength": 1 },
+    "containers": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/container" }
+    },
+    "accessPatterns": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/accessPattern" }
+    },
+    "crossPartitionQueries": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/crossPartitionQuery" }
+    }
+  },
+  "$defs": {
+    "resourceName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "pattern": "^[^/\\\\?#]+[^/\\\\?# ]$|^[^/\\\\?# ]$"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["table", "column", "type"],
+      "properties": {
+        "table": { "type": "string", "minLength": 1 },
+        "column": { "type": "string", "minLength": 1 },
+        "type": { "type": "string", "minLength": 1 }
+      }
+    },
+    "sourceFK": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["table", "column"],
+      "properties": {
+        "table": { "type": "string", "minLength": 1 },
+        "column": { "type": "string", "minLength": 1 },
+        "type": { "type": "string", "minLength": 1 }
+      }
+    },
+    "partitionKey": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path"],
+      "properties": {
+        "path": { "type": "string", "pattern": "^/[^/*?#]+$" },
+        "candidates": { "type": "array" },
+        "analysis": { "type": "string" }
+      }
+    },
+    "attribute": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target", "source", "type"],
+      "properties": {
+        "target": { "type": "string", "minLength": 1 },
+        "source": { "$ref": "#/$defs/source" },
+        "type": { "enum": ["string", "number", "integer", "boolean", "object", "array", "null"] },
+        "isPartitionKey": { "type": "boolean" },
+        "isId": { "type": "boolean" }
+      }
+    },
+    "relationship": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["targetEntity", "sourceFK", "type", "strategy"],
+      "properties": {
+        "targetEntity": { "type": "string", "minLength": 1 },
+        "sourceFK": { "$ref": "#/$defs/sourceFK" },
+        "type": { "enum": ["one-to-one", "one-to-many", "many-to-many"] },
+        "strategy": { "enum": ["embed", "reference"] },
+        "targetProperty": { "type": "string", "minLength": 1 },
+        "score": { "type": "number" },
+        "rationale": { "type": "string" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "strategy": { "const": "embed" } } },
+          "then": { "required": ["targetProperty"] },
+          "else": { "not": { "required": ["targetProperty"] } }
+        }
+      ]
+    },
+    "entity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "docType", "sourceTable", "attributes"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "docType": { "type": "string", "minLength": 1 },
+        "sourceTable": { "type": "string", "minLength": 1 },
+        "attributes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/attribute" }
+        },
+        "relationships": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/relationship" }
+        },
+        "isEmbeddedOnly": { "type": "boolean" },
+        "idTemplate": { "type": "string", "minLength": 1 }
+      }
+    },
+    "indexPath": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path"],
+      "properties": {
+        "path": { "type": "string", "minLength": 2 }
+      }
+    },
+    "compositeIndexPath": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "order"],
+      "properties": {
+        "path": { "type": "string", "minLength": 2 },
+        "order": { "enum": ["ascending", "descending"] }
+      }
+    },
+    "indexingPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["includedPaths", "excludedPaths"],
+      "properties": {
+        "indexingMode": { "enum": ["consistent", "none"] },
+        "automatic": { "type": "boolean" },
+        "includedPaths": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/indexPath" }
+        },
+        "excludedPaths": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/indexPath" }
+        },
+        "compositeIndexes": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 8,
+            "items": { "$ref": "#/$defs/compositeIndexPath" }
+          }
+        },
+        "fullTextIndexes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/indexPath" }
+        }
+      }
+    },
+    "fullTextPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["defaultLanguage", "fullTextPaths"],
+      "properties": {
+        "defaultLanguage": { "type": "string", "minLength": 1 },
+        "fullTextPaths": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path"],
+            "properties": {
+              "path": { "type": "string", "minLength": 2 },
+              "language": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    },
+    "uniqueKeyPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uniqueKeys"],
+      "properties": {
+        "uniqueKeys": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["paths"],
+            "properties": {
+              "paths": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 16,
+                "uniqueItems": true,
+                "items": { "type": "string", "minLength": 2 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "container": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "partitionKeys", "entities", "indexingPolicy"],
+      "properties": {
+        "name": { "$ref": "#/$defs/resourceName" },
+        "partitionKeys": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": { "$ref": "#/$defs/partitionKey" }
+        },
+        "entities": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/entity" }
+        },
+        "indexingPolicy": { "$ref": "#/$defs/indexingPolicy" },
+        "fullTextPolicy": { "$ref": "#/$defs/fullTextPolicy" },
+        "uniqueKeyPolicy": { "$ref": "#/$defs/uniqueKeyPolicy" },
+        "maxThroughput": { "type": "integer", "minimum": 1000, "multipleOf": 1000 },
+        "estimatedStorageGB": { "type": "number", "minimum": 0 },
+        "estimatedRowCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "accessPattern": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "source", "target"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "query"],
+          "properties": {
+            "type": { "type": "string", "minLength": 1 },
+            "query": { "type": "string", "minLength": 1 }
+          }
+        },
+        "target": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "container", "operation", "isCrossPartition"],
+          "properties": {
+            "type": { "type": "string", "minLength": 1 },
+            "container": { "type": "string", "minLength": 1 },
+            "operation": { "type": "string", "minLength": 1 },
+            "query": { "type": "string" },
+            "partitionKeyValue": { "type": "string" },
+            "isCrossPartition": { "type": "boolean" },
+            "estimatedRU": { "type": "string" }
+          }
+        }
+      }
+    },
+    "crossPartitionQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "container", "query", "reason", "estimatedRUCost", "optimizations"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "container": { "type": "string", "minLength": 1 },
+        "query": { "type": "string", "minLength": 1 },
+        "reason": { "type": "string", "minLength": 1 },
+        "estimatedRUCost": { "type": "string", "minLength": 1 },
+        "optimizations": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

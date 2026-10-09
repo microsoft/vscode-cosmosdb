@@ -5,8 +5,15 @@
 
 import type * as React from 'react';
 import { createContext, useContext, useEffect, useReducer, type Dispatch } from 'react';
+import { type TokenEstimatePayload } from '../../../../panels/trpc/routers/migrationEventsRouter';
 import { sanitizeCosmosDBAccountName } from '../../../../utils/cosmosDBAccountName';
-import { resolveSelectedModelId, type ModelInfo } from '../../../../utils/modelUtils';
+import { getMigrationModels, resolveSelectedModelId, type ModelInfo } from '../../../../utils/modelUtils';
+import {
+    deriveMigrationPhaseStates,
+    shouldResetMigrationTargetEndpoint,
+    type MigrationCompletionMap,
+    type MigrationRunActivity,
+} from './deriveMigrationPhaseStates';
 import { type Channel } from './MigrationChannel';
 
 export type { ModelInfo };
@@ -17,10 +24,13 @@ export interface MigrationState {
     workspacePath: string;
     projectName: string;
     isLoaded: boolean;
+    phaseCompletion: MigrationCompletionMap | null;
+    runActivity: MigrationRunActivity | null;
 
     // Model selection
     availableModels: ModelInfo[];
     selectedModelId: string | null;
+    savedModelId: string | null;
 
     // Consent
     consentGiven: boolean;
@@ -129,11 +139,14 @@ export interface MigrationState {
     fileStateGeneration: number;
 
     // Token estimate for context
-    tokenEstimate: { minTokens: number; maxTokens: number; modelMaxTokens: number; estimateGeneration: number } | null;
+    tokenEstimate: TokenEstimatePayload | null;
 
     // Experimental: show the token-estimate progress bar in the Discovery phase.
     // Calculation and logging happen regardless; this only toggles the UI.
     showTokenEstimate: boolean;
+
+    // Whether the legacy programmatic migration runner and its analysis-mode controls are active.
+    useProgrammaticFlow: boolean;
 
     // Discovery instructions
     discoveryInstructions: string;
@@ -144,7 +157,7 @@ export interface MigrationState {
     // Code migration plan
     hasCodeMigrationPlan: boolean;
     codeMigrationPlanPath: string;
-    migrationMode: 'plan' | 'start';
+    codeMigrationAction: 'plan' | 'migrate';
 
     // Whether Phase 4 (Target Environment) must be completed before migration can start
     isPhase4Required: boolean;
@@ -154,7 +167,10 @@ export type MigrationAction =
     | { type: 'SET_LOADED'; payload: Partial<MigrationState> }
     | { type: 'SET_PROJECT_NAME'; payload: string }
     | { type: 'SET_CONSENT'; payload: boolean }
-    | { type: 'SET_MODELS'; payload: { models: ModelInfo[]; savedModelId: string | null } }
+    | {
+          type: 'SET_MODELS';
+          payload: { models: ModelInfo[]; savedModelId: string | null; useProgrammaticFlow: boolean };
+      }
     | { type: 'SET_SELECTED_MODEL'; payload: string }
     | { type: 'SET_ANALYSIS_STATE'; payload: PhaseState }
     | {
@@ -214,40 +230,24 @@ export type MigrationAction =
     | { type: 'SET_AI_FEATURES_ENABLED'; payload: boolean }
     | {
           type: 'SET_TOKEN_ESTIMATE';
-          payload: { minTokens: number; maxTokens: number; modelMaxTokens: number; estimateGeneration: number } | null;
+          payload: TokenEstimatePayload | null;
       }
     | { type: 'SET_SHOW_TOKEN_ESTIMATE'; payload: boolean }
+    | { type: 'SET_USE_PROGRAMMATIC_FLOW'; payload: boolean }
     | { type: 'SET_DISCOVERY_INSTRUCTIONS'; payload: string }
     | { type: 'SET_MIGRATION_INSTRUCTIONS'; payload: string }
-    | { type: 'SET_MIGRATION_MODE'; payload: 'plan' | 'start' }
-    | {
-          type: 'SET_FILE_STATE';
-          payload: {
-              schemaFiles: string[];
-              volumetricFiles: string[];
-              accessPatternFiles: string[];
-              excludedSchemaFiles: string[];
-              excludedVolumetricFiles: string[];
-              excludedAccessPatternFiles: string[];
-              hasVolumetricsTemplate: boolean;
-              hasAccessPatternsTemplate: boolean;
-              hasDiscoveryReport: boolean;
-              hasAssessmentSummary: boolean;
-              hasSchemaConversion: boolean;
-              hasSampleData: boolean;
-              hasBicep: boolean;
-              hasCodeMigrationPlan: boolean;
-              codeMigrationPlanPath: string;
-              fileStateGeneration: number;
-          };
-      };
+    | { type: 'SET_CODE_MIGRATION_ACTION'; payload: 'plan' | 'migrate' }
+    | { type: 'SET_RUN_ACTIVITY'; payload: MigrationRunActivity | null };
 
 const initialState: MigrationState = {
     workspacePath: '',
     projectName: '',
     isLoaded: false,
+    phaseCompletion: null,
+    runActivity: null,
     availableModels: [],
     selectedModelId: null,
+    savedModelId: null,
     consentGiven: false,
     schemaFiles: [],
     volumetricFiles: [],
@@ -301,19 +301,22 @@ const initialState: MigrationState = {
     fileStateGeneration: 0,
     tokenEstimate: null,
     showTokenEstimate: false,
+    useProgrammaticFlow: false,
     discoveryInstructions: '',
     migrationInstructions: '',
     hasCodeMigrationPlan: false,
     codeMigrationPlanPath: '',
-    migrationMode: 'start',
+    codeMigrationAction: 'plan',
     isPhase4Required: false,
 };
 
 function migrationReducer(state: MigrationState, action: MigrationAction): MigrationState {
     switch (action.type) {
+        case 'SET_RUN_ACTIVITY':
+            return { ...state, runActivity: action.payload };
         case 'SET_LOADED': {
-            // Derive phase states from the payload (disk artifacts) but never overwrite
-            // 'in-progress' or 'error' — mirrors the guard used in SET_FILE_STATE.
+            // Derive phase states from the persisted checkpoint but never overwrite
+            // live 'in-progress' or 'error' state.
             const canDerive = (current: PhaseState): boolean => current !== 'in-progress' && current !== 'error';
 
             return {
@@ -352,14 +355,23 @@ function migrationReducer(state: MigrationState, action: MigrationAction): Migra
             return { ...state, projectName: action.payload };
         case 'SET_CONSENT':
             return { ...state, consentGiven: action.payload };
-        case 'SET_MODELS':
+        case 'SET_MODELS': {
+            const models = getMigrationModels(action.payload.models, action.payload.useProgrammaticFlow);
+            const selectedModelId = resolveSelectedModelId(models, action.payload.savedModelId);
             return {
                 ...state,
-                availableModels: action.payload.models,
-                selectedModelId: action.payload.savedModelId ?? action.payload.models[0]?.id ?? null,
+                availableModels: models,
+                savedModelId: action.payload.savedModelId,
+                selectedModelId,
+                useProgrammaticFlow: action.payload.useProgrammaticFlow,
+                tokenEstimate:
+                    action.payload.useProgrammaticFlow && selectedModelId === state.selectedModelId
+                        ? state.tokenEstimate
+                        : null,
             };
+        }
         case 'SET_SELECTED_MODEL':
-            return { ...state, selectedModelId: action.payload };
+            return { ...state, selectedModelId: action.payload, savedModelId: action.payload, tokenEstimate: null };
         case 'SET_ANALYSIS_STATE':
             return {
                 ...state,
@@ -439,10 +451,12 @@ function migrationReducer(state: MigrationState, action: MigrationAction): Migra
             return { ...state, includeUnmappedDomains: action.payload };
         case 'SET_THOROUGH_ANALYSIS':
             return { ...state, thoroughAnalysis: action.payload };
-        case 'SET_TARGET_TYPE':
+        case 'SET_TARGET_TYPE': {
+            const resetEndpoint = shouldResetMigrationTargetEndpoint(state.targetType, action.payload);
             return {
                 ...state,
                 targetType: action.payload,
+                targetEndpoint: resetEndpoint ? '' : state.targetEndpoint,
                 connectionVerified: false,
                 connectionTestState: 'available',
                 connectionTestError: null,
@@ -454,18 +468,33 @@ function migrationReducer(state: MigrationState, action: MigrationAction): Migra
                     action.payload === 'provision' && !state.targetAccountName
                         ? (sanitizeCosmosDBAccountName(state.projectName) ?? null)
                         : state.targetAccountName,
-                // "Azure Cosmos DB Account" and "Provision new…" share the endpoint:
-                // if one was already captured (e.g. from a prior provisioning), mark the
-                // provisioning sub-step as complete so the user sees the endpoint prefilled
-                // when switching between these options.
-                accountProvisioningState: state.targetEndpoint ? 'complete' : 'available',
+                accountProvisioningState: !resetEndpoint && state.targetEndpoint ? 'complete' : 'available',
                 accountProvisioningProgress: null,
                 accountProvisioningError: null,
             };
+        }
         case 'SET_TARGET_ENDPOINT':
             return { ...state, targetEndpoint: action.payload };
-        case 'SET_TARGET_ACCOUNT_NAME':
-            return { ...state, targetAccountName: action.payload };
+        case 'SET_TARGET_ACCOUNT_NAME': {
+            const resetEndpoint =
+                state.targetType === 'provision' &&
+                shouldResetMigrationTargetEndpoint(
+                    state.targetType,
+                    state.targetType,
+                    state.targetAccountName,
+                    action.payload,
+                );
+            return {
+                ...state,
+                targetAccountName: action.payload,
+                ...(resetEndpoint && {
+                    targetEndpoint: '',
+                    connectionVerified: false,
+                    connectionTestState: 'available',
+                    accountProvisioningState: 'available',
+                }),
+            };
+        }
         case 'SET_TARGET_SUBSCRIPTION':
             return {
                 ...state,
@@ -527,75 +556,33 @@ function migrationReducer(state: MigrationState, action: MigrationAction): Migra
         case 'SET_AI_FEATURES_ENABLED':
             return { ...state, isAIFeaturesEnabled: action.payload };
         case 'SET_TOKEN_ESTIMATE':
+            if (
+                action.payload &&
+                (!state.useProgrammaticFlow ||
+                    state.selectedModelId === 'auto' ||
+                    action.payload.modelId !== state.selectedModelId ||
+                    action.payload.estimateGeneration !== state.fileStateGeneration)
+            )
+                return state;
             return { ...state, tokenEstimate: action.payload };
         case 'SET_SHOW_TOKEN_ESTIMATE':
             return { ...state, showTokenEstimate: action.payload };
+        case 'SET_USE_PROGRAMMATIC_FLOW': {
+            const models = getMigrationModels(state.availableModels, action.payload);
+            return {
+                ...state,
+                useProgrammaticFlow: action.payload,
+                availableModels: models,
+                selectedModelId: resolveSelectedModelId(models, state.savedModelId),
+                tokenEstimate: null,
+            };
+        }
         case 'SET_DISCOVERY_INSTRUCTIONS':
             return { ...state, discoveryInstructions: action.payload };
         case 'SET_MIGRATION_INSTRUCTIONS':
             return { ...state, migrationInstructions: action.payload };
-        case 'SET_MIGRATION_MODE':
-            return { ...state, migrationMode: action.payload };
-        case 'SET_FILE_STATE': {
-            const p = action.payload;
-
-            // Derive phase states from disk artifacts.
-            // Never overwrite 'in-progress' or 'error' — only update 'locked'/'available'/'complete'.
-            const canDerive = (current: PhaseState): boolean => current !== 'in-progress' && current !== 'error';
-
-            const discoveryState = canDerive(state.discoveryState)
-                ? p.hasDiscoveryReport
-                    ? 'complete'
-                    : 'available'
-                : state.discoveryState;
-
-            const discoveryComplete = discoveryState === 'complete';
-
-            const assessmentState = canDerive(state.assessmentState)
-                ? p.hasAssessmentSummary
-                    ? 'complete'
-                    : discoveryComplete
-                      ? 'available'
-                      : 'locked'
-                : state.assessmentState;
-
-            const assessmentComplete = assessmentState === 'complete';
-
-            const schemaConversionState = canDerive(state.schemaConversionState)
-                ? p.hasSchemaConversion
-                    ? 'complete'
-                    : assessmentComplete
-                      ? 'available'
-                      : 'locked'
-                : state.schemaConversionState;
-
-            const provisioningState = canDerive(state.provisioningState)
-                ? p.hasSampleData
-                    ? 'complete'
-                    : 'locked'
-                : state.provisioningState;
-
-            return {
-                ...state,
-                schemaFiles: p.schemaFiles,
-                volumetricFiles: p.volumetricFiles,
-                accessPatternFiles: p.accessPatternFiles,
-                excludedSchemaFiles: p.excludedSchemaFiles,
-                excludedVolumetricFiles: p.excludedVolumetricFiles,
-                excludedAccessPatternFiles: p.excludedAccessPatternFiles,
-                hasVolumetricsTemplate: p.hasVolumetricsTemplate,
-                hasAccessPatternsTemplate: p.hasAccessPatternsTemplate,
-                hasSampleData: p.hasSampleData,
-                bicepGenerated: p.hasBicep,
-                hasCodeMigrationPlan: p.hasCodeMigrationPlan,
-                codeMigrationPlanPath: p.codeMigrationPlanPath,
-                fileStateGeneration: p.fileStateGeneration,
-                discoveryState,
-                assessmentState,
-                schemaConversionState,
-                provisioningState,
-            };
-        }
+        case 'SET_CODE_MIGRATION_ACTION':
+            return { ...state, codeMigrationAction: action.payload };
         default:
             return state;
     }
@@ -607,7 +594,7 @@ const MigrationDispatchContext = createContext<Dispatch<MigrationAction>>(() => 
 export const useMigrationState = () => useContext(MigrationStateContext);
 export const useMigrationDispatch = () => useContext(MigrationDispatchContext);
 
-export function WithMigrationContext({ channel, children }: { channel: Channel; children: React.ReactNode }) {
+export function WithMigrationContext({ channel, children }: { channel: Channel; children?: React.ReactNode }) {
     const [state, dispatch] = useReducer(migrationReducer, initialState);
 
     useEffect(() => {
@@ -620,7 +607,6 @@ export function WithMigrationContext({ channel, children }: { channel: Channel; 
                     project: {
                         name: string;
                         migrationInstructions?: string;
-                        migrationMode?: 'plan' | 'start';
                         phases: {
                             discovery: Record<string, unknown>;
                             assessment?: Record<string, unknown>;
@@ -650,10 +636,18 @@ export function WithMigrationContext({ channel, children }: { channel: Channel; 
                     codeMigrationPlanPath: string;
                     isPhase4Required: boolean;
                     showTokenEstimate: boolean;
+                    useProgrammaticFlow: boolean;
+                    phaseCompletion: MigrationCompletionMap;
+                    runActivity: MigrationRunActivity | null;
+                    fileStateGeneration: number;
                 }) => {
                     const discovery = data.project.phases.discovery;
                     const assessment = data.project.phases.assessment;
-                    const analysis = discovery.applicationAnalysis as MigrationState['analysisResult'] | undefined;
+                    const rawAnalysis = discovery.applicationAnalysis;
+                    const analysis =
+                        rawAnalysis && typeof rawAnalysis === 'object' && !Array.isArray(rawAnalysis)
+                            ? (rawAnalysis as Record<string, unknown>)
+                            : undefined;
                     const target = data.project.phases.targetEnvironment as
                         | {
                               type: 'emulator' | 'azure' | 'provision';
@@ -667,20 +661,27 @@ export function WithMigrationContext({ channel, children }: { channel: Channel; 
                           }
                         | undefined;
 
-                    // Phase 1 is complete when schema files exist AND discovery-report.md exists
-                    const assessmentComplete = data.hasAssessmentSummary;
-                    const schemaConversionComplete = data.hasSchemaConversion;
+                    const discoveryComplete = data.phaseCompletion?.discovery?.complete ?? false;
+                    const phaseStates = deriveMigrationPhaseStates(data.phaseCompletion, data.useProgrammaticFlow);
 
                     // Initialize analysisResult with projectName from top-level if not already set
-                    const effectiveAnalysis = analysis ?? { projectName: data.project.name };
-                    if (!effectiveAnalysis.projectName) {
-                        effectiveAnalysis.projectName = data.project.name;
-                    }
+                    const analysisString = (key: string): string | undefined =>
+                        typeof analysis?.[key] === 'string' ? analysis[key] : undefined;
+                    const effectiveAnalysis: NonNullable<MigrationState['analysisResult']> = {
+                        projectName: analysisString('projectName') || data.project.name,
+                        projectType: analysisString('projectType'),
+                        language: analysisString('language'),
+                        frameworks: Array.isArray(analysis?.frameworks)
+                            ? analysis.frameworks.filter(
+                                  (framework): framework is string => typeof framework === 'string',
+                              )
+                            : [],
+                        databaseType: analysisString('databaseType'),
+                        databaseAccess: analysisString('databaseAccess'),
+                    };
 
                     // Discovery report state is independent of analysis (auto-detect) state
                     const hasAnalysis = !!analysis;
-                    const discoveryComplete = data.hasDiscoveryReport;
-
                     dispatch({
                         type: 'SET_LOADED',
                         payload: {
@@ -696,21 +697,13 @@ export function WithMigrationContext({ channel, children }: { channel: Channel; 
                             hasAccessPatternsTemplate: data.hasAccessPatternsTemplate,
                             analysisResult: effectiveAnalysis,
                             analysisState: hasAnalysis ? 'complete' : 'available',
-                            discoveryState: discoveryComplete ? 'complete' : 'available',
+                            discoveryState: phaseStates.discoveryState,
                             discoveryError: null,
-                            assessmentState: assessmentComplete
-                                ? 'complete'
-                                : discoveryComplete
-                                  ? 'available'
-                                  : 'locked',
+                            assessmentState: phaseStates.assessmentState,
                             assessmentInstructions: (assessment?.assessmentInstructions as string) ?? '',
                             assessmentResult: data.assessmentResult ?? null,
                             assessmentError: null,
-                            schemaConversionState: schemaConversionComplete
-                                ? 'complete'
-                                : assessmentComplete
-                                  ? 'available'
-                                  : 'locked',
+                            schemaConversionState: phaseStates.schemaConversionState,
                             schemaConversionResult: data.schemaConversionResult ?? null,
                             schemaConversionInstructions:
                                 (data.project.phases.schemaConversion?.schemaConversionInstructions as string) ?? '',
@@ -732,7 +725,7 @@ export function WithMigrationContext({ channel, children }: { channel: Channel; 
                                 : discoveryComplete
                                   ? 'available'
                                   : 'locked',
-                            provisioningState: data.hasSampleData ? 'complete' : 'locked',
+                            provisioningState: phaseStates.provisioningState,
                             provisioningProgress: null,
                             provisioningError: null,
                             provisioningResult: null,
@@ -744,11 +737,15 @@ export function WithMigrationContext({ channel, children }: { channel: Channel; 
                             migrationInstructions: data.project.migrationInstructions ?? '',
                             hasCodeMigrationPlan: data.hasCodeMigrationPlan,
                             codeMigrationPlanPath: data.codeMigrationPlanPath,
-                            // Respect the user's persisted choice if set; otherwise default based on whether
-                            // the plan file exists ('start' if present, 'plan' if not).
-                            migrationMode: data.project.migrationMode ?? (data.hasCodeMigrationPlan ? 'start' : 'plan'),
+                            codeMigrationAction: data.phaseCompletion?.['code-migration']?.complete
+                                ? 'migrate'
+                                : 'plan',
                             isPhase4Required: data.isPhase4Required,
                             showTokenEstimate: data.showTokenEstimate,
+                            useProgrammaticFlow: data.useProgrammaticFlow,
+                            fileStateGeneration: data.fileStateGeneration,
+                            phaseCompletion: data.phaseCompletion,
+                            runActivity: data.runActivity ?? null,
                         },
                     });
                 },
@@ -756,12 +753,21 @@ export function WithMigrationContext({ channel, children }: { channel: Channel; 
         );
 
         disposables.push(
-            channel.on('availableModels', (models: ModelInfo[], savedModelId: string | null) => {
-                dispatch({
-                    type: 'SET_MODELS',
-                    payload: { models, savedModelId: resolveSelectedModelId(models, savedModelId) },
-                });
+            channel.on('runActivityChanged', (activity: MigrationRunActivity | null) => {
+                dispatch({ type: 'SET_RUN_ACTIVITY', payload: activity });
             }),
+        );
+
+        disposables.push(
+            channel.on(
+                'availableModels',
+                (models: ModelInfo[], savedModelId: string | null, useProgrammaticFlow: boolean) => {
+                    dispatch({
+                        type: 'SET_MODELS',
+                        payload: { models, savedModelId, useProgrammaticFlow },
+                    });
+                },
+            ),
         );
 
         disposables.push(
@@ -925,19 +931,9 @@ export function WithMigrationContext({ channel, children }: { channel: Channel; 
         );
 
         disposables.push(
-            channel.on(
-                'tokenEstimate',
-                (
-                    estimate: {
-                        minTokens: number;
-                        maxTokens: number;
-                        modelMaxTokens: number;
-                        estimateGeneration: number;
-                    } | null,
-                ) => {
-                    dispatch({ type: 'SET_TOKEN_ESTIMATE', payload: estimate });
-                },
-            ),
+            channel.on('tokenEstimate', (estimate: TokenEstimatePayload | null) => {
+                dispatch({ type: 'SET_TOKEN_ESTIMATE', payload: estimate });
+            }),
         );
 
         disposables.push(
@@ -1064,29 +1060,9 @@ export function WithMigrationContext({ channel, children }: { channel: Channel; 
         );
 
         disposables.push(
-            channel.on(
-                'filesChanged',
-                (data: {
-                    schemaFiles: string[];
-                    volumetricFiles: string[];
-                    accessPatternFiles: string[];
-                    excludedSchemaFiles: string[];
-                    excludedVolumetricFiles: string[];
-                    excludedAccessPatternFiles: string[];
-                    hasVolumetricsTemplate: boolean;
-                    hasAccessPatternsTemplate: boolean;
-                    hasDiscoveryReport: boolean;
-                    hasAssessmentSummary: boolean;
-                    hasSchemaConversion: boolean;
-                    hasSampleData: boolean;
-                    hasBicep: boolean;
-                    hasCodeMigrationPlan: boolean;
-                    codeMigrationPlanPath: string;
-                    fileStateGeneration: number;
-                }) => {
-                    dispatch({ type: 'SET_FILE_STATE', payload: data });
-                },
-            ),
+            channel.on('programmaticFlowChanged', (enabled: boolean) => {
+                dispatch({ type: 'SET_USE_PROGRAMMATIC_FLOW', payload: enabled });
+            }),
         );
 
         return () => {

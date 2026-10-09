@@ -263,6 +263,16 @@ export interface ParsedAccessPattern {
     codeExample?: string;
 }
 
+export function normalizeParsedAccessPatterns(patterns: ParsedAccessPattern[]): ParsedAccessPattern[] {
+    return patterns.map((pattern) => {
+        const filterFields = (pattern as ParsedAccessPattern & { filterFields?: string | string[] }).filterFields;
+        return {
+            ...pattern,
+            ...(Array.isArray(filterFields) ? { filterFields: filterFields.join(', ') } : {}),
+        };
+    });
+}
+
 /**
  * Assigns pre-parsed access patterns to domains based on table overlap.
  * A pattern is assigned to a domain if any of its tables belong to that domain.

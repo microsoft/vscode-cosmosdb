@@ -40,6 +40,13 @@ export interface CosmosContainer {
     partitionKeys?: PartitionKeyConfig[];
     entities: CosmosEntity[];
     indexingPolicy?: IndexingPolicy;
+    fullTextPolicy?: {
+        defaultLanguage: string;
+        fullTextPaths: { path: string; language?: string }[];
+    };
+    uniqueKeyPolicy?: {
+        uniqueKeys: { paths: string[] }[];
+    };
     /**
      * Autoscale maximum RU/s for this container.
      * Only meaningful when the root model's `capacityMode` is `'provisioned'`.

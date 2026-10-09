@@ -7,6 +7,7 @@ import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils
 import { type TypedEventSink } from '@microsoft/vscode-ext-webview';
 import * as l10n from '@vscode/l10n';
 import * as path from 'path';
+import { pathToFileURL } from 'url';
 import * as vscode from 'vscode';
 import { ext } from '../../../extensionVariables';
 import { MigrationProjectService, type ProjectJson } from '../../../services/MigrationProjectService';
@@ -60,6 +61,36 @@ import {
 import { createToolExecutor, getBestPracticeTools } from '../tools/migrationTools';
 
 // ─── Helpers ────────────────────────────────────────────────────────
+
+async function validateAndCanonicalizeDeploymentModel(model: CosmosModel): Promise<string> {
+    const validatorPath = path.join(
+        ext.context.extensionPath,
+        'skills',
+        'cosmosdb-relational-migration',
+        'scripts',
+        'validate-cosmos-model.mjs',
+    );
+    const validator = (await import(pathToFileURL(validatorPath).href)) as {
+        canonicalStringify(value: CosmosModel): string;
+        validateAndCanonicalize(value: CosmosModel): {
+            errors: { path: string; message: string }[];
+            model?: CosmosModel;
+        };
+    };
+    const result = validator.validateAndCanonicalize(stripPartitionKeyCandidates(model));
+    if (!result.model || result.errors.length > 0) {
+        throw new Error(JSON.stringify({ valid: false, errors: result.errors }));
+    }
+    return validator.canonicalStringify(result.model);
+}
+
+async function saveValidatedCosmosModel(directory: string, fileName: string, model: CosmosModel): Promise<void> {
+    const canonicalModel = await validateAndCanonicalizeDeploymentModel(model);
+    await vscode.workspace.fs.writeFile(
+        MigrationProjectService.toUri(directory, fileName),
+        Buffer.from(canonicalModel, 'utf-8'),
+    );
+}
 
 /**
  * Sections to keep from per-domain summaries when building the Step 8
@@ -1065,7 +1096,7 @@ export async function runSchemaConversion(
                         indexPathSyntaxRule,
                     );
                     cosmosModel = idxResult.updatedModel;
-                    await saveCosmosModel(domainOutputPath, stripPartitionKeyCandidates(cosmosModel));
+                    await saveValidatedCosmosModel(domainOutputPath, 'cosmos-model.json', cosmosModel);
 
                     // Save index-policy.json (per-container indexing policies)
                     const indexPolicies: Record<string, unknown> = {};
@@ -1164,7 +1195,7 @@ export async function runSchemaConversion(
                         ext.outputChannel.warn(`[SchemaConversion] ${w}`);
                     }
 
-                    await saveCosmosModel(domainOutputPath, stripPartitionKeyCandidates(fastResult.cosmosModel));
+                    await saveValidatedCosmosModel(domainOutputPath, 'cosmos-model.json', fastResult.cosmosModel);
                     await saveAnalysisFile(
                         domainOutputPath,
                         'summary.md',
@@ -1300,10 +1331,7 @@ export async function runSchemaConversion(
             }
 
             // Save deployment model and summary at schema-conversion root
-            await vscode.workspace.fs.writeFile(
-                MigrationProjectService.toUri(conversionPath, 'model.json'),
-                Buffer.from(JSON.stringify(stripPartitionKeyCandidates(deploymentModel), null, 2), 'utf-8'),
-            );
+            await saveValidatedCosmosModel(conversionPath, 'model.json', deploymentModel);
             await saveAnalysisFile(
                 conversionPath,
                 'summary.md',
@@ -1397,6 +1425,7 @@ export async function runSchemaConversion(
 
             // Update project.json
             project.phases.schemaConversion = {
+                ...project.phases.schemaConversion,
                 status: 'complete',
                 domains: completedDomains,
                 completedAt: new Date().toISOString(),

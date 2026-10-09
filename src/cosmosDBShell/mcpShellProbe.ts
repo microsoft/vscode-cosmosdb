@@ -22,7 +22,11 @@ const initializeResponseSchema = z.object({
 });
 
 async function* readEvents(response: Response): AsyncGenerator<{ event: string; data: string }> {
-    if (!response.ok || !response.headers.get('content-type')?.startsWith('text/event-stream') || !response.body) {
+    if (
+        !response.ok ||
+        response.headers.get('content-type')?.split(';')[0].trim().toLowerCase() !== 'text/event-stream' ||
+        !response.body
+    ) {
         await response.body?.cancel();
         throw new Error(`MCP event stream unavailable (HTTP ${response.status}).`);
     }
@@ -135,7 +139,7 @@ export async function isMcpShellServer(
                 await response.body?.cancel();
                 throw new Error(`MCP initialization returned HTTP ${response.status}.`);
             }
-            if (response.headers.get('content-type')?.split(';')[0].trim() === 'application/json') {
+            if (response.headers.get('content-type')?.split(';')[0].trim().toLowerCase() === 'application/json') {
                 return await complete(await response.json(), endpoint);
             }
         }

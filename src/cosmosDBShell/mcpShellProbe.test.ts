@@ -51,9 +51,16 @@ describe('Shell MCP identity probe', () => {
         }
     });
 
-    it.each(['application/json', 'text/event-stream'])(
-        'recognizes root initialization with %s, without depending on /sse, and deletes its session',
-        async (contentType) => {
+    it.each([
+        { contentType: 'application/json', jsonResponse: true },
+        { contentType: 'application/json; charset=utf-8', jsonResponse: true },
+        { contentType: 'Application/JSON ; charset=utf-8', jsonResponse: true },
+        { contentType: 'text/event-stream', jsonResponse: false },
+        { contentType: 'text/event-stream; charset=utf-8', jsonResponse: false },
+        { contentType: 'Text/Event-Stream ; charset=utf-8', jsonResponse: false },
+    ])(
+        'recognizes root initialization with $contentType, without depending on /sse, and deletes its session',
+        async ({ contentType, jsonResponse }) => {
             const paths: string[] = [];
             const deleted = vi.fn();
             const initialized = vi.fn();
@@ -74,7 +81,7 @@ describe('Shell MCP identity probe', () => {
                                 'Mcp-Session-Id': 'probe-session',
                             });
                             const result = JSON.stringify(initializeResult(message.id));
-                            if (contentType === 'application/json') {
+                            if (jsonResponse) {
                                 res.end(result);
                             } else {
                                 // Split the event across chunks, and keep the stream open after the response.
@@ -162,12 +169,19 @@ describe('Shell MCP identity probe', () => {
         expect(log).toHaveBeenCalledWith(expect.stringContaining('could not verify'));
     });
 
-    it.each(['404', '405'])('initializes legacy SSE after root HTTP %s', async (status) => {
+    it.each([
+        { status: 404, contentType: 'text/event-stream' },
+        { status: 405, contentType: 'text/event-stream' },
+        { status: 404, contentType: 'text/event-stream; charset=utf-8' },
+        { status: 405, contentType: 'text/event-stream; charset=utf-8' },
+        { status: 404, contentType: 'Text/Event-Stream ; charset=utf-8' },
+        { status: 405, contentType: 'Text/Event-Stream ; charset=utf-8' },
+    ])('initializes legacy SSE after root HTTP $status with $contentType', async ({ status, contentType }) => {
         let events: http.ServerResponse;
         await startServer((req, res) => {
             if (req.url === '/sse') {
                 events = res;
-                res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+                res.writeHead(200, { 'Content-Type': contentType });
                 res.write('event: endpoint\ndata: /messages\n\n');
             } else if (req.url === '/messages') {
                 void readMessage(req).then((message) => {
@@ -177,11 +191,37 @@ describe('Shell MCP identity probe', () => {
                     }
                 });
             } else {
-                res.writeHead(Number(status)).end();
+                res.writeHead(status).end();
             }
         });
 
         expect(await isMcpShellServer(port, tokenSource.token, log)).toBe(true);
+    });
+
+    it.each([
+        { legacy: false, contentType: 'text/event-streaming' },
+        { legacy: true, contentType: 'text/event-streaming' },
+        { legacy: false, contentType: 'text/event-streaming; charset=utf-8' },
+        { legacy: true, contentType: 'text/event-streaming; charset=utf-8' },
+    ])('rejects $contentType despite valid MCP messages (legacy: $legacy)', async ({ legacy, contentType }) => {
+        const paths: string[] = [];
+        await startServer((req, res) => {
+            paths.push(`${req.method} ${req.url}`);
+            if (legacy && req.url === '/') {
+                res.writeHead(404).end();
+            } else if (req.url === '/messages' || req.headers['mcp-protocol-version']) {
+                res.writeHead(202).end();
+            } else {
+                res.writeHead(200, { 'Content-Type': contentType });
+                res.end(
+                    (legacy ? 'event: endpoint\ndata: /messages\n\n' : '') +
+                        `event: message\ndata: ${JSON.stringify(initializeResult(1))}\n\n`,
+                );
+            }
+        });
+
+        expect(await isMcpShellServer(port, tokenSource.token, log)).toBe(false);
+        expect(paths).toEqual(legacy ? ['POST /', 'GET /sse'] : ['POST /']);
     });
 
     it.each([302, 401, 403, 500])('does not follow redirects or fall back after root HTTP %s', async (status) => {

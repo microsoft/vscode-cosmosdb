@@ -83,8 +83,12 @@ For EACH container in the current cosmos model:
    - Format: arrays of { path, order } objects
 
 5. **Full-text search** — If any access pattern requires full-text search:
-   - Add a fullTextPolicy with the appropriate language
-   - Add fullTextIndexes for the paths that need search
+   - Add container-level fullTextPolicy with defaultLanguage and fullTextPaths entries
+     shaped as { path, language? }; omitted path languages inherit defaultLanguage.
+   - Add indexingPolicy.fullTextIndexes for the paths that need search. Every index
+     path must be declared in fullTextPolicy.fullTextPaths.
+   - Never nest fullTextPolicy inside indexingPolicy. When full-text search is not
+     needed, omit fullTextPolicy and fullTextIndexes instead of setting them to null.
 
 ## Output Format
 
@@ -95,8 +99,13 @@ Respond with a JSON object in EXACTLY this format (no markdown, no code fences):
 }
 
 The "analysis" field should explain the reasoning for each indexing decision.
-The "updatedModel" field must be the COMPLETE cosmos-model.json with indexingPolicy
-added to each container:
+The "updatedModel" field must be the COMPLETE cosmos-model.json. The following
+properties are siblings on a container that requires full-text search:
+{
+  "fullTextPolicy": {
+    "defaultLanguage": "en-US",
+    "fullTextPaths": [{ "path": "/description", "language": "en-US" }]
+  },
   "indexingPolicy": {
     "indexingMode": "consistent",
     "automatic": true,
@@ -108,9 +117,9 @@ added to each container:
         { "path": "/field2", "order": "descending" }
       ]
     ],
-    "fullTextPolicy": { "defaultLanguage": "en-US", "paths": ["/description"] },
     "fullTextIndexes": [{ "path": "/description" }]
   }
+}
 
 IMPORTANT: Your FINAL response must be ONLY the JSON object.`,
                 ),

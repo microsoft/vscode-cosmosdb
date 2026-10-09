@@ -179,7 +179,8 @@ Denormalize when:
        # 2. Delete all related score documents (different container, same partition key)
        scores_query = "SELECT c.id FROM c WHERE c.playerId = @pid"
        async for page in scores_container.query_items(
-           query=scores_query, parameters=[{"name": "@pid", "value": player_id}]
+           query=scores_query, parameters=[{"name": "@pid", "value": player_id}],
+           partition_key=player_id,
        ):
            await scores_container.delete_item(item=page["id"], partition_key=player_id)
 
@@ -204,16 +205,30 @@ Denormalize when:
        // 2. Delete related scores
        var scoreQuery = new QueryDefinition("SELECT c.id FROM c WHERE c.playerId = @pid")
            .WithParameter("@pid", playerId);
-       await foreach (var score in _scoresContainer.GetItemQueryIterator<dynamic>(
-               scoreQuery, requestOptions: new QueryRequestOptions { PartitionKey = new PartitionKey(playerId) }))
-           await _scoresContainer.DeleteItemAsync<dynamic>(score.id, new PartitionKey(playerId));
+       using var scoreIterator = _scoresContainer.GetItemQueryIterator<dynamic>(scoreQuery,
+           requestOptions: new QueryRequestOptions { PartitionKey = new PartitionKey(playerId) });
+       while (scoreIterator.HasMoreResults)
+       {
+           var scorePage = await scoreIterator.ReadNextAsync();
+           foreach (var score in scorePage)
+           {
+               await _scoresContainer.DeleteItemAsync<dynamic>((string)score.id, new PartitionKey(playerId));
+           }
+       }
 
        // 3. Delete derived leaderboard entries (enumerate all leaderboard partitions or use cross-partition query)
        var lbQuery = new QueryDefinition("SELECT c.id, c.leaderboardKey FROM c WHERE c.playerId = @pid")
            .WithParameter("@pid", playerId);
-       await foreach (var entry in _leaderboardContainer.GetItemQueryIterator<dynamic>(lbQuery))
-           await _leaderboardContainer.DeleteItemAsync<dynamic>(
-               (string)entry.id, new PartitionKey((string)entry.leaderboardKey));
+       using var leaderboardIterator = _leaderboardContainer.GetItemQueryIterator<dynamic>(lbQuery);
+       while (leaderboardIterator.HasMoreResults)
+       {
+           var leaderboardPage = await leaderboardIterator.ReadNextAsync();
+           foreach (var entry in leaderboardPage)
+           {
+               await _leaderboardContainer.DeleteItemAsync<dynamic>(
+                   (string)entry.id, new PartitionKey((string)entry.leaderboardKey));
+           }
+       }
    }
    ```
 
@@ -270,4 +285,4 @@ Denormalize when:
    - If the updated field is a partition key of the derived container, you must delete-and-recreate (Cosmos DB does not support updating partition key values)
    - Consider listing all containers where derived data lives in a comment near each delete/update handler
 
-Reference: [Denormalization patterns](https://learn.microsoft.com/azure/cosmos-db/nosql/modeling-data#denormalization)
+Reference: [Embedding and denormalization](https://learn.microsoft.com/azure/cosmos-db/modeling-data#embed-data)

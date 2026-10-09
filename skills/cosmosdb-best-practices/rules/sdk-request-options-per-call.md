@@ -1,7 +1,7 @@
 ---
-title: Never share a single CosmosItemRequestOptions instance across multiple createItem calls
+title: Use Separate CosmosItemRequestOptions for Deferred or Concurrent Requests
 impact: HIGH
-impactDescription: causes wrong partition key to be sent, producing silent data corruption or 400/404 errors
+impactDescription: avoids partition-key overrides from shared mutable request options
 tags:
   - sdk
   - java
@@ -10,40 +10,54 @@ tags:
   - correctness
 ---
 
-## Never Share a Single CosmosItemRequestOptions Instance Across Multiple createItem Calls
+## Use Separate CosmosItemRequestOptions for Deferred or Concurrent Requests
 
-**Impact: HIGH (causes wrong partition key to be sent, producing silent data corruption or 400/404 errors)**
+**Impact: HIGH (avoids partition-key overrides from shared mutable request options)**
 
-`CosmosItemRequestOptions` is a mutable object. The SDK may mutate the options object internally during request preparation (e.g., stamping the resolved partition key). Reusing the same instance across two `createItem` calls causes the second call to inherit state from the first, resulting in an incorrect partition key being sent to the service.
+`CosmosItemRequestOptions` is mutable. The Java SDK assigns the supplied partition key to it on every `createItem(item, partitionKey, options)` invocation, before returning the `Mono`. Request preparation reads the captured options when the operation is subscribed. If multiple requests share that object, a later invocation can overwrite its partition key before an earlier request reads it.
 
-**Incorrect (shared mutable options — second call sends wrong partition key):**
+Fully awaited sequential `createItem(...).block()` calls do not exhibit this retained-key behavior: the first operation completes before the second invocation assigns its own partition key. The hazard is deferred or overlapping use of shared options, not sequential reuse by itself. Prefer a fresh options instance per operation so the same code remains safe when request scheduling changes.
+
+**Incorrect (both requests capture shared options before either is subscribed):**
 
 ```java
-// ❌ Anti-pattern: one options instance reused for two different createItem calls
+import reactor.core.publisher.Mono;
+
+// ❌ Anti-pattern: both deferred requests capture the same mutable options
 CosmosItemRequestOptions options = new CosmosItemRequestOptions()
     .setIfNoneMatchETag("*");
 
-// First call: writes UserCredentials with PK = email
-credentialsContainer.createItem(credentials, new PartitionKey(email), options).block();
+// The first invocation sets the key to email but does not subscribe yet
+Mono<?> credentialsRequest =
+    credentialsContainer.createItem(credentials, new PartitionKey(email), options);
 
-// Second call: SDK re-uses the mutated options — may send PK = email (WRONG)
-// instead of PK = userId, causing misrouted write or silent corruption
-usersContainer.createItem(userProfile, new PartitionKey(userId), options).block();
+// The second invocation overwrites the shared key with userId
+Mono<?> userRequest =
+    usersContainer.createItem(userProfile, new PartitionKey(userId), options);
+
+// The first request now reads userId instead of email from the shared options
+credentialsRequest.block();
+userRequest.block();
 ```
 
 **Correct (separate instance per call):**
 
 ```java
+import reactor.core.publisher.Mono;
+
 // ✅ Each createItem gets its own fresh options instance
 CosmosItemRequestOptions credsOptions = new CosmosItemRequestOptions()
     .setIfNoneMatchETag("*");
 CosmosItemRequestOptions userOptions = new CosmosItemRequestOptions()
     .setIfNoneMatchETag("*");
 
-credentialsContainer
-    .createItem(credentials, new PartitionKey(email), credsOptions).block();
-usersContainer
-    .createItem(userProfile, new PartitionKey(userId), userOptions).block();
+Mono<?> credentialsRequest =
+    credentialsContainer.createItem(credentials, new PartitionKey(email), credsOptions);
+Mono<?> userRequest =
+    usersContainer.createItem(userProfile, new PartitionKey(userId), userOptions);
+
+credentialsRequest.block();
+userRequest.block();
 ```
 
 ```java
@@ -58,9 +72,10 @@ usersContainer.createItem(
 ```
 
 **Key Points:**
-- `CosmosItemRequestOptions` is **not thread-safe and not reuse-safe** across different requests
-- The bug is especially insidious because: (a) the first call succeeds, (b) the second call may also succeed but route to the wrong partition, (c) the document appears at the wrong partition key value, breaking point reads
-- The same rule applies to `CosmosQueryRequestOptions` and `CosmosPatchItemRequestOptions`
+- A returned `Mono` retains the options reference, not an immutable snapshot; do not mutate or share it with another operation before the request completes
+- Sequential subscriptions alone are not sufficient if both `Mono`s were constructed using shared options before either subscription
+- A partition key that differs from the item's partition-key value is rejected with a 400 error; this is not silent relocation of the item to another partition
+- Avoid sharing other mutable request-option objects across overlapping operations as well
 - Prefer inline construction (`new CosmosItemRequestOptions()...`) to make accidental sharing impossible by inspection
 
-Reference: [Java SDK createItem](https://learn.microsoft.com/azure/cosmos-db/nosql/how-to-java-get-started)
+References: [CosmosAsyncContainer API](https://learn.microsoft.com/java/api/com.azure.cosmos.cosmosasynccontainer?view=azure-java-stable), [Java SDK createItem implementation](https://github.com/Azure/azure-sdk-for-java/blob/main/sdk/cosmos/azure-cosmos/src/main/java/com/azure/cosmos/CosmosAsyncContainer.java)

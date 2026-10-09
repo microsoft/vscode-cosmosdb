@@ -14,7 +14,7 @@ tags:
 
 **Impact: HIGH (without the index, FTS functions fall back to a full scan)**
 
-The `fullTextIndexes` array in the `indexingPolicy` tells Cosmos DB to build an inverted index for the corresponding path. This is separate from the range index — a field can have both. Fields covered by a full-text index should **not** also appear in `excludedPaths`.
+The `fullTextIndexes` array in the `indexingPolicy` tells Cosmos DB to build an inverted index for the corresponding path. This is separate from the range index — a field can have both. A field may be excluded from regular range indexing, explicitly or through a wildcard, while still being indexed for full-text search through `fullTextIndexes`. Retain appropriate range indexes for ordinary equality/range filters and `ORDER BY` queries as needed; a full-text index does not replace them.
 
 **Incorrect (field excluded from range index but no FTS index — slow scan):**
 
@@ -26,6 +26,8 @@ excludedPaths: [
 
 **Correct (Bicep):**
 
+Here `/name` and `/userid` retain range indexes. The root exclusion covers `/description` for regular range indexing, while its separate full-text index remains enabled.
+
 ```bicep
 indexingPolicy: {
   indexingMode: 'consistent'
@@ -34,8 +36,7 @@ indexingPolicy: {
     { path: '/userid/?' }
   ]
   excludedPaths: [
-    { path: '/*' }             // root wildcard
-    // description NOT listed here — managed by FTS index below
+    { path: '/*' }             // excludes description from range indexing, not its full-text index
   ]
   #disable-next-line BCP037
   fullTextIndexes: [

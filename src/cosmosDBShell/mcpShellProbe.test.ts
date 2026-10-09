@@ -45,17 +45,26 @@ describe('Shell MCP identity probe', () => {
 
     afterEach(async () => {
         tokenSource.dispose();
-        if (server) {
+        if (server?.listening) {
             server.closeAllConnections();
             await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
         }
     });
 
-    it.each(['application/json', 'text/event-stream'])(
-        'recognizes root initialization with %s, without depending on /sse, and deletes its session',
-        async (contentType) => {
+    it.each([
+        { contentType: 'application/json', jsonResponse: true },
+        { contentType: 'application/json; charset=utf-8', jsonResponse: true },
+        { contentType: 'Application/JSON ; charset=utf-8', jsonResponse: true },
+        { contentType: 'text/event-stream', jsonResponse: false },
+        { contentType: 'text/event-stream; charset=utf-8', jsonResponse: false },
+        { contentType: 'Text/Event-Stream ; charset=utf-8', jsonResponse: false },
+    ])(
+        'recognizes root initialization with $contentType, without depending on /sse, and deletes its session',
+        async ({ contentType, jsonResponse }) => {
             const paths: string[] = [];
             const deleted = vi.fn();
+            const initialized = vi.fn();
+            const notified = vi.fn();
             await startServer((req, res) => {
                 paths.push(`${req.method} ${req.url}`);
                 if (req.url === '/sse' || req.method === 'GET') {
@@ -66,12 +75,13 @@ describe('Shell MCP identity probe', () => {
                 } else {
                     void readMessage(req).then((message) => {
                         if (message.method === 'initialize') {
+                            initialized(message, req.headers);
                             res.writeHead(200, {
                                 'Content-Type': contentType,
                                 'Mcp-Session-Id': 'probe-session',
                             });
                             const result = JSON.stringify(initializeResult(message.id));
-                            if (contentType === 'application/json') {
+                            if (jsonResponse) {
                                 res.end(result);
                             } else {
                                 // Split the event across chunks, and keep the stream open after the response.
@@ -79,6 +89,7 @@ describe('Shell MCP identity probe', () => {
                                 res.write(`${result}\r\n\r\n`);
                             }
                         } else {
+                            notified(message, req.headers);
                             res.writeHead(202).end();
                         }
                     });
@@ -87,16 +98,130 @@ describe('Shell MCP identity probe', () => {
 
             expect(await isMcpShellServer(port, tokenSource.token, log)).toBe(true);
             expect(paths).not.toContain('GET /sse');
+            expect(initialized).toHaveBeenCalledWith(
+                {
+                    jsonrpc: '2.0',
+                    id: 1,
+                    method: 'initialize',
+                    params: {
+                        protocolVersion: '2025-11-25',
+                        capabilities: {},
+                        clientInfo: { name: 'cosmosdb-shell-identity-probe', version: '1.0.0' },
+                    },
+                },
+                expect.objectContaining({
+                    'content-type': 'application/json',
+                    accept: 'application/json, text/event-stream',
+                }),
+            );
+            expect(notified).toHaveBeenCalledWith(
+                { jsonrpc: '2.0', method: 'notifications/initialized' },
+                expect.objectContaining({
+                    'mcp-session-id': 'probe-session',
+                    'mcp-protocol-version': '2025-03-26',
+                }),
+            );
             expect(deleted).toHaveBeenCalledWith('probe-session', '2025-03-26');
         },
     );
 
-    it.each(['404', '405'])('initializes legacy SSE after root HTTP %s', async (status) => {
+    it('reads multiline SSE data and ignores notifications and responses to other requests', async () => {
+        await startServer((req, res) => {
+            void readMessage(req).then((message) => {
+                if (message.method === 'initialize') {
+                    res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+                    res.write(': keepalive\r\n\r\n');
+                    res.write('data: {"jsonrpc":"2.0","method":"notifications/message"}\r\n\r\n');
+                    res.write(`data: ${JSON.stringify(initializeResult(2, 'OtherMcpServer'))}\r\n\r\n`);
+                    const result = JSON.stringify(initializeResult(message.id), null, 2);
+                    res.write(
+                        `${result
+                            .split('\n')
+                            .map((line) => `data: ${line}`)
+                            .join('\r\n')}\r\n\r\n`,
+                    );
+                } else {
+                    res.writeHead(202).end();
+                }
+            });
+        });
+
+        expect(await isMcpShellServer(port, tokenSource.token, log)).toBe(true);
+    });
+
+    const validResponse = initializeResult(1);
+    it.each([
+        { scenario: 'leading BOM in root SSE', legacy: false, prefix: '\uFEFF', expected: true },
+        { scenario: 'leading BOM in legacy SSE', legacy: true, prefix: '\uFEFF', expected: true },
+        { scenario: 'two leading BOMs', legacy: false, prefix: '\uFEFF\uFEFF', expected: false },
+        { scenario: 'BOM after the first line', legacy: false, prefix: '\n\uFEFF', expected: false },
+        {
+            scenario: 'BOM inside server identity',
+            legacy: false,
+            prefix: '\uFEFF',
+            name: 'Cosmos\uFEFFDBShell',
+            expected: false,
+        },
+    ])('handles $scenario with split byte chunks', async ({ legacy, prefix, name, expected }) => {
+        const result = JSON.stringify(initializeResult(1, name));
+        const bytes = Buffer.from(
+            prefix + (legacy ? 'event: endpoint\ndata: /messages\n\n' : '') + `data: ${result}\n\n`,
+        );
+        const response = new Response(
+            new ReadableStream<Uint8Array>({
+                start(controller) {
+                    controller.enqueue(bytes.subarray(0, 1));
+                    controller.enqueue(bytes.subarray(1, 2));
+                    controller.enqueue(bytes.subarray(2));
+                    controller.close();
+                },
+            }),
+            { headers: { 'Content-Type': 'text/event-stream' } },
+        );
+        const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 202 }));
+        if (legacy) {
+            fetchMock.mockResolvedValueOnce(new Response(null, { status: 404 }));
+        }
+        fetchMock.mockResolvedValueOnce(response);
+        try {
+            expect(await isMcpShellServer('12345', tokenSource.token, log)).toBe(expected);
+        } finally {
+            fetchMock.mockRestore();
+        }
+    });
+
+    it.each([
+        ['mismatched response ID', initializeResult(2)],
+        ['missing JSON-RPC version', { ...validResponse, jsonrpc: undefined }],
+        ['unsupported protocol', { ...validResponse, result: { ...validResponse.result, protocolVersion: 'unknown' } }],
+        [
+            'missing server version',
+            { ...validResponse, result: { ...validResponse.result, serverInfo: { name: 'CosmosDBShell' } } },
+        ],
+        ['JSON-RPC error', { jsonrpc: '2.0', id: 1, error: { code: -32600, message: 'Invalid request' } }],
+    ])('rejects initialization with %s', async (_description, response) => {
+        await startServer((_req, res) => {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(response));
+        });
+
+        expect(await isMcpShellServer(port, tokenSource.token, log)).toBe(false);
+        expect(log).toHaveBeenCalledWith(expect.stringContaining('could not verify'));
+    });
+
+    it.each([
+        { status: 404, contentType: 'text/event-stream' },
+        { status: 405, contentType: 'text/event-stream' },
+        { status: 404, contentType: 'text/event-stream; charset=utf-8' },
+        { status: 405, contentType: 'text/event-stream; charset=utf-8' },
+        { status: 404, contentType: 'Text/Event-Stream ; charset=utf-8' },
+        { status: 405, contentType: 'Text/Event-Stream ; charset=utf-8' },
+    ])('initializes legacy SSE after root HTTP $status with $contentType', async ({ status, contentType }) => {
         let events: http.ServerResponse;
         await startServer((req, res) => {
             if (req.url === '/sse') {
                 events = res;
-                res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+                res.writeHead(200, { 'Content-Type': contentType });
                 res.write('event: endpoint\ndata: /messages\n\n');
             } else if (req.url === '/messages') {
                 void readMessage(req).then((message) => {
@@ -106,11 +231,62 @@ describe('Shell MCP identity probe', () => {
                     }
                 });
             } else {
-                res.writeHead(Number(status)).end();
+                res.writeHead(status).end();
             }
         });
 
         expect(await isMcpShellServer(port, tokenSource.token, log)).toBe(true);
+    });
+
+    it.each([
+        { legacy: false, contentType: 'text/event-streaming' },
+        { legacy: true, contentType: 'text/event-streaming' },
+        { legacy: false, contentType: 'text/event-streaming; charset=utf-8' },
+        { legacy: true, contentType: 'text/event-streaming; charset=utf-8' },
+    ])('rejects $contentType despite valid MCP messages (legacy: $legacy)', async ({ legacy, contentType }) => {
+        const paths: string[] = [];
+        await startServer((req, res) => {
+            paths.push(`${req.method} ${req.url}`);
+            if (legacy && req.url === '/') {
+                res.writeHead(404).end();
+            } else if (req.url === '/messages' || req.headers['mcp-protocol-version']) {
+                res.writeHead(202).end();
+            } else {
+                res.writeHead(200, { 'Content-Type': contentType });
+                res.end(
+                    (legacy ? 'event: endpoint\ndata: /messages\n\n' : '') +
+                        `event: message\ndata: ${JSON.stringify(initializeResult(1))}\n\n`,
+                );
+            }
+        });
+
+        expect(await isMcpShellServer(port, tokenSource.token, log)).toBe(false);
+        expect(paths).toEqual(legacy ? ['POST /', 'GET /sse'] : ['POST /']);
+    });
+
+    it.each([302, 401, 403, 500])('does not follow redirects or fall back after root HTTP %s', async (status) => {
+        const paths: string[] = [];
+        await startServer((req, res) => {
+            paths.push(`${req.method} ${req.url}`);
+            res.writeHead(status, { Location: '/sse' }).end();
+        });
+
+        expect(await isMcpShellServer(port, tokenSource.token, log)).toBe(false);
+        expect(paths).toEqual(['POST /']);
+    });
+
+    it('rejects a legacy message endpoint on a different origin', async () => {
+        await startServer((req, res) => {
+            if (req.url === '/sse') {
+                res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+                res.write('event: endpoint\ndata: http://127.0.0.1:1/messages\n\n');
+            } else {
+                res.writeHead(404).end();
+            }
+        });
+
+        expect(await isMcpShellServer(port, tokenSource.token, log)).toBe(false);
+        expect(log).toHaveBeenCalledWith(expect.stringContaining('different origin'));
     });
 
     it.each(['OtherMcpServer', 'CosmosDBShell impostor'])('rejects MCP identity %s', async (name) => {

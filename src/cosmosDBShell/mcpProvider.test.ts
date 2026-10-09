@@ -3,8 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import * as http from 'http';
 import { type AddressInfo } from 'net';
 import * as vscode from 'vscode';
@@ -81,31 +79,16 @@ describe('Shell MCP provider resolution', () => {
     });
 
     it.runIf(process.env.COSMOSDB_SHELL_MCP_TEST_PORT)(
-        'reuses a live Shell through the registered resolver and executes an MCP tool',
+        'reuses a live Shell through the registered resolver without stopping it',
         async () => {
             const port = process.env.COSMOSDB_SHELL_MCP_TEST_PORT!;
             mocks.getSetting.mockImplementation((key: string) => (key === SETTING_MCP_PORT ? Number(port) : true));
             const server = definition(port);
             const resolved = await provider.resolveMcpServerDefinition?.(server, tokenSource.token);
             expect(resolved).toBe(server);
+            expect(await provider.resolveMcpServerDefinition?.(server, tokenSource.token)).toBe(server);
             expect(vscode.commands.executeCommand).not.toHaveBeenCalled();
             expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
-
-            const transport = new StreamableHTTPClientTransport(new URL(server.uri.toString()));
-            const client = new Client({ name: 'cosmosdb-shell-regression-test', version: '1.0.0' });
-            try {
-                await client.connect(transport, { timeout: 3000 });
-                expect(client.getServerVersion()?.name).toBe('CosmosDBShell');
-                const result = await client.callTool({ name: 'help', arguments: { command: 'version', plain: true } });
-                expect(result.isError).not.toBe(true);
-                expect(result.content).toEqual(expect.arrayContaining([expect.objectContaining({ type: 'text' })]));
-            } finally {
-                try {
-                    await transport.terminateSession();
-                } finally {
-                    await client.close();
-                }
-            }
         },
     );
 });

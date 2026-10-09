@@ -3,11 +3,65 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
-import { StreamableHTTPClientTransport, StreamableHTTPError } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { createInterface } from 'node:readline';
+import { Readable } from 'node:stream';
+import { type ReadableStream } from 'node:stream/web';
 import { type CancellationToken } from 'vscode';
+import { z } from 'zod';
 import { getCosmosDBShellMcpEndpoint } from './cosmosDBShellMcpEndpoint';
+
+const protocolVersions = ['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05', '2024-10-07'] as const;
+const initializeResponseSchema = z.object({
+    jsonrpc: z.literal('2.0'),
+    id: z.literal(1),
+    result: z.object({
+        protocolVersion: z.enum(protocolVersions),
+        capabilities: z.object({}),
+        serverInfo: z.object({ name: z.string(), version: z.string() }),
+    }),
+});
+
+async function* readEvents(response: Response): AsyncGenerator<{ event: string; data: string }> {
+    if (
+        !response.ok ||
+        response.headers.get('content-type')?.split(';')[0].trim().toLowerCase() !== 'text/event-stream' ||
+        !response.body
+    ) {
+        await response.body?.cancel();
+        throw new Error(`MCP event stream unavailable (HTTP ${response.status}).`);
+    }
+
+    const input = Readable.fromWeb(response.body as ReadableStream<Uint8Array>);
+    const lines = createInterface({ input, crlfDelay: Infinity });
+    let event = 'message';
+    let data: string[] = [];
+    let firstLine = true;
+    try {
+        for await (const rawLine of lines) {
+            const line = firstLine ? rawLine.replace(/^\uFEFF/, '') : rawLine;
+            firstLine = false;
+            if (line === '') {
+                if (data.length) {
+                    yield { event, data: data.join('\n') };
+                }
+                event = 'message';
+                data = [];
+            } else {
+                const separator = line.indexOf(':');
+                const field = separator < 0 ? line : line.slice(0, separator);
+                const value = separator < 0 ? '' : line.slice(separator + 1).replace(/^ /, '');
+                if (field === 'event') {
+                    event = value || 'message';
+                } else if (field === 'data') {
+                    data.push(value);
+                }
+            }
+        }
+    } finally {
+        lines.close();
+        input.destroy();
+    }
+}
 
 /**
  * Identify Shell by an MCP initialization response, not by an HTTP content type.
@@ -29,78 +83,89 @@ export async function isMcpShellServer(
     const cancellation = token.onCancellationRequested(() =>
         controller.abort(new Error('MCP identity probe cancelled.')),
     );
-    const probeFetch: typeof fetch = (input, init) =>
-        fetch(input, {
-            ...init,
+    let sessionId: string | null = null;
+    let protocolVersion: string | undefined;
+    const initialize = {
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: {
+            protocolVersion: protocolVersions[0],
+            capabilities: {},
+            clientInfo: { name: 'cosmosdb-shell-identity-probe', version: '1.0.0' },
+        },
+    };
+    const post = (url: URL, message: unknown): Promise<Response> =>
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json, text/event-stream',
+                ...(sessionId ? { 'Mcp-Session-Id': sessionId } : {}),
+                ...(protocolVersion ? { 'MCP-Protocol-Version': protocolVersion } : {}),
+            },
+            body: JSON.stringify(message),
             redirect: 'error',
-            signal: init?.signal ? AbortSignal.any([init.signal, controller.signal]) : controller.signal,
+            signal: controller.signal,
         });
 
-    const probe = async (transport: StreamableHTTPClientTransport | SSEClientTransport): Promise<boolean> => {
-        const client = new Client({ name: 'cosmosdb-shell-identity-probe', version: '1.0.0' });
-        let abortListener: (() => void) | undefined;
-        try {
-            // Closing an SSE transport before its endpoint event does not settle start(), so race the entire handshake.
-            const aborted = new Promise<never>((_resolve, reject) => {
-                abortListener = () => {
-                    const reason: unknown = controller.signal.reason;
-                    reject(reason instanceof Error ? reason : new Error('MCP identity probe aborted.'));
-                };
-                controller.signal.addEventListener('abort', abortListener, { once: true });
-                if (controller.signal.aborted) {
-                    abortListener();
-                }
-            });
-            await Promise.race([client.connect(transport, { signal: controller.signal }), aborted]);
-            const isShell = client.getServerVersion()?.name === 'CosmosDBShell';
-            if (!isShell) {
-                log('MCP resolve: initialization returned a server identity other than CosmosDBShell.');
-            }
-            return isShell;
-        } finally {
-            if (abortListener) {
-                controller.signal.removeEventListener('abort', abortListener);
-            }
-            // Initialization creates a separate session; never terminate the session used by VS Code.
-            // Use an independent deadline because a failed handshake may already have closed/aborted the transport.
-            if (transport instanceof StreamableHTTPClientTransport && transport.sessionId) {
-                try {
-                    const response = await fetch(endpoint, {
-                        method: 'DELETE',
-                        headers: {
-                            'Mcp-Session-Id': transport.sessionId,
-                            ...(transport.protocolVersion ? { 'MCP-Protocol-Version': transport.protocolVersion } : {}),
-                        },
-                        redirect: 'error',
-                        signal: AbortSignal.timeout(500),
-                    });
-                    await response.body?.cancel();
-                    if (!response.ok && response.status !== 405) {
-                        log(`MCP resolve: probe session cleanup returned HTTP ${response.status}.`);
-                    }
-                } catch (error) {
-                    log(`MCP resolve: could not terminate probe session: ${String(error)}`);
-                }
-            }
-            await client.close();
-            await transport.close();
+    const complete = async (message: unknown, url: URL): Promise<boolean> => {
+        const { result } = initializeResponseSchema.parse(message);
+        protocolVersion = result.protocolVersion;
+        const response = await post(url, { jsonrpc: '2.0', method: 'notifications/initialized' });
+        await response.body?.cancel();
+        if (!response.ok) {
+            throw new Error(`MCP initialized notification returned HTTP ${response.status}.`);
         }
+        const isShell = result.serverInfo.name === 'CosmosDBShell';
+        if (!isShell) {
+            log('MCP resolve: initialization returned a server identity other than CosmosDBShell.');
+        }
+        return isShell;
     };
 
     try {
-        try {
-            return await probe(new StreamableHTTPClientTransport(endpoint, { fetch: probeFetch }));
-        } catch (error) {
-            if (
-                controller.signal.aborted ||
-                !(error instanceof StreamableHTTPError) ||
-                (error.code !== 404 && error.code !== 405)
-            ) {
-                throw error;
-            }
+        let response = await post(endpoint, initialize);
+        let messageEndpoint: URL | undefined = endpoint;
+        if (response.status === 404 || response.status === 405) {
+            await response.body?.cancel();
             log('MCP resolve: root endpoint does not support streamable HTTP; checking legacy SSE.');
-            return await probe(new SSEClientTransport(new URL('/sse', endpoint), { fetch: probeFetch }));
+            messageEndpoint = undefined;
+            response = await fetch(new URL('/sse', endpoint), {
+                headers: { Accept: 'text/event-stream' },
+                redirect: 'error',
+                signal: controller.signal,
+            });
+        } else {
+            sessionId = response.headers.get('mcp-session-id');
+            if (!response.ok) {
+                await response.body?.cancel();
+                throw new Error(`MCP initialization returned HTTP ${response.status}.`);
+            }
+            if (response.headers.get('content-type')?.split(';')[0].trim().toLowerCase() === 'application/json') {
+                return await complete(await response.json(), endpoint);
+            }
         }
+
+        for await (const { event, data } of readEvents(response)) {
+            if (event === 'endpoint' && !messageEndpoint) {
+                messageEndpoint = new URL(data, new URL('/sse', endpoint));
+                if (messageEndpoint.origin !== endpoint.origin) {
+                    throw new Error('MCP legacy endpoint has a different origin.');
+                }
+                const posted = await post(messageEndpoint, initialize);
+                await posted.body?.cancel();
+                if (!posted.ok) {
+                    throw new Error(`MCP initialization returned HTTP ${posted.status}.`);
+                }
+            } else if (event === 'message' && messageEndpoint) {
+                const message: unknown = JSON.parse(data);
+                if (message && typeof message === 'object' && 'id' in message && message.id === initialize.id) {
+                    return await complete(message, messageEndpoint);
+                }
+            }
+        }
+        throw new Error('MCP event stream ended before initialization.');
     } catch (error) {
         if (!token.isCancellationRequested) {
             log(`MCP resolve: could not verify Cosmos DB Shell identity: ${String(error)}`);
@@ -110,5 +175,24 @@ export async function isMcpShellServer(
         clearTimeout(timeout);
         cancellation.dispose();
         controller.abort();
+        if (sessionId) {
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'DELETE',
+                    headers: {
+                        'Mcp-Session-Id': sessionId,
+                        ...(protocolVersion ? { 'MCP-Protocol-Version': protocolVersion } : {}),
+                    },
+                    redirect: 'error',
+                    signal: AbortSignal.timeout(500),
+                });
+                await response.body?.cancel();
+                if (!response.ok && response.status !== 405) {
+                    log(`MCP resolve: probe session cleanup returned HTTP ${response.status}.`);
+                }
+            } catch (error) {
+                log(`MCP resolve: could not terminate probe session: ${String(error)}`);
+            }
+        }
     }
 }

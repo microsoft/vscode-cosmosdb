@@ -24,8 +24,9 @@ export function selectSchemaConversionDomains(project, includeUnmappedDomains = 
 
     const names = new Set();
     for (const domain of domains) {
-        if (names.has(domain.name)) throw new Error(`Assessment domain name is duplicated: ${domain.name}`);
-        names.add(domain.name);
+        const normalizedName = domain.name.toLowerCase();
+        if (names.has(normalizedName)) throw new Error(`Assessment domain name is duplicated: ${domain.name}`);
+        names.add(normalizedName);
     }
 
     const selectedDomains = domains

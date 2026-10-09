@@ -59,3 +59,18 @@ test('rejects duplicate assessment domain names', () => {
         /duplicated: Orders/u,
     );
 });
+
+test('rejects case-insensitive assessment domain collisions in either selection mode', () => {
+    const project = projectWithDomains([ORDERS, { ...ORDERS, name: 'orders' }]);
+    for (const includeUnmappedDomains of [false, true]) {
+        assert.throws(
+            () => selectSchemaConversionDomains(project, includeUnmappedDomains),
+            /duplicated: orders/u,
+        );
+    }
+});
+
+test('rejects case-insensitive collisions before skipping unmapped domains', () => {
+    const project = projectWithDomains([ORDERS, { ...CATALOG, name: 'orders' }]);
+    assert.throws(() => selectSchemaConversionDomains(project), /duplicated: orders/u);
+});

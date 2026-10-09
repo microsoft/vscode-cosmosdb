@@ -56,6 +56,8 @@ describe('Shell MCP identity probe', () => {
         async (contentType) => {
             const paths: string[] = [];
             const deleted = vi.fn();
+            const initialized = vi.fn();
+            const notified = vi.fn();
             await startServer((req, res) => {
                 paths.push(`${req.method} ${req.url}`);
                 if (req.url === '/sse' || req.method === 'GET') {
@@ -66,6 +68,7 @@ describe('Shell MCP identity probe', () => {
                 } else {
                     void readMessage(req).then((message) => {
                         if (message.method === 'initialize') {
+                            initialized(message, req.headers);
                             res.writeHead(200, {
                                 'Content-Type': contentType,
                                 'Mcp-Session-Id': 'probe-session',
@@ -79,6 +82,7 @@ describe('Shell MCP identity probe', () => {
                                 res.write(`${result}\r\n\r\n`);
                             }
                         } else {
+                            notified(message, req.headers);
                             res.writeHead(202).end();
                         }
                     });
@@ -87,9 +91,76 @@ describe('Shell MCP identity probe', () => {
 
             expect(await isMcpShellServer(port, tokenSource.token, log)).toBe(true);
             expect(paths).not.toContain('GET /sse');
+            expect(initialized).toHaveBeenCalledWith(
+                {
+                    jsonrpc: '2.0',
+                    id: 1,
+                    method: 'initialize',
+                    params: {
+                        protocolVersion: '2025-11-25',
+                        capabilities: {},
+                        clientInfo: { name: 'cosmosdb-shell-identity-probe', version: '1.0.0' },
+                    },
+                },
+                expect.objectContaining({
+                    'content-type': 'application/json',
+                    accept: 'application/json, text/event-stream',
+                }),
+            );
+            expect(notified).toHaveBeenCalledWith(
+                { jsonrpc: '2.0', method: 'notifications/initialized' },
+                expect.objectContaining({
+                    'mcp-session-id': 'probe-session',
+                    'mcp-protocol-version': '2025-03-26',
+                }),
+            );
             expect(deleted).toHaveBeenCalledWith('probe-session', '2025-03-26');
         },
     );
+
+    it('reads multiline SSE data and ignores notifications and responses to other requests', async () => {
+        await startServer((req, res) => {
+            void readMessage(req).then((message) => {
+                if (message.method === 'initialize') {
+                    res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+                    res.write(': keepalive\r\n\r\n');
+                    res.write('data: {"jsonrpc":"2.0","method":"notifications/message"}\r\n\r\n');
+                    res.write(`data: ${JSON.stringify(initializeResult(2, 'OtherMcpServer'))}\r\n\r\n`);
+                    const result = JSON.stringify(initializeResult(message.id), null, 2);
+                    res.write(
+                        `${result
+                            .split('\n')
+                            .map((line) => `data: ${line}`)
+                            .join('\r\n')}\r\n\r\n`,
+                    );
+                } else {
+                    res.writeHead(202).end();
+                }
+            });
+        });
+
+        expect(await isMcpShellServer(port, tokenSource.token, log)).toBe(true);
+    });
+
+    const validResponse = initializeResult(1);
+    it.each([
+        ['mismatched response ID', initializeResult(2)],
+        ['missing JSON-RPC version', { ...validResponse, jsonrpc: undefined }],
+        ['unsupported protocol', { ...validResponse, result: { ...validResponse.result, protocolVersion: 'unknown' } }],
+        [
+            'missing server version',
+            { ...validResponse, result: { ...validResponse.result, serverInfo: { name: 'CosmosDBShell' } } },
+        ],
+        ['JSON-RPC error', { jsonrpc: '2.0', id: 1, error: { code: -32600, message: 'Invalid request' } }],
+    ])('rejects initialization with %s', async (_description, response) => {
+        await startServer((_req, res) => {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(response));
+        });
+
+        expect(await isMcpShellServer(port, tokenSource.token, log)).toBe(false);
+        expect(log).toHaveBeenCalledWith(expect.stringContaining('could not verify'));
+    });
 
     it.each(['404', '405'])('initializes legacy SSE after root HTTP %s', async (status) => {
         let events: http.ServerResponse;
@@ -111,6 +182,31 @@ describe('Shell MCP identity probe', () => {
         });
 
         expect(await isMcpShellServer(port, tokenSource.token, log)).toBe(true);
+    });
+
+    it.each([302, 401, 403, 500])('does not follow redirects or fall back after root HTTP %s', async (status) => {
+        const paths: string[] = [];
+        await startServer((req, res) => {
+            paths.push(`${req.method} ${req.url}`);
+            res.writeHead(status, { Location: '/sse' }).end();
+        });
+
+        expect(await isMcpShellServer(port, tokenSource.token, log)).toBe(false);
+        expect(paths).toEqual(['POST /']);
+    });
+
+    it('rejects a legacy message endpoint on a different origin', async () => {
+        await startServer((req, res) => {
+            if (req.url === '/sse') {
+                res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+                res.write('event: endpoint\ndata: http://127.0.0.1:1/messages\n\n');
+            } else {
+                res.writeHead(404).end();
+            }
+        });
+
+        expect(await isMcpShellServer(port, tokenSource.token, log)).toBe(false);
+        expect(log).toHaveBeenCalledWith(expect.stringContaining('different origin'));
     });
 
     it.each(['OtherMcpServer', 'CosmosDBShell impostor'])('rejects MCP identity %s', async (name) => {

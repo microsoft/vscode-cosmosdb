@@ -96,6 +96,21 @@ export const DocumentPanel = () => {
     const isReadOnly = state.mode === 'view';
     const isEditorReadOnly = isReadOnly || !!state.cleanupRequiredMessage;
     const inProgress = state.isSaving || state.isRefreshing || state.isCleaningUp;
+    const conflict = state.conflict;
+
+    const onRefreshConflict = useCallback(() => {
+        if (!conflict) return;
+        void dispatcher.refreshConflict(conflict);
+    }, [conflict, dispatcher]);
+
+    const onCompareConflict = useCallback(() => {
+        if (!conflict) return;
+        void dispatcher.compareConflict(state.currentDocumentContent, conflict);
+    }, [conflict, dispatcher, state.currentDocumentContent]);
+
+    const onOverwriteConflict = useCallback(() => {
+        void dispatcher.overwriteConflict(state.currentDocumentContent);
+    }, [dispatcher, state.currentDocumentContent]);
 
     const onChange = useCallback(
         (newValue: string | undefined) => {
@@ -203,6 +218,29 @@ export const DocumentPanel = () => {
                         </List>
                     )}
                     {errors.length === 0 && <Text>{l10n.t('This item is valid and ready to be saved.')}</Text>}
+                </MessageBarWrapper>
+                <MessageBarWrapper key={'conflict'} visible={!!conflict} debounceTime={0} intent={'warning'}>
+                    {conflict && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <Text>{conflict.message}</Text>
+                            <Text>
+                                {l10n.t(
+                                    'Refresh loads the latest server version, Compare opens a diff, and Overwrite saves your local changes anyway.',
+                                )}
+                            </Text>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                <Button appearance={'secondary'} disabled={inProgress} onClick={onRefreshConflict}>
+                                    {l10n.t('Refresh')}
+                                </Button>
+                                <Button appearance={'secondary'} disabled={inProgress} onClick={onCompareConflict}>
+                                    {l10n.t('Compare')}
+                                </Button>
+                                <Button appearance={'primary'} disabled={inProgress} onClick={onOverwriteConflict}>
+                                    {l10n.t('Overwrite')}
+                                </Button>
+                            </div>
+                        </div>
+                    )}
                 </MessageBarWrapper>
             </section>
             <section className={classes.resultDisplay}>

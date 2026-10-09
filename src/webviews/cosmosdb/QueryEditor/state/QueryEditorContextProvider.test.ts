@@ -96,7 +96,7 @@ async function setup(initDelay?: Promise<void>) {
 }
 
 describe('query execution response errors', () => {
-    it('shows an error toast and stops execution when the response contains an error', async () => {
+    it('stops execution without a webview toast when the host returns an error', async () => {
         const { provider, routes, dispatchAction, dispatchToast } = await setup();
         routes.runQuery.mutate.mockResolvedValue({
             executionId: 'A',
@@ -109,11 +109,12 @@ describe('query execution response errors', () => {
 
         await provider.runQuery('SELECT * FROM c', {});
 
-        await vi.waitFor(() => expect(dispatchToast).toHaveBeenCalledOnce());
-        expect(dispatchToast).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ intent: 'error' }));
-        expect(dispatchAction).toHaveBeenCalledWith(
-            expect.objectContaining({ type: 'executionStopped', executionId: 'A' }),
+        await vi.waitFor(() =>
+            expect(dispatchAction).toHaveBeenCalledWith(
+                expect.objectContaining({ type: 'executionStopped', executionId: 'A', endExecutionTime: 20 }),
+            ),
         );
+        expect(dispatchToast).not.toHaveBeenCalled();
         provider.dispose();
     });
 });

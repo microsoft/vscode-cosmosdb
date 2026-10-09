@@ -6,6 +6,7 @@
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
+import { ext } from '../../extensionVariables';
 import { AuthenticationMethod } from '../AuthenticationMethod';
 import { type CosmosDBCredential } from '../CosmosDBCredential';
 import { type NoSqlQueryConnection } from '../NoSqlQueryConnection';
@@ -91,7 +92,7 @@ const credentialCases: { name: string; credentials: CosmosDBCredential[]; masks:
 
 import { QuerySession } from './QuerySession';
 
-describe('QuerySession telemetry privacy', () => {
+describe('QuerySession', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mocks.contexts.length = 0;
@@ -103,6 +104,19 @@ describe('QuerySession telemetry privacy', () => {
             }),
         });
         vi.mocked(vscode.window.showErrorMessage).mockResolvedValue(undefined);
+    });
+
+    it('logs and shows a single host notification when query execution fails', async () => {
+        const error = new Error('Server-side failure');
+        mocks.fetchNext.mockRejectedValueOnce(error);
+        const session = new QuerySession(connection, query, { countPerPage: 10 });
+
+        const result = await session.run();
+
+        expect(result).toMatchObject({ executionId: session.id, result: null, error: error.message });
+        expect(ext.outputChannel.error).toHaveBeenCalledExactlyOnceWith(error.message);
+        expect(vscode.window.showErrorMessage).toHaveBeenCalledExactlyOnceWith(error.message, 'Go to output');
+        session.dispose();
     });
 
     it.each(credentialCases)(

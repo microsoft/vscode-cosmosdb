@@ -551,6 +551,10 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
     private handleQueryExecutionResult(result?: QueryExecutionResponse): void {
         if (!result) return;
 
+        if (result.error) {
+            this.showToast(l10n.t('Query Error'), result.error, 'error');
+        }
+
         if (result.result) {
             this.dispatch({
                 type: 'updateQueryResult',

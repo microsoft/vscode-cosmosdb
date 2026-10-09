@@ -82,16 +82,41 @@ async function setup(initDelay?: Promise<void>) {
     const dispatchAction = vi.fn((action: DispatchAction) => {
         state = dispatch(state, action);
     });
-    const provider = new QueryEditorContextProvider(dispatchAction, vi.fn(), client);
+    const dispatchToast = vi.fn();
+    const provider = new QueryEditorContextProvider(dispatchAction, dispatchToast, client);
     if (!initDelay) await vi.waitUntil(() => state.isConnected);
     return {
         routes,
         provider,
         dispatchAction,
+        dispatchToast,
         getState: () => state,
         emitEvent: (event: QueryEditorEvent) => emitEvent(event),
     };
 }
+
+describe('query execution response errors', () => {
+    it('shows an error toast and stops execution when the response contains an error', async () => {
+        const { provider, routes, dispatchAction, dispatchToast } = await setup();
+        routes.runQuery.mutate.mockResolvedValue({
+            executionId: 'A',
+            startTime: 10,
+            endTime: 20,
+            result: null,
+            currentPage: 1,
+            error: 'Server-side failure',
+        });
+
+        await provider.runQuery('SELECT * FROM c', {});
+
+        await vi.waitFor(() => expect(dispatchToast).toHaveBeenCalledOnce());
+        expect(dispatchToast).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ intent: 'error' }));
+        expect(dispatchAction).toHaveBeenCalledWith(
+            expect.objectContaining({ type: 'executionStopped', executionId: 'A' }),
+        );
+        provider.dispose();
+    });
+});
 
 describe('query execution origin', () => {
     it('marks tool-created sessions and leaves subsequent manual runs unmarked', async () => {

@@ -151,7 +151,13 @@ export const queryEditorRouterDef = queryEditorRouter({
      * returned `executionId` to actually run it.
      */
     createQuerySession: queryEditorProcedure
-        .input(z.object({ query: z.string(), options: QueryMetadataSchema }))
+        .input(
+            z.object({
+                query: z.string(),
+                options: QueryMetadataSchema,
+                isLlmTool: z.boolean().optional(),
+            }),
+        )
         .output(z.object({ executionId: z.string() }).optional())
         .mutation(async ({ input, ctx }) => {
             // Strip trailing semicolons — they are multi-query separators
@@ -201,7 +207,7 @@ export const queryEditorRouterDef = queryEditorRouter({
                 }
             }
 
-            const session = new QuerySession(ctx.state.connection, input.query, input.options);
+            const session = new QuerySession(ctx.state.connection, input.query, input.options, input.isLlmTool);
             if (ctx.actionContext) {
                 ctx.actionContext.telemetry.properties.executionId = session.id;
             }

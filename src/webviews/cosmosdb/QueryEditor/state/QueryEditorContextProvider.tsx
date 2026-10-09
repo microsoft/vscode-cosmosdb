@@ -121,6 +121,7 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
                 this.trpcClient.queryEditor.createQuerySession.mutate({
                     query: cleanQuery,
                     options: { ...DEFAULT_RESULT_VIEW_METADATA },
+                    isLlmTool: true,
                 }),
             );
             if (!session?.executionId) return;

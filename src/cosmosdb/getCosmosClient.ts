@@ -19,6 +19,7 @@ import { getAccessTokenForVSCode } from './utils/azureSessionHelper';
 
 export type GetCosmosClientOptions = Partial<CosmosClientOptions> & {
     wwwAuthenticate?: string; // Optional challenge for EntraID authentication
+    isLlmTool?: boolean;
 };
 
 export function getCosmosClient(connection: NoSqlQueryConnection, options?: GetCosmosClientOptions): CosmosClient;
@@ -76,9 +77,10 @@ export function getCosmosClient(
     const agent = endpoint.startsWith('https:')
         ? new https.Agent({ rejectUnauthorized: isEmulator ? !isEmulator : vscodeStrictSSL })
         : undefined;
+    const { isLlmTool = false, ...clientOptions } = options ?? {};
     const commonProperties: CosmosClientOptions = {
         endpoint,
-        userAgentSuffix: appendExtensionUserAgent(),
+        userAgentSuffix: `${appendExtensionUserAgent()}${isLlmTool ? '/llm-tool' : ''}`,
         agent: agent,
         connectionPolicy,
     };
@@ -189,7 +191,7 @@ export function getCosmosClient(
         throw Error(l10n.t('No credential available to create CosmosClient.'));
     }
 
-    return new CosmosClient(merge(options ?? {}, commonProperties));
+    return new CosmosClient(merge(clientOptions, commonProperties));
 }
 
 function normalizeCosmosScopes(scopes: string | string[]): string[] {

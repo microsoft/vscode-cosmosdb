@@ -54,7 +54,12 @@ export class QuerySession {
     private currentIteration = 0;
     private _isDisposed = false;
 
-    constructor(connection: NoSqlQueryConnection, query: string, resultViewMetadata: QueryMetadata) {
+    constructor(
+        connection: NoSqlQueryConnection,
+        query: string,
+        resultViewMetadata: QueryMetadata,
+        private readonly isLlmTool = false,
+    ) {
         const { databaseId, containerId, endpoint, credentials } = connection;
 
         this.id = crypto.randomUUID();
@@ -99,6 +104,7 @@ export class QuerySession {
                             requestTimeout: this.resultViewMetadata.timeout ?? DEFAULT_EXECUTION_TIMEOUT,
                         },
                         throughputBucket: this.resultViewMetadata.throughputBucket,
+                        isLlmTool: this.isLlmTool,
                     });
 
                     // Priority Level: prefer the user's explicit choice from

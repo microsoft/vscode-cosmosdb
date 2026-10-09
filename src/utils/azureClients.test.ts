@@ -51,13 +51,15 @@ describe('modular ARM client factories', () => {
             ...armTestSubscription,
             environment: { ...armTestSubscription.environment, resourceManagerEndpointUrl: endpoint },
         };
-        const context = createArmTestContext();
-        const cosmos = await createCosmosDBManagementClient(context, subscription);
-        const monitor = await createMonitorClient(context, subscription);
+        const cosmosContext = createArmTestContext();
+        const monitorContext = createArmTestContext();
+        const cosmos = await createCosmosDBManagementClient(cosmosContext, subscription);
+        const monitor = await createMonitorClient(monitorContext, subscription);
         expect(cosmos).toBeInstanceOf(CosmosDBManagementClient);
         expect(monitor).toBeInstanceOf(MonitorClient);
         expect(createAzureSubscriptionClient).toHaveBeenCalledTimes(2);
-        expect(context.valuesToMask).toContain(subscription.subscriptionId);
+        expect(cosmosContext.valuesToMask).toContain(subscription.subscriptionId);
+        expect(monitorContext.valuesToMask).toContain(subscription.subscriptionId);
 
         const cosmosRequest = vi.spyOn(cosmos.pipeline, 'sendRequest').mockImplementation((_http, request) =>
             Promise.resolve({

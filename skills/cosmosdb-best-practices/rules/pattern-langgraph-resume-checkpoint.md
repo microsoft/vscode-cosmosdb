@@ -9,55 +9,47 @@ tags: pattern, langgraph, fastapi, checkpointing, resume
 
 **Impact: HIGH (enables multi-turn conversations with persistent state)**
 
-When a LangGraph graph pauses at an `interrupt()` node, the next user message must resume from the last checkpoint rather than starting fresh. Retrieve the last checkpoint, append the new user message, inject `langgraph_triggers` to signal which node to resume, and call `ainvoke` with `stream_mode="updates"`. Without proper resume logic, each message starts a new conversation with no memory of prior turns.
+When a LangGraph graph pauses at an `interrupt()` node, resume it with `Command(resume=...)` using the same thread ID. Let the graph and checkpointer restore the saved state instead of reconstructing input from raw checkpoint records or injecting internal execution metadata. For normal conversation turns without a pending interrupt, pass a message update; the checkpointer and message reducer preserve the existing history.
 
-**Incorrect (always starts a fresh graph invocation):**
+**Incorrect (passing ordinary graph input to a pending interrupt):**
 
 ```python
 @app.post("/chat/{session_id}")
 async def chat(session_id: str, user_message: str):
     config = {"configurable": {"thread_id": session_id}}
-    # BAD: Always starts from scratch — ignores prior conversation state
+    # BAD: Does not supply the resume value required by a pending interrupt
     state = {"messages": [{"role": "user", "content": user_message}]}
-    response = await graph.ainvoke(state, config, stream_mode="updates")
+    response = await graph.ainvoke(state, config)
     return extract_response(response)
 ```
 
-**Correct (resume from last checkpoint when one exists):**
+**Correct (resume a pending interrupt or submit a normal message update):**
+
+This example assumes a graph compiled with an async-capable checkpointer, `MessagesState` (or an equivalent message reducer), and at most one pending interrupt at a time.
 
 ```python
+from langgraph.types import Command
+
 @app.post("/chat/{session_id}")
 async def chat(session_id: str, user_message: str):
-    config = {"configurable": {"thread_id": session_id, "checkpoint_ns": ""}}
+    config = {"configurable": {"thread_id": session_id}}
+    graph_state = await graph.aget_state(config)
 
-    # Check for existing checkpoint (prior conversation state)
-    checkpoints = [cp async for cp in checkpointer.alist(config)]
-
-    if not checkpoints:
-        # First message — start fresh
-        state = {"messages": [{"role": "user", "content": user_message}]}
+    if any(task.interrupts for task in graph_state.tasks):
+        graph_input = Command(resume=user_message)
     else:
-        # Resume from last checkpoint
-        last_checkpoint = checkpoints[-1]
-        state = last_checkpoint.checkpoint
+        graph_input = {"messages": [{"role": "user", "content": user_message}]}
 
-        if "messages" not in state:
-            state["messages"] = []
-        state["messages"].append({"role": "user", "content": user_message})
-
-        # Signal which node to resume from (required after interrupt)
-        # Determine the last active agent from channel_versions or external state
-        resume_node = determine_resume_node(state)
-        state["langgraph_triggers"] = [f"resume:{resume_node}"]
-
-    response = await graph.ainvoke(state, config, stream_mode="updates")
+    response = await graph.ainvoke(graph_input, config)
     return extract_response(response)
 ```
 
 **Key details:**
-1. `stream_mode="updates"` returns per-node state diffs, making it easy to extract only the final agent response
-2. `langgraph_triggers` tells the graph which paused node to resume — without it, the graph may restart from START
-3. The `checkpoint_ns` must match what was used when the checkpoint was written (typically `""`)
-4. Use `checkpointer.alist(config)` to list checkpoints — this is an async generator
+1. Reuse the same `thread_id` to retain conversation state; a new thread ID starts a separate conversation
+2. `aget_state()` returns the current `StateSnapshot`; interrupts in its pending tasks identify a paused human-input flow
+3. `Command(resume=user_message)` supplies the value returned by `interrupt()` in the restarted node; that node must include the value in its state update if it should become part of the message history
+4. Normal input dictionaries do not inherently discard history: `MessagesState` applies its message reducer to the restored state
+5. The default `ainvoke()` result contains the full state, plus `__interrupt__` when paused; `extract_response` should surface pending interrupt prompts as well as normal responses
+6. For multiple simultaneous interrupts, use an interrupt-ID-to-response mapping in `Command(resume=...)` rather than the single-response flow shown here
 
-Reference: [LangGraph persistence](https://langchain-ai.github.io/langgraph/concepts/persistence/)
+References: [LangGraph persistence](https://docs.langchain.com/oss/python/langgraph/persistence), [resuming interrupts](https://docs.langchain.com/oss/python/langgraph/interrupts#resuming-interrupts), [StateSnapshot](https://reference.langchain.com/python/langgraph/types/StateSnapshot)

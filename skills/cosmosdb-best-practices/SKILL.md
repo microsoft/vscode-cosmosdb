@@ -89,7 +89,7 @@ Reference these guidelines when:
 - [query-pagination](rules/query-pagination.md) - Use continuation tokens for pagination
 - [query-avoid-scans](rules/query-avoid-scans.md) - Avoid full container scans
 - [query-parameterize](rules/query-parameterize.md) - Use parameterized queries
-- [query-order-filters](rules/query-order-filters.md) - Order filters by selectivity
+- [query-order-filters](rules/query-order-filters.md) - Let the query engine order filters; tune indexed predicates rather than their textual order
 - [query-top-literal](rules/query-top-literal.md) - Use literal integers for TOP, never parameters
 - [query-latest-by-timestamp](rules/query-latest-by-timestamp.md) - Query "latest" documents with explicit ORDER BY and TOP 1
 - [query-olap-detection](rules/query-olap-detection.md) - Detect and redirect analytical queries away from transactional containers
@@ -109,8 +109,8 @@ Reference these guidelines when:
 - [sdk-serialization-enums](rules/sdk-serialization-enums.md) - Serialize enums as strings not integers
 - [sdk-emulator-ssl](rules/sdk-emulator-ssl.md) - Configure SSL and connection mode for Cosmos DB Emulator
 - [sdk-ifnonematch-create](rules/sdk-conditional-create-etag.md) - Use `setIfNoneMatchETag("*")` on `createItem` to reject duplicates atomically (409 on conflict)
-- [sdk-no-shared-request-options](rules/sdk-request-options-per-call.md) - Never reuse a `CosmosItemRequestOptions` instance across multiple `createItem` calls — SDK mutates it internally, causing wrong partition key on second call
-- [sdk-patch-incr](rules/sdk-patch-counter-increment.md) - Use `CosmosPatchOperations.incr()` for atomic counter increments — no read RU, no ETag conflict cycle
+- [sdk-no-shared-request-options](rules/sdk-request-options-per-call.md) - Use separate `CosmosItemRequestOptions` instances for deferred or concurrent `createItem` operations to avoid shared-state partition-key overrides
+- [sdk-patch-incr](rules/sdk-patch-counter-increment.md) - Use `CosmosPatchOperations.increment()` for atomic counter increments — no read RU, no ETag conflict cycle
 - [sdk-bypage-empty-token](rules/sdk-continuation-token-null-guard.md) - Guard against empty-string continuation tokens before calling `byPage()` — pass `null` for first page, never `""`
 - [sdk-etag-concurrency](rules/sdk-etag-concurrency.md) - Use ETags for optimistic concurrency on read-modify-write operations
 - [sdk-java-content-response](rules/sdk-java-content-response.md) - Enable content response on write operations (Java)
@@ -206,7 +206,7 @@ Reference these guidelines when:
 - [fts-index-policy](rules/fts-add-index.md) - Add `fullTextIndexes` entry in the indexing policy to build the inverted index
 - [fts-contains-query](rules/fts-keyword-matching.md) - Use `FullTextContains` / `FullTextContainsAll` / `FullTextContainsAny` instead of `CONTAINS(LOWER(...))`
 - [fts-score-ranking](rules/fts-relevance-ranking.md) - Use `ORDER BY RANK FullTextScore(path, term)` for BM25 relevance ranking
-- [fts-hybrid-query](rules/fts-hybrid-queries.md) - Combine FTS predicates with range/equality filters; put most selective filter first
+- [fts-hybrid-query](rules/fts-hybrid-queries.md) - Combine FTS predicates with selective indexed equality/range filters; predicate text order does not control execution
 
 ## How to Use
 

@@ -1,7 +1,7 @@
 ---
 title: Use the Patch API for atomic counter increments
 impact: HIGH
-impactDescription: eliminates read-modify-write for counters; reduces RU cost and eliminates concurrency conflicts
+impactDescription: avoids a separate read for counters and eliminates read-modify-write concurrency conflicts
 tags:
   - sdk
   - patch
@@ -13,14 +13,14 @@ tags:
 
 ## Use the Patch API for Atomic Counter Increments
 
-**Impact: HIGH (eliminates read-modify-write for counters; reduces RU cost and eliminates concurrency conflicts)**
+**Impact: HIGH (avoids a separate read for counters and eliminates read-modify-write concurrency conflicts)**
 
-For fields that act as counters (view counts, rating totals, like counts), `patchItem` with `CosmosPatchOperations.incr()` performs a server-side atomic increment without a prior read. This is cheaper (no read RU), faster, and free of the ETag conflict/retry cycle.
+For fields that act as counters (view counts, rating totals, like counts), `patchItem` with `CosmosPatchOperations.increment()` performs a server-side atomic increment without a prior read. This avoids the extra read round-trip and its RU charge, and is free of the read-modify-write ETag conflict/retry cycle. The patch write itself still consumes RUs; do not assume a fixed charge or that it is significantly cheaper than replacing the item.
 
 **Incorrect (read-modify-write for counters):**
 
 ```java
-// ❌ Read-modify-write: 1 read RU + 1 write RU, subject to ETag conflicts at scale
+// ❌ Read-modify-write incurs separate read and write charges, subject to ETag conflicts at scale
 CosmosItemResponse<Video> resp = container.readItem(videoId,
     new PartitionKey(videoId), Video.class).block();
 Video video = resp.getItem();
@@ -62,7 +62,7 @@ return container.patchItem(videoId, new PartitionKey(videoId), ops, Video.class)
 ```
 
 **Patch operations supported:**
-- `incr(path, value)` — numeric increment (positive or negative)
+- `increment(path, value)` — numeric increment (positive or negative)
 - `set(path, value)` — set a field to a new value
 - `add(path, value)` — add to an array or set a field
 - `remove(path)` — remove a field
@@ -70,10 +70,10 @@ return container.patchItem(videoId, new PartitionKey(videoId), ops, Video.class)
 - `move(from, to)` — rename a field
 
 **Key Points:**
-- `incr()` requires the field to already exist as a numeric type in the document; initialize it to `0` on document creation
+- `increment()` requires the field to already exist as a numeric type in the document; initialize it to `0` on document creation
 - At most 10 patch operations per `patchItem` call
-- Patch is idempotent for `set`/`replace` but **not** for `incr` — a retried increment will double-count. Use conditional patch (`setFilterPredicate`) or accept the retry risk for high-volume counters
-- RU cost: ~1 write RU (same as a regular write), no read RU
+- Patch is idempotent for `set`/`replace` but **not** for `increment` — a retried increment will double-count. Use conditional patch (`setFilterPredicate`) or accept the retry risk for high-volume counters
+- RU cost varies with item size, the update, and indexing policy. Patch is billed like other database operations, not as a fixed 1-RU write. It avoids a separate application read; measure the patch response with `CosmosItemResponse.getRequestCharge()` to evaluate actual costs.
 - Prefer Patch over Stored Procedures for simple counter increments — Patch is natively supported without custom server-side code
 
-Reference: [Partial document update (Patch API)](https://learn.microsoft.com/azure/cosmos-db/partial-document-update)
+References: [Partial document update (Patch API)](https://learn.microsoft.com/azure/cosmos-db/partial-document-update), [Patch RU pricing](https://learn.microsoft.com/azure/cosmos-db/partial-document-update-faq#how-is-ru-s-pricing-calculated-), [read/write cost factors](https://learn.microsoft.com/azure/cosmos-db/optimize-cost-reads-writes)

@@ -13,6 +13,7 @@ import {
     PartitionKeyKind,
     type CosmosClient,
     type IndexingPolicy as CosmosIndexingPolicy,
+    type PartitionKey,
 } from '@azure/cosmos';
 import { VSCodeAzureSubscriptionProvider } from '@microsoft/vscode-azext-azureauth';
 import { getResourceGroupFromId } from '@microsoft/vscode-azext-azureutils';
@@ -38,7 +39,6 @@ import { ext } from '../../../extensionVariables';
 import { MigrationProjectService, type ProjectJson } from '../../../services/MigrationProjectService';
 import { createCosmosDBManagementClient } from '../../../utils/azureClients';
 import { validateCosmosDBAccountName } from '../../../utils/cosmosDBAccountName';
-import { getConfirmationAsInSettings } from '../../../utils/dialogs/getConfirmation';
 import { type MigrationEvent } from '../../trpc/routers/migrationEventsRouter';
 import { getCosmosDbBestPractices } from '../bestPractices';
 import { type CosmosModel, type IndexingPolicy } from '../cosmosModel';
@@ -57,12 +57,24 @@ import {
 } from '../helpers/bicepGenerator';
 import { saveAnalysisFile, sendPhaseEvent, sendPhaseProgress } from '../helpers/migrationHelpers';
 import {
+    buildPortableProvisioningArtifacts,
+    getPortableProvisioningCapacity,
+    hashPortableMigrationModel,
+    normalizeFullTextPolicy,
+    normalizeUniqueKeyPolicy,
+    validatePortableMigrationModel,
+    validatePortableProvisioningVerification,
+    validatePortableSampleData,
+    type ProvisioningVerificationReport,
+} from '../helpers/migrationProvisioningContracts';
+import {
     enrichErrorContext,
     extractAccountNameFromEndpoint,
     incrementRunCount,
     setMigrationTelemetryContext,
 } from '../helpers/migrationTelemetry';
-import { generateSeedScript, type SampleDataResult } from '../helpers/seedScriptHelpers';
+import { assertProvisioningAuthorized, type ProvisioningAuthorization } from '../helpers/provisioningAuthorization';
+import { type SampleDataResult } from '../helpers/seedScriptHelpers';
 import { Phase4SampleDataPrompt } from '../prompts';
 import { createToolExecutor, getBestPracticeTools } from '../tools/migrationTools';
 
@@ -88,6 +100,7 @@ export interface Phase4BaseContext {
 
 export interface Phase4Context extends Phase4BaseContext {
     client: CosmosClient;
+    endpoint: string;
     cancellationToken: vscode.CancellationToken;
     /**
      * ARM (control-plane) coordinates for the target account. Required for
@@ -112,6 +125,73 @@ export interface ProvisioningResult {
      * items failed to insert). Empty when everything succeeded.
      */
     warnings: string[];
+}
+
+function formatPortableErrors(errors: { path: string; message: string }[]): string {
+    return errors.map((error) => `${error.path}: ${error.message}`).join('; ');
+}
+
+function provisioningFailureCode(error: unknown): string {
+    if (typeof error === 'object' && error !== null) {
+        const candidate = error as { code?: unknown; statusCode?: unknown };
+        if (typeof candidate.code === 'string' || typeof candidate.code === 'number') return String(candidate.code);
+        if (typeof candidate.statusCode === 'string' || typeof candidate.statusCode === 'number') {
+            return String(candidate.statusCode);
+        }
+    }
+    return 'unknown';
+}
+
+function observedIndexingPolicy(expected: IndexingPolicy, actual: CosmosIndexingPolicy | undefined): IndexingPolicy {
+    return {
+        ...(expected.indexingMode === undefined ? {} : { indexingMode: actual?.indexingMode }),
+        ...(expected.automatic === undefined ? {} : { automatic: actual?.automatic }),
+        includedPaths: (actual?.includedPaths ?? []).map(({ path: indexPath }) => ({ path: indexPath })),
+        excludedPaths: (actual?.excludedPaths ?? []).map(({ path: indexPath }) => ({ path: indexPath })),
+        ...(expected.compositeIndexes === undefined ? {} : { compositeIndexes: actual?.compositeIndexes }),
+        ...(actual?.fullTextIndexes?.length
+            ? {
+                  fullTextIndexes: [...actual.fullTextIndexes].sort((left, right) =>
+                      left.path.localeCompare(right.path),
+                  ),
+              }
+            : {}),
+    };
+}
+
+async function writePortableArtifacts(provisioningPath: string, artifacts: Record<string, string>): Promise<boolean> {
+    const divergentArtifacts: string[] = [];
+    for (const [name, content] of Object.entries(artifacts)) {
+        try {
+            const existing = Buffer.from(
+                await vscode.workspace.fs.readFile(MigrationProjectService.toUri(provisioningPath, name)),
+            ).toString('utf-8');
+            if (existing !== content) divergentArtifacts.push(name);
+        } catch {
+            // Missing artifacts can be created without confirmation.
+        }
+    }
+    if (divergentArtifacts.length > 0) {
+        const regenerate = l10n.t('Regenerate');
+        const cancel = l10n.t('Cancel');
+        const choice = await vscode.window.showWarningMessage(
+            l10n.t(
+                'Generated provisioning artifacts differ from the canonical model. Regenerate {0}? Existing changes will be replaced.',
+                divergentArtifacts.join(', '),
+            ),
+            { modal: true },
+            regenerate,
+            cancel,
+        );
+        if (choice !== regenerate) return false;
+    }
+    for (const [name, content] of Object.entries(artifacts)) {
+        await vscode.workspace.fs.writeFile(
+            MigrationProjectService.toUri(provisioningPath, name),
+            Buffer.from(content, 'utf-8'),
+        );
+    }
+    return true;
 }
 
 // ─── Data-Plane RBAC Propagation Retry ──────────────────────────────
@@ -181,14 +261,24 @@ async function withDataPlaneRbacRetry<T>(
  * from the Phase 3 model, generates sample data via AI, inserts it,
  * and produces a reusable CosmosDB Shell seed script.
  */
-export async function runProvisioning(ctx: Phase4Context): Promise<void> {
-    const { project, projectService, channel, client, armTarget, cancellationToken: token } = ctx;
+export async function runProvisioning(ctx: Phase4Context, authorization: ProvisioningAuthorization): Promise<void> {
+    assertProvisioningAuthorized(authorization);
+    const { project, projectService, channel, client, endpoint, armTarget, cancellationToken: token } = ctx;
 
     await callWithTelemetryAndErrorHandling('cosmosDB.migration.phase4.provisioning', async (context) => {
         setMigrationTelemetryContext(context, project, 'provisioning');
         context.errorHandling.suppressDisplay = true;
         context.errorHandling.forceIncludeInReportIssueCommand = true;
         incrementRunCount(project, 'provisioning');
+        const configuredTarget = project.phases.targetEnvironment;
+        if (configuredTarget?.type === 'emulator' && !configuredTarget.endpoint) {
+            configuredTarget.endpoint = resolveTargetConnection(configuredTarget).endpoint;
+        }
+        project.phases.provisioning = {
+            ...project.phases.provisioning,
+            status: 'in-progress',
+        };
+        await projectService.save(project);
 
         // Log target environment info. Only OII identifiers under their
         // predefined property names are emitted (`accountName`, `subscriptionId`).
@@ -249,6 +339,81 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
                     l10n.t('Could not load model.json from Phase 3. Please complete Schema Conversion first.'),
                 );
             }
+            const modelValidationErrors = await validatePortableMigrationModel(ext.context.extensionPath, model);
+            if (
+                modelValidationErrors.length > 0 ||
+                !model.databaseName ||
+                !model.capacityMode ||
+                !Array.isArray(model.containers)
+            ) {
+                throw new Error(l10n.t('The canonical model is missing required provisioning fields.'));
+            }
+            const canonicalDatabaseName = model.databaseName;
+            context.valuesToMask.push(canonicalDatabaseName, ...model.containers.map((container) => container.name));
+
+            const capacityWarnings: string[] = [];
+            const capacityTarget = project.phases.targetEnvironment;
+            if (armTarget && capacityTarget) {
+                context.valuesToMask.push(armTarget.resourceGroup, armTarget.accountName);
+                const account = await (
+                    await getMgmtClient()
+                ).databaseAccounts.get(armTarget.resourceGroup, armTarget.accountName);
+                capacityTarget.capacityMode = account.capabilities?.some(
+                    (capability) => capability.name === 'EnableServerless',
+                )
+                    ? 'serverless'
+                    : 'provisioned';
+                if (capacityTarget.capacityMode === 'serverless') delete capacityTarget.maxThroughput;
+                if (model.capacityMode === 'serverless' && capacityTarget.capacityMode === 'provisioned') {
+                    if (capacityTarget.maxThroughput === undefined) {
+                        const throughput = await vscode.window.showInputBox({
+                            title: l10n.t('Use Provisioned Account'),
+                            prompt: l10n.t(
+                                'Autoscale maximum RU/s per container. This account is compatible with the serverless design, but ongoing capacity charges apply.',
+                            ),
+                            value: '1000',
+                            validateInput: (value) => {
+                                const maximum = Number(value);
+                                return Number.isInteger(maximum) && maximum >= 1000 && maximum % 1000 === 0
+                                    ? undefined
+                                    : l10n.t('Enter a multiple of 1000 RU/s, at least 1000.');
+                            },
+                        });
+                        if (throughput === undefined) return;
+                        capacityTarget.maxThroughput = Number(throughput);
+                    }
+                    capacityWarnings.push(
+                        l10n.t(
+                            'Using provisioned autoscale at {0} RU/s maximum per container for the serverless design. Ongoing capacity charges apply; the canonical model is unchanged.',
+                            capacityTarget.maxThroughput,
+                        ),
+                    );
+                }
+                await projectService.save(project);
+            }
+            for (const container of model.containers) {
+                const capacity = await getPortableProvisioningCapacity(
+                    ext.context.extensionPath,
+                    model,
+                    container,
+                    capacityTarget,
+                );
+                if (
+                    capacityTarget?.type === 'emulator' &&
+                    capacity.capacityMode !== model.capacityMode &&
+                    capacityWarnings.length === 0
+                ) {
+                    capacityWarnings.push(
+                        l10n.t(
+                            'The emulator uses a different capacity mode from the model. This is a functional test only; production throughput and capacity behavior remain unverified.',
+                        ),
+                    );
+                }
+            }
+            for (const warning of capacityWarnings) {
+                await sendPhaseProgress(channel, 'Provisioning', 'provisioningProgress', progress(warning));
+            }
+            if (token.isCancellationRequested) return;
 
             // summary.md is optional context for sample-data generation. If absent
             // (older projects, manual edits) we proceed without it.
@@ -352,9 +517,6 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
                 }
 
                 sampleDataResult = generated;
-
-                // Save the generated sample data
-                await saveAnalysisFile(provisioningPath, 'sample-data.json', JSON.stringify(sampleDataResult, null, 2));
             } else {
                 await sendPhaseProgress(
                     channel,
@@ -376,23 +538,48 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
                 }
             }
 
-            // ─── Step 3: Generate seed script ───────────────────────
-            // Generated before provisioning so the user can run it
-            // manually if SDK-based provisioning fails.
-            context.telemetry.properties.lastStep = 'seedScript';
-            const baseDatabaseName = model.databaseName ?? project.name;
-            const targetType = project.phases.targetEnvironment?.type ?? 'emulator';
+            const sampleDataErrors = await validatePortableSampleData(
+                ext.context.extensionPath,
+                model,
+                sampleDataResult,
+            );
+            for (const entry of sampleDataResult.sampleData) {
+                context.valuesToMask.push(entry.containerName);
+                const modelContainer = model.containers.find((container) => container.name === entry.containerName);
+                for (const item of entry.items) {
+                    if (typeof item.id === 'string' && item.id.length > 0) context.valuesToMask.push(item.id);
+                    for (const partitionKey of modelContainer?.partitionKeys ?? []) {
+                        const value = item[partitionKey.path.slice(1)];
+                        if (typeof value === 'string' && value.length > 0) context.valuesToMask.push(value);
+                    }
+                }
+            }
+            if (sampleDataErrors.length > 0) {
+                throw new Error(l10n.t('Sample data failed validation: {0}', formatPortableErrors(sampleDataErrors)));
+            }
+            if (shouldRegenerate) {
+                await saveAnalysisFile(provisioningPath, 'sample-data.json', JSON.stringify(sampleDataResult, null, 2));
+            }
+
+            // ─── Step 3: Generate deterministic artifacts ───────────
+            context.telemetry.properties.lastStep = 'provisioningArtifacts';
+            const baseDatabaseName = canonicalDatabaseName;
 
             await sendPhaseProgress(
                 channel,
                 'Provisioning',
                 'provisioningProgress',
-                progress(l10n.t('Generating seed script…')),
+                progress(l10n.t('Generating deployment artifacts…')),
             );
 
-            const seedScript = generateSeedScript(model, baseDatabaseName, targetType);
+            const generatedArtifacts = await buildPortableProvisioningArtifacts(
+                ext.context.extensionPath,
+                model,
+                sampleDataResult,
+                project,
+            );
+            if (!(await writePortableArtifacts(provisioningPath, generatedArtifacts))) return;
             const seedScriptPath = path.join(provisioningPath, 'seed-data.csh');
-            await vscode.workspace.fs.writeFile(vscode.Uri.file(seedScriptPath), Buffer.from(seedScript, 'utf-8'));
 
             if (token.isCancellationRequested) return;
 
@@ -403,39 +590,7 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
             // The emulator path keeps using the SDK because there is no ARM
             // surface for it.
             context.telemetry.properties.lastStep = 'createDatabase';
-            const databaseName = armTarget
-                ? await resolveUniqueDatabaseNameViaArm(await getMgmtClient(), armTarget, baseDatabaseName)
-                : await withDataPlaneRbacRetry(
-                      () => resolveUniqueDatabaseName(client, baseDatabaseName),
-                      token,
-                      async (_attempt, totalWaitedMs) => {
-                          await sendPhaseProgress(
-                              channel,
-                              'Provisioning',
-                              'provisioningProgress',
-                              progress(
-                                  l10n.t(
-                                      'Waiting for data-plane role assignment to propagate ({0}s elapsed)…',
-                                      Math.round(totalWaitedMs / 1000),
-                                  ),
-                              ),
-                          );
-                      },
-                  );
-
-            if (databaseName === undefined) {
-                // User cancelled the prompt
-                return;
-            }
-
-            // Re-generate the seed script if the database name changed
-            if (databaseName !== baseDatabaseName) {
-                const updatedSeedScript = generateSeedScript(model, databaseName, targetType);
-                await vscode.workspace.fs.writeFile(
-                    vscode.Uri.file(seedScriptPath),
-                    Buffer.from(updatedSeedScript, 'utf-8'),
-                );
-            }
+            const databaseName = baseDatabaseName;
 
             await sendPhaseProgress(
                 channel,
@@ -495,6 +650,12 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
                 );
 
                 const partitionKeyPaths = container.partitionKeys?.map((pk) => pk.path) ?? ['/id'];
+                const capacity = await getPortableProvisioningCapacity(
+                    ext.context.extensionPath,
+                    model,
+                    container,
+                    project.phases.targetEnvironment,
+                );
 
                 if (armTarget) {
                     const mgmt = await getMgmtClient();
@@ -507,13 +668,15 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
                             resource: {
                                 id: container.name,
                                 partitionKey: toArmPartitionKey(partitionKeyPaths),
+                                fullTextPolicy: normalizeFullTextPolicy(container.fullTextPolicy),
+                                uniqueKeyPolicy: normalizeUniqueKeyPolicy(container.uniqueKeyPolicy),
                                 indexingPolicy: container.indexingPolicy
                                     ? toArmIndexingPolicy(container.indexingPolicy)
                                     : undefined,
                             },
                             options:
-                                model.capacityMode === 'provisioned' && container.maxThroughput
-                                    ? { autoscaleSettings: { maxThroughput: container.maxThroughput } }
+                                capacity.capacityMode === 'provisioned' && capacity.maxThroughput
+                                    ? { autoscaleSettings: { maxThroughput: capacity.maxThroughput } }
                                     : {},
                         },
                     );
@@ -528,10 +691,9 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
                         indexingPolicy: container.indexingPolicy
                             ? toCosmosIndexingPolicy(container.indexingPolicy)
                             : undefined,
-                        maxThroughput:
-                            model.capacityMode === 'provisioned' && container.maxThroughput
-                                ? container.maxThroughput
-                                : undefined,
+                        fullTextPolicy: normalizeFullTextPolicy(container.fullTextPolicy),
+                        uniqueKeyPolicy: normalizeUniqueKeyPolicy(container.uniqueKeyPolicy),
+                        maxThroughput: capacity.maxThroughput,
                     });
                 }
 
@@ -563,17 +725,72 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
                 );
             }
 
-            // ─── Step 6: Insert sample data ─────────────────────────
+            // ─── Step 6: Verify containers and insert sample data ──
             // Concurrency batch size for item inserts. Chosen to match the upper
             // bound on concurrent requests most Cosmos accounts handle well while
             // staying well below the SDK's parallelism defaults.
             context.telemetry.properties.lastStep = 'insertData';
             const INSERT_BATCH_SIZE = 50;
-            // Maximum number of distinct per-item error messages to surface in
-            // a single warning. More than this becomes noise; users can open
-            // the output channel for the full picture.
-            const MAX_REPORTED_INSERT_ERRORS = 3;
-            const warnings: string[] = [];
+            const failures: ProvisioningVerificationReport['failures'] = [];
+            const observedContainers: ProvisioningVerificationReport['containers'] = [];
+            const sampleItems: ProvisioningVerificationReport['sampleItems'] = [];
+            for (const expectedContainer of model.containers) {
+                const cosmosContainer = database.container(expectedContainer.name);
+                try {
+                    const { resource } = await cosmosContainer.read();
+                    if (!resource) throw new Error('Container read returned no resource.');
+                    const capacity = await getPortableProvisioningCapacity(
+                        ext.context.extensionPath,
+                        model,
+                        expectedContainer,
+                        project.phases.targetEnvironment,
+                    );
+                    let maxThroughput: number | undefined;
+                    if (capacity.capacityMode === 'provisioned') {
+                        const { resource: offer } = await cosmosContainer.readOffer();
+                        maxThroughput = offer?.content?.offerAutopilotSettings?.maxThroughput;
+                    }
+                    const expectedIndexingPolicy = expectedContainer.indexingPolicy ?? {
+                        includedPaths: [],
+                        excludedPaths: [],
+                    };
+                    observedContainers.push({
+                        name: resource.id ?? expectedContainer.name,
+                        partitionKeys: resource.partitionKey?.paths ?? [],
+                        indexingPolicy: observedIndexingPolicy(expectedIndexingPolicy, resource.indexingPolicy),
+                        ...(resource.fullTextPolicy === undefined
+                            ? {}
+                            : { fullTextPolicy: normalizeFullTextPolicy(resource.fullTextPolicy) }),
+                        ...(resource.uniqueKeyPolicy === undefined
+                            ? {}
+                            : { uniqueKeyPolicy: resource.uniqueKeyPolicy }),
+                        capacityMode: capacity.capacityMode,
+                        ...(maxThroughput === undefined ? {} : { maxThroughput }),
+                    });
+                } catch (error) {
+                    failures.push({
+                        operation: 'read-container',
+                        resource: expectedContainer.name,
+                        code: provisioningFailureCode(error),
+                    });
+                }
+            }
+            const uniqueKeyMismatch = model.containers.find((expected) => {
+                const observed = observedContainers.find((container) => container.name === expected.name);
+                return (
+                    observed &&
+                    JSON.stringify(normalizeUniqueKeyPolicy(expected.uniqueKeyPolicy)) !==
+                        JSON.stringify(normalizeUniqueKeyPolicy(observed.uniqueKeyPolicy))
+                );
+            });
+            if (uniqueKeyMismatch) {
+                throw new Error(
+                    l10n.t(
+                        'Container "{name}" has a different unique-key policy. Changing it requires a new container and an approved data migration.',
+                        { name: uniqueKeyMismatch.name },
+                    ),
+                );
+            }
             for (const entry of sampleDataResult.sampleData) {
                 if (token.isCancellationRequested) return;
 
@@ -596,56 +813,98 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
                 // failing every item with a 409 conflict.
                 // `Promise.allSettled` ensures a single failed item does not
                 // abort the remaining inserts in the same batch.
-                let failureCount = 0;
-                const failureMessages: string[] = [];
                 for (let i = 0; i < entry.items.length; i += INSERT_BATCH_SIZE) {
                     if (token.isCancellationRequested) return;
                     const batch = entry.items.slice(i, i + INSERT_BATCH_SIZE);
                     const results = await Promise.allSettled(batch.map((item) => cosmosContainer.items.upsert(item)));
-                    for (const result of results) {
+                    for (const [resultIndex, result] of results.entries()) {
                         if (result.status === 'rejected') {
-                            failureCount++;
-                            if (failureMessages.length < MAX_REPORTED_INSERT_ERRORS) {
-                                failureMessages.push(parseError(result.reason).message);
-                            }
+                            const item = batch[resultIndex];
+                            failures.push({
+                                operation: 'upsert-item',
+                                resource: `${entry.containerName}/${String(item.id)}`,
+                                code: provisioningFailureCode(result.reason),
+                            });
                         }
                     }
                 }
 
-                // Post-verification: compare the actual item count to the
-                // expected count so silent losses (e.g. partial write quorum
-                // failures) surface as warnings rather than going unnoticed.
-                let actualCount: number | undefined;
-                try {
-                    const { resources } = await cosmosContainer.items
-                        .query<number>('SELECT VALUE COUNT(1) FROM c')
-                        .fetchAll();
-                    actualCount = resources[0];
-                } catch (error) {
-                    ext.outputChannel.warn(
-                        `[migration] Item-count verification failed for "${entry.containerName}": ${parseError(error).message}`,
+                const modelContainer = model.containers.find((container) => container.name === entry.containerName)!;
+                for (const item of entry.items) {
+                    const partitionKeyValues = (modelContainer.partitionKeys ?? []).map(
+                        (partitionKey) => item[partitionKey.path.slice(1)],
                     );
-                }
-
-                const expectedCount = entry.items.length;
-                if (failureCount > 0 || (actualCount !== undefined && actualCount < expectedCount)) {
-                    const warning = l10n.t(
-                        '"{0}": {1} of {2} sample items were not inserted.',
-                        entry.containerName,
-                        Math.max(failureCount, expectedCount - (actualCount ?? expectedCount)),
-                        expectedCount,
-                    );
-                    warnings.push(warning);
-                    ext.outputChannel.warn(
-                        `[migration] ${warning}` +
-                            (failureMessages.length > 0 ? ` First errors: ${failureMessages.join(' | ')}` : ''),
-                    );
+                    let found = false;
+                    let document: Record<string, unknown> | undefined;
+                    try {
+                        const partitionKey = (
+                            partitionKeyValues.length === 1 ? partitionKeyValues[0] : partitionKeyValues
+                        ) as PartitionKey;
+                        const response = await cosmosContainer
+                            .item(String(item.id), partitionKey)
+                            .read<Record<string, unknown>>();
+                        found = response.resource !== undefined;
+                        document = response.resource;
+                    } catch (error) {
+                        failures.push({
+                            operation: 'read-item',
+                            resource: `${entry.containerName}/${String(item.id)}`,
+                            code: provisioningFailureCode(error),
+                        });
+                    }
+                    sampleItems.push({
+                        containerName: entry.containerName,
+                        id: String(item.id),
+                        partitionKeyValues,
+                        found,
+                        ...(document === undefined ? {} : { document }),
+                    });
                 }
             }
 
-            // ─── Step 7: Update project state ───────────────────────
+            // ─── Step 7: Persist and validate observed evidence ─────
+            const targetEnvironment = project.phases.targetEnvironment!;
+            const verifiedAt = new Date().toISOString();
+            const verificationReport: ProvisioningVerificationReport = {
+                version: 1,
+                verifiedAt,
+                modelSha256: await hashPortableMigrationModel(ext.context.extensionPath, model),
+                target: {
+                    type: targetEnvironment.type,
+                    endpoint: new URL(endpoint).origin,
+                    ...(targetEnvironment.accountName === undefined
+                        ? {}
+                        : { accountName: targetEnvironment.accountName }),
+                },
+                databaseName,
+                containers: observedContainers,
+                sampleItems,
+                failures,
+            };
+            await saveAnalysisFile(
+                provisioningPath,
+                'provisioning-verification.json',
+                JSON.stringify(verificationReport, null, 2),
+            );
+            const verificationErrors = await validatePortableProvisioningVerification(
+                ext.context.extensionPath,
+                model,
+                sampleDataResult,
+                project,
+                verificationReport,
+            );
+            if (verificationErrors.length > 0) {
+                throw new Error(
+                    l10n.t('Provisioning verification failed: {0}', formatPortableErrors(verificationErrors)),
+                );
+            }
+
+            // ─── Step 8: Update project state ───────────────────────
             context.telemetry.properties.lastStep = 'updateProjectState';
+            targetEnvironment.verified = true;
+            targetEnvironment.verifiedAt = verifiedAt;
             project.phases.provisioning = {
+                ...project.phases.provisioning,
                 status: 'complete',
                 databaseName,
                 containersCreated,
@@ -662,7 +921,7 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
                     databaseName,
                     containersCreated,
                     seedScriptPath,
-                    warnings,
+                    warnings: capacityWarnings,
                 } satisfies ProvisioningResult,
             ]);
         } catch (error) {
@@ -748,7 +1007,7 @@ export async function testConnection(ctx: Phase4BaseContext, subscription?: Azur
                 }
             }
 
-            await reportConnectionTestFailure(channel, target, error);
+            reportConnectionTestFailure(channel, target, error);
         }
     });
 }
@@ -761,7 +1020,9 @@ export async function testConnection(ctx: Phase4BaseContext, subscription?: Azur
 export async function populateSampleData(
     ctx: Phase4BaseContext,
     provisioningCancellation: vscode.CancellationTokenSource,
+    authorization: ProvisioningAuthorization,
 ): Promise<void> {
+    assertProvisioningAuthorized(authorization);
     await callWithTelemetryAndErrorHandling('cosmosDB.migration.phase4.sampleDataPopulation', async (context) => {
         const { project, projectService, channel } = ctx;
         if (!project || !projectService) return;
@@ -804,14 +1065,18 @@ export async function populateSampleData(
             }
         }
 
-        await runProvisioning({
-            project,
-            projectService,
-            channel,
-            client,
-            armTarget,
-            cancellationToken: provisioningCancellation.token,
-        });
+        await runProvisioning(
+            {
+                project,
+                projectService,
+                channel,
+                client,
+                endpoint,
+                armTarget,
+                cancellationToken: provisioningCancellation.token,
+            },
+            authorization,
+        );
     });
 }
 
@@ -912,127 +1177,8 @@ function toCosmosIndexingPolicy(policy: NonNullable<IndexingPolicy>): CosmosInde
         includedPaths: sanitizeIndexingPaths(policy.includedPaths),
         excludedPaths: sanitizeIndexingPaths(policy.excludedPaths),
         compositeIndexes: policy.compositeIndexes,
+        fullTextIndexes: policy.fullTextIndexes,
     };
-}
-
-/**
- * Check whether a database with `baseName` already exists. If it does,
- * prompt the user to either **replace** it or **create a new one** with an
- * incremented suffix (`-2`, `-3`, …).
- *
- * Returns the resolved database name, or `undefined` if the user cancels.
- */
-async function resolveUniqueDatabaseName(client: CosmosClient, baseName: string): Promise<string | undefined> {
-    const { resources: existingDatabases } = await client.databases.readAll().fetchAll();
-    const existingNames = new Set(existingDatabases.map((db) => db.id));
-
-    if (!existingNames.has(baseName)) {
-        return baseName;
-    }
-
-    const replace = l10n.t('Replace');
-    const createNew = l10n.t('Create New');
-    const choice = await vscode.window.showWarningMessage(
-        l10n.t('A database named "{0}" already exists. Would you like to replace it or create a new one?', baseName),
-        { modal: true },
-        replace,
-        createNew,
-    );
-
-    if (choice === replace) {
-        // Replacing an existing database is destructive — require an explicit
-        // confirmation that matches the user's configured confirmation style
-        // (button, challenge number, or typed word).
-        const confirmed = await getConfirmationAsInSettings(
-            l10n.t('Replace database "{0}"?', baseName),
-            l10n.t(
-                'This permanently deletes the existing database "{0}" and all of its containers and items. This action cannot be undone.',
-                baseName,
-            ),
-            baseName,
-        );
-        if (!confirmed) {
-            return undefined;
-        }
-        await client.database(baseName).delete();
-        return baseName;
-    }
-
-    if (choice === createNew) {
-        let suffix = 2;
-        let candidate = `${baseName}-${suffix}`;
-        while (existingNames.has(candidate)) {
-            suffix++;
-            candidate = `${baseName}-${suffix}`;
-        }
-        return candidate;
-    }
-
-    // Dialog was dismissed — treat as cancellation
-    return undefined;
-}
-
-/**
- * ARM-based counterpart of `resolveUniqueDatabaseName`. Lists existing SQL
- * databases on the account through the control plane (authorized by the
- * Cosmos DB Operator role), prompts the user on collision, and either deletes
- * the existing database or picks a `-2`/`-3`/… suffix. Returns `undefined`
- * when the user cancels.
- */
-async function resolveUniqueDatabaseNameViaArm(
-    mgmtClient: CosmosDBManagementClient,
-    armTarget: NonNullable<Phase4Context['armTarget']>,
-    baseName: string,
-): Promise<string | undefined> {
-    const existingNames = new Set<string>();
-    const iter = mgmtClient.sqlResources.listSqlDatabases(armTarget.resourceGroup, armTarget.accountName);
-    for await (const db of iter) {
-        // `name` is the resource name which matches the database id on Cosmos.
-        if (db.name) {
-            existingNames.add(db.name);
-        }
-    }
-
-    if (!existingNames.has(baseName)) {
-        return baseName;
-    }
-
-    const replace = l10n.t('Replace');
-    const createNew = l10n.t('Create New');
-    const choice = await vscode.window.showWarningMessage(
-        l10n.t('A database named "{0}" already exists. Would you like to replace it or create a new one?', baseName),
-        { modal: true },
-        replace,
-        createNew,
-    );
-
-    if (choice === replace) {
-        const confirmed = await getConfirmationAsInSettings(
-            l10n.t('Replace database "{0}"?', baseName),
-            l10n.t(
-                'This permanently deletes the existing database "{0}" and all of its containers and items. This action cannot be undone.',
-                baseName,
-            ),
-            baseName,
-        );
-        if (!confirmed) {
-            return undefined;
-        }
-        await mgmtClient.sqlResources.deleteSqlDatabase(armTarget.resourceGroup, armTarget.accountName, baseName);
-        return baseName;
-    }
-
-    if (choice === createNew) {
-        let suffix = 2;
-        let candidate = `${baseName}-${suffix}`;
-        while (existingNames.has(candidate)) {
-            suffix++;
-            candidate = `${baseName}-${suffix}`;
-        }
-        return candidate;
-    }
-
-    return undefined;
 }
 
 /**
@@ -1047,6 +1193,7 @@ function toArmIndexingPolicy(policy: NonNullable<IndexingPolicy>): ArmIndexingPo
         includedPaths: sanitizeIndexingPaths(policy.includedPaths),
         excludedPaths: sanitizeIndexingPaths(policy.excludedPaths),
         compositeIndexes: policy.compositeIndexes,
+        fullTextIndexes: policy.fullTextIndexes,
     };
 }
 
@@ -1147,8 +1294,10 @@ export async function provisionAccount(
     accountName: string,
     location: string,
     subscription: AzureSubscription,
+    authorization: ProvisioningAuthorization,
     token?: vscode.CancellationToken,
 ): Promise<string | undefined> {
+    assertProvisioningAuthorized(authorization);
     const { project, projectService, channel } = ctx;
 
     return callWithTelemetryAndErrorHandling('cosmosDB.migration.phase4.accountProvisioning', async (context) => {
@@ -1629,11 +1778,11 @@ async function handleRbacError(
 /**
  * Reports a connection test failure to the user with appropriate error messaging.
  */
-async function reportConnectionTestFailure(
+function reportConnectionTestFailure(
     channel: TypedEventSink<MigrationEvent>,
     target: NonNullable<ProjectJson['phases']['targetEnvironment']>,
     error: unknown,
-): Promise<void> {
+): void {
     const parsedError = parseError(error);
     const rawMessage = parsedError.message || l10n.t('Connection failed. Is the target running?');
     ext.outputChannel.error(`[Migration] Test connection failed: ${rawMessage}`);

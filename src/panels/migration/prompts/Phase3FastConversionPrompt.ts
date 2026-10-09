@@ -271,6 +271,13 @@ Per-container formula:
 
 ## Output Format
 
+When full-text search is required, add container-level \`fullTextPolicy\` with
+\`defaultLanguage\` and \`fullTextPaths: [{ path, language? }]\`. Keep
+\`fullTextIndexes: [{ path }]\` inside \`indexingPolicy\`, and declare every indexed
+path in \`fullTextPolicy.fullTextPaths\`. Omitted path languages inherit the default.
+Never nest \`fullTextPolicy\` inside \`indexingPolicy\`. When full-text search is not
+needed, omit both optional fields instead of setting them to \`null\`.
+
 Respond with TWO parts, in this exact order:
 
 1. A JSON object representing the CosmosModel (no markdown, no code fences, no wrapper).
@@ -324,9 +331,7 @@ The JSON object MUST match EXACTLY this shape:
         "automatic": true,
         "includedPaths": [{ "path": "/*" }],
         "excludedPaths": [{ "path": "/\\"_etag\\"/?" }],
-        "compositeIndexes": [],
-        "fullTextPolicy": null,
-        "fullTextIndexes": null
+        "compositeIndexes": []
       },
       "maxThroughput": 4000,
       "estimatedRowCount": 1500000,

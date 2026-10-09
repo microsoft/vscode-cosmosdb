@@ -117,6 +117,10 @@ function seedUserSettings(userDataDir: string): void {
         // The dedicated e2e emulator binds to 8082 (not the default 8081);
         // the migration provisioning step reads this to target the right port.
         'cosmosDB.emulator.port': E2E_EMULATOR_PORT,
+        // Most migration E2E fixtures exercise the programmatic fallback with an
+        // offline language-model mock. Dedicated Skill-first specs temporarily
+        // switch this setting and intercept Skill dispatch before Chat opens.
+        'cosmosDB.experimental.migration.useProgrammaticFlow': true,
         // Suppress the Quick Start onboarding tour globally. On a fresh profile
         // the automatic tour opens a Popover overlay anchored to the Query
         // Editor toolbar; it intercepts pointer events and hides toolbar

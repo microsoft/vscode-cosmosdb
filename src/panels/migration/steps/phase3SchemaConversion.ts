@@ -7,18 +7,13 @@ import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils
 import { type TypedEventSink } from '@microsoft/vscode-ext-webview';
 import * as l10n from '@vscode/l10n';
 import * as path from 'path';
+import { pathToFileURL } from 'url';
 import * as vscode from 'vscode';
 import { ext } from '../../../extensionVariables';
 import { MigrationProjectService, type ProjectJson } from '../../../services/MigrationProjectService';
 import { type MigrationEvent } from '../../trpc/routers/migrationEventsRouter';
 import { getCosmosDbBestPractices, getIndexPathSyntaxRule } from '../bestPractices';
-import {
-    type CosmosContainer,
-    type CosmosModel,
-    type FinalSummaryResult,
-    type IndexingPolicy,
-    type SchemaConversionStepResult,
-} from '../cosmosModel';
+import { type CosmosModel, type FinalSummaryResult, type SchemaConversionStepResult } from '../cosmosModel';
 import {
     createMkDebug,
     dumpDebugResponse,
@@ -33,6 +28,7 @@ import {
 } from '../helpers/aiHelpers';
 import { buildBicepParams, buildBicepTemplate } from '../helpers/bicepGenerator';
 import {
+    mergeDomainModels,
     saveAnalysisFile,
     saveCosmosModel,
     sendPhaseEvent,
@@ -60,6 +56,36 @@ import {
 import { createToolExecutor, getBestPracticeTools } from '../tools/migrationTools';
 
 // ─── Helpers ────────────────────────────────────────────────────────
+
+async function validateAndCanonicalizeDeploymentModel(model: CosmosModel): Promise<string> {
+    const validatorPath = path.join(
+        ext.context.extensionPath,
+        'skills',
+        'cosmosdb-relational-migration',
+        'scripts',
+        'validate-cosmos-model.mjs',
+    );
+    const validator = (await import(pathToFileURL(validatorPath).href)) as {
+        canonicalStringify(value: CosmosModel): string;
+        validateAndCanonicalize(value: CosmosModel): {
+            errors: { path: string; message: string }[];
+            model?: CosmosModel;
+        };
+    };
+    const result = validator.validateAndCanonicalize(stripPartitionKeyCandidates(model));
+    if (!result.model || result.errors.length > 0) {
+        throw new Error(JSON.stringify({ valid: false, errors: result.errors }));
+    }
+    return validator.canonicalStringify(result.model);
+}
+
+async function saveValidatedCosmosModel(directory: string, fileName: string, model: CosmosModel): Promise<void> {
+    const canonicalModel = await validateAndCanonicalizeDeploymentModel(model);
+    await vscode.workspace.fs.writeFile(
+        MigrationProjectService.toUri(directory, fileName),
+        Buffer.from(canonicalModel, 'utf-8'),
+    );
+}
 
 /**
  * Sections to keep from per-domain summaries when building the Step 8
@@ -457,115 +483,6 @@ function validatePartitionKeyAlignment(cosmosModel: CosmosModel): string[] {
     }
 
     return warnings;
-}
-
-/**
- * Programmatically merges per-domain CosmosModels into one unified model.
- * Detects conflicts when containers from different domains share a name.
- */
-function mergeDomainModels(domainModels: { domainName: string; model: CosmosModel }[]): {
-    merged: CosmosModel;
-    conflicts: string[];
-} {
-    const containerMap = new Map<string, { container: CosmosContainer; domains: string[] }>();
-    const conflicts: string[] = [];
-    let sourceType: string | undefined;
-
-    const allAccessPatterns = domainModels.flatMap(({ domainName, model }) =>
-        (model.accessPatterns ?? []).map((ap) => ({ ...ap, name: `${domainName}: ${ap.name}` })),
-    );
-    const allCrossPartitionQueries = domainModels.flatMap(({ domainName, model }) =>
-        (model.crossPartitionQueries ?? []).map((cpq) => ({ ...cpq, name: `${domainName}: ${cpq.name}` })),
-    );
-
-    for (const { domainName, model } of domainModels) {
-        if (model.sourceType && !sourceType) {
-            sourceType = model.sourceType;
-        }
-
-        for (const container of model.containers) {
-            const existing = containerMap.get(container.name);
-            if (!existing) {
-                containerMap.set(container.name, {
-                    container: { ...container },
-                    domains: [domainName],
-                });
-            } else {
-                existing.domains.push(domainName);
-
-                // Merge entities (append new ones, flag duplicates)
-                for (const entity of container.entities) {
-                    const duplicate = existing.container.entities.find((e) => e.name === entity.name);
-                    if (duplicate) {
-                        conflicts.push(
-                            `Container "${container.name}": entity "${entity.name}" exists in both ` +
-                                `"${existing.domains[0]}" and "${domainName}" domains`,
-                        );
-                    } else {
-                        existing.container.entities.push(entity);
-                    }
-                }
-
-                // Check partition key conflicts
-                const existingPKs = (existing.container.partitionKeys ?? []).map((pk) => pk.path).join(',');
-                const newPKs = (container.partitionKeys ?? []).map((pk) => pk.path).join(',');
-                if (existingPKs && newPKs && existingPKs !== newPKs) {
-                    conflicts.push(
-                        `Container "${container.name}": partition key mismatch — ` +
-                            `"${existing.domains[0]}" uses [${existingPKs}] vs "${domainName}" uses [${newPKs}]`,
-                    );
-                }
-
-                // Merge indexing policies
-                if (container.indexingPolicy && existing.container.indexingPolicy) {
-                    existing.container.indexingPolicy = mergeIndexingPolicies(
-                        existing.container.indexingPolicy,
-                        container.indexingPolicy,
-                    );
-                } else if (container.indexingPolicy) {
-                    existing.container.indexingPolicy = container.indexingPolicy;
-                }
-            }
-        }
-    }
-
-    const merged: CosmosModel = {
-        version: 1,
-        domain: 'all',
-        sourceType,
-        containers: Array.from(containerMap.values()).map((v) => v.container),
-        accessPatterns: allAccessPatterns.length > 0 ? allAccessPatterns : undefined,
-        crossPartitionQueries: allCrossPartitionQueries.length > 0 ? allCrossPartitionQueries : undefined,
-    };
-
-    return { merged, conflicts };
-}
-
-/**
- * Merges two indexing policies by unioning their paths and composite indexes.
- */
-function mergeIndexingPolicies(a: IndexingPolicy, b: IndexingPolicy): IndexingPolicy {
-    const unionPaths = (arr1: { path: string }[], arr2: { path: string }[]): { path: string }[] => {
-        const set = new Set(arr1.map((p) => p.path));
-        const result = [...arr1];
-        for (const p of arr2) {
-            if (!set.has(p.path)) {
-                result.push(p);
-                set.add(p.path);
-            }
-        }
-        return result;
-    };
-
-    return {
-        indexingMode: a.indexingMode ?? b.indexingMode,
-        automatic: a.automatic ?? b.automatic,
-        includedPaths: unionPaths(a.includedPaths, b.includedPaths),
-        excludedPaths: unionPaths(a.excludedPaths, b.excludedPaths),
-        compositeIndexes: [...(a.compositeIndexes ?? []), ...(b.compositeIndexes ?? [])],
-        fullTextPolicy: a.fullTextPolicy ?? b.fullTextPolicy,
-        fullTextIndexes: a.fullTextIndexes ?? b.fullTextIndexes,
-    };
 }
 
 /**
@@ -1065,7 +982,7 @@ export async function runSchemaConversion(
                         indexPathSyntaxRule,
                     );
                     cosmosModel = idxResult.updatedModel;
-                    await saveCosmosModel(domainOutputPath, stripPartitionKeyCandidates(cosmosModel));
+                    await saveValidatedCosmosModel(domainOutputPath, 'cosmos-model.json', cosmosModel);
 
                     // Save index-policy.json (per-container indexing policies)
                     const indexPolicies: Record<string, unknown> = {};
@@ -1164,7 +1081,7 @@ export async function runSchemaConversion(
                         ext.outputChannel.warn(`[SchemaConversion] ${w}`);
                     }
 
-                    await saveCosmosModel(domainOutputPath, stripPartitionKeyCandidates(fastResult.cosmosModel));
+                    await saveValidatedCosmosModel(domainOutputPath, 'cosmos-model.json', fastResult.cosmosModel);
                     await saveAnalysisFile(
                         domainOutputPath,
                         'summary.md',
@@ -1300,10 +1217,7 @@ export async function runSchemaConversion(
             }
 
             // Save deployment model and summary at schema-conversion root
-            await vscode.workspace.fs.writeFile(
-                MigrationProjectService.toUri(conversionPath, 'model.json'),
-                Buffer.from(JSON.stringify(stripPartitionKeyCandidates(deploymentModel), null, 2), 'utf-8'),
-            );
+            await saveValidatedCosmosModel(conversionPath, 'model.json', deploymentModel);
             await saveAnalysisFile(
                 conversionPath,
                 'summary.md',
@@ -1397,6 +1311,7 @@ export async function runSchemaConversion(
 
             // Update project.json
             project.phases.schemaConversion = {
+                ...project.phases.schemaConversion,
                 status: 'complete',
                 domains: completedDomains,
                 completedAt: new Date().toISOString(),

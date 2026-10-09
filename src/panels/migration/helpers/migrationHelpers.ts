@@ -13,7 +13,7 @@ import {
     type MigrationEventPayloads,
     type MigrationProgressEventName,
 } from '../../trpc/routers/migrationEventsRouter';
-import { type CosmosModel } from '../cosmosModel';
+import { type CosmosContainer, type CosmosModel, type IndexingPolicy } from '../cosmosModel';
 
 // ─── File I/O ────────────────────────────────────────────────────────
 
@@ -72,6 +72,140 @@ export function stripPartitionKeyCandidates(model: CosmosModel): CosmosModel {
                 relationships: entity.relationships?.map(({ rationale: _r, score: _s, ...rest }) => rest),
             })),
         })),
+    };
+}
+
+export function mergeDomainModels(domainModels: { domainName: string; model: CosmosModel }[]): {
+    merged: CosmosModel;
+    conflicts: string[];
+} {
+    const containerMap = new Map<string, { container: CosmosContainer; domains: string[] }>();
+    const conflicts: string[] = [];
+    let sourceType: string | undefined;
+
+    const allAccessPatterns = domainModels.flatMap(({ domainName, model }) =>
+        (model.accessPatterns ?? []).map((pattern) => ({ ...pattern, name: `${domainName}: ${pattern.name}` })),
+    );
+    const allCrossPartitionQueries = domainModels.flatMap(({ domainName, model }) =>
+        (model.crossPartitionQueries ?? []).map((query) => ({ ...query, name: `${domainName}: ${query.name}` })),
+    );
+
+    for (const { domainName, model } of domainModels) {
+        if (model.sourceType && !sourceType) {
+            sourceType = model.sourceType;
+        }
+
+        for (const container of model.containers) {
+            const existing = containerMap.get(container.name);
+            if (!existing) {
+                containerMap.set(container.name, {
+                    container: { ...container },
+                    domains: [domainName],
+                });
+            } else {
+                existing.domains.push(domainName);
+
+                for (const entity of container.entities) {
+                    const duplicate = existing.container.entities.find((candidate) => candidate.name === entity.name);
+                    if (duplicate) {
+                        conflicts.push(
+                            `Container "${container.name}": entity "${entity.name}" exists in both ` +
+                                `"${existing.domains[0]}" and "${domainName}" domains`,
+                        );
+                    } else {
+                        existing.container.entities.push(entity);
+                    }
+                }
+
+                const existingPKs = (existing.container.partitionKeys ?? []).map((key) => key.path).join(',');
+                const newPKs = (container.partitionKeys ?? []).map((key) => key.path).join(',');
+                if (existingPKs && newPKs && existingPKs !== newPKs) {
+                    conflicts.push(
+                        `Container "${container.name}": partition key mismatch — ` +
+                            `"${existing.domains[0]}" uses [${existingPKs}] vs "${domainName}" uses [${newPKs}]`,
+                    );
+                }
+
+                const incomingPolicy = container.fullTextPolicy;
+                const existingPolicy = existing.container.fullTextPolicy;
+                if (incomingPolicy && existingPolicy) {
+                    if (incomingPolicy.defaultLanguage !== existingPolicy.defaultLanguage) {
+                        conflicts.push(
+                            `Container "${container.name}": full-text default language differs between domains`,
+                        );
+                    }
+                    const fullTextPaths = new Map(
+                        existingPolicy.fullTextPaths.map((entry) => [
+                            entry.path,
+                            {
+                                ...entry,
+                                language: entry.language ?? existingPolicy.defaultLanguage,
+                            },
+                        ]),
+                    );
+                    for (const entry of incomingPolicy.fullTextPaths) {
+                        const language = entry.language ?? incomingPolicy.defaultLanguage;
+                        const previous = fullTextPaths.get(entry.path);
+                        if (previous && previous.language !== language) {
+                            conflicts.push(
+                                `Container "${container.name}": full-text language differs for path "${entry.path}"`,
+                            );
+                        } else if (!previous) {
+                            fullTextPaths.set(entry.path, { ...entry, language });
+                        }
+                    }
+                    existing.container.fullTextPolicy = {
+                        defaultLanguage: existingPolicy.defaultLanguage,
+                        fullTextPaths: [...fullTextPaths.values()],
+                    };
+                } else if (incomingPolicy) {
+                    existing.container.fullTextPolicy = incomingPolicy;
+                }
+
+                if (container.indexingPolicy && existing.container.indexingPolicy) {
+                    existing.container.indexingPolicy = mergeIndexingPolicies(
+                        existing.container.indexingPolicy,
+                        container.indexingPolicy,
+                    );
+                } else if (container.indexingPolicy) {
+                    existing.container.indexingPolicy = container.indexingPolicy;
+                }
+            }
+        }
+    }
+
+    const merged: CosmosModel = {
+        version: 1,
+        domain: 'all',
+        sourceType,
+        containers: Array.from(containerMap.values()).map((entry) => entry.container),
+        accessPatterns: allAccessPatterns.length > 0 ? allAccessPatterns : undefined,
+        crossPartitionQueries: allCrossPartitionQueries.length > 0 ? allCrossPartitionQueries : undefined,
+    };
+
+    return { merged, conflicts };
+}
+
+function mergeIndexingPolicies(first: IndexingPolicy, second: IndexingPolicy): IndexingPolicy {
+    const unionPaths = (firstPaths: { path: string }[], secondPaths: { path: string }[]): { path: string }[] => {
+        const paths = new Set(firstPaths.map((entry) => entry.path));
+        const result = [...firstPaths];
+        for (const entry of secondPaths) {
+            if (!paths.has(entry.path)) {
+                result.push(entry);
+                paths.add(entry.path);
+            }
+        }
+        return result;
+    };
+
+    return {
+        indexingMode: first.indexingMode ?? second.indexingMode,
+        automatic: first.automatic ?? second.automatic,
+        includedPaths: unionPaths(first.includedPaths, second.includedPaths),
+        excludedPaths: unionPaths(first.excludedPaths, second.excludedPaths),
+        compositeIndexes: [...(first.compositeIndexes ?? []), ...(second.compositeIndexes ?? [])],
+        fullTextIndexes: unionPaths(first.fullTextIndexes ?? [], second.fullTextIndexes ?? []),
     };
 }
 
@@ -261,6 +395,16 @@ export interface ParsedAccessPattern {
     singleOrBatch?: string;
     sqlExample?: string;
     codeExample?: string;
+}
+
+export function normalizeParsedAccessPatterns(patterns: ParsedAccessPattern[]): ParsedAccessPattern[] {
+    return patterns.map((pattern) => {
+        const filterFields = (pattern as ParsedAccessPattern & { filterFields?: string | string[] }).filterFields;
+        return {
+            ...pattern,
+            ...(Array.isArray(filterFields) ? { filterFields: filterFields.join(', ') } : {}),
+        };
+    });
 }
 
 /**

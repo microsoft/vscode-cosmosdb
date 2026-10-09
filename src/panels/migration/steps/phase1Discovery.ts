@@ -40,7 +40,6 @@ import {
     buildAnalyzeAccessPatternsPrompt,
     buildAnalyzeDatabaseSchemaPrompt,
     buildAnalyzeVolumetricsPrompt,
-    buildChatDiscoveryPrompt,
     Phase1Step2DiscoveryPrompt,
 } from '../prompts';
 import { getAccessPatternsTemplateContent } from '../templates/accessPatternsTemplate';
@@ -55,15 +54,6 @@ import {
     getWorkspaceFileExclude,
     MAX_FILE_TOKENS,
 } from '../tools/migrationTools';
-
-// ─── Feature Toggle ──────────────────────────────────────────────────
-
-/**
- * When `true`, the discovery report is generated via Copilot Chat (Chat window)
- * using `#file:` links instead of the raw LLM agentic tool-calling loop.
- * Set to `true` to test the Chat-based alternative path.
- */
-const USE_CHAT_DISCOVERY = false;
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -155,75 +145,6 @@ async function readFileByName(filePaths: string[], fileName: string): Promise<st
 /**
  * Markdown link pattern: matches `[text](url)` anywhere in a string.
  */
-
-// ─── Chat-Based Discovery (alternative path) ───────────────────────
-
-/**
- * Dispatches the discovery prompt to Copilot Chat instead of running the
- * agentic tool-calling loop. All input files are referenced via `#file:`
- * links so Chat resolves their content natively.
- */
-async function dispatchChatDiscovery(
-    schemaFiles: string[],
-    volumetricFiles: string[],
-    accessPatternFiles: string[],
-    projectService: MigrationProjectService,
-    project: ProjectJson,
-    analysis: AnalysisResult,
-): Promise<void> {
-    const workspaceRoot = projectService.getWorkspacePath();
-    const discoveryDir = projectService.getDiscoveryPath();
-    const outputRelativePath = path.relative(workspaceRoot, path.join(discoveryDir, 'discovery-report.md'));
-
-    // Convert absolute paths to workspace-relative for #file: links
-    const schemaFileRefs = schemaFiles.map((f) => path.relative(workspaceRoot, f));
-
-    // Separate access-patterns.md from other access-pattern files
-    const accessPatternsMdAbsPath = accessPatternFiles.find((f) => path.basename(f) === 'access-patterns.md');
-    const accessPatternsMdPath = accessPatternsMdAbsPath
-        ? path.relative(workspaceRoot, accessPatternsMdAbsPath)
-        : undefined;
-    const accessPatternFileRefs = accessPatternFiles
-        .filter((f) => path.basename(f) !== 'access-patterns.md')
-        .map((f) => path.relative(workspaceRoot, f));
-
-    // Separate volumetrics.md from other volumetric files
-    const volumetricsMdAbsPath = volumetricFiles.find((f) => path.basename(f) === 'volumetrics.md');
-    const volumetricsMdPath = volumetricsMdAbsPath ? path.relative(workspaceRoot, volumetricsMdAbsPath) : undefined;
-    const volumetricFileRefs = volumetricFiles
-        .filter((f) => path.basename(f) !== 'volumetrics.md')
-        .map((f) => path.relative(workspaceRoot, f));
-
-    // Parse code-evidenced tables from access-patterns.md (if it exists)
-    let codeEvidencedTables: string[] = [];
-    if (accessPatternsMdAbsPath) {
-        const content = await readFileByName(accessPatternFiles, 'access-patterns.md');
-        if (content) {
-            codeEvidencedTables = parseCodeEvidencedTables(content);
-        }
-    }
-
-    const prompt = buildChatDiscoveryPrompt({
-        schemaFileRefs,
-        accessPatternsMdPath,
-        accessPatternFileRefs: accessPatternFileRefs.length > 0 ? accessPatternFileRefs : undefined,
-        volumetricsMdPath,
-        volumetricFileRefs: volumetricFileRefs.length > 0 ? volumetricFileRefs : undefined,
-        codeEvidencedTables,
-        outputRelativePath,
-        language: analysis.language ?? '',
-        frameworks: analysis.frameworks ?? [],
-        databaseType: analysis.databaseType ?? '',
-        databaseAccess: analysis.databaseAccess ?? '',
-        discoveryInstructions: project.phases.discovery.discoveryInstructions,
-    });
-
-    await vscode.commands.executeCommand('workbench.action.chat.open', {
-        // Custom .agent.md entries are resolved in Agent mode.
-        mode: 'agent',
-        query: prompt,
-    });
-}
 
 // ─── Discovery Report Generation ────────────────────────────────────
 
@@ -331,6 +252,7 @@ async function generateDiscoveryReport(
 
     // Save discovery report (strip any LLM preamble before the first heading)
     const outputPath = path.join(discoveryDir, 'discovery-report.md');
+    await vscode.workspace.fs.createDirectory(vscode.Uri.file(path.dirname(outputPath)));
     await vscode.workspace.fs.writeFile(
         vscode.Uri.file(outputPath),
         Buffer.from(stripMarkdownPreamble(fullText), 'utf-8'),
@@ -545,9 +467,7 @@ export async function runApplicationAnalysis(ctx: Phase1Context): Promise<void> 
             // Update project.json
             project.phases.discovery.applicationAnalysis = {
                 ...analysis,
-                // Never leave frameworks empty — downstream UI treats it as a required field.
-                // Some projects legitimately have no frameworks; mark as "N/A" instead.
-                frameworks: analysis.frameworks && analysis.frameworks.length > 0 ? analysis.frameworks : ['N/A'],
+                frameworks: analysis.frameworks ?? [],
                 completedAt: new Date().toISOString(),
             };
             project.phases.discovery.status = 'in-progress';
@@ -577,7 +497,6 @@ export async function runDiscoveryReport(ctx: Phase1Context): Promise<void> {
         setMigrationTelemetryContext(context, project, 'discovery');
         context.errorHandling.suppressDisplay = true;
         context.errorHandling.forceIncludeInReportIssueCommand = true;
-        incrementRunCount(project, 'discovery');
         // Check if a discovery report already exists and ask for confirmation
         const discoveryReportPath = path.join(projectService.getDiscoveryPath(), 'discovery-report.md');
         if (await MigrationProjectService.fileExists(vscode.Uri.file(discoveryReportPath))) {
@@ -594,6 +513,8 @@ export async function runDiscoveryReport(ctx: Phase1Context): Promise<void> {
 
         try {
             context.telemetry.properties.lastStep = 'discoveryReport';
+
+            incrementRunCount(project, 'discovery');
             const model = await getSelectedModel();
             setAiTelemetryContext(context, model);
 
@@ -630,19 +551,6 @@ export async function runDiscoveryReport(ctx: Phase1Context): Promise<void> {
             const accessPatternFiles = await projectService.listDiscoveryFiles(project, 'access-patterns');
             const volumetricFiles = await projectService.listDiscoveryFiles(project, 'volumetrics');
 
-            if (USE_CHAT_DISCOVERY) {
-                await dispatchChatDiscovery(
-                    schemaFiles,
-                    volumetricFiles,
-                    accessPatternFiles,
-                    projectService,
-                    project,
-                    analysis ?? {},
-                );
-                await sendPhaseEvent(channel, 'discoveryCompleted');
-                return;
-            }
-
             await generateDiscoveryReport(
                 model,
                 schemaFiles,
@@ -655,6 +563,9 @@ export async function runDiscoveryReport(ctx: Phase1Context): Promise<void> {
                 project.phases.discovery.discoveryInstructions,
                 context,
             );
+
+            project.phases.discovery.status = 'complete';
+            await projectService.save(project);
 
             await sendPhaseEvent(channel, 'discoveryCompleted');
         } catch (error) {

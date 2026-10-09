@@ -159,7 +159,7 @@ async function frameMatchesReady(frame: Frame, isReady: (f: Frame) => Promise<bo
  *
  * `commandTitle` should match what the palette displays — e.g.
  * `"Cosmos DB: New Migration…"`. Substring matching is fine: we type the
- * title verbatim and press Enter, which selects the top-ranked result.
+ * title verbatim and click the matching result.
  */
 export async function runCommand(page: Page, commandTitle: string): Promise<void> {
     await page.keyboard.press(COMMAND_PALETTE_SHORTCUT);
@@ -168,10 +168,12 @@ export async function runCommand(page: Page, commandTitle: string): Promise<void
     // The leading ">" forces "command" mode regardless of where the palette
     // was last left (quick-open vs. commands).
     await input.fill(`>${commandTitle}`);
-    // Wait for the first result row so we don't press Enter before the list
-    // populates (which would just close the palette).
-    await page.locator('.quick-input-list .monaco-list-row').first().waitFor({ state: 'visible', timeout: 5_000 });
-    await page.keyboard.press('Enter');
+    // Wait for the matching result so a stale top-ranked command cannot run while the palette is filtering.
+    await page
+        .locator('.quick-input-list .monaco-list-row')
+        .filter({ hasText: commandTitle })
+        .first()
+        .click({ timeout: 5_000 });
 }
 
 /**

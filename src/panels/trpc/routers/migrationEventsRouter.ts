@@ -6,6 +6,8 @@
 import { type TypedEventSink } from '@microsoft/vscode-ext-webview';
 import { type ProjectJson } from '../../../services/MigrationProjectService';
 import { type ModelInfo } from '../../../utils/modelUtils';
+import { type MigrationRunActivity } from '../../../webviews/cosmosdb/Migration/state/deriveMigrationPhaseStates';
+import { type MigrationPhaseCompletionMap } from '../../migration/helpers/migrationStateSync';
 import { type ProvisioningResult } from '../../migration/steps/phase4Provisioning';
 import { migrationProcedure, migrationRouter } from '../trpc';
 
@@ -74,28 +76,14 @@ export interface ProjectLoadedPayload {
     codeMigrationPlanPath: string;
     isPhase4Required: boolean;
     showTokenEstimate: boolean;
-}
-
-export interface FilesChangedPayload {
-    schemaFiles: string[];
-    volumetricFiles: string[];
-    accessPatternFiles: string[];
-    excludedSchemaFiles: string[];
-    excludedVolumetricFiles: string[];
-    excludedAccessPatternFiles: string[];
-    hasVolumetricsTemplate: boolean;
-    hasAccessPatternsTemplate: boolean;
-    hasDiscoveryReport: boolean;
-    hasAssessmentSummary: boolean;
-    hasSchemaConversion: boolean;
-    hasSampleData: boolean;
-    hasBicep: boolean;
-    hasCodeMigrationPlan: boolean;
-    codeMigrationPlanPath: string;
+    useProgrammaticFlow: boolean;
+    phaseCompletion: MigrationPhaseCompletionMap;
+    runActivity: MigrationRunActivity | null;
     fileStateGeneration: number;
 }
 
 export interface TokenEstimatePayload {
+    modelId: string;
     minTokens: number;
     maxTokens: number;
     modelMaxTokens: number;
@@ -131,6 +119,7 @@ export type ConnectionTestResultPayload =
 // ─── Event Payload Map ──────────────────────────────────────────────────────
 
 export type MigrationEventPayloads = {
+    runActivityChanged: [activity: MigrationRunActivity | null];
     // Discovery / Phase 1
     analysisStarted: [];
     analysisCompleted: [result: AnalysisResultPayload];
@@ -179,17 +168,17 @@ export type MigrationEventPayloads = {
 
     // Project / file state
     projectLoaded: [data: ProjectLoadedPayload];
-    filesChanged: [data: FilesChangedPayload];
 
     // Git
     gitStatus: [hasGit: boolean];
     gitignoreStatus: [isInGitignore: boolean];
 
     // AI / models
-    availableModels: [models: ModelInfo[], savedModelId: string | null];
+    availableModels: [models: ModelInfo[], savedModelId: string | null, useProgrammaticFlow: boolean];
     aiFeaturesEnabledChanged: [available: boolean];
     tokenEstimate: [estimate: TokenEstimatePayload | null];
     showTokenEstimateChanged: [enabled: boolean];
+    programmaticFlowChanged: [enabled: boolean];
 };
 
 export type MigrationEventName = keyof MigrationEventPayloads;

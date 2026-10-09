@@ -105,5 +105,6 @@
   "cosmosdb.configuration.accountOverview.advisories.sharedThroughputVictimThrottlePct": "Account Overview: rate-limited (429) request rate (percent) at or above which a low-consumption sibling collection counts as a starved victim in the Shared-throughput Starvation advisory.",
   "cosmosdb.configuration.accountOverview.advisories.sharedThroughputVictimSharePct": "Account Overview: share (percent) of the shared pool's request units at or below which a throttled sibling collection counts as a starved victim (consuming little while being throttled) in the Shared-throughput Starvation advisory.",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Experimental) Show token usage estimates in the Migration Assistant UI.",
+  "cosmosdb.configuration.experimental.migration.useProgrammaticFlow": "(Experimental) Use the legacy programmatic migration flow instead of the agentic migration Skill.",
   "cosmosdb.configuration.experimental.migration.enabled": "(Experimental) Enable the Cosmos DB Migration (Preview) feature. When disabled, the Cosmos DB Migrations node and its commands are hidden."
 }

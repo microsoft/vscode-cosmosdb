@@ -3,8 +3,26 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as path from 'node:path';
+import * as vscode from 'vscode';
 import { type CosmosContainer, type CosmosModel } from '../cosmosModel';
 import { buildBicepParams, buildBicepTemplate, mergeBicepParams, parseBicepParams } from './bicepGenerator';
+
+vi.mock('@microsoft/vscode-azext-azureauth', () => ({}));
+vi.mock('@microsoft/vscode-azext-azureutils', () => ({}));
+vi.mock('@microsoft/vscode-azext-utils', () => ({}));
+vi.mock('../../../cosmosdb/getCosmosClient', () => ({}));
+vi.mock('../../../cosmosdb/utils/azureSessionHelper', () => ({}));
+vi.mock('../../../cosmosdb/utils/rbacUtils', () => ({}));
+vi.mock('../../../services/MigrationProjectService', () => ({}));
+vi.mock('../../../utils/azureClients', () => ({}));
+vi.mock('../bestPractices', () => ({}));
+vi.mock('./aiHelpers', () => ({}));
+vi.mock('./migrationHelpers', () => ({}));
+vi.mock('./migrationTelemetry', () => ({}));
+vi.mock('../prompts', () => ({}));
+vi.mock('../tools/migrationTools', () => ({}));
+vi.mock('../../../extensionVariables', () => ({ ext: { outputChannel: { warn: vi.fn() } } }));
 
 function container(partial: Partial<CosmosContainer> & Pick<CosmosContainer, 'name'>): CosmosContainer {
     return { entities: [], ...partial };
@@ -15,6 +33,63 @@ function buildModel(partial: Partial<CosmosModel> = {}): CosmosModel {
 }
 
 describe('bicepGenerator', () => {
+    describe('Bicep export regeneration', () => {
+        beforeEach(() => vi.clearAllMocks());
+        afterEach(() => vi.restoreAllMocks());
+
+        it.each([false, true])('regenerates only missing templates (exists: %s)', async (templateExists) => {
+            const { refineBicepParams } = await import('../steps/phase4Provisioning');
+            const conversionPath = path.resolve('test-migration', 'phases', '3-schema-conversion');
+            const modelPath = path.join(conversionPath, 'model.json');
+            const bicepPath = path.resolve('test-migration', 'phases', '4-provisioning', 'main.bicep');
+            const paramsPath = path.resolve('test-migration', 'phases', '4-provisioning', 'main.bicepparam');
+            const model = buildModel({
+                containers: [
+                    container({
+                        name: 'Items',
+                        fullTextPolicy: {
+                            defaultLanguage: 'en-US',
+                            fullTextPaths: [{ path: '/description' }],
+                        },
+                        indexingPolicy: {
+                            includedPaths: [{ path: '/*' }],
+                            excludedPaths: [],
+                            fullTextIndexes: [{ path: '/description' }],
+                        },
+                    }),
+                ],
+            });
+            vi.spyOn(vscode.workspace.fs, 'readFile').mockImplementation(async (uri) => {
+                if (uri.fsPath === modelPath) return Buffer.from(JSON.stringify(model));
+                if (uri.fsPath === paramsPath) return Buffer.from(buildBicepParams({ accountName: 'original' }));
+                throw new Error(`Unexpected file read: ${uri.fsPath}`);
+            });
+            vi.spyOn(vscode.workspace.fs, 'stat').mockImplementation(async () => {
+                if (!templateExists) throw new Error('File not found');
+                return { type: vscode.FileType.File, ctime: 0, mtime: 0, size: 1 };
+            });
+            const write = vi.spyOn(vscode.workspace.fs, 'writeFile').mockResolvedValue(undefined);
+            const context = {
+                projectService: {
+                    getBicepPath: () => bicepPath,
+                    getBicepParamPath: () => paramsPath,
+                    getSchemaConversionPath: () => conversionPath,
+                },
+            } as unknown as Parameters<typeof refineBicepParams>[0];
+
+            await refineBicepParams(context, { location: 'westus' });
+
+            const templates = write.mock.calls
+                .filter(([uri]) => uri.fsPath === bicepPath)
+                .map(([, content]) => Buffer.from(content).toString('utf8'));
+            expect(templates).toEqual(templateExists ? [] : [buildBicepTemplate(model)]);
+            const params = write.mock.calls.find(([uri]) => uri.fsPath === paramsPath)?.[1];
+            expect(params).toBeDefined();
+            expect(Buffer.from(params!).toString('utf8')).toContain("param accountName = 'original'");
+            expect(Buffer.from(params!).toString('utf8')).toContain("param location = 'westus'");
+        });
+    });
+
     describe('buildBicepTemplate', () => {
         it('targets a resource group and declares the standard parameters', () => {
             const template = buildBicepTemplate(buildModel());
@@ -103,6 +178,119 @@ describe('bicepGenerator', () => {
             expect(template).toContain("indexingMode: 'consistent'");
             expect(template).toContain("path: '/secret/*'");
             expect(template).toContain("order: 'descending'");
+        });
+
+        it('preserves full-text policies and indexes with a supported container API', () => {
+            const template = buildBicepTemplate(
+                buildModel({
+                    containers: [
+                        container({
+                            name: 'Items',
+                            fullTextPolicy: {
+                                defaultLanguage: 'en-US',
+                                fullTextPaths: [{ path: '/description' }, { path: '/title', language: 'fr-FR' }],
+                            },
+                            indexingPolicy: {
+                                includedPaths: [{ path: '/*' }],
+                                excludedPaths: [],
+                                fullTextIndexes: [{ path: '/description' }, { path: '/title' }],
+                            },
+                        }),
+                    ],
+                }),
+            );
+            expect(template).toContain('Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2025-10-15');
+            expect(template).toContain(
+                [
+                    '      fullTextPolicy: {',
+                    "        defaultLanguage: 'en-US'",
+                    '        fullTextPaths: [',
+                    '          {',
+                    "            path: '/description'",
+                    '          }',
+                    '          {',
+                    "            path: '/title'",
+                    "            language: 'fr-FR'",
+                    '          }',
+                    '        ]',
+                    '      }',
+                ].join('\n'),
+            );
+            expect(template).toContain(
+                [
+                    '        fullTextIndexes: [',
+                    '          {',
+                    "            path: '/description'",
+                    '          }',
+                    '          {',
+                    "            path: '/title'",
+                    '          }',
+                    '        ]',
+                ].join('\n'),
+            );
+        });
+
+        it.each([{ fullTextIndexes: undefined }, { fullTextIndexes: [] }])(
+            'omits absent policies and empty full-text indexes: %j',
+            ({ fullTextIndexes }) => {
+                const template = buildBicepTemplate(
+                    buildModel({
+                        containers: [
+                            container({
+                                name: 'Items',
+                                indexingPolicy: { includedPaths: [{ path: '/*' }], excludedPaths: [], fullTextIndexes },
+                            }),
+                        ],
+                    }),
+                );
+                expect(template).not.toContain('fullTextPolicy:');
+                expect(template).not.toContain('fullTextIndexes:');
+            },
+        );
+
+        it('escapes full-text paths and language values', () => {
+            const template = buildBicepTemplate(
+                buildModel({
+                    containers: [
+                        container({
+                            name: 'Items',
+                            fullTextPolicy: {
+                                defaultLanguage: "en-'US",
+                                fullTextPaths: [{ path: "/description's\\text", language: "fr-'FR" }],
+                            },
+                            indexingPolicy: {
+                                includedPaths: [{ path: '/*' }],
+                                excludedPaths: [],
+                                fullTextIndexes: [{ path: "/description's\\text" }],
+                            },
+                        }),
+                    ],
+                }),
+            );
+            expect(template).toContain("defaultLanguage: 'en-\\'US'");
+            expect(template).toContain("language: 'fr-\\'FR'");
+            expect(template.split("path: '/description\\'s\\\\text'")).toHaveLength(3);
+        });
+
+        it('preserves container unique-key policies in exported Bicep', () => {
+            const template = buildBicepTemplate(
+                buildModel({
+                    containers: [
+                        container({
+                            name: 'Items',
+                            uniqueKeyPolicy: {
+                                uniqueKeys: [{ paths: ['/docType', '/email'] }, { paths: ['/profile/code'] }],
+                            },
+                        }),
+                    ],
+                }),
+            );
+            expect(template).toContain('uniqueKeyPolicy: {');
+            expect(template).toContain("paths: ['/docType', '/email']");
+            expect(template).toContain("paths: ['/profile/code']");
+            expect(buildBicepTemplate(buildModel({ containers: [container({ name: 'Items' })] }))).not.toContain(
+                'uniqueKeyPolicy:',
+            );
         });
 
         it('references the data contributor role definition and emits outputs', () => {

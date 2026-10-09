@@ -4,13 +4,74 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { describe, expect, it } from 'vitest';
+import * as vscode from 'vscode';
+import { ext } from '../extensionVariables';
+import { getAvailableModelsInfo, getSelectedModel, setE2eModelOverride } from './aiUtils';
 import {
     formatTokenCount,
+    getMigrationModels,
+    MIGRATION_SELECTED_MODEL_KEY,
     partitionModelsByCapability,
     resolveSelectedModelId,
     sortModelsAutoFirst,
     type ModelInfo,
 } from './modelUtils';
+
+vi.mock('../extensionVariables', () => ({
+    ext: { context: { globalState: { get: vi.fn(), update: vi.fn() } } },
+}));
+vi.mock('@microsoft/vscode-azext-utils', () => ({ callWithTelemetryAndErrorHandling: vi.fn() }));
+vi.mock('vscode', () => ({ lm: { selectChatModels: vi.fn() } }));
+
+describe('migration model availability', () => {
+    const models = [
+        { id: 'auto', name: 'Auto', vendor: 'copilot', family: 'auto', maxInputTokens: 128_000 },
+        { id: 'first', name: 'First', vendor: 'copilot', family: 'first', maxInputTokens: 100_000 },
+        { id: 'second', name: 'Second', vendor: 'copilot', family: 'second', maxInputTokens: 200_000 },
+    ];
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        setE2eModelOverride(undefined);
+        vi.mocked(vscode.lm.selectChatModels).mockResolvedValue(models as vscode.LanguageModelChat[]);
+        vi.mocked(ext.context.globalState.get).mockReturnValue('auto');
+    });
+
+    afterEach(() => setE2eModelOverride(undefined));
+
+    it('includes Auto only when explicitly requested without overwriting preferences', async () => {
+        expect((await getAvailableModelsInfo()).models.map((model) => model.id)).toEqual(['first', 'second']);
+        expect(await getAvailableModelsInfo(MIGRATION_SELECTED_MODEL_KEY, { includeAuto: true })).toEqual({
+            models,
+            savedModelId: 'auto',
+        });
+        expect(ext.context.globalState.update).not.toHaveBeenCalled();
+    });
+
+    it('resolves saved Auto to the first concrete model for direct migration requests', async () => {
+        expect(await getSelectedModel({ stateKey: MIGRATION_SELECTED_MODEL_KEY, excludeAuto: true })).toBe(models[1]);
+        expect(ext.context.globalState.get).toHaveBeenCalledWith(MIGRATION_SELECTED_MODEL_KEY);
+        expect(ext.context.globalState.update).not.toHaveBeenCalled();
+    });
+
+    it('preserves a concrete preference', async () => {
+        vi.mocked(ext.context.globalState.get).mockReturnValue('second');
+        expect(await getSelectedModel({ excludeAuto: true })).toBe(models[2]);
+    });
+
+    it('rejects an Auto-only list for direct migration requests', async () => {
+        vi.mocked(vscode.lm.selectChatModels).mockResolvedValue([models[0]] as vscode.LanguageModelChat[]);
+        await expect(getSelectedModel({ excludeAuto: true })).rejects.toThrow('No language models available');
+    });
+
+    it('applies the same availability filtering to E2E overrides', async () => {
+        setE2eModelOverride(models);
+        expect((await getAvailableModelsInfo()).models.map((model) => model.id)).toEqual(['first', 'second']);
+        expect((await getAvailableModelsInfo(MIGRATION_SELECTED_MODEL_KEY, { includeAuto: true })).models).toEqual(
+            models,
+        );
+    });
+});
 
 function makeModel(overrides: Partial<ModelInfo> & Pick<ModelInfo, 'id' | 'name' | 'maxInputTokens'>): ModelInfo {
     return {
@@ -110,6 +171,38 @@ describe('resolveSelectedModelId', () => {
     it('returns null when there are no models', () => {
         expect(resolveSelectedModelId([], 'anything')).toBeNull();
         expect(resolveSelectedModelId([], null)).toBeNull();
+    });
+});
+
+describe('getMigrationModels', () => {
+    const models = [
+        makeModel({ id: 'auto', name: 'Auto', maxInputTokens: 128_000 }),
+        makeModel({ id: 'gpt', name: 'GPT', maxInputTokens: 128_000 }),
+        makeModel({ id: 'claude', name: 'Claude', maxInputTokens: 200_000 }),
+    ];
+
+    it('offers Auto without changing the concrete default or ordering', () => {
+        const available = getMigrationModels(models, false);
+        expect(available.map((model) => model.id)).toEqual(['gpt', 'claude', 'auto']);
+        expect(resolveSelectedModelId(available, null)).toBe('gpt');
+        expect(resolveSelectedModelId(available, 'auto')).toBe('auto');
+        expect(resolveSelectedModelId(available, 'claude')).toBe('claude');
+        expect(models[0].id).toBe('auto');
+    });
+
+    it('uses the same legacy fallback for saved Auto and no preference', () => {
+        const available = getMigrationModels(models, true);
+        expect(available.map((model) => model.id)).toEqual(['gpt', 'claude']);
+        expect(resolveSelectedModelId(available, 'auto')).toBe(resolveSelectedModelId(available, null));
+        expect(resolveSelectedModelId(available, 'missing')).toBe('gpt');
+        expect(resolveSelectedModelId(available, 'claude')).toBe('claude');
+        expect(resolveSelectedModelId(getMigrationModels(models, false), 'auto')).toBe('auto');
+    });
+
+    it('handles empty and Auto-only lists', () => {
+        expect(resolveSelectedModelId(getMigrationModels([], false), 'auto')).toBeNull();
+        expect(resolveSelectedModelId(getMigrationModels(models.slice(0, 1), true), 'auto')).toBeNull();
+        expect(resolveSelectedModelId(getMigrationModels(models.slice(0, 1), false), null)).toBe('auto');
     });
 });
 

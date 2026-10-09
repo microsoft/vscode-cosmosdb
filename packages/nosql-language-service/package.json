@@ -64,17 +64,17 @@
   },
   "dependencies": {
     "@azure/cosmosdb-schema-analyzer": "~1.1.0",
-    "chevrotain": "^12.0.0"
+    "chevrotain": "~13.2.0"
   },
   "devDependencies": {
-    "@codemirror/autocomplete": "^6.18.0",
-    "@codemirror/language": "^6.10.0",
-    "@codemirror/lint": "^6.8.0",
-    "@codemirror/state": "^6.5.0",
-    "@codemirror/view": "^6.43.0",
-    "@types/vscode": "~1.109.0",
+    "@codemirror/autocomplete": "~6.20.0",
+    "@codemirror/language": "~6.12.0",
+    "@codemirror/lint": "~6.9.0",
+    "@codemirror/state": "~6.7.0",
+    "@codemirror/view": "~6.43.0",
+    "@types/vscode": "~1.125.0",
     "monaco-editor": "~0.52.2",
-    "vitest": "^4.1.11"
+    "vitest": "~4.1.11"
   },
   "peerDependencies": {
     "@codemirror/autocomplete": ">=6.0.0 <7.0.0",
@@ -105,7 +105,7 @@
     }
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=24.15"
   },
   "license": "MIT",
   "author": "Microsoft Corporation",

@@ -9,7 +9,7 @@ tags: pattern, langgraph, human-in-the-loop, interrupt, multi-agent
 
 **Impact: HIGH (enables safe confirmation flows for sensitive operations)**
 
-When agents perform sensitive operations (e.g., money transfers, account creation, data deletion), use LangGraph's `interrupt()` mechanism to pause execution and wait for user confirmation. The graph state is persisted to Cosmos DB via the checkpointer, and execution resumes from the same point when the user responds. This avoids custom polling loops or separate confirmation APIs.
+When agents perform sensitive operations (e.g., money transfers, account creation, data deletion), use LangGraph's `interrupt()` mechanism to pause execution and wait for user confirmation. The graph state is persisted to Cosmos DB via the checkpointer. When the user responds, the interrupted node restarts with the saved state and `interrupt()` returns the supplied resume value. This avoids custom polling loops or separate confirmation APIs.
 
 **Incorrect (no confirmation — agent executes sensitive action immediately):**
 
@@ -40,10 +40,10 @@ from langgraph.types import Command, interrupt
 from langgraph.graph import StateGraph, MessagesState
 from langchain_azure_cosmosdb import CosmosDBSaver
 
-def human_node(state: MessagesState, config) -> None:
+def human_node(state: MessagesState, config) -> dict:
     """Pauses the graph and waits for the next user message."""
-    interrupt(value="Ready for user input.")
-    return None
+    user_message = interrupt(value="Ready for user input.")
+    return {"messages": [{"role": "user", "content": user_message}]}
 
 async def call_transactions_agent(state: MessagesState, config) -> Command:
     response = await transactions_agent.ainvoke(state)
@@ -59,10 +59,22 @@ graph = builder.compile(checkpointer=CosmosDBSaver(async_container))
 ```
 
 **How it works:**
+
 1. Agent node returns `Command(goto="human")` after processing
 2. The `human_node` calls `interrupt()`, which persists state and pauses
 3. The caller receives a response indicating the graph is waiting
-4. When the user sends a new message, the caller resumes the graph with `graph.stream(new_input, config)`
-5. The checkpointer restores state from Cosmos DB and continues from where it paused
+4. When the user sends a new message, the async caller consumes `graph.astream(Command(resume=user_message), config)` using the same `config["configurable"]["thread_id"]` as the interrupted run
+5. The checkpointer restores state from Cosmos DB and the interrupted node restarts; `interrupt()` returns `user_message`, which `human_node` adds to the message history
 
-Reference: [LangGraph human-in-the-loop](https://langchain-ai.github.io/langgraph/concepts/human_in_the_loop/)
+Consume the resume stream inside an async caller:
+
+```python
+async for update in graph.astream(Command(resume=user_message), config):
+    print(update)
+```
+
+Use the async execution APIs for this graph's async agent node and Cosmos DB checkpointer. If streaming updates are not needed, use `await graph.ainvoke(Command(resume=user_message), config)` instead.
+
+Code before `interrupt()` runs again when the node resumes, so any side effects before it must be idempotent.
+
+Reference: [LangGraph interrupts and resuming](https://docs.langchain.com/oss/python/langgraph/interrupts#resuming-interrupts)

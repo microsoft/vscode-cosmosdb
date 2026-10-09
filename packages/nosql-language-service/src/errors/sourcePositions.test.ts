@@ -34,6 +34,21 @@ describe('UTF-16 source coordinates', () => {
         }
     });
 
+    it.each([' ', ' /* comment */', ' -- comment\r\n'])('places EOF after trailing trivia %j', (trivia) => {
+        const query = `SELECT * FROM${trivia}`;
+        const position = {
+            offset: query.length,
+            line: trivia.endsWith('\r\n') ? 2 : 1,
+            col: trivia.endsWith('\r\n') ? 1 : query.length + 1,
+        };
+        expect(parse(query).errors).toContainEqual(
+            expect.objectContaining({
+                code: SqlErrorCode.UnexpectedEof,
+                range: { start: position, end: position },
+            }),
+        );
+    });
+
     it('counts surrogate pairs and combining marks as UTF-16 units, with an exclusive AST end', () => {
         const query = 'SELECT VALUE "\uD83D\uDE00e\u0301"';
         const { ast, errors } = parse(query);

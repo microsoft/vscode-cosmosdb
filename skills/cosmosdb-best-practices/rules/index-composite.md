@@ -7,15 +7,15 @@ tags: index, composite, orderby, sorting
 
 ## Use Composite Indexes for ORDER BY
 
-Create composite indexes for queries with ORDER BY on multiple properties. Without them, queries may fail or require expensive client-side sorting.
+Queries with `ORDER BY` on two or more properties require a matching composite index. Without it, Cosmos DB cannot execute that multi-property sort.
 
-The default indexing policy indexes every property but does **not** create composite indexes. Any query that combines a `WHERE` equality filter with `ORDER BY` on a different field needs a composite index declared explicitly, or the query will either fail in production or require expensive client-side sorting.
+The default indexing policy indexes every property but does **not** create composite indexes. A query that combines a `WHERE` equality filter with a single-property `ORDER BY` on a different field can succeed using those range indexes. A composite index is an optional optimization for this pattern, not a prerequisite for executing the query.
 
-> **Emulator warning:** The Cosmos DB emulator silently permits `ORDER BY` queries without a matching composite index and returns identical RU charges. Production containers reject the same query with *"The order by query does not have a corresponding composite index that it can be served from."* Always declare composite indexes at container-create time — do not rely on emulator success as validation.
+To apply a composite index to a filter-plus-sort query, include the equality-filtered properties first in `ORDER BY`, followed by the sort property, and define a matching composite index. Those added properties are constant within the filtered results, so the rewrite preserves the requested ordering. Measure request charges to evaluate the benefit.
 
 > ⚠️ **CreateContainerIfNotExists warning:** Defining a composite index in `CreateContainerIfNotExists` (or `createIfNotExists`) only applies the indexing policy when the container is created for the first time. If the container already exists, Cosmos DB returns the existing container, silently ignores the indexing policy argument, and keeps the existing indexing policy unchanged. To update composite indexes on an existing container, read the container, update its `IndexingPolicy`, and replace the container resource using the SDK's container replace operation. Always read the container back and verify that the expected composite indexes are present.
 
-**Incorrect (ORDER BY without composite index):**
+**Incorrect (multi-property ORDER BY without a matching composite index):**
 
 ```csharp
 // Query with multi-property ORDER BY
@@ -24,9 +24,8 @@ var query = @"
     WHERE c.status = 'active' 
     ORDER BY c.createdAt DESC, c.priority ASC";
 
-// Without composite index, this may:
-// 1. Fail with: "Order-by item requires a corresponding composite index"
-// 2. Or consume excessive RU for sorting
+// This multi-property ORDER BY requires a matching composite index.
+// Without one, the service rejects the query rather than sorting it less efficiently.
 ```
 
 **Correct (composite index for ORDER BY):**
@@ -39,21 +38,15 @@ var indexingPolicy = new IndexingPolicy
     
     CompositeIndexes =
     {
-        // Must match ORDER BY exactly (properties and sort order)
+        // Supports this path sequence with these directions or their full reverse
         new Collection<CompositePath>
         {
             new CompositePath { Path = "/createdAt", Order = CompositePathSortOrder.Descending },
             new CompositePath { Path = "/priority", Order = CompositePathSortOrder.Ascending }
         },
         
-        // Add reverse order for flexibility
-        new Collection<CompositePath>
-        {
-            new CompositePath { Path = "/createdAt", Order = CompositePathSortOrder.Ascending },
-            new CompositePath { Path = "/priority", Order = CompositePathSortOrder.Descending }
-        },
-        
-        // Common filter + sort pattern
+        // Optional filter + sort optimization:
+        // WHERE status = 'active' ORDER BY status ASC, createdAt DESC
         new Collection<CompositePath>
         {
             new CompositePath { Path = "/status", Order = CompositePathSortOrder.Ascending },
@@ -92,10 +85,10 @@ var containerProperties = new ContainerProperties
 ```
 
 ```csharp
-// Common patterns that need composite indexes:
+// Composite indexes for multi-property sorts, including optional filter + sort rewrites:
 
-// Pattern 1: Filter + Sort
-// WHERE status = 'x' ORDER BY date DESC
+// Pattern 1: Optional rewrite of a single-property sort with an equality filter
+// WHERE status = 'x' ORDER BY status ASC, date DESC
 new Collection<CompositePath>
 {
     new CompositePath { Path = "/status", Order = CompositePathSortOrder.Ascending },
@@ -110,8 +103,8 @@ new Collection<CompositePath>
     new CompositePath { Path = "/firstName", Order = CompositePathSortOrder.Ascending }
 }
 
-// Pattern 3: Range + Sort
-// WHERE price >= 10 ORDER BY rating DESC
+// Pattern 3: Range filter with a multi-property sort
+// WHERE price >= 10 ORDER BY price ASC, rating DESC
 new Collection<CompositePath>
 {
     new CompositePath { Path = "/price", Order = CompositePathSortOrder.Ascending },
@@ -121,7 +114,7 @@ new Collection<CompositePath>
 
 ### Multi-Tenant Composite Index Patterns
 
-In multi-tenant designs using type discriminators and hierarchical partition keys, composite indexes are **critical** for queries that filter by entity type and sort by common fields:
+In multi-tenant designs using type discriminators and hierarchical partition keys, composite indexes can improve frequent type-filtered sorting queries. Match each index to the actual `ORDER BY` sequence, including equality-filtered fields added by an optimization rewrite:
 
 ```json
 // Multi-tenant SaaS: tasks by status, sorted by date
@@ -150,14 +143,16 @@ In multi-tenant designs using type discriminators and hierarchical partition key
 // Java: Composite indexes with IndexingPolicy
 IndexingPolicy policy = new IndexingPolicy();
 
-// Type + Status + Date (for: WHERE type='task' AND status='open' ORDER BY createdAt DESC)
+// Type + Status + Date:
+// WHERE type='task' AND status='open' ORDER BY type ASC, status ASC, createdAt DESC
 List<CompositePath> statusSort = Arrays.asList(
     new CompositePath().setPath("/type").setOrder(CompositePathSortOrder.ASCENDING),
     new CompositePath().setPath("/status").setOrder(CompositePathSortOrder.ASCENDING),
     new CompositePath().setPath("/createdAt").setOrder(CompositePathSortOrder.DESCENDING)
 );
 
-// Type + Assignee + DueDate (for: WHERE type='task' AND assigneeId=@id ORDER BY dueDate)
+// Type + Assignee + DueDate:
+// WHERE type='task' AND assigneeId=@id ORDER BY type ASC, assigneeId ASC, dueDate ASC
 List<CompositePath> assigneeSort = Arrays.asList(
     new CompositePath().setPath("/type").setOrder(CompositePathSortOrder.ASCENDING),
     new CompositePath().setPath("/assigneeId").setOrder(CompositePathSortOrder.ASCENDING),
@@ -200,28 +195,30 @@ let properties = ContainerProperties::new(
 db_client.create_container(properties, None).await?;
 ```
 
-**Why type discriminators need composite indexes:**
-When a single container holds multiple entity types (tenant, user, project, task), queries always filter by `type`. Without a composite index on `(type, sortField)`, the query engine cannot efficiently sort within a single entity type. This is especially costly in containers with millions of mixed-type documents.
+**When type-filtered queries benefit from composite indexes:**
+A type discriminator alone does not require a composite index. A query such as `WHERE c.type = 'task' ORDER BY c.createdAt DESC` can use range indexes. For frequent queries over mixed-type documents, consider the equivalent `ORDER BY c.type ASC, c.createdAt DESC` with a matching composite index to reduce RU consumption when beneficial.
 
 ### Node.js / TypeScript (@azure/cosmos v4)
 
-**Incorrect (container created with default indexing policy — no composites):**
+The following are independent creation examples using different container IDs. Each assumes its container does not already exist; `create()` fails rather than silently retaining an existing policy. Use equivalent data when comparing request charges. For an existing application container, use the policy-update flow below instead of `createIfNotExists()`.
+
+**Valid baseline (single-property sorting with default range indexes):**
 
 ```typescript
-// ❌ No indexingPolicy → default (indexes everything, no composite)
-await database.containers.createIfNotExists({
-  id: 'orders',
+// The default policy creates range indexes, but no composite indexes.
+const { container: baselineContainer } = await database.containers.create({
+    id: 'orders-baseline',
   partitionKey: { paths: ['/userId'] },
 });
 
-// This query works on the emulator but FAILS in production:
-await container.items.query({
+// This single-property ORDER BY can use the default range indexes.
+await baselineContainer.items.query({
   query: 'SELECT * FROM c WHERE c.userId = @u ORDER BY c.createdAt DESC',
   parameters: [{ name: '@u', value: userId }],
 }, { partitionKey: userId }).fetchAll();
 ```
 
-**Correct (composite indexes declared at container creation):**
+**Optional optimization (equivalent ORDER BY rewrite with a matching composite):**
 
 ```typescript
 import { IndexingPolicy } from '@azure/cosmos';
@@ -233,12 +230,12 @@ const ordersIndexingPolicy: IndexingPolicy = {
   includedPaths: [{ path: '/*' }],
   excludedPaths: [{ path: '/"_etag"/?' }],
   compositeIndexes: [
-    // WHERE c.userId = @u ORDER BY c.createdAt DESC
+    // WHERE c.userId = @u ORDER BY c.userId ASC, c.createdAt DESC
     [
       { path: '/userId', order: 'ascending' },
       { path: '/createdAt', order: 'descending' },
     ],
-    // WHERE c.userId = @u AND c.status = @s ORDER BY c.createdAt DESC
+    // WHERE c.userId = @u AND c.status = @s ORDER BY c.userId ASC, c.status ASC, c.createdAt DESC
     [
       { path: '/userId', order: 'ascending' },
       { path: '/status', order: 'ascending' },
@@ -247,33 +244,41 @@ const ordersIndexingPolicy: IndexingPolicy = {
   ],
 };
 
-await database.containers.createIfNotExists({
-  id: 'orders',
+const { container: optimizedContainer } = await database.containers.create({
+    id: 'orders-optimized',
   partitionKey: { paths: ['/userId'] },
   indexingPolicy: ordersIndexingPolicy,
 });
+
+await optimizedContainer.items.query({
+    query: 'SELECT * FROM c WHERE c.userId = @u ORDER BY c.userId ASC, c.createdAt DESC',
+    parameters: [{ name: '@u', value: userId }],
+}, { partitionKey: userId }).fetchAll();
 ```
 
 **Updating an existing container's indexing policy:**
 
+Modify the full definition returned by `read()` so `replace()` preserves unrelated container settings, such as TTL.
+
 ```typescript
 // Replace indexing policy on an existing container
 const { resource: existing } = await database.container('orders').read();
-await database.container('orders').replace({
-  id: 'orders',
-  partitionKey: existing!.partitionKey,
-  indexingPolicy: ordersIndexingPolicy,
-});
+if (!existing) {
+    throw new Error('Container definition was not returned.');
+}
+
+existing.indexingPolicy = ordersIndexingPolicy;
+await database.container('orders').replace(existing);
 // Indexing is rebuilt in the background; monitor indexTransformationProgress
 ```
 
 Rules:
-- Composite index order must match ORDER BY exactly
-- First path can be equality filter
-- Include both ASC/DESC variants for flexibility
+- Composite paths must match the `ORDER BY` sequence; directions may match the index or be reversed on every path
+- For equality-filtered sort optimizations, include the equality-filtered paths first in both `ORDER BY` and the composite index
+- Do not add a duplicate inverse-direction index; add distinct direction combinations only when queries require them
 - Maximum 8 paths per composite index
 - Composite indexes consume additional write RU — declare only the composites you actually query against
-- **Always** define composite indexes when using type discriminators in shared containers
-- Include `/type` as the first path in multi-tenant composite indexes
+- Evaluate composite indexes for frequent type-filtered sorting queries; a type filter alone does not require one
+- Include `/type` first when it is equality-filtered and leads the optimized `ORDER BY`
 
 Reference: [Composite indexes](https://learn.microsoft.com/azure/cosmos-db/index-policy#composite-indexes)

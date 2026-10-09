@@ -417,13 +417,13 @@ function checkPhase(workspace, phaseInput, checkFreshness) {
     addArtifact(artifacts, workspace, projectPath, 'Migration project checkpoint', validateJson);
     let inventory;
     if (['preflight', 'discovery', 'assessment', 'schema-conversion', 'provisioning'].includes(phase)) {
-        try { inventory = readSourceInventory(workspace, project, selectedDdlFiles(workspace, project, migrationRoot)); }
+        try { inventory = readSourceInventory(workspace, project, selectedDdlFiles(workspace, project)); }
         catch (error) { inventory = { errors: [{ path: 'resolved schema selection', message: error.message }] }; }
         if (inventory.errors.length) artifacts.push({ path: 'resolved schema selection', description: 'Recorded source inventory evidence', conditional: false, state: 'invalid', diagnostics: inventory.errors });
     }
 
     if (phase === 'preflight') {
-        const ddlFiles = selectedDdlFiles(workspace, project, migrationRoot);
+        const ddlFiles = selectedDdlFiles(workspace, project);
         if (ddlFiles.length === 0) {
             artifacts.push(missingMetadataArtifact('resolved schema selection', 'At least one selected DDL file'));
         } else {

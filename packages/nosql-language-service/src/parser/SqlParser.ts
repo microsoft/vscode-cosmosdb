@@ -324,13 +324,13 @@ export class SqlParser extends EmbeddedActionsParser {
             },
             {
                 ALT: () => {
-                    this.CONSUME(T.LParen);
+                    const lp = this.CONSUME(T.LParen);
                     const query = this.SUBRULE(this.sqlQuery);
                     const rp = this.CONSUME(T.RParen);
                     return {
                         kind: 'SubqueryCollection' as const,
                         query,
-                        range: query.range ? { start: query.range.start, end: posEnd(rp) } : undefined,
+                        range: query.range ? { start: pos(lp), end: posEnd(rp) } : undefined,
                     };
                 },
             },
@@ -1137,7 +1137,10 @@ export class SqlParser extends EmbeddedActionsParser {
                         {
                             GATE: () => {
                                 const nameUpper = name?.value?.toUpperCase() ?? '';
-                                return nameUpper === 'ALL' || nameUpper === 'FIRST' || nameUpper === 'LAST';
+                                return (
+                                    (nameUpper === 'ALL' || nameUpper === 'FIRST' || nameUpper === 'LAST') &&
+                                    this.LA(1).tokenType === T.Select
+                                );
                             },
                             ALT: () => {
                                 const query = this.SUBRULE3(this.sqlQuery);

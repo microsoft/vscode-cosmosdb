@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
+import { MonitorClient } from '@azure/arm-monitor';
 import {
     createHttpHeaders,
     createPipelineRequest,
@@ -13,7 +14,12 @@ import {
 import { createAzureSubscriptionClient, type AzExtSubscriptionClientType } from '@microsoft/vscode-azext-azureutils';
 import { type IActionContext, type ISubscriptionContext } from '@microsoft/vscode-azext-utils';
 import { armTestSubscription, createArmTestContext } from '../cosmosdb/armTestUtils';
-import { COSMOSDB_ARM_API_VERSION, createCosmosDBManagementClient, PRESERVE_API_VERSION_HEADER } from './azureClients';
+import {
+    COSMOSDB_ARM_API_VERSION,
+    createCosmosDBManagementClient,
+    createMonitorClient,
+    PRESERVE_API_VERSION_HEADER,
+} from './azureClients';
 
 vi.mock('@microsoft/vscode-azext-utils', () => ({
     createSubscriptionContext: (subscription: typeof armTestSubscription) => ({
@@ -45,11 +51,15 @@ describe('modular ARM client factories', () => {
             ...armTestSubscription,
             environment: { ...armTestSubscription.environment, resourceManagerEndpointUrl: endpoint },
         };
-        const context = createArmTestContext();
-        const cosmos = await createCosmosDBManagementClient(context, subscription);
+        const cosmosContext = createArmTestContext();
+        const monitorContext = createArmTestContext();
+        const cosmos = await createCosmosDBManagementClient(cosmosContext, subscription);
+        const monitor = await createMonitorClient(monitorContext, subscription);
         expect(cosmos).toBeInstanceOf(CosmosDBManagementClient);
-        expect(createAzureSubscriptionClient).toHaveBeenCalledTimes(1);
-        expect(context.valuesToMask).toContain(subscription.subscriptionId);
+        expect(monitor).toBeInstanceOf(MonitorClient);
+        expect(createAzureSubscriptionClient).toHaveBeenCalledTimes(2);
+        expect(cosmosContext.valuesToMask).toContain(subscription.subscriptionId);
+        expect(monitorContext.valuesToMask).toContain(subscription.subscriptionId);
 
         const cosmosRequest = vi.spyOn(cosmos.pipeline, 'sendRequest').mockImplementation((_http, request) =>
             Promise.resolve({
@@ -63,6 +73,17 @@ describe('modular ARM client factories', () => {
         expect(cosmosRequest.mock.calls[0][1].url).toContain(
             `${endpoint}subscriptions/sub-1/resourceGroups/rg/providers/Microsoft.DocumentDB/databaseAccounts/account?`,
         );
+
+        const monitorRequest = vi.spyOn(monitor.pipeline, 'sendRequest').mockImplementation((_http, request) =>
+            Promise.resolve({
+                request,
+                status: 200,
+                headers: createHttpHeaders(),
+                bodyAsText: JSON.stringify({ value: [] }),
+            }),
+        );
+        await monitor.activityLogs.list('eventTimestamp ge 2026-01-01T00:00:00Z').next();
+        expect(monitorRequest.mock.calls[0][1].url).toContain(`${endpoint}subscriptions/sub-1/`);
     });
 
     it.each([

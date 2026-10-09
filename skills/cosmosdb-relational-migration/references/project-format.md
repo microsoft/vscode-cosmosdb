@@ -47,8 +47,8 @@ classification lives in `discovery-manifest.json`. Domain models remain in `cosm
 and identity evidence live in the root schema-conversion manifest. Provisioning
 verification lives in its manifest. Follow
 [validation-evidence.md](./validation-evidence.md) for these contracts.
-Existing source DDL and curated templates remain inputs. The optional local `.tools/`
-parser environment is disposable tooling, not checkpoint data.
+Existing source DDL and curated templates remain inputs. Python environments are
+host-managed tooling, not checkpoint data; no environment path is prescribed.
 
 The optional root `freshness` map in `project.json` stores the version 1 contract from
 [validation-evidence.md](./validation-evidence.md), keyed by named phase:

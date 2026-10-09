@@ -16,8 +16,9 @@ to repeat those procedures in your requests.
 - The application workspace you want to migrate.
 - The `cosmosdb-best-practices` peer skill, which supplies Cosmos DB design guidance.
 
-SQLGlot is optional. Its setup helper requires Python 3.11 or later when that parser
-is selected; model-only DDL interpretation does not require Python. See
+SQLGlot is optional. When selected, the agent uses the latest available release and
+manages a compatible Python environment through the host's tools and permissions.
+Model-only DDL interpretation does not require Python. See
 [DDL interpretation](./references/workflow/ddl-interpretation.md) for the available
 choices and dependency requirements.
 

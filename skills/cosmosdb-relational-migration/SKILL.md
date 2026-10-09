@@ -66,11 +66,15 @@ In autonomous/unattended mode, use SQLGlot by default and disclose that choice,
 unless the current request or saved decision disallows it. An explicit opt-out
 selects model-only parsing, with no Python, SQLGlot, or custom DDL parser scripts.
 The agent reads and interprets the DDL itself using the procedure in the reference.
-When SQLGlot is selected, the agent determines how to use its API through ordinary
-host tools. The Skill bundles no script that parses DDL. Setup is optional tooling;
-dependency use never bypasses the host's installation/network consent controls.
+When SQLGlot is selected, the agent uses the latest available release and determines
+its Python requirements, environment setup, and API usage through ordinary host tools.
+The Skill bundles no parser setup or readiness script and pins no SQLGlot version.
+If the latest release is unavailable or its provenance is in doubt, consult the
+advisory tested fallback and artifact digest in the DDL interpretation reference.
+Dependency checks, installation, and invocation follow the host's execution approvals,
+sandbox restrictions, and network permissions.
 
-Check whether the pinned SQLGlot version supports the source dialect before using it.
+Check whether the selected SQLGlot release supports the source dialect before using it.
 An unsupported dialect always warns and falls back to model-only interpretation; the
 model may research authoritative vendor documentation and records sources and remaining
 uncertainty. If SQLGlot is unavailable or installation fails, an unattended default

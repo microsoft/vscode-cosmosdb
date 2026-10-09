@@ -229,6 +229,11 @@ test('documents dependency permission, persisted choice, model-only procedure an
     assert.match(reference, /fallbackReason: "unsupported-dialect" \| "unavailable"/u);
     assert.match(reference, /unattended-default.*warn and continue with model-only/isu);
     assert.match(reference, /saved `interactive`\/`explicit` SQLGlot selection.*abort/isu);
+    assert.match(reference, /latest available SQLGlot release/u);
+    assert.match(reference, /host's execution approvals, sandbox\s+restrictions, and network permissions/u);
+    assert.match(reference, /without modifying application\s+dependencies or global Python/u);
+    assert.match(reference, /record it in the source inventory's\s+`parser\.version`/u);
+    assert.doesNotMatch(reference, /setup-ddl-parser|requirements-ddl|pinned version|Python 3\.11/u);
     assert.match(evidence, /Artifact Budget/u);
     for (const scriptName of ['extract-ddl.mjs', 'extract-ddl.py']) {
         assert.equal(fs.existsSync(path.join(skillRoot, 'scripts', scriptName)), false);
@@ -236,13 +241,30 @@ test('documents dependency permission, persisted choice, model-only procedure an
 });
 
 test('ships an opt-in real SQLGlot DDL evaluation without affecting parser-free tests', () => {
-    const setupTest = fs.readFileSync(path.join(skillRoot, 'tests', 'setup-ddl-parser.test.mjs'), 'utf8');
-    assert.match(setupTest, /MIGRATION_SQLGLOT_EVALUATION_PYTHON/u);
-    assert.match(setupTest, /MIGRATION_SQLGLOT_EVALUATION_MODULE_PATH/u);
+    const evaluationTest = fs.readFileSync(path.join(skillRoot, 'tests', 'sqlglot-evaluation.test.mjs'), 'utf8');
+    assert.match(evaluationTest, /MIGRATION_SQLGLOT_EVALUATION_PYTHON/u);
+    assert.match(evaluationTest, /MIGRATION_SQLGLOT_EVALUATION_MODULE_PATH/u);
     for (const dialect of ['tsql', 'postgres', 'mysql', 'oracle', 'sqlite']) {
-        assert.match(setupTest, new RegExp(`dialect: '${dialect}'`, 'u'));
+        assert.match(evaluationTest, new RegExp(`dialect: '${dialect}'`, 'u'));
     }
-    assert.match(setupTest, /assert\.equal\(report\.version, SQLGLOT_VERSION\)/u);
+    assert.match(evaluationTest, /skip: !evaluationPython/u);
+    assert.match(evaluationTest, /SQLGlot version: \$\{report\.version\}/u);
+    assert.equal(fs.existsSync(path.join(skillRoot, 'scripts', 'setup-ddl-parser.mjs')), false);
+    assert.equal(fs.existsSync(path.join(skillRoot, 'scripts', 'requirements-ddl.txt')), false);
+});
+
+test('documents an advisory SQLGlot fallback with artifact provenance and limited assurance', () => {
+    const reference = fs.readFileSync(path.join(skillRoot, 'references/workflow/ddl-interpretation.md'), 'utf8');
+    assert.match(reference, /### Tested Fallback Release/u);
+    assert.match(reference, /SQLGlot 30\.22\.0/u);
+    assert.match(reference, /2026-10-09/u);
+    assert.match(reference, /sqlglot-30\.22\.0-py3-none-any\.whl/u);
+    assert.match(reference, /90aa461490fcd95d14ec3842a97506ae20f6d3e9313307ad31be793d479cca65/u);
+    assert.match(reference, /not a default version pin or a security audit/u);
+    assert.match(reference, /Honor\s+explicit user version constraints and model-only choices/u);
+    assert.match(reference, /independently trusted cached or mirrored\s+copy/u);
+    assert.match(reference, /Do not fetch executable code or\s+replacement digests/u);
+    assert.match(reference, /existing unavailable-parser fallback or abort policy/u);
 });
 
 test('keeps core workflow documentation host-neutral', () => {
@@ -352,11 +374,9 @@ test('documents every helper and separates CLI recovery from workflow invocation
 
 test('ships executable workflow, rule-provenance, and model-merge helpers', () => {
     for (const scriptName of [
-        'setup-ddl-parser.mjs',
         'freshness.mjs',
         'project-state.mjs',
         'phase-summary.mjs',
-        'requirements-ddl.txt',
         'identity-mapping.mjs',
         'reconcile-capacity.mjs',
         'validate-source-evidence.mjs',

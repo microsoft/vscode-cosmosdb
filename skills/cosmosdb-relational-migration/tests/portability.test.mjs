@@ -28,7 +28,6 @@ test('value-taking options fail before helper work when their value is missing',
             ['generate-provisioning-artifacts', [], ['--model', '--sample-data', '--project', '--output', '--check-shell']],
             ['merge-cosmos-models', [], ['--manifest', '--capacity-evidence', '--database', '--capacity', '--output', '--input']],
             ['project-state', [], ['--workspace', '--get', '--offset', '--limit', '--set', '--value', '--expect', '--init']],
-            ['setup-ddl-parser', ['--install'], ['--workspace', '--python', '--wheel-dir']],
             ['validate-cosmos-model', [], ['--reference-manifest', '--reference-registry', '--output']],
             ['validate-schema-conversion-domains', [], ['--workspace', '--reference-manifest', '--domain', '--offset', '--limit']],
         ];

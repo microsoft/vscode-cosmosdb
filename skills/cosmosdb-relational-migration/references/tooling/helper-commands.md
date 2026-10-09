@@ -62,7 +62,6 @@ Run them when a phase calls for a precondition or a failure needs narrower diagn
 
 | Helper | Purpose and overlap |
 | --- | --- |
-| [setup-ddl-parser.mjs](../../scripts/setup-ddl-parser.mjs) | Optional pinned SQLGlot environment setup, not a DDL parser; `--install` may use the network and requires the saved choice/host consent |
 | [calculate-capacity.mjs](../../scripts/calculate-capacity.mjs) | Optional RU sizing arithmetic; already used internally by capacity reconciliation during merge |
 | [identity-mapping.mjs](../../scripts/identity-mapping.mjs) | Resolve one item's ID; identity logic is already used by sample validation |
 | [validate-migration-project.mjs](../../scripts/validate-migration-project.mjs) | Project-shape diagnosis; already included in state writes, inspection, and completion |
@@ -91,6 +90,7 @@ These files support the commands above and have no command-line entry point:
 | [cli-help.mjs](../../scripts/cli-help.mjs) | All executable helpers: side-effect-free help dispatch |
 | [cli-arguments.mjs](../../scripts/cli-arguments.mjs) | Option-taking helpers: reject missing values before reading inputs or performing work |
 
-The optional parser's [requirements-ddl.txt](../../scripts/requirements-ddl.txt) pins its
-dependency; it is not an executable helper. Keep shared modules even when they are
-not agent-facing commands. No helper needs to be invoked solely because it is packaged.
+SQLGlot setup and invocation use ordinary host tools under the
+[DDL interpretation workflow](../workflow/ddl-interpretation.md), not a bundled helper.
+Keep shared modules even when they are not agent-facing commands. No helper needs to
+be invoked solely because it is packaged.

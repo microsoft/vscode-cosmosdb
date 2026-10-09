@@ -93,8 +93,12 @@ material alternatives. If there are no candidates, write exactly "No candidate b
 
 Write \`${migrationFolder}/code-migration-manifest.json\` as a JSON object with:
 - version 1 and mode "${action}".
-- modelSha256 and sdkReportSha256 computed from the exact bytes of model.json and
-    the discovery manifest.
+- modelSha256: the lowercase SHA-256 hash of the exact canonical model.json file bytes.
+- sdkReportSha256: read \`${migrationFolder}/phases/1-discovery/discovery-manifest.json\`
+    and extract its sdkCompatibility object. Compute the lowercase SHA-256 hash of
+    the UTF-8 bytes of \`JSON.stringify(sdkCompatibility, null, 2) + '\\n'\`, preserving
+    object-property order and including the single trailing newline. Hash only that
+    serialized object, not the whole discovery manifest or a preflight artifact.
 - bestPractices with unique model-selected rule paths and unresolvedConcerns. Also
     list every rule path in the human-readable "Applied Rules" section. Migrate mode
     requires unresolvedConcerns to be empty.

@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { buildCompatibilityReport } from '../scripts/check-sdk-compatibility.mjs';
+import { readSdkCompatibility } from '../scripts/phase-summary.mjs';
 import {
     contentSha256,
     fileSha256,
@@ -115,6 +116,32 @@ test('accepts a complete plan-mode review artifact', () => {
         assert.deepEqual(validateCodeMigrationPlan(markdown(planManifest), planManifest, options(workspace, project('start'))), []);
     } finally {
         fs.rmSync(workspace, { recursive: true });
+    }
+});
+
+test('hashes only the pretty-printed SDK compatibility object including its newline', () => {
+    const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'code-sdk-hash-'));
+    try {
+        const discoveryPath = path.join(workspace, 'discovery-manifest.json');
+        const discoveryContent = `${JSON.stringify({
+            version: 1,
+            blockingIssues: [],
+            sdkCompatibility: SDK_REPORT,
+        }, null, 2)}\n`;
+        fs.writeFileSync(discoveryPath, discoveryContent);
+        const { sdkReport, sdkReportContent } = readSdkCompatibility(discoveryPath);
+        assert.equal(sdkReportContent, `${JSON.stringify(sdkReport, null, 2)}\n`);
+        const validationOptions = options(workspace, project('plan'), sdkReport, sdkReportContent);
+        const correct = manifest('plan', { sdkReportSha256: contentSha256(sdkReportContent) });
+        assert.deepEqual(validateCodeMigrationPlan(markdown(correct), correct, validationOptions), []);
+
+        for (const incorrectContent of [discoveryContent, JSON.stringify(sdkReport, null, 2)]) {
+            const incorrect = manifest('plan', { sdkReportSha256: contentSha256(incorrectContent) });
+            const errors = validateCodeMigrationPlan(markdown(incorrect), incorrect, validationOptions);
+            assert.deepEqual(errors.map(error => error.path), ['$.manifest.sdkReportSha256']);
+        }
+    } finally {
+        fs.rmSync(workspace, { recursive: true, force: true });
     }
 });
 

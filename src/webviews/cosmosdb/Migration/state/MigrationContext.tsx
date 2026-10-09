@@ -661,8 +661,10 @@ export function WithMigrationContext({ channel, children }: { channel: Channel; 
                           }
                         | undefined;
 
-                    const discoveryComplete = data.phaseCompletion?.discovery?.complete ?? false;
                     const phaseStates = deriveMigrationPhaseStates(data.phaseCompletion, data.useProgrammaticFlow);
+                    const discoveryComplete = data.useProgrammaticFlow
+                        ? phaseStates.discoveryState === 'complete'
+                        : (data.phaseCompletion?.discovery?.complete ?? false);
 
                     // Initialize analysisResult with projectName from top-level if not already set
                     const analysisString = (key: string): string | undefined =>

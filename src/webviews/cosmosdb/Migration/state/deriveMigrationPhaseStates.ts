@@ -227,7 +227,7 @@ export function deriveMigrationPhaseStates(
     provisioningState: PhaseState;
 } {
     const canRestoreCompletion =
-        isCodeMigrationReady(completion) || (completion?.['code-migration']?.complete ?? false);
+        useProgrammaticFlow || isCodeMigrationReady(completion) || (completion?.['code-migration']?.complete ?? false);
     const wasCompleted = (phase: MigrationPhaseName): boolean => completion?.[phase]?.status === 'complete';
     const isComplete = (phase: MigrationPhaseName): boolean =>
         (completion?.[phase]?.complete ?? false) || (canRestoreCompletion && wasCompleted(phase));

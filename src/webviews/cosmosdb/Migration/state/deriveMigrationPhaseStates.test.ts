@@ -292,6 +292,95 @@ function completion(overrides: Partial<Record<MigrationPhaseName, boolean>> = {}
     };
 }
 
+describe('migration project reload', () => {
+    it('restores legacy completion and connection testing without weakening Skill mode after switching', () => {
+        const on = vi.fn<Channel['on']>(() => ({ dispose: () => {} }));
+        const channel: Channel = { on, postMessage: async () => {} };
+        const { result } = renderHook(() => useMigrationState(), {
+            wrapper: ({ children }: { children: ReactNode }) =>
+                createElement(WithMigrationContext, { channel }, children),
+        });
+        const projectLoaded = on.mock.calls.find(([name]) => name === 'projectLoaded')?.[1] as
+            | ((data: unknown) => void)
+            | undefined;
+        if (!projectLoaded) throw new Error('Missing projectLoaded subscription');
+
+        const phases = completion();
+        phases.discovery.status = 'complete';
+        const reload = (useProgrammaticFlow: boolean, verified = false) => {
+            act(() =>
+                projectLoaded({
+                    project: {
+                        name: 'legacy-project',
+                        phases: {
+                            discovery: { status: phases.discovery.status },
+                            assessment: { status: phases.assessment.status },
+                            targetEnvironment: { type: 'emulator', verified },
+                        },
+                    },
+                    workspacePath: '/workspace',
+                    schemaFiles: [],
+                    volumetricFiles: [],
+                    accessPatternFiles: [],
+                    excludedSchemaFiles: [],
+                    excludedVolumetricFiles: [],
+                    excludedAccessPatternFiles: [],
+                    hasDiscoveryReport: true,
+                    hasAssessmentSummary: phases.assessment.status === 'complete',
+                    assessmentResult: null,
+                    hasSchemaConversion: false,
+                    schemaConversionResult: null,
+                    hasSampleData: false,
+                    hasBicep: false,
+                    hasVolumetricsTemplate: false,
+                    hasAccessPatternsTemplate: false,
+                    isAIFeaturesEnabled: true,
+                    consentGiven: true,
+                    hasCodeMigrationPlan: false,
+                    codeMigrationPlanPath: '',
+                    isPhase4Required: true,
+                    showTokenEstimate: false,
+                    useProgrammaticFlow,
+                    phaseCompletion: phases,
+                    runActivity: null,
+                    fileStateGeneration: 0,
+                }),
+            );
+        };
+
+        reload(true);
+        expect(result.current).toMatchObject({
+            discoveryState: 'complete',
+            assessmentState: 'available',
+            schemaConversionState: 'locked',
+            connectionTestState: 'available',
+        });
+
+        phases.assessment.status = 'complete';
+        reload(true);
+        expect(result.current).toMatchObject({ assessmentState: 'complete', schemaConversionState: 'available' });
+
+        reload(false);
+        expect(result.current).toMatchObject({
+            discoveryState: 'available',
+            assessmentState: 'available',
+            schemaConversionState: 'locked',
+            connectionTestState: 'locked',
+        });
+
+        reload(true);
+        expect(result.current).toMatchObject({ assessmentState: 'complete', connectionTestState: 'available' });
+        expect(phases.discovery.complete).toBe(false);
+
+        phases['code-migration'].ready = true;
+        reload(false);
+        expect(result.current).toMatchObject({ discoveryState: 'complete', connectionTestState: 'locked' });
+
+        reload(false, true);
+        expect(result.current.connectionTestState).toBe('complete');
+    });
+});
+
 describe('deriveMigrationPhaseStates', () => {
     it('uses accepted-model readiness independently of live phases and past migration completion', () => {
         const phases = completion();
@@ -315,6 +404,45 @@ describe('deriveMigrationPhaseStates', () => {
         expect(deriveMigrationPhaseStates(completion({ preflight: true }), true).discoveryState).toBe('available');
     });
 
+    it('restores completed legacy phases without portable evidence and unlocks their successors', () => {
+        const phases = completion();
+        phases.discovery.status = 'complete';
+        expect(deriveMigrationPhaseStates(phases, true)).toEqual({
+            discoveryState: 'complete',
+            assessmentState: 'available',
+            schemaConversionState: 'locked',
+            provisioningState: 'locked',
+        });
+
+        phases.assessment.status = 'complete';
+        expect(deriveMigrationPhaseStates(phases, true)).toMatchObject({
+            assessmentState: 'complete',
+            schemaConversionState: 'available',
+        });
+
+        phases['schema-conversion'].status = 'complete';
+        phases.provisioning.status = 'complete';
+        expect(deriveMigrationPhaseStates(phases, true)).toEqual({
+            discoveryState: 'complete',
+            assessmentState: 'complete',
+            schemaConversionState: 'complete',
+            provisioningState: 'complete',
+        });
+        expect(phases.discovery.complete).toBe(false);
+        expect(phases['code-migration'].complete).toBe(false);
+    });
+
+    it.each(['not-started', 'in-progress'] as const)('does not restore %s legacy phases as complete', (status) => {
+        const phases = completion();
+        for (const phase of Object.values(phases)) phase.status = status;
+        expect(deriveMigrationPhaseStates(phases, true)).toEqual({
+            discoveryState: 'locked',
+            assessmentState: 'locked',
+            schemaConversionState: 'locked',
+            provisioningState: 'locked',
+        });
+    });
+
     it('treats missing completion entries as incomplete', () => {
         expect(deriveMigrationPhaseStates(undefined)).toEqual({
             discoveryState: 'available',
@@ -324,6 +452,12 @@ describe('deriveMigrationPhaseStates', () => {
         });
         expect(deriveMigrationPhaseStates({ discovery: completion().discovery })).toMatchObject({
             discoveryState: 'available',
+            assessmentState: 'locked',
+            schemaConversionState: 'locked',
+            provisioningState: 'locked',
+        });
+        expect(deriveMigrationPhaseStates(undefined, true)).toEqual({
+            discoveryState: 'locked',
             assessmentState: 'locked',
             schemaConversionState: 'locked',
             provisioningState: 'locked',

@@ -3,10 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
+import { type Mock } from 'vitest';
 import { API } from '../AzureDBExperiences';
 import { wellKnownEmulatorPassword } from '../cosmosdb/cosmosdb-shared-constants';
 import { type ParsedCosmosDBConnectionString } from '../cosmosdb/cosmosDBConnectionStrings';
-import { type StorageItem } from '../services/StorageService';
+import { StorageService, type StorageItem } from '../services/StorageService';
 
 // StorageService statically imports `../extensionVariables`, which transitively `require('vscode')`
 // from CJS telemetry deps. The pure helpers under test don't touch storage, so stub it out.
@@ -87,6 +89,100 @@ describe('emulatorUtils', () => {
             } as unknown as StorageItem;
 
             await expect(migrateRawEmulatorItemToHashed(item)).resolves.toBe(item);
+        });
+
+        it('masks the legacy identifiers and propagates the failure when migration fails', async () => {
+            // Records from very old versions stored the connection string as the item id.
+            const legacyId = 'AccountEndpoint=https://localhost:8081/;AccountKey=private-key;';
+            const legacyName = 'private-name : 8081';
+            const item = {
+                id: legacyId,
+                name: legacyName,
+                properties: { api: API.Core },
+            } as unknown as StorageItem;
+            const context = {
+                telemetry: { properties: {}, measurements: {} },
+                errorHandling: {},
+                valuesToMask: [] as string[],
+            };
+
+            (callWithTelemetryAndErrorHandling as Mock).mockImplementation(
+                (_eventName: string, callback: (ctx: typeof context) => Promise<StorageItem>) => callback(context),
+            );
+            (StorageService.get as Mock).mockReturnValue({
+                push: vi.fn().mockRejectedValue(new Error('storage rejected')),
+                delete: vi.fn(),
+            });
+
+            await expect(migrateRawEmulatorItemToHashed(item)).rejects.toThrow();
+            expect(context.valuesToMask).toContain(legacyId);
+            expect(context.valuesToMask).toContain(legacyName);
+            // The failure message itself must not carry the legacy id.
+            await expect(migrateRawEmulatorItemToHashed(item)).rejects.not.toThrow(legacyId);
+        });
+
+        it('propagates the original storage failure', async () => {
+            const item = {
+                id: 'AccountEndpoint=https://localhost/;AccountKey=private-key;',
+                name: 'private-emulator-name',
+                properties: { api: API.Core },
+            } as unknown as StorageItem;
+            const context = {
+                telemetry: { properties: {} as Record<string, string>, measurements: {} },
+                errorHandling: {},
+                valuesToMask: [] as string[],
+            };
+            const failure = { error: { message: 'Storage rejected the item' } };
+            (callWithTelemetryAndErrorHandling as Mock).mockImplementation(
+                (_eventName: string, callback: (ctx: typeof context) => Promise<StorageItem>) => callback(context),
+            );
+            (StorageService.get as Mock).mockReturnValue({ push: vi.fn().mockRejectedValue(failure) });
+
+            await expect(migrateRawEmulatorItemToHashed(item)).rejects.toBe(failure);
+            expect(context.telemetry.properties).not.toHaveProperty('errorCause');
+        });
+
+        it('reports only a bounded api value to telemetry', async () => {
+            // Telemetry properties are sent verbatim, so persisted free-form text must not reach them.
+            const item = {
+                id: 'raw-legacy-id',
+                name: 'Emulator : 8081',
+                properties: { api: 'private-free-form-api' },
+            } as unknown as StorageItem;
+            const context = {
+                telemetry: { properties: {} as Record<string, string>, measurements: {} },
+                errorHandling: {},
+                valuesToMask: [] as string[],
+            };
+
+            (callWithTelemetryAndErrorHandling as Mock).mockImplementation(
+                (_eventName: string, callback: (ctx: typeof context) => Promise<StorageItem>) => callback(context),
+            );
+            (StorageService.get as Mock).mockReturnValue({ push: vi.fn(), delete: vi.fn() });
+
+            await migrateRawEmulatorItemToHashed(item);
+            expect(context.telemetry.properties.api).toBe(API.Common);
+        });
+
+        it('reports Core unchanged to telemetry', async () => {
+            const item = {
+                id: 'raw-legacy-id',
+                name: 'Emulator : 8081',
+                properties: { api: API.Core },
+            } as unknown as StorageItem;
+            const context = {
+                telemetry: { properties: {} as Record<string, string>, measurements: {} },
+                errorHandling: {},
+                valuesToMask: [] as string[],
+            };
+
+            (callWithTelemetryAndErrorHandling as Mock).mockImplementation(
+                (_eventName: string, callback: (ctx: typeof context) => Promise<StorageItem>) => callback(context),
+            );
+            (StorageService.get as Mock).mockReturnValue({ push: vi.fn(), delete: vi.fn() });
+
+            await migrateRawEmulatorItemToHashed(item);
+            expect(context.telemetry.properties.api).toBe(API.Core);
         });
     });
 });

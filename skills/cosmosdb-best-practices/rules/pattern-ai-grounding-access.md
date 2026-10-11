@@ -1,7 +1,7 @@
 ---
 title: Use Point Reads for AI-Grounding and RAG Retrieval When ID Is Known
 impact: HIGH
-impactDescription: 1 RU point read vs ~2.5+ RU query per grounding fetch; reduces tool-call latency in LLM loops
+impactDescription: 1 RU per 1-KB point read at session consistency; avoids query overhead
 tags: pattern, ai, grounding, rag, point-read, tool-call, llm, retrieval
 ---
 
@@ -75,18 +75,20 @@ export async function groundOrderContext(orderId: string, userId: string) {
 ```
 
 ```python
-# ✅ Point read — 1 RU, no query engine overhead
+# ✅ Point read — 1 RU for a 1-KB item at session consistency; larger items cost more
 def ground_order_context(order_id: str, user_id: str):
     order = orders_container.read_item(item=order_id, partition_key=user_id)
     return build_grounding_context(order)
 ```
 
+**RU cost depends on item size and consistency:** A point read of a 1-KB item costs 1 RU at session, consistent-prefix, or eventual consistency. Larger items cost more; the documented 100-KB example costs 10 RUs. Strong or bounded-staleness consistency doubles the read charge. Measure the actual request charge for the documents and consistency level used by the application.
+
 **Why this matters for AI workloads:**
 
-1. **Latency-sensitive** — each tool call adds to perceived LLM response time; a point read (1 RU, single backend hop) is the fastest possible retrieval
+1. **Latency-sensitive** — each tool call adds to perceived LLM response time; a point read avoids query-engine overhead when the item ID and partition key are known
 2. **Throughput-sensitive** — hot conversations drive the same partition key repeatedly; cross-partition fan-out under load hot-spots a single logical partition fastest
 3. **ID is known by construction** — the LLM tool-use loop hands the agent an id parsed from the user turn or a prior tool result; agents should recognise this signal and reach for the point read
 
 See also: `query-point-reads` (general point-read guidance), `query-use-projections` (select only needed fields), `query-avoid-cross-partition` (avoid cross-partition fan-out).
 
-Reference: [Request Units — point reads cost fewer RUs than queries](https://learn.microsoft.com/azure/cosmos-db/request-units#request-unit-considerations)
+Reference: [Point-read request charges and consistency levels](https://learn.microsoft.com/azure/cosmos-db/optimize-cost-reads-writes)

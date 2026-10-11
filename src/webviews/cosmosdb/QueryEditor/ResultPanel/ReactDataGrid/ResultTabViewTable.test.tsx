@@ -45,6 +45,14 @@ const renderTable = () => {
     }
 };
 
+describe('ResultTabViewTable column header menu accessibility', () => {
+    it('keeps the closed menu button in the accessibility tree', () => {
+        renderTable();
+
+        expect(screen.getByRole('button', { name: 'Column context menu for id' })).not.toHaveAttribute('aria-hidden');
+    });
+});
+
 describe('ResultTabViewTable keyboard selection', () => {
     beforeEach(() => {
         vi.clearAllMocks();

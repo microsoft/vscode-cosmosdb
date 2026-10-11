@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type IToken } from 'chevrotain';
+import { EOF, type IToken } from 'chevrotain';
 import { type SourcePosition, type SourceRange } from './SqlError.js';
 
 /** Maps UTF-16 offsets to 1-based positions, treating LF, CRLF and CR as line breaks. */
@@ -38,6 +38,10 @@ export function tokenToSourceRange(
     token: IToken,
     positionAt: (offset: number) => SourcePosition,
 ): SourceRange {
+    if (token.tokenType === EOF) {
+        const end = positionAt(text.length);
+        return { start: end, end };
+    }
     const start = Number.isFinite(token.startOffset) ? token.startOffset : text.length;
     const end = token.endOffset !== undefined && Number.isFinite(token.endOffset) ? token.endOffset + 1 : start;
     return { start: positionAt(start), end: positionAt(end) };

@@ -54,7 +54,7 @@ export class ArmCosmosDBControlPlane implements CosmosDBControlPlane {
 
     public async createDatabase(databaseId: string): Promise<DatabaseResource> {
         const client = await this.getArmClient();
-        const response = await client.sqlResources.beginCreateUpdateSqlDatabaseAndWait(
+        const response = await client.sqlResources.createUpdateSqlDatabase(
             this.resourceGroup,
             this.accountName,
             databaseId,
@@ -65,7 +65,7 @@ export class ArmCosmosDBControlPlane implements CosmosDBControlPlane {
 
     public async deleteDatabase(databaseId: string): Promise<void> {
         const client = await this.getArmClient();
-        await client.sqlResources.beginDeleteSqlDatabaseAndWait(this.resourceGroup, this.accountName, databaseId);
+        await client.sqlResources.deleteSqlDatabase(this.resourceGroup, this.accountName, databaseId);
         await SchemaService.getInstance().deleteSchemasForDatabase(this.endpoint, databaseId);
     }
 
@@ -121,7 +121,7 @@ export class ArmCosmosDBControlPlane implements CosmosDBControlPlane {
             options,
         };
 
-        const response = await client.sqlResources.beginCreateUpdateSqlContainerAndWait(
+        const response = await client.sqlResources.createUpdateSqlContainer(
             this.resourceGroup,
             this.accountName,
             databaseId,
@@ -133,12 +133,7 @@ export class ArmCosmosDBControlPlane implements CosmosDBControlPlane {
 
     public async deleteContainer(databaseId: string, containerId: string): Promise<void> {
         const client = await this.getArmClient();
-        await client.sqlResources.beginDeleteSqlContainerAndWait(
-            this.resourceGroup,
-            this.accountName,
-            databaseId,
-            containerId,
-        );
+        await client.sqlResources.deleteSqlContainer(this.resourceGroup, this.accountName, databaseId, containerId);
         await SchemaService.getInstance().deleteSchemasForContainer(this.endpoint, databaseId, containerId);
     }
 

@@ -219,7 +219,6 @@ export const ColumnHeaderCell = <R, SR = unknown>({
                             aria-label={l10n.t('Column context menu for {0}', displayText)}
                             aria-haspopup="menu"
                             aria-expanded={menuOpen}
-                            aria-hidden={!menuOpen}
                             tabIndex={-1}
                             onClick={() => setMenuOpen((prev) => !prev)}
                             onKeyDown={handleButtonKeyDown}

@@ -3,121 +3,113 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type TokenCredential } from '@azure/core-auth';
-import { createHttpHeaders, type PipelineRequest } from '@azure/core-rest-pipeline';
-import { Environment } from '@azure/ms-rest-azure-env';
-import { type createCredential, type IActionContext } from '@microsoft/vscode-azext-utils';
-import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
-import { describe, expect, it, vi } from 'vitest';
-import { createLogsQueryClient } from './azureClients';
+import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
+import { MonitorClient } from '@azure/arm-monitor';
+import {
+    createHttpHeaders,
+    createPipelineRequest,
+    type PipelineRequest,
+    type PipelineResponse,
+} from '@azure/core-rest-pipeline';
+import { createAzureSubscriptionClient, type AzExtSubscriptionClientType } from '@microsoft/vscode-azext-azureutils';
+import { type IActionContext, type ISubscriptionContext } from '@microsoft/vscode-azext-utils';
+import { armTestSubscription, createArmTestContext } from '../cosmosdb/armTestUtils';
+import {
+    COSMOSDB_ARM_API_VERSION,
+    createCosmosDBManagementClient,
+    createMonitorClient,
+    PRESERVE_API_VERSION_HEADER,
+} from './azureClients';
 
-vi.mock('@microsoft/vscode-azext-azureutils', () => ({ createAzureClient: vi.fn() }));
 vi.mock('@microsoft/vscode-azext-utils', () => ({
-    createSubscriptionContext: vi.fn(() => {
-        throw new Error('Log Analytics must not use the ARM credential.');
-    }),
-    createCredential: (getSession: Parameters<typeof createCredential>[0]): TokenCredential => ({
-        getToken: async (scopes) => {
-            const session = await getSession(typeof scopes === 'string' ? [scopes] : scopes);
-            return session ? { token: session.accessToken, expiresOnTimestamp: Date.now() + 3600000 } : null;
-        },
+    createSubscriptionContext: (subscription: typeof armTestSubscription) => ({
+        subscriptionId: subscription.subscriptionId,
+        environment: subscription.environment,
+        credentials: { getToken: () => Promise.resolve(null) },
     }),
 }));
+vi.mock('@microsoft/vscode-azext-azureutils', () => ({
+    createAzureClient: vi.fn(),
+    createAzureSubscriptionClient: vi.fn(
+        ([, subscription]: [IActionContext, ISubscriptionContext], Client: AzExtSubscriptionClientType<unknown>) =>
+            new Client(subscription.credentials, {
+                endpoint: subscription.environment.resourceManagerEndpointUrl,
+            }),
+    ),
+}));
 
-function setup(environment: Environment = Environment.AzureCloud) {
-    const getSession = vi.fn<AzureSubscription['authentication']['getSession']>();
-    const getSessionWithScopes = vi.fn<AzureSubscription['authentication']['getSessionWithScopes']>();
-    getSessionWithScopes.mockResolvedValue({
-        id: 'logs-session',
-        accessToken: 'logs-token',
-        scopes: [],
-        account: { id: 'account-id', label: 'Test account' },
+describe('modular ARM client factories', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
     });
-    const subscription: AzureSubscription = {
-        authentication: { getSession, getSessionWithScopes },
-        environment,
-        isCustomCloud: false,
-        name: 'Test subscription',
-        subscriptionId: 'subscription-id',
-        tenantId: 'tenant-id',
-    };
-    const context: IActionContext = {
-        valuesToMask: [],
-        telemetry: { properties: {}, measurements: {} },
-        errorHandling: { issueProperties: {} },
-        get ui(): IActionContext['ui'] {
-            throw new Error('Client creation must not use the action UI.');
-        },
-    };
-    return { subscription, context, getSession, getSessionWithScopes };
-}
 
-async function createInterceptedClient(subscription: AzureSubscription, context: IActionContext) {
-    const client = await createLogsQueryClient(context, subscription);
-    const requests: PipelineRequest[] = [];
-    client.pipeline.addPolicy(
-        {
-            name: 'testTransport',
-            sendRequest: async (request) => {
-                requests.push(request);
-                return {
-                    request,
-                    status: 200,
-                    headers: createHttpHeaders(),
-                    bodyAsText: JSON.stringify({ tables: [{ name: 'PrimaryResult', columns: [], rows: [] }] }),
-                };
-            },
-        },
-        { afterPhase: 'Sign' },
-    );
-    return { client, requests };
-}
-
-const resourceId = 'subscriptions/sub/resourceGroups/rg/providers/Microsoft.DocumentDB/databaseAccounts/account';
-const timespan = { duration: 'PT1H' };
-
-describe('createLogsQueryClient', () => {
     it.each([
-        { environment: Environment.AzureCloud, audience: 'https://api.loganalytics.io' },
-        { environment: Environment.ChinaCloud, audience: 'https://api.loganalytics.azure.cn' },
-        { environment: Environment.USGovernment, audience: 'https://api.loganalytics.us' },
-    ])('uses scoped subscription authentication and endpoint $audience', async ({ environment, audience }) => {
-        const { subscription, context, getSession, getSessionWithScopes } = setup(environment);
-        const { client, requests } = await createInterceptedClient(subscription, context);
+        ['public', 'https://management.azure.com/'],
+        ['sovereign', 'https://management.usgovcloudapi.net/'],
+    ])('preserves subscription and %s cloud endpoint through the extension factory', async (_cloud, endpoint) => {
+        const subscription = {
+            ...armTestSubscription,
+            environment: { ...armTestSubscription.environment, resourceManagerEndpointUrl: endpoint },
+        };
+        const cosmosContext = createArmTestContext();
+        const monitorContext = createArmTestContext();
+        const cosmos = await createCosmosDBManagementClient(cosmosContext, subscription);
+        const monitor = await createMonitorClient(monitorContext, subscription);
+        expect(cosmos).toBeInstanceOf(CosmosDBManagementClient);
+        expect(monitor).toBeInstanceOf(MonitorClient);
+        expect(createAzureSubscriptionClient).toHaveBeenCalledTimes(2);
+        expect(cosmosContext.valuesToMask).toContain(subscription.subscriptionId);
+        expect(monitorContext.valuesToMask).toContain(subscription.subscriptionId);
 
-        await client.queryResource(resourceId, 'CDBDataPlaneRequests | take 0', timespan);
-
-        expect(getSession).not.toHaveBeenCalled();
-        expect(getSessionWithScopes).toHaveBeenCalledExactlyOnceWith([`${audience}/.default`], {
-            createIfNone: true,
-        });
-        expect(getSessionWithScopes.mock.contexts[0]).toBe(subscription.authentication);
-        expect(requests).toHaveLength(1);
-        expect(requests[0].url).toBe(`${audience}/v1/${resourceId}/query`);
-        expect(requests[0].headers.get('authorization')).toBe('Bearer logs-token');
-        expect(context.valuesToMask).toContain(subscription.subscriptionId);
-    });
-
-    it('does not fall back to an ARM token when no scoped session is available', async () => {
-        const { subscription, context, getSession, getSessionWithScopes } = setup();
-        getSessionWithScopes.mockResolvedValue(undefined);
-        const { client, requests } = await createInterceptedClient(subscription, context);
-
-        await expect(client.queryResource(resourceId, 'CDBDataPlaneRequests | take 0', timespan)).rejects.toThrow();
-        expect(getSession).not.toHaveBeenCalled();
-        expect(requests).toHaveLength(0);
-    });
-
-    it('propagates scoped authentication failures without sending a request', async () => {
-        const { subscription, context, getSession, getSessionWithScopes } = setup();
-        const error = new Error('Consent was cancelled.');
-        getSessionWithScopes.mockRejectedValue(error);
-        const { client, requests } = await createInterceptedClient(subscription, context);
-
-        await expect(client.queryResource(resourceId, 'CDBDataPlaneRequests | take 0', timespan)).rejects.toThrow(
-            error,
+        const cosmosRequest = vi.spyOn(cosmos.pipeline, 'sendRequest').mockImplementation((_http, request) =>
+            Promise.resolve({
+                request,
+                status: 200,
+                headers: createHttpHeaders(),
+                bodyAsText: JSON.stringify({ name: 'account' }),
+            }),
         );
-        expect(getSession).not.toHaveBeenCalled();
-        expect(requests).toHaveLength(0);
+        await cosmos.databaseAccounts.get('rg', 'account');
+        expect(cosmosRequest.mock.calls[0][1].url).toContain(
+            `${endpoint}subscriptions/sub-1/resourceGroups/rg/providers/Microsoft.DocumentDB/databaseAccounts/account?`,
+        );
+
+        const monitorRequest = vi.spyOn(monitor.pipeline, 'sendRequest').mockImplementation((_http, request) =>
+            Promise.resolve({
+                request,
+                status: 200,
+                headers: createHttpHeaders(),
+                bodyAsText: JSON.stringify({ value: [] }),
+            }),
+        );
+        await monitor.activityLogs.list('eventTimestamp ge 2026-01-01T00:00:00Z').next();
+        expect(monitorRequest.mock.calls[0][1].url).toContain(`${endpoint}subscriptions/sub-1/`);
+    });
+
+    it.each([
+        ['/subscriptions/sub/resourceGroups/rg/providers/Microsoft.DocumentDB/databaseAccounts/account', false, true],
+        ['/subscriptions/sub/providers/Microsoft.DocumentDB/locations/westus/operationResults/operation', false, true],
+        ['/subscriptions/sub/resourceGroups/rg/providers/Microsoft.DocumentDB/databaseAccounts/account', true, false],
+        ['/subscriptions/sub/providers/Microsoft.Insights/metrics', false, false],
+    ])('pins API versions for %s (preserve: %s)', async (path, preserve, pinned) => {
+        const client = await createCosmosDBManagementClient(createArmTestContext(), armTestSubscription);
+        const policy = client.pipeline
+            .getOrderedPolicies()
+            .find((entry) => entry.name === 'PinCosmosDBApiVersionPolicy');
+        expect(policy).toBeDefined();
+        const request = createPipelineRequest({
+            url: `https://management.azure.com${path}?api-version=2025-05-01-preview&other=value`,
+            method: 'GET',
+            headers: createHttpHeaders(preserve ? { [PRESERVE_API_VERSION_HEADER]: 'true' } : {}),
+        });
+        const next = vi.fn((forwarded: PipelineRequest): Promise<PipelineResponse> =>
+            Promise.resolve({ request: forwarded, status: 200, headers: createHttpHeaders() }),
+        );
+        await policy!.sendRequest(request, next);
+        const url = new URL(request.url);
+        expect(url.searchParams.get('api-version')).toBe(pinned ? COSMOSDB_ARM_API_VERSION : '2025-05-01-preview');
+        expect(url.searchParams.get('other')).toBe('value');
+        expect(request.headers.has(PRESERVE_API_VERSION_HEADER)).toBe(false);
+        expect(next).toHaveBeenCalledWith(request);
     });
 });

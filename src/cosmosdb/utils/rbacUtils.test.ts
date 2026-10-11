@@ -3,7 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { createHttpHeaders, type PipelineResponse } from '@azure/core-rest-pipeline';
 import * as vscode from 'vscode';
+import { createCosmosDBManagementClient } from '../../utils/azureClients';
+import { armTestSubscription, createArmTestClient, createArmTestContext } from '../armTestUtils';
 
 // The module statically imports heavy azext barrels (which transitively `require('vscode')`
 // from CJS telemetry deps). None of them are exercised by the pure guards / message helper
@@ -20,7 +23,7 @@ vi.mock('../../utils/azureClients', () => ({
     createCosmosDBManagementClient: vi.fn(),
 }));
 
-import { isRbacException, showRbacPermissionError } from './rbacUtils';
+import { addRbacContributorPermission, isRbacException, showRbacPermissionError } from './rbacUtils';
 
 describe('rbacUtils', () => {
     beforeEach(() => {
@@ -28,6 +31,63 @@ describe('rbacUtils', () => {
         // reset call history (and any spies) before each test to avoid leaking state between them.
         vi.restoreAllMocks();
         vi.clearAllMocks();
+    });
+
+    it('creates the role assignment in the correct scope and waits for the final ARM result', async () => {
+        const client = createArmTestClient();
+        vi.mocked(createCosmosDBManagementClient).mockResolvedValue(client);
+        const completed = Promise.withResolvers<void>();
+        const polling = Promise.withResolvers<void>();
+        const send = vi.spyOn(client.pipeline, 'sendRequest').mockImplementation(async (_httpClient, request) => {
+            if (request.url.includes('/operations/role')) {
+                polling.resolve();
+                await completed.promise;
+                return {
+                    request,
+                    status: 200,
+                    headers: createHttpHeaders(),
+                    bodyAsText: JSON.stringify({ id: 'assignment-id', properties: { provisioningState: 'Succeeded' } }),
+                };
+            }
+            throw new Error('Unexpected request');
+        });
+        send.mockImplementationOnce((_httpClient, request): Promise<PipelineResponse> =>
+            Promise.resolve({
+                request,
+                status: 202,
+                headers: createHttpHeaders({
+                    location: 'https://management.azure.com/operations/role',
+                    'retry-after': '0',
+                }),
+            }),
+        );
+
+        const result = addRbacContributorPermission(
+            'account',
+            'principal',
+            'rg',
+            createArmTestContext(),
+            armTestSubscription,
+        );
+        const settled = vi.fn();
+        void result.then(settled);
+        await polling.promise;
+        expect(settled).not.toHaveBeenCalled();
+        expect(send.mock.calls[0][1].url).toMatch(
+            /\/resourceGroups\/rg\/providers\/Microsoft.DocumentDB\/databaseAccounts\/account\/sqlRoleAssignments\/[0-9a-f-]{36}\?/,
+        );
+        expect(send.mock.calls[0][1].body).toBe(
+            JSON.stringify({
+                properties: {
+                    roleDefinitionId:
+                        '/subscriptions/sub-1/resourceGroups/rg/providers/Microsoft.DocumentDB/databaseAccounts/account/sqlRoleDefinitions/00000000-0000-0000-0000-000000000002',
+                    scope: '/subscriptions/sub-1/resourceGroups/rg/providers/Microsoft.DocumentDB/databaseAccounts/account',
+                    principalId: 'principal',
+                },
+            }),
+        );
+        completed.resolve();
+        await expect(result).resolves.toBe('assignment-id');
     });
 
     describe('isRbacException', () => {

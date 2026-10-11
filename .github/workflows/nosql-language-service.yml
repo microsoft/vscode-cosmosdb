@@ -7,7 +7,7 @@
 #
 # Why a separate workflow:
 #   - It needs Docker (Cosmos emulator) — `build.yml` / `test.yml` do not.
-#   - It only matters when `packages/**` or the seed script changes, so the path filter below keeps the run off the
+#   - It only matters when `packages/**`, the emulator configuration, or the seed script changes, keeping it off the
 #     vast majority of commits.
 #
 # Emulator state: the container always starts fresh — no caching, no volumes. The seed dataset is tiny (~100-200
@@ -29,6 +29,7 @@ on:
     paths:
       - 'packages/**'
       - 'scripts/import-seed.mjs'
+      - 'docker-compose.yml'
       - '.github/workflows/nosql-language-service.yml'
 
   pull_request:
@@ -36,6 +37,7 @@ on:
     paths:
       - 'packages/**'
       - 'scripts/import-seed.mjs'
+      - 'docker-compose.yml'
       - '.github/workflows/nosql-language-service.yml'
 
 # Push and PR runs share a head repository + branch group, so PR runs cancel overlapping push builds. Main and

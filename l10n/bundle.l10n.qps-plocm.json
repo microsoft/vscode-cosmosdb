@@ -903,7 +903,7 @@
   "Please try again. If the error persists, please": "[الهاتفPlease try again. If the error persists, pleaseעִבְרִית عليكעִבְרִית!]",
   "Please use the dedicated PostgreSQL extension instead.": "[الهاتفPlease use the dedicated PostgreSQL extension instead.עִבְרִית عليكעִבְרִית عل!]",
   "Populate Sample Data": "[الهاتفPopulate Sample Dataעִבְרִית ع!]",
-  "Port {0} is in use by another process. Configure a different MCP port in settings.": "[الهاتفPort {0} is in use by another process. Configure a different MCP port in settings.עִבְרִית عليكעִבְרִית عليكעִבְרִית !]",
+  "Port {0} is in use, but the listener could not be verified as Cosmos DB Shell MCP. Check the Azure Cosmos DB output log and the Shell server, or configure a different MCP port.": "[الهاتفPort {0} is in use, but the listener could not be verified as Cosmos DB Shell MCP. Check the Azure Cosmos DB output log and the Shell server, or configure a different MCP port.עִבְרִית عليكעִבְרִית عليكעִבְרִית عليكעִבְרִית عليكעִבְרִית عليكעִבְרִי!]",
   "Port number is required": "[الهاتفPort number is requiredעִבְרִית عل!]",
   "Port number must be an integer": "[الهاتفPort number must be an integerעִבְרִית عليكעִ!]",
   "Port number must be between 1 and 65535": "[الهاتفPort number must be between 1 and 65535עִבְרִית عليكעִבְרִ!]",

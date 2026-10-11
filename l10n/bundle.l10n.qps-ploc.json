@@ -903,7 +903,7 @@
   "Please try again. If the error persists, please": "[24sfw][นั้Plëæsë trÿ ægæïñ. Ïf thë ërrør përsïsts, plëæsëẤğ倪İЂҰक्र्तिृまẤğ倪İЂนั้ढूँ]",
   "Please use the dedicated PostgreSQL extension instead.": "[j7gTG][นั้Plëæsë µsë thë ðëðïçætëð Pøstgrë§Q£ ëxtëñsïøñ ïñstëæð.Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्นั้ढूँ]",
   "Populate Sample Data": "[cfXK7][นั้Pøpµlætë §æmplë ÐætæẤğ倪İЂҰक्นั้ढूँ]",
-  "Port {0} is in use by another process. Configure a different MCP port in settings.": "[gcKbs][นั้Pørt {0} ïs ïñ µsë þÿ æñøthër prøçëss. Çøñfïgµrë æ ðïffërëñt MÇP pørt ïñ sëttïñgs.Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂนั้ढूँ]",
+  "Port {0} is in use, but the listener could not be verified as Cosmos DB Shell MCP. Check the Azure Cosmos DB output log and the Shell server, or configure a different MCP port.": "[absOu][นั้Pørt {0} ïs ïñ µsë, þµt thë lïstëñër çøµlð ñøt þë vërïfïëð æs Çøsmøs Ðß §hëll MÇP. Çhëçk thë Æzµrë Çøsmøs Ðß øµtpµt løg æñð thë §hëll sërvër, ør çøñfïgµrë æ ðïffërëñt MÇP pørt.Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまนั้ढूँ]",
   "Port number is required": "[VInTQ][นั้Pørt ñµmþër ïs rëqµïrëðẤğ倪İЂҰक्र्นั้ढूँ]",
   "Port number must be an integer": "[XU58c][นั้Pørt ñµmþër mµst þë æñ ïñtëgërẤğ倪İЂҰक्र्तिृนั้ढूँ]",
   "Port number must be between 1 and 65535": "[I58J4][นั้Pørt ñµmþër mµst þë þëtwëëñ 1 æñð 65535Ấğ倪İЂҰक्र्तिृまẤğนั้ढूँ]",

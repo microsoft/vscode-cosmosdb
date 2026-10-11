@@ -903,7 +903,7 @@
   "Please try again. If the error persists, please": "請再試一次。如果此錯誤持續發生，請",
   "Please use the dedicated PostgreSQL extension instead.": "請改為使用專用的 PostgreSQL 延伸模組。",
   "Populate Sample Data": "填入範例資料",
-  "Port {0} is in use by another process. Configure a different MCP port in settings.": "其他處理程序正在使用連接埠 {0}。請在設定中設定不同的 MCP 連接埠。",
+  "Port {0} is in use, but the listener could not be verified as Cosmos DB Shell MCP. Check the Azure Cosmos DB output log and the Shell server, or configure a different MCP port.": "Port {0} is in use, but the listener could not be verified as Cosmos DB Shell MCP. Check the Azure Cosmos DB output log and the Shell server, or configure a different MCP port.",
   "Port number is required": "需要連接埠號碼",
   "Port number must be an integer": "連接埠號碼必須是整數",
   "Port number must be between 1 and 65535": "連接埠號碼必須介於 1 到 65535 之間",

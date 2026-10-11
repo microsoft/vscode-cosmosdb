@@ -903,7 +903,7 @@
   "Please try again. If the error persists, please": "もう一度お試しください。エラーが引き続き発生する場合は、",
   "Please use the dedicated PostgreSQL extension instead.": "代わりに、専用の PostgreSQL 拡張機能を使用してください。",
   "Populate Sample Data": "サンプル データの入力",
-  "Port {0} is in use by another process. Configure a different MCP port in settings.": "ポート {0} は別のプロセスで使用されています。設定で別の MCP ポートを構成します。",
+  "Port {0} is in use, but the listener could not be verified as Cosmos DB Shell MCP. Check the Azure Cosmos DB output log and the Shell server, or configure a different MCP port.": "Port {0} is in use, but the listener could not be verified as Cosmos DB Shell MCP. Check the Azure Cosmos DB output log and the Shell server, or configure a different MCP port.",
   "Port number is required": "ポート番号が必要です",
   "Port number must be an integer": "ポート番号は整数である必要があります",
   "Port number must be between 1 and 65535": "ポート番号は 1 - 65535 の間で指定する必要があります",

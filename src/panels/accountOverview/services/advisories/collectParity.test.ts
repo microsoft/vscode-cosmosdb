@@ -48,7 +48,7 @@ vi.mock('./fetchers/metrics', () => ({
 }));
 
 import { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
-import { MonitorClient, type MetricsListResponse } from '@azure/arm-monitor';
+import { MonitorClient, type Response as MetricsResponse } from '@azure/arm-monitor';
 import { getSqlInventoryDetails } from '../inventory';
 import { getInventoryMetrics } from '../inventoryMetrics';
 import { getPartitionHealth, getPartitionStorageSeries } from '../partitionHealth';
@@ -174,7 +174,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
             let peakConcurrency = 0;
             const list = vi
                 .spyOn(monitorClient.metrics, 'list')
-                .mockImplementation(async (_resource, options): Promise<MetricsListResponse> => {
+                .mockImplementation(async (_resource, options): Promise<MetricsResponse> => {
                     inFlight++;
                     peakConcurrency = Math.max(peakConcurrency, inFlight);
                     await Promise.resolve();

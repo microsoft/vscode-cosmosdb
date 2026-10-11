@@ -89,6 +89,15 @@ describe('SqlParser — basic queries', () => {
         expect(expr.udf).toBe(true);
     });
 
+    it.each(['ALL', 'FIRST', 'LAST'])('parses %s with a non-subquery argument as a function call', (name) => {
+        const { ast, errors } = parse(`SELECT ${name}(c.field) FROM c`);
+        expect(errors).toHaveLength(0);
+        const spec = ast!.query.select.spec;
+        expect(spec.kind).toBe('SelectListSpec');
+        if (spec.kind !== 'SelectListSpec') return;
+        expect(spec.items[0].expression.kind).toBe('FunctionCallScalarExpression');
+    });
+
     it('parses BETWEEN', () => {
         const { ast, errors } = parse('SELECT * FROM c WHERE c.age BETWEEN 18 AND 65');
         expect(errors).toHaveLength(0);
@@ -233,6 +242,19 @@ describe('SqlParser — grammar discrepancy fixes', () => {
         expect(errors).toHaveLength(0);
         expect(ast!.query.orderBy!.isRank).toBe(true);
         expect(ast!.query.orderBy!.items[0].sortOrder).toBe('Ascending');
+    });
+
+    it('includes the opening parenthesis in a subquery collection range', () => {
+        const query = 'SELECT * FROM (SELECT * FROM c)';
+        const { ast, errors } = parse(query);
+        expect(errors).toHaveLength(0);
+        const from = ast!.query.from!.collection;
+        expect(from.kind).toBe('AliasedCollectionExpression');
+        if (from.kind !== 'AliasedCollectionExpression') return;
+        expect(from.collection.kind).toBe('SubqueryCollection');
+        if (from.collection.kind !== 'SubqueryCollection') return;
+        expect(from.collection.range?.start.offset).toBe(query.indexOf('('));
+        expect(from.collection.range?.end.offset).toBe(query.length);
     });
 
     // Fix #2: chained comparisons

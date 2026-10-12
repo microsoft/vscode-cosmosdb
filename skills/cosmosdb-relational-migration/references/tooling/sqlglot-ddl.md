@@ -142,7 +142,7 @@ searches descendants and must stay scoped to the definition being interpreted.
 | `CREATE TABLE ... (...)` | Check `isinstance(tree, exp.Create)` and `tree.args.get("kind") == "TABLE"`. For an explicit definition, `tree.this` is `exp.Schema`, its `.this` is the owning `exp.Table`, and `.expressions` contains columns and table constraints. CTAS/LIKE and other shapes require separate review. |
 | Qualified identity | The owning `Table.parts` gives ordered identifiers. Preserve each `.name` and `.args.get("quoted", False)`; never split a rendered name on dots or lowercase quoted identifiers. Resolve omitted catalog/schema from source context and apply dialect case rules before matching identities. |
 | Column | Direct `exp.ColumnDef` children have `.this` as the identifier, `.args["kind"]` as the type, and `.args.get("constraints", [])` as column constraints. Preserve declared types, length, precision/scale, aliases, and source spelling; generated `.sql(dialect=dialect)` may normalize synonyms. |
-| Inline constraints | Inspect each `exp.ColumnConstraint.args["kind"]`: commonly `NotNullColumnConstraint`, `PrimaryKeyColumnConstraint`, `UniqueColumnConstraint`, `DefaultColumnConstraint`, `CheckColumnConstraint`, `GeneratedAsIdentityColumnConstraint`, or `Reference`. Default/check expressions are in `.this`. Determine nullability from explicit constraints and source-dialect rules, not solely absence of `NOT NULL`. |
+| Inline constraints | Inspect each `exp.ColumnConstraint.args["kind"]`: commonly `NotNullColumnConstraint`, `PrimaryKeyColumnConstraint`, `UniqueColumnConstraint`, `DefaultColumnConstraint`, `CheckColumnConstraint`, `GeneratedAsIdentityColumnConstraint`, or `Reference`. Default/check expressions are in `.this`. For nullability, inspect `NotNullColumnConstraint.args["allow_null"]` as described below; the class alone cannot distinguish `NULL` from `NOT NULL`. |
 | Named/table constraints | `exp.Constraint` wraps a name in `.this` and definitions in `.expressions`. `exp.PrimaryKey.expressions` preserves key order. `exp.UniqueColumnConstraint` may wrap an `exp.Schema`; inspect its children, not a guessed fixed shape. Retain check predicates and constraint options. |
 | Foreign key | `exp.ForeignKey.expressions` gives local columns in order. `.args["reference"]` is `exp.Reference`; for an explicit referenced column list, `.this` is `exp.Schema` with the referenced `Table` in `.this` and columns in `.expressions`. Inline `Reference` belongs to its enclosing column. Resolve omitted referenced columns from source key evidence, not guesses; retain referential actions. |
 | `ALTER TABLE` | `exp.Alter.this` is the affected table; `.args["actions"]` is ordered. `ADD COLUMN` can be a `ColumnDef`; `ADD CONSTRAINT` can be `AddConstraint.expressions` containing `Constraint`. Apply additions, changes, renames, and drops to the working inventory in source order, never to source files. |
@@ -166,6 +166,51 @@ remaining errors, and compute `sourceSha256` as specified there. Retain addition
 constraints, source locations, and statement dispositions in that same result. Clear
 errors only after resolution; successful JSON validation cannot establish DDL correctness.
 
+### Column Nullability
+
+SQLGlot uses `exp.NotNullColumnConstraint` for both explicit `NULL` and `NOT NULL`.
+`constraint.args.get("allow_null", False)` is `True` for `NULL` and `False` for
+`NOT NULL`. A class-only check incorrectly makes explicit nullable columns required.
+Inspect the structural flag rather than inferring nullability from rendered SQL.
+
+This inline inspection function returns the explicit declaration: `True` for nullable,
+`False` for not nullable, and `None` when no nullability clause is present. It does not
+infer primary-key or dialect-specific defaults:
+
+```python
+from sqlglot import exp
+
+
+def declared_nullability(column):
+	declarations = {
+		bool(constraint.args["kind"].args.get("allow_null", False))
+		for constraint in column.args.get("constraints", [])
+		if isinstance(constraint.args["kind"], exp.NotNullColumnConstraint)
+	}
+	if len(declarations) > 1:
+		raise ValueError(f"Conflicting nullability declarations for {column.name}")
+	return next(iter(declarations), None)
+```
+
+Resolve the effective `nullable` value separately using the source dialect, inline
+and table-level keys, type/domain constraints, table options, and ordered alterations.
+For the ordinary PostgreSQL types in the example below, a primary key is not nullable;
+other columns follow their explicit declaration, or default to nullable when omitted.
+Do not apply that primary-key rule indiscriminately: ordinary SQLite rowid tables can
+permit nulls in non-`INTEGER` primary keys, unlike `STRICT` or `WITHOUT ROWID` tables.
+SQL Server nullability defaults can depend on session/database settings. Preserve
+`unknown` in the evidence when the source context does not establish the result.
+
+When source-engine validation is available, compare effective nullability for every
+column with engine metadata, not just column names and FK counts. For SQLite,
+`PRAGMA table_info` reports a `notnull` flag, but it must be interpreted with key/type
+and table-option semantics; the flag alone does not cover every primary-key case.
+Cross-check ORM `field.null` when model metadata was used for inference, and reconcile
+disagreements against the authoritative DDL. Include explicit `NULL`, explicit
+`NOT NULL`, omitted clauses, and `ALTER TABLE` additions in the check. Unresolved
+contradictions must remain visible in source evidence, not be copied into downstream
+constraint mappings merely because portable structural validation passes.
+
 ## Worked CREATE and ALTER Example
 
 For this PostgreSQL input, establish the owning tables from statements 1 and 2, add
@@ -180,7 +225,7 @@ CREATE TABLE public.orders (
 		customer_id INT NOT NULL,
 		total NUMERIC(12, 2) DEFAULT 0 CHECK (total >= 0)
 );
-ALTER TABLE public.orders ADD COLUMN note VARCHAR(40);
+ALTER TABLE public.orders ADD COLUMN note VARCHAR(40) NULL;
 ALTER TABLE public.orders ADD CONSTRAINT orders_customer_fk
 		FOREIGN KEY (customer_id) REFERENCES public.customers(id);
 ```

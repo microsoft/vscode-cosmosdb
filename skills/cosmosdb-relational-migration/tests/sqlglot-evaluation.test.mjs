@@ -127,9 +127,10 @@ test('evaluates representative DDL with the selected SQLGlot library', { skip: !
 test('executes the documented SQLGlot inspection recipe and inventory example', { skip: !evaluationPython }, async (context) => {
     const guide = fs.readFileSync(new URL('../references/tooling/sqlglot-ddl.md', import.meta.url), 'utf8');
     const snippet = guide.match(/```python\n([\s\S]*?)\n```/u)?.[1];
+    const nullabilitySnippet = guide.match(/### Column Nullability[\s\S]*?```python\n([\s\S]*?)\n```/u)?.[1];
     const workedSql = guide.match(/```sql\n([\s\S]*?)\n```/u)?.[1];
     const workedTable = JSON.parse(guide.match(/```json\n([\s\S]*?)\n```/u)?.[1] ?? 'null');
-    assert(snippet && workedSql && workedTable, 'The guide must contain executable examples');
+    assert(snippet && nullabilitySnippet && workedSql && workedTable, 'The guide must contain executable examples');
     const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'sqlglot-guide-'));
     const sourcePath = path.join(temporary, 'schema.sql');
     const prelude = `import sys\n${evaluationModulePath ? `sys.path.insert(0, ${JSON.stringify(evaluationModulePath)})\n` : ''}`;
@@ -153,6 +154,7 @@ test('executes the documented SQLGlot inspection recipe and inventory example', 
         });
         await context.test('matches the worked inventory to actual CREATE and ALTER nodes', () => {
             const assertions = [
+                nullabilitySnippet,
                 'expected = json.loads(sys.argv[4])',
                 'assert len(trees) == 4',
                 'schema = trees[1].this',
@@ -167,7 +169,10 @@ test('executes the documented SQLGlot inspection recipe and inventory example', 
                 '    assert column.args["kind"] == sqlglot.parse_one(recorded["type"], read=dialect, into=exp.DataType)',
                 '    assert column.this.meta["line"] == recorded["source"]["line"]',
                 '    constraints = [constraint.args["kind"] for constraint in column.args.get("constraints", [])]',
-                '    assert recorded["nullable"] == (not any(isinstance(constraint, (exp.NotNullColumnConstraint, exp.PrimaryKeyColumnConstraint)) for constraint in constraints))',
+                '    declared = declared_nullability(column)',
+                '    primary_key = any(isinstance(constraint, exp.PrimaryKeyColumnConstraint) for constraint in constraints)',
+                '    effective_nullable = False if primary_key else (True if declared is None else declared)',
+                '    assert recorded["nullable"] == effective_nullable',
                 'assert columns[0].args["constraints"][0].args["kind"].key == "primarykeycolumnconstraint"',
                 'assert expected["primaryKey"] == [columns[0].name]',
                 'total_type = columns[2].args["kind"]',
@@ -191,6 +196,69 @@ test('executes the documented SQLGlot inspection recipe and inventory example', 
             const result = runSnippet(workedSql, 'postgres', assertions);
             assert.equal(result.status, 0, result.stderr || result.stdout);
             context.diagnostic(`Documented recipe SQLGlot version: ${JSON.parse(result.stdout).version}`);
+        });
+        await context.test('distinguishes explicit NULL, NOT NULL and omitted declarations across dialects', () => {
+            for (const dialect of ['tsql', 'postgres', 'mysql', 'oracle', 'sqlite']) {
+                const result = runSnippet(
+                    'CREATE TABLE nullability_sample (optional_value INT NULL, required_value INT NOT NULL, unspecified_value INT);',
+                    dialect,
+                    [
+                        nullabilitySnippet,
+                        'columns = trees[0].this.expressions',
+                        'assert [declared_nullability(column) for column in columns] == [True, False, None]',
+                        'assert isinstance(columns[0].args["constraints"][0].args["kind"], exp.NotNullColumnConstraint)',
+                        'assert columns[0].args["constraints"][0].args["kind"].args["allow_null"] is True',
+                    ].join('\n'),
+                );
+                assert.equal(result.status, 0, `${dialect}: ${result.stderr || result.stdout}`);
+            }
+        });
+        await context.test('reconciles inferred SQLite nullability with engine metadata and insert behavior', () => {
+            const sql = `CREATE TABLE nullability_sample (
+    id INTEGER NOT NULL PRIMARY KEY,
+    owner_id INTEGER NULL,
+    required_value TEXT NOT NULL,
+    unspecified_value TEXT
+);
+ALTER TABLE nullability_sample ADD COLUMN date_merged TEXT NULL;`;
+            const result = runSnippet(sql, 'sqlite', [
+                nullabilitySnippet,
+                'import sqlite3',
+                'columns = list(trees[0].this.expressions) + trees[1].args["actions"]',
+                'assert [declared_nullability(column) for column in columns] == [False, True, False, None, True]',
+                'effective = {column.name: (True if declared_nullability(column) is None else declared_nullability(column)) for column in columns}',
+                'connection = sqlite3.connect(":memory:")',
+                'try:',
+                '    connection.executescript(source_sql)',
+                '    observed = {column[1]: not bool(column[3]) for column in connection.execute("PRAGMA table_info(nullability_sample)")}',
+                '    assert effective == observed',
+                '    connection.execute("INSERT INTO nullability_sample VALUES (1, NULL, ?, NULL, NULL)", ("required",))',
+                '    assert connection.execute("SELECT owner_id, unspecified_value, date_merged FROM nullability_sample").fetchone() == (None, None, None)',
+                '    try:',
+                '        connection.execute("INSERT INTO nullability_sample VALUES (2, NULL, NULL, NULL, NULL)")',
+                '    except sqlite3.IntegrityError:',
+                '        pass',
+                '    else:',
+                '        raise AssertionError("NOT NULL must reject a null value")',
+                'finally:',
+                '    connection.close()',
+            ].join('\n'));
+            assert.equal(result.status, 0, result.stderr || result.stdout);
+        });
+        await context.test('leaves primary-key nullability to source-dialect and table semantics', () => {
+            const result = runSnippet('CREATE TABLE nullable_key (code TEXT PRIMARY KEY);', 'sqlite', [
+                nullabilitySnippet,
+                'import sqlite3',
+                'assert declared_nullability(trees[0].this.expressions[0]) is None',
+                'connection = sqlite3.connect(":memory:")',
+                'try:',
+                '    connection.executescript(source_sql)',
+                '    connection.execute("INSERT INTO nullable_key VALUES (NULL)")',
+                '    assert connection.execute("SELECT code FROM nullable_key").fetchone() == (None,)',
+                'finally:',
+                '    connection.close()',
+            ].join('\n'));
+            assert.equal(result.status, 0, result.stderr || result.stdout);
         });
         await context.test('preserves quoted identifier parts and source locations', () => {
             const result = runSnippet('CREATE TABLE "Sales"."Order.With.Dot" ("Key" INT PRIMARY KEY);', 'postgres', [

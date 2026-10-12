@@ -220,6 +220,9 @@ export async function getThrottleRate(
     let total = 0;
     let throttled = 0;
     for (const metric of response.value ?? []) {
+        if (metric.errorCode && metric.errorCode !== 'Success') {
+            throw new Error(metric.errorMessage ?? metric.errorCode);
+        }
         for (const series of metric.timeseries ?? []) {
             const statusCode = series.metadatavalues?.find((m) => m.name?.value?.toLowerCase() === 'statuscode')?.value;
             const isThrottle = isThrottledStatusCode(statusCode);

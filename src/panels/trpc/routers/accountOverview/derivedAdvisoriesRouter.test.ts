@@ -55,6 +55,35 @@ function metadata(account: DatabaseAccountGetResults = {}) {
 beforeEach(() => vi.clearAllMocks());
 
 describe('account advisory acquisition', () => {
+    it.each(['unsupported', 'noData', 'rbac'] as const)(
+        'separates metric and log coverage in the %s configuration-only fallback',
+        async (reason) => {
+            const input = metadata(reason === 'unsupported' ? { capabilities: [{ name: 'EnableGremlin' }] } : {});
+            if (reason === 'noData') {
+                input.getMonitorClient.mockResolvedValue(undefined);
+            } else if (reason === 'rbac') {
+                input.getMonitorClient.mockRejectedValue({ statusCode: 403 });
+            }
+
+            const result = await getDerivedAdvisoriesForAccount(input);
+            expect(result.metricSource?.available).toBe(false);
+            expect(result.metricSource?.failures).toHaveLength(13);
+            expect(result.metricSource?.failures.every((failure) => failure.reason === reason)).toBe(true);
+            const failedRules = result.metricSource?.failures.map((failure) => failure.rule);
+            for (const rule of [
+                'ExpensiveConsistency',
+                'MultiRegionWriteAntipattern',
+                'CrossPartitionQuery',
+                'ShardKeyMisalignment',
+                'UncontrolledIngestion',
+                'SharedThroughputStarvation',
+            ]) {
+                expect(failedRules).not.toContain(rule);
+            }
+            expect(result.logSource).toEqual({ available: false, reason });
+        },
+    );
+
     it.each([
         { capabilities: [{ name: 'EnableGremlin' }] },
         { capabilities: [{ name: 'EnableCassandra' }] },

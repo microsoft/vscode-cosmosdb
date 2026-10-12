@@ -70,9 +70,16 @@ export async function getDerivedAdvisoriesForAccount(
         metricSource: {
             available: false,
             failures: DETECTORS.filter(
-                ({ rule }) => rule !== 'ExpensiveConsistency' && rule !== 'MultiRegionWriteAntipattern',
+                ({ rule }) =>
+                    rule !== 'ExpensiveConsistency' &&
+                    rule !== 'MultiRegionWriteAntipattern' &&
+                    rule !== 'CrossPartitionQuery' &&
+                    rule !== 'ShardKeyMisalignment' &&
+                    rule !== 'UncontrolledIngestion' &&
+                    rule !== 'SharedThroughputStarvation',
             ).map(({ rule }) => ({ rule, reason })),
         },
+        logSource: { available: false, reason },
         generatedAt: Date.now(),
     });
 

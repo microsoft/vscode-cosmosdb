@@ -97,6 +97,45 @@ interface ObservationCase {
     interval: string;
 }
 
+describe.each([
+    {
+        metric: 'TotalRequestUnits',
+        run: (client: MonitorClient) => getAccountConsumedRuShape(client, 'resource'),
+        zero: { avgRuPerSec: 0, peakRuPerSec: 0, sampleCount: 1 },
+    },
+    {
+        metric: 'AutoscaledRU',
+        run: (client: MonitorClient) => getAutoscaleUtilization(client, 'resource', 'db', 'container', 1000),
+        zero: { peakPercent: 0, avgPercent: 0, sampleCount: 1 },
+    },
+    {
+        metric: 'TotalRequests',
+        run: (client: MonitorClient) => getThrottleRate(client, 'resource', '7D', 'db', 'container'),
+        zero: { ratePercent: 0, totalRequests: 0 },
+    },
+])('$metric diagnostic failures', ({ metric, run, zero }) => {
+    const samples = [{ data: [{ timeStamp: '2026-01-01T00:00:00.000Z', total: 0, maximum: 0, count: 0 }] }];
+
+    it.each([undefined, 'Incomplete metric response'])(
+        'rejects per-metric errors with message %s, with or without samples',
+        async (errorMessage) => {
+            for (const timeseries of [[], samples]) {
+                const response = {
+                    value: [{ errorCode: 'InternalServerError', errorMessage, timeseries }],
+                };
+                const client = mockClient({ [metric]: response });
+                await expect(run(client)).rejects.toThrow(errorMessage ?? 'InternalServerError');
+            }
+        },
+    );
+
+    it.each([undefined, 'Success'])('preserves observed zeros for success code %s', async (errorCode) => {
+        const response = { value: [{ errorCode, timeseries: samples }] };
+        const client = mockClient({ [metric]: response });
+        expect(await run(client)).toEqual(zero);
+    });
+});
+
 describe('diagnostic metric observations', () => {
     const cases: ObservationCase[] = [
         {

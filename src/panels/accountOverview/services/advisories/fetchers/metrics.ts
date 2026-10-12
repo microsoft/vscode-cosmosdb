@@ -59,6 +59,9 @@ export async function getAccountConsumedRuShape(
 
     const perBucket = new Map<number, number>();
     for (const metric of response.value ?? []) {
+        if (metric.errorCode && metric.errorCode !== 'Success') {
+            throw new Error(metric.errorMessage ?? metric.errorCode);
+        }
         for (const series of metric.timeseries ?? []) {
             for (const point of series.data ?? []) {
                 const value = pickPointValue(point, 'Total');
@@ -218,6 +221,9 @@ export async function getAutoscaleUtilization(
     // timestamp → summed AutoscaledRU across the container's physical partitions.
     const totals = new Map<number, number>();
     for (const metric of response.value ?? []) {
+        if (metric.errorCode && metric.errorCode !== 'Success') {
+            throw new Error(metric.errorMessage ?? metric.errorCode);
+        }
         for (const series of metric.timeseries ?? []) {
             for (const point of series.data ?? []) {
                 const value = pickPointValue(point, 'Maximum');

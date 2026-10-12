@@ -30,7 +30,7 @@ function evaluateAutoscaleCandidate(
     provisionedRu?: number,
     scope?: string,
     containerId?: string,
-    observationLabel: string = '7 days',
+    observationLabel: string = l10n.t('7 days'),
 ): DerivedAdvisory | undefined {
     if (!hasManualThroughput || maxPercent === undefined || avgPercent === undefined || avgPercent <= 0) {
         return undefined;
@@ -115,7 +115,7 @@ function evaluateManualThroughput(
         input.provisionedRu,
         containerKey(input.databaseId, input.containerId),
         input.containerId,
-        '30 days',
+        l10n.t('30 days'),
     );
 }
 

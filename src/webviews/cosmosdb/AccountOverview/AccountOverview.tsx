@@ -3,12 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { makeStyles, Spinner, tokens } from '@fluentui/react-components';
+import { Button, makeStyles, Spinner, tokens } from '@fluentui/react-components';
 import { useTrpcClient } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     type AccountOverviewAppRouter,
+    type AccountOverviewTarget,
     type AlertsResult,
     type AlertTimeRange,
     type DerivedAdvisoriesResult,
@@ -32,6 +33,8 @@ import { type ContainerRef, type MetricScope, METRIC_ORDER } from './metrics/des
 import { MetricsSection } from './metrics/MetricsSection';
 import { PartitionHealth } from './PartitionHealth';
 import { Recommendations } from './Recommendations';
+import { type OverviewTab, TabbedOverviewLayout } from './TabbedOverviewLayout';
+import { useOverviewNavigation } from './useOverviewNavigation';
 
 const AUTO_REFRESH_INTERVAL_MS = 60_000;
 /** Lightweight inventory metrics poll; staggered from the 60 s trends poll. */
@@ -73,40 +76,6 @@ const useStyles = makeStyles({
         minHeight: '100vh',
         boxSizing: 'border-box',
     },
-    layout: {
-        display: 'flex',
-        // Stretch the two columns to a common height so the rail can match the taller main column (the rail's own
-        // content never drives the row height because its growable card can shrink — see `advisoriesCard`).
-        alignItems: 'stretch',
-        gap: tokens.spacingHorizontalL,
-        flexWrap: 'wrap',
-    },
-    mainColumn: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: tokens.spacingVerticalL,
-        flex: '1 1 640px',
-        minWidth: 0,
-    },
-    rail: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: tokens.spacingVerticalL,
-        flex: '1 1 300px',
-        minWidth: 0,
-        // Allow the flex children to shrink below their content size so the growable advisories card can bound
-        // itself and scroll internally instead of stretching the whole panel taller.
-        minHeight: 0,
-        maxWidth: '420px',
-    },
-    // The Derived Advisories card fills whatever vertical space is left in the rail after the fixed cards, matching
-    // the main column's height. `flex: 1 1 0` + `minHeight: 0` lets it grow to fill yet shrink to nothing, so its
-    // (potentially long) content never drives the row taller; the list scrolls inside it instead.
-    advisoriesCard: {
-        flex: '1 1 0',
-        minHeight: 0,
-        overflow: 'hidden',
-    },
     loading: {
         display: 'flex',
         alignItems: 'center',
@@ -123,9 +92,36 @@ type Inventory = {
 };
 
 export const AccountOverview = () => {
+    const { navigation, failed, retry } = useOverviewNavigation();
+    return (
+        <>
+            {failed && (
+                <div role="alert">
+                    <p>{l10n.t('Account Overview navigation could not be loaded.')}</p>
+                    <Button onClick={retry}>{l10n.t('Retry')}</Button>
+                </div>
+            )}
+            {!navigation && !failed && <Spinner label={l10n.t('Loading Account Overview…')} />}
+            {navigation && (
+                <OverviewDashboard requestedTarget={navigation.target} navigationRevision={navigation.revision} />
+            )}
+        </>
+    );
+};
+
+export const OverviewDashboard = ({
+    requestedTarget = 'overview',
+    navigationRevision = 0,
+}: {
+    requestedTarget?: AccountOverviewTarget;
+    navigationRevision?: number;
+}) => {
     const styles = useStyles();
     const trpcClient = useTrpcClient<AccountOverviewAppRouter>();
 
+    const requestedTab = requestedTarget === 'advisories' ? 'advisories' : 'monitoring';
+    const [selectedTab, setSelectedTab] = useState<OverviewTab>(requestedTab);
+    useEffect(() => setSelectedTab(requestedTab), [requestedTab, requestedTarget, navigationRevision]);
     const [summary, setSummary] = useState<AccountSummary | undefined>(undefined);
     const [inventory, setInventory] = useState<Inventory | undefined>(undefined);
     const [inventoryMetrics, setInventoryMetrics] = useState<InventoryMetricsResult | undefined>(undefined);
@@ -149,6 +145,7 @@ export const AccountOverview = () => {
     const [lastRefreshedAt, setLastRefreshedAt] = useState(() => Date.now());
     // Monotonic id of the latest in-flight trends request; only that request may commit its result.
     const trendsRequestSeq = useRef(0);
+    const partitionRequestSeq = useRef(0);
 
     const reportEvent = useCallback(
         (eventName: string, properties?: Record<string, string>, measurements?: Record<string, number>) => {
@@ -230,6 +227,7 @@ export const AccountOverview = () => {
 
     const fetchPartitionHealth = useCallback(
         (container: ContainerRef, mode: PartitionDistributionMode, range: TimeRange) => {
+            const requestId = ++partitionRequestSeq.current;
             setPartitionLoading(true);
             return trpcClient.accountOverview.getPartitionHealth
                 .query({
@@ -239,9 +237,15 @@ export const AccountOverview = () => {
                     mode,
                 })
                 .then((result: PartitionHealthResult) => {
-                    setPartitionHealth(result);
+                    if (requestId === partitionRequestSeq.current) {
+                        setPartitionHealth(result);
+                    }
                 })
-                .finally(() => setPartitionLoading(false));
+                .finally(() => {
+                    if (requestId === partitionRequestSeq.current) {
+                        setPartitionLoading(false);
+                    }
+                });
         },
         [trpcClient],
     );
@@ -542,8 +546,10 @@ export const AccountOverview = () => {
     return (
         <DashboardActionsProvider value={actions}>
             <div className={styles.root}>
-                <div className={styles.layout}>
-                    <div className={styles.mainColumn}>
+                <TabbedOverviewLayout
+                    selectedTab={selectedTab}
+                    onTabSelect={setSelectedTab}
+                    header={
                         <DashboardCard>
                             <AccountHeader
                                 summary={summary}
@@ -557,9 +563,11 @@ export const AccountOverview = () => {
                                     inventory: INVENTORY_REFRESH_INTERVAL_MS / 1000,
                                     alerts: RAIL_REFRESH_INTERVAL_MS / 1000,
                                 }}
+                                defaultEssentialsOpen
                             />
                         </DashboardCard>
-
+                    }
+                    monitoring={
                         <MetricsSection
                             order={METRIC_ORDER}
                             seriesByMetric={trends}
@@ -569,8 +577,17 @@ export const AccountOverview = () => {
                             containers={containers}
                             selectedContainer={selectedContainer}
                             onSelectContainer={setSelectedContainer}
+                            chartAffordances
+                            requestedMetric={
+                                requestedTarget === 'overview' || requestedTarget === 'advisories'
+                                    ? undefined
+                                    : requestedTarget
+                            }
+                            navigationRevision={navigationRevision}
+                            active={selectedTab === 'monitoring'}
                         />
-
+                    }
+                    inventory={
                         <DashboardCard>
                             <SectionHeader
                                 title={l10n.t('Databases and Containers')}
@@ -586,14 +603,17 @@ export const AccountOverview = () => {
                                 metrics={inventoryMetrics?.available ? inventoryMetrics.metrics : undefined}
                                 onRevealInTree={handleRevealInTree}
                                 onOpenQueryEditor={handleOpenQueryEditor}
+                                selectedContainer={partitionContainer}
+                                onSelectContainer={handleSelectPartitionContainer}
                             />
                         </DashboardCard>
-
+                    }
+                    partitionHealth={
                         <DashboardCard>
                             <SectionHeader
                                 title={l10n.t('Partition Key Distribution Health')}
                                 description={l10n.t(
-                                    'Physical-partition RU and storage distribution for the selected container, with hot partitions flagged.',
+                                    'Physical-partition RU and storage distribution, not logical partition-key values. Select a container in the inventory or below.',
                                 )}
                             />
                             <PartitionHealth
@@ -606,9 +626,8 @@ export const AccountOverview = () => {
                                 onSelectContainer={handleSelectPartitionContainer}
                             />
                         </DashboardCard>
-                    </div>
-
-                    <aside className={styles.rail} aria-label={l10n.t('Alerts and recommendations')}>
+                    }
+                    alerts={
                         <DashboardCard>
                             <SectionHeader
                                 title={l10n.t('Active Alerts')}
@@ -622,10 +641,11 @@ export const AccountOverview = () => {
                                 onOpenUrl={handleOpenUrl}
                             />
                         </DashboardCard>
-
+                    }
+                    recommendations={
                         <DashboardCard>
                             <SectionHeader
-                                title={l10n.t('Recommendations')}
+                                title={l10n.t('Azure Advisor recommendations')}
                                 description={l10n.t('Azure Advisor guidance for this account.')}
                             />
                             <Recommendations
@@ -634,8 +654,9 @@ export const AccountOverview = () => {
                                 onOpenUrl={handleOpenUrl}
                             />
                         </DashboardCard>
-
-                        <DashboardCard className={styles.advisoriesCard}>
+                    }
+                    advisories={
+                        <DashboardCard>
                             <SectionHeader
                                 title={l10n.t('Derived Advisories')}
                                 description={l10n.t(
@@ -649,8 +670,8 @@ export const AccountOverview = () => {
                                 onDismiss={handleDismissAdvisory}
                             />
                         </DashboardCard>
-                    </aside>
-                </div>
+                    }
+                />
             </div>
         </DashboardActionsProvider>
     );

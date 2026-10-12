@@ -14,7 +14,7 @@ import {
 } from '@fluentui/react-components';
 import { Database16Regular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { type MetricKey, type MetricSeriesResult, type TimeRange } from '../../../api/types';
 import { DashboardCard, SectionHeader } from '../DashboardChrome';
 import { type ContainerRef, METRIC_GROUPS, type MetricGroup, type MetricScope, METRIC_VIEWS } from './descriptors';
@@ -109,6 +109,12 @@ const useStyles = makeStyles({
         whiteSpace: 'nowrap',
         border: 0,
     },
+    chartRegion: {
+        ':focus-visible': {
+            outline: '2px solid var(--vscode-focusBorder)',
+            outlineOffset: '2px',
+        },
+    },
 });
 
 export const MetricsSection = ({
@@ -120,6 +126,10 @@ export const MetricsSection = ({
     containers,
     selectedContainer,
     onSelectContainer,
+    chartAffordances = false,
+    requestedMetric,
+    navigationRevision = 0,
+    active = true,
 }: {
     order: readonly MetricKey[];
     seriesByMetric: Partial<Record<MetricKey, MetricSeriesResult>>;
@@ -129,9 +139,30 @@ export const MetricsSection = ({
     containers: ContainerRef[];
     selectedContainer?: MetricScope;
     onSelectContainer: (scope?: MetricScope) => void;
+    chartAffordances?: boolean;
+    requestedMetric?: MetricKey;
+    navigationRevision?: number;
+    active?: boolean;
 }) => {
     const styles = useStyles();
-    const [selectedMetric, setSelectedMetric] = useState<MetricKey>('normalizedRu');
+    const groupLabelId = useId();
+    const [selectedMetric, setSelectedMetric] = useState<MetricKey>(requestedMetric ?? 'normalizedRu');
+    const chartRef = useRef<HTMLElement>(null);
+    const handledNavigation = useRef<number | undefined>(undefined);
+
+    useEffect(() => {
+        if (requestedMetric) {
+            setSelectedMetric(requestedMetric);
+        }
+    }, [requestedMetric, navigationRevision]);
+
+    useEffect(() => {
+        if (active && requestedMetric === selectedMetric && handledNavigation.current !== navigationRevision) {
+            handledNavigation.current = navigationRevision;
+            chartRef.current?.focus({ preventScroll: true });
+            chartRef.current?.scrollIntoView({ block: 'nearest' });
+        }
+    }, [active, requestedMetric, selectedMetric, navigationRevision]);
 
     const activeDescriptor = METRIC_VIEWS[selectedMetric];
     const activeSeries = seriesByMetric[selectedMetric];
@@ -215,6 +246,8 @@ export const MetricsSection = ({
                         loading={loading}
                         selected={key === selectedMetric}
                         onSelect={() => setSelectedMetric(key)}
+                        chartAffordances={chartAffordances}
+                        groupLabelId={`${groupLabelId}-${METRIC_VIEWS[key].group}`}
                     />
                 ))}
             </div>
@@ -223,31 +256,45 @@ export const MetricsSection = ({
                 {(Object.keys(METRIC_GROUPS) as MetricGroup[]).map((groupKey) => {
                     const meta = METRIC_GROUPS[groupKey];
                     return (
-                        <span key={groupKey} className={styles.legendItem} title={meta.description}>
+                        <span
+                            key={groupKey}
+                            className={styles.legendItem}
+                            title={meta.description}
+                            aria-description={chartAffordances ? meta.description : undefined}
+                        >
                             <span
                                 className={styles.legendSwatch}
                                 style={{ backgroundColor: meta.color }}
                                 aria-hidden="true"
                             />
-                            <Text className={styles.legendText}>{meta.label}</Text>
-                            <Text className={styles.visuallyHidden}>{meta.description}</Text>
+                            <Text id={`${groupLabelId}-${groupKey}`} className={styles.legendText}>
+                                {meta.label}
+                            </Text>
+                            {!chartAffordances && <Text className={styles.visuallyHidden}>{meta.description}</Text>}
                         </span>
                     );
                 })}
             </div>
 
-            <DashboardCard>
-                <SectionHeader
-                    title={l10n.t('{0} trend', activeDescriptor.label)}
-                    description={l10n.t('Select a tile above to chart a different metric over the chosen window.')}
-                />
-                <MetricChart
-                    descriptor={activeDescriptor}
-                    series={activeSeries}
-                    loading={loading}
-                    timeRange={timeRange}
-                />
-            </DashboardCard>
+            <section
+                ref={chartRef}
+                className={styles.chartRegion}
+                aria-label={l10n.t('{0} trend', activeDescriptor.label)}
+                tabIndex={-1}
+            >
+                <DashboardCard>
+                    <SectionHeader
+                        title={l10n.t('{0} trend', activeDescriptor.label)}
+                        description={l10n.t('Select a tile above to chart a different metric over the chosen window.')}
+                    />
+                    <MetricChart
+                        descriptor={activeDescriptor}
+                        series={activeSeries}
+                        loading={loading}
+                        timeRange={timeRange}
+                    />
+                </DashboardCard>
+            </section>
         </>
     );
 };

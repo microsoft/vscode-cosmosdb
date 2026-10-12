@@ -204,6 +204,7 @@ export const AccountHeader = ({
     onTogglePause,
     onRefresh,
     autoRefreshIntervalsSeconds,
+    defaultEssentialsOpen = false,
 }: {
     summary: AccountSummary;
     accountHealth?: HealthState;
@@ -213,9 +214,10 @@ export const AccountHeader = ({
     onRefresh: () => void;
     /** Auto-refresh cadences (in seconds), surfaced in the pause toggle's tooltip. */
     autoRefreshIntervalsSeconds: { metrics: number; inventory: number; alerts: number };
+    defaultEssentialsOpen?: boolean;
 }) => {
     const styles = useStyles();
-    const [essentialsOpen, setEssentialsOpen] = useState(false);
+    const [essentialsOpen, setEssentialsOpen] = useState(defaultEssentialsOpen);
     const lastRefreshedLabel = formatRefreshTime(lastRefreshedAt);
     const health = accountHealth ? healthFromState(accountHealth) : healthFromProvisioning(summary.provisioningState);
 
@@ -329,11 +331,11 @@ export const AccountHeader = ({
                 </Link>
             </div>
             {essentialsOpen && (
-                <div className={styles.essentialsGrid}>
+                <section className={styles.essentialsGrid} aria-label={l10n.t('Essentials')}>
                     {essentials.map((field) => (
                         <EssentialField key={field.label} label={field.label} value={field.value} />
                     ))}
-                </div>
+                </section>
             )}
         </div>
     );

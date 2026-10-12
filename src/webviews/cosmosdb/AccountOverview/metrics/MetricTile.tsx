@@ -3,7 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { makeStyles, mergeClasses, Text, tokens } from '@fluentui/react-components';
+import { Button, makeStyles, mergeClasses, Text, tokens } from '@fluentui/react-components';
+import { Eye16Regular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { type MetricSeriesResult, type UnavailableReason } from '../../../api/types';
 import { formatMetricValue, METRIC_GROUPS, type MetricViewDescriptor, tileScalar } from './descriptors';
@@ -51,6 +52,46 @@ const useStyles = makeStyles({
         borderBottomColor: 'var(--vscode-focusBorder)',
         boxShadow: '0 0 0 1px var(--vscode-focusBorder)',
     },
+    interactiveCard: {
+        position: 'relative',
+        display: 'flex',
+        minWidth: 0,
+        borderRadius: tokens.borderRadiusMedium,
+        border: '1px solid var(--vscode-widget-border, var(--vscode-panel-border))',
+        borderLeft: '3px solid transparent',
+        backgroundColor: 'var(--vscode-editorWidget-background, var(--vscode-editor-background))',
+        ':hover': {
+            backgroundColor: 'var(--vscode-list-hoverBackground)',
+        },
+    },
+    interactiveSelected: {
+        borderTopColor: 'var(--vscode-textLink-foreground)',
+        borderRightColor: 'var(--vscode-textLink-foreground)',
+        borderBottomColor: 'var(--vscode-textLink-foreground)',
+        backgroundColor: 'var(--vscode-list-inactiveSelectionBackground)',
+    },
+    interactiveUnselected: {
+        ':hover': {
+            borderTopColor: 'var(--vscode-descriptionForeground)',
+            borderRightColor: 'var(--vscode-descriptionForeground)',
+            borderBottomColor: 'var(--vscode-descriptionForeground)',
+        },
+    },
+    cardButton: {
+        flexGrow: 1,
+        border: 0,
+        backgroundColor: 'transparent',
+        paddingBottom: '40px',
+        ':focus-visible': {
+            outline: '2px solid var(--vscode-focusBorder)',
+            outlineOffset: '3px',
+        },
+    },
+    eye: {
+        position: 'absolute',
+        bottom: tokens.spacingVerticalXS,
+        right: tokens.spacingHorizontalXS,
+    },
     label: {
         fontSize: tokens.fontSizeBase200,
         color: 'var(--vscode-descriptionForeground)',
@@ -82,12 +123,16 @@ export const MetricTile = ({
     loading,
     selected,
     onSelect,
+    chartAffordances = false,
+    groupLabelId,
 }: {
     descriptor: MetricViewDescriptor;
     series?: MetricSeriesResult;
     loading: boolean;
     selected: boolean;
     onSelect: () => void;
+    chartAffordances?: boolean;
+    groupLabelId?: string;
 }) => {
     const styles = useStyles();
     const group = METRIC_GROUPS[descriptor.group];
@@ -100,6 +145,43 @@ export const MetricTile = ({
             : series?.available
               ? descriptor.seriesLabel
               : unavailableCaption(series?.reason);
+
+    if (chartAffordances) {
+        return (
+            <div
+                className={mergeClasses(
+                    styles.interactiveCard,
+                    selected ? styles.interactiveSelected : styles.interactiveUnselected,
+                )}
+                style={{
+                    borderLeftColor: group.color,
+                    borderLeftWidth: selected ? 6 : 3,
+                    paddingLeft: selected ? 0 : 3,
+                }}
+            >
+                <button
+                    type="button"
+                    className={mergeClasses(styles.tile, styles.cardButton)}
+                    aria-pressed={selected}
+                    aria-describedby={groupLabelId}
+                    onClick={onSelect}
+                >
+                    <Text className={styles.label}>{descriptor.label}</Text>
+                    <Text className={styles.value}>{value}</Text>
+                    <Text className={styles.caption}>{caption}</Text>
+                </button>
+                <Button
+                    className={styles.eye}
+                    appearance="subtle"
+                    size="small"
+                    icon={<Eye16Regular aria-hidden="true" />}
+                    aria-label={l10n.t('Show chart: {metric}', { metric: descriptor.label })}
+                    aria-pressed={selected}
+                    onClick={onSelect}
+                />
+            </div>
+        );
+    }
 
     return (
         <button

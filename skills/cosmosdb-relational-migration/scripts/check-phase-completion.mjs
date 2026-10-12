@@ -23,7 +23,7 @@ import { validateMigrationProject } from './validate-migration-project.mjs';
 import { validateProvisioningVerification } from './validate-provisioning-verification.mjs';
 import { validateSampleData } from './validate-sample-data.mjs';
 import {
-    readExpectedPatternIdsByDomain,
+    expectedPatternIdsForDomain,
     validateSchemaConversionSummary,
 } from './validate-schema-conversion-summary.mjs';
 import { readSourceInventory, selectedDdlFiles, validateSourceReport, validateTemplates, validateWorkloadInputs } from './validate-source-evidence.mjs';
@@ -279,10 +279,33 @@ const PREDECESSOR_PHASE = {
 };
 
 export function checkPhaseCompletion(workspace, phaseInput) {
-    const result = checkPhase(workspace, phaseInput, true);
+    return phaseCompletion(workspace, phaseInput, new Map());
+}
+
+export function checkPhaseCompletions(workspace, phases) {
+    const cache = new Map();
+    return Object.fromEntries(phases.map(phase => {
+        try {
+            return [phase, phaseCompletion(workspace, phase, cache)];
+        } catch (error) {
+            return [phase, {
+                phase,
+                status: undefined,
+                complete: false,
+                freshness: 'unknown',
+                staleInputs: [{ id: 'completion-check', reason: 'Completion checker failed unexpectedly' }],
+                artifacts: [],
+                errors: [`Completion check failed: ${error instanceof Error ? error.message : String(error)}`],
+            }];
+        }
+    }));
+}
+
+function phaseCompletion(workspace, phaseInput, cache) {
+    const result = checkPhase(workspace, phaseInput, true, cache);
     if (result.phase === 'code-migration') {
         try {
-            result.ready = checkCodeMigrationPrerequisites(workspace).complete;
+            result.ready = checkPhase(workspace, 'schema-conversion', false, cache).complete;
         } catch {
             result.ready = false;
         }
@@ -291,7 +314,20 @@ export function checkPhaseCompletion(workspace, phaseInput) {
 }
 
 export function checkCodeMigrationPrerequisites(workspace) {
-    return checkPhase(workspace, 'schema-conversion', false);
+    return checkPhase(workspace, 'schema-conversion', false, new Map());
+}
+
+function cachedCheck(cache, key, check) {
+    if (!cache.has(key)) {
+        try {
+            cache.set(key, { result: check() });
+        } catch (error) {
+            cache.set(key, { error });
+        }
+    }
+    const cached = cache.get(key);
+    if ('error' in cached) throw cached.error;
+    return cached.result;
 }
 
 function artifactCounts(artifacts) {
@@ -371,7 +407,15 @@ export function summarizePhaseCompletion(
     return compactResult(completion, failures, offset, limit, returned);
 }
 
-function checkPhase(workspace, phaseInput, checkFreshness) {
+function checkPhase(workspace, phaseInput, checkFreshness, cache) {
+    const phase = normalizePhaseName(phaseInput);
+    if (!phase) return evaluatePhase(workspace, phaseInput, checkFreshness, cache);
+    checkFreshness &&= phase !== 'code-migration';
+    return cachedCheck(cache, `phase:${phase}:${checkFreshness}`, () =>
+        evaluatePhase(workspace, phase, checkFreshness, cache));
+}
+
+function evaluatePhase(workspace, phaseInput, checkFreshness, cache) {
     const phase = normalizePhaseName(phaseInput);
     checkFreshness &&= phase !== 'code-migration';
     if (!phase) {
@@ -387,7 +431,7 @@ function checkPhase(workspace, phaseInput, checkFreshness) {
     }
     const migrationRoot = path.join(workspace, '.cosmosdb-migration');
     const projectPath = path.join(migrationRoot, 'project.json');
-    const project = readJson(projectPath);
+    const project = cachedCheck(cache, 'project', () => readJson(projectPath));
     if (!project) {
         return {
             phase,
@@ -400,7 +444,7 @@ function checkPhase(workspace, phaseInput, checkFreshness) {
         };
     }
 
-    const projectErrors = validateMigrationProject(project);
+    const projectErrors = cachedCheck(cache, 'project-errors', () => validateMigrationProject(project));
     if (projectErrors.length > 0) {
         return {
             phase,
@@ -414,16 +458,19 @@ function checkPhase(workspace, phaseInput, checkFreshness) {
     }
 
     const artifacts = [];
-    addArtifact(artifacts, workspace, projectPath, 'Migration project checkpoint', validateJson);
+    addArtifact(artifacts, workspace, projectPath, 'Migration project checkpoint', () => true);
+    const getDdlFiles = () => cachedCheck(cache, 'ddl-files', () => selectedDdlFiles(workspace, project));
     let inventory;
     if (['preflight', 'discovery', 'assessment', 'schema-conversion', 'provisioning'].includes(phase)) {
-        try { inventory = readSourceInventory(workspace, project, selectedDdlFiles(workspace, project)); }
-        catch (error) { inventory = { errors: [{ path: 'resolved schema selection', message: error.message }] }; }
+        inventory = cachedCheck(cache, 'source-inventory', () => {
+            try { return readSourceInventory(workspace, project, getDdlFiles()); }
+            catch (error) { return { errors: [{ path: 'resolved schema selection', message: error.message }] }; }
+        });
         if (inventory.errors.length) artifacts.push({ path: 'resolved schema selection', description: 'Recorded source inventory evidence', conditional: false, state: 'invalid', diagnostics: inventory.errors });
     }
 
     if (phase === 'preflight') {
-        const ddlFiles = selectedDdlFiles(workspace, project);
+        const ddlFiles = getDdlFiles();
         if (ddlFiles.length === 0) {
             artifacts.push(missingMetadataArtifact('resolved schema selection', 'At least one selected DDL file'));
         } else {
@@ -550,7 +597,15 @@ function checkPhase(workspace, phaseInput, checkFreshness) {
         let expectedPatternIdsByDomain;
         let patternCoverageError;
         try {
-            expectedPatternIdsByDomain = readExpectedPatternIdsByDomain(workspace, conversionDomains);
+            expectedPatternIdsByDomain = cachedCheck(cache, 'pattern-ids', () => {
+                const patterns = readPhaseEvidence(
+                    path.join(migrationRoot, 'phases/1-discovery/discovery-manifest.json'),
+                ).patterns;
+                return new Map(conversionDomains.map(domainName => [
+                    domainName,
+                    expectedPatternIdsForDomain(project, patterns, inventory, domainName),
+                ]));
+            });
         } catch (error) {
             patternCoverageError = error;
         }
@@ -791,7 +846,7 @@ function checkPhase(workspace, phaseInput, checkFreshness) {
         ? validateFreshnessManifest(workspace, project, phase, project.freshness?.[phase])
         : { freshness: 'not-applicable', staleInputs: [] };
     const predecessorPhase = PREDECESSOR_PHASE[phase];
-    const predecessor = predecessorPhase ? checkPhase(workspace, predecessorPhase, checkFreshness) : undefined;
+    const predecessor = predecessorPhase ? checkPhase(workspace, predecessorPhase, checkFreshness, cache) : undefined;
     const staleInputs = [...ownFreshness.staleInputs];
     if (predecessor && !predecessor.complete) {
         artifacts.push({

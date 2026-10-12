@@ -66,10 +66,11 @@ export type MigrationPhaseCompletionMap = Record<MigrationPhaseName, MigrationPh
 
 interface MigrationCompletionCheckerModule {
     checkPhaseCompletion(workspace: string, phase: MigrationPhaseName): MigrationPhaseCompletion;
+    checkPhaseCompletions(workspace: string, phases: readonly MigrationPhaseName[]): MigrationPhaseCompletionMap;
 }
 
 export function safeCheckPhaseCompletion(
-    checker: MigrationCompletionCheckerModule,
+    checker: Pick<MigrationCompletionCheckerModule, 'checkPhaseCompletion'>,
     workspacePath: string,
     phase: MigrationPhaseName,
 ): MigrationPhaseCompletion {
@@ -103,7 +104,5 @@ export async function readMigrationPhaseCompletion(
         /* @vite-ignore */ pathToFileURL(checkerPath).href
     )) as MigrationCompletionCheckerModule;
 
-    return Object.fromEntries(
-        migrationPhaseNames.map((phase) => [phase, safeCheckPhaseCompletion(checker, workspacePath, phase)]),
-    ) as MigrationPhaseCompletionMap;
+    return checker.checkPhaseCompletions(workspacePath, migrationPhaseNames);
 }

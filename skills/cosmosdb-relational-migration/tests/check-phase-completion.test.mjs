@@ -8,6 +8,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
     checkPhaseCompletion,
+    checkPhaseCompletions,
     MAX_COMPLETION_OUTPUT_BYTES,
     summarizePhaseCompletion,
 } from '../scripts/check-phase-completion.mjs';
@@ -138,6 +139,115 @@ function prepareConversionChain(workspace, project, model, language = 'TypeScrip
         canonicalStringify(canonicalizeCosmosModel(model)),
     );
 }
+
+test('batch completion matches individual results with one checkpoint read and freshness evaluation', (context) => {
+    const project = { version: 1, phases: {} };
+    const workspace = workspaceWithProject(project);
+    try {
+        prepareConversionChain(workspace, project, provisioningModel());
+        const consultedPath = path.join(workspace, 'consulted.md');
+        fs.writeFileSync(consultedPath, 'Reviewed application evidence.');
+        project.freshness.preflight = buildFreshnessManifest(workspace, project, 'preflight', ['consulted.md']);
+        write(workspace, '.cosmosdb-migration/project.json', JSON.stringify(project));
+        const phases = ['preflight', 'discovery', 'assessment', 'schema-conversion', 'provisioning', 'code-migration'];
+        const expected = Object.fromEntries(phases.map(phase => [phase, checkPhaseCompletion(workspace, phase)]));
+        const projectPath = path.join(workspace, '.cosmosdb-migration/project.json');
+        const originalRead = fs.readFileSync;
+        const originalOpen = fs.openSync;
+        let checkpointReads = 0;
+        let consultedReads = 0;
+        context.mock.method(fs, 'readFileSync', (filePath, ...args) => {
+            if (filePath === projectPath) checkpointReads++;
+            return originalRead(filePath, ...args);
+        });
+        context.mock.method(fs, 'openSync', (filePath, ...args) => {
+            if (filePath === consultedPath) consultedReads++;
+            return originalOpen(filePath, ...args);
+        });
+        assert.deepEqual(checkPhaseCompletions(workspace, phases), expected);
+        assert.equal(checkpointReads, 1);
+        assert.equal(consultedReads, 1);
+    } finally {
+        fs.rmSync(workspace, { recursive: true, force: true });
+    }
+});
+
+test('batch completion keeps freshness modes separate and observes edits on the next call', () => {
+    const project = { version: 1, phases: {} };
+    const workspace = workspaceWithProject(project);
+    try {
+        prepareConversionChain(workspace, project, provisioningModel());
+        const phases = ['code-migration', 'schema-conversion', 'assessment', 'discovery', 'preflight'];
+        const initial = checkPhaseCompletions(workspace, phases);
+        assert.equal(initial['schema-conversion'].complete, true);
+        assert.equal(initial['code-migration'].ready, true);
+
+        project.phases.discovery.discoveryInstructions = 'Updated discovery instructions';
+        write(workspace, '.cosmosdb-migration/project.json', JSON.stringify(project));
+        const updated = checkPhaseCompletions(workspace, phases);
+        assert.equal(updated['schema-conversion'].complete, false);
+        assert.equal(updated['code-migration'].ready, true);
+        for (const phase of phases) assert.deepEqual(updated[phase], checkPhaseCompletion(workspace, phase));
+
+        fs.rmSync(path.join(workspace, '.cosmosdb-migration/phases/1-discovery/discovery-report.md'));
+        const removed = checkPhaseCompletions(workspace, phases);
+        assert.equal(removed['code-migration'].ready, false);
+        assert.equal(removed.discovery.complete, false);
+    } finally {
+        fs.rmSync(workspace, { recursive: true, force: true });
+    }
+});
+
+test('batch completion isolates unexpected failures and retries them on a new call', (context) => {
+    const project = { version: 1, phases: {} };
+    const workspace = workspaceWithProject(project);
+    try {
+        prepareConversionChain(workspace, project, provisioningModel());
+        const phases = ['preflight', 'discovery', 'code-migration'];
+        const schemaPath = path.join(workspace, '.cosmosdb-migration/phases/1-discovery/schema-ddl');
+        const originalRead = fs.readdirSync;
+        const readDirectory = context.mock.method(fs, 'readdirSync', (directory, ...args) => {
+            if (directory === schemaPath) throw new Error('Directory read failed');
+            return originalRead(directory, ...args);
+        });
+        const result = checkPhaseCompletions(workspace, phases);
+        assert.deepEqual(Object.keys(result), phases);
+        for (const phase of ['preflight', 'discovery']) {
+            assert.equal(result[phase].complete, false);
+            assert.equal(result[phase].freshness, 'unknown');
+            assert.deepEqual(result[phase].errors, ['Completion check failed: Directory read failed']);
+        }
+        assert.deepEqual(result['code-migration'], checkPhaseCompletion(workspace, 'code-migration'));
+        assert.equal(result['code-migration'].ready, false);
+
+        readDirectory.mock.restore();
+        const recovered = checkPhaseCompletions(workspace, phases);
+        assert.equal(recovered.preflight.complete, true);
+        assert.equal(recovered.discovery.complete, true);
+        assert.equal(recovered['code-migration'].ready, true);
+    } finally {
+        fs.rmSync(workspace, { recursive: true, force: true });
+    }
+});
+
+test('batch completion preserves diagnostics for invalid phases and missing or malformed checkpoints', () => {
+    const workspace = workspaceWithProject({ version: 1, phases: {} });
+    try {
+        const phases = ['preflight', '1', 'code-migration', 'unknown-phase'];
+        const projectPath = path.join(workspace, '.cosmosdb-migration/project.json');
+        for (const content of ['{', JSON.stringify({ version: 2, phases: {} }), undefined]) {
+            if (content === undefined) fs.rmSync(projectPath);
+            else fs.writeFileSync(projectPath, content);
+            const result = checkPhaseCompletions(workspace, phases);
+            for (const phase of phases) {
+                assert.deepEqual(result[phase], checkPhaseCompletion(workspace, phase));
+                assert.equal(result[phase].complete, false);
+            }
+        }
+    } finally {
+        fs.rmSync(workspace, { recursive: true, force: true });
+    }
+});
 
 test('completes valid conversions with design notes while retaining correctness gates', () => {
     const project = { version: 1, phases: {} };

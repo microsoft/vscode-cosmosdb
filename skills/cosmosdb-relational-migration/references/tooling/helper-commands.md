@@ -55,6 +55,15 @@ an agent/host responsibility, not a flag on these local helpers.
 | [generate-provisioning-artifacts.mjs](../../scripts/generate-provisioning-artifacts.mjs) | Generate local deployment files; compare with `--check` | Writes local files; `--force` replaces divergent files; never deploys |
 | [validate-code-migration-plan.mjs](../../scripts/validate-code-migration-plan.mjs) | Check plan and current iteration evidence | Read-only; validates declared coverage and results, not command execution or test adequacy |
 
+Consumers collecting multiple completion results should import
+`checkPhaseCompletions(workspace, phases)` from `check-phase-completion.mjs`.
+It returns a map keyed by the requested phase identifiers and shares checkpoint,
+source-inventory, and phase results only within that call. Freshness-aware completion
+and code-migration readiness remain separate checks. Unexpected failures become
+incomplete results for the affected phases; other results are still returned.
+Each call starts a new cache so later edits are observed. The existing single-phase
+`checkPhaseCompletion`, `checkCodeMigrationPrerequisites`, and CLI contracts are unchanged.
+
 ## Optional and Diagnostic Commands
 
 These commands are supported, but they are not extra completion requirements.

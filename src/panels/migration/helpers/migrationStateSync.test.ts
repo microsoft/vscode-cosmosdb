@@ -13,7 +13,12 @@ import {
     MigrationRunTracker,
     type MigrationExecution,
 } from '../../../webviews/cosmosdb/Migration/state/deriveMigrationPhaseStates';
-import { readMigrationExecution, readMigrationPhaseCompletion, safeCheckPhaseCompletion } from './migrationStateSync';
+import {
+    migrationPhaseNames,
+    readMigrationExecution,
+    readMigrationPhaseCompletion,
+    safeCheckPhaseCompletion,
+} from './migrationStateSync';
 
 describe('migrationStateSync', () => {
     const startedAt = '2026-10-04T10:00:00.000Z';
@@ -161,6 +166,7 @@ describe('migrationStateSync', () => {
         try {
             const extensionPath = path.resolve(__dirname, '../../../..');
             const completion = await readMigrationPhaseCompletion(extensionPath, workspace);
+            expect(Object.keys(completion)).toEqual([...migrationPhaseNames]);
             expect(completion.discovery.status).toBe('complete');
             expect(completion.discovery.complete).toBe(false);
             expect(completion.discovery.artifacts).toContainEqual(
@@ -168,6 +174,13 @@ describe('migrationStateSync', () => {
             );
             expect(await readMigrationExecution(extensionPath, workspace)).toBeUndefined();
             const projectPath = path.join(migrationRoot, 'project.json');
+            const updatedProject = JSON.parse(fs.readFileSync(projectPath, 'utf8'));
+            updatedProject.phases.discovery.status = 'in-progress';
+            fs.writeFileSync(projectPath, JSON.stringify(updatedProject));
+            const updatedCompletion = await readMigrationPhaseCompletion(extensionPath, workspace);
+            expect(updatedCompletion.discovery.status).toBe('in-progress');
+            expect(completion.discovery.status).toBe('complete');
+
             const content = JSON.stringify({ version: 1, execution });
             fs.writeFileSync(projectPath, content);
             expect(await readMigrationExecution(extensionPath, workspace)).toEqual(execution);

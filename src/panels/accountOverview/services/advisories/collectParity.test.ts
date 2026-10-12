@@ -151,7 +151,11 @@ describe('collectDerivedAdvisories parity wiring', () => {
                 compositeIndexCount: 0,
                 health: 'Healthy' as const,
             }));
-            vi.mocked(getSqlInventoryDetails).mockResolvedValue({ rows, offers: rows });
+            vi.mocked(getSqlInventoryDetails).mockResolvedValue({
+                rows,
+                offers: rows,
+                databases: [...new Set(rows.map((row) => row.databaseId))],
+            });
             vi.mocked(getRuTrends).mockResolvedValue({
                 available: false,
                 points: [],
@@ -305,7 +309,11 @@ describe('collectDerivedAdvisories parity wiring', () => {
             compositeIndexCount: 0,
             health: 'Healthy' as const,
         }));
-        vi.mocked(getSqlInventoryDetails).mockResolvedValue({ rows, offers: rows });
+        vi.mocked(getSqlInventoryDetails).mockResolvedValue({
+            rows,
+            offers: rows,
+            databases: [...new Set(rows.map((row) => row.databaseId))],
+        });
         vi.mocked(getRuTrends).mockResolvedValue({
             available: true,
             points: Array.from({ length: 24 }, (_, index) => ({ timestamp: index, ruPercent: 10, throttled: false })),
@@ -346,6 +354,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
 
     it('uses dedicated offers for container checks, includes serverless throttling, and counts scope RU once per offer', async () => {
         vi.mocked(getSqlInventoryDetails).mockResolvedValue({
+            databases: ['db-shared', 'db-manual', 'db-auto', 'db-sls'],
             rows: [
                 {
                     databaseId: 'db-shared',
@@ -537,6 +546,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
 
     it('records failures instead of downgrading missing metrics to zero', async () => {
         vi.mocked(getSqlInventoryDetails).mockResolvedValue({
+            databases: ['db'],
             rows: [
                 {
                     databaseId: 'db',

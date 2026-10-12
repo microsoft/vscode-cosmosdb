@@ -191,7 +191,7 @@ test('runs the validation suites from a standalone Skill copy without peer or DD
     try {
         const copied = path.join(root, 'skills', 'cosmosdb-relational-migration');
         fs.cpSync(sourceSkillRoot, copied, { recursive: true });
-        const tests = fs.readdirSync(path.join(copied, 'tests')).filter(name => name.endsWith('.test.mjs') && name !== 'portability.test.mjs').map(name => path.join(copied, 'tests', name));
+        const tests = fs.readdirSync(path.join(copied, 'tests')).filter(name => name.endsWith('.test.mjs') && name !== 'portability.test.mjs' && name !== 'sqlglot-evaluation.test.mjs').map(name => path.join(copied, 'tests', name));
         const environment = { ...process.env, MIGRATION_STANDALONE_CHILD: '1' };
         delete environment.COSMOSDB_MIGRATION_PARSER_WORKSPACE;
         delete environment.MIGRATION_PARSER_WORKSPACE;

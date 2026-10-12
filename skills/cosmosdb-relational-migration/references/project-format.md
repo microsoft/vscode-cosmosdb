@@ -173,11 +173,9 @@ Treat project updates as merge operations over the current file:
   and effective fallback survive resume and unattended runs.
 - Preserve target-environment values and verification state.
 - Never reconstruct the whole document from an example schema.
-- Use the helper for updates, not a model-authored replacement document. It validates
-  with `validateMigrationProject`, writes two-space JSON with a trailing newline to a
-  unique sibling temporary file, rechecks the revision immediately before replacement,
-  and atomically renames only a valid, non-conflicting candidate. Failed replacements
-  clean up their temporary file without changing the checkpoint.
+- Use the helper for updates, not a model-authored replacement document. Updates are
+  validated and atomic, and succeed only when the expected revision still matches.
+  Failed updates leave the checkpoint unchanged; handle conflicts as described above.
 
 ## Version 1 Checkpoint Contract
 
@@ -218,10 +216,9 @@ Each `parsedAccessPatterns` entry requires string `name`, `type`, and `frequency
 values plus string arrays for `tables` and `codeReferences`. The optional
 `filterFields`, `singleOrBatch`, `sqlExample`, and `codeExample` values are strings.
 
-Consumers may inspect artifacts independently, while the Skill requires both artifacts
-and status. Therefore write both the defined artifact paths and corresponding
-status fields. Merge phase updates so unrelated fields
-and persisted instructions survive a rerun.
+Write both the defined artifact paths and corresponding status fields; completion
+requires both. Merge phase updates so unrelated fields and persisted instructions
+survive a rerun.
 
 Additional checkpoint fields are opaque data. Preserve them without allowing them
 to alter required analysis quality, artifacts, or completion.

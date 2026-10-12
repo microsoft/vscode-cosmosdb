@@ -341,15 +341,27 @@ test('keeps human invocation examples free of manifest details', () => {
 test('keeps the human README outside the agent reference graph', () => {
     const readmePath = path.join(skillRoot, 'README.md');
     assert(fs.existsSync(readmePath));
+    const readme = fs.readFileSync(readmePath, 'utf8');
+    const integrationApis = [
+        'checkPhaseCompletions',
+        'validateCompatibilityReport',
+        'validateCodeMigrationRecord',
+        'validateMigrationProject',
+    ];
+    for (const name of integrationApis) {
+        assert(readme.includes(name), `${name} belongs in programmatic integration documentation`);
+    }
     assert.equal(fs.existsSync(path.join(skillRoot, 'references/tooling/host-setup-and-invocation.md')), false);
     const instructionFiles = [path.join(skillRoot, 'SKILL.md'), ...walk(path.join(skillRoot, 'references'))];
     for (const filePath of instructionFiles.filter(filePath => filePath.endsWith('.md'))) {
         const content = fs.readFileSync(filePath, 'utf8');
+        for (const name of integrationApis) assert(!content.includes(name), `${filePath} contains integration API ${name}`);
+        assert.doesNotMatch(content, /Consumers may inspect artifacts independently/u, filePath);
         for (const link of relativeMarkdownLinks(content)) {
             assert.notEqual(path.resolve(path.dirname(filePath), link), readmePath);
         }
     }
-    for (const link of relativeMarkdownLinks(fs.readFileSync(readmePath, 'utf8'))) {
+    for (const link of relativeMarkdownLinks(readme)) {
         assert(fs.existsSync(path.resolve(skillRoot, link)), `README link must resolve: ${link}`);
     }
 });
@@ -357,18 +369,24 @@ test('keeps the human README outside the agent reference graph', () => {
 test('documents every helper and separates CLI recovery from workflow invocation inputs', () => {
     const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
     const reference = fs.readFileSync(path.join(skillRoot, 'references/tooling/helper-commands.md'), 'utf8');
+    const readme = fs.readFileSync(path.join(skillRoot, 'README.md'), 'utf8');
     assert.match(skill, /<helper>\.mjs --help/u);
     assert.match(skill, /not a shared CLI option schema/u);
     assert.match(skill, /validation-only request must\s+never add `--regenerate`/u);
-    assert.match(reference, /## Import-Only Modules/u);
-    const documentedPaths = relativeMarkdownLinks(reference).map(link =>
-        path.resolve(skillRoot, 'references/tooling', link),
-    );
+    assert.match(readme, /## Programmatic Integration/u);
+    assert.match(readme, /### Import-Only Modules/u);
+    assert.match(readme, /checkPhaseCompletions\(workspace, phases\)/u);
+    assert.doesNotMatch(reference, /checkPhaseCompletions|Import-Only Modules/u);
+    const commandPaths = relativeMarkdownLinks(reference).map(link => path.resolve(skillRoot, 'references/tooling', link));
+    const integrationPaths = relativeMarkdownLinks(readme).map(link => path.resolve(skillRoot, link));
     for (const scriptName of fs.readdirSync(path.join(skillRoot, 'scripts'))) {
+        const scriptPath = path.join(skillRoot, 'scripts', scriptName);
+        const executable = /export function runCli\(/u.test(fs.readFileSync(scriptPath, 'utf8'));
         assert.ok(
-            documentedPaths.includes(path.join(skillRoot, 'scripts', scriptName)),
+            (executable ? commandPaths : integrationPaths).includes(scriptPath),
             `${scriptName} must be documented`,
         );
+        if (!executable) assert.equal(commandPaths.includes(scriptPath), false, `${scriptName} is not a CLI command`);
     }
 });
 

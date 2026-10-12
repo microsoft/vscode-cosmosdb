@@ -55,15 +55,6 @@ an agent/host responsibility, not a flag on these local helpers.
 | [generate-provisioning-artifacts.mjs](../../scripts/generate-provisioning-artifacts.mjs) | Generate local deployment files; compare with `--check` | Writes local files; `--force` replaces divergent files; never deploys |
 | [validate-code-migration-plan.mjs](../../scripts/validate-code-migration-plan.mjs) | Check plan and current iteration evidence | Read-only; validates declared coverage and results, not command execution or test adequacy |
 
-Consumers collecting multiple completion results should import
-`checkPhaseCompletions(workspace, phases)` from `check-phase-completion.mjs`.
-It returns a map keyed by the requested phase identifiers and shares checkpoint,
-source-inventory, and phase results only within that call. Freshness-aware completion
-and code-migration readiness remain separate checks. Unexpected failures become
-incomplete results for the affected phases; other results are still returned.
-Each call starts a new cache so later edits are observed. The existing single-phase
-`checkPhaseCompletion`, `checkCodeMigrationPrerequisites`, and CLI contracts are unchanged.
-
 ## Optional and Diagnostic Commands
 
 These commands are supported, but they are not extra completion requirements.
@@ -86,20 +77,7 @@ after samples, models, identity mappings, or source evidence change and before s
 After finalizing artifacts, freshness, and checkpoint fields, run the completion gate
 once. Standalone validator success never replaces that gate.
 
-## Import-Only Modules
-
-These files support the commands above and have no command-line entry point:
-
-| Module | Consumers and responsibility |
-| --- | --- |
-| [phase-names.mjs](../../scripts/phase-names.mjs) | Inspection, completion, freshness: normalize phase identifiers |
-| [phase-summary.mjs](../../scripts/phase-summary.mjs) | Validators: read evidence/model JSON and Markdown sections |
-| [reconcile-capacity.mjs](../../scripts/reconcile-capacity.mjs) | Model merge: reconcile capacity contributions before sizing |
-| [validate-source-evidence.mjs](../../scripts/validate-source-evidence.mjs) | Completion and provisioning validators: inventory, hashes, source identity |
-| [cli-help.mjs](../../scripts/cli-help.mjs) | All executable helpers: side-effect-free help dispatch |
-| [cli-arguments.mjs](../../scripts/cli-arguments.mjs) | Option-taking helpers: reject missing values before reading inputs or performing work |
-
 SQLGlot setup and invocation use ordinary host tools under the
 [DDL interpretation workflow](../workflow/ddl-interpretation.md), not a bundled helper.
-Keep shared modules even when they are not agent-facing commands. No helper needs to
-be invoked solely because it is packaged.
+Use the listed CLI commands; supporting modules are not standalone commands. No helper
+needs to be invoked solely because it is packaged.

@@ -304,7 +304,7 @@ changes, expose secrets, or claim completion without running applicable tests.
 
 Write the code-migration checkpoint after its required outputs validate, preserving
 unrelated project fields. Subsequent `check-phase-completion.mjs --phase code-migration`
-inspection uses `validateCodeMigrationRecord`: it validates the plan's structure,
+inspection validates the historical plan's structure,
 recorded coverage and result fields, safe relative paths, and checkpoint metadata only. A missing
 or malformed plan or recorded failed validation prevents completion, but changed or
 missing application outputs and changed design inputs do not.

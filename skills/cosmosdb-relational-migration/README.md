@@ -181,3 +181,61 @@ node --test tests/*.test.mjs
 The default suite does not require a live Cosmos DB target, paid model calls, or a
 SQL parser installation. Real-agent evaluations and application behavior tests are
 separate from these portable checks.
+
+## Programmatic Integration
+
+### Completion Results
+
+For hosts and tools collecting multiple completion results, import
+`checkPhaseCompletions(workspace, phases)` from
+[check-phase-completion.mjs](./scripts/check-phase-completion.mjs).
+It returns a map keyed by the requested phase identifiers and shares checkpoint,
+source-inventory, and phase results only within that call. Freshness-aware completion
+and code-migration readiness remain separate checks. Unexpected failures become
+incomplete results for the affected phases; other results are still returned.
+Each call starts a new cache so later edits are observed. The existing single-phase
+`checkPhaseCompletion`, `checkCodeMigrationPrerequisites`, and CLI contracts are unchanged.
+
+External tools may inspect individual artifacts independently, but file existence is
+not phase completion. Use the completion checker when reporting migration readiness;
+it considers persisted status and the required artifact/evidence contracts together.
+
+### Validation APIs
+
+SDK report consumers can call `validateCompatibilityReport(report, expectedLanguages)`
+from [check-sdk-compatibility.mjs](./scripts/check-sdk-compatibility.mjs). Discovery
+and current-iteration plan validation use this function. Derive `expectedLanguages`
+from the comma-separated `phases.discovery.applicationAnalysis.language` field, not
+the report's own results. The [SDK evidence contract](./references/contracts/sdk-compatibility.md)
+describes coverage, normalization, and permissible documentation overrides.
+
+[validate-code-migration-plan.mjs](./scripts/validate-code-migration-plan.mjs) exports
+`validateCodeMigrationPlan` for current-iteration validation and
+`validateCodeMigrationRecord` for historical inspection. The latter checks recorded
+structure, coverage/results, safe relative paths, and checkpoint metadata without
+requiring historical application outputs or design inputs to remain unchanged.
+Keep historical completion separate from readiness to start a new migration iteration.
+
+### Checkpoint Writes
+
+[project-state.mjs](./scripts/project-state.mjs) validates updates with
+`validateMigrationProject`, writes two-space JSON with a trailing newline to a unique
+sibling temporary file, rechecks the expected revision immediately before replacement,
+and atomically renames only a valid, non-conflicting candidate. Failed replacements
+clean up their temporary file without changing the checkpoint.
+
+### Import-Only Modules
+
+These modules support the executable helpers and have no command-line entry point:
+
+| Module | Consumers and responsibility |
+| --- | --- |
+| [phase-names.mjs](./scripts/phase-names.mjs) | Inspection, completion, freshness: normalize phase identifiers |
+| [phase-summary.mjs](./scripts/phase-summary.mjs) | Validators: read evidence/model JSON and Markdown sections |
+| [reconcile-capacity.mjs](./scripts/reconcile-capacity.mjs) | Model merge: reconcile capacity contributions before sizing |
+| [validate-source-evidence.mjs](./scripts/validate-source-evidence.mjs) | Completion and provisioning validators: inventory, hashes, source identity |
+| [cli-help.mjs](./scripts/cli-help.mjs) | All executable helpers: side-effect-free help dispatch |
+| [cli-arguments.mjs](./scripts/cli-arguments.mjs) | Option-taking helpers: reject missing values before reading inputs or performing work |
+
+Keep these shared modules when distributing the skill, even though they are not
+agent-facing commands.

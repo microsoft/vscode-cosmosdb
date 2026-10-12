@@ -70,9 +70,9 @@ first-party Cosmos DB SDK. Planning a supported-language boundary remains allowe
 
 ## Report Validation
 
-Discovery and current-iteration plan validation both use `validateCompatibilityReport`
-from the bundled checker. Pass the expected languages from the comma-separated
-`phases.discovery.applicationAnalysis.language` field; do not infer coverage from the
+Discovery and current-iteration plan validation compare SDK evidence with the expected
+languages from the comma-separated `phases.discovery.applicationAnalysis.language`
+field; do not infer coverage from the
 report's own results. Trim language names, collapse internal whitespace, and compare
 case-insensitively. Each expected normalized language must appear exactly once, with
 no extra results. Language aliases select an SDK family but do not silently replace a

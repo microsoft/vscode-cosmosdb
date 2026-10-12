@@ -199,7 +199,7 @@ extends:
                               locProj: 'l10n/LocProject.json'
                               outDir: '$(Build.ArtifactStagingDirectory)'
                               isEnablePseudoLanguagesSelected: true
-                              isCreatePrSelected: true
+                              isCreatePrSelected: false
                               isShouldReusePrSelected: true
                               isAutoCompletePrSelected: false
                               isSetAutoCompletePrSelected: true

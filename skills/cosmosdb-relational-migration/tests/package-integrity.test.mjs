@@ -215,6 +215,7 @@ test('groups references by purpose and links every guide directly from the Skill
 
 test('documents dependency permission, persisted choice, model-only procedure and minimal results', () => {
     const reference = fs.readFileSync(path.join(skillRoot, 'references/workflow/ddl-interpretation.md'), 'utf8');
+    const sqlglot = fs.readFileSync(path.join(skillRoot, 'references/tooling/sqlglot-ddl.md'), 'utf8');
     const evidence = fs.readFileSync(path.join(skillRoot, 'references/contracts/validation-evidence.md'), 'utf8');
     assert.match(reference, /May I use \[SQLGlot\]\(https:\/\/github\.com\/tobymao\/sqlglot\)/u);
     assert.match(reference, /phases\.discovery\.ddlParsing/u);
@@ -229,15 +230,42 @@ test('documents dependency permission, persisted choice, model-only procedure an
     assert.match(reference, /fallbackReason: "unsupported-dialect" \| "unavailable"/u);
     assert.match(reference, /unattended-default.*warn and continue with model-only/isu);
     assert.match(reference, /saved `interactive`\/`explicit` SQLGlot selection.*abort/isu);
-    assert.match(reference, /latest available SQLGlot release/u);
-    assert.match(reference, /host's execution approvals, sandbox\s+restrictions, and network permissions/u);
-    assert.match(reference, /without modifying application\s+dependencies or global Python/u);
-    assert.match(reference, /record it in the source inventory's\s+`parser\.version`/u);
-    assert.doesNotMatch(reference, /setup-ddl-parser|requirements-ddl|pinned version|Python 3\.11/u);
+    assert.match(sqlglot, /latest available SQLGlot release/u);
+    assert.match(sqlglot, /host's execution approvals, sandbox\s+restrictions, and network permissions/u);
+    assert.match(sqlglot, /without modifying application\s+dependencies or global Python/u);
+    assert.match(sqlglot, /record it in the source inventory's\s+`parser\.version`/u);
+    assert.doesNotMatch(reference + sqlglot, /setup-ddl-parser|requirements-ddl|pinned version|Python 3\.11/u);
     assert.match(evidence, /Artifact Budget/u);
     for (const scriptName of ['extract-ddl.mjs', 'extract-ddl.py']) {
         assert.equal(fs.existsSync(path.join(skillRoot, 'scripts', scriptName)), false);
     }
+});
+
+test('loads SQLGlot mechanics only for the selected SQLGlot branch', () => {
+    const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
+    const reference = fs.readFileSync(path.join(skillRoot, 'references/workflow/ddl-interpretation.md'), 'utf8');
+    const sqlglot = fs.readFileSync(path.join(skillRoot, 'references/tooling/sqlglot-ddl.md'), 'utf8');
+    assert.match(skill, /Only after SQLGlot is selected:/u);
+    assert.match(reference, /Only when the effective choice is SQLGlot, load/u);
+    assert.match(reference, /Do not load that reference for model-only interpretation/u);
+    assert.match(reference, /## Model-Only DDL Interpretation/u);
+    assert.doesNotMatch(reference, /## Setup and Dialect|### Tested Fallback Release/u);
+    assert.match(sqlglot, /Model-only interpretation does not need this reference or Python/u);
+});
+
+test('provides an inline SQLGlot recipe with scoped AST and completeness guidance', () => {
+    const reference = fs.readFileSync(path.join(skillRoot, 'references/tooling/sqlglot-ddl.md'), 'utf8');
+    assert.match(reference, /without first consulting external API\s+documentation/u);
+    assert.match(reference, /Dialect\.get_or_raise\(dialect\)/u);
+    assert.match(reference, /sqlglot\.parse\(source_sql, read=dialect, error_level=ErrorLevel\.RAISE\)/u);
+    assert.match(reference, /except ParseError as error/u);
+    assert.match(reference, /except TokenError as error/u);
+    assert.match(reference, /isinstance\(node, exp\.Command\)/u);
+    assert.match(reference, /Start from each statement's owner/u);
+    assert.match(reference, /Do\s+not split on semicolons/u);
+    assert.match(reference, /Review every source statement a second time/u);
+    assert.match(reference, /## Worked CREATE and ALTER Example/u);
+    assert.doesNotThrow(() => JSON.parse(reference.match(/```json\n([\s\S]*?)\n```/u)[1]));
 });
 
 test('ships an opt-in real SQLGlot DDL evaluation without affecting parser-free tests', () => {
@@ -254,7 +282,7 @@ test('ships an opt-in real SQLGlot DDL evaluation without affecting parser-free 
 });
 
 test('documents an advisory SQLGlot fallback with artifact provenance and limited assurance', () => {
-    const reference = fs.readFileSync(path.join(skillRoot, 'references/workflow/ddl-interpretation.md'), 'utf8');
+    const reference = fs.readFileSync(path.join(skillRoot, 'references/tooling/sqlglot-ddl.md'), 'utf8');
     assert.match(reference, /### Tested Fallback Release/u);
     assert.match(reference, /SQLGlot 30\.22\.0/u);
     assert.match(reference, /2026-10-09/u);

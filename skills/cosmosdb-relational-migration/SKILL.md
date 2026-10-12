@@ -36,6 +36,7 @@ identify. Do not load every reference at the start of a run.
 | [Interaction and checkpoints](./references/workflow/interaction-and-checkpoints.md) | Handling execution modes, decisions, blockers, and phase handoffs. |
 | [Best-practices integration](./references/workflow/best-practices-integration.md) | Loading the required peer and selecting guidance for Cosmos DB decisions. |
 | [DDL interpretation](./references/workflow/ddl-interpretation.md) | Choosing a parser and interpreting selected DDL without changing authoritative inputs. |
+| [SQLGlot DDL](./references/tooling/sqlglot-ddl.md) | Only after SQLGlot is selected: environment setup, dialect checks, AST inspection, and inventory examples. Skip for model-only interpretation. |
 | [Project state and artifacts](./references/contracts/project-state-and-artifacts.md) | Reading or updating project state, resolving inputs, or checking completion. |
 | [Validation evidence](./references/contracts/validation-evidence.md) | Recording assurance, source inventories, and cross-artifact evidence. |
 | [Freshness](./references/contracts/freshness.md) | Recording input/output hashes or checking whether analytical checkpoints remain current. |
@@ -67,10 +68,12 @@ unless the current request or saved decision disallows it. An explicit opt-out
 selects model-only parsing, with no Python, SQLGlot, or custom DDL parser scripts.
 The agent reads and interprets the DDL itself using the procedure in the reference.
 When SQLGlot is selected, the agent uses the latest available release and determines
-its Python requirements, environment setup, and API usage through ordinary host tools.
+its Python requirements and environment setup through ordinary host tools, then follows
+the [SQLGlot DDL guide](./references/tooling/sqlglot-ddl.md). Do not load that guide for
+model-only interpretation.
 The Skill bundles no parser setup or readiness script and pins no SQLGlot version.
 If the latest release is unavailable or its provenance is in doubt, consult the
-advisory tested fallback and artifact digest in the DDL interpretation reference.
+advisory tested fallback and artifact digest in the SQLGlot DDL guide.
 Dependency checks, installation, and invocation follow the host's execution approvals,
 sandbox restrictions, and network permissions.
 

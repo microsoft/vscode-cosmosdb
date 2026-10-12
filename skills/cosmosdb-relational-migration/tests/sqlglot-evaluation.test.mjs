@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
 const evaluationPython = process.env.MIGRATION_SQLGLOT_EVALUATION_PYTHON;
@@ -117,5 +121,130 @@ test('evaluates representative DDL with the selected SQLGlot library', { skip: !
             `${name}: quoted identifiers`,
         );
         for (const node of ddlCase.expectedNodes) assert(report.results[name].nodes.includes(node), `${name}: ${node}`);
+    }
+});
+
+test('executes the documented SQLGlot inspection recipe and inventory example', { skip: !evaluationPython }, async (context) => {
+    const guide = fs.readFileSync(new URL('../references/tooling/sqlglot-ddl.md', import.meta.url), 'utf8');
+    const snippet = guide.match(/```python\n([\s\S]*?)\n```/u)?.[1];
+    const workedSql = guide.match(/```sql\n([\s\S]*?)\n```/u)?.[1];
+    const workedTable = JSON.parse(guide.match(/```json\n([\s\S]*?)\n```/u)?.[1] ?? 'null');
+    assert(snippet && workedSql && workedTable, 'The guide must contain executable examples');
+    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'sqlglot-guide-'));
+    const sourcePath = path.join(temporary, 'schema.sql');
+    const prelude = `import sys\n${evaluationModulePath ? `sys.path.insert(0, ${JSON.stringify(evaluationModulePath)})\n` : ''}`;
+    const runSnippet = (sql, dialect = 'postgres', extra = '', encoding = 'utf-8') => {
+        fs.writeFileSync(sourcePath, sql);
+        return spawnSync(evaluationPython, ['-I', '-c', `${prelude}${snippet}\n${extra}`, sourcePath, dialect, encoding, JSON.stringify(workedTable)], {
+            encoding: 'utf8', timeout: 30000, maxBuffer: 1024 * 1024,
+        });
+    };
+    try {
+        await context.test('inspects all five supported dialect examples', () => {
+            for (const ddlCase of Object.values(SQLGLOT_DDL_CASES)) {
+                const result = runSnippet(ddlCase.sql, ddlCase.dialect);
+                assert.equal(result.status, 0, result.stderr || result.stdout);
+                const report = JSON.parse(result.stdout);
+                assert.equal(report.statements.length, ddlCase.expectedStatements);
+                assert(report.statements.every(statement => !statement.opaque && statement.ast.length > 0));
+                assert.equal(report.sha256, createHash('sha256').update(ddlCase.sql).digest('hex'));
+                assert.equal(report.dialect, ddlCase.dialect);
+            }
+        });
+        await context.test('matches the worked inventory to actual CREATE and ALTER nodes', () => {
+            const assertions = [
+                'expected = json.loads(sys.argv[4])',
+                'assert len(trees) == 4',
+                'schema = trees[1].this',
+                'assert isinstance(schema, exp.Schema)',
+                'assert schema.this.sql(dialect=dialect) == expected["name"]',
+                'assert [{"name": part.name, "quoted": part.args.get("quoted", False)} for part in schema.this.parts] == expected["identity"]',
+                'assert schema.this.this.meta["line"] == expected["source"]["line"]',
+                'columns = list(schema.expressions) + trees[2].args["actions"]',
+                'assert [column.name for column in columns] == [column["name"] for column in expected["columns"]]',
+                'for column, recorded in zip(columns, expected["columns"]):',
+                '    assert isinstance(column, exp.ColumnDef)',
+                '    assert column.args["kind"] == sqlglot.parse_one(recorded["type"], read=dialect, into=exp.DataType)',
+                '    assert column.this.meta["line"] == recorded["source"]["line"]',
+                '    constraints = [constraint.args["kind"] for constraint in column.args.get("constraints", [])]',
+                '    assert recorded["nullable"] == (not any(isinstance(constraint, (exp.NotNullColumnConstraint, exp.PrimaryKeyColumnConstraint)) for constraint in constraints))',
+                'assert columns[0].args["constraints"][0].args["kind"].key == "primarykeycolumnconstraint"',
+                'assert expected["primaryKey"] == [columns[0].name]',
+                'total_type = columns[2].args["kind"]',
+                'assert [int(parameter.this.this) for parameter in total_type.expressions] == [expected["columns"][2]["precision"], expected["columns"][2]["scale"]]',
+                'assert int(columns[3].args["kind"].expressions[0].this.this) == expected["columns"][3]["length"]',
+                'total_constraints = [constraint.args["kind"] for constraint in columns[2].args["constraints"]]',
+                'assert next(constraint.this.sql(dialect=dialect) for constraint in total_constraints if isinstance(constraint, exp.DefaultColumnConstraint)) == expected["columns"][2]["default"]',
+                'assert [constraint.this.sql(dialect=dialect) for constraint in total_constraints if isinstance(constraint, exp.CheckColumnConstraint)] == expected["columns"][2]["checks"]',
+                'named_constraint = trees[3].args["actions"][0].expressions[0]',
+                'foreign_key = named_constraint.expressions[0]',
+                'reference_schema = foreign_key.args["reference"].this',
+                'recorded_fk = expected["foreignKeys"][0]',
+                'assert named_constraint.name == recorded_fk["name"]',
+                'assert named_constraint.this.meta["line"] == recorded_fk["source"]["line"]',
+                'assert [column.name for column in foreign_key.expressions] == recorded_fk["columns"]',
+                'assert reference_schema.this.sql(dialect=dialect) == recorded_fk["referencedTable"]',
+                'assert [column.name for column in reference_schema.expressions] == recorded_fk["referencedColumns"]',
+                'assert reference_schema.this == trees[0].this.this',
+                'assert recorded_fk["referencedColumns"] == [trees[0].this.expressions[0].name]',
+            ].join('\n');
+            const result = runSnippet(workedSql, 'postgres', assertions);
+            assert.equal(result.status, 0, result.stderr || result.stdout);
+            context.diagnostic(`Documented recipe SQLGlot version: ${JSON.parse(result.stdout).version}`);
+        });
+        await context.test('preserves quoted identifier parts and source locations', () => {
+            const result = runSnippet('CREATE TABLE "Sales"."Order.With.Dot" ("Key" INT PRIMARY KEY);', 'postgres', [
+                'parts = trees[0].this.this.parts',
+                'assert [part.name for part in parts] == ["Sales", "Order.With.Dot"]',
+                'assert all(part.args["quoted"] for part in parts)',
+                'assert all(part.meta["line"] == 1 for part in parts)',
+            ].join('\n'));
+            assert.equal(result.status, 0, result.stderr || result.stdout);
+        });
+        await context.test('reports malformed DDL with a nonzero exit and source diagnostics', () => {
+            const result = runSnippet('CREATE TABLE broken (id INT');
+            assert.equal(result.status, 1, result.stderr || result.stdout);
+            const report = JSON.parse(result.stdout);
+            assert(report.parseErrors.length > 0);
+            assert.equal(report.parseErrors[0].line, 1);
+            assert.equal(report.statements, undefined);
+        });
+        await context.test('reports tokenization failures without emitting a statement inventory', () => {
+            const result = runSnippet("CREATE TABLE broken (value TEXT DEFAULT 'unterminated);");
+            assert.equal(result.status, 1, result.stderr || result.stdout);
+            const report = JSON.parse(result.stdout);
+            assert.equal(typeof report.tokenError, 'string');
+            assert(report.tokenError.length > 0);
+            assert.equal(report.statements, undefined);
+        });
+        await context.test('exposes opaque commands even with RAISE enabled', () => {
+            const result = runSnippet('CREATE TABLE public.orders (id INT); REINDEX TABLE public.orders;');
+            assert.equal(result.status, 0, result.stderr || result.stdout);
+            const report = JSON.parse(result.stdout);
+            assert.deepEqual(report.statements.map(statement => statement.opaque), [false, true]);
+            assert.equal(report.statements[1].kind, 'command');
+            assert.match(result.stderr, /unsupported syntax/iu);
+        });
+        await context.test('rejects an unsupported dialect without a default-dialect retry', () => {
+            const result = runSnippet(workedSql, 'not-a-sqlglot-dialect');
+            assert.equal(result.status, 1);
+            assert.match(result.stderr, /ValueError/u);
+        });
+        await context.test('handles comment-only input without fabricating a table', () => {
+            const result = runSnippet('-- no declarations\n');
+            assert.equal(result.status, 0, result.stderr || result.stdout);
+            const report = JSON.parse(result.stdout);
+            assert(report.statements.every(statement => statement.kind === 'empty' && statement.ast === null));
+        });
+        await context.test('decodes a BOM explicitly and hashes the original bytes', () => {
+            const source = `\uFEFF${workedSql}`;
+            const result = runSnippet(source, 'postgres', '', 'utf-8-sig');
+            assert.equal(result.status, 0, result.stderr || result.stdout);
+            const report = JSON.parse(result.stdout);
+            assert.equal(report.statements.length, 4);
+            assert.equal(report.sha256, createHash('sha256').update(source).digest('hex'));
+        });
+    } finally {
+        fs.rmSync(temporary, { recursive: true, force: true });
     }
 });

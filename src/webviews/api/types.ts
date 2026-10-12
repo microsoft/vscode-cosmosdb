@@ -49,3 +49,4 @@ export type {
 } from '../../panels/accountOverview/metrics/contracts';
 export type { InventoryContainerRow, ThroughputMode } from '../../panels/trpc/routers/accountOverviewRouter';
 export type { QueryEditorEvent } from '../../panels/trpc/routers/queryEditorEventsRouter';
+export type { AccountOverviewNavigation, AccountOverviewTarget } from '../../panels/accountOverview/navigation';

@@ -36,6 +36,7 @@ import {
     type UnavailableReason,
 } from '../../api/types';
 import { EmptyState } from './DashboardChrome';
+import { type ContainerRef } from './metrics/descriptors';
 
 const useStyles = makeStyles({
     root: {
@@ -256,6 +257,8 @@ const InventoryRow = memo(function InventoryRow({
     measureRef,
     onRevealInTree,
     onOpenQueryEditor,
+    selected,
+    onSelectContainer,
 }: {
     row: InventoryContainerRow;
     metric: ContainerMetrics | undefined;
@@ -263,6 +266,8 @@ const InventoryRow = memo(function InventoryRow({
     measureRef: (node: HTMLTableRowElement | null) => void;
     onRevealInTree: (databaseId: string, containerId: string) => void;
     onOpenQueryEditor: (databaseId: string, containerId: string) => void;
+    selected?: boolean;
+    onSelectContainer?: (container: ContainerRef) => void;
 }) {
     const styles = useStyles();
     const health = HEALTH_BADGE[rowHealth(row, metric)];
@@ -279,7 +284,26 @@ const InventoryRow = memo(function InventoryRow({
     return (
         <TableRow ref={measureRef} data-index={dataIndex}>
             <TableCell>
-                <TableCellLayout>{row.containerId}</TableCellLayout>
+                <TableCellLayout>
+                    {onSelectContainer ? (
+                        <Button
+                            appearance={selected ? 'primary' : 'subtle'}
+                            size="small"
+                            aria-pressed={selected}
+                            aria-label={l10n.t('{container}: show partition health in {database}', {
+                                container: row.containerId,
+                                database: row.databaseId,
+                            })}
+                            onClick={() =>
+                                onSelectContainer({ databaseId: row.databaseId, containerId: row.containerId })
+                            }
+                        >
+                            <span aria-hidden="true">{row.containerId}</span>
+                        </Button>
+                    ) : (
+                        row.containerId
+                    )}
+                </TableCellLayout>
             </TableCell>
             <TableCell>{row.databaseId}</TableCell>
             <TableCell>
@@ -367,6 +391,8 @@ export const InventoryTable = ({
     metrics,
     onRevealInTree,
     onOpenQueryEditor,
+    selectedContainer,
+    onSelectContainer,
 }: {
     rows: InventoryContainerRow[];
     supported: boolean;
@@ -375,6 +401,8 @@ export const InventoryTable = ({
     metrics?: Record<string, ContainerMetrics>;
     onRevealInTree: (databaseId: string, containerId: string) => void;
     onOpenQueryEditor: (databaseId: string, containerId: string) => void;
+    selectedContainer?: ContainerRef;
+    onSelectContainer?: (container: ContainerRef) => void;
 }) => {
     const styles = useStyles();
     const [search, setSearch] = useState('');
@@ -617,6 +645,11 @@ export const InventoryTable = ({
                                         metric={metrics?.[containerKey(row)]}
                                         onRevealInTree={onRevealInTree}
                                         onOpenQueryEditor={onOpenQueryEditor}
+                                        selected={
+                                            selectedContainer?.databaseId === row.databaseId &&
+                                            selectedContainer?.containerId === row.containerId
+                                        }
+                                        onSelectContainer={onSelectContainer}
                                     />
                                 );
                             })}

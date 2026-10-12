@@ -24,6 +24,7 @@ import { type CosmosDBRecordIdentifier } from '../../cosmosdb/types/queryResult'
 import { type TelemetryContext } from '../../Telemetry';
 import { openSurvey, promptAfterActionEventually } from '../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../utils/surveyTypes';
+import { type AccountOverviewNavigation } from '../accountOverview/navigation';
 import { accountOverviewRouterDef } from './routers/accountOverviewRouter';
 import { documentRouterDef } from './routers/documentRouter';
 import { migrationEventsRouterDef, type MigrationEvent } from './routers/migrationEventsRouter';
@@ -158,6 +159,8 @@ export type MigrationRouterContext = CosmosDBRouterContext & {
 
 export type AccountOverviewRouterContext = CosmosDBRouterContext & {
     metadata: AzureResourceMetadata;
+    getInitialization: () => AccountOverviewNavigation;
+    onNavigation: vscode.Event<AccountOverviewNavigation>;
 };
 
 // ─── Common Procedures (per-instance) ───────────────────────────────────────

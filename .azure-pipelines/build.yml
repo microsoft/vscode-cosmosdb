@@ -200,12 +200,14 @@ extends:
                               outDir: '$(Build.ArtifactStagingDirectory)'
                               isEnablePseudoLanguagesSelected: true
                               isCreatePrSelected: false
-                              isShouldReusePrSelected: true
-                              isAutoCompletePrSelected: false
-                              isSetAutoCompletePrSelected: true
-                              repoType: 'gitHub'
-                              prSourceBranchPrefix: 'locfiles'
-                              gitHubPrMergeMethod: 'squash'
+                              # Native2Native delivers localization PRs through olprod.
+                              # The pipeline PR options below are no longer needed.
+                              # isShouldReusePrSelected: true
+                              # isAutoCompletePrSelected: false
+                              # isSetAutoCompletePrSelected: true
+                              # repoType: 'gitHub'
+                              # prSourceBranchPrefix: 'locfiles'
+                              # gitHubPrMergeMethod: 'squash'
                               packageSourceAuth: patAuth
                               dependencyPackageSource: 'https://msdata.pkgs.visualstudio.com/CosmosDB/_packaging/vscode-cosmosdb/nuget/v3/index.json'
                               lclSource: lclFilesfromPackage

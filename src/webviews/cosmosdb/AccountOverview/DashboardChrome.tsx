@@ -161,7 +161,15 @@ export const MetricTile = ({
     );
 };
 
-export const Pill = ({ tone = 'neutral', children }: { tone?: PillTone; children: ReactNode }) => {
+export const Pill = ({
+    tone = 'neutral',
+    children,
+    className,
+}: {
+    tone?: PillTone;
+    children: ReactNode;
+    className?: string;
+}) => {
     const styles = useStyles();
     const toneClass: Record<PillTone, string | undefined> = {
         neutral: undefined,
@@ -170,7 +178,7 @@ export const Pill = ({ tone = 'neutral', children }: { tone?: PillTone; children
         warning: styles.pillWarning,
         danger: styles.pillDanger,
     };
-    return <span className={mergeClasses(styles.pill, toneClass[tone])}>{children}</span>;
+    return <span className={mergeClasses(styles.pill, toneClass[tone], className)}>{children}</span>;
 };
 
 // ─── Dashboard actions context ────────────────────────────────────────────────────

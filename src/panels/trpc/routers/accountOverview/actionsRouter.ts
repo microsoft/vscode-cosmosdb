@@ -10,7 +10,10 @@ import { z } from 'zod';
 import { getCosmosDBCredentials } from '../../../../cosmosdb/CosmosDBCredential';
 import { type NoSqlQueryConnection } from '../../../../cosmosdb/NoSqlQueryConnection';
 import { ext } from '../../../../extensionVariables';
+import { nonNullProp } from '../../../../utils/nonNull';
 import { revealAzureResourceInExplorer } from '../../../../vscodeUriHandler';
+import { accountActionInput } from '../../../accountOverview/accountActions';
+import { runAccountAction } from '../../../accountOverview/services/accountActions';
 import { QueryEditorTab } from '../../../QueryEditorTab';
 import { type AccountOverviewRouterContext } from '../../appRouter';
 import { accountOverviewProcedure } from '../../trpc';
@@ -22,6 +25,10 @@ import { accountOverviewProcedure } from '../../trpc';
 // services and carry no dashboard-metrics logic.
 
 export const actionsProcedures = {
+    runAccountAction: accountOverviewProcedure.input(accountActionInput).mutation(async ({ ctx, input }) => {
+        return runAccountAction(nonNullProp(ctx, 'actionContext'), ctx.metadata, input);
+    }),
+
     showOutput: accountOverviewProcedure.mutation(() => {
         ext.outputChannel.show(true);
     }),

@@ -50,3 +50,4 @@ export type {
 export type { InventoryContainerRow, ThroughputMode } from '../../panels/trpc/routers/accountOverviewRouter';
 export type { QueryEditorEvent } from '../../panels/trpc/routers/queryEditorEventsRouter';
 export type { AccountOverviewNavigation, AccountOverviewTarget } from '../../panels/accountOverview/navigation';
+export type { AccountActionInput, AccountActionResult } from '../../panels/accountOverview/accountActions';

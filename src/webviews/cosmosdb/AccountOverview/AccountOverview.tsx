@@ -8,6 +8,7 @@ import { useTrpcClient } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+    type AccountActionInput,
     type AccountOverviewAppRouter,
     type AccountOverviewTarget,
     type AlertsResult,
@@ -24,6 +25,7 @@ import {
     type TimeRange,
     type UnavailableReason,
 } from '../../api/types';
+import { AccountActions, type AccountActionFailure } from './AccountActions';
 import { AccountHeader, type AccountSummary } from './AccountHeader';
 import { ActiveAlerts } from './ActiveAlerts';
 import { DashboardActionsProvider, DashboardCard, SectionHeader } from './DashboardChrome';
@@ -89,10 +91,12 @@ type Inventory = {
     available: boolean;
     reason?: UnavailableReason;
     rows: InventoryContainerRow[];
+    databases?: string[];
 };
 
 export const AccountOverview = () => {
     const { navigation, failed, retry } = useOverviewNavigation();
+    const [accountDeleted, setAccountDeleted] = useState(false);
     return (
         <>
             {failed && (
@@ -102,8 +106,13 @@ export const AccountOverview = () => {
                 </div>
             )}
             {!navigation && !failed && <Spinner label={l10n.t('Loading Account Overview…')} />}
-            {navigation && (
-                <OverviewDashboard requestedTarget={navigation.target} navigationRevision={navigation.revision} />
+            {accountDeleted && <output>{l10n.t('This Cosmos DB account has been deleted.')}</output>}
+            {navigation && !accountDeleted && (
+                <OverviewDashboard
+                    requestedTarget={navigation.target}
+                    navigationRevision={navigation.revision}
+                    onAccountDeleted={() => setAccountDeleted(true)}
+                />
             )}
         </>
     );
@@ -112,9 +121,11 @@ export const AccountOverview = () => {
 export const OverviewDashboard = ({
     requestedTarget = 'overview',
     navigationRevision = 0,
+    onAccountDeleted,
 }: {
     requestedTarget?: AccountOverviewTarget;
     navigationRevision?: number;
+    onAccountDeleted: () => void;
 }) => {
     const styles = useStyles();
     const trpcClient = useTrpcClient<AccountOverviewAppRouter>();
@@ -143,6 +154,10 @@ export const OverviewDashboard = ({
     const [dismissedAdvisoryIds, setDismissedAdvisoryIds] = useState<ReadonlySet<string>>(() => new Set());
     const [paused, setPaused] = useState(false);
     const [lastRefreshedAt, setLastRefreshedAt] = useState(() => Date.now());
+    const [accountActionBusy, setAccountActionBusy] = useState(false);
+    const [accountActionFailure, setAccountActionFailure] = useState<AccountActionFailure>();
+    const accountActionInFlight = useRef(false);
+    const inventoryRequestSeq = useRef(0);
     // Monotonic id of the latest in-flight trends request; only that request may commit its result.
     const trendsRequestSeq = useRef(0);
     const partitionRequestSeq = useRef(0);
@@ -159,6 +174,56 @@ export const OverviewDashboard = ({
             setSummary(result);
         });
     }, [trpcClient]);
+
+    const fetchInventory = useCallback(async () => {
+        const requestId = ++inventoryRequestSeq.current;
+        const result = await trpcClient.accountOverview.getInventory.query();
+        if (requestId === inventoryRequestSeq.current) {
+            setInventory(result);
+        }
+        return result;
+    }, [trpcClient]);
+
+    const reloadInventory = useCallback(async () => {
+        try {
+            const result = await fetchInventory();
+            if (!result.available) {
+                setAccountActionFailure('refresh');
+            } else {
+                setAccountActionFailure((failure) => (failure === 'refresh' ? undefined : failure));
+            }
+        } catch {
+            setAccountActionFailure('refresh');
+        }
+    }, [fetchInventory]);
+
+    const runAccountAction = useCallback(
+        async (input: AccountActionInput) => {
+            if (accountActionInFlight.current) {
+                return;
+            }
+            accountActionInFlight.current = true;
+            setAccountActionBusy(true);
+            setAccountActionFailure(undefined);
+            try {
+                const result = await trpcClient.accountOverview.runAccountAction.mutate(input);
+                if (result.status === 'cancelled') {
+                    return;
+                }
+                if (input.action === 'deleteAccount') {
+                    onAccountDeleted();
+                } else if (input.action === 'createDatabase' || input.action === 'createContainer') {
+                    await reloadInventory();
+                }
+            } catch {
+                setAccountActionFailure('action');
+            } finally {
+                accountActionInFlight.current = false;
+                setAccountActionBusy(false);
+            }
+        },
+        [trpcClient, reloadInventory, onAccountDeleted],
+    );
 
     const fetchTrends = useCallback(
         async (range: TimeRange, container?: MetricScope) => {
@@ -291,24 +356,17 @@ export const OverviewDashboard = ({
     useEffect(() => {
         let cancelled = false;
         void fetchSummary();
-        void trpcClient.accountOverview.getInventory
-            .query()
-            .then((result: Inventory) => {
-                if (!cancelled) {
-                    setInventory(result);
-                }
-            })
-            .catch(() => {
-                // A transport-level failure (the router already shapes ARM/RBAC errors) must still
-                // resolve the inventory state, otherwise the whole panel stays on the loading spinner.
-                if (!cancelled) {
-                    setInventory({ supported: true, available: false, reason: 'noData', rows: [] });
-                }
-            });
+        void fetchInventory().catch(() => {
+            // A transport-level failure (the router already shapes ARM/RBAC errors) must still
+            // resolve the inventory state, otherwise the whole panel stays on the loading spinner.
+            if (!cancelled) {
+                setInventory({ supported: true, available: false, reason: 'noData', rows: [] });
+            }
+        });
         return () => {
             cancelled = true;
         };
-    }, [trpcClient, fetchSummary]);
+    }, [fetchInventory, fetchSummary]);
 
     // Reload trends whenever the time range or selected container changes.
     useEffect(() => {
@@ -382,6 +440,11 @@ export const OverviewDashboard = ({
         fetchRecommendations,
         fetchDerivedAdvisories,
     ]);
+
+    const refreshAccount = useCallback(() => {
+        refresh();
+        void reloadInventory();
+    }, [refresh, reloadInventory]);
 
     // Auto-refresh: poll every 60s, but only while the panel is visible and not
     // paused. Resume immediately when the panel becomes visible again.
@@ -550,22 +613,37 @@ export const OverviewDashboard = ({
                     selectedTab={selectedTab}
                     onTabSelect={setSelectedTab}
                     header={
-                        <DashboardCard>
+                        <>
                             <AccountHeader
                                 summary={summary}
                                 accountHealth={accountHealth}
                                 lastRefreshedAt={lastRefreshedAt}
                                 paused={paused}
                                 onTogglePause={setPaused}
-                                onRefresh={refresh}
+                                onRefresh={refreshAccount}
                                 autoRefreshIntervalsSeconds={{
                                     metrics: AUTO_REFRESH_INTERVAL_MS / 1000,
                                     inventory: INVENTORY_REFRESH_INTERVAL_MS / 1000,
                                     alerts: RAIL_REFRESH_INTERVAL_MS / 1000,
                                 }}
                                 defaultEssentialsOpen
+                                timeRange={timeRange}
+                                onTimeRangeChange={setTimeRange}
+                                containers={containers}
+                                selectedContainer={selectedContainer}
+                                onSelectContainer={setSelectedContainer}
+                                databaseIds={inventory.databases}
+                                accountActionBusy={accountActionBusy}
+                                onAccountAction={(input) => void runAccountAction(input)}
                             />
-                        </DashboardCard>
+                            <AccountActions
+                                busy={accountActionBusy}
+                                supported={inventory.supported}
+                                databaseId={selectedContainer?.databaseId}
+                                failure={accountActionFailure}
+                                onAction={(input) => void runAccountAction(input)}
+                            />
+                        </>
                     }
                     monitoring={
                         <MetricsSection
@@ -573,10 +651,6 @@ export const OverviewDashboard = ({
                             seriesByMetric={trends}
                             loading={trendsLoading}
                             timeRange={timeRange}
-                            onTimeRangeChange={setTimeRange}
-                            containers={containers}
-                            selectedContainer={selectedContainer}
-                            onSelectContainer={setSelectedContainer}
                             chartAffordances
                             requestedMetric={
                                 requestedTarget === 'overview' || requestedTarget === 'advisories'

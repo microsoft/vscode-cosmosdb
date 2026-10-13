@@ -62,7 +62,7 @@
   "cosmosdb.configuration.preferredAuthenticationMethod.auto.description": "Sélectionne la meilleure méthode d'authentification en fonction de la configuration du compte",
   "cosmosdb.configuration.preferredAuthenticationMethod.accountKey": "Clé de compte",
   "cosmosdb.configuration.preferredAuthenticationMethod.accountKey.description": "L'authentification locale ([LocalAuth](https://learn.microsoft.com/azure/cosmos-db/nosql/security/how-to-disable-key-based-authentication)) doit être activée ; son utilisation est déconseillée en environnement de production",
-  "cosmosdb.configuration.preferredAuthenticationMethod.entraId": "Identifiant d'entrée VS Code",
+  "cosmosdb.configuration.preferredAuthenticationMethod.entraId": "Entra ID VS Code",
   "cosmosdb.configuration.preferredAuthenticationMethod.entraId.description": "Connectez-vous à VS Code avec votre identifiant Entra",
   "cosmosdb.configuration.preferredAuthenticationMethod.managedIdentity": "Identité gérée",
   "cosmosdb.configuration.preferredAuthenticationMethod.managedIdentity.description": "Prise en charge uniquement lors de l'exécution dans Azure (c'est-à-dire sur une machine virtuelle), [en savoir plus](https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-setup-managed-identity)",

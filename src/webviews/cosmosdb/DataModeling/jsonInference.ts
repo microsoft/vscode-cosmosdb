@@ -13,7 +13,13 @@
 
 import { type JSONSchema, type JSONSchemaRef } from '@azure/cosmosdb-schema-analyzer';
 import { getSchemaFromDocuments, type NoSQLDocument } from '@azure/cosmosdb-schema-analyzer/json';
-import { type DocumentShape, type PropertyRole, type PropertyType } from './models';
+import { MAX_DOCUMENT_SIZE_KB, type DocumentShape, type PropertyRole, type PropertyType } from './models';
+
+export class DocumentSizeLimitError extends Error {
+    constructor() {
+        super('Document size exceeds the 2 MB item limit.');
+    }
+}
 
 export interface InferredProperty {
     name: string;
@@ -101,6 +107,9 @@ function toKilobytes(value: number): number {
 
 function inferDocumentShape(documents: NoSQLDocument[], attributeCount: number): DocumentShape {
     const sizes = documents.map((document) => new TextEncoder().encode(JSON.stringify(document)).length);
+    if (sizes.some((size) => size > MAX_DOCUMENT_SIZE_KB * 1024)) {
+        throw new DocumentSizeLimitError();
+    }
     return {
         attributeCount,
         avgSizeKb: toKilobytes(sizes.reduce((total, size) => total + size, 0) / sizes.length),

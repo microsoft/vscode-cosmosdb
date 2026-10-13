@@ -5,11 +5,14 @@
 
 import { z } from 'zod';
 import { type WizardState } from '../webviews/cosmosdb/DataModeling/dataModel';
-import { MAX_CONTAINERS, type ContainerModel } from '../webviews/cosmosdb/DataModeling/models';
+import { MAX_CONTAINERS, MAX_DOCUMENT_SIZE_KB, type ContainerModel } from '../webviews/cosmosdb/DataModeling/models';
 import { SuccessfulDeploymentSchema } from './deploymentModel';
 import { PartitionKeyRecommendationSchema } from './recommendationSchema';
 
 const PropertyRoleSchema = z.enum(['key', 'filter', 'payload']);
+// Projects saved before the 2 MB item limit was enforced may contain larger estimates.
+// Cap them at the limit instead of failing to load the whole project.
+const DocumentSizeKbSchema = z.number().transform((size) => Math.min(size, MAX_DOCUMENT_SIZE_KB));
 const ContainerModelSchema: z.ZodType<ContainerModel> = z.object({
     id: z.string().min(1),
     entity: z.string(),
@@ -23,7 +26,11 @@ const ContainerModelSchema: z.ZodType<ContainerModel> = z.object({
             pkCandidate: z.boolean(),
         }),
     ),
-    document: z.object({ attributeCount: z.number(), avgSizeKb: z.number(), maxSizeKb: z.number() }),
+    document: z.object({
+        attributeCount: z.number(),
+        avgSizeKb: DocumentSizeKbSchema,
+        maxSizeKb: DocumentSizeKbSchema,
+    }),
     arrays: z.object({
         hasArrays: z.boolean(),
         avgItems: z.number(),

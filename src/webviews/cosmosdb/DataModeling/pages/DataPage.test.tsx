@@ -20,6 +20,63 @@ beforeEach(() => {
     confirm.mockReset();
 });
 
+describe('DataPage document size limits', () => {
+    const fields = [
+        { label: 'Average document size', field: 'avgSizeKb' },
+        { label: 'Maximum document size', field: 'maxSizeKb' },
+    ] as const;
+
+    it.each(fields)('rejects oversized $label edits and accepts the inclusive boundary', ({ label, field }) => {
+        const container = createBlankContainer();
+        const model: DataModel = { containers: [container], activeContainerId: container.id };
+        const onChange = vi.fn<(next: DataModel) => void>();
+        const { rerender } = render(<DataPage model={model} onChange={onChange} />);
+        const input = screen.getByRole('spinbutton', { name: label });
+        expect(screen.getByText(label)).toBeVisible();
+        expect(input).toHaveAccessibleName(label);
+        expect(input).toHaveAttribute('max', '2048');
+        expect(input).toHaveAttribute('step', 'any');
+
+        for (const value of ['2048.01', '2049', '49999']) {
+            fireEvent.change(input, { target: { value } });
+            expect(onChange).not.toHaveBeenCalled();
+            expect(input).toHaveValue(container.document[field]);
+            expect(input).toHaveAttribute('aria-invalid', 'true');
+            expect(input).toHaveAccessibleDescription('Document size cannot exceed 2 MB (2048 KB).');
+            expect(screen.getByRole('alert')).toHaveTextContent('Document size cannot exceed 2 MB (2048 KB).');
+        }
+
+        for (const value of ['2048', '2047.99', '1.5', '0']) {
+            fireEvent.change(input, { target: { value } });
+            const next = onChange.mock.lastCall![0];
+            expect(next.containers[0].document[field]).toBe(Number(value));
+            rerender(<DataPage model={next} onChange={onChange} />);
+            expect(input).toHaveValue(Number(value));
+            expect(input).not.toHaveAttribute('aria-invalid', 'true');
+            expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        }
+    });
+
+    it('keeps errors independent and clears them when switching containers', () => {
+        const first = createBlankContainer('First');
+        const second = createBlankContainer('Second');
+        const model: DataModel = { containers: [first, second], activeContainerId: first.id };
+        const onChange = vi.fn();
+        const { rerender } = render(<DataPage model={model} onChange={onChange} />);
+        const average = screen.getByRole('spinbutton', { name: 'Average document size' });
+        const maximum = screen.getByRole('spinbutton', { name: 'Maximum document size' });
+        fireEvent.change(average, { target: { value: '49999' } });
+        fireEvent.change(maximum, { target: { value: '49999' } });
+        expect(screen.getAllByRole('alert')).toHaveLength(2);
+        fireEvent.change(maximum, { target: { value: '2048' } });
+        expect(maximum).not.toHaveAttribute('aria-invalid', 'true');
+        expect(average).toHaveAttribute('aria-invalid', 'true');
+        rerender(<DataPage model={{ ...model, activeContainerId: second.id }} onChange={onChange} />);
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        expect(average).not.toHaveAttribute('aria-invalid', 'true');
+    });
+});
+
 describe('DataPage property types', () => {
     it('shows three default attributes for a new container and keeps the count editable', () => {
         const container = createBlankContainer();
@@ -76,6 +133,30 @@ describe('DataPage property types', () => {
 });
 
 describe('DataPage native schema confirmation', () => {
+    it('rejects oversized imported documents with an accessible size error and no model changes', async () => {
+        confirm.mockResolvedValue(true);
+        const container = createBlankContainer();
+        const onChange = vi.fn();
+        const onTelemetry = vi.fn();
+        const page = render(
+            <DataPage
+                model={{ containers: [container], activeContainerId: container.id }}
+                onChange={onChange}
+                onTelemetry={onTelemetry}
+            />,
+        );
+        const text = JSON.stringify({ payload: 'x'.repeat(2 * 1024 * 1024) });
+        const file = new File([text], 'oversized.json', { type: 'application/json' });
+        Object.defineProperty(file, 'text', { value: vi.fn().mockResolvedValue(text) });
+        fireEvent.change(page.container.querySelector('input[type="file"]')!, { target: { files: [file] } });
+        await waitFor(() =>
+            expect(screen.getByRole('alert')).toHaveTextContent('Document size cannot exceed 2 MB (2048 KB).'),
+        );
+        expect(onChange).not.toHaveBeenCalled();
+        expect(onTelemetry).toHaveBeenCalledExactlyOnceWith({ type: 'schemaImport', outcome: 'error' });
+        expect(screen.getByRole('button', { name: 'Upload JSON' })).toHaveFocus();
+    });
+
     it.each([true, false, undefined])('replaces the schema only on Yes (response: %s)', async (response) => {
         let answer!: (result: boolean | undefined) => void;
         confirm.mockImplementation(

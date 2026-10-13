@@ -382,6 +382,21 @@ describe('DataModelerProjectService', () => {
         expect(await service.loadState()).toEqual(state);
     });
 
+    it('loads projects saved before the 2 MB document limit by capping oversized size estimates', async () => {
+        const state = snapshot();
+        const legacy = structuredClone(state);
+        legacy.wizard.dataModel.containers[0].document = { attributeCount: 3, avgSizeKb: 49999, maxSizeKb: 2049 };
+        files.set(
+            service.projectUri.toString(),
+            Buffer.from(JSON.stringify({ version: 1, name: 'Data Modeler', state: legacy })),
+        );
+        state.wizard.dataModel.containers[0].document = { attributeCount: 3, avgSizeKb: 2048, maxSizeKb: 2048 };
+        const loaded = await service.loadState();
+        expect(loaded).toEqual(state);
+        await service.saveState(loaded!);
+        expect(await new DataModelerProjectService(endpoint).loadState()).toEqual(state);
+    });
+
     it('does not let a corrupt account file block another account', async () => {
         const second = new DataModelerProjectService('https://account-b.documents.azure.com');
         files.set(service.projectUri.toString(), Buffer.from('invalid'));

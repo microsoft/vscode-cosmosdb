@@ -38,6 +38,11 @@ Containers created with **Add container** start with **Total attributes per docu
 an `id` key, a `type` string filter, and a `createdAt` date/time filter. The count and properties remain editable.
 Workload templates and previously saved containers retain their own configuration.
 
+**Average document size** and **Maximum document size** each have an inclusive limit of **2048 KB (2 MB)**.
+An oversized edit shows an inline error and leaves the last accepted value unchanged.
+JSON imports reject individual documents larger than 2 MB, measured as UTF-8 serialized JSON before rounding.
+Saved projects created before this limit open with any larger size estimate capped at 2048 KB.
+
 ## Source of truth
 
 The Result page's **Query routing → Filters on** column displays a comma-separated list of property names,

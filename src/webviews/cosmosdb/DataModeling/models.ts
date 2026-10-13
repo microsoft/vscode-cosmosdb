@@ -56,6 +56,8 @@ export interface SchemaProperty {
     pkCandidate: boolean;
 }
 
+export const MAX_DOCUMENT_SIZE_KB = 2 * 1024;
+
 export interface DocumentShape {
     attributeCount: number;
     avgSizeKb: number;

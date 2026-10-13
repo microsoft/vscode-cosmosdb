@@ -6,6 +6,7 @@
 import {
     Button,
     Checkbox,
+    Field,
     Input,
     makeStyles,
     Select,
@@ -24,10 +25,11 @@ import { type ChangeEvent, type KeyboardEvent, useEffect, useRef, useState } fro
 import { type ModelingTelemetryEvent } from '../../../../dataModeling/modelingTelemetrySchema';
 import { InlineGuidance, MythBox, SubPanel } from '../components/primitives';
 import { type DataModel } from '../dataModel';
-import { inferSchemaFromJson } from '../jsonInference';
+import { DocumentSizeLimitError, inferSchemaFromJson } from '../jsonInference';
 import {
     type ArrayUpdatePattern,
     type ContainerModel,
+    MAX_DOCUMENT_SIZE_KB,
     type PropertyRole,
     type PropertyType,
     PROPERTY_TYPES,
@@ -134,11 +136,15 @@ export interface DataPageProps {
     onTelemetry?: (event: ModelingTelemetryEvent) => void;
 }
 
+type DocumentSizeField = 'avgSizeKb' | 'maxSizeKb';
+
 export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
     const styles = useStyles();
     const [draftTag, setDraftTag] = useState('');
     const [uploadInfo, setUploadInfo] = useState<string>();
     const [uploadError, setUploadError] = useState<string>();
+    const [sizeErrors, setSizeErrors] = useState<Partial<Record<DocumentSizeField, boolean>>>({});
+    const sizeLimitMessage = l10n.t('Document size cannot exceed 2 MB (2048 KB).');
     const { confirm, confirmationError } = useNativeConfirmation();
     const fileRef = useRef<HTMLInputElement>(null);
     const uploadButtonRef = useRef<HTMLButtonElement>(null);
@@ -152,6 +158,9 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
     const onChangeContainers = (next: ContainerModel[]) => onChange({ ...model, containers: next });
 
     const active = containers.find((c) => c.id === activeContainerId) ?? containers[0];
+    useEffect(() => {
+        setSizeErrors({});
+    }, [active?.id]);
     useEffect(() => {
         const input = fileRef.current;
         const onCancel = () => onTelemetry?.({ type: 'schemaImport', outcome: 'cancelled' });
@@ -238,14 +247,17 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
             }));
             setUploadInfo(file.name);
             setUploadError(undefined);
+            setSizeErrors({});
             onTelemetry?.({ type: 'schemaImport', outcome: 'success' });
-        } catch {
+        } catch (error) {
             onTelemetry?.({ type: 'schemaImport', outcome: 'error' });
             setUploadInfo(undefined);
             setUploadError(
-                l10n.t('Could not read {file}. Make sure it is a JSON object or an array of objects.', {
-                    file: file.name,
-                }),
+                error instanceof DocumentSizeLimitError
+                    ? sizeLimitMessage
+                    : l10n.t('Could not read {file}. Make sure it is a JSON object or an array of objects.', {
+                          file: file.name,
+                      }),
             );
         }
     };
@@ -260,6 +272,15 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
 
     const patchDocument = (patch: Partial<ContainerModel['document']>) =>
         updateActive((c) => ({ ...c, document: { ...c.document, ...patch } }));
+
+    const patchDocumentSize = (field: DocumentSizeField, value: string) => {
+        const size = Number(value) || 0;
+        const exceedsLimit = size > MAX_DOCUMENT_SIZE_KB;
+        setSizeErrors((previous) => ({ ...previous, [field]: exceedsLimit }));
+        if (!exceedsLimit) {
+            patchDocument({ [field]: size });
+        }
+    };
 
     const patchArrays = (patch: Partial<ContainerModel['arrays']>) =>
         updateActive((c) => ({ ...c, arrays: { ...c.arrays, ...patch } }));
@@ -331,7 +352,11 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
                         })}
                     </MythBox>
                 ) : null}
-                {uploadError ? <Text className={styles.uploadError}>{uploadError}</Text> : null}
+                {uploadError ? (
+                    <Text className={styles.uploadError} role="alert">
+                        {uploadError}
+                    </Text>
+                ) : null}
                 {confirmationError ? <Text role="alert">{confirmationError}</Text> : null}
 
                 <div className={styles.tableWrap}>
@@ -411,27 +436,45 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
                         onChange={(_, data) => patchDocument({ attributeCount: Number(data.value) || 0 })}
                     />
                     <Text>{l10n.t('Average document size')}</Text>
-                    <div className={styles.unit}>
-                        <Input
-                            className={styles.kvInput}
-                            type="number"
-                            aria-label={l10n.t('Average document size')}
-                            value={String(active.document.avgSizeKb)}
-                            onChange={(_, data) => patchDocument({ avgSizeKb: Number(data.value) || 0 })}
-                        />
-                        <Text>{'KB'}</Text>
-                    </div>
+                    <Field
+                        validationState={sizeErrors.avgSizeKb ? 'error' : 'none'}
+                        validationMessage={
+                            sizeErrors.avgSizeKb ? { children: sizeLimitMessage, role: 'alert' } : undefined
+                        }
+                    >
+                        <div className={styles.unit}>
+                            <Input
+                                className={styles.kvInput}
+                                type="number"
+                                max={MAX_DOCUMENT_SIZE_KB}
+                                step="any"
+                                aria-label={l10n.t('Average document size')}
+                                value={String(active.document.avgSizeKb)}
+                                onChange={(_, data) => patchDocumentSize('avgSizeKb', data.value)}
+                            />
+                            <Text>{'KB'}</Text>
+                        </div>
+                    </Field>
                     <Text>{l10n.t('Maximum document size')}</Text>
-                    <div className={styles.unit}>
-                        <Input
-                            className={styles.kvInput}
-                            type="number"
-                            aria-label={l10n.t('Maximum document size')}
-                            value={String(active.document.maxSizeKb)}
-                            onChange={(_, data) => patchDocument({ maxSizeKb: Number(data.value) || 0 })}
-                        />
-                        <Text>{'KB'}</Text>
-                    </div>
+                    <Field
+                        validationState={sizeErrors.maxSizeKb ? 'error' : 'none'}
+                        validationMessage={
+                            sizeErrors.maxSizeKb ? { children: sizeLimitMessage, role: 'alert' } : undefined
+                        }
+                    >
+                        <div className={styles.unit}>
+                            <Input
+                                className={styles.kvInput}
+                                type="number"
+                                max={MAX_DOCUMENT_SIZE_KB}
+                                step="any"
+                                aria-label={l10n.t('Maximum document size')}
+                                value={String(active.document.maxSizeKb)}
+                                onChange={(_, data) => patchDocumentSize('maxSizeKb', data.value)}
+                            />
+                            <Text>{'KB'}</Text>
+                        </div>
+                    </Field>
                 </div>
             </SubPanel>
 

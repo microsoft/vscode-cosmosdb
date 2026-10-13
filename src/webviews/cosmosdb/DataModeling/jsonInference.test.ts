@@ -4,9 +4,31 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { describe, expect, it } from 'vitest';
-import { inferSchemaFromJson } from './jsonInference';
+import { DocumentSizeLimitError, inferSchemaFromJson } from './jsonInference';
 
 describe('inferSchemaFromJson', () => {
+    it('accepts a document exactly 2 MB in size', () => {
+        const overhead = JSON.stringify({ payload: '' }).length;
+        const document = { payload: 'x'.repeat(2 * 1024 * 1024 - overhead) };
+        expect(inferSchemaFromJson(JSON.stringify(document)).document).toEqual({
+            attributeCount: 1,
+            avgSizeKb: 2048,
+            maxSizeKb: 2048,
+        });
+    });
+
+    it('rejects a document one byte above 2 MB before rounding its size', () => {
+        const overhead = JSON.stringify({ payload: '' }).length;
+        const document = { payload: 'x'.repeat(2 * 1024 * 1024 - overhead + 1) };
+        expect(() => inferSchemaFromJson(JSON.stringify(document))).toThrow(DocumentSizeLimitError);
+        expect(() => inferSchemaFromJson(JSON.stringify([{ payload: '' }, document]))).toThrow(DocumentSizeLimitError);
+    });
+
+    it('measures imported document size in UTF-8 bytes rather than characters', () => {
+        const document = { payload: '\u00e9'.repeat(1024 * 1024) };
+        expect(() => inferSchemaFromJson(JSON.stringify(document))).toThrow(DocumentSizeLimitError);
+    });
+
     it('uses the shared schema analyzer to include top-level and nested object properties', () => {
         const schema = inferSchemaFromJson(
             JSON.stringify({

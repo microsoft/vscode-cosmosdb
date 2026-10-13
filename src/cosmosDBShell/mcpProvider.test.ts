@@ -6,11 +6,15 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import * as http from 'http';
-import { type AddressInfo } from 'net';
+import { createServer, type AddressInfo } from 'net';
+import { spawn, type ChildProcess } from 'node:child_process';
+import { once } from 'node:events';
 import * as vscode from 'vscode';
 import { MCP_SERVER_NAME, SETTING_MCP_PORT } from './constants';
+import { resolveCosmosDBShellCommand } from './cosmosDBShellCommandResolver';
 import { getCosmosDBShellMcpEndpoint } from './cosmosDBShellMcpEndpoint';
 import { registerMcpServer } from './mcpProvider';
+import { isMcpShellServer } from './mcpShellProbe';
 
 const mocks = vi.hoisted(() => ({
     getSetting: vi.fn(),
@@ -80,32 +84,143 @@ describe('Shell MCP provider resolution', () => {
         }
     });
 
-    it.runIf(process.env.COSMOSDB_SHELL_MCP_TEST_PORT)(
-        'reuses a live Shell through the registered resolver and executes an MCP tool',
-        async () => {
-            const port = process.env.COSMOSDB_SHELL_MCP_TEST_PORT!;
-            mocks.getSetting.mockImplementation((key: string) => (key === SETTING_MCP_PORT ? Number(port) : true));
-            const server = definition(port);
-            const resolved = await provider.resolveMcpServerDefinition?.(server, tokenSource.token);
-            expect(resolved).toBe(server);
-            expect(vscode.commands.executeCommand).not.toHaveBeenCalled();
-            expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
+    describe.runIf(process.env.COSMOSDB_SHELL_MCP_INTEGRATION === '1' || process.env.COSMOSDB_SHELL_MCP_TEST_PORT)(
+        'live Shell MCP integration',
+        () => {
+            let port: string;
+            let shell: ChildProcess | undefined;
+            let output = '';
+            let startupError: Error | undefined;
+            let client: Client;
+            let transport: StreamableHTTPClientTransport;
 
-            const transport = new StreamableHTTPClientTransport(new URL(server.uri.toString()));
-            const client = new Client({ name: 'cosmosdb-shell-regression-test', version: '1.0.0' });
-            try {
-                await client.connect(transport, { timeout: 3000 });
-                expect(client.getServerVersion()?.name).toBe('CosmosDBShell');
-                const result = await client.callTool({ name: 'help', arguments: { command: 'version', plain: true } });
-                expect(result.isError).not.toBe(true);
-                expect(result.content).toEqual(expect.arrayContaining([expect.objectContaining({ type: 'text' })]));
-            } finally {
+            beforeAll(async () => {
+                if (process.env.COSMOSDB_SHELL_MCP_TEST_PORT) {
+                    port = process.env.COSMOSDB_SHELL_MCP_TEST_PORT;
+                    return;
+                }
+
+                const listener = createServer();
+                listener.listen(0, '127.0.0.1');
+                await once(listener, 'listening');
+                port = (listener.address() as AddressInfo).port.toString();
+                await new Promise<void>((resolve, reject) =>
+                    listener.close((error) => (error ? reject(error) : resolve())),
+                );
+
+                const command = resolveCosmosDBShellCommand(process.env.COSMOSDB_SHELL_MCP_TEST_PATH);
+                shell = spawn(command, ['--mcp', port, '--quiet'], {
+                    stdio: 'pipe',
+                    windowsHide: true,
+                });
+                shell.on('error', (error) => {
+                    startupError = error;
+                });
+                shell.stdout?.on('data', (chunk: Buffer) => {
+                    output += chunk.toString();
+                });
+                shell.stderr?.on('data', (chunk: Buffer) => {
+                    output += chunk.toString();
+                });
+
+                const startupToken = new vscode.CancellationTokenSource();
                 try {
-                    await transport.terminateSession();
+                    await vi.waitFor(
+                        async () => {
+                            if (startupError || shell?.exitCode !== null || shell?.signalCode !== null) {
+                                throw new Error(
+                                    `Shell failed to start: ${startupError?.message ?? shell?.exitCode}\n${output}`,
+                                );
+                            }
+                            const ready = await isMcpShellServer(
+                                port,
+                                startupToken.token,
+                                (message) => {
+                                    output += `${message}\n`;
+                                },
+                                1000,
+                            );
+                            if (!ready) {
+                                throw new Error(`Shell MCP did not become ready:\n${output}`);
+                            }
+                        },
+                        { timeout: 30_000, interval: 250 },
+                    );
+                } finally {
+                    startupToken.dispose();
+                }
+            }, 35_000);
+
+            afterAll(async () => {
+                if (shell && shell.pid && shell.exitCode === null && shell.signalCode === null) {
+                    const exited = once(shell, 'exit');
+                    shell.kill();
+                    await exited;
+                }
+            });
+
+            beforeEach(async () => {
+                mocks.getSetting.mockImplementation((key: string) => (key === SETTING_MCP_PORT ? Number(port) : true));
+                transport = new StreamableHTTPClientTransport(new URL(getCosmosDBShellMcpEndpoint(port)));
+                client = new Client({ name: 'cosmosdb-shell-regression-test', version: '1.0.0' });
+                await client.connect(transport, { timeout: 3000 });
+            });
+
+            afterEach(async () => {
+                try {
+                    // An owned Shell process is stopped after the suite, releasing all its server sessions.
+                    if (process.env.COSMOSDB_SHELL_MCP_TEST_PORT && transport.sessionId) {
+                        await transport.terminateSession();
+                    }
                 } finally {
                     await client.close();
                 }
-            }
+            });
+
+            it('reuses a live Shell through the registered resolver after an MCP handshake', async () => {
+                const server = definition(port);
+                const resolved = await provider.resolveMcpServerDefinition?.(server, tokenSource.token);
+                expect(resolved).toBe(server);
+                expect(vscode.commands.executeCommand).not.toHaveBeenCalled();
+                expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
+                expect(client.getServerVersion()?.name).toBe('CosmosDBShell');
+                expect(client.getServerVersion()?.version).toEqual(expect.any(String));
+                await client.ping();
+            });
+
+            it('discovers Shell tools and their input schemas', async () => {
+                const tools = [];
+                let cursor: string | undefined;
+                do {
+                    const result = await client.listTools({ cursor });
+                    tools.push(...result.tools);
+                    cursor = result.nextCursor;
+                } while (cursor);
+                expect(tools.map((tool) => tool.name)).toEqual(expect.arrayContaining(['help', 'version', 'echo']));
+                for (const tool of tools) {
+                    expect(tool.inputSchema.type).toBe('object');
+                }
+            });
+
+            it('executes version with a nonempty text result', async () => {
+                const result = await client.callTool({ name: 'version', arguments: {} });
+                expect(result).not.toHaveProperty('isError', true);
+                expect(result.content).toEqual(
+                    expect.arrayContaining([
+                        expect.objectContaining({ type: 'text', text: expect.stringMatching(/\S/) }),
+                    ]),
+                );
+                expect(result.structuredContent).toEqual(
+                    expect.objectContaining({
+                        result: expect.objectContaining({
+                            version: expect.stringMatching(/^\d+\.\d+\.\d+(?:[-+].+)?$/),
+                            mcpEnabled: true,
+                            mcpPort: Number(port),
+                            mcpStatus: 'on',
+                        }),
+                    }),
+                );
+            });
         },
     );
 });

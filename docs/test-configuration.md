@@ -161,6 +161,42 @@ The script:
    `@vitest/runner.startTests()`.
 5. Exits with non-zero status if any test fails.
 
+### Shell MCP integration
+
+Prerequisites: npm dependencies and an existing Cosmos DB Shell installation on `PATH`. No Azure account,
+database connection, emulator, or VS Code instance is required.
+
+```bash
+npm run test:shell-mcp
+```
+
+This command never installs or updates the Shell locally. It starts the existing executable on a dynamically
+allocated loopback port, waits for a successful MCP identity probe, and stops its process after the tests.
+The tests cover Streamable HTTP initialization, server identity, ping, tool discovery and input schemas,
+a structured `version` tool result reporting MCP enabled on the selected port, and the extension's MCP resolver
+reusing the server.
+The resolver uses the mocked VS Code API; the Shell process, HTTP transport, and MCP client are real.
+
+To select a particular local installation in PowerShell:
+
+```powershell
+$env:COSMOSDB_SHELL_MCP_TEST_PATH = 'C:\tools\cosmosdbshell.exe'
+npm run test:shell-mcp
+```
+
+Alternatively, set `COSMOSDB_SHELL_MCP_TEST_PORT` to reuse an already running Shell MCP server.
+In that mode the tests do not start or stop the server. Each client session is terminated after its test.
+For an owned process, client transports are closed after each test and stopping the Shell releases its server sessions.
+The live tests are skipped during ordinary unit-test runs unless this port is set.
+
+Older Shell previews may not support tool execution with redirected terminal streams. Such a version fails
+the live tool-call test with the Shell's actual error; use `COSMOSDB_SHELL_MCP_TEST_PATH` to select a newer
+existing installation. The test never upgrades it automatically.
+
+The **Tests** CI workflow installs .NET 10 and the latest `CosmosDBShell` preview with
+`dotnet tool install CosmosDBShell --prerelease --tool-path ...` into the runner's temporary directory,
+then runs the same command with `COSMOSDB_SHELL_MCP_TEST_PATH` pointing to that isolated installation.
+
 ### Testing proxy routing locally
 
 Prerequisites: the project's npm dependencies and **OpenSSL** on `PATH`. No Azure account or Docker emulator

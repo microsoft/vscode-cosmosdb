@@ -7,8 +7,9 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import * as http from 'http';
 import { createServer, type AddressInfo } from 'net';
-import { spawn, type ChildProcess } from 'node:child_process';
+import { ChildProcess, spawn } from 'node:child_process';
 import { once } from 'node:events';
+import { PassThrough } from 'node:stream';
 import * as vscode from 'vscode';
 import { MCP_SERVER_NAME, SETTING_MCP_PORT } from './constants';
 import { resolveCosmosDBShellCommand } from './cosmosDBShellCommandResolver';
@@ -31,6 +32,90 @@ vi.mock('./shellSupportCache', () => ({
     isCosmosDBShellInstalled: () => true,
     invalidateCosmosDBShellSupportCache: vi.fn(),
 }));
+
+async function stopShellProcess(shell: ChildProcess): Promise<void> {
+    if (!shell.pid || shell.exitCode !== null || shell.signalCode !== null) {
+        return;
+    }
+    if (!shell.stdin) {
+        throw new Error('The owned Shell process has no stdin pipe for the exit command.');
+    }
+
+    const exited = once(shell, 'exit', { signal: AbortSignal.timeout(5000) });
+    const forceKill = setTimeout(() => {
+        console.warn(
+            'Shell did not exit within 2 seconds of the exit command; stopping the owned test process with SIGKILL.',
+        );
+        shell.kill('SIGKILL');
+    }, 2000);
+    try {
+        shell.stdin.end('exit\n');
+        await exited;
+    } finally {
+        clearTimeout(forceKill);
+    }
+}
+
+describe('Shell test process cleanup', () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+        vi.restoreAllMocks();
+    });
+
+    const childProcess = (): { child: ChildProcess; input: PassThrough } => {
+        const child = new ChildProcess();
+        const input = new PassThrough();
+        child.stdin = input;
+        Object.defineProperty(child, 'pid', { value: 12345 });
+        return { child, input };
+    };
+
+    it('sends exit through stdin without killing a process that shuts down normally', async () => {
+        const { child, input } = childProcess();
+        const end = vi.spyOn(input, 'end');
+        const kill = vi.spyOn(child, 'kill').mockReturnValue(true);
+        input.on('data', () => {
+            queueMicrotask(() => child.emit('exit', 0, null));
+        });
+
+        await stopShellProcess(child);
+        await vi.advanceTimersByTimeAsync(5000);
+
+        expect(end).toHaveBeenCalledWith('exit\n');
+        expect(kill).not.toHaveBeenCalled();
+        expect(child.listenerCount('exit')).toBe(0);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('force-kills a process that ignores exit at the two-second deadline', async () => {
+        const { child, input } = childProcess();
+        const end = vi.spyOn(input, 'end');
+        const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const kill = vi.spyOn(child, 'kill').mockImplementation((signal) => {
+            if (signal === 'SIGKILL') {
+                queueMicrotask(() => child.emit('exit', null, 'SIGKILL'));
+            }
+            return true;
+        });
+
+        const stopped = stopShellProcess(child);
+        await vi.advanceTimersByTimeAsync(1999);
+        expect(end).toHaveBeenCalledWith('exit\n');
+        expect(kill).not.toHaveBeenCalled();
+
+        await vi.advanceTimersByTimeAsync(1);
+        await stopped;
+
+        expect(kill.mock.calls).toEqual([['SIGKILL']]);
+        expect(warning).toHaveBeenCalledWith(expect.stringContaining('SIGKILL'));
+        expect(child.listenerCount('exit')).toBe(0);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+});
 
 describe('Shell MCP provider resolution', () => {
     let provider: vscode.McpServerDefinitionProvider;
@@ -152,10 +237,8 @@ describe('Shell MCP provider resolution', () => {
             }, 35_000);
 
             afterAll(async () => {
-                if (shell && shell.pid && shell.exitCode === null && shell.signalCode === null) {
-                    const exited = once(shell, 'exit');
-                    shell.kill();
-                    await exited;
+                if (shell) {
+                    await stopShellProcess(shell);
                 }
             });
 

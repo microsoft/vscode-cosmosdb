@@ -172,6 +172,10 @@ npm run test:shell-mcp
 
 This command never installs or updates the Shell locally. It starts the existing executable on a dynamically
 allocated loopback port, waits for a successful MCP identity probe, and stops its process after the tests.
+Cleanup sends `exit` through the owned process's stdin pipe; `exit` is restricted to interactive use and
+cannot be invoked through MCP. If the process remains alive after two seconds, cleanup logs a warning and
+sends `SIGKILL`. The process must exit within five seconds; otherwise cleanup fails. An externally supplied
+server is never stopped. This avoids waiting indefinitely for `SIGTERM`, which did not stop the Shell in Linux CI.
 The tests cover Streamable HTTP initialization, server identity, ping, tool discovery and input schemas,
 a structured `version` tool result reporting MCP enabled on the selected port, and the extension's MCP resolver
 reusing the server.

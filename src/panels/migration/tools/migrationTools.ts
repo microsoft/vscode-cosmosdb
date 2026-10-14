@@ -11,6 +11,11 @@ import { CHARS_PER_TOKEN, estimateTokens, MAX_FILE_TOKENS } from '../../../utils
 import { extractStructuralDDL } from '../../../utils/ddlExtractor';
 import { decodeFileBytes } from '../../../utils/decodeFileBytes';
 import { loadSkillSupplementaryFile } from '../bestPractices';
+import {
+    findMigrationProjectFiles,
+    isMigrationProjectFile,
+    isMigrationWorkspaceRoot,
+} from '../helpers/migrationHelpers';
 import { formatDdlExtractorSummary, reportDdlExtractorStats } from '../helpers/migrationTelemetry';
 
 // ─── Tool Definitions ────────────────────────────────────────────────
@@ -195,7 +200,11 @@ const ALLOWED_CHAT_TOOLS: ReadonlySet<string> = new Set([
  * Only tools in the {@link ALLOWED_CHAT_TOOLS} allowlist are included, and any
  * whose names collide with the provided set of custom tool names are excluded.
  */
-export function getRegisteredChatTools(excludeNames: ReadonlySet<string>): vscode.LanguageModelChatTool[] {
+export function getRegisteredChatTools(
+    excludeNames: ReadonlySet<string>,
+    workspacePath: string,
+): vscode.LanguageModelChatTool[] {
+    if (!isMigrationWorkspaceRoot(workspacePath)) return [];
     return vscode.lm.tools
         .filter((t) => ALLOWED_CHAT_TOOLS.has(t.name) && !excludeNames.has(t.name))
         .map((t) => ({
@@ -218,6 +227,7 @@ export function serializeToolResult(result: vscode.LanguageModelToolResult): str
 // ─── Tool Executor ───────────────────────────────────────────────────
 
 export interface ToolFileLists {
+    workspacePath?: string;
     schemaFiles?: string[];
     accessPatternFiles?: string[];
     volumetricFiles?: string[];
@@ -268,7 +278,7 @@ export { CHARS_PER_TOKEN, estimateTokens, MAX_FILE_TOKENS };
 /**
  * Creates a unified tool executor function that handles all migration AI tools.
  * Pass in file maps for schema/access-pattern/volumetric tools; workspace tools
- * always work against the current VS Code workspace.
+ * require the selected project root in `fileLists.workspacePath`.
  *
  * @param fileMaps Optional lookup maps for file-based tools.
  * @param logPrefix Optional prefix for output channel logging (e.g. "[Discovery]").
@@ -284,7 +294,7 @@ export function createToolExecutor(
     token?: vscode.CancellationToken,
     phaseContext?: IActionContext,
 ): (toolCall: vscode.LanguageModelToolCallPart) => Promise<string> {
-    const { schemaFiles, accessPatternFiles, volumetricFiles } = fileLists;
+    const { workspacePath, schemaFiles, accessPatternFiles, volumetricFiles } = fileLists;
     const workspaceFileExclude = getWorkspaceFileExclude(languageContext?.language, languageContext?.frameworks);
     const tag = logPrefix ?? '[Migration]';
 
@@ -447,11 +457,10 @@ export function createToolExecutor(
 
             // ── Workspace tools ──
             case 'listWorkspaceFiles': {
-                const workspaceFolders = vscode.workspace.workspaceFolders;
-                if (!workspaceFolders || workspaceFolders.length === 0) return 'No workspace folder open.';
+                if (!workspacePath) return 'No migration project selected.';
 
                 const pattern = input.pattern || DEFAULT_SOURCE_PATTERN;
-                const files = await vscode.workspace.findFiles(pattern, workspaceFileExclude);
+                const files = await findMigrationProjectFiles(workspacePath, pattern, workspaceFileExclude);
 
                 if (files.length === 0) {
                     if (logPrefix) {
@@ -485,27 +494,17 @@ export function createToolExecutor(
             }
 
             case 'readWorkspaceFile': {
-                const workspaceFolders = vscode.workspace.workspaceFolders;
-                if (!workspaceFolders || workspaceFolders.length === 0) return 'No workspace folder open.';
+                if (!workspacePath) return 'No migration project selected.';
 
                 // Reject non-absolute paths to avoid resolving against the extension host CWD.
                 if (!input.filePath || !path.isAbsolute(input.filePath)) {
-                    return 'Error: File path must be an absolute path inside the workspace.';
+                    return 'Error: File path must be an absolute path inside the selected project.';
                 }
 
                 const absolutePath = path.normalize(input.filePath);
 
-                // Ensure the resolved path stays inside one of the workspace folders.
-                // Use path.relative so that "/ws/foo-evil/x" is not accepted when the
-                // workspace is "/ws/foo" (a naive startsWith check would allow it).
-                const isWithinWorkspace = workspaceFolders.some((folder) => {
-                    const folderPath = path.normalize(folder.uri.fsPath);
-                    if (absolutePath === folderPath) return true;
-                    const rel = path.relative(folderPath, absolutePath);
-                    return rel.length > 0 && !rel.startsWith('..') && !path.isAbsolute(rel);
-                });
-                if (!isWithinWorkspace) {
-                    return 'Error: File path must be within the workspace.';
+                if (!(await isMigrationProjectFile(workspacePath, absolutePath))) {
+                    return 'Error: File path must be within the selected project, including after resolving symlinks.';
                 }
 
                 const startLine = input.startLine ? Number(input.startLine) : undefined;
@@ -542,6 +541,13 @@ export function createToolExecutor(
             }
 
             default: {
+                if (
+                    !workspacePath ||
+                    !isMigrationWorkspaceRoot(workspacePath) ||
+                    !ALLOWED_CHAT_TOOLS.has(toolCall.name)
+                ) {
+                    return 'Error: This tool is not available for the selected project. Use listWorkspaceFiles and readWorkspaceFile.';
+                }
                 // Fall back to VS Code registered chat tools
                 try {
                     const vsCodeResult = await vscode.lm.invokeTool(

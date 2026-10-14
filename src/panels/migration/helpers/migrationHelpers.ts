@@ -4,6 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type TypedEventSink } from '@microsoft/vscode-ext-webview';
+import { realpath } from 'fs/promises';
+import * as path from 'path';
 import * as vscode from 'vscode';
 import { ext } from '../../../extensionVariables';
 import { MigrationProjectService } from '../../../services/MigrationProjectService';
@@ -14,6 +16,41 @@ import {
     type MigrationProgressEventName,
 } from '../../trpc/routers/migrationEventsRouter';
 import { type CosmosContainer, type CosmosModel, type IndexingPolicy } from '../cosmosModel';
+
+export function isMigrationWorkspaceRoot(workspacePath: string): boolean {
+    const folders = vscode.workspace.workspaceFolders;
+    return folders?.length === 1 && path.relative(folders[0].uri.fsPath, workspacePath) === '';
+}
+
+function isWithinDirectory(directory: string, filePath: string): boolean {
+    const relative = path.relative(directory, filePath);
+    return relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
+}
+
+export async function isMigrationProjectFile(workspacePath: string, filePath: string): Promise<boolean> {
+    if (!path.isAbsolute(filePath) || !isWithinDirectory(workspacePath, filePath)) return false;
+    try {
+        const [resolvedRoot, resolvedFile] = await Promise.all([realpath(workspacePath), realpath(filePath)]);
+        return isWithinDirectory(resolvedRoot, resolvedFile);
+    } catch {
+        return false;
+    }
+}
+
+export async function findMigrationProjectFiles(
+    workspacePath: string,
+    pattern: string,
+    exclude: string,
+    maxResults?: number,
+): Promise<vscode.Uri[]> {
+    const files = await vscode.workspace.findFiles(
+        new vscode.RelativePattern(workspacePath, pattern),
+        exclude,
+        maxResults,
+    );
+    const included = await Promise.all(files.map((file) => isMigrationProjectFile(workspacePath, file.fsPath)));
+    return files.filter((_file, index) => included[index]);
+}
 
 // ─── File I/O ────────────────────────────────────────────────────────
 

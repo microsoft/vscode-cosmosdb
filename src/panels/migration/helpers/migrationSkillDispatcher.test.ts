@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as path from 'path';
 import { type Mock } from 'vitest';
 import * as vscode from 'vscode';
 import { MigrationProjectService } from '../../../services/MigrationProjectService';
@@ -30,6 +31,9 @@ vi.mock('vscode', () => ({
         getCommands: vi.fn().mockResolvedValue([]),
     },
     workspace: {
+        get workspaceFolders() {
+            return [{ uri: { fsPath: '/workspace/shop' }, name: 'shop', index: 0 }];
+        },
         getConfiguration: vi.fn(),
         fs: { stat: vi.fn() },
     },
@@ -79,7 +83,7 @@ describe('migrationSkillDispatcher', () => {
         expect(shouldUseMigrationSkill()).toBe(false);
     });
 
-    it('builds a minimal workspace invocation by default', () => {
+    it('omits the project path when it is the sole workspace root', () => {
         const prompt = buildMigrationSkillPrompt({ workspacePath: '/workspace/shop' });
 
         expect(prompt).toBe(
@@ -88,6 +92,54 @@ describe('migrationSkillDispatcher', () => {
                 'Use the cosmosdb-relational-migration skill.',
             ].join('\n'),
         );
+    });
+
+    it.each([
+        ['/workspace/shop', '/workspace/other'],
+        ['/workspace/other', '/workspace/shop'],
+        ['/workspace'],
+        ['/workspace/other'],
+        [],
+    ])('includes the selected project scope for workspace folders %j', (...roots: string[]) => {
+        vi.spyOn(vscode.workspace, 'workspaceFolders', 'get').mockReturnValue(
+            roots.map((root, index) => ({ uri: vscode.Uri.file(root), name: root, index })),
+        );
+
+        for (const hasExistingArtifacts of [false, true]) {
+            const prompt = buildMigrationSkillPrompt(
+                { workspacePath: '/workspace/shop', phase: 'code-migration', codeMigrationAction: 'migrate' },
+                hasExistingArtifacts,
+            );
+
+            expect(prompt).toContain(`Workspace: ${JSON.stringify(path.resolve('/workspace/shop'))}`);
+            expect(prompt).not.toContain('/workspace/other');
+        }
+    });
+
+    it('normalizes the project path before comparing it with the sole workspace root', () => {
+        const prompt = buildMigrationSkillPrompt({ workspacePath: '/workspace/shop/../shop/' });
+
+        expect(prompt).not.toContain('Workspace:');
+    });
+
+    it.each([
+        undefined,
+        'preflight',
+        'discovery',
+        'assessment',
+        'schema-conversion',
+        'provisioning',
+        'code-migration',
+    ] as const)('retains project scope for new and resumed %s requests', (phase) => {
+        const workspacePath = '/workspace/My Shop';
+        for (const hasExistingArtifacts of [false, true]) {
+            const prompt = buildMigrationSkillPrompt(
+                { workspacePath, phase, runId: 'scoped-run' },
+                hasExistingArtifacts,
+            );
+            expect(prompt).toContain(`Workspace: ${JSON.stringify(path.resolve(workspacePath))}`);
+            expect(prompt.split('\n').at(-1)).toBe('Run ID: scoped-run');
+        }
     });
 
     it('supplies only phase routing inputs for WebView-triggered runs', () => {
@@ -291,6 +343,28 @@ describe('migrationSkillDispatcher', () => {
             modelSelector: { vendor: 'copilot', id: 'selected' },
         });
         expect(query).toBe(buildMigrationSkillPrompt(invocation));
+    });
+
+    it('adds project scope to a reused chat session after another folder is added', async () => {
+        const session = new MigrationSkillChatSession();
+        const invocation = { workspacePath: '/workspace/shop', phase: 'discovery' as const };
+        const initialQuery = await session.dispatch(invocation, 'selected');
+        expect(initialQuery).not.toContain('Workspace:');
+
+        vi.spyOn(vscode.workspace, 'workspaceFolders', 'get').mockReturnValue(
+            ['/workspace/other', '/workspace/shop'].map((root, index) => ({
+                uri: vscode.Uri.file(root),
+                name: root,
+                index,
+            })),
+        );
+        const resumedQuery = await session.dispatch(invocation, 'selected');
+        expect(resumedQuery).toContain(`Workspace: ${JSON.stringify(path.resolve(invocation.workspacePath))}`);
+        expect(vscode.commands.executeCommand).toHaveBeenLastCalledWith('workbench.action.chat.open', {
+            mode: 'agent',
+            query: resumedQuery,
+            modelSelector: { vendor: 'copilot', id: 'selected' },
+        });
     });
 
     it.each([

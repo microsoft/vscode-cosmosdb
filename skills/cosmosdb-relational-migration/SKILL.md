@@ -138,7 +138,8 @@ be inferred safely.
   regenerates completed phase outputs, while interactive mode asks whether to validate
   existing outputs or regenerate them.
 - `additional instructions`: optional phase guidance supplied with the request.
-- `workspace`: application workspace root; default to the current workspace.
+- `workspace`: selected application project root; default to the sole workspace folder
+  only when it is also the target project root. Resolve it as described below.
 - `run-id`: optional host-supplied tracking identifier. Use it for the run activity contract in
   [project-state-and-artifacts.md](./references/contracts/project-state-and-artifacts.md#run-activity), not as authorization.
 - `allow-provisioning`: default `false`. Only `true` explicitly authorizes resource or
@@ -147,6 +148,31 @@ be inferred safely.
 Use named phases when invoking the portable command-line helpers. Artifact paths
 and version 1 `project.json` fields are defined in
 [project-state-and-artifacts.md](./references/contracts/project-state-and-artifacts.md).
+
+### Project Scope
+
+Resolve one application project root before inspecting or initializing migration state.
+An explicit `workspace` selects that root. When resuming a selected existing migration,
+use the directory containing its `.cosmosdb-migration` folder. If these identify different
+roots, stop and ask which project to use; do not initialize another migration instead.
+With no explicit selection, use the sole workspace folder only when it is the target
+project root. If multiple projects could match, ask the user to select one before proceeding.
+Do not infer the target from workspace-folder order, the active editor, or terminal working directory.
+
+Throughout this Skill and its references, "workspace" means that selected project root,
+not the collection of open folders or a containing repository. Anchor application searches,
+file reads, relative paths, artifacts, and application edits to this root. Scope search tools
+explicitly and discard results outside it. Set each command's working directory to this root
+unless a command requires a directory within it, and pass the same root to every helper's
+`--workspace` argument. Do not follow source symlinks outside the project or use sibling
+projects as application evidence. Reading Skill resources and invoking installed tooling
+outside the project remains allowed; it does not make those directories migration inputs.
+
+Keep this scope when resuming, regenerating, delegating, or executing a code migration plan.
+Permission to edit application code does not widen the project boundary. If a required shared
+dependency lies outside it, explain the dependency and request explicit scope approval before
+analyzing or changing that external project. Preserve existing checkpoint-relative paths;
+adding the project to another workspace does not relocate its `.cosmosdb-migration` folder.
 
 ### Helper Commands
 
@@ -371,8 +397,9 @@ choices or silently choose between materially different valid designs.
 
 ## Safety and Approvals
 
-- File writes are restricted to the workspace and `.cosmosdb-migration` unless the
-  user explicitly requests application code migration.
+- File writes are restricted to the selected project root and its `.cosmosdb-migration`
+  folder. Application code edits additionally require an explicit migration request;
+  that permission does not authorize edits in other workspace folders.
 - Reading production data, executing source queries, and using paid services require
   the host's normal consent controls.
 - `provisioning` may generate Bicep, parameters, sample data, and seed scripts without cloud

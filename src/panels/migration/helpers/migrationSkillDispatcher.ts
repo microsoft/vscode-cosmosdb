@@ -10,6 +10,7 @@ import { MIGRATION_FOLDER, MigrationProjectService } from '../../../services/Mig
 import { getAvailableModelsInfo } from '../../../utils/aiUtils';
 import { getMigrationModels, MIGRATION_SELECTED_MODEL_KEY, resolveSelectedModelId } from '../../../utils/modelUtils';
 import { capturePrompt, isMigrationAiMockEnabled } from './e2eMigrationAiMock';
+import { isMigrationWorkspaceRoot } from './migrationHelpers';
 
 export type MigrationSkillExecutionMode = 'interactive' | 'autonomous';
 export type MigrationSkillPhase =
@@ -118,6 +119,7 @@ export function buildMigrationSkillPrompt(invocation: MigrationSkillInvocation, 
     const codeMigrationAction =
         invocation.phase === 'code-migration' ? (invocation.codeMigrationAction ?? 'plan') : undefined;
     const phaseLabel = invocation.phase?.replaceAll('-', ' ');
+    const isWorkspaceRoot = isMigrationWorkspaceRoot(invocation.workspacePath);
     const lines = [
         invocation.phase === undefined
             ? 'Run a relational database migration to Azure Cosmos DB.'
@@ -125,6 +127,7 @@ export function buildMigrationSkillPrompt(invocation: MigrationSkillInvocation, 
               ? `Regenerate the ${phaseLabel} results for a relational database migration to Azure Cosmos DB.`
               : `Run the ${phaseLabel} phase of a relational database migration to Azure Cosmos DB.`,
         'Use the cosmosdb-relational-migration skill.',
+        ...(isWorkspaceRoot ? [] : [`Workspace: ${JSON.stringify(path.resolve(invocation.workspacePath))}`]),
         ...(invocation.mode === 'autonomous' ? ['Run in autonomous mode.'] : []),
         ...(invocation.preflightStep === undefined ? [] : [`Run only the ${invocation.preflightStep} preflight step.`]),
         ...(invocation.includeUnmappedDomains === undefined

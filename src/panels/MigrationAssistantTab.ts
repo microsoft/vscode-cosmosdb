@@ -1580,7 +1580,7 @@ export class MigrationAssistantTab extends BaseTab {
             });
             return;
         }
-        let prompt = buildCodeMigrationPrompt(this.project, MIGRATION_FOLDER, action);
+        let prompt = buildCodeMigrationPrompt(this.project, MIGRATION_FOLDER, action, this.workspacePath);
 
         if (isDebugPromptsEnabled()) {
             try {

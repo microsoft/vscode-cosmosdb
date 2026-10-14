@@ -3,8 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as path from 'path';
 import { type ProjectJson } from '../../../services/MigrationProjectService';
 import { isDebugPromptsEnabled } from '../helpers/aiHelpers';
+import { isMigrationWorkspaceRoot } from '../helpers/migrationHelpers';
 
 /**
  * Build a plain-text code migration prompt for Copilot Chat.
@@ -15,10 +17,15 @@ export function buildCodeMigrationPrompt(
     project: ProjectJson | undefined,
     migrationFolder: string,
     action: 'plan' | 'migrate' = 'plan',
+    workspacePath?: string,
 ): string {
     const analysis = project?.phases.discovery.applicationAnalysis;
     const provisioning = project?.phases.provisioning;
     const targetEnv = project?.phases.targetEnvironment;
+    const workspaceScope =
+        workspacePath !== undefined && !isMigrationWorkspaceRoot(workspacePath)
+            ? `\nWorkspace: ${JSON.stringify(path.resolve(workspacePath))}\n`
+            : '';
 
     // Source application context (only include truthy values)
     const appLines: string[] = [];
@@ -51,20 +58,21 @@ export function buildCodeMigrationPrompt(
     return `You are an expert Azure Cosmos DB NoSQL architect helping migrate an application from a relational database.
 Generate a detailed, step-by-step CODE MIGRATION PLAN to refactor the data access layer to use the Azure Cosmos DB NoSQL.
 Focus on APPLICATION CODE CHANGES — this is NOT a data migration plan.
-${debugExclusion}
+${workspaceScope}${debugExclusion}
 ## Instructions
+All paths and commands are relative to the selected application project root, or the sole workspace folder when no root is specified. Keep application analysis and edits within that project, including after resolving symlinks. Do not scan other workspace folders; ask before expanding scope to external application dependencies.
 0. **Artifact regeneration: required.** Execute this code-migration action even if the existing checkpoint and plan validate. Rebuild the phase-owned outputs as though they were absent; do not ask whether to validate instead and do not stop based on existing outputs.
 1. **Read the Cosmos DB data model** at \`${migrationFolder}/phases/3-schema-conversion/model.json\`
    — this is the highest-priority migration artifact defining the target schema.
    - Read and analyze it thoroughly before generating the plan.
    - Also read \`${migrationFolder}/phases/3-schema-conversion/summary.md\` for a deeper understanding of the schema design decisions and recommendations.
 2. **Understand domain access patterns** by reading \`${migrationFolder}/phases/2-assessment/domains/*.md\` — these summaries describe the access patterns for each domain.
-3. **Scan the entire workspace** (excluding the \`${migrationFolder}\` folder!) to understand the application structure, dependencies, and data access patterns before planning. **Prioritize files matching the source application's language${analysis?.frameworks?.length ? ' and frameworks' : ''}** — other files should be reviewed with lower priority.
+3. **Scan only the selected application project** (excluding the \`${migrationFolder}\` folder!) to understand the application structure, dependencies, and data access patterns before planning. **Prioritize files matching the source application's language${analysis?.frameworks?.length ? ' and frameworks' : ''}** — other files in that project should be reviewed with lower priority.
 5. Follow **Azure Cosmos DB best practices** from the \`/cosmosdb-best-practices\` skill for data modeling, partitioning, and SDK usage.
 6. If anything is ambiguous, missing, or contradictory, **first look for answers** in these additional files before asking the user:
     - \`${migrationFolder}/phases/1-discovery/discovery-report.md\` — original schema and access patterns to be migrated from.
     - \`${migrationFolder}/phases/2-assessment/assessment-summary.md\` — domain breakdown, dependencies, and their access patterns in the original code.
-   - After consulting those files, **always ask clarifying questions** about anything that remains unclear rather than making assumptions.
+    - After consulting those files, **always ask clarifying questions** about anything that remains unclear rather than making assumptions.
 7. **Review execution blockers during planning**. Investigate each candidate using repository evidence, migration artifacts, and applicable best practices, then propose a concrete solution. Treat known framework upgrades, SDK/package changes, and configuration work as ordered changes when a compatible solution can be planned.
 8. In interactive planning, ask the user now about consequential choices with multiple valid solutions. For every recommendation, add a recommendation rationale that cites evidence and constraints, compares the material alternatives, and explains why its tradeoffs best fit this migration. A "Recommended" label alone is not a rationale. Defer only blockers that cannot be resolved during planning. For each deferred blocker, record a stable identifier, evidence, solutions considered, recommendation, recommendation rationale, reason for deferral, and exact clearance condition.
 ${appSection}${envSection}

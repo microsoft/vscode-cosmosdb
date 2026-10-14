@@ -92,6 +92,7 @@ interface CrossDomainResult {
  * domain's tables are referenced in the application source code (isMapped).
  */
 async function detectDomainMappings(
+    workspacePath: string,
     model: vscode.LanguageModelChat,
     domains: { name: string; tables: string[]; accessPatterns?: { name: string; codeReferences?: string[] }[] }[],
     language: string,
@@ -104,9 +105,15 @@ async function detectDomainMappings(
     const results = new Map<string, boolean>();
     const customTools = [...getWorkspaceTools(), ...getBestPracticeTools()];
     const customToolNames = new Set(customTools.map((t) => t.name));
-    const tools = [...getRegisteredChatTools(customToolNames), ...customTools];
+    const tools = [...getRegisteredChatTools(customToolNames, workspacePath), ...customTools];
     ext.outputChannel.appendLog(`[Assessment] Tools (${tools.length}):\n${tools.map((t) => `  ${t.name}`).join('\n')}`);
-    const executeToolCall = createToolExecutor({}, '[Assessment]', { language, frameworks }, token, phaseContext);
+    const executeToolCall = createToolExecutor(
+        { workspacePath },
+        '[Assessment]',
+        { language, frameworks },
+        token,
+        phaseContext,
+    );
     const mkDebug = createMkDebug(isDebugPromptsEnabled(), assessmentDebugDir);
 
     for (const domain of domains) {
@@ -718,6 +725,7 @@ export async function runAssessment(ctx: Phase2Context): Promise<void> {
             const frameworks = appAnalysis?.frameworks ?? [];
 
             const domainMappingResults = await detectDomainMappings(
+                projectService.getWorkspacePath(),
                 model,
                 domainsWithTokens,
                 language,

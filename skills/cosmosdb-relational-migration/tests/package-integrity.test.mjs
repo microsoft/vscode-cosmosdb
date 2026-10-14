@@ -41,6 +41,19 @@ test('documents natural migration requests without redundant workspace or host i
     }
 });
 
+test('defines a project boundary independent of the host workspace', () => {
+    const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
+    assert.match(skill, /default to the sole workspace folder\s+only when it is also the target project root/u);
+    assert.match(skill, /directory containing its `\.cosmosdb-migration` folder/u);
+    assert.match(skill, /If multiple projects could match, ask the user to select one/u);
+    assert.match(skill, /not the collection of open folders or a containing repository/u);
+    assert.match(skill, /Scope search tools\s+explicitly and discard results outside it/u);
+    assert.match(skill, /Set each command's working directory to this root/u);
+    assert.match(skill, /Do not follow source symlinks outside the project/u);
+    assert.match(skill, /Permission to edit application code does not widen the project boundary/u);
+    assert.match(skill, /request explicit scope approval before\s+analyzing or changing that external project/u);
+});
+
 test('selects the default mode from host interaction capability and defines phase checkpoints', () => {
     const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
     const interaction = fs.readFileSync(path.join(skillRoot, 'references', 'workflow', 'interaction-and-checkpoints.md'), 'utf8');

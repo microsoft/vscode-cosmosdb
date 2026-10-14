@@ -3,11 +3,57 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as fs from 'fs/promises';
+import * as os from 'os';
+import * as path from 'path';
 import {
     assignAccessPatternsToDomains,
+    isMigrationProjectFile,
     normalizeParsedAccessPatterns,
     type ParsedAccessPattern,
 } from './migrationHelpers';
+
+describe('migration project containment', () => {
+    let directory: string;
+    let projectRoot: string;
+    let siblingRoot: string;
+
+    beforeEach(async () => {
+        directory = await fs.mkdtemp(path.join(os.tmpdir(), 'migration-scope-'));
+        projectRoot = path.join(directory, 'app');
+        siblingRoot = path.join(directory, 'app-other');
+        for (const root of [projectRoot, siblingRoot]) {
+            await fs.mkdir(root);
+            await fs.writeFile(path.join(root, 'source.ts'), root);
+        }
+    });
+
+    afterEach(async () => {
+        await fs.rm(directory, { recursive: true, force: true });
+    });
+
+    it('accepts existing project files but rejects siblings, traversal, and relative paths', async () => {
+        expect(await isMigrationProjectFile(projectRoot, path.join(projectRoot, 'source.ts'))).toBe(true);
+        expect(await isMigrationProjectFile(projectRoot, path.join(siblingRoot, 'source.ts'))).toBe(false);
+        expect(await isMigrationProjectFile(projectRoot, `${projectRoot}/../app-other/source.ts`)).toBe(false);
+        expect(await isMigrationProjectFile(projectRoot, 'source.ts')).toBe(false);
+        expect(await isMigrationProjectFile(projectRoot, path.join(projectRoot, 'missing.ts'))).toBe(false);
+    });
+
+    it('allows names starting with two dots inside the project', async () => {
+        const filePath = path.join(projectRoot, '..source.ts');
+        await fs.writeFile(filePath, 'source');
+        expect(await isMigrationProjectFile(projectRoot, filePath)).toBe(true);
+    });
+
+    it('rejects symlink escapes but permits a symlinked project root', async () => {
+        await fs.symlink(siblingRoot, path.join(projectRoot, 'external'), 'junction');
+        expect(await isMigrationProjectFile(projectRoot, path.join(projectRoot, 'external', 'source.ts'))).toBe(false);
+        const linkedRoot = path.join(directory, 'linked-app');
+        await fs.symlink(projectRoot, linkedRoot, 'junction');
+        expect(await isMigrationProjectFile(linkedRoot, path.join(linkedRoot, 'source.ts'))).toBe(true);
+    });
+});
 
 const SAMPLE_ACCESS_PATTERNS: ParsedAccessPattern[] = [
     {

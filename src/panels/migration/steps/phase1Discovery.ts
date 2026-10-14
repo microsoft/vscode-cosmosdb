@@ -22,7 +22,7 @@ import {
     runPromptWithJsonResult,
 } from '../helpers/aiHelpers';
 import { parseCodeEvidencedTables, stripMarkdownPreamble } from '../helpers/markdownUtils';
-import { sendPhaseEvent } from '../helpers/migrationHelpers';
+import { findMigrationProjectFiles, sendPhaseEvent } from '../helpers/migrationHelpers';
 import {
     enrichErrorContext,
     incrementRunCount,
@@ -72,10 +72,7 @@ interface AnalysisResult {
  * Scans the workspace for project manifest and configuration files
  * to provide application-level context (language, frameworks, project type).
  */
-export async function gatherWorkspaceContext(): Promise<string> {
-    const workspaceFolders = vscode.workspace.workspaceFolders;
-    if (!workspaceFolders || workspaceFolders.length === 0) return '';
-
+export async function gatherWorkspaceContext(workspacePath: string): Promise<string> {
     const manifestPatterns = [
         '**/*.csproj',
         '**/*.fsproj',
@@ -109,11 +106,11 @@ export async function gatherWorkspaceContext(): Promise<string> {
     const exclude = '**/node_modules/**,**/bin/**,**/obj/**,**/dist/**,**/.cosmosdb-migration/**';
 
     for (const pattern of allPatterns) {
-        const files = await vscode.workspace.findFiles(pattern, exclude, 3);
+        const files = await findMigrationProjectFiles(workspacePath, pattern, exclude, 3);
         for (const file of files) {
             try {
                 const content = await vscode.workspace.fs.readFile(file);
-                const relativePath = vscode.workspace.asRelativePath(file);
+                const relativePath = path.relative(workspacePath, file.fsPath);
                 const text = Buffer.from(content).toString('utf-8').slice(0, MANIFEST_PREVIEW_CHARS);
                 context += `\n--- ${relativePath} ---\n${text}\n`;
             } catch {
@@ -175,7 +172,7 @@ async function generateDiscoveryReport(
 
     const customTools = [...getAllDiscoveryTools(), ...getBestPracticeTools()];
     const customToolNames = new Set(customTools.map((t) => t.name));
-    const tools = [...getRegisteredChatTools(customToolNames), ...customTools];
+    const tools = [...getRegisteredChatTools(customToolNames, projectService.getWorkspacePath()), ...customTools];
     ext.outputChannel.appendLog(`[Discovery] Tools (${tools.length}):\n${tools.map((t) => `  ${t.name}`).join('\n')}`);
     ext.outputChannel.debug(
         `[Discovery] Report generation: schemaFiles=${schemaFiles.length}, ` +
@@ -183,7 +180,7 @@ async function generateDiscoveryReport(
     );
     const reportStartTime = Date.now();
     const executeToolCall = createToolExecutor(
-        { schemaFiles, accessPatternFiles },
+        { workspacePath: projectService.getWorkspacePath(), schemaFiles, accessPatternFiles },
         '[Discovery]',
         { language: analysis.language, frameworks: analysis.frameworks },
         token,
@@ -422,7 +419,7 @@ export async function runApplicationAnalysis(ctx: Phase1Context): Promise<void> 
                 }
             }
 
-            const workspaceContext = await gatherWorkspaceContext();
+            const workspaceContext = await gatherWorkspaceContext(projectService.getWorkspacePath());
 
             const mkDebug = createMkDebug(
                 isDebugPromptsEnabled(),

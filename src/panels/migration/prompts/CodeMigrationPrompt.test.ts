@@ -3,13 +3,47 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { describe, expect, it, vi } from 'vitest';
+import * as path from 'path';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import * as vscode from 'vscode';
 
 vi.mock('../helpers/aiHelpers', () => ({ isDebugPromptsEnabled: () => false }));
+vi.mock('vscode', () => ({
+    workspace: {
+        get workspaceFolders() {
+            return [{ uri: { fsPath: '/workspace/shop' }, name: 'shop', index: 0 }];
+        },
+    },
+}));
 
 import { buildCodeMigrationPrompt } from './CodeMigrationPrompt';
 
 describe('buildCodeMigrationPrompt', () => {
+    afterEach(() => vi.restoreAllMocks());
+
+    it.each(['plan', 'migrate'] as const)(
+        'scopes %s to the selected project without a redundant single-root path',
+        (action) => {
+            const singleRoot = buildCodeMigrationPrompt(undefined, '.cosmosdb-migration', action, '/workspace/shop');
+            expect(singleRoot).not.toContain('Workspace:');
+            expect(singleRoot).toContain('Scan only the selected application project');
+            expect(singleRoot).not.toContain('Scan the entire workspace');
+
+            vi.spyOn(vscode.workspace, 'workspaceFolders', 'get').mockReturnValue([]);
+            const scoped = buildCodeMigrationPrompt(undefined, '.cosmosdb-migration', action, '/workspace/shop');
+            expect(scoped).toContain(`Workspace: ${JSON.stringify(path.resolve('/workspace/shop'))}`);
+            expect(scoped).toContain('Do not scan other workspace folders');
+        },
+    );
+
+    it.each(['plan', 'migrate'] as const)('preserves Chat questions and scope approval in %s mode', (action) => {
+        const prompt = buildCodeMigrationPrompt(undefined, '.cosmosdb-migration', action, '/workspace/shop');
+        expect(prompt).toContain('ask before expanding scope to external application dependencies');
+        expect(prompt).toContain('always ask clarifying questions');
+        expect(prompt).toContain('ask the user now');
+        expect(prompt).not.toMatch(/non-interactive|Do not ask questions|without requesting confirmation/u);
+    });
+
     it('requires the deterministic plan manifest in plan mode', () => {
         const prompt = buildCodeMigrationPrompt(undefined, '.cosmosdb-migration', 'plan');
         expect(prompt).toContain('code-migration-manifest.json');

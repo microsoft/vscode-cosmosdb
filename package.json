@@ -949,7 +949,7 @@
       "commandPalette": [
         {
           "command": "cosmosDB.migration.open",
-          "when": "cosmosDB.migration.enabled"
+          "when": "config.cosmosDB.experimental.migration.enabled"
         },
         {
           "command": "azureDatabases.refresh",

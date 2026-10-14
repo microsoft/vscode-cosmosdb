@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
+import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
 import { Detector, type DetectorContext } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
@@ -75,13 +76,13 @@ function evaluateCrossPartitionQuery(
         title: l10n.t('Cross-partition query fan-out in {container}', { container: input.containerId }),
         rationale: clampRationale(
             l10n.t(
-                '{pct}% of query executions fan out across partitions (the container has ~{partitions} physical partitions).',
+                '`{pct}%` of query executions fan out across partitions (the container has `~{partitions} physical partitions`).',
                 { pct, partitions: containerPartitions },
             ) +
                 ' ' +
-                l10n.t('The most frequent offender averages {fanout} partitions per run. Anonymized shape: {shape}', {
+                l10n.t('The most frequent offender averages `{fanout} partitions` per run. Anonymized shape: {shape}', {
                     fanout: worst.avgFanout.toFixed(1),
-                    shape,
+                    shape: escapeAdvisoryText(shape),
                 }),
         ),
         suggestedAction:
@@ -94,7 +95,7 @@ function evaluateCrossPartitionQuery(
             ) +
             ' ' +
             l10n.t('Cross-partition fan-out multiplies RU and latency and does not scale as the container grows.'),
-        thresholdReference: l10n.t('Threshold: ≥ {pct}% of executions fan out (avg ≥ {fanout} partitions/query)', {
+        thresholdReference: l10n.t('Threshold: ≥ `{pct}%` of executions fan out (avg ≥ `{fanout} partitions/query`)', {
             pct: thresholds.medPct,
             fanout: thresholds.fanoutThreshold,
         }),

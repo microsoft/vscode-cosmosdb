@@ -3,16 +3,26 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Link, makeStyles, Spinner, Text, tokens } from '@fluentui/react-components';
+import {
+    Badge,
+    type BadgeProps,
+    Card,
+    Link,
+    makeStyles,
+    Spinner,
+    Text,
+    tokens,
+    typographyStyles,
+} from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
 import { type ReactNode } from 'react';
 import { type RecommendationImpact, type RecommendationItem, type RecommendationsResult } from '../../api/types';
-import { EmptyState, Pill, type PillTone, useDashboardActions } from './DashboardChrome';
+import { EmptyState, useDashboardActions } from './DashboardChrome';
 
-const IMPACT_TONE: Record<RecommendationImpact, PillTone> = {
+const IMPACT_TONE: Record<RecommendationImpact, BadgeProps['color']> = {
     High: 'warning',
-    Medium: 'info',
-    Low: 'neutral',
+    Medium: 'informative',
+    Low: 'subtle',
 };
 
 const useStyles = makeStyles({
@@ -27,13 +37,9 @@ const useStyles = makeStyles({
         gap: tokens.spacingVerticalS,
     },
     item: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '2px',
-        padding: tokens.spacingHorizontalM,
-        borderRadius: tokens.borderRadiusMedium,
-        border: '1px solid var(--vscode-widget-border, var(--vscode-panel-border))',
-        backgroundColor: 'var(--vscode-editor-background)',
+        gap: tokens.spacingVerticalXXS,
+        minWidth: 0,
+        overflow: 'visible',
     },
     titleRow: {
         display: 'flex',
@@ -42,29 +48,27 @@ const useStyles = makeStyles({
         flexWrap: 'wrap',
     },
     category: {
-        fontSize: tokens.fontSizeBase100,
-        textTransform: 'uppercase',
-        letterSpacing: '0.04em',
-        color: 'var(--vscode-descriptionForeground)',
+        ...typographyStyles.caption1,
+        color: tokens.colorNeutralForeground2,
     },
     problem: {
-        fontWeight: tokens.fontWeightSemibold,
+        ...typographyStyles.body1Strong,
     },
     solution: {
-        fontSize: tokens.fontSizeBase200,
-        color: 'var(--vscode-foreground)',
+        ...typographyStyles.body1,
+        color: tokens.colorNeutralForeground1,
     },
     benefit: {
-        fontSize: tokens.fontSizeBase200,
-        color: 'var(--vscode-descriptionForeground)',
+        ...typographyStyles.body1,
+        color: tokens.colorNeutralForeground2,
     },
     link: {
-        fontSize: tokens.fontSizeBase200,
+        ...typographyStyles.body1,
     },
     emptyState: {
         padding: tokens.spacingVerticalL,
         textAlign: 'center',
-        color: 'var(--vscode-descriptionForeground)',
+        color: tokens.colorNeutralForeground2,
     },
     loading: {
         display: 'flex',
@@ -93,9 +97,11 @@ const RecommendationRow = ({
 }) => {
     const styles = useStyles();
     return (
-        <div className={styles.item}>
+        <Card className={styles.item} appearance="outline" focusMode="off">
             <div className={styles.titleRow}>
-                <Pill tone={IMPACT_TONE[recommendation.impact]}>{impactLabel(recommendation.impact)}</Pill>
+                <Badge appearance="outline" shape="circular" color={IMPACT_TONE[recommendation.impact]}>
+                    {impactLabel(recommendation.impact)}
+                </Badge>
                 <Text className={styles.category}>{recommendation.category}</Text>
             </div>
             <Text className={styles.problem}>{recommendation.problem}</Text>
@@ -116,7 +122,7 @@ const RecommendationRow = ({
                     {l10n.t('Learn more')}
                 </Link>
             )}
-        </div>
+        </Card>
     );
 };
 

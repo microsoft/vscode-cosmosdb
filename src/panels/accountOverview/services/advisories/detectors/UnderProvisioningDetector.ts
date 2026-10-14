@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
+import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
 import { Detector, type DetectorContext } from '../core/Detector';
 import { clampRationale, hasMinimumKnownResourceAge } from '../core/helpers';
@@ -51,7 +52,7 @@ function evaluateUnderProvisioning(
         input.throughputMode === 'autoscale'
             ? input.provisionedRu !== undefined
                 ? l10n.t(
-                      'Raise the autoscale maximum above {ru} RU/s. The workload is pinned at the current ceiling.',
+                      'Raise the autoscale maximum above `{ru} RU/s`. The workload is pinned at the current ceiling.',
                       {
                           ru: Math.round(input.provisionedRu).toLocaleString(),
                       },
@@ -59,7 +60,7 @@ function evaluateUnderProvisioning(
                 : l10n.t('Raise the autoscale maximum. The workload is pinned at the current ceiling.')
             : input.provisionedRu !== undefined
               ? l10n.t(
-                    'Raise provisioned throughput above {ru} RU/s, or convert to autoscale if the demand is bursty.',
+                    'Raise provisioned throughput above `{ru} RU/s`, or convert to autoscale if the demand is bursty.',
                     {
                         ru: Math.round(input.provisionedRu).toLocaleString(),
                     },
@@ -72,17 +73,20 @@ function evaluateUnderProvisioning(
         severity,
         title: l10n.t('Sustained throttling in {container}', { container: input.containerId }),
         rationale: clampRationale(
-            l10n.t('In "{container}", {rate}% of requests were throttled (HTTP 429).', {
-                container: input.containerId,
+            l10n.t('In "{container}", `{rate}%` of requests were throttled (HTTP 429).', {
+                container: escapeAdvisoryText(input.containerId),
                 rate,
             }) +
                 ' ' +
-                l10n.t('The busiest partition reached {busiest}% p99 and even the coolest stayed at {coolest}% p99.', {
-                    busiest,
-                    coolest,
-                }) +
+                l10n.t(
+                    'The busiest partition reached `{busiest}%` p99 and even the coolest stayed at `{coolest}%` p99.',
+                    {
+                        busiest,
+                        coolest,
+                    },
+                ) +
                 ' ' +
-                l10n.t('The coolest partition still cleared the {headroom}% broad-saturation floor.', {
+                l10n.t('The coolest partition still cleared the `{headroom}%` broad-saturation floor.', {
                     headroom: Math.round(headroomPercent),
                 }) +
                 ' ' +
@@ -90,7 +94,7 @@ function evaluateUnderProvisioning(
         ),
         suggestedAction: action,
         thresholdReference: l10n.t(
-            'Threshold: 429 rate ≥ {rate}%, busiest partition p99 ≥ {saturation}%, coolest partition p99 ≥ {headroom}%',
+            'Threshold: 429 rate ≥ `{rate}%`, busiest partition p99 ≥ `{saturation}%`, coolest partition p99 ≥ `{headroom}%`',
             {
                 rate: Math.round(throttleThresholdPercent),
                 saturation: Math.round(saturationPercent),

@@ -12,7 +12,8 @@ export const accountActionInput = z.discriminatedUnion('action', [
         databaseId: z
             .string()
             .min(1)
-            .regex(/^[^/\\?#]+$/),
+            .regex(/^[^/\\?#]+$/)
+            .optional(),
     }),
     z.object({ action: z.literal('deleteAccount') }),
     z.object({ action: z.literal('openCosts') }),

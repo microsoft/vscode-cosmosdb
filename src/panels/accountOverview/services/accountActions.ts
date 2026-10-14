@@ -75,26 +75,43 @@ export async function runAccountAction(
                 await cosmosDBCreateDatabase(context, account);
             } else if (input.action === 'createContainer') {
                 const children = await account.getChildren();
-                const database = children.find(
+                const databases = children.filter(
                     (node): node is CosmosDBDatabaseResourceItem =>
-                        node instanceof CosmosDBDatabaseResourceItem && node.model.database.id === input.databaseId,
+                        node instanceof CosmosDBDatabaseResourceItem &&
+                        node.id === `${account.id}/${node.model.database.id}` &&
+                        node.model.accountInfo.id.toLowerCase() === metadata.accountId.toLowerCase() &&
+                        node.experience.api === API.Core,
                 );
-                if (
-                    !database ||
-                    database.id !== `${account.id}/${input.databaseId}` ||
-                    database.model.accountInfo.id.toLowerCase() !== metadata.accountId.toLowerCase() ||
-                    database.experience.api !== API.Core
-                ) {
+                let database: CosmosDBDatabaseResourceItem | undefined;
+                if (input.databaseId !== undefined) {
+                    database = databases.find((node) => node.model.database.id === input.databaseId);
+                } else {
+                    if (databases.length === 0) {
+                        throw new Error(
+                            l10n.t('This account has no databases. Create a database before adding a container.'),
+                        );
+                    }
+                    context.valuesToMask.push(
+                        ...getResourceMaskedValues(databases.map((node) => node.model.database.id)),
+                    );
+                    database = (
+                        await context.ui.showQuickPick(
+                            databases.map((node) => ({ label: node.model.database.id, data: node })),
+                            { placeHolder: l10n.t('Select a database for the new container') },
+                        )
+                    ).data;
+                }
+                if (!database || !databases.includes(database)) {
                     throw new Error(l10n.t('Unable to resolve the selected database in this account.'));
                 }
                 maskConnectionTelemetry(context, {
                     ...database.model.accountInfo,
-                    databaseId: input.databaseId,
+                    databaseId: database.model.database.id,
                     containerId: '',
                 });
                 await cosmosDBCreateContainer(context, database);
             } else {
-                // The existing handler retains DeleteConfirmationStep and awaits ARM deletion.
+                // The shared handler confirms according to extension settings and awaits ARM deletion.
                 await cosmosDBDeleteDatabaseAccount(context, account);
             }
         }

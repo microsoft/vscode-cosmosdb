@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
+import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
 import { Detector, type DetectorContext } from '../core/Detector';
 import { clampRationale, hasMinimumKnownResourceAge } from '../core/helpers';
@@ -44,8 +45,8 @@ function evaluateAutoscaleToManualCandidate(
         title: l10n.t('Autoscale container looks steady: manual may be cheaper'),
         rationale: clampRationale(
             l10n.t(
-                'Autoscale on "{container}" averaged {avg}% of its max with a peak of {peak}%, a {ratio}× peak-to-average.',
-                { container: input.containerId, avg, peak, ratio },
+                'Autoscale on "{container}" averaged `{avg}%` of its max with a peak of `{peak}%`, a `{ratio}×` peak-to-average.',
+                { container: escapeAdvisoryText(input.containerId), avg, peak, ratio },
             ) +
                 ' ' +
                 l10n.t('The load is steady and high with little spikiness.') +
@@ -56,9 +57,9 @@ function evaluateAutoscaleToManualCandidate(
         ),
         suggestedAction: l10n.t(
             'Consider converting "{container}" to manual throughput at a fixed RU/s near the sustained level to drop the autoscale premium.',
-            { container: input.containerId },
+            { container: escapeAdvisoryText(input.containerId) },
         ),
-        thresholdReference: l10n.t('Threshold: average ≥ {avg}% of max and peak/average ≤ {ratio}×', {
+        thresholdReference: l10n.t('Threshold: average ≥ `{avg}%` of max and peak/average ≤ `{ratio}×`', {
             avg: Math.round(avgFloorPercent),
             ratio: Math.round(peakToAvgCeiling * 10) / 10,
         }),

@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
+import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
 import { Detector, type DetectorContext } from '../core/Detector';
 import { clampRationale, hasMinimumKnownResourceAge } from '../core/helpers';
@@ -65,14 +66,16 @@ function evaluateStorageSkewRisk(input: ContainerStorageInput, balanceThreshold:
         severity,
         title: l10n.t('Uneven physical-partition storage in {container}', { container: input.containerId }),
         rationale: clampRationale(
-            l10n.t('Physical-partition storage in "{container}" is uneven.', { container: input.containerId }) +
+            l10n.t('Physical-partition storage in "{container}" is uneven.', {
+                container: escapeAdvisoryText(input.containerId),
+            }) +
                 ' ' +
                 l10n.t(
-                    'The coolest partition holds only {balance}× the busiest (below the {threshold}× balance floor).',
+                    'The coolest partition holds only `{balance}×` the busiest (below the `{threshold}×` balance floor).',
                     { balance, threshold },
                 ) +
                 ' ' +
-                l10n.t('The busiest is at {busiest} GiB, about {ceiling}% of the 50 GiB split ceiling.', {
+                l10n.t('The busiest is at `{busiest} GiB`, about `{ceiling}%` of the `50 GiB` split ceiling.', {
                     busiest: busiestGiB,
                     ceiling: ceilingPercent,
                 }) +
@@ -85,7 +88,7 @@ function evaluateStorageSkewRisk(input: ContainerStorageInput, balanceThreshold:
             l10n.t('Review the partition key for a higher-cardinality choice so data spreads evenly.') +
             ' ' +
             l10n.t('Split or archive the oversized logical keys concentrating storage on one partition.'),
-        thresholdReference: l10n.t('Threshold: min/max partition size < {threshold}× with busiest ≥ 1 GiB', {
+        thresholdReference: l10n.t('Threshold: min/max partition size < `{threshold}×` with busiest ≥ `1 GiB`', {
             threshold,
         }),
         scope,

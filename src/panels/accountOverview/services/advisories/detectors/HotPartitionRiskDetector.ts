@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
+import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
 import { Detector, type DetectorContext } from '../core/Detector';
 import { clampRationale, hasMinimumKnownResourceAge } from '../core/helpers';
@@ -52,14 +53,17 @@ function evaluateHotPartitionRisk(
         severity,
         title: l10n.t('Hot physical partition in {container}', { container: input.containerId }),
         rationale: clampRationale(
-            l10n.t('In "{container}", the busiest of {count} physical partitions ran at {busiest}% p99 utilization.', {
-                container: input.containerId,
-                count: input.partitionCount,
-                busiest,
-            }) +
+            l10n.t(
+                'In "{container}", the busiest of `{count} physical partitions` ran at `{busiest}%` p99 utilization.',
+                {
+                    container: escapeAdvisoryText(input.containerId),
+                    count: input.partitionCount,
+                    busiest,
+                },
+            ) +
                 ' ' +
                 l10n.t(
-                    'This is at or above the {saturation}% saturation mark. The coolest sat at {coolest}%, below the {headroom}% headroom mark.',
+                    'This is at or above the `{saturation}%` saturation mark. The coolest sat at `{coolest}%`, below the `{headroom}%` headroom mark.',
                     { saturation, coolest, headroom },
                 ) +
                 ' ' +
@@ -77,7 +81,7 @@ function evaluateHotPartitionRisk(
             ) +
             ' ' +
             l10n.t('It does not remove the throttling on a single hot key.'),
-        thresholdReference: l10n.t('Threshold: busiest partition p99 ≥ {saturation}% while another < {headroom}%', {
+        thresholdReference: l10n.t('Threshold: busiest partition p99 ≥ `{saturation}%` while another < `{headroom}%`', {
             saturation,
             headroom,
         }),

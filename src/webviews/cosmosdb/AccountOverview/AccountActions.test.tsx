@@ -5,17 +5,38 @@
 
 // @vitest-environment jsdom
 
-import { FluentProvider, webLightTheme } from '@fluentui/react-components';
+import { AriaLiveAnnouncer, FluentProvider, messageBarClassNames, webLightTheme } from '@fluentui/react-components';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { type ComponentProps, type PropsWithChildren } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AccountActions } from './AccountActions';
 
 type ActionProps = ComponentProps<typeof AccountActions>;
 
+const ariaNotify = vi.fn();
+let originalAriaNotify: PropertyDescriptor | undefined;
+
+beforeEach(() => {
+    ariaNotify.mockReset();
+    originalAriaNotify = Object.getOwnPropertyDescriptor(document, 'ariaNotify');
+    Object.defineProperty(document, 'ariaNotify', { configurable: true, value: ariaNotify });
+});
+
+afterEach(() => {
+    if (originalAriaNotify) {
+        Object.defineProperty(document, 'ariaNotify', originalAriaNotify);
+    } else {
+        Reflect.deleteProperty(document, 'ariaNotify');
+    }
+});
+
 function Wrapper({ children }: PropsWithChildren) {
-    return <FluentProvider theme={webLightTheme}>{children}</FluentProvider>;
+    return (
+        <FluentProvider theme={webLightTheme}>
+            <AriaLiveAnnouncer>{children}</AriaLiveAnnouncer>
+        </FluentProvider>
+    );
 }
 
 function renderActions(overrides: Partial<ActionProps> = {}) {
@@ -65,7 +86,6 @@ describe('AccountActions', () => {
     });
 
     it.each([
-        ['without a selected database', {}, 'Select a database in the header to add a container.'],
         [
             'for an unsupported account',
             { supported: false, databaseId: 'selected-db' },
@@ -98,6 +118,21 @@ describe('AccountActions', () => {
         },
     );
 
+    it('allows Add container without a database scope and explains that a picker will follow', async () => {
+        const user = userEvent.setup();
+        const { props } = renderActions();
+        const button = screen.getByRole('button', { name: 'Add container' });
+        expect(button).toHaveTextContent('Add container');
+        expect(button).toHaveAccessibleName('Add container');
+        expect(button).not.toHaveAttribute('aria-disabled', 'true');
+        button.focus();
+        await waitFor(() =>
+            expect(button).toHaveAccessibleDescription('Choose a database in this account, then create a container.'),
+        );
+        await user.keyboard('{Enter}');
+        expect(props.onAction).toHaveBeenCalledExactlyOnceWith({ action: 'createContainer', databaseId: undefined });
+    });
+
     it('updates the container tooltip and action payload when the selected database changes', async () => {
         const user = userEvent.setup();
         const { props, rerender } = renderActions({ databaseId: 'old-db' });
@@ -108,11 +143,11 @@ describe('AccountActions', () => {
         await waitFor(() => expect(button).toHaveAccessibleDescription('Create a container in database new-db.'));
     });
 
-    it('announces busy state and blocks all mutating actions until it clears', async () => {
+    it('blocks all mutating actions without an inline progress message until busy clears', async () => {
         const user = userEvent.setup();
         const { props, rerender } = renderActions({ busy: true, databaseId: 'database' });
-        expect(screen.getByRole('status')).toHaveAttribute('aria-live', 'polite');
-        expect(screen.getByRole('status')).toHaveTextContent('Account action in progress…');
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+        expect(screen.queryByText('Account action in progress…')).not.toBeInTheDocument();
         for (const label of ['Add database', 'Delete account']) {
             const button = screen.getByRole('button', { name: label });
             expect(button).toBeDisabled();
@@ -121,7 +156,7 @@ describe('AccountActions', () => {
         await user.click(screen.getByRole('button', { name: 'Add container' }));
         expect(props.onAction).not.toHaveBeenCalled();
         rerender(<AccountActions {...props} busy={false} />);
-        expect(screen.getByRole('status')).toBeEmptyDOMElement();
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Add database' })).toBeEnabled();
         expect(screen.getByRole('button', { name: 'Delete account' })).toBeEnabled();
         expect(screen.getByRole('button', { name: 'Add container' })).not.toHaveAttribute('aria-disabled', 'true');
@@ -142,9 +177,49 @@ describe('AccountActions', () => {
         ['refresh', 'Account data could not be refreshed. Try Refresh again.'],
     ] as const)('renders an explicit accessible %s failure', (failure, message) => {
         const { props, rerender } = renderActions({ failure });
-        expect(screen.getByRole('alert')).toBeVisible();
-        expect(screen.getByRole('alert')).toHaveTextContent(message);
-        rerender(<AccountActions {...props} failure={undefined} />);
+        const bar = screen.getByRole('group', { name: 'Error' });
+        expect(bar).toHaveClass(messageBarClassNames.root);
+        expect(bar).toBeVisible();
+        expect(bar).toHaveTextContent(message);
+        expect(ariaNotify).toHaveBeenCalledExactlyOnceWith(`Error ${message}`, { priority: 'high' });
         expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        rerender(<AccountActions {...props} failure={undefined} />);
+        expect(screen.queryByRole('group', { name: 'Error' })).not.toBeInTheDocument();
+    });
+
+    it('announces newly shown or changed errors once without moving focus', () => {
+        const { props, rerender } = renderActions();
+        const trigger = screen.getByRole('button', { name: 'Add database' });
+        trigger.focus();
+        expect(ariaNotify).not.toHaveBeenCalled();
+        rerender(<AccountActions {...props} failure="action" />);
+        expect(ariaNotify).toHaveBeenCalledExactlyOnceWith(
+            'Error The account action could not be completed. Retry or use the Azure Resources view.',
+            { priority: 'high' },
+        );
+        expect(trigger).toHaveFocus();
+        rerender(<AccountActions {...props} failure="action" databaseId="selected-db" />);
+        expect(ariaNotify).toHaveBeenCalledTimes(1);
+        rerender(<AccountActions {...props} failure="refresh" />);
+        expect(ariaNotify).toHaveBeenCalledTimes(2);
+        expect(ariaNotify).toHaveBeenLastCalledWith('Error Account data could not be refreshed. Try Refresh again.', {
+            priority: 'high',
+        });
+        rerender(<AccountActions {...props} />);
+        rerender(<AccountActions {...props} failure="refresh" />);
+        expect(ariaNotify).toHaveBeenCalledTimes(3);
+        expect(trigger).toHaveFocus();
+    });
+
+    it('uses the assertive live-region fallback when ariaNotify is unavailable', async () => {
+        Reflect.deleteProperty(document, 'ariaNotify');
+        const { props, rerender } = renderActions();
+        rerender(<AccountActions {...props} failure="action" />);
+        await waitFor(() =>
+            expect(document.querySelector<HTMLSpanElement>('[aria-live="assertive"] span')?.innerText).toContain(
+                'Error The account action could not be completed. Retry or use the Azure Resources view.',
+            ),
+        );
+        expect(ariaNotify).not.toHaveBeenCalled();
     });
 });

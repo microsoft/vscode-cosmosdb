@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { tokens } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
 import { type MetricKey, type MetricPoint, type MetricUnit } from '../../../api/types';
 
@@ -54,8 +55,11 @@ export interface MetricGroupMeta {
     label: string;
     /** Localized one-line explanation shown in the legend tooltip. */
     description: string;
-    /** Theme-aware accent color (VS Code chart token) used for the tile stripe and legend swatch. */
+    /** Fluent palette foreground used for the stripe, legend and selected text. */
     color: string;
+    background: string;
+    /** Foreground2 also gives the selected outline sufficient contrast against Background2. */
+    border: string;
 }
 
 /** Color-coded metric families, rendered as a tile accent stripe plus the legend under the tiles. */
@@ -63,12 +67,16 @@ export const METRIC_GROUPS: Record<MetricGroup, MetricGroupMeta> = {
     state: {
         label: l10n.t('State'),
         description: l10n.t('Reported continuously by the platform, populated even when the account is idle.'),
-        color: 'var(--vscode-charts-blue)',
+        color: tokens.colorPaletteTealForeground2,
+        background: tokens.colorPaletteTealBackground2,
+        border: tokens.colorPaletteTealForeground2,
     },
     activity: {
         label: l10n.t('Activity'),
         description: l10n.t('Sampled only when requests reach the account, blank while there is no traffic.'),
-        color: 'var(--vscode-charts-purple)',
+        color: tokens.colorPaletteMarigoldForeground2,
+        background: tokens.colorPaletteMarigoldBackground2,
+        border: tokens.colorPaletteMarigoldForeground2,
     },
 };
 

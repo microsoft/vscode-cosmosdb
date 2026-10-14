@@ -66,7 +66,7 @@ const useStyles = makeStyles({
         position: 'sticky',
         top: 0,
         zIndex: 1,
-        backgroundColor: 'var(--vscode-editor-background)',
+        backgroundColor: tokens.colorNeutralBackground1,
     },
     spacerCell: {
         padding: 0,
@@ -78,10 +78,10 @@ const useStyles = makeStyles({
     emptyState: {
         padding: tokens.spacingVerticalXL,
         textAlign: 'center',
-        color: 'var(--vscode-descriptionForeground)',
+        color: tokens.colorNeutralForeground2,
     },
     monospace: {
-        fontFamily: 'var(--vscode-editor-font-family)',
+        fontFamily: tokens.fontFamilyMonospace,
     },
     sparkline: {
         width: '96px',

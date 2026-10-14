@@ -197,12 +197,24 @@ activation bundle — verified via `bundle-analysis/extension-report-vite.json`.
 `openUrl`, `revealInTree`, `openQueryEditor` (deep-links / existing extension commands), `showOutput` (extension Output), and `reportEvent`
 (telemetry). The dashboard never mutates Azure resources — all "fix" affordances deep-link out.
 
-### Polling
+### Loading and refresh
 
-- Metric trend charts: every 60 s.
-- Lightweight ARM polls (account, throughput, inventory, alerts, advisor): every 30 s, staggered.
-- Polling pauses when the panel is hidden (`document.visibilityState !== 'visible'`) and via the header's
-  **Pause auto-refresh** toggle.
+- Data loads when Overview opens. There are no polling timers, refresh-on-visibility handlers or auto-refresh settings.
+- **Refresh** reloads every section: account summary, inventory, metric trends, inventory metrics, the selected
+  container's partition health, alerts, Azure Advisor recommendations and derived advisories. It waits for all requests.
+- Metric time-range changes reload trends, time-dependent inventory metrics and the selected partition view.
+  Database-scope changes reload trends only; partition selection/measure and alert-window changes reload their own data.
+  Switching tabs, showing a chart or returning to the editor does not itself fetch data.
+- **Charts generated at**, to the left of the header filters, shows the local date and time when the latest accepted
+  trend batch produced available chart results. It is absent before any chart results are available or when the whole
+  batch is unavailable. It is not a
+  timestamp for all sections, the Azure ingestion time or the latest metric sample.
+- A spinner inside **Refresh** indicates an explicit Refresh or header filter change, not initial loading.
+  The button keeps its Refresh label; no separate updating text is displayed.
+  Refresh and both header selectors remain unavailable while existing data requests finish, including initial loading.
+  They unlock after completion or failure without resetting the selected database or period.
+  Individual sections show their own loading state.
+- Successful database/container creation retains its existing inventory reload. Filters and selections are preserved.
 
 ## Permissions (RBAC)
 

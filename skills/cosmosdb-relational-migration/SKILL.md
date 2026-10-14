@@ -6,7 +6,8 @@ description: |
   Use when asked to migrate an RDBMS application, run or resume a
   .cosmosdb-migration project, infer relational DDL from application code when no DDL
   was supplied, verify whether the application language has a supported Cosmos DB
-  SDK, or execute one migration phase. Requires the
+  SDK, execute one migration phase, or remember migration findings, decisions, or a
+  generated Cosmos DB model for another application. Requires the
   cosmosdb-best-practices peer Skill.
 license: MIT
 metadata:
@@ -34,6 +35,7 @@ identify. Do not load every reference at the start of a run.
 | [Provisioning](./references/phases/provisioning.md) | Generating deployment artifacts or applying authorized target changes. |
 | [Code migration](./references/phases/code-migration.md) | Planning or executing application changes against the accepted model. |
 | [Interaction and checkpoints](./references/workflow/interaction-and-checkpoints.md) | Handling execution modes, decisions, blockers, and phase handoffs. |
+| [Migration memory](./references/workflow/memory.md) | Starting any migration task, remembering findings or decisions, or preserving a model for another application. |
 | [Best-practices integration](./references/workflow/best-practices-integration.md) | Loading the required peer and selecting guidance for Cosmos DB decisions. |
 | [DDL interpretation](./references/workflow/ddl-interpretation.md) | Choosing a parser and interpreting selected DDL without changing authoritative inputs. |
 | [SQLGlot DDL](./references/tooling/sqlglot-ddl.md) | Only after SQLGlot is selected: environment setup, dialect checks, AST inspection, and inventory examples. Skip for model-only interpretation. |
@@ -51,7 +53,7 @@ provisioning, query, or SDK decision. Follow
 relevant rules from its current table of contents by concept. Rule filenames are not a
 stable API and must not be hardcoded as runtime dependencies.
 
-If the peer Skill is unavailable, complete only source classification tasks that do
+For phase execution, if the peer Skill is unavailable, complete only source classification tasks that do
 not make Cosmos DB design decisions, then stop with installation guidance.
 
 ## DDL Parsing Choice and Results
@@ -90,7 +92,8 @@ Use the summary and JSON manifest paths defined in the phase references for each
 phase and assessed domain, and the `summary.md` and `cosmos-model.json` pair for each
 converted domain. Store human-readable analysis in summaries, machine-readable evidence in
 manifests, and complete models only in model JSON files. Keep the canonical root
-`model.json` and executable provisioning files as approved exceptions. Explain and
+`model.json`, executable provisioning files, and the optional files described in
+[Migration memory](./references/workflow/memory.md) as approved exceptions. Explain and
 obtain approval before adding any other durable artifact. Validators check recorded
 structure and source hashes; they do not parse DDL or prove the correctness of the
 agent's interpretation.
@@ -174,6 +177,19 @@ dependency lies outside it, explain the dependency and request explicit scope ap
 analyzing or changing that external project. Preserve existing checkpoint-relative paths;
 adding the project to another workspace does not relocate its `.cosmosdb-migration` folder.
 
+### Migration Memory
+
+After resolving the project root, follow [Migration memory](./references/workflow/memory.md)
+before phase work. Read `.cosmosdb-migration/memory.md` when present and automatically
+remember important decisions and findings during ordinary migration work. Use project-local
+files, not the host's user-profile memory tool. Current requirements take precedence over
+remembered context. Report additions or corrections in the final task or phase summary.
+
+A request only to remember, review, or update migration memory does not start a phase,
+initialize `project.json`, or run the inspector, freshness, or completion helpers. Perform
+the requested memory work and stop. Recording existing knowledge does not require the peer
+Skill; making new Cosmos DB design decisions still does.
+
 ### Helper Commands
 
 Before using an unfamiliar helper, or after an argument/usage error, run
@@ -201,6 +217,8 @@ Examples:
 - "Run the provisioning phase of a relational database migration to Azure Cosmos DB. Allow provisioning for this invocation."
 - "Create an application code migration plan for moving this relational application to Azure Cosmos DB."
 - "Migrate the application code using the validated migration plan." (explicitly permits application edits)
+- "Remember this decision for future relational database migrations."
+- "Memorize the generated Cosmos DB model to be preserved for the next migration."
 
 ## Invariants
 
@@ -313,7 +331,9 @@ is supplied, execute exactly that phase and stop after its checkpoint in either 
   analytical inputs and outputs. Before completing `preflight` through `provisioning`, run
   `node <skill-root>/scripts/freshness.mjs --workspace <workspace> --phase <phase> --write --expect <revision>`
   with one `--consulted <workspace-relative-path>` for each application or evidence
-  file materially used. Peer guidance is excluded from freshness: do not record its
+  file materially used. Migration memory notes are advisory and excluded from freshness;
+  a preserved model used as a design input follows the normal consulted-file rule.
+  Peer guidance is excluded from freshness: do not record its
   index or rule files as consulted inputs. Keep applied rule paths and rationale in summaries.
   Finalize artifacts and semantic project fields first. Obtain
   the revision from `project-state.mjs`; the helper records input and output hashes
@@ -335,7 +355,8 @@ is supplied, execute exactly that phase and stop after its checkpoint in either 
   outputs, preserve unrelated steps, and recompute the shared preflight gate.
 - Regeneration replaces only phase-owned generated artifacts. Preserve authoritative
   inputs, user-managed files, unrelated application changes, unknown project fields,
-  and external resources. Provisioning mutations still require current authorization.
+  migration memory and preserved models, and external resources. Provisioning mutations
+  still require current authorization.
 - Never mark completion from file existence alone; apply the checks in the phase
   reference and [project-state-and-artifacts.md](./references/contracts/project-state-and-artifacts.md).
 - Before skipping or advancing past a phase, require a current computed completion

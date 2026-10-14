@@ -22,7 +22,8 @@ Required:
 Do not copy complete domain models into summaries or create separate registry,
 capacity, identity, or per-decision analysis files. Keep machine-readable evidence in
 the existing manifest and human-readable analysis in the existing summaries. Explain
-the need and obtain approval before adding any other durable artifact.
+the need and obtain approval before adding any other durable artifact, except the optional
+notes and explicitly requested model snapshots in [Migration memory](../workflow/memory.md).
 
 ## Adaptive Execution Contract
 
@@ -69,6 +70,12 @@ Use `selectedDomains` as the complete work list and carry `skippedDomains` into
 the root summary.
 
 ## Per-Domain Procedure
+
+Read relevant migration memory and any preserved model for the same source schema before
+designing overlapping entities. Consider alignment of containers, partition keys, identities,
+and document shapes while reassessing the current application's requirements and access
+patterns. Explain material reuse or divergence in the existing summaries. A remembered model
+is context, not a replacement for current analysis or evidence of a deployed target.
 
 First assemble the selected-domain reference registry described in
 [validation-evidence.md](../contracts/validation-evidence.md). Assign distinct model entity

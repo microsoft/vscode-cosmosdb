@@ -114,6 +114,34 @@ test('defines completed-phase rerun behavior by mode and explicit intent', () =>
     );
 });
 
+test('defines local advisory memory with automatic capture and explicit model preservation', () => {
+    const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
+    const memory = fs.readFileSync(path.join(skillRoot, 'references/workflow/memory.md'), 'utf8');
+    const projectFormat = fs.readFileSync(path.join(skillRoot, 'references/contracts/project-state-and-artifacts.md'), 'utf8');
+    const freshness = fs.readFileSync(path.join(skillRoot, 'references/contracts/freshness.md'), 'utf8');
+    const checkpoints = fs.readFileSync(path.join(skillRoot, 'references/workflow/interaction-and-checkpoints.md'), 'utf8');
+    const conversion = fs.readFileSync(path.join(skillRoot, 'references/phases/schema-conversion.md'), 'utf8');
+    assert.match(skill, /remember migration findings, decisions, or a\s+generated Cosmos DB model/u);
+    assert.match(skill, /\.cosmosdb-migration\/memory\.md/u);
+    assert.match(skill, /A request only to remember, review, or update migration memory does not start a phase/u);
+    assert.match(memory, /Use ordinary file tools, not a host-specific memory tool/u);
+    assert.match(memory, /automatically retain important research findings/u);
+    assert.match(memory, /Read before writing/u);
+    assert.match(memory, /do not write memory during read-only or validation-only tasks unless the user also requests it/u);
+    assert.match(memory, /Memory does not override supplied DDL, current user requirements/u);
+    assert.match(memory, /memory-models\/<name>\.json/u);
+    assert.match(memory, /do not regenerate it or reconstruct it from recollection/u);
+    assert.match(memory, /evaluating the new application's access patterns and requirements/u);
+    assert.match(memory, /Do not copy checkpoint state to transfer knowledge/u);
+    assert.match(memory, /Markdown notebook is excluded\s+from freshness tracking/u);
+    assert.match(memory, /briefly say what was remembered or corrected/u);
+    assert.match(projectFormat, /memory-models\/<name>\.json/u);
+    assert.match(projectFormat, /a memory-only task does not initialize\s+or update `project\.json`/u);
+    assert.match(freshness, /notebook is not a consulted freshness input/u);
+    assert.match(checkpoints, /When memory was created or updated/u);
+    assert.match(conversion, /preserved model for the same source schema/u);
+});
+
 test('resolves conversion concerns independently without premature terminal blockers', () => {
     const conversion = fs.readFileSync(path.join(skillRoot, 'references/phases/schema-conversion.md'), 'utf8');
     const interaction = fs.readFileSync(path.join(skillRoot, 'references/workflow/interaction-and-checkpoints.md'), 'utf8');

@@ -147,7 +147,10 @@ Record the selected option and rationale in the current phase summary. Do not ad
 new fields to `project.json` for decision history. The defined
 `phases.discovery.ddlParsing` field stores the current parsing choice, not a history.
 Keep one result per phase and one summary per domain, apart from the approved
-canonical root model and executable provisioning inputs. Explain and obtain approval
+canonical root model, executable provisioning inputs, and optional
+[migration memory](./memory.md). Automatically retain important reusable findings and
+decisions in local memory without a separate approval prompt; this does not grant approval
+to reuse a consequential choice in a different context. Explain and obtain approval
 before creating another durable artifact; an unattended run records the pending need
 in the existing summary and stops rather than creating the extra file.
 
@@ -169,6 +172,11 @@ warnings, confirmed decisions, remaining blockers, and next action without repro
 the full report. Omit empty sections and combine related points to keep the reply short.
 Keep validation assurance explicit: structural checks do not establish source-engine,
 production-workload, live-target, or application-behavior correctness.
+
+When memory was created or updated, briefly state what was remembered or corrected and
+link to `.cosmosdb-migration/memory.md` and any newly preserved model. Omit this notice
+when nothing changed; never imply a failed write succeeded. A memory-only request needs
+only this short outcome and links, not a phase checkpoint or completion claim.
 
 Use the following content as a checklist, adapting its presentation to the task:
 

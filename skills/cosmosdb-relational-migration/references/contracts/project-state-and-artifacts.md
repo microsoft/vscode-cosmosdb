@@ -8,6 +8,8 @@ relative to the application workspace unless stated otherwise.
 ```text
 .cosmosdb-migration/
 |-- project.json
+|-- memory.md                         (optional reusable notes)
+|-- memory-models/<name>.json          (models explicitly preserved by the user)
 |-- phases/
 |   |-- 1-discovery/
 |   |   |-- schema-ddl/
@@ -40,6 +42,11 @@ relative to the application workspace unless stated otherwise.
 ```
 
 Create missing directories lazily before their first write.
+
+The optional [migration memory](../workflow/memory.md) uses ordinary Markdown notes and,
+when requested, preserved model JSON files. They are not phase outputs or completion
+requirements. Preserve them during regeneration; a memory-only task does not initialize
+or update `project.json`. Do not add a memory manifest or checkpoint fields.
 
 Each phase writes a human-readable Markdown artifact and an authoritative,
 adjacent JSON manifest. Source inventory lives in `preflight-manifest.json`, while SDK

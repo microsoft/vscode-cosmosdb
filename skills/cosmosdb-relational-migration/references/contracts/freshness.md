@@ -37,6 +37,12 @@ observations are excluded from semantic projections. The checkpoint itself is ne
 hashed as a file: only relevant semantic fields are hashed, avoiding self-reference
 and invalidation from unrelated workflow bookkeeping.
 
+The advisory `.cosmosdb-migration/memory.md` notebook is not a consulted freshness input.
+Updating notes does not invalidate completed phases. Record materially applied reasoning
+in the phase summary instead. A preserved model under `memory-models/` that is actually
+used as a design input is an ordinary consulted file; merely retaining a snapshot adds
+no freshness requirement. See [Migration memory](../workflow/memory.md).
+
 Mandatory inputs are:
 
 - `preflight`: selected DDL and raw workload paths and bytes, all three source

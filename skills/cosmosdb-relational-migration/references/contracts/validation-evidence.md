@@ -409,6 +409,11 @@ Existing selected DDL and curated preflight
 input templates remain inputs, not additional phase reports. Record SDK classification
 in `discovery-manifest.json` as `sdkCompatibility` rather than a separate SDK report.
 
+The optional [migration memory](../workflow/memory.md) notebook and explicitly requested
+model snapshots are also approved artifacts. Useful notes can be retained automatically
+without separate approval. They remain reusable context, not required phase evidence or
+additional completion gates.
+
 If another durable artifact is genuinely needed, explain its purpose, why it cannot
 live in an existing result, ownership and retention, and obtain approval first.
 Do not silently delete or overwrite user-managed artifacts. Keep required evidence

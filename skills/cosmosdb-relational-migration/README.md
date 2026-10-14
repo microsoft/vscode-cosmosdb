@@ -122,6 +122,32 @@ Planning and applying application changes are separate requests. Resource and da
 mutations require explicit permission for the current invocation; a previous run's
 authorization does not carry forward.
 
+### Remember Findings and Models
+
+The agent reads `.cosmosdb-migration/memory.md` when present and automatically retains
+important decisions, research findings, and verified fixes there, reporting additions at
+the end of the task. These are concise Markdown notes in the application project, not
+user-profile memories. You can ask it not to retain information or explicitly ask:
+
+```text
+Remember this decision for future relational database migrations.
+```
+
+```text
+Memorize the generated Cosmos DB model to be preserved for the next migration.
+```
+
+A model-preservation request keeps a JSON copy under `.cosmosdb-migration/memory-models/`
+and links it from the notes. To reuse the knowledge in another application, copy the memory
+file and its referenced model snapshots into that project's `.cosmosdb-migration` folder,
+or ask the agent to bring them from a specific project. Review the contents before sharing.
+Do not copy checkpoint state just to transfer knowledge.
+
+The next migration considers alignment with a remembered model, especially for applications
+using the same source database, while evaluating its own requirements. Memory is advisory:
+it does not force old choices, transfer permissions, or require a pack format or memory
+validation. See the [memory workflow](./references/workflow/memory.md).
+
 ## Inputs and Results
 
 Start with the application source. You can also supply DDL, application details,

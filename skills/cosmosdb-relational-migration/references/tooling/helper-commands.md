@@ -23,6 +23,8 @@ an agent/host responsibility, not a flag on these local helpers.
   summaries; do not add peer files to consulted workspace inputs. Historical peer-file
   freshness entries are ignored. Completion and inspection do not need a peer installation;
   new Cosmos DB decisions still require the peer Skill.
+- Migration memory notes are also excluded from freshness. Preserved models materially
+  used as design inputs follow the ordinary `--consulted` rule. Memory has no dedicated helper.
 - Use separate option/value arguments, quote paths or JSON containing spaces, and
   replace placeholders. Brackets and ellipses in examples describe optional/repeated
   arguments; do not pass them literally.

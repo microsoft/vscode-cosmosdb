@@ -143,8 +143,9 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
     const [draftTag, setDraftTag] = useState('');
     const [uploadInfo, setUploadInfo] = useState<string>();
     const [uploadError, setUploadError] = useState<string>();
-    const [sizeErrors, setSizeErrors] = useState<Partial<Record<DocumentSizeField, boolean>>>({});
+    const [sizeErrors, setSizeErrors] = useState<Partial<Record<DocumentSizeField, string>>>({});
     const sizeLimitMessage = l10n.t('Document size cannot exceed 2 MB (2048 KB).');
+    const sizeOrderMessage = l10n.t('Average document size cannot exceed maximum document size.');
     const { confirm, confirmationError } = useNativeConfirmation();
     const fileRef = useRef<HTMLInputElement>(null);
     const uploadButtonRef = useRef<HTMLButtonElement>(null);
@@ -275,9 +276,15 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
 
     const patchDocumentSize = (field: DocumentSizeField, value: string) => {
         const size = Number(value) || 0;
-        const exceedsLimit = size > MAX_DOCUMENT_SIZE_KB;
-        setSizeErrors((previous) => ({ ...previous, [field]: exceedsLimit }));
-        if (!exceedsLimit) {
+        const document = { ...active.document, [field]: size };
+        const error =
+            size > MAX_DOCUMENT_SIZE_KB
+                ? sizeLimitMessage
+                : document.avgSizeKb > document.maxSizeKb
+                  ? sizeOrderMessage
+                  : undefined;
+        setSizeErrors((previous) => ({ ...previous, [field]: error }));
+        if (!error) {
             patchDocument({ [field]: size });
         }
     };
@@ -288,6 +295,10 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
     if (!active) {
         return null;
     }
+
+    const existingSizeError = active.document.avgSizeKb > active.document.maxSizeKb ? sizeOrderMessage : undefined;
+    const averageSizeError = sizeErrors.avgSizeKb ?? existingSizeError;
+    const maximumSizeError = sizeErrors.maxSizeKb ?? existingSizeError;
 
     return (
         <div className={styles.stack}>
@@ -437,10 +448,8 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
                     />
                     <Text>{l10n.t('Average document size')}</Text>
                     <Field
-                        validationState={sizeErrors.avgSizeKb ? 'error' : 'none'}
-                        validationMessage={
-                            sizeErrors.avgSizeKb ? { children: sizeLimitMessage, role: 'alert' } : undefined
-                        }
+                        validationState={averageSizeError ? 'error' : 'none'}
+                        validationMessage={averageSizeError ? { children: averageSizeError, role: 'alert' } : undefined}
                     >
                         <div className={styles.unit}>
                             <Input
@@ -457,10 +466,8 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
                     </Field>
                     <Text>{l10n.t('Maximum document size')}</Text>
                     <Field
-                        validationState={sizeErrors.maxSizeKb ? 'error' : 'none'}
-                        validationMessage={
-                            sizeErrors.maxSizeKb ? { children: sizeLimitMessage, role: 'alert' } : undefined
-                        }
+                        validationState={maximumSizeError ? 'error' : 'none'}
+                        validationMessage={maximumSizeError ? { children: maximumSizeError, role: 'alert' } : undefined}
                     >
                         <div className={styles.unit}>
                             <Input

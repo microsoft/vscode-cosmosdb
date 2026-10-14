@@ -253,6 +253,7 @@
   "Availability across a date range": "Availability across a date range",
   "Available": "Available",
   "Average document size": "Average document size",
+  "Average document size cannot exceed maximum document size.": "Average document size cannot exceed maximum document size.",
   "Average items per array": "Average items per array",
   "avg doc {n} KB": "avg doc {n} KB",
   "Avoid": "Avoid",

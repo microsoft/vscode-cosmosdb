@@ -397,6 +397,19 @@ describe('DataModelerProjectService', () => {
         expect(await new DataModelerProjectService(endpoint).loadState()).toEqual(state);
     });
 
+    it('keeps older inconsistent document sizes openable so they can be corrected and saved', async () => {
+        const state = snapshot();
+        state.wizard.dataModel.containers[0].document = { attributeCount: 3, avgSizeKb: 8, maxSizeKb: 4 };
+        files.set(
+            service.projectUri.toString(),
+            Buffer.from(JSON.stringify({ version: 1, name: 'Data Modeler', state })),
+        );
+        expect(await service.loadState()).toEqual(state);
+        state.wizard.dataModel.containers[0].document.maxSizeKb = 8;
+        await service.saveState(state);
+        expect(await new DataModelerProjectService(endpoint).loadState()).toEqual(state);
+    });
+
     it('does not let a corrupt account file block another account', async () => {
         const second = new DataModelerProjectService('https://account-b.documents.azure.com');
         files.set(service.projectUri.toString(), Buffer.from('invalid'));

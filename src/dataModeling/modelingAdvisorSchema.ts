@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as l10n from '@vscode/l10n';
 import { z } from 'zod';
 import { type WizardState } from '../webviews/cosmosdb/DataModeling/dataModel';
 import { MAX_CONTAINERS, MAX_DOCUMENT_SIZE_KB, type ContainerModel } from '../webviews/cosmosdb/DataModeling/models';
@@ -62,7 +63,7 @@ const ContainerModelSchema: z.ZodType<ContainerModel> = z.object({
     }),
 });
 
-export const WizardStateSchema: z.ZodType<WizardState> = z
+const StoredWizardStateSchema: z.ZodType<WizardState> = z
     .object({
         step: z.number().int().min(1),
         reachedSteps: z.array(z.string()).optional(),
@@ -112,9 +113,22 @@ export const WizardStateSchema: z.ZodType<WizardState> = z
         }
     });
 
+export const WizardStateSchema: z.ZodType<WizardState> = StoredWizardStateSchema.superRefine((state, ctx) => {
+    for (const [index, container] of state.dataModel.containers.entries()) {
+        if (container.document.avgSizeKb > container.document.maxSizeKb) {
+            ctx.addIssue({
+                code: 'custom',
+                message: l10n.t('Average document size cannot exceed maximum document size.'),
+                path: ['dataModel', 'containers', index, 'document', 'avgSizeKb'],
+            });
+        }
+    }
+});
+
 export const ModelingAdvisorSnapshotSchema = z
     .object({
-        wizard: WizardStateSchema,
+        // Keep older inconsistent estimates editable; recommendation requests enforce their ordering.
+        wizard: StoredWizardStateSchema,
         recommendation: z.object({
             status: z.enum(['idle', 'waiting', 'received', 'error']),
             value: PartitionKeyRecommendationSchema.optional(),

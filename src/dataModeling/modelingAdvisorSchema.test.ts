@@ -5,11 +5,13 @@
 
 import { describe, expect, it } from 'vitest';
 import { createBlankContainer } from '../webviews/cosmosdb/DataModeling/dataModel';
-import { WizardStateSchema } from './modelingAdvisorSchema';
+import { ModelingAdvisorSnapshotSchema, WizardStateSchema } from './modelingAdvisorSchema';
 
 describe('wizard document size validation', () => {
     it.each(['avgSizeKb', 'maxSizeKb'] as const)('caps %s at the inclusive 2048 KB limit', (field) => {
         const container = createBlankContainer();
+        container.document.avgSizeKb = 0;
+        container.document.maxSizeKb = 2048;
         const wizard = {
             step: 1,
             dataModel: { containers: [container], activeContainerId: container.id },
@@ -30,5 +32,39 @@ describe('wizard document size validation', () => {
             expect(result.success).toBe(false);
             expect(result.error?.issues[0].path).toEqual(['dataModel', 'containers', 0, 'document', field]);
         }
+    });
+
+    it.each([
+        { average: 1, maximum: 4, valid: true },
+        { average: 4, maximum: 4, valid: true },
+        { average: 0, maximum: 0, valid: true },
+        { average: 2048, maximum: 2048, valid: true },
+        { average: 4.01, maximum: 4, valid: false },
+        { average: 2048, maximum: 28, valid: false },
+    ])('validates average $average against maximum $maximum', ({ average, maximum, valid }) => {
+        const container = createBlankContainer();
+        container.document.avgSizeKb = average;
+        container.document.maxSizeKb = maximum;
+        const wizard = { step: 1, dataModel: { containers: [container], activeContainerId: container.id } };
+        const result = WizardStateSchema.safeParse(wizard);
+        expect(result.success).toBe(valid);
+        expect(result.error?.issues[0].path).toEqual(
+            valid ? undefined : ['dataModel', 'containers', 0, 'document', 'avgSizeKb'],
+        );
+        expect(ModelingAdvisorSnapshotSchema.parse({ wizard, recommendation: { status: 'idle' } }).wizard).toEqual(
+            wizard,
+        );
+    });
+
+    it('rejects inconsistent estimates in inactive containers too', () => {
+        const first = createBlankContainer('First');
+        const second = createBlankContainer('Second');
+        second.document.avgSizeKb = 8;
+        const result = WizardStateSchema.safeParse({
+            step: 1,
+            dataModel: { containers: [first, second], activeContainerId: first.id },
+        });
+        expect(result.success).toBe(false);
+        expect(result.error?.issues[0].path).toEqual(['dataModel', 'containers', 1, 'document', 'avgSizeKb']);
     });
 });

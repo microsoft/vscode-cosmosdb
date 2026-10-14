@@ -28,6 +28,8 @@ describe('DataPage document size limits', () => {
 
     it.each(fields)('rejects oversized $label edits and accepts the inclusive boundary', ({ label, field }) => {
         const container = createBlankContainer();
+        container.document.avgSizeKb = 0;
+        container.document.maxSizeKb = field === 'avgSizeKb' ? 2048 : 4;
         const model: DataModel = { containers: [container], activeContainerId: container.id };
         const onChange = vi.fn<(next: DataModel) => void>();
         const { rerender } = render(<DataPage model={model} onChange={onChange} />);
@@ -55,6 +57,51 @@ describe('DataPage document size limits', () => {
             expect(input).not.toHaveAttribute('aria-invalid', 'true');
             expect(screen.queryByRole('alert')).not.toBeInTheDocument();
         }
+    });
+
+    it.each([
+        { label: 'Average document size', field: 'avgSizeKb', invalid: '4.01', valid: '4' },
+        { label: 'Maximum document size', field: 'maxSizeKb', invalid: '1.99', valid: '2' },
+    ] as const)('rejects inconsistent $label edits and allows equality', ({ label, field, invalid, valid }) => {
+        const container = createBlankContainer();
+        container.document.avgSizeKb = 2;
+        container.document.maxSizeKb = 4;
+        const model: DataModel = { containers: [container], activeContainerId: container.id };
+        const onChange = vi.fn<(next: DataModel) => void>();
+        const { rerender } = render(<DataPage model={model} onChange={onChange} />);
+        const input = screen.getByRole('spinbutton', { name: label });
+        fireEvent.change(input, { target: { value: invalid } });
+        expect(onChange).not.toHaveBeenCalled();
+        expect(input).toHaveValue(container.document[field]);
+        expect(input).toHaveAttribute('aria-invalid', 'true');
+        expect(input).toHaveAccessibleDescription('Average document size cannot exceed maximum document size.');
+        expect(screen.getByRole('alert')).toHaveTextContent(
+            'Average document size cannot exceed maximum document size.',
+        );
+
+        fireEvent.change(input, { target: { value: valid } });
+        const next = onChange.mock.lastCall![0];
+        expect(next.containers[0].document[field]).toBe(Number(valid));
+        rerender(<DataPage model={next} onChange={onChange} />);
+        expect(input).not.toHaveAttribute('aria-invalid', 'true');
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it.each([
+        { label: 'Average document size', value: '4' },
+        { label: 'Maximum document size', value: '8' },
+    ])('shows inconsistent saved estimates and allows correcting $label', ({ label, value }) => {
+        const container = createBlankContainer();
+        container.document.avgSizeKb = 8;
+        const model: DataModel = { containers: [container], activeContainerId: container.id };
+        const onChange = vi.fn<(next: DataModel) => void>();
+        const { rerender } = render(<DataPage model={model} onChange={onChange} />);
+        expect(screen.getAllByRole('alert')).toHaveLength(2);
+        fireEvent.change(screen.getByRole('spinbutton', { name: label }), { target: { value } });
+        const next = onChange.mock.lastCall![0];
+        expect(next.containers[0].document.avgSizeKb).toBe(next.containers[0].document.maxSizeKb);
+        rerender(<DataPage model={next} onChange={onChange} />);
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 
     it('keeps errors independent and clears them when switching containers', () => {

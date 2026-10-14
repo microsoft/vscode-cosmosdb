@@ -40,8 +40,12 @@ Workload templates and previously saved containers retain their own configuratio
 
 **Average document size** and **Maximum document size** each have an inclusive limit of **2048 KB (2 MB)**.
 An oversized edit shows an inline error and leaves the last accepted value unchanged.
+The average must also be less than or equal to the maximum. Editing either field to break this rule shows an inline
+error and retains its last accepted value. To raise both sizes, raise the maximum first; to lower both, lower the average first.
 JSON imports reject individual documents larger than 2 MB, measured as UTF-8 serialized JSON before rounding.
 Saved projects created before this limit open with any larger size estimate capped at 2048 KB.
+Older projects with an average above the maximum remain openable and editable, with inline errors on the Data tab.
+Recommendation requests reject inconsistent sizes in any container until they are corrected.
 
 ## Source of truth
 

@@ -65,9 +65,9 @@ describe('single-column container tabs', () => {
         await user.click(summary);
         expect(details).not.toHaveAttribute('open');
         fireEvent.change(screen.getByRole('spinbutton', { name: 'Average document size' }), {
-            target: { value: '8' },
+            target: { value: '4' },
         });
-        expect(screen.getByRole('spinbutton', { name: 'Average document size' })).toHaveValue(8);
+        expect(screen.getByRole('spinbutton', { name: 'Average document size' })).toHaveValue(4);
     });
 
     it('keeps query editing and request estimates working with guidance collapsed', async () => {

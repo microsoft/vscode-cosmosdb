@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
+import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
 import { Detector, type DetectorContext } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
@@ -34,25 +35,25 @@ function evaluateServerlessThrottling(input: ServerlessThrottlingInput): Derived
         title: l10n.t('Serverless container is throttling in {container}', { container: input.containerId }),
         rationale: clampRationale(
             l10n.t(
-                '"{container}" throttled {rate}% of requests over the last 7 days. Serverless has no throughput knob.',
-                { container: input.containerId, rate },
+                '"{container}" throttled `{rate}%` of requests over the last `7 days`. Serverless has no throughput knob.',
+                { container: escapeAdvisoryText(input.containerId), rate },
             ) +
                 ' ' +
                 l10n.t(
-                    'Bursts can still exceed the per-partition {limit} RU/s ceiling even when the average looks lower.',
+                    'Bursts can still exceed the per-partition `{limit} RU/s` ceiling even when the average looks lower.',
                     { limit: SERVERLESS_RU_PER_PARTITION.toLocaleString() },
                 ),
         ),
         suggestedAction:
             l10n.t(
                 'Evaluate migrating "{container}" to provisioned throughput (manual or autoscale) for higher, predictable capacity.',
-                { container: input.containerId },
+                { container: escapeAdvisoryText(input.containerId) },
             ) +
             ' ' +
             l10n.t(
                 'Better partition-key distribution can help a multi-partition serverless container, but provisioned throughput is the reliable fix.',
             ),
-        thresholdReference: l10n.t('Threshold: 429 rate ≥ {rate}% over at least {requests} requests', {
+        thresholdReference: l10n.t('Threshold: 429 rate ≥ `{rate}%` over at least `{requests} requests`', {
             rate: DIAGNOSTIC_POLICY.serverlessThrottling.throttleRatePercent,
             requests: DIAGNOSTIC_POLICY.serverlessThrottling.minRequests.toLocaleString(),
         }),

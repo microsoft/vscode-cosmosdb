@@ -5,8 +5,17 @@
 
 // @vitest-environment jsdom
 
-import { FluentProvider, webLightTheme } from '@fluentui/react-components';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import {
+    accordionClassNames,
+    accordionHeaderClassNames,
+    accordionPanelClassNames,
+    badgeClassNames,
+    cardClassNames,
+    FluentProvider,
+    messageBarClassNames,
+    webLightTheme,
+} from '@fluentui/react-components';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { type DerivedAdvisoriesResult } from '../../api/types';
@@ -42,6 +51,10 @@ describe('log coverage guidance', () => {
             failures: [{ operation: 'probeDataPlane', kind: 'accessDenied', reason: 'rbac' }],
         });
 
+        const notice = screen.getByRole('group', { name: 'Partial coverage' });
+        expect(notice).toHaveClass(messageBarClassNames.root);
+        expect(notice).not.toHaveAttribute('tabindex');
+        expect(notice.querySelector(`.${messageBarClassNames.icon}`)).toHaveAttribute('aria-hidden', 'true');
         expect(screen.getByText('DataPlaneRequests availability: Access denied')).toBeDefined();
         expect(
             screen.getByText(
@@ -117,7 +130,7 @@ describe('log coverage guidance', () => {
         const { showOutput } = showCoverage({ available: false, reason: 'rbac' });
         const button = screen.getByRole('button', { name: 'Show Output' });
         await user.tab();
-        expect(screen.getByLabelText(/Partial coverage/)).toHaveFocus();
+        expect(screen.getByLabelText(/^Partial coverage\./)).toHaveFocus();
         await user.tab();
         expect(button).toHaveFocus();
         await user.keyboard('{Enter}');
@@ -139,7 +152,11 @@ describe('metric coverage and actionable findings', () => {
                 },
             },
         );
-        expect(screen.getByText('Incomplete workload analysis')).toBeInTheDocument();
+        const notice = screen.getByRole('group', { name: 'Incomplete workload analysis' });
+        expect(notice).toHaveClass(messageBarClassNames.root);
+        expect(notice).not.toHaveAttribute('tabindex');
+        expect(notice.querySelector(`.${messageBarClassNames.icon}`)).toHaveAttribute('aria-hidden', 'true');
+        expect(within(notice).getByText('Incomplete workload analysis')).toBeInTheDocument();
         expect(
             screen.getByText(
                 'Some workload checks could not run. Missing or failed metric queries are not treated as zero usage. ' +
@@ -150,7 +167,7 @@ describe('metric coverage and actionable findings', () => {
         expect(screen.getByText('No advisories from the checks that completed.')).toBeInTheDocument();
         expect(screen.queryByText('No advisories from your telemetry right now.')).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: /Learn/ })).not.toBeInTheDocument();
-        expect(screen.getByLabelText(/^Partial coverage/)).toHaveAccessibleName(/^Partial coverage/);
+        expect(screen.getByLabelText(/^Partial coverage\./)).toHaveAccessibleName(/^Partial coverage/);
     });
 
     describe('advisory resource details', () => {
@@ -182,16 +199,21 @@ describe('metric coverage and actionable findings', () => {
                 expect(dialog.getAllByText(text)).toHaveLength(1);
                 expect(within(list).queryByText(text)).not.toBeInTheDocument();
             }
-            expect(list.querySelector('details')).toBeNull();
+            expect(list.querySelector(`.${accordionClassNames.root}`)).toBeNull();
             const dismiss = dialog.getByRole('button', { name: 'Dismiss advisory for db/b' });
             expect(dismiss).toHaveAccessibleName('Dismiss advisory for db/b');
             await user.click(dismiss);
             expect(onDismiss).toHaveBeenCalledExactlyOnceWith('idle-b');
         });
 
-        it.each(['Escape', 'Close button'] as const)(
-            'keeps differing evidence behind resource names and restores focus after %s',
-            async (closeWith) => {
+        it.each([
+            ['Enter', 'Escape'],
+            ['Enter', 'Close button'],
+            ['Space', 'Escape'],
+            ['Space', 'Close button'],
+        ] as const)(
+            'opens a Fluent card with %s, keeps resource evidence, and restores focus after %s',
+            async (openWith, closeWith) => {
                 const user = userEvent.setup();
                 showCoverage(undefined, {
                     advisories: [
@@ -200,22 +222,47 @@ describe('metric coverage and actionable findings', () => {
                     ],
                 });
                 const trigger = screen.getByRole('button', { name: /^Idle containers/ });
+                expect(trigger).toHaveClass(cardClassNames.root);
+                const badge = within(trigger).getByText('Low');
+                expect(badge).toHaveClass(badgeClassNames.root);
+                expect(badge).not.toHaveAttribute('tabindex');
+                expect(badge).not.toHaveAttribute('aria-hidden');
+                expect(trigger).toHaveTextContent('Idle containers');
+                expect(trigger).toHaveAccessibleName(/^Idle containers/);
+                expect(trigger).toHaveAttribute('aria-haspopup', 'dialog');
+                expect(within(trigger).queryByRole('button')).not.toBeInTheDocument();
                 await user.tab();
                 expect(trigger).toHaveFocus();
-                await user.keyboard('{Enter}');
+                await user.keyboard(`[${openWith}>]`);
+                expect(screen.queryAllByRole('dialog')).toHaveLength(openWith === 'Enter' ? 1 : 0);
+                await user.keyboard(`[/${openWith}]`);
                 const dialog = within(screen.getByRole('dialog'));
                 const list = dialog.getByRole('list', { name: 'Idle containers' });
-                const summary = within(list).getByText('db/a').closest('summary');
+                const summary = within(list).getByRole('button', { name: 'db/a' });
+                expect(summary).toHaveClass(accordionHeaderClassNames.button);
+                expect(summary).toHaveTextContent('db/a');
                 expect(summary).toHaveAccessibleName('db/a');
+                expect(summary).toHaveAttribute('aria-expanded', 'false');
                 expect(screen.getByRole('dialog').contains(document.activeElement)).toBe(true);
-                expect(dialog.getByText('Peak: 10 RU.')).not.toBeVisible();
-                expect(dialog.getByText('Peak: 20 RU.')).not.toBeVisible();
-                await user.click(within(list).getByText('db/a'));
+                expect(dialog.getByText('Peak: 10 RU.').closest('[inert]')).not.toBeNull();
+                expect(dialog.getByText('Peak: 20 RU.').closest('[inert]')).not.toBeNull();
+                summary.focus();
+                await user.keyboard('{Enter}');
+                const evidence = dialog.getByRole('region', { name: 'db/a' });
+                expect(evidence).toHaveClass(accordionPanelClassNames.root);
+                expect(evidence).toHaveAttribute('id', summary.getAttribute('aria-controls'));
+                expect(evidence).toHaveAttribute('aria-labelledby', summary.id);
+                expect(summary).toHaveAttribute('aria-expanded', 'true');
+                expect(summary).toHaveFocus();
                 expect(dialog.getByText('Peak: 10 RU.')).toBeVisible();
-                expect(dialog.getByText('Peak: 20 RU.')).not.toBeVisible();
+                expect(dialog.getByText('Peak: 20 RU.').closest('[inert]')).not.toBeNull();
                 expect(dialog.getAllByText(common.suggestedAction)).toHaveLength(1);
                 expect(within(list).queryByText(common.suggestedAction)).not.toBeInTheDocument();
                 expect(dialog.getAllByText(common.thresholdReference)).toHaveLength(1);
+                await user.keyboard(' ');
+                expect(summary).toHaveAttribute('aria-expanded', 'false');
+                await waitFor(() => expect(evidence).toHaveAttribute('inert'));
+                expect(summary).toHaveFocus();
                 const close = dialog.getByRole('button', { name: 'Close' });
                 expect(close).toHaveTextContent('Close');
                 expect(close).toHaveAccessibleName('Close');
@@ -241,7 +288,44 @@ describe('metric coverage and actionable findings', () => {
             }
             const list = dialog.getByRole('list', { name: 'Serverless candidates' });
             expect(within(list).getByRole('listitem')).toHaveTextContent(/^Account-wide$/);
-            expect(list.querySelector('details')).toBeNull();
+            expect(list.querySelector(`.${accordionClassNames.root}`)).toBeNull();
+        });
+
+        it('renders marked values in shared guidance and resource-specific evidence without changing focus', async () => {
+            const user = userEvent.setup();
+            showCoverage(undefined, {
+                advisories: [
+                    {
+                        ...common,
+                        id: 'idle-a',
+                        scope: 'db/a',
+                        rationale: 'Peak: `10 RU`.',
+                        suggestedAction: 'Recover `400 RU/s`.',
+                        thresholdReference: 'Threshold: `50 RU`.',
+                    },
+                    {
+                        ...common,
+                        id: 'idle-b',
+                        scope: 'db/b',
+                        rationale: 'Peak: `20 RU`.',
+                        suggestedAction: 'Recover `400 RU/s`.',
+                        thresholdReference: 'Threshold: `50 RU`.',
+                    },
+                ],
+            });
+            await user.click(screen.getByRole('button', { name: /^Idle containers/ }));
+            const dialog = within(screen.getByRole('dialog'));
+            expect(dialog.getByText('400 RU/s').tagName).toBe('SPAN');
+            expect(dialog.getByText('50 RU').tagName).toBe('SPAN');
+            const toggle = dialog.getByRole('button', { name: 'db/a' });
+            await user.click(toggle);
+            expect(toggle).toHaveAccessibleName('db/a');
+            expect(toggle).toHaveFocus();
+            const evidence = dialog.getByRole('region', { name: 'db/a' });
+            expect(evidence.textContent).toBe('Peak: 10 RU.');
+            expect(within(evidence).getByText('10 RU')).toBeVisible();
+            expect(within(evidence).getByText('10 RU')).not.toHaveAttribute('tabindex');
+            expect(evidence.querySelector('[aria-live], [role="alert"]')).toBeNull();
         });
     });
 

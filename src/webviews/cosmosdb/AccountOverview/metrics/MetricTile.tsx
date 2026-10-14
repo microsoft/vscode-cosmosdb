@@ -3,7 +3,16 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Button, makeStyles, mergeClasses, Text, tokens } from '@fluentui/react-components';
+import {
+    Button,
+    buttonClassNames,
+    makeStyles,
+    mergeClasses,
+    Text,
+    textClassNames,
+    tokens,
+    typographyStyles,
+} from '@fluentui/react-components';
 import { Eye16Regular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { type MetricSeriesResult, type UnavailableReason } from '../../../api/types';
@@ -33,48 +42,45 @@ function unavailableCaption(reason: UnavailableReason | undefined): string {
 
 const useStyles = makeStyles({
     tile: {
+        ...typographyStyles.body1,
         display: 'flex',
         flexDirection: 'column',
-        gap: '2px',
+        gap: tokens.spacingVerticalXXS,
         padding: tokens.spacingVerticalM,
         borderRadius: tokens.borderRadiusMedium,
-        border: '1px solid var(--vscode-widget-border, transparent)',
-        borderLeftWidth: '3px',
-        backgroundColor: 'var(--vscode-editorWidget-background, var(--vscode-editor-background))',
+        border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStrokeAccessible}`,
+        borderLeftWidth: tokens.strokeWidthThicker,
+        backgroundColor: tokens.colorNeutralBackground1,
         cursor: 'pointer',
         textAlign: 'left',
-        color: 'var(--vscode-foreground)',
+        color: tokens.colorNeutralForeground1,
         minWidth: 0,
-    },
-    tileSelected: {
-        borderTopColor: 'var(--vscode-focusBorder)',
-        borderRightColor: 'var(--vscode-focusBorder)',
-        borderBottomColor: 'var(--vscode-focusBorder)',
-        boxShadow: '0 0 0 1px var(--vscode-focusBorder)',
+        ':focus-visible': {
+            outline: `${tokens.strokeWidthThick} solid ${tokens.colorStrokeFocus2}`,
+            outlineOffset: tokens.strokeWidthThicker,
+        },
     },
     interactiveCard: {
         position: 'relative',
         display: 'flex',
         minWidth: 0,
         borderRadius: tokens.borderRadiusMedium,
-        border: '1px solid var(--vscode-widget-border, var(--vscode-panel-border))',
-        borderLeft: '3px solid transparent',
-        backgroundColor: 'var(--vscode-editorWidget-background, var(--vscode-editor-background))',
+        border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStrokeAccessible}`,
+        borderLeft: `${tokens.strokeWidthThicker} solid transparent`,
+        backgroundColor: tokens.colorNeutralBackground1,
         ':hover': {
-            backgroundColor: 'var(--vscode-list-hoverBackground)',
+            backgroundColor: tokens.colorNeutralBackground1Hover,
         },
-    },
-    interactiveSelected: {
-        borderTopColor: 'var(--vscode-textLink-foreground)',
-        borderRightColor: 'var(--vscode-textLink-foreground)',
-        borderBottomColor: 'var(--vscode-textLink-foreground)',
-        backgroundColor: 'var(--vscode-list-inactiveSelectionBackground)',
     },
     interactiveUnselected: {
         ':hover': {
-            borderTopColor: 'var(--vscode-descriptionForeground)',
-            borderRightColor: 'var(--vscode-descriptionForeground)',
-            borderBottomColor: 'var(--vscode-descriptionForeground)',
+            borderTopColor: tokens.colorNeutralStrokeAccessibleHover,
+            borderRightColor: tokens.colorNeutralStrokeAccessibleHover,
+            borderBottomColor: tokens.colorNeutralStrokeAccessibleHover,
+            // High-contrast hover backgrounds require the matching foreground for both text and the eye action.
+            [`& .${textClassNames.root}, & .${buttonClassNames.root}`]: {
+                color: tokens.colorNeutralForeground1Hover,
+            },
         },
     },
     cardButton: {
@@ -82,10 +88,6 @@ const useStyles = makeStyles({
         border: 0,
         backgroundColor: 'transparent',
         paddingBottom: '40px',
-        ':focus-visible': {
-            outline: '2px solid var(--vscode-focusBorder)',
-            outlineOffset: '3px',
-        },
     },
     eye: {
         position: 'absolute',
@@ -93,16 +95,15 @@ const useStyles = makeStyles({
         right: tokens.spacingHorizontalXS,
     },
     label: {
-        fontSize: tokens.fontSizeBase200,
-        color: 'var(--vscode-descriptionForeground)',
+        ...typographyStyles.body1,
+        color: tokens.colorNeutralForeground2,
     },
     value: {
-        fontSize: tokens.fontSizeBase500,
-        fontWeight: tokens.fontWeightSemibold,
+        ...typographyStyles.subtitle1,
     },
     caption: {
-        fontSize: tokens.fontSizeBase100,
-        color: 'var(--vscode-descriptionForeground)',
+        ...typographyStyles.caption1,
+        color: tokens.colorNeutralForeground2,
     },
     visuallyHidden: {
         position: 'absolute',
@@ -136,6 +137,15 @@ export const MetricTile = ({
 }) => {
     const styles = useStyles();
     const group = METRIC_GROUPS[descriptor.group];
+    const selectedStyle = selected
+        ? {
+              backgroundColor: group.background,
+              borderTopColor: group.border,
+              borderRightColor: group.border,
+              borderBottomColor: group.border,
+          }
+        : undefined;
+    const selectedTextStyle = selected ? { color: group.color } : undefined;
 
     const scalar = series?.available ? tileScalar(descriptor, series.points, series.peak) : undefined;
     const value = series?.available ? formatMetricValue(descriptor.unit, scalar) : '—';
@@ -149,11 +159,9 @@ export const MetricTile = ({
     if (chartAffordances) {
         return (
             <div
-                className={mergeClasses(
-                    styles.interactiveCard,
-                    selected ? styles.interactiveSelected : styles.interactiveUnselected,
-                )}
+                className={mergeClasses(styles.interactiveCard, !selected && styles.interactiveUnselected)}
                 style={{
+                    ...selectedStyle,
                     borderLeftColor: group.color,
                     borderLeftWidth: selected ? 6 : 3,
                     paddingLeft: selected ? 0 : 3,
@@ -166,9 +174,15 @@ export const MetricTile = ({
                     aria-describedby={groupLabelId}
                     onClick={onSelect}
                 >
-                    <Text className={styles.label}>{descriptor.label}</Text>
-                    <Text className={styles.value}>{value}</Text>
-                    <Text className={styles.caption}>{caption}</Text>
+                    <Text className={styles.label} style={selectedTextStyle}>
+                        {descriptor.label}
+                    </Text>
+                    <Text className={styles.value} style={selectedTextStyle}>
+                        {value}
+                    </Text>
+                    <Text className={styles.caption} style={selectedTextStyle}>
+                        {caption}
+                    </Text>
                 </button>
                 <Button
                     className={styles.eye}
@@ -186,14 +200,24 @@ export const MetricTile = ({
     return (
         <button
             type="button"
-            className={mergeClasses(styles.tile, selected && styles.tileSelected)}
-            style={{ borderLeftColor: group.color }}
+            className={styles.tile}
+            style={{
+                ...selectedStyle,
+                borderLeftColor: group.color,
+                boxShadow: selected ? `0 0 0 ${tokens.strokeWidthThin} ${group.border}` : undefined,
+            }}
             aria-pressed={selected}
             onClick={onSelect}
         >
-            <Text className={styles.label}>{descriptor.label}</Text>
-            <Text className={styles.value}>{value}</Text>
-            <Text className={styles.caption}>{caption}</Text>
+            <Text className={styles.label} style={selectedTextStyle}>
+                {descriptor.label}
+            </Text>
+            <Text className={styles.value} style={selectedTextStyle}>
+                {value}
+            </Text>
+            <Text className={styles.caption} style={selectedTextStyle}>
+                {caption}
+            </Text>
             <Text className={styles.visuallyHidden}>{group.label}</Text>
         </button>
     );

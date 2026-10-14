@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import {
-    Button,
+    Badge,
     Dropdown,
     makeStyles,
     mergeClasses,
@@ -12,6 +12,9 @@ import {
     Spinner,
     Text,
     tokens,
+    Toolbar,
+    ToolbarToggleButton,
+    typographyStyles,
     type OptionOnSelectData,
 } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
@@ -28,17 +31,15 @@ import { type ContainerRef } from './metrics/descriptors';
 const NO_CONTAINER = 'none';
 
 /**
- * Heat ramp toward `--vscode-errorForeground`. Text stays on `--vscode-foreground`
- * and the fill is mixed against the editor background so every level keeps
- * legible contrast in dark, light, and high-contrast themes; hot partitions get
- * a solid error-colored border in addition to the deepest fill.
+ * The heat ramp uses Fluent's danger surface pair. Hot partitions also have a danger border and a textual badge;
+ * intensity is not the only indication of a hot partition.
  */
 const LEVEL_FILL: Record<PartitionIntensityLevel, string> = {
-    1: 'color-mix(in srgb, var(--vscode-errorForeground) 10%, var(--vscode-editor-background))',
-    2: 'color-mix(in srgb, var(--vscode-errorForeground) 22%, var(--vscode-editor-background))',
-    3: 'color-mix(in srgb, var(--vscode-errorForeground) 36%, var(--vscode-editor-background))',
-    4: 'color-mix(in srgb, var(--vscode-errorForeground) 52%, var(--vscode-editor-background))',
-    5: 'color-mix(in srgb, var(--vscode-errorForeground) 70%, var(--vscode-editor-background))',
+    1: `color-mix(in srgb, ${tokens.colorStatusDangerBackground1} 10%, ${tokens.colorNeutralBackground1})`,
+    2: `color-mix(in srgb, ${tokens.colorStatusDangerBackground1} 22%, ${tokens.colorNeutralBackground1})`,
+    3: `color-mix(in srgb, ${tokens.colorStatusDangerBackground1} 36%, ${tokens.colorNeutralBackground1})`,
+    4: `color-mix(in srgb, ${tokens.colorStatusDangerBackground1} 52%, ${tokens.colorNeutralBackground1})`,
+    5: `color-mix(in srgb, ${tokens.colorStatusDangerBackground1} 70%, ${tokens.colorNeutralBackground1})`,
 };
 
 const useStyles = makeStyles({
@@ -57,19 +58,15 @@ const useStyles = makeStyles({
     containerSelect: {
         minWidth: '220px',
     },
-    modeToggle: {
-        display: 'flex',
-        gap: tokens.spacingHorizontalXS,
-    },
     stats: {
+        ...typographyStyles.body1,
         display: 'flex',
         gap: tokens.spacingHorizontalL,
         flexWrap: 'wrap',
-        color: 'var(--vscode-descriptionForeground)',
-        fontSize: tokens.fontSizeBase200,
+        color: tokens.colorNeutralForeground2,
     },
     statValue: {
-        color: 'var(--vscode-foreground)',
+        color: tokens.colorNeutralForeground1,
         fontWeight: tokens.fontWeightSemibold,
     },
     heatmap: {
@@ -91,19 +88,19 @@ const useStyles = makeStyles({
     tile: {
         display: 'flex',
         flexDirection: 'column',
-        gap: '2px',
+        gap: tokens.spacingVerticalXXS,
         padding: tokens.spacingHorizontalS,
         borderRadius: tokens.borderRadiusMedium,
-        border: '1px solid var(--vscode-widget-border, var(--vscode-panel-border))',
-        color: 'var(--vscode-foreground)',
+        border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke1}`,
+        color: tokens.colorStatusDangerForeground1,
         minWidth: 0,
     },
     tileHot: {
-        border: '1px solid var(--vscode-errorForeground)',
+        border: `${tokens.strokeWidthThin} solid ${tokens.colorStatusDangerBorder1}`,
     },
     tileId: {
-        fontFamily: 'var(--vscode-editor-font-family)',
-        fontSize: tokens.fontSizeBase200,
+        ...typographyStyles.body1,
+        fontFamily: tokens.fontFamilyMonospace,
         overflow: 'hidden',
         textOverflow: 'ellipsis',
         whiteSpace: 'nowrap',
@@ -119,14 +116,14 @@ const useStyles = makeStyles({
     listItem: {
         display: 'flex',
         flexDirection: 'column',
-        gap: '2px',
+        gap: tokens.spacingVerticalXXS,
         padding: tokens.spacingHorizontalM,
         borderRadius: tokens.borderRadiusMedium,
-        border: '1px solid var(--vscode-widget-border, var(--vscode-panel-border))',
-        backgroundColor: 'var(--vscode-editor-background)',
+        border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke1}`,
+        backgroundColor: tokens.colorNeutralBackground1,
     },
     listItemHot: {
-        borderLeft: '3px solid var(--vscode-errorForeground)',
+        borderLeft: `${tokens.strokeWidthThicker} solid ${tokens.colorStatusDangerBorder1}`,
     },
     listTitleRow: {
         display: 'flex',
@@ -135,27 +132,21 @@ const useStyles = makeStyles({
         flexWrap: 'wrap',
     },
     listTitle: {
-        fontFamily: 'var(--vscode-editor-font-family)',
-        fontWeight: tokens.fontWeightSemibold,
-    },
-    hotTag: {
-        color: 'var(--vscode-errorForeground)',
-        fontSize: tokens.fontSizeBase200,
-        textTransform: 'uppercase',
-        letterSpacing: '0.04em',
+        ...typographyStyles.body1Strong,
+        fontFamily: tokens.fontFamilyMonospace,
     },
     rationale: {
-        fontSize: tokens.fontSizeBase200,
-        color: 'var(--vscode-foreground)',
+        ...typographyStyles.body1,
+        color: tokens.colorNeutralForeground1,
     },
     action: {
-        fontSize: tokens.fontSizeBase200,
-        color: 'var(--vscode-descriptionForeground)',
+        ...typographyStyles.body1,
+        color: tokens.colorNeutralForeground2,
     },
     emptyState: {
         padding: tokens.spacingVerticalXL,
         textAlign: 'center',
-        color: 'var(--vscode-descriptionForeground)',
+        color: tokens.colorNeutralForeground2,
     },
     loading: {
         display: 'flex',
@@ -291,24 +282,18 @@ export const PartitionHealth = ({
                     );
                 })}
             </Dropdown>
-            <div className={styles.modeToggle} role="toolbar" aria-label={l10n.t('Partition distribution measure')}>
-                <Button
-                    size="small"
-                    appearance={mode === 'ru' ? 'primary' : 'subtle'}
-                    aria-pressed={mode === 'ru'}
-                    onClick={() => onModeChange('ru')}
-                >
+            <Toolbar
+                size="small"
+                aria-label={l10n.t('Partition distribution measure')}
+                checkedValues={{ mode: [mode] }}
+            >
+                <ToolbarToggleButton name="mode" value="ru" onClick={() => onModeChange('ru')}>
                     {l10n.t('By RU Share')}
-                </Button>
-                <Button
-                    size="small"
-                    appearance={mode === 'storage' ? 'primary' : 'subtle'}
-                    aria-pressed={mode === 'storage'}
-                    onClick={() => onModeChange('storage')}
-                >
+                </ToolbarToggleButton>
+                <ToolbarToggleButton name="mode" value="storage" onClick={() => onModeChange('storage')}>
                     {l10n.t('By Storage Share')}
-                </Button>
-            </div>
+                </ToolbarToggleButton>
+            </Toolbar>
         </div>
     );
 
@@ -390,7 +375,11 @@ export const PartitionHealth = ({
                                     <Text className={styles.listTitle}>
                                         {`${partitionLabel(tile.partitionId)} — ${formatShare(tile.sharePercent)}`}
                                     </Text>
-                                    {tile.hot && <Text className={styles.hotTag}>{l10n.t('Hot')}</Text>}
+                                    {tile.hot && (
+                                        <Badge appearance="tint" shape="circular" color="danger">
+                                            {l10n.t('Hot')}
+                                        </Badge>
+                                    )}
                                 </div>
                                 <Text className={styles.rationale}>{rationaleFor(tile, result.mode)}</Text>
                                 {action && <Text className={styles.action}>{action}</Text>}

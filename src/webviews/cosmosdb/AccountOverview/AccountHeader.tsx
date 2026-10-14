@@ -4,27 +4,27 @@
  *--------------------------------------------------------------------------------------------*/
 
 import {
+    Accordion,
+    AccordionHeader,
+    AccordionItem,
+    AccordionPanel,
+    Badge,
+    type BadgeProps,
     Button,
+    Dropdown,
     makeStyles,
     mergeClasses,
-    Popover,
-    PopoverSurface,
-    PopoverTrigger,
-    Switch,
+    Option,
+    Spinner,
     Text,
     tokens,
     Tooltip,
+    typographyStyles,
 } from '@fluentui/react-components';
-import {
-    ArrowClockwise16Regular,
-    ChevronDown16Regular,
-    ChevronRight16Regular,
-    ChevronUp16Regular,
-} from '@fluentui/react-icons';
+import { ArrowClockwise16Regular, Braces16Regular, Money16Regular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useId, useMemo, useRef, useState } from 'react';
 import { type AccountActionInput, type HealthState, type ProvisioningState, type TimeRange } from '../../api/types';
-import { Pill, type PillTone } from './DashboardChrome';
 import { type ContainerRef, type MetricScope } from './metrics/descriptors';
 
 const cosmosIcon = new URL('../../../../resources/azurecosmosdb.png', import.meta.url).href;
@@ -62,7 +62,7 @@ const useStyles = makeStyles({
     root: {
         display: 'flex',
         flexDirection: 'column',
-        gap: '20px',
+        gap: tokens.spacingVerticalXL,
         minWidth: 0,
     },
     topRow: {
@@ -75,13 +75,13 @@ const useStyles = makeStyles({
     titleBlock: {
         display: 'flex',
         flexDirection: 'column',
-        gap: '2px',
+        gap: tokens.spacingVerticalXXS,
         minWidth: 0,
     },
     identity: {
         display: 'flex',
         alignItems: 'center',
-        gap: '12px',
+        gap: tokens.spacingHorizontalM,
         minWidth: 0,
     },
     icon: {
@@ -90,16 +90,14 @@ const useStyles = makeStyles({
         flexShrink: 0,
     },
     title: {
+        ...typographyStyles.subtitle1,
         margin: 0,
-        fontSize: '20px',
-        lineHeight: '28px',
-        fontWeight: 600,
         overflowWrap: 'anywhere',
     },
     subtitle: {
+        ...typographyStyles.caption1,
         margin: 0,
-        color: 'var(--vscode-descriptionForeground)',
-        fontSize: tokens.fontSizeBase200,
+        color: tokens.colorNeutralForeground2,
     },
     controls: {
         display: 'flex',
@@ -108,55 +106,35 @@ const useStyles = makeStyles({
         flexWrap: 'wrap',
         minWidth: 0,
         maxWidth: '100%',
-        fontSize: tokens.fontSizeBase200,
     },
     select: {
-        color: 'var(--vscode-descriptionForeground)',
-        backgroundColor: 'var(--vscode-editor-background)',
-        border: '1px solid transparent',
-        borderRadius: tokens.borderRadiusMedium,
-        padding: tokens.spacingHorizontalS,
+        minWidth: 0,
         maxWidth: '100%',
-        font: 'inherit',
-        ':focus-visible': { outline: '2px solid var(--vscode-focusBorder)' },
-    },
-    link: {
-        color: 'var(--vscode-textLink-foreground)',
-    },
-    refreshOptions: {
-        fontSize: tokens.fontSizeBase100,
-        color: 'var(--vscode-descriptionForeground)',
-    },
-    refreshPanel: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: tokens.spacingVerticalS,
-        width: 'min(300px, calc(100vw - 40px))',
-        boxSizing: 'border-box',
     },
     refreshText: {
-        color: 'var(--vscode-descriptionForeground)',
-        fontSize: tokens.fontSizeBase200,
-        whiteSpace: 'nowrap',
+        ...typographyStyles.caption1,
+        color: tokens.colorNeutralForeground2,
+        overflowWrap: 'anywhere',
     },
     status: {
-        border: '1px solid var(--vscode-widget-border, var(--vscode-panel-border))',
+        ...typographyStyles.body1,
+        border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke1}`,
         borderRadius: tokens.borderRadiusLarge,
-        padding: '8px 12px',
-        fontSize: tokens.fontSizeBase200,
-        backgroundColor: 'var(--vscode-sideBar-background, var(--vscode-editor-background))',
+        padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
+        backgroundColor: tokens.colorNeutralBackground2,
     },
     statusItems: {
         display: 'flex',
         alignItems: 'center',
-        gap: '8px 16px',
+        rowGap: tokens.spacingVerticalS,
+        columnGap: tokens.spacingHorizontalL,
         flexWrap: 'wrap',
         flex: 1,
         minWidth: 0,
         overflowWrap: 'anywhere',
-        '& > span + span': {
-            borderLeft: '1px solid var(--vscode-panel-border)',
-            paddingLeft: '16px',
+        '& > * + *': {
+            borderLeft: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
+            paddingLeft: tokens.spacingHorizontalL,
         },
         '@media (max-width: 700px)': {
             flexBasis: '100%',
@@ -165,7 +143,7 @@ const useStyles = makeStyles({
     statusValue: {
         display: 'inline-flex',
         alignItems: 'center',
-        gap: '6px',
+        gap: tokens.spacingHorizontalSNudge,
     },
     statusDot: {
         width: '6px',
@@ -173,18 +151,13 @@ const useStyles = makeStyles({
         borderRadius: tokens.borderRadiusCircular,
         backgroundColor: 'currentColor',
     },
-    statusPill: {
-        backgroundColor: 'color-mix(in srgb, currentColor 15%, transparent)',
-        border: '1px solid var(--vscode-contrastBorder, transparent)',
-        fontWeight: 600,
-    },
     detailsToggle: {
         marginLeft: 'auto',
     },
     detailBody: {
-        borderTop: '1px solid var(--vscode-widget-border, var(--vscode-panel-border))',
-        margin: '8px -12px -8px',
-        padding: '16px 12px',
+        borderTop: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke1}`,
+        margin: `${tokens.spacingVerticalS} calc(-1 * ${tokens.spacingHorizontalM}) calc(-1 * ${tokens.spacingVerticalS})`,
+        padding: `${tokens.spacingVerticalL} ${tokens.spacingHorizontalM}`,
     },
     essentialsGrid: {
         display: 'grid',
@@ -199,36 +172,26 @@ const useStyles = makeStyles({
         gap: tokens.spacingHorizontalS,
         marginTop: tokens.spacingVerticalM,
     },
-    additionalProperties: {
-        marginLeft: 'auto',
-        minWidth: 0,
-        fontSize: tokens.fontSizeBase100,
-        '& > summary': {
-            cursor: 'pointer',
-            color: 'var(--vscode-descriptionForeground)',
-        },
-        '&[open]': { flexBasis: '100%', marginLeft: 0 },
-        '& > div': { marginTop: tokens.spacingVerticalM },
+    additionalPropertiesPanel: {
+        margin: `${tokens.spacingVerticalM} 0 0`,
     },
     essentialItem: {
         display: 'flex',
         flexDirection: 'column',
-        gap: '2px',
+        gap: tokens.spacingVerticalXXS,
         minWidth: 0,
     },
     essentialLabel: {
-        textTransform: 'uppercase',
-        letterSpacing: '0.04em',
-        fontSize: tokens.fontSizeBase100,
-        color: 'var(--vscode-descriptionForeground)',
+        ...typographyStyles.caption1,
+        color: tokens.colorNeutralForeground2,
     },
     essentialValue: {
+        ...typographyStyles.body1,
         display: 'block',
         maxWidth: '100%',
         overflow: 'hidden',
         textOverflow: 'ellipsis',
         whiteSpace: 'nowrap',
-        fontSize: tokens.fontSizeBase200,
     },
     srOnly: {
         position: 'absolute',
@@ -244,14 +207,13 @@ const useStyles = makeStyles({
 });
 
 function formatRefreshTime(timestamp: number): string {
-    return new Date(timestamp).toLocaleTimeString(undefined, {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
+    return new Date(timestamp).toLocaleString(undefined, {
+        dateStyle: 'short',
+        timeStyle: 'medium',
     });
 }
 
-function healthFromProvisioning(state: ProvisioningState | undefined): { tone: PillTone; label: string } {
+function healthFromProvisioning(state: ProvisioningState | undefined): { tone: BadgeProps['color']; label: string } {
     switch (state) {
         case 'Succeeded':
             return { tone: 'success', label: l10n.t('Healthy') };
@@ -264,12 +226,12 @@ function healthFromProvisioning(state: ProvisioningState | undefined): { tone: P
             return { tone: 'danger', label: l10n.t('Critical') };
         case undefined:
         default:
-            return { tone: 'neutral', label: l10n.t('Unknown') };
+            return { tone: 'subtle', label: l10n.t('Unknown') };
     }
 }
 
-/** Maps a derived {@link HealthState} (provisioning + throttling) to a pill tone and localized label. */
-function healthFromState(state: HealthState): { tone: PillTone; label: string } {
+/** Maps a derived {@link HealthState} (provisioning + throttling) to a badge color and localized label. */
+function healthFromState(state: HealthState): { tone: BadgeProps['color']; label: string } {
     switch (state) {
         case 'Healthy':
             return { tone: 'success', label: l10n.t('Healthy') };
@@ -318,10 +280,9 @@ export const AccountHeader = ({
     summary,
     accountHealth,
     lastRefreshedAt,
-    paused,
-    onTogglePause,
     onRefresh,
-    autoRefreshIntervalsSeconds,
+    loading = false,
+    refreshDisabled = false,
     defaultEssentialsOpen = false,
     timeRange,
     onTimeRangeChange,
@@ -334,12 +295,10 @@ export const AccountHeader = ({
 }: {
     summary: AccountSummary;
     accountHealth?: HealthState;
-    lastRefreshedAt: number;
-    paused: boolean;
-    onTogglePause: (paused: boolean) => void;
+    lastRefreshedAt?: number;
     onRefresh: () => void;
-    /** Auto-refresh cadences (in seconds), surfaced in the pause toggle's tooltip. */
-    autoRefreshIntervalsSeconds: { metrics: number; inventory: number; alerts: number };
+    loading?: boolean;
+    refreshDisabled?: boolean;
     defaultEssentialsOpen?: boolean;
     timeRange: TimeRange;
     onTimeRangeChange: (range: TimeRange) => void;
@@ -352,9 +311,14 @@ export const AccountHeader = ({
 }) => {
     const styles = useStyles();
     const id = useId();
+    const controlsDisabled = loading || refreshDisabled;
+    const loadingDescription = loading
+        ? l10n.t('Updating…')
+        : refreshDisabled
+          ? l10n.t('Account data is still loading.')
+          : undefined;
     const [essentialsOpen, setEssentialsOpen] = useState(defaultEssentialsOpen);
-    const [refreshOptionsOpen, setRefreshOptionsOpen] = useState(false);
-    const lastRefreshedLabel = formatRefreshTime(lastRefreshedAt);
+    const [additionalPropertiesOpen, setAdditionalPropertiesOpen] = useState(false);
     const health = accountHealth ? healthFromState(accountHealth) : healthFromProvisioning(summary.provisioningState);
     const databases = useMemo(
         () => [...new Set(databaseIds ?? containers.map((container) => container.databaseId))].sort(),
@@ -428,27 +392,6 @@ export const AccountHeader = ({
     const regionsLabel =
         [...new Set([...summary.writeRegions, ...summary.readRegions])].join(', ') || l10n.t('Unknown');
 
-    const autoRefreshTooltip = (
-        <>
-            <div>{l10n.t('Auto-refresh cadence while this tab is active:')}</div>
-            <div>
-                {l10n.t('• Charts & partitions: every {seconds}s', {
-                    seconds: autoRefreshIntervalsSeconds.metrics,
-                })}
-            </div>
-            <div>
-                {l10n.t('• Inventory metrics: every {seconds}s', {
-                    seconds: autoRefreshIntervalsSeconds.inventory,
-                })}
-            </div>
-            <div>
-                {l10n.t('• Alerts & recommendations: every {seconds}s', {
-                    seconds: autoRefreshIntervalsSeconds.alerts,
-                })}
-            </div>
-        </>
-    );
-
     return (
         <header className={styles.root}>
             <output className={styles.srOnly} aria-live="polite">
@@ -463,156 +406,194 @@ export const AccountHeader = ({
                     </div>
                 </div>
                 <div className={styles.controls}>
-                    <select
+                    {lastRefreshedAt !== undefined && (
+                        <time dateTime={new Date(lastRefreshedAt).toISOString()} className={styles.refreshText}>
+                            {l10n.t('Charts generated at {time}', { time: formatRefreshTime(lastRefreshedAt) })}
+                        </time>
+                    )}
+                    <Dropdown
                         className={styles.select}
+                        size="small"
+                        inlinePopup
+                        disabled={controlsDisabled}
                         aria-label={l10n.t('Metric time range: {range}', { range: timeRangeLabel ?? timeRange })}
-                        value={timeRange}
-                        onChange={(event) => onTimeRangeChange(timeRanges[event.currentTarget.selectedIndex].value)}
-                    >
-                        {timeRanges.map((range) => (
-                            <option key={range.value} value={range.value}>
-                                {range.label}
-                            </option>
-                        ))}
-                    </select>
-                    <select
-                        className={styles.select}
-                        aria-label={l10n.t('Database scope for metrics: {scope}', { scope: selectedScopeLabel })}
-                        value={selectedDatabaseIndex}
-                        onChange={(event) => {
-                            const index = event.currentTarget.selectedIndex - 1;
-                            onSelectContainer(index < 0 ? undefined : { databaseId: databases[index] });
+                        aria-description={loadingDescription}
+                        value={timeRangeLabel ?? timeRange}
+                        selectedOptions={[timeRange]}
+                        onOptionSelect={(_, data) => {
+                            if (controlsDisabled) {
+                                return;
+                            }
+                            const range = timeRanges.find((range) => range.value === data.optionValue);
+                            if (range) {
+                                onTimeRangeChange(range.value);
+                            }
                         }}
                     >
-                        <option value={-1}>{l10n.t('All databases')}</option>
-                        {databases.map((database, index) => (
-                            <option key={database} value={index}>
-                                {database}
-                            </option>
+                        {timeRanges.map((range) => (
+                            <Option key={range.value} value={range.value}>
+                                {range.label}
+                            </Option>
                         ))}
-                    </select>
-                    <Button
-                        appearance="subtle"
+                    </Dropdown>
+                    <Dropdown
+                        className={styles.select}
                         size="small"
-                        className={styles.link}
-                        icon={<ArrowClockwise16Regular aria-hidden />}
-                        onClick={onRefresh}
+                        inlinePopup
+                        disabled={controlsDisabled}
+                        aria-label={l10n.t('Database scope for metrics: {scope}', { scope: selectedScopeLabel })}
+                        aria-description={loadingDescription}
+                        value={selectedScopeLabel}
+                        selectedOptions={[String(selectedDatabaseIndex)]}
+                        onOptionSelect={(_, data) => {
+                            if (controlsDisabled) {
+                                return;
+                            }
+                            if (data.optionValue === '-1') {
+                                onSelectContainer(undefined);
+                            } else {
+                                const databaseId = databases.find((_, index) => String(index) === data.optionValue);
+                                if (databaseId !== undefined) {
+                                    onSelectContainer({ databaseId });
+                                }
+                            }
+                        }}
+                    >
+                        <Option value="-1">{l10n.t('All databases')}</Option>
+                        {databases.map((database, index) => (
+                            <Option key={database} value={String(index)}>
+                                {database}
+                            </Option>
+                        ))}
+                    </Dropdown>
+                    <Button
+                        appearance="secondary"
+                        size="small"
+                        icon={loading ? <Spinner size="tiny" aria-hidden /> : <ArrowClockwise16Regular aria-hidden />}
+                        disabledFocusable={controlsDisabled}
+                        aria-busy={loading}
+                        aria-description={loadingDescription}
+                        onClick={controlsDisabled ? undefined : onRefresh}
                     >
                         {l10n.t('Refresh')}
                     </Button>
-                    <Popover
-                        open={refreshOptionsOpen}
-                        onOpenChange={(_, data) => setRefreshOptionsOpen(data.open)}
-                        positioning="below-end"
-                    >
-                        <PopoverTrigger disableButtonEnhancement>
-                            <Button
-                                appearance="subtle"
-                                size="small"
-                                className={styles.refreshOptions}
-                                icon={
-                                    refreshOptionsOpen ? (
-                                        <ChevronDown16Regular aria-hidden />
-                                    ) : (
-                                        <ChevronRight16Regular aria-hidden />
-                                    )
-                                }
-                            >
-                                {paused ? l10n.t('Auto-refresh paused') : l10n.t('Refresh options')}
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverSurface className={styles.refreshPanel} aria-label={l10n.t('Refresh options')}>
-                            <Text className={styles.refreshText}>
-                                {l10n.t('Last refreshed at {time}', { time: lastRefreshedLabel })}
-                            </Text>
-                            <Tooltip content={autoRefreshTooltip} relationship="description">
-                                <Switch
-                                    checked={paused}
-                                    onChange={(_, data) => onTogglePause(data.checked)}
-                                    label={l10n.t('Pause auto-refresh')}
-                                />
-                            </Tooltip>
-                            <p className={styles.subtitle}>
-                                {l10n.t(
-                                    'Time and database scope apply to metric trends. Inventory is account-wide; alerts and advisories use their own time windows.',
-                                )}
-                            </p>
-                        </PopoverSurface>
-                    </Popover>
                 </div>
             </div>
+            <p className={styles.subtitle}>
+                {l10n.t(
+                    'Time and database scope apply to metric trends. Inventory is account-wide; alerts and advisories use their own time windows.',
+                )}
+            </p>
 
-            <div className={styles.status}>
-                <div className={styles.topRow}>
-                    <div className={styles.statusItems}>
-                        <span className={styles.statusValue}>
-                            <span>{l10n.t('Status:')}</span>
-                            <Pill tone={health.tone} className={styles.statusPill}>
-                                <span className={styles.statusDot} aria-hidden />
-                                {health.label}
-                            </Pill>
-                        </span>
-                        <span>{l10n.t('Regions: {regions}', { regions: regionsLabel })}</span>
-                        <span>{l10n.t('Capacity mode: {mode}', { mode: capacityMode })}</span>
-                        <span>{l10n.t('Total throughput limit: {limit}', { limit: throughputLimit })}</span>
-                    </div>
-                    <Button
-                        appearance="subtle"
-                        size="small"
-                        className={mergeClasses(styles.link, styles.detailsToggle)}
-                        icon={
-                            essentialsOpen ? <ChevronUp16Regular aria-hidden /> : <ChevronDown16Regular aria-hidden />
-                        }
-                        iconPosition="after"
-                        id={`${id}-toggle`}
-                        aria-expanded={essentialsOpen}
-                        aria-controls={`${id}-details`}
-                        onClick={() => setEssentialsOpen((open) => !open)}
-                    >
-                        {l10n.t('Account details')}
-                    </Button>
-                </div>
-                <section
-                    className={styles.detailBody}
-                    id={`${id}-details`}
-                    aria-labelledby={`${id}-toggle`}
-                    hidden={!essentialsOpen}
-                >
-                    <div className={styles.essentialsGrid}>
-                        {essentials.map((field) => (
-                            <EssentialField key={field.label} label={field.label} value={field.value} />
-                        ))}
-                    </div>
-                    <div className={styles.detailFooter}>
-                        <Button
-                            appearance="subtle"
-                            size="small"
-                            className={styles.link}
-                            disabled={accountActionBusy}
-                            onClick={() => onAccountAction({ action: 'openCosts' })}
-                        >
-                            {l10n.t('View cost')}
-                        </Button>
-                        <Button
-                            appearance="subtle"
-                            size="small"
-                            className={styles.link}
-                            disabled={accountActionBusy}
-                            onClick={() => onAccountAction({ action: 'openJson' })}
-                        >
-                            {l10n.t('JSON view')}
-                        </Button>
-                        <details className={styles.additionalProperties}>
-                            <summary>{l10n.t('Additional account properties')}</summary>
-                            <div className={styles.essentialsGrid}>
-                                {additionalProperties.map((field) => (
-                                    <EssentialField key={field.label} label={field.label} value={field.value} />
-                                ))}
+            <Accordion
+                className={styles.status}
+                collapsible
+                openItems={essentialsOpen ? ['details'] : []}
+                onToggle={(_, data) => setEssentialsOpen(data.openItems.includes('details'))}
+            >
+                <AccordionItem value="details">
+                    <div className={styles.topRow}>
+                        <div className={styles.statusItems}>
+                            <div className={styles.statusValue}>
+                                <span>{l10n.t('Status:')}</span>
+                                <Badge
+                                    appearance="tint"
+                                    shape="circular"
+                                    color={health.tone}
+                                    icon={<span className={styles.statusDot} aria-hidden />}
+                                >
+                                    {health.label}
+                                </Badge>
                             </div>
-                        </details>
+                            <span>{l10n.t('Regions: {regions}', { regions: regionsLabel })}</span>
+                            <span>{l10n.t('Capacity mode: {mode}', { mode: capacityMode })}</span>
+                            <span>{l10n.t('Total throughput limit: {limit}', { limit: throughputLimit })}</span>
+                        </div>
+                        <AccordionHeader
+                            as="h2"
+                            inline
+                            size="small"
+                            className={styles.detailsToggle}
+                            expandIconPosition="end"
+                            button={{ id: `${id}-toggle`, 'aria-controls': `${id}-details` }}
+                        >
+                            {l10n.t('Account details')}
+                        </AccordionHeader>
                     </div>
-                </section>
-            </div>
+                    <AccordionPanel
+                        className={styles.detailBody}
+                        // AccordionPanel only supports a div root.
+                        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
+                        role="region"
+                        id={`${id}-details`}
+                        aria-labelledby={`${id}-toggle`}
+                        collapseMotion={{
+                            children: (Component, props) => <Component {...props} unmountOnExit={false} />,
+                        }}
+                    >
+                        <div className={styles.essentialsGrid}>
+                            {essentials.map((field) => (
+                                <EssentialField key={field.label} label={field.label} value={field.value} />
+                            ))}
+                        </div>
+                        <Accordion
+                            collapsible
+                            openItems={additionalPropertiesOpen ? ['properties'] : []}
+                            onToggle={(_, data) => setAdditionalPropertiesOpen(data.openItems.includes('properties'))}
+                        >
+                            <AccordionItem value="properties">
+                                <div className={styles.detailFooter}>
+                                    <Button
+                                        appearance="secondary"
+                                        size="small"
+                                        icon={<Money16Regular aria-hidden />}
+                                        disabled={accountActionBusy}
+                                        onClick={() => onAccountAction({ action: 'openCosts' })}
+                                    >
+                                        {l10n.t('View Cost')}
+                                    </Button>
+                                    <Button
+                                        appearance="secondary"
+                                        size="small"
+                                        icon={<Braces16Regular aria-hidden />}
+                                        disabled={accountActionBusy}
+                                        onClick={() => onAccountAction({ action: 'openJson' })}
+                                    >
+                                        {l10n.t('View JSON')}
+                                    </Button>
+                                    <AccordionHeader
+                                        as="h3"
+                                        inline
+                                        size="small"
+                                        className={styles.detailsToggle}
+                                        button={{
+                                            id: `${id}-properties-toggle`,
+                                            'aria-controls': `${id}-properties`,
+                                        }}
+                                    >
+                                        {l10n.t('Additional account properties')}
+                                    </AccordionHeader>
+                                </div>
+                                <AccordionPanel
+                                    className={mergeClasses(styles.essentialsGrid, styles.additionalPropertiesPanel)}
+                                    // AccordionPanel only supports a div root.
+                                    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
+                                    role="region"
+                                    id={`${id}-properties`}
+                                    aria-labelledby={`${id}-properties-toggle`}
+                                    collapseMotion={{
+                                        children: (Component, props) => <Component {...props} unmountOnExit={false} />,
+                                    }}
+                                >
+                                    {additionalProperties.map((field) => (
+                                        <EssentialField key={field.label} label={field.label} value={field.value} />
+                                    ))}
+                                </AccordionPanel>
+                            </AccordionItem>
+                        </Accordion>
+                    </AccordionPanel>
+                </AccordionItem>
+            </Accordion>
         </header>
     );
 };

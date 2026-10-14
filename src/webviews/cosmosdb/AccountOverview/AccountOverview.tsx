@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Button, makeStyles, Spinner, tokens } from '@fluentui/react-components';
+import { Button, makeStyles, Spinner, tokens, typographyStyles, useAnnounce } from '@fluentui/react-components';
 import { useTrpcClient } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -38,14 +38,6 @@ import { Recommendations } from './Recommendations';
 import { type OverviewTab, TabbedOverviewLayout } from './TabbedOverviewLayout';
 import { useOverviewNavigation } from './useOverviewNavigation';
 
-const AUTO_REFRESH_INTERVAL_MS = 60_000;
-/** Lightweight inventory metrics poll; staggered from the 60 s trends poll. */
-const INVENTORY_REFRESH_INTERVAL_MS = 30_000;
-/** Partition telemetry poll cadence (metric heatmaps refresh every 60 s). */
-const PARTITION_REFRESH_INTERVAL_MS = 60_000;
-/** Alerts + Advisor recommendations poll cadence. */
-const RAIL_REFRESH_INTERVAL_MS = 60_000;
-
 const HEALTH_ORDER: Record<HealthState, number> = { Healthy: 0, 'Needs Attention': 1, Critical: 2 };
 
 /**
@@ -69,12 +61,13 @@ function escalateHealth(
 
 const useStyles = makeStyles({
     root: {
+        ...typographyStyles.body1,
         display: 'flex',
         flexDirection: 'column',
         gap: tokens.spacingVerticalL,
         padding: tokens.spacingHorizontalXXL,
-        color: 'var(--vscode-editor-foreground)',
-        backgroundColor: 'var(--vscode-editor-background)',
+        color: tokens.colorNeutralForeground1,
+        backgroundColor: tokens.colorNeutralBackground1,
         minHeight: '100vh',
         boxSizing: 'border-box',
     },
@@ -83,6 +76,13 @@ const useStyles = makeStyles({
         alignItems: 'center',
         justifyContent: 'center',
         minHeight: '100vh',
+    },
+    creationOverlay: {
+        position: 'fixed',
+        inset: 0,
+        zIndex: 1000001,
+        backgroundColor: tokens.colorBackgroundOverlay,
+        cursor: 'wait',
     },
 });
 
@@ -129,6 +129,7 @@ export const OverviewDashboard = ({
 }) => {
     const styles = useStyles();
     const trpcClient = useTrpcClient<AccountOverviewAppRouter>();
+    const { announce } = useAnnounce();
 
     const requestedTab = requestedTarget === 'advisories' ? 'advisories' : 'monitoring';
     const [selectedTab, setSelectedTab] = useState<OverviewTab>(requestedTab);
@@ -136,6 +137,7 @@ export const OverviewDashboard = ({
     const [summary, setSummary] = useState<AccountSummary | undefined>(undefined);
     const [inventory, setInventory] = useState<Inventory | undefined>(undefined);
     const [inventoryMetrics, setInventoryMetrics] = useState<InventoryMetricsResult | undefined>(undefined);
+    const [inventoryMetricsLoading, setInventoryMetricsLoading] = useState(true);
     const [trends, setTrends] = useState<Partial<Record<MetricKey, MetricSeriesResult>>>({});
     const [trendsLoading, setTrendsLoading] = useState(true);
     const [timeRange, setTimeRange] = useState<TimeRange>('24H');
@@ -152,15 +154,63 @@ export const OverviewDashboard = ({
     const [derivedAdvisories, setDerivedAdvisories] = useState<DerivedAdvisoriesResult | undefined>(undefined);
     const [derivedLoading, setDerivedLoading] = useState(true);
     const [dismissedAdvisoryIds, setDismissedAdvisoryIds] = useState<ReadonlySet<string>>(() => new Set());
-    const [paused, setPaused] = useState(false);
-    const [lastRefreshedAt, setLastRefreshedAt] = useState(() => Date.now());
-    const [accountActionBusy, setAccountActionBusy] = useState(false);
+    const [lastRefreshedAt, setLastRefreshedAt] = useState<number>();
+    const [refreshing, setRefreshing] = useState(false);
+    const refreshInFlight = useRef(false);
+    const [userUpdatePending, setUserUpdatePending] = useState(false);
+    const [pendingAccountAction, setPendingAccountAction] = useState<AccountActionInput['action']>();
+    const accountActionBusy = pendingAccountAction !== undefined;
+    const creationBusy = pendingAccountAction === 'createDatabase' || pendingAccountAction === 'createContainer';
     const [accountActionFailure, setAccountActionFailure] = useState<AccountActionFailure>();
     const accountActionInFlight = useRef(false);
+    const creationTrigger = useRef<HTMLElement | undefined>(undefined);
     const inventoryRequestSeq = useRef(0);
+    const inventoryMetricsRequestSeq = useRef(0);
     // Monotonic id of the latest in-flight trends request; only that request may commit its result.
     const trendsRequestSeq = useRef(0);
     const partitionRequestSeq = useRef(0);
+    const headerLoading =
+        refreshing ||
+        trendsLoading ||
+        inventoryMetricsLoading ||
+        partitionLoading ||
+        alertsLoading ||
+        recommendationsLoading ||
+        derivedLoading;
+    const headerUpdating =
+        refreshing || (userUpdatePending && (trendsLoading || inventoryMetricsLoading || partitionLoading));
+
+    const beginHeaderUpdate = useCallback(() => {
+        if (!userUpdatePending) {
+            announce(l10n.t('Updating Account Overview…'), { polite: true });
+        }
+        setUserUpdatePending(true);
+        setAccountActionFailure((failure) => (failure === 'refresh' ? undefined : failure));
+    }, [announce, userUpdatePending]);
+
+    useEffect(() => {
+        if (userUpdatePending && !headerUpdating) {
+            setUserUpdatePending(false);
+            announce(l10n.t('Account Overview update finished.'), { polite: true });
+        }
+    }, [userUpdatePending, headerUpdating, announce]);
+
+    useEffect(() => {
+        if (accountActionBusy) {
+            announce(l10n.t('Account action in progress…'), { polite: true });
+        }
+    }, [accountActionBusy, announce]);
+
+    useEffect(() => {
+        if (!creationBusy && creationTrigger.current) {
+            const trigger = creationTrigger.current;
+            creationTrigger.current = undefined;
+            // Do not take focus back from another VS Code editor or the native wizard.
+            if (trigger.isConnected && document.hasFocus()) {
+                trigger.focus({ preventScroll: true });
+            }
+        }
+    }, [creationBusy]);
 
     const reportEvent = useCallback(
         (eventName: string, properties?: Record<string, string>, measurements?: Record<string, number>) => {
@@ -203,7 +253,11 @@ export const OverviewDashboard = ({
                 return;
             }
             accountActionInFlight.current = true;
-            setAccountActionBusy(true);
+            if (input.action === 'createDatabase' || input.action === 'createContainer') {
+                creationTrigger.current =
+                    document.activeElement instanceof HTMLElement ? document.activeElement : undefined;
+            }
+            setPendingAccountAction(input.action);
             setAccountActionFailure(undefined);
             try {
                 const result = await trpcClient.accountOverview.runAccountAction.mutate(input);
@@ -219,7 +273,7 @@ export const OverviewDashboard = ({
                 setAccountActionFailure('action');
             } finally {
                 accountActionInFlight.current = false;
-                setAccountActionBusy(false);
+                setPendingAccountAction(undefined);
             }
         },
         [trpcClient, reloadInventory, onAccountDeleted],
@@ -269,7 +323,7 @@ export const OverviewDashboard = ({
                     }
                 });
                 setTrends(next);
-                setLastRefreshedAt(Date.now());
+                setLastRefreshedAt(Object.values(next).some((series) => series.available) ? Date.now() : undefined);
             } finally {
                 if (requestId === trendsRequestSeq.current) {
                     setTrendsLoading(false);
@@ -280,12 +334,26 @@ export const OverviewDashboard = ({
     );
 
     const fetchInventoryMetrics = useCallback(
-        (range: TimeRange) => {
-            return trpcClient.accountOverview.getInventoryMetrics
-                .query({ timeRange: range })
-                .then((result: InventoryMetricsResult) => {
+        async (range: TimeRange) => {
+            const requestId = ++inventoryMetricsRequestSeq.current;
+            setInventoryMetricsLoading(true);
+            try {
+                const result = await trpcClient.accountOverview.getInventoryMetrics.query({ timeRange: range });
+                if (requestId === inventoryMetricsRequestSeq.current) {
                     setInventoryMetrics(result);
-                });
+                }
+                return true;
+            } catch {
+                if (requestId === inventoryMetricsRequestSeq.current) {
+                    setInventoryMetrics(undefined);
+                    setAccountActionFailure('refresh');
+                }
+                return false;
+            } finally {
+                if (requestId === inventoryMetricsRequestSeq.current) {
+                    setInventoryMetricsLoading(false);
+                }
+            }
         },
         [trpcClient],
     );
@@ -305,6 +373,14 @@ export const OverviewDashboard = ({
                     if (requestId === partitionRequestSeq.current) {
                         setPartitionHealth(result);
                     }
+                    return true;
+                })
+                .catch(() => {
+                    if (requestId === partitionRequestSeq.current) {
+                        setPartitionHealth(undefined);
+                        setAccountActionFailure('refresh');
+                    }
+                    return false;
                 })
                 .finally(() => {
                     if (requestId === partitionRequestSeq.current) {
@@ -412,23 +488,31 @@ export const OverviewDashboard = ({
         void fetchAlerts(alertTimeRange);
     }, [fetchAlerts, alertTimeRange]);
 
-    // One-time recommendations load (subscription-wide Advisor call; polled below).
+    // Initial recommendations load; subsequent loads are requested by Refresh.
     useEffect(() => {
         void fetchRecommendations();
     }, [fetchRecommendations]);
 
-    // One-time derived-advisories load (host-side derived-advisory engine over already-fetched telemetry; polled below).
+    // Initial advisory collection and calculation; subsequent runs are requested by Refresh.
     useEffect(() => {
         void fetchDerivedAdvisories();
     }, [fetchDerivedAdvisories]);
 
     const refresh = useCallback(() => {
         reportEvent('refreshTicked', { windowSize: timeRange });
-        void fetchSummary();
-        void fetchTrends(timeRange, selectedContainer);
-        void fetchAlerts(alertTimeRange);
-        void fetchRecommendations();
-        void fetchDerivedAdvisories();
+        return Promise.allSettled([
+            fetchSummary(),
+            fetchTrends(timeRange, selectedContainer),
+            fetchAlerts(alertTimeRange),
+            fetchRecommendations(),
+            fetchDerivedAdvisories(),
+        ]).then((outcomes) => {
+            const succeeded = outcomes.every((outcome) => outcome.status === 'fulfilled');
+            if (!succeeded) {
+                setAccountActionFailure('refresh');
+            }
+            return succeeded;
+        });
     }, [
         reportEvent,
         fetchSummary,
@@ -441,102 +525,71 @@ export const OverviewDashboard = ({
         fetchDerivedAdvisories,
     ]);
 
-    const refreshAccount = useCallback(() => {
-        refresh();
-        void reloadInventory();
-    }, [refresh, reloadInventory]);
-
-    // Auto-refresh: poll every 60s, but only while the panel is visible and not
-    // paused. Resume immediately when the panel becomes visible again.
-    useEffect(() => {
-        if (paused) {
+    const refreshAccount = useCallback(async () => {
+        if (refreshInFlight.current) {
             return;
         }
-        const intervalId = setInterval(() => {
-            if (document.visibilityState === 'visible') {
-                refresh();
+        refreshInFlight.current = true;
+        setRefreshing(true);
+        beginHeaderUpdate();
+        try {
+            const outcomes = await Promise.allSettled([
+                refresh(),
+                fetchInventory(),
+                fetchInventoryMetrics(timeRange),
+                ...(partitionContainer ? [fetchPartitionHealth(partitionContainer, partitionMode, timeRange)] : []),
+            ]);
+            const inventoryOutcome = outcomes[1];
+            if (
+                outcomes.some((outcome) => outcome.status === 'rejected' || outcome.value === false) ||
+                (inventoryOutcome.status === 'fulfilled' &&
+                    typeof inventoryOutcome.value === 'object' &&
+                    !inventoryOutcome.value.available)
+            ) {
+                setAccountActionFailure('refresh');
             }
-        }, AUTO_REFRESH_INTERVAL_MS);
-        const onVisibilityChange = () => {
-            if (document.visibilityState === 'visible') {
-                refresh();
-            }
-        };
-        document.addEventListener('visibilitychange', onVisibilityChange);
-        return () => {
-            clearInterval(intervalId);
-            document.removeEventListener('visibilitychange', onVisibilityChange);
-        };
-    }, [paused, refresh]);
-
-    // Lightweight inventory-metrics poll (30s), staggered by half an interval from the 60s
-    // trends poll, gated on visibility and the pause toggle just like the trends refresh.
-    useEffect(() => {
-        if (paused) {
-            return;
+        } finally {
+            refreshInFlight.current = false;
+            setRefreshing(false);
         }
-        const poll = () => {
-            if (document.visibilityState === 'visible') {
-                void fetchInventoryMetrics(timeRange);
-            }
-        };
-        const stagger: { intervalId?: ReturnType<typeof setInterval> } = {};
-        const startTimeout = setTimeout(() => {
-            poll();
-            stagger.intervalId = setInterval(poll, INVENTORY_REFRESH_INTERVAL_MS);
-        }, INVENTORY_REFRESH_INTERVAL_MS / 2);
-        const onVisibilityChange = () => poll();
-        document.addEventListener('visibilitychange', onVisibilityChange);
-        return () => {
-            clearTimeout(startTimeout);
-            if (stagger.intervalId) {
-                clearInterval(stagger.intervalId);
-            }
-            document.removeEventListener('visibilitychange', onVisibilityChange);
-        };
-    }, [paused, fetchInventoryMetrics, timeRange]);
+    }, [
+        beginHeaderUpdate,
+        refresh,
+        fetchInventory,
+        fetchInventoryMetrics,
+        fetchPartitionHealth,
+        timeRange,
+        partitionContainer,
+        partitionMode,
+    ]);
 
-    // Partition telemetry poll (60s), gated on visibility and the pause toggle.
-    useEffect(() => {
-        if (paused || !partitionContainer) {
-            return;
-        }
-        const poll = () => {
-            if (document.visibilityState === 'visible') {
-                void fetchPartitionHealth(partitionContainer, partitionMode, timeRange);
+    const handleTimeRangeChange = useCallback(
+        (range: TimeRange) => {
+            if (range === timeRange) {
+                return;
             }
-        };
-        const intervalId = setInterval(poll, PARTITION_REFRESH_INTERVAL_MS);
-        const onVisibilityChange = () => poll();
-        document.addEventListener('visibilitychange', onVisibilityChange);
-        return () => {
-            clearInterval(intervalId);
-            document.removeEventListener('visibilitychange', onVisibilityChange);
-        };
-    }, [paused, partitionContainer, partitionMode, timeRange, fetchPartitionHealth]);
+            beginHeaderUpdate();
+            setTrendsLoading(true);
+            setInventoryMetricsLoading(true);
+            setTimeRange(range);
+        },
+        [beginHeaderUpdate, timeRange],
+    );
 
-    // Alerts + Advisor recommendations poll (60s), gated on visibility and pause.
-    // The Advisor call is shared subscription-wide on the host, so multiple open
-    // dashboards coalesce into one ARM read per tick.
-    useEffect(() => {
-        if (paused) {
-            return;
-        }
-        const poll = () => {
-            if (document.visibilityState === 'visible') {
-                void fetchAlerts(alertTimeRange);
-                void fetchRecommendations();
-                void fetchDerivedAdvisories();
+    const handleScopeChange = useCallback(
+        (scope?: MetricScope) => {
+            if (
+                scope?.databaseId === selectedContainer?.databaseId &&
+                scope?.containerId === selectedContainer?.containerId
+            ) {
+                return;
             }
-        };
-        const intervalId = setInterval(poll, RAIL_REFRESH_INTERVAL_MS);
-        const onVisibilityChange = () => poll();
-        document.addEventListener('visibilitychange', onVisibilityChange);
-        return () => {
-            clearInterval(intervalId);
-            document.removeEventListener('visibilitychange', onVisibilityChange);
-        };
-    }, [paused, alertTimeRange, fetchAlerts, fetchRecommendations, fetchDerivedAdvisories]);
+            beginHeaderUpdate();
+            setTrendsLoading(true);
+            setSelectedContainer(scope);
+        },
+        [beginHeaderUpdate, selectedContainer],
+    );
 
     const handleOpenUrl = useCallback(
         (url: string) => {
@@ -608,7 +661,7 @@ export const OverviewDashboard = ({
 
     return (
         <DashboardActionsProvider value={actions}>
-            <div className={styles.root}>
+            <div className={styles.root} inert={creationBusy} aria-busy={creationBusy}>
                 <TabbedOverviewLayout
                     selectedTab={selectedTab}
                     onTabSelect={setSelectedTab}
@@ -618,20 +671,15 @@ export const OverviewDashboard = ({
                                 summary={summary}
                                 accountHealth={accountHealth}
                                 lastRefreshedAt={lastRefreshedAt}
-                                paused={paused}
-                                onTogglePause={setPaused}
-                                onRefresh={refreshAccount}
-                                autoRefreshIntervalsSeconds={{
-                                    metrics: AUTO_REFRESH_INTERVAL_MS / 1000,
-                                    inventory: INVENTORY_REFRESH_INTERVAL_MS / 1000,
-                                    alerts: RAIL_REFRESH_INTERVAL_MS / 1000,
-                                }}
+                                onRefresh={() => void refreshAccount()}
+                                loading={headerUpdating}
+                                refreshDisabled={headerLoading}
                                 defaultEssentialsOpen
                                 timeRange={timeRange}
-                                onTimeRangeChange={setTimeRange}
+                                onTimeRangeChange={handleTimeRangeChange}
                                 containers={containers}
                                 selectedContainer={selectedContainer}
-                                onSelectContainer={setSelectedContainer}
+                                onSelectContainer={handleScopeChange}
                                 databaseIds={inventory.databases}
                                 accountActionBusy={accountActionBusy}
                                 onAccountAction={(input) => void runAccountAction(input)}
@@ -747,6 +795,14 @@ export const OverviewDashboard = ({
                     }
                 />
             </div>
+            {creationBusy && (
+                <div
+                    className={styles.creationOverlay}
+                    aria-hidden
+                    // Keep clicks on the backdrop from moving focus away from the native VS Code wizard.
+                    onPointerDown={(event) => event.preventDefault()}
+                />
+            )}
         </DashboardActionsProvider>
     );
 };

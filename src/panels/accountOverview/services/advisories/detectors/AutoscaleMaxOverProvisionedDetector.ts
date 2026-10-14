@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
+import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
 import { Detector, type DetectorContext } from '../core/Detector';
 import { capacityMaterialitySeverity, clampRationale, hasMinimumKnownResourceAge } from '../core/helpers';
@@ -71,9 +72,9 @@ function evaluateAutoscaleMaxOverProvisioned(
         title: l10n.t('Autoscale max may be set too high'),
         rationale: clampRationale(
             l10n.t(
-                'Autoscale on "{container}" never provisioned more than {peak}% of its {max} RU/s max over the window, below the {band}% band.',
+                'Autoscale on "{container}" never provisioned more than `{peak}%` of its `{max} RU/s` max over the window, below the `{band}%` band.',
                 {
-                    container: input.containerId,
+                    container: escapeAdvisoryText(input.containerId),
                     peak: peakPct,
                     max: Math.round(max),
                     band: Math.round(bandPercent),
@@ -81,18 +82,18 @@ function evaluateAutoscaleMaxOverProvisioned(
             ) +
                 ' ' +
                 l10n.t(
-                    'Autoscale bills a 10% idle floor of the max even at zero load, so an over-high max wastes ~{wasted} RU/s of that floor.',
+                    'Autoscale bills a `10%` idle floor of the max even at zero load, so an over-high max wastes `~{wasted} RU/s` of that floor.',
                     { wasted: wastedRu },
                 ),
         ),
         suggestedAction:
-            l10n.t('Lower the autoscale max on "{container}" toward ~{recommended} RU/s.', {
-                container: input.containerId,
+            l10n.t('Lower the autoscale max on "{container}" toward `~{recommended} RU/s`.', {
+                container: escapeAdvisoryText(input.containerId),
                 recommended: recommend,
             }) +
             ' ' +
             l10n.t('The idle floor will track real demand while the ceiling still covers the observed peak.'),
-        thresholdReference: l10n.t('Threshold: peak AutoscaledRU < {band}% of the configured max', {
+        thresholdReference: l10n.t('Threshold: peak AutoscaledRU < `{band}%` of the configured max', {
             band: Math.round(bandPercent),
         }),
         scope,

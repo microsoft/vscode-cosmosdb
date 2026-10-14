@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
+import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
 import { Detector, type DetectorContext } from '../core/Detector';
 import { clampRationale, finiteNumbers, hasMinimumKnownResourceAge, mean } from '../core/helpers';
@@ -64,13 +65,13 @@ function evaluateAutoscaleCandidate(
             ? l10n.t('Workload in {container} looks like an autoscale candidate', { container: containerId })
             : l10n.t('Workload looks like an autoscale candidate'),
         rationale: clampRationale(
-            l10n.t('Over the last {window} RU consumption peaked at {max}% but averaged just {avg}%.', {
+            l10n.t('Over the last `{window}` RU consumption peaked at `{max}%` but averaged just `{avg}%`.', {
                 window: observationLabel,
                 max,
                 avg,
             }) +
                 ' ' +
-                l10n.t('That is a {ratio}× peak-to-average burst on a mostly-idle baseline.', { ratio }) +
+                l10n.t('That is a `{ratio}×` peak-to-average burst on a mostly-idle baseline.', { ratio }) +
                 ' ' +
                 l10n.t(
                     'For this duty cycle, autoscale tracks demand more efficiently than fixed throughput sized for the peak.',
@@ -78,8 +79,8 @@ function evaluateAutoscaleCandidate(
         ),
         suggestedAction:
             containerId && recommendedMax !== undefined
-                ? l10n.t('Enable autoscale on "{container}" and start with a maximum near {recommended} RU/s.', {
-                      container: containerId,
+                ? l10n.t('Enable autoscale on "{container}" and start with a maximum near `{recommended} RU/s`.', {
+                      container: escapeAdvisoryText(containerId),
                       recommended: recommendedMax.toLocaleString(),
                   }) +
                   ' ' +
@@ -87,7 +88,7 @@ function evaluateAutoscaleCandidate(
                 : l10n.t(
                       'Enable autoscale on the bursty containers so provisioned RU/s follows demand between the configured floor and ceiling.',
                   ),
-        thresholdReference: l10n.t('Threshold: peak ≥ {max}%, average ≤ {avg}%, and peak/average ≥ {ratio}×', {
+        thresholdReference: l10n.t('Threshold: peak ≥ `{max}%`, average ≤ `{avg}%`, and peak/average ≥ `{ratio}×`', {
             max: thresholds.maxPercent,
             avg: thresholds.avgPercent,
             ratio: thresholds.peakToAvgRatio,

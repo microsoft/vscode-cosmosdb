@@ -3,10 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureWizard, DeleteConfirmationStep, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { AzureWizard, UserCancelledError, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import { type CosmosDBAccountResourceItem } from '../../tree/cosmosdb/CosmosDBAccountResourceItem';
+import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { DatabaseAccountDeleteStep } from './DatabaseAccountDeleteStep';
 import { type DeleteWizardContext } from './DeleteWizardContext';
@@ -30,12 +31,15 @@ export async function cosmosDBDeleteDatabaseAccount(
     const title = l10n.t('Delete Database Account "{0}"', accountName);
     const confirmationMessage = l10n.t('Are you sure you want to delete account "{0}" and its contents?', accountName);
 
+    const confirmed = await getConfirmationAsInSettings(title, confirmationMessage, accountName);
+    if (!confirmed) {
+        throw new UserCancelledError();
+    }
+
     const wizard = new AzureWizard(wizardContext, {
         title,
-        promptSteps: [new DeleteConfirmationStep(confirmationMessage)],
         executeSteps: [new DatabaseAccountDeleteStep()],
     });
 
-    await wizard.prompt();
     await wizard.execute();
 }

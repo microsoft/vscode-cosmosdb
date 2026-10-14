@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { makeStyles, Text, tokens } from '@fluentui/react-components';
+import { makeStyles, Text, tokens, typographyStyles } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { type MetricKey, type MetricSeriesResult, type TimeRange } from '../../../api/types';
@@ -47,8 +47,8 @@ const useStyles = makeStyles({
         flexShrink: 0,
     },
     legendText: {
-        fontSize: tokens.fontSizeBase100,
-        color: 'var(--vscode-descriptionForeground)',
+        ...typographyStyles.caption1,
+        color: tokens.colorNeutralForeground2,
     },
     visuallyHidden: {
         position: 'absolute',
@@ -63,8 +63,8 @@ const useStyles = makeStyles({
     },
     chartRegion: {
         ':focus-visible': {
-            outline: '2px solid var(--vscode-focusBorder)',
-            outlineOffset: '2px',
+            outline: `${tokens.strokeWidthThick} solid ${tokens.colorStrokeFocus2}`,
+            outlineOffset: tokens.strokeWidthThick,
         },
     },
 });

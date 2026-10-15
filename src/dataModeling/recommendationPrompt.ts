@@ -16,9 +16,10 @@ export async function buildRecommendationPrompt(
     return (
         'Load the `cosmosdb-data-model-recommendation` skill and follow its workflow for EVERY container in this Data Modeler request.' +
         '\n' +
-        'If required skills, guidance, or information are missing, or you are unsure which recommendation is supported, stop and report failure using only ' +
+        "Apply the skill's Wizard evidence policy, including its immutability assumptions, before deciding whether missing information blocks a recommendation. " +
+        'If required skills or guidance are unavailable, or the remaining core workload evidence is insufficient to justify a recommendation, stop and report failure using only ' +
         (requestId ? 'wizardTabId, requestId, and error. ' : 'wizardTabId and error. ') +
-        'Explain what is missing or uncertain and what is needed to proceed. Do not invent or return a provisional recommendation.' +
+        'Explain what is missing or uncertain and what is needed to proceed. Do not invent missing facts or return unsupported recommendations.' +
         '\n\n' +
         "Scenario context computed by Data Modeler (apply the skill's unchanged-default hint rule):\n" +
         JSON.stringify(context) +

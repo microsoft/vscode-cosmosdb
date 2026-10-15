@@ -386,6 +386,9 @@ function riskBand(risk: HotPartitionRisk['risk']): { fill: string; label: string
 function ContainerResultView({ container }: { container: ContainerRecommendation }) {
     const styles = useStyles();
     const guardrailsId = useId();
+    const queryRoutingTitle = l10n.t('Query routing — assuming {partitionKey}', {
+        partitionKey: container.partitionKey,
+    });
     const fillTone: Record<'low' | 'medium' | 'high', string> = {
         low: styles.fillLow,
         medium: styles.fillMedium,
@@ -464,9 +467,9 @@ function ContainerResultView({ container }: { container: ContainerRecommendation
             </div>
 
             {container.queryRouting ? (
-                <SubPanel title={'🧭 ' + l10n.t('Query routing')} subtitle={container.queryRouting.headline}>
+                <SubPanel title={'🧭 ' + queryRoutingTitle} subtitle={container.queryRouting.headline}>
                     <div className={styles.tableWrap}>
-                        <Table size="small" aria-label={l10n.t('Query routing')}>
+                        <Table size="small" aria-label={queryRoutingTitle}>
                             <TableHeader>
                                 <TableRow>
                                     <TableHeaderCell>{l10n.t('Read pattern')}</TableHeaderCell>

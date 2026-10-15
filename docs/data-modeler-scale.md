@@ -66,7 +66,16 @@ Recommendation requests reject inconsistent sizes in any container until they ar
 ## Source of truth
 
 The Result page's **Query routing** table shows **Read pattern**, **Filters on**, **QPS**, and **Routing**.
+Its title and accessible name include the container's recommended key, for example **Query routing — assuming /playerId**,
+to make the basis of the single-/cross-partition classifications explicit.
 Estimated costs are not displayed; existing recommendations containing cost estimates remain loadable.
+
+The wizard does not collect per-property immutability. Missing lifecycle evidence alone does not block a recommendation:
+the recommendation skill ranks eligible keys from the supplied workload and explicitly assumes the chosen value stays
+unchanged for the document's lifetime. It must show an **Immutability assumed** warning on the recommended candidate
+and an **Immutability assumption** under **Absolute rules (guardrails)** requiring confirmation before deployment.
+Known mutable fields remain unsuitable; missing guidance, no eligible alternatives, and other insufficient core evidence
+still block a recommendation. This is an instruction to the recommendation agent, not verification of lifecycle stability.
 
 The Result page's **Query routing → Filters on** column displays a comma-separated list of property names,
 matching the Queries tab rather than showing SQL predicates. New recommendations provide property-name arrays;

@@ -519,7 +519,11 @@ describe('recommendation prompt', () => {
         const prompt = await buildRecommendationPrompt(wizard, 'wizard-id');
         expect(prompt).toContain('Load the `cosmosdb-data-model-recommendation` skill');
         expect(prompt).toContain('stop and report failure using only wizardTabId and error');
-        expect(prompt).toContain('Do not invent or return a provisional recommendation');
+        expect(prompt).toContain(
+            "Apply the skill's Wizard evidence policy, including its immutability assumptions, before deciding whether missing information blocks a recommendation.",
+        );
+        expect(prompt).toContain('remaining core workload evidence is insufficient to justify a recommendation');
+        expect(prompt).toContain('Do not invent missing facts or return unsupported recommendations');
         expect(prompt).not.toContain('label the recommendation as provisional');
         expect(prompt).toContain('"scenario":"ecommerce","defaultsUnchanged":true');
         expect(prompt).toContain('"hint":"/customerId, /orderId"');
@@ -536,6 +540,23 @@ describe('recommendation prompt', () => {
         expect(prompt).toContain('wizard is closed');
         expect(prompt).toContain(JSON.stringify(wizard.dataModel));
     });
+
+    it.each([undefined, 'playerId changes when a player transfers their state.'])(
+        'sends gaming evidence unchanged and delegates immutability policy (lifecycle evidence: %s)',
+        async (lifecycleEvidence) => {
+            const wizard = applyScenario(createInitialState(), 'gaming');
+            if (lifecycleEvidence) {
+                wizard.dataModel.containers[0].reads[0].pattern += ` ${lifecycleEvidence}`;
+            }
+            const original = structuredClone(wizard);
+            const prompt = await buildRecommendationPrompt(wizard, 'wizard-id', 'request-id');
+            expect(prompt).toContain(JSON.stringify(wizard.dataModel));
+            expect(wizard).toEqual(original);
+            expect(prompt).toContain("skill's Wizard evidence policy, including its immutability assumptions");
+            expect(prompt).toContain('stop and report failure using only wizardTabId, requestId, and error');
+            expect(prompt).toContain('Include requestId "request-id" in both success and failure reports');
+        },
+    );
 
     it('does not pass preferred container keys after any default input is changed', async () => {
         const wizard = applyScenario(createInitialState(), 'ecommerce');

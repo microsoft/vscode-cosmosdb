@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { statSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import packageJson from '../../package.json';
 import {
@@ -300,5 +300,21 @@ describe('bundled recommendation skill', () => {
         const skillPath = './skills/cosmosdb-data-model-recommendation/SKILL.md';
         expect(packageJson.contributes.chatSkills).toContainEqual({ path: skillPath });
         expect(statSync(new URL(`../../${skillPath}`, import.meta.url)).isFile()).toBe(true);
+    });
+
+    it('permits unknown immutability only with explicit warnings while retaining known-mutable rejection', () => {
+        const skill = readFileSync(
+            new URL('../../skills/cosmosdb-data-model-recommendation/SKILL.md', import.meta.url),
+            'utf8',
+        );
+        const policy = skill.split('#### Immutability assumptions')[1]?.split('## 1. Ground the analysis')[0];
+        expect(policy).toBeDefined();
+        expect(policy).toContain('unknown immutability alone must not block a');
+        expect(policy).toContain('Apply the same assumption to competing candidates');
+        expect(policy).toContain('`warn` assessment labeled "Immutability assumed"');
+        expect(policy).toContain('"Immutability assumption" entry in `guardrails`');
+        expect(policy).toContain('require confirmation before deployment');
+        expect(policy).toContain('Known mutable fields remain unsuitable');
+        expect(policy).toContain('If no eligible alternative exists');
     });
 });

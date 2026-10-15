@@ -35,8 +35,9 @@ needed is simply not a result this skill produces.
 ## Evidence and failure policy
 
 If core evidence or required guidance is contradictory, unavailable, or insufficient to compare candidates,
-**stop and report failure**. This takes precedence over the default-hint preference and scoring/output requirements.
-Do not invent facts, arbitrary scores, or provisional recommendations. Do not report partial success:
+**stop and report failure**, subject to the Wizard evidence policy below.
+This takes precedence over the default-hint preference and scoring/output requirements.
+Do not invent facts, arbitrary scores, or unsupported recommendations. Do not report partial success:
 identify affected containers, the blocker, and the specific information or clarification needed to proceed.
 
 - **Wizard failure:** call its report tool exactly once with only `wizardTabId` and a non-empty `error` explanation.
@@ -60,6 +61,25 @@ below, and add a `guardrails` entry for each applicable unverified limit.
 Do not reject a candidate, mark it `fail`, invent score inputs, or use the error-only report shape for these omissions.
 Reject for such a constraint only when the supplied workload establishes a violation.
 The recommendation is a partition-key design judgment, not a certification of application/configuration/retention compliance.
+
+#### Immutability assumptions
+
+The wizard has no per-property immutability input. For wizard requests, **unknown immutability alone must not block a
+recommendation** or require confirmation before reporting it. Rank the existing eligible fields using the supplied
+queries, cardinality, writes, and scale; recommend the best-supported key conditional on its value remaining unchanged
+throughout each document's lifetime. Apply the same assumption to competing candidates whose immutability is unknown,
+so absence of that input does not arbitrarily favor one identifier.
+
+- Include a `warn` assessment labeled "Immutability assumed" on the recommended candidate, within its 4-5 reasons.
+  Name the selected field and state that its lifecycle stability is assumed, not verified.
+- Include an "Immutability assumption" entry in `guardrails`. Name the key, require confirmation before deployment,
+  and explain that the key must be reassessed if its value can change. Keep this entry even when candidate reasons
+  are combined or shortened.
+- This disclosed assumption is not a failed suitability check or evidence of immutability. It alone does not exclude
+  an otherwise suitable candidate from `recommended` or the good-fit score band. Never mark unknown immutability as `pass`
+  or infer a guarantee from a field name, Key role, or scenario hint.
+- Known mutable fields remain unsuitable: mark them `avoid` with a `fail` assessment and prefer a supported alternative.
+  If no eligible alternative exists, or other core workload evidence is insufficient, use the failure policy.
 
 ## 1. Ground the analysis
 
@@ -166,7 +186,8 @@ For each container:
    not measurements or probabilities. Unsupported choices/assessments require failure, not arbitrary scores.
    A candidate's score and verdict must agree with its own assessments. A decisive check that is failed or unmet
    keeps the candidate out of the good-fit band and out of `recommended`, however well it scores elsewhere;
-   several unresolved warnings do the same. Do not average a decisive failure away against passing checks.
+   several unresolved warnings do the same, subject to the Wizard evidence policy.
+   Do not average a decisive failure away against passing checks.
 5. Order best first, subject to the hint rule. Keep the selected key, first candidate, verdicts, scores, and analyses consistent;
    do not score an alternative above the selected key. Resolve close suitable baseline choices toward the hint, not arbitrary precision.
    Give specific, honest reasons for weaker/avoid candidates.
@@ -199,6 +220,7 @@ Only after every container succeeds, provide a concise overall summary and these
 - Optional `hotPartitionRisk` comparisons: risk bands and numeric `pct` per row, distinguishing estimates from measurements.
   If percentages cannot be justified, omit the section and describe qualitative risks in assessments.
 - `queryRouting`: headline, one route per read pattern with filters/QPS/routing/estimated cost, and source-grounded analysis.
+  Evaluate every route using the container's recommended `partitionKey`, not an alternative or the original input key.
   Map findings to the tool's `single`/`cross` enum; use `analysis` for qualifications the enum cannot express.
   Keep the headline to one short sentence. Use an empty `analysis` unless it adds a qualification missing from the table;
   when needed, use at most two short sentences. For unsupported costs, use "Not measured".

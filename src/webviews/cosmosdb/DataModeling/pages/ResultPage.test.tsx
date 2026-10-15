@@ -55,7 +55,9 @@ describe('ResultPage', () => {
         };
         const restored = PartitionKeyRecommendationSchema.parse(JSON.parse(JSON.stringify(value)));
         renderResult(restored);
-        const table = screen.getByRole('table', { name: 'Query routing' });
+        const table = screen.getByRole('table', { name: 'Query routing — assuming /conversationId' });
+        expect(screen.getByText('🧭 Query routing — assuming /conversationId')).toBeVisible();
+        expect(table).toHaveAccessibleName('Query routing — assuming /conversationId');
         expect(within(table).getByRole('columnheader', { name: 'Filters on' })).toBeVisible();
         expect(
             within(table)
@@ -102,6 +104,31 @@ describe('ResultPage', () => {
         expect(within(userSection).getByText(value.containers[1].guardrails[0].detail)).toBeVisible();
         expect(screen.queryByText('Logical-partition storage')).not.toBeInTheDocument();
         expect(userSection.parentElement?.lastElementChild).toBe(userSection);
+    });
+
+    it('uses each container recommendation in the routing title and table name when switching tabs', async () => {
+        const user = userEvent.setup();
+        const value = structuredClone(recommendation);
+        value.containers[1].partitionKey = '/customer/customerId';
+        for (const container of value.containers) {
+            container.queryRouting = {
+                headline: 'Reads under the recommended key.',
+                routes: [
+                    { pattern: 'List records', filters: [], qps: '100/s', routing: 'cross', estCost: 'Not measured' },
+                ],
+                analysis: '',
+            };
+        }
+        renderResult(value);
+        for (const container of [value.containers[0], value.containers[1], value.containers[0]]) {
+            await user.click(screen.getByRole('tab', { name: `Container: ${container.entity}` }));
+            const title = `Query routing — assuming ${container.partitionKey}`;
+            expect(screen.getByText(`🧭 ${title}`)).toBeVisible();
+            const table = screen.getByRole('table', { name: title });
+            expect(table).toHaveAccessibleName(title);
+            expect(within(table).getByText('Cross-partition')).toBeVisible();
+            expect(screen.getAllByRole('table')).toHaveLength(1);
+        }
     });
 
     it.each([{ guardrails: undefined }, { guardrails: [] }])(
@@ -156,6 +183,49 @@ describe('ResultPage', () => {
         );
     }
 
+    it('shows an unverified immutability warning and deployment guardrail on a restored recommendation', () => {
+        const value = structuredClone(scoredRecommendation);
+        const container = value.containers[0];
+        container.entity = 'PlayerState';
+        container.partitionKey = '/playerId';
+        container.candidates = [
+            {
+                partitionKey: '/playerId',
+                score: 80,
+                verdict: 'recommended',
+                assessments: [
+                    { label: 'Player reads targeted', status: 'pass', detail: 'Reads filter by playerId.' },
+                    {
+                        label: 'Many player values',
+                        status: 'pass',
+                        detail: 'Supplied cardinality supports distribution.',
+                    },
+                    { label: 'Writes spread evenly', status: 'pass', detail: 'The supplied write profile is even.' },
+                    {
+                        label: 'Immutability assumed',
+                        status: 'warn',
+                        detail: 'playerId is assumed unchanged throughout each document lifetime, not verified.',
+                    },
+                ],
+            },
+        ];
+        container.guardrails = [
+            {
+                rule: 'Immutability assumption',
+                detail: 'Confirm playerId never changes before deployment; reassess this key if it can change.',
+            },
+        ];
+        const restored = PartitionKeyRecommendationSchema.parse(JSON.parse(JSON.stringify(value)));
+        renderScores({ recommendation: restored });
+        const warning = screen.getByRole('region', { name: 'Warning Immutability assumed' });
+        expect(within(warning).getByRole('img', { name: 'Warning' })).toBeVisible();
+        expect(within(warning).queryByRole('img', { name: 'Pass' })).not.toBeInTheDocument();
+        expect(within(warning).getByText(container.candidates[0].assessments[3].detail)).toBeVisible();
+        const guardrails = screen.getByRole('region', { name: 'Absolute rules (guardrails)' });
+        expect(within(guardrails).getByText('Immutability assumption')).toBeVisible();
+        expect(within(guardrails).getByText(container.guardrails[0].detail)).toBeVisible();
+    });
+
     it('shows card and query details directly without a toggle or redundant summary', () => {
         const value = structuredClone(scoredRecommendation);
         const container = value.containers[0];
@@ -198,7 +268,7 @@ describe('ResultPage', () => {
         ]) {
             expect(screen.getByText(text)).toBeVisible();
         }
-        expect(screen.getByRole('table', { name: 'Query routing' })).toBeVisible();
+        expect(screen.getByRole('table', { name: 'Query routing — assuming /conversationId' })).toBeVisible();
         expect(screen.getAllByRole('img', { name: /^Score / })).toHaveLength(3);
         expect(screen.queryByRole('button', { name: 'Show details' })).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'Hide details' })).not.toBeInTheDocument();

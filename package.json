@@ -68,6 +68,7 @@
     "pretest": "rimraf out && tsc -p tsconfig.test.json && node -e \"require('fs').writeFileSync('out/package.json', JSON.stringify({type:'module'}))\"",
     "test": "node scripts/run-integration-tests.mjs",
     "test:proxy": "node scripts/test-proxy.mjs",
+    "test:shell-mcp": "cross-env COSMOSDB_SHELL_MCP_INTEGRATION=1 vitest run src/cosmosDBShell/mcpProvider.test.ts",
     "vitest": "vitest run",
     "vitest:coverage": "vitest run --coverage",
     "vitest:ui": "vitest --ui",

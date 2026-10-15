@@ -192,10 +192,19 @@ activation hot path. Clients are created on the host from the account's `AzureSu
 The three lazy SDKs (`arm-monitor`, `arm-advisor`, `arm-alertsmanagement`) must **not** enter the main
 activation bundle — verified via `bundle-analysis/extension-report-vite.json`.
 
-### Action procedures (mutations, no ARM reads)
+### Action procedures
 
 `openUrl`, `revealInTree`, `openQueryEditor` (deep-links / existing extension commands), `showOutput` (extension Output), and `reportEvent`
-(telemetry). The dashboard never mutates Azure resources — all "fix" affordances deep-link out.
+(telemetry). Failures of the four auxiliary actions are displayed once as native VS Code error notifications through
+the shared RPC event channel; their local catches neither redisplay nor rethrow the same error. Background query and
+telemetry errors do not use this notification path. A refused browser launch is an explicit action failure.
+Existing account-action and refresh feedback remains in the dashboard.
+
+`runAccountAction` invokes the existing scoped create/delete commands or opens account costs/JSON.
+Advisory guidance does not automatically modify Azure resources.
+Alert links and View Cost preserve `subscription.environment.portalUrl` and include the subscription's tenant,
+matching Azure Resources' portal selection convention. This preserves public, sovereign and configured `ms.portal`
+destinations without guessing the portal from a tenant ID.
 
 ### Loading and refresh
 
@@ -214,6 +223,9 @@ activation bundle — verified via `bundle-analysis/extension-report-vite.json`.
   Refresh and both header selectors remain unavailable while existing data requests finish, including initial loading.
   They unlock after completion or failure without resetting the selected database or period.
   Individual sections show their own loading state.
+- Alert-window buttons are disabled while alerts load, including initial collection, a period change and manual Refresh.
+  They remain disabled until the whole manual Refresh settles. Repeated selection does not reload data; failed requests
+  unlock the buttons and replace stale alerts with an unavailable state. Latest-request guards also protect result publication.
 - Successful database/container creation retains its existing inventory reload. Filters and selections are preserved.
 
 ## Permissions (RBAC)

@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Button, makeStyles, Spinner, tokens, typographyStyles, useAnnounce } from '@fluentui/react-components';
-import { useTrpcClient } from '@microsoft/vscode-ext-webview/react';
+import { useRpcEvents, useTrpcClient } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -39,6 +39,21 @@ import { type OverviewTab, TabbedOverviewLayout } from './TabbedOverviewLayout';
 import { useOverviewNavigation } from './useOverviewNavigation';
 
 const HEALTH_ORDER: Record<HealthState, number> = { Healthy: 0, 'Needs Attention': 1, Critical: 2 };
+
+const NATIVE_ERROR_ACTIONS = new Set([
+    'accountOverview.openUrl',
+    'accountOverview.showOutput',
+    'accountOverview.revealInTree',
+    'accountOverview.openQueryEditor',
+]);
+
+async function runAuxiliaryAction(action: () => Promise<unknown>): Promise<void> {
+    try {
+        await action();
+    } catch {
+        // The RPC event subscriber owns native error notification; do not display or rethrow it again here.
+    }
+}
 
 /**
  * Final account-health formula: escalates the base health with
@@ -129,7 +144,23 @@ export const OverviewDashboard = ({
 }) => {
     const styles = useStyles();
     const trpcClient = useTrpcClient<AccountOverviewAppRouter>();
+    const rpcEvents = useRpcEvents();
     const { announce } = useAnnounce();
+
+    useEffect(
+        () =>
+            rpcEvents.onError((error, info) => {
+                if (info.type === 'mutation' && NATIVE_ERROR_ACTIONS.has(info.path)) {
+                    void trpcClient.accountOverview.showErrorMessage
+                        .mutate({ message: error.message })
+                        .catch((error: unknown) => {
+                            // Do not send notification failures back through the notification route.
+                            console.error('Unable to display Account Overview action error.', error);
+                        });
+                }
+            }),
+        [rpcEvents, trpcClient],
+    );
 
     const requestedTab = requestedTarget === 'advisories' ? 'advisories' : 'monitoring';
     const [selectedTab, setSelectedTab] = useState<OverviewTab>(requestedTab);
@@ -169,6 +200,7 @@ export const OverviewDashboard = ({
     // Monotonic id of the latest in-flight trends request; only that request may commit its result.
     const trendsRequestSeq = useRef(0);
     const partitionRequestSeq = useRef(0);
+    const alertsRequestSeq = useRef(0);
     const headerLoading =
         refreshing ||
         trendsLoading ||
@@ -392,14 +424,34 @@ export const OverviewDashboard = ({
     );
 
     const fetchAlerts = useCallback(
-        (range: AlertTimeRange) => {
+        async (range: AlertTimeRange) => {
+            const requestId = ++alertsRequestSeq.current;
             setAlertsLoading(true);
-            return trpcClient.accountOverview.getAlerts
-                .query({ timeRange: range })
-                .then((result: AlertsResult) => {
+            try {
+                const result = await trpcClient.accountOverview.getAlerts.query({ timeRange: range });
+                if (requestId === alertsRequestSeq.current) {
                     setAlerts(result);
-                })
-                .finally(() => setAlertsLoading(false));
+                }
+                return true;
+            } catch {
+                if (requestId === alertsRequestSeq.current) {
+                    setAlerts({
+                        available: false,
+                        reason: 'noData',
+                        alerts: [],
+                        criticalCount: 0,
+                        warningCount: 0,
+                        timeRange: range,
+                        generatedAt: Date.now(),
+                    });
+                    setAccountActionFailure('refresh');
+                }
+                return false;
+            } finally {
+                if (requestId === alertsRequestSeq.current) {
+                    setAlertsLoading(false);
+                }
+            }
         },
         [trpcClient],
     );
@@ -507,7 +559,7 @@ export const OverviewDashboard = ({
             fetchRecommendations(),
             fetchDerivedAdvisories(),
         ]).then((outcomes) => {
-            const succeeded = outcomes.every((outcome) => outcome.status === 'fulfilled');
+            const succeeded = outcomes.every((outcome) => outcome.status === 'fulfilled' && outcome.value !== false);
             if (!succeeded) {
                 setAccountActionFailure('refresh');
             }
@@ -593,19 +645,19 @@ export const OverviewDashboard = ({
 
     const handleOpenUrl = useCallback(
         (url: string) => {
-            void trpcClient.accountOverview.openUrl.mutate({ url });
+            void runAuxiliaryAction(() => trpcClient.accountOverview.openUrl.mutate({ url }));
         },
         [trpcClient],
     );
 
     const handleShowOutput = useCallback(() => {
-        void trpcClient.accountOverview.showOutput.mutate();
+        void runAuxiliaryAction(() => trpcClient.accountOverview.showOutput.mutate());
     }, [trpcClient]);
 
     const handleRevealInTree = useCallback(
         (databaseId: string, containerId: string) => {
             reportEvent('deepLinkFollowed', { target: 'tree' });
-            void trpcClient.accountOverview.revealInTree.mutate({ databaseId, containerId });
+            void runAuxiliaryAction(() => trpcClient.accountOverview.revealInTree.mutate({ databaseId, containerId }));
         },
         [trpcClient, reportEvent],
     );
@@ -613,7 +665,9 @@ export const OverviewDashboard = ({
     const handleOpenQueryEditor = useCallback(
         (databaseId: string, containerId: string) => {
             reportEvent('deepLinkFollowed', { target: 'dataExplorer' });
-            void trpcClient.accountOverview.openQueryEditor.mutate({ databaseId, containerId });
+            void runAuxiliaryAction(() =>
+                trpcClient.accountOverview.openQueryEditor.mutate({ databaseId, containerId }),
+            );
         },
         [trpcClient, reportEvent],
     );
@@ -624,6 +678,17 @@ export const OverviewDashboard = ({
             setPartitionContainer(container);
         },
         [reportEvent],
+    );
+
+    const handleAlertTimeRangeChange = useCallback(
+        (range: AlertTimeRange) => {
+            if (alertsLoading || refreshInFlight.current || range === alertTimeRange) {
+                return;
+            }
+            setAlertsLoading(true);
+            setAlertTimeRange(range);
+        },
+        [alertsLoading, alertTimeRange],
     );
 
     const actions = useMemo(
@@ -757,9 +822,9 @@ export const OverviewDashboard = ({
                             />
                             <ActiveAlerts
                                 result={alerts}
-                                loading={alertsLoading}
+                                loading={alertsLoading || refreshing}
                                 timeRange={alertTimeRange}
-                                onTimeRangeChange={setAlertTimeRange}
+                                onTimeRangeChange={handleAlertTimeRangeChange}
                                 onOpenUrl={handleOpenUrl}
                             />
                         </DashboardCard>

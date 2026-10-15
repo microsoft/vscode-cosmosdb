@@ -14,6 +14,7 @@ import {
     toolbarClassNames,
     webLightTheme,
 } from '@fluentui/react-components';
+import { createEventChannel } from '@microsoft/vscode-ext-webview/webview';
 import { act, createEvent, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { type PropsWithChildren } from 'react';
@@ -49,7 +50,11 @@ const queries = vi.hoisted(() => ({
     queryEditor: vi.fn(),
     accountAction: vi.fn(),
     announce: vi.fn(),
+    openUrl: vi.fn(),
+    showOutput: vi.fn(),
+    showErrorMessage: vi.fn(),
 }));
+const rpcEvents = createEventChannel();
 vi.mock('@fluentui/react-components', async (importOriginal) => ({
     ...(await importOriginal<typeof FluentUI>()),
     useAnnounce: () => ({ announce: queries.announce }),
@@ -57,6 +62,7 @@ vi.mock('@fluentui/react-components', async (importOriginal) => ({
 vi.mock('@microsoft/vscode-ext-webview/react', () => {
     const client = {
         accountOverview: {
+            showErrorMessage: { mutate: queries.showErrorMessage },
             getAccountSummary: { query: queries.summary },
             getInventory: { query: queries.inventory },
             getInventoryMetrics: { query: queries.inventoryMetrics },
@@ -70,9 +76,11 @@ vi.mock('@microsoft/vscode-ext-webview/react', () => {
             revealInTree: { mutate: queries.reveal },
             openQueryEditor: { mutate: queries.queryEditor },
             runAccountAction: { mutate: queries.accountAction },
+            openUrl: { mutate: queries.openUrl },
+            showOutput: { mutate: queries.showOutput },
         },
     };
-    return { useTrpcClient: () => client };
+    return { useTrpcClient: () => client, useRpcEvents: () => rpcEvents };
 });
 vi.mock('./metrics/MetricChart', () => ({ MetricChart: () => null }));
 vi.mock('@tanstack/react-virtual', () => ({
@@ -159,6 +167,7 @@ beforeEach(() => {
     queries.summary.mockResolvedValue(summary);
     queries.inventory.mockResolvedValue({ supported: true, available: true, rows });
     queries.accountAction.mockResolvedValue({ status: 'completed' } satisfies AccountActionResult);
+    queries.showErrorMessage.mockResolvedValue(undefined);
     queries.inventoryMetrics.mockResolvedValue({ available: false, reason: 'noData', metrics: {} });
     queries.metric.mockImplementation(({ metric, timeRange }: { metric: MetricKey; timeRange: TimeRange }) =>
         Promise.resolve({ metric, timeRange, available: false, reason: 'noData', points: [], generatedAt: 0 }),
@@ -1112,6 +1121,185 @@ describe('Account Overview account actions', () => {
             }
         },
     );
+});
+
+describe('alert window serialization', () => {
+    async function showAlerts() {
+        const user = userEvent.setup();
+        render(<AccountOverview />, { wrapper: Wrapper });
+        await user.click(await screen.findByRole('tab', { name: 'Advisories' }));
+        return { user, controls: within(screen.getByRole('toolbar', { name: 'Alert time range' })) };
+    }
+
+    function alertResult(timeRange: '1d' | '7d' | '30d'): AlertsResult {
+        return {
+            available: true,
+            alerts: [
+                {
+                    id: timeRange,
+                    name: `${timeRange} alert`,
+                    severity: 'Informational',
+                    rawSeverity: 'Sev4',
+                    portalUrl: 'https://example.invalid/alert',
+                },
+            ],
+            criticalCount: 0,
+            warningCount: 0,
+            timeRange,
+            generatedAt: 0,
+        };
+    }
+
+    it('locks every alert window during initial loading and unlocks after completion', async () => {
+        const pending = Promise.withResolvers<AlertsResult>();
+        queries.alerts.mockReturnValueOnce(pending.promise);
+        const { user, controls } = await showAlerts();
+        for (const button of controls.getAllByRole('button')) {
+            expect(button).toBeDisabled();
+            expect(button).toHaveAccessibleDescription('Alerts are still loading.');
+            await user.click(button);
+        }
+        expect(queries.alerts).toHaveBeenCalledTimes(1);
+        await act(async () => pending.resolve(alertResult('1d')));
+        for (const button of controls.getAllByRole('button')) {
+            expect(button).toBeEnabled();
+            expect(button).not.toHaveAttribute('aria-description');
+        }
+    });
+
+    it('blocks mouse and keyboard period changes until the previous result arrives', async () => {
+        const { user, controls } = await showAlerts();
+        const pending = Promise.withResolvers<AlertsResult>();
+        queries.alerts.mockReturnValueOnce(pending.promise);
+        await user.click(controls.getByRole('button', { name: '7d' }));
+        const next = controls.getByRole('button', { name: '30d' });
+        expect(next).toBeDisabled();
+        await user.click(next);
+        fireEvent.click(next);
+        next.focus();
+        await user.keyboard('{Enter} ');
+        expect(queries.alerts).toHaveBeenCalledTimes(2);
+        expect(queries.alerts).toHaveBeenLastCalledWith({ timeRange: '7d' });
+        await act(async () => pending.resolve(alertResult('7d')));
+        expect(screen.getByText('7d alert')).toBeVisible();
+        queries.alerts.mockResolvedValueOnce(alertResult('30d'));
+        await user.click(next);
+        expect(queries.alerts).toHaveBeenLastCalledWith({ timeRange: '30d' });
+        expect(await screen.findByText('30d alert')).toBeVisible();
+        expect(screen.queryByText('7d alert')).not.toBeInTheDocument();
+        await user.click(next);
+        expect(queries.alerts).toHaveBeenCalledTimes(3);
+    });
+
+    it.each([false, true])(
+        'keeps alert windows locked until the whole manual Refresh settles (alerts fail: %s)',
+        async (alertsFail) => {
+            const { user, controls } = await showAlerts();
+            const pending = Promise.withResolvers<unknown>();
+            const previous: unknown = await queries.advisories.mock.results[0].value;
+            queries.advisories.mockReturnValueOnce(pending.promise);
+            if (alertsFail) {
+                queries.alerts.mockRejectedValueOnce(new Error('Alert request failed'));
+            }
+            const refresh = screen.getByRole('button', { name: 'Refresh' });
+            await waitFor(() => expect(refresh).not.toHaveAttribute('aria-disabled', 'true'));
+            await user.click(refresh);
+            for (const button of controls.getAllByRole('button')) {
+                expect(button).toBeDisabled();
+            }
+            expect(queries.alerts).toHaveBeenCalledTimes(2);
+            await user.click(controls.getByRole('button', { name: '7d' }));
+            expect(queries.alerts).toHaveBeenCalledTimes(2);
+            await act(async () => pending.resolve(previous));
+            await waitFor(() => expect(controls.getByRole('button', { name: '7d' })).toBeEnabled());
+            const failureMessage = screen.queryByRole('group', { name: 'Error' })?.textContent ?? '';
+            expect(failureMessage.includes('Account data could not be refreshed.')).toBe(alertsFail);
+            expect(queries.showErrorMessage).not.toHaveBeenCalled();
+        },
+    );
+
+    it('unlocks after a rejected period request, replaces stale alerts and permits another selection', async () => {
+        queries.alerts.mockResolvedValueOnce(alertResult('1d'));
+        const { user, controls } = await showAlerts();
+        queries.alerts.mockRejectedValueOnce(new Error('Alert request failed'));
+        await user.click(controls.getByRole('button', { name: '7d' }));
+        expect(screen.queryByText('1d alert')).not.toBeInTheDocument();
+        expect(screen.getByRole('group', { name: 'Error' })).toHaveTextContent('Account data could not be refreshed.');
+        const next = controls.getByRole('button', { name: '30d' });
+        expect(next).toBeEnabled();
+        queries.alerts.mockResolvedValueOnce(alertResult('30d'));
+        await user.click(next);
+        expect(await screen.findByText('30d alert')).toBeVisible();
+        expect(queries.showErrorMessage).not.toHaveBeenCalled();
+    });
+});
+
+describe('native auxiliary action errors', () => {
+    it.each([
+        ['revealInTree', 'Reveal in tree', queries.reveal],
+        ['openQueryEditor', 'Open Query Editor', queries.queryEditor],
+    ] as const)(
+        'shows one native error for %s without rethrowing or an inline duplicate',
+        async (action, label, query) => {
+            const user = userEvent.setup();
+            const error = new Error('Action failed');
+            query.mockImplementation(async () => {
+                rpcEvents.emitError(error, { id: 1, type: 'mutation', path: `accountOverview.${action}` });
+                throw error;
+            });
+            render(<AccountOverview />, { wrapper: Wrapper });
+            await user.click(await screen.findByRole('tab', { name: 'Databases and Containers' }));
+            await user.click(screen.getAllByRole('button', { name: label })[0]);
+            expect(queries.showErrorMessage).toHaveBeenCalledExactlyOnceWith({ message: error.message });
+            expect(screen.queryByRole('group', { name: 'Error' })).not.toBeInTheDocument();
+        },
+    );
+
+    it.each(['openUrl', 'showOutput'] as const)(
+        'notifies once for %s through the RPC error channel',
+        async (action) => {
+            const { unmount } = render(<AccountOverview />, { wrapper: Wrapper });
+            await screen.findByRole('tab', { name: 'Monitoring' });
+            const error = new Error('Action failed');
+            act(() => rpcEvents.emitError(error, { id: 1, type: 'mutation', path: `accountOverview.${action}` }));
+            expect(queries.showErrorMessage).toHaveBeenCalledExactlyOnceWith({ message: error.message });
+            unmount();
+            rpcEvents.emitError(error, { id: 2, type: 'mutation', path: `accountOverview.${action}` });
+            expect(queries.showErrorMessage).toHaveBeenCalledTimes(1);
+        },
+    );
+
+    it('does not notify for cancelled calls, data queries, telemetry or notification failures', async () => {
+        render(<AccountOverview />, { wrapper: Wrapper });
+        await screen.findByRole('tab', { name: 'Monitoring' });
+        const error = new Error('Failed');
+        act(() => {
+            rpcEvents.emitAborted({ id: 1, type: 'mutation', path: 'accountOverview.openUrl' });
+            rpcEvents.emitError(error, { id: 2, type: 'query', path: 'accountOverview.getAlerts' });
+            rpcEvents.emitError(error, { id: 3, type: 'mutation', path: 'accountOverview.reportEvent' });
+            rpcEvents.emitError(error, { id: 4, type: 'mutation', path: 'accountOverview.showErrorMessage' });
+        });
+        expect(queries.showErrorMessage).not.toHaveBeenCalled();
+    });
+
+    it('logs a failed notification without recursively notifying or rethrowing', async () => {
+        const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const notificationError = new Error('Notification transport failed');
+        queries.showErrorMessage.mockRejectedValueOnce(notificationError);
+        render(<AccountOverview />, { wrapper: Wrapper });
+        await screen.findByRole('tab', { name: 'Monitoring' });
+        act(() =>
+            rpcEvents.emitError(new Error('Open failed'), {
+                id: 1,
+                type: 'mutation',
+                path: 'accountOverview.openUrl',
+            }),
+        );
+        await waitFor(() =>
+            expect(log).toHaveBeenCalledWith('Unable to display Account Overview action error.', notificationError),
+        );
+        expect(queries.showErrorMessage).toHaveBeenCalledTimes(1);
+    });
 });
 
 describe('tabbed Account Overview', () => {

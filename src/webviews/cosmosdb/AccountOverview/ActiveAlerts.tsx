@@ -184,7 +184,9 @@ export const ActiveAlerts = ({
                     key={range}
                     name="timeRange"
                     value={range}
-                    onClick={() => onTimeRangeChange(range)}
+                    disabled={loading}
+                    aria-description={loading ? l10n.t('Alerts are still loading.') : undefined}
+                    onClick={loading ? undefined : () => onTimeRangeChange(range)}
                 >
                     {TIME_RANGE_LABELS[range]}
                 </ToolbarToggleButton>

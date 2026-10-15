@@ -228,6 +228,26 @@ describe('escalateAccountHealth', () => {
 });
 
 describe('getActiveAlerts', () => {
+    it.each([
+        'https://portal.azure.com/',
+        'https://ms.portal.azure.com',
+        'https://portal.azure.us/',
+        'https://portal.azure.cn',
+    ])('preserves the configured portal %s and tenant when constructing alert links', async (portal) => {
+        const id = '/subscriptions/sub/providers/Microsoft.AlertsManagement/alerts/a b?#%';
+        const result = await getActiveAlerts(
+            mockAlertsClient([makeAlert(id, 'Sev1')]),
+            'sub',
+            '/acct',
+            '1d',
+            portal,
+            'tenant/# ?@',
+        );
+        expect(result.alerts[0].portalUrl).toBe(
+            `${portal.replace(/\/$/, '')}/#@tenant%2F%23%20%3F%40/blade/Microsoft_Azure_Monitoring/AlertDetailsTemplateBlade/alertId/${encodeURIComponent(id)}`,
+        );
+    });
+
     it('maps severities, counts, and sorts, with per-alert portal links', async () => {
         const client = mockAlertsClient([
             makeAlert('/a/warn', 'Sev2', { startDateTime: new Date(1000) }),

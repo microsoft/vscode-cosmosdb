@@ -127,6 +127,8 @@ Rule (every standalone entity, \`isEmbeddedOnly\` !== true):
 2. **EXCEPTION — native GUID/UUID PK** (\`uniqueidentifier\`, \`uuid\`):
    Use the GUID value directly, no prefix.
    \`idTemplate\`: \`"{rowguid}"\`. \`source.type\`: \`"uniqueidentifier"\`.
+  A real UUID PK named \`uuid\` uses \`"{uuid}"\` with its real source table and
+  column, not generated-fallback metadata. Preserve its separate natural-key attribute.
 
 3. **FALLBACK — generated GUID** (only when rules 1 and 2 cannot apply, e.g.
    the source table has no PK, or its PK is unsafe as a Cosmos \`id\` and has
@@ -380,7 +382,7 @@ IMPORTANT:
 - The attribute marked isPartitionKey=true MUST have the same "target" name across all standalone entities in the container
 - Partition keys are immutable — once a container is created, its partition key cannot be changed. To change the partition key, a new container must be created with the desired partition key, data migrated, and application code updated. Choose partition keys carefully as this is a breaking change.
 - Set isId=true on primary keys
-- Set \`idTemplate\` on every standalone entity (isEmbeddedOnly !== true), using EXACT source column names in braces (e.g. \`"customer-{CustomerID}"\`, \`"salesOrderDetail-{SalesOrderID}-{SalesOrderDetailID}"\`, \`"{rowguid}"\` for native GUID PKs, or \`"{uuid}"\` only as fallback when no usable PK exists).
+- Set \`idTemplate\` on every standalone entity (isEmbeddedOnly !== true), using EXACT source column names in braces (e.g. \`"customer-{CustomerID}"\`, \`"salesOrderDetail-{SalesOrderID}-{SalesOrderDetailID}"\`, or \`"{rowguid}"\` and \`"{uuid}"\` for native GUID PKs). Generated \`"{uuid}"\` fallback requires the explicit generated source mapping above.
 - The \`id\` attribute MUST be derived from source PK columns via \`idTemplate\` (or be the value of a native GUID PK; fallback is a generated GUID). Every source PK column MUST also appear as a SEPARATE camelCase attribute typed to match the source (e.g. \`customerId: number\` alongside \`id: string\` "customer-101").
 - Include relationships with \`targetEntity\`, \`sourceFK\`, \`type\`, and \`strategy\` only — do NOT include \`rationale\` (or any other free-form prose) on relationships in the JSON. All rationale belongs in the markdown summary.
 - Do NOT include partition key candidates, scores, or analysis text in the model JSON — include candidate evaluation details in the summary under "Partition Key Decisions" instead. The model JSON partitionKeys entries should contain only the final "path".

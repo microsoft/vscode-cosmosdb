@@ -98,8 +98,8 @@ export interface CosmosEntity {
      * import to construct each document's `id` from source PK column values.
      * Source column names are referenced in braces, e.g. `"customer-{CustomerID}"`,
      * `"salesOrderDetail-{SalesOrderID}-{SalesOrderDetailID}"`, or `"{rowguid}"`
-     * when the PK is a native GUID. Use `"{uuid}"` as a fallback when no usable
-     * PK exists (a fresh GUID is generated per document).
+     * when the PK is a native GUID. `"{uuid}"` can reference a real source column named uuid;
+     * generated fallback additionally requires the ID source (generated)/(uuid)/uuid.
      * Required at runtime for every standalone entity (`isEmbeddedOnly` !== true).
      */
     idTemplate?: string;
@@ -115,7 +115,7 @@ export interface CosmosAttribute {
 
 export interface EntityRelationship {
     targetEntity: string;
-    sourceFK: { table: string; column: string };
+    sourceFK: { table: string; column: string; constraintName?: string };
     type: 'one-to-one' | 'one-to-many' | 'many-to-many';
     strategy?: 'embed' | 'reference';
     score?: number;

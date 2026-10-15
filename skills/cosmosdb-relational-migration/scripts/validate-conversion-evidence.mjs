@@ -8,7 +8,7 @@ import { showHelp } from './cli-help.mjs';
 import { mergeCosmosModels } from './merge-cosmos-models.mjs';
 import { assertNoTerminalIssues, readDomainModel, readPhaseEvidence } from './phase-summary.mjs';
 import { selectSchemaConversionDomains } from './select-schema-conversion-domains.mjs';
-import { canonicalStringify, canonicalizeCosmosModel } from './validate-cosmos-model.mjs';
+import { canonicalStringify, canonicalizeCosmosModel, classifyItemIdentity } from './validate-cosmos-model.mjs';
 import { readSourceInventory, resolveForeignKey, resolveSource } from './validate-source-evidence.mjs';
 
 export function modelHash(model) {
@@ -86,9 +86,10 @@ export function validateConversionEvidence(project, inventory, domainModels, roo
                 }
                 const preservedColumns = preservedSourceColumns(entity, sourceTable, inventory);
                 const idColumns = new Set([...(entity.idTemplate ?? '').matchAll(/\{([^{}]+)\}/gu)].map(match => match[1]));
+                const generatedId = classifyItemIdentity(entity) === 'generated-uuid';
                 for (const column of sourceTable.primaryKey ?? []) {
                     if (!preservedColumns.has(column)) throw new Error(`Primary-key column is not preserved separately: ${source}.${column}`);
-                    if (entity.isEmbeddedOnly !== true && entity.idTemplate !== '{uuid}' && !idColumns.has(column)) throw new Error(`idTemplate omits source primary-key column: ${source}.${column}`);
+                    if (entity.isEmbeddedOnly !== true && !generatedId && !idColumns.has(column)) throw new Error(`idTemplate omits source primary-key column: ${source}.${column}`);
                 }
             }
         }

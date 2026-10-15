@@ -10,6 +10,7 @@ import { type ProjectJson } from '../../../services/MigrationProjectService';
 import { type CosmosModel } from '../cosmosModel';
 import { Phase3FastConversionPrompt } from '../prompts/Phase3FastConversionPrompt';
 import { Phase3Step6IndexingPrompt } from '../prompts/Phase3Step6IndexingPrompt';
+import { Phase4SampleDataPrompt } from '../prompts/Phase4SampleDataPrompt';
 import { mergeDomainModels } from './migrationHelpers';
 import {
     buildPortableProvisioningArtifacts,
@@ -78,7 +79,7 @@ const project: ProjectJson = {
     },
 };
 
-describe('legacy schema-conversion full-text prompts', () => {
+describe('legacy migration model prompts', () => {
     const props = {
         domainSummary: '',
         cosmosModel: '',
@@ -97,6 +98,17 @@ describe('legacy schema-conversion full-text prompts', () => {
     });
 
     afterEach(() => vi.unstubAllGlobals());
+
+    it('distinguishes source-backed uuid templates from explicitly generated UUID fallback', () => {
+        const conversion = render(new Phase3FastConversionPrompt(props));
+        expect(conversion).toContain('A real UUID PK named `uuid`');
+        expect(conversion).toContain('Generated `"{uuid}"` fallback requires the explicit generated source mapping');
+        const samples = render(new Phase4SampleDataPrompt({ ...props, schemaSummary: '' }));
+        expect(samples).toContain('requires BOTH `idTemplate: "{uuid}"`');
+        expect(samples).toContain('"table": "(generated)", "column": "(uuid)", "type": "uuid"');
+        expect(samples).toContain('A real source column named `uuid` is NOT generated');
+        expect(samples).toContain('substitute its natural-key value');
+    });
 
     it('renders a canonical container-level policy in the indexing example', async () => {
         const prompt = render(new Phase3Step6IndexingPrompt(props));

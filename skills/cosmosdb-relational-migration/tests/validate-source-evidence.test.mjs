@@ -224,6 +224,67 @@ test('validates and resolves single and composite source foreign keys', () => {
     );
 });
 
+test('selects overlapping and same-endpoint foreign keys by exact constraint name', () => {
+    const sourceInventory = {
+        dialect: 'postgres',
+        tables: [
+            {
+                name: 'public.orders',
+                identity: [{ name: 'public' }, { name: 'orders' }],
+                foreignKeys: [
+                    {
+                        name: 'fk_customer',
+                        columns: ['customer_id'],
+                        referencedTable: 'public.customers',
+                        referencedColumns: ['id'],
+                        options: [],
+                    },
+                    {
+                        name: 'fk_customer_tenant',
+                        columns: ['tenant_id', 'customer_id'],
+                        referencedTable: 'public.customers',
+                        referencedColumns: ['tenant_id', 'id'],
+                        options: [],
+                    },
+                    {
+                        name: 'fk_customer_cascade',
+                        columns: ['customer_id'],
+                        referencedTable: 'public.customers',
+                        referencedColumns: ['id'],
+                        options: ['ON DELETE CASCADE'],
+                    },
+                ],
+            },
+            {
+                name: 'public.customers',
+                identity: [{ name: 'public' }, { name: 'customers' }],
+                foreignKeys: [],
+            },
+        ],
+    };
+    const before = structuredClone(sourceInventory);
+    const sourceFK = { table: 'public.orders', column: 'customer_id' };
+    assert.throws(() => resolveForeignKey(sourceFK, sourceInventory), /missing or ambiguous/u);
+    for (const constraintName of ['fk_customer', 'fk_customer_tenant', 'fk_customer_cascade']) {
+        const resolved = resolveForeignKey({ ...sourceFK, constraintName }, sourceInventory);
+        const expected = sourceInventory.tables[0].foreignKeys.find(foreignKey => foreignKey.name === constraintName);
+        assert.deepEqual(resolved.columns, expected.columns);
+        assert.deepEqual(resolved.referencedColumns, expected.referencedColumns);
+        assert.equal(resolved.referencedTable.name, 'public.customers');
+    }
+    for (const constraintName of ['missing', 'FK_CUSTOMER', '', null, 1]) {
+        assert.throws(() => resolveForeignKey({ ...sourceFK, constraintName }, sourceInventory));
+    }
+    assert.throws(() => resolveForeignKey({
+        ...sourceFK, column: 'tenant_id', constraintName: 'fk_customer',
+    }, sourceInventory), /missing or ambiguous/u);
+    assert.deepEqual(sourceInventory, before);
+    sourceInventory.tables[0].foreignKeys.push(structuredClone(sourceInventory.tables[0].foreignKeys[0]));
+    assert.throws(() => resolveForeignKey({
+        ...sourceFK, constraintName: 'fk_customer',
+    }, sourceInventory), /missing or ambiguous/u);
+});
+
 test('rejects invalid foreign-key endpoints in persisted source inventory evidence', () => {
     const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'foreign-key-inventory-'));
     try {

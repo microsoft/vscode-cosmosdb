@@ -71,8 +71,14 @@ declared checks with source locations in this inventory. Explicitly distinguish
 Each `foreignKeys` entry records ordered `columns`, `referencedTable`, and ordered
 `referencedColumns`. Both column arrays are non-empty, have equal lengths, and preserve
 composite-key order. Source and referenced tables and columns must resolve in the same
-inventory. A model relationship's `sourceFK.table` and `sourceFK.column` identify
-exactly one recorded foreign key; ambiguous or missing matches block conversion.
+inventory. A model relationship's `sourceFK.table` and `sourceFK.column` identify exactly
+one recorded foreign key. When constraints overlap, also set `sourceFK.constraintName`
+to the exact recorded constraint `name`; the selected column must still belong to
+that constraint. Names are matched exactly within the resolved table, not normalized
+or inferred from target entities. An omitted name retains the unambiguous table/column
+lookup. Unknown names, duplicate matching names, and ambiguous or missing matches block
+conversion. Preserve source constraint names in the inventory and keep constraints
+with different actions or semantics separate, even when their endpoints match.
 
 Compute `sourceSha256` with the exported `sourceFilesHash(dialect, files)` helper,
 or the equivalent SHA-256 of compact JSON `{ "dialect": ..., "files": [...] }`
@@ -363,9 +369,13 @@ source primary-key component in the template and retain its separate natural-key
 attribute; encoding does not relax source-coverage requirements.
 Over-limit output blocks; it is never truncated or silently replaced by a hash.
 
-Generated UUID fallback does not use a schema-conversion identity mapping. The
-`idTemplate: "{uuid}"` model declaration records that no stable source identity is
-available; record the reason and future data-migration requirement in the conversion
+Generated UUID fallback does not use a schema-conversion identity mapping. It requires
+both `idTemplate: "{uuid}"` and the ID attribute source
+`{ "table": "(generated)", "column": "(uuid)", "type": "uuid" }`. A real source
+column named `uuid` is not this sentinel: `{uuid}` preserves a native UUID value and
+an entity-prefixed template such as `lease-{uuid}` derives the ID from that source key.
+Both retain the real source mapping and a separate natural-key attribute. For genuine
+generated fallback, record the reason and future data-migration requirement in the conversion
 summary. Provisioning generates a valid UUID once per synthetic document and persists
 it directly as `sample-data.json#sampleData[].items[].id`. Validation reads that value
 without regenerating it, so ordinary provisioning retries reuse the same item key.

@@ -7,6 +7,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
     canonicalStringify,
+    classifyItemIdentity,
     TARGET_JSON_TYPES,
     validateAndCanonicalize,
     validateCosmosModel,
@@ -123,6 +124,35 @@ test('validates and canonicalizes a root model', () => {
     assert.equal(result.model.containers[0].partitionKeys[1].path, '/customerId');
     assert.equal(result.model.containers[0].partitionKeys[0].candidates, undefined);
     assert.equal(result.model.containers[0].entities[1].relationships[0].rationale, undefined);
+});
+
+test('preserves named FK references and canonicalizes their order without changing attribute sources', () => {
+    const model = validModel();
+    const entity = model.containers[0].entities[0];
+    const relationship = entity.relationships[0];
+    entity.relationships = ['fk_customer_restrict', 'fk_customer_cascade'].map(constraintName => ({
+        ...relationship, sourceFK: { ...relationship.sourceFK, constraintName },
+    }));
+    const original = structuredClone(model);
+    const result = validateAndCanonicalize(model);
+    assert.deepEqual(result.errors, []);
+    const canonicalEntity = result.model.containers[0].entities.find(entry => entry.name === entity.name);
+    assert.deepEqual(canonicalEntity.relationships.map(entry => entry.sourceFK.constraintName), [
+        'fk_customer_cascade', 'fk_customer_restrict',
+    ]);
+    assert.deepEqual(model, original);
+    entity.relationships.reverse();
+    assert.equal(canonicalStringify(validateAndCanonicalize(model).model), canonicalStringify(result.model));
+    for (const constraintName of ['', ' ', null, 42]) {
+        entity.relationships[0].sourceFK.constraintName = constraintName;
+        assert(validateCosmosModel(model).some(error => error.path.endsWith('.constraintName')));
+    }
+    entity.relationships[0].sourceFK.constraintName = 'fk_customer_cascade';
+    entity.attributes[0].source.constraintName = 'not-an-attribute-property';
+    assert(validateCosmosModel(model).some(error => error.path.includes('.attributes[0].source.constraintName')));
+    const schema = JSON.parse(fs.readFileSync(new URL('../schemas/cosmos-model.schema.json', import.meta.url), 'utf8'));
+    assert.deepEqual(schema.$defs.sourceFK.properties.constraintName, { type: 'string', minLength: 1 });
+    assert.equal(schema.$defs.source.properties.constraintName, undefined);
 });
 
 test('preserves unique-key policies during canonicalization', () => {
@@ -310,6 +340,42 @@ test('accepts direct and prefixed UUID identities while enforcing generated fall
     assert(
         validateCosmosModel(generatedModel).some((error) => error.message.includes('generated UUID fallback')),
     );
+});
+
+test('distinguishes real source columns named uuid from generated identity', () => {
+    const model = validModel();
+    const entity = model.containers[0].entities[0];
+    const idAttribute = entity.attributes.find(attribute => attribute.isId);
+    const naturalKey = entity.attributes.find(attribute => attribute.target === 'orderId');
+    idAttribute.source.column = 'uuid';
+    idAttribute.source.type = 'UUID';
+    naturalKey.source.column = 'uuid';
+    naturalKey.source.type = 'UUID';
+    naturalKey.type = 'string';
+    for (const idTemplate of ['{uuid}', 'order-{uuid}']) {
+        entity.idTemplate = idTemplate;
+        assert.deepEqual(validateCosmosModel(model), []);
+        assert.equal(classifyItemIdentity(entity), idTemplate === '{uuid}' ? 'native-uuid' : 'derived');
+    }
+    entity.attributes = entity.attributes.filter(attribute => attribute !== naturalKey);
+    assert(validateCosmosModel(model).some(error => /separate natural-key attribute/u.test(error.message)));
+    entity.attributes.push(naturalKey);
+    idAttribute.source.type = 'int';
+    naturalKey.source.type = 'int';
+    naturalKey.type = 'integer';
+    assert.deepEqual(validateCosmosModel(model), []);
+    entity.idTemplate = '{uuid}';
+    assert.equal(classifyItemIdentity(entity), 'derived');
+    assert(validateCosmosModel(model).some(error => /must start with/u.test(error.message)));
+    for (const source of [
+        { table: '(generated)', column: 'uuid', type: 'uuid' },
+        { table: 'Orders', column: '(uuid)', type: 'uuid' },
+        { table: '(generated)', column: '(uuid)', type: 'int' },
+    ]) {
+        idAttribute.source = source;
+        assert(validateCosmosModel(model).some(error => /generated UUID fallback/u.test(error.message)));
+        assert.notEqual(classifyItemIdentity(entity), 'generated-uuid');
+    }
 });
 
 test('rejects capacity and index path conflicts', () => {

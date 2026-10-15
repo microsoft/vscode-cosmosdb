@@ -95,6 +95,31 @@ test('binds relationship source-FK tables and columns to the selected source inv
     assert(errors.some(error => error.message.includes('missing.orders')));
 });
 
+test('preserves separately named same-endpoint constraints through merge and source evidence validation', () => {
+    const value = fixture();
+    const entity = value.domainModels[0].model.containers[0].entities[0];
+    const table = value.inventory.tables[0];
+    table.foreignKeys = ['fk_order_restrict', 'fk_order_cascade'].map(name => ({
+        name, columns: ['id'], referencedTable: 'public.orders', referencedColumns: ['id'],
+        options: name.endsWith('cascade') ? ['ON DELETE CASCADE'] : [],
+    }));
+    entity.relationships = table.foreignKeys.map(foreignKey => ({
+        targetEntity: 'Order',
+        sourceFK: { table: table.name, column: 'id', constraintName: foreignKey.name },
+        type: 'one-to-one', strategy: 'reference',
+    }));
+    const originalInventory = structuredClone(value.inventory);
+    assert.deepEqual(validateUpdatedModels(value), []);
+    assert.deepEqual(value.root.containers[0].entities[0].relationships.map(entry => entry.sourceFK.constraintName), [
+        'fk_order_cascade', 'fk_order_restrict',
+    ]);
+    assert.deepEqual(value.inventory, originalInventory);
+    delete entity.relationships[0].sourceFK.constraintName;
+    assert(validateUpdatedModels(value).some(error => /missing or ambiguous/u.test(error.message)));
+    entity.relationships[0].sourceFK.constraintName = 'missing';
+    assert(validateUpdatedModels(value).some(error => /missing or ambiguous/u.test(error.message)));
+});
+
 test('requires every composite primary-key component in the standalone ID template', () => {
     const value = fixture();
     const table = value.inventory.tables[0];
@@ -141,6 +166,28 @@ test('accepts all-UUID and mixed composite keys but still rejects either omitted
         entity.idTemplate = secondType === 'uuid' ? '{lineNo}' : 'order-{lineNo}';
         assert(validateUpdatedModels(value).some(error => error.message.includes('idTemplate omits source primary-key column: public.orders.id')));
     }
+});
+
+test('checks every primary-key component when a real uuid column uses the direct template', () => {
+    const value = fixture();
+    const table = value.inventory.tables[0];
+    const entity = value.domainModels[0].model.containers[0].entities[0];
+    table.columns[0].name = 'uuid';
+    table.primaryKey = ['uuid'];
+    for (const attribute of entity.attributes.filter(entry => entry.source.column === 'id')) {
+        attribute.source.column = 'uuid';
+        attribute.source.type = 'uuid';
+        attribute.type = 'string';
+    }
+    for (const idTemplate of ['{uuid}', 'order-{uuid}']) {
+        entity.idTemplate = idTemplate;
+        assert.deepEqual(validateUpdatedModels(value), []);
+    }
+    entity.idTemplate = '{uuid}';
+    table.primaryKey.push('pk');
+    assert(validateUpdatedModels(value).some(error => /idTemplate omits source primary-key column: public.orders.pk/u.test(error.message)));
+    entity.idTemplate = 'order-{uuid}-{pk}';
+    assert.deepEqual(validateUpdatedModels(value), []);
 });
 
 test('does not let a projection supply columns missing from the authoritative target', () => {

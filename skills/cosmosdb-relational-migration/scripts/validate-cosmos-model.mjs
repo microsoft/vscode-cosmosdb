@@ -49,6 +49,7 @@ const RELATIONSHIP_KEYS = new Set([
     'rationale',
 ]);
 const SOURCE_KEYS = new Set(['table', 'column', 'type']);
+const SOURCE_FK_KEYS = new Set([...SOURCE_KEYS, 'constraintName']);
 const INDEX_POLICY_KEYS = new Set([
     'indexingMode',
     'automatic',
@@ -121,11 +122,12 @@ function checkResourceName(value, jsonPath, errors) {
     }
 }
 
-function checkSource(value, jsonPath, errors, { typeRequired = true } = {}) {
-    if (!checkObject(value, jsonPath, SOURCE_KEYS, errors)) return;
+function checkSource(value, jsonPath, errors, { typeRequired = true, constraintNameAllowed = false } = {}) {
+    if (!checkObject(value, jsonPath, constraintNameAllowed ? SOURCE_FK_KEYS : SOURCE_KEYS, errors)) return;
     checkString(value.table, `${jsonPath}.table`, errors);
     checkString(value.column, `${jsonPath}.column`, errors);
     checkString(value.type, `${jsonPath}.type`, errors, { optional: !typeRequired });
+    if (constraintNameAllowed) checkString(value.constraintName, `${jsonPath}.constraintName`, errors, { optional: true });
 }
 
 function checkPartitionPath(value, jsonPath, errors) {
@@ -257,7 +259,7 @@ function checkRelationship(relationship, jsonPath, entityNames, errors) {
     if (typeof relationship.targetEntity === 'string' && !entityNames.has(relationship.targetEntity.toLowerCase())) {
         addError(errors, `${jsonPath}.targetEntity`, 'must reference an entity in the model');
     }
-    checkSource(relationship.sourceFK, `${jsonPath}.sourceFK`, errors, { typeRequired: false });
+    checkSource(relationship.sourceFK, `${jsonPath}.sourceFK`, errors, { typeRequired: false, constraintNameAllowed: true });
     if (!RELATIONSHIP_TYPES.has(relationship.type)) {
         addError(errors, `${jsonPath}.type`, 'must be one-to-one, one-to-many, or many-to-many');
     }
@@ -302,10 +304,16 @@ export function isUuidSourceType(sourceType) {
 }
 
 export function classifyItemIdentity(entity) {
-    if (entity?.idTemplate === '{uuid}') return 'generated-uuid';
     const template = typeof entity?.idTemplate === 'string' ? entity.idTemplate : '';
     const idSource = entity?.attributes?.find(attribute => attribute?.isId === true)?.source;
-    if (isUuidSourceType(idSource?.type) && template === `{${idSource.column}}`) {
+    const generatedSource = idSource?.table === '(generated)' || idSource?.column === '(uuid)';
+    if (
+        template === '{uuid}' && idSource?.table === '(generated)' && idSource?.column === '(uuid)' &&
+        typeof idSource?.type === 'string' && idSource.type.toLocaleLowerCase('en-US') === 'uuid'
+    ) {
+        return 'generated-uuid';
+    }
+    if (!generatedSource && isUuidSourceType(idSource?.type) && template === `{${idSource.column}}`) {
         return 'native-uuid';
     }
     return 'derived';
@@ -326,28 +334,19 @@ function checkIdTemplate(entity, jsonPath, errors) {
     );
     const idAttribute = entity.attributes.find((attribute) => attribute?.isId === true);
     const idSource = idAttribute?.source;
-    const sourceType = typeof idSource?.type === 'string' ? idSource.type.toLocaleLowerCase('en-US') : '';
     const generatedId = idSource?.table === '(generated)' || idSource?.column === '(uuid)';
-    const usesGeneratedUuid = placeholders.includes('uuid');
 
     if (/[/\\?#]/u.test(entity.idTemplate) || /\s$/u.test(entity.idTemplate)) {
         addError(errors, `${jsonPath}.idTemplate`, 'static template text contains a forbidden ID character or trailing whitespace');
     }
-    if (usesGeneratedUuid) {
-        if (
-            entity.idTemplate !== '{uuid}' ||
-            idSource?.table !== '(generated)' ||
-            idSource?.column !== '(uuid)' ||
-            sourceType !== 'uuid'
-        ) {
+    if (generatedId) {
+        if (classifyItemIdentity(entity) !== 'generated-uuid') {
             addError(
                 errors,
                 `${jsonPath}.idTemplate`,
                 'generated UUID fallback must use idTemplate "{uuid}" and source (generated)/(uuid)/uuid',
             );
         }
-    } else if (generatedId) {
-        addError(errors, `${jsonPath}.idTemplate`, 'generated ID source requires the {uuid} fallback template');
     } else if (classifyItemIdentity(entity) !== 'native-uuid') {
         const entityPrefix = `${entity.name.slice(0, 1).toLocaleLowerCase('en-US')}${entity.name.slice(1)}-`;
         if (!entity.idTemplate.startsWith(entityPrefix)) {
@@ -355,15 +354,15 @@ function checkIdTemplate(entity, jsonPath, errors) {
         }
     }
 
-    if (!usesGeneratedUuid && typeof idSource?.column === 'string' && !placeholders.includes(idSource.column)) {
+    if (!generatedId && typeof idSource?.column === 'string' && !placeholders.includes(idSource.column)) {
         addError(errors, `${jsonPath}.idTemplate`, 'must include the source column used by the id attribute');
     }
     for (const placeholder of placeholders) {
-        if (placeholder !== 'uuid' && !sourceColumns.has(placeholder)) {
+        if (generatedId && placeholder === 'uuid') continue;
+        if (!sourceColumns.has(placeholder)) {
             addError(errors, `${jsonPath}.idTemplate`, `placeholder "${placeholder}" has no matching source column`);
         }
         if (
-            placeholder !== 'uuid' &&
             !entity.attributes.some(
                 (attribute) => attribute?.target !== 'id' && attribute?.source?.column === placeholder,
             )
@@ -730,6 +729,9 @@ function canonicalRelationship(relationship) {
         type: relationship.type,
         strategy: relationship.strategy,
     };
+    if (relationship.sourceFK.constraintName !== undefined) {
+        result.sourceFK.constraintName = relationship.sourceFK.constraintName;
+    }
     if (relationship.targetProperty !== undefined) result.targetProperty = relationship.targetProperty;
     return result;
 }
@@ -747,8 +749,8 @@ function canonicalEntity(entity) {
     };
     if (entity.relationships?.length) {
         result.relationships = entity.relationships.map(canonicalRelationship).sort((left, right) =>
-            `${left.targetEntity}\0${left.sourceFK.table}\0${left.sourceFK.column}`.localeCompare(
-                `${right.targetEntity}\0${right.sourceFK.table}\0${right.sourceFK.column}`,
+            `${left.targetEntity}\0${left.sourceFK.table}\0${left.sourceFK.column}\0${left.sourceFK.constraintName ?? ''}`.localeCompare(
+                `${right.targetEntity}\0${right.sourceFK.table}\0${right.sourceFK.column}\0${right.sourceFK.constraintName ?? ''}`,
             ),
         );
     }

@@ -188,9 +188,12 @@ the design but are not another copy of the model.
   keys are derived identities even when one or all components are GUIDs/UUIDs; include
   every component in `idTemplate` and preserve each separately. For example,
   `membership-{GroupId}-{UserId}` requires an explicit mapping such as `typed-hex-v1`
-  when the UUID values contain the template's hyphen separator. Use `{uuid}` only when
-  no stable source key or stable string projection exists, and record the reason in
-  the summary. `{uuid}` declares a fallback policy only; do not create or persist
+  when the UUID values contain the template's hyphen separator. Use generated UUID
+  fallback only when no stable source key or stable string projection exists, and record
+  the reason in the summary. It requires both `{uuid}` and the ID source
+  `(generated)/(uuid)/uuid`; a real source column named `uuid` retains its real source
+  mapping, natural-key attribute, and ordinary source-derived identity rules.
+  Generated fallback declares a policy only; do not create or persist
   row-level assignments during schema conversion. A future source-data migration must
   resolve production identity separately before importing those rows.
 - Never sanitize IDs using lossy character replacement. Select the shared identity
@@ -202,8 +205,10 @@ the design but are not another copy of the model.
 - Relationships reference existing entities and use explicit embed/reference
   strategies. Every `sourceFK` table and column must resolve to the authoritative
   selected source inventory and identify exactly one complete foreign-key mapping
-  whose endpoints match the relationship entities. Embedded relationships also
-  declare the target document property. Unresolved, ambiguous, or unselected source
+  whose endpoints match the relationship entities. When several constraints contain
+  that column, set `sourceFK.constraintName` to the exact source constraint name;
+  do not collapse overlapping or same-endpoint constraints to evade ambiguity.
+  Embedded relationships also declare the target document property. Unresolved, ambiguous, or unselected source
   references are errors.
 - Index policy paths and capabilities are supported by provisioning.
 - Capacity mode and per-container throughput are internally consistent.

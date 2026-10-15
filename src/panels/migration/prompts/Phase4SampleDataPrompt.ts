@@ -56,9 +56,11 @@ from a ${this.props.sourceType} relational database.
      template: \`CustomerID=101\` → \`id: "customer-101"\`.
    - When \`idTemplate\` is \`"{GuidCol}"\` (native GUID PK), generate realistic
      GUID strings and use them directly as \`id\`.
-   - When \`idTemplate\` is \`"{uuid}"\` (generated-GUID fallback for entities
-     without a usable PK), generate a fresh GUID string as \`id\`; there is no
-     corresponding natural-key field to align.
+   - Generated-GUID fallback requires BOTH \`idTemplate: "{uuid}"\` and the ID
+     attribute's \`source: { "table": "(generated)", "column": "(uuid)", "type": "uuid" }\`.
+     Only then generate a fresh GUID string as \`id\`; there is no corresponding
+     natural-key field to align. A real source column named \`uuid\` is NOT generated
+     fallback: substitute its natural-key value into \`{uuid}\` or its prefixed template.
    - The natural-key field on the same document (e.g. \`customerId: 101\`) MUST hold
      the SAME value you substituted into the template, with the type declared in
      the model.

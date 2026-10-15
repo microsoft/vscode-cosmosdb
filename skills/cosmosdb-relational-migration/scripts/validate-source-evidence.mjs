@@ -66,8 +66,13 @@ export function resolveSource(value, inventory) {
 export function resolveForeignKey(sourceFK, inventory) {
     const resolve = createSourceResolver(inventory);
     const table = resolve(sourceFK.table);
+    const hasConstraintName = sourceFK.constraintName !== undefined;
+    if (hasConstraintName && (typeof sourceFK.constraintName !== 'string' || !sourceFK.constraintName.trim())) {
+        throw new Error('Source foreign key constraintName must be a non-empty string');
+    }
     const matches = table.foreignKeys.filter(foreignKey =>
-        foreignKey.columns.includes(sourceFK.column),
+        foreignKey.columns.includes(sourceFK.column) &&
+        (!hasConstraintName || foreignKey.name === sourceFK.constraintName),
     );
     if (matches.length !== 1) {
         throw new Error(`Source foreign key is missing or ambiguous: ${sourceFK.table}.${sourceFK.column}`);

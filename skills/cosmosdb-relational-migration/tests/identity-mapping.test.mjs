@@ -31,7 +31,12 @@ test('preserves safe legacy values, rejects ambiguous values and unsafe numeric 
 });
 
 test('UUID fallback validates the durable ID stored in the item', () => {
-    const fallback = { ...entity, idTemplate: '{uuid}' };
+    const fallback = {
+        ...entity, idTemplate: '{uuid}', attributes: [
+            ...entity.attributes,
+            { target: 'id', isId: true, source: { table: '(generated)', column: '(uuid)', type: 'uuid' } },
+        ],
+    };
     for (const id of [
         'c56a4180-65aa-42ec-a945-5fd21dec0538',
         '01890f47-4d2a-7cc1-98c4-dc0c0c07398f',
@@ -50,6 +55,10 @@ test('rejects schema-conversion mappings and row assignments for generated UUID 
         ...entity,
         docType: 'item',
         idTemplate: '{uuid}',
+        attributes: [
+            ...entity.attributes,
+            { target: 'id', isId: true, source: { table: '(generated)', column: '(uuid)', type: 'uuid' } },
+        ],
     };
     const model = {
         version: 1,
@@ -127,6 +136,39 @@ test('preserves native UUID values and rejects lossy Unicode input', () => {
     assert.throws(() => resolveItemId(native, item, mapping), /Native UUID/);
     assert.throws(() => resolveItemId(native, { guid: 'invalid' }), /UUID string/);
     assert.throws(() => resolveItemId(entity, { first: '\ud800', second: 'ok' }, mapping), /invalid Unicode/);
+});
+
+test('resolves source-backed uuid templates from the natural key instead of an existing item ID', () => {
+    const native = {
+        name: 'Item', docType: 'item', sourceTable: 'ids', idTemplate: '{uuid}', attributes: [
+            { target: 'id', isId: true, type: 'string', source: { table: 'ids', column: 'uuid', type: 'uuid' } },
+            { target: 'sourceUuid', type: 'string', isPartitionKey: true, source: { table: 'ids', column: 'uuid', type: 'uuid' } },
+        ],
+    };
+    const item = { sourceUuid: 'C56A4180-65AA-42EC-A945-5FD21DEC0538', id: 'not-the-source-identity' };
+    assert.equal(resolveItemId(native, item), item.sourceUuid);
+    assert.throws(() => resolveItemId(native, { id: item.sourceUuid }), /source key is missing/u);
+    assert.throws(() => resolveItemId(native, item, mapping), /Native UUID/u);
+    const prefixed = { ...native, idTemplate: 'item-{uuid}' };
+    assert.equal(resolveItemId(prefixed, item), `item-${item.sourceUuid}`);
+    assert.equal(resolveItemId(prefixed, item, mapping), resolveItemId(prefixed, { sourceUuid: item.sourceUuid }, mapping));
+    for (const [candidate, encoding] of [[native, 'legacy'], [prefixed, 'typed-hex-v1']]) {
+        const model = {
+            version: 1, domain: 'all', databaseName: 'migration', capacityMode: 'serverless',
+            containers: [{
+                name: 'Items', partitionKeys: [{ path: '/sourceUuid' }], entities: [candidate],
+                indexingPolicy: { includedPaths: [{ path: '/*' }], excludedPaths: [] },
+            }],
+        };
+        const manifest = {
+            version: 1, modelSha256: identityModelHash(model), mappings: [{
+                containerName: 'Items', docType: 'item', sourceTable: candidate.sourceTable,
+                idTemplate: candidate.idTemplate, encoding, rule: 'peer-id-rule',
+            }],
+        };
+        assert.deepEqual(validateIdentityManifest(model, manifest), []);
+        assert.throws(() => resolveItemId(candidate, { sourceUuid: 'invalid' }), /UUID strings/u);
+    }
 });
 
 test('namespaces shared UUID source keys without changing source values or replay identity', () => {

@@ -599,7 +599,6 @@
   "Error while querying databases": "Error while querying databases",
   "Error: {0}": "Error: {0}",
   "Errors found in document {path}. Please fix these.": "Errors found in document {path}. Please fix these.",
-  "Est. cost": "Est. cost",
   "Est. Tokens": "Est. Tokens",
   "Estimate peak transactions per second (TPS). TPS is the combined number of insert, update, and delete operations per second.": "Estimate peak transactions per second (TPS). TPS is the combined number of insert, update, and delete operations per second.",
   "Estimated distinct values": "Estimated distinct values",

@@ -57,11 +57,20 @@ describe('ResultPage', () => {
         renderResult(restored);
         const table = screen.getByRole('table', { name: 'Query routing' });
         expect(within(table).getByRole('columnheader', { name: 'Filters on' })).toBeVisible();
+        expect(
+            within(table)
+                .getAllByRole('columnheader')
+                .map((header) => header.textContent),
+        ).toEqual(['Read pattern', 'Filters on', 'QPS', 'Routing']);
+        expect(within(table).queryByRole('columnheader', { name: 'Est. cost' })).not.toBeInTheDocument();
+        expect(within(table).queryByText('3 RU')).not.toBeInTheDocument();
         const row = within(table).getAllByRole('row')[1];
         const cells = within(row).getAllByRole('cell');
+        expect(cells).toHaveLength(4);
         expect(cells[1].textContent).toBe(expected);
         expect(cells[0]).toHaveTextContent('List records');
         expect(cells[2]).toHaveTextContent('100/s');
+        expect(cells[3]).toHaveTextContent('Single-partition');
     });
 
     it('shows relevant absolute rules as the final named section for each container', async () => {

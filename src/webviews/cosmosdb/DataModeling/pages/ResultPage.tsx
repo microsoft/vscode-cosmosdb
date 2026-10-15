@@ -473,7 +473,6 @@ function ContainerResultView({ container }: { container: ContainerRecommendation
                                     <TableHeaderCell>{l10n.t('Filters on')}</TableHeaderCell>
                                     <TableHeaderCell>{l10n.t('QPS')}</TableHeaderCell>
                                     <TableHeaderCell>{l10n.t('Routing')}</TableHeaderCell>
-                                    <TableHeaderCell>{l10n.t('Est. cost')}</TableHeaderCell>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -493,7 +492,6 @@ function ContainerResultView({ container }: { container: ContainerRecommendation
                                                     : l10n.t('Cross-partition')}
                                             </span>
                                         </TableCell>
-                                        <TableCell>{route.estCost}</TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>

@@ -65,6 +65,9 @@ Recommendation requests reject inconsistent sizes in any container until they ar
 
 ## Source of truth
 
+The Result page's **Query routing** table shows **Read pattern**, **Filters on**, **QPS**, and **Routing**.
+Estimated costs are not displayed; existing recommendations containing cost estimates remain loadable.
+
 The Result page's **Query routing → Filters on** column displays a comma-separated list of property names,
 matching the Queries tab rather than showing SQL predicates. New recommendations provide property-name arrays;
 older saved string predicates are converted for display using the same property extraction as the Queries tab.

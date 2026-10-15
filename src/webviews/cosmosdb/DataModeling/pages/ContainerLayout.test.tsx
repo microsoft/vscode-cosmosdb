@@ -131,7 +131,7 @@ describe('single-column container tabs', () => {
         await user.click(screen.getByRole('radio', { name: '100K – 1M items' }));
         expect(within(estimate).getByText(/Projected size exceeds the 20 GB limit/)).toBeVisible();
         await user.click(screen.getByRole('radio', { name: 'Grows slowly' }));
-        expect(screen.getByRole('radio', { name: 'Grows slowly' })).toHaveAttribute('aria-checked', 'true');
+        expect(screen.getByRole('radio', { name: 'Grows slowly' })).toBeChecked();
         const distinctValues = screen.getByRole('combobox', { name: 'Estimated distinct values for id' });
         expect(within(distinctValues).getByRole('option', { name: '< 100 — low ⚠️' })).toHaveValue('50');
         expect(within(distinctValues).getByRole('option', { name: 'Hundreds – thousands' })).toHaveValue('1000');

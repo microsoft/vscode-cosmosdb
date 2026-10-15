@@ -34,6 +34,13 @@ The container-step subtitle combines the selected template notice with tab guida
   with a bulleted list and a visible hot-partition warning.
   Capacity warnings remain visible, not behind a disclosure.
 
+Workload scenario cards and the three Scale option groups use native radio inputs styled as cards.
+Tab enters a group at the selected option and then leaves the group; arrow keys move focus and selection,
+wrapping at the ends. Space selects the focused option. Each group has its own name and a visible card focus outline.
+Filtering Workload does not change the chosen scenario. If the selection is hidden, Tab enters at the first visible
+option; if nothing matches, the group is not displayed. Radio names come from the visible titles, with descriptions,
+badges, and hints exposed as accessible descriptions. Activating an already-selected radio does not reapply its defaults.
+
 Selecting **Next** from Data before visiting either Queries or Scale for that container opens a native VS Code dialog.
 **Configure** opens and focuses Queries; **Next** continues through the normal next-step flow.
 Dismissing the dialog keeps Data selected and returns focus to Next.

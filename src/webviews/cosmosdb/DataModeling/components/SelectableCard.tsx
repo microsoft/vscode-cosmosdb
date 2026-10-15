@@ -4,11 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { makeStyles, mergeClasses, tokens } from '@fluentui/react-components';
-import { type ReactNode } from 'react';
+import { type ReactNode, useId } from 'react';
 
 /**
- * A radio-style selectable card. Behaves like a single-choice option: exactly
- * one card in a group should be `selected`. Fully keyboard operable.
+ * A native radio styled as a selectable card. Cards in a group share a name
+ * so the browser manages Tab entry and arrow-key selection.
  */
 
 const useStyles = makeStyles({
@@ -17,6 +17,7 @@ const useStyles = makeStyles({
         gap: tokens.spacingHorizontalM,
         alignItems: 'flex-start',
         width: '100%',
+        boxSizing: 'border-box',
         textAlign: 'left',
         padding: tokens.spacingHorizontalM,
         borderRadius: tokens.borderRadiusMedium,
@@ -24,6 +25,10 @@ const useStyles = makeStyles({
         backgroundColor: tokens.colorNeutralBackground1,
         cursor: 'pointer',
         color: tokens.colorNeutralForeground1,
+        ':focus-within': {
+            outline: `2px solid ${tokens.colorStrokeFocus2}`,
+            outlineOffset: '2px',
+        },
         ':hover': {
             backgroundColor: tokens.colorNeutralBackground1Hover,
             border: `1px solid ${tokens.colorNeutralStroke1}`,
@@ -36,23 +41,12 @@ const useStyles = makeStyles({
     },
     radio: {
         flexShrink: 0,
+        margin: 0,
         marginTop: '2px',
         width: '16px',
         height: '16px',
-        borderRadius: tokens.borderRadiusCircular,
-        border: `2px solid ${tokens.colorNeutralStroke1}`,
-        boxSizing: 'border-box',
-        position: 'relative',
-    },
-    radioSelected: {
-        border: `2px solid ${tokens.colorBrandStroke1}`,
-        '::after': {
-            content: '""',
-            position: 'absolute',
-            inset: '2px',
-            borderRadius: tokens.borderRadiusCircular,
-            backgroundColor: tokens.colorBrandForeground1,
-        },
+        accentColor: tokens.colorBrandBackground,
+        cursor: 'pointer',
     },
     body: {
         display: 'flex',
@@ -70,33 +64,46 @@ const useStyles = makeStyles({
 });
 
 export interface SelectableCardProps {
+    name: string;
+    value: string;
     selected: boolean;
     onSelect: () => void;
     title: ReactNode;
     description?: ReactNode;
     /** Extra content rendered under the description (badges, hints, etc.). */
     meta?: ReactNode;
-    ariaLabel?: string;
 }
 
-export function SelectableCard({ selected, onSelect, title, description, meta, ariaLabel }: SelectableCardProps) {
+export function SelectableCard({ name, value, selected, onSelect, title, description, meta }: SelectableCardProps) {
     const styles = useStyles();
+    const id = useId();
+    const titleId = `${id}-title`;
+    const descriptionId = `${id}-description`;
+    const metaId = `${id}-meta`;
+    const describedBy = [description ? descriptionId : undefined, meta ? metaId : undefined].filter(Boolean).join(' ');
     return (
-        <button
-            type="button"
-            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- styled radio card; a native <input> cannot host the card layout/children
-            role="radio"
-            aria-checked={selected}
-            aria-label={ariaLabel}
-            className={mergeClasses(styles.card, selected && styles.cardSelected)}
-            onClick={onSelect}
-        >
-            <span className={mergeClasses(styles.radio, selected && styles.radioSelected)} aria-hidden="true" />
+        <label className={mergeClasses(styles.card, selected && styles.cardSelected)}>
+            <input
+                className={styles.radio}
+                type="radio"
+                name={name}
+                value={value}
+                checked={selected}
+                onChange={onSelect}
+                aria-labelledby={titleId}
+                aria-describedby={describedBy || undefined}
+            />
             <span className={styles.body}>
-                <span className={styles.title}>{title}</span>
-                {description ? <span className={styles.desc}>{description}</span> : null}
-                {meta}
+                <span id={titleId} className={styles.title}>
+                    {title}
+                </span>
+                {description ? (
+                    <span id={descriptionId} className={styles.desc}>
+                        {description}
+                    </span>
+                ) : null}
+                {meta ? <span id={metaId}>{meta}</span> : null}
             </span>
-        </button>
+        </label>
     );
 }

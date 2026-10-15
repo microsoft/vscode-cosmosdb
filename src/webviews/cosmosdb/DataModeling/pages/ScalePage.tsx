@@ -139,6 +139,9 @@ export interface ScalePageProps {
 export function ScalePage({ model, onChange }: ScalePageProps) {
     const styles = useStyles();
     const limitsHeadingId = useId();
+    const itemsGroupName = useId();
+    const writesGroupName = useId();
+    const growthGroupName = useId();
 
     // Scale is per-container: edit the active container's scale profile.
     const active = getActiveContainer(model);
@@ -207,11 +210,12 @@ export function ScalePage({ model, onChange }: ScalePageProps) {
                     {ITEMS_OPTIONS.map((o) => (
                         <SelectableCard
                             key={o.value}
+                            name={itemsGroupName}
+                            value={o.value}
                             selected={scale.items === o.value}
                             onSelect={() => onChangeScale({ ...scale, items: o.value })}
                             title={<span className={o.warn ? styles.warn : undefined}>{o.title}</span>}
                             description={o.desc}
-                            ariaLabel={o.title}
                         />
                     ))}
                 </div>
@@ -222,11 +226,12 @@ export function ScalePage({ model, onChange }: ScalePageProps) {
                     {WRITE_OPTIONS.map((o) => (
                         <SelectableCard
                             key={o.value}
+                            name={writesGroupName}
+                            value={o.value}
                             selected={scale.writes === o.value}
                             onSelect={() => onChangeScale({ ...scale, writes: o.value })}
                             title={o.title}
                             description={o.desc}
-                            ariaLabel={o.title}
                         />
                     ))}
                 </div>
@@ -237,11 +242,12 @@ export function ScalePage({ model, onChange }: ScalePageProps) {
                     {GROWTH_OPTIONS.map((o) => (
                         <SelectableCard
                             key={o.value}
+                            name={growthGroupName}
+                            value={o.value}
                             selected={scale.growth === o.value}
                             onSelect={() => onChangeScale({ ...scale, growth: o.value })}
                             title={<span className={o.warn ? styles.warn : undefined}>{o.title}</span>}
                             description={o.desc}
-                            ariaLabel={o.title}
                         />
                     ))}
                 </div>

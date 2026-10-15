@@ -6,7 +6,7 @@
 import { Badge, Input, makeStyles, Text, tokens } from '@fluentui/react-components';
 import { SearchRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { SelectableCard } from '../components/SelectableCard';
 import { type ScenarioId } from '../models';
 import { getScenarioList, type ScenarioBadge } from '../scenarios';
@@ -61,6 +61,7 @@ export interface WorkloadPageProps {
 
 export function WorkloadPage({ scenario, onPickScenario }: WorkloadPageProps) {
     const styles = useStyles();
+    const groupName = useId();
     const [filter, setFilter] = useState('');
     const scenarios = useMemo(() => getScenarioList(), []);
 
@@ -83,6 +84,7 @@ export function WorkloadPage({ scenario, onPickScenario }: WorkloadPageProps) {
                 className={styles.search}
                 contentBefore={<SearchRegular />}
                 placeholder={l10n.t('Filter scenarios…')}
+                aria-label={l10n.t('Filter scenarios…')}
                 value={filter}
                 onChange={(_, data) => setFilter(data.value)}
             />
@@ -94,11 +96,12 @@ export function WorkloadPage({ scenario, onPickScenario }: WorkloadPageProps) {
                     {visible.map((s) => (
                         <SelectableCard
                             key={s.id}
+                            name={groupName}
+                            value={s.id}
                             selected={scenario === s.id}
                             onSelect={() => onPickScenario(s.id)}
                             title={s.title}
                             description={s.description}
-                            ariaLabel={s.title}
                             meta={
                                 s.hint || s.badge ? (
                                     <span className={styles.meta}>

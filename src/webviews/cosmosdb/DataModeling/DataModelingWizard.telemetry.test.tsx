@@ -63,10 +63,9 @@ it('records workload choices before Start, for mouse and keyboard, without filte
     const iot = workloads.find((scenario) => scenario.id === 'iot')!;
     await user.click(screen.getByRole('radio', { name: chat.title }));
     screen.getByRole('radio', { name: iot.title }).focus();
-    await user.keyboard('{Enter}{Enter}');
+    await user.keyboard('  ');
     expect(selections()).toEqual([
         { type: 'scenarioSelected', scenario: 'chat' },
-        { type: 'scenarioSelected', scenario: 'iot' },
         { type: 'scenarioSelected', scenario: 'iot' },
     ]);
     expect(client.dataModeling.saveState.mutate).toHaveBeenLastCalledWith(

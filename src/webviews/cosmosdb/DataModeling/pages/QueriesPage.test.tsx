@@ -10,7 +10,8 @@ import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { ModelingAdvisorProjectSchema } from '../../../../dataModeling/modelingAdvisorSchema';
-import { buildDataModel, createInitialState, type DataModel } from '../dataModel';
+import { buildDataModel, createBlankContainer, createInitialState, type DataModel } from '../dataModel';
+import { inferSchemaFromJson } from '../jsonInference';
 import { QueriesPage } from './QueriesPage';
 
 function Editor({ initialModel, onChange }: { initialModel: DataModel; onChange: (model: DataModel) => void }) {
@@ -40,6 +41,62 @@ function restore(model: DataModel): DataModel {
         ),
     ).state.wizard.dataModel;
 }
+
+function nestedModel(): DataModel {
+    const container = createBlankContainer('Orders');
+    const schema = inferSchemaFromJson(
+        JSON.stringify({ id: 'order-1', customerId: 'top-level-id', customer: { customerId: 'nested-id' } }),
+    );
+    container.properties = schema.properties.map((property) => ({ id: property.name, ...property }));
+    container.reads = [{ id: 'read', pattern: '', query: '', filters: [], qps: 10 }];
+    return { containers: [container], activeContainerId: container.id };
+}
+
+describe('nested query property references', () => {
+    const references = [
+        'c.customer.customerId',
+        'c["customer"]["customerId"]',
+        'c.customer["customerId"]',
+        'c["customer"].customerId',
+    ];
+
+    it.each(references)('auto-selects the full path for %s without a false warning', (reference) => {
+        const onChange = vi.fn<(model: DataModel) => void>();
+        render(<Editor initialModel={nestedModel()} onChange={onChange} />);
+        const sql = `SELECT * FROM c WHERE ${reference} = @customerId`;
+        fireEvent.change(screen.getByRole('textbox', { name: 'Query for read 1' }), { target: { value: sql } });
+        const filters = screen.getByRole('combobox', { name: 'Filters on for read 1' });
+        expect(filters).toHaveTextContent(/^customer\/customerId$/);
+        expect(filters).not.toHaveAccessibleDescription();
+        expect(screen.queryByText(/Selected properties not referenced/)).not.toBeInTheDocument();
+        const edited = onChange.mock.lastCall![0];
+        expect(edited.containers[0].reads[0].filters).toEqual(['customer/customerId']);
+        expect(edited.containers[0].reads[0].query).toBe(sql);
+        expect(restore(edited)).toEqual(edited);
+    });
+
+    it.each(references)('recognizes a manually selected nested field in %s', async (reference) => {
+        const user = userEvent.setup();
+        const model = nestedModel();
+        const sql = `SELECT * FROM c WHERE ${reference} = @customerId`;
+        model.containers[0].reads[0].query = sql;
+        const onChange = vi.fn<(model: DataModel) => void>();
+        render(<Editor initialModel={model} onChange={onChange} />);
+        const filters = screen.getByRole('combobox', { name: 'Filters on for read 1' });
+        await user.click(filters);
+        await user.click(screen.getByRole('menuitemcheckbox', { name: 'customer/customerId' }));
+        await user.keyboard('{Escape}');
+        expect(filters).not.toHaveAccessibleDescription();
+        expect(screen.queryByText(/Selected properties not referenced/)).not.toBeInTheDocument();
+        expect(screen.getByRole('textbox', { name: 'Query for read 1' })).toHaveValue(sql);
+        expect(onChange.mock.lastCall![0].containers[0].reads[0].filters).toEqual(['customer/customerId']);
+
+        await user.click(filters);
+        await user.click(screen.getByRole('menuitemcheckbox', { name: 'customerId' }));
+        await user.keyboard('{Escape}');
+        expect(filters).toHaveAccessibleDescription('Selected properties not referenced in the query: customerId');
+    });
+});
 
 describe('catalog query fields', () => {
     it('shows all four catalog values with visible labels included in their accessible names', () => {

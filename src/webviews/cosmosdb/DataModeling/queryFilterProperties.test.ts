@@ -15,12 +15,49 @@ describe('query property references', () => {
         ['SELECT * FROM c WHERE c.tenantId = @id /* createdAt */ -- payload', ['tenantId']],
         ['SELECT "id" AS tenantId FROM c', []],
         ['SELECT c.tenantId FROM c', ['tenantId']],
+        ['SELECT * FROM c WHERE c.customer.customerId = @customerId', ['customer/customerId']],
+        ['SELECT * FROM c WHERE c["customer"]["customerId"] = @customerId', ['customer/customerId']],
+        ["SELECT * FROM c WHERE c['customer']['customerId'] = @customerId", ['customer/customerId']],
+        ['SELECT * FROM c WHERE c.customer["customerId"] = @customerId', ['customer/customerId']],
+        ['SELECT * FROM c WHERE c["customer"].customerId = @customerId', ['customer/customerId']],
+        ['SELECT customer.customerId FROM c', ['customer/customerId']],
+        ['SELECT doc.customer.customerId FROM Orders AS doc', ['customer/customerId']],
+        ['SELECT VALUE doc FROM Orders AS doc', []],
+        ['SELECT c.customer.c FROM c', ['customer/c']],
+        [
+            'SELECT customer.customerId FROM c WHERE EXISTS (SELECT VALUE customer FROM customer IN c.items)',
+            ['customer/customerId'],
+        ],
+        [
+            'SELECT (SELECT VALUE x.customer.customerId FROM Orders x), x.customer.customerId FROM c',
+            ['customer/customerId', 'x/customer/customerId'],
+        ],
+        [
+            'SELECT c.id FROM c WHERE EXISTS (SELECT VALUE d.customer.customerId FROM Orders d WHERE d.id = c.id)',
+            ['id', 'customer/customerId'],
+        ],
+        [
+            'SELECT c.customer.address.city FROM c WHERE c.customer.customerId = @id ORDER BY c.customer.address.city',
+            ['customer/address/city', 'customer/customerId'],
+        ],
+        ['SELECT c.customer, c.customer.customerId FROM c', ['customer', 'customer/customerId']],
+        ['SELECT c.customer.customerId, c.customerId FROM c', ['customer/customerId', 'customerId']],
+        ['SELECT c["customer.info"]["customer-id"] FROM c', ['customer.info/customer-id']],
+        ['SELECT c.customer.customerId, c["customer"]["customerId"] FROM c', ['customer/customerId']],
+        [
+            'SELECT "customer/customerId" AS customerId FROM c WHERE c.id = @customerId /* c.customer.customerId */',
+            ['id'],
+        ],
+        ['SELECT VALUE { "customerId": LOWER(c.customer.customerId) } FROM c', ['customer/customerId']],
+        ['SELECT c.payload[c.lookup.field].id FROM c', ['payload', 'lookup/field']],
+        ['SELECT udf.details(c.customer.customerId).id FROM c', ['customer/customerId']],
         ['SELECT * FROM c', []],
         ['', []],
     ])('extracts exact references from %s', (query, names) => {
         const result = queryPropertyNames(query);
         expect(result.valid).toBe(true);
         expect(new Set(result.names)).toEqual(new Set(names));
+        expect(result.names).toHaveLength(names.length);
     });
 
     it('marks incomplete SQL as unavailable for automatic selection', () => {
@@ -45,5 +82,11 @@ describe('query property references', () => {
     it('retains explicit empty selections and names containing punctuation', () => {
         expect(readFilterProperties({ filters: [] })).toEqual([]);
         expect(readFilterProperties({ filters: ['a,b', 'tenant-id'] })).toEqual(['a,b', 'tenant-id']);
+    });
+
+    it('derives full nested paths from legacy predicates without rewriting saved selections', () => {
+        expect(readFilterProperties({ filters: 'c.customer.customerId = @id' })).toEqual(['customer/customerId']);
+        expect(readFilterProperties({ filters: 'c["customer"]["customerId"] = @id' })).toEqual(['customer/customerId']);
+        expect(readFilterProperties({ filters: ['customer/customerId'] })).toEqual(['customer/customerId']);
     });
 });

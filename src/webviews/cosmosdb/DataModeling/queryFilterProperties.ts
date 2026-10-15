@@ -3,11 +3,43 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { parse, type SqlNode } from '@azure/cosmosdb-nosql-language-service';
+import { parse, type SqlNode, type SqlScalarExpression } from '@azure/cosmosdb-nosql-language-service';
 import { type ReadQuery } from './models';
 
 function isNode(value: unknown): value is SqlNode {
     return typeof value === 'object' && value !== null && 'kind' in value;
+}
+
+function propertyPath(expression: SqlScalarExpression): string[] | undefined {
+    if (expression.kind === 'PropertyRefScalarExpression') {
+        if (!expression.member) {
+            return [expression.identifier.value];
+        }
+        const parent = propertyPath(expression.member);
+        return parent ? [...parent, expression.identifier.value] : undefined;
+    }
+    if (
+        expression.kind === 'MemberIndexerScalarExpression' &&
+        expression.indexer.kind === 'LiteralScalarExpression' &&
+        expression.indexer.literal.kind === 'StringLiteral'
+    ) {
+        const parent = propertyPath(expression.member);
+        return parent ? [...parent, expression.indexer.literal.value] : undefined;
+    }
+    return undefined;
+}
+
+function collectAliases(value: unknown, aliases: Set<string>): void {
+    if (Array.isArray(value)) {
+        value.forEach((child) => collectAliases(child, aliases));
+    } else if (isNode(value) && value.kind !== 'Query') {
+        if (value.kind === 'AliasedCollectionExpression' && value.alias) {
+            aliases.add(value.alias.value);
+        } else if (value.kind === 'InputPathCollection' || value.kind === 'ArrayIteratorCollectionExpression') {
+            aliases.add(value.identifier.value);
+        }
+        Object.values(value).forEach((child) => collectAliases(child, aliases));
+    }
 }
 
 /** Match actual property references, not parameters, comments, string values, or identifier substrings. */
@@ -17,36 +49,30 @@ export function queryPropertyNames(query: string): { names: string[]; valid: boo
     }
     const { ast, errors } = parse(query);
     const names = new Set<string>();
-    const aliases = new Set<string>();
-    const bareNames = new Set<string>();
-    function visit(value: unknown): void {
+    function visit(value: unknown, aliases: Set<string>): void {
         if (Array.isArray(value)) {
-            value.forEach(visit);
+            value.forEach((child) => visit(child, aliases));
         } else if (isNode(value)) {
-            if (value.kind === 'PropertyRefScalarExpression') {
-                (value.member ? names : bareNames).add(value.identifier.value);
-            } else if (
-                value.kind === 'MemberIndexerScalarExpression' &&
-                value.indexer.kind === 'LiteralScalarExpression' &&
-                value.indexer.literal.kind === 'StringLiteral'
-            ) {
-                names.add(value.indexer.literal.value);
-            } else if (value.kind === 'AliasedCollectionExpression') {
-                if (value.alias) {
-                    aliases.add(value.alias.value);
-                }
-            } else if (value.kind === 'InputPathCollection') {
-                aliases.add(value.identifier.value);
+            if (value.kind === 'Query') {
+                // FROM follows SELECT in the AST; resolve aliases before processing any references in this scope.
+                aliases = new Set(aliases);
+                collectAliases(value.from, aliases);
             }
-            Object.values(value).forEach(visit);
+            if (value.kind === 'PropertyRefScalarExpression' || value.kind === 'MemberIndexerScalarExpression') {
+                const path = propertyPath(value);
+                if (path) {
+                    const segments = aliases.has(path[0]) ? path.slice(1) : path;
+                    if (segments.length) {
+                        names.add(segments.join('/'));
+                    }
+                    // The member nodes belong to this reference, not separate references to its parent properties.
+                    return;
+                }
+            }
+            Object.values(value).forEach((child) => visit(child, aliases));
         }
     }
-    visit(ast);
-    bareNames.forEach((name) => {
-        if (!aliases.has(name)) {
-            names.add(name);
-        }
-    });
+    visit(ast, new Set());
     return { names: [...names], valid: errors.length === 0 };
 }
 

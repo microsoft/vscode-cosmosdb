@@ -26,6 +26,9 @@ The container-step subtitle combines the selected template notice with tab guida
   The dropdown lists the active container's properties. Selecting properties never rewrites SQL.
   Editing valid SQL adds explicitly referenced properties to the selection; existing selections remain so missing
   references can be flagged with a non-blocking warning. Parameters, comments, and string values do not count as references.
+  Nested SQL references retain their full schema paths: `c.customer.customerId`, `c["customer"]["customerId"]`,
+  and mixed dotted/bracketed forms all match `customer/customerId`. Collection aliases are excluded, and parent fields
+  are only selected when separately referenced, not merely because they occur inside a nested path.
   Incomplete SQL temporarily suspends automatic selection and shows a validation hint.
   Selections are saved as property-name arrays. Older filter predicates remain readable and seed the initial selection;
   older models without SQL text open with an empty Query field. Removed properties remain visible for deselection with a warning.

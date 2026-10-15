@@ -13,7 +13,14 @@
 
 import { type JSONSchema, type JSONSchemaRef } from '@azure/cosmosdb-schema-analyzer';
 import { getSchemaFromDocuments, type NoSQLDocument } from '@azure/cosmosdb-schema-analyzer/json';
-import { MAX_DOCUMENT_SIZE_KB, type DocumentShape, type PropertyRole, type PropertyType } from './models';
+import {
+    MAX_DOCUMENT_SIZE_KB,
+    type DocumentShape,
+    type PropertyRole,
+    type PropertyType,
+    type SchemaProperty,
+} from './models';
+import { getPartitionKeyRestriction } from './partitionKeyEligibility';
 
 export class DocumentSizeLimitError extends Error {
     constructor() {
@@ -21,16 +28,11 @@ export class DocumentSizeLimitError extends Error {
     }
 }
 
-export interface InferredProperty {
-    name: string;
-    type: PropertyType;
-    role: PropertyRole;
-    pkCandidate: boolean;
-}
+export type InferredProperty = Omit<SchemaProperty, 'id'>;
 
 export interface InferredSchema {
     properties: InferredProperty[];
-    /** Partition-key path derived from the chosen candidate, e.g. `/sessionId`. */
+    /** Partition-key path derived from the chosen candidate, or empty when no field is eligible. */
     partitionKey: string;
     /** Document-shape metrics calculated from the uploaded documents. */
     document: DocumentShape;
@@ -141,7 +143,19 @@ function getSchemaVariants(schema: JSONSchemaRef | JSONSchemaRef[] | undefined):
  * polymorphic `anyOf`, so all object branches must be visited to avoid
  * omitting fields only present in a less common document shape.
  */
-function flattenProperties(schema: JSONSchema, parentPath = '', result: InferredProperty[] = []): InferredProperty[] {
+function flattenProperties(
+    schema: JSONSchema,
+    parentPath = '',
+    result = new Map<string, InferredProperty>(),
+    hasArrayAncestor = false,
+): Map<string, InferredProperty> {
+    if (schema.type === 'array') {
+        for (const variant of getSchemaVariants(schema.items)) {
+            flattenProperties(variant, parentPath, result, true);
+        }
+        return result;
+    }
+
     for (const [name, child] of Object.entries(schema.properties ?? {})) {
         if (!isSchema(child)) {
             continue;
@@ -149,25 +163,24 @@ function flattenProperties(schema: JSONSchema, parentPath = '', result: Inferred
 
         const path = parentPath ? `${parentPath}/${name}` : name;
         const type = toPropertyType(child);
-        result.push({
+        const variants = getSchemaVariants(child);
+        result.set(path, {
+            ...result.get(path),
             name: path,
             type,
             role: inferRole(path, type),
             pkCandidate: false,
+            ...(hasArrayAncestor ? { hasArrayAncestor: true } : {}),
+            ...(type !== 'object' &&
+            type !== 'array' &&
+            variants.some((variant) => variant.type === 'object' || variant.type === 'array')
+                ? { hasNonScalarValues: true }
+                : {}),
         });
 
-        for (const variant of getSchemaVariants(child)) {
-            if (variant.type === 'object') {
-                flattenProperties(variant, path, result);
-            }
-
-            if (variant.type === 'array') {
-                for (const itemVariant of getSchemaVariants(variant.items)) {
-                    if (itemVariant.type === 'object') {
-                        flattenProperties(itemVariant, path, result);
-                    }
-                }
-            }
+        const traversesArray = hasArrayAncestor || variants.some((variant) => variant.type === 'array');
+        for (const variant of variants) {
+            flattenProperties(variant, path, result, traversesArray);
         }
     }
 
@@ -198,8 +211,12 @@ export function inferSchemaFromJson(text: string): InferredSchema {
         throw new Error('The JSON does not contain an object with properties.');
     }
 
-    const properties = flattenProperties(getSchemaFromDocuments(docs));
-    const pkName = pickPartitionKey(properties.map((property) => property.name));
+    const properties = [...flattenProperties(getSchemaFromDocuments(docs)).values()];
+    const pkName = pickPartitionKey(
+        properties
+            .filter((property) => !getPartitionKeyRestriction(property, properties))
+            .map((property) => property.name),
+    );
 
     for (const property of properties) {
         property.pkCandidate = property.name === pkName;
@@ -207,7 +224,7 @@ export function inferSchemaFromJson(text: string): InferredSchema {
 
     return {
         properties,
-        partitionKey: pkName ? `/${pkName}` : '/id',
+        partitionKey: pkName ? `/${pkName}` : '',
         document: inferDocumentShape(docs, properties.length),
         hasNestedCollections: hasNestedCollections(docs),
     };

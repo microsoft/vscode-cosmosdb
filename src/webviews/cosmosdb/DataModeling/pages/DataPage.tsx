@@ -19,7 +19,7 @@ import {
     Text,
     tokens,
 } from '@fluentui/react-components';
-import { ArrowUploadRegular, DismissRegular } from '@fluentui/react-icons';
+import { ArrowUploadRegular, DismissRegular, WarningRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { type ChangeEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { type ModelingTelemetryEvent } from '../../../../dataModeling/modelingTelemetrySchema';
@@ -35,6 +35,7 @@ import {
     PROPERTY_TYPES,
     type SchemaProperty,
 } from '../models';
+import { getPartitionKeyRestriction } from '../partitionKeyEligibility';
 import { getArrayUpdateOptions, nextId } from '../scenarios';
 import { useNativeConfirmation } from '../useNativeConfirmation';
 import { getRoleOptions } from '../wizardState';
@@ -92,6 +93,15 @@ const useStyles = makeStyles({
     },
     cellSelect: {
         minWidth: '120px',
+    },
+    propertyWarning: {
+        display: 'inline-flex',
+        alignItems: 'flex-start',
+        gap: tokens.spacingHorizontalXS,
+        color: 'var(--vscode-editorWarning-foreground)',
+    },
+    warningIcon: {
+        flexShrink: 0,
     },
     kvGrid: {
         display: 'grid',
@@ -317,19 +327,21 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
                 </InlineGuidance>
                 <div className={styles.propertyInputRow}>
                     <div className={styles.tagBox}>
-                        {active.properties.map((p) => (
-                            <span key={p.id} className={styles.tag}>
-                                {p.name}
-                                <button
-                                    type="button"
-                                    className={styles.tagRemove}
-                                    aria-label={l10n.t('Remove {name}', { name: p.name })}
-                                    onClick={() => removeProperty(p.id)}
-                                >
-                                    <DismissRegular fontSize={12} />
-                                </button>
-                            </span>
-                        ))}
+                        {active.properties
+                            .filter((p) => !getPartitionKeyRestriction(p, active.properties))
+                            .map((p) => (
+                                <span key={p.id} className={styles.tag}>
+                                    {p.name}
+                                    <button
+                                        type="button"
+                                        className={styles.tagRemove}
+                                        aria-label={l10n.t('Remove {name}', { name: p.name })}
+                                        onClick={() => removeProperty(p.id)}
+                                    >
+                                        <DismissRegular fontSize={12} />
+                                    </button>
+                                </span>
+                            ))}
                         <input
                             className={styles.tagInput}
                             aria-label={l10n.t('Add property…')}
@@ -381,51 +393,79 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {active.properties.map((p) => (
-                                <TableRow key={p.id}>
-                                    <TableCell>{p.name}</TableCell>
-                                    <TableCell>
-                                        <Select
-                                            className={styles.cellSelect}
-                                            aria-label={l10n.t('Type for {name}', { name: p.name })}
-                                            value={p.type}
-                                            onChange={(_, data) =>
-                                                patchProperty(p.id, { type: data.value as PropertyType })
-                                            }
-                                        >
-                                            {PROPERTY_TYPES.map((t) => (
-                                                <option key={t} value={t}>
-                                                    {t === 'string (ISO)' ? l10n.t('Date/time (ISO 8601 string)') : t}
-                                                </option>
-                                            ))}
-                                        </Select>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Select
-                                            className={styles.cellSelect}
-                                            value={p.role}
-                                            onChange={(_, data) =>
-                                                patchProperty(p.id, { role: data.value as PropertyRole })
-                                            }
-                                        >
-                                            {roleOptions.map((o) => (
-                                                <option key={o.value} value={o.value}>
-                                                    {o.label}
-                                                </option>
-                                            ))}
-                                        </Select>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Button
-                                            icon={<DismissRegular />}
-                                            appearance="subtle"
-                                            size="small"
-                                            aria-label={l10n.t('Remove {name}', { name: p.name })}
-                                            onClick={() => removeProperty(p.id)}
-                                        />
-                                    </TableCell>
-                                </TableRow>
-                            ))}
+                            {active.properties.map((p) => {
+                                const restriction = getPartitionKeyRestriction(p, active.properties);
+                                return (
+                                    <TableRow key={p.id}>
+                                        <TableCell>{p.name}</TableCell>
+                                        <TableCell>
+                                            <Select
+                                                className={styles.cellSelect}
+                                                aria-label={l10n.t('Type for {name}', { name: p.name })}
+                                                value={p.type}
+                                                onChange={(_, data) =>
+                                                    patchProperty(p.id, {
+                                                        type: data.value as PropertyType,
+                                                        hasNonScalarValues: undefined,
+                                                    })
+                                                }
+                                            >
+                                                {PROPERTY_TYPES.map((t) => (
+                                                    <option key={t} value={t}>
+                                                        {t === 'string (ISO)'
+                                                            ? l10n.t('Date/time (ISO 8601 string)')
+                                                            : t}
+                                                    </option>
+                                                ))}
+                                            </Select>
+                                        </TableCell>
+                                        <TableCell>
+                                            {restriction ? (
+                                                <span className={styles.propertyWarning}>
+                                                    <WarningRegular
+                                                        className={styles.warningIcon}
+                                                        fontSize={16}
+                                                        aria-hidden
+                                                    />
+                                                    <Text size={200}>
+                                                        {restriction === 'arrayAncestor'
+                                                            ? l10n.t(
+                                                                  'Not usable as a partition key: this field is inside an array.',
+                                                              )
+                                                            : l10n.t(
+                                                                  'Not usable as a partition key: this field has object or array values.',
+                                                              )}
+                                                    </Text>
+                                                </span>
+                                            ) : (
+                                                <Select
+                                                    className={styles.cellSelect}
+                                                    aria-label={l10n.t('Role for {name}', { name: p.name })}
+                                                    value={p.role}
+                                                    onChange={(_, data) =>
+                                                        patchProperty(p.id, { role: data.value as PropertyRole })
+                                                    }
+                                                >
+                                                    {roleOptions.map((o) => (
+                                                        <option key={o.value} value={o.value}>
+                                                            {o.label}
+                                                        </option>
+                                                    ))}
+                                                </Select>
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Button
+                                                icon={<DismissRegular />}
+                                                appearance="subtle"
+                                                size="small"
+                                                aria-label={l10n.t('Remove {name}', { name: p.name })}
+                                                onClick={() => removeProperty(p.id)}
+                                            />
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
                         </TableBody>
                     </Table>
                 </div>

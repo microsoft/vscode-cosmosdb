@@ -25,6 +25,8 @@ const ContainerModelSchema: z.ZodType<ContainerModel> = z.object({
             type: z.enum(['string', 'string (ISO)', 'number', 'boolean', 'array', 'object', 'number[]', 'guid']),
             role: PropertyRoleSchema,
             pkCandidate: z.boolean(),
+            hasArrayAncestor: z.boolean().optional(),
+            hasNonScalarValues: z.boolean().optional(),
         }),
     ),
     document: z.object({

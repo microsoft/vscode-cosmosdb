@@ -19,6 +19,7 @@
 
 import { type ContainerDefault, DATA_MODEL_DEFAULTS } from './dataModelDefaults';
 import { type ContainerModel, type PartitionCandidate, type ScenarioId } from './models';
+import { getPartitionKeyRestriction } from './partitionKeyEligibility';
 import { nextId } from './scenarios';
 
 /**
@@ -60,7 +61,9 @@ export function buildCandidates(container: Pick<ContainerModel, 'properties'> | 
         return [];
     }
     return container.properties
-        .filter((p) => p.role === 'key' || p.role === 'filter')
+        .filter(
+            (p) => (p.role === 'key' || p.role === 'filter') && !getPartitionKeyRestriction(p, container.properties),
+        )
         .map((p) => ({
             id: nextId('cand'),
             attribute: p.name,

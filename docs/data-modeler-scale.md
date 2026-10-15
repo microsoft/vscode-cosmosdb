@@ -14,6 +14,12 @@ The container-step subtitle combines the selected template notice with tab guida
 - **Data:** a key/filter properties card, document shape/size, then arrays.
   The properties card groups the tag input, adjacent Upload JSON button, import feedback, and property table.
   Optional partition-key guidance expands beside the property inputs.
+  The tag input excludes object/array-valued fields and fields whose paths traverse arrays.
+  These fields remain in the schema table, with a warning icon and explanation in **Role** instead of a role selector.
+  The icon and text use the editor theme's warning color; the explanation remains accessible without relying on color.
+  JSON imports retain array ancestry, including through nested objects and mixed object/array shapes, when projects are saved.
+  Default partition-key selection and derived Scale candidates use the same eligibility rules; nested scalar fields in
+  ordinary objects remain eligible. If no field is eligible, the import leaves the default partition key unset.
 - **Queries:** separate cards for reads with expandable query-alignment guidance, write rates, and estimated request cost.
   Each read exposes all four scenario-catalog fields: **Description**, **Peak QPS**, full SQL (**Query**),
   and filter properties (**Filters on**). Query uses a single-line input with a Fluent UI multiselect dropdown to its right.

@@ -54,6 +54,10 @@ export interface SchemaProperty {
     role: PropertyRole;
     /** Marked by the user as a partition-key candidate. */
     pkCandidate: boolean;
+    /** The flattened path traverses an array in at least one imported document shape. */
+    hasArrayAncestor?: boolean;
+    /** A scalar display type also has object or array values in the imported documents. */
+    hasNonScalarValues?: boolean;
 }
 
 export const MAX_DOCUMENT_SIZE_KB = 2 * 1024;

@@ -8,7 +8,8 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createBlankContainer, type DataModel } from '../dataModel';
+import { createBlankContainer, type DataModel, withDerivedCandidates } from '../dataModel';
+import { inferSchemaFromJson } from '../jsonInference';
 import { DataPage } from './DataPage';
 
 const confirm = vi.hoisted(() => vi.fn());
@@ -18,6 +19,111 @@ vi.mock('@microsoft/vscode-ext-webview/react', () => ({
 
 beforeEach(() => {
     confirm.mockReset();
+});
+
+describe('DataPage partition-key eligibility', () => {
+    it('hides imported array fields from the input box and explains their restrictions in Role', async () => {
+        confirm.mockResolvedValue(true);
+        const container = createBlankContainer('Orders');
+        const model: DataModel = { containers: [container], activeContainerId: container.id };
+        const onChange = vi.fn<(next: DataModel) => void>();
+        const page = render(<DataPage model={model} onChange={onChange} />);
+        const text = JSON.stringify([
+            { id: 'order-1', items: [{ productId: 'p1' }] },
+            { id: 'order-2', items: [{ productId: 'p2' }, { productId: 'p3' }] },
+            { id: 'order-3', items: [] },
+        ]);
+        const file = new File([text], 'orders.json', { type: 'application/json' });
+        Object.defineProperty(file, 'text', { value: vi.fn().mockResolvedValue(text) });
+        fireEvent.change(page.container.querySelector('input[type="file"]')!, { target: { files: [file] } });
+        await waitFor(() => expect(onChange).toHaveBeenCalledOnce());
+        const imported = withDerivedCandidates(onChange.mock.lastCall![0]);
+        expect(imported.containers[0].partitionKey).toBe('/id');
+        expect(imported.containers[0].scale.candidates.map((candidate) => candidate.attribute)).toEqual(['id']);
+        page.rerender(<DataPage model={imported} onChange={onChange} />);
+
+        const tags = within(screen.getByRole('textbox', { name: 'Add property…' }).parentElement!);
+        expect(tags.getByText('id')).toBeVisible();
+        expect(tags.queryByText('items')).not.toBeInTheDocument();
+        expect(tags.queryByText('items/productId')).not.toBeInTheDocument();
+        const table = within(screen.getByRole('table', { name: 'Schema properties' }));
+        const itemsRow = within(table.getByRole('row', { name: /^items array / }));
+        const productRow = within(table.getByRole('row', { name: /^items\/productId / }));
+        expect(itemsRow.getAllByRole('cell')[2]).toHaveTextContent(
+            'Not usable as a partition key: this field has object or array values.',
+        );
+        expect(productRow.getAllByRole('cell')[2]).toHaveTextContent(
+            'Not usable as a partition key: this field is inside an array.',
+        );
+        for (const row of [itemsRow, productRow]) {
+            const roleCell = row.getAllByRole('cell')[2];
+            const icon = roleCell.querySelector('svg');
+            expect(icon).toBeVisible();
+            expect(icon).toHaveAttribute('aria-hidden', 'true');
+            expect(icon?.parentElement).toHaveStyle({ color: 'var(--vscode-editorWarning-foreground)' });
+            expect(roleCell).toHaveAccessibleName(roleCell.textContent);
+        }
+        expect(table.queryByRole('combobox', { name: 'Role for items' })).not.toBeInTheDocument();
+        expect(table.queryByRole('combobox', { name: 'Role for items/productId' })).not.toBeInTheDocument();
+        expect(table.getByRole('combobox', { name: 'Role for id' })).toHaveAccessibleName('Role for id');
+        expect(screen.getByRole('button', { name: 'Upload JSON' })).toHaveFocus();
+
+        fireEvent.click(itemsRow.getByRole('button', { name: 'Remove items' }));
+        const withoutParent = withDerivedCandidates(onChange.mock.lastCall![0]);
+        page.rerender(<DataPage model={withoutParent} onChange={onChange} />);
+        expect(withoutParent.containers[0].scale.candidates.map((candidate) => candidate.attribute)).toEqual(['id']);
+        expect(tags.queryByText('items/productId')).not.toBeInTheDocument();
+        expect(screen.getByText('Not usable as a partition key: this field is inside an array.')).toBeVisible();
+    });
+
+    it('keeps nested scalar fields editable while excluding objects and numeric arrays', () => {
+        const container = createBlankContainer();
+        const schema = inferSchemaFromJson(
+            JSON.stringify({ id: '1', customer: { customerId: 'customer-1' }, embedding: [0.1, 0.2] }),
+        );
+        container.properties = schema.properties.map((property) => ({
+            ...property,
+            id: property.name,
+            type: property.name === 'embedding' ? 'number[]' : property.type,
+        }));
+        render(<DataPage model={{ containers: [container], activeContainerId: container.id }} onChange={vi.fn()} />);
+        const tags = within(screen.getByRole('textbox', { name: 'Add property…' }).parentElement!);
+        expect(tags.getByText('customer/customerId')).toBeVisible();
+        expect(tags.queryByText('customer')).not.toBeInTheDocument();
+        expect(tags.queryByText('embedding')).not.toBeInTheDocument();
+        expect(screen.getByRole('combobox', { name: 'Role for customer/customerId' })).toHaveValue('key');
+        expect(
+            screen.getAllByText('Not usable as a partition key: this field has object or array values.'),
+        ).toHaveLength(2);
+    });
+
+    it('updates the input tags and role controls when a field type changes', () => {
+        const container = createBlankContainer();
+        const onChange = vi.fn<(next: DataModel) => void>();
+        const page = render(
+            <DataPage model={{ containers: [container], activeContainerId: container.id }} onChange={onChange} />,
+        );
+        const tags = within(screen.getByRole('textbox', { name: 'Add property…' }).parentElement!);
+        const typeSelect = screen.getByRole('combobox', { name: 'Type for type' });
+        fireEvent.change(typeSelect, { target: { value: 'object' } });
+        const withObject = withDerivedCandidates(onChange.mock.lastCall![0]);
+        page.rerender(<DataPage model={withObject} onChange={onChange} />);
+        expect(tags.queryByText('type')).not.toBeInTheDocument();
+        expect(screen.queryByRole('combobox', { name: 'Role for type' })).not.toBeInTheDocument();
+        expect(withObject.containers[0].scale.candidates.some((candidate) => candidate.attribute === 'type')).toBe(
+            false,
+        );
+        expect(screen.getByText('Not usable as a partition key: this field has object or array values.')).toBeVisible();
+
+        fireEvent.change(typeSelect, { target: { value: 'string' } });
+        const withScalar = withDerivedCandidates(onChange.mock.lastCall![0]);
+        page.rerender(<DataPage model={withScalar} onChange={onChange} />);
+        expect(tags.getByText('type')).toBeVisible();
+        expect(screen.getByRole('combobox', { name: 'Role for type' })).toHaveValue('filter');
+        expect(withScalar.containers[0].scale.candidates.some((candidate) => candidate.attribute === 'type')).toBe(
+            true,
+        );
+    });
 });
 
 describe('DataPage document size limits', () => {

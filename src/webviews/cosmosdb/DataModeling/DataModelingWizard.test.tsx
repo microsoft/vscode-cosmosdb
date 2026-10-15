@@ -138,6 +138,25 @@ async function answerConfirmation(message: string | RegExp, result: boolean | un
     });
 }
 
+async function getStepControl(name: string): Promise<HTMLElement> {
+    const navigation = within(screen.getByRole('navigation', { name: 'Data modeling steps' }));
+    const normalizeName = (value: string) => value.replace(/\s+/g, ' ').replace(/:\s*/g, ': ').trim();
+    const matchesName = (accessibleName: string) => normalizeName(accessibleName) === normalizeName(name);
+    const visibleStep = navigation.queryByRole('button', { name: matchesName });
+    if (visibleStep) return visibleStep;
+
+    const overflowedStep = screen.queryByRole('menuitem', { name: matchesName });
+    if (overflowedStep) return overflowedStep;
+
+    const overflowButton = navigation.queryByRole('button', { name: /^\d+ more steps?$/ });
+    if (!overflowButton) {
+        throw new Error(`Step "${name}" is not available in the navigation.`);
+    }
+
+    await userEvent.click(overflowButton);
+    return screen.getByRole('menuitem', { name: matchesName });
+}
+
 async function continueExisting() {
     await answerConfirmation('Continue your data model?', true);
 }
@@ -492,9 +511,8 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         await confirmDeployment();
         expect(screen.getByRole('button', { name: 'Back' })).toBeDisabled();
         expect(screen.getByRole('button', { name: 'Start Over' })).toBeDisabled();
-        const navigation = within(screen.getByRole('navigation'));
         for (const name of ['Workload', 'Container: Orders', 'Review', 'Result']) {
-            const step = navigation.getByRole('button', { name });
+            const step = await getStepControl(name);
             expect(step).toHaveAttribute('aria-disabled', 'true');
             await userEvent.click(step);
             expect(screen.getByRole('region', { name: 'Deploy data model' })).toBeVisible();
@@ -1029,7 +1047,12 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(screen.getByRole('alert')).toHaveTextContent('Could not save');
         // Status rows share one viewport-height column with the wizard so they cannot add a document scrollbar.
         const viewport = retry.parentElement!.parentElement!;
-        expect(viewport).toHaveStyle({ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' });
+        expect(viewport).toHaveStyle({
+            display: 'flex',
+            'flex-direction': 'column',
+            height: `${window.innerHeight}px`,
+            overflow: 'hidden',
+        });
         expect(viewport).toContainElement(screen.getByRole('alert'));
         const wizardHost = screen
             .getByRole('navigation', { name: 'Data modeling steps' })
@@ -1060,8 +1083,8 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         await userEvent.click(screen.getByRole('button', { name: 'Start Over' }));
         act(() => callbacks.onData({ type: 'recommendationReceived', recommendation: saved.recommendation.value! }));
         expect(lastSave()).toEqual(createInitialSnapshot());
-        expect(screen.getByRole('button', { name: 'Review' })).toHaveAttribute('aria-disabled', 'true');
-        expect(screen.getByRole('button', { name: 'Result' })).toHaveAttribute('aria-disabled', 'true');
+        expect(await getStepControl('Review')).toHaveAttribute('aria-disabled', 'true');
+        expect(await getStepControl('Result')).toHaveAttribute('aria-disabled', 'true');
     });
 
     it('waits for the input save before opening Chat', async () => {
@@ -1090,10 +1113,10 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         client.dataModeling.loadState.query.mockResolvedValue(restored(4));
         render(<DataModelingWizard />);
         await continueExisting();
-        await userEvent.click(screen.getByRole('button', { name: 'Review' }));
+        await userEvent.click(await getStepControl('Review'));
         expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
         await userEvent.click(screen.getByRole('button', { name: 'Back' }));
-        await userEvent.click(screen.getByRole('button', { name: 'Result' }));
+        await userEvent.click(await getStepControl('Result'));
         expect(screen.getByRole('img', { name: 'Score 100 out of 100 for Orders /orderId' })).toBeVisible();
         expect(client.dataModeling.requestRecommendation.mutate).not.toHaveBeenCalled();
     });
@@ -1110,7 +1133,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             requestId: expect.any(String),
         });
         expect(lastSave().wizard.dataModel).toEqual(saved.wizard.dataModel);
-        await userEvent.click(screen.getByRole('button', { name: 'Review' }));
+        await userEvent.click(await getStepControl('Review'));
         expect(screen.queryByRole('slider')).not.toBeInTheDocument();
         const callbacks = client.dataModeling.events.subscribe.mock.calls[0][1] as {
             onData: (event: DataModelingEvent) => void;
@@ -1213,13 +1236,13 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             client.dataModeling.loadState.query.mockResolvedValue(restored(4));
             render(<DataModelingWizard />);
             await continueExisting();
-            await user.click(screen.getByRole('button', { name: 'Review' }));
+            await user.click(await getStepControl('Review'));
             const next = screen.getByRole('button', { name: 'Get Recommendation' });
             await user.click(next);
             await answerConfirmation('Restart from this step?', dismissal);
             await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
             await waitFor(() => expect(next).toHaveFocus());
-            await user.click(screen.getByRole('button', { name: 'Result' }));
+            await user.click(await getStepControl('Result'));
             expect(screen.getByRole('img', { name: 'Score 100 out of 100 for Orders /orderId' })).toBeVisible();
             expect(client.dataModeling.requestRecommendation.mutate).not.toHaveBeenCalled();
         },
@@ -1233,7 +1256,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         client.dataModeling.loadState.query.mockResolvedValue(saved);
         const mounted = render(<DataModelingWizard />);
         await continueExisting();
-        await userEvent.click(screen.getByRole('button', { name: step }));
+        await userEvent.click(await getStepControl(step));
         await userEvent.click(screen.getByRole('button', { name: next }));
         if (next === 'Next') {
             await answerConfirmation('Configure queries and scale?', false);
@@ -1241,13 +1264,13 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         await confirmAdvance();
         expect(lastSave().wizard.dataModel.containers).toEqual(saved.wizard.dataModel.containers);
         expect(lastSave().recommendation).toEqual({ status: 'idle' });
-        expect(screen.getByRole('button', { name: 'Result' })).toHaveAttribute('aria-disabled', 'true');
+        expect(await getStepControl('Result')).toHaveAttribute('aria-disabled', 'true');
         const persisted = lastSave();
         mounted.unmount();
         client.dataModeling.loadState.query.mockResolvedValue(persisted);
         render(<DataModelingWizard />);
         await continueExisting();
-        expect(screen.getByRole('button', { name: 'Result' })).toHaveAttribute('aria-disabled', 'true');
+        expect(await getStepControl('Result')).toHaveAttribute('aria-disabled', 'true');
         while (screen.queryByRole('button', { name: 'Next' })) {
             await userEvent.click(screen.getByRole('button', { name: 'Next' }));
             await answerConfirmation('Configure queries and scale?', false);
@@ -1291,7 +1314,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             type: 'recommendationDisplayed',
             requestId: undefined,
         });
-        await userEvent.click(screen.getByRole('button', { name: 'Container: Orders' }));
+        await userEvent.click(await getStepControl('Container: Orders'));
         expect(usage()).toMatchObject({ dataViewedCount: 1, dataCoverage: 1, queriesViewedCount: 0 });
         await userEvent.click(screen.getByRole('tab', { name: 'Queries' }));
         expect(usage()).toMatchObject({ queriesViewedCount: 1, queriesNeverViewedCount: 0, scaleViewedCount: 0 });
@@ -1361,8 +1384,8 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         const down = () => screen.getByRole('button', { name: 'Unhelpful recommendation' });
         await userEvent.click(up());
         expect(up()).toHaveAttribute('aria-pressed', 'true');
-        await userEvent.click(screen.getByRole('button', { name: 'Review' }));
-        await userEvent.click(screen.getByRole('button', { name: 'Result' }));
+        await userEvent.click(await getStepControl('Review'));
+        await userEvent.click(await getStepControl('Result'));
         expect(up()).toHaveAttribute('aria-pressed', 'true');
         await userEvent.click(up());
         await userEvent.click(down());
@@ -1374,7 +1397,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             { type: 'feedback', vote: 'up' },
             { type: 'feedback', vote: 'down' },
         ]);
-        await userEvent.click(screen.getByRole('button', { name: 'Review' }));
+        await userEvent.click(await getStepControl('Review'));
         await userEvent.click(screen.getByRole('button', { name: 'Get Recommendation' }));
         await confirmAdvance();
         const callbacks = client.dataModeling.events.subscribe.mock.calls[0][1] as {

@@ -95,7 +95,7 @@ export async function generateDeploymentTemplate(
         case 'sdk':
             return buildSdkDeployment(model, input.databaseMode, account.getDeploymentTarget?.());
         default:
-            return exportTemplate(account, input, model);
+            return exportTemplate(account, input, pending);
     }
 }
 

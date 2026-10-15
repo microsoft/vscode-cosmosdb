@@ -206,8 +206,7 @@
     },
     "concurrently": {
       "shell-quote": "~1.12.0"
-    },
-    "nwsapi": "2.2.24"
+    }
   },
   "extensionDependencies": [
     "ms-azuretools.vscode-azureresourcegroups"

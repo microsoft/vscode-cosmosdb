@@ -56,7 +56,9 @@ const useStyles = makeStyles({
         flexWrap: 'wrap',
     },
     containerSelect: {
-        minWidth: '220px',
+        minWidth: 0,
+        width: '220px',
+        maxWidth: '100%',
     },
     stats: {
         ...typographyStyles.body1,
@@ -73,17 +75,6 @@ const useStyles = makeStyles({
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))',
         gap: tokens.spacingHorizontalS,
-    },
-    srOnly: {
-        position: 'absolute',
-        width: '1px',
-        height: '1px',
-        padding: 0,
-        margin: '-1px',
-        overflow: 'hidden',
-        clipPath: 'inset(50%)',
-        whiteSpace: 'nowrap',
-        border: 0,
     },
     tile: {
         display: 'flex',
@@ -155,12 +146,15 @@ const useStyles = makeStyles({
     },
 });
 
+function roundShare(sharePercent: number): number {
+    return sharePercent >= 10 ? Math.round(sharePercent) : Math.round(sharePercent * 10) / 10;
+}
+
 function formatShare(sharePercent: number): string {
     if (!Number.isFinite(sharePercent)) {
         return '—';
     }
-    const rounded = sharePercent >= 10 ? Math.round(sharePercent) : Math.round(sharePercent * 10) / 10;
-    return `${rounded}%`;
+    return `${roundShare(sharePercent)}%`;
 }
 
 function partitionLabel(partitionId: string): string {
@@ -168,7 +162,7 @@ function partitionLabel(partitionId: string): string {
 }
 
 function rationaleFor(tile: PartitionTile, mode: PartitionDistributionMode): string {
-    const percent = Math.round(tile.sharePercent);
+    const percent = roundShare(tile.sharePercent);
     if (mode === 'ru') {
         return tile.hot
             ? l10n.t(
@@ -193,7 +187,7 @@ function suggestedActionFor(tile: PartitionTile, mode: PartitionDistributionMode
 
 function tileAriaLabel(tile: PartitionTile, mode: PartitionDistributionMode): string {
     const label = partitionLabel(tile.partitionId);
-    const percent = Math.round(tile.sharePercent);
+    const percent = roundShare(tile.sharePercent);
     if (mode === 'ru') {
         return tile.hot
             ? l10n.t('Physical partition {0}, {1} percent p99 utilization, flagged as hot', label, percent)
@@ -210,6 +204,7 @@ const HeatmapTile = ({ tile, mode }: { tile: PartitionTile; mode: PartitionDistr
         <figure
             className={mergeClasses(styles.tile, tile.hot && styles.tileHot)}
             style={{ backgroundColor: LEVEL_FILL[tile.level], margin: 0 }}
+            aria-label={tileAriaLabel(tile, mode)}
             title={
                 mode === 'ru'
                     ? l10n.t('{label}: {value} p99 utilization', {
@@ -222,7 +217,6 @@ const HeatmapTile = ({ tile, mode }: { tile: PartitionTile; mode: PartitionDistr
                       })
             }
         >
-            <figcaption className={styles.srOnly}>{tileAriaLabel(tile, mode)}</figcaption>
             <Text className={styles.tileId} aria-hidden="true">
                 {partitionLabel(tile.partitionId)}
             </Text>
@@ -234,6 +228,8 @@ const HeatmapTile = ({ tile, mode }: { tile: PartitionTile; mode: PartitionDistr
 };
 
 export const PartitionHealth = ({
+    active = true,
+    navigationRevision = 0,
     result,
     loading,
     mode,
@@ -242,6 +238,8 @@ export const PartitionHealth = ({
     selected,
     onSelectContainer,
 }: {
+    active?: boolean;
+    navigationRevision?: number;
     result?: PartitionHealthResult;
     loading: boolean;
     mode: PartitionDistributionMode;
@@ -253,7 +251,7 @@ export const PartitionHealth = ({
     const styles = useStyles();
 
     const selectedValue = selected ? `${selected.databaseId}/${selected.containerId}` : NO_CONTAINER;
-    const selectedText = selected ? selected.containerId : l10n.t('Select a container');
+    const selectedText = selected ? `${selected.containerId} · ${selected.databaseId}` : l10n.t('Select a container');
 
     const handleSelect = (_: unknown, data: OptionOnSelectData) => {
         const value = data.optionValue;
@@ -267,17 +265,21 @@ export const PartitionHealth = ({
     const toolbar = (
         <div className={styles.toolbar}>
             <Dropdown
+                key={`${active}-${navigationRevision}`}
                 className={styles.containerSelect}
-                aria-label={l10n.t('Select a container for partition health')}
+                aria-label={l10n.t('Select a container for partition health: {selection}', {
+                    selection: selectedText,
+                })}
                 value={selectedText}
                 selectedOptions={[selectedValue]}
                 onOptionSelect={handleSelect}
             >
                 {containers.map((c) => {
                     const value = `${c.databaseId}/${c.containerId}`;
+                    const text = `${c.containerId} · ${c.databaseId}`;
                     return (
-                        <Option key={value} value={value} text={c.containerId}>
-                            {`${c.containerId} · ${c.databaseId}`}
+                        <Option key={value} value={value} text={text}>
+                            {text}
                         </Option>
                     );
                 })}
@@ -353,12 +355,13 @@ export const PartitionHealth = ({
                         <span className={styles.statValue}>{result.partitionCount}</span>
                     </span>
                 </div>
-                <figure className={styles.heatmap} style={{ margin: 0 }}>
-                    <figcaption className={styles.srOnly}>
-                        {l10n.t('Partition distribution heatmap with {count} physical partitions', {
-                            count: result.partitionCount,
-                        })}
-                    </figcaption>
+                <figure
+                    className={styles.heatmap}
+                    style={{ margin: 0 }}
+                    aria-label={l10n.t('Partition distribution heatmap with {count} physical partitions', {
+                        count: result.partitionCount,
+                    })}
+                >
                     {result.tiles.map((tile) => (
                         <HeatmapTile key={tile.partitionId} tile={tile} mode={result.mode} />
                     ))}

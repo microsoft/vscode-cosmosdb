@@ -17,6 +17,7 @@ import {
 } from '@fluentui/react-components';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { type DerivedAdvisoriesResult } from '../../api/types';
 import { DashboardActionsProvider } from './DashboardChrome';
@@ -130,7 +131,11 @@ describe('log coverage guidance', () => {
         const { showOutput } = showCoverage({ available: false, reason: 'rbac' });
         const button = screen.getByRole('button', { name: 'Show Output' });
         await user.tab();
-        expect(screen.getByLabelText(/^Partial coverage\./)).toHaveFocus();
+        const coverage = screen.getByLabelText('Partial coverage', { selector: '[tabindex="0"]' });
+        expect(coverage).toHaveFocus();
+        expect(coverage).toHaveTextContent('Partial coverage');
+        expect(coverage).toHaveAccessibleName('Partial coverage');
+        expect(coverage).toHaveAccessibleDescription('Some analyzers could not run, so coverage is partial.');
         await user.tab();
         expect(button).toHaveFocus();
         await user.keyboard('{Enter}');
@@ -167,7 +172,9 @@ describe('metric coverage and actionable findings', () => {
         expect(screen.getByText('No advisories from the checks that completed.')).toBeInTheDocument();
         expect(screen.queryByText('No advisories from your telemetry right now.')).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: /Learn/ })).not.toBeInTheDocument();
-        expect(screen.getByLabelText(/^Partial coverage\./)).toHaveAccessibleName(/^Partial coverage/);
+        expect(screen.getByLabelText('Partial coverage', { selector: '[tabindex="0"]' })).toHaveAccessibleName(
+            'Partial coverage',
+        );
     });
 
     describe('advisory resource details', () => {
@@ -179,6 +186,81 @@ describe('metric coverage and actionable findings', () => {
             suggestedAction: 'Remove unused provisioned capacity.',
             thresholdReference: 'Peak consumption at most 50 RU.',
         } as const;
+
+        function showDismissibleGroup() {
+            function Harness() {
+                const [dismissedIds, setDismissedIds] = useState<ReadonlySet<string>>(new Set());
+                return (
+                    <DerivedAdvisories
+                        result={{
+                            available: true,
+                            generatedAt: 0,
+                            advisories: ['a', 'b', 'c'].map((key) => ({
+                                ...common,
+                                id: `idle-${key}`,
+                                scope: `db/${key}`,
+                            })),
+                        }}
+                        loading={false}
+                        dismissedIds={dismissedIds}
+                        onDismiss={(id) => setDismissedIds((previous) => new Set([...previous, id]))}
+                    />
+                );
+            }
+            render(
+                <FluentProvider theme={webLightTheme}>
+                    <DashboardActionsProvider value={{ openUrl: vi.fn(), showOutput: vi.fn(), reportEvent: vi.fn() }}>
+                        <Harness />
+                    </DashboardActionsProvider>
+                </FluentProvider>,
+            );
+        }
+
+        it.each([
+            ['a', 'b', '{Enter}'],
+            ['b', 'c', ' '],
+            ['c', 'b', '{Enter}'],
+        ])('keeps focus inside the dialog after dismissing db/%s', async (removed, next, key) => {
+            const user = userEvent.setup();
+            showDismissibleGroup();
+            const trigger = screen.getByRole('button', { name: /^Idle containers/ });
+            await user.click(trigger);
+            screen.getByRole('button', { name: `Dismiss advisory for db/${removed}` }).focus();
+            await user.keyboard(key);
+            const dialog = screen.getByRole('dialog');
+            expect(within(dialog).queryByRole('button', { name: `Dismiss advisory for db/${removed}` })).toBeNull();
+            expect(within(dialog).getByRole('button', { name: `Dismiss advisory for db/${next}` })).toHaveFocus();
+            expect(within(dialog).getAllByRole('listitem')).toHaveLength(2);
+            await user.keyboard('{Escape}');
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+            expect(trigger).toHaveFocus();
+        });
+
+        it('closes the emptied group and focuses the surviving section after the last dismissal', async () => {
+            const user = userEvent.setup();
+            showDismissibleGroup();
+            await user.click(screen.getByRole('button', { name: /^Idle containers/ }));
+            screen.getByRole('button', { name: 'Dismiss advisory for db/a' }).focus();
+            for (const key of ['a', 'b', 'c']) {
+                expect(screen.getByRole('button', { name: `Dismiss advisory for db/${key}` })).toHaveFocus();
+                await user.keyboard('{Enter}');
+            }
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+            expect(screen.queryByRole('button', { name: /^Idle containers/ })).not.toBeInTheDocument();
+            expect(screen.getByLabelText('Recommendations')).toHaveFocus();
+            expect(screen.getByText('No advisories from your telemetry right now.')).toBeVisible();
+        });
+
+        it('does not move focus when a dismissal removes an unfocused button', async () => {
+            const user = userEvent.setup();
+            showDismissibleGroup();
+            await user.click(screen.getByRole('button', { name: /^Idle containers/ }));
+            const close = screen.getByRole('button', { name: 'Close' });
+            close.focus();
+            fireEvent.click(screen.getByRole('button', { name: 'Dismiss advisory for db/a' }));
+            expect(close).toHaveFocus();
+            expect(screen.getAllByRole('listitem')).toHaveLength(2);
+        });
 
         it('shows identical guidance once above a plain resource list and keeps individual dismissal', async () => {
             const user = userEvent.setup();
@@ -229,6 +311,14 @@ describe('metric coverage and actionable findings', () => {
                 expect(badge).not.toHaveAttribute('aria-hidden');
                 expect(trigger).toHaveTextContent('Idle containers');
                 expect(trigger).toHaveAccessibleName(/^Idle containers/);
+                const descriptions = trigger
+                    .getAttribute('aria-describedby')
+                    ?.split(' ')
+                    .map((id) => document.getElementById(id));
+                expect(descriptions).toHaveLength(2);
+                expect(descriptions?.[0]).toBe(badge);
+                expect(descriptions?.[1]).toBeVisible();
+                expect(trigger).toHaveAccessibleDescription(`Low ${descriptions?.[1]?.textContent}`);
                 expect(trigger).toHaveAttribute('aria-haspopup', 'dialog');
                 expect(within(trigger).queryByRole('button')).not.toBeInTheDocument();
                 await user.tab();

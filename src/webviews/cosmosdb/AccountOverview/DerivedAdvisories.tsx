@@ -186,9 +186,7 @@ const useStyles = makeStyles({
     },
     title: {
         ...typographyStyles.body1Strong,
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap',
+        overflowWrap: 'anywhere',
     },
     rationale: {
         ...typographyStyles.body1,
@@ -501,6 +499,7 @@ const AdvisoryGroupCard = ({
     const styles = useStyles();
     const restoreFocusTargetAttributes = useRestoreFocusTarget();
     const count = groupCountLabel(group);
+    const id = useId();
     return (
         <Card
             ref={buttonRef}
@@ -528,20 +527,26 @@ const AdvisoryGroupCard = ({
                 }
             }}
             aria-label={l10n.t('{name}. {count}. Show affected containers.', { name: group.name, count })}
+            aria-describedby={`${id}-severity ${id}-description`}
             aria-haspopup="dialog"
             {...restoreFocusTargetAttributes}
         >
             <div className={styles.titleRow}>
                 <div className={styles.titleGroup}>
-                    <Badge appearance="outline" shape="circular" color={SEVERITY_TONE[group.severity]}>
+                    <Badge
+                        id={`${id}-severity`}
+                        appearance="outline"
+                        shape="circular"
+                        color={SEVERITY_TONE[group.severity]}
+                    >
                         {severityLabel(group.severity)}
                     </Badge>
-                    <Text className={styles.title} title={group.name}>
-                        {group.name}
-                    </Text>
+                    <Text className={styles.title}>{group.name}</Text>
                 </div>
             </div>
-            <Text className={styles.groupDescription}>{group.description}</Text>
+            <Text id={`${id}-description`} className={styles.groupDescription}>
+                {group.description}
+            </Text>
             <div className={styles.groupMeta}>
                 <Text className={styles.groupCount}>{count}</Text>
                 <ChevronRight16Regular className={styles.chevron} aria-hidden="true" />
@@ -569,6 +574,8 @@ const AdvisoryDetailDialog = ({
 }) => {
     const styles = useStyles();
     const id = useId();
+    const dismissButtonRefs = useRef(new Map<string, HTMLButtonElement | HTMLAnchorElement>());
+    const closeButtonRef = useRef<HTMLButtonElement>(null);
     if (!group) {
         return null;
     }
@@ -646,10 +653,29 @@ const AdvisoryDetailDialog = ({
                                             </Text>
                                         )}
                                         <Button
+                                            ref={(element) => {
+                                                if (element) {
+                                                    dismissButtonRefs.current.set(advisory.id, element);
+                                                } else {
+                                                    dismissButtonRefs.current.delete(advisory.id);
+                                                }
+                                            }}
                                             size="small"
                                             appearance="subtle"
                                             icon={<Dismiss16Regular />}
-                                            onClick={() => onDismiss(advisory.id)}
+                                            onClick={(event) => {
+                                                if (
+                                                    event.currentTarget.ownerDocument.activeElement ===
+                                                    event.currentTarget
+                                                ) {
+                                                    // Move focus before removal so Fluent does not restore it outside the open dialog.
+                                                    const neighbor = rows[index + 1] ?? rows[index - 1];
+                                                    const target =
+                                                        neighbor && dismissButtonRefs.current.get(neighbor.id);
+                                                    (target ?? closeButtonRef.current)?.focus();
+                                                }
+                                                onDismiss(advisory.id);
+                                            }}
                                             aria-label={l10n.t('Dismiss advisory for {scope}', {
                                                 scope: scopeLabel,
                                             })}
@@ -661,7 +687,9 @@ const AdvisoryDetailDialog = ({
                     </DialogContent>
                     <DialogActions>
                         <DialogTrigger disableButtonEnhancement>
-                            <Button appearance="secondary">{l10n.t('Close')}</Button>
+                            <Button ref={closeButtonRef} appearance="secondary">
+                                {l10n.t('Close')}
+                            </Button>
                         </DialogTrigger>
                     </DialogActions>
                 </DialogBody>
@@ -671,11 +699,15 @@ const AdvisoryDetailDialog = ({
 };
 
 export const DerivedAdvisories = ({
+    active = true,
+    navigationRevision = 0,
     result,
     loading,
     dismissedIds,
     onDismiss,
 }: {
+    active?: boolean;
+    navigationRevision?: number;
     result?: DerivedAdvisoriesResult;
     loading: boolean;
     dismissedIds: ReadonlySet<string>;
@@ -689,6 +721,7 @@ export const DerivedAdvisories = ({
     const cardRefs = useRef(new Map<string, HTMLDivElement | null>());
     const [announcement, setAnnouncement] = useState('');
     const [openRule, setOpenRule] = useState<DerivedAdvisoryRule | null>(null);
+    const [openedAtRevision, setOpenedAtRevision] = useState(navigationRevision);
 
     // Collapse the flat advisory list (worst case: tens of thousands of container-scoped findings) into one group per
     // detector. Memoized on the raw list + dismissals so a card re-render never re-buckets the whole account.
@@ -699,7 +732,8 @@ export const DerivedAdvisories = ({
         return groupAdvisories(visible);
     }, [result?.advisories, dismissedIds]);
     const visibleCount = groups.reduce((total, group) => total + group.advisories.length, 0);
-    const openGroup = groups.find((group) => group.rule === openRule) ?? null;
+    const navigationChanged = openedAtRevision !== navigationRevision;
+    const openGroup = active && !navigationChanged ? (groups.find((group) => group.rule === openRule) ?? null) : null;
 
     // Partial coverage: the section itself is available (Tier-1 ran) but some Log Analytics (Tier-2) checks failed.
     // We keep rendering all available advisories and surface Tier-2's degradation explicitly, rather than
@@ -716,17 +750,22 @@ export const DerivedAdvisories = ({
     }, [partialCoverage, coverageReason, reportEvent]);
 
     useEffect(() => {
+        if (!active || navigationChanged) {
+            setOpenRule(null);
+            return;
+        }
         // The open group emptied out (its last advisory was dismissed): close the dialog and move focus to the
         // section container, since the card that opened it is now gone.
         if (openRule && !openGroup) {
             setOpenRule(null);
             rootRef.current?.focus();
         }
-    }, [openRule, openGroup]);
+    }, [openRule, openGroup, active, navigationChanged]);
 
     const handleOpen = (rule: DerivedAdvisoryRule) => {
         reportEvent('recommendationClicked', { source: 'derived', action: 'expand' });
         setOpenRule(rule);
+        setOpenedAtRevision(navigationRevision);
     };
 
     const handleDismiss = (id: string) => {
@@ -751,7 +790,7 @@ export const DerivedAdvisories = ({
                     tabIndex={0}
                     appearance="tint"
                     color="warning"
-                    aria-label={`${coverageLabel}. ${coverageDescription}`}
+                    aria-label={coverageLabel}
                 >
                     <span aria-hidden="true">{coverageLabel}</span>
                 </Badge>

@@ -15,10 +15,11 @@ import {
     Toolbar,
     ToolbarToggleButton,
     typographyStyles,
+    useAnnounce,
 } from '@fluentui/react-components';
 import { Open16Regular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { type ReactNode } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import { type AlertItem, type AlertSeverity, type AlertsResult, type AlertTimeRange } from '../../api/types';
 import { EmptyState, useDashboardActions } from './DashboardChrome';
 
@@ -67,16 +68,17 @@ const useStyles = makeStyles({
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: tokens.spacingHorizontalS,
+        flexWrap: 'wrap',
     },
     title: {
         ...typographyStyles.body1Strong,
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap',
+        overflowWrap: 'anywhere',
+        minWidth: 0,
     },
     meta: {
         ...typographyStyles.caption1,
         color: tokens.colorNeutralForeground2,
+        overflowWrap: 'anywhere',
     },
     link: {
         ...typographyStyles.body1,
@@ -128,9 +130,7 @@ const AlertRow = ({ alert, onOpenUrl }: { alert: AlertItem; onOpenUrl: (url: str
     return (
         <Card className={styles.item} appearance="outline" focusMode="off">
             <div className={styles.titleRow}>
-                <Text className={styles.title} title={alert.name}>
-                    {alert.name}
-                </Text>
+                <Text className={styles.title}>{alert.name}</Text>
                 <Badge appearance="outline" shape="circular" color={SEVERITY_TONE[alert.severity]}>
                     {severityLabel(alert.severity)}
                 </Badge>
@@ -157,15 +157,35 @@ export const ActiveAlerts = ({
     timeRange,
     onTimeRangeChange,
     onOpenUrl,
+    active = true,
 }: {
     result?: AlertsResult;
     loading: boolean;
     timeRange: AlertTimeRange;
     onTimeRangeChange: (range: AlertTimeRange) => void;
     onOpenUrl: (url: string) => void;
+    active?: boolean;
 }) => {
     const styles = useStyles();
     const { reportEvent } = useDashboardActions();
+    const { announce } = useAnnounce();
+    const pendingRange = useRef<AlertTimeRange | undefined>(undefined);
+
+    useEffect(() => {
+        if (!active) {
+            pendingRange.current = undefined;
+        }
+        if (loading || !pendingRange.current || result?.timeRange !== pendingRange.current) {
+            return;
+        }
+        pendingRange.current = undefined;
+        announce(
+            result.available
+                ? l10n.t('Active alerts in the selected window: {count}', { count: result.alerts.length })
+                : l10n.t('Alerts could not be loaded for the selected window.'),
+            { polite: true },
+        );
+    }, [active, loading, result, announce]);
 
     const openAlert = (url: string) => {
         reportEvent('deepLinkFollowed', { target: 'portal' });
@@ -185,8 +205,18 @@ export const ActiveAlerts = ({
                     name="timeRange"
                     value={range}
                     disabled={loading}
+                    disabledFocusable={loading}
                     aria-description={loading ? l10n.t('Alerts are still loading.') : undefined}
-                    onClick={loading ? undefined : () => onTimeRangeChange(range)}
+                    onClick={
+                        loading
+                            ? undefined
+                            : () => {
+                                  if (range !== timeRange) {
+                                      pendingRange.current = range;
+                                      onTimeRangeChange(range);
+                                  }
+                              }
+                    }
                 >
                     {TIME_RANGE_LABELS[range]}
                 </ToolbarToggleButton>

@@ -18,12 +18,11 @@ import {
     Spinner,
     Text,
     tokens,
-    Tooltip,
     typographyStyles,
 } from '@fluentui/react-components';
 import { ArrowClockwise16Regular, Braces16Regular, Money16Regular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { useId, useMemo, useRef, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { type AccountActionInput, type HealthState, type ProvisioningState, type TimeRange } from '../../api/types';
 import { type ContainerRef, type MetricScope } from './metrics/descriptors';
 
@@ -189,9 +188,7 @@ const useStyles = makeStyles({
         ...typographyStyles.body1,
         display: 'block',
         maxWidth: '100%',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap',
+        overflowWrap: 'anywhere',
     },
     srOnly: {
         position: 'absolute',
@@ -242,41 +239,19 @@ function healthFromState(state: HealthState): { tone: BadgeProps['color']; label
     }
 }
 
-/**
- * A single label/value row in the expandable Essentials panel. The value is truncated with an
- * ellipsis when it exceeds the available width; the full text is then revealed in a tooltip on
- * hover/focus. When the value is not truncated the tooltip is suppressed so it never repeats text
- * the user can already read.
- */
 const EssentialField = ({ label, value }: { label: string; value: string }) => {
     const styles = useStyles();
-    const valueRef = useRef<HTMLSpanElement>(null);
-    const [tooltipVisible, setTooltipVisible] = useState(false);
-
-    const handleVisibleChange = (_ev: unknown, data: { visible: boolean }) => {
-        const el = valueRef.current;
-        const overflowing = !!el && el.scrollWidth > el.clientWidth;
-        setTooltipVisible(data.visible && overflowing);
-    };
 
     return (
         <div className={styles.essentialItem}>
             <Text className={styles.essentialLabel}>{label}</Text>
-            <Tooltip
-                content={value}
-                relationship="label"
-                visible={tooltipVisible}
-                onVisibleChange={handleVisibleChange}
-            >
-                <Text ref={valueRef} className={styles.essentialValue}>
-                    {value}
-                </Text>
-            </Tooltip>
+            <Text className={styles.essentialValue}>{value}</Text>
         </div>
     );
 };
 
 export const AccountHeader = ({
+    navigationRevision = 0,
     summary,
     accountHealth,
     lastRefreshedAt,
@@ -293,6 +268,7 @@ export const AccountHeader = ({
     accountActionBusy,
     onAccountAction,
 }: {
+    navigationRevision?: number;
     summary: AccountSummary;
     accountHealth?: HealthState;
     lastRefreshedAt?: number;
@@ -312,6 +288,8 @@ export const AccountHeader = ({
     const styles = useStyles();
     const id = useId();
     const controlsDisabled = loading || refreshDisabled;
+    // Dropdown has no disabledFocusable prop. Keep the trigger focusable while its disabled state blocks interaction.
+    const filterButtonProps = { disabled: false, 'aria-disabled': controlsDisabled, tabIndex: 0 };
     const loadingDescription = loading
         ? l10n.t('Updating…')
         : refreshDisabled
@@ -412,10 +390,12 @@ export const AccountHeader = ({
                         </time>
                     )}
                     <Dropdown
+                        key={`time-${navigationRevision}`}
                         className={styles.select}
                         size="small"
                         inlinePopup
                         disabled={controlsDisabled}
+                        button={filterButtonProps}
                         aria-label={l10n.t('Metric time range: {range}', { range: timeRangeLabel ?? timeRange })}
                         aria-description={loadingDescription}
                         value={timeRangeLabel ?? timeRange}
@@ -437,10 +417,12 @@ export const AccountHeader = ({
                         ))}
                     </Dropdown>
                     <Dropdown
+                        key={`database-${navigationRevision}`}
                         className={styles.select}
                         size="small"
                         inlinePopup
                         disabled={controlsDisabled}
+                        button={filterButtonProps}
                         aria-label={l10n.t('Database scope for metrics: {scope}', { scope: selectedScopeLabel })}
                         aria-description={loadingDescription}
                         value={selectedScopeLabel}

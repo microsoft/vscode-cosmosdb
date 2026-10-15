@@ -95,6 +95,50 @@ test.describe('Migration Assistant', () => {
         await expect(migration.modelDropdown).toBeVisible();
     });
 
+    test('locked phases explain prerequisites on hover and keyboard focus', async ({ vscodeWindow }, testInfo) => {
+        const frame = await openMigrationFresh(vscodeWindow);
+        const reasons = [
+            [PHASE_HEADERS.phase1, 'Complete Preflight before running Source Discovery.'],
+            [PHASE_HEADERS.phase2, 'Complete Phase 1: Source Discovery first.'],
+            [PHASE_HEADERS.phase3, 'Complete Phase 2: Domain Assessment first.'],
+            [PHASE_HEADERS.phase4, 'Complete Phase 1: Source Discovery first.'],
+        ] as const;
+
+        for (const [label, reason] of reasons) {
+            const header = frame.getByRole('button', { name: new RegExp(label) });
+            await expect(header).toHaveText(label);
+            await expect(header).toHaveAccessibleName(new RegExp(label));
+            await expect(header).toHaveAccessibleDescription(reason);
+            await expect(header.getByRole('img', { name: 'Locked', exact: true })).toBeVisible();
+            await header.hover();
+            const tooltip = frame.getByRole('tooltip', { name: reason, exact: true });
+            await expect(tooltip).toBeVisible();
+            await expect
+                .poll(async () => {
+                    const labelBox = await header.getByTestId(/migration-phase\d-label/).boundingBox();
+                    const tooltipBox = await tooltip.boundingBox();
+                    if (!labelBox || !tooltipBox) return false;
+                    return (
+                        tooltipBox.y + tooltipBox.height <= labelBox.y &&
+                        Math.abs(tooltipBox.x + tooltipBox.width / 2 - (labelBox.x + labelBox.width / 2)) < 8
+                    );
+                })
+                .toBe(true);
+            await header.press('Escape');
+            await expect(frame.getByRole('tooltip')).toHaveCount(0);
+            await vscodeWindow.mouse.move(0, 0);
+            await header.press('Tab');
+            await vscodeWindow.keyboard.press('Shift+Tab');
+            await expect(header).toBeFocused();
+            await expect(frame.getByRole('tooltip', { name: reason, exact: true })).toBeVisible();
+            await header.press('Escape');
+            await expect(frame.getByRole('tooltip')).toHaveCount(0);
+        }
+        await frame.getByRole('button', { name: new RegExp(PHASE_HEADERS.phase3) }).hover();
+        await expect(frame.getByRole('tooltip')).toBeVisible();
+        await vscodeWindow.screenshot({ path: testInfo.outputPath('locked-phases.png') });
+    });
+
     test('file list discloses its expanded state', async ({ vscodeWindow }) => {
         const frame = await openMigrationSeeded(vscodeWindow);
         const fileListExpander = frame.getByRole('button', { name: /file\(s\) selected/ }).first();
@@ -282,6 +326,36 @@ test.describe('Migration Assistant', () => {
             'aria-required',
             'true',
         );
+    });
+
+    test('required application details stay neutral until blurred', async ({ vscodeWindow }, testInfo) => {
+        const frame = await openMigrationFresh(vscodeWindow);
+        const migration = new MigrationPage(frame);
+        const fields = ['project-name', 'project-type', 'language', 'database', 'access'] as const;
+
+        await expect(frame.getByText('Required', { exact: true })).toHaveCount(0);
+        for (const field of fields) {
+            const input = migration.analysisField(field);
+            await expect(input).toHaveAttribute('required', '');
+            await expect(input).not.toHaveAttribute('aria-invalid', 'true');
+            await input.focus();
+            await input.fill('');
+            await expect(input).not.toHaveAttribute('aria-invalid', 'true');
+            await input.press('Tab');
+            await expect(input).toHaveAttribute('aria-invalid', 'true');
+            await expect(input).toHaveAccessibleDescription('Required');
+            await expect(frame.getByText('Required', { exact: true })).toHaveCount(1);
+            await input.fill('Example');
+            await expect(input).not.toHaveAttribute('aria-invalid', 'true');
+            await input.fill('   ');
+            await expect(input).toHaveAttribute('aria-invalid', 'true');
+            await input.fill('Example');
+        }
+        await expect(frame.getByText('Required', { exact: true })).toHaveCount(0);
+        await migration.analysisField('frameworks').focus();
+        await migration.analysisField('frameworks').press('Tab');
+        await expect(migration.analysisField('frameworks')).not.toHaveAttribute('aria-invalid', 'true');
+        await migration.root.screenshot({ path: testInfo.outputPath('application-details-validation.png') });
     });
 
     test('frameworks are optional and clearing them persists without a placeholder', async ({ vscodeWindow }) => {
@@ -1084,6 +1158,13 @@ test.describe('Migration Assistant', () => {
             let assessment = frame.getByTestId('migration-phase-assessment');
             await assessment.getByRole('button', { name: /Phase 2: Domain Assessment/ }).click();
             await expect(assessment.getByTestId('migration-phase2-status-complete')).toBeVisible();
+            const completedAssessmentHeader = assessment.getByRole('button', {
+                name: new RegExp(PHASE_HEADERS.phase2),
+            });
+            await expect(completedAssessmentHeader.getByRole('img', { name: 'Complete', exact: true })).toBeVisible();
+            await expect(completedAssessmentHeader.getByText('Complete', { exact: true })).toHaveCount(0);
+            await expect(completedAssessmentHeader).not.toHaveAttribute('aria-description');
+            await completedAssessmentHeader.screenshot({ path: testInfo.outputPath('completed-phase-header.png') });
             const relative = 'phases/1-discovery/volumetrics/volumetrics.md';
             appendFileSync(path.join(process.env.COSMOSDB_E2E_WORKSPACE_DIR!, '.cosmosdb-migration', relative), ' ');
             const diagnostics = assessment.getByTestId('migration-assessment-diagnostics');

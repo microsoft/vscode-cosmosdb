@@ -1340,6 +1340,70 @@ function getPhaseIcon(state: PhaseState) {
     );
 }
 
+function MigrationPhaseHeader({
+    phase,
+    state,
+    label,
+    outcome,
+    lockedReason,
+}: {
+    phase: string;
+    state: PhaseState;
+    label: string;
+    outcome: ReactNode;
+    lockedReason: string;
+}) {
+    const [labelTarget, setLabelTarget] = useState<HTMLSpanElement | null>(null);
+    const buttonRef = useRef<HTMLButtonElement>(null);
+    const [tooltipVisible, setTooltipVisible] = useState(false);
+    const description = state === 'locked' && !outcome ? lockedReason : undefined;
+    const header = (
+        <AccordionHeader
+            button={{
+                ref: buttonRef,
+                'aria-description': description,
+                onFocus: () => setTooltipVisible(true),
+                onBlur: () => setTooltipVisible(false),
+            }}
+        >
+            <span
+                ref={setLabelTarget}
+                data-testid={`migration-${phase}-label`}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', minWidth: 0 }}
+            >
+                <span
+                    data-testid={state === 'complete' && !outcome ? `migration-${phase}-status-complete` : undefined}
+                    style={{ display: 'inline-flex', fontSize: '20px', flexShrink: 0 }}
+                >
+                    {outcome ? <WarningRegular aria-hidden="true" /> : getPhaseIcon(state)}
+                </span>
+                <Text weight="semibold">{label}</Text>
+            </span>
+            {outcome}
+        </AccordionHeader>
+    );
+    return description ? (
+        <Tooltip
+            content={description}
+            relationship="inaccessible"
+            positioning={{ target: labelTarget, position: 'above' }}
+            visible={tooltipVisible}
+            onVisibleChange={(event, data) => {
+                const button = buttonRef.current;
+                if (!data.visible && event?.type === 'pointerleave' && button === button?.ownerDocument.activeElement) {
+                    return;
+                }
+                setTooltipVisible(data.visible);
+            }}
+            withArrow
+        >
+            {header}
+        </Tooltip>
+    ) : (
+        header
+    );
+}
+
 function ReferencedInCodeStatus({ isMapped }: { isMapped: boolean }): ReactElement {
     const label = isMapped ? l10n.t('Yes') : l10n.t('No');
 
@@ -1363,6 +1427,17 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
     const analysisLabelId = useId();
     const state = useMigrationState();
     const dispatch = useMigrationDispatch();
+    const [touchedAnalysisFields, setTouchedAnalysisFields] = useState<Record<string, boolean>>({});
+    const analysisFieldValidation = (
+        field: 'projectName' | 'projectType' | 'language' | 'databaseType' | 'databaseAccess',
+    ) => {
+        const invalid = touchedAnalysisFields[field] && !state.analysisResult?.[field]?.trim();
+        return {
+            validationMessage: invalid ? l10n.t('Required') : undefined,
+            validationState: invalid ? ('error' as const) : ('none' as const),
+            onBlur: () => setTouchedAnalysisFields((current) => ({ ...current, [field]: true })),
+        };
+    };
 
     // Load project on mount
     useEffect(() => {
@@ -1457,6 +1532,15 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
     const isPhase2Disabled = isRunActive || phase1State !== 'complete' || !hasAllAnalysisFields;
     const isPhase3Disabled = isRunActive || phase2State !== 'complete';
     const isPhase4Disabled = isRunActive || phase1State !== 'complete' || !hasAllAnalysisFields;
+    const phaseLockReason = (phase: 'discovery' | 'assessment' | 'schema-conversion' | 'provisioning'): string => {
+        if (isRunActive) return l10n.t('Wait for the current migration run to finish.');
+        if (phase === 'discovery') return l10n.t('Complete Preflight before running Source Discovery.');
+        if (phase === 'schema-conversion') return l10n.t('Complete Phase 2: Domain Assessment first.');
+        if (phase1State !== 'complete') return l10n.t('Complete Phase 1: Source Discovery first.');
+        if (!hasAllAnalysisFields) return l10n.t('Complete the required Application Details fields first.');
+        if (phase === 'provisioning') return l10n.t('Select a target environment and verify the connection.');
+        return l10n.t('Refresh the project status to check phase availability.');
+    };
 
     // isEstimating: a request was sent for the current fileStateGeneration but the estimate hasn't caught up yet
     const isAutoSelected = state.selectedModelId === 'auto';
@@ -2263,13 +2347,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                     styles={styles}
                                 />
                             </Text>
-                            <Field
-                                required
-                                validationMessage={
-                                    !state.analysisResult?.projectName?.trim() ? l10n.t('Required') : undefined
-                                }
-                                validationState={!state.analysisResult?.projectName?.trim() ? 'error' : 'none'}
-                            >
+                            <Field required {...analysisFieldValidation('projectName')}>
                                 <Input
                                     data-testid="migration-project-name"
                                     disabled={isRunActive}
@@ -2291,13 +2369,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                     styles={styles}
                                 />
                             </Text>
-                            <Field
-                                required
-                                validationMessage={
-                                    !state.analysisResult?.projectType?.trim() ? l10n.t('Required') : undefined
-                                }
-                                validationState={!state.analysisResult?.projectType?.trim() ? 'error' : 'none'}
-                            >
+                            <Field required {...analysisFieldValidation('projectType')}>
                                 <Input
                                     data-testid="migration-project-type"
                                     disabled={isRunActive}
@@ -2319,13 +2391,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                     styles={styles}
                                 />
                             </Text>
-                            <Field
-                                required
-                                validationMessage={
-                                    !state.analysisResult?.language?.trim() ? l10n.t('Required') : undefined
-                                }
-                                validationState={!state.analysisResult?.language?.trim() ? 'error' : 'none'}
-                            >
+                            <Field required {...analysisFieldValidation('language')}>
                                 <Input
                                     data-testid="migration-language"
                                     disabled={isRunActive}
@@ -2368,13 +2434,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                     styles={styles}
                                 />
                             </Text>
-                            <Field
-                                required
-                                validationMessage={
-                                    !state.analysisResult?.databaseType?.trim() ? l10n.t('Required') : undefined
-                                }
-                                validationState={!state.analysisResult?.databaseType?.trim() ? 'error' : 'none'}
-                            >
+                            <Field required {...analysisFieldValidation('databaseType')}>
                                 <Input
                                     data-testid="migration-database"
                                     disabled={isRunActive}
@@ -2396,13 +2456,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                     styles={styles}
                                 />
                             </Text>
-                            <Field
-                                required
-                                validationMessage={
-                                    !state.analysisResult?.databaseAccess?.trim() ? l10n.t('Required') : undefined
-                                }
-                                validationState={!state.analysisResult?.databaseAccess?.trim() ? 'error' : 'none'}
-                            >
+                            <Field required {...analysisFieldValidation('databaseAccess')}>
                                 <Input
                                     data-testid="migration-access"
                                     disabled={isRunActive}
@@ -2488,28 +2542,13 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                 >
                     {/* Phase 1: Source Discovery */}
                     <AccordionItem value="phase1" data-testid="migration-phase-discovery">
-                        <AccordionHeader
-                            icon={
-                                phaseOutcome('discovery') ? (
-                                    <WarningRegular aria-hidden="true" />
-                                ) : (
-                                    getPhaseIcon(phase1State)
-                                )
-                            }
-                        >
-                            <Text weight="semibold">{l10n.t('Phase 1: Source Discovery')}</Text>
-                            {outcomeBadge('discovery')}
-                            {phase1State === 'complete' && !phaseOutcome('discovery') && (
-                                <Badge
-                                    data-testid="migration-phase1-status-complete"
-                                    appearance="filled"
-                                    color="success"
-                                    style={{ marginLeft: '8px' }}
-                                >
-                                    {l10n.t('Complete')}
-                                </Badge>
-                            )}
-                        </AccordionHeader>
+                        <MigrationPhaseHeader
+                            phase="phase1"
+                            state={phase1State}
+                            label={l10n.t('Phase 1: Source Discovery')}
+                            outcome={outcomeBadge('discovery')}
+                            lockedReason={phaseLockReason('discovery')}
+                        />
                         <AccordionPanel>
                             <div className={styles.stepContent}>
                                 <Text size={200}>
@@ -2633,34 +2672,13 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
 
                     {/* Phase 2: Domain Assessment */}
                     <AccordionItem value="phase2" data-testid="migration-phase-assessment">
-                        <AccordionHeader
-                            icon={
-                                phaseOutcome('assessment') ? (
-                                    <WarningRegular aria-hidden="true" />
-                                ) : (
-                                    getPhaseIcon(
-                                        phase2State === 'complete'
-                                            ? 'complete'
-                                            : isPhase2Disabled
-                                              ? 'locked'
-                                              : phase2State,
-                                    )
-                                )
-                            }
-                        >
-                            <Text weight="semibold">{l10n.t('Phase 2: Domain Assessment')}</Text>
-                            {outcomeBadge('assessment')}
-                            {phase2State === 'complete' && !phaseOutcome('assessment') && (
-                                <Badge
-                                    data-testid="migration-phase2-status-complete"
-                                    appearance="filled"
-                                    color="success"
-                                    style={{ marginLeft: '8px' }}
-                                >
-                                    {l10n.t('Complete')}
-                                </Badge>
-                            )}
-                        </AccordionHeader>
+                        <MigrationPhaseHeader
+                            phase="phase2"
+                            state={phase2State === 'complete' ? 'complete' : isPhase2Disabled ? 'locked' : phase2State}
+                            label={l10n.t('Phase 2: Domain Assessment')}
+                            outcome={outcomeBadge('assessment')}
+                            lockedReason={phaseLockReason('assessment')}
+                        />
                         <AccordionPanel>
                             <div className={styles.stepContent}>
                                 <div
@@ -2864,34 +2882,13 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
 
                     {/* Phase 3: Schema Conversion */}
                     <AccordionItem value="phase3" data-testid="migration-phase-schema-conversion">
-                        <AccordionHeader
-                            icon={
-                                phaseOutcome('schema-conversion') ? (
-                                    <WarningRegular aria-hidden="true" />
-                                ) : (
-                                    getPhaseIcon(
-                                        phase3State === 'complete'
-                                            ? 'complete'
-                                            : isPhase3Disabled
-                                              ? 'locked'
-                                              : phase3State,
-                                    )
-                                )
-                            }
-                        >
-                            <Text weight="semibold">{l10n.t('Phase 3: Schema Conversion')}</Text>
-                            {outcomeBadge('schema-conversion')}
-                            {phase3State === 'complete' && !phaseOutcome('schema-conversion') && (
-                                <Badge
-                                    data-testid="migration-phase3-status-complete"
-                                    appearance="filled"
-                                    color="success"
-                                    style={{ marginLeft: '8px' }}
-                                >
-                                    {l10n.t('Complete')}
-                                </Badge>
-                            )}
-                        </AccordionHeader>
+                        <MigrationPhaseHeader
+                            phase="phase3"
+                            state={phase3State === 'complete' ? 'complete' : isPhase3Disabled ? 'locked' : phase3State}
+                            label={l10n.t('Phase 3: Schema Conversion')}
+                            outcome={outcomeBadge('schema-conversion')}
+                            lockedReason={phaseLockReason('schema-conversion')}
+                        />
                         <AccordionPanel>
                             <div className={styles.stepContent}>
                                 <div
@@ -3153,34 +3150,13 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
 
                     {/* Phase 4: Target Provisioning */}
                     <AccordionItem value="phase4" data-testid="migration-phase-provisioning">
-                        <AccordionHeader
-                            icon={
-                                phaseOutcome('provisioning') ? (
-                                    <WarningRegular aria-hidden="true" />
-                                ) : (
-                                    getPhaseIcon(
-                                        phase4State === 'complete'
-                                            ? 'complete'
-                                            : isPhase4Disabled
-                                              ? 'locked'
-                                              : phase4State,
-                                    )
-                                )
-                            }
-                        >
-                            <Text weight="semibold">{l10n.t('Phase 4: Target Provisioning')}</Text>
-                            {outcomeBadge('provisioning')}
-                            {phase4State === 'complete' && !phaseOutcome('provisioning') && (
-                                <Badge
-                                    data-testid="migration-phase4-status-complete"
-                                    appearance="filled"
-                                    color="success"
-                                    style={{ marginLeft: '8px' }}
-                                >
-                                    {l10n.t('Complete')}
-                                </Badge>
-                            )}
-                        </AccordionHeader>
+                        <MigrationPhaseHeader
+                            phase="phase4"
+                            state={phase4State === 'complete' ? 'complete' : isPhase4Disabled ? 'locked' : phase4State}
+                            label={l10n.t('Phase 4: Target Provisioning')}
+                            outcome={outcomeBadge('provisioning')}
+                            lockedReason={phaseLockReason('provisioning')}
+                        />
                         <AccordionPanel>
                             <div className={styles.stepContent}>
                                 <div

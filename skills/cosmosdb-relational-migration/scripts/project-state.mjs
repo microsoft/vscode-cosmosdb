@@ -7,7 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { requireOptionValue } from './cli-arguments.mjs';
 import { showHelp } from './cli-help.mjs';
-import { validateMigrationProject } from './validate-migration-project.mjs';
+import { normalizeMigrationProjectCompatibility, validateMigrationProject } from './validate-migration-project.mjs';
 
 const MAX_OUTPUT_BYTES = 16384;
 const UNSAFE_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
@@ -28,7 +28,8 @@ function readContent(projectPath) {
 export function readProjectState(workspace) {
     const projectPath = path.join(workspace, '.cosmosdb-migration/project.json');
     const content = readContent(projectPath);
-    return { projectPath, revision: revision(content), project: content === undefined ? undefined : JSON.parse(content) };
+    const { project, changes } = normalizeMigrationProjectCompatibility(content === undefined ? undefined : JSON.parse(content));
+    return { projectPath, revision: revision(content), project, ...(changes.length ? { compatibilityChanges: changes } : {}) };
 }
 
 export function updateProjectState(workspace, expectedRevision, update) {
@@ -166,7 +167,8 @@ export function selectProjectState(state, pointer, offset = 0, limit = 20, { toc
             }])),
         };
     }
-    const result = { revision: state.revision, ...selection };
+    const result = { revision: state.revision, ...selection,
+        ...(state.compatibilityChanges?.length ? { compatibilityChangeCount: state.compatibilityChanges.length } : {}) };
     if (Buffer.byteLength(`${JSON.stringify(result, null, 2)}\n`) > MAX_OUTPUT_BYTES) {
         throw new Error('Selection exceeds 16 KiB; select a narrower JSON pointer or a smaller page.');
     }
@@ -191,6 +193,8 @@ Workspace defaults to the current working directory. No operation prints a summa
 
 Choose one operation. Writes merge objects, replace arrays/scalars, validate the
 project, and preserve unrelated fields. On conflict, reread and reconsider the change.
+Reads interpret known null optional access-pattern fields as omitted without writing;
+compatibilityChangeCount reports adjustments. Revisions always refer to saved bytes.
 Outputs JSON (at most 16 KiB for reads); writes return the new revision.
 Exit: 0 on success; 1 for invalid input, revision conflicts, or I/O failures.
 `)) return 0;

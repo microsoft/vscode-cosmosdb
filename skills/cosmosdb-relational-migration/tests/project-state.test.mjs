@@ -163,6 +163,43 @@ test('merges scoped writes while preserving unrelated state and rejecting stale 
     assert.deepEqual(fs.readdirSync(path.dirname(saved.projectPath)), ['project.json']);
 });
 
+test('reads compatible optional nulls without writing and validates explicit repairs against the original revision', context => {
+    const workspace = fixture(context);
+    const initial = readProjectState(workspace);
+    const original = { ...initial.project, phases: { ...initial.project.phases, assessment: {
+        status: 'complete', completedAt: '2026-05-18T10:37:56.400Z',
+        parsedAccessPatterns: [{ name: 'Read', type: 'read', frequency: 'daily', tables: ['Orders'], codeReferences: [], singleOrBatch: null }],
+    } } };
+    fs.writeFileSync(initial.projectPath, JSON.stringify(original));
+    const originalBytes = fs.readFileSync(initial.projectPath);
+    const read = readProjectState(workspace);
+    assert.deepEqual(read.compatibilityChanges, ['/phases/assessment/parsedAccessPatterns/0/singleOrBatch']);
+    assert.equal(Object.hasOwn(read.project.phases.assessment.parsedAccessPatterns[0], 'singleOrBatch'), false);
+    assert.deepEqual(fs.readFileSync(initial.projectPath), originalBytes);
+    assert.equal(selectProjectState(read).compatibilityChangeCount, 1);
+    const validation = spawnSync(process.execPath, [fileURLToPath(new URL('../scripts/validate-migration-project.mjs', import.meta.url)), initial.projectPath], { encoding: 'utf8' });
+    assert.equal(validation.status, 0, validation.stderr);
+    assert.deepEqual(JSON.parse(validation.stdout).compatibilityChanges, read.compatibilityChanges);
+    const cliRead = spawnSync(process.execPath, [script, '--workspace', workspace, '--get', '/phases/assessment/parsedAccessPatterns'], { encoding: 'utf8' });
+    assert.equal(cliRead.status, 0, cliRead.stderr);
+    assert.equal(JSON.parse(cliRead.stdout).compatibilityChangeCount, 1);
+    assert.equal(Object.hasOwn(JSON.parse(cliRead.stdout).value[0], 'singleOrBatch'), false);
+    assert.deepEqual(fs.readFileSync(initial.projectPath), originalBytes);
+    assert.throws(() => updateProjectState(workspace, initial.revision, project => project), /Project changed/u);
+    assert.throws(() => updateProjectState(workspace, read.revision, project => {
+        project.phases.assessment.parsedAccessPatterns[0].singleOrBatch = 42;
+        return project;
+    }), /Invalid project/u);
+    assert.deepEqual(fs.readFileSync(initial.projectPath), originalBytes);
+    updateProjectState(workspace, read.revision, project => project);
+    const saved = readProjectState(workspace);
+    assert.deepEqual(saved.project, read.project);
+    assert.equal(saved.compatibilityChanges, undefined);
+    assert.deepEqual(saved.project.custom, original.custom);
+    assert.deepEqual(saved.project.runCounts, original.runCounts);
+    assert.throws(() => updateProjectState(workspace, read.revision, project => project), /Project changed/u);
+});
+
 test('detects a concurrent edit and removes its temporary checkpoint', context => {
     const workspace = fixture(context);
     const original = readProjectState(workspace);

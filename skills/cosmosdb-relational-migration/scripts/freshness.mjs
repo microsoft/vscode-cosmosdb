@@ -268,9 +268,10 @@ export function validateFreshnessManifest(
     }
     for (const input of expected.inputs) {
         const recorded = recordedById.get(input.id);
-        if (!recorded) staleInputs.push({ id: input.id, reason: 'required input is not recorded' });
+        const location = input.kind === 'file' ? { path: input.path } : {};
+        if (!recorded) staleInputs.push({ id: input.id, ...location, reason: 'required input is not recorded' });
         else if (JSON.stringify(recorded) !== JSON.stringify(input)) {
-            staleInputs.push({ id: input.id, reason: 'recorded input no longer matches current content' });
+            staleInputs.push({ id: input.id, ...location, reason: 'recorded input no longer matches current content' });
         }
     }
     const expectedIds = new Set(expected.inputs.map((input) => input.id));
@@ -284,7 +285,7 @@ export function validateFreshnessManifest(
                         const current = input.kind === 'file' ? fileInput(workspace, input.id, input.path) : undefined;
             if (!current) throw new Error('Additional input kind is invalid');
             if (JSON.stringify(current) !== JSON.stringify(input)) {
-                staleInputs.push({ id: input.id, reason: 'consulted input no longer matches current content' });
+                staleInputs.push({ id: input.id, path: current.path, reason: 'consulted input no longer matches current content' });
             }
         } catch (error) {
             staleInputs.push({ id: input.id, reason: error.message });

@@ -142,6 +142,50 @@ describe('migrationSkillDispatcher', () => {
         }
     });
 
+    it.each(['preflight', 'assessment', 'provisioning', 'code-migration'] as const)(
+        'reviews %s blockers without authorizing regeneration or mutations',
+        (phase) => {
+            for (const hasExistingArtifacts of [false, true]) {
+                const prompt = buildMigrationSkillPrompt(
+                    {
+                        workspacePath: '/workspace/Other App',
+                        phase,
+                        intent: 'review-and-fix',
+                        mode: 'interactive',
+                        runId: 'review-run',
+                    },
+                    hasExistingArtifacts,
+                );
+                expect(prompt).toContain(
+                    `Review the ${phase.replaceAll('-', ' ')} migration blockers and propose fixes for approval.`,
+                );
+                expect(prompt).toContain('Use the cosmosdb-relational-migration skill.');
+                expect(prompt).toContain('Run in interactive mode.');
+                expect(prompt).toContain('Do not change files or resources before explicit approval.');
+                expect(prompt).toContain(`Workspace: ${JSON.stringify(path.resolve('/workspace/Other App'))}`);
+                expect(prompt).not.toMatch(/Regenerate|Allow provisioning|Migrate the application code/);
+                expect(prompt.split('\n').at(-1)).toBe('Run ID: review-run');
+            }
+        },
+    );
+
+    it.each([
+        { mode: 'autonomous' as const },
+        { allowProvisioning: true },
+        { provisioningStep: 'resources-and-data' as const },
+        { preflightStep: 'volumetrics' as const },
+        { codeMigrationAction: 'migrate' as const },
+    ])('rejects conflicting execution authorization on a blocker review: %j', (change) => {
+        expect(() =>
+            buildMigrationSkillPrompt({
+                workspacePath: '/workspace/shop',
+                phase: 'assessment',
+                intent: 'review-and-fix',
+                ...change,
+            }),
+        ).toThrow('cannot preauthorize');
+    });
+
     it('supplies only phase routing inputs for WebView-triggered runs', () => {
         const prompt = buildMigrationSkillPrompt({
             workspacePath: '/workspace/shop',
@@ -343,6 +387,24 @@ describe('migrationSkillDispatcher', () => {
             modelSelector: { vendor: 'copilot', id: 'selected' },
         });
         expect(query).toBe(buildMigrationSkillPrompt(invocation));
+    });
+
+    it('opens a fresh review conversation without reading or rewriting the checkpoint', async () => {
+        const session = new MigrationSkillChatSession();
+        const load = vi.spyOn(MigrationProjectService.prototype, 'load');
+        const invocation: MigrationSkillInvocation = {
+            workspacePath: '/workspace/shop',
+            phase: 'assessment',
+            intent: 'review-and-fix',
+        };
+        await session.dispatch(invocation, 'selected');
+        await session.dispatch(invocation, 'selected');
+        const newChats = vi
+            .mocked(vscode.commands.executeCommand)
+            .mock.calls.filter(([command]) => command === 'workbench.action.chat.newChat');
+        expect(newChats).toHaveLength(2);
+        expect(load).not.toHaveBeenCalled();
+        expect(vscode.workspace.fs.stat).not.toHaveBeenCalled();
     });
 
     it('adds project scope to a reused chat session after another folder is added', async () => {

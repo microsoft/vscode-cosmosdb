@@ -52,8 +52,6 @@ The installation should contain two independent skill folders:
 
 ## Get Started
 
-In the application workspace, ask:
-
 ```text
 Run a relational database migration to Azure Cosmos DB.
 ```
@@ -121,6 +119,22 @@ Migrate the application code using the validated migration plan.
 Planning and applying application changes are separate requests. Resource and data
 mutations require explicit permission for the current invocation; a previous run's
 authorization does not carry forward.
+
+### Review and Fix
+
+Use **Review and Fix** in Migration Assistant, or request a review directly:
+
+```text
+Review the assessment migration blockers and propose fixes for approval.
+Run in interactive mode. Do not change files or resources before explicit approval.
+```
+
+The Skill inspects the selected project and relevant prerequisites, summarizes the
+blockers, and asks whether to apply a proposed repair scope. Initial review is read-only,
+including activity and memory state. Without an in-run question capability, it stops
+after the proposal rather than applying fixes unattended. Resource mutations and
+application-code changes still need explicit authorization. See the
+[review contract](./references/workflow/interaction-and-checkpoints.md#review-and-fix).
 
 ### Remember Findings and Models
 
@@ -220,7 +234,20 @@ source-inventory, and phase results only within that call. Freshness-aware compl
 and code-migration readiness remain separate checks. Unexpected failures become
 incomplete results for the affected phases; other results are still returned.
 Each call starts a new cache so later edits are observed. The existing single-phase
-`checkPhaseCompletion`, `checkCodeMigrationPrerequisites`, and CLI contracts are unchanged.
+`checkPhaseCompletion`, `checkCodeMigrationPrerequisites`, and CLI entry points remain supported.
+
+Results can include `recordedCompletedAt` independently of `complete`. A recorded
+completion date never establishes current acceptance. Optional `compatibilityChanges`
+lists JSON pointers interpreted through the narrow optional-null compatibility rule;
+compact CLI results report `compatibilityChangeCount` instead of the full pointer list.
+
+Full completion results include `freshnessCauses`: the originating phase, input ID,
+reason, and file path where available. Causes propagate through prerequisites; repeated
+references to the same file retain the earliest upstream cause. `staleInputs` remains
+the phase-local check list, with optional file paths. Predecessor artifact diagnostics
+also retain the underlying causes for compact CLI inspection. Hosts verify file access
+before offering navigation. A successful recorded run and subsequently stale evidence
+are separate facts; neither a newer timestamp alone nor elapsed time makes content stale.
 
 External tools may inspect individual artifacts independently, but file existence is
 not phase completion. Use the completion checker when reporting migration readiness;
@@ -244,11 +271,35 @@ Keep historical completion separate from readiness to start a new migration iter
 
 ### Checkpoint Writes
 
+`normalizeMigrationProjectCompatibility(value)` in
+[validate-migration-project.mjs](./scripts/validate-migration-project.mjs) returns
+`{ project, changes }`. It clones version-1 input and omits only explicit nulls in
+Assessment access-pattern `filterFields`, `singleOrBatch`, `sqlExample`, and
+`codeExample`. It preserves unknown fields and all other values. The raw
+`validateMigrationProject` API remains strict; the diagnostic CLI validates the
+compatibility view and reports any adjustments without rewriting the file.
+
+The TypeScript declaration companions
+[validate-migration-project.d.mts](./scripts/validate-migration-project.d.mts) and
+[project-state.d.mts](./scripts/project-state.d.mts) describe the extension-facing
+normalization and state-writer APIs. They contain no runtime logic or CLI commands.
+
+`readProjectState` and completion checks use this same normalized view. State-read
+revisions still identify the original saved bytes. Opening the extension is read-only;
+an intentional save stores canonical fields. `MigrationProjectService` binds revisions
+to loaded object snapshots, so a later reload does not permit an older object to overwrite
+newer state. These checks protect sequential handoffs, not simultaneous cross-process writers.
+
 [project-state.mjs](./scripts/project-state.mjs) validates updates with
 `validateMigrationProject`, writes two-space JSON with a trailing newline to a unique
 sibling temporary file, rechecks the expected revision immediately before replacement,
 and atomically renames only a valid, non-conflicting candidate. Failed replacements
 clean up their temporary file without changing the checkpoint.
+
+Older recorded results remain inspectable but do not bypass current evidence gates.
+The UI can offer explicit preparation from the earliest required phase using the normal
+Skill launch path; opening a project never launches preparation or invents manifests,
+parser decisions, freshness hashes, timestamps, or resource-mutation authorization.
 
 ### Import-Only Modules
 

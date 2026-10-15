@@ -36,6 +36,50 @@ async function withCompletionChecker(source: string, check: (extensionPath: stri
 }
 
 describe('migrationStateSync', () => {
+    it('preserves artifact diagnostics and opens only existing workspace files', async () => {
+        const artifacts = [
+            {
+                path: 'invalid.json',
+                state: 'invalid',
+                diagnostics: [{ code: 'invalid-key', path: '$.id', message: 'Missing id' }],
+            },
+            { path: 'missing.json', state: 'missing' },
+            { path: 'scripts', state: 'invalid' },
+            { path: '../outside.json', state: 'invalid' },
+            { path: 'outside/package.json', state: 'present' },
+        ];
+        await withCompletionChecker(
+            `export function checkPhaseCompletions() {
+            return { preflight: { artifacts: ${JSON.stringify(artifacts)}, freshnessCauses: [
+                {phase:'preflight', id:'volumetrics', path:'invalid.json', reason:'Changed'},
+                {phase:'preflight', id:'external', path:'outside/package.json', reason:'Changed'},
+                {phase:'preflight', id:'missing', path:'missing.json', reason:'Missing'},
+                {phase:'preflight', id:'settings', reason:'Changed'}
+            ] } };
+        }`,
+            async (workspace) => {
+                fs.writeFileSync(path.join(workspace, 'invalid.json'), '{');
+                fs.mkdirSync(path.join(workspace, 'scripts'));
+                fs.symlinkSync(process.cwd(), path.join(workspace, 'outside'), 'dir');
+                const result = await readMigrationPhaseCompletion(workspace, workspace);
+                expect(result.preflight.artifacts.map((artifact) => artifact.canOpen)).toEqual([
+                    true,
+                    false,
+                    false,
+                    false,
+                    false,
+                ]);
+                expect(result.preflight.artifacts[0].diagnostics).toEqual(artifacts[0].diagnostics);
+                expect(result.preflight.freshnessCauses?.map((cause) => cause.canOpen)).toEqual([
+                    true,
+                    false,
+                    false,
+                    false,
+                ]);
+            },
+        );
+    });
+
     const startedAt = '2026-10-04T10:00:00.000Z';
     const invocation = { workspacePath: '/workspace', phase: 'discovery' as const };
     const execution: MigrationExecution = {
@@ -226,6 +270,23 @@ describe('migrationStateSync', () => {
         expect(tracker.snapshot()?.activity).toBe('complete');
         tracker.observe({ ...execution, phase: 'preflight', step: 'volumetrics', activity: 'complete' }, {});
         expect(tracker.snapshot()).toMatchObject({ activity: 'complete', validationFailed: false });
+    });
+
+    it('preserves a completed run when its evidence later becomes stale, including after reopening', () => {
+        const tracker = new MigrationRunTracker();
+        const completed = { ...execution, activity: 'complete' as const, detail: 'Discovery completed.' };
+        tracker.observe(completed, { discovery: { complete: true, freshness: 'current' } });
+        tracker.observe(completed, { discovery: { complete: false, freshness: 'stale' } });
+        expect(tracker.snapshot()).toMatchObject({
+            activity: 'complete',
+            validationFailed: true,
+            detail: 'Discovery completed.',
+        });
+        const reopened = new MigrationRunTracker();
+        reopened.observe(completed, { discovery: { complete: false, freshness: 'stale' } });
+        expect(reopened.snapshot()).toMatchObject({ activity: 'complete', validationFailed: true });
+        reopened.observe({ ...completed, activity: 'blocked' }, { discovery: { complete: false, freshness: 'stale' } });
+        expect(reopened.snapshot()?.activity).toBe('blocked');
     });
 
     it('does not revive a confirmed stopped run or let an old callback clear a new launch', () => {

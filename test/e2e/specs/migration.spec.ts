@@ -24,10 +24,12 @@
  * the Playwright fixture in `test/e2e/fixtures/vscode.ts`.
  */
 
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { appendFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { type ProjectJson } from '../../../src/services/MigrationProjectService';
 import {
     addMockRegenerationSentinel,
@@ -822,10 +824,97 @@ test.describe('Migration Assistant', () => {
             await expect(reopenedButton).toBeFocused();
             await expect(migration.autoDetectButton).toBeDisabled();
 
+            await frame.evaluate(() => {
+                const record = (message: string) =>
+                    document.documentElement.setAttribute('data-migration-announcement', message);
+                const target = document as Document & { ariaNotify?: (message: string, options?: unknown) => void };
+                if (target.ariaNotify) {
+                    const notify = target.ariaNotify.bind(target);
+                    target.ariaNotify = (message, options) => {
+                        record(message);
+                        notify(message, options);
+                    };
+                } else {
+                    new MutationObserver(() => {
+                        const message = Array.from(document.querySelectorAll('[aria-live]'))
+                            .map((element) => element.textContent)
+                            .join(' ');
+                        if (message.includes('Preflight: Blocked.')) record(message);
+                    }).observe(document.body, { childList: true, subtree: true, characterData: true });
+                }
+            });
             setMockSkillRunActivity(prompt, 'blocked', 'Source schema needs review.');
+            await expect(frame.locator('html')).toHaveAttribute('data-migration-announcement', /Preflight: Blocked\./);
             await expect(frame.getByTestId('migration-run-activity')).toHaveCount(0);
             await expect(migration.autoDetectButton).toBeEnabled();
+            const blockedBytes = readMigrationArtifact('project.json');
+            await closeAllEditorTabs(vscodeWindow);
+            frame = await openMigrationAssistant(vscodeWindow);
+            migration = new MigrationPage(frame);
+            const diagnostics = frame.getByTestId('migration-preflight-diagnostics');
+            const preflight = frame.getByTestId('migration-phase-preflight');
+            await expect(preflight.getByTestId('migration-preflight-diagnostics')).toBeVisible();
+            await expect(preflight.locator(':scope > :last-child')).toHaveAttribute(
+                'data-testid',
+                'migration-preflight-diagnostics',
+            );
+            await expect(diagnostics.getByText('Blocked', { exact: true })).toBeVisible();
+            await expect(diagnostics.getByText('Source schema needs review.', { exact: true })).toBeVisible();
+            const inventoryFailure = diagnostics
+                .getByTestId('migration-diagnostic-failure')
+                .filter({ hasText: 'Recorded source inventory evidence' });
+            const inventoryToggle = inventoryFailure.getByRole('button', {
+                name: 'Recorded source inventory evidence Invalid',
+                exact: true,
+            });
+            await expect(inventoryToggle).toHaveAttribute('aria-expanded', 'false');
+            await expect(inventoryToggle).toHaveAccessibleName('Recorded source inventory evidence Invalid');
+            await inventoryToggle.focus();
+            await inventoryToggle.press('Enter');
+            await expect(inventoryToggle).toHaveAttribute('aria-expanded', 'true');
+            await expect(inventoryFailure.getByText(/Choose and persist a DDL parsing method/)).toBeVisible();
+            const schemaFailure = diagnostics
+                .getByTestId('migration-diagnostic-failure')
+                .filter({ hasText: 'Authoritative schema DDL' });
+            const schemaToggle = schemaFailure.getByRole('button', {
+                name: 'Authoritative schema DDL Invalid',
+                exact: true,
+            });
+            await schemaToggle.click();
+            await expect(inventoryToggle).toHaveAttribute('aria-expanded', 'true');
+            await expect(schemaToggle).toHaveAttribute('aria-expanded', 'true');
+            await expect(schemaFailure.getByRole('button', { name: 'Open Artifact', exact: true })).toBeVisible();
+            await diagnostics.screenshot({ path: testInfo.outputPath('blocked-phase-expanded.png') });
+            await inventoryToggle.press('Space');
+            await expect(inventoryToggle).toHaveAttribute('aria-expanded', 'false');
+            await schemaToggle.click();
+            const restart = diagnostics.getByRole('button', { name: 'Review and Fix', exact: true });
+            await expect(restart).toBeEnabled();
+            await expect(restart).toHaveText('Review and Fix');
+            await expect(restart).toHaveAccessibleName('Review and Fix');
+            await expect(restart).toHaveAccessibleDescription(
+                'Preflight: review blockers and propose fixes. Changes require your approval.',
+            );
+            expect(await restart.evaluate((element) => element.parentElement?.firstElementChild === element)).toBe(
+                true,
+            );
+            const refreshBlocked = diagnostics.getByRole('button', { name: 'Refresh Status', exact: true });
+            await refreshBlocked.click();
+            await expect(refreshBlocked).toBeFocused();
+            await expect(diagnostics.getByRole('button', { name: /Open (in )?Chat/ })).toHaveCount(0);
+            expect(readCapturedPrompts()).toHaveLength(count);
+            expect(readMigrationArtifact('project.json')).toBe(blockedBytes);
+            await diagnostics.screenshot({ path: testInfo.outputPath('blocked-phase-desktop.png') });
+            await vscodeWindow.setViewportSize({ width: 720, height: 900 });
+            await expect(restart).toBeVisible();
+            expect(await diagnostics.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+            await schemaToggle.click();
+            await expect(schemaToggle).toHaveAttribute('aria-expanded', 'true');
+            expect(await diagnostics.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+            await diagnostics.screenshot({ path: testInfo.outputPath('blocked-phase-narrow.png') });
+            await vscodeWindow.setViewportSize(viewport);
             runMockSkillAgent(prompt);
+            await expect(diagnostics).toHaveCount(0);
             await expect(frame.getByTestId('migration-run-activity')).toHaveCount(0);
             await expect(migration.generateSchemaButton).toBeVisible();
             await expect(migration.modelDropdown).toBeEnabled();
@@ -871,6 +960,60 @@ test.describe('Migration Assistant', () => {
                 if (phase === 'assessment') {
                     await activity.screenshot({ path: testInfo.outputPath('run-activity-assessment-button.png') });
                 }
+                if (phase === 'discovery' || phase === 'schema-conversion') {
+                    const message =
+                        phase === 'discovery'
+                            ? 'The discovery evidence needs review.'
+                            : 'The converted model needs repair.';
+                    setMockSkillRunActivity(prompt, 'blocked', message);
+                    const phaseSection = frame.getByTestId(`migration-phase-${phase}`);
+                    await expect(
+                        phaseSection.getByRole('button', {
+                            name: /Phase (1: Source Discovery|3: Schema Conversion).*Blocked/,
+                        }),
+                    ).toBeVisible();
+                    await expect(
+                        phaseSection.getByTestId(`migration-phase${phase === 'discovery' ? 1 : 3}-status-complete`),
+                    ).toHaveCount(0);
+                    await expect(phaseSection.getByText(message, { exact: true })).toBeVisible();
+                    const runButton = phaseSection.getByTestId(
+                        phase === 'discovery' ? 'migration-run-discovery' : 'migration-run-conversion',
+                    );
+                    const runBounds = await runButton.boundingBox();
+                    const failureBounds = await phaseSection
+                        .getByTestId(`migration-${phase}-diagnostics`)
+                        .boundingBox();
+                    expect(runBounds).not.toBeNull();
+                    expect(failureBounds).not.toBeNull();
+                    expect(failureBounds!.y).toBeGreaterThanOrEqual(runBounds!.y + runBounds!.height);
+                    await expect(activity).toHaveCount(0);
+                    await expect(migration.modelDropdown).toBeEnabled();
+                    if (phase === 'schema-conversion') {
+                        const diagnostics = phaseSection.getByTestId('migration-schema-conversion-diagnostics');
+                        const freshness = diagnostics.getByRole('button', {
+                            name: 'Evidence freshness (4)',
+                            exact: true,
+                        });
+                        await expect(diagnostics.getByRole('button', { name: /^Evidence freshness/ })).toHaveCount(1);
+                        await expect(freshness).toHaveText('Evidence freshness (4)');
+                        await expect(freshness).toHaveAccessibleName('Evidence freshness (4)');
+                        await freshness.focus();
+                        await freshness.press('Enter');
+                        const reasons = diagnostics.getByRole('list', {
+                            name: 'Evidence freshness (4)',
+                            exact: true,
+                        });
+                        await expect(reasons).toContainText('Preflight / freshness-manifest:');
+                        await expect(reasons).toContainText('Domain Assessment / freshness-manifest:');
+                        await diagnostics.getByRole('button', { name: 'Refresh Status', exact: true }).click();
+                        await expect(freshness).toHaveAttribute('aria-expanded', 'true');
+                        await expect(
+                            diagnostics.getByRole('button', { name: 'Review and Fix', exact: true }),
+                        ).toBeEnabled();
+                    }
+                    await phaseSection.screenshot({ path: testInfo.outputPath(`blocked-${phase}.png`) });
+                    continue;
+                }
                 const checkpoint = readMigrationArtifact('project.json');
                 await stubMessageBoxButton(vscodeApp, 'Agent Has Stopped');
                 await statusButton.click();
@@ -881,6 +1024,332 @@ test.describe('Migration Assistant', () => {
         } finally {
             await resetNativeDialogStubs(vscodeApp);
             if (prompt) setMockSkillRunActivity(prompt, 'cancelled');
+            setMigrationSettings({ useProgrammaticFlow: true });
+        }
+    });
+
+    test('explains a stale upstream file without changing successful run history', async ({
+        vscodeWindow,
+    }, testInfo) => {
+        await runCommand(vscodeWindow, 'Cosmos DB: [E2E Test] Use Skill Migration Flow');
+        const viewport =
+            vscodeWindow.viewportSize() ??
+            (await vscodeWindow.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight })));
+        try {
+            await openMigrationSeeded(vscodeWindow);
+            const fixtures = pathToFileURL(
+                path.resolve('skills/cosmosdb-relational-migration/tests/source-evidence-fixtures.mjs'),
+            ).href;
+            const freshness = pathToFileURL(
+                path.resolve('skills/cosmosdb-relational-migration/scripts/freshness.mjs'),
+            ).href;
+            execFileSync(
+                process.execPath,
+                [
+                    '--input-type=module',
+                    '--eval',
+                    `
+                import fs from 'node:fs';
+                import path from 'node:path';
+                import { sourceFixture, discoveryFixture, assessmentFixture } from ${JSON.stringify(fixtures)};
+                import { buildFreshnessManifest } from ${JSON.stringify(freshness)};
+                const workspace = process.env.COSMOSDB_E2E_WORKSPACE_DIR;
+                const projectPath = path.join(workspace, '.cosmosdb-migration/project.json');
+                const project = JSON.parse(fs.readFileSync(projectPath, 'utf8'));
+                const timestamp = new Date().toISOString();
+                project.phases.discovery.status = 'complete';
+                project.phases.discovery.schemaInventory = { files: ['phases/1-discovery/schema-ddl/Schema.sql'] };
+                project.phases.discovery.applicationAnalysis.completedAt ??= timestamp;
+                project.phases.assessment = { status: 'complete', completedAt: timestamp, domains: [
+                    { name: 'Orders', tables: ['dbo.Orders'], crossDomainDependencies: [], estimatedTokens: 1, isMapped: true }
+                ] };
+                const inventory = sourceFixture(workspace, project);
+                discoveryFixture(workspace, inventory, project);
+                assessmentFixture(workspace, project, inventory);
+                project.freshness.assessment = buildFreshnessManifest(workspace, project, 'assessment', [
+                    '.cosmosdb-migration/phases/1-discovery/discovery-report.md',
+                    '.cosmosdb-migration/phases/1-discovery/access-patterns/access-patterns.md',
+                    '.cosmosdb-migration/phases/1-discovery/volumetrics/volumetrics.md'
+                ]);
+                project.execution = { version: 1, runId: 'stale-evidence-review', phase: 'assessment', step: null,
+                    activity: 'complete', startedAt: timestamp, updatedAt: timestamp, detail: 'Assessment complete.' };
+                fs.writeFileSync(projectPath, JSON.stringify(project));
+            `,
+                ],
+                { env: process.env },
+            );
+            const checkpoint = readMigrationArtifact('project.json');
+            await closeAllEditorTabs(vscodeWindow);
+            let frame = await openMigrationAssistant(vscodeWindow);
+            let assessment = frame.getByTestId('migration-phase-assessment');
+            await assessment.getByRole('button', { name: /Phase 2: Domain Assessment/ }).click();
+            await expect(assessment.getByTestId('migration-phase2-status-complete')).toBeVisible();
+            const relative = 'phases/1-discovery/volumetrics/volumetrics.md';
+            appendFileSync(path.join(process.env.COSMOSDB_E2E_WORKSPACE_DIR!, '.cosmosdb-migration', relative), ' ');
+            const diagnostics = assessment.getByTestId('migration-assessment-diagnostics');
+            await expect(diagnostics.getByText('Stale evidence', { exact: true })).toBeVisible();
+            await expect(diagnostics.getByText('Blocked', { exact: true })).toHaveCount(0);
+            await expect(diagnostics.getByText('Last run: Assessment complete.', { exact: true })).toBeVisible();
+            await expect(diagnostics.getByText(/Required prerequisite: Preflight/)).toHaveCount(0);
+            await diagnostics.getByRole('button', { name: 'Evidence freshness (1)', exact: true }).click();
+            await expect(diagnostics.getByTestId('migration-freshness-cause')).toHaveCount(1);
+            await expect(diagnostics.getByRole('list', { name: 'Evidence freshness (1)', exact: true })).toContainText(
+                'Preflight / volumetrics.md: recorded input no longer matches current content',
+            );
+            await expect(diagnostics.locator(':scope > [data-testid="migration-freshness-cause"]')).toHaveCount(0);
+            await expect(diagnostics.getByRole('textbox', { name: 'Evidence freshness (1)', exact: true })).toHaveCount(
+                0,
+            );
+            const promptCount = readCapturedPrompts().length;
+            await diagnostics.getByRole('button', { name: 'Go to Preflight', exact: true }).click();
+            await expect(frame.getByTestId('migration-phase-preflight').getByRole('button').first()).toBeFocused();
+            await diagnostics.screenshot({ path: testInfo.outputPath('stale-volumetrics-desktop.png') });
+            await vscodeWindow.setViewportSize({ width: 720, height: 900 });
+            expect(await diagnostics.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+            await diagnostics.screenshot({ path: testInfo.outputPath('stale-volumetrics-narrow.png') });
+            await vscodeWindow.setViewportSize(viewport);
+            const fileLink = diagnostics.getByRole('button', { name: 'volumetrics.md', exact: true });
+            await expect(fileLink).toHaveAccessibleName('volumetrics.md');
+            await expect(fileLink).toHaveAccessibleDescription(`.cosmosdb-migration/${relative}`);
+            await fileLink.focus();
+            await fileLink.press('Enter');
+            await expect(vscodeWindow.getByRole('tab', { name: /volumetrics\.md/ })).toBeVisible();
+            await expect(vscodeWindow.getByRole('code')).toBeVisible();
+            await expect(vscodeWindow.getByRole('code').locator('.view-lines')).toContainText('Volumetrics');
+            await closeAllEditorTabs(vscodeWindow);
+            frame = await openMigrationAssistant(vscodeWindow);
+            assessment = frame.getByTestId('migration-phase-assessment');
+            await assessment.getByRole('button', { name: /Phase 2: Domain Assessment/ }).click();
+            await expect(
+                assessment.getByTestId('migration-assessment-diagnostics').getByText('Stale evidence', { exact: true }),
+            ).toBeVisible();
+            expect(readMigrationArtifact('project.json')).toBe(checkpoint);
+            expect(readCapturedPrompts()).toHaveLength(promptCount);
+            execFileSync(
+                process.execPath,
+                [
+                    '--input-type=module',
+                    '--eval',
+                    `
+                import fs from 'node:fs';
+                import path from 'node:path';
+                import { buildFreshnessManifest } from ${JSON.stringify(freshness)};
+                const workspace = process.env.COSMOSDB_E2E_WORKSPACE_DIR;
+                const root = path.join(workspace, '.cosmosdb-migration');
+                const projectPath = path.join(root, 'project.json');
+                const project = JSON.parse(fs.readFileSync(projectPath, 'utf8'));
+                for (const file of ['discovery-manifest.json', 'discovery-report.md', 'access-patterns/access-patterns.md']) {
+                    fs.appendFileSync(path.join(root, 'phases/1-discovery', file), ' ');
+                }
+                project.freshness.preflight = buildFreshnessManifest(workspace, project, 'preflight');
+                project.freshness.discovery = buildFreshnessManifest(workspace, project, 'discovery');
+                const timestamp = new Date().toISOString();
+                project.execution = { version: 1, runId: 'discovery-rerun-review', phase: 'discovery', step: null,
+                    activity: 'complete', startedAt: timestamp, updatedAt: timestamp, detail: 'Discovery rerun complete.' };
+                fs.writeFileSync(projectPath, JSON.stringify(project));
+            `,
+                ],
+                { env: process.env },
+            );
+            await expect(frame.getByTestId('migration-phase1-status-complete')).toBeVisible();
+            const currentDiagnostics = assessment.getByTestId('migration-assessment-diagnostics');
+            const currentFreshness = currentDiagnostics.getByRole('button', {
+                name: 'Evidence freshness (4)',
+                exact: true,
+            });
+            if ((await currentFreshness.getAttribute('aria-expanded')) !== 'true') await currentFreshness.click();
+            const currentList = currentDiagnostics.getByRole('list', { name: 'Evidence freshness (4)', exact: true });
+            await expect(currentList.getByTestId('migration-freshness-cause')).toHaveCount(4);
+            await expect(currentDiagnostics.getByRole('textbox', { name: /^Evidence freshness/ })).toHaveCount(0);
+            await expect(currentDiagnostics.getByRole('button', { name: /^Open .*\.(md|json)$/ })).toHaveCount(0);
+            for (const file of [
+                'discovery-manifest.json',
+                'discovery-report.md',
+                'access-patterns.md',
+                'volumetrics.md',
+            ]) {
+                const link = currentList.getByRole('button', { name: file, exact: true });
+                await expect(link).toHaveCount(1);
+                await expect(link).toHaveAccessibleName(file);
+            }
+            const refreshedCheckpoint = readMigrationArtifact('project.json');
+            await currentDiagnostics.screenshot({
+                path: testInfo.outputPath('assessment-freshness-links-desktop.png'),
+            });
+            await vscodeWindow.setViewportSize({ width: 720, height: 900 });
+            expect(await currentList.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+            await currentDiagnostics.screenshot({ path: testInfo.outputPath('assessment-freshness-links-narrow.png') });
+            expect(readMigrationArtifact('project.json')).toBe(refreshedCheckpoint);
+            expect(readCapturedPrompts()).toHaveLength(promptCount);
+        } finally {
+            await vscodeWindow.setViewportSize(viewport);
+            setMigrationSettings({ useProgrammaticFlow: true });
+        }
+    });
+
+    test('groups phase errors into one keyboard-scrollable expander', async ({ vscodeWindow }, testInfo) => {
+        await runCommand(vscodeWindow, 'Cosmos DB: [E2E Test] Use Skill Migration Flow');
+        const viewport =
+            vscodeWindow.viewportSize() ??
+            (await vscodeWindow.evaluate(() => ({
+                width: window.innerWidth,
+                height: window.innerHeight,
+            })));
+        try {
+            const frame = await openMigrationSeeded(vscodeWindow);
+            const project = readMigrationJson<{ phases: Record<string, unknown> }>('project.json')!;
+            project.phases.assessment = {
+                status: 'complete',
+                parsedAccessPatterns: Array.from({ length: 80 }, (_, index) => ({
+                    name: `Pattern ${index}`,
+                    type: 'read',
+                    frequency: 'daily',
+                    tables: ['dbo.Orders'],
+                    codeReferences: [],
+                    singleOrBatch: 42,
+                })),
+            };
+            const checkpoint = `${JSON.stringify(project, null, 2)}\n`;
+            writeFileSync(
+                path.join(process.env.COSMOSDB_E2E_WORKSPACE_DIR!, '.cosmosdb-migration/project.json'),
+                checkpoint,
+            );
+            const phase = frame.getByTestId('migration-phase-assessment');
+            await phase.getByRole('button', { name: /Phase 2: Domain Assessment/ }).click();
+            const diagnostics = phase.getByTestId('migration-assessment-diagnostics');
+            await expect(diagnostics.getByText('Project validation failed', { exact: true })).toBeVisible();
+            await expect(diagnostics.getByText('Evidence not verified', { exact: true })).toHaveCount(0);
+            await expect(diagnostics.getByText(/Required prerequisite:/)).toHaveCount(0);
+            await expect(diagnostics.getByRole('button', { name: /^Evidence freshness/ })).toHaveCount(0);
+            await expect(diagnostics.getByRole('button', { name: 'Restart Generation', exact: true })).toHaveCount(0);
+            await expect(diagnostics.getByRole('button', { name: 'Review and Fix', exact: true })).toBeEnabled();
+            await expect(
+                diagnostics.getByText('Resolve the project validation errors, then refresh status.', { exact: true }),
+            ).toBeVisible();
+            const toggle = diagnostics.getByRole('button', { name: 'Errors (80)', exact: true });
+            await expect(toggle).toHaveCount(1);
+            await expect(toggle).toHaveText('Errors (80)');
+            await expect(toggle).toHaveAccessibleName('Errors (80)');
+            await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+            await expect(diagnostics.getByRole('button', { name: 'Next diagnostics', exact: true })).toHaveCount(0);
+            await toggle.focus();
+            await toggle.press('Enter');
+            const list = diagnostics.getByRole('textbox', { name: 'Errors (80)', exact: true });
+            await expect(list).toBeVisible();
+            await expect(list).toHaveJSProperty('readOnly', true);
+            expect((await list.inputValue()).split('\n')).toHaveLength(80);
+            const dimensions = await list.evaluate((element) => ({
+                height: element.clientHeight,
+                content: element.scrollHeight,
+            }));
+            expect(dimensions.height).toBeLessThanOrEqual(240);
+            expect(dimensions.content).toBeGreaterThan(dimensions.height);
+            await list.focus();
+            await expect(list).toBeFocused();
+            await list.press('PageDown');
+            await expect.poll(() => list.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+            await list.evaluate((element) => {
+                element.scrollTop = element.scrollHeight;
+            });
+            const scrollTop = await list.evaluate((element) => element.scrollTop);
+            await diagnostics.getByRole('button', { name: 'Refresh Status', exact: true }).click();
+            await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+            await expect.poll(() => list.evaluate((element) => element.scrollTop)).toBe(scrollTop);
+            expect(readMigrationArtifact('project.json')).toBe(checkpoint);
+            await diagnostics.screenshot({ path: testInfo.outputPath('grouped-errors-desktop.png') });
+            await vscodeWindow.setViewportSize({ width: 720, height: 900 });
+            await expect(list).toBeVisible();
+            expect(await list.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+            expect(await diagnostics.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+            await diagnostics.screenshot({ path: testInfo.outputPath('grouped-errors-narrow.png') });
+        } finally {
+            await vscodeWindow.setViewportSize(viewport);
+            setMigrationSettings({ useProgrammaticFlow: true });
+        }
+    });
+
+    test('observes historical completion read-only and reviews blockers before approval', async ({
+        vscodeWindow,
+    }, testInfo) => {
+        await runCommand(vscodeWindow, 'Cosmos DB: [E2E Test] Use Skill Migration Flow');
+        try {
+            let frame = await openMigrationSeeded(vscodeWindow);
+            const project = readMigrationJson<{ phases: Record<string, unknown> }>('project.json')!;
+            project.phases.assessment = {
+                status: 'complete',
+                completedAt: '2026-05-18T10:37:56.400Z',
+                parsedAccessPatterns: [
+                    {
+                        name: 'Read Orders',
+                        type: 'read',
+                        frequency: 'daily',
+                        tables: ['dbo.Orders'],
+                        codeReferences: [],
+                        singleOrBatch: null,
+                        codeExample: null,
+                    },
+                ],
+            };
+            Object.assign(project, { futureMetadata: { preserved: true } });
+            const checkpoint = `${JSON.stringify(project, null, 2)}\n`;
+            const root = path.join(process.env.COSMOSDB_E2E_WORKSPACE_DIR!, '.cosmosdb-migration');
+            const summaryPath = 'phases/2-assessment/assessment-summary.md';
+            const summary = '# Historical assessment\n\nEarlier results retained for inspection.\n';
+            mkdirSync(path.join(root, 'phases/2-assessment'), { recursive: true });
+            writeFileSync(path.join(root, summaryPath), summary);
+            writeFileSync(path.join(root, 'project.json'), checkpoint);
+            await closeAllEditorTabs(vscodeWindow);
+            frame = await openMigrationAssistant(vscodeWindow);
+            const phase = frame.getByTestId('migration-phase-assessment');
+            await phase.getByRole('button', { name: /Phase 2: Domain Assessment/ }).click();
+            const diagnostics = phase.getByTestId('migration-assessment-diagnostics');
+            await expect(diagnostics.getByTestId('migration-recorded-completion')).toContainText(
+                'Recorded as complete on',
+            );
+            await expect(diagnostics.getByTestId('migration-recorded-completion')).toContainText(
+                'Not verified for the current Skill workflow.',
+            );
+            await expect(diagnostics.getByTestId('migration-compatibility-notice')).toContainText(
+                '2 empty optional fields',
+            );
+            await expect(phase.getByTestId('migration-phase2-status-complete')).toHaveCount(0);
+            await expect(diagnostics.getByText('Project validation failed', { exact: true })).toHaveCount(0);
+            await diagnostics.getByRole('button', { name: 'Compatibility adjustments (2)', exact: true }).click();
+            await expect(
+                diagnostics.getByRole('textbox', { name: 'Compatibility adjustments (2)', exact: true }),
+            ).toHaveJSProperty('readOnly', true);
+            expect(
+                await diagnostics
+                    .getByRole('textbox', { name: 'Compatibility adjustments (2)', exact: true })
+                    .inputValue(),
+            ).toContain('/phases/assessment/parsedAccessPatterns/0/singleOrBatch');
+            const promptCount = readCapturedPrompts().length;
+            await diagnostics.getByRole('button', { name: 'Refresh Status', exact: true }).click();
+            expect(readMigrationArtifact('project.json')).toBe(checkpoint);
+            expect(readMigrationArtifact(summaryPath)).toBe(summary);
+            expect(readCapturedPrompts()).toHaveLength(promptCount);
+            const review = diagnostics.getByRole('button', { name: 'Review and Fix', exact: true });
+            await expect(review).toBeEnabled();
+            await expect(review).toHaveAccessibleName('Review and Fix');
+            await expect(review).toHaveAccessibleDescription(
+                'Domain Assessment: review blockers and propose fixes. Changes require your approval.',
+            );
+            expect(await review.evaluate((element) => element.parentElement?.firstElementChild === element)).toBe(true);
+            await diagnostics.screenshot({ path: testInfo.outputPath('historical-completion.png') });
+            await review.click();
+            await expect.poll(() => readCapturedPrompts().length).toBe(promptCount + 1);
+            const request = readCapturedPrompts().at(-1)!;
+            expect(request.route).toBe('skill-assessment');
+            expect(request.promptText).toContain(
+                'Review the assessment migration blockers and propose fixes for approval.',
+            );
+            expect(request.promptText).toContain('Do not change files or resources before explicit approval.');
+            expect(request.promptText).not.toMatch(/Regenerate|Allow provisioning/);
+            expect(request.chat?.newSession).toBe(true);
+            await expect(frame.getByTestId('migration-run-activity')).toHaveCount(0);
+            expect(readMigrationArtifact('project.json')).toBe(checkpoint);
+            expect(readMigrationArtifact(summaryPath)).toBe(summary);
+        } finally {
             setMigrationSettings({ useProgrammaticFlow: true });
         }
     });

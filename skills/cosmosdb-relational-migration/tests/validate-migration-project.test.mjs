@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { resolveDdlParsingChoice, resolveDdlParsingFallback, validateMigrationProject } from '../scripts/validate-migration-project.mjs';
+import { normalizeMigrationProjectCompatibility, resolveDdlParsingChoice, resolveDdlParsingFallback, validateMigrationProject } from '../scripts/validate-migration-project.mjs';
 
 function compatibleProject() {
     return {
@@ -70,6 +70,46 @@ function compatibleProject() {
 
 test('accepts the complete established project shape', () => {
     assert.deepEqual(validateMigrationProject(compatibleProject()), []);
+});
+
+test('normalizes only known optional null fields without mutating project state', () => {
+    const project = compatibleProject();
+    const pattern = project.phases.assessment.parsedAccessPatterns[0];
+    Object.assign(pattern, { filterFields: null, singleOrBatch: null, sqlExample: null, codeExample: null, futureField: null });
+    project.futureMetadata = { keep: ['unchanged'], nullable: null };
+    const original = structuredClone(project);
+    const result = normalizeMigrationProjectCompatibility(project);
+    assert.deepEqual(project, original);
+    assert.equal(validateMigrationProject(project).length, 4);
+    assert.deepEqual(validateMigrationProject(result.project), []);
+    assert.deepEqual(result.changes, ['filterFields', 'singleOrBatch', 'sqlExample', 'codeExample']
+        .map(field => `/phases/assessment/parsedAccessPatterns/0/${field}`));
+    for (const field of ['filterFields', 'singleOrBatch', 'sqlExample', 'codeExample']) delete original.phases.assessment.parsedAccessPatterns[0][field];
+    assert.deepEqual(result.project, original);
+    assert.notEqual(result.project, project);
+    assert.deepEqual(normalizeMigrationProjectCompatibility(result.project), { project: result.project, changes: [] });
+});
+
+test('does not coerce invalid values or required fields during compatibility normalization', () => {
+    for (const invalid of [0, false, [], {}]) {
+        const project = compatibleProject();
+        project.phases.assessment.parsedAccessPatterns[0].singleOrBatch = invalid;
+        const result = normalizeMigrationProjectCompatibility(project);
+        assert.deepEqual(result.changes, []);
+        assert.deepEqual(validateMigrationProject(result.project), validateMigrationProject(project));
+        assert(validateMigrationProject(result.project).some(error => error.path.endsWith('.singleOrBatch')));
+    }
+    for (const invalid of [null, 'not-an-object', { version: 2 }, { version: 1, phases: { assessment: { parsedAccessPatterns: 'invalid' } } }]) {
+        const result = normalizeMigrationProjectCompatibility(invalid);
+        assert.deepEqual(result, { project: invalid, changes: [] });
+    }
+    const project = compatibleProject();
+    project.phases.assessment.parsedAccessPatterns[0].name = null;
+    project.phases.assessment.parsedAccessPatterns[0].filterFields = 'CustomerID';
+    const result = normalizeMigrationProjectCompatibility(project);
+    assert.deepEqual(result.changes, []);
+    assert(validateMigrationProject(result.project).some(error => error.path.endsWith('.name')));
+    assert.equal(result.project.phases.assessment.parsedAccessPatterns[0].filterFields, 'CustomerID');
 });
 
 test('validates optional target capacity without changing the model decision', () => {

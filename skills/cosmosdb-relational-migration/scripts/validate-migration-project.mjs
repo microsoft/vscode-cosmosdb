@@ -327,6 +327,24 @@ export function validateMigrationExecution(value) {
     return errors;
 }
 
+export function normalizeMigrationProjectCompatibility(value) {
+    const changes = [];
+    if (!isObject(value) || value.version !== 1) return { project: value, changes };
+    const project = structuredClone(value);
+    const patterns = project.phases?.assessment?.parsedAccessPatterns;
+    if (!Array.isArray(patterns)) return { project, changes };
+    patterns.forEach((pattern, index) => {
+        if (!isObject(pattern)) return;
+        for (const field of ['filterFields', 'singleOrBatch', 'sqlExample', 'codeExample']) {
+            if (pattern[field] === null) {
+                delete pattern[field];
+                changes.push(`/phases/assessment/parsedAccessPatterns/${index}/${field}`);
+            }
+        }
+    });
+    return { project, changes };
+}
+
 export function validateMigrationProject(project) {
     const errors = [];
     if (!requireObject(project, '$', errors)) return errors;
@@ -362,7 +380,10 @@ Usage: node validate-migration-project.mjs <project.json>
 Read-only validation of the version 1 project shape. Does not validate artifact contents,
 freshness, or phase completion. The required file path resolves from the current directory.
 Use for targeted diagnosis; state writes and completion checks already validate project shape.
-Outputs JSON {valid, errors}. Exit: 0 when valid; 1 for invalid JSON, schema, or I/O errors.
+Reads interpret null values in the four optional Assessment access-pattern string fields
+as omitted, without rewriting the file. No other invalid values are coerced.
+Outputs JSON {valid, errors, compatibilityChanges?}; compatibilityChanges lists adjusted
+JSON pointers. Exit: 0 when valid; 1 for invalid JSON, schema, or I/O errors.
 `)) return 0;
     const filePath = argv[0];
     if (!filePath || argv.length !== 1) {
@@ -370,9 +391,10 @@ Outputs JSON {valid, errors}. Exit: 0 when valid; 1 for invalid JSON, schema, or
         return 1;
     }
     try {
-        const project = JSON.parse(fs.readFileSync(path.resolve(filePath), 'utf8'));
+        const { project, changes } = normalizeMigrationProjectCompatibility(JSON.parse(fs.readFileSync(path.resolve(filePath), 'utf8')));
         const errors = validateMigrationProject(project);
-        process.stdout.write(`${JSON.stringify({ valid: errors.length === 0, errors }, null, 2)}\n`);
+        process.stdout.write(`${JSON.stringify({ valid: errors.length === 0, errors,
+            ...(changes.length ? { compatibilityChanges: changes } : {}) }, null, 2)}\n`);
         return errors.length === 0 ? 0 : 1;
     } catch (error) {
         process.stderr.write(`${error.message}\n`);

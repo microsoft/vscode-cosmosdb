@@ -4,8 +4,17 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
+import { createHash } from 'node:crypto';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import {
+    readProjectState,
+    updateProjectState,
+} from '../../skills/cosmosdb-relational-migration/scripts/project-state.mjs';
+import {
+    normalizeMigrationProjectCompatibility,
+    validateMigrationProject,
+} from '../../skills/cosmosdb-relational-migration/scripts/validate-migration-project.mjs';
 import { type ParsedAccessPattern } from '../panels/migration/helpers/migrationHelpers';
 
 export const MIGRATION_FOLDER = '.cosmosdb-migration';
@@ -123,6 +132,7 @@ function hasLegacyWorkspaceRootPath(value: unknown): boolean {
 }
 
 export function normalizeMigrationProject(value: unknown, defaultName: string): ProjectJson | undefined {
+    value = normalizeMigrationProjectCompatibility(value).project;
     if (!isRecord(value)) return undefined;
 
     const phases = isRecord(value.phases) ? value.phases : {};
@@ -154,6 +164,8 @@ export class MigrationProjectService {
     private readonly migrationRoot: string;
     private readonly projectFilePath: string;
     private initialized = false;
+    private projectRevision: string | undefined;
+    private readonly projectRevisions = new WeakMap<ProjectJson, string>();
 
     constructor(private readonly workspacePath: string) {
         this.migrationRoot = path.join(workspacePath, MIGRATION_FOLDER);
@@ -231,9 +243,11 @@ export class MigrationProjectService {
     async load(options: { readOnly?: boolean } = {}): Promise<ProjectJson | undefined> {
         try {
             const data = await vscode.workspace.fs.readFile(MigrationProjectService.toUri(this.projectFilePath));
+            this.projectRevision = createHash('sha256').update(data).digest('hex');
             const parsed: unknown = JSON.parse(Buffer.from(data).toString('utf-8'));
             const project = normalizeMigrationProject(parsed, path.basename(this.workspacePath));
             if (!project) return undefined;
+            this.projectRevisions.set(project, this.projectRevision);
 
             const wasMissingSessionId = !project.sessionId;
             const shouldPersistNormalizedPaths = hasLegacyWorkspaceRootPath(parsed);
@@ -256,9 +270,20 @@ export class MigrationProjectService {
      * Ensures the migration folder structure is created on the first save.
      */
     async save(project: ProjectJson): Promise<void> {
+        const revision =
+            this.projectRevisions.get(project) ?? this.projectRevision ?? readProjectState(this.workspacePath).revision;
+        const normalized = normalizeMigrationProjectCompatibility(project).project;
+        const errors = validateMigrationProject(normalized);
+        if (errors.length) {
+            throw new Error(
+                l10n.t('Invalid migration project: {errors}', {
+                    errors: errors.map((error) => `${error.path}: ${error.message}`).join('; '),
+                }),
+            );
+        }
         await this.ensureInitialized();
-        const content = Buffer.from(JSON.stringify(project, null, 2), 'utf-8');
-        await vscode.workspace.fs.writeFile(MigrationProjectService.toUri(this.projectFilePath), content);
+        this.projectRevision = updateProjectState(this.workspacePath, revision, () => normalized).revision;
+        this.projectRevisions.set(project, this.projectRevision);
     }
 
     /**
@@ -275,6 +300,7 @@ export class MigrationProjectService {
         }
 
         this.initialized = false;
+        this.projectRevision = 'missing';
         return this.initialize(project.name);
     }
 

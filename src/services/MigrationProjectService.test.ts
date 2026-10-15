@@ -3,6 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import * as path from 'path';
 import { type Mock } from 'vitest';
 import * as vscode from 'vscode';
@@ -69,6 +71,52 @@ describe('MigrationProjectService paths', () => {
 
 describe('MigrationProjectService default input selections', () => {
     afterEach(() => vi.restoreAllMocks());
+
+    it('normalizes optional nulls read-only and saves canonical fields without changing unrelated data', async () => {
+        const workspace = mkdtempSync(path.join(tmpdir(), 'migration-compatible-save-'));
+        const service = new MigrationProjectService(workspace);
+        try {
+            const project = service.createDefaultProject('app');
+            Object.assign(project, { futureMetadata: { preserved: true } });
+            project.phases.assessment = {
+                status: 'complete',
+                parsedAccessPatterns: [
+                    {
+                        name: 'Read',
+                        type: 'read',
+                        frequency: 'daily',
+                        tables: ['Orders'],
+                        codeReferences: [],
+                    },
+                ],
+            };
+            Object.assign(project.phases.assessment.parsedAccessPatterns![0], { singleOrBatch: null });
+            const projectPath = path.join(workspace, MIGRATION_FOLDER, 'project.json');
+            mkdirSync(path.dirname(projectPath));
+            const original = JSON.stringify(project);
+            writeFileSync(projectPath, original);
+            vi.spyOn(vscode.workspace.fs, 'readFile').mockResolvedValue(Buffer.from(original));
+            const loaded = await service.load({ readOnly: true });
+            expect(loaded?.phases.assessment?.parsedAccessPatterns?.[0]).not.toHaveProperty('singleOrBatch');
+            expect(readFileSync(projectPath, 'utf8')).toBe(original);
+            await service.save(loaded!);
+            expect(JSON.parse(readFileSync(projectPath, 'utf8'))).toEqual(loaded);
+            expect(loaded).toHaveProperty('futureMetadata.preserved', true);
+            expect(project.phases.assessment.parsedAccessPatterns![0]).toHaveProperty('singleOrBatch', null);
+            writeFileSync(projectPath, `${readFileSync(projectPath, 'utf8')}\n`);
+            const changed = readFileSync(projectPath, 'utf8');
+            vi.mocked(vscode.workspace.fs.readFile).mockResolvedValue(Buffer.from(changed));
+            const refreshed = await service.load({ readOnly: true });
+            expect(refreshed).not.toBe(loaded);
+            await expect(service.save(loaded!)).rejects.toThrow('Project changed');
+            expect(readFileSync(projectPath, 'utf8')).toBe(changed);
+            Object.assign(loaded!.phases.assessment!.parsedAccessPatterns![0], { singleOrBatch: 42 });
+            await expect(service.save(loaded!)).rejects.toThrow('Invalid migration project');
+            expect(readFileSync(projectPath, 'utf8')).toBe(changed);
+        } finally {
+            rmSync(workspace, { recursive: true, force: true });
+        }
+    });
 
     it('normalizes old projects in memory without saving during read-only observation', async () => {
         const service = new MigrationProjectService(path.join(path.sep, 'workspace', 'app'));
@@ -322,19 +370,25 @@ describe('MigrationProjectService.reset', () => {
     });
 
     it('deletes the entire migration root so tooling and abandoned replacements are removed', async () => {
-        const workspacePath = path.join(path.sep, 'workspace', 'app');
+        const workspacePath = mkdtempSync(path.join(tmpdir(), 'migration-project-reset-'));
         const service = new MigrationProjectService(workspacePath);
         const project = service.createDefaultProject('app');
-
-        const resetProject = await service.reset(project);
-
-        expect(vscode.workspace.fs.delete).toHaveBeenCalledWith(
-            MigrationProjectService.toUri(workspacePath, MIGRATION_FOLDER),
-            { recursive: true, useTrash: false },
-        );
-        expect(resetProject.name).toBe('app');
-        expect(resetProject.runCounts).toEqual({});
-        expect(resetProject.phases.discovery.status).toBe('not-started');
+        try {
+            await service.save(project);
+            vi.mocked(vscode.workspace.fs.delete).mockImplementation(async (uri) => {
+                rmSync(uri.fsPath, { recursive: true, force: true });
+            });
+            const resetProject = await service.reset(project);
+            expect(vscode.workspace.fs.delete).toHaveBeenCalledWith(
+                expect.objectContaining({ scheme: 'file', path: path.join(workspacePath, MIGRATION_FOLDER) }),
+                { recursive: true, useTrash: false },
+            );
+            expect(resetProject.name).toBe('app');
+            expect(resetProject.runCounts).toEqual({});
+            expect(resetProject.phases.discovery.status).toBe('not-started');
+        } finally {
+            rmSync(workspacePath, { recursive: true, force: true });
+        }
     });
 
     it('does not recreate the project when an existing migration root cannot be deleted', async () => {

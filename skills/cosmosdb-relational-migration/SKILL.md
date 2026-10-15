@@ -7,7 +7,8 @@ description: |
   .cosmosdb-migration project, infer relational DDL from application code when no DDL
   was supplied, verify whether the application language has a supported Cosmos DB
   SDK, execute one migration phase, or remember migration findings, decisions, or a
-  generated Cosmos DB model for another application. Requires the
+  generated Cosmos DB model for another application, or review migration blockers
+  and propose fixes for approval. Requires the
   cosmosdb-best-practices peer Skill.
 license: MIT
 metadata:
@@ -34,7 +35,7 @@ identify. Do not load every reference at the start of a run.
 | [Schema conversion](./references/phases/schema-conversion.md) | Designing, merging, and validating the target model. |
 | [Provisioning](./references/phases/provisioning.md) | Generating deployment artifacts or applying authorized target changes. |
 | [Code migration](./references/phases/code-migration.md) | Planning or executing application changes against the accepted model. |
-| [Interaction and checkpoints](./references/workflow/interaction-and-checkpoints.md) | Handling execution modes, decisions, blockers, and phase handoffs. |
+| [Interaction and checkpoints](./references/workflow/interaction-and-checkpoints.md) | Reviewing blockers for repair approval; handling modes, decisions, and phase handoffs. |
 | [Migration memory](./references/workflow/memory.md) | Starting any migration task, remembering findings or decisions, or preserving a model for another application. |
 | [Best-practices integration](./references/workflow/best-practices-integration.md) | Loading the required peer and selecting guidance for Cosmos DB decisions. |
 | [DDL interpretation](./references/workflow/ddl-interpretation.md) | Choosing a parser and interpreting selected DDL without changing authoritative inputs. |
@@ -140,6 +141,10 @@ be inferred safely.
   validate performs validation only. When neither is explicit, autonomous mode always
   regenerates completed phase outputs, while interactive mode asks whether to validate
   existing outputs or regenerate them.
+- For review-and-fix requests, resolve the project scope and follow
+  [Review and Fix](./references/workflow/interaction-and-checkpoints.md#review-and-fix).
+  A supplied phase scopes the review, including prerequisites, not execution. Require
+  explicit approval before writes or phase execution; this overrides mode fallback and rerun defaults.
 - `additional instructions`: optional phase guidance supplied with the request.
 - `workspace`: selected application project root; default to the sole workspace folder
   only when it is also the target project root. Resolve it as described below.
@@ -214,6 +219,7 @@ Examples:
 - "Run the assessment phase of a relational database migration to Azure Cosmos DB."
 - "Run the schema conversion phase of a relational database migration to Azure Cosmos DB."
 - "Regenerate the assessment results for a relational database migration to Azure Cosmos DB."
+- "Review the assessment migration blockers and propose fixes for approval. Run in interactive mode. Do not change files or resources before explicit approval."
 - "Run the provisioning phase of a relational database migration to Azure Cosmos DB. Allow provisioning for this invocation."
 - "Create an application code migration plan for moving this relational application to Azure Cosmos DB."
 - "Migrate the application code using the validated migration plan." (explicitly permits application edits)

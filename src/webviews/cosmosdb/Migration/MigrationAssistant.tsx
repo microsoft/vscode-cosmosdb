@@ -44,6 +44,7 @@ import {
 import {
     AddRegular,
     ArrowClockwiseRegular,
+    ArrowUpRegular,
     ChatRegular,
     CheckmarkCircleFilled,
     ChevronDownRegular,
@@ -65,7 +66,7 @@ import {
 } from '@fluentui/react-icons';
 import { useTrpcClient } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
-import { useCallback, useEffect, useId, useMemo, useState, type ReactElement, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { type MigrationAppRouter } from '../../../panels/trpc/appRouter';
 import { sanitizeCosmosDBAccountName, validateCosmosDBAccountName } from '../../../utils/cosmosDBAccountName';
 import { formatTokenCount, isAutoModel, partitionModelsByCapability } from '../../../utils/modelUtils';
@@ -73,9 +74,16 @@ import { CosmosDBIcon } from '../../icons/CosmosDBIcon';
 import { BaseContextProvider, type DispatchToastFn } from '../../utils/context/BaseContextProvider';
 import { ErrorBoundary } from '../../utils/ErrorBoundary';
 import {
+    getMigrationPhaseOutcome,
+    getMigrationPrerequisite,
+    getMigrationRunPhase,
+    getMigrationValidationFailure,
     isCodeMigrationReady,
     isDiscoveryLaunchReady,
     isMigrationRunActive,
+    type MigrationCompletionMap,
+    type MigrationFreshnessCause,
+    type MigrationPhaseName,
     type MigrationRunActivity,
 } from './state/deriveMigrationPhaseStates';
 import { MigrationChannel } from './state/MigrationChannel';
@@ -91,6 +99,59 @@ const tooltipParagraphStyle = { margin: '0 0 8px 0' };
 const tooltipParagraphLastStyle = { margin: 0 };
 
 const useStyles = makeStyles({
+    diagnostics: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '8px',
+        minWidth: 0,
+        padding: '12px',
+        border: '1px solid var(--vscode-panel-border)',
+        borderRadius: '4px',
+        overflowWrap: 'anywhere',
+        '& ul': { margin: 0, paddingLeft: '20px' },
+    },
+    diagnosticItem: {
+        borderTop: '1px solid var(--vscode-panel-border)',
+    },
+    diagnosticCause: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '4px',
+        minWidth: 0,
+    },
+    diagnosticSummary: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        minWidth: 0,
+        flex: 1,
+    },
+    diagnosticTitle: {
+        flex: 1,
+        minWidth: 0,
+    },
+    diagnosticBody: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'flex-start',
+        gap: '8px',
+        paddingBottom: '12px',
+        minWidth: 0,
+        '& code': { whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' },
+    },
+    diagnosticMessageList: {
+        maxHeight: '240px',
+        width: '100%',
+        boxSizing: 'border-box',
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        overscrollBehaviorY: 'contain',
+        whiteSpace: 'pre-wrap',
+        '&:focus-visible': {
+            outline: '1px solid var(--vscode-focusBorder)',
+            outlineOffset: '2px',
+        },
+    },
     actionGroup: {
         display: 'inline-flex',
         alignItems: 'center',
@@ -614,6 +675,429 @@ function MigrationActionButton({
     );
 }
 
+function migrationPhaseLabel(phase: MigrationPhaseName): string {
+    switch (phase) {
+        case 'preflight':
+            return l10n.t('Preflight');
+        case 'discovery':
+            return l10n.t('Source Discovery');
+        case 'assessment':
+            return l10n.t('Domain Assessment');
+        case 'schema-conversion':
+            return l10n.t('Schema Conversion');
+        case 'provisioning':
+            return l10n.t('Target Provisioning');
+        case 'code-migration':
+            return l10n.t('Code Migration');
+    }
+}
+
+function migrationInputLabel(cause: MigrationFreshnessCause): string {
+    switch (cause.id) {
+        case 'volumetrics':
+            return l10n.t('Volumetrics');
+        case 'access-patterns':
+            return l10n.t('Access patterns');
+        case 'application-analysis':
+            return l10n.t('Application details');
+        case 'ddl-parsing-choice':
+            return l10n.t('DDL parsing choice');
+        default:
+            return cause.path?.split('/').at(-1) ?? cause.id;
+    }
+}
+
+function migrationOutcomeLabel(outcome: NonNullable<ReturnType<typeof getMigrationPhaseOutcome>>): string {
+    switch (outcome) {
+        case 'blocked':
+            return l10n.t('Blocked');
+        case 'failed':
+            return l10n.t('Failed');
+        case 'cancelled':
+            return l10n.t('Stopped');
+        case 'stale':
+            return l10n.t('Stale evidence');
+        case 'unknown':
+            return l10n.t('Evidence not verified');
+        case 'invalid':
+            return l10n.t('Validation failed');
+        case 'project-invalid':
+            return l10n.t('Project validation failed');
+        case 'validation-unavailable':
+            return l10n.t('Validation unavailable');
+    }
+}
+
+export function MigrationPhaseDiagnostics({
+    phase,
+    completion,
+    activity,
+    workspacePath,
+    onOpenFile,
+    onReload,
+    onReview,
+    onGoToPhase,
+    reviewDisabled = false,
+}: {
+    phase: MigrationPhaseName;
+    completion: Partial<MigrationCompletionMap> | null;
+    activity: MigrationRunActivity | null;
+    workspacePath: string;
+    onOpenFile: (filePath: string) => void;
+    onReload: () => void;
+    onReview?: (phase: MigrationPhaseName) => void | Promise<void>;
+    onGoToPhase?: (phase: MigrationPhaseName) => void;
+    reviewDisabled?: boolean;
+}) {
+    const styles = useStyles();
+    const { announce } = useAnnounce();
+    const [page, setPage] = useState(0);
+    const [reviewPending, setReviewPending] = useState(false);
+    const [reviewError, setReviewError] = useState<string | null>(null);
+    const outcome = getMigrationPhaseOutcome(phase, completion, activity);
+    const result = completion?.[phase];
+    const detail = getMigrationRunPhase(activity, completion) === phase ? activity?.detail : undefined;
+    const compatibilityChanges = phase === 'assessment' ? (result?.compatibilityChanges ?? []) : [];
+    const recordedCompletion =
+        result?.status === 'complete' && !result.complete && !getMigrationValidationFailure(result);
+    const validationInputs = (result?.staleInputs ?? []).filter((input) =>
+        ['project', 'completion-check', 'phase'].includes(input.id),
+    );
+    const causes = (result?.freshnessCauses ?? []).filter(
+        (cause) => !['project', 'completion-check', 'phase'].includes(cause.id),
+    );
+    const causeDescription = (
+        cause: MigrationFreshnessCause,
+        input = cause.path?.split('/').at(-1) ?? migrationInputLabel(cause),
+    ) =>
+        l10n.t('{phase} / {input}: {reason}', {
+            phase: migrationPhaseLabel(cause.phase),
+            input,
+            reason: cause.reason,
+        });
+    const renderCauseDescription = (cause: MigrationFreshnessCause) => {
+        if (
+            !cause.canOpen ||
+            !cause.path ||
+            cause.path.split(/[\\/]/).includes('..') ||
+            /^(?:[\\/]|[a-z]+:)/i.test(cause.path)
+        ) {
+            return causeDescription(cause);
+        }
+        const marker = '__MIGRATION_FRESHNESS_FILE__';
+        const description = causeDescription(cause, marker);
+        const markerIndex = description.indexOf(marker);
+        if (markerIndex < 0) return causeDescription(cause);
+        return (
+            <>
+                {description.slice(0, markerIndex)}
+                <Link inline aria-description={cause.path} onClick={() => onOpenFile(`${workspacePath}/${cause.path}`)}>
+                    {cause.path.split('/').at(-1)}
+                </Link>
+                {description.slice(markerIndex + marker.length)}
+            </>
+        );
+    };
+    const errors = [...new Set(result?.errors.length ? result.errors : validationInputs.map((input) => input.reason))];
+    const freshness = [
+        ...new Set(
+            causes.length
+                ? causes.map((cause) => causeDescription(cause))
+                : (result?.staleInputs ?? [])
+                      .filter((input) => !validationInputs.includes(input))
+                      .map((input) => `${input.id}: ${input.reason}`),
+        ),
+    ];
+    const diagnostics: { key: string; title: string; status?: string; path?: string; messages: string[] }[] = [
+        ...(compatibilityChanges.length
+            ? [
+                  {
+                      key: 'compatibility',
+                      title: l10n.t('Compatibility adjustments ({count})', { count: compatibilityChanges.length }),
+                      messages: compatibilityChanges,
+                  },
+              ]
+            : []),
+        ...(errors.length
+            ? [{ key: 'errors', title: l10n.t('Errors ({count})', { count: errors.length }), messages: errors }]
+            : []),
+        ...(freshness.length
+            ? [
+                  {
+                      key: 'freshness',
+                      title: l10n.t('Evidence freshness ({count})', { count: freshness.length }),
+                      messages: freshness,
+                  },
+              ]
+            : []),
+        ...(result?.artifacts ?? [])
+            .filter((artifact) => artifact.state !== 'present' || artifact.diagnostics?.length)
+            .map((artifact) => ({
+                key: `artifact:${artifact.path}:${artifact.description}`,
+                title: artifact.description,
+                status: artifact.state === 'missing' ? l10n.t('Missing') : l10n.t('Invalid'),
+                path: artifact.path,
+                messages: [
+                    ...new Set(
+                        (artifact.diagnostics ?? []).map((diagnostic) =>
+                            typeof diagnostic === 'string'
+                                ? diagnostic
+                                : [diagnostic.code, diagnostic.path, diagnostic.message].filter(Boolean).join(': '),
+                        ),
+                    ),
+                ],
+            })),
+    ];
+    const label = outcome ? migrationOutcomeLabel(outcome) : l10n.t('Compatibility adjustments');
+    const phaseLabel = migrationPhaseLabel(phase);
+    const diagnosticCount = diagnostics.reduce(
+        (count, diagnostic) => count + Math.max(1, diagnostic.messages.length),
+        0,
+    );
+    const announcement =
+        outcome || compatibilityChanges.length
+            ? `${phaseLabel}: ${label}. ${detail ?? ''} ${l10n.t('{count} diagnostics.', { count: diagnosticCount })}`
+            : '';
+    useEffect(() => {
+        if (!announcement) return;
+        const timer = setTimeout(() => announce(announcement), 200);
+        return () => clearTimeout(timer);
+    }, [announcement, announce]);
+    if (!outcome && !compatibilityChanges.length) return null;
+    const lastPage = Math.max(0, Math.ceil(diagnostics.length / 20) - 1);
+    const currentPage = Math.min(page, lastPage);
+    const prerequisite = getMigrationPrerequisite(phase, completion);
+    const artifacts =
+        result?.artifacts.filter(
+            (artifact) =>
+                artifact.canOpen === true &&
+                !artifact.path.split(/[\\/]/).includes('..') &&
+                !/^(?:[\\/]|[a-z]+:)/i.test(artifact.path),
+        ) ?? [];
+    const startReview = async (): Promise<void> => {
+        if (!onReview || reviewPending) return;
+        setReviewPending(true);
+        setReviewError(null);
+        try {
+            const request = onReview(phase);
+            if (request) await request;
+        } catch (error) {
+            setReviewError(
+                l10n.t('Could not open the review: {message}', {
+                    message: error instanceof Error ? error.message : String(error),
+                }),
+            );
+        } finally {
+            setReviewPending(false);
+        }
+    };
+    return (
+        <section
+            className={styles.diagnostics}
+            aria-label={l10n.t('{phase} diagnostics', { phase: phaseLabel })}
+            data-testid={`migration-${phase}-diagnostics`}
+        >
+            <Text weight="semibold">
+                <WarningRegular aria-hidden="true" /> {label}
+            </Text>
+            {recordedCompletion && (
+                <Text data-testid="migration-recorded-completion">
+                    {result.recordedCompletedAt && Number.isFinite(Date.parse(result.recordedCompletedAt))
+                        ? outcome === 'stale'
+                            ? l10n.t('Recorded as complete on {date}. Evidence is now stale.', {
+                                  date: new Date(result.recordedCompletedAt).toLocaleString(),
+                              })
+                            : l10n.t('Recorded as complete on {date}. Not verified for the current Skill workflow.', {
+                                  date: new Date(result.recordedCompletedAt).toLocaleString(),
+                              })
+                        : outcome === 'stale'
+                          ? l10n.t('Recorded as complete. Evidence is now stale.')
+                          : l10n.t('Recorded as complete. Not verified for the current Skill workflow.')}
+                </Text>
+            )}
+            {compatibilityChanges.length > 0 && (
+                <Text data-testid="migration-compatibility-notice">
+                    {l10n.t(
+                        'Compatibility: {count} empty optional fields are interpreted as omitted. Viewing this project does not change the saved checkpoint.',
+                        {
+                            count: compatibilityChanges.length,
+                        },
+                    )}
+                </Text>
+            )}
+            {detail && (
+                <Text>
+                    {outcome === 'stale' && activity?.activity === 'complete'
+                        ? l10n.t('Last run: {detail}', { detail })
+                        : detail}
+                </Text>
+            )}
+            {outcome === 'blocked' && !detail && (
+                <Text>{l10n.t('The phase could not be accepted. Review the diagnostics below.')}</Text>
+            )}
+            {outcome === 'project-invalid' && (
+                <Text>{l10n.t('Resolve the project validation errors, then refresh status.')}</Text>
+            )}
+            {prerequisite === undefined && outcome !== 'project-invalid' && (
+                <Text>
+                    {l10n.t(
+                        'Validation could not establish prerequisite status. Review the reported errors before choosing a repair.',
+                    )}
+                </Text>
+            )}
+            {prerequisite && !causes.some((cause) => cause.phase === prerequisite) && (
+                <Text>
+                    {l10n.t('Required prerequisite: {phase}. Regenerate this phase first.', {
+                        phase: migrationPhaseLabel(prerequisite),
+                    })}
+                </Text>
+            )}
+            {diagnostics.length > 0 && (
+                <Accordion multiple collapsible data-testid="migration-diagnostic-failures">
+                    {diagnostics.slice(currentPage * 20, (currentPage + 1) * 20).map((diagnostic) => (
+                        <AccordionItem
+                            key={diagnostic.key}
+                            value={diagnostic.key}
+                            className={styles.diagnosticItem}
+                            data-testid="migration-diagnostic-failure"
+                        >
+                            <AccordionHeader size="small">
+                                <span className={styles.diagnosticSummary}>
+                                    <span className={styles.diagnosticTitle}>{diagnostic.title}</span>
+                                    {diagnostic.status && (
+                                        <Badge appearance="tint" color="warning">
+                                            {diagnostic.status}
+                                        </Badge>
+                                    )}
+                                </span>
+                            </AccordionHeader>
+                            <AccordionPanel>
+                                <div className={styles.diagnosticBody}>
+                                    {diagnostic.path && <code>{diagnostic.path}</code>}
+                                    {diagnostic.key === 'freshness' && causes.length > 0 ? (
+                                        <ul className={styles.diagnosticMessageList} aria-label={diagnostic.title}>
+                                            {causes.map((cause) => (
+                                                <li
+                                                    key={cause.path ?? `${cause.phase}:${cause.id}`}
+                                                    className={styles.diagnosticCause}
+                                                    data-testid="migration-freshness-cause"
+                                                >
+                                                    <Text>{renderCauseDescription(cause)}</Text>
+                                                    {onGoToPhase && cause.phase !== phase && (
+                                                        <div className={styles.actionGroup}>
+                                                            <Button
+                                                                size="small"
+                                                                icon={<ArrowUpRegular />}
+                                                                onClick={() => onGoToPhase(cause.phase)}
+                                                            >
+                                                                {l10n.t('Go to {phase}', {
+                                                                    phase: migrationPhaseLabel(cause.phase),
+                                                                })}
+                                                            </Button>
+                                                        </div>
+                                                    )}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    ) : (
+                                        diagnostic.messages.length > 0 &&
+                                        (['errors', 'freshness', 'compatibility'].includes(diagnostic.key) ? (
+                                            <Textarea
+                                                readOnly
+                                                resize="none"
+                                                aria-label={diagnostic.title}
+                                                value={diagnostic.messages.join('\n')}
+                                                rows={Math.min(12, diagnostic.messages.length)}
+                                                style={{ width: '100%' }}
+                                                textarea={{ className: styles.diagnosticMessageList }}
+                                            />
+                                        ) : (
+                                            <ul>
+                                                {diagnostic.messages.map((message) => (
+                                                    <li key={message}>{message}</li>
+                                                ))}
+                                            </ul>
+                                        ))
+                                    )}
+                                    {artifacts.some((artifact) => artifact.path === diagnostic.path) && (
+                                        <Button
+                                            size="small"
+                                            icon={<DocumentRegular />}
+                                            onClick={() =>
+                                                onOpenFile(`${workspacePath}/${diagnostic.path!.split('#')[0]}`)
+                                            }
+                                        >
+                                            {l10n.t('Open Artifact')}
+                                        </Button>
+                                    )}
+                                </div>
+                            </AccordionPanel>
+                        </AccordionItem>
+                    ))}
+                </Accordion>
+            )}
+            {lastPage > 0 && (
+                <div className={styles.actionGroup}>
+                    <Button size="small" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>
+                        {l10n.t('Previous diagnostics')}
+                    </Button>
+                    <Text>{l10n.t('Page {page} of {count}', { page: currentPage + 1, count: lastPage + 1 })}</Text>
+                    <Button size="small" disabled={currentPage === lastPage} onClick={() => setPage(currentPage + 1)}>
+                        {l10n.t('Next diagnostics')}
+                    </Button>
+                </div>
+            )}
+            {artifacts.length > 0 && (
+                <details>
+                    <summary>{l10n.t('Available artifacts')}</summary>
+                    <ul>
+                        {artifacts.map((artifact) => (
+                            <li key={artifact.path}>
+                                <Link onClick={() => onOpenFile(`${workspacePath}/${artifact.path.split('#')[0]}`)}>
+                                    {artifact.path}
+                                </Link>
+                            </li>
+                        ))}
+                    </ul>
+                </details>
+            )}
+            <div className={styles.actionGroup}>
+                {onReview && outcome && (
+                    <Button
+                        appearance="primary"
+                        size="small"
+                        icon={
+                            reviewPending ? (
+                                <Spinner size="extra-tiny" appearance="inverted" aria-hidden="true" />
+                            ) : (
+                                <SparkleRegular />
+                            )
+                        }
+                        disabled={reviewDisabled || reviewPending || isMigrationRunActive(activity)}
+                        aria-description={l10n.t(
+                            '{phase}: review blockers and propose fixes. Changes require your approval.',
+                            { phase: phaseLabel },
+                        )}
+                        onClick={() => {
+                            void startReview();
+                        }}
+                    >
+                        {l10n.t('Review and Fix')}
+                    </Button>
+                )}
+                <Button size="small" icon={<ArrowClockwiseRegular />} onClick={onReload}>
+                    {l10n.t('Refresh Status')}
+                </Button>
+            </div>
+            {reviewError && (
+                <Text role="alert" className={styles.errorText}>
+                    {reviewError}
+                </Text>
+            )}
+        </section>
+    );
+}
+
 function FileListExpander({
     files,
     excludedFiles,
@@ -875,6 +1359,7 @@ function ReferencedInCodeStatus({ isMapped }: { isMapped: boolean }): ReactEleme
 
 function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
     const styles = useStyles();
+    const rootRef = useRef<HTMLDivElement>(null);
     const analysisLabelId = useId();
     const state = useMigrationState();
     const dispatch = useMigrationDispatch();
@@ -911,11 +1396,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
 
     // Derived phase states
     const isRunActive = isMigrationRunActive(state.runActivity);
-    const runPhase =
-        state.runActivity?.phase === 'all'
-            ? (Object.values(state.phaseCompletion ?? {}).find((completion) => completion.status === 'in-progress')
-                  ?.phase ?? 'preflight')
-            : state.runActivity?.phase;
+    const runPhase = getMigrationRunPhase(state.runActivity, state.phaseCompletion);
     const [openPhases, setOpenPhases] = useState(['phase1']);
     useEffect(() => {
         const phase = {
@@ -1303,9 +1784,55 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
         onReload: () => sendCommand('loadProject'),
         onConfirmStopped: () => sendCommand('confirmMigrationStopped'),
     };
+    const phaseOutcome = (phase: MigrationPhaseName) =>
+        state.useProgrammaticFlow ? null : getMigrationPhaseOutcome(phase, state.phaseCompletion, run);
+    const outcomeBadge = (phase: MigrationPhaseName) => {
+        const outcome = phaseOutcome(phase);
+        return outcome ? (
+            <Badge appearance="tint" color="warning" style={{ marginLeft: '8px' }}>
+                {migrationOutcomeLabel(outcome)}
+            </Badge>
+        ) : null;
+    };
+    const phaseDiagnostics = (phase: MigrationPhaseName) =>
+        !state.useProgrammaticFlow && (
+            <MigrationPhaseDiagnostics
+                onReload={chatActionProps.onReload}
+                phase={phase}
+                completion={state.phaseCompletion}
+                activity={run}
+                workspacePath={state.workspacePath}
+                onOpenFile={handleOpenFile}
+                onGoToPhase={(targetPhase) => {
+                    const items: Partial<Record<MigrationPhaseName, string>> = {
+                        discovery: 'phase1',
+                        assessment: 'phase2',
+                        'schema-conversion': 'phase3',
+                        provisioning: 'phase4',
+                    };
+                    const item = items[targetPhase];
+                    if (item) setOpenPhases((current) => (current.includes(item) ? current : [...current, item]));
+                    requestAnimationFrame(() => {
+                        const target = rootRef.current?.querySelector<HTMLElement>(
+                            `[data-testid="migration-phase-${targetPhase}"]`,
+                        );
+                        target?.scrollIntoView({ block: 'start' });
+                        target?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
+                    });
+                }}
+                reviewDisabled={!state.consentGiven || !state.isAIFeaturesEnabled || !state.selectedModelId}
+                onReview={(reviewPhase) =>
+                    channel.postMessage({
+                        type: 'event',
+                        name: 'command',
+                        params: [{ commandName: 'reviewMigrationPhase', params: [reviewPhase] }],
+                    })
+                }
+            />
+        );
 
     return (
-        <div className={styles.root}>
+        <div className={styles.root} ref={rootRef}>
             {/* Floating Preview chip — pinned to the panel's top-right corner; stays put on scroll. */}
             <div className={styles.previewRail}>
                 <Tooltip
@@ -1949,6 +2476,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                         </div>
                     </div>
                 </div>
+                {phaseDiagnostics('preflight')}
             </div>
 
             {/* Migration Phases */}
@@ -1960,9 +2488,18 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                 >
                     {/* Phase 1: Source Discovery */}
                     <AccordionItem value="phase1" data-testid="migration-phase-discovery">
-                        <AccordionHeader icon={getPhaseIcon(phase1State)}>
+                        <AccordionHeader
+                            icon={
+                                phaseOutcome('discovery') ? (
+                                    <WarningRegular aria-hidden="true" />
+                                ) : (
+                                    getPhaseIcon(phase1State)
+                                )
+                            }
+                        >
                             <Text weight="semibold">{l10n.t('Phase 1: Source Discovery')}</Text>
-                            {phase1State === 'complete' && (
+                            {outcomeBadge('discovery')}
+                            {phase1State === 'complete' && !phaseOutcome('discovery') && (
                                 <Badge
                                     data-testid="migration-phase1-status-complete"
                                     appearance="filled"
@@ -2066,6 +2603,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                         </MigrationActionButton>
                                     ))}
 
+                                {phaseDiagnostics('discovery')}
                                 {state.discoveryError && (
                                     <Text role="alert" className={styles.errorText}>
                                         <DismissCircleRegular /> {state.discoveryError}
@@ -2096,12 +2634,23 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                     {/* Phase 2: Domain Assessment */}
                     <AccordionItem value="phase2" data-testid="migration-phase-assessment">
                         <AccordionHeader
-                            icon={getPhaseIcon(
-                                phase2State === 'complete' ? 'complete' : isPhase2Disabled ? 'locked' : phase2State,
-                            )}
+                            icon={
+                                phaseOutcome('assessment') ? (
+                                    <WarningRegular aria-hidden="true" />
+                                ) : (
+                                    getPhaseIcon(
+                                        phase2State === 'complete'
+                                            ? 'complete'
+                                            : isPhase2Disabled
+                                              ? 'locked'
+                                              : phase2State,
+                                    )
+                                )
+                            }
                         >
                             <Text weight="semibold">{l10n.t('Phase 2: Domain Assessment')}</Text>
-                            {phase2State === 'complete' && (
+                            {outcomeBadge('assessment')}
+                            {phase2State === 'complete' && !phaseOutcome('assessment') && (
                                 <Badge
                                     data-testid="migration-phase2-status-complete"
                                     appearance="filled"
@@ -2202,6 +2751,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                     )}
                                 </div>
 
+                                {phaseDiagnostics('assessment')}
                                 {state.assessmentError && (
                                     <Text role="alert" className={styles.errorText}>
                                         <DismissCircleRegular /> {state.assessmentError}
@@ -2315,12 +2865,23 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                     {/* Phase 3: Schema Conversion */}
                     <AccordionItem value="phase3" data-testid="migration-phase-schema-conversion">
                         <AccordionHeader
-                            icon={getPhaseIcon(
-                                phase3State === 'complete' ? 'complete' : isPhase3Disabled ? 'locked' : phase3State,
-                            )}
+                            icon={
+                                phaseOutcome('schema-conversion') ? (
+                                    <WarningRegular aria-hidden="true" />
+                                ) : (
+                                    getPhaseIcon(
+                                        phase3State === 'complete'
+                                            ? 'complete'
+                                            : isPhase3Disabled
+                                              ? 'locked'
+                                              : phase3State,
+                                    )
+                                )
+                            }
                         >
                             <Text weight="semibold">{l10n.t('Phase 3: Schema Conversion')}</Text>
-                            {phase3State === 'complete' && (
+                            {outcomeBadge('schema-conversion')}
+                            {phase3State === 'complete' && !phaseOutcome('schema-conversion') && (
                                 <Badge
                                     data-testid="migration-phase3-status-complete"
                                     appearance="filled"
@@ -2452,6 +3013,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                     )}
                                 </div>
 
+                                {phaseDiagnostics('schema-conversion')}
                                 {state.schemaConversionError && (
                                     <Text role="alert" className={styles.errorText}>
                                         <DismissCircleRegular /> {state.schemaConversionError}
@@ -2592,12 +3154,23 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                     {/* Phase 4: Target Provisioning */}
                     <AccordionItem value="phase4" data-testid="migration-phase-provisioning">
                         <AccordionHeader
-                            icon={getPhaseIcon(
-                                phase4State === 'complete' ? 'complete' : isPhase4Disabled ? 'locked' : phase4State,
-                            )}
+                            icon={
+                                phaseOutcome('provisioning') ? (
+                                    <WarningRegular aria-hidden="true" />
+                                ) : (
+                                    getPhaseIcon(
+                                        phase4State === 'complete'
+                                            ? 'complete'
+                                            : isPhase4Disabled
+                                              ? 'locked'
+                                              : phase4State,
+                                    )
+                                )
+                            }
                         >
                             <Text weight="semibold">{l10n.t('Phase 4: Target Provisioning')}</Text>
-                            {phase4State === 'complete' && (
+                            {outcomeBadge('provisioning')}
+                            {phase4State === 'complete' && !phaseOutcome('provisioning') && (
                                 <Badge
                                     data-testid="migration-phase4-status-complete"
                                     appearance="filled"
@@ -2883,6 +3456,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                     </Text>
                                 )}
 
+                                {phaseDiagnostics('provisioning')}
                                 {/* Provisioning Section */}
                                 {((state.connectionVerified && state.schemaConversionState === 'complete') ||
                                     isMigrationRunActive(actionActivity('provisioning', 'resources-and-data'))) && (
@@ -3016,6 +3590,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
 
             {/* Additional Migration Instructions */}
             <div className={styles.configSection} data-testid="migration-phase-code-migration">
+                {phaseDiagnostics('code-migration')}
                 <Field
                     label={
                         <>

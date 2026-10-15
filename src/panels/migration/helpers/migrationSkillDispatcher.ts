@@ -26,6 +26,7 @@ export type MigrationCodeMigrationAction = 'plan' | 'migrate';
 
 export interface MigrationSkillInvocation {
     workspacePath: string;
+    intent?: 'review-and-fix';
     runId?: string;
     mode?: MigrationSkillExecutionMode;
     phase?: MigrationSkillPhase;
@@ -107,6 +108,31 @@ async function hasMigrationSkillArtifacts(invocation: MigrationSkillInvocation):
 }
 
 export function buildMigrationSkillPrompt(invocation: MigrationSkillInvocation, hasExistingArtifacts = false): string {
+    if (invocation.intent === 'review-and-fix') {
+        if (
+            invocation.mode === 'autonomous' ||
+            invocation.allowProvisioning === true ||
+            invocation.preflightStep !== undefined ||
+            invocation.provisioningStep !== undefined ||
+            invocation.codeMigrationAction !== undefined
+        ) {
+            throw new Error(
+                'Review and Fix requires interactive approval and cannot preauthorize execution or mutations',
+            );
+        }
+        return [
+            invocation.phase
+                ? `Review the ${invocation.phase.replaceAll('-', ' ')} migration blockers and propose fixes for approval.`
+                : 'Review the migration blockers and propose fixes for approval.',
+            'Use the cosmosdb-relational-migration skill.',
+            ...(isMigrationWorkspaceRoot(invocation.workspacePath)
+                ? []
+                : [`Workspace: ${JSON.stringify(path.resolve(invocation.workspacePath))}`]),
+            'Run in interactive mode.',
+            'Do not change files or resources before explicit approval.',
+            ...(invocation.runId === undefined ? [] : [`Run ID: ${invocation.runId}`]),
+        ].join('\n');
+    }
     if (invocation.provisioningStep !== undefined && invocation.phase !== 'provisioning') {
         throw new Error('provisioningStep requires phase provisioning');
     }
@@ -178,6 +204,7 @@ export class MigrationSkillChatSession {
         }
         this.dispatching = true;
         try {
+            if (invocation.intent === 'review-and-fix') this.initialization = undefined;
             return await this.submit(invocation, selectedModelId);
         } finally {
             this.dispatching = false;
@@ -191,7 +218,10 @@ export class MigrationSkillChatSession {
     }
 
     private async submit(invocation: MigrationSkillInvocation, selectedModelId: string | null): Promise<string> {
-        const query = buildMigrationSkillPrompt(invocation, await hasMigrationSkillArtifacts(invocation));
+        const query = buildMigrationSkillPrompt(
+            invocation,
+            invocation.intent === 'review-and-fix' ? false : await hasMigrationSkillArtifacts(invocation),
+        );
         const { models, savedModelId } = await getAvailableModelsInfo(MIGRATION_SELECTED_MODEL_KEY, {
             includeAuto: true,
         });

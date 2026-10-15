@@ -56,6 +56,7 @@ import {
     type MigrationSkillInvocation,
 } from './migration/helpers/migrationSkillDispatcher';
 import {
+    migrationPhaseNames,
     readMigrationExecution,
     readMigrationPhaseCompletion,
     toMigrationProjectView,
@@ -325,6 +326,8 @@ export class MigrationAssistantTab extends BaseTab {
                 return this.confirmMigrationStopped();
             case 'loadProject':
                 return this.loadProject();
+            case 'reviewMigrationPhase':
+                return this.reviewMigrationPhase(params[0]);
             case 'updateProjectName':
                 return this.updateProjectName(params[0] as string);
             case 'updateConsent':
@@ -1085,6 +1088,24 @@ export class MigrationAssistantTab extends BaseTab {
 
     private async cancelDiscovery(): Promise<void> {
         this.discoveryCancellation = await cancelDiscovery(this.discoveryCancellation, this.eventSink);
+    }
+
+    private async reviewMigrationPhase(requestedPhase: unknown): Promise<void> {
+        const phase = migrationPhaseNames.find((candidate) => candidate === requestedPhase);
+        if (!phase) throw new Error(l10n.t('Select a valid migration phase to review.'));
+        if (!this.project?.consentGiven) throw new Error(l10n.t('AI consent is required to use this action.'));
+        if (!ext.isAIFeaturesEnabled) throw new Error(l10n.t('GitHub Copilot must be active to use this action.'));
+        await this.selectedModelUpdate;
+        await this.skillChatSession.dispatch(
+            {
+                workspacePath: this.workspacePath,
+                phase,
+                mode: 'interactive',
+                intent: 'review-and-fix',
+                runId: globalThis.crypto.randomUUID(),
+            },
+            this.selectedModelId,
+        );
     }
 
     private async runAssessment(): Promise<void> {

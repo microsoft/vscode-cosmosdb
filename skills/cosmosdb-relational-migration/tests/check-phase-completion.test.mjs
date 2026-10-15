@@ -181,6 +181,39 @@ test('batch completion matches individual results with one checkpoint read and f
     }
 });
 
+test('propagates a specific upstream input once through direct and inherited dependencies', () => {
+    const project = { version: 1, phases: {} };
+    const workspace = workspaceWithProject(project);
+    try {
+        prepareConversionChain(workspace, project, provisioningModel());
+        const relative = '.cosmosdb-migration/phases/1-discovery/volumetrics/volumetrics.md';
+        project.freshness.assessment = buildFreshnessManifest(workspace, project, 'assessment', [relative]);
+        write(workspace, '.cosmosdb-migration/project.json', JSON.stringify(project));
+        const filePath = path.join(workspace, relative);
+        const original = fs.readFileSync(filePath);
+        const before = checkPhaseCompletions(workspace, ['preflight', 'discovery', 'assessment']);
+        for (const result of Object.values(before)) assert.equal(result.complete, true);
+        const future = new Date(Date.now() + 60000);
+        fs.utimesSync(filePath, future, future);
+        assert.equal(checkPhaseCompletion(workspace, 'assessment').complete, true);
+        fs.appendFileSync(filePath, ' ');
+        const after = checkPhaseCompletions(workspace, ['preflight', 'discovery', 'assessment']);
+        const cause = { phase: 'preflight', id: 'volumetrics', path: relative, reason: 'recorded input no longer matches current content' };
+        for (const result of Object.values(after)) {
+            assert.equal(result.complete, false);
+            assert.equal(result.freshness, 'stale');
+            assert.deepEqual(result.freshnessCauses, [cause]);
+        }
+        assert.equal(after.assessment.staleInputs.find(input => input.id === 'consulted:001').path, relative);
+        assert.deepEqual(after.assessment.artifacts.find(artifact => artifact.description === 'Required predecessor discovery').diagnostics,
+            [{ path: relative, message: `preflight: ${cause.reason}` }]);
+        fs.writeFileSync(filePath, original);
+        assert.equal(checkPhaseCompletion(workspace, 'assessment').complete, true);
+    } finally {
+        fs.rmSync(workspace, { recursive: true, force: true });
+    }
+});
+
 test('batch completion keeps freshness modes separate and observes edits on the next call', () => {
     const project = { version: 1, phases: {} };
     const workspace = workspaceWithProject(project);
@@ -301,6 +334,30 @@ test('batch completion preserves diagnostics for invalid phases and missing or m
                 assert.equal(result[phase].complete, false);
             }
         }
+    } finally {
+        fs.rmSync(workspace, { recursive: true, force: true });
+    }
+});
+
+test('normalizes old optional nulls without certifying historical completion or changing checkpoint bytes', () => {
+    const project = { version: 1, phases: { discovery: { status: 'in-progress' }, assessment: {
+        status: 'complete', completedAt: '2026-05-18T10:37:56.400Z', parsedAccessPatterns: [{
+            name: 'Orders', type: 'read', frequency: 'daily', tables: ['dbo.Orders'], codeReferences: [], singleOrBatch: null,
+        }],
+    } } };
+    const workspace = workspaceWithProject(project);
+    try {
+        const projectPath = path.join(workspace, '.cosmosdb-migration/project.json');
+        const before = fs.readFileSync(projectPath);
+        const result = checkPhaseCompletion(workspace, 'assessment');
+        assert.equal(result.complete, false);
+        assert.equal(result.status, 'complete');
+        assert.equal(result.recordedCompletedAt, project.phases.assessment.completedAt);
+        assert.equal(result.freshness, 'unknown');
+        assert.deepEqual(result.compatibilityChanges, ['/phases/assessment/parsedAccessPatterns/0/singleOrBatch']);
+        assert.equal(result.staleInputs.some(input => input.id === 'project'), false);
+        assert(result.artifacts.some(artifact => artifact.state === 'missing'));
+        assert.deepEqual(fs.readFileSync(projectPath), before);
     } finally {
         fs.rmSync(workspace, { recursive: true, force: true });
     }

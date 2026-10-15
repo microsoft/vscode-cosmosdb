@@ -382,6 +382,22 @@ test('documents an advisory SQLGlot fallback with artifact provenance and limite
     assert.match(reference, /existing unavailable-parser fallback or abort policy/u);
 });
 
+test('requires read-only blocker review and explicit repair approval before phase execution', () => {
+    const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
+    const interaction = fs.readFileSync(path.join(skillRoot, 'references/workflow/interaction-and-checkpoints.md'), 'utf8');
+    assert.match(skill, /Review and Fix.*interaction-and-checkpoints\.md#review-and-fix/u);
+    assert.match(skill, /explicit approval before writes or phase execution; this overrides mode fallback and rerun defaults/u);
+    const review = interaction.split('## Review and Fix')[1].split('## Modes')[0];
+    assert.match(review, /not a\s+regeneration request/u);
+    assert.match(review, /Summarize blockers and impact/u);
+    assert.match(review, /action: regenerate.*proposal, not authorization/u);
+    assert.match(review, /Ask for explicit approval using the host's in-run question tool/u);
+    assert.match(review, /stop read-only; do not fall back to autonomous repair/u);
+    assert.match(review, /Before approval, no file or resource changes, dependency installation, or activity reporting/u);
+    assert.match(review, /After approval, reread authoritative state/u);
+    assert.match(review, /resource\/data mutations need current\s+`allow-provisioning` authorization, not review approval alone/u);
+});
+
 test('keeps core workflow documentation host-neutral', () => {
     const markdownFiles = walk(skillRoot).filter(
         (filePath) => filePath.endsWith('.md') && filePath !== path.join(skillRoot, 'README.md'),

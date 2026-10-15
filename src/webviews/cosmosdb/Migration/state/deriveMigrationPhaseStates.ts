@@ -122,7 +122,9 @@ export class MigrationRunTracker {
 
     public observe(
         execution: MigrationExecution | undefined,
-        completion: Partial<Record<MigrationPhaseName, { complete: boolean }>>,
+        completion: Partial<
+            Record<MigrationPhaseName, { complete: boolean; freshness?: MigrationPhaseCompletionState['freshness'] }>
+        >,
     ): void {
         if (!execution || execution.runId === this.confirmedStoppedRunId) return;
         if (
@@ -137,15 +139,19 @@ export class MigrationRunTracker {
         )
             return;
         this.acknowledgedRunId = execution.runId;
-        const validationFailed =
-            execution.activity === 'complete' &&
-            execution.step === null &&
-            (execution.phase === 'all'
-                ? ['preflight', 'discovery', 'assessment', 'schema-conversion', 'provisioning', 'code-migration'].some(
-                      (phase) => !completion[phase as MigrationPhaseName]?.complete,
-                  )
-                : !completion[execution.phase]?.complete);
-        this.activity = { ...execution, activity: validationFailed ? 'blocked' : execution.activity, validationFailed };
+        const phases: MigrationPhaseName[] =
+            execution.phase === 'all'
+                ? ['preflight', 'discovery', 'assessment', 'schema-conversion', 'provisioning', 'code-migration']
+                : [execution.phase];
+        const incomplete = phases.filter((phase) => !completion[phase]?.complete);
+        const validationFailed = execution.activity === 'complete' && execution.step === null && incomplete.length > 0;
+        const staleOnly =
+            incomplete.length > 0 && incomplete.every((phase) => completion[phase]?.freshness === 'stale');
+        this.activity = {
+            ...execution,
+            activity: validationFailed && !staleOnly ? 'blocked' : execution.activity,
+            validationFailed,
+        };
     }
 
     public confirmStopped(): void {
@@ -183,21 +189,109 @@ export type MigrationPhaseName =
     | 'provisioning'
     | 'code-migration';
 
+export interface MigrationFreshnessCause {
+    phase: MigrationPhaseName;
+    id: string;
+    reason: string;
+    path?: string;
+    canOpen?: boolean;
+}
+
 export interface MigrationPhaseCompletionState {
     phase: MigrationPhaseName;
     status: 'not-started' | 'in-progress' | 'complete' | undefined;
     complete: boolean;
+    compatibilityChanges?: string[];
+    recordedCompletedAt?: string;
     ready?: boolean;
+    freshness?: 'current' | 'stale' | 'unknown' | 'not-applicable';
+    staleInputs?: { id: string; reason: string; path?: string }[];
+    freshnessCauses?: MigrationFreshnessCause[];
     artifacts: {
         path: string;
         description: string;
         conditional: boolean;
         state: 'missing' | 'present' | 'invalid';
+        diagnostics?: (string | { path?: string; code?: string; message: string })[];
+        canOpen?: boolean;
     }[];
     errors: string[];
 }
 
 export type MigrationCompletionMap = Record<MigrationPhaseName, MigrationPhaseCompletionState>;
+
+export function getMigrationRunPhase(
+    activity: MigrationRunActivity | null | undefined,
+    completion: Partial<MigrationCompletionMap> | null | undefined,
+): MigrationPhaseName | undefined {
+    if (activity?.phase !== 'all') return activity?.phase;
+    const phases = Object.values(completion ?? {});
+    return (
+        phases.find((phase) => phase?.status === 'in-progress')?.phase ??
+        phases.find((phase) => !phase?.complete)?.phase ??
+        'preflight'
+    );
+}
+
+export function getMigrationValidationFailure(
+    result: MigrationPhaseCompletionState | undefined,
+): 'project-invalid' | 'validation-unavailable' | null {
+    if (result?.staleInputs?.some((input) => input.id === 'project')) return 'project-invalid';
+    if (result?.staleInputs?.some((input) => input.id === 'completion-check' || input.id === 'phase')) {
+        return 'validation-unavailable';
+    }
+    return null;
+}
+
+export function getMigrationPhaseOutcome(
+    phase: MigrationPhaseName,
+    completion: Partial<MigrationCompletionMap> | null | undefined,
+    activity: MigrationRunActivity | null | undefined,
+):
+    | 'blocked'
+    | 'failed'
+    | 'cancelled'
+    | 'stale'
+    | 'unknown'
+    | 'invalid'
+    | 'project-invalid'
+    | 'validation-unavailable'
+    | null {
+    const isCurrentRun = getMigrationRunPhase(activity, completion) === phase;
+    if (isCurrentRun && isMigrationRunActive(activity)) return null;
+    const result = completion?.[phase];
+    const validationFailure = getMigrationValidationFailure(result);
+    if (validationFailure) return validationFailure;
+    if (isCurrentRun) {
+        if (activity?.activity === 'blocked' || activity?.activity === 'failed' || activity?.activity === 'cancelled') {
+            return activity.activity;
+        }
+    }
+    if (result?.complete || result?.status !== 'complete') return null;
+    if (result.freshness === 'stale' || result.freshness === 'unknown') return result.freshness;
+    return 'invalid';
+}
+
+export function getMigrationPrerequisite(
+    phase: MigrationPhaseName,
+    completion: Partial<MigrationCompletionMap> | null | undefined,
+): MigrationPhaseName | null | undefined {
+    const result = completion?.[phase];
+    if (!result || getMigrationValidationFailure(result)) return undefined;
+    if (phase === 'code-migration' && isCodeMigrationReady(completion)) return null;
+    const predecessor: Partial<Record<MigrationPhaseName, MigrationPhaseName>> = {
+        discovery: 'preflight',
+        assessment: 'discovery',
+        'schema-conversion': 'assessment',
+        provisioning: 'schema-conversion',
+        'code-migration': 'schema-conversion',
+    };
+    const previous = predecessor[phase];
+    if (!previous) return null;
+    const prerequisite = getMigrationPrerequisite(previous, completion);
+    if (prerequisite === undefined) return undefined;
+    return prerequisite ?? (!completion?.[previous]?.complete ? previous : null);
+}
 
 export function isCodeMigrationReady(completion: Partial<MigrationCompletionMap> | null | undefined): boolean {
     return completion?.['code-migration']?.ready === true;

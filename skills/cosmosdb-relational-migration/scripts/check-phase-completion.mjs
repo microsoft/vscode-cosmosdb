@@ -19,7 +19,7 @@ import {
     canonicalizeCosmosModel,
     validateCosmosModel,
 } from './validate-cosmos-model.mjs';
-import { validateMigrationProject } from './validate-migration-project.mjs';
+import { normalizeMigrationProjectCompatibility, validateMigrationProject } from './validate-migration-project.mjs';
 import { validateProvisioningVerification } from './validate-provisioning-verification.mjs';
 import { validateSampleData } from './validate-sample-data.mjs';
 import {
@@ -303,6 +303,15 @@ export function checkPhaseCompletions(workspace, phases) {
 
 function phaseCompletion(workspace, phaseInput, cache) {
     const result = checkPhase(workspace, phaseInput, true, cache);
+    const compatibility = cache.get('project-compatibility')?.result;
+    if (compatibility?.changes.length) result.compatibilityChanges = compatibility.changes;
+    const phaseKey = { preflight: 'discovery', discovery: 'discovery', assessment: 'assessment',
+        'schema-conversion': 'schemaConversion', provisioning: 'provisioning', 'code-migration': 'codeMigration' }[result.phase];
+    const recorded = compatibility?.project?.phases?.[phaseKey];
+    const completedAt = result.phase === 'preflight' ? recorded?.preflightCompletedAt : recorded?.completedAt;
+    if (result.status === 'complete' && typeof completedAt === 'string' && Number.isFinite(Date.parse(completedAt))) {
+        result.recordedCompletedAt = completedAt;
+    }
     if (result.phase === 'code-migration') {
         try {
             result.ready = checkPhase(workspace, 'schema-conversion', false, cache).complete;
@@ -358,6 +367,8 @@ function compactResult(completion, failures, offset, limit, returned) {
         complete: completion.complete,
         freshness: completion.freshness,
         ...(completion.ready === undefined ? {} : { ready: completion.ready }),
+        ...(completion.compatibilityChanges?.length ? { compatibilityChangeCount: completion.compatibilityChanges.length } : {}),
+        ...(completion.recordedCompletedAt ? { recordedCompletedAt: completion.recordedCompletedAt } : {}),
         artifactCounts: artifactCounts(completion.artifacts),
         staleInputCount: completion.staleInputs.length,
         errorCount: completion.errors.length,
@@ -431,7 +442,8 @@ function evaluatePhase(workspace, phaseInput, checkFreshness, cache) {
     }
     const migrationRoot = path.join(workspace, '.cosmosdb-migration');
     const projectPath = path.join(migrationRoot, 'project.json');
-    const project = cachedCheck(cache, 'project', () => readJson(projectPath));
+    const rawProject = cachedCheck(cache, 'project', () => readJson(projectPath));
+    const { project } = cachedCheck(cache, 'project-compatibility', () => normalizeMigrationProjectCompatibility(rawProject));
     if (!project) {
         return {
             phase,
@@ -466,13 +478,22 @@ function evaluatePhase(workspace, phaseInput, checkFreshness, cache) {
     const predecessorPhase = PREDECESSOR_PHASE[phase];
     const predecessor = predecessorPhase ? checkPhase(workspace, predecessorPhase, checkFreshness, cache) : undefined;
     const staleInputs = [...ownFreshness.staleInputs];
+    const inheritedCauses = predecessor && !predecessor.complete ? predecessor.freshnessCauses ?? [] : [];
+    const causeBySource = new Map();
+    for (const cause of [...inheritedCauses, ...ownFreshness.staleInputs.map(input => ({ phase, ...input }))]) {
+        const key = cause.path ?? `${cause.phase}:${cause.id}`;
+        if (!causeBySource.has(key)) causeBySource.set(key, cause);
+    }
+    const freshnessCauses = [...causeBySource.values()];
     if (predecessor && !predecessor.complete) {
         artifacts.push({
             path: `.cosmosdb-migration/project.json#${predecessorPhase}`,
             description: `Required predecessor ${predecessorPhase}`,
             conditional: false,
             state: 'invalid',
-            diagnostics: predecessor.errors,
+            diagnostics: inheritedCauses.length
+                ? inheritedCauses.map(cause => ({ path: cause.path ?? cause.id, message: `${cause.phase}: ${cause.reason}` }))
+                : predecessor.errors,
         });
         if (checkFreshness) staleInputs.push({
             id: `predecessor:${predecessorPhase}`,
@@ -494,6 +515,7 @@ function evaluatePhase(workspace, phaseInput, checkFreshness, cache) {
         complete: status === 'complete' && incompleteArtifacts.length === 0 && (!checkFreshness || freshness === 'current'),
         freshness,
         staleInputs,
+        freshnessCauses,
         artifacts,
         errors:
             status === 'complete' && (incompleteArtifacts.length > 0 || (checkFreshness && freshness !== 'current'))

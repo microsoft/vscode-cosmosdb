@@ -269,6 +269,17 @@ Each `parsedAccessPatterns` entry requires string `name`, `type`, and `frequency
 values plus string arrays for `tables` and `codeReferences`. The optional
 `filterFields`, `singleOrBatch`, `sqlExample`, and `codeExample` values are strings.
 
+Omit optional fields when no value is available; do not write null. Read helpers
+interpret existing null values in these four fields as omitted and report compatibility
+adjustments without rewriting the checkpoint. Other invalid types remain errors.
+Scoped-read revisions refer to the saved bytes, not the normalized view. An intentional
+validated update may persist this canonical representation while preserving unrelated data.
+
+A recorded complete status or timestamp is historical information, not proof of current
+artifact acceptance. Missing evidence requires normal preparation and validation before
+dependent work. Do not invent parser decisions, manifests, or freshness hashes to certify
+earlier outputs, and do not regenerate anything merely because a project was opened.
+
 Write both the defined artifact paths and corresponding status fields; completion
 requires both. Merge phase updates so unrelated fields and persisted instructions
 survive a rerun.

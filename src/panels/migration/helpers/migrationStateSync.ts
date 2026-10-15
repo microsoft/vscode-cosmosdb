@@ -4,12 +4,15 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
-import { readFile } from 'node:fs/promises';
+import { readFile, realpath, stat } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { Worker } from 'node:worker_threads';
 import * as path from 'path';
 import { type ProjectJson } from '../../../services/MigrationProjectService';
-import { type MigrationExecution } from '../../../webviews/cosmosdb/Migration/state/deriveMigrationPhaseStates';
+import {
+    type MigrationExecution,
+    type MigrationFreshnessCause,
+} from '../../../webviews/cosmosdb/Migration/state/deriveMigrationPhaseStates';
 
 export function toMigrationProjectView(project: ProjectJson) {
     const discovery = project.phases.discovery;
@@ -101,19 +104,63 @@ export interface MigrationPhaseCompletion {
     phase: MigrationPhaseName;
     status: 'not-started' | 'in-progress' | 'complete' | undefined;
     complete: boolean;
+    compatibilityChanges?: string[];
+    recordedCompletedAt?: string;
     freshness: 'current' | 'stale' | 'unknown' | 'not-applicable';
     ready?: boolean;
-    staleInputs: { id: string; reason: string }[];
+    staleInputs: { id: string; reason: string; path?: string }[];
+    freshnessCauses?: MigrationFreshnessCause[];
     artifacts: {
         path: string;
         description: string;
         conditional: boolean;
         state: 'missing' | 'present' | 'invalid';
+        diagnostics?: (string | { path?: string; code?: string; message: string })[];
+        canOpen?: boolean;
     }[];
     errors: string[];
 }
 
 export type MigrationPhaseCompletionMap = Record<MigrationPhaseName, MigrationPhaseCompletion>;
+
+async function addArtifactAccess(
+    completion: MigrationPhaseCompletionMap,
+    workspacePath: string,
+): Promise<MigrationPhaseCompletionMap> {
+    const root = await realpath(workspacePath).catch(() => undefined);
+    const access = new Map<string, Promise<boolean>>();
+    await Promise.all(
+        Object.values(completion).flatMap((phase) =>
+            [...phase.artifacts, ...(phase.freshnessCauses ?? [])].map(async (artifact) => {
+                if (!root || !artifact.path || ('state' in artifact && artifact.state === 'missing')) {
+                    artifact.canOpen = false;
+                    return;
+                }
+                const artifactPath = artifact.path.split('#')[0];
+                let check = access.get(artifactPath);
+                if (!check) {
+                    check = (async () => {
+                        try {
+                            const resolved = await realpath(path.resolve(root, artifactPath));
+                            const relative = path.relative(root, resolved);
+                            return (
+                                relative !== '..' &&
+                                !relative.startsWith(`..${path.sep}`) &&
+                                !path.isAbsolute(relative) &&
+                                (await stat(resolved)).isFile()
+                            );
+                        } catch {
+                            return false;
+                        }
+                    })();
+                    access.set(artifactPath, check);
+                }
+                artifact.canOpen = await check;
+            }),
+        ),
+    );
+    return completion;
+}
 
 interface MigrationCompletionCheckerModule {
     checkPhaseCompletion(workspace: string, phase: MigrationPhaseName): MigrationPhaseCompletion;
@@ -187,7 +234,7 @@ export async function readMigrationPhaseCompletion(
             } else if (failure) reject(failure);
             else if (code !== 0 || !completion) {
                 reject(new Error(l10n.t('Migration completion check exited without a result (code {0}).', code)));
-            } else resolve(completion);
+            } else resolve(addArtifactAccess(completion, workspacePath));
         });
     });
 }

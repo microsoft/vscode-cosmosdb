@@ -292,12 +292,14 @@ describe('ResultPage', () => {
         renderResult(value);
         expect(screen.getByText('Conversation reads use one partition.')).toBeVisible();
         await user.click(screen.getByRole('tab', { name: 'Container: User' }));
+        expect(screen.getByRole('tab', { name: 'Container: User' })).toHaveAttribute('aria-selected', 'true');
         expect(screen.getByText('User reads use one partition.')).toBeVisible();
         expect(screen.queryByText('Conversation reads use one partition.')).not.toBeInTheDocument();
         expect(screen.queryByText('User-specific rationale.')).not.toBeInTheDocument();
         await user.click(screen.getByRole('tab', { name: 'Container: Message' }));
         expect(screen.getByText('Conversation reads use one partition.')).toBeVisible();
         expect(screen.queryByText('User reads use one partition.')).not.toBeInTheDocument();
+        expect(MonacoEditor).not.toHaveBeenCalled();
     });
 
     it('keeps the rationale visible for saved results without candidate cards', () => {
@@ -495,16 +497,6 @@ describe('ResultPage', () => {
         expect(screen.getByText('Message ID')).toHaveClass('fui-Badge');
         expect(screen.getByText('🆔 Document ID strategy')).toBeVisible();
         expect(screen.getByText('Use a unique message ID.')).toBeVisible();
-    });
-
-    it('switches container analysis without mounting a code editor', async () => {
-        const user = userEvent.setup();
-        renderResult();
-
-        await user.click(screen.getByRole('tab', { name: 'Container: User' }));
-
-        expect(screen.getByRole('tab', { name: 'Container: User' })).toHaveAttribute('aria-selected', 'true');
-        expect(MonacoEditor).not.toHaveBeenCalled();
     });
 
     describe('recommendation feedback', () => {

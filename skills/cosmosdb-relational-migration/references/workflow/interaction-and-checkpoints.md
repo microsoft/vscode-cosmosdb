@@ -7,6 +7,7 @@ For mutating invocations, report `execution` activity using
 for in-run input and `running` after the answer. A terminal blocker ends activity as `blocked`; a user-requested stop
 ends it as `cancelled`. Complete activity only after the requested scope validates and its final checkpoint is saved.
 This does not change the existing phase-status enum or authorize resource mutations.
+Before ending a run as `blocked`, follow [Blocker Resolution](#blocker-resolution), including for tooling failures.
 
 ## Modes
 
@@ -62,12 +63,13 @@ Do not attempt interactive prompts in such a host.
 - Emit the same checkpoint summary to the run log or conversation, then continue.
 - Resolve only choices that are deterministic, reversible, non-destructive, and
   already governed by an explicit invariant.
-- Stop and request confirmation for choices that change authoritative input,
+- Pause and request confirmation for choices that change authoritative input,
   discard user work, alter `schema-conversion` ownership or partitioning, materially
   change cost/security/availability, or trigger external side effects without prior
   authorization.
-- In a non-interactive host, persist the completed checkpoint, report the pending
-  decision with options, and exit cleanly so another invocation can resume.
+- In a non-interactive host, preserve valid partial artifacts and any completed
+  checkpoints, report the pending decision with options, and exit cleanly so another
+  invocation can resume. Do not mark an incomplete phase complete.
 
 An optional `phase` scope limits either mode to one phase. The run always stops
 after that phase's checkpoint, even in autonomous mode. Discovery includes required
@@ -87,6 +89,7 @@ validation results, and best-practice guidance. Create a decision candidate when
 - Required information is missing and assumptions would materially affect output.
 - SDK compatibility is preview or unsupported and code migration is requested.
 - Provisioning or another external side effect needs authorization.
+- A failed tool or validator needs a repair, dependency update, or permission outside the current scope.
 
 Do not ask about cosmetic choices or decisions fixed by a hard invariant. For
 example, supplied DDL remains authoritative; ask whether to continue with a warning
@@ -172,6 +175,11 @@ warnings, confirmed decisions, remaining blockers, and next action without repro
 the full report. Omit empty sections and combine related points to keep the reply short.
 Keep validation assurance explicit: structural checks do not establish source-engine,
 production-workload, live-target, or application-behavior correctness.
+
+For blocked work, lead with the failure, its practical impact, and the resolution or
+pending decision before artifact counts. The length target must not omit the explanation
+needed to make that decision; link supporting detail rather than replacing the explanation
+with a report link or a diagnostic label.
 
 When memory was created or updated, briefly state what was remembered or corrected and
 link to `.cosmosdb-migration/memory.md` and any newly preserved model. Omit this notice
@@ -260,9 +268,51 @@ After the checkpoint and any required decision prompts, ask:
 Do not begin the next phase until the user selects an option. If the user chooses
 review, open or identify requested artifacts and ask again after review.
 
-## Blocking Mid-Phase Choices
+## Blocker Resolution
 
-Some decisions must be confirmed before a phase can safely finish. Leave the
-persisted phase `in-progress`, preserve valid partial artifacts, present the same
-decision format, and resume after the answer. Once the phase validates, write its
-completion checkpoint and present the normal phase-boundary checkpoint.
+Apply this procedure when a failure or unresolved decision prevents the requested
+scope from finishing, not only for model-design choices. Do not end a run merely
+because a tool failed or a repair needs permission.
+
+1. **Establish the cause and scope.** Inspect the relevant diagnostic and nearby
+  evidence. Distinguish a verified correctness failure, a tooling limitation, a
+  permission boundary, missing evidence, and downstream verification. State which
+  current operation cannot proceed and which authorized work can continue. A missing
+  measurement or an unperformed check is not a failed check. Follow
+  [Issue Classification](../contracts/validation-evidence.md#issue-classification)
+  without changing a failure's classification merely to pass validation.
+2. **Explain the resolution.** Use the [Decision Prompt](#decision-prompt) format.
+  Explain what failed and why it blocks this phase, the affected mappings or outputs,
+  the supporting evidence, concrete remedies and their consequences, the recommended
+  remedy and rationale, and the exact check or evidence that would establish resolution.
+  Explain why an apparent shortcut would lose data, weaken guarantees, or bypass
+  validation when applicable. If no supported remedy is known, say what was investigated
+  and what evidence or capability is still needed; do not invent an alternative.
+3. **Resolve authorized work or ask before stopping.** Perform a deterministic repair
+  already authorized by the request and rerun its focused check without asking for
+  permission again. Otherwise, when the host can receive an answer and a user decision
+  could unblock progress, record `waiting-for-decision`, present the options using the
+  host's question tool when available, and wait for the answer. Without a question tool,
+  ask in conversation and pause for the answer. Do not save terminal `blocked` activity
+  and append a permission question to the final reply instead. This also applies to
+  consequential decisions during autonomous execution on an interaction-capable host.
+4. **Honor the answer and boundary.** Leave the phase `in-progress` and preserve valid
+  partial artifacts while waiting. After approval, record `running`, perform only the
+  authorized remedy, and rerun the failed check before continuing. Approval is not proof
+  of repair or validation. For work outside the selected project, identify the exact
+  project or installation and proposed change, and obtain explicit scope approval before
+  editing it. Offer a separately managed tooling repair/update or deferral when suitable;
+  never silently patch installed validators, alter authoritative input, or weaken checks.
+  Reuse applicable prior answers; do not ask again unless the evidence or scope changed.
+5. **End deliberately when resolution cannot proceed.** In a host that cannot receive
+  answers, report the same explanation and options without attempting an interactive
+  prompt. Preserve pending decisions in existing summaries, not new state fields or files.
+  When the user defers or declines the needed remedy, the host cannot obtain approval,
+  or no supported authorized remedy exists, continue independent authorized work and
+  then end activity as `blocked` if the requested scope remains incomplete. An explicit
+  user request to stop ends activity as `cancelled`. Report the remaining blocker,
+  decision disposition, and exact resumption condition, not an unanswered closing question.
+
+Once the phase validates, write its completion checkpoint and present the normal
+phase-boundary checkpoint. Distinguish checks that failed from checks not reached because
+an earlier gate stopped: a successful repair does not certify unvalidated artifacts.

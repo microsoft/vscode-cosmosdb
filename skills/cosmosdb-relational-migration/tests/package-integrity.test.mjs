@@ -93,6 +93,52 @@ test('requires concise findings and report links after each requested task', () 
     }
 });
 
+test('requires an interactive resolution before terminal tooling blockage', () => {
+    const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
+    const conversion = fs.readFileSync(path.join(skillRoot, 'references/phases/schema-conversion.md'), 'utf8');
+    const interaction = fs.readFileSync(path.join(skillRoot, 'references/workflow/interaction-and-checkpoints.md'), 'utf8');
+    for (const entryPoint of [skill, conversion]) {
+        assert.match(entryPoint, /interaction-and-checkpoints\.md#blocker-resolution/u);
+    }
+    assert.match(conversion, /a tool limitation is not evidence that Cosmos DB cannot\s+represent the source behavior/u);
+    assert.match(interaction, /Before ending a run as `blocked`, follow \[Blocker Resolution\]/u);
+    assert.match(interaction, /including for tooling failures/u);
+    assert.match(interaction, /record `waiting-for-decision`, present the options using the\s+host's question tool when available, and wait for the answer/u);
+    assert.match(interaction, /Without a question tool,\s+ask in conversation and pause for the answer/u);
+    assert.match(interaction, /Do not save terminal `blocked` activity\s+and append a permission question to the final reply instead/u);
+    assert.match(interaction, /Pause and request confirmation for choices/u);
+    assert.match(interaction, /autonomous execution on an interaction-capable host/u);
+    assert.match(interaction, /After approval, record `running`/u);
+    assert.match(interaction, /rerun the failed check before continuing/u);
+});
+
+test('requires actionable blocker explanations without overstating validation', () => {
+    const interaction = fs.readFileSync(path.join(skillRoot, 'references/workflow/interaction-and-checkpoints.md'), 'utf8');
+    assert.match(interaction, /what failed and why it blocks this phase, the affected mappings or outputs/u);
+    assert.match(interaction, /concrete remedies and their consequences, the recommended\s+remedy and rationale/u);
+    assert.match(interaction, /exact check or evidence that would establish resolution/u);
+    assert.match(interaction, /A missing\s+measurement or an unperformed check is not a failed check/u);
+    assert.match(interaction, /If no supported remedy is known, say what was investigated/u);
+    assert.match(interaction, /length target must not omit the explanation/u);
+    assert.match(interaction, /Distinguish checks that failed from checks not reached/u);
+    assert.match(interaction, /a successful repair does not certify unvalidated artifacts/u);
+});
+
+test('preserves repair authorization, prior decisions, and non-interactive handoffs', () => {
+    const interaction = fs.readFileSync(path.join(skillRoot, 'references/workflow/interaction-and-checkpoints.md'), 'utf8');
+    assert.match(interaction, /deterministic repair\s+already authorized by the request/u);
+    assert.match(interaction, /obtain explicit scope approval before\s+editing it/u);
+    assert.match(interaction, /never silently patch installed validators, alter authoritative input, or weaken checks/u);
+    assert.match(interaction, /Reuse applicable prior answers; do not ask again unless the evidence or scope changed/u);
+    assert.match(interaction, /host that cannot receive\s+answers, report the same explanation and options without attempting an interactive\s+prompt/u);
+    assert.match(interaction, /preserve valid partial artifacts and any completed\s+checkpoints/u);
+    assert.match(interaction, /Do not mark an incomplete phase complete/u);
+    assert.match(interaction, /Preserve pending decisions in existing summaries, not new state fields or files/u);
+    assert.match(interaction, /continue independent authorized work and\s+then end activity as `blocked`/u);
+    assert.match(interaction, /user request to stop ends activity as `cancelled`/u);
+    assert.match(interaction, /exact resumption condition, not an unanswered closing question/u);
+});
+
 test('defines completed-phase rerun behavior by mode and explicit intent', () => {
     const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
     const checkpoints = fs.readFileSync(path.join(skillRoot, 'references', 'workflow', 'interaction-and-checkpoints.md'), 'utf8');

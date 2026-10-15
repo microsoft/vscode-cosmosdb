@@ -448,6 +448,11 @@ every phase boundary. Follow the response contract in
 - Whether any external resource or application-code mutation occurred.
 - The exact next action needed when blocked.
 
+Before ending a run as blocked, follow
+[Blocker Resolution](./references/workflow/interaction-and-checkpoints.md#blocker-resolution).
+Explain the cause, affected scope, remedies, and clearance check, and obtain any
+answerable resolution decision before issuing the terminal report.
+
 Keep the reply concise without omitting consequential caveats. Do not paste the full
 report, invent missing report links, or create extra artifacts just for the reply.
 In interactive mode, ask whether to continue, review artifacts, revise the phase, or

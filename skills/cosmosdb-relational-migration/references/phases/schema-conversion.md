@@ -129,6 +129,14 @@ End early only when the user stops or no authorized work can proceed; identify a
 concrete correctness failure or authorization boundary. Never invent source facts,
 silently weaken explicit requirements, or claim unperformed checks have passed.
 
+Before ending on a tooling failure or permission boundary, follow
+[Blocker Resolution](../workflow/interaction-and-checkpoints.md#blocker-resolution).
+Explain the unsupported model/evidence operation and affected mappings, not merely
+the validator's error label. Ask any answerable repair or scope-approval question
+before closing the run; a tool limitation is not evidence that Cosmos DB cannot
+represent the source behavior. Preserve failed checks and distinguish them from
+domain, summary, or merge checks that have not yet run.
+
 Apply the Migration Feasibility checkpoint before ranking key candidates and before
 finalizing each domain; recheck shared-container impacts when merging domains.
 

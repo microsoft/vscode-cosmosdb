@@ -29,7 +29,7 @@ export function sourceIdentity(value, dialect) {
     throw new Error(`Invalid source identifier: ${value}`);
 }
 
-function createSourceResolver(inventory) {
+export function createSourceResolver(inventory) {
     let index;
     return value => {
         const parts = sourceIdentity(value, inventory.dialect);
@@ -63,8 +63,7 @@ export function resolveSource(value, inventory) {
     return matches[0];
 }
 
-export function resolveForeignKey(sourceFK, inventory) {
-    const resolve = createSourceResolver(inventory);
+export function resolveForeignKey(sourceFK, inventory, resolve = createSourceResolver(inventory)) {
     const table = resolve(sourceFK.table);
     const hasConstraintName = sourceFK.constraintName !== undefined;
     if (hasConstraintName && (typeof sourceFK.constraintName !== 'string' || !sourceFK.constraintName.trim())) {

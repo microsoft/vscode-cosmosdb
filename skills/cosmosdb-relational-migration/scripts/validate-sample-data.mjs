@@ -8,7 +8,7 @@ import { requireOptionValue } from './cli-arguments.mjs';
 import { showHelp } from './cli-help.mjs';
 import { readIdentityManifest, resolveItemId, validateIdentityManifest } from './identity-mapping.mjs';
 import { splitIndexPathParts, validateCosmosModel } from './validate-cosmos-model.mjs';
-import { readSourceInventory, resolveForeignKey, resolveSource } from './validate-source-evidence.mjs';
+import { createSourceResolver, readSourceInventory, resolveForeignKey } from './validate-source-evidence.mjs';
 
 const ROOT_KEYS = new Set(['sampleData']);
 const ENTRY_KEYS = new Set(['containerName', 'items']);
@@ -80,11 +80,11 @@ function validateId(item, entity, jsonPath, errors, mapping) {
     }
 }
 
-function attributeForSource(entity, table, column, inventory) {
+function attributeForSource(entity, table, column, resolve) {
     const matches = entity.attributes.filter(attribute =>
         attribute.isId !== true &&
         attribute.source.table !== '(generated)' &&
-        resolveSource(attribute.source.table, inventory).name === table.name &&
+        resolve(attribute.source.table).name === table.name &&
         attribute.source.column === column,
     );
     if (matches.length !== 1) {
@@ -93,17 +93,17 @@ function attributeForSource(entity, table, column, inventory) {
     return matches[0];
 }
 
-function keyValues(entity, item, table, columns, inventory) {
-    return columns.map(column => item[attributeForSource(entity, table, column, inventory).target]);
+function keyValues(entity, item, table, columns, resolve) {
+    return columns.map(column => item[attributeForSource(entity, table, column, resolve).target]);
 }
 
 function sameValues(left, right) {
     return left.length === right.length && left.every((value, index) => Object.is(value, right[index]));
 }
 
-function relationshipEndpoints(owner, target, foreignKey, inventory) {
-    const ownerTable = resolveSource(owner.sourceTable, inventory);
-    const targetTable = resolveSource(target.sourceTable, inventory);
+function relationshipEndpoints(owner, target, foreignKey, resolve) {
+    const ownerTable = resolve(owner.sourceTable);
+    const targetTable = resolve(target.sourceTable);
     const sourceEntity = foreignKey.table.name === ownerTable.name
         ? owner
         : foreignKey.table.name === targetTable.name
@@ -147,15 +147,15 @@ function validateReferenceRelationship(
     foreignKey,
     samplesByEntity,
     errors,
-    inventory,
+    resolve,
 ) {
-    const { sourceEntity, referencedEntity } = relationshipEndpoints(owner, target, foreignKey, inventory);
+    const { sourceEntity, referencedEntity } = relationshipEndpoints(owner, target, foreignKey, resolve);
     if (sourceEntity.isEmbeddedOnly === true || referencedEntity.isEmbeddedOnly === true) {
         throw new Error('Reference relationships require standalone source and target entities.');
     }
     const referencedSamples = samplesByEntity.get(referencedEntity.name) ?? [];
     for (const sample of samplesByEntity.get(sourceEntity.name) ?? []) {
-        const sourceValues = keyValues(sourceEntity, sample.item, foreignKey.table, foreignKey.columns, inventory);
+        const sourceValues = keyValues(sourceEntity, sample.item, foreignKey.table, foreignKey.columns, resolve);
         const found = referencedSamples.some(candidate =>
             sameValues(
                 sourceValues,
@@ -164,7 +164,7 @@ function validateReferenceRelationship(
                     candidate.item,
                     foreignKey.referencedTable,
                     foreignKey.referencedColumns,
-                    inventory,
+                    resolve,
                 ),
             ),
         );
@@ -185,9 +185,9 @@ function validateEmbedRelationship(
     foreignKey,
     samplesByEntity,
     errors,
-    inventory,
+    resolve,
 ) {
-    const { sourceEntity, referencedEntity } = relationshipEndpoints(owner, target, foreignKey, inventory);
+    const { sourceEntity, referencedEntity } = relationshipEndpoints(owner, target, foreignKey, resolve);
     let embeddedCount = 0;
     for (const sample of samplesByEntity.get(owner.name) ?? []) {
         if (!Object.hasOwn(sample.item, relationship.targetProperty)) continue;
@@ -209,14 +209,14 @@ function validateEmbedRelationship(
                 sourceDocument,
                 foreignKey.table,
                 foreignKey.columns,
-                inventory,
+                resolve,
             );
             const referencedValues = keyValues(
                 referencedEntity,
                 referencedDocument,
                 foreignKey.referencedTable,
                 foreignKey.referencedColumns,
-                inventory,
+                resolve,
             );
             if (!sameValues(sourceValues, referencedValues)) {
                 addError(errors, documentPath, `does not match relationship ${owner.name} -> ${target.name}`);
@@ -269,6 +269,12 @@ function validateRelationships(model, samplesByEntity, errors, inventory) {
         addError(errors, '$.sampleData', 'source inventory is required to validate modeled relationships');
         return;
     }
+    const resolveIndexed = createSourceResolver(inventory);
+    const resolvedSources = new Map();
+    const resolve = value => {
+        if (!resolvedSources.has(value)) resolvedSources.set(value, resolveIndexed(value));
+        return resolvedSources.get(value);
+    };
     const entities = new Map(
         model.containers.flatMap(container =>
             container.entities.map(entity => [entity.name.toLocaleLowerCase('en-US'), entity]),
@@ -284,7 +290,7 @@ function validateRelationships(model, samplesByEntity, errors, inventory) {
     for (const { owner, relationship } of relationships) {
         try {
             const target = entities.get(relationship.targetEntity.toLocaleLowerCase('en-US'));
-            const foreignKey = resolveForeignKey(relationship.sourceFK, inventory);
+            const foreignKey = resolveForeignKey(relationship.sourceFK, inventory, resolve);
             if (relationship.strategy === 'reference') {
                 validateReferenceRelationship(
                     relationship,
@@ -293,7 +299,7 @@ function validateRelationships(model, samplesByEntity, errors, inventory) {
                     foreignKey,
                     samplesByEntity,
                     errors,
-                    inventory,
+                    resolve,
                 );
             } else {
                 validateEmbedRelationship(
@@ -303,7 +309,7 @@ function validateRelationships(model, samplesByEntity, errors, inventory) {
                     foreignKey,
                     allSamplesByEntity,
                     errors,
-                    inventory,
+                    resolve,
                 );
             }
         } catch (error) {

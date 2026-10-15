@@ -161,6 +161,36 @@ test('accepts model-aligned sample data', () => {
     assert.deepEqual(validateSampleData(model(), samples()), []);
 });
 
+test('indexes source identities once per sample validation without hiding later ambiguity', () => {
+    const { definition, data, inventory } = referenceFixture();
+    for (let index = 0; index < 200; index++) {
+        inventory.tables.push({
+            name: `dbo.Unused${index}`,
+            identity: [{ name: 'dbo' }, { name: `Unused${index}` }],
+            columns: [],
+            foreignKeys: [],
+        });
+    }
+    for (let index = 0; index < 20; index++) {
+        data.sampleData[0].items.push({
+            ...data.sampleData[0].items[0], id: `order-${200 + index}`, orderId: 200 + index,
+        });
+    }
+    let identityReads = 0;
+    for (const table of inventory.tables) {
+        const identity = table.identity;
+        Object.defineProperty(table, 'identity', { get() { identityReads++; return identity; } });
+    }
+    assert.deepEqual(validateSampleData(definition, data, undefined, inventory), []);
+    assert.equal(identityReads, inventory.tables.length);
+    inventory.tables.push({
+        name: 'other.Customers', identity: [{ name: 'other' }, { name: 'Customers' }],
+        columns: [], foreignKeys: [],
+    });
+    assert(validateSampleData(definition, data, undefined, inventory).some(error =>
+        error.message.includes('Source table is missing or ambiguous: Customers')));
+});
+
 test('enforces composite unique keys within the full partition tuple with case-sensitive values', () => {
     const definition = model();
     const container = definition.containers[0];

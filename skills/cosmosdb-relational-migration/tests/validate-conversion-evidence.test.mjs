@@ -29,6 +29,27 @@ test('binds selected domains, source ownership and root bytes to accepted inputs
     assert(validateConversionEvidence(project, inventory, domainModels, root, evidence).some(error => /deterministic merge/.test(error.message)));
 });
 
+test('indexes source identities once per conversion check and observes changed inventories', () => {
+    const value = fixture();
+    for (let index = 0; index < 200; index++) {
+        value.inventory.tables.push({
+            name: `public.unused${index}`,
+            identity: [{ name: 'public' }, { name: `unused${index}` }],
+            columns: [], primaryKey: [], foreignKeys: [],
+        });
+    }
+    let identityReads = 0;
+    for (const table of value.inventory.tables) {
+        const identity = table.identity;
+        Object.defineProperty(table, 'identity', { get() { identityReads++; return identity; } });
+    }
+    assert.deepEqual(validateConversionEvidence(value.project, value.inventory, value.domainModels, value.root, value.evidence), []);
+    assert.equal(identityReads, value.inventory.tables.length);
+    value.inventory.tables.push(value.inventory.tables[0]);
+    assert(validateConversionEvidence(value.project, value.inventory, value.domainModels, value.root, value.evidence)
+        .some(error => error.message.includes('Source table is missing or ambiguous: public.orders')));
+});
+
 test('accepts design decisions without bypassing concrete conversion failures', () => {
     const value = fixture();
     value.evidence.blockingIssues = [{ kind: 'design-decision', message: 'Review the capacity estimate before deployment.' }];

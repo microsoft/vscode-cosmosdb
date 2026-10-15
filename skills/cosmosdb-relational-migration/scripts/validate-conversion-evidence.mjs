@@ -9,22 +9,23 @@ import { mergeCosmosModels } from './merge-cosmos-models.mjs';
 import { assertNoTerminalIssues, readDomainModel, readPhaseEvidence } from './phase-summary.mjs';
 import { selectSchemaConversionDomains } from './select-schema-conversion-domains.mjs';
 import { canonicalStringify, canonicalizeCosmosModel, classifyItemIdentity } from './validate-cosmos-model.mjs';
-import { readSourceInventory, resolveForeignKey, resolveSource } from './validate-source-evidence.mjs';
+import { createSourceResolver, readSourceInventory, resolveForeignKey } from './validate-source-evidence.mjs';
 
 export function modelHash(model) {
     return createHash('sha256').update(canonicalStringify(canonicalizeCosmosModel(model))).digest('hex');
 }
 
-function preservedSourceColumns(entity, table, inventory) {
+function preservedSourceColumns(entity, table, resolve) {
     return new Set(entity.attributes.filter(attribute =>
         attribute.source.table !== '(generated)' &&
         (entity.isEmbeddedOnly === true || (attribute.target !== 'id' && attribute.isId !== true)) &&
-        resolveSource(attribute.source.table, inventory).name === table.name,
+        resolve(attribute.source.table).name === table.name,
     ).map(attribute => attribute.source.column));
 }
 
 export function validateConversionEvidence(project, inventory, domainModels, root, evidence) {
     try {
+    const resolve = createSourceResolver(inventory);
         if (evidence?.version !== 1 || typeof evidence.includeUnmappedDomains !== 'boolean' || evidence.sourceSha256 !== inventory.sha256) throw new Error('Conversion evidence requires version, explicit selection policy and current source hash');
         assertNoTerminalIssues(evidence.blockingIssues);
         const selected = selectSchemaConversionDomains(project, evidence.includeUnmappedDomains).selectedDomains;
@@ -34,7 +35,7 @@ export function validateConversionEvidence(project, inventory, domainModels, roo
         const owners = new Map();
         for (const domain of selected) {
             for (const source of domain.tables) {
-                const table = resolveSource(source, inventory);
+                const table = resolve(source);
                 if (owners.has(table.name)) throw new Error(`Duplicate authoritative owner: ${table.name}`);
                 owners.set(table.name, domain.name);
             }
@@ -53,7 +54,7 @@ export function validateConversionEvidence(project, inventory, domainModels, roo
         for (const { domainName, model } of domainModels) {
             if (evidence.domainSha256[domainName] !== modelHash(model)) throw new Error(`Stale domain model hash: ${domainName}`);
             for (const container of model.containers) for (const entity of container.entities) {
-                const sourceTable = resolveSource(entity.sourceTable, inventory);
+                const sourceTable = resolve(entity.sourceTable);
                 const source = sourceTable.name;
                 if (!owners.has(source)) throw new Error(`Unselected source mapping: ${source}`);
                 const key = JSON.stringify([domainName, container.name, entity.name]);
@@ -64,19 +65,19 @@ export function validateConversionEvidence(project, inventory, domainModels, roo
                 }
                 for (const attribute of entity.attributes) {
                     if (attribute.source.table === '(generated)') continue;
-                    const table = resolveSource(attribute.source.table, inventory);
+                    const table = resolve(attribute.source.table);
                     if (!owners.has(table.name)) throw new Error(`Attribute maps an unselected source: ${table.name}`);
                     if (!table.columns.some(column => column.name === attribute.source.column)) throw new Error(`Attribute maps a missing source column: ${attribute.source.table}.${attribute.source.column}`);
                 }
                 for (const relationship of entity.relationships ?? []) {
-                    const foreignKey = resolveForeignKey(relationship.sourceFK, inventory);
+                    const foreignKey = resolveForeignKey(relationship.sourceFK, inventory, resolve);
                     if (!owners.has(foreignKey.table.name) || !owners.has(foreignKey.referencedTable.name)) {
                         throw new Error('Relationship maps an unselected source foreign-key endpoint');
                     }
                     const targetEntity = entities.get(relationship.targetEntity.toLocaleLowerCase('en-US'));
                     const endpoints = new Set([
                         sourceTable.name,
-                        resolveSource(targetEntity.sourceTable, inventory).name,
+                        resolve(targetEntity.sourceTable).name,
                     ]);
                     if (!endpoints.has(foreignKey.table.name) || !endpoints.has(foreignKey.referencedTable.name)) {
                         throw new Error(
@@ -84,7 +85,7 @@ export function validateConversionEvidence(project, inventory, domainModels, roo
                         );
                     }
                 }
-                const preservedColumns = preservedSourceColumns(entity, sourceTable, inventory);
+                const preservedColumns = preservedSourceColumns(entity, sourceTable, resolve);
                 const idColumns = new Set([...(entity.idTemplate ?? '').matchAll(/\{([^{}]+)\}/gu)].map(match => match[1]));
                 const generatedId = classifyItemIdentity(entity) === 'generated-uuid';
                 for (const column of sourceTable.primaryKey ?? []) {
@@ -96,7 +97,7 @@ export function validateConversionEvidence(project, inventory, domainModels, roo
         if (explicitOwnership !== undefined) {
             const usedMappings = new Set();
             for (const disposition of explicitOwnership) {
-                const source = resolveSource(disposition.sourceTable, inventory).name;
+                const source = resolve(disposition.sourceTable).name;
                 if (covered.has(source) || owners.get(source) !== disposition.domain) throw new Error(`Duplicate or incorrect source owner: ${source}`);
                 if (!Array.isArray(disposition.targets) || !disposition.targets.length) throw new Error(`Missing target disposition: ${source}`);
                 let authoritative = 0;
@@ -105,7 +106,7 @@ export function validateConversionEvidence(project, inventory, domainModels, roo
                     const key = JSON.stringify([target.domain, target.container, target.entity]);
                     const mapping = mapped.get(key);
                     if (!mapping || !['authoritative', 'embedded', 'projection', 'consolidated'].includes(target.kind)) throw new Error(`Invalid target lineage: ${source}`);
-                    const lineage = mapping.source === source || mapping.entity.attributes.some(attribute => attribute.source.table !== '(generated)' && resolveSource(attribute.source.table, inventory).name === source);
+                    const lineage = mapping.source === source || mapping.entity.attributes.some(attribute => attribute.source.table !== '(generated)' && resolve(attribute.source.table).name === source);
                     if (!lineage) throw new Error(`Target lacks source lineage: ${source}`);
                     if (target.kind !== 'projection') {
                         if (target.domain !== disposition.domain) throw new Error(`Authoritative target belongs to a different domain: ${source}`);
@@ -122,8 +123,8 @@ export function validateConversionEvidence(project, inventory, domainModels, roo
         }
         if (covered.size !== owners.size) throw new Error('Conversion omits selected source tables');
         for (const [source, entity] of covered) {
-            const table = resolveSource(source, inventory);
-            const preservedColumns = preservedSourceColumns(entity, table, inventory);
+            const table = resolve(source);
+            const preservedColumns = preservedSourceColumns(entity, table, resolve);
             for (const column of table.columns) {
                 if (!preservedColumns.has(column.name)) throw new Error(`Authoritative target omits source column: ${source}.${column.name}`);
             }

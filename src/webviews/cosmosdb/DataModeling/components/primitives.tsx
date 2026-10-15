@@ -10,52 +10,10 @@
  * state, so pages stay self-contained and portable to a future wizard package.
  */
 
-import { makeStyles, mergeClasses, Text, tokens } from '@fluentui/react-components';
+import { makeStyles, Text, tokens } from '@fluentui/react-components';
 import { type PropsWithChildren, type ReactNode } from 'react';
 
 const useStyles = makeStyles({
-    // Responsive 2-column layout: sidebar collapses under the main content on narrow widths.
-    twoCol: {
-        display: 'grid',
-        gridTemplateColumns: 'minmax(180px, 220px) minmax(0, 1fr)',
-        gap: tokens.spacingHorizontalXL,
-        alignItems: 'start',
-        '@media (max-width: 720px)': {
-            gridTemplateColumns: '1fr',
-        },
-    },
-    twoColReverse: {
-        '@media (max-width: 720px)': {
-            display: 'flex',
-            flexDirection: 'column-reverse',
-        },
-    },
-    sidebar: {
-        position: 'sticky',
-        top: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: tokens.spacingVerticalS,
-        padding: tokens.spacingHorizontalM,
-        borderRadius: tokens.borderRadiusMedium,
-        backgroundColor: tokens.colorNeutralBackground2,
-        border: `1px solid ${tokens.colorNeutralStroke2}`,
-        '@media (max-width: 720px)': {
-            position: 'static',
-        },
-    },
-    sidebarTitle: {
-        fontWeight: tokens.fontWeightSemibold,
-    },
-    sidebarList: {
-        margin: 0,
-        paddingLeft: tokens.spacingHorizontalL,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: tokens.spacingVerticalXXS,
-        color: tokens.colorNeutralForeground2,
-        fontSize: tokens.fontSizeBase200,
-    },
     infoBox: {
         display: 'flex',
         gap: tokens.spacingHorizontalS,
@@ -102,14 +60,6 @@ const useStyles = makeStyles({
         color: tokens.colorNeutralForeground3,
         fontSize: tokens.fontSizeBase200,
     },
-    sectionHead: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: tokens.spacingHorizontalS,
-        fontWeight: tokens.fontWeightSemibold,
-        marginTop: tokens.spacingVerticalM,
-        marginBottom: tokens.spacingVerticalXS,
-    },
     countBadge: {
         padding: `2px ${tokens.spacingHorizontalS}`,
         borderRadius: tokens.borderRadiusCircular,
@@ -127,20 +77,6 @@ const useStyles = makeStyles({
         backgroundColor: tokens.colorNeutralBackground4,
         fontSize: tokens.fontSizeBase200,
         whiteSpace: 'nowrap',
-    },
-    fieldGroup: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: tokens.spacingVerticalXS,
-        marginBottom: tokens.spacingVerticalL,
-    },
-    fieldLabel: {
-        fontWeight: tokens.fontWeightSemibold,
-        fontSize: tokens.fontSizeBase300,
-    },
-    hint: {
-        color: tokens.colorNeutralForeground3,
-        fontSize: tokens.fontSizeBase200,
     },
     pillRow: {
         display: 'flex',
@@ -171,26 +107,6 @@ export function InlineGuidance({ title, children }: PropsWithChildren<{ title: s
             <summary className={styles.guidanceSummary}>{title}</summary>
             {children}
         </details>
-    );
-}
-
-export function TwoColumn({ children, reverseOnNarrow }: PropsWithChildren<{ reverseOnNarrow?: boolean }>) {
-    const styles = useStyles();
-    return <div className={mergeClasses(styles.twoCol, reverseOnNarrow && styles.twoColReverse)}>{children}</div>;
-}
-
-export function SidebarInfo({ title, items, note }: { title: string; items: ReactNode[]; note?: ReactNode }) {
-    const styles = useStyles();
-    return (
-        <aside className={styles.sidebar}>
-            <Text className={styles.sidebarTitle}>{title}</Text>
-            <ul className={styles.sidebarList}>
-                {items.map((item, i) => (
-                    <li key={i}>{item}</li>
-                ))}
-            </ul>
-            {note ? <div className={styles.infoBox}>{note}</div> : null}
-        </aside>
     );
 }
 
@@ -230,16 +146,6 @@ export function SubPanel({
     );
 }
 
-export function SectionHead({ children, count }: PropsWithChildren<{ count?: string }>) {
-    const styles = useStyles();
-    return (
-        <div className={styles.sectionHead}>
-            <span>{children}</span>
-            {count ? <span className={styles.countBadge}>{count}</span> : null}
-        </div>
-    );
-}
-
 export function MetricPill({ children }: PropsWithChildren) {
     const styles = useStyles();
     return <span className={styles.metricPill}>{children}</span>;
@@ -248,15 +154,4 @@ export function MetricPill({ children }: PropsWithChildren) {
 export function PillRow({ children }: PropsWithChildren) {
     const styles = useStyles();
     return <div className={styles.pillRow}>{children}</div>;
-}
-
-export function FieldGroup({ label, hint, children }: PropsWithChildren<{ label?: ReactNode; hint?: ReactNode }>) {
-    const styles = useStyles();
-    return (
-        <div className={styles.fieldGroup}>
-            {label ? <Text className={styles.fieldLabel}>{label}</Text> : null}
-            {hint ? <Text className={styles.hint}>{hint}</Text> : null}
-            {children}
-        </div>
-    );
 }

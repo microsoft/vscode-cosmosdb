@@ -32,6 +32,7 @@ import {
 } from '../../api/types';
 import { type AccountSummary } from './AccountHeader';
 import { AccountOverview } from './AccountOverview';
+import { InventoryTable } from './InventoryTable';
 import { METRIC_ORDER, METRIC_VIEWS } from './metrics/descriptors';
 
 const queries = vi.hoisted(() => ({
@@ -83,14 +84,6 @@ vi.mock('@microsoft/vscode-ext-webview/react', () => {
     return { useTrpcClient: () => client, useRpcEvents: () => rpcEvents };
 });
 vi.mock('./metrics/MetricChart', () => ({ MetricChart: () => null }));
-vi.mock('@tanstack/react-virtual', () => ({
-    useVirtualizer: ({ count }: { count: number }) => ({
-        getVirtualItems: () =>
-            Array.from({ length: count }, (_, index) => ({ index, start: index * 48, end: (index + 1) * 48 })),
-        getTotalSize: () => count * 48,
-        measureElement: () => {},
-    }),
-}));
 
 const summary: AccountSummary = {
     accountName: 'test-account',
@@ -137,7 +130,7 @@ function navigate(target: AccountOverviewTarget, revision: number) {
 
 async function chooseHeaderOption(user: ReturnType<typeof userEvent.setup>, name: RegExp, option: string) {
     const select = screen.getByRole('combobox', { name });
-    await waitFor(() => expect(select).toBeEnabled());
+    await waitFor(() => expect(select).not.toHaveAttribute('aria-disabled', 'true'));
     await user.click(select);
     await user.click(screen.getByRole('option', { name: option }));
 }
@@ -273,7 +266,7 @@ describe('header update feedback', () => {
         const counts = dataQueryCounts();
         for (const name of [/^Metric time range:/, /^Database scope for metrics:/]) {
             const select = screen.getByRole('combobox', { name });
-            expect(select).toBeDisabled();
+            expect(select).toHaveAttribute('aria-disabled', 'true');
             await user.click(select);
         }
         expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
@@ -286,7 +279,7 @@ describe('header update feedback', () => {
         expect(queries.announce).toHaveBeenLastCalledWith('Account Overview update finished.', { polite: true });
         expect(refresh).toHaveFocus();
         for (const name of [/^Metric time range:/, /^Database scope for metrics:/]) {
-            expect(screen.getByRole('combobox', { name })).toBeEnabled();
+            expect(screen.getByRole('combobox', { name })).not.toHaveAttribute('aria-disabled', 'true');
         }
     });
 
@@ -301,7 +294,7 @@ describe('header update feedback', () => {
             const counts = dataQueryCounts();
             for (const name of [/^Metric time range:/, /^Database scope for metrics:/]) {
                 const select = screen.getByRole('combobox', { name });
-                expect(select).toBeDisabled();
+                expect(select).toHaveAttribute('aria-disabled', 'true');
                 await user.click(select);
             }
             expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
@@ -330,11 +323,13 @@ describe('header update feedback', () => {
             expect(refresh).toHaveAttribute('aria-busy', 'true');
             const select = screen.getByRole('combobox', { name: /^Metric time range:/ });
             expect(select).toHaveTextContent('Last 7 days');
-            expect(select).toBeDisabled();
+            expect(select).toHaveAttribute('aria-disabled', 'true');
+            expect(select).toHaveFocus();
             expect(select).toHaveAccessibleDescription('Updating…');
             await act(async () => pending.resolve(response));
             await waitFor(() => expect(refresh).toHaveAttribute('aria-busy', 'false'));
-            expect(select).toBeEnabled();
+            expect(select).not.toHaveAttribute('aria-disabled', 'true');
+            expect(select).toHaveFocus();
         },
     );
 
@@ -351,7 +346,7 @@ describe('header update feedback', () => {
             const counts = dataQueryCounts();
             for (const name of [/^Metric time range:/, /^Database scope for metrics:/]) {
                 const select = screen.getByRole('combobox', { name });
-                expect(select).toBeDisabled();
+                expect(select).toHaveAttribute('aria-disabled', 'true');
                 await user.click(select);
             }
             expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
@@ -365,6 +360,7 @@ describe('header update feedback', () => {
                 }
             });
             await waitFor(() => expect(refresh).toHaveAttribute('aria-busy', 'false'));
+            expect(screen.getByRole('combobox', { name: /^Database scope for metrics:/ })).toHaveFocus();
             await chooseHeaderOption(user, /^Database scope for metrics:/, 'All databases');
             expect(queries.metric).toHaveBeenCalledTimes(counts.metric + METRIC_ORDER.length);
             expect(screen.getByRole('combobox', { name: /^Database scope for metrics:/ })).toHaveTextContent(
@@ -372,6 +368,57 @@ describe('header update feedback', () => {
             );
         },
     );
+
+    it.each([
+        ['Metric time range', 'Last 7 days', false],
+        ['Metric time range', 'Last 7 days', true],
+        ['Database scope for metrics', 'database', false],
+        ['Database scope for metrics', 'database', true],
+    ] as const)('%s retains %s and keyboard focus after loading (failure: %s)', async (label, value, fails) => {
+        const user = userEvent.setup();
+        const refresh = await showReadyOverview();
+        const response: unknown = await queries.metric.mock.results[0].value;
+        const pending = Promise.withResolvers<unknown>();
+        queries.metric.mockReturnValueOnce(pending.promise);
+        const select = screen.getByRole('combobox', { name: new RegExp(`^${label}:`) });
+        select.focus();
+        await user.keyboard('{Enter}{ArrowDown}{Enter}');
+        expect(select).toHaveTextContent(value);
+        expect(select).toHaveAccessibleName(`${label}: ${value}`);
+        expect(select).toHaveFocus();
+        expect(select).toHaveAttribute('aria-disabled', 'true');
+        const counts = dataQueryCounts();
+        await user.keyboard('{ArrowDown}{Enter} {Home}{End}database');
+        expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+        expect(dataQueryCounts()).toEqual(counts);
+        await act(async () => {
+            if (fails) {
+                pending.reject(new Error('Metric request failed'));
+            } else {
+                pending.resolve(response);
+            }
+        });
+        await waitFor(() => expect(refresh).toHaveAttribute('aria-busy', 'false'));
+        expect(select).not.toHaveAttribute('aria-disabled', 'true');
+        expect(select).toHaveFocus();
+    });
+
+    it.each([
+        [/^Metric time range:/, 'Last 7 days'],
+        [/^Database scope for metrics:/, 'database'],
+    ] as const)('does not restore %s focus if the user leaves during loading', async (name, option) => {
+        const user = userEvent.setup();
+        const refresh = await showReadyOverview();
+        const response: unknown = await queries.metric.mock.results[0].value;
+        const pending = Promise.withResolvers<unknown>();
+        queries.metric.mockReturnValueOnce(pending.promise);
+        await chooseHeaderOption(user, name, option);
+        const destination = screen.getByRole('tab', { name: 'Advisories' });
+        await user.click(destination);
+        await act(async () => pending.resolve(response));
+        await waitFor(() => expect(refresh).toHaveAttribute('aria-busy', 'false'));
+        expect(destination).toHaveFocus();
+    });
 
     it('blocks another period selection until the current inventory-metrics request finishes', async () => {
         const user = userEvent.setup();
@@ -382,7 +429,7 @@ describe('header update feedback', () => {
         await chooseHeaderOption(user, /^Metric time range:/, 'Last 7 days');
         expect(refresh).toHaveAttribute('aria-busy', 'true');
         const select = screen.getByRole('combobox', { name: /^Metric time range:/ });
-        expect(select).toBeDisabled();
+        expect(select).toHaveAttribute('aria-disabled', 'true');
         await user.click(select);
         expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
         expect(queries.inventoryMetrics).toHaveBeenCalledTimes(2);
@@ -405,7 +452,7 @@ describe('header update feedback', () => {
             await act(async () => pending.reject(new Error('Refresh failed')));
             await waitFor(() => expect(refresh).toHaveAttribute('aria-busy', 'false'));
             for (const name of [/^Metric time range:/, /^Database scope for metrics:/]) {
-                expect(screen.getByRole('combobox', { name })).toBeEnabled();
+                expect(screen.getByRole('combobox', { name })).not.toHaveAttribute('aria-disabled', 'true');
             }
             expect(screen.getByRole('group', { name: 'Error' })).toHaveTextContent(
                 'Account data could not be refreshed.',
@@ -1058,8 +1105,8 @@ describe('Account Overview account actions', () => {
             'aria-pressed',
             'true',
         );
-        expect(screen.getByRole('combobox', { name: 'Select a container for partition health' })).toHaveTextContent(
-            'products',
+        expect(screen.getByRole('combobox', { name: /^Select a container for partition health:/ })).toHaveTextContent(
+            'products · database',
         );
         expect(screen.getByRole('combobox', { name: /^Metric time range:/ })).toHaveTextContent('Last 7 days');
         expect(screen.getByRole('combobox', { name: /^Database scope for metrics:/ })).toHaveTextContent(
@@ -1155,7 +1202,8 @@ describe('alert window serialization', () => {
         queries.alerts.mockReturnValueOnce(pending.promise);
         const { user, controls } = await showAlerts();
         for (const button of controls.getAllByRole('button')) {
-            expect(button).toBeDisabled();
+            expect(button).toHaveAttribute('aria-disabled', 'true');
+            expect(button).not.toBeDisabled();
             expect(button).toHaveAccessibleDescription('Alerts are still loading.');
             await user.click(button);
         }
@@ -1163,6 +1211,7 @@ describe('alert window serialization', () => {
         await act(async () => pending.resolve(alertResult('1d')));
         for (const button of controls.getAllByRole('button')) {
             expect(button).toBeEnabled();
+            expect(button).not.toHaveAttribute('aria-disabled', 'true');
             expect(button).not.toHaveAttribute('aria-description');
         }
     });
@@ -1173,7 +1222,7 @@ describe('alert window serialization', () => {
         queries.alerts.mockReturnValueOnce(pending.promise);
         await user.click(controls.getByRole('button', { name: '7d' }));
         const next = controls.getByRole('button', { name: '30d' });
-        expect(next).toBeDisabled();
+        expect(next).toHaveAttribute('aria-disabled', 'true');
         await user.click(next);
         fireEvent.click(next);
         next.focus();
@@ -1205,13 +1254,15 @@ describe('alert window serialization', () => {
             await waitFor(() => expect(refresh).not.toHaveAttribute('aria-disabled', 'true'));
             await user.click(refresh);
             for (const button of controls.getAllByRole('button')) {
-                expect(button).toBeDisabled();
+                expect(button).toHaveAttribute('aria-disabled', 'true');
             }
             expect(queries.alerts).toHaveBeenCalledTimes(2);
             await user.click(controls.getByRole('button', { name: '7d' }));
             expect(queries.alerts).toHaveBeenCalledTimes(2);
             await act(async () => pending.resolve(previous));
-            await waitFor(() => expect(controls.getByRole('button', { name: '7d' })).toBeEnabled());
+            await waitFor(() =>
+                expect(controls.getByRole('button', { name: '7d' })).not.toHaveAttribute('aria-disabled', 'true'),
+            );
             const failureMessage = screen.queryByRole('group', { name: 'Error' })?.textContent ?? '';
             expect(failureMessage.includes('Account data could not be refreshed.')).toBe(alertsFail);
             expect(queries.showErrorMessage).not.toHaveBeenCalled();
@@ -1227,10 +1278,404 @@ describe('alert window serialization', () => {
         expect(screen.getByRole('group', { name: 'Error' })).toHaveTextContent('Account data could not be refreshed.');
         const next = controls.getByRole('button', { name: '30d' });
         expect(next).toBeEnabled();
+        expect(next).not.toHaveAttribute('aria-disabled', 'true');
         queries.alerts.mockResolvedValueOnce(alertResult('30d'));
         await user.click(next);
         expect(await screen.findByText('30d alert')).toBeVisible();
         expect(queries.showErrorMessage).not.toHaveBeenCalled();
+    });
+
+    it.each([false, true])('preserves period focus across loading (request fails: %s)', async (fails) => {
+        const { user, controls } = await showAlerts();
+        const pending = Promise.withResolvers<AlertsResult>();
+        queries.alerts.mockReturnValueOnce(pending.promise);
+        controls.getByRole('button', { name: '1d' }).focus();
+        await user.keyboard('{ArrowRight}{Enter}');
+        const selected = controls.getByRole('button', { name: '7d' });
+        expect(selected).toHaveTextContent('7d');
+        expect(selected).toHaveAccessibleName('7d');
+        expect(selected).toHaveFocus();
+        expect(selected).toHaveAttribute('aria-disabled', 'true');
+        await user.keyboard('{Enter} ');
+        expect(queries.alerts).toHaveBeenCalledTimes(2);
+        await act(async () => {
+            if (fails) {
+                pending.reject(new Error('Alert request failed'));
+            } else {
+                pending.resolve(alertResult('7d'));
+            }
+        });
+        expect(selected).not.toHaveAttribute('aria-disabled', 'true');
+        expect(selected).toHaveFocus();
+    });
+
+    it('does not restore period focus if the user moves elsewhere during loading', async () => {
+        const { user, controls } = await showAlerts();
+        const pending = Promise.withResolvers<AlertsResult>();
+        queries.alerts.mockReturnValueOnce(pending.promise);
+        await user.click(controls.getByRole('button', { name: '7d' }));
+        const destination = screen.getByRole('tab', { name: 'Monitoring' });
+        await user.click(destination);
+        queries.announce.mockClear();
+        await act(async () => pending.resolve(alertResult('7d')));
+        expect(destination).toHaveFocus();
+        expect(queries.announce).not.toHaveBeenCalled();
+    });
+});
+
+describe('inventory accessibility', () => {
+    const manyRows = Array.from({ length: 53 }, (_, index) => ({
+        ...rows[0],
+        containerId: `container-${String(index).padStart(3, '0')}`,
+    }));
+    const inventoryProps = {
+        supported: true,
+        available: true,
+        onRevealInTree: vi.fn(),
+        onOpenQueryEditor: vi.fn(),
+        onSelectContainer: vi.fn(),
+    };
+
+    it('pages a native table with total row count, logical row positions and stable boundary controls', async () => {
+        const user = userEvent.setup();
+        render(<InventoryTable {...inventoryProps} rows={manyRows} />, { wrapper: Wrapper });
+        const table = screen.getByRole('table', { name: 'Containers' });
+        const next = screen.getByRole('button', { name: 'Next page' });
+        const previous = screen.getByRole('button', { name: 'Previous page' });
+        expect(table).toHaveAttribute('aria-rowcount', '54');
+        expect(within(table).getAllByRole('row')).toHaveLength(26);
+        expect(within(table).getAllByRole('row')[0]).toHaveAttribute('aria-rowindex', '1');
+        expect(within(table).getAllByRole('row')[1]).toHaveAttribute('aria-rowindex', '2');
+        expect(previous).toHaveAttribute('aria-disabled', 'true');
+        next.focus();
+        await user.keyboard('{Enter}');
+        expect(next).toHaveFocus();
+        expect(within(table).getAllByRole('row')[1]).toHaveAttribute('aria-rowindex', '27');
+        expect(screen.getByText('Page 2 of 3. Containers 26 to 50 of 53.')).toBeVisible();
+        expect(queries.announce).toHaveBeenLastCalledWith('Page 2 of 3. Containers 26 to 50 of 53.', { polite: true });
+        await user.keyboard(' ');
+        expect(next).toHaveFocus();
+        expect(next).toHaveAttribute('aria-disabled', 'true');
+        expect(next).not.toBeDisabled();
+        expect(within(table).getAllByRole('row')).toHaveLength(4);
+        expect(within(table).getAllByRole('row')[3]).toHaveAttribute('aria-rowindex', '54');
+        await user.keyboard('{Enter} ');
+        expect(screen.getByText('Page 3 of 3. Containers 51 to 53 of 53.')).toBeVisible();
+        await user.click(previous);
+        expect(previous).toHaveFocus();
+        expect(screen.getByText('Page 2 of 3. Containers 26 to 50 of 53.')).toBeVisible();
+    });
+
+    it('sorts and filters the entire inventory, resets the page, and retains selection outside the page', async () => {
+        const user = userEvent.setup();
+        render(<InventoryTable {...inventoryProps} rows={manyRows} selectedContainer={manyRows[52]} />, {
+            wrapper: Wrapper,
+        });
+        await user.click(screen.getByRole('button', { name: 'Next page' }));
+        const sort = within(screen.getByRole('columnheader', { name: 'Container' })).getByRole('button');
+        await user.click(sort);
+        expect(sort).toHaveFocus();
+        expect(screen.getByText('Page 1 of 3. Containers 1 to 25 of 53.')).toBeVisible();
+        const selected = screen.getByRole('button', { name: 'container-052: show partition health in database' });
+        expect(selected).toHaveAttribute('aria-pressed', 'true');
+        expect(within(screen.getByRole('table')).getAllByRole('row')[1]).toContainElement(selected);
+        const search = screen.getByRole('textbox', { name: 'Search containers or databases' });
+        await user.type(search, 'container-000');
+        expect(search).toHaveFocus();
+        expect(screen.getByText('Page 1 of 1. Containers 1 to 1 of 1.')).toBeVisible();
+        expect(screen.getByRole('table')).toHaveAttribute('aria-rowcount', '2');
+        expect(screen.getByRole('button', { name: 'container-000: show partition health in database' })).toBeVisible();
+    });
+
+    it('recovers focus when a refreshed row disappears and clamps a shortened page', async () => {
+        vi.spyOn(document, 'hasFocus').mockReturnValue(true);
+        const user = userEvent.setup();
+        const { rerender } = render(<InventoryTable {...inventoryProps} rows={manyRows} />, { wrapper: Wrapper });
+        await user.click(screen.getByRole('button', { name: 'Next page' }));
+        await user.click(screen.getByRole('button', { name: 'Next page' }));
+        screen.getByRole('button', { name: 'container-052: show partition health in database' }).focus();
+        rerender(<InventoryTable {...inventoryProps} rows={manyRows.slice(0, 26)} />);
+        expect(screen.getByRole('region', { name: 'Container inventory' })).toHaveFocus();
+        expect(screen.getByText('Page 2 of 2. Containers 26 to 26 of 26.')).toBeVisible();
+        const previous = screen.getByRole('button', { name: 'Previous page' });
+        previous.focus();
+        rerender(<InventoryTable {...inventoryProps} rows={manyRows.slice(0, 25)} />);
+        expect(previous).toHaveFocus();
+        expect(previous).toHaveAttribute('aria-disabled', 'true');
+        screen.getByRole('button', { name: 'container-000: show partition health in database' }).focus();
+        rerender(<InventoryTable {...inventoryProps} rows={[]} />);
+        expect(screen.getByRole('region', { name: 'Container inventory' })).toHaveFocus();
+    });
+
+    it('does not take focus back when refreshed rows disappear on a hidden tab', () => {
+        vi.spyOn(document, 'hasFocus').mockReturnValue(true);
+        const { rerender } = render(<InventoryTable {...inventoryProps} rows={manyRows} />, { wrapper: Wrapper });
+        screen.getByRole('button', { name: 'container-000: show partition health in database' }).focus();
+        rerender(<InventoryTable {...inventoryProps} rows={[]} active={false} />);
+        expect(screen.getByRole('region', { name: 'Container inventory' })).not.toHaveFocus();
+    });
+
+    it('does not recover removed-row focus when the webview no longer owns focus', () => {
+        const { rerender } = render(<InventoryTable {...inventoryProps} rows={manyRows} />, { wrapper: Wrapper });
+        screen.getByRole('button', { name: 'container-000: show partition health in database' }).focus();
+        vi.spyOn(document, 'hasFocus').mockReturnValue(false);
+        rerender(<InventoryTable {...inventoryProps} rows={[]} />);
+        expect(screen.getByRole('region', { name: 'Container inventory' })).not.toHaveFocus();
+    });
+
+    it('includes the selected filter text and resource context without repeating icon tooltip names', async () => {
+        const user = userEvent.setup();
+        queries.inventory.mockResolvedValue({
+            supported: true,
+            available: true,
+            rows: [rows[0], { ...rows[0], databaseId: 'other-database' }],
+        });
+        render(<AccountOverview />, { wrapper: Wrapper });
+        await user.click(await screen.findByRole('tab', { name: 'Databases and Containers' }));
+        const database = screen.getByRole('combobox', { name: 'Filter by database: All databases' });
+        expect(database).toHaveTextContent('All databases');
+        const throughput = screen.getByRole('combobox', { name: 'Filter by throughput mode: All throughput modes' });
+        expect(throughput).toHaveTextContent('All throughput modes');
+        const selector = screen.getByRole('combobox', { name: /^Select a container for partition health:/ });
+        expect(selector).toHaveTextContent('orders · database');
+        expect(selector).toHaveAccessibleName('Select a container for partition health: orders · database');
+        await user.click(selector);
+        await user.click(screen.getByRole('option', { name: 'orders · other-database' }));
+        expect(selector).toHaveTextContent('orders · other-database');
+        expect(selector).toHaveAccessibleName('Select a container for partition health: orders · other-database');
+
+        for (const label of ['Reveal in tree', 'Open Query Editor']) {
+            const actions = screen.getAllByRole('button', { name: label });
+            for (const [index, action] of actions.entries()) {
+                const db = index === 0 ? 'database' : 'other-database';
+                expect(action).toHaveAccessibleName(label);
+                expect(action).toHaveAccessibleDescription(`Container orders in database ${db}`);
+                action.focus();
+                await user.keyboard('{Enter}');
+                expect(label === 'Reveal in tree' ? queries.reveal : queries.queryEditor).toHaveBeenLastCalledWith({
+                    databaseId: db,
+                    containerId: 'orders',
+                });
+            }
+        }
+        await user.click(database);
+        await user.click(screen.getByRole('option', { name: 'other-database' }));
+        expect(database).toHaveTextContent('other-database');
+        expect(database).toHaveAccessibleName('Filter by database: other-database');
+        await user.click(throughput);
+        await user.click(screen.getByRole('option', { name: 'Dedicated' }));
+        expect(throughput).toHaveTextContent('Dedicated');
+        expect(throughput).toHaveAccessibleName('Filter by throughput mode: Dedicated');
+    });
+
+    it('coalesces filter result announcements and does not announce initial results or sorting', async () => {
+        const user = userEvent.setup();
+        render(<AccountOverview />, { wrapper: Wrapper });
+        await user.click(await screen.findByRole('tab', { name: 'Databases and Containers' }));
+        expect(queries.announce).not.toHaveBeenCalled();
+        const search = screen.getByRole('textbox', { name: 'Search containers or databases' });
+        fireEvent.change(search, { target: { value: 'o' } });
+        fireEvent.change(search, { target: { value: 'orders' } });
+        await waitFor(() =>
+            expect(queries.announce).toHaveBeenCalledExactlyOnceWith('Containers matching the current filters: 1', {
+                polite: true,
+            }),
+        );
+        queries.announce.mockClear();
+        fireEvent.change(search, { target: { value: 'missing' } });
+        await waitFor(() =>
+            expect(queries.announce).toHaveBeenCalledExactlyOnceWith('No containers match the current filters.', {
+                polite: true,
+            }),
+        );
+        queries.announce.mockClear();
+        fireEvent.change(search, { target: { value: '' } });
+        await waitFor(() =>
+            expect(queries.announce).toHaveBeenCalledExactlyOnceWith('Containers matching the current filters: 2', {
+                polite: true,
+            }),
+        );
+        queries.announce.mockClear();
+        await user.click(within(screen.getByRole('columnheader', { name: 'Container' })).getByRole('button'));
+        await act(async () => new Promise((resolve) => setTimeout(resolve, 350)));
+        expect(queries.announce).not.toHaveBeenCalled();
+    });
+
+    it('cancels a pending filter announcement when leaving the inventory tab', async () => {
+        const user = userEvent.setup();
+        render(<AccountOverview />, { wrapper: Wrapper });
+        await user.click(await screen.findByRole('tab', { name: 'Databases and Containers' }));
+        fireEvent.change(screen.getByRole('textbox', { name: 'Search containers or databases' }), {
+            target: { value: 'missing' },
+        });
+        await user.click(screen.getByRole('tab', { name: 'Monitoring' }));
+        await act(async () => new Promise((resolve) => setTimeout(resolve, 350)));
+        expect(queries.announce).not.toHaveBeenCalled();
+        await user.click(screen.getByRole('tab', { name: 'Databases and Containers' }));
+        await act(async () => new Promise((resolve) => setTimeout(resolve, 350)));
+        expect(queries.announce).not.toHaveBeenCalled();
+    });
+
+    it('exposes only sortable headers as buttons and sorts with Enter and Space', async () => {
+        const user = userEvent.setup();
+        render(<AccountOverview />, { wrapper: Wrapper });
+        await user.click(await screen.findByRole('tab', { name: 'Databases and Containers' }));
+        const table = screen.getByRole('table', { name: 'Containers' });
+        for (const name of ['Container', 'Database', 'Throughput', 'Storage', 'Documents', 'Peak RU', 'Health']) {
+            const header = within(table).getByRole('columnheader', { name });
+            const button = within(header).getByRole('button', { name });
+            expect(button).toHaveTextContent(name);
+            expect(button).toHaveAccessibleName(name);
+            expect(button.tabIndex).toBe(0);
+        }
+        for (const name of ['Partition key', 'Indexing', 'Actions']) {
+            expect(within(within(table).getByRole('columnheader', { name })).queryByRole('button')).toBeNull();
+        }
+        const header = within(table).getByRole('columnheader', { name: 'Container' });
+        const button = within(header).getByRole('button', { name: 'Container' });
+        const containerNames = () =>
+            within(table)
+                .getAllByRole('button', { name: /: show partition health/ })
+                .map((element) => element.textContent);
+        expect(header).toHaveAttribute('aria-sort', 'ascending');
+        expect(containerNames()).toEqual(['orders', 'products']);
+        button.focus();
+        await user.keyboard('{Enter}');
+        expect(header).toHaveAttribute('aria-sort', 'descending');
+        expect(containerNames()).toEqual(['products', 'orders']);
+        expect(button).toHaveFocus();
+        await user.keyboard(' ');
+        expect(header).toHaveAttribute('aria-sort', 'ascending');
+        expect(containerNames()).toEqual(['orders', 'products']);
+        expect(button).toHaveFocus();
+    });
+
+    it.each(['ru', 'storage'] as const)(
+        'uses the same %s precision in heatmap names, values and explanations',
+        async (mode) => {
+            const user = userEvent.setup();
+            const shares = [0.4, 4.6, 9.94, 10.4, 95.6];
+            const formatted = ['0.4', '4.6', '9.9', '10', '96'];
+            queries.partition.mockResolvedValue({
+                available: true,
+                mode,
+                databaseId: 'database',
+                containerId: 'orders',
+                tiles: shares.map((sharePercent, index) => ({
+                    partitionId: String(index),
+                    sharePercent,
+                    level: 1,
+                    hot: index === 4,
+                })),
+                skewScore: 0,
+                topPartitionShare: 95.6,
+                partitionCount: shares.length,
+                topN: shares.length,
+                generatedAt: 0,
+            } satisfies PartitionHealthResult);
+            render(<AccountOverview />, { wrapper: Wrapper });
+            await user.click(await screen.findByRole('tab', { name: 'Databases and Containers' }));
+            for (const [index, percent] of formatted.entries()) {
+                const name = `Physical partition PKR-${index}, ${percent} percent ${mode === 'ru' ? 'p99 utilization' : 'of storage'}${index === 4 ? ', flagged as hot' : ''}`;
+                const tile = screen.getByTitle(
+                    `PKR-${index}: ${percent}% ${mode === 'ru' ? 'p99 utilization' : 'share'}`,
+                );
+                expect(tile).toHaveRole('figure');
+                expect(tile).toHaveAccessibleName(name);
+                expect(tile.querySelector('figcaption')).toBeNull();
+                expect(within(tile).getByText(`${percent}%`)).toBeVisible();
+            }
+            expect(
+                screen.getByText(mode === 'ru' ? 'Ran at 0.4% p99 utilization.' : 'Holds 0.4% of container storage.'),
+            ).toBeVisible();
+        },
+    );
+});
+
+describe('local result announcements', () => {
+    it.each([false, true])(
+        'announces one alert-window result without claiming success on failure (%s)',
+        async (fails) => {
+            const user = userEvent.setup();
+            render(<AccountOverview />, { wrapper: Wrapper });
+            await user.click(await screen.findByRole('tab', { name: 'Advisories' }));
+            const windowButton = within(screen.getByRole('toolbar', { name: 'Alert time range' })).getByRole('button', {
+                name: '7d',
+            });
+            await waitFor(() => expect(windowButton).not.toHaveAttribute('aria-disabled', 'true'));
+            queries.announce.mockClear();
+            const pending = Promise.withResolvers<AlertsResult>();
+            queries.alerts.mockReturnValueOnce(pending.promise);
+            await user.click(windowButton);
+            expect(queries.announce).not.toHaveBeenCalled();
+            await act(async () => {
+                if (fails) {
+                    pending.reject(new Error('Failed'));
+                } else {
+                    pending.resolve({
+                        available: true,
+                        timeRange: '7d',
+                        alerts: [],
+                        criticalCount: 0,
+                        warningCount: 0,
+                        generatedAt: 1,
+                    });
+                }
+            });
+            expect(queries.announce).toHaveBeenCalledExactlyOnceWith(
+                fails
+                    ? 'Alerts could not be loaded for the selected window.'
+                    : 'Active alerts in the selected window: 0',
+                { polite: true },
+            );
+        },
+    );
+});
+
+describe('Advisor recommendation accessibility', () => {
+    it('describes each Learn more action with its visible recommendation and opens the matching URL', async () => {
+        const user = userEvent.setup();
+        const recommendations: RecommendationsResult['recommendations'] = [
+            {
+                id: 'cost',
+                category: 'Cost',
+                impact: 'High',
+                problem: 'Review provisioned capacity',
+                learnMoreLink: 'https://example.invalid/capacity',
+            },
+            {
+                id: 'performance',
+                category: 'Performance',
+                impact: 'Medium',
+                problem: 'Review indexing policy',
+                learnMoreLink: 'https://example.invalid/indexing',
+            },
+            { id: 'no-link', category: 'Cost', impact: 'Low', problem: 'Recommendation without documentation' },
+        ];
+        queries.recommendations.mockResolvedValue({
+            available: true,
+            recommendations,
+            hasHighImpactPerfCost: true,
+            generatedAt: 0,
+        } satisfies RecommendationsResult);
+        render(<AccountOverview />, { wrapper: Wrapper });
+        await user.click(await screen.findByRole('tab', { name: 'Advisories' }));
+        const actions = screen.getAllByRole('button', { name: 'Learn more' });
+        expect(actions).toHaveLength(2);
+        for (const [index, action] of actions.entries()) {
+            const recommendation = recommendations[index];
+            const problem = screen.getByText(recommendation.problem);
+            expect(problem).toBeVisible();
+            expect(action).toHaveTextContent('Learn more');
+            expect(action).toHaveAccessibleName('Learn more');
+            expect(action).toHaveAccessibleDescription(recommendation.problem);
+            expect(action).toHaveAttribute('aria-describedby', problem.id);
+            action.focus();
+            await user.keyboard('{Enter}');
+            expect(queries.openUrl).toHaveBeenNthCalledWith(index + 1, { url: recommendation.learnMoreLink });
+        }
+        expect(queries.openUrl).toHaveBeenCalledTimes(2);
+        expect(screen.getByText('Recommendation without documentation')).toBeVisible();
     });
 });
 
@@ -1303,6 +1748,115 @@ describe('native auxiliary action errors', () => {
 });
 
 describe('tabbed Account Overview', () => {
+    it('keeps a dialog and focus during background completion or replay of the same navigation revision', async () => {
+        const user = userEvent.setup();
+        initialTarget = 'advisories';
+        const pending = Promise.withResolvers<AlertsResult>();
+        queries.alerts.mockReturnValueOnce(pending.promise);
+        queries.advisories.mockResolvedValue({
+            available: true,
+            generatedAt: 0,
+            advisories: [
+                {
+                    id: 'idle',
+                    rule: 'IdleContainer',
+                    severity: 'Low',
+                    scope: 'database/orders',
+                    title: 'Idle container',
+                    rationale: 'Low traffic.',
+                    suggestedAction: 'Review capacity.',
+                    thresholdReference: 'Below threshold.',
+                },
+            ],
+        });
+        render(<AccountOverview />, { wrapper: Wrapper });
+        const card = await screen.findByRole('button', { name: /^Idle containers/ });
+        await user.click(card);
+        const close = screen.getByRole('button', { name: 'Close' });
+        close.focus();
+        await act(async () =>
+            pending.resolve({
+                available: true,
+                timeRange: '1d',
+                alerts: [],
+                criticalCount: 0,
+                warningCount: 0,
+                generatedAt: 1,
+            }),
+        );
+        expect(screen.getByRole('dialog')).toBeVisible();
+        expect(close).toHaveFocus();
+        navigate('advisories', 0);
+        expect(screen.getByRole('dialog')).toBeVisible();
+        expect(close).toHaveFocus();
+        await user.keyboard('{Escape}');
+        await waitFor(() => expect(card).toHaveFocus());
+    });
+
+    it.each(['overview', 'advisories', ...METRIC_ORDER] as const)(
+        'closes an advisory dialog and focuses the explicit host destination %s',
+        async (target) => {
+            const user = userEvent.setup();
+            initialTarget = 'advisories';
+            queries.advisories.mockResolvedValue({
+                available: true,
+                generatedAt: 0,
+                advisories: [
+                    {
+                        id: 'idle',
+                        rule: 'IdleContainer',
+                        severity: 'Low',
+                        scope: 'database/orders',
+                        title: 'Idle container',
+                        rationale: 'Low traffic.',
+                        suggestedAction: 'Review capacity.',
+                        thresholdReference: 'Below threshold.',
+                    },
+                ],
+            });
+            render(<AccountOverview />, { wrapper: Wrapper });
+            await user.click(await screen.findByRole('button', { name: /^Idle containers/ }));
+            expect(screen.getByRole('dialog')).toBeVisible();
+            const calls = dataQueryCounts();
+            navigate(target, 1);
+            expect(screen.queryByRole('dialog')).toBeNull();
+            const destination =
+                target === 'overview' || target === 'advisories'
+                    ? screen.getByRole('tab', { name: target === 'overview' ? 'Monitoring' : 'Advisories' })
+                    : screen.getByRole('region', { name: `${METRIC_VIEWS[target].label} trend` });
+            await waitFor(() => expect(destination).toHaveFocus());
+            expect(dataQueryCounts()).toEqual(calls);
+            navigate(target, 2);
+            expect(destination).toHaveFocus();
+            await user.click(screen.getByRole('tab', { name: 'Advisories' }));
+            expect(screen.queryByRole('dialog')).toBeNull();
+        },
+    );
+
+    it.each([
+        ['Monitoring', /^Metric time range:/],
+        ['Monitoring', /^Database scope for metrics:/],
+        ['Databases and Containers', /^Filter by database:/],
+        ['Databases and Containers', /^Filter by throughput mode:/],
+        ['Databases and Containers', /^Select a container for partition health:/],
+    ] as const)('closes a %s dropdown on explicit navigation (%s)', async (tab, name) => {
+        const user = userEvent.setup();
+        render(<AccountOverview />, { wrapper: Wrapper });
+        await user.click(await screen.findByRole('tab', { name: tab }));
+        const select = screen.getByRole('combobox', { name });
+        await waitFor(() => expect(select).not.toHaveAttribute('aria-disabled', 'true'));
+        await user.click(select);
+        expect(screen.getByRole('listbox')).toBeVisible();
+        const recovery =
+            tab === 'Databases and Containers'
+                ? vi.spyOn(screen.getByRole('region', { name: 'Container inventory' }), 'focus')
+                : vi.fn();
+        navigate('advisories', 1);
+        expect(screen.queryByRole('listbox')).toBeNull();
+        expect(recovery).not.toHaveBeenCalled();
+        expect(screen.getByRole('tab', { name: 'Advisories' })).toHaveFocus();
+    });
+
     it.each([
         ['Advisories', 'Alert time range', ['1h', '1d', '7d', '30d'], '1d'],
         [
@@ -1541,8 +2095,8 @@ describe('tabbed Account Overview', () => {
         expect(select).toHaveAccessibleName('products: show partition health in database');
         await user.click(select);
         expect(select).toHaveAttribute('aria-pressed', 'true');
-        expect(screen.getByRole('combobox', { name: 'Select a container for partition health' })).toHaveTextContent(
-            'products',
+        expect(screen.getByRole('combobox', { name: /^Select a container for partition health:/ })).toHaveTextContent(
+            'products · database',
         );
         expect(queries.partition).toHaveBeenLastCalledWith(
             expect.objectContaining({ databaseId: 'database', containerId: 'products' }),

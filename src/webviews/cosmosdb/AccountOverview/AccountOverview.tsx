@@ -728,11 +728,16 @@ export const OverviewDashboard = ({
         <DashboardActionsProvider value={actions}>
             <div className={styles.root} inert={creationBusy} aria-busy={creationBusy}>
                 <TabbedOverviewLayout
+                    requestedTab={
+                        requestedTarget === 'overview' || requestedTarget === 'advisories' ? requestedTab : undefined
+                    }
+                    navigationRevision={navigationRevision}
                     selectedTab={selectedTab}
                     onTabSelect={setSelectedTab}
                     header={
                         <>
                             <AccountHeader
+                                navigationRevision={navigationRevision}
                                 summary={summary}
                                 accountHealth={accountHealth}
                                 lastRefreshedAt={lastRefreshedAt}
@@ -783,6 +788,8 @@ export const OverviewDashboard = ({
                                 )}
                             />
                             <InventoryTable
+                                navigationRevision={navigationRevision}
+                                active={selectedTab === 'databases'}
                                 rows={inventory.rows}
                                 supported={inventory.supported}
                                 available={inventory.available}
@@ -804,6 +811,8 @@ export const OverviewDashboard = ({
                                 )}
                             />
                             <PartitionHealth
+                                active={selectedTab === 'databases'}
+                                navigationRevision={navigationRevision}
                                 result={partitionHealth}
                                 loading={partitionLoading}
                                 mode={partitionMode}
@@ -821,6 +830,7 @@ export const OverviewDashboard = ({
                                 description={l10n.t('Fired Azure Monitor alerts targeting this account.')}
                             />
                             <ActiveAlerts
+                                active={selectedTab === 'advisories'}
                                 result={alerts}
                                 loading={alertsLoading || refreshing}
                                 timeRange={alertTimeRange}
@@ -851,6 +861,8 @@ export const OverviewDashboard = ({
                                 )}
                             />
                             <DerivedAdvisories
+                                active={selectedTab === 'advisories'}
+                                navigationRevision={navigationRevision}
                                 result={derivedAdvisories}
                                 loading={derivedLoading}
                                 dismissedIds={dismissedAdvisoryIds}

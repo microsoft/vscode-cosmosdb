@@ -101,7 +101,8 @@ describe('AccountHeader', () => {
         expect(refresh).toHaveFocus();
         for (const name of [/^Metric time range:/, /^Database scope for metrics:/]) {
             const select = screen.getByRole('combobox', { name });
-            expect(select).toBeDisabled();
+            expect(select).toHaveAttribute('aria-disabled', 'true');
+            expect(select).not.toBeDisabled();
             expect(select).toHaveAccessibleDescription('Account data is still loading.');
             await user.click(select);
         }
@@ -110,7 +111,7 @@ describe('AccountHeader', () => {
         expect(props.onSelectContainer).not.toHaveBeenCalled();
         rerender(<AccountHeader {...props} refreshDisabled={false} />);
         for (const name of [/^Metric time range:/, /^Database scope for metrics:/]) {
-            expect(screen.getByRole('combobox', { name })).toBeEnabled();
+            expect(screen.getByRole('combobox', { name })).not.toHaveAttribute('aria-disabled', 'true');
         }
         expect(refresh).not.toHaveAttribute('aria-disabled', 'true');
         expect(refresh).not.toHaveAccessibleDescription();
@@ -138,7 +139,7 @@ describe('AccountHeader', () => {
         expect(props.onRefresh).not.toHaveBeenCalled();
         for (const name of [/^Metric time range:/, /^Database scope for metrics:/]) {
             const select = screen.getByRole('combobox', { name });
-            expect(select).toBeDisabled();
+            expect(select).toHaveAttribute('aria-disabled', 'true');
             expect(select).toHaveAccessibleDescription('Updating…');
         }
         rerender(<AccountHeader {...props} loading={false} />);
@@ -147,19 +148,28 @@ describe('AccountHeader', () => {
         expect(screen.queryByText('Updating…')).not.toBeInTheDocument();
         expect(refresh).toHaveFocus();
         for (const name of [/^Metric time range:/, /^Database scope for metrics:/]) {
-            expect(screen.getByRole('combobox', { name })).toBeEnabled();
+            expect(screen.getByRole('combobox', { name })).not.toHaveAttribute('aria-disabled', 'true');
         }
         await user.click(refresh);
         expect(props.onRefresh).toHaveBeenCalledOnce();
     });
 
-    it('skips locked filters in the Tab order and restores keyboard selection after loading', async () => {
+    it('keeps locked filters in the Tab order without allowing mouse, keyboard or type-ahead selection', async () => {
         const user = userEvent.setup();
         const { props, rerender } = renderHeader({ loading: true, databaseIds: ['alpha', 'beta'] });
+        for (const name of [/^Metric time range:/, /^Database scope for metrics:/]) {
+            await user.tab();
+            const select = screen.getByRole('combobox', { name });
+            expect(select).toHaveFocus();
+            expect(select).toHaveAttribute('aria-disabled', 'true');
+            await user.keyboard('{ArrowDown}{Enter} {Home}{End}alpha');
+            await user.click(select);
+            expect(select).toHaveFocus();
+            expect(select).toHaveAttribute('aria-expanded', 'false');
+            expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+        }
         await user.tab();
         expect(screen.getByRole('button', { name: 'Refresh' })).toHaveFocus();
-        await user.keyboard('{ArrowDown}{Enter}');
-        expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
         expect(props.onTimeRangeChange).not.toHaveBeenCalled();
         expect(props.onSelectContainer).not.toHaveBeenCalled();
         rerender(<AccountHeader {...props} loading={false} />);
@@ -168,6 +178,34 @@ describe('AccountHeader', () => {
         expect(database).toHaveFocus();
         await user.keyboard('{Enter}{ArrowDown}{Enter}');
         expect(props.onSelectContainer).toHaveBeenCalledExactlyOnceWith({ databaseId: 'alpha' });
+    });
+
+    it.each([
+        ['Metric time range', 'Last 7 days'],
+        ['Database scope for metrics', 'alpha'],
+    ])('retains %s focus when loading begins and finishes without resetting its value', async (label, value) => {
+        const user = userEvent.setup();
+        const { props, rerender } = renderHeader({
+            databaseIds: ['alpha'],
+            timeRange: '7D',
+            selectedContainer: { databaseId: 'alpha' },
+        });
+        const select = screen.getByRole('combobox', { name: `${label}: ${value}` });
+        select.focus();
+        rerender(<AccountHeader {...props} loading />);
+        expect(select).toHaveFocus();
+        expect(select).toHaveTextContent(value);
+        expect(select).toHaveAccessibleName(`${label}: ${value}`);
+        expect(select).toHaveAttribute('aria-disabled', 'true');
+        expect(select).toHaveAccessibleDescription('Updating…');
+        await user.keyboard('{Enter}{ArrowDown}{Enter}');
+        expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+        expect(props.onTimeRangeChange).not.toHaveBeenCalled();
+        expect(props.onSelectContainer).not.toHaveBeenCalled();
+        rerender(<AccountHeader {...props} loading={false} />);
+        expect(select).toHaveFocus();
+        expect(select).not.toHaveAttribute('aria-disabled', 'true');
+        expect(select).not.toHaveAccessibleDescription();
     });
 
     it('shows account identity with a decorative Cosmos icon and deduplicated regions', () => {

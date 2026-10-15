@@ -5,11 +5,23 @@
 
 import { makeStyles, Tab, TabList, tokens } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
-import { type ReactNode, useId } from 'react';
+import { type ReactNode, useEffect, useId, useRef } from 'react';
 
 export type OverviewTab = 'monitoring' | 'databases' | 'advisories';
 
 const useStyles = makeStyles({
+    tabs: {
+        flexWrap: 'wrap',
+        minWidth: 0,
+    },
+    tab: {
+        maxWidth: '100%',
+    },
+    tabContent: {
+        whiteSpace: 'normal',
+        overflowWrap: 'anywhere',
+        minWidth: 0,
+    },
     content: {
         display: 'flex',
         flexDirection: 'column',
@@ -29,6 +41,8 @@ export const TabbedOverviewLayout = ({
     advisories,
     recommendations,
     alerts,
+    requestedTab,
+    navigationRevision = 0,
 }: {
     selectedTab: OverviewTab;
     onTabSelect: (tab: OverviewTab) => void;
@@ -39,9 +53,19 @@ export const TabbedOverviewLayout = ({
     advisories: ReactNode;
     recommendations: ReactNode;
     alerts: ReactNode;
+    requestedTab?: OverviewTab;
+    navigationRevision?: number;
 }) => {
     const styles = useStyles();
     const id = useId();
+    const tabRefs = useRef(new Map<OverviewTab, HTMLButtonElement>());
+    const handledNavigation = useRef<number | undefined>(undefined);
+    useEffect(() => {
+        if (requestedTab === selectedTab && handledNavigation.current !== navigationRevision) {
+            handledNavigation.current = navigationRevision;
+            tabRefs.current.get(selectedTab)?.focus();
+        }
+    }, [requestedTab, selectedTab, navigationRevision]);
     const sections = [
         { tab: 'monitoring', label: l10n.t('Monitoring'), content: monitoring },
         {
@@ -71,6 +95,7 @@ export const TabbedOverviewLayout = ({
         <>
             {header}
             <TabList
+                className={styles.tabs}
                 aria-label={l10n.t('Account overview sections')}
                 selectedValue={selectedTab}
                 onTabSelect={(_, data) => {
@@ -81,7 +106,21 @@ export const TabbedOverviewLayout = ({
                 }}
             >
                 {sections.map(({ tab, label }) => (
-                    <Tab key={tab} id={`${id}-${tab}`} aria-controls={`${id}-${tab}-panel`} value={tab}>
+                    <Tab
+                        ref={(element) => {
+                            if (element) {
+                                tabRefs.current.set(tab, element);
+                            } else {
+                                tabRefs.current.delete(tab);
+                            }
+                        }}
+                        key={tab}
+                        id={`${id}-${tab}`}
+                        aria-controls={`${id}-${tab}-panel`}
+                        value={tab}
+                        className={styles.tab}
+                        content={{ className: styles.tabContent }}
+                    >
                         {label}
                     </Tab>
                 ))}

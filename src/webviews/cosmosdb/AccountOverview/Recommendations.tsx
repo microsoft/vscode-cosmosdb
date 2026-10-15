@@ -15,7 +15,7 @@ import {
     typographyStyles,
 } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
-import { type ReactNode } from 'react';
+import { type ReactNode, useId } from 'react';
 import { type RecommendationImpact, type RecommendationItem, type RecommendationsResult } from '../../api/types';
 import { EmptyState, useDashboardActions } from './DashboardChrome';
 
@@ -96,6 +96,7 @@ const RecommendationRow = ({
     onLearnMore: (recommendation: RecommendationItem) => void;
 }) => {
     const styles = useStyles();
+    const problemId = useId();
     return (
         <Card className={styles.item} appearance="outline" focusMode="off">
             <div className={styles.titleRow}>
@@ -104,7 +105,9 @@ const RecommendationRow = ({
                 </Badge>
                 <Text className={styles.category}>{recommendation.category}</Text>
             </div>
-            <Text className={styles.problem}>{recommendation.problem}</Text>
+            <Text id={problemId} className={styles.problem}>
+                {recommendation.problem}
+            </Text>
             {recommendation.solution && <Text className={styles.solution}>{recommendation.solution}</Text>}
             {recommendation.potentialBenefit && (
                 <Text className={styles.benefit}>
@@ -115,6 +118,7 @@ const RecommendationRow = ({
                 <Link
                     className={styles.link}
                     as="button"
+                    aria-describedby={problemId}
                     onClick={() => {
                         onLearnMore(recommendation);
                     }}

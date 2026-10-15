@@ -192,17 +192,78 @@ activation hot path. Clients are created on the host from the account's `AzureSu
 The three lazy SDKs (`arm-monitor`, `arm-advisor`, `arm-alertsmanagement`) must **not** enter the main
 activation bundle — verified via `bundle-analysis/extension-report-vite.json`.
 
-### Action procedures (mutations, no ARM reads)
+### Action procedures
 
 `openUrl`, `revealInTree`, `openQueryEditor` (deep-links / existing extension commands), `showOutput` (extension Output), and `reportEvent`
-(telemetry). The dashboard never mutates Azure resources — all "fix" affordances deep-link out.
+(telemetry). Failures of the four auxiliary actions are displayed once as native VS Code error notifications through
+the shared RPC event channel; their local catches neither redisplay nor rethrow the same error. Background query and
+telemetry errors do not use this notification path. A refused browser launch is an explicit action failure.
+Existing account-action and refresh feedback remains in the dashboard.
 
-### Polling
+`runAccountAction` invokes the existing scoped create/delete commands or opens account costs/JSON.
+Advisory guidance does not automatically modify Azure resources.
+Alert links and View Cost preserve `subscription.environment.portalUrl` and include the subscription's tenant,
+matching Azure Resources' portal selection convention. This preserves public, sovereign and configured `ms.portal`
+destinations without guessing the portal from a tenant ID.
 
-- Metric trend charts: every 60 s.
-- Lightweight ARM polls (account, throughput, inventory, alerts, advisor): every 30 s, staggered.
-- Polling pauses when the panel is hidden (`document.visibilityState !== 'visible'`) and via the header's
-  **Pause auto-refresh** toggle.
+### Loading and refresh
+
+- Data loads when Overview opens. There are no polling timers, refresh-on-visibility handlers or auto-refresh settings.
+- **Refresh** reloads every section: account summary, inventory, metric trends, inventory metrics, the selected
+  container's partition health, alerts, Azure Advisor recommendations and derived advisories. It waits for all requests.
+- Metric time-range changes reload trends, time-dependent inventory metrics and the selected partition view.
+  Database-scope changes reload trends only; partition selection/measure and alert-window changes reload their own data.
+  Switching tabs, showing a chart or returning to the editor does not itself fetch data.
+- **Charts generated at**, to the left of the header filters, shows the local date and time when the latest accepted
+  trend batch produced available chart results. It is absent before any chart results are available or when the whole
+  batch is unavailable. It is not a
+  timestamp for all sections, the Azure ingestion time or the latest metric sample.
+- A spinner inside **Refresh** indicates an explicit Refresh or header filter change, not initial loading.
+  The button keeps its Refresh label; no separate updating text is displayed.
+  Refresh and both header selectors remain unavailable while existing data requests finish, including initial loading.
+  They remain focusable and expose their disabled state to assistive technology; loading does not remove the active control
+  from the keyboard focus order. Header selectors cannot open or change selection while locked.
+  They unlock after completion or failure without resetting the selected database or period.
+  Individual sections show their own loading state.
+- Alert-window buttons are disabled but remain focusable while alerts load, including initial collection, a period change and manual Refresh.
+  They remain disabled until the whole manual Refresh settles. Repeated selection does not reload data; failed requests
+  unlock the buttons and replace stale alerts with an unavailable state. Latest-request guards also protect result publication.
+- Successful database/container creation retains its existing inventory reload. Filters and selections are preserved.
+
+### Keyboard and accessible feedback
+
+- Explicit Explorer navigation closes advisory dialogs and open selectors without resetting filters or selections.
+  Generic destinations focus their tab; metric destinations retain their existing chart-region focus.
+  Replayed navigation revisions and background data completion do not refocus or dismiss an open dialog.
+- Inventory uses a native table with 25 rows per page instead of scroll virtualization. All rows on the page stay mounted;
+  Previous/Next controls expose the current range and announce page changes. Logical row positions and total row count
+  include the header. Sorting and filtering apply to the full inventory and reset to page one; tab changes preserve the page.
+  Shortened results clamp the page. If a refresh removes the focused element, focus returns to the inventory region only
+  while its tab is active and the webview still owns focus; surviving controls keep their focus.
+- Sortable inventory headers use Fluent's keyboard-activated buttons and expose the current direction through `aria-sort`.
+  Enter or Space sorts; non-sortable headers remain ordinary column headings.
+- Alert-window selection retains focus during loading without allowing another request. Completion does not pull focus back
+  if the user has moved elsewhere.
+- Header time-range and database selectors also retain focus through loading success or failure, without restoring it
+  if the user has moved elsewhere. The Dropdown's disabled state blocks interaction while its button slot remains focusable.
+- Dismissing a focused advisory moves focus to the next remaining Dismiss button, or the previous one at the end of the list.
+  Removing the group's last finding closes the dialog and focuses the surviving Recommendations section.
+  Ordinary dialog closure continues to use Fluent's focus restoration to the originating card.
+- Heatmap values, accessible names and explanations use the same rounding precision. Partial coverage exposes its
+  explanation once as a description, separately from its name.
+- Each Advisor **Learn more** action references the visible recommendation text as its accessible description.
+  The visible label and recommendation-specific URL are unchanged; recommendations without a URL have no action.
+- Inventory filter names include their visible selection; partition selection includes both container and database.
+  Inventory icon actions have a resource-specific description without repeating the tooltip label.
+- Advisory cards describe their visible severity and explanation. Heatmap names are attached directly to visible figures,
+  not off-screen captions. Real screen-reader virtual-cursor behavior still needs manual verification.
+- Inventory filters show a result count and announce changes politely after 300 ms of inactivity.
+  Alert-window changes announce the returned count or unavailability. Hidden tabs and initial background collection stay
+  silent. Advisory analysis runs initially or through global Refresh, which keeps its existing shared feedback rather
+  than adding section-by-section announcements.
+- Essentials values, alert names and advisory titles wrap instead of depending on mouse-only truncation tooltips.
+  Section tabs wrap within the available width, retaining Fluent's horizontal Left/Right navigation and manual activation
+  with Enter or Space.
 
 ## Permissions (RBAC)
 

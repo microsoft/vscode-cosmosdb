@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
+import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
 import { Detector, type DetectorContext } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
@@ -74,8 +75,8 @@ function evaluateStorageGrowthRisk(input: ContainerStorageInput, horizonDays: nu
             }),
             rationale: clampRationale(
                 l10n.t(
-                    'The fullest physical partition in "{container}" is already at {current} GiB, at or above the 50 GiB physical-partition ceiling.',
-                    { container: input.containerId, current: currentGiB },
+                    'The fullest physical partition in "{container}" is already at `{current} GiB`, at or above the `50 GiB` physical-partition ceiling.',
+                    { container: escapeAdvisoryText(input.containerId), current: currentGiB },
                 ) +
                     ' ' +
                     l10n.t(
@@ -88,7 +89,7 @@ function evaluateStorageGrowthRisk(input: ContainerStorageInput, horizonDays: nu
                 ) +
                 ' ' +
                 l10n.t('Confirm no oversized logical key is blocking healthy splits.'),
-            thresholdReference: l10n.t('Threshold: current partition size ≥ 50 GiB'),
+            thresholdReference: l10n.t('Threshold: current partition size ≥ `50 GiB`'),
             scope,
         };
     }
@@ -113,12 +114,12 @@ function evaluateStorageGrowthRisk(input: ContainerStorageInput, horizonDays: nu
         }),
         rationale: clampRationale(
             l10n.t(
-                'The fastest-growing physical partition in "{container}" is at {current} GiB and growing about {perDay} GiB/day.',
-                { container: input.containerId, current: currentGiB, perDay: perDayGiB },
+                'The fastest-growing physical partition in "{container}" is at `{current} GiB` and growing about `{perDay} GiB/day`.',
+                { container: escapeAdvisoryText(input.containerId), current: currentGiB, perDay: perDayGiB },
             ) +
                 ' ' +
                 l10n.t(
-                    'On that trajectory it reaches the 50 GiB physical-partition split ceiling in roughly {days} days, within the {horizon}-day risk horizon.',
+                    'On that trajectory it reaches the `50 GiB` physical-partition split ceiling in roughly `{days} days`, within the `{horizon}-day` risk horizon.',
                     { days, horizon },
                 ) +
                 ' ' +
@@ -127,8 +128,8 @@ function evaluateStorageGrowthRisk(input: ContainerStorageInput, horizonDays: nu
         suggestedAction:
             l10n.t('Confirm the partition key spreads new data across partitions, and archive or delete cold data.') +
             ' ' +
-            l10n.t('Ensure large logical keys stay well under the 20 GiB per-key cap so partitions split cleanly.'),
-        thresholdReference: l10n.t('Threshold: projected < {horizon} days to the 50 GiB partition ceiling', {
+            l10n.t('Ensure large logical keys stay well under the `20 GiB` per-key cap so partitions split cleanly.'),
+        thresholdReference: l10n.t('Threshold: projected < `{horizon} days` to the `50 GiB` partition ceiling', {
             horizon,
         }),
         scope,

@@ -36,6 +36,7 @@ describe('getInventoryResult', () => {
         expect(result.available).toBe(true);
         expect(result.reason).toBeUndefined();
         expect(result.rows).toEqual([]);
+        expect(result.databases).toEqual([]);
     });
 
     it('degrades a 403 to an rbac empty-state instead of throwing', async () => {
@@ -43,6 +44,7 @@ describe('getInventoryResult', () => {
         expect(result.available).toBe(false);
         expect(result.reason).toBe('rbac');
         expect(result.rows).toEqual([]);
+        expect(result.databases).toEqual([]);
     });
 
     it('degrades any other ARM failure to a noData empty-state', async () => {
@@ -50,5 +52,28 @@ describe('getInventoryResult', () => {
         expect(result.available).toBe(false);
         expect(result.reason).toBe('noData');
         expect(result.rows).toEqual([]);
+        expect(result.databases).toEqual([]);
+    });
+
+    it('preserves empty databases even when the account has no container rows', async () => {
+        const client = {
+            sqlResources: {
+                listSqlDatabases: async function* () {
+                    yield { name: 'arm-name', resource: { id: 'empty-db' } };
+                    yield { name: 'fallback-db' };
+                },
+                listSqlContainers: () => ({
+                    [Symbol.asyncIterator]: () => ({
+                        next: () => Promise.resolve({ done: true, value: undefined }),
+                    }),
+                }),
+            },
+        } as unknown as CosmosDBManagementClient;
+
+        await expect(getInventoryResult(client, 'rg', 'acct', true)).resolves.toEqual({
+            available: true,
+            rows: [],
+            databases: ['empty-db', 'fallback-db'],
+        });
     });
 });

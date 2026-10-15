@@ -66,6 +66,8 @@ export const alertsRecommendationsProcedures = {
                     metadata.subscription.subscriptionId,
                     metadata.accountId,
                     input.timeRange,
+                    metadata.subscription.environment.portalUrl,
+                    metadata.subscription.tenantId,
                 );
             },
         ),

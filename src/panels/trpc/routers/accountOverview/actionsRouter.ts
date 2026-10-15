@@ -5,12 +5,18 @@
 
 import { parseAzureResourceId } from '@microsoft/vscode-azext-azureutils';
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { z } from 'zod';
 import { getCosmosDBCredentials } from '../../../../cosmosdb/CosmosDBCredential';
+import { maskConnectionTelemetry } from '../../../../cosmosdb/maskConnectionTelemetry';
 import { type NoSqlQueryConnection } from '../../../../cosmosdb/NoSqlQueryConnection';
 import { ext } from '../../../../extensionVariables';
+import { nonNullProp } from '../../../../utils/nonNull';
 import { revealAzureResourceInExplorer } from '../../../../vscodeUriHandler';
+import { accountActionInput } from '../../../accountOverview/accountActions';
+import { getAccountOverviewMaskedValues, getResourceMaskedValues } from '../../../accountOverview/resourceMasking';
+import { runAccountAction } from '../../../accountOverview/services/accountActions';
 import { QueryEditorTab } from '../../../QueryEditorTab';
 import { type AccountOverviewRouterContext } from '../../appRouter';
 import { accountOverviewProcedure } from '../../trpc';
@@ -22,19 +28,32 @@ import { accountOverviewProcedure } from '../../trpc';
 // services and carry no dashboard-metrics logic.
 
 export const actionsProcedures = {
+    runAccountAction: accountOverviewProcedure.input(accountActionInput).mutation(async ({ ctx, input }) => {
+        return runAccountAction(nonNullProp(ctx, 'actionContext'), ctx.metadata, input);
+    }),
+
     showOutput: accountOverviewProcedure.mutation(() => {
         ext.outputChannel.show(true);
     }),
+
+    // Keep this route typed locally, like openUrl: the shared common router loses its procedure types.
+    showErrorMessage: accountOverviewProcedure
+        .input(z.object({ message: z.string() }))
+        .mutation(async ({ ctx, input }) => {
+            nonNullProp(ctx, 'actionContext').valuesToMask.push(...getResourceMaskedValues([input.message]));
+            await vscode.window.showErrorMessage(input.message);
+        }),
 
     /**
      * Opens an external URL (e.g. an Azure portal deep link from the Active
      * Alerts aside or an Advisor "Learn more" link) in the user's browser.
      */
-    openUrl: accountOverviewProcedure
-        .input(z.object({ url: z.string() }))
-        .mutation(async ({ input }: { input: { url: string } }) => {
-            await vscode.env.openExternal(vscode.Uri.parse(input.url));
-        }),
+    openUrl: accountOverviewProcedure.input(z.object({ url: z.string() })).mutation(async ({ ctx, input }) => {
+        nonNullProp(ctx, 'actionContext').valuesToMask.push(...getResourceMaskedValues([input.url]));
+        if (!(await vscode.env.openExternal(vscode.Uri.parse(input.url)))) {
+            throw new Error(l10n.t('Unable to open the link in your browser.'));
+        }
+    }),
 
     /**
      * Records a webview-originated telemetry event — e.g. `emptyStateShown`,
@@ -88,6 +107,11 @@ export const actionsProcedures = {
                 input: { databaseId: string; containerId: string };
             }) => {
                 const { metadata } = ctx;
+                const context = nonNullProp(ctx, 'actionContext');
+                context.valuesToMask.push(
+                    ...getAccountOverviewMaskedValues(metadata),
+                    ...getResourceMaskedValues([input.databaseId, input.containerId]),
+                );
                 const credentials = await getCosmosDBCredentials({
                     accountName: metadata.accountName,
                     documentEndpoint: metadata.documentEndpoint,
@@ -105,6 +129,7 @@ export const actionsProcedures = {
                     isEmulator: false,
                 };
 
+                maskConnectionTelemetry(context, connection);
                 QueryEditorTab.render(connection);
             },
         ),

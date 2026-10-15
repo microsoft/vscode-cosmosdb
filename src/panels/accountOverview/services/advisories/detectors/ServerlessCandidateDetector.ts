@@ -41,7 +41,7 @@ function evaluateServerlessCandidate(
         title: l10n.t('Account may suit serverless'),
         rationale: clampRationale(
             l10n.t(
-                'Account throughput is low and sporadic: peak {peak} RU/s, average {avg} RU/s (a {ratio}% average-to-peak with long idle stretches).',
+                'Account throughput is low and sporadic: peak `{peak} RU/s`, average `{avg} RU/s` (a `{ratio}%` average-to-peak with long idle stretches).',
                 { peak, avg, ratio: ratioPct },
             ) +
                 ' ' +
@@ -51,9 +51,9 @@ function evaluateServerlessCandidate(
             l10n.t('Evaluate serverless: it is migration-class and requires a new, single-region account.') +
             ' ' +
             l10n.t(
-                'It has no shared-throughput databases and a 5,000 RU/s per-partition cap. Validate those constraints fit before migrating data.',
+                'It has no shared-throughput databases and a `5,000 RU/s` per-partition cap. Validate those constraints fit before migrating data.',
             ),
-        thresholdReference: l10n.t('Threshold: peak in ({floor}, {ceiling}] RU/s and average/peak < {ratio}', {
+        thresholdReference: l10n.t('Threshold: peak in `({floor}, {ceiling}] RU/s` and average/peak < `{ratio}`', {
             floor: Math.round(thresholds.peakFloorRuPerSec),
             ceiling: Math.round(thresholds.peakCeilingRuPerSec),
             ratio: thresholds.sporadicRatio,

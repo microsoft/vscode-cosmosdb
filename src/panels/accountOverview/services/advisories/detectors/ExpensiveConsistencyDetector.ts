@@ -46,7 +46,7 @@ function evaluateExpensiveConsistency(config: AccountConfigInput): DerivedAdviso
         severity: isStrong ? 'Medium' : 'Low',
         title: l10n.t('Premium consistency across regions'),
         rationale: clampRationale(
-            l10n.t('This account uses {level} consistency across {regions} regions.', {
+            l10n.t('This account uses {level} consistency across `{regions} regions`.', {
                 level: displayLevel,
                 regions: config.regionCount,
             }) +
@@ -61,7 +61,7 @@ function evaluateExpensiveConsistency(config: AccountConfigInput): DerivedAdviso
             l10n.t('Confirm the application genuinely needs this consistency level.') +
             ' ' +
             l10n.t("If not, relax it to Session (or Bounded Staleness) after validating the application's tolerance."),
-        thresholdReference: l10n.t('Threshold: Strong or Bounded Staleness across ≥ 2 regions'),
+        thresholdReference: l10n.t('Threshold: Strong or Bounded Staleness across ≥ `2 regions`'),
     };
 }
 

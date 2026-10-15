@@ -48,7 +48,7 @@ function evaluateMultiRegionWrites(config: AccountConfigInput): DerivedAdvisory 
                     ) +
                     ' ' +
                     l10n.t(
-                        'The account still carries the write-conflict surface (and 2× write cost across any second write region).',
+                        'The account still carries the write-conflict surface (and `2×` write cost across any second write region).',
                     ),
             ),
             suggestedAction: disableAction,
@@ -88,7 +88,7 @@ function evaluateMultiRegionWrites(config: AccountConfigInput): DerivedAdvisory 
         title: l10n.t('Multi-region writes on a non-production account'),
         rationale: clampRationale(
             l10n.t(
-                'Multi-region writes are enabled across {regions} write regions on a non-production account, which does not need RTO=0 write failover.',
+                'Multi-region writes are enabled across `{regions} write regions` on a non-production account, which does not need RTO=0 write failover.',
                 { regions: config.writeRegionCount },
             ) +
                 ' ' +
@@ -97,7 +97,7 @@ function evaluateMultiRegionWrites(config: AccountConfigInput): DerivedAdvisory 
         suggestedAction: l10n.t(
             'Disable multi-region writes (and consider dropping the second write region) on dev/test/stage accounts.',
         ),
-        thresholdReference: l10n.t('Threshold: multi-region writes across ≥ 2 write regions on a non-prod account'),
+        thresholdReference: l10n.t('Threshold: multi-region writes across ≥ `2 write regions` on a non-prod account'),
     };
 }
 

@@ -4,8 +4,14 @@
  *--------------------------------------------------------------------------------------------*/
 
 import {
+    Accordion,
+    AccordionHeader,
+    AccordionItem,
+    AccordionPanel,
     Badge,
+    type BadgeProps,
     Button,
+    Card,
     Dialog,
     DialogActions,
     DialogBody,
@@ -15,14 +21,19 @@ import {
     DialogTrigger,
     Link,
     makeStyles,
+    MessageBar,
+    MessageBarActions,
+    MessageBarBody,
+    MessageBarTitle,
     Text,
     tokens,
     Tooltip,
+    typographyStyles,
     useRestoreFocusTarget,
 } from '@fluentui/react-components';
 import { ChevronRight16Regular, Dismiss16Regular, Sparkle16Regular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
     type DerivedAdvisory,
     type DerivedAdvisoryRule,
@@ -30,12 +41,13 @@ import {
     type DerivedAdvisoriesResult,
     type UnavailableReason,
 } from '../../api/types';
-import { DIAGNOSTIC_SETTINGS_URL, EmptyState, Pill, type PillTone, useDashboardActions } from './DashboardChrome';
+import { AdvisoryText } from './AdvisoryText';
+import { DIAGNOSTIC_SETTINGS_URL, EmptyState, useDashboardActions } from './DashboardChrome';
 
-const SEVERITY_TONE: Record<DerivedAdvisorySeverity, PillTone> = {
+const SEVERITY_TONE: Record<DerivedAdvisorySeverity, BadgeProps['color']> = {
     High: 'danger',
     Medium: 'warning',
-    Low: 'neutral',
+    Low: 'subtle',
 };
 
 /** Higher wins when picking a group's headline severity and when ordering the cards. */
@@ -67,7 +79,7 @@ const useStyles = makeStyles({
     provenance: {
         display: 'inline-flex',
         alignItems: 'center',
-        gap: '4px',
+        gap: tokens.spacingHorizontalXS,
         alignSelf: 'flex-start',
         flexShrink: 0,
     },
@@ -76,30 +88,12 @@ const useStyles = makeStyles({
         cursor: 'default',
     },
     notice: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '2px',
-        padding: tokens.spacingHorizontalM,
         marginBottom: tokens.spacingVerticalS,
-        borderRadius: tokens.borderRadiusMedium,
-        border: '1px solid var(--vscode-inputValidation-warningBorder, var(--vscode-widget-border))',
-        backgroundColor: 'var(--vscode-inputValidation-warningBackground, var(--vscode-editor-background))',
-        color: 'var(--vscode-foreground)',
-    },
-    noticeTitle: {
-        fontWeight: tokens.fontWeightSemibold,
-        fontSize: tokens.fontSizeBase200,
-    },
-    noticeBody: {
-        fontSize: tokens.fontSizeBase200,
-        color: 'var(--vscode-descriptionForeground)',
     },
     noticeActions: {
-        display: 'flex',
         alignItems: 'center',
         flexWrap: 'wrap',
-        gap: tokens.spacingHorizontalM,
-        marginTop: tokens.spacingVerticalS,
+        rowGap: tokens.spacingVerticalS,
     },
     scrollBody: {
         flexGrow: 1,
@@ -112,41 +106,27 @@ const useStyles = makeStyles({
         gap: tokens.spacingVerticalS,
     },
     groupCard: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '4px',
+        gap: tokens.spacingVerticalXS,
         width: '100%',
         textAlign: 'left',
-        appearance: 'none',
-        fontFamily: 'inherit',
-        padding: tokens.spacingHorizontalM,
-        borderRadius: tokens.borderRadiusMedium,
-        border: '1px solid var(--vscode-widget-border, var(--vscode-panel-border))',
-        backgroundColor: 'var(--vscode-editor-background)',
-        color: 'var(--vscode-foreground)',
-        cursor: 'pointer',
-        ':hover': {
-            backgroundColor: 'var(--vscode-list-hoverBackground, var(--vscode-editor-background))',
-        },
     },
     groupDescription: {
-        fontSize: tokens.fontSizeBase200,
-        color: 'var(--vscode-descriptionForeground)',
+        ...typographyStyles.body1,
+        color: tokens.colorNeutralForeground2,
     },
     groupMeta: {
         display: 'flex',
         alignItems: 'center',
         gap: tokens.spacingHorizontalS,
-        marginTop: '2px',
+        marginTop: tokens.spacingVerticalXXS,
     },
     groupCount: {
-        fontSize: tokens.fontSizeBase200,
-        fontWeight: tokens.fontWeightSemibold,
-        color: 'var(--vscode-foreground)',
+        ...typographyStyles.body1Strong,
+        color: tokens.colorNeutralForeground1,
     },
     chevron: {
         marginLeft: 'auto',
-        color: 'var(--vscode-descriptionForeground)',
+        color: tokens.colorNeutralForeground2,
         flexShrink: 0,
     },
     dialogSurface: {
@@ -167,7 +147,7 @@ const useStyles = makeStyles({
         gap: tokens.spacingHorizontalS,
         paddingTop: tokens.spacingVerticalS,
         paddingBottom: tokens.spacingVerticalS,
-        borderBottom: '1px solid var(--vscode-widget-border, var(--vscode-panel-border))',
+        borderBottom: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
     },
     detailContent: {
         flexGrow: 1,
@@ -180,20 +160,17 @@ const useStyles = makeStyles({
         marginTop: tokens.spacingVerticalS,
     },
     detailScope: {
-        fontWeight: tokens.fontWeightSemibold,
+        ...typographyStyles.body1Strong,
         overflowWrap: 'anywhere',
-    },
-    detailToggle: {
-        cursor: 'pointer',
     },
     item: {
         display: 'flex',
         flexDirection: 'column',
-        gap: '2px',
+        gap: tokens.spacingVerticalXXS,
         padding: tokens.spacingHorizontalM,
         borderRadius: tokens.borderRadiusMedium,
-        border: '1px solid var(--vscode-widget-border, var(--vscode-panel-border))',
-        backgroundColor: 'var(--vscode-editor-background)',
+        border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke1}`,
+        backgroundColor: tokens.colorNeutralBackground1,
     },
     titleRow: {
         display: 'flex',
@@ -208,28 +185,25 @@ const useStyles = makeStyles({
         minWidth: 0,
     },
     title: {
-        fontWeight: tokens.fontWeightSemibold,
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap',
+        ...typographyStyles.body1Strong,
+        overflowWrap: 'anywhere',
     },
     rationale: {
-        fontSize: tokens.fontSizeBase200,
-        color: 'var(--vscode-foreground)',
+        ...typographyStyles.body1,
+        color: tokens.colorNeutralForeground1,
     },
     action: {
-        fontSize: tokens.fontSizeBase200,
-        color: 'var(--vscode-descriptionForeground)',
+        ...typographyStyles.body1,
+        color: tokens.colorNeutralForeground2,
     },
     threshold: {
-        fontSize: tokens.fontSizeBase100,
-        color: 'var(--vscode-descriptionForeground)',
-        fontStyle: 'italic',
+        ...typographyStyles.caption1,
+        color: tokens.colorNeutralForeground2,
     },
     emptyState: {
         padding: tokens.spacingVerticalL,
         textAlign: 'center',
-        color: 'var(--vscode-descriptionForeground)',
+        color: tokens.colorNeutralForeground2,
     },
     srOnly: {
         position: 'absolute',
@@ -520,34 +494,64 @@ const AdvisoryGroupCard = ({
 }: {
     group: AdvisoryGroup;
     onOpen: (rule: DerivedAdvisoryRule) => void;
-    buttonRef: (el: HTMLButtonElement | null) => void;
+    buttonRef: (el: HTMLDivElement | null) => void;
 }) => {
     const styles = useStyles();
     const restoreFocusTargetAttributes = useRestoreFocusTarget();
     const count = groupCountLabel(group);
+    const id = useId();
     return (
-        <button
-            type="button"
+        <Card
             ref={buttonRef}
             className={styles.groupCard}
+            appearance="outline"
+            focusMode="off"
+            // Card only supports a div root.
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
+            role="button"
+            tabIndex={0}
             onClick={() => onOpen(group.rule)}
+            // Card renders a div; activate this single action instead of entering a card focus group.
+            onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    if (event.key === 'Enter') {
+                        event.currentTarget.click();
+                    }
+                }
+            }}
+            onKeyUp={(event) => {
+                if (event.key === ' ') {
+                    event.preventDefault();
+                    event.currentTarget.click();
+                }
+            }}
             aria-label={l10n.t('{name}. {count}. Show affected containers.', { name: group.name, count })}
+            aria-describedby={`${id}-severity ${id}-description`}
+            aria-haspopup="dialog"
             {...restoreFocusTargetAttributes}
         >
             <div className={styles.titleRow}>
                 <div className={styles.titleGroup}>
-                    <Pill tone={SEVERITY_TONE[group.severity]}>{severityLabel(group.severity)}</Pill>
-                    <Text className={styles.title} title={group.name}>
-                        {group.name}
-                    </Text>
+                    <Badge
+                        id={`${id}-severity`}
+                        appearance="outline"
+                        shape="circular"
+                        color={SEVERITY_TONE[group.severity]}
+                    >
+                        {severityLabel(group.severity)}
+                    </Badge>
+                    <Text className={styles.title}>{group.name}</Text>
                 </div>
             </div>
-            <Text className={styles.groupDescription}>{group.description}</Text>
+            <Text id={`${id}-description`} className={styles.groupDescription}>
+                {group.description}
+            </Text>
             <div className={styles.groupMeta}>
                 <Text className={styles.groupCount}>{count}</Text>
                 <ChevronRight16Regular className={styles.chevron} aria-hidden="true" />
             </div>
-        </button>
+        </Card>
     );
 };
 
@@ -569,6 +573,9 @@ const AdvisoryDetailDialog = ({
     onDismiss: (id: string) => void;
 }) => {
     const styles = useStyles();
+    const id = useId();
+    const dismissButtonRefs = useRef(new Map<string, HTMLButtonElement | HTMLAnchorElement>());
+    const closeButtonRef = useRef<HTMLButtonElement>(null);
     if (!group) {
         return null;
     }
@@ -596,40 +603,79 @@ const AdvisoryDetailDialog = ({
                             {first &&
                                 sharedFields.map(({ key, className }) => (
                                     <Text key={key} className={className}>
-                                        {first[key]}
+                                        <AdvisoryText text={first[key]} />
                                     </Text>
                                 ))}
                         </div>
                         {/* Safari needs the explicit role when list-style is none. */}
                         {/* oxlint-disable-next-line jsx-a11y/no-redundant-roles */}
                         <ul className={styles.dialogList} aria-label={group.name} role="list">
-                            {rows.map((advisory) => {
+                            {rows.map((advisory, index) => {
                                 const scopeLabel = advisory.scope ?? l10n.t('Account-wide');
+                                const headerId = `${id}-${index}-toggle`;
+                                const panelId = `${id}-${index}-evidence`;
                                 return (
                                     <li key={advisory.id} className={styles.detailItem}>
                                         {resourceFields.length > 0 ? (
-                                            <details className={styles.detailContent}>
-                                                <summary className={styles.detailToggle}>
-                                                    <span className={styles.detailScope}>{scopeLabel}</span>
-                                                </summary>
-                                                <div className={styles.detailDescription}>
-                                                    {resourceFields.map(({ key, className }) => (
-                                                        <Text key={key} className={className}>
-                                                            {advisory[key]}
-                                                        </Text>
-                                                    ))}
-                                                </div>
-                                            </details>
+                                            <Accordion className={styles.detailContent} collapsible>
+                                                <AccordionItem value={advisory.id}>
+                                                    <AccordionHeader
+                                                        as="h3"
+                                                        size="small"
+                                                        button={{ id: headerId, 'aria-controls': panelId }}
+                                                    >
+                                                        <span className={styles.detailScope}>{scopeLabel}</span>
+                                                    </AccordionHeader>
+                                                    <AccordionPanel
+                                                        className={styles.detailDescription}
+                                                        // AccordionPanel only supports a div root.
+                                                        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
+                                                        role="region"
+                                                        id={panelId}
+                                                        aria-labelledby={headerId}
+                                                        collapseMotion={{
+                                                            children: (Component, props) => (
+                                                                <Component {...props} unmountOnExit={false} />
+                                                            ),
+                                                        }}
+                                                    >
+                                                        {resourceFields.map(({ key, className }) => (
+                                                            <Text key={key} className={className}>
+                                                                <AdvisoryText text={advisory[key]} />
+                                                            </Text>
+                                                        ))}
+                                                    </AccordionPanel>
+                                                </AccordionItem>
+                                            </Accordion>
                                         ) : (
                                             <Text className={styles.detailContent}>
                                                 <span className={styles.detailScope}>{scopeLabel}</span>
                                             </Text>
                                         )}
                                         <Button
+                                            ref={(element) => {
+                                                if (element) {
+                                                    dismissButtonRefs.current.set(advisory.id, element);
+                                                } else {
+                                                    dismissButtonRefs.current.delete(advisory.id);
+                                                }
+                                            }}
                                             size="small"
                                             appearance="subtle"
                                             icon={<Dismiss16Regular />}
-                                            onClick={() => onDismiss(advisory.id)}
+                                            onClick={(event) => {
+                                                if (
+                                                    event.currentTarget.ownerDocument.activeElement ===
+                                                    event.currentTarget
+                                                ) {
+                                                    // Move focus before removal so Fluent does not restore it outside the open dialog.
+                                                    const neighbor = rows[index + 1] ?? rows[index - 1];
+                                                    const target =
+                                                        neighbor && dismissButtonRefs.current.get(neighbor.id);
+                                                    (target ?? closeButtonRef.current)?.focus();
+                                                }
+                                                onDismiss(advisory.id);
+                                            }}
                                             aria-label={l10n.t('Dismiss advisory for {scope}', {
                                                 scope: scopeLabel,
                                             })}
@@ -641,7 +687,9 @@ const AdvisoryDetailDialog = ({
                     </DialogContent>
                     <DialogActions>
                         <DialogTrigger disableButtonEnhancement>
-                            <Button appearance="secondary">{l10n.t('Close')}</Button>
+                            <Button ref={closeButtonRef} appearance="secondary">
+                                {l10n.t('Close')}
+                            </Button>
                         </DialogTrigger>
                     </DialogActions>
                 </DialogBody>
@@ -651,11 +699,15 @@ const AdvisoryDetailDialog = ({
 };
 
 export const DerivedAdvisories = ({
+    active = true,
+    navigationRevision = 0,
     result,
     loading,
     dismissedIds,
     onDismiss,
 }: {
+    active?: boolean;
+    navigationRevision?: number;
     result?: DerivedAdvisoriesResult;
     loading: boolean;
     dismissedIds: ReadonlySet<string>;
@@ -666,9 +718,10 @@ export const DerivedAdvisories = ({
 
     const rootRef = useRef<HTMLDivElement>(null);
     // Card buttons keyed by rule, so focus can return to the section when the open group's last advisory is dismissed.
-    const cardRefs = useRef(new Map<string, HTMLButtonElement | null>());
+    const cardRefs = useRef(new Map<string, HTMLDivElement | null>());
     const [announcement, setAnnouncement] = useState('');
     const [openRule, setOpenRule] = useState<DerivedAdvisoryRule | null>(null);
+    const [openedAtRevision, setOpenedAtRevision] = useState(navigationRevision);
 
     // Collapse the flat advisory list (worst case: tens of thousands of container-scoped findings) into one group per
     // detector. Memoized on the raw list + dismissals so a card re-render never re-buckets the whole account.
@@ -679,7 +732,8 @@ export const DerivedAdvisories = ({
         return groupAdvisories(visible);
     }, [result?.advisories, dismissedIds]);
     const visibleCount = groups.reduce((total, group) => total + group.advisories.length, 0);
-    const openGroup = groups.find((group) => group.rule === openRule) ?? null;
+    const navigationChanged = openedAtRevision !== navigationRevision;
+    const openGroup = active && !navigationChanged ? (groups.find((group) => group.rule === openRule) ?? null) : null;
 
     // Partial coverage: the section itself is available (Tier-1 ran) but some Log Analytics (Tier-2) checks failed.
     // We keep rendering all available advisories and surface Tier-2's degradation explicitly, rather than
@@ -696,17 +750,22 @@ export const DerivedAdvisories = ({
     }, [partialCoverage, coverageReason, reportEvent]);
 
     useEffect(() => {
+        if (!active || navigationChanged) {
+            setOpenRule(null);
+            return;
+        }
         // The open group emptied out (its last advisory was dismissed): close the dialog and move focus to the
         // section container, since the card that opened it is now gone.
         if (openRule && !openGroup) {
             setOpenRule(null);
             rootRef.current?.focus();
         }
-    }, [openRule, openGroup]);
+    }, [openRule, openGroup, active, navigationChanged]);
 
     const handleOpen = (rule: DerivedAdvisoryRule) => {
         reportEvent('recommendationClicked', { source: 'derived', action: 'expand' });
         setOpenRule(rule);
+        setOpenedAtRevision(navigationRevision);
     };
 
     const handleDismiss = (id: string) => {
@@ -731,7 +790,7 @@ export const DerivedAdvisories = ({
                     tabIndex={0}
                     appearance="tint"
                     color="warning"
-                    aria-label={`${coverageLabel}. ${coverageDescription}`}
+                    aria-label={coverageLabel}
                 >
                     <span aria-hidden="true">{coverageLabel}</span>
                 </Badge>
@@ -811,21 +870,29 @@ const MetricCoverageNotice = ({ source }: { source: DerivedAdvisoriesResult['met
     };
     const failures = new Map((source?.failures ?? []).map((failure) => [`${failure.rule}:${failure.reason}`, failure]));
     return (
-        <output className={styles.notice}>
-            <Text className={styles.noticeTitle}>{l10n.t('Incomplete workload analysis')}</Text>
-            <Text className={styles.noticeBody}>
-                {l10n.t(
-                    'Some workload checks could not run. Missing or failed metric queries are not treated as zero usage.',
-                ) +
-                    ' ' +
-                    l10n.t('Configuration checks and successful analyses still contribute recommendations.')}
-            </Text>
-            <ul>
-                {[...failures].map(([key, failure]) => (
-                    <li key={key}>{`${ruleMeta(failure.rule).name}: ${reasons[failure.reason]}`}</li>
-                ))}
-            </ul>
-        </output>
+        <MessageBar
+            className={styles.notice}
+            intent="warning"
+            layout="multiline"
+            politeness="polite"
+            icon={{ 'aria-hidden': true }}
+        >
+            <MessageBarBody>
+                <MessageBarTitle>{l10n.t('Incomplete workload analysis')}</MessageBarTitle>
+                <div>
+                    {l10n.t(
+                        'Some workload checks could not run. Missing or failed metric queries are not treated as zero usage.',
+                    ) +
+                        ' ' +
+                        l10n.t('Configuration checks and successful analyses still contribute recommendations.')}
+                </div>
+                <ul>
+                    {[...failures].map(([key, failure]) => (
+                        <li key={key}>{`${ruleMeta(failure.rule).name}: ${reasons[failure.reason]}`}</li>
+                    ))}
+                </ul>
+            </MessageBarBody>
+        </MessageBar>
     );
 };
 
@@ -857,22 +924,32 @@ const PartialCoverageNotice = ({ source }: { source: DerivedAdvisoriesResult['lo
         clientUnavailable: l10n.t('Client unavailable'),
     };
     return (
-        <output className={styles.notice}>
-            <Text className={styles.noticeTitle}>{l10n.t('Partial coverage')}</Text>
-            <Text className={styles.noticeBody}>{body}</Text>
-            {!!source?.failures?.length && (
-                <ul>
-                    {source.failures.map((failure) => (
-                        <li key={`${failure.operation}-${failure.kind}`}>
-                            {`${operations[failure.operation]}: ${kinds[failure.kind]}`}
-                        </li>
-                    ))}
-                </ul>
-            )}
-            <Text className={styles.noticeBody}>
-                {l10n.t('See the extension Output channel for the HTTP status, service error details, and request ID.')}
-            </Text>
-            <div className={styles.noticeActions}>
+        <MessageBar
+            className={styles.notice}
+            intent="warning"
+            layout="multiline"
+            politeness="polite"
+            icon={{ 'aria-hidden': true }}
+        >
+            <MessageBarBody>
+                <MessageBarTitle>{l10n.t('Partial coverage')}</MessageBarTitle>
+                <div>{body}</div>
+                {!!source?.failures?.length && (
+                    <ul>
+                        {source.failures.map((failure) => (
+                            <li key={`${failure.operation}-${failure.kind}`}>
+                                {`${operations[failure.operation]}: ${kinds[failure.kind]}`}
+                            </li>
+                        ))}
+                    </ul>
+                )}
+                <div>
+                    {l10n.t(
+                        'See the extension Output channel for the HTTP status, service error details, and request ID.',
+                    )}
+                </div>
+            </MessageBarBody>
+            <MessageBarActions className={styles.noticeActions}>
                 <Button size="small" onClick={showOutput}>
                     {l10n.t('Show Output')}
                 </Button>
@@ -881,7 +958,7 @@ const PartialCoverageNotice = ({ source }: { source: DerivedAdvisoriesResult['lo
                         {linkLabel}
                     </Link>
                 )}
-            </div>
-        </output>
+            </MessageBarActions>
+        </MessageBar>
     );
 };

@@ -56,7 +56,17 @@ The Azure Cosmos DB Explorer helps you find, view, and manage your Azure Cosmos 
 
 ## Account Overview Dashboard
 
-The Account Overview Dashboard gives you an at-a-glance, read-only view of a Cosmos DB account: inventory, provisioned vs. normalized RU consumption, partition health, active alerts, and recommendations. Open it from an account node in the Explorer.
+The Account Overview Dashboard gives you an at-a-glance view of a Cosmos DB account: inventory, provisioned vs. normalized RU consumption, partition health, active alerts, and recommendations. Open **Account Overview → Overview** from an account node in the Explorer.
+
+The dashboard has three tabs: **Monitoring**, **Databases and Containers**, and **Advisories**. The Account Overview submenu also provides shortcuts to each monitoring metric and to Advisories. Metric shortcuts select the corresponding card and focus its chart in the existing Monitoring tab, preserving the time range and database scope; they do not open separate dashboards.
+
+Expand **Account details** for **View Cost**, **View JSON**, and **Additional account properties**. **View Cost** opens Azure Portal Cost Analysis scoped to the account in its Azure cloud. **View JSON** retrieves the account resource from Azure Resource Manager and opens formatted JSON in VS Code without requesting keys or connection strings. The action bar reuses the existing database/container creation wizards and account deletion confirmation. **Add container** uses the database selected in the header; with **All databases**, it first asks you to choose a database within this account, including empty databases. These creation/deletion actions require the corresponding Azure write permissions. **Try Data Modeler** is currently a disabled preview placeholder.
+
+While **Add database** or **Add container** runs its native VS Code wizard, Overview is dimmed and unavailable to mouse and keyboard interaction. Cancel in the wizard to return without changes. After successful creation, Overview unlocks once inventory refresh finishes. Failures appear in a Fluent error message bar and are announced assertively to screen readers without moving focus.
+
+Overview loads on opening and does not auto-refresh, including when you return to the editor. **Refresh** reloads every section, including inventory metrics, the selected container's partition telemetry, alerts and advisories. Changing a filter reloads only the data that depends on it. The header shows the local date and time when the displayed metric charts were generated, to the left of the filters; this is not the freshness timestamp for every section or the latest Azure metric sample.
+
+The **Refresh** button shows a spinner for an explicit Refresh or a metric time/database-scope change, not for the initial load. Its label stays **Refresh**, with no separate updating text. Refresh and the header's database/time-range selectors are unavailable while data requests finish, including initial loading, so another filter change cannot overlap the current load. They become available again after completion or failure, retaining the selected values. Each section retains its own loading state. User-requested updates are announced to screen readers.
 
 Every section reads from Azure Resource Manager and Azure Monitor. When a section can't load, it shows an explicit empty state instead of a blank panel:
 
@@ -77,6 +87,8 @@ Data is fetched with your Azure credentials, so each section requires the corres
 | Advisor recommendations                                | Reader on the subscription      |
 
 Tier-2 derived advisories (cross-partition query fan-out, shard-key misalignment, uncontrolled ingestion, and shared-throughput starvation) additionally read the account's `CDB*` diagnostic-log tables, so they require **Diagnostic Settings → Log Analytics** enabled on the account plus the [Log Analytics Reader](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/monitor#log-analytics-reader) role (Monitoring Reader also works). When these are missing, the Derived Advisories card still renders every Tier-1 advisory and flags the Tier-2 gap with a "Partial coverage" notice.
+
+Derived advisory explanations, suggested actions and threshold references highlight numeric evidence and its units on a subtle theme-aware background. Their underlying strings remain readable plain text: paired backticks mark a highlighted phrase (for example, `` `400 RU/s` ``), not HTML or general Markdown. Translations retain those delimiters around the complete value and unit in the translated word order. Literal backticks and backslashes in resource names or query text are escaped before interpolation. Highlights remain ordinary inline text for screen readers, without extra announcements or keyboard stops.
 
 Learn more about assigning roles in [Azure role-based access control](https://learn.microsoft.com/azure/role-based-access-control/overview).
 

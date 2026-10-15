@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
+import { escapeAdvisoryText } from '../../../advisoryText';
 import { percentile } from '../../shared';
 import { Detector, type DetectorContext } from '../core/Detector';
 import {
@@ -74,7 +75,7 @@ function evaluateOverProvisioning(
     const materiality =
         wastedRu !== undefined && recommendedRu !== undefined
             ? l10n.t(
-                  ' That leaves roughly {wasted} RU/s recoverable by lowering the offer toward ~{recommended} RU/s.',
+                  ' That leaves roughly `{wasted} RU/s` recoverable by lowering the offer toward `~{recommended} RU/s`.',
                   {
                       wasted: wastedRu.toLocaleString(),
                       recommended: recommendedRu.toLocaleString(),
@@ -92,26 +93,26 @@ function evaluateOverProvisioning(
         rationale: clampRationale(
             (containerId
                 ? l10n.t(
-                      'Container "{container}" stayed at {p99}% 99th-percentile normalized RU over the last {window}.',
-                      { container: containerId, p99, window: observationLabel },
+                      'Container "{container}" stayed at `{p99}%` 99th-percentile normalized RU over the last `{window}`.',
+                      { container: escapeAdvisoryText(containerId), p99, window: observationLabel },
                   ) +
                   ' ' +
-                  l10n.t('This is below the {threshold}% over-provisioning band.', { threshold })
+                  l10n.t('This is below the `{threshold}%` over-provisioning band.', { threshold })
                 : l10n.t(
-                      '99th-percentile normalized RU consumption stayed at {p99}% over the last {window}, below the {threshold}% over-provisioning threshold.',
+                      '99th-percentile normalized RU consumption stayed at `{p99}%` over the last `{window}`, below the `{threshold}%` over-provisioning threshold.',
                       { p99, window: observationLabel, threshold },
                   )) +
                 l10n.t(
-                    ' The busiest observed sample still stayed below the 90% peak guard, so this looks steadily oversized rather than bursty.',
+                    ' The busiest observed sample still stayed below the `90%` peak guard, so this looks steadily oversized rather than bursty.',
                 ) +
                 materiality,
         ),
         suggestedAction:
             containerId && recommendedRu !== undefined && provisionedRu !== undefined
                 ? l10n.t(
-                      'Lower "{container}" from {provisioned} RU/s toward ~{recommended} RU/s, or switch it to autoscale if demand is bursty.',
+                      'Lower "{container}" from `{provisioned} RU/s` toward `~{recommended} RU/s`, or switch it to autoscale if demand is bursty.',
                       {
-                          container: containerId,
+                          container: escapeAdvisoryText(containerId),
                           provisioned: Math.round(provisionedRu).toLocaleString(),
                           recommended: recommendedRu.toLocaleString(),
                       },
@@ -119,7 +120,7 @@ function evaluateOverProvisioning(
                 : l10n.t(
                       'Lower provisioned RU/s to match observed demand, or switch to autoscale so capacity tracks usage automatically.',
                   ),
-        thresholdReference: l10n.t('Threshold: p99 RU < {threshold}% and peak < 90%', { threshold }),
+        thresholdReference: l10n.t('Threshold: p99 RU < `{threshold}%` and peak < `90%`', { threshold }),
         scope,
     };
 }

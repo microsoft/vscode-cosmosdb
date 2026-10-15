@@ -152,21 +152,30 @@ test('batch completion matches individual results with one checkpoint read and f
         const phases = ['preflight', 'discovery', 'assessment', 'schema-conversion', 'provisioning', 'code-migration'];
         const expected = Object.fromEntries(phases.map(phase => [phase, checkPhaseCompletion(workspace, phase)]));
         const projectPath = path.join(workspace, '.cosmosdb-migration/project.json');
+        const assessmentManifestPath = path.join(workspace, '.cosmosdb-migration/phases/2-assessment/assessment-manifest.json');
         const originalRead = fs.readFileSync;
         const originalOpen = fs.openSync;
         let checkpointReads = 0;
+        let assessmentManifestReads = 0;
         let consultedReads = 0;
         context.mock.method(fs, 'readFileSync', (filePath, ...args) => {
             if (filePath === projectPath) checkpointReads++;
+            if (filePath === assessmentManifestPath) assessmentManifestReads++;
             return originalRead(filePath, ...args);
         });
         context.mock.method(fs, 'openSync', (filePath, ...args) => {
             if (filePath === consultedPath) consultedReads++;
             return originalOpen(filePath, ...args);
         });
-        assert.deepEqual(checkPhaseCompletions(workspace, phases), expected);
-        assert.equal(checkpointReads, 1);
-        assert.equal(consultedReads, 1);
+        for (const order of [phases, [...phases].reverse()]) {
+            checkpointReads = 0;
+            assessmentManifestReads = 0;
+            consultedReads = 0;
+            assert.deepEqual(checkPhaseCompletions(workspace, order), expected);
+            assert.equal(checkpointReads, 1);
+            assert.equal(assessmentManifestReads, 1);
+            assert.equal(consultedReads, 1);
+        }
     } finally {
         fs.rmSync(workspace, { recursive: true, force: true });
     }
@@ -193,6 +202,54 @@ test('batch completion keeps freshness modes separate and observes edits on the 
         const removed = checkPhaseCompletions(workspace, phases);
         assert.equal(removed['code-migration'].ready, false);
         assert.equal(removed.discovery.complete, false);
+    } finally {
+        fs.rmSync(workspace, { recursive: true, force: true });
+    }
+});
+
+test('batch completion preserves live source checks without contaminating historical readiness', () => {
+    const project = { version: 1, phases: {} };
+    const workspace = workspaceWithProject(project);
+    try {
+        prepareConversionChain(workspace, project, provisioningModel());
+        write(workspace, 'app.ts', 'export const item = 1;');
+        const manifestPath = '.cosmosdb-migration/phases/1-discovery/discovery-manifest.json';
+        const manifest = readPhaseEvidence(path.join(workspace, manifestPath));
+        manifest.patterns = [{
+            id: 'R001', kind: 'read', tables: ['dbo.Items'], sourcePaths: ['app.ts'],
+            evidence: 'code', tps: 1, operation: 'Read item by source key.',
+        }];
+        manifest.noObservedAccess = [];
+        write(workspace, manifestPath, JSON.stringify(manifest));
+        for (const phase of ['discovery', 'assessment', 'schema-conversion']) {
+            project.freshness[phase] = buildFreshnessManifest(workspace, project, phase);
+        }
+        write(workspace, '.cosmosdb-migration/project.json', JSON.stringify(project));
+        const phases = ['preflight', 'discovery', 'assessment', 'schema-conversion', 'code-migration'];
+        for (const order of [phases, [...phases].reverse()]) {
+            const completion = checkPhaseCompletions(workspace, order);
+            assert.equal(completion.discovery.complete, true);
+            assert.equal(completion['schema-conversion'].complete, true);
+            assert.equal(completion['code-migration'].ready, true);
+        }
+
+        project.phases.discovery.discoveryInstructions = 'Updated instructions';
+        write(workspace, '.cosmosdb-migration/project.json', JSON.stringify(project));
+        for (const order of [phases, [...phases].reverse()]) {
+            const completion = checkPhaseCompletions(workspace, order);
+            assert.equal(completion['schema-conversion'].complete, false);
+            assert.equal(completion['code-migration'].ready, true);
+        }
+
+        fs.rmSync(path.join(workspace, 'app.ts'));
+        for (const order of [phases, [...phases].reverse()]) {
+            const completion = checkPhaseCompletions(workspace, order);
+            assert.equal(completion.discovery.complete, false);
+            assert.equal(completion['code-migration'].ready, true);
+            assert(completion.discovery.artifacts.some(artifact =>
+                artifact.description === 'Discovery evidence manifest' && artifact.state === 'invalid'));
+            for (const phase of phases) assert.deepEqual(completion[phase], checkPhaseCompletion(workspace, phase));
+        }
     } finally {
         fs.rmSync(workspace, { recursive: true, force: true });
     }

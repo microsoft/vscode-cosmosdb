@@ -29,6 +29,30 @@ export function sourceIdentity(value, dialect) {
     throw new Error(`Invalid source identifier: ${value}`);
 }
 
+function createSourceResolver(inventory) {
+    let index;
+    return value => {
+        const parts = sourceIdentity(value, inventory.dialect);
+        if (!index) {
+            const qualified = new Map();
+            const unqualified = new Map();
+            for (const table of inventory.tables) {
+                const identity = table.identity.map(part => part.name);
+                const key = JSON.stringify(identity);
+                const name = identity.at(-1);
+                qualified.set(key, qualified.has(key) ? null : table);
+                unqualified.set(name, unqualified.has(name) ? null : table);
+            }
+            index = { qualified, unqualified };
+        }
+        const table = parts.length === 1
+            ? index.unqualified.get(parts[0])
+            : index.qualified.get(JSON.stringify(parts));
+        if (!table) throw new Error(`Source table is missing or ambiguous: ${value}`);
+        return table;
+    };
+}
+
 export function resolveSource(value, inventory) {
     const parts = sourceIdentity(value, inventory.dialect);
     const matches = inventory.tables.filter(table => {
@@ -40,7 +64,8 @@ export function resolveSource(value, inventory) {
 }
 
 export function resolveForeignKey(sourceFK, inventory) {
-    const table = resolveSource(sourceFK.table, inventory);
+    const resolve = createSourceResolver(inventory);
+    const table = resolve(sourceFK.table);
     const matches = table.foreignKeys.filter(foreignKey =>
         foreignKey.columns.includes(sourceFK.column),
     );
@@ -51,7 +76,7 @@ export function resolveForeignKey(sourceFK, inventory) {
     return {
         table,
         columns: foreignKey.columns,
-        referencedTable: resolveSource(foreignKey.referencedTable, inventory),
+        referencedTable: resolve(foreignKey.referencedTable),
         referencedColumns: foreignKey.referencedColumns,
     };
 }
@@ -95,9 +120,10 @@ export function readSourceInventory(workspace, project, selectedFiles = selected
                 }
             }
         }
+        const resolve = createSourceResolver(inventory);
         for (const table of inventory.tables) {
             for (const foreignKey of table.foreignKeys) {
-                const referencedTable = resolveSource(foreignKey.referencedTable, inventory);
+                const referencedTable = resolve(foreignKey.referencedTable);
                 const referencedColumns = new Set(referencedTable.columns.map(column => column.name));
                 if (
                     new Set(foreignKey.referencedColumns).size !== foreignKey.referencedColumns.length ||
@@ -178,13 +204,14 @@ function numeric(value, percent = false) {
 export function validateTemplates(volumetrics, accessPatterns, inventory, comparisons = []) {
     const errors = [];
     const observations = new Map();
+    const resolve = createSourceResolver(inventory);
     const verify = (label, action) => { try { action(); } catch (error) { errors.push({ path: label, message: error.message }); } };
     verify('volumetrics/volumetrics.md', () => {
         const rows = tableRows(volumetrics, ['#', 'Schema', 'Table', 'Est. Row Count', 'Avg Row Size (KB)', 'Growth Rate (month)', 'Read TPS', 'Write TPS', 'Notes']);
         const identities = new Set();
         const ids = new Set();
         for (const row of rows) {
-            const table = resolveSource(row.Schema && row.Schema !== 'N/A' ? `${row.Schema}.${row.Table}` : row.Table, inventory);
+            const table = resolve(row.Schema && row.Schema !== 'N/A' ? `${row.Schema}.${row.Table}` : row.Table);
             if (ids.has(row['#']) || identities.has(table.name) || !/^\d+$/u.test(row['#'])) throw new Error('Duplicate or invalid volumetric row identity');
             ids.add(row['#']); identities.add(table.name);
             for (const field of ['Est. Row Count', 'Avg Row Size (KB)', 'Read TPS', 'Write TPS']) numeric(row[field]);
@@ -203,7 +230,7 @@ export function validateTemplates(volumetrics, accessPatterns, inventory, compar
             for (const row of rows) {
                 if (!new RegExp(`^${prefix}\\d{3,}$`, 'u').test(row['#']) || ids.has(row['#']) || !row['Pattern Name'] || names.has(row['Pattern Name'])) throw new Error('Duplicate or invalid access pattern identity');
                 ids.add(row['#']); names.add(row['Pattern Name']);
-                for (const name of row['Tables / Entities'].split(/,\s*/u)) tables.add(resolveSource(name, inventory).name);
+                for (const name of row['Tables / Entities'].split(/,\s*/u)) tables.add(resolve(name).name);
                 numeric(row['Frequency (TPS)']);
                 observations.set(JSON.stringify(['pattern', row['#']]), row['Frequency (TPS)']);
                 if (!row[scope] || !row['Latency Requirement'] || !row.Notes) throw new Error('Missing access-pattern scope, latency, or provenance');
@@ -218,7 +245,7 @@ export function validateTemplates(volumetrics, accessPatterns, inventory, compar
         const total = references => {
             if (!Array.isArray(references) || !references.length) throw new Error('Comparison operands must reference observed values');
             return references.reduce((sum, reference) => {
-                const key = reference.kind === 'pattern' ? ['pattern', reference.id] : ['volumetrics', resolveSource(reference.table, inventory).name, reference.field];
+                const key = reference.kind === 'pattern' ? ['pattern', reference.id] : ['volumetrics', resolve(reference.table).name, reference.field];
                 const raw = observations.get(JSON.stringify(key));
                 if (!raw || /^(?:N\/A|unknown)$/iu.test(raw)) throw new Error('Comparison references missing or unknown observations');
                 return sum + Number(raw.replace(/\s*\(estimated\)\s*$/iu, '').replace(/,/gu, ''));
@@ -239,7 +266,8 @@ export function validateSourceReport(markdown, evidence, inventory, kind, domain
         validateSummary(markdown, kind === 'discovery' ? ['Source Overview', 'Read Patterns', 'Write Patterns', 'Relational Semantics', 'Warnings'] : ['Overview', 'Domains', 'Cross-Domain Dependencies', 'Recommendations', 'Warnings']);
         if (evidence.sourceSha256 !== inventory.sha256) throw new Error('Report source hash does not match selected DDL');
         if (!Array.isArray(evidence.tables)) throw new Error('Report requires source table identities');
-        const tables = evidence.tables.map(name => resolveSource(name, inventory).name);
+        const resolve = createSourceResolver(inventory);
+        const tables = evidence.tables.map(name => resolve(name).name);
         if (new Set(tables).size !== tables.length || tables.length !== inventory.tables.length) throw new Error('Report does not account for every source table exactly once');
         if (kind === 'discovery') {
             if (!Array.isArray(evidence.patterns) || !Array.isArray(evidence.noObservedAccess)) throw new Error('Discovery requires patterns and noObservedAccess arrays');
@@ -253,7 +281,7 @@ export function validateSourceReport(markdown, evidence, inventory, kind, domain
                     if (pattern.tps !== null) throw new Error('Pattern TPS must be non-negative or null for unknown');
                 }
                 if (typeof pattern.operation !== 'string' || !pattern.operation.trim()) throw new Error('Pattern operation is required');
-                for (const source of pattern.tables) dispositions.add(resolveSource(source, inventory).name);
+                for (const source of pattern.tables) dispositions.add(resolve(source).name);
                 if (workspace) for (const source of pattern.sourcePaths) {
                     if (typeof source !== 'string' || path.isAbsolute(source)) throw new Error('Evidence paths must be workspace-relative');
                     const file = source.split('#')[0];
@@ -265,23 +293,28 @@ export function validateSourceReport(markdown, evidence, inventory, kind, domain
             }
             const noAccess = new Set();
             for (const source of evidence.noObservedAccess) {
-                const table = resolveSource(source, inventory).name;
+                const table = resolve(source).name;
                 if (dispositions.has(table) || noAccess.has(table)) throw new Error('Contradictory or duplicate no-access disposition');
                 noAccess.add(table); dispositions.add(table);
             }
             if (dispositions.size !== tables.length) throw new Error('Discovery patterns omit source access dispositions');
         }
         if (kind === 'assessment') {
-            const owned = domains.flatMap(domain => domain.tables.map(name => resolveSource(name, inventory).name));
+            const ownership = new Map();
+            const owned = domains.flatMap(domain => {
+                const tableNames = domain.tables.map(name => resolve(name).name);
+                if (!ownership.has(domain.name)) ownership.set(domain.name, new Set(tableNames));
+                return tableNames;
+            });
             if (new Set(owned).size !== owned.length || owned.length !== tables.length) throw new Error('Assessment source ownership is missing or duplicated');
             if (!Array.isArray(evidence.domains) || JSON.stringify([...evidence.domains].sort()) !== JSON.stringify(domains.map(domain => domain.name).sort())) throw new Error('Assessment report and checkpoint domains differ');
-            for (const domain of domains) if (domain.crossDomainDependencies.some(name => !domains.some(target => target.name === name))) throw new Error('Cross-domain dependency does not identify an assessed domain');
+            for (const domain of domains) if (domain.crossDomainDependencies.some(name => !ownership.has(name))) throw new Error('Cross-domain dependency does not identify an assessed domain');
             if (!Array.isArray(evidence.crossDomainEdges)) throw new Error('Assessment requires crossDomainEdges');
             for (const edge of evidence.crossDomainEdges) {
                 for (const prefix of ['from', 'to']) {
-                    const owner = domains.find(domain => domain.name === edge[`${prefix}Domain`]);
-                    const table = resolveSource(edge[`${prefix}Table`], inventory).name;
-                    if (!owner || !owner.tables.some(source => resolveSource(source, inventory).name === table)) throw new Error('Cross-domain edge contradicts source ownership');
+                    const owner = ownership.get(edge[`${prefix}Domain`]);
+                    const table = resolve(edge[`${prefix}Table`]).name;
+                    if (!owner?.has(table)) throw new Error('Cross-domain edge contradicts source ownership');
                 }
                 if (typeof edge.strategy !== 'string' || !edge.strategy.trim()) throw new Error('Cross-domain edge requires a handling strategy');
             }

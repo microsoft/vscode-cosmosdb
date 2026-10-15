@@ -5,7 +5,10 @@
 
 import type * as React from 'react';
 import { createContext, useContext, useEffect, useReducer, type Dispatch } from 'react';
-import { type TokenEstimatePayload } from '../../../../panels/trpc/routers/migrationEventsRouter';
+import {
+    type ProjectLoadedPayload,
+    type TokenEstimatePayload,
+} from '../../../../panels/trpc/routers/migrationEventsRouter';
 import { sanitizeCosmosDBAccountName } from '../../../../utils/cosmosDBAccountName';
 import { getMigrationModels, resolveSelectedModelId, type ModelInfo } from '../../../../utils/modelUtils';
 import {
@@ -604,16 +607,7 @@ export function WithMigrationContext({ channel, children }: { channel: Channel; 
             channel.on(
                 'projectLoaded',
                 (data: {
-                    project: {
-                        name: string;
-                        migrationInstructions?: string;
-                        phases: {
-                            discovery: Record<string, unknown>;
-                            assessment?: Record<string, unknown>;
-                            schemaConversion?: Record<string, unknown>;
-                            targetEnvironment?: Record<string, unknown>;
-                        };
-                    };
+                    project: ProjectLoadedPayload['project'];
                     workspacePath: string;
                     schemaFiles: string[];
                     volumetricFiles: string[];
@@ -702,13 +696,13 @@ export function WithMigrationContext({ channel, children }: { channel: Channel; 
                             discoveryState: phaseStates.discoveryState,
                             discoveryError: null,
                             assessmentState: phaseStates.assessmentState,
-                            assessmentInstructions: (assessment?.assessmentInstructions as string) ?? '',
+                            assessmentInstructions: assessment?.assessmentInstructions ?? '',
                             assessmentResult: data.assessmentResult ?? null,
                             assessmentError: null,
                             schemaConversionState: phaseStates.schemaConversionState,
                             schemaConversionResult: data.schemaConversionResult ?? null,
                             schemaConversionInstructions:
-                                (data.project.phases.schemaConversion?.schemaConversionInstructions as string) ?? '',
+                                data.project.phases.schemaConversion?.schemaConversionInstructions ?? '',
                             schemaConversionError: null,
                             targetType: target?.type ?? null,
                             targetEndpoint: target?.endpoint ?? '',
@@ -735,7 +729,7 @@ export function WithMigrationContext({ channel, children }: { channel: Channel; 
                             bicepGenerated: data.hasBicep,
                             isAIFeaturesEnabled: data.isAIFeaturesEnabled,
                             consentGiven: data.consentGiven,
-                            discoveryInstructions: (discovery.discoveryInstructions as string) ?? '',
+                            discoveryInstructions: discovery.discoveryInstructions ?? '',
                             migrationInstructions: data.project.migrationInstructions ?? '',
                             hasCodeMigrationPlan: data.hasCodeMigrationPlan,
                             codeMigrationPlanPath: data.codeMigrationPlanPath,

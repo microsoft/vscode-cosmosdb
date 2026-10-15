@@ -4,10 +4,12 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type TypedEventSink } from '@microsoft/vscode-ext-webview';
-import { type ProjectJson } from '../../../services/MigrationProjectService';
 import { type ModelInfo } from '../../../utils/modelUtils';
 import { type MigrationRunActivity } from '../../../webviews/cosmosdb/Migration/state/deriveMigrationPhaseStates';
-import { type MigrationPhaseCompletionMap } from '../../migration/helpers/migrationStateSync';
+import {
+    type MigrationPhaseCompletionMap,
+    type MigrationProjectView,
+} from '../../migration/helpers/migrationStateSync';
 import { type ProvisioningResult } from '../../migration/steps/phase4Provisioning';
 import { migrationProcedure, migrationRouter } from '../trpc';
 
@@ -53,7 +55,7 @@ export interface SchemaConversionResultPayload {
 }
 
 export interface ProjectLoadedPayload {
-    project: ProjectJson | undefined;
+    project: MigrationProjectView;
     workspacePath: string;
     schemaFiles: string[];
     volumetricFiles: string[];

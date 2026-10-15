@@ -55,7 +55,11 @@ import {
     type MigrationPreflightStep,
     type MigrationSkillInvocation,
 } from './migration/helpers/migrationSkillDispatcher';
-import { readMigrationExecution, readMigrationPhaseCompletion } from './migration/helpers/migrationStateSync';
+import {
+    readMigrationExecution,
+    readMigrationPhaseCompletion,
+    toMigrationProjectView,
+} from './migration/helpers/migrationStateSync';
 import { setMigrationTelemetryContext } from './migration/helpers/migrationTelemetry';
 import { buildCodeMigrationPrompt } from './migration/prompts';
 import {
@@ -98,6 +102,7 @@ export class MigrationAssistantTab extends BaseTab {
     private readonly runTracker: MigrationRunTracker;
     private acknowledgmentTimer: ReturnType<typeof setTimeout> | undefined;
     private loadGeneration = 0;
+    private phaseCompletionAbort: AbortController | undefined;
     private projectService: MigrationProjectService;
     private project: ProjectJson | undefined;
     private analysisCancellation: vscode.CancellationTokenSource | undefined;
@@ -230,6 +235,7 @@ export class MigrationAssistantTab extends BaseTab {
 
     public dispose(): void {
         this.loadGeneration++;
+        this.phaseCompletionAbort?.abort();
         if (this.acknowledgmentTimer) clearTimeout(this.acknowledgmentTimer);
         this.modelsRequestGeneration++;
         this.tokenEstimateGeneration++;
@@ -448,8 +454,13 @@ export class MigrationAssistantTab extends BaseTab {
 
     private async loadProject(): Promise<void> {
         const generation = ++this.loadGeneration;
+        this.phaseCompletionAbort?.abort();
+        const abortController = new AbortController();
+        this.phaseCompletionAbort = abortController;
         await callWithTelemetryAndErrorHandling('cosmosDB.migration.loadProject', async (context) => {
-            this.project = await this.projectService.load({ readOnly: shouldUseMigrationSkill() });
+            const project = await this.projectService.load({ readOnly: shouldUseMigrationSkill() });
+            if (abortController.signal.aborted) return;
+            this.project = project;
             const isNewProject = !this.project;
 
             if (!this.project) {
@@ -461,7 +472,18 @@ export class MigrationAssistantTab extends BaseTab {
             setMigrationTelemetryContext(context, this.project);
             context.telemetry.properties.isNewProject = String(isNewProject);
 
-            const phaseCompletion = await readMigrationPhaseCompletion(ext.context.extensionPath, this.workspacePath);
+            let phaseCompletion;
+            try {
+                phaseCompletion = await readMigrationPhaseCompletion(
+                    ext.context.extensionPath,
+                    this.workspacePath,
+                    abortController.signal,
+                );
+            } catch (error) {
+                if (abortController.signal.aborted) return;
+                throw error;
+            }
+            if (abortController.signal.aborted) return;
 
             // Gather file lists. Hide the curated template files from the UI —
             // they are managed via the dedicated "Open Template" buttons and AI flows,
@@ -640,7 +662,7 @@ export class MigrationAssistantTab extends BaseTab {
             this.publishRunActivity();
             emitMigrationEvent(this.eventSink, 'projectLoaded', [
                 {
-                    project: this.project,
+                    project: toMigrationProjectView(this.project),
                     workspacePath: this.workspacePath,
                     schemaFiles,
                     volumetricFiles,

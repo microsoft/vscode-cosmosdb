@@ -3,10 +3,61 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as l10n from '@vscode/l10n';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
+import { Worker } from 'node:worker_threads';
 import * as path from 'path';
+import { type ProjectJson } from '../../../services/MigrationProjectService';
 import { type MigrationExecution } from '../../../webviews/cosmosdb/Migration/state/deriveMigrationPhaseStates';
+
+export function toMigrationProjectView(project: ProjectJson) {
+    const discovery = project.phases.discovery;
+    const analysis = discovery.applicationAnalysis;
+    const target = project.phases.targetEnvironment;
+    return {
+        name: project.name,
+        migrationInstructions: project.migrationInstructions,
+        phases: {
+            discovery: {
+                discoveryInstructions: discovery.discoveryInstructions,
+                applicationAnalysis:
+                    analysis && typeof analysis === 'object' && !Array.isArray(analysis)
+                        ? {
+                              projectName: analysis.projectName,
+                              projectType: analysis.projectType,
+                              language: analysis.language,
+                              frameworks: Array.isArray(analysis.frameworks)
+                                  ? analysis.frameworks.filter((framework) => typeof framework === 'string')
+                                  : undefined,
+                              databaseType: analysis.databaseType,
+                              databaseAccess: analysis.databaseAccess,
+                          }
+                        : undefined,
+            },
+            assessment: project.phases.assessment
+                ? { assessmentInstructions: project.phases.assessment.assessmentInstructions }
+                : undefined,
+            schemaConversion: project.phases.schemaConversion
+                ? { schemaConversionInstructions: project.phases.schemaConversion.schemaConversionInstructions }
+                : undefined,
+            targetEnvironment: target
+                ? {
+                      type: target.type,
+                      endpoint: target.endpoint,
+                      accountName: target.accountName,
+                      subscriptionId: target.subscriptionId,
+                      subscriptionName: target.subscriptionName,
+                      resourceGroup: target.resourceGroup,
+                      location: target.location,
+                      verified: target.verified,
+                  }
+                : undefined,
+        },
+    };
+}
+
+export type MigrationProjectView = ReturnType<typeof toMigrationProjectView>;
 
 export async function readMigrationExecution(
     extensionPath: string,
@@ -92,7 +143,9 @@ export function safeCheckPhaseCompletion(
 export async function readMigrationPhaseCompletion(
     extensionPath: string,
     workspacePath: string,
+    signal?: AbortSignal,
 ): Promise<MigrationPhaseCompletionMap> {
+    signal?.throwIfAborted();
     const checkerPath = path.join(
         extensionPath,
         'skills',
@@ -100,9 +153,41 @@ export async function readMigrationPhaseCompletion(
         'scripts',
         'check-phase-completion.mjs',
     );
-    const checker = (await import(
-        /* @vite-ignore */ pathToFileURL(checkerPath).href
-    )) as MigrationCompletionCheckerModule;
-
-    return checker.checkPhaseCompletions(workspacePath, migrationPhaseNames);
+    return new Promise((resolve, reject) => {
+        const worker = new Worker(
+            `const { parentPort, workerData } = require('node:worker_threads');
+             process.argv = [process.execPath];
+             import(workerData.checkerUrl).then(checker => {
+                 parentPort.postMessage(checker.checkPhaseCompletions(workerData.workspacePath, workerData.phases));
+             });`,
+            {
+                eval: true,
+                execArgv: [],
+                workerData: {
+                    checkerUrl: pathToFileURL(checkerPath).href,
+                    workspacePath,
+                    phases: migrationPhaseNames,
+                },
+            },
+        );
+        let completion: MigrationPhaseCompletionMap | undefined;
+        let failure: Error | undefined;
+        const abort = () => void worker.terminate();
+        signal?.addEventListener('abort', abort, { once: true });
+        worker.once('message', (result: MigrationPhaseCompletionMap) => {
+            completion = result;
+        });
+        worker.once('error', (error) => {
+            failure = error instanceof Error ? error : new Error(String(error));
+        });
+        worker.once('exit', (code) => {
+            signal?.removeEventListener('abort', abort);
+            if (signal?.aborted) {
+                reject(signal.reason instanceof Error ? signal.reason : new Error(String(signal.reason)));
+            } else if (failure) reject(failure);
+            else if (code !== 0 || !completion) {
+                reject(new Error(l10n.t('Migration completion check exited without a result (code {0}).', code)));
+            } else resolve(completion);
+        });
+    });
 }

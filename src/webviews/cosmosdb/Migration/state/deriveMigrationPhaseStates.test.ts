@@ -7,6 +7,7 @@
 
 import { act, renderHook } from '@testing-library/react';
 import { createElement, type ReactNode } from 'react';
+import { toMigrationProjectView } from '../../../../panels/migration/helpers/migrationStateSync';
 import {
     deriveMigrationPhaseStates,
     isCodeMigrationReady,
@@ -310,14 +311,44 @@ describe('migration project reload', () => {
         const reload = (useProgrammaticFlow: boolean, verified = false) => {
             act(() =>
                 projectLoaded({
-                    project: {
+                    project: toMigrationProjectView({
+                        version: 1,
                         name: 'legacy-project',
+                        sourceCode: 'parent',
+                        migrationInstructions: 'Preserve source keys.',
                         phases: {
-                            discovery: { status: phases.discovery.status },
-                            assessment: { status: phases.assessment.status },
-                            targetEnvironment: { type: 'emulator', verified },
+                            discovery: {
+                                status: phases.discovery.status ?? 'not-started',
+                                discoveryInstructions: 'Inspect the application.',
+                                applicationAnalysis: {
+                                    projectName: 'source-project',
+                                    projectType: 'service',
+                                    language: 'TypeScript',
+                                    frameworks: ['Express'],
+                                    databaseType: 'PostgreSQL',
+                                    databaseAccess: 'ORM',
+                                },
+                            },
+                            assessment: {
+                                status: phases.assessment.status ?? 'not-started',
+                                assessmentInstructions: 'Group by ownership.',
+                            },
+                            schemaConversion: {
+                                status: 'not-started',
+                                schemaConversionInstructions: 'Preserve identifiers.',
+                            },
+                            targetEnvironment: {
+                                type: 'emulator',
+                                endpoint: 'https://localhost:8081/',
+                                accountName: 'target-account',
+                                subscriptionId: 'subscription',
+                                subscriptionName: 'Test subscription',
+                                resourceGroup: 'test-group',
+                                location: 'westus',
+                                verified,
+                            },
                         },
-                    },
+                    }),
                     workspacePath: '/workspace',
                     schemaFiles: [],
                     volumetricFiles: [],
@@ -350,6 +381,28 @@ describe('migration project reload', () => {
 
         reload(true);
         expect(result.current).toMatchObject({
+            projectName: 'legacy-project',
+            migrationInstructions: 'Preserve source keys.',
+            discoveryInstructions: 'Inspect the application.',
+            assessmentInstructions: 'Group by ownership.',
+            schemaConversionInstructions: 'Preserve identifiers.',
+            analysisState: 'complete',
+            analysisResult: {
+                projectName: 'source-project',
+                projectType: 'service',
+                language: 'TypeScript',
+                frameworks: ['Express'],
+                databaseType: 'PostgreSQL',
+                databaseAccess: 'ORM',
+            },
+            targetType: 'emulator',
+            targetEndpoint: 'https://localhost:8081/',
+            targetAccountName: 'target-account',
+            targetSubscriptionId: 'subscription',
+            targetSubscriptionName: 'Test subscription',
+            targetResourceGroup: 'test-group',
+            targetLocation: 'westus',
+            connectionVerified: false,
             discoveryState: 'complete',
             assessmentState: 'available',
             schemaConversionState: 'locked',

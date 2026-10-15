@@ -6,6 +6,8 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { type ProjectJson } from '../../../services/MigrationProjectService';
 import {
     isMigrationInspectionCommand,
     isMigrationRunActive,
@@ -18,7 +20,20 @@ import {
     readMigrationExecution,
     readMigrationPhaseCompletion,
     safeCheckPhaseCompletion,
+    toMigrationProjectView,
 } from './migrationStateSync';
+
+async function withCompletionChecker(source: string, check: (extensionPath: string) => Promise<void>): Promise<void> {
+    const extensionPath = fs.mkdtempSync(path.join(os.tmpdir(), 'migration worker test '));
+    const scriptsPath = path.join(extensionPath, 'skills', 'cosmosdb-relational-migration', 'scripts');
+    fs.mkdirSync(scriptsPath, { recursive: true });
+    fs.writeFileSync(path.join(scriptsPath, 'check-phase-completion.mjs'), source);
+    try {
+        await check(extensionPath);
+    } finally {
+        fs.rmSync(extensionPath, { recursive: true });
+    }
+}
 
 describe('migrationStateSync', () => {
     const startedAt = '2026-10-04T10:00:00.000Z';
@@ -33,6 +48,104 @@ describe('migrationStateSync', () => {
         updatedAt: startedAt,
         detail: '',
     };
+
+    it('projects only display fields without changing the authoritative project', () => {
+        const project: ProjectJson = {
+            version: 1,
+            name: 'migration-app',
+            sourceCode: 'parent',
+            migrationInstructions: 'Keep source keys.',
+            consentGiven: true,
+            phases: {
+                discovery: {
+                    status: 'complete',
+                    discoveryInstructions: 'Inspect the service.',
+                    applicationAnalysis: {
+                        projectName: 'source-app',
+                        projectType: 'service',
+                        language: 'TypeScript',
+                        frameworks: ['Express'],
+                        databaseType: 'PostgreSQL',
+                        databaseAccess: 'ORM',
+                        completedAt: startedAt,
+                    },
+                },
+                assessment: { status: 'complete', assessmentInstructions: 'Group by ownership.' },
+                schemaConversion: { status: 'complete', schemaConversionInstructions: 'Preserve identifiers.' },
+                targetEnvironment: {
+                    type: 'azure',
+                    endpoint: 'https://example.invalid',
+                    accountName: 'target-account',
+                    subscriptionId: 'subscription',
+                    subscriptionName: 'Test subscription',
+                    tenantId: 'tenant',
+                    resourceGroup: 'test-group',
+                    location: 'westus',
+                    verified: true,
+                    verifiedAt: startedAt,
+                    capacityMode: 'serverless',
+                },
+            },
+        };
+        const bulk = 'artifact-data'.repeat(10000);
+        Object.assign(project, { freshness: bulk, execution: { detail: bulk }, futureMetadata: bulk });
+        Object.assign(project.phases.discovery, { schemaInventory: { files: [bulk] } });
+        Object.assign(project.phases.discovery.applicationAnalysis!, { futureMetadata: bulk });
+        Object.assign(project.phases.assessment!, { domains: [bulk], parsedAccessPatterns: [bulk] });
+        Object.assign(project.phases.schemaConversion!, { domains: [bulk] });
+        Object.assign(project.phases.targetEnvironment!, { futureMetadata: bulk });
+        const original = JSON.stringify(project);
+
+        const view = toMigrationProjectView(project);
+        const serialized = JSON.stringify(view);
+        expect(JSON.parse(serialized)).toEqual({
+            name: 'migration-app',
+            migrationInstructions: 'Keep source keys.',
+            phases: {
+                discovery: {
+                    discoveryInstructions: 'Inspect the service.',
+                    applicationAnalysis: {
+                        projectName: 'source-app',
+                        projectType: 'service',
+                        language: 'TypeScript',
+                        frameworks: ['Express'],
+                        databaseType: 'PostgreSQL',
+                        databaseAccess: 'ORM',
+                    },
+                },
+                assessment: { assessmentInstructions: 'Group by ownership.' },
+                schemaConversion: { schemaConversionInstructions: 'Preserve identifiers.' },
+                targetEnvironment: {
+                    type: 'azure',
+                    endpoint: 'https://example.invalid',
+                    accountName: 'target-account',
+                    subscriptionId: 'subscription',
+                    subscriptionName: 'Test subscription',
+                    resourceGroup: 'test-group',
+                    location: 'westus',
+                    verified: true,
+                },
+            },
+        });
+        expect(Buffer.byteLength(serialized)).toBeLessThan(2048);
+        expect(JSON.stringify(project)).toBe(original);
+    });
+
+    it('keeps sparse projects and invalid application analysis uninitialized', () => {
+        const project: ProjectJson = {
+            version: 1,
+            name: 'new-project',
+            sourceCode: 'parent',
+            phases: { discovery: { status: 'not-started' } },
+        };
+        for (const applicationAnalysis of [undefined, null, 'invalid', 1, []]) {
+            Object.assign(project.phases.discovery, { applicationAnalysis });
+            expect(JSON.parse(JSON.stringify(toMigrationProjectView(project)))).toEqual({
+                name: 'new-project',
+                phases: { discovery: {} },
+            });
+        }
+    });
 
     it('keeps inspection available while guarding mutating commands', () => {
         for (const command of [
@@ -146,6 +259,47 @@ describe('migrationStateSync', () => {
             staleInputs: [{ id: 'completion-check', reason: 'Completion checker failed unexpectedly' }],
             artifacts: [],
             errors: [expect.stringContaining("reading 'includes'")],
+        });
+    });
+
+    it('checks every phase off-thread and passes workspace paths as data', async () => {
+        await withCompletionChecker(
+            `import { isMainThread } from 'node:worker_threads';
+             export function checkPhaseCompletions(workspace, phases) {
+                 return Object.fromEntries(phases.map(phase => [phase, {
+                     phase, status: 'not-started', complete: false, freshness: 'unknown',
+                     staleInputs: [], artifacts: [], errors: [String(isMainThread), workspace],
+                 }]));
+             }`,
+            async (extensionPath) => {
+                const workspace = '/workspace with spaces/"quoted"';
+                const completion = await readMigrationPhaseCompletion(extensionPath, workspace);
+                expect(Object.keys(completion)).toEqual([...migrationPhaseNames]);
+                expect(completion.discovery.errors).toEqual(['false', workspace]);
+            },
+        );
+    });
+
+    it.each([
+        ['throw new Error("Import failed");', 'Import failed'],
+        ['export function checkPhaseCompletions() { throw new Error("Validation failed"); }', 'Validation failed'],
+        ['export function checkPhaseCompletions() { process.exit(0); }', 'exited without a result'],
+    ])('rejects worker failures without hanging: %s', async (source, message) => {
+        await withCompletionChecker(source, async (extensionPath) => {
+            await expect(readMigrationPhaseCompletion(extensionPath, '/workspace')).rejects.toThrow(message);
+        });
+    });
+
+    it('cancels an active worker and permits the next check', async () => {
+        await withCompletionChecker('export function checkPhaseCompletions() { return {}; }', async (extensionPath) => {
+            const controller = new AbortController();
+            const pending = readMigrationPhaseCompletion(extensionPath, '/workspace', controller.signal);
+            controller.abort();
+            await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+            await expect(readMigrationPhaseCompletion(extensionPath, '/workspace')).resolves.toEqual({});
+            await expect(
+                readMigrationPhaseCompletion(extensionPath, '/workspace', controller.signal),
+            ).rejects.toMatchObject({ name: 'AbortError' });
         });
     });
 

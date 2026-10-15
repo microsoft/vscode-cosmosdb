@@ -759,6 +759,7 @@
   "Migrate Application": "Migrate Application",
   "Migrate your application from a relational database (RDBMS) to Azure Cosmos DB NoSQL with AI-assisted analysis. Follow the phases below to inventory your schema, analyze your application, and configure your target environment.": "Migrate your application from a relational database (RDBMS) to Azure Cosmos DB NoSQL with AI-assisted analysis. Follow the phases below to inventory your schema, analyze your application, and configure your target environment.",
   "Migration activity could not be read: {message}": "Migration activity could not be read: {message}",
+  "Migration completion check exited without a result (code {0}).": "Migration completion check exited without a result (code {0}).",
   "Migration Configuration": "Migration Configuration",
   "Model": "Model",
   "Monitoring Reader": "Monitoring Reader",

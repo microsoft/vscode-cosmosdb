@@ -137,6 +137,56 @@ test('preserves source-specific quoted names and rejects unknown source referenc
     assert.throws(() => resolveSource('"PUBLIC".orders', inventory), /missing/);
 });
 
+test('preserves dialect, quoting and ambiguity rules in standalone and indexed resolution', () => {
+    const report = evidenceReport(['Source Overview', 'Read Patterns', 'Write Patterns', 'Relational Semantics', 'Warnings']);
+    const cases = [
+        { dialect: 'postgres', identities: [['public', 'orders'], ['archive', 'orders']], value: 'PUBLIC.ORDERS', match: 0 },
+        { dialect: 'postgres', identities: [['public', 'orders'], ['archive', 'orders']], value: 'orders' },
+        { dialect: 'postgres', identities: [['public', 'orders']], value: '"PUBLIC".orders' },
+        { dialect: 'postgres', identities: [['public', 'orders']], value: 'missing' },
+        { dialect: 'postgres', identities: [['public', 'orders']], value: 'public..orders', invalid: true },
+        { dialect: 'postgres', identities: [['catalog', 'public', 'orders']], value: 'public.orders' },
+        { dialect: 'postgres', identities: [['catalog', 'public', 'orders']], value: 'catalog.public.orders', match: 0 },
+        { dialect: 'postgres', identities: [['public', 'Order.Items'], ['public.Order', 'Items']], value: 'public."Order.Items"', match: 0 },
+        { dialect: 'postgres', identities: [['public', 'Order.Items']], value: '"Order.Items"', match: 0 },
+        { dialect: 'postgres', identities: [['public', 'A"B']], value: 'public."A""B"', match: 0 },
+        { dialect: 'sqlite', identities: [['main', 'orders']], value: '"MAIN"."ORDERS"', match: 0 },
+        { dialect: 'oracle', identities: [['APP', 'ORDERS'], ['App', 'Orders']], value: 'app.orders', match: 0 },
+        { dialect: 'oracle', identities: [['APP', 'ORDERS'], ['App', 'Orders']], value: '"App"."Orders"', match: 1 },
+        { dialect: 'oracle', identities: [['APP', 'ORDERS']], value: 'orders', match: 0 },
+        { dialect: 'sqlserver', identities: [['dbo', 'Orders']], value: '[dbo].[Orders]', match: 0 },
+        { dialect: 'sqlserver', identities: [['dbo', 'Orders']], value: 'dbo.orders' },
+        { dialect: 'sqlserver', identities: [['dbo', 'A]B']], value: '[dbo].[A]]B]', match: 0 },
+        { dialect: 'mysql', identities: [['store', 'Odd`Name']], value: '`store`.`Odd``Name`', match: 0 },
+        { dialect: 'postgres', identities: [['public', 'orders'], ['public', 'orders'], ['public', 'orders']], value: 'public.orders' },
+    ];
+    for (const scenario of cases) {
+        const sourceInventory = {
+            dialect: scenario.dialect,
+            sha256: 'source-hash',
+            tables: scenario.identities.map(identity => ({
+                name: identity.map(name => `"${name.replaceAll('"', '""')}"`).join('.'),
+                identity: identity.map(name => ({ name })),
+            })),
+        };
+        const names = sourceInventory.tables.map(table => table.name);
+        const evidence = {
+            sourceSha256: sourceInventory.sha256,
+            tables: names,
+            patterns: [],
+            noObservedAccess: names.map((name, index) => index === (scenario.match ?? 0) ? scenario.value : name),
+        };
+        if (scenario.match !== undefined) {
+            assert.equal(resolveSource(scenario.value, sourceInventory), sourceInventory.tables[scenario.match]);
+            assert.deepEqual(validateSourceReport(report, evidence, sourceInventory, 'discovery'), []);
+        } else {
+            const expected = scenario.invalid ? /Invalid source identifier/u : /Source table is missing or ambiguous/u;
+            assert.throws(() => resolveSource(scenario.value, sourceInventory), expected);
+            assert.match(validateSourceReport(report, evidence, sourceInventory, 'discovery')[0].message, expected);
+        }
+    }
+});
+
 test('validates and resolves single and composite source foreign keys', () => {
     const sourceInventory = {
         dialect: 'postgres',
@@ -218,4 +268,120 @@ test('requires substantive report structure and source-bound evidence', () => {
     const report = evidenceReport(['Source Overview', 'Read Patterns', 'Write Patterns', 'Relational Semantics', 'Warnings']);
     assert.deepEqual(validateSourceReport(report, evidence, inventory, 'discovery'), []);
     assert(validateSourceReport(report, { ...evidence, sourceSha256: 'stale' }, inventory, 'discovery').length);
+});
+
+test('preserves assessment ownership checks and observes edits between validation calls', () => {
+    const sourceInventory = {
+        dialect: 'postgres',
+        sha256: 'source-hash',
+        tables: ['orders', 'customers'].map(name => ({
+            name: `public.${name}`,
+            identity: [{ name: 'public' }, { name }],
+        })),
+    };
+    const domains = [
+        { name: '__proto__', tables: ['ORDERS'], crossDomainDependencies: ['constructor'] },
+        { name: 'constructor', tables: ['"public"."customers"'], crossDomainDependencies: [] },
+    ];
+    const evidence = {
+        sourceSha256: sourceInventory.sha256,
+        tables: sourceInventory.tables.map(table => table.name),
+        domains: domains.map(domain => domain.name),
+        crossDomainEdges: [{
+            fromDomain: '__proto__', fromTable: 'public.orders',
+            toDomain: 'constructor', toTable: 'CUSTOMERS', strategy: 'Reference by source key.',
+        }],
+    };
+    const report = evidenceReport(['Overview', 'Domains', 'Cross-Domain Dependencies', 'Recommendations', 'Warnings']);
+    const validate = (reportEvidence = evidence) =>
+        validateSourceReport(report, reportEvidence, sourceInventory, 'assessment', domains);
+    assert.deepEqual(validate(), []);
+
+    for (const change of [
+        { fromDomain: 'missing' }, { toDomain: 'missing' },
+        { fromTable: 'public.customers' }, { toTable: 'public.orders' },
+    ]) {
+        const errors = validate({ ...evidence, crossDomainEdges: [{ ...evidence.crossDomainEdges[0], ...change }] });
+        assert.equal(errors[0].message, 'Cross-domain edge contradicts source ownership');
+    }
+    assert.equal(validate({ ...evidence, crossDomainEdges: [{ ...evidence.crossDomainEdges[0], strategy: '' }] })[0].message,
+        'Cross-domain edge requires a handling strategy');
+
+    domains[0].crossDomainDependencies.push('missing');
+    assert.equal(validate()[0].message, 'Cross-domain dependency does not identify an assessed domain');
+    domains[0].crossDomainDependencies.pop();
+
+    domains[0].tables.push('public.customers');
+    assert.equal(validate()[0].message, 'Assessment source ownership is missing or duplicated');
+    domains[0].tables.pop();
+    const originalTable = domains[0].tables.pop();
+    assert.equal(validate()[0].message, 'Assessment source ownership is missing or duplicated');
+    domains[0].tables.push(originalTable);
+
+    sourceInventory.tables[0].identity[1].name = 'renamed';
+    assert.match(validate()[0].message, /Source table is missing or ambiguous/u);
+    assert.throws(() => resolveSource('orders', sourceInventory), /missing or ambiguous/u);
+    sourceInventory.tables[0].identity[1].name = 'orders';
+    assert.deepEqual(validate(), []);
+
+    [domains[0].tables, domains[1].tables] = [domains[1].tables, domains[0].tables];
+    assert.equal(validate()[0].message, 'Cross-domain edge contradicts source ownership');
+    [evidence.crossDomainEdges[0].fromDomain, evidence.crossDomainEdges[0].toDomain] =
+        [evidence.crossDomainEdges[0].toDomain, evidence.crossDomainEdges[0].fromDomain];
+    assert.deepEqual(validate(), []);
+
+    sourceInventory.tables.push(sourceInventory.tables[0]);
+    assert.match(validate()[0].message, /Source table is missing or ambiguous/u);
+    sourceInventory.tables.pop();
+    assert.deepEqual(validate(), []);
+});
+
+test('indexes source identities and domain ownership once per assessment validation', () => {
+    let identityReads = 0;
+    let ownershipReads = 0;
+    const sourceInventory = {
+        dialect: 'postgres',
+        sha256: 'source-hash',
+        tables: Array.from({ length: 200 }, (_, index) => ({
+            name: `public.table_${index}`,
+            get identity() {
+                identityReads++;
+                return [{ name: 'public' }, { name: `table_${index}` }];
+            },
+        })),
+    };
+    const domains = ['First', 'Second'].map((name, index) => {
+        const tables = sourceInventory.tables.slice(index * 100, (index + 1) * 100).map(table => table.name);
+        return {
+            name,
+            get tables() {
+                ownershipReads++;
+                return tables;
+            },
+            crossDomainDependencies: [],
+        };
+    });
+    const evidence = {
+        sourceSha256: sourceInventory.sha256,
+        tables: sourceInventory.tables.map(table => table.name),
+        domains: domains.map(domain => domain.name),
+        crossDomainEdges: Array.from({ length: 200 }, (_, index) => ({
+            fromDomain: 'First',
+            fromTable: `public.table_${index % 100}`,
+            toDomain: 'Second',
+            toTable: `public.table_${100 + index % 100}`,
+            strategy: 'Reference by source key.',
+        })),
+    };
+    const report = evidenceReport(['Overview', 'Domains', 'Cross-Domain Dependencies', 'Recommendations', 'Warnings']);
+
+    assert.deepEqual(validateSourceReport(report, evidence, sourceInventory, 'assessment', domains), []);
+    assert.equal(identityReads, sourceInventory.tables.length);
+    assert.equal(ownershipReads, domains.length);
+
+    identityReads = 0;
+    ownershipReads = 0;
+    assert.deepEqual(validateSourceReport(report, evidence, sourceInventory, 'assessment', domains), []);
+    assert.equal(identityReads, sourceInventory.tables.length);
+    assert.equal(ownershipReads, domains.length);
 });

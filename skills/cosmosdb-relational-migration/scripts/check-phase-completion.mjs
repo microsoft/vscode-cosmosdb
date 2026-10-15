@@ -457,6 +457,58 @@ function evaluatePhase(workspace, phaseInput, checkFreshness, cache) {
         };
     }
 
+    const artifactMode = phase === 'discovery' && checkFreshness;
+    const artifacts = [...cachedCheck(cache, `artifacts:${phase}:${artifactMode}`, () =>
+        collectPhaseArtifacts(workspace, phase, project, artifactMode, cache))];
+    const ownFreshness = checkFreshness
+        ? validateFreshnessManifest(workspace, project, phase, project.freshness?.[phase])
+        : { freshness: 'not-applicable', staleInputs: [] };
+    const predecessorPhase = PREDECESSOR_PHASE[phase];
+    const predecessor = predecessorPhase ? checkPhase(workspace, predecessorPhase, checkFreshness, cache) : undefined;
+    const staleInputs = [...ownFreshness.staleInputs];
+    if (predecessor && !predecessor.complete) {
+        artifacts.push({
+            path: `.cosmosdb-migration/project.json#${predecessorPhase}`,
+            description: `Required predecessor ${predecessorPhase}`,
+            conditional: false,
+            state: 'invalid',
+            diagnostics: predecessor.errors,
+        });
+        if (checkFreshness) staleInputs.push({
+            id: `predecessor:${predecessorPhase}`,
+            reason: `required predecessor ${predecessorPhase} is not current and complete`,
+        });
+    }
+    const freshness = staleInputs.length
+        ? ownFreshness.freshness === 'unknown'
+            ? 'unknown'
+            : 'stale'
+        : ownFreshness.freshness;
+    const status = phaseStatus(project, phase);
+    const incompleteArtifacts = artifacts.filter(
+        (artifact) => !artifact.conditional && artifact.state !== 'present',
+    );
+    return {
+        phase,
+        status,
+        complete: status === 'complete' && incompleteArtifacts.length === 0 && (!checkFreshness || freshness === 'current'),
+        freshness,
+        staleInputs,
+        artifacts,
+        errors:
+            status === 'complete' && (incompleteArtifacts.length > 0 || (checkFreshness && freshness !== 'current'))
+                ? [
+                      incompleteArtifacts.length > 0
+                          ? 'project status is complete but required artifacts are missing or invalid'
+                          : 'project status is complete but required inputs are stale or have unknown freshness',
+                  ]
+                : [],
+    };
+}
+
+function collectPhaseArtifacts(workspace, phase, project, checkSourcePaths, cache) {
+    const migrationRoot = path.join(workspace, '.cosmosdb-migration');
+    const projectPath = path.join(migrationRoot, 'project.json');
     const artifacts = [];
     addArtifact(artifacts, workspace, projectPath, 'Migration project checkpoint', () => true);
     const getDdlFiles = () => cachedCheck(cache, 'ddl-files', () => selectedDdlFiles(workspace, project));
@@ -546,7 +598,7 @@ function evaluatePhase(workspace, phaseInput, checkFreshness, cache) {
             workspace,
             path.join(migrationRoot, 'phases', '1-discovery', 'discovery-manifest.json'),
             'Discovery evidence manifest',
-            filePath => inventory.errors.length ? inventory.errors : validateSourceReport(fs.readFileSync(path.join(path.dirname(filePath), 'discovery-report.md'), 'utf8'), readPhaseEvidence(filePath), inventory, 'discovery', [], checkFreshness ? workspace : undefined),
+            filePath => inventory.errors.length ? inventory.errors : validateSourceReport(fs.readFileSync(path.join(path.dirname(filePath), 'discovery-report.md'), 'utf8'), readPhaseEvidence(filePath), inventory, 'discovery', [], checkSourcePaths ? workspace : undefined),
         );
     } else if (phase === 'assessment') {
         addArtifact(
@@ -842,50 +894,7 @@ function evaluatePhase(workspace, phaseInput, checkFreshness, cache) {
         );
     }
 
-    const ownFreshness = checkFreshness
-        ? validateFreshnessManifest(workspace, project, phase, project.freshness?.[phase])
-        : { freshness: 'not-applicable', staleInputs: [] };
-    const predecessorPhase = PREDECESSOR_PHASE[phase];
-    const predecessor = predecessorPhase ? checkPhase(workspace, predecessorPhase, checkFreshness, cache) : undefined;
-    const staleInputs = [...ownFreshness.staleInputs];
-    if (predecessor && !predecessor.complete) {
-        artifacts.push({
-            path: `.cosmosdb-migration/project.json#${predecessorPhase}`,
-            description: `Required predecessor ${predecessorPhase}`,
-            conditional: false,
-            state: 'invalid',
-            diagnostics: predecessor.errors,
-        });
-        if (checkFreshness) staleInputs.push({
-            id: `predecessor:${predecessorPhase}`,
-            reason: `required predecessor ${predecessorPhase} is not current and complete`,
-        });
-    }
-    const freshness = staleInputs.length
-        ? ownFreshness.freshness === 'unknown'
-            ? 'unknown'
-            : 'stale'
-        : ownFreshness.freshness;
-    const status = phaseStatus(project, phase);
-    const incompleteArtifacts = artifacts.filter(
-        (artifact) => !artifact.conditional && artifact.state !== 'present',
-    );
-    return {
-        phase,
-        status,
-        complete: status === 'complete' && incompleteArtifacts.length === 0 && (!checkFreshness || freshness === 'current'),
-        freshness,
-        staleInputs,
-        artifacts,
-        errors:
-            status === 'complete' && (incompleteArtifacts.length > 0 || (checkFreshness && freshness !== 'current'))
-                ? [
-                      incompleteArtifacts.length > 0
-                          ? 'project status is complete but required artifacts are missing or invalid'
-                          : 'project status is complete but required inputs are stale or have unknown freshness',
-                  ]
-                : [],
-    };
+    return artifacts;
 }
 
 function parseArguments(argv) {

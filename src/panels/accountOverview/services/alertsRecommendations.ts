@@ -97,8 +97,13 @@ export function mapAlertSeverity(raw: string | undefined): AlertSeverity {
 }
 
 /** Builds the standard Azure portal deep link to a single alert's details blade. Pure. */
-export function buildAlertPortalUrl(alertId: string, portalBaseUrl = 'https://portal.azure.com'): string {
-    return `${portalBaseUrl}/#blade/Microsoft_Azure_Monitoring/AlertDetailsTemplateBlade/alertId/${encodeURIComponent(alertId)}`;
+export function buildAlertPortalUrl(
+    alertId: string,
+    portalBaseUrl = 'https://portal.azure.com',
+    tenantId?: string,
+): string {
+    const tenant = tenantId ? `@${encodeURIComponent(tenantId)}/` : '';
+    return `${portalBaseUrl.replace(/\/$/, '')}/#${tenant}blade/Microsoft_Azure_Monitoring/AlertDetailsTemplateBlade/alertId/${encodeURIComponent(alertId)}`;
 }
 
 const ALERT_SEVERITY_ORDER: Record<AlertSeverity, number> = { Critical: 0, Warning: 1, Informational: 2 };
@@ -188,6 +193,7 @@ export async function getActiveAlerts(
     resourceId: string,
     timeRange: AlertTimeRange,
     portalBaseUrl?: string,
+    tenantId?: string,
 ): Promise<AlertsResult> {
     const generatedAt = Date.now();
     const scope = `/subscriptions/${subscriptionId}`;
@@ -211,7 +217,7 @@ export async function getActiveAlerts(
                 alertRule: essentials?.alertRule,
                 targetResource: essentials?.targetResource,
                 startedAt: essentials?.startDateTime ? new Date(essentials.startDateTime).getTime() : undefined,
-                portalUrl: buildAlertPortalUrl(id, portalBaseUrl),
+                portalUrl: buildAlertPortalUrl(id, portalBaseUrl, tenantId),
             });
         }
     } catch (error) {

@@ -424,14 +424,16 @@ describe('runAccountAction', () => {
 });
 
 describe('account action boundaries', () => {
-    it.each(['https://portal.azure.us/', 'https://portal.azure.cn', 'https://portal.azure.com/'])(
-        'encodes the tenant and complete ARM scope for %s',
-        (portal) => {
-            expect(buildAccountCostsUrl(portal, 'tenant/# ?@', '/subscriptions/sub/rg/a b?#%')).toBe(
-                `${portal.replace(/\/$/, '')}/#@tenant%2F%23%20%3F%40/view/Microsoft_Azure_CostManagement/CostAnalysis/scope/%2Fsubscriptions%2Fsub%2Frg%2Fa%20b%3F%23%25`,
-            );
-        },
-    );
+    it.each([
+        'https://portal.azure.us/',
+        'https://portal.azure.cn',
+        'https://portal.azure.com/',
+        'https://ms.portal.azure.com',
+    ])('encodes the tenant and complete ARM scope for %s', (portal) => {
+        expect(buildAccountCostsUrl(portal, 'tenant/# ?@', '/subscriptions/sub/rg/a b?#%')).toBe(
+            `${portal.replace(/\/$/, '')}/#@tenant%2F%23%20%3F%40/view/Microsoft_Azure_CostManagement/CostAnalysis/scope/%2Fsubscriptions%2Fsub%2Frg%2Fa%20b%3F%23%25`,
+        );
+    });
 
     it.each(['', 'db/other', 'db\\other', 'db?other', 'db#other'])('rejects invalid database ID %j', (id) => {
         expect(accountActionInput.safeParse({ action: 'createContainer', databaseId: id }).success).toBe(false);

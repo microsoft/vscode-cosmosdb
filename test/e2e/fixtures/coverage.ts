@@ -95,7 +95,7 @@ export async function stopAndPersistCoverage(page: Page, testInfo: TestInfo): Pr
 
     let entries: V8ScriptCoverage[] = [];
     try {
-        entries = (await page.coverage.stopJSCoverage()) as unknown as V8ScriptCoverage[];
+        entries = await page.coverage.stopJSCoverage();
     } catch {
         // Ignore — emit an empty (but valid) artifact below so aggregation
         // still has something to read.

@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 // ---------------------------------------------------------------------------
-// Provides hover documentation for built-in functions and SQL keywords.
+// Provides hover documentation for built-in functions and query keywords.
 //
 // The data is statically embedded in ../docs/index.ts (auto-generated from
 // .md files by `node scripts/generate-docs-index.mjs`). This avoids any
@@ -22,7 +22,7 @@ export function getFunctionDoc(name: string): string | undefined {
 }
 
 /**
- * Return the markdown documentation for a SQL keyword,
+ * Return the markdown documentation for a query keyword,
  * or `undefined` if no doc file exists.
  */
 export function getKeywordDoc(name: string): string | undefined {

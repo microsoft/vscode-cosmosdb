@@ -8,11 +8,11 @@ import { describe, expect, it } from 'vitest';
 import { escapeCosmosDBShellStringLiteral, getGoToContainerCommand } from './goToContainerCommand';
 
 function db(id: string): DatabaseDefinition {
-    return { id } as DatabaseDefinition;
+    return { id };
 }
 
 function container(id: string): ContainerDefinition {
-    return { id } as ContainerDefinition;
+    return { id };
 }
 
 describe('escapeCosmosDBShellStringLiteral', () => {

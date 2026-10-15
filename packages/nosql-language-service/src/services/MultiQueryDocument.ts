@@ -18,6 +18,7 @@ import { Semicolon } from '../lexer/tokens.js';
 
 /**
  * A single query region within a multi-query document.
+ * Offsets count UTF-16 code units; parse-result coordinates are local to `text`.
  */
 export interface QueryRegion {
     /** 0-based index of this region. */

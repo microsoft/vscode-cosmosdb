@@ -37,12 +37,21 @@ const renderTable = () => {
 
     // jsdom lacks the grid's CSS nesting selector syntax and scrollIntoView.
     const grid = screen.getByRole('grid', { name: 'Query results table' });
-    const querySelector = grid.querySelector.bind(grid);
+    const queryRoot: { querySelector: (selector: string) => Element | null } = grid;
+    const querySelector = queryRoot.querySelector.bind(grid);
     vi.spyOn(grid, 'querySelector').mockImplementation((selector) => querySelector(selector.replace(/^&/, ':scope')));
     for (const cell of [...screen.getAllByRole('gridcell'), ...screen.getAllByRole('columnheader')]) {
         cell.scrollIntoView = vi.fn();
     }
 };
+
+describe('ResultTabViewTable column header menu accessibility', () => {
+    it('keeps the closed menu button in the accessibility tree', () => {
+        renderTable();
+
+        expect(screen.getByRole('button', { name: 'Column context menu for id' })).not.toHaveAttribute('aria-hidden');
+    });
+});
 
 describe('ResultTabViewTable keyboard selection', () => {
     beforeEach(() => {

@@ -18,4 +18,4 @@ Returns a string.
 
 ---
 
-⚠️ **Documentation:** No public documentation available yet. This is an internal Cosmos DB SQL function.
+⚠️ **Documentation:** No public documentation available yet. This is an internal function in the Cosmos DB query language.

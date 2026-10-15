@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 /**
- * Schema inference for plain JSON / CosmosDB NoSQL documents.
+ * Schema inference for JSON documents, including Cosmos DB documents.
  *
  * Uses the shared core traversal with a JSON-specific type adapter.
  * Schema output uses `x-dataType` (not `x-bsonType`) for the original type tag.

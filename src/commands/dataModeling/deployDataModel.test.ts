@@ -337,7 +337,7 @@ describe('Data Modeler reuses migration provisioning', () => {
             async (_options, task) =>
                 new Promise((resolve) => {
                     finish = () => resolve(task({ report: vi.fn() }, new vscode.CancellationTokenSource().token));
-                }) as ReturnType<typeof task>,
+                }),
         );
         const pending = deployDataModel(account, value, context());
         await vi.waitFor(() => expect(vscode.window.withProgress).toHaveBeenCalledOnce());

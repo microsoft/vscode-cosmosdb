@@ -5,14 +5,14 @@
 
 import { type AdvisorManagementClient } from '@azure/arm-advisor';
 import { type AlertsManagementClient } from '@azure/arm-alertsmanagement';
-import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
+import { CosmosDBManagementClient, type CosmosDBManagementClientOptionalParams } from '@azure/arm-cosmosdb';
 import { type FeatureClient } from '@azure/arm-features';
-import { type MonitorClient } from '@azure/arm-monitor';
+import { type MonitorClient, type MonitorClientOptionalParams } from '@azure/arm-monitor';
 import { type PostgreSQLManagementClient } from '@azure/arm-postgresql';
 import { type PostgreSQLManagementFlexibleServerClient } from '@azure/arm-postgresql-flexible';
 import { type TokenCredential } from '@azure/core-auth';
 import { type KnownMonitorLogsQueryAudience, type LogsQueryClient } from '@azure/monitor-query-logs';
-import { createAzureClient } from '@microsoft/vscode-azext-azureutils';
+import { createAzureClient, createAzureSubscriptionClient } from '@microsoft/vscode-azext-azureutils';
 import { createSubscriptionContext, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 
@@ -49,18 +49,10 @@ const DOCUMENT_DB_PROVIDER_PATH = '/providers/microsoft.documentdb/';
  */
 export const PRESERVE_API_VERSION_HEADER = 'x-vscode-cosmosdb-preserve-api-version';
 
-type PinnablePipelineRequest = {
-    url: string;
-    headers: { has(name: string): boolean; delete(name: string): void };
-};
-
 function pinCosmosDBApiVersion(client: CosmosDBManagementClient): CosmosDBManagementClient {
-    const clientWithPipeline = client as unknown as {
-        pipeline: { addPolicy: (policy: unknown) => void };
-    };
-    clientWithPipeline.pipeline.addPolicy({
+    client.pipeline.addPolicy({
         name: 'PinCosmosDBApiVersionPolicy',
-        async sendRequest(request: PinnablePipelineRequest, next: (req: PinnablePipelineRequest) => Promise<unknown>) {
+        async sendRequest(request, next) {
             if (request.headers.has(PRESERVE_API_VERSION_HEADER)) {
                 request.headers.delete(PRESERVE_API_VERSION_HEADER);
                 return next(request);
@@ -88,8 +80,16 @@ export async function createCosmosDBManagementClient(
     context: IActionContext,
     subscription: AzureSubscription,
 ): Promise<CosmosDBManagementClient> {
+    context.valuesToMask.push(subscription.subscriptionId);
     const subContext = createSubscriptionContext(subscription);
-    return pinCosmosDBApiVersion(createAzureClient([context, subContext], CosmosDBManagementClient));
+    // Modular SDK clients no longer extend ServiceClient. Adapt their subscription argument to the generic
+    // factory so extension authentication, sovereign endpoints and pipeline policies are still applied.
+    class SubscriptionClient extends CosmosDBManagementClient {
+        constructor(credential: TokenCredential, options?: CosmosDBManagementClientOptionalParams) {
+            super(credential, subscription.subscriptionId, options);
+        }
+    }
+    return pinCosmosDBApiVersion(createAzureSubscriptionClient([context, subContext], SubscriptionClient));
 }
 
 export async function createFeatureClient(
@@ -108,9 +108,15 @@ export async function createMonitorClient(
     context: IActionContext,
     subscription: AzureSubscription,
 ): Promise<MonitorClient> {
+    context.valuesToMask.push(subscription.subscriptionId);
     const subContext = createSubscriptionContext(subscription);
     const { MonitorClient } = await import('@azure/arm-monitor');
-    return createAzureClient([context, subContext], MonitorClient);
+    class SubscriptionClient extends MonitorClient {
+        constructor(credential: TokenCredential, options?: MonitorClientOptionalParams) {
+            super(credential, subscription.subscriptionId, options);
+        }
+    }
+    return createAzureSubscriptionClient([context, subContext], SubscriptionClient);
 }
 
 // `@azure/monitor-query-logs` is the data-plane Log Analytics client for the Account Overview dashboard's Tier-2
@@ -127,7 +133,7 @@ export async function createLogsQueryClient(
     const subContext = createSubscriptionContext(subscription);
     const { LogsQueryClient, KnownMonitorLogsQueryAudience } = await import('@azure/monitor-query-logs');
     const audience = logAnalyticsAudience(subscription.environment?.name, KnownMonitorLogsQueryAudience);
-    return new LogsQueryClient(subContext.credentials as TokenCredential, audience ? { audience } : undefined);
+    return new LogsQueryClient(subContext.credentials, audience ? { audience } : undefined);
 }
 
 /**
@@ -174,7 +180,7 @@ export async function createAlertsManagementClient(subscription: AzureSubscripti
     const subContext = createSubscriptionContext(subscription);
     const { AlertsManagementClient } = await import('@azure/arm-alertsmanagement');
     const endpoint = subscription.environment?.resourceManagerEndpointUrl;
-    return new AlertsManagementClient(subContext.credentials as TokenCredential, endpoint ? { endpoint } : undefined);
+    return new AlertsManagementClient(subContext.credentials, endpoint ? { endpoint } : undefined);
 }
 
 export async function createPostgreSQLClient(

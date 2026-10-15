@@ -9,6 +9,7 @@ import { ext } from '../../extensionVariables';
 import { type StorageItem, StorageNames, StorageService } from '../../services/StorageService';
 import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
 import { getEmulatorItemLabelForApi, getEmulatorItemUniqueId } from '../../utils/emulatorUtils';
+import { revealAttachedAccounts } from '../../utils/revealAttachedAccounts';
 import {
     NewEmulatorConnectionMode,
     type NewEmulatorConnectionWizardContext,
@@ -40,6 +41,8 @@ export class ExecuteStep extends AzureWizardExecuteStep<NewEmulatorConnectionWiz
         }
 
         const label = getEmulatorItemLabelForApi(experience.api, port);
+
+        await revealAttachedAccounts(parentId);
 
         return ext.state.showCreatingChild(
             parentId,

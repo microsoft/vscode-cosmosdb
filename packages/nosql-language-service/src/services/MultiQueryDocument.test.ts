@@ -163,7 +163,7 @@ describe('SqlLanguageService with multiQuery', () => {
         });
 
         it('returns diagnostics from multiple regions', () => {
-            // Both regions have genuinely broken SQL (missing FROM clause)
+            // Both regions have genuinely broken queries (missing FROM clause)
             const text = 'SELECT * FORM; SELECT * FORM';
             const diags = service.getDiagnostics(text);
             // Should have errors from both regions

@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 // ---------------------------------------------------------------------------
-// Schema field extraction for CosmosDB NoSQL SQL completion
+// Schema field extraction for Cosmos DB query language completion
 // ---------------------------------------------------------------------------
 
 import { type JSONSchema } from '@azure/cosmosdb-schema-analyzer';

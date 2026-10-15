@@ -1,8 +1,9 @@
 # E2E Tests workflow — runs the Playwright suite against a real VS Code instance with the extension loaded from dist/
-# and a Cosmos DB emulator brought up in Docker.
+# and a Cosmos DB emulator brought up in Docker, plus isolated proxy/TLS tests.
 #
 # Triggered on PRs and pushes that touch code which could change behaviour observable through the webview (src/,
-# test/e2e/, scripts/import-seed.mjs, docker-compose.e2e.yml, package.json, playwright config, the workflow itself).
+# test/e2e/, scripts/import-seed.mjs, scripts/test-proxy*.mjs, docker-compose.e2e.yml, package.json,
+# playwright config, the workflow itself).
 # Other commits skip the run to keep CI cost reasonable.
 #
 # Flow:
@@ -35,6 +36,7 @@ on:
       - 'src/**'
       - 'test/e2e/**'
       - 'scripts/import-seed.mjs'
+      - 'scripts/test-proxy*.mjs'
       - 'docker-compose.e2e.yml'
       - 'package.json'
       - 'package-lock.json'
@@ -48,6 +50,7 @@ on:
       - 'src/**'
       - 'test/e2e/**'
       - 'scripts/import-seed.mjs'
+      - 'scripts/test-proxy*.mjs'
       - 'docker-compose.e2e.yml'
       - 'package.json'
       - 'package-lock.json'

@@ -17,7 +17,7 @@ import { MonacoSignatureHelpProvider } from './signatureHelpProvider.js';
 import { type MonacoNamespace, type MonacoRegistrationOptions } from './types.js';
 
 /**
- * Register CosmosDB NoSQL SQL language support in a Monaco editor
+ * Register Cosmos DB query language support in a Monaco editor
  * instance. Returns a {@link Disposable} that unregisters everything.
  */
 export function registerCosmosDbSql(

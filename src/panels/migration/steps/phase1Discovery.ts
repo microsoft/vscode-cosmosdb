@@ -370,7 +370,7 @@ export async function estimateDiscoveryTokens(
     const codeEvidencedTables = accessPatternsMdContent ? parseCodeEvidencedTables(accessPatternsMdContent) : [];
     const volumetricsMdContent = await readFileByName(volumetricFiles, 'volumetrics.md');
 
-    const analysis = (project.phases.discovery.applicationAnalysis as AnalysisResult | undefined) ?? {};
+    const analysis = project.phases.discovery.applicationAnalysis ?? {};
     const discoveryDir = projectService.getDiscoveryPath();
     const workspaceRoot = projectService.getWorkspacePath();
     const outputRelativePath = path.relative(workspaceRoot, path.join(discoveryDir, 'discovery-report.md'));
@@ -625,7 +625,7 @@ export async function runDiscoveryReport(ctx: Phase1Context): Promise<void> {
                 return;
             }
 
-            const analysis = project.phases.discovery.applicationAnalysis as AnalysisResult | undefined;
+            const analysis = project.phases.discovery.applicationAnalysis;
 
             const accessPatternFiles = await projectService.listDiscoveryFiles(project, 'access-patterns');
             const volumetricFiles = await projectService.listDiscoveryFiles(project, 'volumetrics');

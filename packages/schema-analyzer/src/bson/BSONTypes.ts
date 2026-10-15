@@ -3,25 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import {
-    Binary,
-    BSONSymbol,
-    Code,
-    DBRef,
-    Decimal128,
-    Double,
-    Int32,
-    Long,
-    MaxKey,
-    MinKey,
-    ObjectId,
-    Timestamp,
-    UUID,
-} from 'mongodb';
+import { inferBsonObjectType, isByteArray, isNativeDate, isNativeMap, isNativeRegExp } from './bsonTypeGuards.js';
 
 /**
- * Represents the different data types that can be stored in a DocumentDB API / MongoDB API document.
- * The string representation is case-sensitive and should match the MongoDB API documentation.
+ * Represents the case-sensitive type tags used by the BSON document analyzer.
+ * For the underlying BSON types, see:
  * https://www.mongodb.com/docs/manual/reference/bson-types/
  */
 export type BSONType =
@@ -107,6 +93,7 @@ export function bsonTypeToJSONType(type: BSONType): string {
         case 'boolean':
             return 'boolean';
 
+        case 'number':
         case 'int32':
         case 'long':
         case 'double':
@@ -134,8 +121,9 @@ export function bsonTypeToJSONType(type: BSONType): string {
 }
 
 /**
- * Accepts a value from a MongoDB API `Document` object and returns the inferred BSON type.
- * @param value - The value of a field in a MongoDB API `Document` object
+ * Accepts a value from a BSON document and returns the inferred type.
+ * Recognizes compatible BSON shapes across module copies without relying on constructor identity.
+ * @param value - The value of a field in a BSON document
  */
 export function inferBsonType(value: unknown): BSONType {
     if (value === null) return 'null';
@@ -153,27 +141,11 @@ export function inferBsonType(value: unknown): BSONType {
                 return 'array';
             }
 
-            if (value instanceof ObjectId) return 'objectid';
-            if (value instanceof Int32) return 'int32';
-            if (value instanceof Double) return 'double';
-            if (value instanceof Date) return 'date';
-            if (value instanceof Timestamp) return 'timestamp';
-            if (value instanceof Decimal128) return 'decimal128';
-            if (value instanceof Long) return 'long';
-            if (value instanceof MinKey) return 'minkey';
-            if (value instanceof MaxKey) return 'maxkey';
-            if (value instanceof BSONSymbol) return 'symbol';
-            if (value instanceof DBRef) return 'dbref';
-            if (value instanceof Map) return 'map';
-            if (value instanceof UUID && value.sub_type === Binary.SUBTYPE_UUID) return 'uuid';
-            if (value instanceof UUID && value.sub_type === Binary.SUBTYPE_UUID_OLD) return 'uuid-legacy';
-            if (value instanceof Buffer || value instanceof Binary) return 'binary';
-            if (value instanceof RegExp) return 'regexp';
-            if (value instanceof Code) {
-                return value.scope ? 'codewithscope' : 'code';
-            }
-
-            return 'object';
+            if (isByteArray(value)) return 'binary';
+            if (isNativeDate(value)) return 'date';
+            if (isNativeMap(value)) return 'map';
+            if (isNativeRegExp(value)) return 'regexp';
+            return inferBsonObjectType(value) ?? 'object';
         default:
             return '_unknown_';
     }

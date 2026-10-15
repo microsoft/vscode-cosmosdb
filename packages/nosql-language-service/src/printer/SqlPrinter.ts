@@ -6,7 +6,7 @@
 /**
  * @module printer/SqlPrinter
  *
- * Serializes an AST back into a CosmosDB NoSQL SQL string.
+ * Serializes an AST back into text in the Cosmos DB query language.
  * This is the inverse of {@link parse} — enabling round-trip
  * transformations: parse → modify AST → print.
  *
@@ -48,10 +48,10 @@ const UNARY_OP_MAP: Record<AST.SqlUnaryScalarOperatorKind, string> = {
 };
 
 /**
- * Serialize a {@link SqlProgram} AST back into a SQL query string.
+ * Serialize a {@link SqlProgram} AST back into query text.
  *
  * @param program - The root AST node (output of {@link parse}).
- * @returns A canonical SQL string that, when reparsed, produces
+ * @returns Canonical query text that, when reparsed, produces
  *          a structurally identical AST.
  *
  * @example

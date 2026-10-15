@@ -23,17 +23,16 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
 }
 
 if (typeof window !== 'undefined' && typeof window.matchMedia !== 'function') {
-    window.matchMedia = (query: string): MediaQueryList =>
-        ({
-            matches: false,
-            media: query,
-            onchange: null,
-            addListener: () => {},
-            removeListener: () => {},
-            addEventListener: () => {},
-            removeEventListener: () => {},
-            dispatchEvent: () => false,
-        }) as unknown as MediaQueryList;
+    window.matchMedia = (query: string): MediaQueryList => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        dispatchEvent: () => false,
+    });
 }
 
 // jsdom does not implement the canvas 2D context. Code paths that use it for text measurement are

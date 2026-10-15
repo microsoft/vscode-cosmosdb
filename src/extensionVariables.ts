@@ -245,10 +245,6 @@ class ExtensionService {
         showOperationSummaries: 'azureDatabases.showOperationSummaries',
         cosmosDbAuthentication: 'azureDatabases.cosmosDB.preferredAuthenticationMethod',
         authManagedIdentityClientId: 'azureDatabases.authentication.managedIdentity.clientID',
-
-        vsCode: {
-            proxyStrictSSL: 'http.proxyStrictSSL',
-        },
     } as const;
 }
 

@@ -26,6 +26,8 @@ vscode-cosmosdb/
 │       └── README.md             # Detailed e2e architecture notes
 ├── scripts/
 │   ├── run-integration-tests.mjs # Downloads VS Code + launches the integration host
+│   ├── test-proxy.mjs            # Isolated proxy-routing matrix launcher
+│   ├── test-proxy-host.mjs       # SDK/adapter comparison inside the Extension Host
 │   └── import-seed.mjs           # Seeds the Cosmos DB emulator for integration & e2e tests
 ├── docker-compose.e2e.yml        # Dedicated emulator (ports 8082/1235, project cosmosdb-e2e)
 ├── playwright.config.ts          # Playwright configuration (single worker, retries on CI)
@@ -159,12 +161,86 @@ The script:
    `@vitest/runner.startTests()`.
 5. Exits with non-zero status if any test fails.
 
+### Shell MCP integration
+
+Prerequisites: npm dependencies and an existing Cosmos DB Shell installation on `PATH`. No Azure account,
+database connection, emulator, or VS Code instance is required.
+
+```bash
+npm run test:shell-mcp
+```
+
+This command never installs or updates the Shell locally. It starts the existing executable on a dynamically
+allocated loopback port, waits for a successful MCP identity probe, and stops its process after the tests.
+Cleanup sends `exit` through the owned process's stdin pipe; `exit` is restricted to interactive use and
+cannot be invoked through MCP. If the process remains alive after two seconds, cleanup logs a warning and
+sends `SIGKILL`. The process must exit within five seconds; otherwise cleanup fails. An externally supplied
+server is never stopped. This avoids waiting indefinitely for `SIGTERM`, which did not stop the Shell in Linux CI.
+The tests cover Streamable HTTP initialization, server identity, ping, tool discovery and input schemas,
+a structured `version` tool result reporting MCP enabled on the selected port, and the extension's MCP resolver
+reusing the server.
+The resolver uses the mocked VS Code API; the Shell process, HTTP transport, and MCP client are real.
+
+To select a particular local installation in PowerShell:
+
+```powershell
+$env:COSMOSDB_SHELL_MCP_TEST_PATH = 'C:\tools\cosmosdbshell.exe'
+npm run test:shell-mcp
+```
+
+Alternatively, set `COSMOSDB_SHELL_MCP_TEST_PORT` to reuse an already running Shell MCP server.
+In that mode the tests do not start or stop the server. Each client session is terminated after its test.
+For an owned process, client transports are closed after each test and stopping the Shell releases its server sessions.
+The live tests are skipped during ordinary unit-test runs unless this port is set.
+
+Older Shell previews may not support tool execution with redirected terminal streams. Such a version fails
+the live tool-call test with the Shell's actual error; use `COSMOSDB_SHELL_MCP_TEST_PATH` to select a newer
+existing installation. The test never upgrades it automatically.
+
+The **Tests** CI workflow installs .NET 10 and the latest `CosmosDBShell` preview with
+`dotnet tool install CosmosDBShell --prerelease --tool-path ...` into the runner's temporary directory,
+then runs the same command with `COSMOSDB_SHELL_MCP_TEST_PATH` pointing to that isolated installation.
+
+### Testing proxy routing locally
+
+Prerequisites: the project's npm dependencies and **OpenSSL** on `PATH`. No Azure account or Docker emulator
+is required. The VS Code runtime must support Node's `tls.setDefaultCACertificates` API.
+
+```bash
+npm run test:proxy
+```
+
+The [launcher](../scripts/test-proxy.mjs) downloads stable VS Code through `@vscode/test-electron`.
+To use an installed or cached editor instead:
+
+```bash
+npm run test:proxy -- "/absolute/path/to/editor-executable"
+```
+
+The launcher creates isolated VS Code profiles, local proxy/HTTPS servers, and temporary test certificates,
+then removes them afterward. It does not change your normal VS Code settings or install certificates in the
+system trust store. The tests exercise the Cosmos SDK and HTTP adapter, not the complete extension UI.
+
+Coverage includes proxy-support modes, settings and environment variables, bypass rules, emulator connections,
+and TLS validation. Proxy authentication, PAC, and remote extension hosts are not covered.
+
+These tests also run as part of `npm run e2e` and the **E2E Tests** CI workflow. The
+[proxy spec](../test/e2e/specs/proxy.spec.ts) reuses the executable downloaded by E2E setup, keeps its profiles
+separate from the webview tests, and attaches launcher output to the Playwright report.
+
 ### End-to-end tests (slow, real VS Code + Docker emulator)
 
 Prerequisite: **Docker Desktop running**. The suite brings up its own emulator
 container (`docker compose -f docker-compose.e2e.yml -p cosmosdb-e2e up -d`)
 on ports `8082` / `1235`, so the developer's local emulator on `8081` is
 untouched.
+
+Both `docker-compose.yml` (local development and NoSQL integration CI) and `docker-compose.e2e.yml` pin the emulator
+to `vnext-EN20260907` using a multi-architecture manifest digest (Linux amd64 and arm64).
+The floating `vnext-preview` image published on 2026-10-08 returns undefined for UDF calls instead of rejecting
+an unregistered UDF, breaking the negative integration fixture I-07. The pin keeps that assertion intact.
+Update all three image references together, and run the NoSQL integration suite and E2E suite before accepting
+a new digest. Changes to `docker-compose.yml` trigger the NoSQL integration workflow.
 
 ```bash
 npm run e2e            # full suite — globalSetup brings up + seeds the emulator

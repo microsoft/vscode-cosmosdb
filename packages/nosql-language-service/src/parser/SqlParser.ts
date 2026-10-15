@@ -4,23 +4,47 @@
  *--------------------------------------------------------------------------------------------*/
 
 // ---------------------------------------------------------------------------
-// Chevrotain EmbeddedActionsParser for CosmosDB NoSQL SQL
+// Chevrotain EmbeddedActionsParser for the Cosmos DB query language
 // Directly builds immutable AST nodes (no intermediate CST).
 // Translates the grammar from sql.y almost 1-to-1.
 // ---------------------------------------------------------------------------
 
-import { EmbeddedActionsParser, EOF } from 'chevrotain';
+import { EmbeddedActionsParser, EOF, type IRuleConfig, type ParserMethod } from 'chevrotain';
 import * as AST from '../ast/nodes.js';
 import { SqlErrorMessageProvider } from '../errors/SqlErrorMessageProvider.js';
 import * as T from '../lexer/tokens.js';
 import { allTokens } from '../lexer/tokens.js';
 import { pos, posEnd, range, rangeFromNodes, rangeStartEnd } from './parserHelpers.js';
+import { MAX_PARSER_RULE_DEPTH, QueryTooComplexError } from './queryComplexity.js';
 
 // ---------------------------------------------------------------------------
 // Parser
 // ---------------------------------------------------------------------------
 
 export class SqlParser extends EmbeddedActionsParser {
+    private ruleDepth = 0;
+
+    protected override RULE<Args extends unknown[], Result>(
+        name: string,
+        implementation: (...args: Args) => Result,
+        config?: IRuleConfig<Result>,
+    ): ParserMethod<Args, Result> {
+        return super.RULE(
+            name,
+            (...args: Args): Result => {
+                if (this.RECORDING_PHASE) return implementation(...args);
+                if (this.ruleDepth >= MAX_PARSER_RULE_DEPTH) throw new QueryTooComplexError(this.LA(1));
+                this.ruleDepth++;
+                try {
+                    return implementation(...args);
+                } finally {
+                    this.ruleDepth--;
+                }
+            },
+            config,
+        );
+    }
+
     private isBetweenExpressionAhead(startLookahead = 1): boolean {
         let depth = 0;
 
@@ -132,7 +156,7 @@ export class SqlParser extends EmbeddedActionsParser {
 
     private topSpec = this.RULE('topSpec', (): AST.SqlTopSpec => {
         const topTok = this.CONSUME(T.Top);
-        const value = this.OR<AST.SqlLiteralScalarExpression | AST.SqlParameterRefScalarExpression>([
+        const value = this.OR([
             { ALT: () => this.SUBRULE(this.numberLitExpr) },
             { ALT: () => this.SUBRULE(this.parameterRefExpr) },
         ]);
@@ -144,7 +168,7 @@ export class SqlParser extends EmbeddedActionsParser {
     });
 
     private selection = this.RULE('selection', (): AST.SqlSelectSpec => {
-        return this.OR<AST.SqlSelectSpec>([
+        return this.OR([
             { ALT: () => this.SUBRULE(this.selectValueSpec) },
             { ALT: () => this.SUBRULE(this.selectStarSpec) },
             { ALT: () => this.SUBRULE(this.selectListSpec) },
@@ -193,7 +217,7 @@ export class SqlParser extends EmbeddedActionsParser {
     });
 
     private selectItemAlias = this.RULE('selectItemAlias', (): AST.SqlSelectItemAlias => {
-        return this.OR<AST.SqlSelectItemAlias>([
+        return this.OR([
             {
                 ALT: () => {
                     this.OPTION(() => this.CONSUME(T.As));
@@ -245,7 +269,7 @@ export class SqlParser extends EmbeddedActionsParser {
     });
 
     private primaryCollectionExpression = this.RULE('primaryCollectionExpression', (): AST.SqlCollectionExpression => {
-        return this.OR<AST.SqlCollectionExpression>([
+        return this.OR([
             {
                 // id IN input_collection
                 GATE: () => {
@@ -285,7 +309,7 @@ export class SqlParser extends EmbeddedActionsParser {
     });
 
     private inputCollection = this.RULE('inputCollection', (): AST.SqlCollection => {
-        return this.OR<AST.SqlCollection>([
+        return this.OR([
             {
                 ALT: () => {
                     const identifier = this.SUBRULE(this.id);
@@ -300,13 +324,13 @@ export class SqlParser extends EmbeddedActionsParser {
             },
             {
                 ALT: () => {
-                    this.CONSUME(T.LParen);
+                    const lp = this.CONSUME(T.LParen);
                     const query = this.SUBRULE(this.sqlQuery);
                     const rp = this.CONSUME(T.RParen);
                     return {
                         kind: 'SubqueryCollection' as const,
                         query,
-                        range: query.range ? { start: query.range.start, end: posEnd(rp) } : undefined,
+                        range: query.range ? { start: pos(lp), end: posEnd(rp) } : undefined,
                     };
                 },
             },
@@ -511,7 +535,7 @@ export class SqlParser extends EmbeddedActionsParser {
 
     private offsetSpec = this.RULE('offsetSpec', (): AST.SqlOffsetSpec => {
         const tok = this.CONSUME(T.Offset);
-        const value = this.OR<AST.SqlLiteralScalarExpression | AST.SqlParameterRefScalarExpression>([
+        const value = this.OR([
             { ALT: () => this.SUBRULE(this.integerLitExpr) },
             { ALT: () => this.SUBRULE(this.parameterRefExpr) },
         ]);
@@ -524,7 +548,7 @@ export class SqlParser extends EmbeddedActionsParser {
 
     private limitSpec = this.RULE('limitSpec', (): AST.SqlLimitSpec => {
         const tok = this.CONSUME(T.Limit);
-        const value = this.OR<AST.SqlLiteralScalarExpression | AST.SqlParameterRefScalarExpression>([
+        const value = this.OR([
             { ALT: () => this.SUBRULE(this.integerLitExpr) },
             { ALT: () => this.SUBRULE(this.parameterRefExpr) },
         ]);
@@ -635,7 +659,7 @@ export class SqlParser extends EmbeddedActionsParser {
     private betweenExpression = this.RULE('betweenExpression', (): AST.SqlScalarExpression => {
         let expr = this.SUBRULE(this.comparisonExpression);
 
-        expr = this.OR<AST.SqlScalarExpression>([
+        expr = this.OR([
             {
                 // BETWEEN binary_expression AND binary_expression
                 ALT: () => {
@@ -681,12 +705,12 @@ export class SqlParser extends EmbeddedActionsParser {
         let expr = this.SUBRULE(this.comparisonExpression);
 
         this.OPTION(() => {
-            expr = this.OR<AST.SqlScalarExpression>([
+            expr = this.OR([
                 {
                     // NOT IN / NOT LIKE
                     ALT: () => {
                         this.CONSUME(T.Not);
-                        return this.OR2<AST.SqlScalarExpression>([
+                        return this.OR2([
                             {
                                 ALT: () => {
                                     this.CONSUME(T.In);
@@ -1043,7 +1067,7 @@ export class SqlParser extends EmbeddedActionsParser {
 
     // Primary expression: literals, identifiers, parens, function calls, etc.
     private primaryExpression = this.RULE('primaryExpression', (): AST.SqlScalarExpression => {
-        return this.OR<AST.SqlScalarExpression>([
+        return this.OR([
             // EXISTS (query)
             {
                 ALT: () => {
@@ -1107,13 +1131,15 @@ export class SqlParser extends EmbeddedActionsParser {
                 ALT: () => {
                     const name = this.SUBRULE3(this.idOrKeywordFuncName);
                     this.CONSUME5(T.LParen);
-                    // Try: is this an aggregate subquery? (ALL, FIRST, LAST with SELECT inside)
-                    // We use OR with backtracking — if internal query fails, treat as normal function.
-                    return this.OR2<AST.SqlScalarExpression>([
+                    // Select aggregate-subquery parsing only for ALL, FIRST, or LAST followed by SELECT.
+                    return this.OR2([
                         {
                             GATE: () => {
                                 const nameUpper = name?.value?.toUpperCase() ?? '';
-                                return nameUpper === 'ALL' || nameUpper === 'FIRST' || nameUpper === 'LAST';
+                                return (
+                                    (nameUpper === 'ALL' || nameUpper === 'FIRST' || nameUpper === 'LAST') &&
+                                    this.LA(1).tokenType === T.Select
+                                );
                             },
                             ALT: () => {
                                 const query = this.SUBRULE3(this.sqlQuery);
@@ -1176,7 +1202,7 @@ export class SqlParser extends EmbeddedActionsParser {
                                     kind: 'SubqueryScalarExpression' as const,
                                     query,
                                     range: query.range,
-                                } as AST.SqlScalarExpression;
+                                };
                             },
                         },
                         {
@@ -1365,7 +1391,7 @@ export class SqlParser extends EmbeddedActionsParser {
     });
 
     private literalExpr = this.RULE('literalExpr', (): AST.SqlLiteralScalarExpression => {
-        const literal: AST.SqlLiteral = this.OR<AST.SqlLiteral>([
+        const literal: AST.SqlLiteral = this.OR([
             {
                 ALT: () => {
                     const tok = this.CONSUME(T.StringLiteral);

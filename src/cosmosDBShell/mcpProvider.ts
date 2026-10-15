@@ -10,7 +10,6 @@
  * when VS Code or Copilot asks to resolve the server.
  */
 import * as l10n from '@vscode/l10n';
-import * as http from 'http';
 import * as net from 'net';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
@@ -25,6 +24,7 @@ import {
     SETTING_SHELL_PATH,
 } from './constants';
 import { CosmosDBShellMcpHost, getCosmosDBShellMcpEndpoint } from './cosmosDBShellMcpEndpoint';
+import { isMcpShellServer } from './mcpShellProbe';
 import { invalidateCosmosDBShellSupportCache, isCosmosDBShellInstalled } from './shellSupportCache';
 
 function isPortReachable(port: string): Promise<boolean> {
@@ -44,23 +44,6 @@ function isPortReachable(port: string): Promise<boolean> {
             resolve(false);
         });
         socket.connect(parseInt(port, 10), CosmosDBShellMcpHost);
-    });
-}
-
-function isMcpShellServer(port: string): Promise<boolean> {
-    return new Promise((resolve) => {
-        const req = http.get(`${getCosmosDBShellMcpEndpoint(port)}/sse`, { timeout: 3000 }, (res) => {
-            const contentType = res.headers['content-type'] ?? '';
-            res.destroy();
-            resolve(contentType.startsWith('text/event-stream'));
-        });
-        req.once('timeout', () => {
-            req.destroy();
-            resolve(false);
-        });
-        req.once('error', () => {
-            resolve(false);
-        });
     });
 }
 
@@ -122,16 +105,22 @@ async function resolveMcpServer(
     const portReachable = await isPortReachable(mcpPort);
 
     if (portReachable) {
-        const isShell = await isMcpShellServer(mcpPort);
+        const isShell = await isMcpShellServer(mcpPort, token, (message) => ext.outputChannel.appendLine(message));
+        if (token.isCancellationRequested) {
+            throw new vscode.CancellationError();
+        }
         if (isShell) {
             return server;
         }
         showMcpSettingsNotification(
-            l10n.t('Port {0} is in use by another process. Configure a different MCP port in settings.', mcpPort),
+            l10n.t(
+                'Port {0} is in use, but the listener could not be verified as Cosmos DB Shell MCP. Check the Azure Cosmos DB output log and the Shell server, or configure a different MCP port.',
+                mcpPort,
+            ),
             SETTING_MCP_PORT,
         );
         throw new Error(
-            `Port ${mcpPort} is in use by another process that is not the Cosmos DB Shell MCP server. Configure a different port via the "${SETTING_MCP_PORT}" setting.`,
+            `Port ${mcpPort} is in use, but the listener could not be verified as the Cosmos DB Shell MCP server. Check the Azure Cosmos DB output log and the Shell server, or configure a different port via the "${SETTING_MCP_PORT}" setting.`,
         );
     }
 

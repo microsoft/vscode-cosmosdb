@@ -32,7 +32,7 @@ export interface QueryFixture {
     id: string;
     /** One-line description */
     description: string;
-    /** The SQL query string */
+    /** The query text */
     query: string;
     /** Which seed container this query targets */
     container: 'products' | 'orders' | 'events';
@@ -72,7 +72,7 @@ export interface NegativeParserFixture {
     id: string;
     /** One-line description */
     description: string;
-    /** The malformed SQL query string */
+    /** The malformed query text */
     query: string;
     /**
      * If set, `errors[0].message` must contain this substring.

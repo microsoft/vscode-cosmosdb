@@ -1,89 +1,76 @@
 ---
-title: Composite Index Directions Must Match ORDER BY
+title: Match Composite Index Paths and Sort Directions
 impact: HIGH
 impactDescription: prevents query failures and rejected sorts
 tags: index, composite, orderby, direction, ascending, descending
 ---
 
-## Composite Index Directions Must Match ORDER BY
+## Match Composite Index Paths and Sort Directions
 
-Every composite index entry must specify sort directions that **exactly match** the `ORDER BY` clause of the queries it serves. If the directions don't match, Cosmos DB will reject the query or fall back to an expensive scan.
+A composite index for `ORDER BY` contains two or more property paths in the same sequence as the sort clause. It supports the declared directions and the opposite directions on **all** paths. Reversing only some directions does not match that index.
 
-For cross-partition `ORDER BY` queries, this is especially critical — the query **will fail** if no matching composite index exists.
+Queries sorting on two or more properties require a matching composite index, whether or not they cross partitions. A single-property `ORDER BY` can use a range index; crossing partitions alone does not make a composite index necessary.
 
-**Incorrect (direction mismatch — query fails):**
-
-```python
-# Composite index defined as descending
-indexing_policy = {
-    "compositeIndexes": [
-        [{"path": "/score", "order": "descending"}]
-    ]
-}
-
-# But query uses ascending order — no matching index!
-query = "SELECT * FROM c ORDER BY c.score ASC"
-# Fails: "The order by query does not have a corresponding composite index"
-```
-
-```csharp
-// Index covers (score DESC) only
-new Collection<CompositePath>
-{
-    new CompositePath { Path = "/score", Order = CompositePathSortOrder.Descending }
-}
-
-// Query needs ASC — fails!
-var query = "SELECT * FROM c ORDER BY c.score ASC";
-```
-
-**Correct (directions match exactly, with both orderings):**
+**Incorrect (only one direction is reversed):**
 
 ```python
-# Define BOTH directions to support ASC and DESC queries
 indexing_policy = {
     "compositeIndexes": [
-        [{"path": "/score", "order": "descending"}],
-        [{"path": "/score", "order": "ascending"}]
-    ]
-}
-```
-
-```csharp
-// Always provide both sort directions for each composite index pattern
-CompositeIndexes =
-{
-    // For ORDER BY score DESC
-    new Collection<CompositePath>
-    {
-        new CompositePath { Path = "/score", Order = CompositePathSortOrder.Descending }
-    },
-    // For ORDER BY score ASC
-    new Collection<CompositePath>
-    {
-        new CompositePath { Path = "/score", Order = CompositePathSortOrder.Ascending }
-    }
-}
-```
-
-```python
-# Multi-property example: provide paired directions
-indexing_policy = {
-    "compositeIndexes": [
-        # For ORDER BY gameId ASC, score DESC
         [
             {"path": "/gameId", "order": "ascending"},
             {"path": "/score", "order": "descending"}
-        ],
-        # For ORDER BY gameId DESC, score ASC (reverse pair)
-        [
-            {"path": "/gameId", "order": "descending"},
-            {"path": "/score", "order": "ascending"}
         ]
     ]
 }
+
+query = "SELECT * FROM c ORDER BY c.gameId ASC, c.score ASC"
 ```
 
-**Best practice: whenever you define a composite index, always include the inverse direction pair** so that both ASC and DESC queries on those paths are served.
+The query reverses only `/score`, so the declared composite index cannot serve it. The query needs another matching composite index; the service does not fall back to a scan for an unsupported multi-property sort.
+
+**Correct (one composite serves the declared order and its full reverse):**
+
+```python
+indexing_policy = {
+    "compositeIndexes": [
+        [
+            {"path": "/gameId", "order": "ascending"},
+            {"path": "/score", "order": "descending"}
+        ]
+    ]
+}
+
+forward_query = "SELECT * FROM c ORDER BY c.gameId ASC, c.score DESC"
+reverse_query = "SELECT * FROM c ORDER BY c.gameId DESC, c.score ASC"
+```
+
+```csharp
+var indexingPolicy = new IndexingPolicy
+{
+    CompositeIndexes =
+    {
+        new Collection<CompositePath>
+        {
+            new CompositePath { Path = "/gameId", Order = CompositePathSortOrder.Ascending },
+            new CompositePath { Path = "/score", Order = CompositePathSortOrder.Descending }
+        }
+    }
+};
+
+var forwardQuery = "SELECT * FROM c ORDER BY c.gameId ASC, c.score DESC";
+var reverseQuery = "SELECT * FROM c ORDER BY c.gameId DESC, c.score ASC";
+```
+
+Both queries use the same path sequence, with every direction reversed in the second query. A separate inverse-direction composite would be redundant. Add another index only for a different required path sequence or direction combination that the existing index cannot serve.
+
+**Single-property sorting uses range indexing:**
+
+```sql
+SELECT * FROM c ORDER BY c.score ASC
+```
+
+With an appropriate range index on `/score`, this query does not require a composite index, including when it runs across partitions.
+
+See also: [Composite-index requirements and optional optimizations](index-composite.md).
 
 Reference: [Composite index sort order](https://learn.microsoft.com/azure/cosmos-db/index-policy#composite-indexes)

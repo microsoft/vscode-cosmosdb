@@ -26,12 +26,49 @@ The architecture is intentionally split into two layers:
 - editor-specific adapters in `src/providers/` translate generic
   results into Monaco, VS Code, or CodeMirror APIs
 
+## Runtime and installation prerequisites
+
+Use the [README installation table and recipes](../README.md#install) for your chosen entry point.
+The package is ESM-only. Runtime and peer dependency ranges are declared in [package.json](../package.json).
+Root and `/services` imports need no editor peers.
+
+For browser/Electron renderers, bundle npm ESM imports and configure editor workers/assets;
+do not treat bare npm imports as directly runnable browser scripts. VS Code examples belong in
+an actual extension host, which supplies the `vscode` runtime module. Install `@types/vscode` for
+TypeScript, align it with your extension's target, and leave `vscode` external when bundling.
+Using type imports inside an adapter does not remove the runtime editor APIs used by the integration.
+
+## Coordinate contract
+
+Parser and language-service offsets are 0-based UTF-16 code-unit offsets. Lines and columns are
+1-based; range starts are inclusive and ends exclusive. LF, CRLF and CR each count as one line break.
+Tabs count as one unit, not a visual tab width. EOF diagnostics have a zero-width range at the input length.
+
+| Adapter      | Mapping                                                                                                   |
+| ------------ | --------------------------------------------------------------------------------------------------------- |
+| Monaco       | Keep the service's 1-based lines and UTF-16 columns; use model offsets for cursor input                   |
+| VS Code      | Subtract one from service lines and columns for `Position`; `document.offsetAt()` supplies UTF-16 offsets |
+| CodeMirror 6 | Use service offsets directly as `from` / `to` against the same query string                               |
+
+With multi-query support, service diagnostics, hover and edit ranges use full-document coordinates.
+`QueryRegion.parseResult` retains region-local coordinates; add `region.startOffset` to a local
+offset before mapping it through the editor's document/model API.
+
 ## Shared setup
 
 All integrations start the same way:
 
 ```typescript
-import { SqlLanguageService } from '@azure/cosmosdb-nosql-language-service';
+import { SqlLanguageService, type JSONSchema } from '@azure/cosmosdb-nosql-language-service';
+
+const collectionSchema: JSONSchema = {
+  type: 'object',
+  properties: {
+    id: { type: 'string' },
+    name: { type: 'string' },
+    address: { type: 'object', properties: { city: { type: 'string' } } },
+  },
+};
 
 const service = new SqlLanguageService({
   getSchema: () => collectionSchema,
@@ -44,6 +81,13 @@ You can then either:
 
 1. use a one-line registration helper, or
 2. wire each feature explicitly
+
+The following snippets are alternatives/continuations, not one script to concatenate. They reuse
+`collectionSchema` above; snippets that construct a service replace the shared `service` declaration.
+Short feature-only snippets reuse the service and editor API imports from that editor's setup.
+Enable `multiQuery: true` on the service used for multi-query examples. See the
+[schema projection and ownership contract](../README.md#schema-input-and-ownership) before passing
+arbitrary JSON Schema documents.
 
 ## What lives where
 
@@ -66,9 +110,9 @@ You can then either:
 Each adapter converts the generic results into the editor's native
 API:
 
-- `src/providers/monaco.ts`
-- `src/providers/vscode.ts`
-- `src/providers/codemirror.ts`
+- `src/providers/monaco/`
+- `src/providers/vscode/`
+- `src/providers/codemirror/`
 
 Diagnostics are slightly special:
 
@@ -80,6 +124,10 @@ So diagnostics are implemented as controller-style adapters rather
 than a classic `register*Provider()` interface.
 
 ## Monaco
+
+These examples register features; your application must create a Monaco editor/model with language
+ID `cosmosdb-sql` in a DOM container. See the [README quick start](../README.md#option-c-use-a-provider-monaco).
+Keep the returned `disposable` or `disposables` and dispose them with your editor/model on teardown.
 
 ### Easiest option
 
@@ -156,7 +204,8 @@ automatically registers:
 - **Folding ranges** — each query region is foldable (`MonacoFoldingRangeProvider`)
 - **Separator decorations** — thin horizontal lines between regions (`MonacoMultiQueryDecorator`)
 
-For explicit wiring:
+For explicit wiring, continue the Monaco explicit setup above (which defines `monaco`, `LANGUAGE_ID`,
+`service` and `disposables`), with `multiQuery: true` on that service:
 
 ```typescript
 import { MonacoFoldingRangeProvider, MonacoMultiQueryDecorator } from '@azure/cosmosdb-nosql-language-service/monaco';
@@ -170,6 +219,10 @@ disposables.push(
 ```
 
 ## VS Code
+
+Configure your extension manifest's entry point, activation and `cosmosdb-sql` language contribution.
+The extension host calls `activate(context)`; open a document with that language ID to exercise providers.
+The helper adds its registration to `context.subscriptions`. Explicit controllers also need disposal.
 
 ### Easiest option
 
@@ -240,6 +293,9 @@ export function activate(context: vscode.ExtensionContext) {
 
 ### VS Code diagnostics only
 
+Put the import at module scope and the controller creation inside `activate(context)` above,
+where `vscode`, `service` and `context` are available:
+
 ```typescript
 import { VSCodeDiagnosticsProvider } from '@azure/cosmosdb-nosql-language-service/vscode';
 
@@ -248,6 +304,7 @@ const diagnostics = new VSCodeDiagnosticsProvider(vscode, service, {
   collectionName: 'cosmosdb-sql',
   diagnosticDelay: 200,
 });
+context.subscriptions.push(diagnostics);
 ```
 
 ### VS Code multi-query features
@@ -258,7 +315,8 @@ automatically registers:
 - **Folding ranges** — each query region is foldable (`VSCodeFoldingRangeProvider`)
 - **Separator decorations** — horizontal lines with spacing between regions (`VSCodeMultiQueryDecorator`)
 
-For explicit wiring:
+For explicit wiring, put the import at module scope and the registration inside `activate(context)`
+from the explicit setup above, where `selector` and `service` exist. Enable `multiQuery: true` on that service:
 
 ```typescript
 import { VSCodeFoldingRangeProvider, VSCodeMultiQueryDecorator } from '@azure/cosmosdb-nosql-language-service/vscode';
@@ -275,6 +333,11 @@ context.subscriptions.push(
 
 CodeMirror already models diagnostics as lint sources, so the
 explicit diagnostics integration is `createLintSource(service)`.
+
+These snippets produce extensions for a caller-created `EditorState`/`EditorView` and DOM container;
+pass the extensions into your state and destroy the view on teardown. See the
+[README quick start](../README.md#option-e-use-a-provider-codemirror-6) for view creation.
+Feature-only snippets reuse `service`; add their resulting extensions to your state's configuration.
 
 ### Explicit wiring
 
@@ -355,6 +418,10 @@ const sigSource = createSignatureHelpSource(service);
 If your editor is not Monaco, VS Code, or CodeMirror, use the
 language service directly.
 
+The examples below reuse the shared `service`. `query` is the current document text and `offset`
+is its cursor offset. `myEditor` is a placeholder for your host's API, not an export of this package;
+adapt its change/completion registration and marker methods to your editor.
+
 ### Diagnostics
 
 ```typescript
@@ -383,10 +450,6 @@ interface Diagnostic {
 ### Minimal custom adapter example
 
 ```typescript
-const service = new SqlLanguageService({
-  getSchema: () => schema,
-});
-
 myEditor.onChange((query: string) => {
   const diagnostics = service.getDiagnostics(query);
   myEditor.setMarkers(
@@ -425,7 +488,7 @@ Use explicit wiring when:
 After changing adapter wiring, validate with:
 
 ```powershell
-pnpm run lint
-pnpm run build
+npm run lint
+npm run build
 npx vitest run tests/parser/parser.test.ts
 ```

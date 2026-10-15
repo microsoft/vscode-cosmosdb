@@ -6,7 +6,7 @@
 /**
  * @module lexer/SqlLexer
  *
- * Singleton Chevrotain {@link Lexer} for CosmosDB NoSQL SQL.
+ * Singleton Chevrotain {@link Lexer} for the Cosmos DB query language.
  * Tokenizes a query string into a flat token array with full
  * position tracking (line, column, offset) on every token.
  *

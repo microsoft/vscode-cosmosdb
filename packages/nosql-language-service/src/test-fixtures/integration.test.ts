@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 /**
- * Integration test suite for the NoSQL SELECT query fixtures.
+ * Integration test suite for the Cosmos DB query language SELECT fixtures.
  *
  * **Requires a running Cosmos DB Emulator.**
  * The suite is automatically skipped when the COSMOS_ENDPOINT environment
@@ -72,7 +72,7 @@ if (!endpoint) {
     // ── Query helper ────────────────────────────────────────────────────────
 
     /**
-     * Runs a SQL query against the specified container.
+     * Runs a query against the specified container.
      * Returns the items array or throws on error.
      */
     // oxlint-disable-next-line no-inner-declarations

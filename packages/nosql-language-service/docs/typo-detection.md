@@ -2,8 +2,8 @@
 
 ## Overview
 
-The language service detects identifiers that look like misspelled SQL
-keywords and emits **warnings** (not errors). For example, `SELECT * FORM c`
+The language service detects identifiers that look like misspelled
+query keywords and emits **warnings** (not errors). For example, `SELECT * FORM c`
 produces a warning: _"Did you mean 'FROM'? 'FORM' looks like a typo."_
 
 This is implemented as a **post-lex token scan**, not an AST walk, because

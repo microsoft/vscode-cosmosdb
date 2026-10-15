@@ -5,6 +5,7 @@
 
 import Denque from 'denque';
 import { type JSONSchema } from '../JSONSchema.js';
+import { getTypeEntries } from './schemaVariants.js';
 
 /**
  * Pure schema utility functions that work on any schema produced by the analyzers.
@@ -123,31 +124,22 @@ export function getKnownFields(schema: JSONSchema, typeExtensionKey: string): Fi
 }
 
 function getMostCommonTypeEntry(schemaNode: JSONSchema): JSONSchema | null {
-    if (schemaNode.anyOf && schemaNode.anyOf.length > 0) {
-        let maxOccurrence = -1;
-        let mostCommonTypeEntry: JSONSchema | null = null;
+    let maxOccurrence = -1;
+    let mostCommonTypeEntry: JSONSchema | null = null;
 
-        for (const typeEntry of schemaNode.anyOf as JSONSchema[]) {
-            const occurrence = typeEntry['x-typeOccurrence'] || 0;
-            if (occurrence > maxOccurrence) {
-                maxOccurrence = occurrence;
-                mostCommonTypeEntry = typeEntry;
-            }
+    for (const typeEntry of getTypeEntries(schemaNode)) {
+        const occurrence = typeEntry['x-typeOccurrence'] || 0;
+        if (occurrence > maxOccurrence) {
+            maxOccurrence = occurrence;
+            mostCommonTypeEntry = typeEntry;
         }
-        return mostCommonTypeEntry;
-    } else if (schemaNode.type) {
-        return schemaNode;
     }
-    return null;
+    return mostCommonTypeEntry;
 }
 
 function collectDataTypes(schemaNode: JSONSchema, typeExtensionKey: string): string[] {
-    if (!schemaNode.anyOf || schemaNode.anyOf.length === 0) {
-        return [];
-    }
-
     const types = new Set<string>();
-    for (const entry of schemaNode.anyOf as JSONSchema[]) {
+    for (const entry of getTypeEntries(schemaNode)) {
         const dt = (entry as Record<string, unknown>)[typeExtensionKey] as string | undefined;
         if (dt) {
             types.add(dt);
@@ -159,22 +151,8 @@ function collectDataTypes(schemaNode: JSONSchema, typeExtensionKey: string): str
 
 function getDominantArrayItemDataType(arrayTypeEntry: JSONSchema, typeExtensionKey: string): string | undefined {
     const itemsSchema = arrayTypeEntry.items as JSONSchema | undefined;
-    if (!itemsSchema?.anyOf || itemsSchema.anyOf.length === 0) {
-        return undefined;
-    }
-
-    let maxOccurrence = -1;
-    let dominantType: string | undefined;
-
-    for (const entry of itemsSchema.anyOf as JSONSchema[]) {
-        const occurrence = (entry['x-typeOccurrence'] as number) ?? 0;
-        if (occurrence > maxOccurrence) {
-            maxOccurrence = occurrence;
-            dominantType = (entry as Record<string, unknown>)[typeExtensionKey] as string | undefined;
-        }
-    }
-
-    return dominantType;
+    const entry = itemsSchema && getMostCommonTypeEntry(itemsSchema);
+    return entry ? ((entry as Record<string, unknown>)[typeExtensionKey] as string | undefined) : undefined;
 }
 
 // ── simplifySchema ─────────────────────────────────────────────────────
@@ -221,40 +199,68 @@ function simplifySchemaNode(node: JSONSchema): void {
 
 // ── getSchemaAtPath ────────────────────────────────────────────────────
 
+/**
+ * Returns the first object matching the complete path. At each segment, objects reached through fewer
+ * array levels take priority across all parent variants; equally deep matches retain traversal order.
+ * A terminal field with no object variant returns undefined; a missing path segment throws.
+ */
 export function getSchemaAtPath(schema: JSONSchema, path: string[]): JSONSchema | undefined {
-    let currentNode: JSONSchema | undefined = schema;
+    return getObjectSchemasAtPath(schema, path)[0];
+}
+
+/**
+ * Paths name properties, not array indexes. Keep all reachable object variants until the entire path
+ * has been resolved; a later segment may exist only in an array's object items.
+ */
+function getObjectSchemasAtPath(schema: JSONSchema, path: string[]): JSONSchema[] {
+    let currentNodes = [schema];
 
     for (let i = 0; i < path.length; i++) {
         const key = path[i];
+        const propertySchemas: JSONSchema[] = [];
 
-        if (currentNode && currentNode.properties && currentNode.properties[key]) {
-            const nextNode: JSONSchema = currentNode.properties[key] as JSONSchema;
-
-            if (nextNode.anyOf && nextNode.anyOf.length > 0) {
-                currentNode = (nextNode.anyOf as JSONSchema[]).find(
-                    (entry) => typeof entry !== 'boolean' && entry.type === 'object',
-                );
-            } else {
-                return currentNode;
+        for (const currentNode of currentNodes) {
+            if (currentNode.properties && Object.hasOwn(currentNode.properties, key)) {
+                propertySchemas.push(currentNode.properties[key] as JSONSchema);
             }
-        } else {
+        }
+        if (propertySchemas.length === 0) {
             throw new Error(`No properties found in the schema at path "${path.slice(0, i + 1).join('/')}"`);
         }
+        currentNodes = getObjectVariants(propertySchemas);
     }
 
-    return currentNode;
+    return currentNodes;
+}
+
+function getObjectVariants(schemas: JSONSchema[]): JSONSchema[] {
+    const objects: JSONSchema[] = [];
+    const queue = new Denque<JSONSchema>(schemas);
+    while (queue.length > 0) {
+        const node = queue.shift();
+        if (!node) continue;
+        for (const entry of getTypeEntries(node)) {
+            if (entry.type === 'object') {
+                objects.push(entry);
+            } else if (entry.type === 'array' && entry.items) {
+                queue.push(entry.items as JSONSchema);
+            }
+        }
+    }
+    return objects;
 }
 
 // ── getPropertyNamesAtLevel ────────────────────────────────────────────
 
+/** Lists the union of property names across object variants reachable at the requested path. */
 export function getPropertyNamesAtLevel(jsonSchema: JSONSchema, path: string[]): string[] {
     const headers = new Set<string>();
 
-    const selectedSchema = getSchemaAtPath(jsonSchema, path);
-
-    if (selectedSchema && selectedSchema.properties) {
-        for (const key of Object.keys(selectedSchema.properties)) {
-            headers.add(key);
+    for (const selectedSchema of getObjectSchemasAtPath(jsonSchema, path)) {
+        if (selectedSchema.properties) {
+            for (const key of Object.keys(selectedSchema.properties)) {
+                headers.add(key);
+            }
         }
     }
 

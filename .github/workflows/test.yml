@@ -9,6 +9,7 @@
 #     reports BOTH buckets instead of hiding the integration result behind a unit failure.
 #   - No Docker/emulator is required: the only integration test is extension activation, which makes no database
 #     connections (see test/extensionActivation.test.ts). E2E (Playwright + Cosmos emulator) lives in e2e.yml.
+#   - Shell MCP tests install the latest preview .NET tool into an isolated directory; no database is needed.
 
 name: Tests
 
@@ -63,6 +64,23 @@ jobs:
         id: unit-tests
         run: npm run vitest:coverage
 
+      - name: Set up .NET for Shell MCP tests
+        if: ${{ !cancelled() }}
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install current Cosmos DB Shell
+        if: ${{ !cancelled() }}
+        run: dotnet tool install CosmosDBShell --prerelease --tool-path "$RUNNER_TEMP/cosmosdb-shell"
+
+      - name: Shell MCP Integration Tests
+        id: shell-mcp-tests
+        if: ${{ !cancelled() }}
+        env:
+          COSMOSDB_SHELL_MCP_TEST_PATH: ${{ runner.temp }}/cosmosdb-shell/cosmosdbshell
+        run: npm run test:shell-mcp
+
       - name: 📊 Upload Code Coverage
         # The coverage service accepts uploads only for the default branch or a PR. Skip release/dev branch
         # pushes, fork PRs (no token to upload), and runs where unit tests never started.
@@ -71,7 +89,7 @@ jobs:
           (github.ref_name == github.event.repository.default_branch ||
           (github.event_name == 'pull_request' &&
           github.event.pull_request.head.repo.full_name == github.repository)) }}
-        uses: actions/upload-code-coverage@d8e329117199404bba6fc81efe8093dc7c015e34
+        uses: actions/upload-code-coverage@2b21a77928be8d5168c2b9581a67f2adbebacc52
         with:
           file: coverage/cobertura-coverage.xml
           language: TypeScript
@@ -117,6 +135,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           UNIT_TEST_RESULT: ${{ steps.unit-tests.outcome }}
           INTEGRATION_TEST_RESULT: ${{ steps.integration-tests.outcome }}
+          SHELL_MCP_TEST_RESULT: ${{ steps.shell-mcp-tests.outcome }}
           REPO: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           COVERAGE_URL: ${{ steps.upload-coverage.outputs.artifact-url }}
@@ -174,6 +193,7 @@ jobs:
 
           unit_icon=$(result_icon "$UNIT_TEST_RESULT")
           int_icon=$(result_icon "$INTEGRATION_TEST_RESULT")
+          shell_icon=$(result_icon "$SHELL_MCP_TEST_RESULT")
 
           coverage_section=""
           if [ -n "${COVERAGE_URL:-}" ]; then
@@ -190,6 +210,7 @@ jobs:
 
           ## 🧪 Results
           - **Unit Tests (vitest):** ${unit_icon} ${UNIT_TEST_RESULT}
+          - **Shell MCP Integration Tests:** ${shell_icon} ${SHELL_MCP_TEST_RESULT}
           - **Integration Tests (extension host):** ${int_icon} ${INTEGRATION_TEST_RESULT}${coverage_section}
           SUMMARY_EOF
 
@@ -197,7 +218,7 @@ jobs:
 
           # Don't overwrite a prior real result with an all-skipped run.
           comment_meaningful=false
-          for r in "$UNIT_TEST_RESULT" "$INTEGRATION_TEST_RESULT"; do
+          for r in "$UNIT_TEST_RESULT" "$INTEGRATION_TEST_RESULT" "$SHELL_MCP_TEST_RESULT"; do
               case "$r" in
                   success|failure) comment_meaningful=true ;;
               esac

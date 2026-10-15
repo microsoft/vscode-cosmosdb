@@ -161,7 +161,7 @@ describe('cosmosdb_sampleContainerSchema — sample context (pinning)', () => {
         const connB = { endpoint: 'https://b.documents.azure.com/', databaseId: 'dbB', containerId: 'cB' };
         const tabA = makeTab('A', connA);
         const tabB = makeTab('B', connB);
-        setOpenTabs(QueryEditorTab as unknown as { openTabs: Set<unknown> }, [tabA, tabB]);
+        setOpenTabs(QueryEditorTab, [tabA, tabB]);
         vi.mocked(getConnectionFromQueryTab).mockImplementation(
             ((tab: unknown) => (tab as typeof tabA).connection) as never,
         );
@@ -184,7 +184,7 @@ describe('cosmosdb_sampleContainerSchema — sample context (pinning)', () => {
         const confirmed = { endpoint: 'https://a.documents.azure.com/', databaseId: 'dbA', containerId: 'cA' };
         const drifted = { endpoint: 'https://a.documents.azure.com/', databaseId: 'dbA', containerId: 'cOTHER' };
         const tabA = makeTab('A', drifted);
-        setOpenTabs(QueryEditorTab as unknown as { openTabs: Set<unknown> }, [tabA]);
+        setOpenTabs(QueryEditorTab, [tabA]);
         vi.mocked(getConnectionFromQueryTab).mockReturnValue(drifted as never);
 
         const sampleContextId = createContainerSampleContext(tabA as never, confirmed as never);
@@ -202,7 +202,7 @@ describe('cosmosdb_sampleContainerSchema — sample context (pinning)', () => {
 
         const connA = { endpoint: 'https://a.documents.azure.com/', databaseId: 'dbA', containerId: 'cA' };
         const tabA = makeTab('A', connA);
-        setOpenTabs(QueryEditorTab as unknown as { openTabs: Set<unknown> }, [tabA]);
+        setOpenTabs(QueryEditorTab, [tabA]);
         vi.mocked(getConnectionFromQueryTab).mockReturnValue(connA as never);
 
         const sampleContextId = createContainerSampleContext(tabA as never, connA as never);
@@ -221,7 +221,7 @@ describe('cosmosdb_sampleContainerSchema — sample context (pinning)', () => {
 
         const connA = { endpoint: 'https://a.documents.azure.com/', databaseId: 'dbA', containerId: 'cA' };
         const tabA = makeTab('A', connA);
-        setOpenTabs(QueryEditorTab as unknown as { openTabs: Set<unknown> }, [tabA]);
+        setOpenTabs(QueryEditorTab, [tabA]);
         vi.mocked(getConnectionFromQueryTab).mockReturnValue(connA as never);
 
         const sampleContextId = createContainerSampleContext(tabA as never, connA as never);

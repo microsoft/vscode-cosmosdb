@@ -904,15 +904,15 @@ export class QueryEditorPage {
     }
 
     /**
-     * True once the Stats tab's query-metrics panel is populated. Anchored on
+     * True when the Stats tab's query-metrics panel is populated. Anchored on
      * the panel's "Learn more about query metrics" link, whose accessible name
      * is stable regardless of which metrics the backend returned.
      */
-    async hasQueryMetrics(timeoutMs: number = DEFAULT_TIMEOUT_MS): Promise<boolean> {
+    async hasQueryMetrics(): Promise<boolean> {
         return this.resultRegion()
             .getByRole('link', { name: 'Learn more about query metrics' })
             .first()
-            .isVisible({ timeout: timeoutMs })
+            .isVisible()
             .catch(() => false);
     }
 
@@ -921,11 +921,11 @@ export class QueryEditorPage {
      * appears when the query result carried a non-empty `indexMetrics` payload.
      * Anchored on its "Learn more about index metrics" link.
      */
-    async hasIndexMetrics(timeoutMs: number = DEFAULT_TIMEOUT_MS): Promise<boolean> {
+    async hasIndexMetrics(): Promise<boolean> {
         return this.resultRegion()
             .getByRole('link', { name: 'Learn more about index metrics' })
             .first()
-            .isVisible({ timeout: timeoutMs })
+            .isVisible()
             .catch(() => false);
     }
 

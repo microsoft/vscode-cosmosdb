@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 // ---------------------------------------------------------------------------
-// Autocomplete for CosmosDB NoSQL SQL
+// Autocomplete for the Cosmos DB query language
 //
 // Takes a query string, cursor offset, and JSON Schema of the collection.
 // Returns completion items suitable for mapping to Monaco CompletionItems.

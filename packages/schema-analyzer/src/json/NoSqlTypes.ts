@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 /**
- * Represents the different data types that can be stored in a NoSQL document.
- * The string representation is case-sensitive and should match the NoSQL documentation.
+ * Represents the case-sensitive type tags used by the JSON document analyzer.
+ * Includes tags for JavaScript values such as undefined and a fallback for unrecognized values.
  */
 export type NoSQLTypes =
     | 'string'
@@ -35,8 +35,8 @@ export function noSqlTypeToDisplayString(type: NoSQLTypes): string {
 }
 
 /**
- * Converts a NoSQL data type to a case-sensitive JSON Schema type string.
- * @param type - The NoSQL data type
+ * Converts a JSON analyzer type tag to a case-sensitive JSON Schema type string.
+ * @param type - The JSON analyzer type tag
  * @returns A corresponding JSON Schema type
  */
 export function noSqlTypeToJSONType(type: NoSQLTypes): string {
@@ -67,8 +67,8 @@ export function noSqlTypeToJSONType(type: NoSQLTypes): string {
 }
 
 /**
- * Accepts a value from a NoSQL document and returns the inferred type.
- * @param value - The value of a field in a NoSQL document
+ * Accepts a value from a JSON document and returns the inferred type.
+ * @param value - The value of a field in a JSON document
  */
 export function inferNoSqlType(value: unknown): NoSQLTypes {
     if (value === null) return 'null';

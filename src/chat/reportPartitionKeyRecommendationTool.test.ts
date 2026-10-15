@@ -322,7 +322,7 @@ describe('cosmosdb_reportPartitionKeyRecommendation', () => {
                     ],
                 },
             },
-            {} as never,
+            {},
         );
 
         expect(firstTab.reportRecommendation).toHaveBeenCalledOnce();
@@ -410,7 +410,7 @@ describe('cosmosdb_reportPartitionKeyRecommendation', () => {
             ],
         };
         const tool = captureRegisteredTool(registerReportPartitionKeyRecommendationTool);
-        await tool.invoke({ input: { wizardTabId: tab.getId(), ...recommendation } }, {} as never);
+        await tool.invoke({ input: { wizardTabId: tab.getId(), ...recommendation } }, {});
 
         expect(tab.reportRecommendation).toHaveBeenCalledWith(recommendation);
     });
@@ -426,7 +426,7 @@ describe('cosmosdb_reportPartitionKeyRecommendation', () => {
             containers: [{ entity: 'Orders', partitionKey: '/customerId', rationale: 'Customer-scoped workload.' }],
         };
         const tool = captureRegisteredTool(registerReportPartitionKeyRecommendationTool);
-        await tool.invoke({ input: { wizardTabId: tab.getId(), ...recommendation } }, {} as never);
+        await tool.invoke({ input: { wizardTabId: tab.getId(), ...recommendation } }, {});
 
         expect(tab.reportRecommendation).toHaveBeenCalledWith(recommendation);
     });
@@ -516,7 +516,7 @@ describe('cosmosdb_reportPartitionKeyRecommendation', () => {
                     ],
                 },
             },
-            {} as never,
+            {},
         );
         expect(tab.reportRecommendation).not.toHaveBeenCalled();
         expect(tab.reportRecommendationError).toHaveBeenCalledOnce();
@@ -538,7 +538,7 @@ describe('cosmosdb_reportPartitionKeyRecommendation', () => {
                     containers: [{ entity: 'Orders', partitionKey: '/customerId' }],
                 },
             },
-            {} as never,
+            {},
         );
 
         expect(wizardTab.reportRecommendationError).toHaveBeenCalledWith(

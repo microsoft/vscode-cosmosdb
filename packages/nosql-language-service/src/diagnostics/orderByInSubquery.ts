@@ -6,7 +6,7 @@
 // ---------------------------------------------------------------------------
 // ORDER BY inside a subquery detection.
 //
-// Azure Cosmos DB NoSQL does **not** support `ORDER BY` inside any subquery —
+// The Cosmos DB query language does **not** support `ORDER BY` inside any subquery —
 // scalar subqueries (`ARRAY`, `FIRST`, `LAST`, `(SELECT …)`), `EXISTS`, and
 // subqueries in the `FROM` clause. The backend rejects such queries at
 // execution time with HTTP 400, even though the grammar (the native C++
@@ -34,7 +34,7 @@ export interface OrderByInSubqueryError {
 }
 
 export const ORDER_BY_IN_SUBQUERY_MESSAGE =
-    'ORDER BY is not supported inside a subquery in Azure Cosmos DB NoSQL. ' +
+    'ORDER BY is not supported inside a subquery in the Cosmos DB query language. ' +
     'Remove it, or move the ordering to the outermost query.';
 
 // ========================== Main entry point ==================================

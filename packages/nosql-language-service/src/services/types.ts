@@ -17,12 +17,12 @@ import { type JSONSchema } from '../completion/SqlCompletion.js';
 
 /**
  * A contiguous range of text inside a query string.
- * Uses 1-based line/column for broad editor compatibility.
+ * Uses 1-based lines and UTF-16 code-unit columns; tabs count as one unit.
  */
 export interface TextRange {
-    /** 0-based start offset (bytes) */
+    /** 0-based start offset (UTF-16 code units, inclusive) */
     startOffset: number;
-    /** 0-based end offset (bytes, exclusive) */
+    /** 0-based end offset (UTF-16 code units, exclusive) */
     endOffset: number;
     /** 1-based start line */
     startLine: number;
@@ -121,7 +121,7 @@ export interface TextEdit {
 // ========================== Multi-query visual features =======================
 
 /**
- * A foldable region described by document-level byte offsets.
+ * A foldable region described by document-level UTF-16 code-unit offsets.
  * Content offsets exclude leading/trailing whitespace so that
  * fold ranges start at the first real token of each query.
  */
@@ -142,7 +142,7 @@ export interface SeparatorPosition {
 
 /**
  * Content range of the active query block in a multi-query document,
- * described by document-level byte offsets with leading/trailing
+ * described by document-level UTF-16 code-unit offsets with leading/trailing
  * whitespace stripped.
  *
  * Editors convert these offsets to native positions to highlight the

@@ -1,8 +1,8 @@
 {
   "name": "@azure/cosmosdb-schema-analyzer",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
-  "description": "Schema inference and analysis for JSON/NoSQL and BSON/MongoDB documents — extracts structure, types, and statistics from document collections",
+  "description": "Schema inference and analysis for JSON and BSON documents — extracts structure, types, and statistics from document collections",
   "main": "dist/esm/index.js",
   "types": "dist/types/index.d.ts",
   "exports": {
@@ -30,6 +30,7 @@
     }
   },
   "files": [
+    "CHANGELOG.md",
     "dist/esm",
     "dist/types"
   ],
@@ -42,23 +43,22 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@types/json-schema": "~7.0.15",
     "denque": "~2.1.0"
   },
-  "peerDependencies": {
-    "mongodb": ">=6.0.0"
-  },
-  "peerDependenciesMeta": {
-    "mongodb": {
-      "optional": true
-    }
-  },
   "devDependencies": {
-    "@types/json-schema": "~7.0.15",
-    "mongodb": "~7.3.0",
+    "bson": "~7.3.2",
+    "bson-v4": "npm:bson@4.7.2",
+    "bson-v5-0": "npm:bson@5.0.0",
+    "bson-v5-5": "npm:bson@5.5.1",
+    "bson-v6-0": "npm:bson@6.0.0",
+    "bson-v6-10": "npm:bson@6.10.4",
+    "bson-v7-0": "npm:bson@7.0.0",
+    "mongodb": "~7.7.0",
     "vitest": "~4.1.11"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=24.15"
   },
   "license": "MIT",
   "author": "Microsoft Corporation",

@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 // ---------------------------------------------------------------------------
-// Chevrotain token definitions for CosmosDB NoSQL SQL
+// Chevrotain token definitions for the Cosmos DB query language
 // Mirrors y_tab.h token codes and SqlScanner keyword recognition.
 // ---------------------------------------------------------------------------
 
@@ -289,7 +289,7 @@ export const allTokens: TokenType[] = [
 // ========================== Derived keyword list ==============================
 
 /**
- * SQL keyword names (uppercase) derived from the token definitions.
+ * Query keyword names (uppercase) derived from the token definitions.
  *
  * A token is considered a keyword if it was created via `kw()` — i.e.
  * it has `Identifier` in its `LONGER_ALT` list.  This avoids manually

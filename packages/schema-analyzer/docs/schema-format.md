@@ -50,6 +50,11 @@ After `simplifySchema()`, single-type properties are unwrapped:
 }
 ```
 
+Both forms can be traversed and incrementally updated. Updating a simplified node restores its `anyOf` wrapper:
+`x-occurrence` stays on the property, while the existing type, structure and statistics move into a variant.
+New types are added alongside that variant, not intersected with an outer `type` constraint.
+Untouched nodes may remain simplified; simplify again when a uniform presentation is needed.
+
 ## Type Entry Schema
 
 Each entry in `anyOf` describes one observed type:
@@ -109,6 +114,27 @@ Each entry in `anyOf` describes one observed type:
 ```
 
 ### Arrays (`type: "array"`)
+
+If only empty arrays have been observed, `items` is `{}`: element types are unknown, not forbidden.
+An empty `anyOf` is not valid draft-07 and is never used to represent unobserved element types.
+This applies to nested arrays as well.
+
+```json
+{
+  "type": "array",
+  "x-minItems": 0,
+  "x-maxItems": 0,
+  "items": {}
+}
+```
+
+During incremental analysis, observed elements populate `items.anyOf`. Later empty arrays retain those types
+and their statistics while still contributing to array occurrence counts and `x-minItems` / `x-maxItems`.
+These `x-*` values describe observations; they are not validation constraints such as `maxItems: 0`.
+Consumers must allow `items.anyOf` to be absent. `getKnownFields()` omits `arrayItemDataType` until an element type
+is known. As elsewhere, `simplifySchema()` can unwrap a single observed element type.
+
+For populated arrays before simplification:
 
 ```jsonc
 {

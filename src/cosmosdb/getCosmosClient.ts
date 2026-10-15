@@ -14,6 +14,7 @@ import { ext } from '../extensionVariables';
 import { type AccountInfo } from '../tree/cosmosdb/AccountInfo';
 import { AuthenticationMethod, getPreferredAuthenticationMethod } from './AuthenticationMethod';
 import { getCosmosDBKeyCredential, type CosmosDBCredential } from './CosmosDBCredential';
+import { createCosmosHttpClient } from './createCosmosHttpClient';
 import { isNoSqlQueryConnection, type NoSqlQueryConnection } from './NoSqlQueryConnection';
 import { getAccessTokenForVSCode } from './utils/azureSessionHelper';
 
@@ -62,9 +63,6 @@ export function getCosmosClient(
         options = arg2 as GetCosmosClientOptions;
     }
 
-    const vscodeStrictSSL: boolean | undefined = vscode.workspace
-        .getConfiguration()
-        .get<boolean>(ext.settingsKeys.vsCode.proxyStrictSSL);
     const enableEndpointDiscovery: boolean | undefined = vscode.workspace
         .getConfiguration()
         .get<boolean>(ext.settingsKeys.enableEndpointDiscovery);
@@ -74,14 +72,19 @@ export function getCosmosClient(
 
     const keyCred = getCosmosDBKeyCredential(credentials);
 
-    const agent = endpoint.startsWith('https:')
-        ? new https.Agent({ rejectUnauthorized: isEmulator ? !isEmulator : vscodeStrictSSL })
-        : undefined;
     const { isLlmTool = false, ...clientOptions } = options ?? {};
+    const agent =
+        clientOptions.agent ??
+        (isEmulator && endpoint.startsWith('https:') ? new https.Agent({ rejectUnauthorized: false }) : undefined);
     const commonProperties: CosmosClientOptions = {
         endpoint,
         userAgentSuffix: `${appendExtensionUserAgent()}${isLlmTool ? '/llm-tool' : ''}`,
         agent: agent,
+        httpClient:
+            clientOptions.httpClient ??
+            (agent
+                ? undefined
+                : createCosmosHttpClient(vscode.workspace.getConfiguration('http').get('proxyStrictSSL') !== false)),
         connectionPolicy,
     };
 

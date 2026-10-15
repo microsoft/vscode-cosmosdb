@@ -108,8 +108,8 @@ describe('shared migration resource pipeline', () => {
 
     it('preserves the migration ARM requests without ARM-template deployment operations', async () => {
         const client = new CosmosDBManagementClient({ getToken: async () => null }, 'test-subscription');
-        const database = vi.spyOn(client.sqlResources, 'beginCreateUpdateSqlDatabaseAndWait').mockResolvedValue({});
-        const container = vi.spyOn(client.sqlResources, 'beginCreateUpdateSqlContainerAndWait').mockResolvedValue({});
+        const database = vi.spyOn(client.sqlResources, 'createUpdateSqlDatabase').mockResolvedValue({});
+        const container = vi.spyOn(client.sqlResources, 'createUpdateSqlContainer').mockResolvedValue({});
         await provisionCosmosModel(
             model,
             'db',

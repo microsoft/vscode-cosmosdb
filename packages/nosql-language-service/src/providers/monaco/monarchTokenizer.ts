@@ -40,7 +40,7 @@ export const cosmosDbSqlLanguageConfiguration: monacoEditor.languages.LanguageCo
 };
 
 /**
- * Monarch tokenizer for CosmosDB NoSQL query language.
+ * Monarch tokenizer for the Cosmos DB query language.
  */
 export const cosmosDbSqlMonarchTokensProvider: monacoEditor.languages.IMonarchLanguage = {
     defaultToken: '',

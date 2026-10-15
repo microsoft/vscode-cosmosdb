@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 // ---------------------------------------------------------------------------
-// Context detection for CosmosDB NoSQL SQL autocomplete
+// Context detection for Cosmos DB query language autocomplete
 //
 // Analyses the cursor position within a query and determines what kind of
 // completions should be offered.

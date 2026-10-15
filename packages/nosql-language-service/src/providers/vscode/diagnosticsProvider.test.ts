@@ -119,6 +119,22 @@ describe('VSCodeDiagnosticsProvider', () => {
         expect(vscode.collection.set).not.toHaveBeenCalled();
     });
 
+    it('converts UTF-16 positions to zero-based coordinates without extending EOF', () => {
+        vscode.textDocuments.push(createDoc('SELECT VALUE "\uD83D\uDE00"\r\nFROM'));
+        const provider = new VSCodeDiagnosticsProvider(vscode, service);
+        const diagnostics = vscode.collection.set.mock.calls[0][1];
+        expect(diagnostics).toContainEqual(
+            expect.objectContaining({
+                code: 'UNEXPECTED_EOF',
+                range: {
+                    start: { line: 1, character: 4 },
+                    end: { line: 1, character: 4 },
+                },
+            }),
+        );
+        provider.dispose();
+    });
+
     it('pushes diagnostics when a matching document is opened', () => {
         new VSCodeDiagnosticsProvider(vscode, service);
         vscode.listeners.open?.(createDoc(VALID_QUERY));

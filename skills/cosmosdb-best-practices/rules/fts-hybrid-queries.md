@@ -15,7 +15,7 @@ tags:
 
 **Impact: MEDIUM (avoids full-container scans when combined with equality/range filters)**
 
-FTS predicates can be combined with standard SQL predicates. Cosmos DB uses the most selective predicate first. Put the most restrictive filter (e.g., equality on a high-cardinality property) before the FTS predicate to reduce the candidate set.
+FTS predicates can be combined with standard SQL predicates. Add selective equality or range filters with appropriate indexes to narrow the matching document set, and include a partition-key equality filter when the query should be scoped to that partition. Let the query engine choose predicate evaluation order; do not rely on moving a predicate earlier in `WHERE` to reduce query cost.
 
 **Incorrect (FTS-only query — no range filters, scans all partitions):**
 
@@ -57,4 +57,4 @@ return container.queryItems(
 - Numeric fields — use range index with `=`, `>`, `<`
 - Array elements already indexed with `[]/?` — `CONTAINS(LOWER(t), @q)` via EXISTS is fine
 
-Reference: [Full-text search queries](https://learn.microsoft.com/azure/cosmos-db/gen-ai/full-text-search)
+References: [Full-text search queries](https://learn.microsoft.com/azure/cosmos-db/gen-ai/full-text-search), [index usage and filter-clause ordering](https://learn.microsoft.com/azure/cosmos-db/index-overview#composite-indexes)

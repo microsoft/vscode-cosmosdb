@@ -8,7 +8,7 @@
 // ---------------------------------------------------------------------------
 // Demo: parser error-recovery and completion with invalid/incomplete queries.
 //
-// Usage:  node scripts/demo.mjs          (requires prior `pnpm run build`)
+// Usage:  node scripts/demo.mjs          (requires prior `npm run build`)
 // ---------------------------------------------------------------------------
 
 import { getCompletions } from '../dist/esm/completion/SqlCompletion.js';

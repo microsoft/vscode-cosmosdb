@@ -513,13 +513,13 @@ describe('ResultPage', () => {
             // Fluent hides tooltips whose anchor is outside the viewport; jsdom has no layout.
             const width = vi.spyOn(document.documentElement, 'clientWidth', 'get').mockReturnValue(1024);
             const height = vi.spyOn(document.documentElement, 'clientHeight', 'get').mockReturnValue(768);
-            const bounds = vi
-                .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
-                .mockImplementation(function (this: HTMLElement) {
-                    return this === document.documentElement || this === document.body
-                        ? new DOMRect(0, 0, 1024, 768)
-                        : new DOMRect(100, 100, 120, 32);
-                });
+            const bounds = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+                this: HTMLElement,
+            ) {
+                return this === document.documentElement || this === document.body
+                    ? new DOMRect(0, 0, 1024, 768)
+                    : new DOMRect(100, 100, 120, 32);
+            });
             try {
                 const user = userEvent.setup();
                 const props = feedbackProps({

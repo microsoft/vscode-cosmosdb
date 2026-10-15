@@ -70,17 +70,12 @@ export function armProvisioningOperations(
 ): CosmosModelProvisioningOperations {
     return {
         createDatabase: (databaseName) =>
-            client.sqlResources.beginCreateUpdateSqlDatabaseAndWait(
-                target.resourceGroup,
-                target.accountName,
-                databaseName,
-                {
-                    resource: { id: databaseName },
-                    options: {},
-                },
-            ),
+            client.sqlResources.createUpdateSqlDatabase(target.resourceGroup, target.accountName, databaseName, {
+                resource: { id: databaseName },
+                options: {},
+            }),
         createContainer: (databaseName, definition, maxThroughput) =>
-            client.sqlResources.beginCreateUpdateSqlContainerAndWait(
+            client.sqlResources.createUpdateSqlContainer(
                 target.resourceGroup,
                 target.accountName,
                 databaseName,

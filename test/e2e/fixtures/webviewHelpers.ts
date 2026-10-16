@@ -181,6 +181,10 @@ async function frameMatchesReady(frame: Frame, isReady: (f: Frame) => Promise<bo
  * title verbatim and click the matching result.
  */
 export async function runCommand(page: Page, commandTitle: string): Promise<void> {
+    await page.bringToFront();
+    // Route the shortcut through the workbench, not a webview's asynchronously forwarded key events.
+    const activeTab = page.locator('.part.editor .tabs-container .tab.active').first();
+    if (await activeTab.count()) await activeTab.focus();
     await page.keyboard.press(COMMAND_PALETTE_SHORTCUT);
     const input = page.locator(QUICK_INPUT_SELECTOR).first();
     await input.waitFor({ state: 'visible', timeout: 10_000 });
@@ -193,6 +197,7 @@ export async function runCommand(page: Page, commandTitle: string): Promise<void
         .filter({ hasText: commandTitle })
         .first()
         .click({ timeout: 5_000 });
+    await input.waitFor({ state: 'hidden', timeout: 5_000 });
 }
 
 /**
@@ -339,32 +344,11 @@ export async function closeAllEditorTabs(page: Page): Promise<void> {
     // Capture the final webview state before the tabs are closed (when enabled).
     await captureWindowScreenshot(page);
 
-    try {
-        // Dismiss any popover / menu that might intercept the palette shortcut.
-        await page.keyboard.press('Escape');
-        await page.waitForTimeout(150);
-
-        const input = page.locator(QUICK_INPUT_SELECTOR).first();
-
-        for (let attempt = 0; attempt < 15; attempt++) {
-            const tabCount = await page.locator(TAB_SELECTOR).count();
-            if (tabCount === 0) return;
-
-            await page.keyboard.press(COMMAND_PALETTE_SHORTCUT);
-            try {
-                await input.waitFor({ state: 'visible', timeout: 2_000 });
-                await input.fill('>workbench.action.revertAndCloseActiveEditor');
-                await page.waitForTimeout(150);
-                await page.keyboard.press('Enter');
-                await page.waitForTimeout(300);
-            } catch {
-                // Quick-input didn't open this iteration — dismiss + retry.
-                await page.keyboard.press('Escape');
-                await page.waitForTimeout(300);
-            }
-        }
-    } catch {
-        // Best-effort cleanup — never fail a test on cleanup.
+    const tabs = page.locator('.part.editor .tabs-container .tab');
+    while (await tabs.count()) {
+        const count = await tabs.count();
+        await runCommand(page, 'View: Revert and Close Editor');
+        await expect(tabs).toHaveCount(count - 1);
     }
 }
 

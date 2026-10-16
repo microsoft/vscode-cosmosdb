@@ -10,6 +10,7 @@ import {
     EditRegular,
     FlashRegular,
     SearchRegular,
+    TaskListSquareLtrRegular,
 } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useId, type ReactNode } from 'react';
@@ -312,7 +313,7 @@ export function ReviewPage({ workloadLabel, containers, onEditWorkload, onEditCo
             </ul>
 
             <section className={styles.rulesPanel} aria-labelledby={rulesHeadingId}>
-                <MythBox icon="✨">
+                <MythBox icon={<TaskListSquareLtrRegular aria-hidden="true" />}>
                     <div className={styles.rulesContent}>
                         <h3 id={rulesHeadingId} className={styles.rulesHeading}>
                             {l10n.t("Rules we'll evaluate")}

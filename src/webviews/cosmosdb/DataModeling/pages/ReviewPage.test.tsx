@@ -120,7 +120,10 @@ describe('ReviewPage', () => {
         const heading = screen.getByRole('heading', { name: "Rules we'll evaluate" });
         expect(heading).toHaveAccessibleName("Rules we'll evaluate");
         const panel = screen.getByRole('region', { name: "Rules we'll evaluate" });
-        expect(within(panel).getByText('✨')).toHaveAttribute('aria-hidden', 'true');
+        expect(within(panel).queryByText('✨')).not.toBeInTheDocument();
+        const checklistIcon = panel.querySelector('svg');
+        expect(checklistIcon).toHaveAttribute('aria-hidden', 'true');
+        expect(checklistIcon?.parentElement).toHaveAttribute('aria-hidden', 'true');
         expect(rules.map((rule) => rule.textContent)).toEqual([
             '✓High cardinality',
             '✓Query alignment',

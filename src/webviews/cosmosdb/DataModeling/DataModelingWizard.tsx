@@ -11,6 +11,7 @@ import {
     DeleteRegular,
     DismissRegular,
     EditRegular,
+    SparkleRegular,
 } from '@fluentui/react-icons';
 import {
     ContainerFooter,
@@ -922,6 +923,7 @@ const HydratedDataModelingWizard = ({
                 <Button
                     ref={advanceButtonRef}
                     appearance="primary"
+                    icon={isReview ? <SparkleRegular aria-hidden="true" /> : undefined}
                     disabled={!canAdvance}
                     onClick={() => {
                         report({

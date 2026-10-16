@@ -1263,6 +1263,31 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(screen.getByText('The recommendation is invalid. Request a new recommendation.')).toBeInTheDocument();
     });
 
+    it('prefixes only the recommendation action with a decorative sparkle icon', async () => {
+        client.dataModeling.loadState.query.mockResolvedValue(restored(4));
+        render(<DataModelingWizard />);
+        await continueExisting();
+
+        for (const [step, label] of [
+            ['Workload', 'Start'],
+            ['Container: Orders', 'Next'],
+        ]) {
+            await userEvent.click(await getStepControl(step));
+            const button = screen.getByRole('button', { name: label });
+            expect(button).toHaveTextContent(label);
+            expect(button).toHaveAccessibleName(label);
+            expect(button.querySelector('svg')).not.toBeInTheDocument();
+        }
+
+        await userEvent.click(await getStepControl('Review'));
+        const button = screen.getByRole('button', { name: 'Get Recommendation' });
+        expect(button).toHaveTextContent('Get Recommendation');
+        expect(button).toHaveAccessibleName('Get Recommendation');
+        const icon = button.querySelector('svg');
+        expect(icon).toHaveAttribute('aria-hidden', 'true');
+        expect(button.firstElementChild).toContainElement(icon);
+    });
+
     it.each([false, undefined])(
         'keeps the result and restores focus when confirmation is dismissed with %s',
         async (dismissal) => {

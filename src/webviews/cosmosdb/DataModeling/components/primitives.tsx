@@ -115,7 +115,7 @@ export function InfoBox({ children }: PropsWithChildren) {
     return <div className={styles.infoBox}>{children}</div>;
 }
 
-export function MythBox({ icon = '💡', children }: PropsWithChildren<{ icon?: string }>) {
+export function MythBox({ icon = '💡', children }: PropsWithChildren<{ icon?: ReactNode }>) {
     const styles = useStyles();
     return (
         <div className={styles.mythBox}>

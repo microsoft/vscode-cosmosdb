@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Button, Dropdown, Field, Input, makeStyles, Option, tokens } from '@fluentui/react-components';
+import { Button, Dropdown, Field, Input, makeStyles, Option, shorthands, tokens } from '@fluentui/react-components';
 import { AddRegular, DismissRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { InlineGuidance, MetricPill, PillRow, SubPanel } from '../components/primitives';
@@ -18,14 +18,25 @@ import { nextId } from '../scenarios';
  */
 
 const useStyles = makeStyles({
+    readGroup: {
+        minWidth: 0,
+        margin: 0,
+        padding: tokens.spacingHorizontalM,
+        ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke1),
+        borderRadius: tokens.borderRadiusMedium,
+        backgroundColor: tokens.colorNeutralBackground1,
+    },
+    readLegend: {
+        paddingInline: tokens.spacingHorizontalXS,
+        fontWeight: tokens.fontWeightSemibold,
+    },
     readRow: {
         display: 'grid',
-        gridTemplateColumns: 'minmax(0, 1fr) 96px 32px',
+        gridTemplateColumns: 'minmax(0, 1fr) 160px 32px',
         gap: tokens.spacingHorizontalS,
-        alignItems: 'end',
-        marginBottom: tokens.spacingVerticalM,
+        alignItems: 'start',
         '@media (max-width: 560px)': {
-            gridTemplateColumns: 'minmax(0, 1fr) 80px 32px',
+            gridTemplateColumns: 'minmax(0, 1fr) 120px 32px',
         },
     },
     queryRow: {
@@ -39,6 +50,11 @@ const useStyles = makeStyles({
     input: {
         minWidth: 0,
         width: '100%',
+    },
+    hint: {
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
     },
     addRead: {
         alignSelf: 'flex-start',
@@ -75,6 +91,10 @@ export function QueriesPage({ model, onChange }: QueriesPageProps) {
     const queryLabel = l10n.t('Query');
     const filtersLabel = l10n.t('Filters on');
     const qpsLabel = l10n.t('Peak QPS');
+    const patternHint = l10n.t('What this read retrieves.');
+    const queryHint = l10n.t('Full NoSQL SELECT query.');
+    const filtersHint = l10n.t('Properties used in the query.');
+    const qpsHint = l10n.t('Peak queries/sec, all users.');
 
     // Queries are per-container: edit the active container's reads and write rates.
     const active = getActiveContainer(model);
@@ -132,84 +152,108 @@ export function QueriesPage({ model, onChange }: QueriesPageProps) {
                               })
                             : undefined;
                     return (
-                        <div key={r.id} className={styles.readRow}>
-                            <Field label={patternLabel} className={styles.input}>
-                                <Input
+                        <fieldset key={r.id} className={styles.readGroup}>
+                            <legend className={styles.readLegend}>{l10n.t('Read query {n}', { n: index + 1 })}</legend>
+                            <div className={styles.readRow}>
+                                <Field
+                                    label={patternLabel}
                                     className={styles.input}
-                                    aria-label={l10n.t('{label} for read {n}', { label: patternLabel, n: index + 1 })}
-                                    value={r.pattern}
-                                    placeholder={l10n.t('e.g., Get all orders for a customer')}
-                                    onChange={(_, data) => patchRead(r.id, { pattern: data.value })}
-                                />
-                            </Field>
-                            <Field label={qpsLabel}>
-                                <Input
-                                    className={styles.input}
-                                    aria-label={l10n.t('{label} for read {n}', { label: qpsLabel, n: index + 1 })}
-                                    type="number"
-                                    value={String(r.qps)}
-                                    onChange={(_, data) => patchRead(r.id, { qps: Number(data.value) || 0 })}
-                                />
-                            </Field>
-                            <Button
-                                icon={<DismissRegular />}
-                                appearance="subtle"
-                                size="small"
-                                aria-label={l10n.t('Remove read query')}
-                                onClick={() => removeRead(r.id)}
-                            />
-                            <div className={styles.queryRow}>
-                                <Field label={queryLabel} className={styles.input}>
+                                    hint={{ children: patternHint, className: styles.hint, title: patternHint }}
+                                >
                                     <Input
                                         className={styles.input}
-                                        aria-label={l10n.t('{label} for read {n}', { label: queryLabel, n: index + 1 })}
-                                        value={r.query ?? ''}
-                                        placeholder="SELECT * FROM c WHERE customerId = @customerId"
-                                        onChange={(_, data) => {
-                                            const next = queryPropertyNames(data.value);
-                                            patchRead(r.id, {
-                                                query: data.value,
-                                                filters: next.valid
-                                                    ? [
-                                                          ...new Set([
-                                                              ...selected,
-                                                              ...propertyNames.filter((name) =>
-                                                                  next.names.includes(name),
-                                                              ),
-                                                          ]),
-                                                      ]
-                                                    : selected,
-                                            });
-                                        }}
+                                        aria-label={l10n.t('{label} for read {n}', {
+                                            label: patternLabel,
+                                            n: index + 1,
+                                        })}
+                                        value={r.pattern}
+                                        placeholder={l10n.t('e.g., Get all orders for a customer')}
+                                        onChange={(_, data) => patchRead(r.id, { pattern: data.value })}
                                     />
                                 </Field>
                                 <Field
-                                    label={filtersLabel}
+                                    label={qpsLabel}
                                     className={styles.input}
-                                    validationState={warning ? 'warning' : 'none'}
-                                    validationMessage={warning ? { children: warning, role: 'status' } : undefined}
+                                    hint={{ children: qpsHint, className: styles.hint, title: qpsHint }}
                                 >
-                                    <Dropdown
+                                    <Input
                                         className={styles.input}
-                                        aria-label={l10n.t('{label} for read {n}', {
-                                            label: filtersLabel,
-                                            n: index + 1,
-                                        })}
-                                        multiselect
-                                        selectedOptions={selected}
-                                        value={selected.join(', ')}
-                                        placeholder={l10n.t('Select properties')}
-                                        onOptionSelect={(_, data) => patchRead(r.id, { filters: data.selectedOptions })}
-                                    >
-                                        {[...propertyNames, ...unknown].map((name) => (
-                                            <Option key={name} value={name}>
-                                                {name}
-                                            </Option>
-                                        ))}
-                                    </Dropdown>
+                                        aria-label={l10n.t('{label} for read {n}', { label: qpsLabel, n: index + 1 })}
+                                        type="number"
+                                        value={String(r.qps)}
+                                        onChange={(_, data) => patchRead(r.id, { qps: Number(data.value) || 0 })}
+                                    />
                                 </Field>
+                                <Button
+                                    icon={<DismissRegular />}
+                                    appearance="subtle"
+                                    size="small"
+                                    aria-label={l10n.t('Remove read query')}
+                                    onClick={() => removeRead(r.id)}
+                                />
+                                <div className={styles.queryRow}>
+                                    <Field
+                                        label={queryLabel}
+                                        className={styles.input}
+                                        hint={{ children: queryHint, className: styles.hint, title: queryHint }}
+                                    >
+                                        <Input
+                                            className={styles.input}
+                                            aria-label={l10n.t('{label} for read {n}', {
+                                                label: queryLabel,
+                                                n: index + 1,
+                                            })}
+                                            value={r.query ?? ''}
+                                            placeholder="SELECT * FROM c WHERE customerId = @customerId"
+                                            onChange={(_, data) => {
+                                                const next = queryPropertyNames(data.value);
+                                                patchRead(r.id, {
+                                                    query: data.value,
+                                                    filters: next.valid
+                                                        ? [
+                                                              ...new Set([
+                                                                  ...selected,
+                                                                  ...propertyNames.filter((name) =>
+                                                                      next.names.includes(name),
+                                                                  ),
+                                                              ]),
+                                                          ]
+                                                        : selected,
+                                                });
+                                            }}
+                                        />
+                                    </Field>
+                                    <Field
+                                        label={filtersLabel}
+                                        className={styles.input}
+                                        hint={{ children: filtersHint, className: styles.hint, title: filtersHint }}
+                                        validationState={warning ? 'warning' : 'none'}
+                                        validationMessage={warning ? { children: warning, role: 'status' } : undefined}
+                                    >
+                                        <Dropdown
+                                            className={styles.input}
+                                            aria-label={l10n.t('{label} for read {n}', {
+                                                label: filtersLabel,
+                                                n: index + 1,
+                                            })}
+                                            multiselect
+                                            selectedOptions={selected}
+                                            value={selected.join(', ')}
+                                            placeholder={l10n.t('Select properties')}
+                                            onOptionSelect={(_, data) =>
+                                                patchRead(r.id, { filters: data.selectedOptions })
+                                            }
+                                        >
+                                            {[...propertyNames, ...unknown].map((name) => (
+                                                <Option key={name} value={name}>
+                                                    {name}
+                                                </Option>
+                                            ))}
+                                        </Dropdown>
+                                    </Field>
+                                </div>
                             </div>
-                        </div>
+                        </fieldset>
                     );
                 })}
                 <Button className={styles.addRead} icon={<AddRegular />} appearance="subtle" onClick={addRead}>

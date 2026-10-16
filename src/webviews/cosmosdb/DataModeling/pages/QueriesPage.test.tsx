@@ -5,7 +5,7 @@
 
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -13,6 +13,8 @@ import { ModelingAdvisorProjectSchema } from '../../../../dataModeling/modelingA
 import { buildDataModel, createBlankContainer, createInitialState, type DataModel } from '../dataModel';
 import { inferSchemaFromJson } from '../jsonInference';
 import { QueriesPage } from './QueriesPage';
+
+const filtersHint = 'Properties used in the query.';
 
 function Editor({ initialModel, onChange }: { initialModel: DataModel; onChange: (model: DataModel) => void }) {
     const [model, setModel] = useState(initialModel);
@@ -67,7 +69,7 @@ describe('nested query property references', () => {
         fireEvent.change(screen.getByRole('textbox', { name: 'Query for read 1' }), { target: { value: sql } });
         const filters = screen.getByRole('combobox', { name: 'Filters on for read 1' });
         expect(filters).toHaveTextContent(/^customer\/customerId$/);
-        expect(filters).not.toHaveAccessibleDescription();
+        expect(filters).toHaveAccessibleDescription(filtersHint);
         expect(screen.queryByText(/Selected properties not referenced/)).not.toBeInTheDocument();
         const edited = onChange.mock.lastCall![0];
         expect(edited.containers[0].reads[0].filters).toEqual(['customer/customerId']);
@@ -86,7 +88,7 @@ describe('nested query property references', () => {
         await user.click(filters);
         await user.click(screen.getByRole('menuitemcheckbox', { name: 'customer/customerId' }));
         await user.keyboard('{Escape}');
-        expect(filters).not.toHaveAccessibleDescription();
+        expect(filters).toHaveAccessibleDescription(filtersHint);
         expect(screen.queryByText(/Selected properties not referenced/)).not.toBeInTheDocument();
         expect(screen.getByRole('textbox', { name: 'Query for read 1' })).toHaveValue(sql);
         expect(onChange.mock.lastCall![0].containers[0].reads[0].filters).toEqual(['customer/customerId']);
@@ -94,7 +96,9 @@ describe('nested query property references', () => {
         await user.click(filters);
         await user.click(screen.getByRole('menuitemcheckbox', { name: 'customerId' }));
         await user.keyboard('{Escape}');
-        expect(filters).toHaveAccessibleDescription('Selected properties not referenced in the query: customerId');
+        expect(filters).toHaveAccessibleDescription(
+            `Selected properties not referenced in the query: customerId ${filtersHint}`,
+        );
     });
 });
 
@@ -102,21 +106,46 @@ describe('catalog query fields', () => {
     it('shows all four catalog values with visible labels included in their accessible names', () => {
         render(<QueriesPage model={buildDataModel('multitenant')} onChange={vi.fn()} />);
         const fields = [
-            { label: 'Description', value: 'Get all records for a tenant', role: 'textbox' },
-            { label: 'Query', value: 'SELECT * FROM c WHERE tenantId = @tenantId', role: 'textbox' },
-            { label: 'Peak QPS', value: 200, role: 'spinbutton' },
+            {
+                label: 'Description',
+                value: 'Get all records for a tenant',
+                role: 'textbox',
+                hint: 'What this read retrieves.',
+            },
+            {
+                label: 'Query',
+                value: 'SELECT * FROM c WHERE tenantId = @tenantId',
+                role: 'textbox',
+                hint: 'Full NoSQL SELECT query.',
+            },
+            {
+                label: 'Peak QPS',
+                value: 200,
+                role: 'spinbutton',
+                hint: 'Peak queries/sec, all users.',
+            },
         ];
-        for (const { label, value, role } of fields) {
+        for (const { label, value, role, hint } of fields) {
             expect(screen.getAllByText(label)[0]).toBeVisible();
             const control = screen.getByRole(role, { name: `${label} for read 1` });
             expect(control).toBeVisible();
             expect(control).toHaveValue(value);
             expect(control).toHaveAccessibleName(`${label} for read 1`);
+            expect(screen.getAllByText(hint)[0]).toBeVisible();
+            expect(control).toHaveAccessibleDescription(hint);
+            const caption = screen.getAllByText(hint)[0];
+            expect(caption).toHaveStyle({ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' });
+            expect(caption).toHaveAttribute('title', hint);
+            expect(control.closest('.fui-Field')).toContainElement(caption);
+            expect(control.compareDocumentPosition(caption) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
         }
         expect(screen.getByRole('textbox', { name: 'Query for read 1' }).tagName).toBe('INPUT');
         const filters = screen.getByRole('combobox', { name: 'Filters on for read 1' });
         expect(filters).toHaveTextContent('tenantId');
         expect(filters).toHaveAccessibleName('Filters on for read 1');
+        expect(screen.getAllByText(filtersHint)[0]).toBeVisible();
+        expect(filters).toHaveAccessibleDescription(filtersHint);
+        expect(screen.getAllByText(filtersHint)[0]).toHaveStyle({ whiteSpace: 'nowrap' });
         const queryField = screen.getByRole('textbox', { name: 'Query for read 1' }).closest('.fui-Field')!;
         const filtersField = filters.closest('.fui-Field')!;
         expect(queryField.nextElementSibling).toBe(filtersField);
@@ -124,6 +153,23 @@ describe('catalog query fields', () => {
             display: 'grid',
             gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)',
         });
+    });
+
+    it('visually and semantically groups each query with its own four inputs and remove button', () => {
+        const model = buildDataModel('multitenant');
+        render(<QueriesPage model={model} onChange={vi.fn()} />);
+        const groups = screen.getAllByRole('group', { name: /^Read query \d+$/ });
+        expect(groups).toHaveLength(model.containers[0].reads.length);
+        for (const [index, group] of groups.entries()) {
+            expect(group.tagName).toBe('FIELDSET');
+            expect(group).toHaveAccessibleName(`Read query ${index + 1}`);
+            expect(within(group).getByText(`Read query ${index + 1}`)).toBeVisible();
+            expect(group).toHaveStyle({ borderTopStyle: 'solid', borderTopWidth: '1px' });
+            for (const label of ['Description', 'Query', 'Peak QPS', 'Filters on']) {
+                expect(within(group).getByLabelText(`${label} for read ${index + 1}`)).toBeVisible();
+            }
+            expect(within(group).getByRole('button', { name: 'Remove read query' })).toBeVisible();
+        }
     });
 
     it('edits the active container, auto-selects query properties, and retains all fields through project restore', () => {
@@ -200,7 +246,9 @@ describe('catalog query fields', () => {
         expect(screen.getByRole('menuitemcheckbox', { name: 'quantity' })).toHaveAttribute('aria-checked', 'true');
         await user.keyboard('{Escape}');
         expect(query).toHaveValue(originalQuery);
-        expect(filters).toHaveAccessibleDescription('Selected properties not referenced in the query: quantity');
+        expect(filters).toHaveAccessibleDescription(
+            `Selected properties not referenced in the query: quantity ${filtersHint}`,
+        );
         const edited: DataModel = onChange.mock.lastCall![0];
         expect(restore(edited)).toEqual(edited);
         expect(edited.containers[0].reads[0].filters).toContain('quantity');
@@ -221,9 +269,13 @@ describe('catalog query fields', () => {
         expect(filters).toHaveTextContent('tenantId, id');
         fireEvent.change(query, { target: { value: 'SELECT c.id FROM c WHERE' } });
         expect(filters).toHaveTextContent('tenantId, id');
-        expect(filters).toHaveAccessibleDescription('Finish the SQL query to validate selected properties.');
+        expect(filters).toHaveAccessibleDescription(
+            `Finish the SQL query to validate selected properties. ${filtersHint}`,
+        );
         fireEvent.change(query, { target: { value: 'SELECT c.id FROM c' } });
-        expect(filters).toHaveAccessibleDescription('Selected properties not referenced in the query: tenantId');
+        expect(filters).toHaveAccessibleDescription(
+            `Selected properties not referenced in the query: tenantId ${filtersHint}`,
+        );
     });
 
     it('allows keyboard selection and deselection, including clearing all properties', async () => {
@@ -248,7 +300,7 @@ describe('catalog query fields', () => {
         model.containers[0].reads[0].filters = ['removed'];
         render(<Editor initialModel={model} onChange={vi.fn()} />);
         const filters = screen.getByRole('combobox', { name: 'Filters on for read 1' });
-        expect(filters).toHaveAccessibleDescription('Properties no longer in this container: removed');
+        expect(filters).toHaveAccessibleDescription(`Properties no longer in this container: removed ${filtersHint}`);
         await user.click(filters);
         await user.click(screen.getByRole('menuitemcheckbox', { name: 'removed' }));
         await user.keyboard('{Escape}');

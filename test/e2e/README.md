@@ -69,6 +69,18 @@ npm run e2e:ui         # Playwright's UI mode — step through tests, time-trave
 npm run e2e:debug      # Playwright Inspector — pause + step + REPL at each action
 ```
 
+To verify the Data Modeler's native **Add container** input, including invalid Enter submissions, valid correction,
+and Escape cancellation, run the following in PowerShell (no emulator required):
+
+```powershell
+$env:COSMOSDB_E2E_SKIP_EMULATOR = '1'
+npm run e2e -- data-modeler-container-name.spec.ts
+```
+
+This regression drives the actual webview-to-host request and VS Code input box, rather than mocking input events.
+For manual verification, restart the Extension Development Host after rebuilding: `npm run build` only type-checks,
+and even a refreshed Vite bundle does not replace code already loaded by a running extension host.
+
 > **Auto-build:** `globalSetup` compares mtimes of `package.json` + `src/`
 > against `dist/main.mjs` and `dist/package.json` and runs `npm run vite-prod`
 > automatically when they're out of sync. Set `COSMOSDB_E2E_SKIP_BUILD=1` to

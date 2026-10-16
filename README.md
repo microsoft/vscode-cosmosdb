@@ -82,6 +82,20 @@ Learn more about assigning roles in [Azure role-based access control](https://le
 
 For the metrics, detections, and ARM endpoints behind the dashboard, see [`docs/account-overview-dashboard.md`](./docs/account-overview-dashboard.md).
 
+## Data Modeler
+
+**Data Modeler (Preview)** helps you choose partition keys for Azure Cosmos DB for NoSQL using GitHub Copilot.
+Open it from **Account Overview** or run **Data Modeling Wizard** from the Command Palette. Requires available
+GitHub Copilot models and AI features enabled.
+
+1. Choose a workload template or define your own schemas, queries, and scale estimates.
+2. Compare single-path partition-key recommendations, query routing, and warnings. Review assumptions before deploying.
+3. Deploy selected databases and containers directly, or export editable **Bicep**, **Terraform**, or **C# SDK** code.
+   Deployment requires resource-creation permissions and may incur Azure charges; it does not upload documents.
+
+Work is saved locally per account so you can resume later; saved sessions expire 30 days after their last save.
+See [modeling details](docs/data-modeler-scale.md) and the [telemetry inventory](docs/data-modeler-telemetry.md) for more.
+
 ## Query Editor
 
 The Query Editor provides a focused workspace for writing, running, and tuning Azure Cosmos DB for NoSQL queries.
@@ -172,6 +186,10 @@ This project welcomes contributions and suggestions. To contribute, see these do
 <!-- endregion exclude-from-marketplace -->
 
 ## Telemetry
+
+Data Modeler template downloads report a `downloadCode` action with the template format, outcome
+(`success`, `cancelled`, or `error`), and whether the code was edited. These events use the existing Data Modeler
+telemetry context and do not include database names, filenames, paths, code contents, or raw error messages.
 
 VS Code collects usage data and sends it to Microsoft to help improve our products and services. Read our [privacy statement](https://go.microsoft.com/fwlink/?LinkID=521839) to learn more. If you don’t wish to send usage data to Microsoft, you can set the `telemetry.enableTelemetry` setting to `false`. If you want to disable feedback requests in VS Code, set `telemetry.feedback.enabled` to `false`. Learn more in our [FAQ](https://code.visualstudio.com/docs/supporting/faq#_how-to-disable-telemetry-reporting).
 

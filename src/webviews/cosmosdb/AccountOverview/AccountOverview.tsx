@@ -26,6 +26,7 @@ import {
 import { AccountHeader, type AccountSummary } from './AccountHeader';
 import { ActiveAlerts } from './ActiveAlerts';
 import { DashboardActionsProvider, DashboardCard, SectionHeader } from './DashboardChrome';
+import { DashboardFooter } from './DashboardFooter';
 import { DerivedAdvisories } from './DerivedAdvisories';
 import { InventoryTable } from './InventoryTable';
 import { type ContainerRef, type MetricScope, METRIC_ORDER } from './metrics/descriptors';
@@ -125,6 +126,18 @@ type Inventory = {
 export const AccountOverview = () => {
     const styles = useStyles();
     const trpcClient = useTrpcClient<AccountOverviewAppRouter>();
+    const [isAIFeaturesEnabled, setAIFeaturesEnabled] = useState(false);
+
+    useEffect(() => {
+        const subscription = trpcClient.accountOverview.aiFeaturesEnabled.subscribe(undefined, {
+            onData: setAIFeaturesEnabled,
+            onError: (error) => {
+                setAIFeaturesEnabled(false);
+                console.error('Failed to track AI feature availability', error);
+            },
+        });
+        return () => subscription.unsubscribe();
+    }, [trpcClient]);
 
     const [summary, setSummary] = useState<AccountSummary | undefined>(undefined);
     const [inventory, setInventory] = useState<Inventory | undefined>(undefined);
@@ -502,6 +515,26 @@ export const AccountOverview = () => {
         [reportEvent],
     );
 
+    const handleAddDatabase = useCallback(() => {
+        reportEvent('footerActionClicked', { action: 'addDatabase' });
+        void trpcClient.accountOverview.addDatabase.mutate();
+    }, [trpcClient, reportEvent]);
+
+    const handleAddContainer = useCallback(() => {
+        reportEvent('footerActionClicked', { action: 'addContainer' });
+        void trpcClient.accountOverview.addContainer.mutate();
+    }, [trpcClient, reportEvent]);
+
+    const handleDeleteAccount = useCallback(() => {
+        reportEvent('footerActionClicked', { action: 'deleteAccount' });
+        void trpcClient.accountOverview.deleteAccount.mutate();
+    }, [trpcClient, reportEvent]);
+
+    const handleOpenDataModeler = useCallback(() => {
+        reportEvent('footerActionClicked', { action: 'dataModeler' });
+        void trpcClient.accountOverview.openDataModeler.mutate();
+    }, [trpcClient, reportEvent]);
+
     const actions = useMemo(() => ({ reportEvent, openUrl: handleOpenUrl }), [reportEvent, handleOpenUrl]);
 
     if (!summary || !inventory) {
@@ -552,6 +585,14 @@ export const AccountOverview = () => {
                                 }}
                             />
                         </DashboardCard>
+
+                        <DashboardFooter
+                            isAIFeaturesEnabled={isAIFeaturesEnabled}
+                            onAddDatabase={handleAddDatabase}
+                            onAddContainer={handleAddContainer}
+                            onDeleteAccount={handleDeleteAccount}
+                            onOpenDataModeler={handleOpenDataModeler}
+                        />
 
                         <MetricsSection
                             order={METRIC_ORDER}

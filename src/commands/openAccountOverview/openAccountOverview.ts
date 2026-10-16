@@ -32,5 +32,5 @@ export async function openAccountOverview(context: IActionContext, node?: Cosmos
         throw new Error(l10n.t('Failed to load Cosmos DB account metadata.'));
     }
 
-    AccountOverviewTab.render(metadata);
+    AccountOverviewTab.render(metadata, node);
 }

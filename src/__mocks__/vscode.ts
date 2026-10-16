@@ -19,6 +19,8 @@ vsCodeMock.l10n = {
     t: vi.fn((msg) => msg),
 };
 
+vsCodeMock.InputBoxValidationSeverity ??= { Info: 1, Warning: 2, Error: 3 };
+
 // ─── Language Model API shims ────────────────────────────────────────────────
 // jest-mock-vscode does not provide the `vscode.lm` namespace or the
 // LanguageModel* value classes. Centralize them here so unit tests (and the

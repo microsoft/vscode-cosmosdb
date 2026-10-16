@@ -5,6 +5,7 @@
 
 import { AzureWizardPromptStep, parseError } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
+import { validateContainerName } from '../../cosmosdb/utils/validateResourceName';
 import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../extensionVariables';
 import { type CreateContainerWizardContext } from './CreateContainerWizardContext';
@@ -39,24 +40,16 @@ export class CosmosDBContainerNameStep extends AzureWizardPromptStep<CreateConta
             return undefined;
         }
 
-        if (/[/\\?#]/.test(name)) {
-            return l10n.t("Container name cannot contain the characters '\\', '/', '#', '?'");
-        }
-
-        if (name.length > 255) {
-            return l10n.t('Container name cannot be longer than 255 characters');
-        }
-
-        return undefined;
+        return validateContainerName(name);
     }
 
     private async validateNameAvailable(
         context: CreateContainerWizardContext,
         name: string,
     ): Promise<string | undefined> {
-        if (name.length === 0) {
-            return l10n.t('Container name is required.');
-        }
+        name = name.trim();
+        const error = validateContainerName(name);
+        if (error) return error;
 
         try {
             const result = await withClaimsChallengeHandling(context.accountInfo, async (cosmosClient) =>

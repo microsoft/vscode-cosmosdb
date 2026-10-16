@@ -32,6 +32,7 @@ const client = vi.hoisted(() => ({
         recordTelemetry: { mutate: vi.fn() },
         getDeploymentOptions: { query: vi.fn() },
         generateDeploymentTemplate: { query: vi.fn() },
+        downloadDeploymentTemplate: { mutate: vi.fn() },
         deploy: { mutate: vi.fn() },
         openDataExplorer: { mutate: vi.fn() },
         events: { subscribe: vi.fn() },
@@ -216,6 +217,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
                 `// ${input.databaseMode} ${input.databaseName}: ${input.containers.map((container) => container.entity).join(', ')}`,
         );
         client.dataModeling.deploy.mutate.mockResolvedValue({ status: 'cancelled' });
+        client.dataModeling.downloadDeploymentTemplate.mutate.mockResolvedValue('saved');
         client.dataModeling.openDataExplorer.mutate.mockResolvedValue(undefined);
         client.dataModeling.events.subscribe.mockReturnValue({ unsubscribe: vi.fn() });
     });
@@ -348,6 +350,34 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             containers: [{ entity: 'Orders', partitionKey: '/orderId' }],
         });
         expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
+    });
+
+    it('downloads the current deployment editor contents through the host route without deploying', async () => {
+        client.dataModeling.loadState.query.mockResolvedValue(restored(4));
+        render(<DataModelingWizard />);
+        await continueExisting();
+        await enterDeployStep();
+        await screen.findByText('source', { selector: 'dd' });
+        fireEvent.change(screen.getByRole('textbox', { name: 'New database name' }), { target: { value: 'fresh-db' } });
+        await userEvent.click(screen.getByRole('radio', { name: 'Bicep' }));
+        const editor = screen.getByRole('textbox', { name: 'Bicep deployment template' });
+        await waitFor(() => expect(editor).toHaveValue('// new fresh-db: Orders'));
+        fireEvent.change(editor, { target: { value: '// my edited Bicep' } });
+        await userEvent.click(screen.getByRole('button', { name: 'Download' }));
+        expect(client.dataModeling.downloadDeploymentTemplate.mutate).toHaveBeenCalledExactlyOnceWith({
+            format: 'bicep',
+            databaseName: 'fresh-db',
+            template: '// my edited Bicep',
+        });
+        expect(client.dataModeling.recordTelemetry.mutate).toHaveBeenCalledWith({
+            type: 'action',
+            action: 'downloadCode',
+            method: 'bicep',
+            outcome: 'success',
+            codeCustomized: true,
+        });
+        expect(screen.getByText('Code downloaded.')).toBeVisible();
+        expect(client.dataModeling.deploy.mutate).not.toHaveBeenCalled();
     });
 
     it('keeps a deployment draft on Back but does not restore it or Deploy navigation after reopening', async () => {

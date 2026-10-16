@@ -32,6 +32,23 @@ export type DeploymentTemplateInput = z.infer<typeof DeploymentTemplateInputSche
 export type DeploymentRequest = z.infer<typeof DeploymentRequestSchema>;
 export type GenerateDeploymentTemplateInput = z.infer<typeof GenerateDeploymentTemplateInputSchema>;
 export type DeploymentTemplateFormat = NonNullable<GenerateDeploymentTemplateInput['format']>;
+export const DownloadDeploymentTemplateInputSchema = GenerateDeploymentTemplateInputSchema.pick({ format: true })
+    .required()
+    .extend({ databaseName: z.string(), template: z.string().min(1) });
+export type DownloadDeploymentTemplateInput = z.infer<typeof DownloadDeploymentTemplateInputSchema>;
+export type DownloadDeploymentTemplateResult = 'saved' | 'cancelled';
+
+export function getDeploymentTemplateFileName(format: DeploymentTemplateFormat, databaseName: string): string {
+    if (format === 'sdk') return 'Program.cs';
+    // Sixty Unicode code points leave room for the prefix and extension within a 255-byte filename.
+    const safeName =
+        Array.from(databaseName.trim().replace(/[<>:"/\\|?*\p{Cc}]/gu, '-'))
+            .slice(0, 60)
+            .join('')
+            .replace(/[. ]+$/, '') || 'database';
+    return `cosmos-${safeName}.${format === 'bicep' ? 'bicep' : 'tf'}`;
+}
+
 export interface DeploymentOptions {
     accountName: string;
     subscriptionName?: string;

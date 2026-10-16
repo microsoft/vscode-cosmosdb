@@ -400,6 +400,115 @@ describe('data modeler deployment procedure', () => {
         ).rejects.toThrow();
         expect(deployDataModel).not.toHaveBeenCalled();
     });
+
+    it.each([
+        { format: 'bicep', fileName: 'cosmos-orders-2026.bicep', extension: 'bicep' },
+        { format: 'terraform', fileName: 'cosmos-orders-2026.tf', extension: 'tf' },
+        { format: 'sdk', fileName: 'Program.cs', extension: 'cs' },
+    ] as const)('downloads the edited $format code to the selected file', async ({ format, fileName, extension }) => {
+        const uri = vscode.Uri.file(`C:\\exports\\custom.${extension}`);
+        const template = '// user edits\r\n// caf\u00e9 \u4e2d\u6587\n';
+        vi.mocked(vscode.window.showSaveDialog).mockResolvedValueOnce(uri);
+        vi.mocked(vscode.workspace.fs.writeFile).mockResolvedValueOnce(undefined);
+        const ctx = context();
+        await expect(
+            dataModelingRouterDef.createCaller(ctx).downloadDeploymentTemplate({
+                format,
+                databaseName: 'orders:2026',
+                template,
+            }),
+        ).resolves.toBe('saved');
+        expect(vscode.window.showSaveDialog).toHaveBeenCalledExactlyOnceWith({
+            defaultUri: expect.objectContaining({
+                path: expect.stringMatching(new RegExp(`/${fileName.replace('.', '\\.')}$`)),
+            }),
+            title: 'Download deployment code',
+            saveLabel: 'Download',
+            filters: { 'Deployment code': [extension] },
+        });
+        expect(vscode.workspace.fs.writeFile).toHaveBeenCalledExactlyOnceWith(uri, Buffer.from(template, 'utf-8'));
+        expect(generateDeploymentTemplate).not.toHaveBeenCalled();
+        expect(deployDataModel).not.toHaveBeenCalled();
+        expect(ctx.actionContext?.telemetry.suppressAll).toBe(true);
+        expect(ctx.actionContext?.errorHandling.suppressDisplay).toBe(true);
+    });
+
+    it('does not write a file when the download dialog is cancelled', async () => {
+        vi.mocked(vscode.window.showSaveDialog).mockResolvedValueOnce(undefined);
+        await expect(
+            dataModelingRouterDef.createCaller(context()).downloadDeploymentTemplate({
+                format: 'bicep',
+                databaseName: 'orders',
+                template: '// edited',
+            }),
+        ).resolves.toBe('cancelled');
+        expect(vscode.workspace.fs.writeFile).not.toHaveBeenCalled();
+    });
+
+    it.each(['dialog', 'write'] as const)('propagates download %s failures to the webview', async (failure) => {
+        const error = new Error('Cannot save file');
+        if (failure === 'dialog') {
+            vi.mocked(vscode.window.showSaveDialog).mockRejectedValueOnce(error);
+        } else {
+            vi.mocked(vscode.window.showSaveDialog).mockResolvedValueOnce(vscode.Uri.file('C:\\exports\\main.bicep'));
+            vi.mocked(vscode.workspace.fs.writeFile).mockRejectedValueOnce(error);
+        }
+        const ctx = context();
+        await expect(
+            dataModelingRouterDef.createCaller(ctx).downloadDeploymentTemplate({
+                format: 'bicep',
+                databaseName: 'orders',
+                template: '// edited',
+            }),
+        ).rejects.toMatchObject({ cause: error });
+        expect(ctx.actionContext?.telemetry.suppressAll).toBe(true);
+        expect(vscode.workspace.fs.writeFile).toHaveBeenCalledTimes(failure === 'dialog' ? 0 : 1);
+    });
+
+    it('rejects invalid download inputs before opening a dialog and suppresses their telemetry', async () => {
+        const ctx = context();
+        const caller = dataModelingRouterDef.createCaller(ctx);
+        await expect(
+            caller.downloadDeploymentTemplate({
+                // @ts-expect-error Verify runtime validation of untrusted webview input.
+                format: 'shell',
+                databaseName: 'orders',
+                template: '// edited',
+            }),
+        ).rejects.toThrow();
+        await expect(
+            caller.downloadDeploymentTemplate({
+                format: 'bicep',
+                databaseName: 'orders',
+                template: '',
+            }),
+        ).rejects.toThrow();
+        await expect(
+            // @ts-expect-error The format must be supplied for downloads.
+            caller.downloadDeploymentTemplate({ databaseName: 'orders', template: '// edited' }),
+        ).rejects.toThrow();
+        // @ts-expect-error The database name must be supplied for downloads.
+        await expect(caller.downloadDeploymentTemplate({ format: 'bicep', template: '// edited' })).rejects.toThrow();
+        expect(vscode.window.showSaveDialog).not.toHaveBeenCalled();
+        expect(vscode.workspace.fs.writeFile).not.toHaveBeenCalled();
+        expect(ctx.actionContext?.telemetry.suppressAll).toBe(true);
+    });
+
+    it('allows downloading retained code with an empty database name and a fallback filename', async () => {
+        vi.mocked(vscode.window.showSaveDialog).mockResolvedValueOnce(undefined);
+        await expect(
+            dataModelingRouterDef.createCaller(context()).downloadDeploymentTemplate({
+                format: 'bicep',
+                databaseName: '',
+                template: '// edited',
+            }),
+        ).resolves.toBe('cancelled');
+        expect(vscode.window.showSaveDialog).toHaveBeenCalledWith(
+            expect.objectContaining({
+                defaultUri: expect.objectContaining({ path: expect.stringMatching(/\/cosmos-database\.bicep$/) }),
+            }),
+        );
+    });
 });
 
 describe('recommendation prompt', () => {
@@ -455,17 +564,19 @@ describe('recommendation prompt', () => {
         executeCommand.mockRestore();
     });
 
-    it('validates telemetry payloads under the suppressed operational context', async () => {
+    it.each([
+        { type: 'feedback', vote: 'down' },
+        { type: 'action', action: 'downloadCode', method: 'bicep', outcome: 'success', codeCustomized: true },
+    ] as const)('validates $type telemetry payloads under the suppressed operational context', async (event) => {
         const ctx = context();
         const record = vi.fn();
         ctx.modelingTelemetry = { record } as unknown as ModelingTelemetry;
         const caller = dataModelingRouterDef.createCaller(ctx);
-        await caller.recordTelemetry({ type: 'feedback', vote: 'down' });
-        expect(record).toHaveBeenCalledWith({ type: 'feedback', vote: 'down' });
+        await caller.recordTelemetry(event);
+        expect(record).toHaveBeenCalledWith(event);
         await expect(
             caller.recordTelemetry({
-                type: 'feedback',
-                vote: 'up',
+                ...event,
                 // @ts-expect-error Arbitrary user text is rejected rather than stripped and emitted.
                 explanation: 'PRIVATE RESPONSE',
             }),

@@ -4,6 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
+import { homedir } from 'os';
+import { extname } from 'path';
 import * as vscode from 'vscode';
 import { z } from 'zod';
 import {
@@ -13,7 +15,10 @@ import {
 } from '../../../commands/dataModeling/deployDataModel';
 import {
     DeploymentRequestSchema,
+    DownloadDeploymentTemplateInputSchema,
+    type DownloadDeploymentTemplateResult,
     GenerateDeploymentTemplateInputSchema,
+    getDeploymentTemplateFileName,
     validateDeploymentContainerName,
 } from '../../../dataModeling/deploymentModel';
 import { ModelingAdvisorSnapshotSchema, WizardStateSchema } from '../../../dataModeling/modelingAdvisorSchema';
@@ -123,6 +128,21 @@ export const dataModelingRouterDef = dataModelingRouter({
         }
     }),
     getDeploymentOptions: stateProcedure.query(({ ctx }) => getDeploymentOptions(ctx.account)),
+    downloadDeploymentTemplate: stateProcedure
+        .input(DownloadDeploymentTemplateInputSchema)
+        .mutation(async ({ input }): Promise<DownloadDeploymentTemplateResult> => {
+            const fileName = getDeploymentTemplateFileName(input.format, input.databaseName);
+            const directory = vscode.workspace.workspaceFolders?.[0]?.uri ?? vscode.Uri.file(homedir());
+            const uri = await vscode.window.showSaveDialog({
+                defaultUri: vscode.Uri.joinPath(directory, fileName),
+                title: l10n.t('Download deployment code'),
+                saveLabel: l10n.t('Download'),
+                filters: { [l10n.t('Deployment code')]: [extname(fileName).slice(1)] },
+            });
+            if (!uri) return 'cancelled';
+            await vscode.workspace.fs.writeFile(uri, Buffer.from(input.template, 'utf-8'));
+            return 'saved';
+        }),
     generateDeploymentTemplate: stateProcedure
         .input(GenerateDeploymentTemplateInputSchema)
         .query(async ({ ctx, input }) => {

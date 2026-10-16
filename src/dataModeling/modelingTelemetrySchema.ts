@@ -111,6 +111,7 @@ export const ModelingTelemetryEventSchema = z.discriminatedUnion('type', [
                 'retryRecommendation',
                 'startOver',
                 'copyCode',
+                'downloadCode',
                 'selectDeploymentMethod',
                 'regenerateCode',
             ]),

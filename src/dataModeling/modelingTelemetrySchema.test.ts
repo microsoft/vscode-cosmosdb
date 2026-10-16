@@ -32,6 +32,31 @@ describe('modeling telemetry bridge', () => {
         expect(ModelingTelemetryEventSchema.parse(selection)).toEqual(selection);
     });
 
+    it.each(['databaseName', 'fileName', 'path', 'template', 'error'])(
+        'rejects download telemetry containing %s',
+        (field) => {
+            expect(
+                ModelingTelemetryEventSchema.safeParse({
+                    type: 'action',
+                    action: 'downloadCode',
+                    method: 'bicep',
+                    outcome: 'success',
+                    codeCustomized: true,
+                    [field]: 'PRIVATE USER DATA',
+                }).success,
+            ).toBe(false);
+        },
+    );
+
+    it.each([{ method: 'private-format' }, { outcome: 'private-error' }, { codeCustomized: 'private-code' }])(
+        'rejects unbounded download metadata: %j',
+        (metadata) => {
+            expect(
+                ModelingTelemetryEventSchema.safeParse({ type: 'action', action: 'downloadCode', ...metadata }).success,
+            ).toBe(false);
+        },
+    );
+
     it.each([NaN, Infinity, -Infinity, -0.01, 1.01])('rejects invalid coverage %s', (coverage) => {
         expect(ModelingUsageSchema.shape.dataCoverage.safeParse(coverage).success).toBe(false);
     });

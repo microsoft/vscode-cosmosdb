@@ -15,6 +15,8 @@ import {
     type DeploymentContainer,
     type DeploymentOptions,
     type DeploymentRequest,
+    type DownloadDeploymentTemplateInput,
+    type DownloadDeploymentTemplateResult,
     type GenerateDeploymentTemplateInput,
     type ModelDeploymentResult,
     type SuccessfulDeployment,
@@ -57,6 +59,7 @@ const containers: DeploymentContainer[] = [
 ];
 const loadOptions = vi.fn<() => Promise<DeploymentOptions>>();
 const generateTemplate = vi.fn<(input: GenerateDeploymentTemplateInput) => Promise<string>>();
+const onDownload = vi.fn<(input: DownloadDeploymentTemplateInput) => Promise<DownloadDeploymentTemplateResult>>();
 const onDeploy = vi.fn<(input: DeploymentRequest) => Promise<ModelDeploymentResult>>();
 const onOpenDataExplorer = vi.fn<(input: { databaseId: string; containerId: string }) => Promise<void>>();
 const onBusyChange = vi.fn();
@@ -81,6 +84,7 @@ function Harness() {
                 }}
                 loadOptions={loadOptions}
                 generateTemplate={generateTemplate}
+                onDownload={onDownload}
                 onDeploy={onDeploy}
                 onOpenDataExplorer={onOpenDataExplorer}
                 onBusyChange={onBusyChange}
@@ -152,6 +156,7 @@ beforeEach(() => {
             `// ${input.databaseMode} ${input.databaseName}: ${input.containers.map((container) => container.entity).join(', ')}`,
     );
     onDeploy.mockResolvedValue({ status: 'cancelled' });
+    onDownload.mockResolvedValue('saved');
     onOpenDataExplorer.mockResolvedValue(undefined);
 });
 
@@ -366,6 +371,7 @@ describe('Deploy wizard page', () => {
             expect(screen.getByRole('button', { name: 'Deploy' })).toBeEnabled();
             expect(generateTemplate).not.toHaveBeenCalled();
             expect(MonacoEditor).not.toHaveBeenCalled();
+            expect(screen.queryByRole('button', { name: 'Download' })).not.toBeInTheDocument();
         } finally {
             vi.useRealTimers();
         }
@@ -377,14 +383,14 @@ describe('Deploy wizard page', () => {
         await chooseBicep();
         const editor = await waitForTemplate();
         const description = screen.getByText(
-            'Review and copy the template, then deploy it with your Bicep tooling. This option does not deploy resources from the wizard.',
+            'Review and copy or download the template, then deploy it with your Bicep tooling. This option does not deploy resources from the wizard.',
         );
         const body = description.parentElement;
         expect(body).toBe(editor.parentElement?.parentElement);
         expect(body).toHaveStyle({ display: 'flex', flexDirection: 'column', gap: '0' });
         if (!body) throw new Error('Bicep template body not found');
         const statuses = within(body).getAllByRole('status');
-        expect(statuses).toHaveLength(2);
+        expect(statuses).toHaveLength(3);
         for (const status of statuses) {
             expect(status).toBeEmptyDOMElement();
             expect(status).toHaveAttribute('aria-live', 'polite');
@@ -408,6 +414,13 @@ describe('Deploy wizard page', () => {
             databaseMode: 'existing',
             databaseName: 'existing-db',
             containers,
+        });
+        expect(screen.getByText('cosmos-existing-db.bicep')).toBeVisible();
+        await userEvent.click(screen.getByRole('button', { name: 'Download' }));
+        expect(onDownload).toHaveBeenCalledExactlyOnceWith({
+            format: 'bicep',
+            databaseName: 'existing-db',
+            template: '// existing existing-db: Orders, Users',
         });
     });
 
@@ -493,9 +506,22 @@ describe('Deploy wizard page', () => {
     });
 
     it.each([
-        { format: 'terraform', label: 'Terraform', title: 'Terraform configuration', language: 'hcl', file: 'main.tf' },
+        {
+            format: 'bicep',
+            label: 'Bicep',
+            title: 'Bicep deployment template',
+            language: 'bicep',
+            file: 'cosmos-new-db.bicep',
+        },
+        {
+            format: 'terraform',
+            label: 'Terraform',
+            title: 'Terraform configuration',
+            language: 'hcl',
+            file: 'cosmos-new-db.tf',
+        },
         { format: 'sdk', label: 'C# SDK', title: 'C# SDK deployment code', language: 'csharp', file: 'Program.cs' },
-    ])('generates, edits, and copies $label code for the selected target without deploying', async (method) => {
+    ])('generates, edits, copies, and downloads $label code without deploying', async (method) => {
         const user = userEvent.setup();
         const writeText = vi.spyOn(navigator.clipboard, 'writeText');
         render(<Harness />);
@@ -525,8 +551,168 @@ describe('Deploy wizard page', () => {
         await user.click(copy);
         expect(writeText).toHaveBeenCalledWith('// customized ' + method.format);
         expect(screen.getByText('Code copied.')).toBeVisible();
+        const download = screen.getByRole('button', { name: 'Download' });
+        expect(download).toHaveTextContent('Download');
+        expect(download).toHaveAccessibleName('Download');
+        download.focus();
+        await user.keyboard('{Enter}');
+        expect(onDownload).toHaveBeenCalledExactlyOnceWith({
+            format: method.format,
+            databaseName: 'new-db',
+            template: '// customized ' + method.format,
+        });
+        expect(onTelemetry).toHaveBeenLastCalledWith({
+            type: 'action',
+            action: 'downloadCode',
+            method: method.format,
+            outcome: 'success',
+            codeCustomized: true,
+        });
+        expect(screen.getByText('Code downloaded.')).toBeVisible();
+        expect(download).toHaveFocus();
         expect(screen.queryByRole('button', { name: 'Deploy' })).not.toBeInTheDocument();
         expect(onDeploy).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        ['orders:2026.', 'cosmos-orders-2026.bicep'],
+        ['', 'cosmos-database.bicep'],
+    ])(
+        'updates the filename when the database changes to %j without losing code edits',
+        async (databaseName, fileName) => {
+            render(<Harness />);
+            changeName();
+            await chooseBicep();
+            const editor = await waitForTemplate();
+            fireEvent.change(editor, { target: { value: '// keep my edits' } });
+            changeName(databaseName);
+            expect(screen.getByText(fileName)).toBeVisible();
+            expect(screen.queryByText('cosmos-new-db.bicep')).not.toBeInTheDocument();
+            await userEvent.click(screen.getByRole('button', { name: 'Download' }));
+            expect(onDownload).toHaveBeenCalledExactlyOnceWith({
+                format: 'bicep',
+                databaseName,
+                template: '// keep my edits',
+            });
+            expect(editor).toHaveValue('// keep my edits');
+        },
+    );
+
+    it('disables downloading while code is missing, generating, or empty', async () => {
+        let resolveTemplate!: (template: string) => void;
+        generateTemplate.mockImplementationOnce(
+            () =>
+                new Promise((resolve) => {
+                    resolveTemplate = resolve;
+                }),
+        );
+        render(<Harness />);
+        await chooseBicep();
+        expect(screen.getByRole('button', { name: 'Download' })).toBeDisabled();
+        changeName();
+        await waitFor(() => expect(generateTemplate).toHaveBeenCalled());
+        expect(screen.getByRole('button', { name: 'Download' })).toBeDisabled();
+        await act(async () => resolveTemplate('// generated'));
+        expect(screen.getByRole('button', { name: 'Download' })).toBeEnabled();
+        fireEvent.change(await waitForTemplate(), { target: { value: '' } });
+        expect(screen.getByRole('button', { name: 'Download' })).toBeDisabled();
+        expect(onDownload).not.toHaveBeenCalled();
+        expect(onTelemetry).not.toHaveBeenCalledWith(expect.objectContaining({ action: 'downloadCode' }));
+    });
+
+    it('prevents duplicate downloads and target edits while the save dialog is pending', async () => {
+        let resolveDownload!: (result: DownloadDeploymentTemplateResult) => void;
+        onDownload.mockImplementationOnce(
+            () =>
+                new Promise((resolve) => {
+                    resolveDownload = resolve;
+                }),
+        );
+        const user = userEvent.setup();
+        render(<Harness />);
+        changeName();
+        await chooseBicep();
+        const editor = await waitForTemplate();
+        const download = screen.getByRole('button', { name: 'Download' });
+        await user.click(download);
+        expect(onDownload).toHaveBeenCalledExactlyOnceWith({
+            format: 'bicep',
+            databaseName: 'new-db',
+            template: '// new new-db: Orders, Users',
+        });
+        expect(download).toHaveAttribute('aria-disabled', 'true');
+        expect(download).toHaveFocus();
+        expect(screen.getByRole('radio', { name: 'Terraform' })).toBeDisabled();
+        expect(screen.getByRole('textbox', { name: 'New database name' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Regenerate' })).toBeDisabled();
+        expect(editor).toHaveAttribute('readonly');
+        expect(screen.getByText('Downloading code...')).toHaveAttribute('aria-live', 'polite');
+        expect(onBusyChange).toHaveBeenLastCalledWith(true);
+        await user.keyboard('{Enter}');
+        await user.click(download);
+        expect(onDownload).toHaveBeenCalledTimes(1);
+        expect(onTelemetry).not.toHaveBeenCalledWith(expect.objectContaining({ action: 'downloadCode' }));
+        expect(screen.queryByText('Code downloaded.')).not.toBeInTheDocument();
+        await act(async () => resolveDownload('saved'));
+        expect(onTelemetry.mock.calls.filter(([event]) => event.action === 'downloadCode')).toEqual([
+            [{ type: 'action', action: 'downloadCode', method: 'bicep', outcome: 'success', codeCustomized: false }],
+        ]);
+        expect(download).not.toHaveAttribute('aria-disabled', 'true');
+        expect(download).toHaveFocus();
+        expect(editor).not.toHaveAttribute('readonly');
+        expect(onBusyChange).toHaveBeenLastCalledWith(false);
+    });
+
+    it('announces cancellation without reporting download success and allows retrying', async () => {
+        onDownload.mockResolvedValueOnce('cancelled');
+        render(<Harness />);
+        changeName();
+        await chooseBicep();
+        await waitForTemplate();
+        await userEvent.click(screen.getByRole('button', { name: 'Download' }));
+        expect(screen.getByText('Download cancelled.')).toHaveAttribute('aria-live', 'polite');
+        expect(onTelemetry).toHaveBeenLastCalledWith({
+            type: 'action',
+            action: 'downloadCode',
+            method: 'bicep',
+            outcome: 'cancelled',
+            codeCustomized: false,
+        });
+        expect(screen.queryByText('Code downloaded.')).not.toBeInTheDocument();
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        await userEvent.click(screen.getByRole('button', { name: 'Download' }));
+        expect(screen.getByText('Code downloaded.')).toBeVisible();
+        expect(screen.queryByText('Download cancelled.')).not.toBeInTheDocument();
+        expect(onTelemetry.mock.calls.filter(([event]) => event.action === 'downloadCode')).toEqual([
+            [{ type: 'action', action: 'downloadCode', method: 'bicep', outcome: 'cancelled', codeCustomized: false }],
+            [{ type: 'action', action: 'downloadCode', method: 'bicep', outcome: 'success', codeCustomized: false }],
+        ]);
+    });
+
+    it('surfaces download failures and clears the error after retrying', async () => {
+        onDownload.mockRejectedValueOnce(new Error('Disk full'));
+        render(<Harness />);
+        changeName();
+        await chooseBicep();
+        await waitForTemplate();
+        await userEvent.click(screen.getByRole('button', { name: 'Download' }));
+        expect(await screen.findByRole('alert')).toHaveTextContent('Could not download code. Disk full');
+        expect(onTelemetry).toHaveBeenLastCalledWith({
+            type: 'action',
+            action: 'downloadCode',
+            method: 'bicep',
+            outcome: 'error',
+            codeCustomized: false,
+        });
+        expect(screen.queryByText('Code downloaded.')).not.toBeInTheDocument();
+        expect(onBusyChange).toHaveBeenLastCalledWith(false);
+        await userEvent.click(screen.getByRole('button', { name: 'Download' }));
+        expect(screen.getByText('Code downloaded.')).toBeVisible();
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        expect(onTelemetry.mock.calls.filter(([event]) => event.action === 'downloadCode')).toEqual([
+            [{ type: 'action', action: 'downloadCode', method: 'bicep', outcome: 'error', codeCustomized: false }],
+            [{ type: 'action', action: 'downloadCode', method: 'bicep', outcome: 'success', codeCustomized: false }],
+        ]);
     });
 
     it('keeps independent edits for every method and flags outdated code after changing the target', async () => {
@@ -967,7 +1153,7 @@ describe('Deploy wizard page', () => {
         expect(screen.getByRole('radio', { name: 'New database' })).toBeEnabled();
     });
 
-    it.each(['getDeploymentOptions', 'generateDeploymentTemplate', 'deploy'] as const)(
+    it.each(['getDeploymentOptions', 'generateDeploymentTemplate', 'downloadDeploymentTemplate', 'deploy'] as const)(
         'explains how to recover when an older host lacks %s',
         async (procedure) => {
             const error = new Error(`No procedure found on path "dataModeling.${procedure}"`);
@@ -975,6 +1161,8 @@ describe('Deploy wizard page', () => {
                 loadOptions.mockRejectedValueOnce(error);
             } else if (procedure === 'generateDeploymentTemplate') {
                 generateTemplate.mockRejectedValueOnce(error);
+            } else if (procedure === 'downloadDeploymentTemplate') {
+                onDownload.mockRejectedValueOnce(error);
             } else {
                 onDeploy.mockRejectedValueOnce(error);
             }
@@ -987,6 +1175,10 @@ describe('Deploy wizard page', () => {
                     await confirmDeployment();
                 } else {
                     await chooseBicep();
+                    if (procedure === 'downloadDeploymentTemplate') {
+                        await waitForTemplate();
+                        await userEvent.click(screen.getByRole('button', { name: 'Download' }));
+                    }
                 }
             }
             expect(await screen.findByText(/The webview is newer than the running extension host/)).toHaveTextContent(

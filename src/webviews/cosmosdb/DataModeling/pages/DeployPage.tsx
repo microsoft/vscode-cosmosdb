@@ -19,7 +19,13 @@ import {
     tokens,
     useId,
 } from '@fluentui/react-components';
-import { ArrowUploadRegular, CheckmarkCircleFilled, CopyRegular, OpenRegular } from '@fluentui/react-icons';
+import {
+    ArrowDownloadRegular,
+    ArrowUploadRegular,
+    CheckmarkCircleFilled,
+    CopyRegular,
+    OpenRegular,
+} from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { type Dispatch, type SetStateAction, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -29,9 +35,12 @@ import {
     type DeploymentRequest,
     type DeploymentTemplateInput,
     type DeploymentTemplateFormat,
+    type DownloadDeploymentTemplateInput,
+    type DownloadDeploymentTemplateResult,
     type GenerateDeploymentTemplateInput,
     type ModelDeploymentResult,
     type SuccessfulDeployment,
+    getDeploymentTemplateFileName,
     validateDeploymentDatabaseName,
 } from '../../../../dataModeling/deploymentModel';
 import { type ModelingTelemetryEvent } from '../../../../dataModeling/modelingTelemetrySchema';
@@ -94,6 +103,7 @@ export interface DeployPageProps {
     onDraftChange: Dispatch<SetStateAction<DeploymentDraft>>;
     loadOptions: () => Promise<DeploymentOptions>;
     generateTemplate: (input: GenerateDeploymentTemplateInput) => Promise<string>;
+    onDownload: (input: DownloadDeploymentTemplateInput) => Promise<DownloadDeploymentTemplateResult>;
     onDeploy: (input: DeploymentRequest) => Promise<ModelDeploymentResult>;
     onOpenDataExplorer: (input: { databaseId: string; containerId: string }) => Promise<void>;
     onBusyChange: (busy: boolean) => void;
@@ -219,29 +229,28 @@ const EDITOR_OPTIONS: MonacoEditorType.editor.IStandaloneEditorConstructionOptio
 
 const EXPORT_METHODS: Record<
     DeploymentTemplateFormat,
-    { label: string; title: string; language: string; fileName: string; description: string }
+    { label: string; title: string; language: string; description: string }
 > = {
     bicep: {
         label: 'Bicep',
         title: l10n.t('Bicep deployment template'),
         language: 'bicep',
-        fileName: 'main.bicep',
-        description: l10n.t('Review and copy the template, then deploy it with your Bicep tooling.'),
+        description: l10n.t('Review and copy or download the template, then deploy it with your Bicep tooling.'),
     },
     terraform: {
         label: 'Terraform',
         title: l10n.t('Terraform configuration'),
         language: 'hcl',
-        fileName: 'main.tf',
-        description: l10n.t('Review and copy the configuration, then initialize, plan, and apply it with Terraform.'),
+        description: l10n.t(
+            'Review and copy or download the configuration, then initialize, plan, and apply it with Terraform.',
+        ),
     },
     sdk: {
         label: l10n.t('C# SDK'),
         title: l10n.t('C# SDK deployment code'),
         language: 'csharp',
-        fileName: 'Program.cs',
         description: l10n.t(
-            'Review and copy the code, then run it in your .NET project using Azure management permissions. This export targets Azure, not the emulator.',
+            'Review and copy or download the code, then run it in your .NET project using Azure management permissions. This export targets Azure, not the emulator.',
         ),
     },
 };
@@ -250,7 +259,7 @@ const TEMPLATE_FORMATS: DeploymentTemplateFormat[] = ['bicep', 'terraform', 'sdk
 function deploymentErrorDetail(error: unknown): string {
     const message = error instanceof Error ? error.message : String(error);
     if (
-        /^No procedure found on path "dataModeling\.(getDeploymentOptions|generateDeploymentTemplate|deploy|openDataExplorer)"$/.test(
+        /^No procedure found on path "dataModeling\.(getDeploymentOptions|generateDeploymentTemplate|downloadDeploymentTemplate|deploy|openDataExplorer)"$/.test(
             message,
         )
     ) {
@@ -268,6 +277,7 @@ export function DeployPage({
     onDraftChange,
     loadOptions,
     generateTemplate,
+    onDownload,
     onDeploy,
     onOpenDataExplorer,
     onBusyChange,
@@ -303,6 +313,10 @@ export function DeployPage({
     const [openingExplorer, setOpeningExplorer] = useState(false);
     const [explorerError, setExplorerError] = useState('');
     const [copyMessage, setCopyMessage] = useState('');
+    const [downloading, setDownloading] = useState(false);
+    const [downloadMessage, setDownloadMessage] = useState('');
+    const [downloadError, setDownloadError] = useState('');
+    const busy = deploying || confirming || downloading;
 
     useEffect(() => {
         if (deploying) {
@@ -396,8 +410,7 @@ export function DeployPage({
     const customized = templateDraft !== undefined && template !== templateDraft.generatedTemplate;
     const templateCurrent = templateDraft?.templateInputKey === inputKey;
     const generationKey = `${format}:${inputKey}`;
-    const canAttemptDeploy =
-        !!options && !options.unavailableReason && !selectionError && !format && !deploying && !confirming;
+    const canAttemptDeploy = !!options && !options.unavailableReason && !selectionError && !format && !busy;
 
     useEffect(() => {
         let disposed = false;
@@ -456,6 +469,8 @@ export function DeployPage({
         setDeploymentError('');
         setExplorerError('');
         setCopyMessage('');
+        setDownloadMessage('');
+        setDownloadError('');
     }, [inputKey, template, format]);
 
     useEffect(() => {
@@ -572,11 +587,42 @@ export function DeployPage({
         () => ({
             ...EDITOR_OPTIONS,
             ariaLabel: exportMethod?.title,
-            readOnly: deploying || generating || confirming,
-            domReadOnly: deploying || generating || confirming,
+            readOnly: busy || generating,
+            domReadOnly: busy || generating,
         }),
-        [deploying, generating, confirming, exportMethod],
+        [busy, generating, exportMethod],
     );
+
+    const downloadCode = async () => {
+        if (!format || !template || busy || generating) return;
+        setDownloading(true);
+        onBusyChange(true);
+        setDownloadMessage('');
+        setDownloadError('');
+        try {
+            const result = await onDownload({ format, databaseName: input.databaseName, template });
+            onTelemetry?.({
+                type: 'action',
+                action: 'downloadCode',
+                method: format,
+                outcome: result === 'saved' ? 'success' : 'cancelled',
+                codeCustomized: customized,
+            });
+            setDownloadMessage(result === 'saved' ? l10n.t('Code downloaded.') : l10n.t('Download cancelled.'));
+        } catch (error) {
+            onTelemetry?.({
+                type: 'action',
+                action: 'downloadCode',
+                method: format,
+                outcome: 'error',
+                codeCustomized: customized,
+            });
+            setDownloadError(l10n.t('Could not download code. {error}', { error: deploymentErrorDetail(error) }));
+        } finally {
+            setDownloading(false);
+            onBusyChange(false);
+        }
+    };
 
     const copyCode = async () => {
         try {
@@ -645,7 +691,7 @@ export function DeployPage({
                     aria-labelledby={databaseGroupId}
                     layout="horizontal"
                     value={draft.databaseMode}
-                    disabled={deploying || confirming}
+                    disabled={busy}
                     onChange={(_, data) => {
                         if (data.value === 'new' || data.value === 'existing') {
                             const databaseMode = data.value;
@@ -667,7 +713,7 @@ export function DeployPage({
                         <Input
                             ref={newDatabaseNameRef}
                             value={draft.newDatabaseName}
-                            disabled={deploying || confirming}
+                            disabled={busy}
                             onChange={(_, data) => {
                                 setShowDatabaseValidation(true);
                                 onDraftChange((previous) => ({ ...previous, newDatabaseName: data.value }));
@@ -687,7 +733,7 @@ export function DeployPage({
                             value={draft.existingDatabaseName}
                             selectedOptions={draft.existingDatabaseName ? [draft.existingDatabaseName] : []}
                             placeholder={l10n.t('Select a database')}
-                            disabled={deploying || confirming || !options || options.databases.length === 0}
+                            disabled={busy || !options || options.databases.length === 0}
                             onOptionSelect={(_, data) => {
                                 if (data.optionValue !== undefined) {
                                     const existingDatabaseName = data.optionValue;
@@ -720,7 +766,7 @@ export function DeployPage({
                                 key={container.entity}
                                 label={container.entity}
                                 checked={draft.selectedContainers.includes(container.entity)}
-                                disabled={deploying || confirming}
+                                disabled={busy}
                                 onChange={(_, data) =>
                                     onDraftChange((previous) => ({
                                         ...previous,
@@ -745,7 +791,7 @@ export function DeployPage({
                     className={styles.methods}
                     layout="horizontal"
                     value={draft.deploymentMethod}
-                    disabled={deploying || confirming}
+                    disabled={busy}
                     onChange={(_, data) => {
                         if (
                             data.value === 'direct' ||
@@ -786,22 +832,33 @@ export function DeployPage({
                                 <Text as="h4" id={templateLabelId} className={styles.sectionTitle}>
                                     {exportMethod.title}
                                 </Text>
-                                <Text className={styles.caption}>{exportMethod.fileName}</Text>
+                                <Text className={styles.caption}>
+                                    {getDeploymentTemplateFileName(format, input.databaseName)}
+                                </Text>
                             </div>
                             <div className={styles.actions}>
                                 <Button
                                     size="small"
                                     appearance="primary"
                                     icon={<CopyRegular aria-hidden />}
-                                    disabled={!template || deploying || generating || confirming}
+                                    disabled={!template || busy || generating}
                                     onClick={() => void copyCode()}
                                 >
                                     {l10n.t('Copy code')}
                                 </Button>
                                 <Button
                                     size="small"
+                                    icon={<ArrowDownloadRegular aria-hidden />}
+                                    disabled={!template || deploying || generating || confirming}
+                                    disabledFocusable={downloading}
+                                    onClick={() => void downloadCode()}
+                                >
+                                    {l10n.t('Download')}
+                                </Button>
+                                <Button
+                                    size="small"
                                     ref={regenerateButtonRef}
-                                    disabled={!valid || deploying || generating || confirming}
+                                    disabled={!valid || busy || generating}
                                     onClick={() => void confirmRegeneration()}
                                 >
                                     {l10n.t('Regenerate')}
@@ -821,7 +878,11 @@ export function DeployPage({
                                 </Text>
                             ) : null}
                             {templateError ? <Text role="alert">{templateError}</Text> : null}
+                            {downloadError ? <Text role="alert">{downloadError}</Text> : null}
                             <output aria-live="polite">{copyMessage}</output>
+                            <output aria-live="polite">
+                                {downloading ? l10n.t('Downloading code...') : downloadMessage}
+                            </output>
                             <output aria-live="polite">
                                 {generating ? l10n.t('Generating deployment code...') : ''}
                             </output>

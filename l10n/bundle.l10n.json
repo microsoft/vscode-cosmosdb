@@ -1241,7 +1241,7 @@
   "Query results table": "Query results table",
   "Query results tree": "Query results tree",
   "Query routing": "Query routing",
-  "Query routing with partition key {partitionKey}": "Query routing with partition key {partitionKey}",
+  "Query routing with recommended partition key {partitionKey}": "Query routing with recommended partition key {partitionKey}",
   "Query timed out": "Query timed out",
   "Query was aborted": "Query was aborted",
   "Query:": "Query:",

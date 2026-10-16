@@ -38,14 +38,6 @@ Connect to **Azure Cosmos DB for NoSQL** from VS Code to explore accounts, manag
 | Work locally               | Attach the Azure Cosmos DB Emulator or a connection string without depending on subscription discovery. |
 | Use GitHub Copilot         | Generate, edit, and explain Azure Cosmos DB for NoSQL queries from natural-language requests.           |
 
-## Migration Assistant (Preview)
-
-The Migration Assistant uses the `cosmosdb-relational-migration` Skill in GitHub Copilot Chat to guide relational database and application migrations. Phase actions open or resume Chat; the assistant tracks progress and validates the artifacts in `.cosmosdb-migration`.
-
-Migration execution is Skill-only. The legacy programmatic runner, its `cosmosDB.experimental.migration.useProgrammaticFlow` setting, and its token-estimate controls are no longer available. Existing migration projects can still be opened and inspected, but recorded completion alone does not replace validated evidence. Target selections are saved in the project; the Skill generates or updates provisioning artifacts when provisioning runs.
-
-Use `cosmosDB.experimental.migration.enabled` to show or hide the migration feature.
-
 ## Azure Cosmos DB Explorer
 
 The Azure Cosmos DB Explorer helps you find, view, and manage your Azure Cosmos DB databases.
@@ -129,6 +121,14 @@ The extension integrates with GitHub Copilot to help you write, edit, and unders
 > **Requires** the [GitHub Copilot](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot) extension and an active Copilot subscription.
 
 For more details, see the [AI Chat documentation](src/chat/README.md).
+
+## Migration Assistant (Preview)
+
+The Migration Assistant uses the `cosmosdb-relational-migration` Skill in GitHub Copilot Chat to guide relational database and application migrations. Phase actions open or resume Chat; the assistant tracks progress and validates the artifacts in `.cosmosdb-migration`.
+
+Migration projects started before the Skill was introduced can still be opened and inspected. Their existing artifacts need evidence validation before their phases can be treated as complete in the Skill workflow.
+
+Use `cosmosDB.experimental.migration.enabled` to show or hide the migration feature.
 
 ## Import into Azure Cosmos DB
 

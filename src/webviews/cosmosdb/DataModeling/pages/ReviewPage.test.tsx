@@ -64,16 +64,26 @@ describe('ReviewPage', () => {
         expect(onEditWorkload).toHaveBeenCalledOnce();
     });
 
-    it('renders one card per container with a title, partition key, and workload summary', () => {
+    it('renders one card per container with a title and workload summary without a premature partition key', () => {
         renderReview([chatSession(), createBlankContainer('User')]);
         const cards = Array.from(screen.getByRole('list', { name: 'Containers' }).children) as HTMLElement[];
         expect(cards).toHaveLength(2);
 
         const session = cards[0];
-        expect(within(session).getByRole('heading', { level: 3, name: 'ChatSession' })).toBeVisible();
-        expect(within(session).getByRole('img', { name: 'Partition key' }).parentElement).toHaveTextContent(
-            '/sessionId',
-        );
+        for (const [index, name] of ['ChatSession', 'User'].entries()) {
+            const heading = within(cards[index]).getByRole('heading', { level: 3, name: `Container: ${name}` });
+            expect(heading).toBeVisible();
+            expect(heading).toHaveTextContent(`Container: ${name}`);
+            expect(heading).toHaveAccessibleName(`Container: ${name}`);
+            expect(heading.parentElement?.parentElement).toHaveStyle({ display: 'flex', alignItems: 'center' });
+            const icon = cards[index].querySelector('svg');
+            expect(icon).toHaveAttribute('viewBox', '0 0 24 24');
+            expect(icon).toHaveAttribute('aria-hidden', 'true');
+            expect(icon).toHaveAttribute('focusable', 'false');
+        }
+        expect(screen.queryByRole('img', { name: 'Partition key' })).not.toBeInTheDocument();
+        expect(screen.queryByText('/sessionId')).not.toBeInTheDocument();
+        expect(screen.queryByText('/id')).not.toBeInTheDocument();
         expect(within(session).getByRole('img', { name: 'Top read' }).parentElement).toHaveTextContent(
             'Get all messages in a session',
         );
@@ -82,20 +92,23 @@ describe('ReviewPage', () => {
         expect(within(session).getByText('Items: Medium · Writes: Even · Growth: Slow')).toBeVisible();
     });
 
-    it('edits each container from a keyboard-accessible button described by its title', async () => {
+    it('edits each container from an icon-only button with a container-specific accessible name and tooltip', async () => {
         const user = userEvent.setup();
         const containers = [chatSession(), createBlankContainer('User')];
         const { onEditContainer } = renderReview(containers);
         await user.tab();
         expect(screen.getByRole('button', { name: 'Change' })).toHaveFocus();
 
-        const edits = screen.getAllByRole('button', { name: 'Edit' });
+        const edits = screen.getAllByRole('button', { name: /^Edit / });
         expect(edits).toHaveLength(2);
         for (const [index, container] of containers.entries()) {
-            expect(edits[index]).toHaveTextContent('Edit');
-            expect(edits[index]).toHaveAccessibleDescription(container.entity);
+            const editLabel = `Edit ${container.entity}`;
+            expect(edits[index]).toHaveTextContent(/^$/);
+            expect(edits[index]).toHaveAccessibleName(editLabel);
+            expect(edits[index].querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
             await user.tab();
             expect(edits[index]).toHaveFocus();
+            expect(await screen.findByRole('tooltip', { name: editLabel })).toHaveTextContent(editLabel);
             await user.keyboard('{Enter}');
             expect(onEditContainer).toHaveBeenLastCalledWith(container.id);
         }
@@ -125,12 +138,12 @@ describe('ReviewPage', () => {
         expect(screen.queryByRole('img', { name: 'Pass' })).not.toBeInTheDocument();
     });
 
-    it('describes missing partition keys and read patterns without inventing values', () => {
+    it('describes missing read patterns without displaying a partition-key placeholder', () => {
         const container = createBlankContainer('Orders');
         container.partitionKey = '';
         container.reads = [];
         renderReview([container]);
-        expect(screen.getByText('Not selected')).toBeVisible();
+        expect(screen.queryByText('Not selected')).not.toBeInTheDocument();
         expect(screen.getByText('No read pattern defined')).toBeVisible();
         expect(screen.getByText('0 read QPS · 0 write TPS')).toBeVisible();
     });

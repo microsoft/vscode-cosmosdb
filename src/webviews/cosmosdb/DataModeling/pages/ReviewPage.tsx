@@ -3,18 +3,17 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Button, Link, makeStyles, tokens } from '@fluentui/react-components';
+import { Button, Link, makeStyles, tokens, Tooltip } from '@fluentui/react-components';
 import {
     DataBarVerticalRegular,
-    DatabaseRegular,
     DocumentRegular,
     EditRegular,
     FlashRegular,
-    KeyRegular,
     SearchRegular,
 } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useId, type ReactNode } from 'react';
+import { ContainerIcon } from '../../../icons/ContainerIcon';
 import { AssessmentIcon } from '../components/AssessmentIcon';
 import { MythBox } from '../components/primitives';
 import { type ContainerModel, type DataGrowth, type ItemsPerPartition, type WriteDistribution } from '../models';
@@ -79,7 +78,7 @@ const useStyles = makeStyles({
     },
     cardHeader: {
         display: 'flex',
-        alignItems: 'flex-start',
+        alignItems: 'center',
         gap: tokens.spacingHorizontalM,
     },
     cardIcon: {
@@ -89,9 +88,6 @@ const useStyles = makeStyles({
         flexShrink: 0,
         width: '36px',
         height: '36px',
-        borderRadius: tokens.borderRadiusMedium,
-        backgroundColor: tokens.colorBrandBackground2,
-        color: tokens.colorBrandForeground2,
         fontSize: '20px',
     },
     cardTitleBlock: {
@@ -106,16 +102,6 @@ const useStyles = makeStyles({
         fontSize: tokens.fontSizeBase400,
         fontWeight: tokens.fontWeightSemibold,
         lineHeight: tokens.lineHeightBase400,
-        overflowWrap: 'anywhere',
-    },
-    partitionKey: {
-        display: 'flex',
-        alignItems: 'flex-start',
-        gap: tokens.spacingHorizontalXS,
-        minWidth: 0,
-        fontFamily: tokens.fontFamilyMonospace,
-        fontSize: tokens.fontSizeBase200,
-        color: tokens.colorBrandForeground1,
         overflowWrap: 'anywhere',
     },
     inlineIcon: {
@@ -204,7 +190,7 @@ function SummaryItem({ icon, iconLabel, children }: { icon: ReactNode; iconLabel
 
 function ContainerCard({ container, onEdit }: { container: ContainerModel; onEdit: () => void }) {
     const styles = useStyles();
-    const titleId = useId();
+    const editLabel = l10n.t('Edit {name}', { name: container.entity });
 
     const itemsLabel: Record<ItemsPerPartition, string> = {
         low: l10n.t('Low'),
@@ -238,29 +224,22 @@ function ContainerCard({ container, onEdit }: { container: ContainerModel; onEdi
         <li className={styles.card}>
             <div className={styles.cardHeader}>
                 <span className={styles.cardIcon} aria-hidden="true">
-                    <DatabaseRegular />
+                    <ContainerIcon />
                 </span>
                 <div className={styles.cardTitleBlock}>
-                    <h3 id={titleId} className={styles.cardTitle}>
-                        {container.entity}
+                    <h3 className={styles.cardTitle}>
+                        {l10n.t('Container:')} {container.entity}
                     </h3>
-                    <span className={styles.partitionKey}>
-                        {/* oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- Named wrapper for a font icon. */}
-                        <span className={styles.inlineIcon} role="img" aria-label={l10n.t('Partition key')}>
-                            <KeyRegular />
-                        </span>
-                        {container.partitionKey || l10n.t('Not selected')}
-                    </span>
                 </div>
-                <Button
-                    appearance="subtle"
-                    size="small"
-                    icon={<EditRegular />}
-                    aria-describedby={titleId}
-                    onClick={onEdit}
-                >
-                    {l10n.t('Edit')}
-                </Button>
+                <Tooltip content={editLabel} relationship="label">
+                    <Button
+                        appearance="subtle"
+                        size="small"
+                        icon={<EditRegular aria-hidden="true" />}
+                        aria-label={editLabel}
+                        onClick={onEdit}
+                    />
+                </Tooltip>
             </div>
             <ul className={styles.summary}>
                 <SummaryItem icon={<SearchRegular />} iconLabel={l10n.t('Top read')}>

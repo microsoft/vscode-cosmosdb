@@ -226,7 +226,6 @@ function SavedModelChoice({ onContinue, onStartNew }: { onContinue: () => void; 
     const { confirm, confirmationError } = useNativeConfirmation();
     const prompted = useRef(false);
     const buttonRef = useRef<HTMLButtonElement>(null);
-    // Only the title is shown while the native dialog is open; the reopen button appears once it is dismissed.
     const [awaitingAnswer, setAwaitingAnswer] = useState(true);
     const choose = useCallback(async () => {
         setAwaitingAnswer(true);
@@ -250,21 +249,12 @@ function SavedModelChoice({ onContinue, onStartNew }: { onContinue: () => void; 
         if (!awaitingAnswer) buttonRef.current?.focus();
     }, [awaitingAnswer]);
 
-    return (
+    return awaitingAnswer ? null : (
         <div>
-            <ContainerHeader
-                headingLevel={2}
-                title={l10n.t('Data Modeler')}
-                action={<Badge appearance="tint">{l10n.t('Preview')}</Badge>}
-            />
-            {awaitingAnswer ? null : (
-                <>
-                    {confirmationError ? <Text role="alert">{confirmationError}</Text> : null}
-                    <Button ref={buttonRef} onClick={() => void choose()}>
-                        {l10n.t('Continue your data model?')}
-                    </Button>
-                </>
-            )}
+            {confirmationError ? <Text role="alert">{confirmationError}</Text> : null}
+            <Button ref={buttonRef} onClick={() => void choose()}>
+                {l10n.t('Continue your data model?')}
+            </Button>
         </div>
     );
 }

@@ -223,8 +223,6 @@ describe('data modeler saved-work choice and revisiting steps', () => {
     it('uses the shared sticky-navigation layout and keeps the footer outside its scroll region', async () => {
         client.dataModeling.loadState.query.mockResolvedValue(restored(4));
         render(<DataModelingWizard />);
-        const savedTitle = await screen.findByRole('heading', { name: 'Data Modeler' });
-        expect(savedTitle.parentElement?.parentElement).toContainElement(screen.getByText('Preview'));
         await continueExisting();
         const navigation = screen.getByRole('navigation', { name: 'Data modeling steps' });
         const scrollRegion = navigation.closest('[data-header-behavior="sticky-navigation"]');
@@ -641,14 +639,17 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         ).toBe(false);
     });
 
-    it('shows only the title while the native saved-work choice is open and offers reopening after dismissal', async () => {
+    it('keeps the saved-work choice headerless and offers reopening after dismissal', async () => {
         client.dataModeling.loadState.query.mockResolvedValue(restored(4));
         render(<DataModelingWizard />);
         await waitFor(() => expect(client.dataModeling.confirm.mutate).toHaveBeenCalledOnce());
-        expect(screen.getByRole('heading', { name: 'Data Modeler', level: 2 })).toBeVisible();
+        expect(screen.queryByRole('heading', { name: 'Data Modeler', level: 2 })).not.toBeInTheDocument();
         expect(screen.queryByRole('button')).not.toBeInTheDocument();
+        expect(screen.queryByText('Preview')).not.toBeInTheDocument();
         expect(screen.queryByText('Workload')).not.toBeInTheDocument();
         await answerConfirmation('Continue your data model?', undefined);
+        expect(screen.queryByRole('heading')).not.toBeInTheDocument();
+        expect(screen.queryByText('Preview')).not.toBeInTheDocument();
         const proceed = await screen.findByRole('button', { name: 'Continue your data model?' });
         expect(proceed).toHaveTextContent('Continue your data model?');
         expect(proceed).toHaveAccessibleName('Continue your data model?');
@@ -657,6 +658,9 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
         expect(client.dataModeling.confirm.mutate).toHaveBeenCalledOnce();
         await userEvent.click(proceed);
+        await waitFor(() => expect(client.dataModeling.confirm.mutate).toHaveBeenCalledTimes(2));
+        expect(screen.queryByRole('heading')).not.toBeInTheDocument();
+        expect(screen.queryByRole('button')).not.toBeInTheDocument();
         await continueExisting();
         expect(await screen.findByRole('img', { name: /100.*Orders.*\/orderId/ })).toBeVisible();
         expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();

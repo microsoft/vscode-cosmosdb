@@ -17,6 +17,12 @@
 - **Break comment lines at logical boundaries, not greedily at the character limit.** Prefer breaks at the end of a sentence or clause so each line reads as a coherent unit, and keep the lines reasonably balanced. Never leave a dangling orphan line with just a word or two (e.g. a lone `// 3).` or `// path.`); pull an earlier word down so the last line is substantial.
 - The repository is formatted with **oxfmt** (`npm run prettier-fix`), not Prettier. Never run `npx prettier` — it uses different defaults (e.g. quote style) and will diverge from the repo format.
 
+## Localization PR Reviews
+
+- When reviewing localization PRs, including OneLocBuild translation handbacks updating `l10n/bundle.l10n.<locale>.json` or `package.nls.<locale>.json`, **ignore translation completeness**: missing translated entries, partial locale coverage, and values still identical to the English source. Do not request translations, reject the handback, or suggest manual translation edits solely for these gaps.
+- **Continue reporting malformed localization changes** introduced by the PR: corrupted text or encoding artifacts (for example, literal `~007E;` instead of `~`), invalid JSON, and missing, added, or altered interpolation placeholders compared with the source string. A missing translation is not the same as a broken placeholder in an existing translation.
+- This exception applies only to translation completeness in localization PRs. It does not waive review of source-code localization defects or the integrity of translated content.
+
 ## Localization
 
 - Do **not** make direct changes to localization files inside the `l10n/` (e.g., `bundle.l10n.json`, `bundle.l10n.[lang].json`, etc.) folder or `package.[lang].nls.json` files (e.g., `package.nls.de.json`, `package.nls.fr.json`, etc.).

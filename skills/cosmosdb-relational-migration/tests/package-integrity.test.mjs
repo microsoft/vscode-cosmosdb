@@ -714,6 +714,53 @@ test('defines focused provisioning and first-class code-migration routing', () =
     assert.doesNotMatch(codeMigration, /Start mode|start mode|start-mode/u);
 });
 
+test('requires strategy-specific execution checklists with durable progress and evidence', () => {
+    const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
+    const reference = fs.readFileSync(path.join(skillRoot, 'references/phases/code-migration.md'), 'utf8');
+    assert.match(skill, /Plan a strategy-specific execution checklist/u);
+    assert.match(reference, /Every generated plan must express `Ordered Changes` as an execution checklist/u);
+    for (const strategy of ['Direct switch', 'Validate alongside the source', 'Reversible cut-over', 'Incremental migration']) {
+        assert(reference.includes(`**${strategy}:**`), `${strategy} must be considered during planning`);
+    }
+    assert.match(reference, /read target, authoritative writer, routing boundary/u);
+    assert.match(reference, /Two independent database\s+writes are not atomic/u);
+    assert.match(reference, /Source-to-Cosmos\s+propagation alone cannot keep the source current/u);
+    assert.match(reference, /A unique, stable `CM-` identifier/u);
+    assert.match(reference, /Explicit dependencies by task identifier/u);
+    assert.match(reference, /`pending`, `in-progress`, `blocked`, or `complete`/u);
+    assert.match(reference, /The plan is the source of truth for task status/u);
+    assert.match(reference, /do not add a separate task file or new manifest fields/u);
+    assert.match(reference, /New execution items start unchecked and `pending`/u);
+    assert.match(reference, /Use `\[x\]` only with `complete`\s+after its completion condition is verified and evidence is recorded/u);
+    assert.match(reference, /Implemented\s+but unverified work remains unchecked/u);
+    assert.match(reference, /Persist progress after each meaningful task/u);
+    assert.match(reference, /On resume, inspect the current code, diff, dependencies, and recorded evidence/u);
+    assert.match(reference, /Preserve task IDs and valid prior\s+progress; reopen affected tasks/u);
+    assert.match(reference, /do not reuse IDs or\s+mark unperformed work complete/u);
+    assert.match(reference, /verify every active `CM-` task is complete\s+with evidence/u);
+    assert.match(reference, /deterministic validator does not parse task status or prove task completion/u);
+});
+
+test('keeps operational handoff separate without hiding required implementation or verification', () => {
+    const reference = fs.readFileSync(path.join(skillRoot, 'references/phases/code-migration.md'), 'utf8');
+    assert.match(reference, /Historical data transfer and production synchronization execution remain out of scope/u);
+    assert.match(reference, /separate top-level `Operational Handoff`\s+section with `OP-` task IDs/u);
+    assert.match(reference, /Operational handoff items do not gate code-migration completion/u);
+    assert.match(reference, /must not be executed\s+or checked off merely because application edits were authorized/u);
+    assert.match(reference, /do not move a missing\s+implementation, failed check, or required-but-unavailable test into the handoff/u);
+    assert.match(reference, /Retiring compatibility code requires a later explicit application\s+change request/u);
+    const example = reference.match(/```markdown\n([\s\S]*?)\n```/u)?.[1];
+    assert.ok(example, 'The checklist contract must illustrate the output format');
+    assert.match(example, /^## Ordered Changes$/mu);
+    assert.match(example, /^## Operational Handoff$/mu);
+    assert.doesNotMatch(example, /^###/mu);
+    assert.deepEqual([...example.matchAll(/^- \[ \] ((?:CM|OP)-\d+) \(pending\):/gmu)].map(match => match[1]),
+        ['CM-01', 'CM-02', 'OP-01']);
+    assert.equal([...example.matchAll(/^  - Depends on:/gmu)].length, 3);
+    assert.equal([...example.matchAll(/^  - Done when:/gmu)].length, 3);
+    assert.equal([...example.matchAll(/^  - Evidence:/gmu)].length, 3);
+});
+
 test('distinguishes model capacity from compatible provisioning targets', () => {
     const provisioning = fs.readFileSync(path.join(skillRoot, 'references/phases/provisioning.md'), 'utf8');
     assert.match(provisioning, /Serverless \| Provisioned \| Compatible/u);

@@ -318,6 +318,8 @@ Examples:
 6. Run [`provisioning`](./references/phases/provisioning.md) to generate deployment artifacts
    and, only when authorized, provision and seed the target.
 7. Run [application code migration](./references/phases/code-migration.md) when requested.
+   Plan a strategy-specific execution checklist, persist progress in the plan, and
+   keep production handoff tasks separate from application-code completion.
 
 In interactive mode, present the required short summary, generated-artifact list,
 warnings, decisions, and validation result after every phase, including `preflight`, then

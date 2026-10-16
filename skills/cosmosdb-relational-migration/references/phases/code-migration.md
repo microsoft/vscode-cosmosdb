@@ -46,9 +46,11 @@ Required for plan mode:
    `completedAt`.
 
 At the end of a migrate iteration, application outputs must exist, applicable build
-and test results must pass, and no unresolved blocking migration step may remain.
+and test results must pass, all active implementation and verification checklist items
+must be complete, and no unresolved blocking migration step may remain.
 Persist the workspace-relative output list in `phases.codeMigration.outputPaths`.
 These are iteration-time checks, not ongoing requirements on the evolving application.
+Production handoff items do not gate code completion or establish production readiness.
 
 ## Inputs
 
@@ -106,7 +108,8 @@ application edits or determines the requested action.
 11. Resolve deterministic choices in the plan. In interactive mode, ask the user now
    about consequential choices with multiple valid solutions; do not postpone those
    questions until migration. Update the plan from the answer before completing the
-   planning checkpoint.
+   planning checkpoint. Resolve the cut-over strategy and rollback expectations using
+   [Cut-over Scope](#cut-over-scope) before finalizing the execution checklist.
 12. Defer a blocker only when planning cannot resolve it, such as unavailable external
    access, credentials or permissions that must not be requested through chat, a
    decision the user explicitly postpones, or an outcome knowable only by executing
@@ -115,8 +118,134 @@ application edits or determines the requested action.
    it. The rationale must compare material alternatives and explain why the
    recommendation best fits repository evidence and migration constraints.
 13. Write `.cosmosdb-migration/code-migration-plan.md` with affected files, ordered
-   changes, tests, rollback considerations, applied rules, and unresolved choices;
-   write machine evidence to `code-migration-manifest.json`.
+   execution checklists, tests, rollback considerations, applied rules, and unresolved
+   choices; add a separate operational handoff checklist when applicable. Write machine
+   evidence to `code-migration-manifest.json`.
+
+## Cut-over Scope
+
+Record the selected strategy and its rationale in `Overview`, and its rollback
+conditions in `Rollback`. Offer options appropriate to the application rather than
+automatically introducing dual writes or migration infrastructure:
+
+- **Direct switch:** Rewrite the application for Cosmos DB and switch reads and writes
+  together, optionally with a maintenance or read-only window.
+- **Validate alongside the source:** Keep the source authoritative while mirroring
+  changes and comparing shadow reads; optionally move reads before write ownership.
+- **Reversible cut-over:** Move read and write ownership to Cosmos DB while keeping
+  the source updated and compatible for a defined rollback window.
+- **Incremental migration:** Move isolated tenants/cohorts or business domains
+  separately, applying one of the preceding strategies within each boundary.
+
+For each stage, identify the read target, authoritative writer, routing boundary,
+write-acknowledgment and secondary-failure behavior, and promotion/abort conditions.
+Include background jobs and other writers, not only request handlers. Resolve
+consequential choices through the normal planning decision and blocker rules.
+
+Keep one write authority per entity or domain at each stage. Two independent database
+writes are not atomic; when both databases must stay updated, define durable propagation,
+retry, idempotency, ordering, delete handling, and lag expectations. Source-to-Cosmos
+propagation alone cannot keep the source current after Cosmos takes write ownership.
+Rollback must account for committed writes, in-flight operations, writer fencing,
+reverse-compatible mappings, acceptable data loss, and recovery time. Switching back
+to the old application is not by itself a database rollback.
+
+Historical data transfer and production synchronization execution remain out of scope.
+Record their required contracts and external readiness gates in the plan; include
+application-side integration and tests in the execution checklist where required.
+Do not claim a reversible cut-over when the accepted model or operations cannot map
+back to the source. Resolve the incompatibility or record a deferred blocker rather
+than silently changing the accepted model.
+
+## Execution Checklist
+
+Every generated plan must express `Ordered Changes` as an execution checklist tailored
+to the selected strategy and application. Track meaningful implementation and
+verification tasks, not individual edits. A direct switch must not inherit shadow-read
+or dual-write tasks unless they are required by the selected design.
+
+For each active task, record:
+
+- A unique, stable `CM-` identifier, concrete action, and affected files or components.
+- Explicit dependencies by task identifier, or `none`; do not rely on list order alone.
+- A completion condition describing the required behavior or verification.
+- A Markdown checkbox and status: `pending`, `in-progress`, `blocked`, or `complete`.
+- Evidence when complete; when blocked, the reason, next action, and clearance condition.
+  Reference the corresponding `Blocker Review` identifier for deferred blockers.
+
+Group tasks with bold labels inside `Ordered Changes`, not nested headings, so the
+existing section validator sees the checklist as section content. This abbreviated
+example illustrates the format, not a mandatory task list or application stack:
+
+```markdown
+## Ordered Changes
+
+**Application implementation**
+- [ ] CM-01 (pending): Configure the Cosmos client.
+  - Scope: The application's data-access configuration and client registration.
+  - Depends on: none.
+  - Done when: Client lifecycle, authentication, and environment configuration match the accepted design and pass focused checks.
+  - Evidence: Not yet collected.
+
+**Verification**
+- [ ] CM-02 (pending): Verify the migrated application.
+  - Scope: All affected application components and their repository checks.
+  - Depends on: CM-01.
+  - Done when: Applicable build and behavioral checks pass, with coverage and limitations recorded in Validation.
+  - Evidence: Not yet collected.
+
+## Operational Handoff
+
+- [ ] OP-01 (pending): Confirm production data and synchronization readiness.
+  - Owner: The engineer responsible for production cut-over.
+  - Depends on: Code verification and the separately managed data-migration work.
+  - Done when: The owner records evidence that the agreed production readiness gates are met.
+  - Evidence: Not yet collected; outside code-migration execution.
+```
+
+The plan is the source of truth for task status. Reuse the existing manifest for output,
+blocker, and validation evidence; do not add a separate task file or new manifest fields.
+Reference validation commands/results from checklist evidence instead of maintaining
+independent copies of those results. Keep deferred blockers aligned with `Blocker Review`,
+`Unresolved Blockers`, and manifest `blockingSteps`.
+
+### Updating and Resuming
+
+- New execution items start unchecked and `pending`. Planning alone never marks an
+  execution item complete or records an unexecuted check as passed.
+- Mark a task `in-progress` before applying its changes. Use `[x]` only with `complete`
+  after its completion condition is verified and evidence is recorded. Implemented
+  but unverified work remains unchecked.
+- Persist progress after each meaningful task and before a handoff or interruption
+  when possible. Report completed, remaining, and blocked work with the next action;
+  do not rely on chat history or host-local todos as the durable execution record.
+- On resume, inspect the current code, diff, dependencies, and recorded evidence before
+  continuing. Do not replay completed edits blindly. Preserve task IDs and valid prior
+  progress; reopen affected tasks when changed code or scope invalidates their evidence,
+  and rerun affected checks for the current iteration.
+- When updating a plan, add new IDs for new work. Remove obsolete tasks from the active
+  checklist with a short note retaining their IDs and the reason; do not reuse IDs or
+  mark unperformed work complete. Preserve historical validation evidence as historical,
+  not proof of current correctness.
+- Before completing a migrate iteration, verify every active `CM-` task is complete
+  with evidence, applicable checks pass, and no execution blocker remains. Plan-mode
+  completion means the plan is ready, not that its implementation tasks have run.
+
+### Operational Handoff
+
+When production rollout is relevant, add a separate top-level `Operational Handoff`
+section with `OP-` task IDs, owners, dependencies, completion conditions, and evidence
+using the same checkbox/status convention. Include only applicable external readiness
+checks, rollout approval, production observation and promotion/abort gates, rollback
+window closure, and retirement of temporary compatibility code.
+
+Operational handoff items do not gate code-migration completion and must not be executed
+or checked off merely because application edits were authorized. Keep required
+application integration and verification in `Ordered Changes`; do not move a missing
+implementation, failed check, or required-but-unavailable test into the handoff to
+claim completion. Retiring compatibility code requires a later explicit application
+change request after the rollback window closes. Report the handoff as outstanding
+without claiming that production cut-over, synchronization, or data migration occurred.
 
 ## Deterministic Plan Contract
 
@@ -299,7 +428,10 @@ that declared coverage is adequate. Never place
 application outputs under `.cosmosdb-migration`.
 
 In plan mode, stop after validating the plan. In migrate mode, apply changes using
-the host repository's editing and testing rules. Do not overwrite unrelated user
+the host repository's editing and testing rules and update the execution checklist
+as work progresses. The host verifies checklist status and completion evidence; the
+deterministic validator does not parse task status or prove task completion.
+Do not overwrite unrelated user
 changes, expose secrets, or claim completion without running applicable tests.
 
 Write the code-migration checkpoint after its required outputs validate, preserving

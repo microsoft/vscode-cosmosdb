@@ -120,6 +120,14 @@ Planning and applying application changes are separate requests. Resource and da
 mutations require explicit permission for the current invocation; a previous run's
 authorization does not carry forward.
 
+Code-migration plans include a strategy-specific execution checklist with stable task
+IDs, dependencies, completion conditions, and recorded progress. The agent updates
+implementation and verification tasks as it works and checks current code and evidence
+before resuming. Applicable production rollout, synchronization readiness, and rollback
+window tasks remain in a separate operational handoff checklist; code completion does
+not mean production cut-over has occurred. See the
+[checklist contract](./references/phases/code-migration.md#execution-checklist).
+
 ### Review and Fix
 
 Use **Review and Fix** in Migration Assistant, or request a review directly:

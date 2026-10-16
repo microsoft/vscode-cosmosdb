@@ -1,23 +1,10 @@
-# Tests workflow — unit tests (vitest) and integration tests (VS Code extension host), as sequential steps in
-# a single job.
-#
-# Design:
-#   - This whole workflow runs IN PARALLEL with build.yml (compile/lint/prettier/l10n/package) on a separate
-#     runner, because the tests are the slow part and shouldn't wait on the fast analyzers.
-#   - Within this job the steps are sequential: unit first (fast), then build dist/ + integration (slow). The
-#     integration step uses `if: ${{ !cancelled() }}` so it still runs when unit tests fail — that way one run
-#     reports BOTH buckets instead of hiding the integration result behind a unit failure.
-#   - No Docker/emulator is required: the only integration test is extension activation, which makes no database
-#     connections (see test/extensionActivation.test.ts). E2E (Playwright + Cosmos emulator) lives in e2e.yml.
-#   - Shell MCP tests install the latest preview .NET tool into an isolated directory; no database is needed.
+# Unit tests run independently of build.yml and integration-tests.yml, with coverage and their own PR summary.
 
-name: Tests
+name: Unit Tests
 
 permissions:
   contents: read
   pull-requests: write
-  # Needed by the summary step's gh api calls (list this run's artifacts).
-  actions: read
   # Needed by the Upload Code Coverage step (actions/upload-code-coverage).
   code-quality: write
 
@@ -43,8 +30,8 @@ concurrency:
     format('{0}-{1}', github.repository, github.ref_name) }}
 
 jobs:
-  test:
-    name: Tests
+  unit-tests:
+    name: Unit Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -63,23 +50,6 @@ jobs:
       - name: 🧪 Unit Tests
         id: unit-tests
         run: npm run vitest:coverage
-
-      - name: Set up .NET for Shell MCP tests
-        if: ${{ !cancelled() }}
-        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Install current Cosmos DB Shell
-        if: ${{ !cancelled() }}
-        run: dotnet tool install CosmosDBShell --prerelease --tool-path "$RUNNER_TEMP/cosmosdb-shell"
-
-      - name: Shell MCP Integration Tests
-        id: shell-mcp-tests
-        if: ${{ !cancelled() }}
-        env:
-          COSMOSDB_SHELL_MCP_TEST_PATH: ${{ runner.temp }}/cosmosdb-shell/cosmosdbshell
-        run: npm run test:shell-mcp
 
       - name: 📊 Upload Code Coverage
         # The coverage service accepts uploads only for the default branch or a PR. Skip release/dev branch
@@ -105,39 +75,12 @@ jobs:
           path: coverage/
           if-no-files-found: warn
 
-      - name: 🔨 Build extension
-        # `npm test` loads the extension from dist/; build it explicitly so a build failure surfaces as its own
-        # step rather than being buried inside the test runner. `!cancelled()` so we still get here (and run
-        # integration) when unit tests failed.
-        if: ${{ !cancelled() }}
-        run: npm run vite-prod
-
-      - name: 🧪 Integration Tests
-        id: integration-tests
-        # Run even when unit tests failed so a single run reports both buckets. xvfb-run is mandatory on Linux:
-        # VS Code/Electron has no real headless mode and the runner has no display. `-a` picks the next free
-        # display number. Retry up to 3 times to ride out the occasional flaky extension-host startup.
-        if: ${{ !cancelled() }}
-        run: |
-          exit_code=1
-          for i in 1 2 3; do
-              xvfb-run -a npm test
-              exit_code=$?
-              if [ $exit_code -eq 0 ]; then break; fi
-              echo "Attempt $i failed with exit code $exit_code"
-              if [ $i -lt 3 ]; then sleep 15; fi
-          done
-          exit $exit_code
-
       - name: 📊 Generate Job Summary
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
           UNIT_TEST_RESULT: ${{ steps.unit-tests.outcome }}
-          INTEGRATION_TEST_RESULT: ${{ steps.integration-tests.outcome }}
-          SHELL_MCP_TEST_RESULT: ${{ steps.shell-mcp-tests.outcome }}
           REPO: ${{ github.repository }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
           COVERAGE_URL: ${{ steps.upload-coverage.outputs.artifact-url }}
           EVENT_NAME: ${{ github.event_name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -192,8 +135,6 @@ jobs:
           }
 
           unit_icon=$(result_icon "$UNIT_TEST_RESULT")
-          int_icon=$(result_icon "$INTEGRATION_TEST_RESULT")
-          shell_icon=$(result_icon "$SHELL_MCP_TEST_RESULT")
 
           coverage_section=""
           if [ -n "${COVERAGE_URL:-}" ]; then
@@ -203,26 +144,22 @@ jobs:
           - [Download HTML report](${COVERAGE_URL})"
           fi
 
-          MARKER="<!-- ci-summary:test -->"
+          MARKER="<!-- ci-summary:unit-tests -->"
           cat >> "$GITHUB_STEP_SUMMARY" << SUMMARY_EOF
           ${MARKER}
-          # 🧪 Tests (Unit + Integration)
+          # 🧪 Unit Tests
 
           ## 🧪 Results
-          - **Unit Tests (vitest):** ${unit_icon} ${UNIT_TEST_RESULT}
-          - **Shell MCP Integration Tests:** ${shell_icon} ${SHELL_MCP_TEST_RESULT}
-          - **Integration Tests (extension host):** ${int_icon} ${INTEGRATION_TEST_RESULT}${coverage_section}
+          - **Unit Tests (vitest):** ${unit_icon} ${UNIT_TEST_RESULT}${coverage_section}
           SUMMARY_EOF
 
           echo "✅ Job summary written to: ${GITHUB_STEP_SUMMARY}"
 
           # Don't overwrite a prior real result with an all-skipped run.
           comment_meaningful=false
-          for r in "$UNIT_TEST_RESULT" "$INTEGRATION_TEST_RESULT" "$SHELL_MCP_TEST_RESULT"; do
-              case "$r" in
-                  success|failure) comment_meaningful=true ;;
-              esac
-          done
+          case "$UNIT_TEST_RESULT" in
+              success|failure) comment_meaningful=true ;;
+          esac
 
           if [ "${EVENT_NAME}" = "pull_request" ] && [ -n "${PR_NUMBER:-}" ]; then
               post_or_update_comment "${PR_NUMBER}" "${MARKER}" "${GITHUB_STEP_SUMMARY}" "${comment_meaningful}"

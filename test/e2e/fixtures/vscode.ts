@@ -124,6 +124,9 @@ function seedUserSettings(userDataDir: string): void {
         // exercise Quick Start itself opt back in by re-enabling this setting.
         'cosmosDB.quickStart.enabled': false,
     };
+    if (process.platform === 'darwin') {
+        settings['window.menuStyle'] = 'custom';
+    }
     const settingsPath = path.join(userDataDir, 'User', 'settings.json');
     mkdirSync(path.dirname(settingsPath), { recursive: true });
     writeFileSync(settingsPath, JSON.stringify(settings, null, 4), 'utf-8');

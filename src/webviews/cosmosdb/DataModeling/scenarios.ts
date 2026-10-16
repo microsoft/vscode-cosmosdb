@@ -19,9 +19,48 @@ export function nextId(prefix = 'id'): string {
     return `${prefix}-${crypto.randomUUID()}`;
 }
 
+export type ScenarioTag =
+    | 'lowLatency'
+    | 'transactional'
+    | 'writeHeavy'
+    | 'tenantIsolation'
+    | 'largeDocs'
+    | 'fanOutReads'
+    | 'cacheable'
+    | 'pointReads'
+    | 'appendOnly'
+    | 'readHeavy'
+    | 'balanced'
+    | 'custom';
+
 export interface ScenarioBadge {
+    /** Stable, non-localized key used for filtering; `text` is the localized label. */
+    tag: ScenarioTag;
     tone: 'info' | 'warn' | 'success';
     text: string;
+}
+
+/**
+ * One color per trait, so a trait looks the same on every card and in the filter.
+ * Yellow flags write or size pressure, green flags read-scale-friendly traits, and blue covers the rest.
+ */
+export const TRAIT_TONE: Record<ScenarioTag, ScenarioBadge['tone']> = {
+    lowLatency: 'info',
+    transactional: 'info',
+    tenantIsolation: 'info',
+    pointReads: 'info',
+    readHeavy: 'info',
+    balanced: 'info',
+    custom: 'info',
+    writeHeavy: 'warn',
+    largeDocs: 'warn',
+    appendOnly: 'warn',
+    fanOutReads: 'success',
+    cacheable: 'success',
+};
+
+function badge(tag: ScenarioTag, text: string): ScenarioBadge {
+    return { tag, tone: TRAIT_TONE[tag], text };
 }
 
 export interface ScenarioListItem {
@@ -40,7 +79,7 @@ export function getScenarioList(): ScenarioListItem[] {
             id: 'chat',
             title: l10n.t('Chat & Sessions'),
             description: l10n.t('Chat sessions, AI assistants, helpdesks'),
-            badge: { tone: 'info', text: l10n.t('Low latency') },
+            badge: badge('lowLatency', l10n.t('Low latency')),
             hint: '/sessionId · /userId',
             searchTerms: 'chat sessions ai assistant helpdesk',
         },
@@ -48,7 +87,7 @@ export function getScenarioList(): ScenarioListItem[] {
             id: 'ecommerce',
             title: l10n.t('Orders & Transactions'),
             description: l10n.t('Checkout, payments, subscription records'),
-            badge: { tone: 'info', text: l10n.t('Transactional') },
+            badge: badge('transactional', l10n.t('Transactional')),
             hint: '/customerId, /orderId',
             searchTerms: 'orders transactions checkout retail e-commerce',
         },
@@ -56,7 +95,7 @@ export function getScenarioList(): ScenarioListItem[] {
             id: 'iot',
             title: l10n.t('IoT Device Telemetry'),
             description: l10n.t('High-volume device events, sensor streams'),
-            badge: { tone: 'warn', text: l10n.t('Write-heavy') },
+            badge: badge('writeHeavy', l10n.t('Write-heavy')),
             hint: '/deviceId, /id',
             searchTerms: 'iot telemetry devices sensors time-series',
         },
@@ -64,7 +103,7 @@ export function getScenarioList(): ScenarioListItem[] {
             id: 'multitenant',
             title: l10n.t('Multi-tenant SaaS'),
             description: l10n.t('Tenant-isolated data, variable tenant sizes'),
-            badge: { tone: 'info', text: l10n.t('Tenant isolation') },
+            badge: badge('tenantIsolation', l10n.t('Tenant isolation')),
             hint: '/tenantId (+ HPK)',
             searchTerms: 'multi-tenant saas b2b tenant isolation',
         },
@@ -72,7 +111,7 @@ export function getScenarioList(): ScenarioListItem[] {
             id: 'rag',
             title: l10n.t('RAG & Embeddings'),
             description: l10n.t('AI knowledge bases, document search, vectors'),
-            badge: { tone: 'warn', text: l10n.t('Large docs') },
+            badge: badge('largeDocs', l10n.t('Large docs')),
             hint: '/sourceId',
             searchTerms: 'rag embeddings vector ai knowledge base',
         },
@@ -80,7 +119,7 @@ export function getScenarioList(): ScenarioListItem[] {
             id: 'social',
             title: l10n.t('Social & Messaging'),
             description: l10n.t('Posts, feeds, conversations, user interactions'),
-            badge: { tone: 'success', text: l10n.t('Fan-out reads') },
+            badge: badge('fanOutReads', l10n.t('Fan-out reads')),
             hint: '/conversationId, /messageId · /userId',
             searchTerms: 'social messaging feeds posts conversations',
         },
@@ -88,7 +127,7 @@ export function getScenarioList(): ScenarioListItem[] {
             id: 'catalog',
             title: l10n.t('Product Catalog'),
             description: l10n.t('Listings, inventory, marketplace items'),
-            badge: { tone: 'success', text: l10n.t('Cacheable') },
+            badge: badge('cacheable', l10n.t('Cacheable')),
             hint: '/categoryId, /productId',
             searchTerms: 'product catalog inventory marketplace',
         },
@@ -96,7 +135,7 @@ export function getScenarioList(): ScenarioListItem[] {
             id: 'gaming',
             title: l10n.t('Gaming & Leaderboards'),
             description: l10n.t('Player state, match history, leaderboards'),
-            badge: { tone: 'info', text: l10n.t('Low latency') },
+            badge: badge('lowLatency', l10n.t('Low latency')),
             hint: '/playerId',
             searchTerms: 'gaming leaderboards player match',
         },
@@ -104,7 +143,7 @@ export function getScenarioList(): ScenarioListItem[] {
             id: 'profiles',
             title: l10n.t('User Profiles & Identity'),
             description: l10n.t('Accounts, preferences, settings'),
-            badge: { tone: 'success', text: l10n.t('Point reads') },
+            badge: badge('pointReads', l10n.t('Point reads')),
             hint: '/userId',
             searchTerms: 'user profiles identity accounts preferences settings',
         },
@@ -112,7 +151,7 @@ export function getScenarioList(): ScenarioListItem[] {
             id: 'eventsourcing',
             title: l10n.t('Event Sourcing & Audit'),
             description: l10n.t('Immutable event streams, audit logs'),
-            badge: { tone: 'info', text: l10n.t('Append-only') },
+            badge: badge('appendOnly', l10n.t('Append-only')),
             hint: '/streamId',
             searchTerms: 'event sourcing audit immutable log stream',
         },
@@ -120,7 +159,7 @@ export function getScenarioList(): ScenarioListItem[] {
             id: 'analytics',
             title: l10n.t('Real-time Analytics'),
             description: l10n.t('Clickstream, sessions, funnels'),
-            badge: { tone: 'warn', text: l10n.t('Write-heavy') },
+            badge: badge('writeHeavy', l10n.t('Write-heavy')),
             hint: '/sessionId',
             searchTerms: 'real-time analytics clickstream sessions funnels',
         },
@@ -128,7 +167,7 @@ export function getScenarioList(): ScenarioListItem[] {
             id: 'cms',
             title: l10n.t('Content Management'),
             description: l10n.t('Articles, pages, media metadata'),
-            badge: { tone: 'success', text: l10n.t('Read-heavy') },
+            badge: badge('readHeavy', l10n.t('Read-heavy')),
             hint: '/siteId, /contentId',
             searchTerms: 'content management articles pages media cms',
         },
@@ -136,7 +175,7 @@ export function getScenarioList(): ScenarioListItem[] {
             id: 'ledger',
             title: l10n.t('Financial Ledger'),
             description: l10n.t('Accounts, transactions, payments'),
-            badge: { tone: 'info', text: l10n.t('Transactional') },
+            badge: badge('transactional', l10n.t('Transactional')),
             hint: '/accountId, /ledgerId',
             searchTerms: 'financial ledger accounts transactions payments',
         },
@@ -144,7 +183,7 @@ export function getScenarioList(): ScenarioListItem[] {
             id: 'inventory',
             title: l10n.t('Inventory & Supply Chain'),
             description: l10n.t('SKUs, stock levels, warehouses'),
-            badge: { tone: 'success', text: l10n.t('Balanced') },
+            badge: badge('balanced', l10n.t('Balanced')),
             hint: '/skuId · /skuId, /movementId',
             searchTerms: 'inventory supply chain sku stock warehouse',
         },
@@ -152,7 +191,7 @@ export function getScenarioList(): ScenarioListItem[] {
             id: 'booking',
             title: l10n.t('Booking & Reservations'),
             description: l10n.t('Properties, resources, availability'),
-            badge: { tone: 'success', text: l10n.t('Balanced') },
+            badge: badge('balanced', l10n.t('Balanced')),
             hint: '/propertyId, /reservationId',
             searchTerms: 'booking reservations property resource availability',
         },
@@ -160,7 +199,7 @@ export function getScenarioList(): ScenarioListItem[] {
             id: 'other',
             title: l10n.t('None of these fit'),
             description: l10n.t('Describe your specific workload'),
-            badge: { tone: 'info', text: l10n.t('Custom') },
+            badge: badge('custom', l10n.t('Custom')),
             hint: '',
             searchTerms: 'other custom none',
         },

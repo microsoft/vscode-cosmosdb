@@ -324,11 +324,16 @@ export async function checkPackages(
                 } else if (visibility === 'public') {
                     if (!isObject(result.metadata?.versions))
                         throw new Error('MS feed metadata has no versions object');
+                    const latest = result.metadata['dist-tags']?.latest;
+                    const latestAvailable =
+                        typeof latest === 'string' && result.metadata.versions[latest]?.dist?.tarball
+                            ? latest
+                            : 'not reported';
                     for (const version of check.versions) {
                         const metadata = result.metadata.versions[version];
                         if (!isObject(metadata) || !metadata.dist?.tarball) {
                             failures.push(
-                                `${check.name}@${version}: version unavailable in MS feed (possibly still in quarantine)`,
+                                `${check.name}@${version}: version unavailable in MS feed (possibly still in quarantine; feed latest: ${latestAvailable})`,
                             );
                         } else {
                             passed++;

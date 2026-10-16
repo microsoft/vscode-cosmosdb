@@ -257,8 +257,14 @@ async function fetchOnce(target, visibility, config, fetchImpl) {
             continue;
         }
         if (visibility === 'public' && response.ok) {
+            let body;
             try {
-                return { status: response.status, metadata: await response.json() };
+                body = await response.text();
+            } catch {
+                return { transientError: 'Network error or request timeout while reading MS feed metadata' };
+            }
+            try {
+                return { status: response.status, metadata: JSON.parse(body) };
             } catch {
                 throw new Error('Invalid or incomplete JSON metadata from the MS feed');
             }

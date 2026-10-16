@@ -1001,6 +1001,7 @@ export function MigrationPhaseDiagnostics({
 
 function FileListExpander({
     files,
+    descriptionId,
     excludedFiles,
     workspacePath,
     onOpenFile,
@@ -1011,6 +1012,7 @@ function FileListExpander({
     styles,
 }: {
     files: string[];
+    descriptionId: string;
     excludedFiles: string[];
     workspacePath: string;
     onOpenFile: (filePath: string) => void;
@@ -1090,6 +1092,7 @@ function FileListExpander({
                 // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- styled <div> expander; switching to <button> would break layout
                 role="button"
                 aria-expanded={expanded}
+                aria-describedby={descriptionId}
                 tabIndex={0}
                 onKeyDown={(e) => {
                     if (e.key === ' ') {
@@ -1258,15 +1261,8 @@ function MigrationPhaseHeader({
     const buttonRef = useRef<HTMLButtonElement>(null);
     const [tooltipVisible, setTooltipVisible] = useState(false);
     const description = state === 'locked' && !outcome ? lockedReason : undefined;
-    const header = (
-        <AccordionHeader
-            button={{
-                ref: buttonRef,
-                'aria-description': description,
-                onFocus: () => setTooltipVisible(true),
-                onBlur: () => setTooltipVisible(false),
-            }}
-        >
+    const content = (
+        <>
             <span
                 ref={setLabelTarget}
                 data-testid={`migration-${phase}-label`}
@@ -1281,7 +1277,7 @@ function MigrationPhaseHeader({
                 <Text weight="semibold">{label}</Text>
             </span>
             {outcome}
-        </AccordionHeader>
+        </>
     );
     return description ? (
         <Tooltip
@@ -1298,10 +1294,27 @@ function MigrationPhaseHeader({
             }}
             withArrow
         >
-            {header}
+            {(triggerProps) => (
+                <AccordionHeader
+                    button={{
+                        ...triggerProps,
+                        ref: (element: HTMLButtonElement | null) => {
+                            buttonRef.current = element;
+                            if (typeof triggerProps.ref === 'function') return triggerProps.ref(element);
+                            if (triggerProps.ref) triggerProps.ref.current = element;
+                        },
+                        'aria-description': description,
+                        // Prerequisites must also appear when Tabster restores focus programmatically.
+                        onFocus: () => setTooltipVisible(true),
+                        onBlur: () => setTooltipVisible(false),
+                    }}
+                >
+                    {content}
+                </AccordionHeader>
+            )}
         </Tooltip>
     ) : (
-        header
+        <AccordionHeader>{content}</AccordionHeader>
     );
 }
 
@@ -1328,6 +1341,42 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
     const analysisLabelId = useId();
     const state = useMigrationState();
     const dispatch = useMigrationDispatch();
+    const { announce } = useAnnounce();
+    const previousRunActivity = useRef(state.runActivity);
+    const previousConnectionTestState = useRef(state.connectionTestState);
+    const schemaFilesDescription = l10n.t('Database Schema Files, required');
+    const volumetricsLabel = l10n.t('Volumetrics:');
+    const accessPatternsLabel = l10n.t('Access Patterns:');
+    useEffect(() => {
+        const previous = previousRunActivity.current;
+        const activity = state.runActivity;
+        previousRunActivity.current = activity;
+        const phase = getMigrationRunPhase(activity, state.phaseCompletion);
+        if (
+            activity?.activity === 'complete' &&
+            previous?.runId === activity.runId &&
+            isMigrationRunActive(previous) &&
+            !activity.validationFailed &&
+            phase &&
+            !getMigrationPhaseOutcome(phase, state.phaseCompletion, activity)
+        ) {
+            announce(
+                l10n.t('{phase}: action completed successfully.', {
+                    phase: activity.phase === 'all' ? l10n.t('Migration') : migrationPhaseLabel(activity.phase),
+                }),
+            );
+        }
+    }, [state.runActivity, state.phaseCompletion, announce]);
+    useEffect(() => {
+        const previous = previousConnectionTestState.current;
+        previousConnectionTestState.current = state.connectionTestState;
+        if (previous === state.connectionTestState) return;
+        if (state.connectionTestState === 'in-progress') {
+            announce(l10n.t('Testing connection…'));
+        } else if (previous === 'in-progress' && state.connectionVerified) {
+            announce(l10n.t('Connection verified successfully.'));
+        }
+    }, [state.connectionTestState, state.connectionVerified, announce]);
     const [touchedAnalysisFields, setTouchedAnalysisFields] = useState<Record<string, boolean>>({});
     const analysisFieldValidation = (
         field: 'projectName' | 'projectType' | 'language' | 'databaseType' | 'databaseAccess',
@@ -1934,7 +1983,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                     <div className={styles.filePickerGrid}>
                         {/* Schema Files */}
                         <Text weight="semibold" size={200}>
-                            {l10n.t('Database Schema Files:')}{' '}
+                            <span id={`${analysisLabelId}-schema-files`}>{l10n.t('Database Schema Files:')}</span>{' '}
                             <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>
                             <InfoPopoverIcon
                                 content={
@@ -1965,7 +2014,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                         <Button
                             appearance="secondary"
                             size="small"
-                            aria-description={l10n.t('Database Schema Files, required')}
+                            aria-description={schemaFilesDescription}
                             onClick={handleSelectSchemaFiles}
                             disabled={isRunActive}
                         >
@@ -1974,7 +2023,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                         <Button
                             appearance="secondary"
                             size="small"
-                            aria-description={l10n.t('Database Schema Files, required')}
+                            aria-description={schemaFilesDescription}
                             onClick={handleSelectSchemaFolder}
                             disabled={isRunActive}
                         >
@@ -1996,6 +2045,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                         <div className={styles.filePickerExpanderRow} data-testid="migration-step-schema-acquisition">
                             <FileListExpander
                                 files={state.schemaFiles}
+                                descriptionId={`${analysisLabelId}-schema-files`}
                                 disabled={isRunActive}
                                 excludedFiles={state.excludedSchemaFiles}
                                 workspacePath={state.workspacePath}
@@ -2008,7 +2058,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
 
                         {/* Volumetric Files */}
                         <Text weight="semibold" size={200}>
-                            {l10n.t('Volumetrics:')}
+                            <span id={`${analysisLabelId}-volumetrics`}>{volumetricsLabel}</span>
                             <InfoPopoverIcon
                                 content={
                                     <>
@@ -2038,6 +2088,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                         <Button
                             appearance="secondary"
                             size="small"
+                            aria-description={volumetricsLabel}
                             onClick={handleSelectVolumetricFiles}
                             disabled={isRunActive}
                         >
@@ -2046,6 +2097,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                         <Button
                             appearance="secondary"
                             size="small"
+                            aria-description={volumetricsLabel}
                             onClick={handleSelectVolumetricFolder}
                             disabled={isRunActive}
                         >
@@ -2075,6 +2127,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                         <div className={styles.filePickerExpanderRow} data-testid="migration-step-volumetrics">
                             <FileListExpander
                                 files={state.volumetricFiles}
+                                descriptionId={`${analysisLabelId}-volumetrics`}
                                 disabled={isRunActive}
                                 excludedFiles={state.excludedVolumetricFiles}
                                 workspacePath={state.workspacePath}
@@ -2088,7 +2141,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
 
                         {/* Access Pattern Files */}
                         <Text weight="semibold" size={200}>
-                            {l10n.t('Access Patterns:')}
+                            <span id={`${analysisLabelId}-access-patterns`}>{accessPatternsLabel}</span>
                             <InfoPopoverIcon
                                 content={
                                     <>
@@ -2118,6 +2171,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                         <Button
                             appearance="secondary"
                             size="small"
+                            aria-description={accessPatternsLabel}
                             onClick={handleSelectAccessPatternFiles}
                             disabled={isRunActive}
                         >
@@ -2126,6 +2180,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                         <Button
                             appearance="secondary"
                             size="small"
+                            aria-description={accessPatternsLabel}
                             onClick={handleSelectAccessPatternFolder}
                             disabled={isRunActive}
                         >
@@ -2155,6 +2210,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                         <div className={styles.filePickerExpanderRow} data-testid="migration-step-access-patterns">
                             <FileListExpander
                                 files={state.accessPatternFiles}
+                                descriptionId={`${analysisLabelId}-access-patterns`}
                                 disabled={isRunActive}
                                 excludedFiles={state.excludedAccessPatternFiles}
                                 workspacePath={state.workspacePath}
@@ -2355,6 +2411,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
             <div className={styles.configSection}>
                 <Accordion
                     collapsible
+                    multiple
                     openItems={openPhases}
                     onToggle={(_event, data) => setOpenPhases(data.openItems as string[])}
                 >
@@ -3036,14 +3093,28 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                         (state.targetType !== 'provision' ||
                                             state.accountProvisioningState === 'complete') && (
                                             <>
-                                                {state.connectionTestState === 'in-progress' ? (
-                                                    <ProgressBar />
-                                                ) : state.targetType === 'provision' ? null : (
+                                                {state.targetType === 'provision' &&
+                                                    state.connectionTestState === 'in-progress' && (
+                                                        <ProgressBar aria-label={l10n.t('Testing connection…')} />
+                                                    )}
+                                                {state.targetType !== 'provision' && (
                                                     <Button
                                                         data-testid="migration-test-connection"
                                                         appearance="primary"
                                                         size="small"
-                                                        icon={<PlugConnectedRegular />}
+                                                        icon={
+                                                            state.connectionTestState === 'in-progress' ? (
+                                                                <Spinner size="extra-tiny" aria-hidden="true" />
+                                                            ) : (
+                                                                <PlugConnectedRegular />
+                                                            )
+                                                        }
+                                                        disabledFocusable={state.connectionTestState === 'in-progress'}
+                                                        aria-description={
+                                                            state.connectionTestState === 'in-progress'
+                                                                ? l10n.t('Testing connection…')
+                                                                : undefined
+                                                        }
                                                         onClick={handleTestConnection}
                                                         disabled={
                                                             isPhase4Disabled ||

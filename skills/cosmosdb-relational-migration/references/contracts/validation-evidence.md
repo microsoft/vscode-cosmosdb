@@ -294,6 +294,9 @@ Storage entries have stable `id`, `kind` (`primary`, `embedded`, `projection`),
 
 - `rows`: current contribution count; null means unknown. Never pre-apply growth
   or retention. `estimatedRowCount` counts current standalone documents only.
+  Known primary and projection counts are retained even when embedded counts are
+  unknown. An unknown primary or projection count prevents a total document count;
+  unknown rows or item sizes in any contribution prevent a storage estimate.
 - Embedded entries name a standalone `parent`; exclude their separately counted
   bytes from the parent and their rows from document totals. Count projections
   separately. Do not allocate standalone metadata to embedded entries.

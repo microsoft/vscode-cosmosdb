@@ -59,8 +59,11 @@ export function reconcileCapacity(evidence, domains, capacityMode) {
         if (value.kind === 'embedded' && (!storage.has(value.parent) || storage.get(value.parent).kind === 'embedded')) throw new Error('Embedded storage must name its standalone parent contribution');
     }
     const orderedStorage = [...storage].sort(([left], [right]) => left.localeCompare(right)).map(([, value]) => value);
+    const standaloneStorage = orderedStorage.filter(value => value.kind !== 'embedded');
+    if (standaloneStorage.length && standaloneStorage.every(value => value.rows !== null)) {
+        result.estimatedRowCount = standaloneStorage.reduce((total, value) => total + value.rows, 0);
+    }
     if (storage.size && orderedStorage.every(value => value.rows !== null)) {
-        result.estimatedRowCount = orderedStorage.filter(value => value.kind !== 'embedded').reduce((total, value) => total + value.rows, 0);
         const growthInput = evidence.sizing?.monthlyGrowthPercent;
         if (orderedStorage.every(value => value.bytesPerItem !== null) && growthInput !== undefined && growthInput !== null) {
             const growth = number(growthInput, 'monthly growth');

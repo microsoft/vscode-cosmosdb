@@ -29,9 +29,46 @@ test('handles separate windows, unknown storage and missing domain evidence', ()
     evidence.storage[1].rows = null;
     const result = reconcileCapacity(evidence, ['Sales', 'Accounts'], 'provisioned');
     assert.equal(result.maxThroughput, 4000);
+    assert.equal(result.estimatedRowCount, 100);
     assert.equal(result.estimatedStorageGB, undefined);
     assert.throws(() => reconcileCapacity(evidence, ['Sales', 'Accounts', 'Missing'], 'provisioned'), /omits/);
     assert.deepEqual(reconcileCapacity({ ...evidence, operations: [...evidence.operations].reverse() }, ['Sales', 'Accounts'], 'provisioned'), result);
+});
+
+test('retains primary and projection counts independently of unknown embedded estimates', () => {
+    for (const capacityMode of ['serverless', 'provisioned']) {
+        for (const field of ['rows', 'bytesPerItem']) {
+            const evidence = input();
+            evidence.storage[1][field] = null;
+            const primaryOnly = reconcileCapacity(evidence, ['Sales', 'Accounts'], capacityMode);
+            assert.equal(primaryOnly.estimatedRowCount, 100);
+            assert.equal(Object.hasOwn(primaryOnly, 'estimatedStorageGB'), false);
+
+            evidence.storage.push({ id: 'order-projection', kind: 'projection', rows: 50, bytesPerItem: 100, source: 'volumetrics.md' });
+            const withProjection = reconcileCapacity(evidence, ['Sales', 'Accounts'], capacityMode);
+            assert.equal(withProjection.estimatedRowCount, 150);
+            assert.equal(Object.hasOwn(withProjection, 'estimatedStorageGB'), false);
+        }
+    }
+});
+
+test('omits document counts when a primary or projection row count is unknown', () => {
+    for (const kind of ['primary', 'projection']) {
+        const evidence = input();
+        evidence.storage.push({ id: 'unknown', kind, rows: null, bytesPerItem: 100, source: 'volumetrics.md' });
+        const result = reconcileCapacity(evidence, ['Sales', 'Accounts'], 'serverless');
+        assert.equal(Object.hasOwn(result, 'estimatedRowCount'), false);
+        assert.equal(Object.hasOwn(result, 'estimatedStorageGB'), false);
+    }
+});
+
+test('distinguishes a known zero document count from missing storage evidence', () => {
+    const evidence = input();
+    evidence.storage[0].rows = 0;
+    evidence.storage[1].rows = null;
+    assert.deepEqual(reconcileCapacity(evidence, ['Sales', 'Accounts'], 'serverless'), { estimatedRowCount: 0 });
+    evidence.storage = [];
+    assert.deepEqual(reconcileCapacity(evidence, ['Sales', 'Accounts'], 'serverless'), {});
 });
 
 test('keeps unknown growth non-blocking without inventing a storage projection', () => {

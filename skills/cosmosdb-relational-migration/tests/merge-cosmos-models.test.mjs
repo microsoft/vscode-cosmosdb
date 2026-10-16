@@ -306,6 +306,41 @@ test('requires contribution evidence rather than losing equal shared-container e
     assert.equal(mergeCosmosModels(domains, options).model.containers[0].maxThroughput, 8000);
 });
 
+test('retains known shared-container document counts when embedded rows are unknown', () => {
+    const domains = ['Sales', 'Accounts'].map(domainName => ({
+        domainName,
+        model: domainModel(domainName, 'Shared', entity(domainName, `${domainName}.Items`)),
+    }));
+    for (const entry of domains) {
+        entry.model.containers[0].estimatedRowCount = 100;
+        entry.model.containers[0].estimatedStorageGB = 1;
+    }
+    const options = {
+        ...mergeOptions,
+        capacityEvidence: {
+            version: 1,
+            containers: [{
+                name: 'Shared',
+                operations: domains.map(({ domainName }) => ({
+                    id: domainName, domains: [domainName], ruPerOperation: 1, operationsPerSecond: 100,
+                    window: 'peak', source: 'patterns.md',
+                })),
+                storage: [
+                    { id: 'items', kind: 'primary', rows: 100, bytesPerItem: 1000, source: 'volumetrics.md' },
+                    { id: 'embedded', kind: 'embedded', parent: 'items', rows: null, bytesPerItem: 500, source: 'volumetrics.md' },
+                ],
+                sizing: { monthlyGrowthPercent: 0 },
+            }],
+        },
+    };
+    const result = mergeCosmosModels(domains, options);
+    assert.deepEqual(result.errors, []);
+    assert.deepEqual(result.conflicts, []);
+    assert.equal(result.model.containers[0].estimatedRowCount, 100);
+    assert.equal(Object.hasOwn(result.model.containers[0], 'estimatedStorageGB'), false);
+    assert.deepEqual(mergeCosmosModels([...domains].reverse(), options).model, result.model);
+});
+
 test('blocks incompatible partition keys instead of selecting one', () => {
     const tenant = {
         domainName: 'Tenant',

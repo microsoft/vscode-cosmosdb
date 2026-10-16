@@ -23,7 +23,6 @@
 
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -42,6 +41,7 @@ import {
     readMigrationJson,
     runMockSkillAgent,
     setMockSkillRunActivity,
+    writeMockSkillEvidence,
 } from '../fixtures/migration';
 import { expect, test } from '../fixtures/vscode';
 import { closeAllEditorTabs, resetNativeDialogStubs, stubMessageBoxButton } from '../fixtures/webviewHelpers';
@@ -82,9 +82,13 @@ test.describe('Migration Assistant', () => {
     });
 
     test('locked phases explain prerequisites on hover and keyboard focus', async ({ vscodeWindow }, testInfo) => {
-        const frame = await openMigrationFresh(vscodeWindow);
+        const frame = await openMigrationSeeded(vscodeWindow);
+        await expect(
+            frame
+                .getByRole('button', { name: new RegExp(PHASE_HEADERS.phase1) })
+                .getByRole('img', { name: 'Locked', exact: true }),
+        ).toHaveCount(0);
         const reasons = [
-            [PHASE_HEADERS.phase1, 'Complete Preflight before running Source Discovery.'],
             [PHASE_HEADERS.phase2, 'Complete Phase 1: Source Discovery first.'],
             [PHASE_HEADERS.phase3, 'Complete Phase 2: Domain Assessment first.'],
             [PHASE_HEADERS.phase4, 'Complete Phase 1: Source Discovery first.'],
@@ -465,13 +469,13 @@ test.describe('Migration Assistant', () => {
         await expect(migration.updateVolumetricsButton).toHaveAccessibleDescription(consentDescription);
         await expect(migration.updateAccessPatternsButton).toHaveAccessibleDescription(consentDescription);
 
-        for (const button of [
-            migration.generateSchemaButton,
-            migration.updateVolumetricsButton,
-            migration.updateAccessPatternsButton,
-        ]) {
+        for (const [button, description] of [
+            [migration.generateSchemaButton, `Database Schema Files, required ${consentDescription}`],
+            [migration.updateVolumetricsButton, consentDescription],
+            [migration.updateAccessPatternsButton, consentDescription],
+        ] as const) {
             await button.hover();
-            await expect(frame.getByRole('tooltip')).toHaveText(consentDescription);
+            await expect(frame.getByRole('tooltip')).toHaveText(description);
         }
 
         await migration.consentCheckbox.click();
@@ -930,7 +934,7 @@ test.describe('Migration Assistant', () => {
                 project.phases.discovery.schemaInventory = { files: ['phases/1-discovery/schema-ddl/Schema.sql'] };
                 project.phases.discovery.applicationAnalysis.completedAt ??= timestamp;
                 project.phases.assessment = { status: 'complete', completedAt: timestamp, domains: [
-                    { name: 'Orders', tables: ['dbo.Orders'], crossDomainDependencies: [], isMapped: true }
+                    { name: 'Orders', tables: ['dbo.Orders'], crossDomainDependencies: [], estimatedTokens: 1, isMapped: true }
                 ] };
                 const inventory = sourceFixture(workspace, project);
                 discoveryFixture(workspace, inventory, project);
@@ -1280,6 +1284,9 @@ test.describe('Migration Assistant', () => {
     });
 
     test('drives Skill-first preflight through code migration with a mocked agent', async ({ vscodeWindow }) => {
+        const captureStart = readCapturedPrompts().length;
+        const readFlowPrompts = () => readCapturedPrompts().slice(captureStart);
+
         const frame = await openMigrationSeeded(vscodeWindow);
         const migration = new MigrationPage(frame);
         const suppliedDdl = readMigrationArtifact('phases/1-discovery/schema-ddl/schema.sql');
@@ -1292,7 +1299,7 @@ test.describe('Migration Assistant', () => {
         await expect
             .poll(
                 () =>
-                    readCapturedPrompts().findLast(
+                    readFlowPrompts().findLast(
                         (prompt) =>
                             prompt.route === 'skill-preflight' &&
                             prompt.promptText.includes('Run only the schema-acquisition preflight step.'),
@@ -1301,7 +1308,7 @@ test.describe('Migration Assistant', () => {
             )
             .toContain('Run only the schema-acquisition preflight step.');
         runMockSkillAgent(
-            readCapturedPrompts().findLast(
+            readFlowPrompts().findLast(
                 (prompt) =>
                     prompt.route === 'skill-preflight' &&
                     prompt.promptText.includes('Run only the schema-acquisition preflight step.'),
@@ -1313,7 +1320,7 @@ test.describe('Migration Assistant', () => {
         await expect
             .poll(
                 () =>
-                    readCapturedPrompts().findLast(
+                    readFlowPrompts().findLast(
                         (prompt) =>
                             prompt.route === 'skill-preflight' &&
                             prompt.promptText.includes('Run only the application-details preflight step.'),
@@ -1322,7 +1329,7 @@ test.describe('Migration Assistant', () => {
             )
             .toContain('Run only the application-details preflight step.');
         runMockSkillAgent(
-            readCapturedPrompts().findLast(
+            readFlowPrompts().findLast(
                 (prompt) =>
                     prompt.route === 'skill-preflight' &&
                     prompt.promptText.includes('Run only the application-details preflight step.'),
@@ -1333,7 +1340,7 @@ test.describe('Migration Assistant', () => {
         await expect
             .poll(
                 () =>
-                    readCapturedPrompts().findLast(
+                    readFlowPrompts().findLast(
                         (prompt) =>
                             prompt.route === 'skill-preflight' &&
                             prompt.promptText.includes('Run only the volumetrics preflight step.'),
@@ -1342,7 +1349,7 @@ test.describe('Migration Assistant', () => {
             )
             .toContain('Run only the volumetrics preflight step.');
         runMockSkillAgent(
-            readCapturedPrompts().findLast(
+            readFlowPrompts().findLast(
                 (prompt) =>
                     prompt.route === 'skill-preflight' &&
                     prompt.promptText.includes('Run only the volumetrics preflight step.'),
@@ -1353,7 +1360,7 @@ test.describe('Migration Assistant', () => {
         await expect
             .poll(
                 () =>
-                    readCapturedPrompts().findLast(
+                    readFlowPrompts().findLast(
                         (prompt) =>
                             prompt.route === 'skill-preflight' &&
                             prompt.promptText.includes('Run only the access-patterns preflight step.'),
@@ -1362,23 +1369,23 @@ test.describe('Migration Assistant', () => {
             )
             .toContain('Run only the access-patterns preflight step.');
         runMockSkillAgent(
-            readCapturedPrompts().findLast(
+            readFlowPrompts().findLast(
                 (prompt) =>
                     prompt.route === 'skill-preflight' &&
                     prompt.promptText.includes('Run only the access-patterns preflight step.'),
             )?.promptText ?? '',
         );
         expect(checkMockSkillPhaseCompletion('preflight')).toMatchObject({ complete: true, errors: [] });
+        expect(readMigrationArtifact('phases/1-discovery/schema-ddl/schema.sql')).toBe(suppliedDdl);
         await expect(migration.runDiscoveryButton()).toBeEnabled({ timeout: 15_000 });
 
         await migration.runDiscoveryButton().click();
         await expect
-            .poll(
-                () => readCapturedPrompts().findLast((prompt) => prompt.route === 'skill-discovery')?.promptText ?? '',
-                { timeout: 15_000 },
-            )
+            .poll(() => readFlowPrompts().findLast((prompt) => prompt.route === 'skill-discovery')?.promptText ?? '', {
+                timeout: 15_000,
+            })
             .toContain('Run the discovery phase');
-        const discoveryPrompt = readCapturedPrompts().findLast((prompt) => prompt.route === 'skill-discovery');
+        const discoveryPrompt = readFlowPrompts().findLast((prompt) => prompt.route === 'skill-discovery');
         expect(discoveryPrompt?.promptText).toContain('Use the cosmosdb-relational-migration skill.');
         expect(discoveryPrompt?.promptText).not.toContain('This host supports interaction.');
         expect(discoveryPrompt?.promptText).not.toContain('Run in interactive mode.');
@@ -1389,16 +1396,14 @@ test.describe('Migration Assistant', () => {
 
         addMockRegenerationSentinel('discovery');
         expect(readMigrationArtifact('phases/1-discovery/discovery-report.md')).toContain('REGENERATION-SENTINEL');
-        const discoveryPromptCount = readCapturedPrompts().filter(
-            (prompt) => prompt.route === 'skill-discovery',
-        ).length;
+        const discoveryPromptCount = readFlowPrompts().filter((prompt) => prompt.route === 'skill-discovery').length;
         await migration.runDiscoveryButton().click();
         await expect
-            .poll(() => readCapturedPrompts().filter((prompt) => prompt.route === 'skill-discovery').length, {
+            .poll(() => readFlowPrompts().filter((prompt) => prompt.route === 'skill-discovery').length, {
                 timeout: 15_000,
             })
             .toBeGreaterThan(discoveryPromptCount);
-        const regenerationPrompt = readCapturedPrompts().findLast((prompt) => prompt.route === 'skill-discovery');
+        const regenerationPrompt = readFlowPrompts().findLast((prompt) => prompt.route === 'skill-discovery');
         expect(regenerationPrompt?.promptText).toContain('Regenerate the discovery results');
         runMockSkillAgent(regenerationPrompt?.promptText ?? '');
         await expect
@@ -1417,13 +1422,12 @@ test.describe('Migration Assistant', () => {
         await expect(migration.runAssessmentButton()).toBeEnabled();
         await migration.runAssessmentButton().click();
         await expect
-            .poll(
-                () => readCapturedPrompts().findLast((prompt) => prompt.route === 'skill-assessment')?.promptText ?? '',
-                { timeout: 15_000 },
-            )
+            .poll(() => readFlowPrompts().findLast((prompt) => prompt.route === 'skill-assessment')?.promptText ?? '', {
+                timeout: 15_000,
+            })
             .toContain('Run the assessment phase');
         runMockSkillAgent(
-            readCapturedPrompts().findLast((prompt) => prompt.route === 'skill-assessment')?.promptText ?? '',
+            readFlowPrompts().findLast((prompt) => prompt.route === 'skill-assessment')?.promptText ?? '',
         );
         await expect(migration.phaseCompleteBadge('phase2')).toBeVisible({ timeout: 15_000 });
         await expect(migration.phase2DomainLinks()).toHaveCount(1);
@@ -1432,16 +1436,14 @@ test.describe('Migration Assistant', () => {
         );
 
         addMockRegenerationSentinel('assessment');
-        const assessmentPromptCount = readCapturedPrompts().filter(
-            (prompt) => prompt.route === 'skill-assessment',
-        ).length;
+        const assessmentPromptCount = readFlowPrompts().filter((prompt) => prompt.route === 'skill-assessment').length;
         await migration.runAssessmentButton().click();
         await expect
-            .poll(() => readCapturedPrompts().filter((prompt) => prompt.route === 'skill-assessment').length, {
+            .poll(() => readFlowPrompts().filter((prompt) => prompt.route === 'skill-assessment').length, {
                 timeout: 15_000,
             })
             .toBeGreaterThan(assessmentPromptCount);
-        const assessmentRegenerationPrompt = readCapturedPrompts().findLast(
+        const assessmentRegenerationPrompt = readFlowPrompts().findLast(
             (prompt) => prompt.route === 'skill-assessment',
         );
         runMockSkillAgent(assessmentRegenerationPrompt?.promptText ?? '');
@@ -1456,13 +1458,13 @@ test.describe('Migration Assistant', () => {
         await expect
             .poll(
                 () =>
-                    readCapturedPrompts().findLast((prompt) => prompt.route === 'skill-schema-conversion')
-                        ?.promptText ?? '',
+                    readFlowPrompts().findLast((prompt) => prompt.route === 'skill-schema-conversion')?.promptText ??
+                    '',
                 { timeout: 15_000 },
             )
             .toContain('Run the schema conversion phase');
         const conversionResult = runMockSkillAgent(
-            readCapturedPrompts().findLast((prompt) => prompt.route === 'skill-schema-conversion')?.promptText ?? '',
+            readFlowPrompts().findLast((prompt) => prompt.route === 'skill-schema-conversion')?.promptText ?? '',
         );
         expect(conversionResult.decisions).toContain('partition-key-selection');
         await expect(migration.phaseCompleteBadge('phase3')).toBeVisible({ timeout: 15_000 });
@@ -1472,16 +1474,16 @@ test.describe('Migration Assistant', () => {
         ).toHaveLength(1);
 
         addMockRegenerationSentinel('schema-conversion');
-        const conversionPromptCount = readCapturedPrompts().filter(
+        const conversionPromptCount = readFlowPrompts().filter(
             (prompt) => prompt.route === 'skill-schema-conversion',
         ).length;
         await migration.runConversionButton().click();
         await expect
-            .poll(() => readCapturedPrompts().filter((prompt) => prompt.route === 'skill-schema-conversion').length, {
+            .poll(() => readFlowPrompts().filter((prompt) => prompt.route === 'skill-schema-conversion').length, {
                 timeout: 15_000,
             })
             .toBeGreaterThan(conversionPromptCount);
-        const conversionRegenerationPrompt = readCapturedPrompts().findLast(
+        const conversionRegenerationPrompt = readFlowPrompts().findLast(
             (prompt) => prompt.route === 'skill-schema-conversion',
         );
         runMockSkillAgent(conversionRegenerationPrompt?.promptText ?? '');
@@ -1499,13 +1501,12 @@ test.describe('Migration Assistant', () => {
         await migration.populateSampleDataButton.click();
         await expect
             .poll(
-                () =>
-                    readCapturedPrompts().findLast((prompt) => prompt.route === 'skill-provisioning')?.promptText ?? '',
+                () => readFlowPrompts().findLast((prompt) => prompt.route === 'skill-provisioning')?.promptText ?? '',
                 { timeout: 15_000 },
             )
             .toContain('Run only the resources-and-data provisioning step.');
-        const provisioningPrompt = readCapturedPrompts().findLast((prompt) => prompt.route === 'skill-provisioning');
-        expect(provisioningPrompt?.promptText).toContain('allow-provisioning: true');
+        const provisioningPrompt = readFlowPrompts().findLast((prompt) => prompt.route === 'skill-provisioning');
+        expect(provisioningPrompt?.promptText).toContain('Allow provisioning for this invocation.');
         runMockSkillAgent(provisioningPrompt?.promptText ?? '');
         await expect(migration.phaseCompleteBadge('phase4')).toBeVisible({ timeout: 15_000 });
         expect(provisioningArtifactExists('provisioning-verification.json')).toBe(true);
@@ -1513,16 +1514,16 @@ test.describe('Migration Assistant', () => {
         const firstVerifiedAt = readMigrationJson<{ verifiedAt: string }>(
             'phases/4-provisioning/provisioning-verification.json',
         )?.verifiedAt;
-        const provisioningPromptCount = readCapturedPrompts().filter(
+        const provisioningPromptCount = readFlowPrompts().filter(
             (prompt) => prompt.route === 'skill-provisioning',
         ).length;
         await migration.populateSampleDataButton.click();
         await expect
-            .poll(() => readCapturedPrompts().filter((prompt) => prompt.route === 'skill-provisioning').length, {
+            .poll(() => readFlowPrompts().filter((prompt) => prompt.route === 'skill-provisioning').length, {
                 timeout: 15_000,
             })
             .toBeGreaterThan(provisioningPromptCount);
-        const provisioningRegenerationPrompt = readCapturedPrompts().findLast(
+        const provisioningRegenerationPrompt = readFlowPrompts().findLast(
             (prompt) => prompt.route === 'skill-provisioning',
         );
         runMockSkillAgent(provisioningRegenerationPrompt?.promptText ?? '');
@@ -1537,13 +1538,11 @@ test.describe('Migration Assistant', () => {
         await migration.migrationActionButton.click();
         await expect
             .poll(
-                () =>
-                    readCapturedPrompts().findLast((prompt) => prompt.route === 'skill-code-migration')?.promptText ??
-                    '',
+                () => readFlowPrompts().findLast((prompt) => prompt.route === 'skill-code-migration')?.promptText ?? '',
                 { timeout: 15_000 },
             )
             .toContain('Create the application code migration plan.');
-        const planningPrompt = readCapturedPrompts().findLast((prompt) => prompt.route === 'skill-code-migration');
+        const planningPrompt = readFlowPrompts().findLast((prompt) => prompt.route === 'skill-code-migration');
         expect(planningPrompt?.promptText).not.toContain('candidate execution blocker');
         expect(planningPrompt?.promptText).not.toContain('Do not modify application files');
         runMockSkillAgent(planningPrompt?.promptText ?? '');
@@ -1554,7 +1553,7 @@ test.describe('Migration Assistant', () => {
         await expect
             .poll(
                 () =>
-                    readCapturedPrompts().findLast(
+                    readFlowPrompts().findLast(
                         (prompt) =>
                             prompt.route === 'skill-code-migration' &&
                             prompt.promptText.includes(
@@ -1565,7 +1564,7 @@ test.describe('Migration Assistant', () => {
             )
             .toContain('Migrate the application code using the validated migration plan.');
         runMockSkillAgent(
-            readCapturedPrompts().findLast(
+            readFlowPrompts().findLast(
                 (prompt) =>
                     prompt.route === 'skill-code-migration' &&
                     prompt.promptText.includes('Migrate the application code using the validated migration plan.'),
@@ -1574,24 +1573,25 @@ test.describe('Migration Assistant', () => {
         const firstMigratedOutput = readApplicationFile('src/mockCosmosRepository.js');
         expect(firstMigratedOutput).toContain('generation 1');
         expect(checkMockSkillPhaseCompletion('code-migration')).toMatchObject({ complete: true, errors: [] });
+        await expect(migration.migrationActionButton).toHaveText('Migrate Application');
 
-        const migrationPromptCount = readCapturedPrompts().filter(
+        const migrationPromptCount = readFlowPrompts().filter(
             (prompt) => prompt.route === 'skill-code-migration',
         ).length;
         await migration.migrationActionButton.click();
         await expect
-            .poll(() => readCapturedPrompts().filter((prompt) => prompt.route === 'skill-code-migration').length, {
+            .poll(() => readFlowPrompts().filter((prompt) => prompt.route === 'skill-code-migration').length, {
                 timeout: 15_000,
             })
             .toBeGreaterThan(migrationPromptCount);
-        const migrationRegenerationPrompt = readCapturedPrompts().findLast(
+        const migrationRegenerationPrompt = readFlowPrompts().findLast(
             (prompt) => prompt.route === 'skill-code-migration',
         );
         runMockSkillAgent(migrationRegenerationPrompt?.promptText ?? '');
         expect(readApplicationFile('src/mockCosmosRepository.js')).toContain('generation 2');
         expect(readApplicationFile('src/mockCosmosRepository.js')).not.toBe(firstMigratedOutput);
         expect(checkMockSkillPhaseCompletion('code-migration')).toMatchObject({ complete: true, errors: [] });
-        const skillDispatches = readCapturedPrompts().filter((prompt) => prompt.route?.startsWith('skill-'));
+        const skillDispatches = readFlowPrompts().filter((prompt) => prompt.route?.startsWith('skill-'));
         expect(skillDispatches[0]?.chat?.newSession).toBe(true);
         expect(skillDispatches.slice(1).every((prompt) => prompt.chat?.newSession === false)).toBe(true);
         expect(skillDispatches.every((prompt) => prompt.chat?.modelSelector.id === 'e2e-mock-migration-model')).toBe(
@@ -1606,6 +1606,8 @@ test.describe('Migration Assistant', () => {
         const project = readMigrationJson<ProjectJson>('project.json')!;
         const workspace = process.env.COSMOSDB_E2E_WORKSPACE_DIR!;
         project.phases.discovery.status = 'complete';
+        project.phases.discovery.preflightStatus = 'complete';
+        project.phases.discovery.applicationAnalysis!.completedAt = new Date().toISOString();
         project.phases.discovery.schemaInventory = { files: ['phases/1-discovery/schema-ddl/schema.sql'] };
         project.phases.discovery.volumetrics = { files: [] };
         project.phases.discovery.accessPatterns = { files: [] };
@@ -1626,14 +1628,8 @@ test.describe('Migration Assistant', () => {
             location: 'eastus',
         };
         writeFileSync(path.join(workspace, '.cosmosdb-migration', 'project.json'), JSON.stringify(project, null, 2));
-        const { sourceFixture, discoveryFixture } = createRequire(import.meta.url)(
-            path.resolve('skills/cosmosdb-relational-migration/tests/source-evidence-fixtures.mjs'),
-        ) as {
-            sourceFixture(workspace: string, project: ProjectJson, tables: string[], fileName: string): unknown;
-            discoveryFixture(workspace: string, inventory: unknown, project: ProjectJson): void;
-        };
-        const inventory = sourceFixture(workspace, project, ['dbo.Orders'], 'schema.sql');
-        discoveryFixture(workspace, inventory, project);
+        writeMockSkillEvidence('preflight');
+        writeMockSkillEvidence('discovery');
         expect(checkMockSkillPhaseCompletion('discovery').complete).toBe(true);
         let frame = await openMigrationAssistant(vscodeWindow);
         let migration = new MigrationPage(frame);

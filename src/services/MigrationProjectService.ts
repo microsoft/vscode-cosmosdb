@@ -32,6 +32,7 @@ export interface AssessmentDomain {
     name: string;
     tables: string[];
     crossDomainDependencies: string[];
+    estimatedTokens: number;
     isMapped: boolean;
 }
 

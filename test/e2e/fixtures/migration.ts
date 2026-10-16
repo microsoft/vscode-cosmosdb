@@ -98,6 +98,16 @@ function writeMigrationArtifact(relativePath: string, content: string): void {
     writeFileSync(artifactPath, content, 'utf-8');
 }
 
+export function writeMockSkillEvidence(phase: Exclude<MockSkillPhase, 'code-migration'>): void {
+    const result = spawnSync(
+        process.execPath,
+        [path.resolve('test/e2e/fixtures/migration-evidence.mjs'), migrationWorkspace(), phase],
+        { encoding: 'utf-8' },
+    );
+    if (result.error) throw result.error;
+    if (result.status !== 0) throw new Error(result.stderr || result.stdout);
+}
+
 function completeMockSkillPreflight(promptText: string): void {
     const step = promptText.match(/^Run only the (.+) preflight step\.$/mu)?.[1];
     if (step === 'schema-acquisition') {
@@ -146,28 +156,11 @@ function completeMockSkillPreflight(promptText: string): void {
             discovery.preflightStatus = 'complete';
             discovery.preflightCompletedAt = new Date().toISOString();
         });
+        writeMockSkillEvidence('preflight');
     }
 }
 
 function completeMockSkillDiscovery(): void {
-    writeMigrationArtifact(
-        'phases/1-discovery/discovery-report.md',
-        '# Discovery Report\n\n## Schema Overview\nOrders and OrderDetails.\n\n## Access Patterns\nOrders by customer.\n',
-    );
-    writeMigrationArtifact(
-        'phases/1-discovery/discovery-manifest.json',
-        `${JSON.stringify(
-            {
-                version: 1,
-                matrixVersion: 1,
-                overallStatus: 'supported',
-                codeMigrationAllowed: true,
-                results: [{ language: 'C#', status: 'supported' }],
-            },
-            null,
-            2,
-        )}\n`,
-    );
     updateMigrationProject((project) => {
         project.phases.discovery = {
             ...(project.phases.discovery as Record<string, unknown>),
@@ -175,6 +168,7 @@ function completeMockSkillDiscovery(): void {
             completedAt: new Date().toISOString(),
         };
     });
+    writeMockSkillEvidence('discovery');
 }
 
 export type MockRegenerationPhase = 'discovery' | 'assessment' | 'schema-conversion';
@@ -192,14 +186,6 @@ export function addMockRegenerationSentinel(phase: MockRegenerationPhase): void 
 }
 
 function completeMockSkillAssessment(): void {
-    writeMigrationArtifact(
-        'phases/2-assessment/assessment-summary.md',
-        '# Domain Assessment Summary\n\n## SalesDomain\nOrders and OrderDetails form one aggregate.\n',
-    );
-    writeMigrationArtifact(
-        'phases/2-assessment/domains/SalesDomain.md',
-        '# Domain: SalesDomain\n\nAggregate root: Orders.\n',
-    );
     updateMigrationProject((project) => {
         project.phases.assessment = {
             status: 'complete',
@@ -208,6 +194,7 @@ function completeMockSkillAssessment(): void {
                     name: 'SalesDomain',
                     tables: ['Orders', 'OrderDetails'],
                     crossDomainDependencies: [],
+                    estimatedTokens: 1000,
                     isMapped: true,
                 },
             ],
@@ -215,6 +202,7 @@ function completeMockSkillAssessment(): void {
             completedAt: new Date().toISOString(),
         };
     });
+    writeMockSkillEvidence('assessment');
 }
 
 function completeMockSkillSchemaConversion(): void {
@@ -250,6 +238,45 @@ function completeMockSkillSchemaConversion(): void {
                                 type: 'string',
                                 isPartitionKey: true,
                             },
+                            {
+                                target: 'orderDate',
+                                source: { table: 'Orders', column: 'OrderDate', type: 'datetime' },
+                                type: 'string',
+                            },
+                            {
+                                target: 'total',
+                                source: { table: 'Orders', column: 'Total', type: 'decimal' },
+                                type: 'number',
+                            },
+                        ],
+                    },
+                    {
+                        name: 'OrderDetail',
+                        docType: 'detail',
+                        sourceTable: 'OrderDetails',
+                        idTemplate: 'orderDetail-{OrderDetailID}',
+                        attributes: [
+                            {
+                                target: 'id',
+                                source: { table: 'OrderDetails', column: 'OrderDetailID', type: 'int' },
+                                type: 'string',
+                                isId: true,
+                            },
+                            {
+                                target: 'customerId',
+                                source: { table: 'Orders', column: 'CustomerID', type: 'int' },
+                                type: 'string',
+                                isPartitionKey: true,
+                            },
+                            ...['OrderDetailID', 'OrderID', 'ProductID', 'Quantity', 'UnitPrice'].map((column) => ({
+                                target: column,
+                                source: {
+                                    table: 'OrderDetails',
+                                    column,
+                                    type: column === 'UnitPrice' ? 'decimal' : 'int',
+                                },
+                                type: 'number',
+                            })),
                         ],
                     },
                 ],
@@ -285,7 +312,10 @@ Use point reads.
 Inputs: [volumetrics] [access patterns]
 ## Example Documents
 \`\`\`json
-${JSON.stringify({ id: 'order-1', docType: 'order', orderId: 1, customerId: 'c1' }, null, 2)}
+${JSON.stringify({ id: 'order-1', docType: 'order', orderId: 1, customerId: 'c1', orderDate: '2026-01-01', total: 10 }, null, 2)}
+\`\`\`
+\`\`\`json
+${JSON.stringify({ id: 'orderDetail-1', docType: 'detail', customerId: 'c1', OrderDetailID: 1, OrderID: 1, ProductID: 1, Quantity: 1, UnitPrice: 10 }, null, 2)}
 \`\`\`
 `,
     );
@@ -336,6 +366,7 @@ Serverless is eligible.
             completedAt: new Date().toISOString(),
         };
     });
+    writeMockSkillEvidence('schema-conversion');
 }
 
 function prepareMockSkillProvisioningTarget(): void {
@@ -361,15 +392,33 @@ function completeMockSkillProvisioning(): void {
         containers: {
             name: string;
             partitionKeys: { path: string }[];
-            indexingPolicy: unknown;
-            maxThroughput?: number;
+            indexingPolicy: Record<string, unknown>;
         }[];
     };
     const sampleData = {
         sampleData: [
             {
                 containerName: 'orders',
-                items: [{ id: 'order-1', docType: 'order', orderId: 1, customerId: 'c1' }],
+                items: [
+                    {
+                        id: 'order-1',
+                        docType: 'order',
+                        orderId: 1,
+                        customerId: 'c1',
+                        orderDate: '2026-01-01',
+                        total: 10,
+                    },
+                    {
+                        id: 'orderDetail-1',
+                        docType: 'detail',
+                        customerId: 'c1',
+                        OrderDetailID: 1,
+                        OrderID: 1,
+                        ProductID: 1,
+                        Quantity: 1,
+                        UnitPrice: 10,
+                    },
+                ],
             },
         ],
     };
@@ -408,19 +457,17 @@ function completeMockSkillProvisioning(): void {
         containers: model.containers.map((container) => ({
             name: container.name,
             partitionKeys: container.partitionKeys.map((partitionKey) => partitionKey.path),
-            indexingPolicy: container.indexingPolicy,
-            capacityMode: model.capacityMode,
-            ...(container.maxThroughput === undefined ? {} : { maxThroughput: container.maxThroughput }),
+            indexingPolicy: { indexingMode: 'consistent', automatic: true, ...container.indexingPolicy },
+            capacityMode: 'provisioned',
+            maxThroughput: 1000,
         })),
-        sampleItems: [
-            {
-                containerName: 'orders',
-                id: 'order-1',
-                partitionKeyValues: ['c1'],
-                found: true,
-                document: structuredClone(sampleData.sampleData[0].items[0]),
-            },
-        ],
+        sampleItems: sampleData.sampleData[0].items.map((item) => ({
+            containerName: 'orders',
+            id: item.id,
+            partitionKeyValues: [item.customerId],
+            found: true,
+            document: structuredClone(item),
+        })),
         failures: [],
     };
     writeMigrationArtifact(
@@ -436,6 +483,7 @@ function completeMockSkillProvisioning(): void {
             completedAt: verifiedAt,
         };
     });
+    writeMockSkillEvidence('provisioning');
 }
 
 export type MockSkillPhase =
@@ -569,17 +617,9 @@ export function writeCodeMigrationPlan(mode: 'plan' | 'migrate' = 'plan'): void 
     const dir = path.join(ws, '.cosmosdb-migration');
     const modelContent = readFileSync(path.join(dir, 'phases/3-schema-conversion/model.json'), 'utf-8');
     const sdkReportPath = path.join(dir, 'phases/1-discovery/discovery-manifest.json');
-    if (!existsSync(sdkReportPath)) {
-        const sdkReport = {
-            version: 1,
-            matrixVersion: 1,
-            overallStatus: 'supported',
-            codeMigrationAllowed: true,
-            results: [{ language: 'C#', status: 'supported' }],
-        };
-        writeFileSync(sdkReportPath, `${JSON.stringify(sdkReport, null, 2)}\n`, 'utf-8');
-    }
-    const sdkReportContent = readFileSync(sdkReportPath, 'utf-8');
+    const discovery = JSON.parse(readFileSync(sdkReportPath, 'utf-8')) as { sdkCompatibility?: unknown };
+    if (!discovery.sdkCompatibility) throw new Error('The mock requires validated discovery SDK compatibility.');
+    const sdkReportContent = `${JSON.stringify(discovery.sdkCompatibility, null, 2)}\n`;
     const outputPath = 'src/mockCosmosRepository.js';
     const outputFile = path.join(ws, outputPath);
     let outputFiles: { path: string; sha256: string }[] = [];

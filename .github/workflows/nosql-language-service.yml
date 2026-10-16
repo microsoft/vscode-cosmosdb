@@ -1,12 +1,12 @@
 # Workflow scope: `packages/nosql-language-service` integration tests.
 #
-# This is NOT the extension-host integration suite under `test/` — that one runs inside `test.yml` ("Tests").
+# This is NOT the extension-host integration suite under `test/` — that one runs inside `integration-tests.yml`.
 # This workflow covers the **NoSQL language service package** (`packages/nosql-language-service`), which talks
 # to a real Cosmos DB Emulator over the wire to validate that its query fixtures behave the same against a live
 # backend as they do in the unit tests.
 #
 # Why a separate workflow:
-#   - It needs Docker (Cosmos emulator) — `build.yml` / `test.yml` do not.
+#   - It needs Docker (Cosmos emulator) — `build.yml` / `integration-tests.yml` do not.
 #   - It only matters when `packages/**`, the emulator configuration, or the seed script changes, keeping it off the
 #     vast majority of commits.
 #

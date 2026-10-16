@@ -165,8 +165,8 @@ jobs:
 
       - name: 📊 Generate Job Summary & PR comment
         # Each CI workflow now owns its own PR comment (identified by a stable HTML-comment
-        # marker). build.yml posts the compile/lint/prettier/l10n/package summary, test.yml posts
-        # the unit/integration summary; this step posts the e2e slice — test result + downloadable
+        # marker). build.yml posts the compile/lint/prettier/l10n/package summary; unit-tests.yml and
+        # integration-tests.yml post their test summaries. This step posts the e2e slice — result + downloadable
         # HTML report. The marker lets re-runs update the existing comment in-place rather than
         # spamming the PR.
         if: always()

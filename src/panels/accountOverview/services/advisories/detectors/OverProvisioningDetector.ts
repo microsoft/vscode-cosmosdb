@@ -6,94 +6,147 @@
 import * as l10n from '@vscode/l10n';
 import { percentile } from '../../shared';
 import { Detector, type DetectorContext } from '../core/Detector';
-import { clampRationale } from '../core/helpers';
-import { type DerivedAdvisory, type DerivedAdvisorySeverity } from '../core/types';
+import {
+    capacityMaterialitySeverity,
+    clampRationale,
+    finiteNumbers,
+    hasMinimumKnownResourceAge,
+} from '../core/helpers';
+import { DIAGNOSTIC_POLICY } from '../core/thresholds';
+import { type DerivedAdvisory, type ManualThroughputInput } from '../core/types';
 
-/** Do not flag over-provisioning when the busiest sample reached this % — a recurring batch needs peak capacity. */
-const OVERPROVISIONING_PEAK_GUARD_PCT = 90;
-/** Headroom multiplier applied to observed p99 demand when sizing the right-size target (CODA DX-001). */
-const OVERPROVISIONING_HEADROOM = 1.3;
 // Platform minimum RU/s floor a right-size recommendation never drops below — a container's minimum manual
 // throughput is 400 RU/s:
 // https://learn.microsoft.com/azure/cosmos-db/set-throughput
 const OVERPROVISIONING_MIN_RU = 400;
-/** Wasted RU/s as % of scope provisioned RU/s at or above which severity is High. */
-const OVERPROVISIONING_MATERIAL_HIGH_PCT = 5;
-/** Wasted RU/s as % of scope provisioned RU/s at or above which severity is Medium (below this, Low). */
-const OVERPROVISIONING_MATERIAL_MEDIUM_PCT = 1;
 
 /**
- * OverProvisioning (CODA DX-001): sustained low **p99** RU on manual throughput over the trailing 7 days, banded
+ * OverProvisioning (CODA DX-001): sustained low **p99** RU on manual throughput over the trailing window, banded
  * below the moderate threshold. Two guards keep it from firing on workloads that genuinely need their capacity: the
  * p99 band ignores brief spikes, and a **peak-saturation guard** suppresses the finding when the busiest sample
- * saturated capacity (a recurring batch needs that peak). Severity is **relative materiality** — wasted RU/s as a
- * share of the scope's provisioned RU/s (the same waste is material against a small account but trivial against a
- * fleet) — falling back to absolute wasted RU/s when the scope total is unknown. The right-size target covers p99
- * demand plus headroom and never drops below the observed peak, so it can never throttle a real spike. Pure.
+ * saturated capacity. Severity is capacity materiality. Pure.
  */
 function evaluateOverProvisioning(
     p99Percent: number | undefined,
     peakPercent: number | undefined,
     thresholdPercent: number,
     hasManualThroughput: boolean,
-    provisionedRuTotal?: number,
+    provisionedRu?: number,
+    scopeProvisionedRuTotal?: number,
+    scope?: string,
+    containerId?: string,
+    observationLabel: string = l10n.t('7 days'),
 ): DerivedAdvisory | undefined {
     if (!hasManualThroughput || p99Percent === undefined || p99Percent >= thresholdPercent) {
         return undefined;
     }
-    // Peak-saturation guard: a workload whose busiest sample saturates capacity genuinely needs it at peak.
-    if (peakPercent !== undefined && peakPercent >= OVERPROVISIONING_PEAK_GUARD_PCT) {
+    if (peakPercent !== undefined && peakPercent >= DIAGNOSTIC_POLICY.overProvisioning.peakGuardPercent) {
         return undefined;
     }
     const p99 = Math.round(p99Percent);
     const threshold = Math.round(thresholdPercent);
 
     let wastedRu: number | undefined;
-    let severity: DerivedAdvisorySeverity = 'Medium';
-    if (provisionedRuTotal !== undefined && provisionedRuTotal > 0) {
-        const consumedAtP99 = (p99Percent / 100) * provisionedRuTotal;
-        const peakConsumed = ((peakPercent ?? p99Percent) / 100) * provisionedRuTotal;
+    let wastedExact: number | undefined;
+    let recommendedRu: number | undefined;
+    if (provisionedRu !== undefined && provisionedRu > 0) {
+        const consumedAtP99 = (p99Percent / 100) * provisionedRu;
+        const peakConsumed = ((peakPercent ?? p99Percent) / 100) * provisionedRu;
         const recommended = Math.min(
-            provisionedRuTotal,
+            provisionedRu,
             Math.max(
                 OVERPROVISIONING_MIN_RU,
-                Math.ceil(consumedAtP99 * OVERPROVISIONING_HEADROOM),
+                Math.ceil(consumedAtP99 * DIAGNOSTIC_POLICY.overProvisioning.headroomMultiplier),
                 Math.ceil(peakConsumed),
             ),
         );
-        wastedRu = Math.max(0, Math.round(provisionedRuTotal - recommended));
-        const materialityPct = (wastedRu / provisionedRuTotal) * 100;
-        severity =
-            materialityPct >= OVERPROVISIONING_MATERIAL_HIGH_PCT
-                ? 'High'
-                : materialityPct >= OVERPROVISIONING_MATERIAL_MEDIUM_PCT
-                  ? 'Medium'
-                  : 'Low';
+        recommendedRu = Math.round(recommended);
+        wastedExact = Math.max(0, provisionedRu - recommended);
+        wastedRu = Math.round(wastedExact);
     }
-
+    const severity =
+        wastedExact !== undefined
+            ? capacityMaterialitySeverity(
+                  wastedExact,
+                  scope ? scopeProvisionedRuTotal : (scopeProvisionedRuTotal ?? provisionedRu),
+              )
+            : 'Medium';
     const materiality =
-        wastedRu !== undefined
-            ? l10n.t(' That is roughly {wasted} RU/s of provisioned capacity the workload never uses.', {
-                  wasted: wastedRu.toLocaleString(),
-              })
+        wastedRu !== undefined && recommendedRu !== undefined
+            ? l10n.t(
+                  ' That leaves roughly {wasted} RU/s recoverable by lowering the offer toward ~{recommended} RU/s.',
+                  {
+                      wasted: wastedRu.toLocaleString(),
+                      recommended: recommendedRu.toLocaleString(),
+                  },
+              )
             : '';
 
     return {
-        id: 'OverProvisioning',
+        id: scope ? `OverProvisioning:${scope}` : 'OverProvisioning',
         rule: 'OverProvisioning',
         severity,
-        title: l10n.t('Throughput may be over-provisioned'),
+        title: containerId
+            ? l10n.t('Throughput may be over-provisioned in {container}', { container: containerId })
+            : l10n.t('Throughput may be over-provisioned'),
         rationale: clampRationale(
-            l10n.t(
-                '99th-percentile normalized RU consumption stayed at {p99}% over the last 7 days, below the {threshold}% over-provisioning threshold, while at least one container uses manual throughput. Banding on p99 rather than the peak ignores brief spikes that do not reflect steady demand.',
-                { p99, threshold },
-            ) + materiality,
+            (containerId
+                ? l10n.t(
+                      'Container "{container}" stayed at {p99}% 99th-percentile normalized RU over the last {window}.',
+                      { container: containerId, p99, window: observationLabel },
+                  ) +
+                  ' ' +
+                  l10n.t('This is below the {threshold}% over-provisioning band.', { threshold })
+                : l10n.t(
+                      '99th-percentile normalized RU consumption stayed at {p99}% over the last {window}, below the {threshold}% over-provisioning threshold.',
+                      { p99, window: observationLabel, threshold },
+                  )) +
+                l10n.t(
+                    ' The busiest observed sample still stayed below the 90% peak guard, so this looks steadily oversized rather than bursty.',
+                ) +
+                materiality,
         ),
-        suggestedAction: l10n.t(
-            'Lower provisioned RU/s to match observed demand, or switch to autoscale so capacity tracks usage automatically.',
-        ),
-        thresholdReference: l10n.t('Threshold: 7-day p99 < {threshold}% RU', { threshold }),
+        suggestedAction:
+            containerId && recommendedRu !== undefined && provisionedRu !== undefined
+                ? l10n.t(
+                      'Lower "{container}" from {provisioned} RU/s toward ~{recommended} RU/s, or switch it to autoscale if demand is bursty.',
+                      {
+                          container: containerId,
+                          provisioned: Math.round(provisionedRu).toLocaleString(),
+                          recommended: recommendedRu.toLocaleString(),
+                      },
+                  )
+                : l10n.t(
+                      'Lower provisioned RU/s to match observed demand, or switch to autoscale so capacity tracks usage automatically.',
+                  ),
+        thresholdReference: l10n.t('Threshold: p99 RU < {threshold}% and peak < 90%', { threshold }),
+        scope,
     };
+}
+
+function evaluateManualThroughput(
+    input: ManualThroughputInput,
+    thresholdPercent: number,
+    scopeProvisionedRuTotal?: number,
+): DerivedAdvisory | undefined {
+    const samples = finiteNumbers(input.ruPercents);
+    if (
+        samples.length < DIAGNOSTIC_POLICY.overProvisioning.minSamples ||
+        !hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.overProvisioning.minResourceAgeDays)
+    ) {
+        return undefined;
+    }
+    return evaluateOverProvisioning(
+        percentile(samples, DIAGNOSTIC_POLICY.overProvisioning.percentile),
+        input.peakPercent ?? (samples.length > 0 ? Math.max(...samples) : undefined),
+        thresholdPercent,
+        true,
+        input.provisionedRu,
+        scopeProvisionedRuTotal,
+        `${input.databaseId}/${input.containerId}`,
+        input.containerId,
+        l10n.t('30 days'),
+    );
 }
 
 export class OverProvisioningDetector extends Detector {
@@ -101,8 +154,19 @@ export class OverProvisioningDetector extends Detector {
     evaluate = evaluateOverProvisioning;
     run(ctx: DetectorContext): DerivedAdvisory[] {
         const { inputs, thresholds } = ctx;
+        if (inputs.manualThroughput !== undefined) {
+            return inputs.manualThroughput
+                .map((input) =>
+                    evaluateManualThroughput(
+                        input,
+                        thresholds.overProvisioningBandPercent,
+                        inputs.scopeProvisionedRuTotal,
+                    ),
+                )
+                .filter((advisory): advisory is DerivedAdvisory => advisory !== undefined);
+        }
         const advisory = this.evaluate(
-            percentile(inputs.weeklyRuPercents, 99),
+            percentile(inputs.weeklyRuPercents, DIAGNOSTIC_POLICY.overProvisioning.percentile),
             inputs.weeklyPeakPercent ??
                 (inputs.weeklyRuPercents.length > 0 ? Math.max(...inputs.weeklyRuPercents) : undefined),
             thresholds.overProvisioningBandPercent,

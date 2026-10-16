@@ -27,9 +27,9 @@
 
 - Do **not** make direct changes to localization files inside the `l10n/` (e.g., `bundle.l10n.json`, `bundle.l10n.[lang].json`, etc.) folder or `package.[lang].nls.json` files (e.g., `package.nls.de.json`, `package.nls.fr.json`, etc.).
 - To update strings used in `package.json`, modify `package.nls.json` only. Do **not** update the actual translation files.
-- After modifying any localizable strings, always run `npm run l10n` to update strings.
+- Regenerate changed localizable strings with `npm run l10n` at the validation point defined under **Validation, Commits, and Pushes**, rather than after each edit.
 - Each `l10n.t()` translation key (the template string) must be **500 characters or fewer**. If a string exceeds this limit, split it into multiple separate `l10n.t()` calls and concatenate them (e.g., `l10n.t('Part one.') + l10n.t('Part two.')`).
-- **Do not wrap non-translatable content in `l10n.t()`.** If a string has no translatable words after removing `{placeholders}`, drop the wrapper and use a plain template literal instead. Examples: `` `${percent}%` `` (not `l10n.t('{percent}%')`), `` `${label} — ${share}` `` (not `l10n.t('{label} — {share}')`). Pure symbols/units/format strings gain nothing from localization.
+- **Each translation key must contain translatable text or concepts beyond its placeholders.** If a string contains only interpolation, optionally joined by punctuation, symbols, or formatting, use a plain template literal instead of `l10n.t()`; there is nothing to translate. Examples: `` `${check}: ${reason}` `` (not `l10n.t('{check}: {reason}', ...)`), `` `${percent}%` `` (not `l10n.t('{percent}%')`), `` `${label} — ${share}` `` (not `l10n.t('{label} — {share}')`). Keep the interpolated values localized where they are defined.
 - **Keep decorative symbols out of the translation key.** Emoji and other decoration should be concatenated in code, not embedded in the key — e.g. `'❌ ' + l10n.t('Command failed:')`, not `l10n.t('❌ Command failed:')`.
 - **Do not hardcode punctuation that is locale-dependent.** In particular, keep a trailing colon **inside** the translated string (e.g. `l10n.t('Database:')`), do **not** rewrite it as `l10n.t('Database') + ':'`. Colon spacing/glyph varies by locale (French uses a narrow no-break space `Type :`, CJK uses fullwidth `：`), so translators must control it.
 - Distinguish **label-colon** from **sentence-colon**: a trailing colon that is natural sentence punctuation introducing following detail (e.g. `l10n.t('The query has syntax errors:')`) is fine and should be left as-is; it is not the same anti-pattern as a short UI label.
@@ -46,9 +46,36 @@
 - When adding, modifying, or reviewing telemetry — any `callWithTelemetryAndErrorHandling` call, any `context.telemetry.properties`/`measurements` assignment, any helper that mutates an `IActionContext` to record stats, or any new telemetry event name — use the `telemetry-best-practices` skill.
 - Apply the skill specifically to verify that no PII/EUII (file names, paths, resource names, IDs, queries, free-form user input, raw error messages) is emitted, and that properties vs. measurements, naming, and error categorization follow the repo conventions.
 
-## Validation Before Finishing
+## Validation, Commits, and Pushes
 
-Before finishing work, agents **must** run the following steps in order:
+- **During ordinary edits:** review the diff; reserve linting, formatting, localization generation, builds, and test runs for
+  an explicit user request or preparation for a push, except for the finalization and targeted-test cases below.
+  Starting or finishing an ordinary task is not itself a trigger for these commands.
+- **On an explicit validation request:** run only the requested checks or generators. After completing ordinary work, the
+  agent may ask whether to run checks or file-changing tasks such as lint fixes, formatting, or localization generation;
+  wait for approval before running them.
+- **Before a commit without a push:** at most run formatting and linting; reserve builds, tests, and localization generation
+  for their other triggers in this section. Use individual commands rather than `npm run pre-commit`, which also runs
+  builds, localization generation, and tests.
+- **Before a push:** run the full sequence below against the changes being pushed. A combined commit-and-push request follows
+  this rule; include any generated changes in the commit before pushing.
+
+### Multi-step and autonomous work
+
+For a planned series of actions, including work delegated to subagents, or when running in autopilot or allow-all mode:
+
+1. Complete all planned implementation work and integrate all subagent results before entering finalization.
+   Pass this timing policy to subagents; they must leave full-suite runs and repository-wide generators to the coordinating
+   agent rather than running them independently after each subtask.
+2. Write or update the necessary tests during finalization, once implementation is complete, rather than while the design
+   and code are still changing. An explicit user request for test-first work overrides this timing.
+3. Run the full validation sequence below on the integrated result at the end, even if no push is requested.
+   Follow its completion gate and three-iteration recovery limit.
+
+**Targeted-test exception:** when continuing implementation requires test feedback, run only the specific tests needed to
+unblock the next change, not the full suite. If that requires a new or updated test, limit the early test work to that case.
+
+### Full validation sequence
 
 > **Verify every command's exit code.** A command has passed only when its process exits with code `0`; seeing the npm command
 > banner or no error output is not sufficient. Some tools in this repository can terminate silently with exit code `255`.
@@ -72,6 +99,18 @@ Before finishing work, agents **must** run the following steps in order:
    ```bash
    npm run build
    ```
+5. **Tests** — Run the unit test suite:
+   ```bash
+   npm run vitest
+   ```
 
-> **An agent must not finish or terminate until every applicable step above has been run and its zero exit code verified.**
-> Skipping these steps or trusting output without checking the process result leads to CI failures.
+> **Completion gate (Full validation only):** once this sequence is started, the agent must not finish or terminate until
+> every applicable step has run and exited with code `0`, except when pausing for user guidance as described below.
+> This gate does not require starting Full validation after ordinary edits or an isolated requested check.
+>
+> **Recovery limit:** after the initial failure, perform at most **three fix-and-recheck iterations** across the entire
+> sequence, not three per command or subagent. Each iteration consists of applying fixes and rerunning the affected steps,
+> including earlier steps invalidated by those fixes, then continuing the remaining sequence in order.
+> If failures remain after the third iteration, or progress is blocked earlier, stop, summarize the remaining failures and
+> attempted fixes, and ask the user how to proceed. Wait for their response before another iteration; do not claim success
+> or push while validation is incomplete.

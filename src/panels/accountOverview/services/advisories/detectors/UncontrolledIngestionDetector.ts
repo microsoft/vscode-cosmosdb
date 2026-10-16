@@ -45,14 +45,31 @@ function evaluateUncontrolledIngestion(
         scope: containerKey(input.databaseId, input.containerId),
         title: l10n.t('Uncontrolled ingestion in {container}', { container: input.containerId }),
         rationale: clampRationale(
+            l10n.t('This container is write-dominant ({writePct}% of RU on writes) and throttling at {throttlePct}%.', {
+                writePct,
+                throttlePct,
+            }) +
+                ' ' +
+                l10n.t(
+                    'Combined with a peak-to-average write burst of ~{burst}×, this is the signature of uncontrolled ingestion.',
+                    { burst: input.burstFactor.toFixed(1) },
+                ) +
+                client,
+        ),
+        suggestedAction:
             l10n.t(
-                'This container is write-dominant ({writePct}% of RU on writes) and throttling at {throttlePct}% (peak-to-average write burst ~{burst}×), the signature of uncontrolled ingestion.',
-                { writePct, throttlePct, burst: input.burstFactor.toFixed(1) },
-            ) + client,
-        ),
-        suggestedAction: l10n.t(
-            'Add application-side rate control rather than only provisioning for the peak: bound ingestion concurrency and honor retry-after on 429; use the SDK throughput-control feature (or the Spark connector) or throughput buckets to cap the batch path; and/or run ingestion under low priority so it yields to app traffic. Raising RU/s is the complementary lever.',
-        ),
+                'Add application-side rate control rather than only provisioning for the peak. Bound ingestion concurrency and honor retry-after on 429.',
+            ) +
+            ' ' +
+            l10n.t(
+                'Use the SDK throughput-control feature (or the Spark connector) or throughput buckets to cap the batch path.',
+            ) +
+            ' ' +
+            l10n.t('Run ingestion under low priority so it yields to app traffic.') +
+            ' ' +
+            l10n.t(
+                'Smooth queued work instead of dumping bursts all at once. Raising RU/s is the complementary lever.',
+            ),
         thresholdReference: l10n.t('Threshold: write-RU ≥ {writePct}% and 429 rate ≥ {throttlePct}%', {
             writePct: thresholds.writeRuPctFloor,
             throttlePct: thresholds.throttleRatePct,

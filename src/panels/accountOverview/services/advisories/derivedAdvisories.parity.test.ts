@@ -20,6 +20,7 @@ import {
     AutoscaleCandidateDetector,
     AutoscaleToManualCandidateDetector,
     CrossPartitionQueryDetector,
+    computeDerivedAdvisories,
     DEFAULT_ADVISORY_THRESHOLDS,
     ExpensiveConsistencyDetector,
     HotPartitionRiskDetector,
@@ -28,6 +29,7 @@ import {
     OverProvisioningDetector,
     PartitionMergeCandidateDetector,
     ServerlessCandidateDetector,
+    ServerlessThrottlingDetector,
     ShardKeyMisalignmentDetector,
     SharedThroughputStarvationDetector,
     StorageGrowthRiskDetector,
@@ -41,12 +43,15 @@ import {
     type ContainerStorageInput,
     type CrossPartitionInput,
     type IdleContainerInput,
+    type ManualThroughputInput,
     type PartitionMergeInput,
     type PartitionSaturationInput,
     type QueryShapeInput,
     type ServerlessCandidateInput,
+    type ServerlessThrottlingInput,
     type UncontrolledIngestionInput,
 } from '.';
+import { API } from '../../../../AzureDBExperiences';
 
 // Detector classes expose the same `evaluate` signature as the old free functions (a bound field delegating to
 // the module-level evaluator), so aliasing keeps every call site below unchanged.
@@ -60,6 +65,7 @@ const evaluateMultiRegionWrites = new MultiRegionWriteAntipatternDetector().eval
 const evaluateOverProvisioning = new OverProvisioningDetector().evaluate;
 const evaluatePartitionMergeCandidate = new PartitionMergeCandidateDetector().evaluate;
 const evaluateServerlessCandidate = new ServerlessCandidateDetector().evaluate;
+const evaluateServerlessThrottling = new ServerlessThrottlingDetector().evaluate;
 const evaluateSharedThroughputStarvation = new SharedThroughputStarvationDetector().evaluate;
 const evaluateShardKeyMisalignment = new ShardKeyMisalignmentDetector().evaluate;
 const evaluateStorageGrowthRisk = new StorageGrowthRiskDetector().evaluate;
@@ -134,8 +140,30 @@ function autoUtil(overrides: Partial<AutoscaleUtilizationInput> = {}): Autoscale
     };
 }
 
+function manualInput(overrides: Partial<ManualThroughputInput> = {}): ManualThroughputInput {
+    return {
+        databaseId: 'db',
+        containerId: 'c',
+        ruPercents: [...Array<number>(24).fill(5)],
+        peakPercent: 5,
+        provisionedRu: 1_000,
+        resourceAgeDays: 30,
+        ...overrides,
+    };
+}
+
 function serverlessInput(overrides: Partial<ServerlessCandidateInput> = {}): ServerlessCandidateInput {
     return { avgRuPerSec: 5, peakRuPerSec: 100, sampleCount: 30, isServerless: false, ...overrides };
+}
+
+function serverlessThrottleInput(overrides: Partial<ServerlessThrottlingInput> = {}): ServerlessThrottlingInput {
+    return {
+        databaseId: 'db',
+        containerId: 'c',
+        totalRequests: 5_000,
+        throttleRatePercent: 8,
+        ...overrides,
+    };
 }
 
 const SERVERLESS_THRESHOLDS = {
@@ -152,7 +180,7 @@ function accountConfig(overrides: Partial<AccountConfigInput> = {}): AccountConf
         regionCount: 2,
         multiRegionWritesEnabled: false,
         writeRegionCount: 1,
-        apiKind: 'core',
+        api: API.Core,
         ...overrides,
     };
 }
@@ -346,6 +374,22 @@ describe('CODA parity — DX-001 OverProvisioning (test_over_provisioning.py)', 
 
     it('zero samples abstain (test_classify_zero_samples_abstains)', () => {
         expect(evaluateOverProvisioning(undefined, undefined, 30, true, 1_000)).toBeUndefined();
+    });
+
+    it('manualThroughput adds the production sufficiency and age gates', () => {
+        const rules = computeDerivedAdvisories(
+            {
+                weeklyRuPercents: [],
+                hasManualThroughput: true,
+                manualProvisionedRuTotal: 1_000,
+                manualThroughput: [manualInput({ ruPercents: [...Array<number>(23).fill(5)] })],
+                partitions: [],
+                storage: [],
+                indexing: [],
+            },
+            DEFAULT_ADVISORY_THRESHOLDS,
+        ).map((a) => a.rule);
+        expect(rules).toEqual([]);
     });
 });
 
@@ -556,6 +600,11 @@ describe('CODA parity — DX-017 StorageGrowthRisk (test_storage_growth.py)', ()
             evaluateStorageGrowthRisk(storageContainer([storageSeries('0', [0.1, 0.2, 0.3, 0.5])]), 180),
         ).toBeUndefined();
     });
+
+    it('a full but flat partition is still High (current CODA urgent-case behavior)', () => {
+        const v = evaluateStorageGrowthRisk(storageContainer([storageSeries('0', [51])]), 180);
+        expect(v?.severity).toBe('High');
+    });
 });
 
 // -------------------------------------------------------------------------------------------------
@@ -608,6 +657,14 @@ describe('CODA parity — DX-015 StorageSkewRisk (test_storage_skew.py)', () => 
         expect(
             evaluateStorageSkewRisk(storageContainer([storageSeries('0', [40]), storageSeries('1', [28])]), 0.7),
         ).toBeUndefined();
+    });
+
+    it('uses the peak size per partition rather than the latest snapshot', () => {
+        const v = evaluateStorageSkewRisk(
+            storageContainer([storageSeries('0', [40, 10]), storageSeries('1', [10, 10])]),
+            0.7,
+        );
+        expect(v?.severity).toBe('High');
     });
 });
 
@@ -662,18 +719,6 @@ describe('CODA parity — DX-008 MultiRegionWriteAntipattern (test_multi_region_
         expect(evaluateMultiRegionWrites(accountConfig({ multiRegionWritesEnabled: false }))).toBeUndefined();
     });
 
-    it('Mongo multi-region writes is High (test_mongo_multi_region_writes_is_high)', () => {
-        const v = evaluateMultiRegionWrites(
-            accountConfig({
-                accountName: 'payments-prod',
-                apiKind: 'mongo',
-                multiRegionWritesEnabled: true,
-                writeRegionCount: 2,
-            }),
-        );
-        expect(v?.severity).toBe('High');
-    });
-
     it('production multi-region writes is legitimate HA (test_prod_multi_region_writes_is_legitimate)', () => {
         expect(
             evaluateMultiRegionWrites(
@@ -717,7 +762,7 @@ describe('CODA parity — DX-008 MultiRegionWriteAntipattern (test_multi_region_
         const v = evaluateMultiRegionWrites(
             accountConfig({
                 accountName: 'ledger-prod',
-                apiKind: 'cassandra',
+                api: API.Cassandra,
                 multiRegionWritesEnabled: true,
                 writeRegionCount: 2,
             }),
@@ -729,7 +774,7 @@ describe('CODA parity — DX-008 MultiRegionWriteAntipattern (test_multi_region_
         const v = evaluateMultiRegionWrites(
             accountConfig({
                 accountName: 'graph-prod',
-                apiKind: 'gremlin',
+                api: API.Graph,
                 multiRegionWritesEnabled: true,
                 writeRegionCount: 2,
             }),
@@ -741,7 +786,7 @@ describe('CODA parity — DX-008 MultiRegionWriteAntipattern (test_multi_region_
         const v = evaluateMultiRegionWrites(
             accountConfig({
                 accountName: 'kv-prod',
-                apiKind: 'table',
+                api: API.Table,
                 multiRegionWritesEnabled: true,
                 writeRegionCount: 2,
             }),
@@ -794,11 +839,11 @@ describe('CODA parity — DX-008 MultiRegionWriteAntipattern (test_multi_region_
         ).toBeUndefined();
     });
 
-    it('Mongo classification precedes the env-based variants (test_mongo_non_prod_still_high)', () => {
+    it('wrong-API classification precedes the env-based variants', () => {
         const v = evaluateMultiRegionWrites(
             accountConfig({
                 accountName: 'cache-dev',
-                apiKind: 'mongo',
+                api: API.Cassandra,
                 multiRegionWritesEnabled: true,
                 writeRegionCount: 1,
                 regionCount: 1,
@@ -927,6 +972,12 @@ describe('DX-007 shard-key misalignment parity', () => {
         );
         expect(v).toBeUndefined(); // container only spans 2 partitions
     });
+
+    it('inherits DX-002s minimum-query sufficiency gate and one-decimal share rounding', () => {
+        expect(evaluateShardKeyMisalignment(shardRows(30, 19), SHARD_THRESHOLDS, CP_FANOUT)).toBeUndefined();
+        const rounded = evaluateShardKeyMisalignment(shardRows(5995, 4005), SHARD_THRESHOLDS, CP_FANOUT);
+        expect(rounded?.severity).toBe('Medium');
+    });
 });
 
 // ─── DX-010 UncontrolledIngestion (coda/tests/test_uncontrolled_ingestion.py) ─────
@@ -1018,6 +1069,19 @@ describe('DX-010 uncontrolled ingestion parity', () => {
             ING_THRESHOLDS,
         );
         expect(v).toBeUndefined();
+    });
+});
+
+describe('DX-018 serverless throttling parity', () => {
+    it('flags serverless throttling independently of partition-utilization telemetry', () => {
+        const v = evaluateServerlessThrottling(serverlessThrottleInput({ throttleRatePercent: 25 }));
+        expect(v?.rule).toBe('ServerlessThrottling');
+        expect(v?.severity).toBe('High');
+    });
+
+    it('abstains on too few requests and stays silent below the 1% floor', () => {
+        expect(evaluateServerlessThrottling(serverlessThrottleInput({ totalRequests: 999 }))).toBeUndefined();
+        expect(evaluateServerlessThrottling(serverlessThrottleInput({ throttleRatePercent: 0.5 }))).toBeUndefined();
     });
 });
 

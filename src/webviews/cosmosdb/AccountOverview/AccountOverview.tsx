@@ -478,6 +478,10 @@ export const AccountOverview = () => {
         [trpcClient],
     );
 
+    const handleShowOutput = useCallback(() => {
+        void trpcClient.accountOverview.showOutput.mutate();
+    }, [trpcClient]);
+
     const handleRevealInTree = useCallback(
         (databaseId: string, containerId: string) => {
             reportEvent('deepLinkFollowed', { target: 'tree' });
@@ -502,7 +506,10 @@ export const AccountOverview = () => {
         [reportEvent],
     );
 
-    const actions = useMemo(() => ({ reportEvent, openUrl: handleOpenUrl }), [reportEvent, handleOpenUrl]);
+    const actions = useMemo(
+        () => ({ reportEvent, openUrl: handleOpenUrl, showOutput: handleShowOutput }),
+        [reportEvent, handleOpenUrl, handleShowOutput],
+    );
 
     if (!summary || !inventory) {
         return (

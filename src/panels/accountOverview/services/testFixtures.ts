@@ -12,8 +12,29 @@ import { type MonitorClient } from '@azure/arm-monitor';
 
 export const GB = 1024 * 1024 * 1024;
 
+export function pagedItems<T>(items: readonly T[]) {
+    const iterator = (async function* () {
+        yield* items;
+    })();
+    return {
+        next: () => iterator.next(),
+        [Symbol.asyncIterator]() {
+            return this;
+        },
+        async *byPage() {
+            yield [...items];
+        },
+    };
+}
+
 export type Meta = { name?: { value?: string }; value?: string };
-export type Point = { timeStamp: string; maximum?: number; average?: number; total?: number };
+export type Point = {
+    timeStamp: string;
+    maximum?: number | null;
+    average?: number | null;
+    total?: number | null;
+    count?: number | null;
+};
 export type Series = { metadatavalues?: Meta[]; data?: Point[] };
 
 /** Builds the database/collection (and optional status-code) dimension metadata for a series. */

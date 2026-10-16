@@ -3,6 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { DIAGNOSTIC_POLICY } from './advisories/core/thresholds';
+import { DAY, HOUR, MINUTE } from './units';
+
+export { DAY, HOUR, MINUTE } from './units';
+
 // ─── Account Overview shared service primitives ─────────────────────────────────
 //
 // Cross-zone vocabulary and Azure Monitor helpers shared by every dashboard-zone
@@ -16,8 +21,8 @@ export type TimeRange = '1H' | '24H' | '7D';
  * maps each value to a distinct empty-state copy so users can tell an
  * as-yet-empty telemetry pipeline (`noData`) apart from an API/SKU that never
  * emits the metric (`unsupported`), a missing Azure RBAC role (`rbac`), and a
- * Log Analytics data path whose diagnostic settings were never enabled so the
- * `CDB*` tables do not exist for the resource (`logAnalyticsDisabled`). The last
+ * Log Analytics data path whose required `CDB*` tables cannot be resolved
+ * (`logAnalyticsDisabled`, a legacy name that does not prove collection is disabled). The last
  * is Tier-2-specific: it drives the derived-advisories partial-coverage notice
  * rather than a whole-section empty-state.
  */
@@ -71,10 +76,6 @@ export interface RangeConfig {
     bucketMs: number;
 }
 
-export const MINUTE = 60 * 1000;
-export const HOUR = 60 * MINUTE;
-export const DAY = 24 * HOUR;
-
 export const RANGE_CONFIG: Record<TimeRange, RangeConfig> = {
     '1H': { windowMs: HOUR, interval: 'PT1M', bucketMs: MINUTE },
     '24H': { windowMs: DAY, interval: 'PT5M', bucketMs: 5 * MINUTE },
@@ -104,41 +105,57 @@ export function effectiveInterval(
 }
 
 /** 429 share above which a bucket counts as throttled. */
-export const THROTTLING_SHARE_THRESHOLD = 0.01;
+export const THROTTLING_SHARE_THRESHOLD = DIAGNOSTIC_POLICY.sustainedThrottling.shareThreshold;
 /** A throttling run must span at least this long to be reported as sustained. */
-export const MIN_THROTTLING_DURATION_MS = 5 * MINUTE;
+export const MIN_THROTTLING_DURATION_MS = DIAGNOSTIC_POLICY.sustainedThrottling.minDurationMs;
 
 export function isThrottledStatusCode(code: string | undefined): boolean {
-    return code === '429' || code?.startsWith('429') === true;
+    return code === '429';
 }
 
 /** The subset of an Azure Monitor datapoint {@link pickPointValue} reads from. */
 export interface MonitorPoint {
-    maximum?: number;
-    average?: number;
-    total?: number;
+    maximum?: number | null;
+    average?: number | null;
+    total?: number | null;
+    count?: number | null;
 }
 
 /**
  * Azure Monitor aggregation to read for a metric. Each maps to a distinct field on
- * a datapoint (`Maximum → maximum`, `Average → average`, `Total → total`).
+ * a datapoint (`Maximum → maximum`, `Average → average`, `Total → total`, `Count → count`).
  */
-export type MetricAggregation = 'Maximum' | 'Average' | 'Total';
+export type MetricAggregation = 'Maximum' | 'Average' | 'Total' | 'Count';
+
+function finiteMetricValue(value: number | null | undefined): number | undefined {
+    return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+/** Parses an Azure Monitor datapoint timestamp; invalid/missing timestamps are ignored by callers. */
+export function parseMonitorTimestamp(timeStamp: Date | string | undefined): number | undefined {
+    if (!timeStamp) {
+        return undefined;
+    }
+    const timestamp = timeStamp instanceof Date ? timeStamp.getTime() : Date.parse(timeStamp);
+    return Number.isFinite(timestamp) ? timestamp : undefined;
+}
 
 /**
  * Reads the field of an Azure Monitor datapoint that matches the requested
- * aggregation (`Maximum → maximum`, `Average → average`, `Total → total`).
+ * aggregation (`Maximum → maximum`, `Average → average`, `Total → total`, `Count → count`).
  * Returns `undefined` when the point carries no value for that aggregation, so
  * callers can skip empty buckets. Pure.
  */
 export function pickPointValue(point: MonitorPoint, aggregation: MetricAggregation): number | undefined {
     switch (aggregation) {
         case 'Maximum':
-            return point.maximum;
+            return finiteMetricValue(point.maximum);
         case 'Average':
-            return point.average;
+            return finiteMetricValue(point.average);
         case 'Total':
-            return point.total;
+            return finiteMetricValue(point.total);
+        case 'Count':
+            return finiteMetricValue(point.count);
     }
 }
 
@@ -182,7 +199,10 @@ export function sustainedTimestamps(overThreshold: number[], bucketMs: number): 
         run = [];
     };
     for (const ts of overThreshold) {
-        if (run.length > 0 && ts - run[run.length - 1] > bucketMs * 1.5) {
+        if (
+            run.length > 0 &&
+            ts - run[run.length - 1] > bucketMs * DIAGNOSTIC_POLICY.sustainedThrottling.maxGapBuckets
+        ) {
             flush();
         }
         run.push(ts);
@@ -202,15 +222,15 @@ export function containerKey(databaseId: string, containerId: string): string {
 // the same signal: each physical partition's p99 of `NormalizedRUConsumption` (already a % of the
 // partition's provisioned capacity). A container is skewed ("hot partition") when the busiest
 // partition is saturated while another still has headroom; it is uniformly under-provisioned when
-// every partition is saturated. Keeping these constants and the classifier here is the single
-// source of truth the heatmap tiles and the derived advisories both consume, so they stay aligned.
+// every partition is saturated. The classifier and compatibility exports below consume the shared diagnostic
+// policy so the heatmap tiles and derived advisories stay aligned.
 
 /** A physical partition's p99 at or above this % of its provisioned capacity counts as saturated. */
-export const DEFAULT_PARTITION_SATURATION_PCT = 90;
+export const DEFAULT_PARTITION_SATURATION_PCT = DIAGNOSTIC_POLICY.partitionSaturation.saturationPercent;
 /** A physical partition's p99 below this % still has headroom — used to tell skew apart from uniform saturation. */
-export const DEFAULT_PARTITION_HEADROOM_PCT = 70;
+export const DEFAULT_PARTITION_HEADROOM_PCT = DIAGNOSTIC_POLICY.partitionSaturation.headroomPercent;
 /** Container 429 rate (`sum(429)/sum(total)`, %) at or above which throttling counts as active. */
-export const DEFAULT_THROTTLE_RATE_PCT = 1;
+export const DEFAULT_THROTTLE_RATE_PCT = DIAGNOSTIC_POLICY.partitionSaturation.throttleRatePercent;
 
 /** Linear-interpolated percentile (`p` in 0..100) of the finite values; `undefined` for an empty series. Pure. */
 export function percentile(values: readonly number[], p: number): number | undefined {
@@ -262,7 +282,11 @@ export function partitionSaturationStats(p99s: readonly number[]): PartitionSatu
  * under-provisioning (DX-005), not a hot partition, and returns `false` here. Pure.
  */
 export function isHotPartition(stats: PartitionSaturationStats, saturationPct: number, headroomPct: number): boolean {
-    return stats.partitionCount >= 2 && stats.maxP99 >= saturationPct && stats.minP99 < headroomPct;
+    return (
+        stats.partitionCount >= DIAGNOSTIC_POLICY.partitionSaturation.minHotPartitions &&
+        stats.maxP99 >= saturationPct &&
+        stats.minP99 < headroomPct
+    );
 }
 
 /** Last defined value in a `timestamp → value` map, ordered by timestamp. */

@@ -4,14 +4,18 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type MonitorClient } from '@azure/arm-monitor';
+import { DIAGNOSTIC_POLICY } from './advisories/core/thresholds';
 import {
     classifyUnavailable,
     firstValue,
     type HealthState,
     isThrottledStatusCode,
     lastValue,
+    parseMonitorTimestamp,
+    pickPointValue,
     type ProvisioningState,
     RANGE_CONFIG,
+    type RangeConfig,
     seriesContainerKey,
     sustainedTimestamps,
     THROTTLING_SHARE_THRESHOLD,
@@ -39,8 +43,8 @@ export interface HealthThresholds {
 }
 
 export const DEFAULT_HEALTH_THRESHOLDS: HealthThresholds = {
-    criticalRuPercent: 90,
-    warningRuPercent: 80,
+    criticalRuPercent: DIAGNOSTIC_POLICY.health.criticalRuPercent,
+    warningRuPercent: DIAGNOSTIC_POLICY.health.warningRuPercent,
 };
 
 export interface ContainerMetrics {
@@ -131,6 +135,7 @@ export function deriveAccountHealth(
  * every container in the account, then folds them into per-row and account-level
  * health. Any failure of the primary storage/RU queries degrades the whole
  * result to `available: false`.
+ * Diagnostic callers supply `peakConfig`; chart callers keep the time-range preset for RU.
  */
 export async function getInventoryMetrics(
     client: MonitorClient,
@@ -138,6 +143,7 @@ export async function getInventoryMetrics(
     timeRange: TimeRange,
     provisioningState: ProvisioningState | undefined,
     thresholds: HealthThresholds,
+    peakConfig: RangeConfig = RANGE_CONFIG[timeRange],
 ): Promise<InventoryMetricsResult> {
     const generatedAt = Date.now();
     const empty = (available: boolean, hasThrottling: boolean, reason?: UnavailableReason): InventoryMetricsResult => ({
@@ -148,11 +154,10 @@ export async function getInventoryMetrics(
         generatedAt,
     });
 
-    const peakConfig = RANGE_CONFIG[timeRange];
     const peakTimespan = `${new Date(generatedAt - peakConfig.windowMs).toISOString()}/${new Date(generatedAt).toISOString()}`;
-    const weekConfig = RANGE_CONFIG['7D'];
+    const weekConfig = DIAGNOSTIC_POLICY.inventoryStorage.observation;
     const weekTimespan = `${new Date(generatedAt - weekConfig.windowMs).toISOString()}/${new Date(generatedAt).toISOString()}`;
-    const hourConfig = RANGE_CONFIG['1H'];
+    const hourConfig = DIAGNOSTIC_POLICY.sustainedThrottling.observation;
     const hourTimespan = `${new Date(generatedAt - hourConfig.windowMs).toISOString()}/${new Date(generatedAt).toISOString()}`;
 
     let dataUsage: Map<string, Map<number, number>>;
@@ -295,11 +300,14 @@ async function querySplitSeries(
             }
             const buckets = byContainer.get(key) ?? new Map<number, number>();
             for (const point of series.data ?? []) {
-                const value = point.maximum;
+                const value = pickPointValue(point, 'Maximum');
                 if (value === undefined) {
                     continue;
                 }
-                const ts = new Date(point.timeStamp).getTime();
+                const ts = parseMonitorTimestamp(point.timeStamp);
+                if (ts === undefined) {
+                    continue;
+                }
                 const prev = buckets.get(ts);
                 buckets.set(ts, prev === undefined ? value : Math.max(prev, value));
             }
@@ -331,7 +339,7 @@ function toSparkline(series: Map<number, number> | undefined, maxPoints = 24): n
 /**
  * Determines which containers saw sustained throttling over the window by
  * splitting `TotalRequests` on `DatabaseName`/`CollectionName`/`StatusCode` and
- * running the same contiguous-run detection used at the account level.
+ * running the same Count-based contiguous-run detection used at the account level.
  */
 async function queryThrottlingByContainer(
     client: MonitorClient,
@@ -342,7 +350,7 @@ async function queryThrottlingByContainer(
 ): Promise<Set<string>> {
     const response = await client.metrics.list(resourceUri, {
         metricnames: 'TotalRequests',
-        aggregation: 'Total',
+        aggregation: 'Count',
         timespan,
         interval,
         filter: `DatabaseName eq '*' and CollectionName eq '*' and StatusCode eq '*'`,
@@ -360,11 +368,14 @@ async function queryThrottlingByContainer(
             const isThrottle = isThrottledStatusCode(statusCode);
             const buckets = perContainer.get(key) ?? new Map<number, { total: number; throttled: number }>();
             for (const point of series.data ?? []) {
-                const count = point.total ?? 0;
-                if (count === 0) {
+                const count = pickPointValue(point, 'Count');
+                if (count === undefined) {
                     continue;
                 }
-                const ts = new Date(point.timeStamp).getTime();
+                const ts = parseMonitorTimestamp(point.timeStamp);
+                if (ts === undefined) {
+                    continue;
+                }
                 const entry = buckets.get(ts) ?? { total: 0, throttled: 0 };
                 entry.total += count;
                 if (isThrottle) {

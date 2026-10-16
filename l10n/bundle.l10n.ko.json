@@ -903,7 +903,7 @@
   "Please try again. If the error persists, please": "다시 시도해 주세요. 이 오류가 지속되면",
   "Please use the dedicated PostgreSQL extension instead.": "대신 전용 PostgreSQL 확장을 사용하세요.",
   "Populate Sample Data": "샘플 데이터 채우기",
-  "Port {0} is in use, but the listener could not be verified as Cosmos DB Shell MCP. Check the Azure Cosmos DB output log and the Shell server, or configure a different MCP port.": "Port {0} is in use, but the listener could not be verified as Cosmos DB Shell MCP. Check the Azure Cosmos DB output log and the Shell server, or configure a different MCP port.",
+  "Port {0} is in use, but the listener could not be verified as Cosmos DB Shell MCP. Check the Azure Cosmos DB output log and the Shell server, or configure a different MCP port.": "포트 {0}을(를) 사용 중이지만 수신기를 Cosmos DB Shell MCP로 확인할 수 없습니다. Azure Cosmos DB 출력 로그와 셸 서버를 확인하거나 다른 MCP 포트를 구성하세요.",
   "Port number is required": "포트 번호 필요",
   "Port number must be an integer": "포트 번호는 정수여야 합니다.",
   "Port number must be between 1 and 65535": "포트 번호는 1에서 65535사이여야 함",

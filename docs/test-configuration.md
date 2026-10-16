@@ -47,8 +47,8 @@ That meant two runners and two different APIs (`suite/test/assert.ok` vs `descri
 Instead, we drive `@vitest/runner.startTests()` directly from a small entry script in
 `test/index.ts` that runs inside the VS Code Extension Host. The result:
 
-- **One framework** — `vitest` everywhere.
-- **One API** — `import { describe, it, expect, beforeAll } from 'vitest';`
+- **One framework for extension tests** — `vitest` for unit and integration tests.
+- **One API for extension tests** — `import { describe, it, expect, beforeAll } from 'vitest';`
 - **Same speed** for unit tests — they don't pay the Electron launch cost.
 - **Real `vscode` module** for integration tests — they run inside Electron.
 
@@ -56,7 +56,12 @@ Instead, we drive `@vitest/runner.startTests()` directly from a small entry scri
 
 - Fast, isolated, no VS Code needed.
 - `vscode` is aliased to `src/__mocks__/vscode.ts` (provided by `jest-mock-vscode`).
-- Run with `npm run vitest`.
+- `npm run vitest` runs these tests and the portable migration skill tests in parallel.
+
+### Migration skill tests (`skills/cosmosdb-relational-migration/tests/*.test.mjs`)
+
+- Use Node's built-in test runner so the standalone skill does not depend on Vitest.
+- Run alone with `npm run test:migration-skill`, or as part of the main `npm run vitest` command.
 
 ### Integration tests (`test/**/*.test.ts`)
 
@@ -135,8 +140,9 @@ compiled — Playwright loads specs through its own TS loader at runtime.
 ### Unit tests (fast, no VS Code)
 
 ```bash
-npm run vitest         # one-shot
-npm run vitest:ui      # watch with UI
+npm run vitest         # one-shot Vitest and migration skill tests
+npm run vitest:coverage # one-shot tests with Vitest coverage
+npm run vitest:ui      # Vitest watch UI (excludes migration skill tests)
 ```
 
 ### Integration tests (slow, real VS Code)

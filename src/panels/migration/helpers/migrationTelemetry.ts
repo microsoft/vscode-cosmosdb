@@ -4,11 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
-import * as vscode from 'vscode';
-import { type LanguageModelChat } from 'vscode';
 import { type ProjectJson } from '../../../services/MigrationProjectService';
-import { type ExtractionStats } from '../../../utils/ddlExtractor';
-import { type FileEncoding } from '../../../utils/decodeFileBytes';
 
 export type MigrationPhaseKey = 'discovery' | 'assessment' | 'schemaConversion' | 'provisioning';
 
@@ -29,10 +25,7 @@ export function setMigrationTelemetryContext(
 
     if (phase) {
         context.telemetry.properties.phase = phase;
-        // Stamp a 0-based run index on every phase event so dashboards have a
-        // first-run baseline: 0 = first run, 1 = first re-run, …
-        // `incrementRunCount` bumps `runCounts[phase]` *after* this stamp, so the
-        // current run index is the number of prior runs (`undefined` → 0).
+        // Preserve the recorded run count when inspecting historical projects.
         context.telemetry.measurements.runIndex = project.runCounts?.[phase] ?? 0;
 
         // Check whether this phase has custom instructions set
@@ -85,15 +78,6 @@ export function setMigrationTelemetryContext(
 }
 
 /**
- * Stamps AI model information on telemetry context.
- */
-export function setAiTelemetryContext(context: IActionContext, model: LanguageModelChat): void {
-    context.telemetry.properties.modelId = model.id;
-    context.telemetry.properties.modelFamily = model.family;
-    context.telemetry.properties.modelVendor = model.vendor;
-}
-
-/**
  * Extracts the account name from a Cosmos DB endpoint URL.
  * The account name is always the first subdomain.
  * E.g., `https://myaccount.documents.azure.com:443/` → `myaccount`
@@ -112,19 +96,6 @@ export function extractAccountNameFromEndpoint(endpoint: string): string | undef
     }
 }
 
-/**
- * Increments the run count for a phase and returns the new value.
- * Mutates `project.runCounts` in place — caller must persist.
- */
-export function incrementRunCount(project: ProjectJson, phase: MigrationPhaseKey): number {
-    if (!project.runCounts) {
-        project.runCounts = {};
-    }
-    const current = project.runCounts[phase] ?? 0;
-    project.runCounts[phase] = current + 1;
-    return current + 1;
-}
-
 function getHasCustomInstructions(project: ProjectJson, phase: MigrationPhaseKey): boolean {
     switch (phase) {
         case 'discovery':
@@ -136,197 +107,4 @@ function getHasCustomInstructions(project: ProjectJson, phase: MigrationPhaseKey
         case 'provisioning':
             return false; // No custom instructions field for provisioning
     }
-}
-
-/**
- * Enriches the telemetry context with error classification and report-issue metadata.
- * Call in catch blocks before rethrowing. No-op for cancellation errors (framework handles those).
- */
-export function enrichErrorContext(context: IActionContext, error: unknown): void {
-    // Cancellation is auto-handled by the framework — no enrichment needed
-    if (error instanceof vscode.CancellationError) {
-        return;
-    }
-
-    // Make this error reportable through the unified "Report Issue" command
-    context.errorHandling.forceIncludeInReportIssueCommand = true;
-
-    // Classify AI errors vs infrastructure errors
-    if (error instanceof vscode.LanguageModelError) {
-        context.telemetry.properties.errorCategory = 'ai';
-        context.telemetry.properties.aiErrorCode = error.code;
-        context.errorHandling.issueProperties.errorCategory = 'ai';
-        context.errorHandling.issueProperties.aiErrorCode = error.code;
-        if (error.code === 'Unknown' && error.cause !== undefined && error.cause !== null) {
-            const cause = error.cause;
-
-            // Bounded: constructor name for Errors, typeof for everything else.
-            // Both come from the JS runtime, not from user/model input.
-            context.telemetry.properties.aiErrorCauseType =
-                cause instanceof Error ? cause.constructor.name : typeof cause;
-
-            // Bounded: a short alphanumeric code if the cause exposes one.
-            // The regex enforces the allowlist — anything else is dropped.
-            const rawCode =
-                (cause as { code?: unknown }).code ??
-                (cause as { name?: unknown }).name ??
-                (cause as { status?: unknown }).status;
-            if (typeof rawCode === 'string' || typeof rawCode === 'number') {
-                const code = String(rawCode);
-                if (/^[A-Za-z0-9_.-]{1,64}$/.test(code)) {
-                    context.telemetry.properties.aiErrorCauseCode = code;
-                }
-            }
-
-            // Intentionally NOT stored: the raw `cause.message`. `issueProperties`
-            // is not a sanctioned PII channel (the same PII/EUII rules as telemetry
-            // apply), and a model error-cause message is unbounded — it may contain
-            // user/model content that `valuesToMask` cannot reliably cover. The
-            // bounded `aiErrorCauseType` / `aiErrorCauseCode` above are sufficient
-            // diagnostics for maintainers.
-        }
-    } else {
-        context.telemetry.properties.errorCategory = 'infrastructure';
-        context.errorHandling.issueProperties.errorCategory = 'infrastructure';
-    }
-
-    // Copy model info from telemetry.properties into issueProperties for the GitHub issue body
-    const modelId = context.telemetry.properties.modelId;
-    if (modelId && typeof modelId === 'string') {
-        context.errorHandling.issueProperties.modelId = modelId;
-    }
-    const modelFamily = context.telemetry.properties.modelFamily;
-    if (modelFamily && typeof modelFamily === 'string') {
-        context.errorHandling.issueProperties.modelFamily = modelFamily;
-    }
-}
-
-// ─── DDL extractor telemetry ────────────────────────────────────────────────
-
-/**
- * Adds per-call extractor stats to the supplied `IActionContext` (used by
- * `callWithTelemetryAndErrorHandling` for the `cosmosDB.migration.ddlExtractor.extract`
- * event) and accumulates phase-level rollups on the optional phase context for
- * dashboards/alerts that prefer one record per phase.
- *
- * When a `phaseContext` is supplied, the shared migration dimensions it already
- * carries (`sessionId`, `phase`, `sourceDbType`, `migrationMode`) are inherited
- * onto the per-call event so extractor stats can be sliced by source database
- * type / mode and correlated to a session. Those values are stamped upstream by
- * {@link setMigrationTelemetryContext} and are all telemetry-safe (an in-memory
- * session GUID and bounded enums).
- *
- * No file contents, paths, or names are emitted — only structural counts.
- */
-export function reportDdlExtractorStats(
-    callContext: IActionContext,
-    stats: ExtractionStats,
-    encoding: FileEncoding,
-    phaseContext?: IActionContext,
-): void {
-    callContext.telemetry.properties.encoding = encoding;
-
-    // Inherit the shared migration dimensions from the surrounding phase so this
-    // per-file event can be grouped by source DB type / mode and joined by session.
-    // Explicit allow-list only — never copy the whole property bag.
-    if (phaseContext) {
-        for (const key of ['sessionId', 'phase', 'sourceDbType', 'migrationMode'] as const) {
-            const value = phaseContext.telemetry.properties[key];
-            if (value !== undefined) {
-                callContext.telemetry.properties[key] = value;
-            }
-        }
-    }
-
-    const m = callContext.telemetry.measurements;
-    m.inputChars = stats.inputChars;
-    m.outputChars = stats.outputChars;
-    m.reductionRatio = round(stats.reductionRatio, 4);
-    m.durationMs = stats.durationMs;
-    m.warningsCount = stats.warnings.length;
-
-    m.createTable = stats.statementCounts.createTable;
-    m.alterTable = stats.statementCounts.alterTable;
-    m.createIndex = stats.statementCounts.createIndex;
-    m.createFulltextIndex = stats.statementCounts.createFulltextIndex;
-    m.createView = stats.statementCounts.createView;
-    m.createSequence = stats.statementCounts.createSequence;
-    m.createType = stats.statementCounts.createType;
-    m.createDomain = stats.statementCounts.createDomain;
-    m.createSchema = stats.statementCounts.createSchema;
-    m.otherStatements = stats.statementCounts.other;
-
-    m.dropAlterCheckReenable = stats.drops.alterTableCheckReenable;
-    m.dropAlterCheckConstraint = stats.drops.alterTableCheckConstraint;
-
-    m.stripWith = stats.strips.withOptionBlocks;
-    m.stripCheck = stats.strips.inlineCheckConstraints;
-    m.stripOnPrimary = stats.strips.onPrimary;
-    m.stripTextImageOn = stats.strips.textImageOn;
-    m.stripFileStreamOn = stats.strips.fileStreamOn;
-    m.stripCollate = stats.strips.collate;
-    m.stripRowGuidCol = stats.strips.rowGuidCol;
-    m.stripNotForReplication = stats.strips.notForReplication;
-
-    m.viewsSummarized = stats.views.summarized;
-    m.viewsRefsTotal = stats.views.referencedTablesTotal;
-
-    if (phaseContext) {
-        const pm = phaseContext.telemetry.measurements;
-        pm.ddlFilesProcessed = (pm.ddlFilesProcessed ?? 0) + 1;
-        pm.ddlInputCharsTotal = (pm.ddlInputCharsTotal ?? 0) + stats.inputChars;
-        pm.ddlOutputCharsTotal = (pm.ddlOutputCharsTotal ?? 0) + stats.outputChars;
-        pm.ddlDurationMsTotal = (pm.ddlDurationMsTotal ?? 0) + stats.durationMs;
-        pm.ddlWarningsTotal = (pm.ddlWarningsTotal ?? 0) + stats.warnings.length;
-        pm.ddlStatementsTotal =
-            (pm.ddlStatementsTotal ?? 0) +
-            stats.statementCounts.createTable +
-            stats.statementCounts.alterTable +
-            stats.statementCounts.createIndex +
-            stats.statementCounts.createFulltextIndex +
-            stats.statementCounts.createView +
-            stats.statementCounts.createSequence +
-            stats.statementCounts.createType +
-            stats.statementCounts.createDomain +
-            stats.statementCounts.createSchema +
-            stats.statementCounts.other;
-
-        // Recompute average reduction ratio across files seen so far in this phase
-        if (pm.ddlInputCharsTotal > 0) {
-            pm.ddlReductionRatioAvg = round(1 - pm.ddlOutputCharsTotal / pm.ddlInputCharsTotal, 4);
-        }
-    }
-}
-
-/** Returns a one-line, human-readable summary of an extraction for the output channel. */
-export function formatDdlExtractorSummary(
-    fileBaseName: string,
-    stats: ExtractionStats,
-    encoding: FileEncoding,
-): string {
-    const c = stats.statementCounts;
-    const pct = (stats.reductionRatio * 100).toFixed(1);
-    const parts: string[] = [];
-    if (c.createTable) parts.push(`${c.createTable} table${c.createTable === 1 ? '' : 's'}`);
-    if (c.alterTable) parts.push(`${c.alterTable} alter${c.alterTable === 1 ? '' : 's'}`);
-    if (c.createIndex || c.createFulltextIndex) {
-        parts.push(`${c.createIndex + c.createFulltextIndex} indexes`);
-    }
-    if (stats.views.summarized) parts.push(`${stats.views.summarized} views summarized`);
-    const detail = parts.length > 0 ? ` (${parts.join(', ')})` : '';
-    return (
-        `Schema "${fileBaseName}": ${formatBytes(stats.inputChars)} ${encoding} → ` +
-        `${formatBytes(stats.outputChars)} (-${pct}%) in ${stats.durationMs} ms${detail}`
-    );
-}
-
-function formatBytes(n: number): string {
-    if (n < 1024) return `${n} B`;
-    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
-    return `${(n / (1024 * 1024)).toFixed(2)} MB`;
-}
-
-function round(n: number, digits: number): number {
-    const f = 10 ** digits;
-    return Math.round(n * f) / f;
 }

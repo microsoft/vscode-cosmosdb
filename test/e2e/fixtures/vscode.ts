@@ -115,7 +115,7 @@ function seedUserSettings(userDataDir: string): void {
         // accounts; required for any e2e-vs-emulator scenario.
         'cosmosDB.enableEndpointDiscovery': false,
         // The dedicated e2e emulator binds to 8082 (not the default 8081);
-        // the migration provisioning step reads this to target the right port.
+        // migration connection testing reads this to target the right port.
         'cosmosDB.emulator.port': E2E_EMULATOR_PORT,
         // Suppress the Quick Start onboarding tour globally. On a fresh profile
         // the automatic tour opens a Popover overlay anchored to the Query
@@ -231,15 +231,13 @@ export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
                 mkdirSync(workspaceDir, { recursive: true });
             }
 
-            // Per-worker scratch dir the migration AI mock reads (control.json)
-            // and writes (capture.jsonl). Created up front so both the worker
-            // (setMockControl) and the extension can see the same location.
+            // Per-worker scratch directory for captured migration Skill dispatches.
             const migrationCaptureDir = path.join(workerDir, 'migration-capture');
             mkdirSync(migrationCaptureDir, { recursive: true });
 
             // Expose the per-worker workspace + capture dirs to this worker's
             // process.env. The migration fixtures (readGitignore, gitDirExists,
-            // provisioningArtifact*, setMockControl) read these from the worker,
+            // provisioningArtifact*) read these from the worker,
             // and the `...process.env` spread below forwards COSMOSDB_E2E_*
             // straight into the launched extension host (the AI mock reads the
             // capture dir there). Workers are isolated processes, so this never
@@ -289,10 +287,8 @@ export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
                     // Without this flag those commands are not registered at all,
                     // so production users running the extension never see them.
                     COSMOSDB_E2E_TEST: '1',
-                    // Replaces the migration assistant's Copilot calls with a
-                    // deterministic offline mock (see
-                    // `src/panels/migration/helpers/e2eMigrationAiMock.ts`) so the
-                    // full migration pipeline can run end-to-end without Copilot.
+                    // Captures migration Skill dispatches without opening Copilot Chat.
+                    // Fixtures simulate the agent by writing portable artifacts.
                     COSMOSDB_E2E_MIGRATION_AI_MOCK: '1',
                     // Source directory copied into `<workspace>/.cosmosdb-migration`
                     // by the `cosmosDB.e2e.openMigration` command so phase-flow
@@ -331,28 +327,30 @@ export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
 
             await use(app);
 
-            // VS Code spawns helper processes (extension host, renderers,
-            // utility) that keep the app alive, so `app.close()` reliably hangs
-            // past the worker-teardown timeout. Every one of those processes
-            // carries this worker's unique `--user-data-dir` in its argv, so a
-            // targeted `pkill -f` tears the whole instance down without touching
-            // other workers. Windows uses named pipes and closes cleanly, so
-            // fall back to `app.close()` there.
+            // Stop only the launched process tree; other VS Code instances may be running on this machine.
             if (process.platform === 'win32') {
                 await app.close().catch(() => {
                     /* close races with Electron teardown are expected */
                 });
             } else {
-                try {
-                    execFileSync('pkill', ['-9', '-f', userDataDir]);
-                } catch {
-                    // `pkill` is missing or matched nothing. Fall back to killing
-                    // the launched process directly so teardown can't hang on
-                    // `app.close()` (VS Code keeps helper processes alive).
-                    try {
-                        app.process().kill('SIGKILL');
-                    } catch {
-                        /* already exited */
+                const rootPid = app.process().pid;
+                if (rootPid !== undefined) {
+                    const processes = execFileSync('ps', ['-axo', 'pid=,ppid='], { encoding: 'utf8' })
+                        .trim()
+                        .split('\n')
+                        .map((line) => line.trim().split(/\s+/).map(Number));
+                    const pids = [rootPid];
+                    for (let index = 0; index < pids.length; index++) {
+                        for (const [pid, parentPid] of processes) {
+                            if (parentPid === pids[index]) pids.push(pid);
+                        }
+                    }
+                    for (const pid of pids.reverse()) {
+                        try {
+                            process.kill(pid, 'SIGKILL');
+                        } catch (error) {
+                            if (!(error instanceof Error && 'code' in error && error.code === 'ESRCH')) throw error;
+                        }
                     }
                 }
                 await app.close().catch(() => {

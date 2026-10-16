@@ -3,14 +3,30 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as l10n from '@vscode/l10n';
+import { createHash } from 'node:crypto';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { type ParsedAccessPattern } from '../panels/migration/helpers/migrationHelpers';
+import {
+    readProjectState,
+    updateProjectState,
+} from '../../skills/cosmosdb-relational-migration/scripts/project-state.mjs';
+import {
+    normalizeMigrationProjectCompatibility,
+    validateMigrationProject,
+} from '../../skills/cosmosdb-relational-migration/scripts/validate-migration-project.mjs';
 
 export const MIGRATION_FOLDER = '.cosmosdb-migration';
 export const PROJECT_FILE = 'project.json';
 
 export type PhaseStatus = 'not-started' | 'in-progress' | 'complete';
+
+export interface DiscoverySourceSelection {
+    files?: string[];
+    excludedFiles?: string[];
+    path?: string;
+    includedFiles?: string[];
+}
 
 export interface AssessmentDomain {
     name: string;
@@ -18,6 +34,18 @@ export interface AssessmentDomain {
     crossDomainDependencies: string[];
     estimatedTokens: number;
     isMapped: boolean;
+}
+
+export interface ParsedAccessPattern {
+    name: string;
+    type: string;
+    tables: string[];
+    frequency: string;
+    codeReferences: string[];
+    filterFields?: string;
+    singleOrBatch?: string;
+    sqlExample?: string;
+    codeExample?: string;
 }
 
 export interface ProjectJson {
@@ -36,24 +64,13 @@ export interface ProjectJson {
     };
     phases: {
         discovery: {
+            preflightStatus?: PhaseStatus;
+            preflightCompletedAt?: string;
             status: PhaseStatus;
             discoveryInstructions?: string;
-            schemaInventory?: {
-                path?: string;
-                // Whitelist: when present, only these files (relative to `path`) are considered.
-                includedFiles?: string[];
-                excludedFiles?: string[];
-            };
-            volumetrics?: {
-                path?: string;
-                includedFiles?: string[];
-                excludedFiles?: string[];
-            };
-            accessPatterns?: {
-                path?: string;
-                includedFiles?: string[];
-                excludedFiles?: string[];
-            };
+            schemaInventory?: DiscoverySourceSelection;
+            volumetrics?: DiscoverySourceSelection;
+            accessPatterns?: DiscoverySourceSelection;
             applicationAnalysis?: {
                 projectName?: string;
                 projectType?: string;
@@ -86,6 +103,8 @@ export interface ProjectJson {
             location?: string;
             subscriptionId?: string;
             subscriptionName?: string;
+            capacityMode?: 'serverless' | 'provisioned';
+            maxThroughput?: number;
             verified?: boolean;
             verifiedAt?: string;
         };
@@ -94,9 +113,58 @@ export interface ProjectJson {
             databaseName?: string;
             containersCreated?: string[];
             sampleDataInserted?: boolean;
+            artifactPaths?: string[];
+            completedAt?: string;
+        };
+        codeMigration?: {
+            status: PhaseStatus;
+            planPath?: string;
+            outputPaths?: string[];
             completedAt?: string;
         };
     };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function normalizeDiscoverySource(value: unknown): unknown {
+    return isRecord(value) && value.path === '' ? { ...value, path: '.' } : value;
+}
+
+function hasLegacyWorkspaceRootPath(value: unknown): boolean {
+    if (!isRecord(value) || !isRecord(value.phases) || !isRecord(value.phases.discovery)) return false;
+    const discovery = value.phases.discovery;
+    return [discovery.schemaInventory, discovery.volumetrics, discovery.accessPatterns].some(
+        (source) => isRecord(source) && source.path === '',
+    );
+}
+
+export function normalizeMigrationProject(value: unknown, defaultName: string): ProjectJson | undefined {
+    value = normalizeMigrationProjectCompatibility(value).project;
+    if (!isRecord(value)) return undefined;
+
+    const phases = isRecord(value.phases) ? value.phases : {};
+    const discovery = isRecord(phases.discovery) ? phases.discovery : {};
+    const status = ['not-started', 'in-progress', 'complete'].includes(String(discovery.status))
+        ? discovery.status
+        : 'not-started';
+
+    return {
+        ...value,
+        name: typeof value.name === 'string' && value.name.length > 0 ? value.name : defaultName,
+        phases: {
+            ...phases,
+            discovery: {
+                ...discovery,
+                schemaInventory: normalizeDiscoverySource(discovery.schemaInventory),
+                volumetrics: normalizeDiscoverySource(discovery.volumetrics),
+                accessPatterns: normalizeDiscoverySource(discovery.accessPatterns),
+                status,
+            },
+        },
+    } as ProjectJson;
 }
 
 /**
@@ -106,6 +174,8 @@ export class MigrationProjectService {
     private readonly migrationRoot: string;
     private readonly projectFilePath: string;
     private initialized = false;
+    private projectRevision: string | undefined;
+    private readonly projectRevisions = new WeakMap<ProjectJson, string>();
 
     constructor(private readonly workspacePath: string) {
         this.migrationRoot = path.join(workspacePath, MIGRATION_FOLDER);
@@ -180,13 +250,22 @@ export class MigrationProjectService {
     /**
      * Load an existing project.json if it exists.
      */
-    async load(): Promise<ProjectJson | undefined> {
+    async load(options: { readOnly?: boolean } = {}): Promise<ProjectJson | undefined> {
         try {
             const data = await vscode.workspace.fs.readFile(MigrationProjectService.toUri(this.projectFilePath));
-            const project = JSON.parse(Buffer.from(data).toString('utf-8')) as ProjectJson;
+            this.projectRevision = createHash('sha256').update(data).digest('hex');
+            const parsed: unknown = JSON.parse(Buffer.from(data).toString('utf-8'));
+            const project = normalizeMigrationProject(parsed, path.basename(this.workspacePath));
+            if (!project) return undefined;
+            this.projectRevisions.set(project, this.projectRevision);
 
-            if (!project.sessionId) {
+            const wasMissingSessionId = !project.sessionId;
+            const shouldPersistNormalizedPaths = hasLegacyWorkspaceRootPath(parsed);
+            if (wasMissingSessionId && !options.readOnly) {
                 project.sessionId = globalThis.crypto.randomUUID();
+            }
+            const inputsNormalized = await this.normalizeDiscoveryInputs(project);
+            if (!options.readOnly && (wasMissingSessionId || shouldPersistNormalizedPaths || inputsNormalized)) {
                 await this.save(project);
             }
 
@@ -201,31 +280,38 @@ export class MigrationProjectService {
      * Ensures the migration folder structure is created on the first save.
      */
     async save(project: ProjectJson): Promise<void> {
+        const revision =
+            this.projectRevisions.get(project) ?? this.projectRevision ?? readProjectState(this.workspacePath).revision;
+        const normalized = normalizeMigrationProjectCompatibility(project).project;
+        const errors = validateMigrationProject(normalized);
+        if (errors.length) {
+            throw new Error(
+                l10n.t('Invalid migration project: {errors}', {
+                    errors: errors.map((error) => `${error.path}: ${error.message}`).join('; '),
+                }),
+            );
+        }
         await this.ensureInitialized();
-        const content = Buffer.from(JSON.stringify(project, null, 2), 'utf-8');
-        await vscode.workspace.fs.writeFile(MigrationProjectService.toUri(this.projectFilePath), content);
+        this.projectRevision = updateProjectState(this.workspacePath, revision, () => normalized).revision;
+        this.projectRevisions.set(project, this.projectRevision);
     }
 
     /**
-     * Reset project by deleting phase subfolders and resetting project.json.
+     * Reset project by deleting the entire migration folder and creating a new project.
      */
     async reset(project: ProjectJson): Promise<ProjectJson> {
-        const phasesDir = MigrationProjectService.toUri(this.migrationRoot, 'phases');
+        const migrationRoot = MigrationProjectService.toUri(this.migrationRoot);
         try {
-            await vscode.workspace.fs.delete(phasesDir, { recursive: true });
-        } catch {
-            // Folder may not exist
+            await vscode.workspace.fs.delete(migrationRoot, { recursive: true, useTrash: false });
+        } catch (error) {
+            if (await MigrationProjectService.fileExists(migrationRoot)) {
+                throw error;
+            }
         }
 
-        // Invalidate cache so the re-initialize below actually re-creates the phase folders.
         this.initialized = false;
-
-        // Re-create folder structure with a new sessionId
-        const newProject = await this.initialize(project.name);
-        newProject.sessionId = globalThis.crypto.randomUUID();
-        newProject.runCounts = {};
-        await this.save(newProject);
-        return newProject;
+        this.projectRevision = 'missing';
+        return this.initialize(project.name);
     }
 
     /**
@@ -258,21 +344,20 @@ export class MigrationProjectService {
         return vscode.Uri.file(path.join(...segments));
     }
 
-    /**
-     * Returns true when the discovery source for the given subfolder points at a folder
-     * inside the workspace (i.e. files are referenced in-place, not copied into
-     * `.cosmosdb-migration`).
-     */
-    isWorkspaceReferenced(project: ProjectJson, subfolder: 'schema-ddl' | 'volumetrics' | 'access-patterns'): boolean {
-        const d = project.phases.discovery;
-        switch (subfolder) {
-            case 'schema-ddl':
-                return d.schemaInventory?.path !== undefined;
-            case 'volumetrics':
-                return d.volumetrics?.path !== undefined;
-            case 'access-patterns':
-                return d.accessPatterns?.path !== undefined;
-        }
+    isWorkspaceReferenced(
+        project: ProjectJson,
+        subfolder: 'schema-ddl' | 'volumetrics' | 'access-patterns',
+        filePath?: string,
+    ): boolean {
+        const selection = this.getSourceSelection(project, subfolder);
+        const isReference = (file: string) => {
+            const relative = path.relative(this.getDefaultSubfolderPath(subfolder), file);
+            return relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative);
+        };
+        if (filePath !== undefined) return isReference(filePath);
+        return selection?.files !== undefined
+            ? selection.files.some((file) => isReference(this.resolveInputFile(file)))
+            : selection?.path !== undefined;
     }
 
     /**
@@ -352,34 +437,202 @@ export class MigrationProjectService {
     }
 
     /**
-     * Path to the generated `main.bicepparam` companion params file. Holds the
-     * resolved values (account name, location, etc.) that the assistant fills
-     * in incrementally as the user proceeds through Phase 4.
-     */
-    getBicepParamPath(): string {
-        return path.join(this.getProvisioningPath(), 'main.bicepparam');
-    }
-
-    /**
      * List files in a given directory, recursing into subdirectories.
      */
-    async listFiles(dirPath: string): Promise<string[]> {
+    async listFiles(dirPath: string, strict = false): Promise<string[]> {
         const results: string[] = [];
         try {
             const entries = await vscode.workspace.fs.readDirectory(vscode.Uri.file(dirPath));
             for (const [name, type] of entries) {
                 const fullPath = path.join(dirPath, name);
                 if ((type & vscode.FileType.Directory) !== 0) {
-                    const nested = await this.listFiles(fullPath);
+                    const nested = await this.listFiles(fullPath, strict);
                     results.push(...nested);
                 } else if ((type & vscode.FileType.File) !== 0) {
                     results.push(fullPath);
                 }
             }
-        } catch {
+        } catch (error) {
+            if (strict) throw error;
             // Directory does not exist or is unreadable
         }
         return results;
+    }
+
+    async recordDefaultInputFiles(
+        project: ProjectJson,
+        subfolder: 'schema-ddl' | 'volumetrics' | 'access-patterns',
+    ): Promise<void> {
+        const base = this.getDefaultSubfolderPath(subfolder);
+        const files = await this.listFiles(base, true);
+        this.recordInputFiles(project, subfolder, files);
+    }
+
+    getSourceSelection(
+        project: ProjectJson,
+        subfolder: 'schema-ddl' | 'volumetrics' | 'access-patterns',
+    ): DiscoverySourceSelection | undefined {
+        const property =
+            subfolder === 'schema-ddl'
+                ? 'schemaInventory'
+                : subfolder === 'volumetrics'
+                  ? 'volumetrics'
+                  : 'accessPatterns';
+        return project.phases.discovery[property];
+    }
+
+    resolveInputFile(file: string): string {
+        const resolved = path.resolve(this.migrationRoot, file);
+        if (path.isAbsolute(file) || !this.isInsideWorkspace(resolved)) {
+            throw new Error(
+                l10n.t('Discovery input must be relative to the migration folder and remain inside the workspace.'),
+            );
+        }
+        return resolved;
+    }
+
+    recordInputFiles(
+        project: ProjectJson,
+        subfolder: 'schema-ddl' | 'volumetrics' | 'access-patterns',
+        files: string[],
+        excludedFiles: string[] = [],
+    ): void {
+        const toRelative = (file: string) => {
+            if (!this.isInsideWorkspace(file))
+                throw new Error(l10n.t('Copy external inputs into the workspace before recording them.'));
+            return path.relative(this.migrationRoot, file).split(path.sep).join('/');
+        };
+        const property =
+            subfolder === 'schema-ddl'
+                ? 'schemaInventory'
+                : subfolder === 'volumetrics'
+                  ? 'volumetrics'
+                  : 'accessPatterns';
+        const source: DiscoverySourceSelection = { ...project.phases.discovery[property] };
+        delete source.path;
+        delete source.includedFiles;
+        delete source.excludedFiles;
+        const template = this.getTemplateFilePath(subfolder);
+        source.files = [...new Set(files.filter((file) => file !== template).map(toRelative))].sort();
+        const excluded = [...new Set(excludedFiles.map(toRelative))]
+            .filter((file) => source.files?.includes(file))
+            .sort();
+        if (excluded.length) source.excludedFiles = excluded;
+        project.phases.discovery[property] = source;
+    }
+
+    async normalizeDiscoveryInputs(project: ProjectJson): Promise<boolean> {
+        let changed = false;
+        for (const subfolder of ['schema-ddl', 'volumetrics', 'access-patterns'] as const) {
+            const source = this.getSourceSelection(project, subfolder);
+            if (source?.files !== undefined) continue;
+            if (source?.path === undefined && source?.includedFiles === undefined) {
+                const excluded = source?.excludedFiles?.map((file) => {
+                    const normalized = file.replace(/\\/g, '/');
+                    if (normalized.startsWith('phases/') || normalized.startsWith('../') || path.isAbsolute(normalized))
+                        return normalized;
+                    return path
+                        .relative(this.migrationRoot, path.resolve(this.getDefaultSubfolderPath(subfolder), normalized))
+                        .split(path.sep)
+                        .join('/');
+                });
+                if (source && JSON.stringify(excluded) !== JSON.stringify(source.excludedFiles)) {
+                    source.excludedFiles = excluded;
+                    changed = true;
+                }
+                continue;
+            }
+            const base = this.getDiscoverySourcePath(project, subfolder);
+            if (
+                source.includedFiles === undefined &&
+                path.resolve(base) === path.resolve(this.getDefaultSubfolderPath(subfolder))
+            ) {
+                const normalized = { ...source };
+                delete normalized.path;
+                if (source.excludedFiles) {
+                    normalized.excludedFiles = source.excludedFiles.map((file) =>
+                        path.relative(this.migrationRoot, path.resolve(base, file)).split(path.sep).join('/'),
+                    );
+                }
+                const property =
+                    subfolder === 'schema-ddl'
+                        ? 'schemaInventory'
+                        : subfolder === 'volumetrics'
+                          ? 'volumetrics'
+                          : 'accessPatterns';
+                project.phases.discovery[property] = normalized;
+                changed = true;
+                continue;
+            }
+            if (
+                source?.includedFiles === undefined &&
+                !(await MigrationProjectService.fileExists(vscode.Uri.file(base)))
+            )
+                continue;
+            const files =
+                source?.includedFiles !== undefined
+                    ? source.includedFiles.map((file) => path.resolve(base, file))
+                    : await this.listFiles(base, true);
+            const rawFiles = files.filter((file) => file !== this.getTemplateFilePath(subfolder));
+            if (!source && !rawFiles.length) continue;
+            this.recordInputFiles(
+                project,
+                subfolder,
+                rawFiles,
+                (source?.excludedFiles ?? []).map((file) => path.resolve(base, file)),
+            );
+            changed = true;
+        }
+        return changed;
+    }
+
+    async setInputFileExcluded(
+        project: ProjectJson,
+        subfolder: 'schema-ddl' | 'volumetrics' | 'access-patterns',
+        filePath: string,
+        excluded: boolean,
+    ): Promise<boolean> {
+        await this.normalizeDiscoveryInputs(project);
+        const source = this.getSourceSelection(project, subfolder);
+        const relative = path.relative(this.migrationRoot, filePath).split(path.sep).join('/');
+        const resolved = this.resolveInputFile(relative);
+        if (resolved === this.getTemplateFilePath(subfolder)) return false;
+        const exclusions = new Set(source?.excludedFiles ?? []);
+        if (exclusions.has(relative) === excluded) return false;
+        const candidates =
+            source?.files !== undefined
+                ? source.files.map((file) => this.resolveInputFile(file))
+                : await this.listFiles(this.getDefaultSubfolderPath(subfolder), true);
+        if (!candidates.includes(resolved)) return false;
+        if (excluded) exclusions.add(relative);
+        else exclusions.delete(relative);
+        const updated = { ...source };
+        if (exclusions.size) updated.excludedFiles = [...exclusions].sort();
+        else delete updated.excludedFiles;
+        const property =
+            subfolder === 'schema-ddl'
+                ? 'schemaInventory'
+                : subfolder === 'volumetrics'
+                  ? 'volumetrics'
+                  : 'accessPatterns';
+        project.phases.discovery[property] = updated;
+        return true;
+    }
+
+    getDiscoveryInputFolders(project: ProjectJson): string[] {
+        return [
+            ...new Set(
+                (['schema-ddl', 'volumetrics', 'access-patterns'] as const).flatMap((subfolder) => {
+                    const source = this.getSourceSelection(project, subfolder);
+                    return source?.files !== undefined
+                        ? [
+                              this.getDefaultSubfolderPath(subfolder),
+                              ...source.files.map((file) => path.dirname(this.resolveInputFile(file))),
+                          ]
+                        : [this.getDiscoverySourcePath(project, subfolder)];
+                }),
+            ),
+        ];
     }
 
     /**
@@ -397,17 +650,31 @@ export class MigrationProjectService {
         project: ProjectJson,
         subfolder: 'schema-ddl' | 'volumetrics' | 'access-patterns',
     ): Promise<string[]> {
+        const source = this.getSourceSelection(project, subfolder);
+        if (source?.files !== undefined) {
+            const excluded = new Set((source.excludedFiles ?? []).map((file) => this.resolveInputFile(file)));
+            const files = source.files.map((file) => this.resolveInputFile(file)).filter((file) => !excluded.has(file));
+            const template = this.getTemplateFilePath(subfolder);
+            if (template && (await MigrationProjectService.fileExists(vscode.Uri.file(template)))) files.push(template);
+            return [...new Set(files)];
+        }
         const base = this.getDiscoverySourcePath(project, subfolder);
         const all = await this.listFiles(base);
         const included = this.getIncludedFiles(project, subfolder);
         let filtered = all;
         if (included !== undefined) {
-            const allow = new Set(included);
-            filtered = filtered.filter((f) => allow.has(path.relative(base, f)));
+            const allow = new Set(included.map((file) => path.normalize(file)));
+            const template = this.getTemplateFilePath(subfolder);
+            filtered = filtered.filter((file) => allow.has(path.relative(base, file)) || file === template);
         }
-        const excluded = new Set(this.getExcludedFiles(project, subfolder));
+        const legacyBase = source?.path !== undefined || source?.includedFiles !== undefined;
+        const excluded = new Set(
+            this.getExcludedFiles(project, subfolder).map((file) =>
+                legacyBase ? path.resolve(base, file) : this.resolveInputFile(file),
+            ),
+        );
         if (excluded.size > 0) {
-            filtered = filtered.filter((f) => !excluded.has(path.relative(base, f)));
+            filtered = filtered.filter((file) => !excluded.has(path.resolve(file)));
         }
         return filtered;
     }
@@ -441,12 +708,24 @@ export class MigrationProjectService {
         project: ProjectJson,
         subfolder: 'schema-ddl' | 'volumetrics' | 'access-patterns',
     ): Promise<string[]> {
+        const source = this.getSourceSelection(project, subfolder);
+        if (source?.files !== undefined) {
+            const files = (source.excludedFiles ?? [])
+                .filter((file) => source.files?.includes(file))
+                .map((file) => this.resolveInputFile(file));
+            const present = await Promise.all(
+                files.map((file) => MigrationProjectService.fileExists(vscode.Uri.file(file))),
+            );
+            return files.filter((_, index) => present[index]);
+        }
         if (this.getIncludedFiles(project, subfolder) !== undefined) return [];
         const excluded = this.getExcludedFiles(project, subfolder);
         if (excluded.length === 0) return [];
         const base = this.getDiscoverySourcePath(project, subfolder);
-        const all = new Set((await this.listFiles(base)).map((f) => path.relative(base, f)));
-        return excluded.filter((rel) => all.has(rel)).map((rel) => path.join(base, rel));
+        const all = new Set(await this.listFiles(base));
+        return excluded
+            .map((file) => (source?.path !== undefined ? path.resolve(base, file) : this.resolveInputFile(file)))
+            .filter((file) => all.has(file) && file !== this.getTemplateFilePath(subfolder));
     }
 
     /**
@@ -499,18 +778,38 @@ export class MigrationProjectService {
     }
 
     /**
+     * Merge existing discovery file paths with files newly selected by the user.
+     */
+    static mergeFileUris(existingFilePaths: string[], selectedFileUris: vscode.Uri[]): vscode.Uri[] {
+        const filesByPath = new Map<string, vscode.Uri>();
+        for (const filePath of existingFilePaths) {
+            filesByPath.set(path.normalize(filePath), vscode.Uri.file(filePath));
+        }
+        for (const uri of selectedFileUris) {
+            filesByPath.set(path.normalize(uri.fsPath), uri);
+        }
+        return [...filesByPath.values()];
+    }
+
+    /**
      * Copy files into a migration subfolder.
      */
     async copyFilesToSubfolder(
         fileUris: vscode.Uri[],
         subfolder: 'schema-ddl' | 'volumetrics' | 'access-patterns',
+        sourceFolder?: string,
     ): Promise<void> {
         const targetDir = path.join(this.migrationRoot, 'phases', '1-discovery', subfolder);
         await vscode.workspace.fs.createDirectory(MigrationProjectService.toUri(targetDir));
 
         for (const uri of fileUris) {
-            const fileName = path.basename(uri.fsPath);
+            const fileName = sourceFolder ? path.relative(sourceFolder, uri.fsPath) : path.basename(uri.fsPath);
+            if (fileName === '..' || fileName.startsWith(`..${path.sep}`) || path.isAbsolute(fileName)) {
+                throw new Error(l10n.t('Copied input must remain inside its selected folder.'));
+            }
             const targetUri = MigrationProjectService.toUri(targetDir, fileName);
+            if (path.relative(uri.fsPath, targetUri.fsPath) === '') continue;
+            await vscode.workspace.fs.createDirectory(MigrationProjectService.toUri(path.dirname(targetUri.fsPath)));
             await vscode.workspace.fs.copy(uri, targetUri, { overwrite: true });
         }
     }
@@ -528,7 +827,7 @@ export class MigrationProjectService {
      * Get a relative path from the workspace root.
      */
     getRelativePath(fsPath: string): string {
-        return path.relative(this.workspacePath, fsPath);
+        return path.relative(this.workspacePath, fsPath) || '.';
     }
 
     /**

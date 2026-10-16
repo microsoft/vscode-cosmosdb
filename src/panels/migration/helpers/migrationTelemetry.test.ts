@@ -5,17 +5,8 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { describe, expect, it } from 'vitest';
-import * as vscode from 'vscode';
 import { type ProjectJson } from '../../../services/MigrationProjectService';
-import { type ExtractionStats } from '../../../utils/ddlExtractor';
-import {
-    enrichErrorContext,
-    extractAccountNameFromEndpoint,
-    incrementRunCount,
-    reportDdlExtractorStats,
-    setAiTelemetryContext,
-    setMigrationTelemetryContext,
-} from './migrationTelemetry';
+import { extractAccountNameFromEndpoint, setMigrationTelemetryContext } from './migrationTelemetry';
 
 function createContext() {
     return {
@@ -41,17 +32,6 @@ function createProject(overrides?: Partial<ProjectJson>): ProjectJson {
         phases: { discovery: { status: 'not-started' } },
         ...overrides,
     };
-}
-
-/**
- * Builds a {@link vscode.LanguageModelError} the type-safe way: the real
- * constructor is `(message?, options?: ErrorOptions)` with a readonly `code`,
- * so set the test `code` afterwards via a cast.
- */
-function lmError(code: string, cause?: unknown): vscode.LanguageModelError {
-    const err = new vscode.LanguageModelError('ai error', cause === undefined ? undefined : { cause });
-    (err as unknown as { code: string }).code = code;
-    return err;
 }
 
 describe('setMigrationTelemetryContext — runIndex baseline', () => {
@@ -143,20 +123,6 @@ describe('setMigrationTelemetryContext — context stamping', () => {
     });
 });
 
-describe('incrementRunCount', () => {
-    it('returns 1 on the first run and initializes runCounts', () => {
-        const project = createProject({ runCounts: undefined });
-        expect(incrementRunCount(project, 'discovery')).toBe(1);
-        expect(project.runCounts?.discovery).toBe(1);
-    });
-
-    it('increments an existing count', () => {
-        const project = createProject({ runCounts: { assessment: 2 } });
-        expect(incrementRunCount(project, 'assessment')).toBe(3);
-        expect(project.runCounts?.assessment).toBe(3);
-    });
-});
-
 describe('extractAccountNameFromEndpoint', () => {
     it('returns the first subdomain of a Cosmos endpoint', () => {
         expect(extractAccountNameFromEndpoint('https://myaccount.documents.azure.com:443/')).toBe('myaccount');
@@ -168,148 +134,5 @@ describe('extractAccountNameFromEndpoint', () => {
 
     it('returns undefined for an unparseable endpoint', () => {
         expect(extractAccountNameFromEndpoint('not a url')).toBeUndefined();
-    });
-});
-
-describe('setAiTelemetryContext', () => {
-    it('stamps model id, family and vendor', () => {
-        const ctx = createContext();
-        setAiTelemetryContext(
-            ctx as unknown as IActionContext,
-            {
-                id: 'gpt-x',
-                family: 'gpt',
-                vendor: 'copilot',
-            } as unknown as vscode.LanguageModelChat,
-        );
-        expect(ctx.telemetry.properties.modelId).toBe('gpt-x');
-        expect(ctx.telemetry.properties.modelFamily).toBe('gpt');
-        expect(ctx.telemetry.properties.modelVendor).toBe('copilot');
-    });
-});
-
-describe('enrichErrorContext', () => {
-    it('is a no-op for cancellation errors', () => {
-        const ctx = createContext();
-        enrichErrorContext(ctx as unknown as IActionContext, new vscode.CancellationError());
-        expect(ctx.telemetry.properties.errorCategory).toBeUndefined();
-        expect(ctx.errorHandling.forceIncludeInReportIssueCommand).toBeUndefined();
-    });
-
-    it('classifies generic errors as infrastructure', () => {
-        const ctx = createContext();
-        enrichErrorContext(ctx as unknown as IActionContext, new Error('disk full'));
-        expect(ctx.telemetry.properties.errorCategory).toBe('infrastructure');
-        expect(ctx.errorHandling.issueProperties.errorCategory).toBe('infrastructure');
-        expect(ctx.errorHandling.forceIncludeInReportIssueCommand).toBe(true);
-    });
-
-    it('classifies LanguageModelError as ai and records the code', () => {
-        const ctx = createContext();
-        enrichErrorContext(ctx as unknown as IActionContext, lmError('Blocked'));
-        expect(ctx.telemetry.properties.errorCategory).toBe('ai');
-        expect(ctx.telemetry.properties.aiErrorCode).toBe('Blocked');
-        expect(ctx.errorHandling.issueProperties.aiErrorCode).toBe('Blocked');
-    });
-
-    it('records a bounded cause type and code for Unknown AI errors', () => {
-        const ctx = createContext();
-        const cause = Object.assign(new TypeError('boom'), { code: 'ECONNRESET' });
-        enrichErrorContext(ctx as unknown as IActionContext, lmError('Unknown', cause));
-        expect(ctx.telemetry.properties.aiErrorCauseType).toBe('TypeError');
-        expect(ctx.telemetry.properties.aiErrorCauseCode).toBe('ECONNRESET');
-    });
-
-    it('drops a cause code that contains PII-like characters (allowlist enforced)', () => {
-        const ctx = createContext();
-        const cause = Object.assign(new Error('x'), { code: '/Users/alice/secret path' });
-        enrichErrorContext(ctx as unknown as IActionContext, lmError('Unknown', cause));
-        // The cause type is bounded and safe...
-        expect(ctx.telemetry.properties.aiErrorCauseType).toBe('Error');
-        // ...but the unbounded code must be rejected by the regex allowlist.
-        expect(ctx.telemetry.properties.aiErrorCauseCode).toBeUndefined();
-    });
-
-    it('never stores the raw cause message', () => {
-        const ctx = createContext();
-        const cause = new Error('user@example.com /secret/path');
-        enrichErrorContext(ctx as unknown as IActionContext, lmError('Unknown', cause));
-        const allValues = [
-            ...Object.values(ctx.telemetry.properties),
-            ...Object.values(ctx.errorHandling.issueProperties),
-        ];
-        expect(allValues).not.toContain('user@example.com /secret/path');
-    });
-
-    it('copies model info into issueProperties', () => {
-        const ctx = createContext();
-        ctx.telemetry.properties.modelId = 'gpt-x';
-        ctx.telemetry.properties.modelFamily = 'gpt';
-        enrichErrorContext(ctx as unknown as IActionContext, new Error('infra'));
-        expect(ctx.errorHandling.issueProperties.modelId).toBe('gpt-x');
-        expect(ctx.errorHandling.issueProperties.modelFamily).toBe('gpt');
-    });
-});
-
-describe('reportDdlExtractorStats', () => {
-    function makeStats(): ExtractionStats {
-        return {
-            inputChars: 100,
-            outputChars: 60,
-            reductionRatio: 0.4,
-            durationMs: 5,
-            warnings: ['w1'],
-            statementCounts: {
-                createTable: 2,
-                alterTable: 1,
-                createIndex: 3,
-                createFulltextIndex: 0,
-                createView: 0,
-                createSequence: 0,
-                createType: 0,
-                createDomain: 0,
-                createSchema: 0,
-                other: 0,
-            },
-            drops: { alterTableCheckReenable: 0, alterTableCheckConstraint: 0 },
-            strips: {
-                withOptionBlocks: 0,
-                inlineCheckConstraints: 0,
-                onPrimary: 0,
-                textImageOn: 0,
-                fileStreamOn: 0,
-                collate: 0,
-                rowGuidCol: 0,
-                notForReplication: 0,
-            },
-            views: { summarized: 0, referencedTablesTotal: 0 },
-        } as unknown as ExtractionStats;
-    }
-
-    it('records structural measurements on the call context', () => {
-        const ctx = createContext();
-        reportDdlExtractorStats(ctx as unknown as IActionContext, makeStats(), 'utf-8');
-        expect(ctx.telemetry.properties.encoding).toBe('utf-8');
-        expect(ctx.telemetry.measurements.inputChars).toBe(100);
-        expect(ctx.telemetry.measurements.createTable).toBe(2);
-        expect(ctx.telemetry.measurements.reductionRatio).toBe(0.4);
-    });
-
-    it('accumulates phase-level rollups across calls', () => {
-        const phaseCtx = createContext();
-        reportDdlExtractorStats(
-            createContext() as unknown as IActionContext,
-            makeStats(),
-            'utf-8',
-            phaseCtx as unknown as IActionContext,
-        );
-        reportDdlExtractorStats(
-            createContext() as unknown as IActionContext,
-            makeStats(),
-            'utf-8',
-            phaseCtx as unknown as IActionContext,
-        );
-        expect(phaseCtx.telemetry.measurements.ddlFilesProcessed).toBe(2);
-        expect(phaseCtx.telemetry.measurements.ddlInputCharsTotal).toBe(200);
     });
 });

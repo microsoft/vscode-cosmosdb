@@ -23,7 +23,7 @@
  * the webview to be fully populated (React mounted, expected UI present).
  */
 
-import { test, type ElectronApplication, type Frame, type Page } from '@playwright/test';
+import { expect, test, type ElectronApplication, type Frame, type Page } from '@playwright/test';
 import { resolveCapturePlan, shouldCapture } from '../helpers/captureMode';
 
 const COMMAND_PALETTE_SHORTCUT = process.platform === 'darwin' ? 'Meta+Shift+P' : 'Control+Shift+P';
@@ -78,6 +78,25 @@ export async function resizeWindow(app: ElectronApplication, width: number, heig
         .catch(() => {
             /* No window yet / context torn down — callers tolerate this. */
         });
+}
+
+/**
+ * Resize the native Electron window instead of overriding CDP device metrics, which can leave
+ * VS Code's embedded webviews using different coordinates from the workbench after a resize.
+ */
+export async function resizeWindowViewport(
+    app: ElectronApplication,
+    page: Page,
+    size: { width: number; height: number },
+): Promise<void> {
+    const browserWindow = await app.browserWindow(page);
+    const actualSize = await browserWindow.evaluate((win, requested) => {
+        if (win.isMaximized()) win.unmaximize();
+        win.setContentSize(requested.width, requested.height);
+        return win.getContentSize();
+    }, size);
+    expect(actualSize[0]).toBe(size.width);
+    await expect.poll(() => page.evaluate(() => [window.innerWidth, window.innerHeight])).toEqual(actualSize);
 }
 
 /**
@@ -159,19 +178,26 @@ async function frameMatchesReady(frame: Frame, isReady: (f: Frame) => Promise<bo
  *
  * `commandTitle` should match what the palette displays — e.g.
  * `"Cosmos DB: New Migration…"`. Substring matching is fine: we type the
- * title verbatim and press Enter, which selects the top-ranked result.
+ * title verbatim and click the matching result.
  */
 export async function runCommand(page: Page, commandTitle: string): Promise<void> {
+    await page.bringToFront();
+    // Route the shortcut through the workbench, not a webview's asynchronously forwarded key events.
+    const activeTab = page.locator('.part.editor .tabs-container .tab.active').first();
+    if (await activeTab.count()) await activeTab.focus();
     await page.keyboard.press(COMMAND_PALETTE_SHORTCUT);
     const input = page.locator(QUICK_INPUT_SELECTOR).first();
     await input.waitFor({ state: 'visible', timeout: 10_000 });
     // The leading ">" forces "command" mode regardless of where the palette
     // was last left (quick-open vs. commands).
     await input.fill(`>${commandTitle}`);
-    // Wait for the first result row so we don't press Enter before the list
-    // populates (which would just close the palette).
-    await page.locator('.quick-input-list .monaco-list-row').first().waitFor({ state: 'visible', timeout: 5_000 });
-    await page.keyboard.press('Enter');
+    // Wait for the matching result so a stale top-ranked command cannot run while the palette is filtering.
+    await page
+        .locator('.quick-input-list .monaco-list-row')
+        .filter({ hasText: commandTitle })
+        .first()
+        .click({ timeout: 5_000 });
+    await input.waitFor({ state: 'hidden', timeout: 5_000 });
 }
 
 /**
@@ -318,32 +344,11 @@ export async function closeAllEditorTabs(page: Page): Promise<void> {
     // Capture the final webview state before the tabs are closed (when enabled).
     await captureWindowScreenshot(page);
 
-    try {
-        // Dismiss any popover / menu that might intercept the palette shortcut.
-        await page.keyboard.press('Escape');
-        await page.waitForTimeout(150);
-
-        const input = page.locator(QUICK_INPUT_SELECTOR).first();
-
-        for (let attempt = 0; attempt < 15; attempt++) {
-            const tabCount = await page.locator(TAB_SELECTOR).count();
-            if (tabCount === 0) return;
-
-            await page.keyboard.press(COMMAND_PALETTE_SHORTCUT);
-            try {
-                await input.waitFor({ state: 'visible', timeout: 2_000 });
-                await input.fill('>workbench.action.revertAndCloseActiveEditor');
-                await page.waitForTimeout(150);
-                await page.keyboard.press('Enter');
-                await page.waitForTimeout(300);
-            } catch {
-                // Quick-input didn't open this iteration — dismiss + retry.
-                await page.keyboard.press('Escape');
-                await page.waitForTimeout(300);
-            }
-        }
-    } catch {
-        // Best-effort cleanup — never fail a test on cleanup.
+    const tabs = page.locator('.part.editor .tabs-container .tab');
+    while (await tabs.count()) {
+        const count = await tabs.count();
+        await runCommand(page, 'View: Revert and Close Editor');
+        await expect(tabs).toHaveCount(count - 1);
     }
 }
 

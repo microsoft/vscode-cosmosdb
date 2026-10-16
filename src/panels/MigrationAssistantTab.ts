@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { VSCodeAzureSubscriptionProvider } from '@microsoft/vscode-azext-azureauth';
 import {
     LocationListStep,
     ResourceGroupCreateStep,
@@ -46,12 +45,9 @@ import {
     shouldResetMigrationTargetEndpoint,
 } from '../webviews/cosmosdb/Migration/state/deriveMigrationPhaseStates';
 import { BaseTab } from './BaseTab';
-import { getSelectedModel, IS_PHASE4_REQUIRED, isDebugPromptsEnabled } from './migration/helpers/aiHelpers';
-import { capturePrompt, isMigrationAiMockEnabled } from './migration/helpers/e2eMigrationAiMock';
-import { emitMigrationEvent, resetCancellationToken } from './migration/helpers/migrationHelpers';
+import { emitMigrationEvent } from './migration/helpers/migrationHelpers';
 import {
     MigrationSkillChatSession,
-    shouldUseMigrationSkill,
     type MigrationPreflightStep,
     type MigrationSkillInvocation,
 } from './migration/helpers/migrationSkillDispatcher';
@@ -62,26 +58,7 @@ import {
     toMigrationProjectView,
 } from './migration/helpers/migrationStateSync';
 import { setMigrationTelemetryContext } from './migration/helpers/migrationTelemetry';
-import { buildCodeMigrationPrompt } from './migration/prompts';
-import {
-    cancelAnalysis,
-    cancelDiscovery,
-    estimateDiscoveryTokens,
-    runAnalyzeDatabaseSchema,
-    runAnalyzeWithAI,
-    runApplicationAnalysis,
-    runDiscoveryReport,
-} from './migration/steps/phase1Discovery';
-import { cancelAssessment, runAssessment } from './migration/steps/phase2Assessment';
-import { cancelSchemaConversion, runSchemaConversion } from './migration/steps/phase3SchemaConversion';
-import {
-    cancelAccountProvisioning,
-    cancelProvisioning,
-    populateSampleData,
-    provisionAccount,
-    refineBicepParams,
-    testConnection,
-} from './migration/steps/phase4Provisioning';
+import { testConnection } from './migration/helpers/testConnection';
 import { getAccessPatternsTemplateContent } from './migration/templates/accessPatternsTemplate';
 import { getVolumetricsTemplateContent } from './migration/templates/volumetricsTemplate';
 import { migrationAppRouter, migrationCallerFactory, type MigrationRouterContext } from './trpc/appRouter';
@@ -106,21 +83,13 @@ export class MigrationAssistantTab extends BaseTab {
     private phaseCompletionAbort: AbortController | undefined;
     private projectService: MigrationProjectService;
     private project: ProjectJson | undefined;
-    private analysisCancellation: vscode.CancellationTokenSource | undefined;
-    private discoveryCancellation: vscode.CancellationTokenSource | undefined;
-    private assessmentCancellation: vscode.CancellationTokenSource | undefined;
-    private schemaConversionCancellation: vscode.CancellationTokenSource | undefined;
-    private provisioningCancellation: vscode.CancellationTokenSource | undefined;
-    private accountProvisioningCancellation: vscode.CancellationTokenSource | undefined;
     private selectedSubscription: AzureSubscription | undefined;
     private fileWatchers: vscode.Disposable[] = [];
     private fileWatcherDebounceTimer: ReturnType<typeof setTimeout> | undefined;
-    private fileStateGeneration = 0;
     private readonly skillChatSession = new MigrationSkillChatSession();
     private selectedModelId: string | null = null;
     private selectedModelUpdate: Promise<void> = Promise.resolve();
     private modelsRequestGeneration = 0;
-    private tokenEstimateGeneration = 0;
 
     private readonly eventSink: TypedEventSink<MigrationEvent>;
 
@@ -145,25 +114,6 @@ export class MigrationAssistantTab extends BaseTab {
         );
         this.disposables.push(disposable);
 
-        // Forward changes to the experimental "show token estimate" setting to the webview
-        // so the UI can show/hide the progress bar live without a panel reload. The estimate
-        // itself is calculated and logged in programmatic mode regardless of this setting.
-        this.disposables.push(
-            vscode.workspace.onDidChangeConfiguration((e) => {
-                if (e.affectsConfiguration('cosmosDB.experimental.migration.showTokenEstimate')) {
-                    emitMigrationEvent(this.eventSink, 'showTokenEstimateChanged', [
-                        MigrationAssistantTab.getShowTokenEstimateSetting(),
-                    ]);
-                }
-                if (e.affectsConfiguration('cosmosDB.experimental.migration.useProgrammaticFlow')) {
-                    this.modelsRequestGeneration++;
-                    this.tokenEstimateGeneration++;
-                    emitMigrationEvent(this.eventSink, 'programmaticFlowChanged', [!shouldUseMigrationSkill()]);
-                    void this.getAvailableModels();
-                }
-            }),
-        );
-
         this.panel.onDidChangeViewState(
             ({ webviewPanel }) => {
                 if (webviewPanel.visible) {
@@ -172,18 +122,6 @@ export class MigrationAssistantTab extends BaseTab {
             },
             null,
             this.disposables,
-        );
-    }
-
-    /**
-     * Read the experimental setting controlling whether the Discovery token-estimate
-     * progress bar is rendered in the webview. Calculation/logging are independent.
-     */
-    private static getShowTokenEstimateSetting(): boolean {
-        return (
-            vscode.workspace
-                .getConfiguration('cosmosDB')
-                .get<boolean>('experimental.migration.showTokenEstimate', false) ?? false
         );
     }
 
@@ -239,21 +177,8 @@ export class MigrationAssistantTab extends BaseTab {
         this.phaseCompletionAbort?.abort();
         if (this.acknowledgmentTimer) clearTimeout(this.acknowledgmentTimer);
         this.modelsRequestGeneration++;
-        this.tokenEstimateGeneration++;
         MigrationAssistantTab.instances.delete(this.workspaceKey);
         this.disposeFileWatchers();
-        this.analysisCancellation?.cancel();
-        this.analysisCancellation?.dispose();
-        this.discoveryCancellation?.cancel();
-        this.discoveryCancellation?.dispose();
-        this.assessmentCancellation?.cancel();
-        this.assessmentCancellation?.dispose();
-        this.schemaConversionCancellation?.cancel();
-        this.schemaConversionCancellation?.dispose();
-        this.provisioningCancellation?.cancel();
-        this.provisioningCancellation?.dispose();
-        this.accountProvisioningCancellation?.cancel();
-        this.accountProvisioningCancellation?.dispose();
         this.eventSink.close();
         super.dispose();
     }
@@ -372,8 +297,6 @@ export class MigrationAssistantTab extends BaseTab {
                 return this.analyzeApplication();
             case 'updateAnalysisResult':
                 return this.updateAnalysisResult(params[0] as Record<string, unknown>);
-            case 'cancelAnalysis':
-                return this.cancelAnalysis();
             case 'runDiscovery':
                 return this.runDiscovery();
             case 'updateDiscoveryInstructions':
@@ -382,16 +305,10 @@ export class MigrationAssistantTab extends BaseTab {
                 return this.updateAssessmentInstructions(params[0] as string);
             case 'updateSchemaConversionInstructions':
                 return this.updateSchemaConversionInstructions(params[0] as string);
-            case 'cancelDiscovery':
-                return this.cancelDiscovery();
             case 'runAssessment':
                 return this.runAssessment();
-            case 'cancelAssessment':
-                return this.cancelAssessment();
             case 'runSchemaConversion':
-                return this.runSchemaConversion(params[0] as boolean | undefined, params[1] as boolean | undefined);
-            case 'cancelSchemaConversion':
-                return this.cancelSchemaConversion();
+                return this.runSchemaConversion(params[0] as boolean | undefined);
             case 'setTargetEnvironment':
                 return this.setTargetEnvironment(
                     params[0] as 'emulator' | 'azure' | 'provision',
@@ -414,18 +331,12 @@ export class MigrationAssistantTab extends BaseTab {
                 return this.provisionNewAccount();
             case 'populateSampleData':
                 return this.populateSampleData();
-            case 'cancelProvisioning':
-                return this.cancelProvisioning();
-            case 'cancelAccountProvisioning':
-                return this.cancelAccountProvisioning();
             case 'resetProject':
                 return this.resetProject();
             case 'getAvailableModels':
                 return this.getAvailableModels();
             case 'setSelectedModel':
                 return this.setSelectedModel(params[0] as string);
-            case 'estimateContextTokens':
-                return this.estimateContextTokens();
             case 'checkGitRepository':
                 return this.checkGitRepository();
             case 'initGitRepository':
@@ -461,7 +372,7 @@ export class MigrationAssistantTab extends BaseTab {
         const abortController = new AbortController();
         this.phaseCompletionAbort = abortController;
         await callWithTelemetryAndErrorHandling('cosmosDB.migration.loadProject', async (context) => {
-            const project = await this.projectService.load({ readOnly: shouldUseMigrationSkill() });
+            const project = await this.projectService.load({ readOnly: true });
             if (abortController.signal.aborted) return;
             this.project = project;
             const isNewProject = !this.project;
@@ -530,7 +441,6 @@ export class MigrationAssistantTab extends BaseTab {
                     tables: string[];
                     filePath: string;
                     isMapped: boolean;
-                    estimatedTokens: number;
                 }[];
                 summaryFilePath: string;
             } | null = null;
@@ -547,10 +457,6 @@ export class MigrationAssistantTab extends BaseTab {
                                 : [],
                             filePath: path.join(assessmentPath, 'domains', `${domain.name}.md`),
                             isMapped: domain.isMapped === true,
-                            estimatedTokens:
-                                typeof domain.estimatedTokens === 'number' && Number.isFinite(domain.estimatedTokens)
-                                    ? domain.estimatedTokens
-                                    : 0,
                         })),
                     summaryFilePath: assessmentSummaryPath,
                 };
@@ -686,12 +592,8 @@ export class MigrationAssistantTab extends BaseTab {
                     consentGiven: Boolean(this.project.consentGiven),
                     hasCodeMigrationPlan,
                     codeMigrationPlanPath,
-                    isPhase4Required: IS_PHASE4_REQUIRED,
-                    showTokenEstimate: MigrationAssistantTab.getShowTokenEstimateSetting(),
-                    useProgrammaticFlow: !shouldUseMigrationSkill(),
                     phaseCompletion,
                     runActivity: this.runTracker.snapshot(),
-                    fileStateGeneration: this.fileStateGeneration,
                 },
             ]);
 
@@ -764,7 +666,6 @@ export class MigrationAssistantTab extends BaseTab {
 
     /** Reload the authoritative project and phase state after a debounced disk change. */
     private async refreshFileState(): Promise<void> {
-        this.fileStateGeneration++;
         await this.loadProject();
     }
 
@@ -840,20 +741,12 @@ export class MigrationAssistantTab extends BaseTab {
 
     private async analyzeWithAI(subfolder: 'volumetrics' | 'access-patterns'): Promise<void> {
         if (!this.project) return;
-        if (shouldUseMigrationSkill()) {
-            await this.dispatchPreflightSkill(subfolder);
-            return;
-        }
-        await runAnalyzeWithAI(subfolder, this.project, this.projectService);
+        await this.dispatchPreflightSkill(subfolder);
     }
 
     private async analyzeDatabaseSchema(): Promise<void> {
         if (!this.project) return;
-        if (shouldUseMigrationSkill()) {
-            await this.dispatchPreflightSkill('schema-acquisition');
-            return;
-        }
-        await runAnalyzeDatabaseSchema(this.project, this.projectService);
+        await this.dispatchPreflightSkill('schema-acquisition');
     }
 
     private async dispatchPreflightSkill(preflightStep: MigrationPreflightStep): Promise<void> {
@@ -1019,17 +912,7 @@ export class MigrationAssistantTab extends BaseTab {
 
     private async analyzeApplication(): Promise<void> {
         if (!this.project) return;
-        if (shouldUseMigrationSkill()) {
-            await this.dispatchPreflightSkill('application-details');
-            return;
-        }
-        this.analysisCancellation = resetCancellationToken(this.analysisCancellation);
-        await runApplicationAnalysis({
-            project: this.project,
-            projectService: this.projectService,
-            channel: this.eventSink,
-            cancellationToken: this.analysisCancellation.token,
-        });
+        await this.dispatchPreflightSkill('application-details');
     }
 
     private async updateAnalysisResult(updates: Record<string, unknown>): Promise<void> {
@@ -1049,45 +932,25 @@ export class MigrationAssistantTab extends BaseTab {
         await this.saveProject();
     }
 
-    private async cancelAnalysis(): Promise<void> {
-        this.analysisCancellation = await cancelAnalysis(this.analysisCancellation, this.eventSink);
-    }
-
     private async runDiscovery(): Promise<void> {
         if (!this.project) return;
-        if (shouldUseMigrationSkill()) {
-            if (!this.project.name.trim()) {
-                throw new Error(l10n.t('Enter a project name before starting Discovery.'));
-            }
-            if (!this.project.consentGiven) {
-                throw new Error(l10n.t('AI consent is required to use this action.'));
-            }
-            if (!ext.isAIFeaturesEnabled) {
-                throw new Error(l10n.t('GitHub Copilot must be active to use this action.'));
-            }
-            if (!this.selectedModelId) {
-                throw new Error(
-                    l10n.t('The selected migration model is unavailable. Please select an available model.'),
-                );
-            }
-            await this.dispatchMigrationSkill({
-                workspacePath: this.workspacePath,
-                mode: 'interactive',
-                phase: 'discovery',
-            });
-            return;
+        if (!this.project.name.trim()) {
+            throw new Error(l10n.t('Enter a project name before starting Discovery.'));
         }
-        this.discoveryCancellation = resetCancellationToken(this.discoveryCancellation);
-        await runDiscoveryReport({
-            project: this.project,
-            projectService: this.projectService,
-            channel: this.eventSink,
-            cancellationToken: this.discoveryCancellation.token,
+        if (!this.project.consentGiven) {
+            throw new Error(l10n.t('AI consent is required to use this action.'));
+        }
+        if (!ext.isAIFeaturesEnabled) {
+            throw new Error(l10n.t('GitHub Copilot must be active to use this action.'));
+        }
+        if (!this.selectedModelId) {
+            throw new Error(l10n.t('The selected migration model is unavailable. Please select an available model.'));
+        }
+        await this.dispatchMigrationSkill({
+            workspacePath: this.workspacePath,
+            mode: 'interactive',
+            phase: 'discovery',
         });
-    }
-
-    private async cancelDiscovery(): Promise<void> {
-        this.discoveryCancellation = await cancelDiscovery(this.discoveryCancellation, this.eventSink);
     }
 
     private async reviewMigrationPhase(requestedPhase: unknown): Promise<void> {
@@ -1110,56 +973,21 @@ export class MigrationAssistantTab extends BaseTab {
 
     private async runAssessment(): Promise<void> {
         if (!this.project) return;
-        if (shouldUseMigrationSkill()) {
-            await this.dispatchMigrationSkill({
-                workspacePath: this.workspacePath,
-                mode: 'interactive',
-                phase: 'assessment',
-            });
-            return;
-        }
-        this.assessmentCancellation = resetCancellationToken(this.assessmentCancellation);
-        await runAssessment({
-            project: this.project,
-            projectService: this.projectService,
-            channel: this.eventSink,
-            cancellationToken: this.assessmentCancellation.token,
+        await this.dispatchMigrationSkill({
+            workspacePath: this.workspacePath,
+            mode: 'interactive',
+            phase: 'assessment',
         });
     }
 
-    private async cancelAssessment(): Promise<void> {
-        this.assessmentCancellation = await cancelAssessment(this.assessmentCancellation, this.eventSink);
-    }
-
-    private async runSchemaConversion(includeUnmappedDomains?: boolean, thoroughAnalysis?: boolean): Promise<void> {
+    private async runSchemaConversion(includeUnmappedDomains?: boolean): Promise<void> {
         if (!this.project) return;
-        if (shouldUseMigrationSkill()) {
-            await this.dispatchMigrationSkill({
-                workspacePath: this.workspacePath,
-                mode: 'interactive',
-                phase: 'schema-conversion',
-                includeUnmappedDomains,
-            });
-            return;
-        }
-        this.schemaConversionCancellation = resetCancellationToken(this.schemaConversionCancellation);
-        await runSchemaConversion(
-            {
-                project: this.project,
-                projectService: this.projectService,
-                channel: this.eventSink,
-                cancellationToken: this.schemaConversionCancellation.token,
-            },
+        await this.dispatchMigrationSkill({
+            workspacePath: this.workspacePath,
+            mode: 'interactive',
+            phase: 'schema-conversion',
             includeUnmappedDomains,
-            thoroughAnalysis,
-        );
-    }
-
-    private async cancelSchemaConversion(): Promise<void> {
-        this.schemaConversionCancellation = await cancelSchemaConversion(
-            this.schemaConversionCancellation,
-            this.eventSink,
-        );
+        });
     }
 
     private async setTargetEnvironment(
@@ -1316,23 +1144,6 @@ export class MigrationAssistantTab extends BaseTab {
             this.selectedSubscription = subscription;
             await this.saveProject();
 
-            // Refine the generated Bicep export with the values the user just
-            // picked so the manual `az deployment group create` invocation has
-            // them ready. Subscription / RG go in as breadcrumb comments;
-            // location is a Bicep param.
-            await refineBicepParams(
-                {
-                    project: this.project!,
-                    projectService: this.projectService,
-                    channel: this.eventSink,
-                },
-                {
-                    subscriptionId: subscription.subscriptionId,
-                    resourceGroup: resourceGroupName,
-                    location,
-                },
-            );
-
             emitMigrationEvent(this.eventSink, 'resourceGroupSelected', [
                 {
                     subscriptionId: subscription.subscriptionId,
@@ -1379,8 +1190,7 @@ export class MigrationAssistantTab extends BaseTab {
     }
 
     /**
-     * Persists the user's location selection and refreshes the Bicep export so
-     * the generated `main.bicepparam` reflects the chosen region.
+     * Persists the user's location selection for the next provisioning run.
      */
     private async setTargetLocation(location: string): Promise<void> {
         if (!this.project || !location) return;
@@ -1393,14 +1203,6 @@ export class MigrationAssistantTab extends BaseTab {
                 location,
             };
             await this.saveProject();
-            await refineBicepParams(
-                {
-                    project: this.project!,
-                    projectService: this.projectService,
-                    channel: this.eventSink,
-                },
-                { location },
-            );
         });
     }
 
@@ -1418,144 +1220,31 @@ export class MigrationAssistantTab extends BaseTab {
 
     private async populateSampleData(): Promise<void> {
         if (!this.project) return;
-        if (shouldUseMigrationSkill()) {
-            await this.dispatchMigrationSkill({
-                workspacePath: this.workspacePath,
-                mode: 'interactive',
-                phase: 'provisioning',
-                provisioningStep: 'resources-and-data',
-                allowProvisioning: true,
-            });
-            return;
-        }
-
-        this.provisioningCancellation = resetCancellationToken(this.provisioningCancellation);
-        await populateSampleData(
-            {
-                project: this.project,
-                projectService: this.projectService,
-                channel: this.eventSink,
-            },
-            this.provisioningCancellation,
-            { allowProvisioning: true },
-        );
+        await this.dispatchMigrationSkill({
+            workspacePath: this.workspacePath,
+            mode: 'interactive',
+            phase: 'provisioning',
+            provisioningStep: 'resources-and-data',
+            allowProvisioning: true,
+        });
     }
 
     private async provisionNewAccount(): Promise<void> {
         if (!this.project) return;
         const target = this.project.phases.targetEnvironment;
         if (!target) return;
-        if (shouldUseMigrationSkill()) {
-            const accountName = target.accountName ?? sanitizeCosmosDBAccountName(this.project.name);
-            if (accountName && accountName !== target.accountName) {
-                this.project.phases.targetEnvironment = { ...target, accountName };
-                await this.saveProject();
-            }
-            await this.dispatchMigrationSkill({
-                workspacePath: this.workspacePath,
-                mode: 'interactive',
-                phase: 'provisioning',
-                provisioningStep: 'target-account',
-                allowProvisioning: true,
-            });
-            return;
+        const accountName = target.accountName ?? sanitizeCosmosDBAccountName(this.project.name);
+        if (accountName && accountName !== target.accountName) {
+            this.project.phases.targetEnvironment = { ...target, accountName };
+            await this.saveProject();
         }
-
-        if (!this.selectedSubscription) {
-            // Re-acquire subscription if not stored (e.g., project loaded from disk).
-            // If the project already knows which subscription to use, look it up
-            // against the signed-in account silently instead of re-prompting.
-            await callWithTelemetryAndErrorHandling('cosmosDB.migration.phase4.selectSubscription', async (context) => {
-                if (target.subscriptionId) {
-                    const subscriptionProvider = new VSCodeAzureSubscriptionProvider();
-                    try {
-                        if (!(await subscriptionProvider.isSignedIn())) {
-                            await subscriptionProvider.signIn(target.tenantId);
-                        }
-                        const subscriptions = await subscriptionProvider.getSubscriptions(false);
-                        this.selectedSubscription = subscriptions.find(
-                            (s) => s.subscriptionId === target.subscriptionId,
-                        );
-                    } finally {
-                        subscriptionProvider.dispose();
-                    }
-                }
-
-                if (!this.selectedSubscription) {
-                    this.selectedSubscription = await subscriptionExperience(
-                        context,
-                        ext.rgApiV2.resources.azureResourceTreeDataProvider,
-                    );
-                }
-            });
-        }
-
-        if (!this.selectedSubscription) return;
-
-        // On reload, the persisted project may not yet have an `accountName` even though
-        // the UI shows (and submitted for validation) a sanitized default derived from
-        // the project name. Apply the same default here and persist it so the backend
-        // and project state match the UI.
-        let accountName = target.accountName;
-        if (!accountName) {
-            accountName = sanitizeCosmosDBAccountName(this.project.name) ?? '';
-            if (accountName) {
-                this.project.phases.targetEnvironment = {
-                    ...target,
-                    accountName,
-                };
-                await this.saveProject();
-            }
-        }
-
-        this.accountProvisioningCancellation = resetCancellationToken(this.accountProvisioningCancellation);
-
-        // Refine the Bicep export with the final account name *before* calling
-        // the SDK so the artifact reflects the user's choice even if SDK
-        // provisioning fails. Also recovers from the case where the user
-        // deleted main.bicep / main.bicepparam between phases 3 and 4.
-        await refineBicepParams(
-            {
-                project: this.project,
-                projectService: this.projectService,
-                channel: this.eventSink,
-            },
-            {
-                accountName,
-                location: target.location,
-                subscriptionId: target.subscriptionId,
-                resourceGroup: target.resourceGroup,
-            },
-        );
-
-        const endpoint = await provisionAccount(
-            {
-                project: this.project,
-                projectService: this.projectService,
-                channel: this.eventSink,
-            },
-            target.resourceGroup ?? '',
-            accountName,
-            target.location ?? 'eastus',
-            this.selectedSubscription,
-            { allowProvisioning: true },
-            this.accountProvisioningCancellation.token,
-        );
-
-        // If provisioning succeeded, automatically run a connection test so the user
-        // doesn't need a separate "Test Connection" click for the provision flow.
-        if (endpoint && !this.accountProvisioningCancellation.token.isCancellationRequested) {
-            await this.testConnection();
-        }
-    }
-
-    private cancelProvisioning(): void {
-        void cancelProvisioning(this.provisioningCancellation, this.eventSink);
-    }
-
-    private cancelAccountProvisioning(): void {
-        void cancelAccountProvisioning(this.accountProvisioningCancellation, this.eventSink);
-        this.accountProvisioningCancellation = undefined;
+        await this.dispatchMigrationSkill({
+            workspacePath: this.workspacePath,
+            mode: 'interactive',
+            phase: 'provisioning',
+            provisioningStep: 'target-account',
+            allowProvisioning: true,
+        });
     }
 
     private async resetProject(): Promise<void> {
@@ -1614,53 +1303,11 @@ export class MigrationAssistantTab extends BaseTab {
      */
     private async executeMigration(action: 'plan' | 'migrate'): Promise<void> {
         if (!this.project) return;
-        if (shouldUseMigrationSkill()) {
-            await this.dispatchMigrationSkill({
-                workspacePath: this.workspacePath,
-                mode: 'interactive',
-                phase: 'code-migration',
-                codeMigrationAction: action,
-            });
-            return;
-        }
-        let prompt = buildCodeMigrationPrompt(this.project, MIGRATION_FOLDER, action, this.workspacePath);
-
-        if (isDebugPromptsEnabled()) {
-            try {
-                const debugDir = path.join(this.workspacePath, '.cosmosdb-migration', 'debug-prompts');
-                await vscode.workspace.fs.createDirectory(vscode.Uri.file(debugDir));
-                const debugPath = path.join(debugDir, `code-migration-${action}.prompt.md`);
-
-                // Try to load an existing override before overwriting
-                try {
-                    const existing = Buffer.from(
-                        await vscode.workspace.fs.readFile(vscode.Uri.file(debugPath)),
-                    ).toString('utf-8');
-                    if (existing.trim().length > 0 && existing.trim() !== prompt.trim()) {
-                        ext.outputChannel.appendLog(
-                            '[DEBUG] ⚠️ OVERRIDE ACTIVE for "code-migration": loaded from code-migration.prompt.md',
-                        );
-                        prompt = existing;
-                    } else {
-                        // No meaningful override — dump the freshly generated prompt
-                        await vscode.workspace.fs.writeFile(vscode.Uri.file(debugPath), Buffer.from(prompt, 'utf-8'));
-                    }
-                } catch {
-                    // File doesn't exist yet — dump the generated prompt
-                    await vscode.workspace.fs.writeFile(vscode.Uri.file(debugPath), Buffer.from(prompt, 'utf-8'));
-                }
-            } catch (error) {
-                console.warn('Failed to handle code migration prompt debug file:', error);
-            }
-        }
-
-        if (isMigrationAiMockEnabled()) {
-            capturePrompt(`code-migration-${action}`, prompt);
-            return;
-        }
-
-        await vscode.commands.executeCommand('workbench.action.chat.open', {
-            query: prompt,
+        await this.dispatchMigrationSkill({
+            workspacePath: this.workspacePath,
+            mode: 'interactive',
+            phase: 'code-migration',
+            codeMigrationAction: action,
         });
     }
 
@@ -1717,78 +1364,23 @@ export class MigrationAssistantTab extends BaseTab {
 
     private async getAvailableModels(): Promise<void> {
         const generation = ++this.modelsRequestGeneration;
-        const useProgrammaticFlow = !shouldUseMigrationSkill();
         await this.selectedModelUpdate;
         const { models, savedModelId } = await getAvailableModelsInfo(MIGRATION_SELECTED_MODEL_KEY, {
-            includeAuto: !useProgrammaticFlow,
+            includeAuto: true,
         });
         if (generation !== this.modelsRequestGeneration) return;
-        const availableModels = getMigrationModels(models, useProgrammaticFlow);
+        const availableModels = getMigrationModels(models);
         this.selectedModelId = resolveSelectedModelId(availableModels, savedModelId);
-        emitMigrationEvent(this.eventSink, 'availableModels', [availableModels, savedModelId, useProgrammaticFlow]);
+        emitMigrationEvent(this.eventSink, 'availableModels', [availableModels, savedModelId]);
     }
 
     private async setSelectedModel(modelId: string): Promise<void> {
         this.selectedModelId = modelId;
         this.modelsRequestGeneration++;
-        this.tokenEstimateGeneration++;
         this.selectedModelUpdate = this.selectedModelUpdate
             .catch(() => undefined)
             .then(() => ext.context.globalState.update(MIGRATION_SELECTED_MODEL_KEY, modelId));
         await this.selectedModelUpdate;
-    }
-
-    /**
-     * Estimates the token count for the current schema + access pattern context
-     * using the selected model's tokenizer.
-     */
-    private async estimateContextTokens(): Promise<void> {
-        const generation = ++this.tokenEstimateGeneration;
-        const fileStateGeneration = this.fileStateGeneration;
-        const cancellation = new vscode.CancellationTokenSource();
-        try {
-            if (!this.project) return;
-            if (shouldUseMigrationSkill()) {
-                emitMigrationEvent(this.eventSink, 'tokenEstimate', [null]);
-                return;
-            }
-            await this.selectedModelUpdate;
-            if (!this.selectedModelId) await this.getAvailableModels();
-            if (generation !== this.tokenEstimateGeneration) return;
-            const model = await getSelectedModel({ modelId: this.selectedModelId ?? undefined });
-            if (generation !== this.tokenEstimateGeneration) return;
-
-            ext.outputChannel.appendLog(`[Migration] estimateContextTokens: model="${model.name}" (${model.id})`);
-
-            const estimate = await estimateDiscoveryTokens(
-                this.projectService,
-                this.project,
-                model,
-                cancellation.token,
-            );
-
-            if (generation !== this.tokenEstimateGeneration || fileStateGeneration !== this.fileStateGeneration) return;
-            emitMigrationEvent(this.eventSink, 'tokenEstimate', [
-                estimate
-                    ? {
-                          modelId: model.id,
-                          minTokens: estimate.minTokens,
-                          maxTokens: estimate.maxTokens,
-                          modelMaxTokens: model.maxInputTokens,
-                          estimateGeneration: fileStateGeneration,
-                      }
-                    : null,
-            ]);
-        } catch (error) {
-            ext.outputChannel.appendLog(
-                `[Migration] estimateContextTokens error: ${error instanceof Error ? error.message : String(error)}`,
-            );
-            if (generation === this.tokenEstimateGeneration) {
-                emitMigrationEvent(this.eventSink, 'tokenEstimate', [null]);
-            }
-        } finally {
-            cancellation.dispose();
-        }
     }
 
     private async openFile(filePath: string): Promise<void> {
@@ -1813,9 +1405,7 @@ export class MigrationAssistantTab extends BaseTab {
             await vscode.workspace.fs.stat(bicepUri);
         } catch {
             await vscode.window.showInformationMessage(
-                l10n.t(
-                    'The generated Bicep template was not found. It will be regenerated the next time you run schema conversion.',
-                ),
+                l10n.t('The generated Bicep template was not found. Run provisioning in Chat to generate it.'),
             );
             return;
         }

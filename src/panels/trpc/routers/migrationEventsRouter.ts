@@ -10,26 +10,7 @@ import {
     type MigrationPhaseCompletionMap,
     type MigrationProjectView,
 } from '../../migration/helpers/migrationStateSync';
-import { type ProvisioningResult } from '../../migration/steps/phase4Provisioning';
 import { migrationProcedure, migrationRouter } from '../trpc';
-
-// ─── Per-event Payload Shapes ───────────────────────────────────────────────
-//
-// All migration events flow extension → webview through a single tRPC
-// subscription. Events are encoded as `{ type: 'event', name, params }` where
-// `name` discriminates the union and `params` is a tuple matching the named
-// event's signature. Producers (`sendPhaseEvent`, `eventSink.emit`) and
-// consumers (`MigrationChannel.on`) are typed against this union so a
-// misspelled name or a wrong payload is a compile error.
-
-export interface AnalysisResultPayload {
-    projectName?: string;
-    projectType?: string;
-    language?: string;
-    frameworks?: string[];
-    databaseType?: string;
-    databaseAccess?: string;
-}
 
 export interface AssessmentResultPayload {
     domainFiles: {
@@ -37,7 +18,6 @@ export interface AssessmentResultPayload {
         tables: string[];
         filePath: string;
         isMapped: boolean;
-        estimatedTokens: number;
     }[];
     summaryFilePath: string;
 }
@@ -76,20 +56,8 @@ export interface ProjectLoadedPayload {
     consentGiven: boolean;
     hasCodeMigrationPlan: boolean;
     codeMigrationPlanPath: string;
-    isPhase4Required: boolean;
-    showTokenEstimate: boolean;
-    useProgrammaticFlow: boolean;
     phaseCompletion: MigrationPhaseCompletionMap;
     runActivity: MigrationRunActivity | null;
-    fileStateGeneration: number;
-}
-
-export interface TokenEstimatePayload {
-    modelId: string;
-    minTokens: number;
-    maxTokens: number;
-    modelMaxTokens: number;
-    estimateGeneration: number;
 }
 
 export interface AzureLocation {
@@ -110,10 +78,6 @@ export interface ResourceGroupSelectedPayload {
     locationDisplayName: string;
 }
 
-export interface AccountProvisioningCompletedPayload {
-    endpoint: string;
-}
-
 export type ConnectionTestResultPayload =
     | { success: true }
     | { success: false; error: string; documentationUrl: string | undefined };
@@ -122,43 +86,6 @@ export type ConnectionTestResultPayload =
 
 export type MigrationEventPayloads = {
     runActivityChanged: [activity: MigrationRunActivity | null];
-    // Discovery / Phase 1
-    analysisStarted: [];
-    analysisCompleted: [result: AnalysisResultPayload];
-    analysisError: [error: string];
-    analysisCancelled: [];
-    discoveryStarted: [];
-    discoveryCompleted: [];
-    discoveryError: [error: string];
-    discoveryCancelled: [];
-
-    // Assessment / Phase 2
-    assessmentStarted: [];
-    assessmentProgress: [message: string];
-    assessmentCompleted: [result: AssessmentResultPayload];
-    assessmentError: [error: string];
-    assessmentCancelled: [];
-
-    // Schema conversion / Phase 3
-    schemaConversionStarted: [];
-    schemaConversionProgress: [message: string];
-    schemaConversionCompleted: [result: SchemaConversionResultPayload];
-    schemaConversionError: [error: string];
-    schemaConversionCancelled: [];
-
-    // Provisioning / Phase 4
-    provisioningStarted: [];
-    provisioningProgress: [message: string];
-    provisioningCompleted: [result: ProvisioningResult];
-    provisioningError: [error: string];
-    provisioningCancelled: [];
-
-    // Account provisioning (sub-flow of Phase 4)
-    accountProvisioningStarted: [];
-    accountProvisioningProgress: [message: string];
-    accountProvisioningCompleted: [result: AccountProvisioningCompletedPayload];
-    accountProvisioningError: [error: string];
-    accountProvisioningCancelled: [];
 
     // Target environment
     accountSelected: [data: AccountSelectedPayload];
@@ -176,18 +103,15 @@ export type MigrationEventPayloads = {
     gitignoreStatus: [isInGitignore: boolean];
 
     // AI / models
-    availableModels: [models: ModelInfo[], savedModelId: string | null, useProgrammaticFlow: boolean];
+    availableModels: [models: ModelInfo[], savedModelId: string | null];
     aiFeaturesEnabledChanged: [available: boolean];
-    tokenEstimate: [estimate: TokenEstimatePayload | null];
-    showTokenEstimateChanged: [enabled: boolean];
-    programmaticFlowChanged: [enabled: boolean];
 };
 
 export type MigrationEventName = keyof MigrationEventPayloads;
 
 /**
  * Discriminated union of every event that can flow over the migration
- * subscription. Construct values via the `sendPhaseEvent` / `sendPhaseProgress`
+ * subscription. Construct values via the `emitMigrationEvent` / `sendPhaseProgress`
  * helpers or directly with `eventSink.emit({ type: 'event', name, params })`
  * — TypeScript will enforce that `params` matches the chosen `name`.
  */

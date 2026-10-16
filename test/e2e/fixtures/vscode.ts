@@ -115,12 +115,8 @@ function seedUserSettings(userDataDir: string): void {
         // accounts; required for any e2e-vs-emulator scenario.
         'cosmosDB.enableEndpointDiscovery': false,
         // The dedicated e2e emulator binds to 8082 (not the default 8081);
-        // the migration provisioning step reads this to target the right port.
+        // migration connection testing reads this to target the right port.
         'cosmosDB.emulator.port': E2E_EMULATOR_PORT,
-        // Most migration E2E fixtures exercise the programmatic fallback with an
-        // offline language-model mock. Dedicated Skill-first specs temporarily
-        // switch this setting and intercept Skill dispatch before Chat opens.
-        'cosmosDB.experimental.migration.useProgrammaticFlow': true,
         // Suppress the Quick Start onboarding tour globally. On a fresh profile
         // the automatic tour opens a Popover overlay anchored to the Query
         // Editor toolbar; it intercepts pointer events and hides toolbar
@@ -235,15 +231,13 @@ export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
                 mkdirSync(workspaceDir, { recursive: true });
             }
 
-            // Per-worker scratch dir the migration AI mock reads (control.json)
-            // and writes (capture.jsonl). Created up front so both the worker
-            // (setMockControl) and the extension can see the same location.
+            // Per-worker scratch directory for captured migration Skill dispatches.
             const migrationCaptureDir = path.join(workerDir, 'migration-capture');
             mkdirSync(migrationCaptureDir, { recursive: true });
 
             // Expose the per-worker workspace + capture dirs to this worker's
             // process.env. The migration fixtures (readGitignore, gitDirExists,
-            // provisioningArtifact*, setMockControl) read these from the worker,
+            // provisioningArtifact*) read these from the worker,
             // and the `...process.env` spread below forwards COSMOSDB_E2E_*
             // straight into the launched extension host (the AI mock reads the
             // capture dir there). Workers are isolated processes, so this never
@@ -293,10 +287,8 @@ export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
                     // Without this flag those commands are not registered at all,
                     // so production users running the extension never see them.
                     COSMOSDB_E2E_TEST: '1',
-                    // Replaces the migration assistant's Copilot calls with a
-                    // deterministic offline mock (see
-                    // `src/panels/migration/helpers/e2eMigrationAiMock.ts`) so the
-                    // full migration pipeline can run end-to-end without Copilot.
+                    // Captures migration Skill dispatches without opening Copilot Chat.
+                    // Fixtures simulate the agent by writing portable artifacts.
                     COSMOSDB_E2E_MIGRATION_AI_MOCK: '1',
                     // Source directory copied into `<workspace>/.cosmosdb-migration`
                     // by the `cosmosDB.e2e.openMigration` command so phase-flow

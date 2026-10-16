@@ -33,12 +33,9 @@ export function isAutoModel(model: Pick<ModelInfo, 'id' | 'name'>): boolean {
     return model.id === 'auto' || model.name.toLowerCase() === 'auto';
 }
 
-export function getMigrationModels<Model extends ModelInfo>(
-    models: readonly Model[],
-    useProgrammaticFlow: boolean,
-): Model[] {
+export function getMigrationModels<Model extends ModelInfo>(models: readonly Model[]): Model[] {
     const concreteModels = models.filter((model) => !isAutoModel(model));
-    return useProgrammaticFlow ? concreteModels : [...concreteModels, ...models.filter(isAutoModel)];
+    return [...concreteModels, ...models.filter(isAutoModel)];
 }
 
 /**

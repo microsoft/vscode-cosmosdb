@@ -182,7 +182,7 @@ describe('getMigrationModels', () => {
     ];
 
     it('offers Auto without changing the concrete default or ordering', () => {
-        const available = getMigrationModels(models, false);
+        const available = getMigrationModels(models);
         expect(available.map((model) => model.id)).toEqual(['gpt', 'claude', 'auto']);
         expect(resolveSelectedModelId(available, null)).toBe('gpt');
         expect(resolveSelectedModelId(available, 'auto')).toBe('auto');
@@ -190,19 +190,17 @@ describe('getMigrationModels', () => {
         expect(models[0].id).toBe('auto');
     });
 
-    it('uses the same legacy fallback for saved Auto and no preference', () => {
-        const available = getMigrationModels(models, true);
-        expect(available.map((model) => model.id)).toEqual(['gpt', 'claude']);
-        expect(resolveSelectedModelId(available, 'auto')).toBe(resolveSelectedModelId(available, null));
+    it('falls back to a concrete model only when the saved preference is unavailable', () => {
+        const available = getMigrationModels(models);
         expect(resolveSelectedModelId(available, 'missing')).toBe('gpt');
         expect(resolveSelectedModelId(available, 'claude')).toBe('claude');
-        expect(resolveSelectedModelId(getMigrationModels(models, false), 'auto')).toBe('auto');
+        expect(resolveSelectedModelId(available, 'auto')).toBe('auto');
     });
 
     it('handles empty and Auto-only lists', () => {
-        expect(resolveSelectedModelId(getMigrationModels([], false), 'auto')).toBeNull();
-        expect(resolveSelectedModelId(getMigrationModels(models.slice(0, 1), true), 'auto')).toBeNull();
-        expect(resolveSelectedModelId(getMigrationModels(models.slice(0, 1), false), null)).toBe('auto');
+        expect(resolveSelectedModelId(getMigrationModels([]), 'auto')).toBeNull();
+        expect(resolveSelectedModelId(getMigrationModels(models.slice(0, 1)), 'auto')).toBe('auto');
+        expect(resolveSelectedModelId(getMigrationModels(models.slice(0, 1)), null)).toBe('auto');
     });
 });
 

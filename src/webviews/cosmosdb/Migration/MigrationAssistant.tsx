@@ -61,7 +61,6 @@ import {
     PlayRegular,
     PlugConnectedRegular,
     SparkleRegular,
-    StopRegular,
     WarningRegular,
 } from '@fluentui/react-icons';
 import { useTrpcClient } from '@microsoft/vscode-ext-webview/react';
@@ -424,105 +423,7 @@ const useStyles = makeStyles({
         color: 'var(--vscode-editorWarning-foreground)',
         fontSize: '12px',
     },
-    tokenBudgetContainer: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '6px',
-    },
-    tokenBudgetTrack: {
-        position: 'relative',
-        width: '120px',
-        height: '6px',
-        borderRadius: '3px',
-        backgroundColor: 'var(--vscode-panel-border)',
-        flexShrink: '0',
-        overflow: 'hidden',
-    },
-    tokenBudgetFill: {
-        position: 'absolute',
-        top: '0',
-        left: '0',
-        height: '100%',
-        borderRadius: '3px',
-        transitionProperty: 'width, background-color',
-        transitionDuration: '0.3s',
-        transitionTimingFunction: 'ease',
-    },
-    tokenBudgetFillAnimating: {
-        animationName: {
-            '0%': { opacity: '1' },
-            '50%': { opacity: '0.35' },
-            '100%': { opacity: '1' },
-        },
-        animationDuration: '1.5s',
-        animationTimingFunction: 'ease-in-out',
-        animationIterationCount: 'infinite',
-    },
 });
-
-function TokenBudgetBar({
-    estimate,
-    isEstimating,
-}: {
-    estimate: { minTokens: number; maxTokens: number; modelMaxTokens: number } | null;
-    isEstimating: boolean;
-}) {
-    const styles = useStyles();
-
-    if (!isEstimating && !estimate) return null;
-
-    const fillPercent = estimate ? Math.min(estimate.minTokens / estimate.modelMaxTokens, 1) * 100 : 0;
-
-    let barColor: string;
-    let textColor: string;
-    if (!estimate) {
-        barColor = 'var(--vscode-descriptionForeground)';
-        textColor = 'var(--vscode-descriptionForeground)';
-    } else if (estimate.minTokens > estimate.modelMaxTokens) {
-        barColor = 'var(--vscode-errorForeground)';
-        textColor = 'var(--vscode-errorForeground)';
-    } else if (estimate.minTokens >= estimate.modelMaxTokens * 0.75 || estimate.maxTokens > estimate.modelMaxTokens) {
-        barColor = 'var(--vscode-editorWarning-foreground)';
-        textColor = 'var(--vscode-editorWarning-foreground)';
-    } else {
-        barColor = 'var(--vscode-testing-iconPassed)';
-        textColor = 'var(--vscode-descriptionForeground)';
-    }
-
-    const tokenText = estimate
-        ? l10n.t(
-              '~{0}\u2013{1} / {2} tokens',
-              formatTokenCount(estimate.minTokens),
-              formatTokenCount(estimate.maxTokens),
-              formatTokenCount(estimate.modelMaxTokens),
-          )
-        : l10n.t('Estimating tokens\u2026');
-
-    return (
-        <div className={styles.tokenBudgetContainer}>
-            <div className={styles.tokenBudgetTrack}>
-                <div
-                    className={
-                        isEstimating
-                            ? `${styles.tokenBudgetFill} ${styles.tokenBudgetFillAnimating}`
-                            : styles.tokenBudgetFill
-                    }
-                    style={{ width: `${fillPercent}%`, backgroundColor: barColor }}
-                />
-            </div>
-            <Text
-                size={200}
-                style={{
-                    color: textColor,
-                    opacity: isEstimating ? 0.6 : 1,
-                    transition: 'opacity 0.3s',
-                }}
-            >
-                {tokenText}
-            </Text>
-        </div>
-    );
-}
 
 function MigrationActionButton({
     activity,
@@ -1494,15 +1395,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                   : state.provisioningState
               : state.connectionTestState;
 
-    const allComplete =
-        !isRunActive &&
-        (state.useProgrammaticFlow
-            ? phase1State === 'complete' &&
-              phase2State === 'complete' &&
-              phase3State === 'complete' &&
-              (!state.isPhase4Required || phase4State === 'complete')
-            : isCodeMigrationReady(state.phaseCompletion)) &&
-        state.consentGiven;
+    const allComplete = !isRunActive && isCodeMigrationReady(state.phaseCompletion) && state.consentGiven;
     const hasAllAnalysisFields = !!(
         state.analysisResult &&
         state.analysisResult.projectName?.trim() &&
@@ -1511,15 +1404,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
         state.analysisResult.databaseType?.trim() &&
         state.analysisResult.databaseAccess?.trim()
     );
-    const isDiscoveryDisabled =
-        isRunActive ||
-        (state.useProgrammaticFlow
-            ? phase1State === 'locked' ||
-              !hasAllAnalysisFields ||
-              state.schemaFiles.length === 0 ||
-              !state.consentGiven ||
-              !state.isAIFeaturesEnabled
-            : !isDiscoveryLaunchReady(state));
+    const isDiscoveryDisabled = isRunActive || !isDiscoveryLaunchReady(state);
     const isAiActionDisabled = isRunActive || !state.consentGiven || !state.isAIFeaturesEnabled;
     const aiActionDisabledDescription = !state.consentGiven
         ? l10n.t('AI consent is required to use this action.')
@@ -1541,39 +1426,6 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
         if (phase === 'provisioning') return l10n.t('Select a target environment and verify the connection.');
         return l10n.t('Refresh the project status to check phase availability.');
     };
-
-    // isEstimating: a request was sent for the current fileStateGeneration but the estimate hasn't caught up yet
-    const isAutoSelected = state.selectedModelId === 'auto';
-    const isEstimating =
-        state.useProgrammaticFlow &&
-        !isAutoSelected &&
-        state.selectedModelId !== null &&
-        state.isLoaded &&
-        state.schemaFiles.length > 0 &&
-        state.fileStateGeneration !== (state.tokenEstimate?.estimateGeneration ?? -1);
-
-    // Request token estimation whenever schema/access-pattern/volumetric files or model change
-    useEffect(() => {
-        if (
-            state.useProgrammaticFlow &&
-            state.isLoaded &&
-            state.schemaFiles.length > 0 &&
-            state.selectedModelId &&
-            !isAutoSelected
-        ) {
-            sendCommand('estimateContextTokens');
-        }
-    }, [
-        state.isLoaded,
-        state.schemaFiles.length,
-        state.accessPatternFiles.length,
-        state.volumetricFiles.length,
-        state.fileStateGeneration,
-        state.selectedModelId,
-        state.useProgrammaticFlow,
-        isAutoSelected,
-        sendCommand,
-    ]);
 
     // Handlers
     const handleProjectNameChange = useCallback(
@@ -1618,9 +1470,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
     const handleAnalyzeDatabaseSchema = useCallback(() => sendCommand('analyzeDatabaseSchema'), [sendCommand]);
 
     const handleAnalyze = useCallback(() => sendCommand('analyzeApplication'), [sendCommand]);
-    const handleCancelAnalysis = useCallback(() => sendCommand('cancelAnalysis'), [sendCommand]);
     const handleRunDiscovery = useCallback(() => sendCommand('runDiscovery'), [sendCommand]);
-    const handleCancelDiscovery = useCallback(() => sendCommand('cancelDiscovery'), [sendCommand]);
     const handleDiscoveryInstructionsChange = useCallback(
         (_e: unknown, data: { value: string }) => {
             dispatch({ type: 'SET_DISCOVERY_INSTRUCTIONS', payload: data.value });
@@ -1666,23 +1516,13 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
         },
         [dispatch, sendCommand],
     );
-
-    const handleCancelAssessment = useCallback(() => sendCommand('cancelAssessment'), [sendCommand]);
     const handleRunSchemaConversion = useCallback(
-        () => sendCommand('runSchemaConversion', state.includeUnmappedDomains, state.thoroughAnalysis),
-        [sendCommand, state.includeUnmappedDomains, state.thoroughAnalysis],
+        () => sendCommand('runSchemaConversion', state.includeUnmappedDomains),
+        [sendCommand, state.includeUnmappedDomains],
     );
-    const handleCancelSchemaConversion = useCallback(() => sendCommand('cancelSchemaConversion'), [sendCommand]);
     const handleIncludeUnmappedDomainsChange = useCallback(
         (_e: unknown, data: { checked: boolean | 'mixed' }) => {
             dispatch({ type: 'SET_INCLUDE_UNMAPPED_DOMAINS', payload: data.checked === true });
-        },
-        [dispatch],
-    );
-
-    const handleThoroughAnalysisChange = useCallback(
-        (_e: unknown, data: { checked: boolean | 'mixed' }) => {
-            dispatch({ type: 'SET_THOROUGH_ANALYSIS', payload: data.checked === true });
         },
         [dispatch],
     );
@@ -1748,10 +1588,6 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
         },
         [dispatch, sendCommand],
     );
-
-    const handleCancelProvisioning = useCallback(() => sendCommand('cancelProvisioning'), [sendCommand]);
-
-    const handleCancelAccountProvisioning = useCallback(() => sendCommand('cancelAccountProvisioning'), [sendCommand]);
 
     // Validate the target account name against the Cosmos DB account-name rules.
     // Only surfaced while in 'provision' mode — for existing-account flows the name
@@ -1868,8 +1704,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
         onReload: () => sendCommand('loadProject'),
         onConfirmStopped: () => sendCommand('confirmMigrationStopped'),
     };
-    const phaseOutcome = (phase: MigrationPhaseName) =>
-        state.useProgrammaticFlow ? null : getMigrationPhaseOutcome(phase, state.phaseCompletion, run);
+    const phaseOutcome = (phase: MigrationPhaseName) => getMigrationPhaseOutcome(phase, state.phaseCompletion, run);
     const outcomeBadge = (phase: MigrationPhaseName) => {
         const outcome = phaseOutcome(phase);
         return outcome ? (
@@ -1878,42 +1713,41 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
             </Badge>
         ) : null;
     };
-    const phaseDiagnostics = (phase: MigrationPhaseName) =>
-        !state.useProgrammaticFlow && (
-            <MigrationPhaseDiagnostics
-                onReload={chatActionProps.onReload}
-                phase={phase}
-                completion={state.phaseCompletion}
-                activity={run}
-                workspacePath={state.workspacePath}
-                onOpenFile={handleOpenFile}
-                onGoToPhase={(targetPhase) => {
-                    const items: Partial<Record<MigrationPhaseName, string>> = {
-                        discovery: 'phase1',
-                        assessment: 'phase2',
-                        'schema-conversion': 'phase3',
-                        provisioning: 'phase4',
-                    };
-                    const item = items[targetPhase];
-                    if (item) setOpenPhases((current) => (current.includes(item) ? current : [...current, item]));
-                    requestAnimationFrame(() => {
-                        const target = rootRef.current?.querySelector<HTMLElement>(
-                            `[data-testid="migration-phase-${targetPhase}"]`,
-                        );
-                        target?.scrollIntoView({ block: 'start' });
-                        target?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
-                    });
-                }}
-                reviewDisabled={!state.consentGiven || !state.isAIFeaturesEnabled || !state.selectedModelId}
-                onReview={(reviewPhase) =>
-                    channel.postMessage({
-                        type: 'event',
-                        name: 'command',
-                        params: [{ commandName: 'reviewMigrationPhase', params: [reviewPhase] }],
-                    })
-                }
-            />
-        );
+    const phaseDiagnostics = (phase: MigrationPhaseName) => (
+        <MigrationPhaseDiagnostics
+            onReload={chatActionProps.onReload}
+            phase={phase}
+            completion={state.phaseCompletion}
+            activity={run}
+            workspacePath={state.workspacePath}
+            onOpenFile={handleOpenFile}
+            onGoToPhase={(targetPhase) => {
+                const items: Partial<Record<MigrationPhaseName, string>> = {
+                    discovery: 'phase1',
+                    assessment: 'phase2',
+                    'schema-conversion': 'phase3',
+                    provisioning: 'phase4',
+                };
+                const item = items[targetPhase];
+                if (item) setOpenPhases((current) => (current.includes(item) ? current : [...current, item]));
+                requestAnimationFrame(() => {
+                    const target = rootRef.current?.querySelector<HTMLElement>(
+                        `[data-testid="migration-phase-${targetPhase}"]`,
+                    );
+                    target?.scrollIntoView({ block: 'start' });
+                    target?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
+                });
+            }}
+            reviewDisabled={!state.consentGiven || !state.isAIFeaturesEnabled || !state.selectedModelId}
+            onReview={(reviewPhase) =>
+                channel.postMessage({
+                    type: 'event',
+                    name: 'command',
+                    params: [{ commandName: 'reviewMigrationPhase', params: [reviewPhase] }],
+                })
+            }
+        />
+    );
 
     return (
         <div className={styles.root} ref={rootRef}>
@@ -2477,56 +2311,40 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                 </Text>
                             )}
 
-                            {state.analysisState === 'in-progress' && (
-                                <div className={styles.progressRow}>
-                                    <ProgressBar style={{ flex: 1 }} />
-                                    <Button appearance="secondary" size="small" onClick={handleCancelAnalysis}>
-                                        {l10n.t('Cancel')}
-                                    </Button>
-                                </div>
-                            )}
-
-                            {state.analysisState !== 'in-progress' &&
-                                (() => {
-                                    const autoDetectDisabled = isAiActionDisabled;
-                                    const autoDetectTooltip = !state.consentGiven
-                                        ? l10n.t('AI consent is required to use Auto-Detect.')
-                                        : !state.isAIFeaturesEnabled
-                                          ? l10n.t('GitHub Copilot must be active to use Auto-Detect.')
-                                          : '';
-                                    const button = (
-                                        <MigrationActionButton
-                                            {...chatActionProps}
-                                            activity={actionActivity('preflight', 'application-details')}
-                                            compact
-                                            actionLabel={l10n.t('Auto-Detect')}
-                                            data-testid="migration-auto-detect"
-                                            appearance="primary"
-                                            size="small"
-                                            icon={<SparkleRegular />}
-                                            onClick={handleAnalyze}
-                                            disabled={autoDetectDisabled}
-                                            style={{ width: '100%' }}
-                                        >
-                                            {state.analysisState === 'complete'
-                                                ? l10n.t('Re-Run Auto-Detect')
-                                                : l10n.t('Auto-Detect')}
-                                        </MigrationActionButton>
-                                    );
-                                    return autoDetectTooltip ? (
-                                        <Tooltip content={autoDetectTooltip} relationship="description" withArrow>
-                                            <span>{button}</span>
-                                        </Tooltip>
-                                    ) : (
-                                        button
-                                    );
-                                })()}
-
-                            {state.analysisError && (
-                                <Text role="alert" className={styles.errorText}>
-                                    <DismissCircleRegular /> {state.analysisError}
-                                </Text>
-                            )}
+                            {(() => {
+                                const autoDetectDisabled = isAiActionDisabled;
+                                const autoDetectTooltip = !state.consentGiven
+                                    ? l10n.t('AI consent is required to use Auto-Detect.')
+                                    : !state.isAIFeaturesEnabled
+                                      ? l10n.t('GitHub Copilot must be active to use Auto-Detect.')
+                                      : '';
+                                const button = (
+                                    <MigrationActionButton
+                                        {...chatActionProps}
+                                        activity={actionActivity('preflight', 'application-details')}
+                                        compact
+                                        actionLabel={l10n.t('Auto-Detect')}
+                                        data-testid="migration-auto-detect"
+                                        appearance="primary"
+                                        size="small"
+                                        icon={<SparkleRegular />}
+                                        onClick={handleAnalyze}
+                                        disabled={autoDetectDisabled}
+                                        style={{ width: '100%' }}
+                                    >
+                                        {state.analysisState === 'complete'
+                                            ? l10n.t('Re-Run Auto-Detect')
+                                            : l10n.t('Auto-Detect')}
+                                    </MigrationActionButton>
+                                );
+                                return autoDetectTooltip ? (
+                                    <Tooltip content={autoDetectTooltip} relationship="description" withArrow>
+                                        <span>{button}</span>
+                                    </Tooltip>
+                                ) : (
+                                    button
+                                );
+                            })()}
                         </div>
                     </div>
                 </div>
@@ -2584,70 +2402,25 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                     />
                                 </Field>
 
-                                {state.discoveryState === 'in-progress' && (
-                                    <div className={styles.progressRow}>
-                                        <ProgressBar style={{ flex: 1 }} />
-                                        <Button appearance="secondary" size="small" onClick={handleCancelDiscovery}>
-                                            {l10n.t('Cancel')}
-                                        </Button>
-                                    </div>
-                                )}
-
-                                {state.discoveryState !== 'in-progress' &&
-                                    (state.useProgrammaticFlow && state.showTokenEstimate ? (
-                                        <div className={styles.buttonRow}>
-                                            <MigrationActionButton
-                                                {...chatActionProps}
-                                                activity={actionActivity('discovery')}
-                                                actionLabel={l10n.t('Generate Discovery Report')}
-                                                data-testid="migration-run-discovery"
-                                                appearance="primary"
-                                                size="small"
-                                                icon={<SparkleRegular />}
-                                                onClick={handleRunDiscovery}
-                                                disabled={isDiscoveryDisabled}
-                                            >
-                                                {state.discoveryState === 'complete'
-                                                    ? l10n.t('Re-Generate Report')
-                                                    : l10n.t('Generate Discovery Report')}
-                                            </MigrationActionButton>
-                                            {isAutoSelected ? (
-                                                <output>
-                                                    <Text size={200}>
-                                                        {l10n.t('Token estimate unavailable for Auto.')}
-                                                    </Text>
-                                                </output>
-                                            ) : (
-                                                <TokenBudgetBar
-                                                    estimate={state.tokenEstimate}
-                                                    isEstimating={isEstimating}
-                                                />
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <MigrationActionButton
-                                            {...chatActionProps}
-                                            activity={actionActivity('discovery')}
-                                            actionLabel={l10n.t('Generate Discovery Report')}
-                                            data-testid="migration-run-discovery"
-                                            appearance="primary"
-                                            size="small"
-                                            icon={<SparkleRegular />}
-                                            onClick={handleRunDiscovery}
-                                            disabled={isDiscoveryDisabled}
-                                        >
-                                            {state.discoveryState === 'complete'
-                                                ? l10n.t('Re-Generate Report')
-                                                : l10n.t('Generate Discovery Report')}
-                                        </MigrationActionButton>
-                                    ))}
+                                {
+                                    <MigrationActionButton
+                                        {...chatActionProps}
+                                        activity={actionActivity('discovery')}
+                                        actionLabel={l10n.t('Generate Discovery Report')}
+                                        data-testid="migration-run-discovery"
+                                        appearance="primary"
+                                        size="small"
+                                        icon={<SparkleRegular />}
+                                        onClick={handleRunDiscovery}
+                                        disabled={isDiscoveryDisabled}
+                                    >
+                                        {state.discoveryState === 'complete'
+                                            ? l10n.t('Re-Generate Report')
+                                            : l10n.t('Generate Discovery Report')}
+                                    </MigrationActionButton>
+                                }
 
                                 {phaseDiagnostics('discovery')}
-                                {state.discoveryError && (
-                                    <Text role="alert" className={styles.errorText}>
-                                        <DismissCircleRegular /> {state.discoveryError}
-                                    </Text>
-                                )}
 
                                 {phase1State === 'complete' && (
                                     <Button
@@ -2690,32 +2463,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                         )}
                                     </Text>
 
-                                    {state.assessmentState === 'in-progress' && (
-                                        <>
-                                            <div className={styles.progressRow}>
-                                                <ProgressBar style={{ flex: 1 }} />
-                                                <Button
-                                                    appearance="secondary"
-                                                    size="small"
-                                                    onClick={handleCancelAssessment}
-                                                >
-                                                    {l10n.t('Cancel')}
-                                                </Button>
-                                            </div>
-                                            {state.assessmentProgress && (
-                                                <output aria-live="polite">
-                                                    <Text
-                                                        size={200}
-                                                        style={{ color: 'var(--vscode-descriptionForeground)' }}
-                                                    >
-                                                        {state.assessmentProgress}
-                                                    </Text>
-                                                </output>
-                                            )}
-                                        </>
-                                    )}
-
-                                    {state.assessmentState !== 'in-progress' && (
+                                    {
                                         <>
                                             <Field
                                                 label={
@@ -2766,15 +2514,10 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                                     : l10n.t('Run Assessment')}
                                             </MigrationActionButton>
                                         </>
-                                    )}
+                                    }
                                 </div>
 
                                 {phaseDiagnostics('assessment')}
-                                {state.assessmentError && (
-                                    <Text role="alert" className={styles.errorText}>
-                                        <DismissCircleRegular /> {state.assessmentError}
-                                    </Text>
-                                )}
 
                                 {state.assessmentResult && (
                                     <div className={styles.stepContent}>
@@ -2802,11 +2545,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                                     <th style={{ padding: '4px 6px', textAlign: 'right' }}>
                                                         {l10n.t('Tables')}
                                                     </th>
-                                                    {state.useProgrammaticFlow && (
-                                                        <th style={{ padding: '4px 6px', textAlign: 'right' }}>
-                                                            {l10n.t('Est. Tokens')}
-                                                        </th>
-                                                    )}
+
                                                     <th style={{ padding: '4px 6px', textAlign: 'center' }}>
                                                         {l10n.t('Referenced in Code')}
                                                     </th>
@@ -2838,17 +2577,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                                         >
                                                             {domain.tables.length}
                                                         </td>
-                                                        {state.useProgrammaticFlow && (
-                                                            <td
-                                                                style={{
-                                                                    padding: '4px 6px',
-                                                                    textAlign: 'right',
-                                                                    color: 'var(--vscode-descriptionForeground)',
-                                                                }}
-                                                            >
-                                                                {formatTokenCount(domain.estimatedTokens)}
-                                                            </td>
-                                                        )}
+
                                                         <td
                                                             style={{
                                                                 padding: '4px 6px',
@@ -2903,37 +2632,13 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                     <Checkbox
                                         checked={state.includeUnmappedDomains}
                                         onChange={handleIncludeUnmappedDomainsChange}
-                                        disabled={isRunActive || state.schemaConversionState === 'in-progress'}
+                                        disabled={isRunActive}
                                         label={l10n.t(
                                             'Include domains without detected application code access patterns (e.g. tables only referenced via stored procedures, ETL, or external systems)',
                                         )}
                                     />
 
-                                    {state.useProgrammaticFlow && (
-                                        <div style={{ display: 'flex', alignItems: 'center' }}>
-                                            <Checkbox
-                                                checked={state.thoroughAnalysis}
-                                                onChange={handleThoroughAnalysisChange}
-                                                disabled={isRunActive || state.schemaConversionState === 'in-progress'}
-                                                label={l10n.t('Enable thorough analysis')}
-                                            />
-                                            <InfoTooltipIcon
-                                                content={
-                                                    l10n.t(
-                                                        'Fast mode (default): Performs a single AI analysis pass per domain, producing a complete data model with containers, partition keys, embedding strategies, access pattern mappings, cross-partition analysis, and indexing policies in one step. Suitable for most migrations and significantly faster.',
-                                                    ) +
-                                                    '\n\n' +
-                                                    l10n.t(
-                                                        'Thorough mode: Runs 7 sequential analysis steps per domain, each focusing on a specific concern (container design, partition key selection, embedding decisions, access patterns, cross-partition queries, indexing, and summary). Produces detailed per-step output files for deeper review. Recommended for complex schemas or when you need granular analysis artifacts.',
-                                                    )
-                                                }
-                                                ariaLabel={l10n.t('Thorough analysis mode help')}
-                                                styles={styles}
-                                            />
-                                        </div>
-                                    )}
-
-                                    {state.schemaConversionState !== 'in-progress' && (
+                                    {
                                         <Field
                                             label={
                                                 <>
@@ -2962,34 +2667,9 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                                 rows={3}
                                             />
                                         </Field>
-                                    )}
+                                    }
 
-                                    {state.schemaConversionState === 'in-progress' && (
-                                        <>
-                                            <div className={styles.progressRow}>
-                                                <ProgressBar style={{ flex: 1 }} />
-                                                <Button
-                                                    appearance="secondary"
-                                                    size="small"
-                                                    onClick={handleCancelSchemaConversion}
-                                                >
-                                                    {l10n.t('Cancel')}
-                                                </Button>
-                                            </div>
-                                            {state.schemaConversionProgress && (
-                                                <output aria-live="polite">
-                                                    <Text
-                                                        size={200}
-                                                        style={{ color: 'var(--vscode-descriptionForeground)' }}
-                                                    >
-                                                        {state.schemaConversionProgress}
-                                                    </Text>
-                                                </output>
-                                            )}
-                                        </>
-                                    )}
-
-                                    {state.schemaConversionState !== 'in-progress' && (
+                                    {
                                         <MigrationActionButton
                                             {...chatActionProps}
                                             activity={actionActivity('schema-conversion')}
@@ -3007,15 +2687,10 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                                 ? l10n.t('Re-Run Schema Conversion')
                                                 : l10n.t('Run Schema Conversion')}
                                         </MigrationActionButton>
-                                    )}
+                                    }
                                 </div>
 
                                 {phaseDiagnostics('schema-conversion')}
-                                {state.schemaConversionError && (
-                                    <Text role="alert" className={styles.errorText}>
-                                        <DismissCircleRegular /> {state.schemaConversionError}
-                                    </Text>
-                                )}
 
                                 {state.schemaConversionResult && (
                                     <div className={styles.stepContent}>
@@ -3324,26 +2999,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                     {(state.targetType === 'provision' ||
                                         isMigrationRunActive(actionActivity('provisioning', 'target-account'))) && (
                                         <>
-                                            {state.accountProvisioningState === 'in-progress' ? (
-                                                <>
-                                                    <div className={styles.progressRow}>
-                                                        <ProgressBar style={{ flex: 1 }} />
-                                                        <Button
-                                                            appearance="secondary"
-                                                            size="small"
-                                                            icon={<StopRegular />}
-                                                            onClick={handleCancelAccountProvisioning}
-                                                        >
-                                                            {l10n.t('Cancel')}
-                                                        </Button>
-                                                    </div>
-                                                    {state.accountProvisioningProgress && (
-                                                        <output aria-live="polite">
-                                                            <Text size={200}>{state.accountProvisioningProgress}</Text>
-                                                        </output>
-                                                    )}
-                                                </>
-                                            ) : (
+                                            {
                                                 <MigrationActionButton
                                                     {...chatActionProps}
                                                     activity={actionActivity('provisioning', 'target-account')}
@@ -3364,18 +3020,13 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                                         ? l10n.t('Re-Provision Account')
                                                         : l10n.t('Provision New Account')}
                                                 </MigrationActionButton>
-                                            )}
+                                            }
                                             {state.accountProvisioningState === 'complete' && (
                                                 <Text>
                                                     <CheckmarkCircleFilled
                                                         style={{ color: 'var(--vscode-testing-iconPassed)' }}
                                                     />{' '}
                                                     {l10n.t('Account provisioned successfully.')}
-                                                </Text>
-                                            )}
-                                            {state.accountProvisioningError && (
-                                                <Text role="alert" className={styles.errorText}>
-                                                    <DismissCircleRegular /> {state.accountProvisioningError}
                                                 </Text>
                                             )}
                                         </>
@@ -3448,28 +3099,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                             </Text>
                                         </div>
 
-                                        {state.provisioningState === 'in-progress' && (
-                                            <>
-                                                <div className={styles.progressRow}>
-                                                    <ProgressBar style={{ flex: 1 }} />
-                                                    <Button
-                                                        appearance="secondary"
-                                                        size="small"
-                                                        icon={<StopRegular />}
-                                                        onClick={handleCancelProvisioning}
-                                                    >
-                                                        {l10n.t('Cancel')}
-                                                    </Button>
-                                                </div>
-                                                {state.provisioningProgress && (
-                                                    <output aria-live="polite">
-                                                        <Text size={200}>{state.provisioningProgress}</Text>
-                                                    </output>
-                                                )}
-                                            </>
-                                        )}
-
-                                        {state.provisioningState !== 'in-progress' && (
+                                        {
                                             <MigrationActionButton
                                                 {...chatActionProps}
                                                 activity={actionActivity('provisioning', 'resources-and-data')}
@@ -3489,73 +3119,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                                     ? l10n.t('Re-Populate Sample Data')
                                                     : l10n.t('Populate Sample Data')}
                                             </MigrationActionButton>
-                                        )}
-
-                                        {state.provisioningError && (
-                                            <Text role="alert" className={styles.errorText}>
-                                                <DismissCircleRegular /> {state.provisioningError}
-                                            </Text>
-                                        )}
-
-                                        {state.provisioningResult && (
-                                            <div
-                                                data-testid="migration-provisioning-summary"
-                                                style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}
-                                            >
-                                                <Text>
-                                                    <CheckmarkCircleFilled
-                                                        style={{ color: 'var(--vscode-testing-iconPassed)' }}
-                                                    />{' '}
-                                                    {l10n.t(
-                                                        'Database "{0}" created with {1} container(s).',
-                                                        state.provisioningResult.databaseName,
-                                                        state.provisioningResult.containersCreated.length,
-                                                    )}
-                                                </Text>
-                                                <Text size={200}>
-                                                    {l10n.t(
-                                                        'Containers: {0}',
-                                                        state.provisioningResult.containersCreated.join(', '),
-                                                    )}
-                                                </Text>
-                                                {state.provisioningResult.seedScriptPath && (
-                                                    <Link
-                                                        onClick={() =>
-                                                            handleOpenFile(state.provisioningResult!.seedScriptPath)
-                                                        }
-                                                    >
-                                                        {l10n.t('Open seed-data.csh script')}
-                                                    </Link>
-                                                )}
-                                                {state.provisioningResult.warnings.length > 0 && (
-                                                    <output
-                                                        aria-live="polite"
-                                                        style={{
-                                                            display: 'flex',
-                                                            flexDirection: 'column',
-                                                            gap: '2px',
-                                                            marginTop: '4px',
-                                                        }}
-                                                    >
-                                                        <Text size={200} weight="semibold">
-                                                            <WarningRegular
-                                                                style={{
-                                                                    color: 'var(--vscode-editorWarning-foreground)',
-                                                                }}
-                                                            />{' '}
-                                                            {l10n.t(
-                                                                'Some sample items were not inserted successfully:',
-                                                            )}
-                                                        </Text>
-                                                        {state.provisioningResult.warnings.map((warning, idx) => (
-                                                            <Text key={idx} size={200}>
-                                                                {warning}
-                                                            </Text>
-                                                        ))}
-                                                    </output>
-                                                )}
-                                            </div>
-                                        )}
+                                        }
                                     </>
                                 )}
                             </div>

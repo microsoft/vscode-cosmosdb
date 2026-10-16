@@ -37,14 +37,6 @@ export interface MigrationSkillInvocation {
     codeMigrationAction?: MigrationCodeMigrationAction;
 }
 
-export function shouldUseMigrationSkill(): boolean {
-    return !(
-        vscode.workspace
-            .getConfiguration('cosmosDB')
-            .get<boolean>('experimental.migration.useProgrammaticFlow', false) ?? false
-    );
-}
-
 async function hasMigrationSkillArtifacts(invocation: MigrationSkillInvocation): Promise<boolean> {
     if (invocation.phase === undefined) return false;
 
@@ -225,7 +217,7 @@ export class MigrationSkillChatSession {
         const { models, savedModelId } = await getAvailableModelsInfo(MIGRATION_SELECTED_MODEL_KEY, {
             includeAuto: true,
         });
-        const modelId = selectedModelId ?? resolveSelectedModelId(getMigrationModels(models, false), savedModelId);
+        const modelId = selectedModelId ?? resolveSelectedModelId(getMigrationModels(models), savedModelId);
         const model = models.find((candidate) => candidate.id === modelId);
         if (!model) {
             throw new Error(l10n.t('The selected migration model is unavailable. Please select an available model.'));

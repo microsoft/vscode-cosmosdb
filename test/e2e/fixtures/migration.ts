@@ -10,34 +10,12 @@
  * and fall back to visible phase-header text for the collapsible accordion.
  */
 
-import { CosmosClient } from '@azure/cosmos';
 import { expect, type Frame, type Locator } from '@playwright/test';
-import { parse } from '@prantlf/jsonlint';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import * as https from 'node:https';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import * as path from 'node:path';
-import { E2E_EMULATOR_ENDPOINT, E2E_EMULATOR_KEY } from '../setup/emulator';
-
-/** Tunes the migration AI mock (delay/failure) for the current test. */
-export function setMockControl(control: { delayMs?: number; failRoutes?: string[] }): void {
-    const dir = process.env.COSMOSDB_E2E_MIGRATION_CAPTURE_DIR;
-    if (!dir) return;
-    mkdirSync(dir, { recursive: true });
-    writeFileSync(path.join(dir, 'control.json'), JSON.stringify(control));
-}
-
-/** Clears any mock control so the next test runs at full speed. */
-export function clearMockControl(): void {
-    const dir = process.env.COSMOSDB_E2E_MIGRATION_CAPTURE_DIR;
-    if (!dir) return;
-    try {
-        rmSync(path.join(dir, 'control.json'), { force: true });
-    } catch {
-        /* ignore */
-    }
-}
+import { E2E_EMULATOR_ENDPOINT } from '../setup/emulator';
 
 /** Reads the workspace `.gitignore` (empty string when absent). */
 export function readGitignore(): string {
@@ -230,7 +208,6 @@ function completeMockSkillAssessment(): void {
                     name: 'SalesDomain',
                     tables: ['Orders', 'OrderDetails'],
                     crossDomainDependencies: [],
-                    estimatedTokens: 1000,
                     isMapped: true,
                 },
             ],
@@ -739,57 +716,11 @@ export function checkMockSkillPhaseCompletion(phase: MockSkillPhase): { complete
     return completion;
 }
 
-/** Reads + parses the generated `sample-data.json` (undefined when absent). */
-export function readSampleData(): { sampleData: { containerName: string; items: unknown[] }[] } | undefined {
-    const p = provisioningArtifact('sample-data.json');
-    if (!p || !existsSync(p)) return undefined;
-    try {
-        return JSON.parse(readFileSync(p, 'utf-8')) as { sampleData: { containerName: string; items: unknown[] }[] };
-    } catch {
-        return undefined;
-    }
-}
-
-/** Reads every document from an emulator container (id-sorted, no system fields). */
-export async function readEmulatorItems(databaseId: string, containerId: string): Promise<Record<string, unknown>[]> {
-    // Scoped self-signed-cert trust, mirroring `test/e2e/setup/emulator.ts`. The
-    // agent is local to this client so the relaxation never leaks process-wide.
-    const client = new CosmosClient({
-        endpoint: E2E_EMULATOR_ENDPOINT,
-        key: E2E_EMULATOR_KEY,
-        connectionPolicy: { enableEndpointDiscovery: false },
-        agent: new https.Agent({ rejectUnauthorized: false }),
-    });
-    const container = client.database(databaseId).container(containerId);
-    const { resources } = await container.items.readAll<Record<string, unknown>>().fetchAll();
-    return resources
-        .map((doc) => {
-            const stripped: Record<string, unknown> = {};
-            for (const [k, v] of Object.entries(doc)) {
-                if (!k.startsWith('_')) stripped[k] = v;
-            }
-            return stripped;
-        })
-        .sort((a, b) => String(a.id).localeCompare(String(b.id)));
-}
-
 /** Reads the migration AI-mock prompt capture log written during the run. */
 interface CapturedMigrationPrompt {
     route: string | null;
     promptText: string;
     chat?: { newSession: boolean; modelSelector: { vendor: string; id: string } };
-}
-
-export function setMigrationSettings(updates: { showTokenEstimate?: boolean; useProgrammaticFlow?: boolean }): void {
-    const settingsPath = path.join(migrationWorkspace(), '.vscode/settings.json');
-    const settings = parse(readFileSync(settingsPath, 'utf8'), {
-        ignoreComments: true,
-        ignoreTrailingCommas: true,
-    });
-    for (const [key, value] of Object.entries(updates)) {
-        settings[`cosmosDB.experimental.migration.${key}`] = value;
-    }
-    writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
 }
 
 export function readCapturedPrompts(): CapturedMigrationPrompt[] {
@@ -889,19 +820,6 @@ export class MigrationPage {
         return this.frame.getByTestId(`migration-${phase}-instructions`);
     }
 
-    // ── Progress / cancel / error states ─────────────────────────────
-    get progressBar(): Locator {
-        return this.frame.getByRole('progressbar');
-    }
-
-    get cancelButton(): Locator {
-        return this.frame.getByRole('button', { name: 'Cancel', exact: true });
-    }
-
-    get errorAlert(): Locator {
-        return this.frame.getByRole('alert');
-    }
-
     phaseHeader(label: string): Locator {
         return this.frame.getByText(label, { exact: true });
     }
@@ -964,10 +882,6 @@ export class MigrationPage {
         return this.frame.getByTestId('migration-populate-sample-data');
     }
 
-    get provisioningSummary(): Locator {
-        return this.frame.getByTestId('migration-provisioning-summary');
-    }
-
     // ── Final step: Plan / Start Migration ───────────────────────────
     /** Primary action of the footer SplitButton ("Plan Migration" / "Start Migration"). */
     get migrationActionButton(): Locator {
@@ -1004,26 +918,5 @@ export class MigrationPage {
      */
     async expandPhase(label: string): Promise<void> {
         await this.phaseHeader(label).click();
-    }
-
-    /** Runs a phase end-to-end and waits for its completion badge. */
-    async runDiscovery(timeoutMs = 60_000): Promise<void> {
-        await expect(this.runDiscoveryButton()).toBeEnabled();
-        await this.runDiscoveryButton().click();
-        await expect(this.phaseCompleteBadge('phase1')).toBeVisible({ timeout: timeoutMs });
-    }
-
-    async runAssessment(timeoutMs = 60_000): Promise<void> {
-        await this.expandPhase(PHASE_HEADERS.phase2);
-        await expect(this.runAssessmentButton()).toBeEnabled();
-        await this.runAssessmentButton().click();
-        await expect(this.phaseCompleteBadge('phase2')).toBeVisible({ timeout: timeoutMs });
-    }
-
-    async runConversion(timeoutMs = 90_000): Promise<void> {
-        await this.expandPhase(PHASE_HEADERS.phase3);
-        await expect(this.runConversionButton()).toBeEnabled();
-        await this.runConversionButton().click();
-        await expect(this.phaseCompleteBadge('phase3')).toBeVisible({ timeout: timeoutMs });
     }
 }

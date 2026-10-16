@@ -15,7 +15,6 @@ import {
     normalizeMigrationProjectCompatibility,
     validateMigrationProject,
 } from '../../skills/cosmosdb-relational-migration/scripts/validate-migration-project.mjs';
-import { type ParsedAccessPattern } from '../panels/migration/helpers/migrationHelpers';
 
 export const MIGRATION_FOLDER = '.cosmosdb-migration';
 export const PROJECT_FILE = 'project.json';
@@ -33,8 +32,19 @@ export interface AssessmentDomain {
     name: string;
     tables: string[];
     crossDomainDependencies: string[];
-    estimatedTokens: number;
     isMapped: boolean;
+}
+
+export interface ParsedAccessPattern {
+    name: string;
+    type: string;
+    tables: string[];
+    frequency: string;
+    codeReferences: string[];
+    filterFields?: string;
+    singleOrBatch?: string;
+    sqlExample?: string;
+    codeExample?: string;
 }
 
 export interface ProjectJson {
@@ -80,7 +90,6 @@ export interface ProjectJson {
         schemaConversion?: {
             status: PhaseStatus;
             schemaConversionInstructions?: string;
-            thoroughAnalysis?: boolean;
             domains?: string[];
             completedAt?: string;
         };
@@ -424,15 +433,6 @@ export class MigrationProjectService {
      */
     getBicepPath(): string {
         return path.join(this.getProvisioningPath(), 'main.bicep');
-    }
-
-    /**
-     * Path to the generated `main.bicepparam` companion params file. Holds the
-     * resolved values (account name, location, etc.) that the assistant fills
-     * in incrementally as the user proceeds through Phase 4.
-     */
-    getBicepParamPath(): string {
-        return path.join(this.getProvisioningPath(), 'main.bicepparam');
     }
 
     /**

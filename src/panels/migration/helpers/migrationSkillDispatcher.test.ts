@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as path from 'path';
-import { type Mock } from 'vitest';
 import * as vscode from 'vscode';
 import { MigrationProjectService } from '../../../services/MigrationProjectService';
 import { getAvailableModelsInfo } from '../../../utils/aiUtils';
@@ -13,7 +12,6 @@ import {
     buildMigrationSkillPrompt,
     MigrationSkillChatSession,
     type MigrationSkillInvocation,
-    shouldUseMigrationSkill,
 } from './migrationSkillDispatcher';
 
 vi.mock('../../../utils/aiUtils', () => ({ getAvailableModelsInfo: vi.fn() }));
@@ -34,7 +32,6 @@ vi.mock('vscode', () => ({
         get workspaceFolders() {
             return [{ uri: { fsPath: '/workspace/shop' }, name: 'shop', index: 0 }];
         },
-        getConfiguration: vi.fn(),
         fs: { stat: vi.fn() },
     },
 }));
@@ -56,7 +53,6 @@ describe('migrationSkillDispatcher', () => {
             savedModelId: null,
         });
         vi.mocked(isMigrationAiMockEnabled).mockReturnValue(false);
-        (vscode.workspace.getConfiguration as Mock).mockReturnValue({ get: vi.fn().mockReturnValue(false) });
     });
 
     afterEach(() => {
@@ -71,17 +67,6 @@ describe('migrationSkillDispatcher', () => {
             throw new Error('File not found');
         });
     }
-
-    it('uses the migration Skill by default', () => {
-        expect(shouldUseMigrationSkill()).toBe(true);
-        expect(vscode.workspace.getConfiguration).toHaveBeenCalledWith('cosmosDB');
-    });
-
-    it('uses the programmatic fallback when explicitly configured', () => {
-        (vscode.workspace.getConfiguration as Mock).mockReturnValue({ get: vi.fn().mockReturnValue(true) });
-
-        expect(shouldUseMigrationSkill()).toBe(false);
-    });
 
     it('omits the project path when it is the sole workspace root', () => {
         const prompt = buildMigrationSkillPrompt({ workspacePath: '/workspace/shop' });

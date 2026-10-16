@@ -28,7 +28,6 @@ export function isMigrationInspectionCommand(command: string): boolean {
     return [
         'loadProject',
         'getAvailableModels',
-        'estimateContextTokens',
         'checkGitRepository',
         'checkGitignore',
         'openFile',
@@ -311,17 +310,14 @@ export function isDiscoveryLaunchReady(settings: {
     );
 }
 
-export function deriveMigrationPhaseStates(
-    completion: Partial<MigrationCompletionMap> | undefined,
-    useProgrammaticFlow = false,
-): {
+export function deriveMigrationPhaseStates(completion: Partial<MigrationCompletionMap> | undefined): {
     discoveryState: PhaseState;
     assessmentState: PhaseState;
     schemaConversionState: PhaseState;
     provisioningState: PhaseState;
 } {
     const canRestoreCompletion =
-        useProgrammaticFlow || isCodeMigrationReady(completion) || (completion?.['code-migration']?.complete ?? false);
+        isCodeMigrationReady(completion) || (completion?.['code-migration']?.complete ?? false);
     const wasCompleted = (phase: MigrationPhaseName): boolean => completion?.[phase]?.status === 'complete';
     const isComplete = (phase: MigrationPhaseName): boolean =>
         (completion?.[phase]?.complete ?? false) || (canRestoreCompletion && wasCompleted(phase));
@@ -329,11 +325,7 @@ export function deriveMigrationPhaseStates(
     const assessmentComplete = isComplete('assessment');
 
     return {
-        discoveryState: discoveryComplete
-            ? 'complete'
-            : !useProgrammaticFlow || completion?.preflight?.complete || wasCompleted('discovery')
-              ? 'available'
-              : 'locked',
+        discoveryState: discoveryComplete ? 'complete' : 'available',
         assessmentState: assessmentComplete
             ? 'complete'
             : discoveryComplete || wasCompleted('assessment')

@@ -111,23 +111,21 @@ describe('migration model state', () => {
         expect(result.current.state.accountProvisioningState).toBe('available');
     });
 
-    it('preserves saved Auto while legacy mode resolves the first model', () => {
+    it('preserves saved Auto across model refreshes', () => {
         const { result } = setup();
         act(() =>
             result.current.dispatch({
                 type: 'SET_MODELS',
-                payload: { models, savedModelId: 'auto', useProgrammaticFlow: false },
+                payload: { models, savedModelId: 'auto' },
             }),
         );
         expect(result.current.state.selectedModelId).toBe('auto');
-        act(() => result.current.dispatch({ type: 'SET_USE_PROGRAMMATIC_FLOW', payload: true }));
-        expect(result.current.state.selectedModelId).toBe('first');
         expect(result.current.state.savedModelId).toBe('auto');
-        expect(result.current.state.availableModels.map((model) => model.id)).toEqual(['first', 'second']);
+        expect(result.current.state.availableModels.map((model) => model.id)).toEqual(['first', 'second', 'auto']);
         act(() =>
             result.current.dispatch({
                 type: 'SET_MODELS',
-                payload: { models, savedModelId: 'auto', useProgrammaticFlow: false },
+                payload: { models, savedModelId: 'auto' },
             }),
         );
         expect(result.current.state.selectedModelId).toBe('auto');
@@ -138,89 +136,20 @@ describe('migration model state', () => {
         act(() =>
             result.current.dispatch({
                 type: 'SET_MODELS',
-                payload: { models, savedModelId: 'auto', useProgrammaticFlow: true },
+                payload: { models, savedModelId: 'auto' },
             }),
         );
         act(() => result.current.dispatch({ type: 'SET_SELECTED_MODEL', payload: 'second' }));
-        act(() => result.current.dispatch({ type: 'SET_USE_PROGRAMMATIC_FLOW', payload: false }));
         expect(result.current.state.savedModelId).toBe('second');
         expect(result.current.state.selectedModelId).toBe('second');
     });
 
-    it('clears estimates on selection and ignores stale model or file results', () => {
-        const { result } = setup();
-        const estimate = {
-            modelId: 'first',
-            minTokens: 10,
-            maxTokens: 20,
-            modelMaxTokens: 100_000,
-            estimateGeneration: 0,
-        };
-        act(() =>
-            result.current.dispatch({
-                type: 'SET_MODELS',
-                payload: { models, savedModelId: null, useProgrammaticFlow: true },
-            }),
-        );
-        act(() => result.current.dispatch({ type: 'SET_TOKEN_ESTIMATE', payload: estimate }));
-        expect(result.current.state.tokenEstimate).toEqual(estimate);
-        act(() => result.current.dispatch({ type: 'SET_SELECTED_MODEL', payload: 'auto' }));
-        act(() => result.current.dispatch({ type: 'SET_TOKEN_ESTIMATE', payload: estimate }));
-        expect(result.current.state.tokenEstimate).toBeNull();
-        act(() => result.current.dispatch({ type: 'SET_SELECTED_MODEL', payload: 'second' }));
-        act(() =>
-            result.current.dispatch({
-                type: 'SET_TOKEN_ESTIMATE',
-                payload: { ...estimate, modelId: 'second', estimateGeneration: 1 },
-            }),
-        );
-        expect(result.current.state.tokenEstimate).toBeNull();
-    });
-
-    it.each([
-        { modelId: 'first', viaModels: false },
-        { modelId: 'auto', viaModels: false },
-        { modelId: 'first', viaModels: true },
-    ])('rejects token estimates in skill mode: %j', ({ modelId, viaModels }) => {
-        const { result } = setup();
-        const estimate = {
-            modelId,
-            minTokens: 10,
-            maxTokens: 20,
-            modelMaxTokens: 100_000,
-            estimateGeneration: 0,
-        };
-        act(() =>
-            result.current.dispatch({
-                type: 'SET_MODELS',
-                payload: { models, savedModelId: 'first', useProgrammaticFlow: true },
-            }),
-        );
-        act(() => result.current.dispatch({ type: 'SET_TOKEN_ESTIMATE', payload: { ...estimate, modelId: 'first' } }));
-        expect(result.current.state.tokenEstimate).not.toBeNull();
-        act(() =>
-            result.current.dispatch(
-                viaModels
-                    ? { type: 'SET_MODELS', payload: { models, savedModelId: 'first', useProgrammaticFlow: false } }
-                    : { type: 'SET_USE_PROGRAMMATIC_FLOW', payload: false },
-            ),
-        );
-        expect(result.current.state.tokenEstimate).toBeNull();
-        act(() => result.current.dispatch({ type: 'SET_SELECTED_MODEL', payload: modelId }));
-        act(() => result.current.dispatch({ type: 'SET_TOKEN_ESTIMATE', payload: estimate }));
-        expect(result.current.state.tokenEstimate).toBeNull();
-
-        act(() => result.current.dispatch({ type: 'SET_USE_PROGRAMMATIC_FLOW', payload: true }));
-        act(() => result.current.dispatch({ type: 'SET_TOKEN_ESTIMATE', payload: { ...estimate, modelId: 'first' } }));
-        expect(result.current.state.tokenEstimate).toEqual({ ...estimate, modelId: 'first' });
-    });
-
-    it('supports an empty legacy list without selecting Auto', () => {
+    it('supports an empty model list without losing the saved preference', () => {
         const { result } = setup();
         act(() =>
             result.current.dispatch({
                 type: 'SET_MODELS',
-                payload: { models: models.slice(0, 1), savedModelId: 'auto', useProgrammaticFlow: true },
+                payload: { models: [], savedModelId: 'auto' },
             }),
         );
         expect(result.current.state.selectedModelId).toBeNull();
@@ -245,7 +174,7 @@ describe('migration selection command ordering', () => {
         return { channel, mutate, post };
     };
 
-    it('waits for a model save before dispatching or estimating', async () => {
+    it('waits for a model save before dispatching', async () => {
         const { channel, mutate, post } = setup();
         let finish!: () => void;
         mutate.mockReturnValueOnce(
@@ -255,16 +184,11 @@ describe('migration selection command ordering', () => {
         );
         const selection = post('setSelectedModel', 'auto');
         const dispatch = post('runDiscovery');
-        const estimate = post('estimateContextTokens');
         await vi.waitFor(() => expect(mutate).toHaveBeenCalledTimes(1));
         expect(mutate).toHaveBeenCalledWith({ commandName: 'setSelectedModel', params: ['auto'] });
         finish();
-        await Promise.all([selection, dispatch, estimate]);
-        expect(mutate.mock.calls.map(([input]) => input.commandName)).toEqual([
-            'setSelectedModel',
-            'runDiscovery',
-            'estimateContextTokens',
-        ]);
+        await Promise.all([selection, dispatch]);
+        expect(mutate.mock.calls.map(([input]) => input.commandName)).toEqual(['setSelectedModel', 'runDiscovery']);
         channel.dispose();
     });
 
@@ -300,7 +224,7 @@ function completion(overrides: Partial<Record<MigrationPhaseName, boolean>> = {}
 }
 
 describe('migration project reload', () => {
-    it('restores legacy completion and connection testing without weakening Skill mode after switching', () => {
+    it('restores historical projects without bypassing portable evidence validation', () => {
         const on = vi.fn<Channel['on']>(() => ({ dispose: () => {} }));
         const channel: Channel = { on, postMessage: async () => {} };
         const { result } = renderHook(() => useMigrationState(), {
@@ -314,7 +238,7 @@ describe('migration project reload', () => {
 
         const phases = completion();
         phases.discovery.status = 'complete';
-        const reload = (useProgrammaticFlow: boolean, verified = false) => {
+        const reload = (verified = false) => {
             act(() =>
                 projectLoaded({
                     project: toMigrationProjectView({
@@ -375,17 +299,13 @@ describe('migration project reload', () => {
                     consentGiven: true,
                     hasCodeMigrationPlan: false,
                     codeMigrationPlanPath: '',
-                    isPhase4Required: true,
-                    showTokenEstimate: false,
-                    useProgrammaticFlow,
                     phaseCompletion: phases,
                     runActivity: null,
-                    fileStateGeneration: 0,
                 }),
             );
         };
 
-        reload(true);
+        reload();
         expect(result.current).toMatchObject({
             projectName: 'legacy-project',
             migrationInstructions: 'Preserve source keys.',
@@ -409,17 +329,14 @@ describe('migration project reload', () => {
             targetResourceGroup: 'test-group',
             targetLocation: 'westus',
             connectionVerified: false,
-            discoveryState: 'complete',
-            assessmentState: 'available',
+            discoveryState: 'available',
+            assessmentState: 'locked',
             schemaConversionState: 'locked',
-            connectionTestState: 'available',
+            connectionTestState: 'locked',
         });
 
         phases.assessment.status = 'complete';
-        reload(true);
-        expect(result.current).toMatchObject({ assessmentState: 'complete', schemaConversionState: 'available' });
-
-        reload(false);
+        reload();
         expect(result.current).toMatchObject({
             discoveryState: 'available',
             assessmentState: 'available',
@@ -427,15 +344,13 @@ describe('migration project reload', () => {
             connectionTestState: 'locked',
         });
 
-        reload(true);
-        expect(result.current).toMatchObject({ assessmentState: 'complete', connectionTestState: 'available' });
         expect(phases.discovery.complete).toBe(false);
 
         phases['code-migration'].ready = true;
-        reload(false);
+        reload();
         expect(result.current).toMatchObject({ discoveryState: 'complete', connectionTestState: 'locked' });
 
-        reload(false, true);
+        reload(true);
         expect(result.current.connectionTestState).toBe('complete');
     });
 });
@@ -959,50 +874,6 @@ describe('deriveMigrationPhaseStates', () => {
         expect(deriveMigrationPhaseStates(completion({ preflight: true })).discoveryState).toBe('available');
     });
 
-    it('preserves the preflight gate for the legacy runner', () => {
-        expect(deriveMigrationPhaseStates(completion(), true).discoveryState).toBe('locked');
-        expect(deriveMigrationPhaseStates(completion({ preflight: true }), true).discoveryState).toBe('available');
-    });
-
-    it('restores completed legacy phases without portable evidence and unlocks their successors', () => {
-        const phases = completion();
-        phases.discovery.status = 'complete';
-        expect(deriveMigrationPhaseStates(phases, true)).toEqual({
-            discoveryState: 'complete',
-            assessmentState: 'available',
-            schemaConversionState: 'locked',
-            provisioningState: 'locked',
-        });
-
-        phases.assessment.status = 'complete';
-        expect(deriveMigrationPhaseStates(phases, true)).toMatchObject({
-            assessmentState: 'complete',
-            schemaConversionState: 'available',
-        });
-
-        phases['schema-conversion'].status = 'complete';
-        phases.provisioning.status = 'complete';
-        expect(deriveMigrationPhaseStates(phases, true)).toEqual({
-            discoveryState: 'complete',
-            assessmentState: 'complete',
-            schemaConversionState: 'complete',
-            provisioningState: 'complete',
-        });
-        expect(phases.discovery.complete).toBe(false);
-        expect(phases['code-migration'].complete).toBe(false);
-    });
-
-    it.each(['not-started', 'in-progress'] as const)('does not restore %s legacy phases as complete', (status) => {
-        const phases = completion();
-        for (const phase of Object.values(phases)) phase.status = status;
-        expect(deriveMigrationPhaseStates(phases, true)).toEqual({
-            discoveryState: 'locked',
-            assessmentState: 'locked',
-            schemaConversionState: 'locked',
-            provisioningState: 'locked',
-        });
-    });
-
     it('treats missing completion entries as incomplete', () => {
         expect(deriveMigrationPhaseStates(undefined)).toEqual({
             discoveryState: 'available',
@@ -1012,12 +883,6 @@ describe('deriveMigrationPhaseStates', () => {
         });
         expect(deriveMigrationPhaseStates({ discovery: completion().discovery })).toMatchObject({
             discoveryState: 'available',
-            assessmentState: 'locked',
-            schemaConversionState: 'locked',
-            provisioningState: 'locked',
-        });
-        expect(deriveMigrationPhaseStates(undefined, true)).toEqual({
-            discoveryState: 'locked',
             assessmentState: 'locked',
             schemaConversionState: 'locked',
             provisioningState: 'locked',

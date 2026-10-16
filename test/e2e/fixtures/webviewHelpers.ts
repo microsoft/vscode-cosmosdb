@@ -23,7 +23,7 @@
  * the webview to be fully populated (React mounted, expected UI present).
  */
 
-import { test, type ElectronApplication, type Frame, type Page } from '@playwright/test';
+import { expect, test, type ElectronApplication, type Frame, type Page } from '@playwright/test';
 import { resolveCapturePlan, shouldCapture } from '../helpers/captureMode';
 
 const COMMAND_PALETTE_SHORTCUT = process.platform === 'darwin' ? 'Meta+Shift+P' : 'Control+Shift+P';
@@ -78,6 +78,25 @@ export async function resizeWindow(app: ElectronApplication, width: number, heig
         .catch(() => {
             /* No window yet / context torn down — callers tolerate this. */
         });
+}
+
+/**
+ * Resize the native Electron window instead of overriding CDP device metrics, which can leave
+ * VS Code's embedded webviews using different coordinates from the workbench after a resize.
+ */
+export async function resizeWindowViewport(
+    app: ElectronApplication,
+    page: Page,
+    size: { width: number; height: number },
+): Promise<void> {
+    const browserWindow = await app.browserWindow(page);
+    const actualSize = await browserWindow.evaluate((win, requested) => {
+        if (win.isMaximized()) win.unmaximize();
+        win.setContentSize(requested.width, requested.height);
+        return win.getContentSize();
+    }, size);
+    expect(actualSize[0]).toBe(size.width);
+    await expect.poll(() => page.evaluate(() => [window.innerWidth, window.innerHeight])).toEqual(actualSize);
 }
 
 /**

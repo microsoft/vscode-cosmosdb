@@ -9,8 +9,8 @@
  * Layers:
  *   1. Structural / render — the panel mounts and all four phase sections and
  *      the model dropdown render.
- *   2. Non-AI interactions — toggling consent and the initial disabled-control
- *      state on a fresh project (no AI involved).
+ *   2. Non-AI interactions — consent, disabled controls, accessible names and descriptions,
+ *      keyboard disclosures, and prerequisite tooltips (no AI involved).
  *   3. Loaded-project state — a deterministic pre-seeded project hydrates with
  *      consent granted, the model populated, and Discovery enabled.
  *   4. Skill flow — real WebView dispatch and strict state synchronization,
@@ -44,14 +44,35 @@ import {
     writeMockSkillEvidence,
 } from '../fixtures/migration';
 import { expect, test } from '../fixtures/vscode';
-import { closeAllEditorTabs, resetNativeDialogStubs, stubMessageBoxButton } from '../fixtures/webviewHelpers';
+import {
+    closeAllEditorTabs,
+    resetNativeDialogStubs,
+    resizeWindowViewport,
+    stubMessageBoxButton,
+} from '../fixtures/webviewHelpers';
 import { openMigrationAssistant, openMigrationFresh, openMigrationSeeded } from '../fixtures/webviews';
 
 test.describe('Migration Assistant', () => {
     // Worker-scoped VS Code is reused across tests; reset editor state so panels
     // from one test don't leak into the next. The e2e open commands also reset
     // the on-disk `.cosmosdb-migration` folder, keeping each test hermetic.
-    test.afterEach(async ({ vscodeWindow, vscodeApp }) => {
+    test.afterEach(async ({ vscodeWindow, vscodeApp }, testInfo) => {
+        if (testInfo.status !== testInfo.expectedStatus) {
+            const promptsPath = testInfo.outputPath('migration-prompts.json');
+            writeFileSync(promptsPath, JSON.stringify(readCapturedPrompts(), null, 2));
+            await testInfo.attach('migration-prompts', {
+                path: promptsPath,
+                contentType: 'application/json',
+            });
+            for (const frame of vscodeWindow.frames()) {
+                if (await frame.getByTestId('migration-phase-preflight').count()) {
+                    await testInfo.attach('migration-accessibility', {
+                        body: await frame.locator('body').ariaSnapshot(),
+                        contentType: 'text/plain',
+                    });
+                }
+            }
+        }
         for (const frame of vscodeWindow.frames()) {
             const activity = frame.getByTestId('migration-run-activity');
             if (await activity.count()) {
@@ -100,6 +121,7 @@ test.describe('Migration Assistant', () => {
             await expect(header).toHaveAccessibleName(new RegExp(label));
             await expect(header).toHaveAccessibleDescription(reason);
             await expect(header.getByRole('img', { name: 'Locked', exact: true })).toBeVisible();
+            await header.scrollIntoViewIfNeeded();
             await header.hover();
             const tooltip = frame.getByRole('tooltip', { name: reason, exact: true });
             await expect(tooltip).toBeVisible();
@@ -124,7 +146,9 @@ test.describe('Migration Assistant', () => {
             await header.press('Escape');
             await expect(frame.getByRole('tooltip')).toHaveCount(0);
         }
-        await frame.getByRole('button', { name: new RegExp(PHASE_HEADERS.phase3) }).hover();
+        const screenshotHeader = frame.getByRole('button', { name: new RegExp(PHASE_HEADERS.phase3) });
+        await screenshotHeader.scrollIntoViewIfNeeded();
+        await screenshotHeader.hover();
         await expect(frame.getByRole('tooltip')).toBeVisible();
         await vscodeWindow.screenshot({ path: testInfo.outputPath('locked-phases.png') });
     });
@@ -310,6 +334,17 @@ test.describe('Migration Assistant', () => {
         await expect(
             frame.getByRole('button', { name: 'Generate schema files from workspace code using AI' }),
         ).toHaveAccessibleDescription(schemaFilesDescription);
+        for (const description of [schemaFilesDescription, 'Volumetrics:', 'Access Patterns:']) {
+            for (const name of ['Select Files…', 'Select Folder…']) {
+                const picker = frame.getByRole('button', { name, description, exact: true });
+                await expect(picker).toHaveText(name);
+                await expect(picker).toHaveAccessibleName(name);
+                await expect(picker).toHaveAccessibleDescription(description);
+            }
+        }
+        await expect(
+            frame.getByRole('button', { name: /file\(s\) selected/, description: 'Database Schema Files:' }),
+        ).toHaveAccessibleDescription('Database Schema Files:');
 
         await frame.getByRole('button', { name: new RegExp(PHASE_HEADERS.phase4) }).click();
         await expect(frame.getByRole('radiogroup', { name: /Target Environment/ })).toHaveAttribute(
@@ -632,6 +667,7 @@ test.describe('Migration Assistant', () => {
         vscodeApp,
     }, testInfo) => {
         let prompt = '';
+        const viewport = await vscodeWindow.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight }));
         try {
             let frame = await openMigrationSeeded(vscodeWindow);
             let migration = new MigrationPage(frame);
@@ -666,13 +702,7 @@ test.describe('Migration Assistant', () => {
             await frame
                 .getByTestId('migration-run-activity')
                 .screenshot({ path: testInfo.outputPath('run-activity-desktop.png') });
-            const viewport =
-                vscodeWindow.viewportSize() ??
-                (await vscodeWindow.evaluate(() => ({
-                    width: window.innerWidth,
-                    height: window.innerHeight,
-                })));
-            await vscodeWindow.setViewportSize({ width: 720, height: 900 });
+            await resizeWindowViewport(vscodeApp, vscodeWindow, { width: 720, height: 900 });
             await expect(resetStatus).toBeVisible();
             await resetStatus.hover();
             await frame
@@ -681,7 +711,7 @@ test.describe('Migration Assistant', () => {
             await frame
                 .getByTestId('migration-run-activity')
                 .screenshot({ path: testInfo.outputPath('run-activity-narrow.png') });
-            await vscodeWindow.setViewportSize(viewport);
+            await resizeWindowViewport(vscodeApp, vscodeWindow, viewport);
             const beforeReopen = readMigrationArtifact('project.json');
             await closeAllEditorTabs(vscodeWindow);
             frame = await openMigrationAssistant(vscodeWindow);
@@ -763,6 +793,7 @@ test.describe('Migration Assistant', () => {
             await inventoryToggle.press('Space');
             await expect(inventoryToggle).toHaveAttribute('aria-expanded', 'false');
             await schemaToggle.click();
+            await expect(schemaToggle).toHaveAttribute('aria-expanded', 'false');
             const restart = diagnostics.getByRole('button', { name: 'Review and Fix', exact: true });
             await expect(restart).toBeEnabled();
             await expect(restart).toHaveText('Review and Fix');
@@ -780,14 +811,16 @@ test.describe('Migration Assistant', () => {
             expect(readCapturedPrompts()).toHaveLength(count);
             expect(readMigrationArtifact('project.json')).toBe(blockedBytes);
             await diagnostics.screenshot({ path: testInfo.outputPath('blocked-phase-desktop.png') });
-            await vscodeWindow.setViewportSize({ width: 720, height: 900 });
+            await resizeWindowViewport(vscodeApp, vscodeWindow, { width: 720, height: 900 });
             await expect(restart).toBeVisible();
             expect(await diagnostics.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+            await expect(schemaToggle).toHaveAttribute('aria-expanded', 'false');
+            await schemaToggle.scrollIntoViewIfNeeded();
             await schemaToggle.click();
             await expect(schemaToggle).toHaveAttribute('aria-expanded', 'true');
             expect(await diagnostics.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
             await diagnostics.screenshot({ path: testInfo.outputPath('blocked-phase-narrow.png') });
-            await vscodeWindow.setViewportSize(viewport);
+            await resizeWindowViewport(vscodeApp, vscodeWindow, viewport);
             runMockSkillAgent(prompt);
             await expect(diagnostics).toHaveCount(0);
             await expect(frame.getByTestId('migration-run-activity')).toHaveCount(0);
@@ -897,6 +930,7 @@ test.describe('Migration Assistant', () => {
                 expect(readCapturedPrompts()).toHaveLength(count);
             }
         } finally {
+            await resizeWindowViewport(vscodeApp, vscodeWindow, viewport);
             await resetNativeDialogStubs(vscodeApp);
             if (prompt) setMockSkillRunActivity(prompt, 'cancelled');
         }
@@ -904,10 +938,9 @@ test.describe('Migration Assistant', () => {
 
     test('explains a stale upstream file without changing successful run history', async ({
         vscodeWindow,
+        vscodeApp,
     }, testInfo) => {
-        const viewport =
-            vscodeWindow.viewportSize() ??
-            (await vscodeWindow.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight })));
+        const viewport = await vscodeWindow.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight }));
         try {
             await openMigrationSeeded(vscodeWindow);
             const fixtures = pathToFileURL(
@@ -984,10 +1017,10 @@ test.describe('Migration Assistant', () => {
             await diagnostics.getByRole('button', { name: 'Go to Preflight', exact: true }).click();
             await expect(frame.getByTestId('migration-phase-preflight').getByRole('button').first()).toBeFocused();
             await diagnostics.screenshot({ path: testInfo.outputPath('stale-volumetrics-desktop.png') });
-            await vscodeWindow.setViewportSize({ width: 720, height: 900 });
+            await resizeWindowViewport(vscodeApp, vscodeWindow, { width: 720, height: 900 });
             expect(await diagnostics.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
             await diagnostics.screenshot({ path: testInfo.outputPath('stale-volumetrics-narrow.png') });
-            await vscodeWindow.setViewportSize(viewport);
+            await resizeWindowViewport(vscodeApp, vscodeWindow, viewport);
             const fileLink = diagnostics.getByRole('button', { name: 'volumetrics.md', exact: true });
             await expect(fileLink).toHaveAccessibleName('volumetrics.md');
             await expect(fileLink).toHaveAccessibleDescription(`.cosmosdb-migration/${relative}`);
@@ -1056,23 +1089,21 @@ test.describe('Migration Assistant', () => {
             await currentDiagnostics.screenshot({
                 path: testInfo.outputPath('assessment-freshness-links-desktop.png'),
             });
-            await vscodeWindow.setViewportSize({ width: 720, height: 900 });
+            await resizeWindowViewport(vscodeApp, vscodeWindow, { width: 720, height: 900 });
             expect(await currentList.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
             await currentDiagnostics.screenshot({ path: testInfo.outputPath('assessment-freshness-links-narrow.png') });
             expect(readMigrationArtifact('project.json')).toBe(refreshedCheckpoint);
             expect(readCapturedPrompts()).toHaveLength(promptCount);
         } finally {
-            await vscodeWindow.setViewportSize(viewport);
+            await resizeWindowViewport(vscodeApp, vscodeWindow, viewport);
         }
     });
 
-    test('groups phase errors into one keyboard-scrollable expander', async ({ vscodeWindow }, testInfo) => {
-        const viewport =
-            vscodeWindow.viewportSize() ??
-            (await vscodeWindow.evaluate(() => ({
-                width: window.innerWidth,
-                height: window.innerHeight,
-            })));
+    test('groups phase errors into one keyboard-scrollable expander', async ({ vscodeWindow, vscodeApp }, testInfo) => {
+        const viewport = await vscodeWindow.evaluate(() => ({
+            width: window.innerWidth,
+            height: window.innerHeight,
+        }));
         try {
             const frame = await openMigrationSeeded(vscodeWindow);
             const project = readMigrationJson<{ phases: Record<string, unknown> }>('project.json')!;
@@ -1135,13 +1166,13 @@ test.describe('Migration Assistant', () => {
             await expect.poll(() => list.evaluate((element) => element.scrollTop)).toBe(scrollTop);
             expect(readMigrationArtifact('project.json')).toBe(checkpoint);
             await diagnostics.screenshot({ path: testInfo.outputPath('grouped-errors-desktop.png') });
-            await vscodeWindow.setViewportSize({ width: 720, height: 900 });
+            await resizeWindowViewport(vscodeApp, vscodeWindow, { width: 720, height: 900 });
             await expect(list).toBeVisible();
             expect(await list.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
             expect(await diagnostics.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
             await diagnostics.screenshot({ path: testInfo.outputPath('grouped-errors-narrow.png') });
         } finally {
-            await vscodeWindow.setViewportSize(viewport);
+            await resizeWindowViewport(vscodeApp, vscodeWindow, viewport);
         }
     });
 
@@ -1240,6 +1271,7 @@ test.describe('Migration Assistant', () => {
             .toEqual({ newSession: true, modelSelector: { vendor: 'copilot', id: 'auto' } });
         await expect(frame.getByText(/Estimating tokens|Token estimate unavailable|^~.+ tokens$/)).toHaveCount(0);
         await expect(frame.getByRole('progressbar')).toHaveCount(0);
+        await expect(frame.getByTestId('migration-run-activity')).toHaveAttribute('data-activity', 'running');
         setMockSkillRunActivity(readCapturedPrompts().at(-1)?.promptText ?? '', 'complete');
         await expect(frame.getByTestId('migration-run-activity')).toHaveCount(0);
 
@@ -1251,6 +1283,7 @@ test.describe('Migration Assistant', () => {
             newSession: false,
             modelSelector: { vendor: 'copilot', id: 'auto' },
         });
+        await expect(frame.getByTestId('migration-run-activity')).toHaveAttribute('data-activity', 'running');
         setMockSkillRunActivity(readCapturedPrompts().at(-1)?.promptText ?? '', 'complete');
         await expect(frame.getByTestId('migration-run-activity')).toHaveCount(0);
         await expect(migration.modelDropdown).toContainText('Auto');
@@ -1267,6 +1300,7 @@ test.describe('Migration Assistant', () => {
             .poll(() => readCapturedPrompts().findLast((prompt) => prompt.route === 'skill-preflight')?.chat)
             .toEqual({ newSession: true, modelSelector: { vendor: 'copilot', id: 'auto' } });
 
+        await expect(frame.getByTestId('migration-run-activity')).toHaveAttribute('data-activity', 'running');
         setMockSkillRunActivity(readCapturedPrompts().at(-1)?.promptText ?? '', 'complete');
         await expect(frame.getByTestId('migration-run-activity')).toHaveCount(0);
         await migration.modelDropdown.click();
@@ -1279,6 +1313,7 @@ test.describe('Migration Assistant', () => {
         await expect
             .poll(() => readCapturedPrompts().findLast((prompt) => prompt.route === 'skill-preflight')?.chat)
             .toEqual({ newSession: false, modelSelector: { vendor: 'copilot', id: 'e2e-mock-migration-model' } });
+        await expect(frame.getByTestId('migration-run-activity')).toHaveAttribute('data-activity', 'running');
         setMockSkillRunActivity(readCapturedPrompts().at(-1)?.promptText ?? '', 'complete');
         await expect(frame.getByTestId('migration-run-activity')).toHaveCount(0);
     });
@@ -1307,7 +1342,7 @@ test.describe('Migration Assistant', () => {
                 { timeout: 15_000 },
             )
             .toContain('Run only the schema-acquisition preflight step.');
-        runMockSkillAgent(
+        await migration.completeSkillRun(
             readFlowPrompts().findLast(
                 (prompt) =>
                     prompt.route === 'skill-preflight' &&
@@ -1328,7 +1363,7 @@ test.describe('Migration Assistant', () => {
                 { timeout: 15_000 },
             )
             .toContain('Run only the application-details preflight step.');
-        runMockSkillAgent(
+        await migration.completeSkillRun(
             readFlowPrompts().findLast(
                 (prompt) =>
                     prompt.route === 'skill-preflight' &&
@@ -1348,7 +1383,7 @@ test.describe('Migration Assistant', () => {
                 { timeout: 15_000 },
             )
             .toContain('Run only the volumetrics preflight step.');
-        runMockSkillAgent(
+        await migration.completeSkillRun(
             readFlowPrompts().findLast(
                 (prompt) =>
                     prompt.route === 'skill-preflight' &&
@@ -1368,7 +1403,7 @@ test.describe('Migration Assistant', () => {
                 { timeout: 15_000 },
             )
             .toContain('Run only the access-patterns preflight step.');
-        runMockSkillAgent(
+        await migration.completeSkillRun(
             readFlowPrompts().findLast(
                 (prompt) =>
                     prompt.route === 'skill-preflight' &&
@@ -1391,7 +1426,7 @@ test.describe('Migration Assistant', () => {
         expect(discoveryPrompt?.promptText).not.toContain('Run in interactive mode.');
         expect(discoveryPrompt?.promptText).toContain('Run the discovery phase');
         expect(discoveryPrompt?.promptText).not.toContain('inspect-migration-state.mjs');
-        runMockSkillAgent(discoveryPrompt?.promptText ?? '');
+        await migration.completeSkillRun(discoveryPrompt?.promptText ?? '');
         await expect(migration.phaseCompleteBadge('phase1')).toBeVisible({ timeout: 15_000 });
 
         addMockRegenerationSentinel('discovery');
@@ -1405,7 +1440,7 @@ test.describe('Migration Assistant', () => {
             .toBeGreaterThan(discoveryPromptCount);
         const regenerationPrompt = readFlowPrompts().findLast((prompt) => prompt.route === 'skill-discovery');
         expect(regenerationPrompt?.promptText).toContain('Regenerate the discovery results');
-        runMockSkillAgent(regenerationPrompt?.promptText ?? '');
+        await migration.completeSkillRun(regenerationPrompt?.promptText ?? '');
         await expect
             .poll(() => readMigrationArtifact('phases/1-discovery/discovery-report.md') ?? '', { timeout: 15_000 })
             .not.toContain('REGENERATION-SENTINEL');
@@ -1426,7 +1461,7 @@ test.describe('Migration Assistant', () => {
                 timeout: 15_000,
             })
             .toContain('Run the assessment phase');
-        runMockSkillAgent(
+        await migration.completeSkillRun(
             readFlowPrompts().findLast((prompt) => prompt.route === 'skill-assessment')?.promptText ?? '',
         );
         await expect(migration.phaseCompleteBadge('phase2')).toBeVisible({ timeout: 15_000 });
@@ -1446,7 +1481,7 @@ test.describe('Migration Assistant', () => {
         const assessmentRegenerationPrompt = readFlowPrompts().findLast(
             (prompt) => prompt.route === 'skill-assessment',
         );
-        runMockSkillAgent(assessmentRegenerationPrompt?.promptText ?? '');
+        await migration.completeSkillRun(assessmentRegenerationPrompt?.promptText ?? '');
         expect(readMigrationArtifact('phases/2-assessment/assessment-summary.md')).not.toContain(
             'REGENERATION-SENTINEL',
         );
@@ -1463,7 +1498,7 @@ test.describe('Migration Assistant', () => {
                 { timeout: 15_000 },
             )
             .toContain('Run the schema conversion phase');
-        const conversionResult = runMockSkillAgent(
+        const conversionResult = await migration.completeSkillRun(
             readFlowPrompts().findLast((prompt) => prompt.route === 'skill-schema-conversion')?.promptText ?? '',
         );
         expect(conversionResult.decisions).toContain('partition-key-selection');
@@ -1486,7 +1521,7 @@ test.describe('Migration Assistant', () => {
         const conversionRegenerationPrompt = readFlowPrompts().findLast(
             (prompt) => prompt.route === 'skill-schema-conversion',
         );
-        runMockSkillAgent(conversionRegenerationPrompt?.promptText ?? '');
+        await migration.completeSkillRun(conversionRegenerationPrompt?.promptText ?? '');
         expect(readMigrationArtifact('phases/3-schema-conversion/summary.md')).not.toContain('REGENERATION-SENTINEL');
         expect(checkMockSkillPhaseCompletion('schema-conversion')).toMatchObject({ complete: true, errors: [] });
 
@@ -1507,7 +1542,7 @@ test.describe('Migration Assistant', () => {
             .toContain('Run only the resources-and-data provisioning step.');
         const provisioningPrompt = readFlowPrompts().findLast((prompt) => prompt.route === 'skill-provisioning');
         expect(provisioningPrompt?.promptText).toContain('Allow provisioning for this invocation.');
-        runMockSkillAgent(provisioningPrompt?.promptText ?? '');
+        await migration.completeSkillRun(provisioningPrompt?.promptText ?? '');
         await expect(migration.phaseCompleteBadge('phase4')).toBeVisible({ timeout: 15_000 });
         expect(provisioningArtifactExists('provisioning-verification.json')).toBe(true);
 
@@ -1526,7 +1561,7 @@ test.describe('Migration Assistant', () => {
         const provisioningRegenerationPrompt = readFlowPrompts().findLast(
             (prompt) => prompt.route === 'skill-provisioning',
         );
-        runMockSkillAgent(provisioningRegenerationPrompt?.promptText ?? '');
+        await migration.completeSkillRun(provisioningRegenerationPrompt?.promptText ?? '');
         expect(
             readMigrationJson<{ verifiedAt: string }>('phases/4-provisioning/provisioning-verification.json')
                 ?.verifiedAt,
@@ -1545,7 +1580,7 @@ test.describe('Migration Assistant', () => {
         const planningPrompt = readFlowPrompts().findLast((prompt) => prompt.route === 'skill-code-migration');
         expect(planningPrompt?.promptText).not.toContain('candidate execution blocker');
         expect(planningPrompt?.promptText).not.toContain('Do not modify application files');
-        runMockSkillAgent(planningPrompt?.promptText ?? '');
+        await migration.completeSkillRun(planningPrompt?.promptText ?? '');
         await expect(migration.migrationActionButton).toContainText('Migrate Application', { timeout: 15_000 });
         expect(readApplicationFile('src/mockCosmosRepository.js')).toBeUndefined();
 
@@ -1563,7 +1598,7 @@ test.describe('Migration Assistant', () => {
                 { timeout: 15_000 },
             )
             .toContain('Migrate the application code using the validated migration plan.');
-        runMockSkillAgent(
+        await migration.completeSkillRun(
             readFlowPrompts().findLast(
                 (prompt) =>
                     prompt.route === 'skill-code-migration' &&
@@ -1587,7 +1622,7 @@ test.describe('Migration Assistant', () => {
         const migrationRegenerationPrompt = readFlowPrompts().findLast(
             (prompt) => prompt.route === 'skill-code-migration',
         );
-        runMockSkillAgent(migrationRegenerationPrompt?.promptText ?? '');
+        await migration.completeSkillRun(migrationRegenerationPrompt?.promptText ?? '');
         expect(readApplicationFile('src/mockCosmosRepository.js')).toContain('generation 2');
         expect(readApplicationFile('src/mockCosmosRepository.js')).not.toBe(firstMigratedOutput);
         expect(checkMockSkillPhaseCompletion('code-migration')).toMatchObject({ complete: true, errors: [] });

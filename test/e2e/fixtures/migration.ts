@@ -787,6 +787,14 @@ export const PHASE_HEADERS = {
 export class MigrationPage {
     constructor(private readonly frame: Frame) {}
 
+    async completeSkillRun(promptText: string): Promise<ReturnType<typeof runMockSkillAgent>> {
+        const activity = this.frame.getByTestId('migration-run-activity');
+        await expect(activity).toHaveAttribute('data-activity', 'running');
+        const result = runMockSkillAgent(promptText);
+        await expect(activity).toHaveCount(0);
+        return result;
+    }
+
     get root(): Locator {
         return this.frame.locator('#root');
     }

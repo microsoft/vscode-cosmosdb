@@ -61,6 +61,7 @@ describe('deployment export schemas', () => {
 describe('Terraform deployment export', () => {
     it('exports a complete provider, target variables, new database and every selected container', () => {
         const code = buildTerraformDeployment(model, 'new', metadata);
+        expect(code).toContain('Save with a .tf extension.');
         expect(code).toContain('source  = "hashicorp/azurerm"');
         expect(code).toContain('version = ">= 4.2.0, < 5.0.0"');
         expect(code).toContain('subscription_id = var.subscription_id');

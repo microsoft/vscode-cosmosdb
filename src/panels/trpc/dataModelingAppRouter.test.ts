@@ -74,6 +74,7 @@ describe('assembled Data Modeler host router', () => {
         for (const path of [
             'dataModeling.getDeploymentOptions',
             'dataModeling.generateDeploymentTemplate',
+            'dataModeling.downloadDeploymentTemplate',
             'dataModeling.deploy',
         ] as const) {
             expect(dataModelingAppRouter._def.procedures).toHaveProperty([path]);

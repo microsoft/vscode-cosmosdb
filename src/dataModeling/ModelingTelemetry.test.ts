@@ -158,6 +158,36 @@ describe('ModelingTelemetry', () => {
         expect(event('feedback')).toHaveLength(2);
     });
 
+    it.each(['bicep', 'terraform', 'sdk'] as const)(
+        'emits bounded %s download outcomes through action telemetry',
+        (method) => {
+            const tracker = new ModelingTelemetry(true);
+            for (const outcome of ['success', 'cancelled', 'error'] as const) {
+                tracker.record({
+                    type: 'action',
+                    action: 'downloadCode',
+                    method,
+                    outcome,
+                    codeCustomized: outcome === 'success',
+                });
+            }
+            expect(event('action').map((entry) => entry.context.telemetry.properties)).toEqual(
+                ['success', 'cancelled', 'error'].map((outcome) => ({
+                    panelId: expect.any(String),
+                    schemaUploaded: 'false',
+                    action: 'downloadCode',
+                    method,
+                    outcome,
+                    codeCustomized: String(outcome === 'success'),
+                })),
+            );
+            for (const entry of event('action')) {
+                expect(entry.context.errorHandling).toMatchObject({ suppressDisplay: true, rethrow: false });
+                expect(entry.context.telemetry.measurements).not.toHaveProperty('codeCustomized');
+            }
+        },
+    );
+
     it('enriches milestones with the latest retained usage even when the panel never closes', () => {
         const tracker = new ModelingTelemetry(true);
         tracker.record({ type: 'usage', usage });

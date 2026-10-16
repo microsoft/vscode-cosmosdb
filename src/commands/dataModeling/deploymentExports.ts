@@ -49,7 +49,7 @@ export function buildTerraformDeployment(
         ['database_name', requireDatabaseName(model)],
     ];
     return [
-        '# Save as main.tf. Authenticate with Azure CLI or workload/managed identity; do not add credentials.',
+        '# Save with a .tf extension. Authenticate with Azure CLI or workload/managed identity; do not add credentials.',
         '# Replace any <...> placeholders. This targets an existing Azure Cosmos DB for NoSQL account.',
         '# Review: terraform init, terraform validate, terraform plan; then apply the reviewed plan.',
         '# Matching existing containers are omitted to preserve their policies and throughput.',

@@ -66,7 +66,7 @@ Recommendation requests reject inconsistent sizes in any container until they ar
 ## Source of truth
 
 The Result page's **Query routing** table shows **Read pattern**, **Filters on**, **QPS**, and **Routing**.
-Its title and accessible name include the container's recommended key, for example **Query routing — assuming /playerId**,
+Its title and accessible name include the container's recommended key, for example **Query routing with partition key /playerId**,
 to make the basis of the single-/cross-partition classifications explicit.
 Estimated costs are not displayed; existing recommendations containing cost estimates remain loadable.
 

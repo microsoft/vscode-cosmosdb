@@ -386,7 +386,7 @@ function riskBand(risk: HotPartitionRisk['risk']): { fill: string; label: string
 function ContainerResultView({ container }: { container: ContainerRecommendation }) {
     const styles = useStyles();
     const guardrailsId = useId();
-    const queryRoutingTitle = l10n.t('Query routing — assuming {partitionKey}', {
+    const queryRoutingTitle = l10n.t('Routing analysis for {partitionKey}', {
         partitionKey: container.partitionKey,
     });
     const fillTone: Record<'low' | 'medium' | 'high', string> = {

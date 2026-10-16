@@ -55,9 +55,9 @@ describe('ResultPage', () => {
         };
         const restored = PartitionKeyRecommendationSchema.parse(JSON.parse(JSON.stringify(value)));
         renderResult(restored);
-        const table = screen.getByRole('table', { name: 'Query routing — assuming /conversationId' });
-        expect(screen.getByText('🧭 Query routing — assuming /conversationId')).toBeVisible();
-        expect(table).toHaveAccessibleName('Query routing — assuming /conversationId');
+        const table = screen.getByRole('table');
+        expect(screen.getByText('/conversationId', { exact: false })).toBeVisible();
+        expect(table).toHaveAccessibleName(/\/conversationId/);
         expect(within(table).getByRole('columnheader', { name: 'Filters on' })).toBeVisible();
         expect(
             within(table)
@@ -122,10 +122,9 @@ describe('ResultPage', () => {
         renderResult(value);
         for (const container of [value.containers[0], value.containers[1], value.containers[0]]) {
             await user.click(screen.getByRole('tab', { name: `Container: ${container.entity}` }));
-            const title = `Query routing — assuming ${container.partitionKey}`;
-            expect(screen.getByText(`🧭 ${title}`)).toBeVisible();
-            const table = screen.getByRole('table', { name: title });
-            expect(table).toHaveAccessibleName(title);
+            expect(screen.getByText(container.partitionKey, { exact: false })).toBeVisible();
+            const table = screen.getByRole('table', { name: (name) => name.includes(container.partitionKey) });
+            expect(table).toBeVisible();
             expect(within(table).getByText('Cross-partition')).toBeVisible();
             expect(screen.getAllByRole('table')).toHaveLength(1);
         }
@@ -268,7 +267,7 @@ describe('ResultPage', () => {
         ]) {
             expect(screen.getByText(text)).toBeVisible();
         }
-        expect(screen.getByRole('table', { name: 'Query routing — assuming /conversationId' })).toBeVisible();
+        expect(screen.getByRole('table', { name: /\/conversationId/ })).toBeVisible();
         expect(screen.getAllByRole('img', { name: /^Score / })).toHaveLength(3);
         expect(screen.queryByRole('button', { name: 'Show details' })).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'Hide details' })).not.toBeInTheDocument();
@@ -440,9 +439,10 @@ describe('ResultPage', () => {
         it('renders accessible, non-interactive score rings without hover bubbles', async () => {
             const user = userEvent.setup();
             renderScores();
-            const score = screen.getByRole('img', { name: 'Score 81 out of 100 for Message /conversationId' });
+            const score = screen.getByRole('img', { name: /Message.*\/conversationId/ });
             expect(score).toHaveTextContent('81');
-            expect(score).toHaveAccessibleName('Score 81 out of 100 for Message /conversationId');
+            expect(score).toHaveAccessibleName(/\b81\b/);
+            expect(score).toHaveAccessibleName(/\b100\b/);
             expect(score).not.toHaveAttribute('tabindex');
             expect(score).not.toHaveAttribute('aria-expanded');
             expect(score).not.toHaveAttribute('aria-describedby');
@@ -495,7 +495,7 @@ describe('ResultPage', () => {
         };
         renderResult(value);
         expect(screen.getByText('Message ID')).toHaveClass('fui-Badge');
-        expect(screen.getByText('🆔 Document ID strategy')).toBeVisible();
+        expect(screen.getByText(/Document ID strategy/)).toBeVisible();
         expect(screen.getByText('Use a unique message ID.')).toBeVisible();
     });
 

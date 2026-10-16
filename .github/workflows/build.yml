@@ -58,7 +58,9 @@ jobs:
       # `steps.install.outcome == 'success'`).
       - name: ⬇️ Install Dependencies
         id: install
-        run: npm ci
+        run: |
+          npm ci
+          npm run docs:install
 
       - name: ⚖️ Validate Version / Preview Alignment
         id: validate-version

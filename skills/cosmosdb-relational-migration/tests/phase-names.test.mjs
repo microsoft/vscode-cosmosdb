@@ -17,3 +17,9 @@ test('rejects unknown phase names', () => {
     assert.equal(normalizePhaseName('planning'), undefined);
     assert.equal(normalizePhaseName(undefined), undefined);
 });
+
+test('rejects inherited property names instead of resolving them as aliases', () => {
+    for (const phase of ['constructor', '__proto__', ' CONSTRUCTOR ', ' __PROTO__ ']) {
+        assert.equal(normalizePhaseName(phase), undefined);
+    }
+});

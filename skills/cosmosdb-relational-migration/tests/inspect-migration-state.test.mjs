@@ -147,6 +147,25 @@ test('initializes a fresh autonomous workflow at preflight', () => {
     fs.rmSync(workspace, { recursive: true });
 });
 
+test('blocks inherited property names as phases for fresh and existing projects', () => {
+    const workspace = createWorkspace();
+    try {
+        for (const existing of [false, true]) {
+            if (existing) saveProject(workspace, baseProject());
+            for (const phase of ['constructor', '__proto__']) {
+                assert.deepEqual(inspectMigrationState(workspace, phase), {
+                    action: 'blocked',
+                    phase,
+                    projectPath: path.join(workspace, '.cosmosdb-migration/project.json'),
+                    errors: [`Unknown phase: ${phase}`],
+                });
+            }
+        }
+    } finally {
+        fs.rmSync(workspace, { recursive: true });
+    }
+});
+
 test('bounds and paginates oversized top-level inspection errors', () => {
     const result = {
         action: 'blocked',

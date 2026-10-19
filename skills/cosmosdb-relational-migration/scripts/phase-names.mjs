@@ -21,5 +21,5 @@ export function normalizePhaseName(value) {
     if (typeof value !== 'string') return undefined;
     const normalized = value.trim().toLocaleLowerCase('en-US');
     if (MIGRATION_PHASES.includes(normalized)) return normalized;
-    return NUMERIC_PHASE_ALIASES[normalized];
+    return Object.hasOwn(NUMERIC_PHASE_ALIASES, normalized) ? NUMERIC_PHASE_ALIASES[normalized] : undefined;
 }

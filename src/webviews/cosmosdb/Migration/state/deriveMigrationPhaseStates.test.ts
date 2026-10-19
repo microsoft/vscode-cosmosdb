@@ -203,6 +203,76 @@ describe('migration selection command ordering', () => {
         expect(mutate).toHaveBeenCalledTimes(3);
         channel.dispose();
     });
+
+    it.each([
+        'loadProject',
+        'getAvailableModels',
+        'checkGitRepository',
+        'checkGitignore',
+        'openFile',
+        'revealInExplorer',
+        'openGeneratedBicep',
+        'previewMarkdown',
+        'openMigrationChat',
+        'openVolumetricsTemplate',
+        'openAccessPatternsTemplate',
+        'confirmMigrationStopped',
+    ])('allows %s after a failed save without unblocking launches', async (command) => {
+        const { channel, mutate, post } = setup();
+        try {
+            mutate.mockRejectedValueOnce(new Error('save failed'));
+            await expect(post('setSelectedModel', 'auto')).rejects.toThrow('save failed');
+            await expect(post(command)).resolves.toBeUndefined();
+            await expect(post('runDiscovery')).rejects.toThrow('save failed');
+            expect(mutate.mock.calls.map(([input]) => input.commandName)).toEqual(['setSelectedModel', command]);
+        } finally {
+            channel.dispose();
+        }
+    });
+
+    it('allows inspection while a save is pending but keeps launches ordered', async () => {
+        const { channel, mutate, post } = setup();
+        let finish!: () => void;
+        mutate.mockReturnValueOnce(
+            new Promise<void>((resolve) => {
+                finish = resolve;
+            }),
+        );
+        const selection = post('setSelectedModel', 'auto');
+        const launch = post('runDiscovery');
+        await vi.waitFor(() => expect(mutate).toHaveBeenCalledTimes(1));
+        const inspection = post('loadProject');
+        try {
+            await vi.waitFor(() => {
+                expect(mutate.mock.calls.map(([input]) => input.commandName)).toEqual([
+                    'setSelectedModel',
+                    'loadProject',
+                ]);
+            });
+        } finally {
+            finish();
+            await Promise.all([selection, launch, inspection]);
+            channel.dispose();
+        }
+        expect(mutate.mock.calls.map(([input]) => input.commandName)).toEqual([
+            'setSelectedModel',
+            'loadProject',
+            'runDiscovery',
+        ]);
+    });
+
+    it('surfaces inspection errors instead of the earlier model-save error', async () => {
+        const { channel, mutate, post } = setup();
+        try {
+            mutate.mockRejectedValueOnce(new Error('save failed'));
+            await expect(post('setSelectedModel', 'auto')).rejects.toThrow('save failed');
+            mutate.mockRejectedValueOnce(new Error('file unavailable'));
+            await expect(post('openFile', 'report.md')).rejects.toThrow('file unavailable');
+            expect(mutate).toHaveBeenLastCalledWith({ commandName: 'openFile', params: ['report.md'] });
+        } finally {
+            channel.dispose();
+        }
+    });
 });
 
 function completion(overrides: Partial<Record<MigrationPhaseName, boolean>> = {}): MigrationCompletionMap {

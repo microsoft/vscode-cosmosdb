@@ -197,7 +197,7 @@
   "ALL (up to {0})": "ALL (up to {0})",
   "All databases": "All databases",
   "All loaded data will be lost. The query will be executed again in new session.": "All loaded data will be lost. The query will be executed again in new session.",
-  "All local Data Modeler data have been deleted.": "All local Data Modeler data have been deleted.",
+  "All local Data Modeler data has been deleted.": "All local Data Modeler data has been deleted.",
   "All pending orders (admin dashboard)": "All pending orders (admin dashboard)",
   "All saved schemas have been deleted.": "All saved schemas have been deleted.",
   "All throughput modes": "All throughput modes",

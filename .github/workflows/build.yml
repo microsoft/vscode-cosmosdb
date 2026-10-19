@@ -4,7 +4,7 @@
 # Design:
 #   - All these checks are fast, so they live as steps in ONE job (no per-job runner spin-up / dependency
 #     reinstall). The SLOW tests run in their own workflows so they execute IN PARALLEL with this job on
-#     separate runners: unit + integration in test.yml, Playwright in e2e.yml.
+#     separate runners: unit-tests.yml, integration-tests.yml and Playwright in e2e.yml.
 #   - "Run everything, then fail if anything failed": after `npm ci` succeeds, every analyzer step carries
 #     `if: ${{ !cancelled() && steps.install.outcome == 'success' }}`, so a failing analyzer does NOT stop the
 #     others — one run surfaces ALL problems (e.g. both a lint and a localization failure). Any failed step
@@ -230,7 +230,7 @@ jobs:
         shell: bash
         run: |
           # ── Helpers ──────────────────────────────────────────────────
-          # Each CI workflow (build.yml, test.yml, e2e.yml, nosql-language-service.yml) posts and
+          # Each CI workflow (build, unit tests, integration tests, e2e and NoSQL language service) posts and
           # maintains its OWN PR comment, identified by a stable marker. The shell helpers below are
           # duplicated across workflows because GitHub Actions has no first-class way to share inline
           # shell — keep them in sync when editing.

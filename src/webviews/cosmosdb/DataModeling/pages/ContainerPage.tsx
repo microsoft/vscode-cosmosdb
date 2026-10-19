@@ -5,7 +5,7 @@
 
 import { makeStyles, Tab, TabList, tokens } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
-import { type Ref, useEffect } from 'react';
+import { type Ref, useEffect, useId } from 'react';
 import { modelingInputsEqual } from '../../../../dataModeling/modelingTelemetryMetrics';
 import { type ModelingSection, type ModelingTelemetryEvent } from '../../../../dataModeling/modelingTelemetrySchema';
 import { type DataModel } from '../dataModel';
@@ -64,6 +64,7 @@ export function ContainerPage({
     onTelemetry,
 }: ContainerPageProps) {
     const styles = useStyles();
+    const id = useId();
     const visible = useModelingPageVisible();
     useEffect(() => {
         if (active && visible && containerId) {
@@ -98,16 +99,44 @@ export function ContainerPage({
                     }
                 }}
             >
-                <Tab value="data">{l10n.t('Data')}</Tab>
-                <Tab value="queries" ref={queriesTabRef}>
+                <Tab value="data" id={`${id}-data-tab`} aria-controls={`${id}-data-panel`}>
+                    {l10n.t('Data')}
+                </Tab>
+                <Tab value="queries" id={`${id}-queries-tab`} aria-controls={`${id}-queries-panel`} ref={queriesTabRef}>
                     {l10n.t('Queries')}
                 </Tab>
-                <Tab value="scale">{l10n.t('Scale')}</Tab>
+                <Tab value="scale" id={`${id}-scale-tab`} aria-controls={`${id}-scale-panel`}>
+                    {l10n.t('Scale')}
+                </Tab>
             </TabList>
 
-            {tab === 'data' ? <DataPage model={model} onChange={change} onTelemetry={onTelemetry} /> : null}
-            {tab === 'queries' ? <QueriesPage model={model} onChange={change} /> : null}
-            {tab === 'scale' ? <ScalePage model={model} onChange={change} /> : null}
+            <div
+                role="tabpanel"
+                id={`${id}-data-panel`}
+                aria-labelledby={`${id}-data-tab`}
+                hidden={tab !== 'data'}
+                tabIndex={0}
+            >
+                {tab === 'data' ? <DataPage model={model} onChange={change} onTelemetry={onTelemetry} /> : null}
+            </div>
+            <div
+                role="tabpanel"
+                id={`${id}-queries-panel`}
+                aria-labelledby={`${id}-queries-tab`}
+                hidden={tab !== 'queries'}
+                tabIndex={0}
+            >
+                {tab === 'queries' ? <QueriesPage model={model} onChange={change} /> : null}
+            </div>
+            <div
+                role="tabpanel"
+                id={`${id}-scale-panel`}
+                aria-labelledby={`${id}-scale-tab`}
+                hidden={tab !== 'scale'}
+                tabIndex={0}
+            >
+                {tab === 'scale' ? <ScalePage model={model} onChange={change} /> : null}
+            </div>
         </div>
     );
 }

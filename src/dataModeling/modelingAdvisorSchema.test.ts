@@ -8,6 +8,27 @@ import { createBlankContainer } from '../webviews/cosmosdb/DataModeling/dataMode
 import { ModelingAdvisorSnapshotSchema, WizardStateSchema } from './modelingAdvisorSchema';
 
 describe('wizard document size validation', () => {
+    it.each(['avgSizeKb', 'maxSizeKb'] as const)('rejects negative %s in requests and saved snapshots', (field) => {
+        const container = createBlankContainer();
+        const wizard = {
+            step: 1,
+            dataModel: { containers: [container], activeContainerId: container.id },
+        };
+        for (const value of [-1, -0.01]) {
+            container.document[field] = value;
+            const result = WizardStateSchema.safeParse(wizard);
+            expect(result.success).toBe(false);
+            expect(result.error?.issues).toEqual(
+                expect.arrayContaining([
+                    expect.objectContaining({ path: ['dataModel', 'containers', 0, 'document', field] }),
+                ]),
+            );
+            const snapshot = ModelingAdvisorSnapshotSchema.safeParse({ wizard, recommendation: { status: 'idle' } });
+            expect(snapshot.success).toBe(false);
+            expect(snapshot.error?.issues[0].path).toEqual(['wizard', 'dataModel', 'containers', 0, 'document', field]);
+        }
+    });
+
     it.each(['avgSizeKb', 'maxSizeKb'] as const)('caps %s at the inclusive 2048 KB limit', (field) => {
         const container = createBlankContainer();
         container.document.avgSizeKb = 0;

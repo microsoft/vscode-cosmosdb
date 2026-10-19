@@ -13,7 +13,10 @@ import { PartitionKeyRecommendationSchema } from './recommendationSchema';
 const PropertyRoleSchema = z.enum(['key', 'filter', 'payload']);
 // Projects saved before the 2 MB item limit was enforced may contain larger estimates.
 // Cap them at the limit instead of failing to load the whole project.
-const DocumentSizeKbSchema = z.number().transform((size) => Math.min(size, MAX_DOCUMENT_SIZE_KB));
+const DocumentSizeKbSchema = z
+    .number()
+    .nonnegative()
+    .transform((size) => Math.min(size, MAX_DOCUMENT_SIZE_KB));
 const ContainerModelSchema: z.ZodType<ContainerModel> = z.object({
     id: z.string().min(1),
     entity: z.string(),

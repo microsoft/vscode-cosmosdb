@@ -8,7 +8,12 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { MIGRATION_FOLDER, MigrationProjectService } from '../../../services/MigrationProjectService';
 import { getAvailableModelsInfo } from '../../../utils/aiUtils';
-import { getMigrationModels, MIGRATION_SELECTED_MODEL_KEY, resolveSelectedModelId } from '../../../utils/modelUtils';
+import {
+    getMigrationModels,
+    MIGRATION_SELECTED_MODEL_KEY,
+    resolveSelectedModelId,
+    type ModelInfo,
+} from '../../../utils/modelUtils';
 import { capturePrompt, isMigrationAiMockEnabled } from './e2eMigrationAiMock';
 import { isMigrationWorkspaceRoot } from './migrationHelpers';
 
@@ -190,14 +195,18 @@ export class MigrationSkillChatSession {
         return this.initialization;
     }
 
-    public async dispatch(invocation: MigrationSkillInvocation, selectedModelId: string | null): Promise<string> {
+    public async dispatch(
+        invocation: MigrationSkillInvocation,
+        selectedModelId: string | null,
+        onDispatch?: (model: ModelInfo, newSession: boolean) => void,
+    ): Promise<string> {
         if (this.dispatching) {
             throw new Error(l10n.t('A migration launch is already pending.'));
         }
         this.dispatching = true;
         try {
             if (invocation.intent === 'review-and-fix') this.initialization = undefined;
-            return await this.submit(invocation, selectedModelId);
+            return await this.submit(invocation, selectedModelId, onDispatch);
         } finally {
             this.dispatching = false;
         }
@@ -209,7 +218,11 @@ export class MigrationSkillChatSession {
         }
     }
 
-    private async submit(invocation: MigrationSkillInvocation, selectedModelId: string | null): Promise<string> {
+    private async submit(
+        invocation: MigrationSkillInvocation,
+        selectedModelId: string | null,
+        onDispatch?: (model: ModelInfo, newSession: boolean) => void,
+    ): Promise<string> {
         const query = buildMigrationSkillPrompt(
             invocation,
             invocation.intent === 'review-and-fix' ? false : await hasMigrationSkillArtifacts(invocation),
@@ -224,6 +237,7 @@ export class MigrationSkillChatSession {
         }
         const modelSelector = { vendor: model.vendor, id: model.id };
         const newSession = this.initialization === undefined;
+        onDispatch?.(model, newSession);
         await this.initialize();
         if (isMigrationAiMockEnabled()) {
             capturePrompt(`skill-${invocation.phase ?? 'all'}`, query, { newSession, modelSelector });

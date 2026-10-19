@@ -374,6 +374,27 @@ describe('migrationSkillDispatcher', () => {
         expect(query).toBe(buildMigrationSkillPrompt(invocation));
     });
 
+    it('reports the resolved launch model and Chat reuse before handoff', async () => {
+        const onDispatch = vi.fn();
+        const session = new MigrationSkillChatSession();
+        const invocation = { workspacePath: '/workspace/shop', phase: 'assessment' as const };
+        await session.dispatch(invocation, 'selected', onDispatch);
+        await session.dispatch(invocation, 'auto', onDispatch);
+        expect(onDispatch).toHaveBeenNthCalledWith(
+            1,
+            expect.objectContaining({ id: 'selected', vendor: 'copilot' }),
+            true,
+        );
+        expect(onDispatch).toHaveBeenNthCalledWith(
+            2,
+            expect.objectContaining({ id: 'auto', vendor: 'copilot' }),
+            false,
+        );
+        expect(onDispatch.mock.invocationCallOrder[0]).toBeLessThan(
+            vi.mocked(vscode.commands.executeCommand).mock.invocationCallOrder[0],
+        );
+    });
+
     it('opens a fresh review conversation without reading or rewriting the checkpoint', async () => {
         const session = new MigrationSkillChatSession();
         const load = vi.spyOn(MigrationProjectService.prototype, 'load');

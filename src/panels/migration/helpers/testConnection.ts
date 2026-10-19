@@ -38,6 +38,7 @@ export interface MigrationConnectionContext {
     project: ProjectJson;
     projectService: MigrationProjectService;
     channel: TypedEventSink<MigrationEvent>;
+    telemetrySessionId?: string;
 }
 
 // ─── Connection Testing ─────────────────────────────────────────────
@@ -51,10 +52,14 @@ export async function testConnection(ctx: MigrationConnectionContext, subscripti
     const { project, projectService, channel } = ctx;
 
     await callWithTelemetryAndErrorHandling('cosmosDB.migration.phase4.connectionTest', async (context) => {
-        setMigrationTelemetryContext(context, project, 'provisioning');
+        setMigrationTelemetryContext(context, project, 'provisioning', ctx.telemetrySessionId);
         context.errorHandling.suppressDisplay = true;
         context.errorHandling.forceIncludeInReportIssueCommand = true;
-        if (!project?.phases.targetEnvironment) return;
+        if (!project?.phases.targetEnvironment) {
+            context.telemetry.properties.outcome = 'notConfigured';
+            delete context.telemetry.properties.result;
+            return;
+        }
 
         const target = project.phases.targetEnvironment;
 
@@ -65,6 +70,7 @@ export async function testConnection(ctx: MigrationConnectionContext, subscripti
         });
 
         const reportSuccess = async (): Promise<void> => {
+            context.telemetry.properties.outcome = 'completed';
             target.verified = true;
             target.verifiedAt = new Date().toISOString();
             await projectService.save(project);
@@ -108,6 +114,10 @@ export async function testConnection(ctx: MigrationConnectionContext, subscripti
                 }
             }
 
+            context.telemetry.properties.outcome = 'failed';
+            context.telemetry.properties.result = 'Failed';
+            context.telemetry.properties.errorCategory =
+                error instanceof Error && isRbacException(error) ? 'authorization' : 'connection';
             reportConnectionTestFailure(channel, target, error);
         }
     });

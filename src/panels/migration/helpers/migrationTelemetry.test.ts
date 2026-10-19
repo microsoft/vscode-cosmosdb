@@ -6,7 +6,12 @@
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { describe, expect, it } from 'vitest';
 import { type ProjectJson } from '../../../services/MigrationProjectService';
-import { extractAccountNameFromEndpoint, setMigrationTelemetryContext } from './migrationTelemetry';
+import {
+    extractAccountNameFromEndpoint,
+    getMigrationTelemetryProperties,
+    maskMigrationApplicationDetails,
+    setMigrationTelemetryContext,
+} from './migrationTelemetry';
 
 function createContext() {
     return {
@@ -34,21 +39,21 @@ function createProject(overrides?: Partial<ProjectJson>): ProjectJson {
     };
 }
 
-describe('setMigrationTelemetryContext — runIndex baseline', () => {
-    it('stamps runIndex 0 on the first run of a phase', () => {
+describe('setMigrationTelemetryContext — run history', () => {
+    it('does not invent a first-run index for an observation', () => {
         const ctx = createContext();
         setMigrationTelemetryContext(ctx as unknown as IActionContext, createProject(), 'discovery');
-        expect(ctx.telemetry.measurements.runIndex).toBe(0);
+        expect(ctx.telemetry.measurements.runIndex).toBeUndefined();
     });
 
-    it('stamps the prior run count on re-runs', () => {
+    it('does not use historical programmatic run counts for skill runs', () => {
         const ctx = createContext();
         setMigrationTelemetryContext(
             ctx as unknown as IActionContext,
             createProject({ runCounts: { schemaConversion: 2 } }),
             'schemaConversion',
         );
-        expect(ctx.telemetry.measurements.runIndex).toBe(2);
+        expect(ctx.telemetry.measurements.runIndex).toBeUndefined();
     });
 
     it('does not stamp runIndex when no phase is provided', () => {
@@ -78,12 +83,12 @@ describe('setMigrationTelemetryContext — context stamping', () => {
                 },
             },
         });
-        setMigrationTelemetryContext(ctx as unknown as IActionContext, project, 'discovery');
-        expect(ctx.telemetry.properties.sessionId).toBe('session-guid');
+        setMigrationTelemetryContext(ctx as unknown as IActionContext, project, 'discovery', 'host-session');
+        expect(ctx.telemetry.properties.sessionId).toBe('host-session');
         expect(ctx.telemetry.properties.phase).toBe('discovery');
         expect(ctx.telemetry.properties.hasCustomInstructions).toBe('true');
         expect(ctx.telemetry.properties.sourceDbType).toBe('PostgreSQL');
-        expect(ctx.errorHandling.issueProperties.sessionId).toBe('session-guid');
+        expect(ctx.errorHandling.issueProperties.sessionId).toBe('host-session');
         expect(ctx.errorHandling.issueProperties.phase).toBe('discovery');
     });
 
@@ -91,6 +96,62 @@ describe('setMigrationTelemetryContext — context stamping', () => {
         const ctx = createContext();
         setMigrationTelemetryContext(ctx as unknown as IActionContext, createProject(), 'discovery');
         expect(ctx.telemetry.properties.hasCustomInstructions).toBe('false');
+    });
+
+    it('masks all saved free-form application details without emitting their values', () => {
+        const ctx = createContext();
+        const applicationAnalysis = {
+            projectName: 'private-app-name',
+            projectType: 'private-type',
+            language: 'private-language',
+            frameworks: ['private-framework-a', 'private-framework-b'],
+            databaseType: 'private-database',
+            databaseAccess: 'private-access',
+        };
+        const project = createProject({
+            phases: { discovery: { status: 'not-started', applicationAnalysis } },
+        });
+        setMigrationTelemetryContext(ctx as unknown as IActionContext, project, 'discovery');
+        expect(ctx.valuesToMask).toEqual(expect.arrayContaining(Object.values(applicationAnalysis).flat()));
+        expect(ctx.telemetry.properties.sourceDbType).toBe('other');
+        expect(JSON.stringify([ctx.telemetry, ctx.errorHandling.issueProperties])).not.toContain('private-');
+    });
+
+    it('retains the safe normalized database dimension while masking other saved details', () => {
+        const ctx = createContext();
+        const project = createProject({
+            phases: {
+                discovery: {
+                    status: 'not-started',
+                    applicationAnalysis: {
+                        projectName: 'private-app',
+                        databaseType: 'PostgreSQL',
+                    },
+                },
+            },
+        });
+        setMigrationTelemetryContext(ctx as unknown as IActionContext, project);
+        expect(ctx.valuesToMask).toContain('private-app');
+        expect(ctx.valuesToMask).not.toContain('PostgreSQL');
+        expect(ctx.telemetry.properties.sourceDbType).toBe('PostgreSQL');
+    });
+
+    it('masks raw and trimmed update values without registering blank masks', () => {
+        const ctx = createContext();
+        maskMigrationApplicationDetails(ctx, {
+            projectName: '  private-app  ',
+            projectType: '',
+            language: ' \n',
+            frameworks: [' private-framework ', '', ' '],
+            databaseType: 'PostgreSQL',
+        });
+        expect(ctx.valuesToMask).toEqual([
+            '  private-app  ',
+            'private-app',
+            ' private-framework ',
+            'private-framework',
+            'PostgreSQL',
+        ]);
     });
 
     it('stamps migrationMode when set', () => {
@@ -114,12 +175,211 @@ describe('setMigrationTelemetryContext — context stamping', () => {
             },
         });
         setMigrationTelemetryContext(ctx as unknown as IActionContext, project, 'provisioning');
-        expect(ctx.valuesToMask).toEqual(expect.arrayContaining(['tenant-1', 'sub-1', 'my-account', 'my-rg']));
+        expect(ctx.valuesToMask).toEqual(expect.arrayContaining(['sub-1', 'my-account', 'my-rg']));
+        expect(ctx.valuesToMask).not.toContain('tenant-1');
         // None of these OII values should be emitted as telemetry properties here.
         const props = Object.values(ctx.telemetry.properties);
         expect(props).not.toContain('tenant-1');
         expect(props).not.toContain('sub-1');
         expect(props).not.toContain('my-rg');
+    });
+
+    it.each(['customer-secret', '__proto__', 'constructor'])(
+        'normalizes untrusted database type %s',
+        (databaseType) => {
+            const ctx = createContext();
+            const project = createProject({
+                sessionId: 'stored-sensitive-id',
+                phases: { discovery: { status: 'not-started', applicationAnalysis: { databaseType } } },
+            });
+            setMigrationTelemetryContext(ctx as unknown as IActionContext, project, 'discovery');
+            expect(ctx.telemetry.properties.sourceDbType).toBe('other');
+            expect(ctx.telemetry.properties.sessionId).toBeUndefined();
+            expect(ctx.errorHandling.issueProperties.sessionId).toBeUndefined();
+            expect(ctx.valuesToMask).toContain(databaseType);
+        },
+    );
+});
+
+describe('normalized Application Details dimensions', () => {
+    type Details = NonNullable<ProjectJson['phases']['discovery']['applicationAnalysis']>;
+
+    function properties(applicationAnalysis: Details) {
+        return getMigrationTelemetryProperties(
+            createProject({
+                phases: { discovery: { status: 'not-started', applicationAnalysis } },
+            }),
+        );
+    }
+
+    it.each([
+        [{ projectType: 'rest API' }, 'sourceProjectType', 'Web API'],
+        [{ projectType: 'web_app; CLI' }, 'sourceProjectType', 'Console, Web application'],
+        [{ language: ' ts, JS;typescript ' }, 'sourceLanguage', 'JavaScript, TypeScript'],
+        [{ language: 'C SHARP, golang' }, 'sourceLanguage', 'C#, Go'],
+        [{ language: 'Python 3.12; TypeScript v5.6' }, 'sourceLanguage', 'Python, TypeScript'],
+        [
+            { frameworks: ['EF Core', 'SpringBoot', 'Entity Framework Core 8.0'] },
+            'sourceFramework',
+            'Entity Framework Core, Spring Boot',
+        ],
+        [{ frameworks: ['react.js', 'Express.js; React 19'] }, 'sourceFramework', 'Express, React'],
+        [{ databaseAccess: 'Entity Framework Core, Dapper;raw sql' }, 'sourceDbAccess', 'Direct SQL, Micro ORM, ORM'],
+        [{ databaseAccess: 'ADO NET; JDBC driver;knex.js' }, 'sourceDbAccess', 'ADO.NET, JDBC, Query builder'],
+        [{ databaseType: 'mssql, postgres' }, 'sourceDbType', 'PostgreSQL, SQL Server'],
+    ] satisfies [Details, string, string][])('normalizes %j to fixed labels', (input, key, expected) => {
+        expect(properties(input)[key]).toBe(expected);
+    });
+
+    it.each([
+        ['athena', 'Athena'],
+        ['bigquery', 'BigQuery'],
+        ['clickhouse', 'ClickHouse'],
+        ['databricks', 'Databricks'],
+        ['dax', 'DAX'],
+        ['doris', 'Doris'],
+        ['dremio', 'Dremio'],
+        ['drill', 'Drill'],
+        ['druid', 'Druid'],
+        ['duckdb', 'DuckDB'],
+        ['dune', 'Dune'],
+        ['exasol', 'Exasol'],
+        ['fabric', 'Fabric'],
+        ['hive', 'Hive'],
+        ['materialize', 'Materialize'],
+        ['mysql', 'MySQL'],
+        ['oracle', 'Oracle'],
+        ['postgres', 'PostgreSQL'],
+        ['presto', 'Presto'],
+        ['prql', 'PRQL'],
+        ['redshift', 'Redshift'],
+        ['risingwave', 'RisingWave'],
+        ['snowflake', 'Snowflake'],
+        ['solr', 'Solr'],
+        ['spark', 'Spark'],
+        ['spark2', 'Spark'],
+        ['sqlite', 'SQLite'],
+        ['starrocks', 'StarRocks'],
+        ['tableau', 'Tableau'],
+        ['teradata', 'Teradata'],
+        ['trino', 'Trino'],
+        ['tsql', 'SQL Server'],
+    ])('covers SQLGlot dialect %s as %s', (dialect, expected) => {
+        expect(properties({ databaseType: dialect }).sourceDbType).toBe(expected);
+    });
+
+    it.each([
+        ['Microsoft SQL Server', 'SQL Server'],
+        ['T-SQL', 'SQL Server'],
+        ['Azure SQL Database', 'SQL Server'],
+        ['Azure SQL Managed Instance', 'SQL Server'],
+        ['Azure Database for PostgreSQL', 'PostgreSQL'],
+        ['Amazon Aurora MySQL', 'MySQL'],
+        ['MariaDB', 'MariaDB'],
+        ['IBM DB2', 'DB2'],
+        ['Amazon Athena', 'Athena'],
+        ['Google BigQuery', 'BigQuery'],
+        ['Apache Spark 3.5', 'Spark'],
+        ['Microsoft Fabric Warehouse', 'Fabric'],
+        ['Databricks SQL', 'Databricks'],
+    ])('normalizes database product name %s to %s', (input, expected) => {
+        expect(properties({ databaseType: input }).sourceDbType).toBe(expected);
+    });
+
+    it.each(['custom-customer-dialect', 'Snowflake for customer-a', 'private-cluster.example.com'])(
+        'keeps unrecognized database labels %s private',
+        (input) => {
+            expect(properties({ databaseType: input }).sourceDbType).toBe('other');
+            const context = createContext();
+            maskMigrationApplicationDetails(context, { databaseType: input }, { preserveNormalizedDimensions: true });
+            expect(context.valuesToMask).toContain(input);
+        },
+    );
+
+    it('never copies unknown categories, versions, or project names into emitted dimensions', () => {
+        const result = properties({
+            projectName: 'private-project',
+            projectType: 'private-type',
+            language: 'Python 5551234567; private-language',
+            frameworks: ['Django for private-service', 'private-framework', 'React'],
+            databaseAccess: 'private-driver',
+        });
+        expect(result).toEqual({
+            sourceProjectType: 'other',
+            sourceLanguage: 'Python, other',
+            sourceFramework: 'React, other',
+            sourceDbAccess: 'other',
+        });
+        expect(JSON.stringify(result)).not.toMatch(/private-|5551234567/);
+    });
+
+    it.each(['constructor', '__proto__', 'TypeScript for private-app', 'C# (private-account)', ';'])(
+        'does not mistake arbitrary input %s for an allowlisted category',
+        (input) => {
+            expect(
+                properties({ projectType: input, language: input, frameworks: [input], databaseAccess: input }),
+            ).toEqual({
+                sourceProjectType: 'other',
+                sourceLanguage: 'other',
+                sourceFramework: 'other',
+                sourceDbAccess: 'other',
+            });
+        },
+    );
+
+    it('omits missing and blank categories instead of inventing values', () => {
+        expect(properties({ projectType: ' ', language: '', frameworks: [' ', ''], databaseAccess: '' })).toEqual({});
+        expect(properties({ frameworks: [] })).toEqual({});
+    });
+
+    it('deduplicates and sorts categories independently of input order', () => {
+        expect(properties({ frameworks: ['React', 'django', 'REACT', 'private-a', 'private-b'] })).toEqual(
+            properties({ frameworks: ['unknown-app', 'Django', 'react.js'] }),
+        );
+    });
+
+    it('preserves normalized dimensions while masking names, versioned text and unknown list entries', () => {
+        const context = createContext();
+        const applicationAnalysis = {
+            projectName: 'private-name',
+            projectType: 'Web API',
+            language: 'Python 5551234567, private-language',
+            frameworks: ['EF Core', ' private-framework '],
+            databaseAccess: 'Entity Framework Core',
+        };
+        const p = createProject({ phases: { discovery: { status: 'not-started', applicationAnalysis } } });
+        setMigrationTelemetryContext(context as unknown as IActionContext, p);
+        expect(context.telemetry.properties).toMatchObject({
+            sourceProjectType: 'Web API',
+            sourceLanguage: 'Python, other',
+            sourceFramework: 'Entity Framework Core, other',
+            sourceDbAccess: 'ORM',
+        });
+        expect(context.valuesToMask).toEqual(
+            expect.arrayContaining([
+                'private-name',
+                'Python 5551234567',
+                'private-language',
+                'Python 5551234567, private-language',
+                ' private-framework ',
+                'private-framework',
+            ]),
+        );
+        for (const label of ['Web API', 'Python', 'Entity Framework Core', 'ORM', 'other']) {
+            expect(context.valuesToMask).not.toContain(label);
+        }
+        expect(context.errorHandling.issueProperties).toMatchObject(context.telemetry.properties);
+    });
+
+    it('still masks recognized category inputs on manual-update contexts', () => {
+        const context = createContext();
+        maskMigrationApplicationDetails(context, {
+            projectType: 'Web API',
+            language: 'Python',
+            frameworks: ['Django'],
+            databaseAccess: 'ORM',
+        });
+        expect(context.valuesToMask).toEqual(['Web API', 'Python', 'Django', 'ORM']);
     });
 });
 

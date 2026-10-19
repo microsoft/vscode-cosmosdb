@@ -43,6 +43,7 @@ import {
     migrationAcknowledgmentTimeout,
     MigrationRunTracker,
     shouldResetMigrationTargetEndpoint,
+    type MigrationExecution,
 } from '../webviews/cosmosdb/Migration/state/deriveMigrationPhaseStates';
 import { BaseTab } from './BaseTab';
 import { emitMigrationEvent } from './migration/helpers/migrationHelpers';
@@ -51,6 +52,7 @@ import {
     type MigrationPreflightStep,
     type MigrationSkillInvocation,
 } from './migration/helpers/migrationSkillDispatcher';
+import { MigrationSkillTelemetry } from './migration/helpers/migrationSkillTelemetry';
 import {
     migrationPhaseNames,
     readMigrationExecution,
@@ -74,10 +76,12 @@ export class MigrationAssistantTab extends BaseTab {
      */
     private static readonly instances = new Map<string, MigrationAssistantTab>();
     private static readonly runs = new Map<string, MigrationRunTracker>();
+    private static readonly telemetryRuns = new Map<string, MigrationSkillTelemetry>();
 
     private readonly workspacePath: string;
     private readonly workspaceKey: string;
     private readonly runTracker: MigrationRunTracker;
+    private readonly skillTelemetry: MigrationSkillTelemetry;
     private acknowledgmentTimer: ReturnType<typeof setTimeout> | undefined;
     private loadGeneration = 0;
     private phaseCompletionAbort: AbortController | undefined;
@@ -99,8 +103,11 @@ export class MigrationAssistantTab extends BaseTab {
         this.workspacePath = path.resolve(workspacePath);
         this.workspaceKey = MigrationAssistantTab.normalizeKey(this.workspacePath);
         this.runTracker = MigrationAssistantTab.runs.get(this.workspaceKey) ?? new MigrationRunTracker();
+        this.skillTelemetry =
+            MigrationAssistantTab.telemetryRuns.get(this.workspaceKey) ?? new MigrationSkillTelemetry();
         this.projectService = new MigrationProjectService(this.workspacePath);
         MigrationAssistantTab.runs.set(this.workspaceKey, this.runTracker);
+        MigrationAssistantTab.telemetryRuns.set(this.workspaceKey, this.skillTelemetry);
 
         this.panel.iconPath = getThemedIconPath('editor.svg') as { light: vscode.Uri; dark: vscode.Uri };
 
@@ -173,6 +180,7 @@ export class MigrationAssistantTab extends BaseTab {
     }
 
     public dispose(): void {
+        this.skillTelemetry.unavailable('panelClosed');
         this.loadGeneration++;
         this.phaseCompletionAbort?.abort();
         if (this.acknowledgmentTimer) clearTimeout(this.acknowledgmentTimer);
@@ -383,10 +391,17 @@ export class MigrationAssistantTab extends BaseTab {
                 this.project = this.projectService.createDefaultProject(folderName);
             }
 
-            setMigrationTelemetryContext(context, this.project);
+            setMigrationTelemetryContext(context, this.project, undefined, this.skillTelemetry.sessionId);
             context.telemetry.properties.isNewProject = String(isNewProject);
 
+            let executionBeforeValidation: MigrationExecution | undefined;
+            try {
+                executionBeforeValidation = await readMigrationExecution(ext.context.extensionPath, this.workspacePath);
+            } catch {
+                this.skillTelemetry.unavailable('executionRead');
+            }
             let phaseCompletion;
+            const validationStart = Date.now();
             try {
                 phaseCompletion = await readMigrationPhaseCompletion(
                     ext.context.extensionPath,
@@ -395,8 +410,10 @@ export class MigrationAssistantTab extends BaseTab {
                 );
             } catch (error) {
                 if (abortController.signal.aborted) return;
+                this.skillTelemetry.unavailable('completionCheck');
                 throw error;
             }
+            const validationDurationMs = Date.now() - validationStart;
             if (abortController.signal.aborted) return;
 
             // Gather file lists. Hide the curated template files from the UI —
@@ -556,12 +573,24 @@ export class MigrationAssistantTab extends BaseTab {
                 vscode.Uri.file(codeMigrationPlanPath),
             );
 
+            let retryTelemetryObservation = false;
             try {
                 const execution = await readMigrationExecution(ext.context.extensionPath, this.workspacePath);
                 if (generation !== this.loadGeneration) return;
                 this.runTracker.observe(execution, phaseCompletion);
+                if (JSON.stringify(execution) === JSON.stringify(executionBeforeValidation)) {
+                    await this.skillTelemetry.observe(execution, this.project, phaseCompletion, Date.now(), {
+                        signal: abortController.signal,
+                        validationDurationMs,
+                    });
+                    if (generation !== this.loadGeneration) return;
+                } else {
+                    // Do not attribute validation from an earlier checkpoint to a later execution update.
+                    retryTelemetryObservation = true;
+                }
             } catch (error) {
                 if (generation !== this.loadGeneration) return;
+                this.skillTelemetry.unavailable('executionRead');
                 this.runTracker.unavailable(
                     l10n.t('Migration activity could not be read: {message}', {
                         message: error instanceof Error ? error.message : String(error),
@@ -599,6 +628,7 @@ export class MigrationAssistantTab extends BaseTab {
 
             // (Re-)create file watchers using the resolved paths (supports custom folder overrides)
             this.setupFileWatchers();
+            if (retryTelemetryObservation) this.debouncedRefreshFileState();
 
             // Push git status after projectLoaded: the webview registers its
             // channel listeners as part of mounting, which can race the early
@@ -958,17 +988,12 @@ export class MigrationAssistantTab extends BaseTab {
         if (!phase) throw new Error(l10n.t('Select a valid migration phase to review.'));
         if (!this.project?.consentGiven) throw new Error(l10n.t('AI consent is required to use this action.'));
         if (!ext.isAIFeaturesEnabled) throw new Error(l10n.t('GitHub Copilot must be active to use this action.'));
-        await this.selectedModelUpdate;
-        await this.skillChatSession.dispatch(
-            {
-                workspacePath: this.workspacePath,
-                phase,
-                mode: 'interactive',
-                intent: 'review-and-fix',
-                runId: globalThis.crypto.randomUUID(),
-            },
-            this.selectedModelId,
-        );
+        await this.dispatchMigrationSkill({
+            workspacePath: this.workspacePath,
+            phase,
+            mode: 'interactive',
+            intent: 'review-and-fix',
+        });
     }
 
     private async runAssessment(): Promise<void> {
@@ -1026,7 +1051,7 @@ export class MigrationAssistantTab extends BaseTab {
         if (!this.project) return;
 
         await callWithTelemetryAndErrorHandling('cosmosDB.migration.selectAccount', async (context) => {
-            setMigrationTelemetryContext(context, this.project);
+            setMigrationTelemetryContext(context, this.project, undefined, this.skillTelemetry.sessionId);
             const source = await vscode.window.showQuickPick(
                 [
                     {
@@ -1102,7 +1127,7 @@ export class MigrationAssistantTab extends BaseTab {
         if (!this.project) return;
 
         await callWithTelemetryAndErrorHandling('cosmosDB.migration.selectResourceGroup', async (context) => {
-            setMigrationTelemetryContext(context, this.project);
+            setMigrationTelemetryContext(context, this.project, undefined, this.skillTelemetry.sessionId);
             const subscription = await subscriptionExperience(
                 context,
                 ext.rgApiV2.resources.azureResourceTreeDataProvider,
@@ -1171,7 +1196,7 @@ export class MigrationAssistantTab extends BaseTab {
         if (!this.selectedSubscription) return;
         const subscription = this.selectedSubscription;
         await callWithTelemetryAndErrorHandling('cosmosDB.migration.listLocations', async (context) => {
-            setMigrationTelemetryContext(context, this.project);
+            setMigrationTelemetryContext(context, this.project, undefined, this.skillTelemetry.sessionId);
             const mgmtClient = await createCosmosDBManagementClient(context, subscription);
             // The Cosmos DB regions API returns the region's display label on `name`
             // (e.g. `East US`) and the canonical short name only as the last segment
@@ -1197,7 +1222,7 @@ export class MigrationAssistantTab extends BaseTab {
         const existing = this.project.phases.targetEnvironment;
         if (!existing) return;
         await callWithTelemetryAndErrorHandling('cosmosDB.migration.setTargetLocation', async (context) => {
-            setMigrationTelemetryContext(context, this.project);
+            setMigrationTelemetryContext(context, this.project, undefined, this.skillTelemetry.sessionId);
             this.project!.phases.targetEnvironment = {
                 ...existing,
                 location,
@@ -1213,6 +1238,7 @@ export class MigrationAssistantTab extends BaseTab {
                 project: this.project,
                 projectService: this.projectService,
                 channel: this.eventSink,
+                telemetrySessionId: this.skillTelemetry.sessionId,
             },
             this.selectedSubscription,
         );
@@ -1315,15 +1341,20 @@ export class MigrationAssistantTab extends BaseTab {
         if (isMigrationRunActive(this.runTracker.snapshot())) {
             throw new Error(l10n.t('A migration run is already active. Open Chat to finish or stop it.'));
         }
-        const runId = globalThis.crypto.randomUUID();
-        this.runTracker.begin(runId, invocation);
+        const runId = this.skillTelemetry.begin(invocation, this.project);
+        const isReview = invocation.intent === 'review-and-fix';
+        if (!isReview) this.runTracker.begin(runId, invocation);
         this.publishRunActivity();
         try {
             await this.selectedModelUpdate;
-            await this.skillChatSession.dispatch({ ...invocation, runId }, this.selectedModelId);
-            this.runTracker.dispatched(runId);
+            await this.skillChatSession.dispatch({ ...invocation, runId }, this.selectedModelId, (model, newSession) =>
+                this.skillTelemetry.dispatchInfo(runId, model, newSession),
+            );
+            this.skillTelemetry.dispatched(runId);
+            if (!isReview) this.runTracker.dispatched(runId);
         } catch (error) {
-            this.runTracker.failed(runId, error instanceof Error ? error.message : String(error));
+            this.skillTelemetry.dispatchFailed(runId, error instanceof vscode.CancellationError);
+            if (!isReview) this.runTracker.failed(runId, error instanceof Error ? error.message : String(error));
             throw error;
         } finally {
             this.publishRunActivity();
@@ -1357,6 +1388,7 @@ export class MigrationAssistantTab extends BaseTab {
             confirm,
         );
         if (answer === confirm && this.runTracker.snapshot()?.runId === runId) {
+            this.skillTelemetry.confirmedStopped();
             this.runTracker.confirmStopped();
             this.publishRunActivity();
         }

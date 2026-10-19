@@ -60,7 +60,8 @@ export class DataModelerProjectService {
     private static readonly instances = new Map<string, DataModelerProjectService>();
     // Pruning visits every endpoint's file, so it must not race another endpoint's save.
     private static pending: Promise<unknown> = Promise.resolve();
-    private loaded = false;
+    private static revision = 0;
+    private loadedRevision: number | undefined;
     public readonly folderUri: vscode.Uri;
     public readonly projectUri: vscode.Uri;
 
@@ -80,7 +81,29 @@ export class DataModelerProjectService {
         return project;
     }
 
-    private enqueue<T>(operation: () => T | Promise<T>): Promise<T> {
+    /** Deletes only Data Modeler storage, including the legacy unscoped session. */
+    public static deleteAllData(): Promise<void> {
+        return this.enqueue(async () => {
+            this.revision++;
+            for (const [name, recursive] of [
+                ['data-modeler', true],
+                ['data-modeler.json', false],
+            ] as const) {
+                try {
+                    await vscode.workspace.fs.delete(vscode.Uri.joinPath(ext.context.globalStorageUri, name), {
+                        recursive,
+                        useTrash: false,
+                    });
+                } catch (error) {
+                    if (!isFileNotFound(error)) {
+                        throw error;
+                    }
+                }
+            }
+        });
+    }
+
+    private static enqueue<T>(operation: () => T | Promise<T>): Promise<T> {
         // A rejected write is reported to its caller, but must not prevent a subsequent retry.
         const result = DataModelerProjectService.pending.then(operation, operation);
         DataModelerProjectService.pending = result;
@@ -88,9 +111,9 @@ export class DataModelerProjectService {
     }
 
     public loadState(): Promise<ModelingAdvisorSnapshot | null> {
-        return this.enqueue(async () => {
+        return DataModelerProjectService.enqueue(async () => {
             const project = await this.readProject();
-            this.loaded = true;
+            this.loadedRevision = DataModelerProjectService.revision;
             if (!project) {
                 return null;
             }
@@ -109,8 +132,8 @@ export class DataModelerProjectService {
     }
 
     public saveState(snapshot: ModelingAdvisorSnapshot): Promise<void> {
-        return this.enqueue(async () => {
-            if (!this.loaded) {
+        return DataModelerProjectService.enqueue(async () => {
+            if (this.loadedRevision !== DataModelerProjectService.revision) {
                 throw new Error(l10n.t('Load the saved data model before saving changes.'));
             }
             const parsed = ModelingAdvisorSnapshotSchema.safeParse(snapshot);

@@ -94,6 +94,9 @@ GitHub Copilot models and AI features enabled.
    Deployment requires resource-creation permissions and may incur Azure charges; it does not upload documents.
 
 Work is saved locally per account so you can resume later; saved sessions expire 30 days after their last save.
+To permanently clear local Data Modeler data for every account, run **Cosmos DB: Delete All Data Modeler Data**
+from the Command Palette and confirm. This closes all Data Modeler tabs and removes saved sessions, including legacy
+data. It does not delete deployed databases or containers, saved container schemas, or query history.
 See [modeling details](docs/data-modeler-scale.md) and the [telemetry inventory](docs/data-modeler-telemetry.md) for more.
 
 ## Query Editor

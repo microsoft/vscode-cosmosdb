@@ -80,7 +80,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: 📦 Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: 'npm'
@@ -116,7 +116,7 @@ jobs:
 
       - name: 📤 Upload Playwright HTML report
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-html-report-${{ github.run_attempt }}
           # Per-run report lives at test/e2e/.reports/<runId>/html/ (runId is random per
@@ -139,7 +139,7 @@ jobs:
         # log clean on fully green runs where Playwright wrote nothing here.
         # `include-hidden-files: true` is required because the directory is `.results/`.
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-results-${{ github.run_attempt }}
           path: test/e2e/.results/**
@@ -156,7 +156,7 @@ jobs:
 
       - name: 📤 Upload emulator logs artifact
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-emulator-logs-${{ github.run_attempt }}
           path: emulator-logs
@@ -165,8 +165,8 @@ jobs:
 
       - name: 📊 Generate Job Summary & PR comment
         # Each CI workflow now owns its own PR comment (identified by a stable HTML-comment
-        # marker). build.yml posts the compile/lint/prettier/l10n/package summary, test.yml posts
-        # the unit/integration summary; this step posts the e2e slice — test result + downloadable
+        # marker). build.yml posts the compile/lint/prettier/l10n/package summary; unit-tests.yml and
+        # integration-tests.yml post their test summaries. This step posts the e2e slice — result + downloadable
         # HTML report. The marker lets re-runs update the existing comment in-place rather than
         # spamming the PR.
         if: always()

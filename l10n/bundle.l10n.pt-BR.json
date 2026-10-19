@@ -903,7 +903,7 @@
   "Please try again. If the error persists, please": "Tente novamente. Se o erro persistir, por favor",
   "Please use the dedicated PostgreSQL extension instead.": "Em vez disso, use a extensão dedicada do PostgreSQL.",
   "Populate Sample Data": "Preencher Dados de Exemplo",
-  "Port {0} is in use, but the listener could not be verified as Cosmos DB Shell MCP. Check the Azure Cosmos DB output log and the Shell server, or configure a different MCP port.": "Port {0} is in use, but the listener could not be verified as Cosmos DB Shell MCP. Check the Azure Cosmos DB output log and the Shell server, or configure a different MCP port.",
+  "Port {0} is in use, but the listener could not be verified as Cosmos DB Shell MCP. Check the Azure Cosmos DB output log and the Shell server, or configure a different MCP port.": "A porta {0} está em uso, mas não foi possível verificar se o ouvinte é o Cosmos DB Shell MCP. Verifique o log de saída do Azure Cosmos DB e o servidor Shell, ou configure outra porta MCP.",
   "Port number is required": "O número da porta é obrigatório",
   "Port number must be an integer": "O número da porta deve ser um número inteiro",
   "Port number must be between 1 and 65535": "O número da porta deve estar entre 1 e 65535",

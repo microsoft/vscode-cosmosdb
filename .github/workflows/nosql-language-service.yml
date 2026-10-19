@@ -1,12 +1,12 @@
 # Workflow scope: `packages/nosql-language-service` integration tests.
 #
-# This is NOT the extension-host integration suite under `test/` — that one runs inside `test.yml` ("Tests").
+# This is NOT the extension-host integration suite under `test/` — that one runs inside `integration-tests.yml`.
 # This workflow covers the **NoSQL language service package** (`packages/nosql-language-service`), which talks
 # to a real Cosmos DB Emulator over the wire to validate that its query fixtures behave the same against a live
 # backend as they do in the unit tests.
 #
 # Why a separate workflow:
-#   - It needs Docker (Cosmos emulator) — `build.yml` / `test.yml` do not.
+#   - It needs Docker (Cosmos emulator) — `build.yml` / `integration-tests.yml` do not.
 #   - It only matters when `packages/**`, the emulator configuration, or the seed script changes, keeping it off the
 #     vast majority of commits.
 #
@@ -66,7 +66,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: 'npm'
@@ -131,7 +131,7 @@ jobs:
         # most useful for triage. `if-no-files-found: warn` keeps the run green if vitest
         # crashed before writing the file (very rare).
         if: ${{ !cancelled() && steps.nosql-tests.outcome != 'skipped' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: nosql-junit-report-${{ github.run_attempt }}
           path: packages/nosql-language-service/junit.xml

@@ -903,7 +903,7 @@
   "Please try again. If the error persists, please": "Zkuste to znovu. Pokud chyba přetrvává,",
   "Please use the dedicated PostgreSQL extension instead.": "Místo toho použijte vyhrazené rozšíření PostgreSQL.",
   "Populate Sample Data": "Naplnit ukázková data",
-  "Port {0} is in use, but the listener could not be verified as Cosmos DB Shell MCP. Check the Azure Cosmos DB output log and the Shell server, or configure a different MCP port.": "Port {0} is in use, but the listener could not be verified as Cosmos DB Shell MCP. Check the Azure Cosmos DB output log and the Shell server, or configure a different MCP port.",
+  "Port {0} is in use, but the listener could not be verified as Cosmos DB Shell MCP. Check the Azure Cosmos DB output log and the Shell server, or configure a different MCP port.": "Port {0} se používá, ale nepodařilo se ověřit, že naslouchající službou je Cosmos DB Shell MCP. Zkontrolujte výstupní protokol Azure Cosmos DB a server Shell nebo nastavte jiný port MCP.",
   "Port number is required": "Číslo portu je povinné",
   "Port number must be an integer": "Číslo portu musí být celé číslo",
   "Port number must be between 1 and 65535": "Číslo portu musí být hodnota v rozsahu 1 až 65535",

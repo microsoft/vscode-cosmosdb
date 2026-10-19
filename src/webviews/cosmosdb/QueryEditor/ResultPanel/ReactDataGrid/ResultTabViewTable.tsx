@@ -232,10 +232,8 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
             } else if (event.shiftKey && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
                 // Shift+Arrow: extend/shrink selection; let the grid move focus normally
                 globalThis.getSelection()?.removeAllRanges();
-                if (anchorRowIdRef.current === null) {
-                    anchorRowIdRef.current = rowId;
-                }
-                const anchorId = anchorRowIdRef.current;
+                const anchorId = anchorRowIdRef.current ?? rowId;
+                anchorRowIdRef.current = anchorId;
 
                 const nextRowIdx =
                     event.key === 'ArrowDown' ? Math.min(rowIdx + 1, rows.length - 1) : Math.max(rowIdx - 1, 0);

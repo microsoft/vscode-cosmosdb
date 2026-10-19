@@ -9,6 +9,7 @@ import * as vscode from 'vscode';
 import { z } from 'zod';
 import { getCosmosDBCredentials } from '../../../../cosmosdb/CosmosDBCredential';
 import { type NoSqlQueryConnection } from '../../../../cosmosdb/NoSqlQueryConnection';
+import { ext } from '../../../../extensionVariables';
 import { revealAzureResourceInExplorer } from '../../../../vscodeUriHandler';
 import { QueryEditorTab } from '../../../QueryEditorTab';
 import { type AccountOverviewRouterContext } from '../../appRouter';
@@ -21,6 +22,10 @@ import { accountOverviewProcedure } from '../../trpc';
 // services and carry no dashboard-metrics logic.
 
 export const actionsProcedures = {
+    showOutput: accountOverviewProcedure.mutation(() => {
+        ext.outputChannel.show(true);
+    }),
+
     /**
      * Opens an external URL (e.g. an Azure portal deep link from the Active
      * Alerts aside or an Advisor "Learn more" link) in the user's browser.

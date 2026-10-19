@@ -33,10 +33,17 @@ function evaluateStorageGrowthRisk(input: ContainerStorageInput, horizonDays: nu
     if (horizonDays <= 0) {
         return undefined;
     }
-    let soonest: { days: number; currentBytes: number; slopeBytesPerDay: number } | undefined;
+    let soonest: { days: number; currentBytes: number; slopeBytesPerDay: number; atOrOverLimit: boolean } | undefined;
     for (const partition of input.partitions) {
         const currentBytes = latestBytes(partition);
         if (currentBytes === undefined || currentBytes < STORAGE_GROWTH_MIN_MATERIAL_BYTES) {
+            continue;
+        }
+        if (currentBytes >= PARTITION_STORAGE_LIMIT_BYTES) {
+            const atLimit = { days: 0, currentBytes, slopeBytesPerDay: 0, atOrOverLimit: true };
+            if (soonest === undefined || !soonest.atOrOverLimit || currentBytes > soonest.currentBytes) {
+                soonest = atLimit;
+            }
             continue;
         }
         const slopeBytesPerDay = storageGrowthSlopeBytesPerDay(partition.samples);
@@ -47,12 +54,43 @@ function evaluateStorageGrowthRisk(input: ContainerStorageInput, horizonDays: nu
         if (days === undefined) {
             continue;
         }
-        if (soonest === undefined || days < soonest.days) {
-            soonest = { days, currentBytes, slopeBytesPerDay };
+        if (soonest === undefined || (!soonest.atOrOverLimit && days < soonest.days)) {
+            soonest = { days, currentBytes, slopeBytesPerDay, atOrOverLimit: false };
         }
     }
     if (soonest === undefined || soonest.days > horizonDays) {
         return undefined;
+    }
+
+    if (soonest.atOrOverLimit) {
+        const scope = containerKey(input.databaseId, input.containerId);
+        const currentGiB = Math.round((soonest.currentBytes / GIB) * 10) / 10;
+        return {
+            id: `StorageGrowthRisk:${scope}`,
+            rule: 'StorageGrowthRisk',
+            severity: 'High',
+            title: l10n.t('Physical partition at or above its storage limit in {container}', {
+                container: input.containerId,
+            }),
+            rationale: clampRationale(
+                l10n.t(
+                    'The fullest physical partition in "{container}" is already at {current} GiB, at or above the 50 GiB physical-partition ceiling.',
+                    { container: input.containerId, current: currentGiB },
+                ) +
+                    ' ' +
+                    l10n.t(
+                        'That is the most urgent storage-growth case even if the recent trend is flat or shrinking.',
+                    ),
+            ),
+            suggestedAction:
+                l10n.t(
+                    'Investigate this container urgently: archive or delete cold data and add TTL where appropriate.',
+                ) +
+                ' ' +
+                l10n.t('Confirm no oversized logical key is blocking healthy splits.'),
+            thresholdReference: l10n.t('Threshold: current partition size ≥ 50 GiB'),
+            scope,
+        };
     }
 
     const severity: DerivedAdvisorySeverity =
@@ -75,13 +113,21 @@ function evaluateStorageGrowthRisk(input: ContainerStorageInput, horizonDays: nu
         }),
         rationale: clampRationale(
             l10n.t(
-                'The fastest-growing physical partition in "{container}" is at {current} GiB and growing about {perDay} GiB/day. On that trajectory it reaches the 50 GiB physical-partition split ceiling in roughly {days} days, within the {horizon}-day risk horizon. A partition that hits the wall can throttle or block writes until it splits.',
-                { container: input.containerId, current: currentGiB, perDay: perDayGiB, days, horizon },
-            ),
+                'The fastest-growing physical partition in "{container}" is at {current} GiB and growing about {perDay} GiB/day.',
+                { container: input.containerId, current: currentGiB, perDay: perDayGiB },
+            ) +
+                ' ' +
+                l10n.t(
+                    'On that trajectory it reaches the 50 GiB physical-partition split ceiling in roughly {days} days, within the {horizon}-day risk horizon.',
+                    { days, horizon },
+                ) +
+                ' ' +
+                l10n.t('A partition that hits the wall can throttle or block writes until it splits.'),
         ),
-        suggestedAction: l10n.t(
-            'Confirm the partition key spreads new data across partitions, archive or delete cold data, and ensure large logical keys stay well under the 20 GiB per-key cap so partitions split cleanly.',
-        ),
+        suggestedAction:
+            l10n.t('Confirm the partition key spreads new data across partitions, and archive or delete cold data.') +
+            ' ' +
+            l10n.t('Ensure large logical keys stay well under the 20 GiB per-key cap so partitions split cleanly.'),
         thresholdReference: l10n.t('Threshold: projected < {horizon} days to the 50 GiB partition ceiling', {
             horizon,
         }),

@@ -58,7 +58,7 @@ interface HostMetricSpec {
  * - `serverLatency` reads the current `ServerSideLatencyDirect` + `ServerSideLatencyGateway`
  *   pair (the flat `ServerSideLatency` was deprecated/removed in 2025) and shows the worse of the two.
  * - `totalRequestUnits` (consumed RU) and `metadataRequests` (control-plane calls, not part of
- *   `TotalRequests`) are additive request-path counters read with `Total`, like `totalRequests`.
+ *   `TotalRequests`) are additive request-path counters read with `Total`. `TotalRequests` uses `Count`.
  * - `serviceAvailability` is account-only and emitted only at `PT1H`.
  * - `dataIndexUsage` sums `DataUsage` + `IndexUsage`; both start at `PT5M`.
  * - `documentCount` reads `DocumentCountV2` (the flat `DocumentCount` is deprecated) with `Maximum`. It is a
@@ -71,7 +71,7 @@ interface HostMetricSpec {
  */
 const SPECS: Record<MetricKey, HostMetricSpec> = {
     normalizedRu: { metricNames: ['NormalizedRUConsumption'], aggregation: 'Maximum' },
-    totalRequests: { metricNames: ['TotalRequests'], aggregation: 'Total' },
+    totalRequests: { metricNames: ['TotalRequests'], aggregation: 'Count' },
     totalRequestUnits: { metricNames: ['TotalRequestUnits'], aggregation: 'Total' },
     metadataRequests: { metricNames: ['MetadataRequests'], aggregation: 'Total' },
     serverLatency: {

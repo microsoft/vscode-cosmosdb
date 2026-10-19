@@ -3,39 +3,58 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { describe, expect, it } from 'vitest';
+import { type MonitorClient } from '@azure/arm-monitor';
+import { describe, expect, it, vi } from 'vitest';
 import { DEFAULT_HEALTH_THRESHOLDS, getInventoryMetrics, type HealthThresholds } from './inventoryMetrics';
 import { DEFAULT_PARTITION_THRESHOLDS, getPartitionHealth } from './partitionHealth';
-import { getRuTrends } from './ruTrends';
+import { getRuTrends, getThrottleRate } from './ruTrends';
 import {
     classifyUnavailable,
     effectiveInterval,
     isHotPartition,
+    parseMonitorTimestamp,
     partitionSaturationStats,
     percentile,
     pickPointValue,
 } from './shared';
-import { mockClient, throwingClient } from './testFixtures';
+import { iso, mockClient, throwingClient } from './testFixtures';
 
 const thresholds: HealthThresholds = DEFAULT_HEALTH_THRESHOLDS;
 
+describe('parseMonitorTimestamp', () => {
+    it.each([new Date(1234), new Date(1234).toISOString()])(
+        'preserves SDK dates and serialized timestamps: %s',
+        (value) => {
+            expect(parseMonitorTimestamp(value)).toBe(1234);
+        },
+    );
+
+    it.each([undefined, '', 'invalid', new Date('invalid')])('rejects missing or invalid timestamps: %s', (value) => {
+        expect(parseMonitorTimestamp(value)).toBeUndefined();
+    });
+});
+
 describe('pickPointValue', () => {
-    const point = { maximum: 90, average: 42, total: 1200 };
+    const point = { maximum: 90, average: 42, total: 1200, count: 12 };
 
     it('reads the field matching the aggregation', () => {
         expect(pickPointValue(point, 'Maximum')).toBe(90);
         expect(pickPointValue(point, 'Average')).toBe(42);
         expect(pickPointValue(point, 'Total')).toBe(1200);
+        expect(pickPointValue(point, 'Count')).toBe(12);
     });
 
     it('returns undefined when the requested aggregation is absent', () => {
         expect(pickPointValue({ maximum: 5 }, 'Average')).toBeUndefined();
         expect(pickPointValue({ average: 5 }, 'Total')).toBeUndefined();
         expect(pickPointValue({ total: 5 }, 'Maximum')).toBeUndefined();
+        expect(pickPointValue({ total: 5 }, 'Count')).toBeUndefined();
+        expect(pickPointValue({ count: null }, 'Count')).toBeUndefined();
     });
 
     it('preserves zero as a real value rather than treating it as missing', () => {
         expect(pickPointValue({ total: 0 }, 'Total')).toBe(0);
+        expect(pickPointValue({ count: 0 }, 'Count')).toBe(0);
     });
 });
 
@@ -185,5 +204,97 @@ describe('unavailable reason plumbing', () => {
         );
         expect(result.available).toBe(false);
         expect(result.reason).toBe('rbac');
+    });
+});
+
+describe('throttling Count aggregation parity', () => {
+    it('uses Count for getThrottleRate, ignores misleading total fields, and counts only exact 429s', async () => {
+        const list = vi.fn().mockResolvedValue({
+            value: [
+                {
+                    timeseries: [
+                        {
+                            metadatavalues: [{ name: { value: 'StatusCode' }, value: '429' }],
+                            data: [{ timeStamp: '2026-01-01T00:00:00.000Z', count: 2, total: 200 }],
+                        },
+                        {
+                            metadatavalues: [{ name: { value: 'StatusCode' }, value: '4290' }],
+                            data: [{ timeStamp: '2026-01-01T00:00:00.000Z', count: 7, total: 700 }],
+                        },
+                        {
+                            metadatavalues: [{ name: { value: 'StatusCode' }, value: '200' }],
+                            data: [{ timeStamp: '2026-01-01T00:00:00.000Z', count: 8, total: 800 }],
+                        },
+                        {
+                            metadatavalues: [{ name: { value: 'StatusCode' }, value: '200' }],
+                            data: [{ timeStamp: 'not-a-date', count: 50, total: 5000 }],
+                        },
+                    ],
+                },
+            ],
+        });
+        const client = { metrics: { list } } as unknown as MonitorClient;
+
+        const result = await getThrottleRate(client, '/sub/acct', '7D', 'db', 'c1');
+
+        expect(list).toHaveBeenCalledWith(
+            '/sub/acct',
+            expect.objectContaining({
+                metricnames: 'TotalRequests',
+                aggregation: 'Count',
+                filter: `CollectionName eq 'c1' and DatabaseName eq 'db' and StatusCode eq '*'`,
+            }),
+        );
+        expect(result.totalRequests).toBe(17);
+        expect(result.ratePercent).toBeCloseTo((2 / 17) * 100);
+    });
+
+    it('marks sustained overlay buckets from exact 429 Count samples only', async () => {
+        const base = Date.UTC(2026, 0, 1, 0, 5, 0);
+        const client = mockClient({
+            NormalizedRUConsumption: {
+                value: [
+                    {
+                        timeseries: [
+                            {
+                                data: Array.from({ length: 6 }, (_, i) => ({
+                                    timeStamp: iso(base - (5 - i) * 60_000),
+                                    maximum: 50,
+                                })),
+                            },
+                        ],
+                    },
+                ],
+            },
+            TotalRequests: {
+                value: [
+                    {
+                        timeseries: [
+                            {
+                                metadatavalues: [{ name: { value: 'StatusCode' }, value: '4290' }],
+                                data: Array.from({ length: 6 }, (_, i) => ({
+                                    timeStamp: iso(base - (5 - i) * 60_000),
+                                    count: 100,
+                                    total: 1,
+                                })),
+                            },
+                            {
+                                metadatavalues: [{ name: { value: 'StatusCode' }, value: '200' }],
+                                data: Array.from({ length: 6 }, (_, i) => ({
+                                    timeStamp: iso(base - (5 - i) * 60_000),
+                                    count: 1,
+                                    total: 1000,
+                                })),
+                            },
+                        ],
+                    },
+                ],
+            },
+        });
+
+        const result = await getRuTrends(client, '/sub/acct', '1H', undefined, undefined);
+        expect(result.available).toBe(true);
+        expect(result.points).toHaveLength(6);
+        expect(result.points.every((point) => !point.throttled)).toBe(true);
     });
 });

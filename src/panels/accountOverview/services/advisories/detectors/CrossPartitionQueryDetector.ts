@@ -75,13 +75,25 @@ function evaluateCrossPartitionQuery(
         title: l10n.t('Cross-partition query fan-out in {container}', { container: input.containerId }),
         rationale: clampRationale(
             l10n.t(
-                '{pct}% of query executions fan out across partitions (the container has ~{partitions} physical partitions). The most frequent offender averages {fanout} partitions per run. Anonymized shape: {shape}',
-                { pct, partitions: containerPartitions, fanout: worst.avgFanout.toFixed(1), shape },
-            ),
+                '{pct}% of query executions fan out across partitions (the container has ~{partitions} physical partitions).',
+                { pct, partitions: containerPartitions },
+            ) +
+                ' ' +
+                l10n.t('The most frequent offender averages {fanout} partitions per run. Anonymized shape: {shape}', {
+                    fanout: worst.avgFanout.toFixed(1),
+                    shape,
+                }),
         ),
-        suggestedAction: l10n.t(
-            "Add the container's partition key to the query filter (or a composite index) so it targets a single logical partition. For access patterns that inherently filter on a different key, serve them from a secondary index or a change-feed-synced copy. Cross-partition fan-out multiplies RU and latency and does not scale as the container grows.",
-        ),
+        suggestedAction:
+            l10n.t(
+                "Add the container's partition key to the query filter (or a composite index) so it targets a single logical partition.",
+            ) +
+            ' ' +
+            l10n.t(
+                'For access patterns that inherently filter on a different key, serve them from a global secondary index or a change-feed-synced copy.',
+            ) +
+            ' ' +
+            l10n.t('Cross-partition fan-out multiplies RU and latency and does not scale as the container grows.'),
         thresholdReference: l10n.t('Threshold: ≥ {pct}% of executions fan out (avg ≥ {fanout} partitions/query)', {
             pct: thresholds.medPct,
             fanout: thresholds.fanoutThreshold,

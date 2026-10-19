@@ -5,7 +5,12 @@
 
 import { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { type MonitorClient } from '@azure/arm-monitor';
-import { getSqlInventory, type ThroughputMode } from '../inventory';
+import {
+    getSqlInventoryDetails,
+    type InventoryContainerRow,
+    type InventoryThroughputOffer,
+    type ThroughputMode,
+} from '../inventory';
 import { getInventoryMetrics, type HealthThresholds } from '../inventoryMetrics';
 import {
     getPartitionHealth,
@@ -13,20 +18,24 @@ import {
     type PartitionStorageResult,
     type PartitionThresholds,
 } from '../partitionHealth';
+import { getContainerCreatedAt, getKnownResourceAgeDays, getSystemCreatedAt } from '../resourceAge';
 import { getRuTrends, getThrottleRate } from '../ruTrends';
-import { containerKey } from '../shared';
+import { classifyUnavailable, containerKey } from '../shared';
+import { DIAGNOSTIC_POLICY } from './core/thresholds';
 import {
     type AccountConfigInput,
-    type AutoscaleUtilizationInput,
     type CrossPartitionInput,
     type DerivedAdvisory,
+    type DerivedAdvisoryRule,
     type DerivedAdvisoryThresholds,
     type IdleContainerInput,
     type IndexingUsageInput,
     type LogsSourceStatus,
+    type MetricSourceStatus,
     type PartitionMergeInput,
     type PartitionSaturationInput,
     type ServerlessCandidateInput,
+    type ServerlessThrottlingInput,
     type SharedThroughputInput,
     type UncontrolledIngestionInput,
 } from './core/types';
@@ -39,20 +48,52 @@ import {
     probeCdbLogs,
     type LogsQueryExecutor,
 } from './fetchers/logs';
+import { type LogsDiagnostic, type LogsDiagnosticReporter } from './fetchers/logsDiagnostics';
 import {
     getAccountConsumedRuShape,
     getAutoscaleUtilization,
-    getContainerIdlePeaks,
-    getContainerPartitionCounts,
+    getContainerIdlePeak,
+    getContainerMergeStoragePeak,
+    getContainerPartitionCount,
 } from './fetchers/metrics';
 
 // ─── Server-side orchestration ──────────────────────────────────────────────────
 
-/** Manual (non-autoscale, non-serverless) throughput modes that the over-provisioning/autoscale rules key on. */
-const MANUAL_THROUGHPUT_MODES: ReadonlySet<ThroughputMode> = new Set<ThroughputMode>(['dedicated', 'shared']);
+const METRIC_BATCH_SIZE = 5;
+const AGE_GATED_RULES: readonly DerivedAdvisoryRule[] = [
+    'OverProvisioning',
+    'AutoscaleCandidate',
+    'IdleContainer',
+    'SustainedThrottlingInRegion',
+    'HotPartitionRisk',
+    'AutoscaleMaxOverProvisioned',
+    'AutoscaleToManualCandidate',
+    'StorageSkewRisk',
+];
 
-/** Upper bound on per-container partition-health scans per derived-advisories tick, to cap ARM reads. */
-const MAX_PARTITION_SCAN = 10;
+const INVENTORY_DEPENDENT_RULES: readonly DerivedAdvisoryRule[] = [
+    'OverProvisioning',
+    'AutoscaleCandidate',
+    'IdleContainer',
+    'SustainedThrottlingInRegion',
+    'HotPartitionRisk',
+    'PartitionMergeCandidate',
+    'AutoscaleMaxOverProvisioned',
+    'AutoscaleToManualCandidate',
+    'StorageGrowthRisk',
+    'StorageSkewRisk',
+    'IndexingCostRisk',
+    'ServerlessThrottling',
+    'CrossPartitionQuery',
+    'ShardKeyMisalignment',
+    'UncontrolledIngestion',
+    'SharedThroughputStarvation',
+] as const;
+
+interface CollectResult<T> {
+    value?: T;
+    reason?: MetricSourceStatus['failures'][number]['reason'];
+}
 
 /** Everything {@link collectDerivedAdvisories} needs, gathered by the router as data preparation. */
 export interface CollectDerivedAdvisoriesParams {
@@ -73,19 +114,104 @@ export interface CollectDerivedAdvisoriesParams {
      * returning the Tier-1 advisories.
      */
     logsClient?: LogsQueryExecutor;
+    /** Sanitized Log Analytics failures for the local Output channel, not telemetry. */
+    onLogsDiagnostic?: LogsDiagnosticReporter;
 }
 
 /** What {@link collectDerivedAdvisories} returns: the fired advisories plus the Tier-2 (Log Analytics) coverage status. */
 export interface CollectedDerivedAdvisories {
     advisories: DerivedAdvisory[];
     logSource: LogsSourceStatus;
+    metricSource: MetricSourceStatus;
+}
+
+/** The Tier-2 inputs gathered from Log Analytics plus the coverage status the card surfaces. */
+interface Tier2Logs {
+    crossPartition: CrossPartitionInput[];
+    ingestion: UncontrolledIngestionInput[];
+    sharedThroughput: SharedThroughputInput[];
+    logSource: LogsSourceStatus;
+}
+
+function addMetricFailure(
+    failures: MetricSourceStatus['failures'],
+    rule: DerivedAdvisoryRule,
+    reason: MetricSourceStatus['failures'][number]['reason'],
+    scope?: string,
+): void {
+    if (!failures.some((failure) => failure.rule === rule && failure.scope === scope && failure.reason === reason)) {
+        failures.push({ rule, scope, reason });
+    }
+}
+
+async function mapInBatches<TItem, TResult>(
+    items: readonly TItem[],
+    worker: (item: TItem, index: number) => Promise<TResult>,
+    batchSize = METRIC_BATCH_SIZE,
+): Promise<TResult[]> {
+    const results: TResult[] = [];
+    for (let start = 0; start < items.length; start += batchSize) {
+        const batch = items.slice(start, start + batchSize);
+        results.push(...(await Promise.all(batch.map((item, index) => worker(item, start + index)))));
+    }
+    return results;
+}
+
+async function capture<T>(work: Promise<T>): Promise<CollectResult<T>> {
+    try {
+        return { value: await work };
+    } catch (error) {
+        return { reason: classifyUnavailable(error) };
+    }
+}
+
+function isDedicatedContainerOffer(row: InventoryContainerRow): boolean {
+    return row.offerLevel === 'container' && row.throughputRU !== undefined && row.throughputRU > 0;
+}
+
+function isDedicatedManualOffer(row: InventoryContainerRow): boolean {
+    return isDedicatedContainerOffer(row) && row.offerThroughputMode === 'manual';
+}
+
+function isDedicatedAutoscaleOffer(row: InventoryContainerRow): boolean {
+    return isDedicatedContainerOffer(row) && row.offerThroughputMode === 'autoscale';
+}
+
+function isServerlessContainer(row: InventoryContainerRow): boolean {
+    return row.throughputMode === 'serverless';
+}
+
+function scopeOf(row: Pick<InventoryContainerRow, 'databaseId' | 'containerId'>): string {
+    return containerKey(row.databaseId, row.containerId);
+}
+
+function rowAgeDays(row: InventoryContainerRow, accountCreatedAt: string | undefined, now: number): number | undefined {
+    return getKnownResourceAgeDays(row.resourceCreatedAt ?? row.offerCreatedAt, accountCreatedAt, now);
+}
+
+function lookupRowAgeDays(
+    rowsByScope: ReadonlyMap<string, InventoryContainerRow>,
+    databaseId: string,
+    containerId: string,
+    accountCreatedAt: string | undefined,
+    now: number,
+): number | undefined {
+    const row = rowsByScope.get(containerKey(databaseId, containerId));
+    return row ? rowAgeDays(row, accountCreatedAt, now) : undefined;
+}
+
+async function getAccountCreatedAt(
+    cosmosClient: CosmosDBManagementClient,
+    resourceGroup: string,
+    accountName: string,
+): Promise<string | undefined> {
+    return getSystemCreatedAt(await cosmosClient.databaseAccounts.get(resourceGroup, accountName));
 }
 
 /**
- * Gathers the telemetry the derived-advisory rules need — static inventory, 24h
- * and 7d RU trends, 7d inventory metrics, and per-container partition health for
- * the busiest containers — then runs {@link computeDerivedAdvisories}. Any Azure
- * failure propagates so the router can classify it into an empty-state reason.
+ * Gathers the telemetry the derived-advisory rules need — authoritative offer inventory, per-offer/manual RU history,
+ * per-container partition/storage signals, account-level serverless shape, and Tier-2 Log Analytics evidence — then
+ * runs {@link computeDerivedAdvisories}. Failures degrade to per-rule coverage rather than blanking config-only checks.
  */
 export async function collectDerivedAdvisories(
     params: CollectDerivedAdvisoriesParams,
@@ -104,187 +230,396 @@ export async function collectDerivedAdvisories(
         logsClient,
     } = params;
 
-    const rows = await getSqlInventory(cosmosClient, resourceGroup, accountName, isServerless);
+    const now = Date.now();
+    const metricFailures: MetricSourceStatus['failures'] = [];
+    const accountCreatedAtPromise = capture(getAccountCreatedAt(cosmosClient, resourceGroup, accountName));
 
-    const [weekTrends, inventoryMetrics, idlePeaks, partitionCounts, serverlessShape] = await Promise.all([
-        getRuTrends(monitorClient, accountId, '7D', undefined, undefined),
-        getInventoryMetrics(monitorClient, accountId, '7D', undefined, healthThresholds),
-        // DX-004: peak consumed RU per bucket over 30 days, per container (empty ⇒ idle, not an error).
-        getContainerIdlePeaks(monitorClient, accountId).catch(() => new Map<string, number>()),
-        // DX-009: actual physical-partition count per container.
-        getContainerPartitionCounts(monitorClient, accountId).catch(() => new Map<string, number>()),
-        // DX-014: account-total consumed-RU shape over 30 days (skipped for accounts already on serverless).
-        isServerless
-            ? Promise.resolve(undefined)
-            : getAccountConsumedRuShape(monitorClient, accountId).catch(() => undefined),
-    ]);
-
-    // Scan partition health only for the busiest containers (highest 7-day peak RU) to bound ARM reads.
-    const scanTargets = [...rows]
-        .sort(
-            (a, b) =>
-                (inventoryMetrics.metrics[containerKey(b.databaseId, b.containerId)]?.peakRuPercent ?? -1) -
-                (inventoryMetrics.metrics[containerKey(a.databaseId, a.containerId)]?.peakRuPercent ?? -1),
-        )
-        .slice(0, MAX_PARTITION_SCAN);
-
-    // DX-006 / DX-005 are present-tense over a 7-day window: per-physical-partition p99 saturation plus the
-    // container's aggregate 429 rate, fetched together for each scanned container.
-    const partitionResults = await Promise.all(
-        scanTargets.map((row) =>
-            getPartitionHealth(
-                monitorClient,
-                accountId,
-                'ru',
-                '7D',
-                row.databaseId,
-                row.containerId,
-                partitionThresholds,
-            ).catch(() => undefined),
-        ),
-    );
-
-    const throttleResults = await Promise.all(
-        scanTargets.map((row) =>
-            getThrottleRate(monitorClient, accountId, '7D', row.databaseId, row.containerId).catch(() => undefined),
-        ),
-    );
-
-    const storageResults = await Promise.all(
-        scanTargets.map((row) =>
-            getPartitionStorageSeries(monitorClient, accountId, '7D', row.databaseId, row.containerId).catch(
-                () => undefined,
-            ),
-        ),
-    );
-
-    // DX-011 / DX-013: the AutoscaledRU-%-of-max duty cycle, fetched only for the scanned autoscale containers
-    // (each is a per-container query, so bound it to the same busiest-container set as the partition scans).
-    const autoscaleTargets = scanTargets.filter(
-        (row) => row.throughputMode === 'autoscale' && row.throughputRU !== undefined && row.throughputRU > 0,
-    );
-    const autoscaleResults = await Promise.all(
-        autoscaleTargets.map((row) =>
-            getAutoscaleUtilization(monitorClient, accountId, row.databaseId, row.containerId, row.throughputRU!).catch(
-                () => undefined,
-            ),
-        ),
-    );
-
-    const rowByKey = new Map(rows.map((row) => [containerKey(row.databaseId, row.containerId), row]));
-    const partitions: PartitionSaturationInput[] = [];
-    partitionResults.forEach((result, index) => {
-        if (!result || !result.available || result.mode !== 'ru') {
-            return;
+    let rows: InventoryContainerRow[] = [];
+    let offers: InventoryThroughputOffer[] = [];
+    const inventory = await capture(getSqlInventoryDetails(cosmosClient, resourceGroup, accountName, isServerless));
+    if (inventory.value) {
+        rows = inventory.value.rows;
+        offers = inventory.value.offers;
+    } else if (inventory.reason) {
+        for (const rule of INVENTORY_DEPENDENT_RULES) {
+            addMetricFailure(metricFailures, rule, inventory.reason);
         }
-        const row = rowByKey.get(containerKey(result.databaseId, result.containerId));
-        const throttle = throttleResults[index];
-        partitions.push({
-            databaseId: result.databaseId,
-            containerId: result.containerId,
-            maxP99: result.maxSaturationPercent ?? result.topPartitionShare,
-            minP99: result.minSaturationPercent ?? 0,
-            partitionCount: result.partitionCount,
-            throttleRatePercent: throttle?.ratePercent ?? 0,
-            totalRequests: throttle?.totalRequests ?? 0,
-            throughputMode: row?.throughputMode ?? 'unknown',
-            provisionedRu: row?.throughputRU,
-        });
-    });
+    }
 
-    const storage = storageResults
-        .filter((result): result is PartitionStorageResult => !!result && result.available)
-        .map((result) => ({
-            databaseId: result.databaseId,
-            containerId: result.containerId,
-            partitions: result.partitions,
-        }));
-
-    const indexing: IndexingUsageInput[] = rows.map((row) => {
-        const metrics = inventoryMetrics.metrics[containerKey(row.databaseId, row.containerId)];
-        return {
-            databaseId: row.databaseId,
-            containerId: row.containerId,
-            indexUsageBytes: metrics?.indexUsageBytes,
-            dataUsageBytes: metrics?.dataUsageBytes,
-            excludedPathCount: row.excludedPathCount,
-        };
-    });
-
-    const weeklyRuPercents = weekTrends.points
-        .map((point) => point.ruPercent)
-        .filter((value): value is number => value !== undefined);
-
-    const manualProvisionedRuTotal = rows
-        .filter((row) => MANUAL_THROUGHPUT_MODES.has(row.throughputMode) && row.throughputRU !== undefined)
-        .reduce<number | undefined>((sum, row) => (sum ?? 0) + (row.throughputRU ?? 0), undefined);
-
-    // DX-004: build an idle input for every container with a recoverable offer (manual or autoscale). A container
-    // absent from the peaks map never emitted RU over the window, which is the idle signal (peak defaults to 0).
-    const idleContainers: IdleContainerInput[] = rows
-        .filter((row) => row.throughputRU !== undefined && row.throughputMode !== 'serverless')
-        .map((row) => ({
-            databaseId: row.databaseId,
-            containerId: row.containerId,
-            peakRuPerBucket: idlePeaks.get(containerKey(row.databaseId, row.containerId)) ?? 0,
-            throughputMode: row.throughputMode,
-            provisionedRu: row.throughputRU,
-        }));
-
-    // DX-009: pair each container's actual physical-partition count with its provisioned RU/s and current storage.
-    const partitionMerges: PartitionMergeInput[] = rows.map((row) => {
-        const metrics = inventoryMetrics.metrics[containerKey(row.databaseId, row.containerId)];
-        return {
-            databaseId: row.databaseId,
-            containerId: row.containerId,
-            actualPartitions: partitionCounts.get(containerKey(row.databaseId, row.containerId)) ?? 0,
-            provisionedRu: row.throughputRU,
-            dataUsageBytes: metrics?.dataUsageBytes,
-        };
-    });
-
-    // DX-011 / DX-013: the fetched autoscale duty cycles, keyed back to their containers' configured max.
-    const autoscaleUtilizations: AutoscaleUtilizationInput[] = [];
-    autoscaleResults.forEach((result, index) => {
-        if (!result) {
-            return;
+    const accountCreation = await accountCreatedAtPromise;
+    const accountCreatedAt = accountCreation.value;
+    const dedicatedTargets = rows.filter(isDedicatedContainerOffer);
+    if (accountCreation.reason && dedicatedTargets.length > 0) {
+        for (const rule of AGE_GATED_RULES) {
+            addMetricFailure(metricFailures, rule, accountCreation.reason);
         }
-        const row = autoscaleTargets[index];
-        autoscaleUtilizations.push({
-            databaseId: row.databaseId,
-            containerId: row.containerId,
-            peakPercent: result.peakPercent,
-            avgPercent: result.avgPercent,
-            sampleCount: result.sampleCount,
-            configuredMaxRu: row.throughputRU,
-        });
-    });
-
-    // DX-014: account-total consumed-RU shape (absent for serverless accounts or when the fetch failed).
-    const serverless: ServerlessCandidateInput | undefined = serverlessShape
-        ? { ...serverlessShape, isServerless }
-        : undefined;
-
-    // Materiality denominator (DX-004 / DX-011): total provisioned RU/s across the whole account.
-    const scopeProvisionedRuTotal = rows.reduce<number | undefined>(
-        (sum, row) => (row.throughputRU === undefined ? sum : (sum ?? 0) + row.throughputRU),
+    }
+    await mapInBatches(
+        dedicatedTargets.filter((row) => !row.resourceCreatedAt),
+        async (row) => {
+            const creation = await capture(
+                getContainerCreatedAt(monitorClient, accountId, row.databaseId, row.containerId, now),
+            );
+            if (creation.reason) {
+                for (const rule of AGE_GATED_RULES) {
+                    addMetricFailure(metricFailures, rule, creation.reason, scopeOf(row));
+                }
+            } else if (creation.value) {
+                row.resourceCreatedAt = creation.value;
+            }
+        },
+    );
+    const manualTargets = dedicatedTargets.filter(isDedicatedManualOffer);
+    const autoscaleTargets = dedicatedTargets.filter(isDedicatedAutoscaleOffer);
+    const serverlessTargets = rows.filter(isServerlessContainer);
+    const logTargets = rows.filter((row) => isDedicatedContainerOffer(row) || isServerlessContainer(row));
+    const rowsByScope = new Map(rows.map((row) => [scopeOf(row), row]));
+    const scopeProvisionedRuTotal = offers.reduce<number | undefined>(
+        (sum, offer) => (sum ?? 0) + offer.throughputRU,
         undefined,
     );
 
-    // Tier-2 (Log Analytics): DX-002/007 (query fan-out) and DX-010 (write-dominant throttling) for the busiest
-    // scanned containers, and DX-003 (shared-throughput starvation) per shared-throughput database. Bounded to the
-    // same busiest-container set as the ARM scans. Probed once so a single reason-specific partial-coverage notice
-    // is surfaced when logs are unavailable, and Tier-1 still ships.
-    const logs = await collectTier2Logs(logsClient, accountId, scanTargets, rows);
+    const manualObservation = DIAGNOSTIC_POLICY.overProvisioning.observation;
+    const saturationObservation = DIAGNOSTIC_POLICY.partitionSaturation.observation;
+    const storageObservation = DIAGNOSTIC_POLICY.storageGrowth.observation;
+    const storageSkewObservation = DIAGNOSTIC_POLICY.storageSkew.observation;
+    const serverlessThrottleObservation = DIAGNOSTIC_POLICY.serverlessThrottling.observation;
+
+    const manualThroughput = (
+        await mapInBatches(manualTargets, async (row) => {
+            const result = await getRuTrends(
+                monitorClient,
+                accountId,
+                manualObservation.timeRange,
+                row.databaseId,
+                row.containerId,
+                manualObservation,
+            );
+            return { row, result };
+        })
+    ).flatMap(({ row, result }) => {
+        const scope = scopeOf(row);
+        if (!result.available) {
+            const reason = result.reason ?? 'noData';
+            addMetricFailure(metricFailures, 'OverProvisioning', reason, scope);
+            addMetricFailure(metricFailures, 'AutoscaleCandidate', reason, scope);
+            return [];
+        }
+        const ruPercents = result.points
+            .map((point) => point.ruPercent)
+            .filter((value): value is number => value !== undefined);
+        return row.throughputRU === undefined
+            ? []
+            : [
+                  {
+                      databaseId: row.databaseId,
+                      containerId: row.containerId,
+                      ruPercents,
+                      peakPercent: result.peakPercent,
+                      provisionedRu: row.throughputRU,
+                      resourceAgeDays: rowAgeDays(row, accountCreatedAt, now),
+                  },
+              ];
+    });
+
+    const idleContainers: IdleContainerInput[] = (
+        await mapInBatches(dedicatedTargets, async (row) => ({
+            row,
+            result: await capture(getContainerIdlePeak(monitorClient, accountId, row.databaseId, row.containerId, now)),
+        }))
+    ).flatMap(({ row, result }) => {
+        if (result.value === undefined) {
+            addMetricFailure(metricFailures, 'IdleContainer', result.reason ?? 'noData', scopeOf(row));
+            return [];
+        }
+        return [
+            {
+                databaseId: row.databaseId,
+                containerId: row.containerId,
+                peakRuPerBucket: result.value,
+                throughputMode: row.throughputMode,
+                provisionedRu: row.throughputRU,
+                resourceAgeDays: rowAgeDays(row, accountCreatedAt, now),
+            },
+        ];
+    });
+
+    const inventoryMetrics =
+        rows.length === 0
+            ? undefined
+            : await getInventoryMetrics(
+                  monitorClient,
+                  accountId,
+                  manualObservation.timeRange,
+                  undefined,
+                  healthThresholds,
+                  manualObservation,
+              );
+    if (inventoryMetrics && !inventoryMetrics.available) {
+        addMetricFailure(metricFailures, 'IndexingCostRisk', inventoryMetrics.reason ?? 'noData');
+    }
+    const indexing: IndexingUsageInput[] =
+        inventoryMetrics?.available === true
+            ? rows.map((row) => {
+                  const metrics = inventoryMetrics.metrics[scopeOf(row)];
+                  return {
+                      databaseId: row.databaseId,
+                      containerId: row.containerId,
+                      indexUsageBytes: metrics?.indexUsageBytes,
+                      dataUsageBytes: metrics?.dataUsageBytes,
+                      excludedPathCount: row.excludedPathCount,
+                  };
+              })
+            : [];
+
+    const partitionSignals = await mapInBatches(dedicatedTargets, async (row) => {
+        const [partition, throttle, growth, skew] = await Promise.all([
+            capture(
+                getPartitionHealth(
+                    monitorClient,
+                    accountId,
+                    'ru',
+                    saturationObservation.timeRange,
+                    row.databaseId,
+                    row.containerId,
+                    partitionThresholds,
+                    saturationObservation,
+                ),
+            ),
+            capture(
+                getThrottleRate(
+                    monitorClient,
+                    accountId,
+                    saturationObservation.timeRange,
+                    row.databaseId,
+                    row.containerId,
+                    saturationObservation,
+                ),
+            ),
+            capture(
+                getPartitionStorageSeries(
+                    monitorClient,
+                    accountId,
+                    storageObservation.timeRange,
+                    row.databaseId,
+                    row.containerId,
+                    storageObservation,
+                ),
+            ),
+            capture(
+                getPartitionStorageSeries(
+                    monitorClient,
+                    accountId,
+                    storageSkewObservation.timeRange,
+                    row.databaseId,
+                    row.containerId,
+                    storageSkewObservation,
+                ),
+            ),
+        ]);
+        return { row, partition, throttle, growth, skew };
+    });
+
+    const partitions: PartitionSaturationInput[] = [];
+    const storage: PartitionStorageResult[] = [];
+    const storageSkew: PartitionStorageResult[] = [];
+    for (const { row, partition, throttle, growth, skew } of partitionSignals) {
+        const scope = scopeOf(row);
+        const ageDays = rowAgeDays(row, accountCreatedAt, now);
+
+        if (partition.reason) {
+            addMetricFailure(metricFailures, 'SustainedThrottlingInRegion', partition.reason, scope);
+            addMetricFailure(metricFailures, 'HotPartitionRisk', partition.reason, scope);
+        } else if (!partition.value?.available) {
+            const reason = partition.value?.reason ?? 'noData';
+            addMetricFailure(metricFailures, 'SustainedThrottlingInRegion', reason, scope);
+            addMetricFailure(metricFailures, 'HotPartitionRisk', reason, scope);
+        } else if (throttle.reason) {
+            addMetricFailure(metricFailures, 'SustainedThrottlingInRegion', throttle.reason, scope);
+            addMetricFailure(metricFailures, 'HotPartitionRisk', throttle.reason, scope);
+        } else if (throttle.value) {
+            partitions.push({
+                databaseId: row.databaseId,
+                containerId: row.containerId,
+                maxP99: partition.value.maxSaturationPercent ?? partition.value.topPartitionShare,
+                minP99: partition.value.minSaturationPercent ?? 0,
+                partitionCount: partition.value.partitionCount,
+                throttleRatePercent: throttle.value.ratePercent,
+                totalRequests: throttle.value.totalRequests,
+                throughputMode: row.throughputMode,
+                provisionedRu: row.throughputRU,
+                resourceAgeDays: ageDays,
+            });
+        }
+
+        if (growth.reason) {
+            addMetricFailure(metricFailures, 'StorageGrowthRisk', growth.reason, scope);
+        } else if (!growth.value?.available) {
+            addMetricFailure(metricFailures, 'StorageGrowthRisk', growth.value?.reason ?? 'noData', scope);
+        } else {
+            storage.push(growth.value);
+        }
+
+        if (skew.reason) {
+            addMetricFailure(metricFailures, 'StorageSkewRisk', skew.reason, scope);
+        } else if (!skew.value?.available) {
+            addMetricFailure(metricFailures, 'StorageSkewRisk', skew.value?.reason ?? 'noData', scope);
+        } else {
+            storageSkew.push(skew.value);
+        }
+    }
+
+    const partitionMerges: PartitionMergeInput[] = (
+        await mapInBatches(dedicatedTargets, async (row) => ({
+            row,
+            count: await capture(
+                getContainerPartitionCount(monitorClient, accountId, row.databaseId, row.containerId, now),
+            ),
+            storage: await capture(
+                getContainerMergeStoragePeak(monitorClient, accountId, row.databaseId, row.containerId, now),
+            ),
+        }))
+    ).flatMap(({ row, count, storage }) => {
+        const scope = scopeOf(row);
+        if (count.value === undefined) {
+            addMetricFailure(metricFailures, 'PartitionMergeCandidate', count.reason ?? 'noData', scope);
+        }
+        if (storage.value === undefined) {
+            addMetricFailure(metricFailures, 'PartitionMergeCandidate', storage.reason ?? 'noData', scope);
+        }
+        if (count.value === undefined || storage.value === undefined) {
+            return [];
+        }
+        return [
+            {
+                databaseId: row.databaseId,
+                containerId: row.containerId,
+                actualPartitions: count.value,
+                provisionedRu: row.throughputRU,
+                dataUsageBytes: storage.value,
+            },
+        ];
+    });
+
+    const autoscaleUtilizations = (
+        await mapInBatches(autoscaleTargets, async (row) => ({
+            row,
+            result: await capture(
+                getAutoscaleUtilization(monitorClient, accountId, row.databaseId, row.containerId, row.throughputRU!),
+            ),
+        }))
+    ).flatMap(({ row, result }) => {
+        const scope = scopeOf(row);
+        if (result.reason) {
+            addMetricFailure(metricFailures, 'AutoscaleMaxOverProvisioned', result.reason, scope);
+            addMetricFailure(metricFailures, 'AutoscaleToManualCandidate', result.reason, scope);
+            return [];
+        }
+        if (!result.value) {
+            return [];
+        }
+        return [
+            {
+                databaseId: row.databaseId,
+                containerId: row.containerId,
+                peakPercent: result.value.peakPercent,
+                avgPercent: result.value.avgPercent,
+                sampleCount: result.value.sampleCount,
+                configuredMaxRu: row.throughputRU,
+                resourceAgeDays: rowAgeDays(row, accountCreatedAt, now),
+            },
+        ];
+    });
+
+    const serverlessThrottling = (
+        await mapInBatches(serverlessTargets, async (row) => ({
+            row,
+            result: await capture(
+                getThrottleRate(
+                    monitorClient,
+                    accountId,
+                    serverlessThrottleObservation.timeRange,
+                    row.databaseId,
+                    row.containerId,
+                    serverlessThrottleObservation,
+                ),
+            ),
+        }))
+    ).flatMap(({ row, result }) => {
+        const scope = scopeOf(row);
+        if (result.reason) {
+            addMetricFailure(metricFailures, 'ServerlessThrottling', result.reason, scope);
+            return [];
+        }
+        return result.value
+            ? [
+                  {
+                      databaseId: row.databaseId,
+                      containerId: row.containerId,
+                      totalRequests: result.value.totalRequests,
+                      throttleRatePercent: result.value.ratePercent,
+                  } satisfies ServerlessThrottlingInput,
+              ]
+            : [];
+    });
+
+    const serverlessShape = isServerless
+        ? undefined
+        : await capture(getAccountConsumedRuShape(monitorClient, accountId));
+    if (serverlessShape?.reason) {
+        addMetricFailure(metricFailures, 'ServerlessCandidate', serverlessShape.reason);
+    }
+    const serverless: ServerlessCandidateInput | undefined = serverlessShape?.value
+        ? { ...serverlessShape.value, isServerless }
+        : undefined;
+
+    const logs = await collectTier2Logs(
+        logsClient,
+        accountId,
+        logTargets,
+        offers,
+        params.onLogsDiagnostic,
+        dedicatedTargets,
+    );
 
     const advisories = computeDerivedAdvisories(
         {
-            weeklyRuPercents,
-            weeklyPeakPercent: weekTrends.peakPercent,
-            hasManualThroughput: rows.some((row) => MANUAL_THROUGHPUT_MODES.has(row.throughputMode)),
-            manualProvisionedRuTotal,
+            manualThroughput,
+            serverlessThrottling,
+            storageSkew: storageSkew.map((result) => ({
+                databaseId: result.databaseId,
+                containerId: result.containerId,
+                partitions: result.partitions,
+                resourceAgeDays: lookupRowAgeDays(
+                    rowsByScope,
+                    result.databaseId,
+                    result.containerId,
+                    accountCreatedAt,
+                    now,
+                ),
+            })),
+            // Compatibility fields stay populated for older detectors, but the per-offer manual inputs above are the
+            // authoritative parity path for DX-001 / DX-012.
+            weeklyRuPercents: [],
+            weeklyPeakPercent: undefined,
+            hasManualThroughput: manualTargets.length > 0,
+            manualProvisionedRuTotal: manualTargets.reduce<number | undefined>(
+                (sum, row) => (sum ?? 0) + (row.throughputRU ?? 0),
+                undefined,
+            ),
             partitions,
-            storage,
+            storage: storage.map((result) => ({
+                databaseId: result.databaseId,
+                containerId: result.containerId,
+                partitions: result.partitions,
+                resourceAgeDays: lookupRowAgeDays(
+                    rowsByScope,
+                    result.databaseId,
+                    result.containerId,
+                    accountCreatedAt,
+                    now,
+                ),
+            })),
             indexing,
             idleContainers,
             partitionMerges,
@@ -299,76 +634,102 @@ export async function collectDerivedAdvisories(
         advisoryThresholds,
     );
 
-    return { advisories, logSource: logs.logSource };
-}
-
-/** The Tier-2 inputs gathered from Log Analytics plus the coverage status the card surfaces. */
-interface Tier2Logs {
-    crossPartition: CrossPartitionInput[];
-    ingestion: UncontrolledIngestionInput[];
-    sharedThroughput: SharedThroughputInput[];
-    logSource: LogsSourceStatus;
+    return {
+        advisories,
+        logSource: logs.logSource,
+        metricSource: { available: metricFailures.length === 0, failures: metricFailures },
+    };
 }
 
 /**
- * Fetches the Tier-2 (Log Analytics) inputs for the busiest scanned containers and shared-throughput databases,
- * degrading gracefully: with no client Tier-2 is reported unavailable (`noData`); if the `CDB*` tables are not
- * queryable the probe classifies why (`logAnalyticsDisabled` / `rbac` / `noData`) and no per-detector queries run.
- * Individual query failures degrade that detector to empty rather than failing the whole section.
+ * Fetches the Tier-2 (Log Analytics) inputs for the dedicated/serverless containers and the database-level shared
+ * throughput offers. Each required table is gated independently: missing query-runtime logs must not suppress
+ * ingestion or shared-throughput checks. Failed queries are excluded from evaluation and recorded as partial coverage.
  */
-async function collectTier2Logs(
+export async function collectTier2Logs(
     logsClient: LogsQueryExecutor | undefined,
     accountId: string,
     scanTargets: readonly { databaseId: string; containerId: string }[],
-    rows: readonly { databaseId: string; containerId: string; throughputMode: ThroughputMode; throughputRU?: number }[],
+    rows: readonly {
+        databaseId: string;
+        containerId?: string;
+        throughputMode: ThroughputMode;
+        throughputRU?: number;
+        offerLevel?: 'database' | 'container' | 'none';
+    }[],
+    onDiagnostic?: LogsDiagnosticReporter,
+    ingestionTargets: readonly { databaseId: string; containerId: string }[] = scanTargets,
 ): Promise<Tier2Logs> {
     const empty = { crossPartition: [], ingestion: [], sharedThroughput: [] };
+    const failures: NonNullable<LogsSourceStatus['failures']> = [];
+    const report: LogsDiagnosticReporter = (diagnostic: LogsDiagnostic) => {
+        if (
+            !failures.some((failure) => failure.operation === diagnostic.operation && failure.kind === diagnostic.kind)
+        ) {
+            failures.push({ operation: diagnostic.operation, kind: diagnostic.kind, reason: diagnostic.reason });
+        }
+        onDiagnostic?.(diagnostic);
+    };
+    const coverage = (): LogsSourceStatus => {
+        if (failures.length === 0) {
+            return { available: true };
+        }
+        const reason = failures.some((failure) => failure.reason === 'rbac')
+            ? 'rbac'
+            : failures.some((failure) => failure.reason === 'logAnalyticsDisabled')
+              ? 'logAnalyticsDisabled'
+              : 'noData';
+        return { available: false, reason, failures };
+    };
     if (!logsClient) {
-        return { ...empty, logSource: { available: false, reason: 'noData' } };
+        report({
+            operation: 'client',
+            kind: 'clientUnavailable',
+            reason: 'noData',
+            codes: [],
+            messages: ['The Log Analytics query client could not be acquired.'],
+        });
+        return { ...empty, logSource: coverage() };
     }
 
     const timespan = logWindow();
-    const probe = await probeCdbLogs(logsClient, accountId, timespan);
-    if (!probe.available) {
-        return { ...empty, logSource: { available: false, reason: probe.reason } };
-    }
+    const [dataPlane, queryRuntime] = await Promise.all([
+        probeCdbLogs(logsClient, accountId, timespan, { onDiagnostic: report, table: 'CDBDataPlaneRequests' }),
+        probeCdbLogs(logsClient, accountId, timespan, { onDiagnostic: report, table: 'CDBQueryRuntimeStatistics' }),
+    ]);
 
-    // DX-003: one query per shared-throughput database (deduped), using the shared pool's provisioned RU/s.
     const sharedDatabases = new Map<string, number>();
     for (const row of rows) {
-        if (row.throughputMode === 'shared' && !sharedDatabases.has(row.databaseId)) {
+        const isDatabaseOffer = row.offerLevel === 'database';
+        if (isDatabaseOffer && row.throughputRU !== undefined) {
+            sharedDatabases.set(row.databaseId, row.throughputRU);
+        } else if (!row.offerLevel && row.throughputMode === 'shared' && !sharedDatabases.has(row.databaseId)) {
             sharedDatabases.set(row.databaseId, row.throughputRU ?? 0);
         }
     }
 
     const [crossPartitionResults, ingestionResults, sharedResults] = await Promise.all([
-        Promise.all(
-            scanTargets.map((row) =>
-                fetchCrossPartitionShapes(logsClient, accountId, row.databaseId, row.containerId, timespan).catch(
-                    () => undefined,
-                ),
+        mapInBatches(queryRuntime.available ? scanTargets : [], (row) =>
+            fetchCrossPartitionShapes(logsClient, accountId, row.databaseId, row.containerId, timespan, report).catch(
+                () => undefined,
             ),
         ),
-        Promise.all(
-            scanTargets.map((row) =>
-                fetchUncontrolledIngestion(logsClient, accountId, row.databaseId, row.containerId, timespan).catch(
-                    () => undefined,
-                ),
+        mapInBatches(dataPlane.available ? ingestionTargets : [], (row) =>
+            fetchUncontrolledIngestion(logsClient, accountId, row.databaseId, row.containerId, timespan, report).catch(
+                () => undefined,
             ),
         ),
-        Promise.all(
-            [...sharedDatabases].map(([databaseId, sharedRu]) =>
-                fetchSharedThroughputTraffic(logsClient, accountId, databaseId, sharedRu, timespan).catch(
-                    () => undefined,
-                ),
+        mapInBatches(dataPlane.available ? [...sharedDatabases] : [], ([databaseId, sharedRu]) =>
+            fetchSharedThroughputTraffic(logsClient, accountId, databaseId, sharedRu, timespan, report).catch(
+                () => undefined,
             ),
         ),
     ]);
 
     return {
-        crossPartition: crossPartitionResults.filter((r): r is CrossPartitionInput => r !== undefined),
-        ingestion: ingestionResults.filter((r): r is UncontrolledIngestionInput => r !== undefined),
-        sharedThroughput: sharedResults.filter((r): r is SharedThroughputInput => r !== undefined),
-        logSource: { available: true },
+        crossPartition: crossPartitionResults.filter((result): result is CrossPartitionInput => result !== undefined),
+        ingestion: ingestionResults.filter((result): result is UncontrolledIngestionInput => result !== undefined),
+        sharedThroughput: sharedResults.filter((result): result is SharedThroughputInput => result !== undefined),
+        logSource: coverage(),
     };
 }

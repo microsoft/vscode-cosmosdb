@@ -3,9 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { type API } from '../../../../../AzureDBExperiences';
 import { type ThroughputMode } from '../../inventory';
 import { type PartitionStorageSeries } from '../../partitionHealth';
 import { type UnavailableReason } from '../../shared';
+import { type LogsFailureKind, type LogsOperation } from '../fetchers/logsDiagnostics';
 
 // ─── Client-side derived advisories ──────────────────────────────────────────────
 //
@@ -33,6 +35,7 @@ export type DerivedAdvisoryRule =
     | 'AutoscaleMaxOverProvisioned'
     | 'AutoscaleToManualCandidate'
     | 'ServerlessCandidate'
+    | 'ServerlessThrottling'
     | 'CrossPartitionQuery'
     | 'ShardKeyMisalignment'
     | 'UncontrolledIngestion'
@@ -53,6 +56,8 @@ export interface DerivedAdvisory {
     thresholdReference: string;
     /** `databaseId/containerId` this advisory concerns, when container-scoped. */
     scope?: string;
+    /** Retained for diagnostic provenance, but hidden from the default actionable list. */
+    supersededBy?: string;
 }
 
 /**
@@ -62,10 +67,18 @@ export interface DerivedAdvisory {
  * Tier-1 metrics + config advisories to show).
  */
 export interface LogsSourceStatus {
-    /** True when the `CDB*` tables were queryable (diagnostic settings on + Reader RBAC), even if empty. */
+    /** True when both required tables and all attempted detector queries succeeded, even if empty. */
     available: boolean;
-    /** When `available` is false, why the log-based (Tier-2) analyzers were skipped. */
+    /** When false, the highest-priority failure reason. Successful log-based checks still contribute findings. */
     reason?: UnavailableReason;
+    /** Bounded categories only; raw service errors, resource identifiers and query text stay out of the webview. */
+    failures?: { operation: LogsOperation; kind: LogsFailureKind; reason: UnavailableReason }[];
+}
+
+/** Failed metric checks stay distinguishable from successful checks with no finding. */
+export interface MetricSourceStatus {
+    available: boolean;
+    failures: { rule: DerivedAdvisoryRule; scope?: string; reason: UnavailableReason }[];
 }
 
 export interface DerivedAdvisoriesResult {
@@ -76,10 +89,11 @@ export interface DerivedAdvisoriesResult {
     advisories: DerivedAdvisory[];
     /**
      * Availability of the Log Analytics ("Tier-2") analyzers, present when the section itself is available.
-     * Absent (or `available: true`) means the log-based checks ran; `available: false` drives the card's
-     * partial-coverage notice while the Tier-1 advisories above still render.
+     * `available: true` means all attempted log queries completed; absent means coverage was not reported.
+     * `available: false` drives a partial-coverage notice while successful findings still render.
      */
     logSource?: LogsSourceStatus;
+    metricSource?: MetricSourceStatus;
     /** Epoch milliseconds when the server produced this snapshot. */
     generatedAt: number;
 }
@@ -100,7 +114,7 @@ export interface DerivedAdvisoryThresholds {
     partitionHeadroomPercent: number;
     /** Container 429 rate (`sum(429)/sum(total)`, %) at or above which throttling counts as active. */
     throttleRatePercent: number;
-    /** 7-day p99 RU (%) below which OverProvisioning fires (CODA DX-001 moderate band). */
+    /** Per-offer 30-day p99 RU (%) below which OverProvisioning fires (CODA DX-001 moderate band). */
     overProvisioningBandPercent: number;
     /** Peak RU (%) a workload must reach for AutoscaleCandidate — below this you should right-size, not autoscale. */
     autoscaleMaxPercent: number;
@@ -195,6 +209,7 @@ export interface DerivedAdvisoryThresholds {
  * over the window; `throttleRatePercent` is the container's aggregate 429 rate.
  */
 export interface PartitionSaturationInput {
+    resourceAgeDays?: number;
     databaseId: string;
     containerId: string;
     /** Busiest physical partition's p99 utilization (% of provisioned). */
@@ -227,6 +242,7 @@ export type StoragePartitionSeries = PartitionStorageSeries;
 
 /** Per-container physical-partition storage series for the StorageGrowthRisk (and StorageSkewRisk) rules. */
 export interface ContainerStorageInput {
+    resourceAgeDays?: number;
     databaseId: string;
     containerId: string;
     partitions: readonly StoragePartitionSeries[];
@@ -260,16 +276,13 @@ export interface AccountConfigInput {
     multiRegionWritesEnabled: boolean;
     /** Number of write regions the account has. */
     writeRegionCount: number;
-    /**
-     * Canonical API family (`core`, `mongo`, `cassandra`, `gremlin`, `table`). The derived-advisory engine only
-     * runs for `core` accounts, so the wrong-API DX-008 branch is effectively dead here, but it is kept faithful
-     * to CODA so the rule is correct if the engine is ever opened to other APIs.
-     */
-    apiKind: string;
+    /** Canonical API; undefined means unknown. */
+    api: API | undefined;
 }
 
 /** Already-fetched idle signal for one container over the 30-day window (DX-004). */
 export interface IdleContainerInput {
+    resourceAgeDays?: number;
     databaseId: string;
     containerId: string;
     /** Peak RU consumed in any single bucket (max of `TotalRequestUnits`, Total). 0 for an all-zero/empty series. */
@@ -288,12 +301,13 @@ export interface PartitionMergeInput {
     actualPartitions: number;
     /** The container's configured provisioned RU/s (autoscale max or manual). */
     provisionedRu?: number;
-    /** Current data storage in bytes (max of `DataUsage`). */
+    /** Peak data storage in bytes over the same six-hour window as the partition count. */
     dataUsageBytes?: number;
 }
 
 /** Already-fetched autoscale duty-cycle signal for one container (DX-011 / DX-013). */
 export interface AutoscaleUtilizationInput {
+    resourceAgeDays?: number;
     databaseId: string;
     containerId: string;
     /** Peak of the `AutoscaledRU`-as-%-of-configured-max series over the window (0..100). */
@@ -316,6 +330,24 @@ export interface ServerlessCandidateInput {
     sampleCount: number;
     /** True when the account already uses serverless capacity mode (guard: never a candidate). */
     isServerless: boolean;
+}
+
+/** One dedicated manual offer's observed utilization; never an account-level mixture of throughput modes. */
+export interface ManualThroughputInput {
+    databaseId: string;
+    containerId: string;
+    ruPercents: readonly number[];
+    peakPercent?: number;
+    provisionedRu: number;
+    resourceAgeDays?: number;
+}
+
+/** Serverless throttling uses request counts, not provisioned-capacity utilization. */
+export interface ServerlessThrottlingInput {
+    databaseId: string;
+    containerId: string;
+    totalRequests: number;
+    throttleRatePercent: number;
 }
 
 /** Tunable cutoffs for {@link evaluateServerlessCandidate}. */
@@ -411,7 +443,11 @@ export interface SharedThroughputThresholds {
 
 /** Already-fetched telemetry the derived-advisory engine consumes. */
 export interface DerivedAdvisoryInputs {
-    /** Account-wide 7-day RU% samples for the over-provisioning + autoscale rules. */
+    manualThroughput?: readonly ManualThroughputInput[];
+    serverlessThrottling?: readonly ServerlessThrottlingInput[];
+    /** Seven-day size series for skew, separate from the thirty-day growth observation. */
+    storageSkew?: readonly ContainerStorageInput[];
+    /** Legacy engine input; the collector supplies per-offer `manualThroughput` instead. */
     weeklyRuPercents: readonly number[];
     /** Max of `weeklyRuPercents`, or undefined when no 7-day data is available. */
     weeklyPeakPercent?: number;
@@ -421,7 +457,7 @@ export interface DerivedAdvisoryInputs {
     manualProvisionedRuTotal?: number;
     /** Per-container physical-partition p99 saturation + 429 rate for the hot-partition and under-provisioning rules. */
     partitions: readonly PartitionSaturationInput[];
-    /** Per-container physical-partition storage series (7d) for the storage-growth and storage-skew rules. */
+    /** Per-container physical-partition storage series (30d) for growth; skew has its separate seven-day input. */
     storage: readonly ContainerStorageInput[];
     /** Per-container index/data storage for the indexing-cost rule. */
     indexing: readonly IndexingUsageInput[];

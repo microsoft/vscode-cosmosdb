@@ -188,13 +188,14 @@ export interface DashboardActions {
     ) => void;
     /** Opens an external URL in the user's browser via the host. */
     openUrl: (url: string) => void;
+    showOutput: () => void;
 }
 
 const noop = () => {
     /* no-op default */
 };
 
-const DashboardActionsContext = createContext<DashboardActions>({ reportEvent: noop, openUrl: noop });
+const DashboardActionsContext = createContext<DashboardActions>({ reportEvent: noop, openUrl: noop, showOutput: noop });
 
 export const DashboardActionsProvider = DashboardActionsContext.Provider;
 
@@ -233,7 +234,9 @@ export const EmptyState = ({ reason, requiredRole }: { reason?: UnavailableReaso
                 : l10n.t('Not enough permissions to load this section.');
             break;
         case 'logAnalyticsDisabled':
-            message = l10n.t('Enable diagnostic settings to a Log Analytics workspace to run log-based checks.');
+            message = l10n.t(
+                'Required log tables are unavailable. Check diagnostic categories, resource-specific export mode, ingestion, and Log Analytics access.',
+            );
             break;
         case 'noData':
         default:

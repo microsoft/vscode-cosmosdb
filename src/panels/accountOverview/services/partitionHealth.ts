@@ -4,17 +4,20 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type MonitorClient } from '@azure/arm-monitor';
+import { DIAGNOSTIC_POLICY } from './advisories/core/thresholds';
 import {
     classifyUnavailable,
     DEFAULT_PARTITION_HEADROOM_PCT,
     DEFAULT_PARTITION_SATURATION_PCT,
     escapeODataLiteral,
     isHotPartition,
-    lastValue,
+    parseMonitorTimestamp,
+    pickPointValue,
     partitionSaturationStats,
     percentile,
     RANGE_CONFIG,
     type PartitionSaturationStats,
+    type RangeConfig,
     type TimeRange,
     type UnavailableReason,
 } from './shared';
@@ -32,15 +35,6 @@ import {
 // partitions are exposed publicly; logical-partition heatmaps stay out of scope.
 
 export type PartitionDistributionMode = 'ru' | 'storage';
-
-const GIB = 1024 ** 3;
-
-/**
- * Below this size a physical partition is immaterial and never flagged as storage-skewed — a balanced-but-tiny
- * split is not a concern. Mirrors the derived StorageSkewRisk rule's materiality gate so the heatmap and the
- * advisory agree on what counts as skewed storage.
- */
-const STORAGE_SKEW_MIN_BUSIEST_BYTES = 1 * GIB;
 
 /**
  * Partition-distribution thresholds. These mirror the derived-advisory engine so the heatmap's hot flags line up
@@ -66,7 +60,7 @@ export const DEFAULT_PARTITION_THRESHOLDS: PartitionThresholds = {
     // Kept in sync with the derived-advisory saturation/headroom/skew defaults.
     saturationPercent: DEFAULT_PARTITION_SATURATION_PCT,
     headroomPercent: DEFAULT_PARTITION_HEADROOM_PCT,
-    skewBalanceRatio: 0.7,
+    skewBalanceRatio: DIAGNOSTIC_POLICY.storageSkew.balanceRatio,
     topN: 5,
 };
 
@@ -132,7 +126,8 @@ export function levelFromExcess(excess: number, hot: boolean): PartitionIntensit
 }
 
 /**
- * Folds latest per-partition storage bytes into ranked heatmap tiles with shares, intensity levels, and hot flags.
+ * Folds peak per-partition storage bytes over the chosen window into ranked heatmap tiles with shares, intensity
+ * levels, and hot flags.
  * A partition is flagged when it is materially larger than the coolest sibling (balance ratio below the configured
  * floor) — not on a raw share cutoff — matching the derived StorageSkewRisk rule. Pure.
  */
@@ -150,9 +145,12 @@ export function deriveStorageTiles(
         const value = Math.max(0, weight);
         const sharePercent = total > 0 ? (value / total) * 100 : 0;
         const tileBalance = value > 0 ? coolest / value : 1;
-        const material = value >= STORAGE_SKEW_MIN_BUSIEST_BYTES;
+        const material = value >= DIAGNOSTIC_POLICY.storageSkew.minBusiestBytes;
         const hot =
-            count >= 2 && material && thresholds.skewBalanceRatio > 0 && tileBalance < thresholds.skewBalanceRatio;
+            count >= DIAGNOSTIC_POLICY.storageSkew.minPartitions &&
+            material &&
+            thresholds.skewBalanceRatio > 0 &&
+            tileBalance < thresholds.skewBalanceRatio;
         const excess =
             thresholds.skewBalanceRatio > 0 && thresholds.skewBalanceRatio < 1
                 ? (1 - tileBalance) / (1 - thresholds.skewBalanceRatio)
@@ -221,7 +219,7 @@ export function deriveSkewScore(matrix: Map<string, Map<number, number>>): numbe
 function p99Matrix(matrix: Map<string, Map<number, number>>): Map<string, number> {
     const p99s = new Map<string, number>();
     for (const [partitionId, series] of matrix) {
-        const p99 = percentile([...series.values()], 99);
+        const p99 = percentile([...series.values()], DIAGNOSTIC_POLICY.partitionSaturation.percentile);
         if (p99 !== undefined) {
             p99s.set(partitionId, p99);
         }
@@ -233,6 +231,7 @@ function p99Matrix(matrix: Map<string, Map<number, number>>): Map<string, number
  * Fetches physical-partition RU or storage distribution for a single container
  * and folds it into heatmap tiles, a skew score, and hot-partition flags. Any
  * Monitor failure or empty dimension resolves to `available: false`.
+ * Diagnostic callers supply `config`; chart callers keep the time-range preset.
  */
 export async function getPartitionHealth(
     client: MonitorClient,
@@ -242,9 +241,9 @@ export async function getPartitionHealth(
     databaseId: string,
     containerId: string,
     thresholds: PartitionThresholds,
+    config: RangeConfig = RANGE_CONFIG[timeRange],
 ): Promise<PartitionHealthResult> {
     const generatedAt = Date.now();
-    const config = RANGE_CONFIG[timeRange];
     const timespan = `${new Date(generatedAt - config.windowMs).toISOString()}/${new Date(generatedAt).toISOString()}`;
 
     const empty: PartitionHealthResult = {
@@ -315,12 +314,11 @@ export async function getPartitionHealth(
     if (matrix.size === 0) {
         return { ...empty, reason: 'noData' };
     }
-    // Storage is effectively static across the window; rank by the latest reported size.
+    // Rank storage by each partition's peak reported size over the chosen window so the heatmap matches the detector.
     const weights = new Map<string, number>();
     for (const [partitionId, series] of matrix) {
-        const latest = lastValue(series);
-        if (latest !== undefined) {
-            weights.set(partitionId, latest);
+        if (series.size > 0) {
+            weights.set(partitionId, Math.max(...series.values()));
         }
     }
     if (weights.size === 0) {
@@ -377,6 +375,7 @@ export interface PartitionStorageResult {
  * derived-advisory engine can fit a growth trajectory per partition and gauge each
  * partition's proximity to the 50 GiB split ceiling. Any Monitor failure or empty
  * dimension resolves to `available: false`.
+ * Diagnostic callers supply `config`; chart callers keep the time-range preset.
  */
 export async function getPartitionStorageSeries(
     client: MonitorClient,
@@ -384,9 +383,9 @@ export async function getPartitionStorageSeries(
     timeRange: TimeRange,
     databaseId: string,
     containerId: string,
+    config: RangeConfig = RANGE_CONFIG[timeRange],
 ): Promise<PartitionStorageResult> {
     const generatedAt = Date.now();
-    const config = RANGE_CONFIG[timeRange];
     const timespan = `${new Date(generatedAt - config.windowMs).toISOString()}/${new Date(generatedAt).toISOString()}`;
 
     const empty: PartitionStorageResult = {
@@ -462,11 +461,16 @@ async function queryPartitionSplitSeries(
             }
             const buckets = byPartition.get(partitionId) ?? new Map<number, number>();
             for (const point of series.data ?? []) {
-                if (point.maximum === undefined) {
+                const value = pickPointValue(point, 'Maximum');
+                if (value === undefined) {
                     continue;
                 }
-                const ts = new Date(point.timeStamp).getTime();
-                buckets.set(ts, Math.max(buckets.get(ts) ?? 0, point.maximum));
+                const ts = parseMonitorTimestamp(point.timeStamp);
+                if (ts === undefined) {
+                    continue;
+                }
+                const prev = buckets.get(ts);
+                buckets.set(ts, prev === undefined ? value : Math.max(prev, value));
             }
             byPartition.set(partitionId, buckets);
         }

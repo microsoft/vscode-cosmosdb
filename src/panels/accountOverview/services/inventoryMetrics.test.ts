@@ -157,8 +157,8 @@ describe('getInventoryMetrics', () => {
         const throttleData: Point[] = [];
         const okData: Point[] = [];
         for (let i = 0; i < 6; i++) {
-            throttleData.push({ timeStamp: iso(base - (5 - i) * minute), total: 100 });
-            okData.push({ timeStamp: iso(base - (5 - i) * minute), total: 1 });
+            throttleData.push({ timeStamp: iso(base - (5 - i) * minute), count: 100, total: 1 });
+            okData.push({ timeStamp: iso(base - (5 - i) * minute), count: 1, total: 100 });
         }
 
         const client = mockClient({
@@ -197,6 +197,58 @@ describe('getInventoryMetrics', () => {
         expect(hot.throttled).toBe(true);
         expect(hot.health).toBe('Critical');
         expect(result.accountHealth).toBe('Critical');
+    });
+
+    it('ignores null and invalid Count samples but preserves zero-count buckets for throttling health', async () => {
+        const client = mockClient({
+            DataUsage: {
+                value: [
+                    {
+                        timeseries: [
+                            { metadatavalues: dims('db', 'c1'), data: [{ timeStamp: iso(base), maximum: 0 }] },
+                        ],
+                    },
+                ],
+            },
+            NormalizedRUConsumption: {
+                value: [
+                    {
+                        timeseries: [
+                            { metadatavalues: dims('db', 'c1'), data: [{ timeStamp: iso(base), maximum: 10 }] },
+                        ],
+                    },
+                ],
+            },
+            TotalRequests: {
+                value: [
+                    {
+                        timeseries: [
+                            {
+                                metadatavalues: dims('db', 'c1', '429'),
+                                data: [
+                                    { timeStamp: iso(base - minute), count: null, total: 100 },
+                                    { timeStamp: 'bad-timestamp', count: 100, total: 100 },
+                                    { timeStamp: iso(base), count: 0, total: 100 },
+                                ],
+                            },
+                            {
+                                metadatavalues: dims('db', 'c1', '200'),
+                                data: [
+                                    { timeStamp: iso(base - minute), count: 1, total: 100 },
+                                    { timeStamp: iso(base), count: 0, total: 100 },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            },
+        });
+
+        const result = await getInventoryMetrics(client, '/sub/acct', '1H', 'Succeeded', thresholds);
+        const row = result.metrics[containerKey('db', 'c1')];
+        expect(row.storageBytes).toBe(0);
+        expect(row.throttled).toBe(false);
+        expect(row.health).toBe('Healthy');
     });
 
     it('surfaces document count and downsampled sparklines per container', async () => {

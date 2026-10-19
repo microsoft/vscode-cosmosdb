@@ -3,8 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type LogsQueryResult, type LogsTable } from '@azure/monitor-query-logs';
-import { classifyUnavailable, DAY, type UnavailableReason } from '../../shared';
+import { LogsQueryResultStatus, type LogsQueryResult, type LogsTable } from '@azure/monitor-query-logs';
+import { type UnavailableReason } from '../../shared';
+import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import {
     type CollectionTrafficInput,
     type CrossPartitionInput,
@@ -12,6 +13,13 @@ import {
     type SharedThroughputInput,
     type UncontrolledIngestionInput,
 } from '../core/types';
+import {
+    classifyLogsFailure,
+    createLogsDiagnostic,
+    LogsFetchError,
+    type LogsDiagnosticReporter,
+    type LogsOperation,
+} from './logsDiagnostics';
 
 // ─── Tier-2 (Log Analytics) data path ─────────────────────────────────────────────
 //
@@ -20,11 +28,8 @@ import {
 // Log Analytics queries. This module is the thin fetch-and-shape seam: it runs the same KQL CODA's detectors
 // use, folds the rows into the plain input shapes the pure `evaluate*` functions in `derivedAdvisories.ts`
 // consume, and classifies "logs unavailable" into an {@link UnavailableReason} so the card can render Tier-1
-// while flagging that Tier-2 was skipped. It is `@azure/arm-monitor`-free (types-only import of the logs SDK),
+// while flagging that Tier-2 was skipped. It is `@azure/arm-monitor`-free,
 // so the whole module graph stays unit-testable against a fake executor.
-
-/** The one-day look-back CODA uses for the present-tense log-based detectors, bucketed hourly. */
-const LOG_WINDOW_MS = DAY;
 
 /** Timespan for a resource-centric Log Analytics query. */
 export interface LogsTimespan {
@@ -42,7 +47,7 @@ export interface LogsQueryExecutor {
 
 /** Builds the one-day timespan ending now. */
 export function logWindow(now = Date.now()): LogsTimespan {
-    return { startTime: new Date(now - LOG_WINDOW_MS), endTime: new Date(now) };
+    return { startTime: new Date(now - DIAGNOSTIC_POLICY.logs.windowMs), endTime: new Date(now) };
 }
 
 /** Strips single quotes from a value interpolated into a KQL string literal, mirroring CODA's `.replace("'", "")`. */
@@ -50,15 +55,83 @@ function kqlLiteral(value: string): string {
     return value.replace(/'/g, '');
 }
 
-/** The first result table, whether the query fully or partially succeeded (both carry rows we can read). */
+/** Only complete query results are suitable for computing recommendations. */
 function firstTable(result: LogsQueryResult): LogsTable | undefined {
-    if ('tables' in result) {
-        return result.tables[0];
-    }
-    if ('partialTables' in result) {
-        return result.partialTables[0];
+    if (result?.status === LogsQueryResultStatus.Success && Array.isArray(result.tables)) {
+        const table = result.tables[0];
+        if (
+            table &&
+            Array.isArray(table.columnDescriptors) &&
+            table.columnDescriptors.every((column) => column && typeof column.name === 'string') &&
+            Array.isArray(table.rows) &&
+            table.rows.every((row) => Array.isArray(row) && row.length === table.columnDescriptors.length)
+        ) {
+            return table;
+        }
     }
     return undefined;
+}
+
+async function executeLogsQuery(
+    executor: LogsQueryExecutor,
+    resourceId: string,
+    query: string,
+    timespan: LogsTimespan,
+    operation: LogsOperation,
+    sensitiveValues: readonly string[],
+    onDiagnostic?: LogsDiagnosticReporter,
+): Promise<Record<string, unknown>[]> {
+    let partialFailure = false;
+    try {
+        // The modular SDK expands "/{+resourceId}/query" without removing an ARM ID's leading slash.
+        const result = await executor.queryResource(resourceId.replace(/^\/+/, ''), query, timespan);
+        if (result?.status === LogsQueryResultStatus.PartialFailure || (result && 'partialError' in result)) {
+            partialFailure = true;
+            // Pass only the explicit SDK error, never partial tables (which can contain document/query data).
+            throw result.partialError;
+        }
+        const table = firstTable(result);
+        if (!table) {
+            throw new Error('Log query returned no valid result table.');
+        }
+        const requiredColumns: Partial<Record<LogsOperation, string[]>> = {
+            crossPartition: ['QueryText', 'executions', 'avgFanout', 'maxFanout'],
+            ingestionSummary: ['totalRu', 'writeRu', 'reqs', 'throttles'],
+            ingestionBurst: ['peak', 'avg'],
+            ingestionUserAgent: ['UserAgent', 'n'],
+            sharedThroughput: ['CollectionName', 'requests', 'throttled', 'ru'],
+        };
+        if (
+            table.rows.length > 0 &&
+            requiredColumns[operation]?.some((name) => !table.columnDescriptors.some((column) => column.name === name))
+        ) {
+            throw new Error('Log query returned an incomplete result schema.');
+        }
+        return tableToRecords(table);
+    } catch (error) {
+        const diagnostic = createLogsDiagnostic(error, operation, {
+            partialFailure,
+            sensitiveValues: [
+                resourceId,
+                resourceId.replace(/^\/+/, ''),
+                ...resourceId
+                    .replace(/^\/+/, '')
+                    .split('/')
+                    .filter((_, index) => index === 1 || index === 3 || (index >= 7 && index % 2 === 1)),
+                query,
+                ...sensitiveValues,
+            ],
+        });
+        try {
+            onDiagnostic?.(diagnostic);
+        } catch {
+            // Output failures must not replace the classified query failure or leak a reporter's raw error.
+            console.warn(
+                `Log Analytics Output reporter failed (${diagnostic.operation}: ${diagnostic.kind}; ${diagnostic.reason}).`,
+            );
+        }
+        throw new LogsFetchError(diagnostic);
+    }
 }
 
 /** Folds a Log Analytics table into an array of `column → cell` records for easy field access. Pure. */
@@ -88,50 +161,38 @@ function str(value: unknown): string {
 }
 
 /**
- * Classifies a failed `CDB*` probe into a Tier-2 {@link UnavailableReason}. A missing table (diagnostic settings
- * were never enabled, so Log Analytics cannot resolve `CDBDataPlaneRequests`) surfaces as a semantic/bad-argument
- * error → `logAnalyticsDisabled`; a 403 → `rbac` (via {@link classifyUnavailable}); anything else degrades to
- * `noData` (transient/throttled). Pure.
+ * Classifies nested SDK errors without treating every semantic error as a missing diagnostic table.
+ * Only explicit missing-CDB-table evidence means `logAnalyticsDisabled`; other query failures remain `noData`.
  */
 export function classifyLogsError(error: unknown): UnavailableReason {
-    const rbacOrNoData = classifyUnavailable(error);
-    if (rbacOrNoData === 'rbac') {
-        return 'rbac';
-    }
-    if (error && typeof error === 'object') {
-        const e = error as { code?: unknown; message?: unknown };
-        const code = typeof e.code === 'string' ? e.code.toLowerCase() : '';
-        const message = typeof e.message === 'string' ? e.message.toLowerCase() : '';
-        const text = `${code} ${message}`;
-        // Log Analytics reports an unconfigured table as a semantic / bad-argument failure. "Failed to resolve
-        // table or column expression" is the canonical message when the `CDB*` tables do not exist for the resource.
-        if (
-            text.includes('semanticerror') ||
-            text.includes('badargument') ||
-            text.includes('pathnotfound') ||
-            text.includes('failed to resolve') ||
-            text.includes('cdbdataplanerequests') ||
-            text.includes('cdbqueryruntimestatistics')
-        ) {
-            return 'logAnalyticsDisabled';
-        }
-    }
-    return 'noData';
+    return classifyLogsFailure(error).reason;
 }
 
 /**
- * Probes whether the account's `CDB*` diagnostic-log tables are queryable. A successful query (even with zero
- * rows) means diagnostic settings are on and the caller has Reader access → `available`. A failure is classified:
- * a missing table → `logAnalyticsDisabled`, a 403 → `rbac`, else `noData`. This gate lets the collector skip the
- * per-detector queries and surface a single, reason-specific partial-coverage notice.
+ * Probes one required resource-specific table without retrieving log rows. Success means the table query completed,
+ * not that every backing workspace is accessible or that the time window contains data. Each table gates its own
+ * detectors; missing-table failures retain the legacy `logAnalyticsDisabled` reason without asserting logs are disabled.
  */
 export async function probeCdbLogs(
     executor: LogsQueryExecutor,
     resourceId: string,
     timespan: LogsTimespan,
+    options?: {
+        onDiagnostic?: LogsDiagnosticReporter;
+        table?: 'CDBDataPlaneRequests' | 'CDBQueryRuntimeStatistics';
+    },
 ): Promise<{ available: boolean; reason?: UnavailableReason }> {
+    const table = options?.table ?? 'CDBDataPlaneRequests';
     try {
-        await executor.queryResource(resourceId, 'CDBDataPlaneRequests | take 1', timespan);
+        await executeLogsQuery(
+            executor,
+            resourceId,
+            `${table} | take 0`,
+            timespan,
+            table === 'CDBDataPlaneRequests' ? 'probeDataPlane' : 'probeQueryRuntime',
+            [],
+            options?.onDiagnostic,
+        );
         return { available: true };
     } catch (error) {
         return { available: false, reason: classifyLogsError(error) };
@@ -150,6 +211,7 @@ export async function fetchCrossPartitionShapes(
     databaseId: string,
     containerId: string,
     timespan: LogsTimespan,
+    onDiagnostic?: LogsDiagnosticReporter,
 ): Promise<CrossPartitionInput> {
     const db = kqlLiteral(databaseId);
     const coll = kqlLiteral(containerId);
@@ -160,7 +222,15 @@ export async function fetchCrossPartitionShapes(
         '| summarize executions = count(), avgFanout = avg(partitionsHit), maxFanout = max(partitionsHit) ' +
         'by QueryText ' +
         '| top 200 by executions desc';
-    const rows = tableToRecords(firstTable(await executor.queryResource(resourceId, kql, timespan)));
+    const rows = await executeLogsQuery(
+        executor,
+        resourceId,
+        kql,
+        timespan,
+        'crossPartition',
+        [databaseId, containerId, db, coll],
+        onDiagnostic,
+    );
     const shapes: QueryShapeInput[] = rows
         .filter((r) => str(r.QueryText).length > 0)
         .map((r) => ({
@@ -204,6 +274,7 @@ export async function fetchUncontrolledIngestion(
     databaseId: string,
     containerId: string,
     timespan: LogsTimespan,
+    onDiagnostic?: LogsDiagnosticReporter,
 ): Promise<UncontrolledIngestionInput | undefined> {
     const db = kqlLiteral(databaseId);
     const coll = kqlLiteral(containerId);
@@ -217,15 +288,47 @@ export async function fetchUncontrolledIngestion(
     const burstKql =
         base +
         `| where OperationName in (${writes}) ` +
-        '| summarize ru = sum(RequestCharge) by bin(TimeGenerated, 1m) ' +
+        `| summarize ru = sum(RequestCharge) by bin(TimeGenerated, ${DIAGNOSTIC_POLICY.ingestion.burstInterval}) ` +
         '| summarize peak = max(ru), avg = avg(ru)';
     const uaKql = base + `| where OperationName in (${writes}) ` + '| summarize n = count() by UserAgent | top 1 by n';
 
-    const [agg, burst, ua] = await Promise.all([
-        executor.queryResource(resourceId, aggKql, timespan).then((r) => tableToRecords(firstTable(r))),
-        executor.queryResource(resourceId, burstKql, timespan).then((r) => tableToRecords(firstTable(r))),
-        executor.queryResource(resourceId, uaKql, timespan).then((r) => tableToRecords(firstTable(r))),
+    const results = await Promise.allSettled([
+        executeLogsQuery(
+            executor,
+            resourceId,
+            aggKql,
+            timespan,
+            'ingestionSummary',
+            [databaseId, containerId, db, coll],
+            onDiagnostic,
+        ),
+        executeLogsQuery(
+            executor,
+            resourceId,
+            burstKql,
+            timespan,
+            'ingestionBurst',
+            [databaseId, containerId, db, coll],
+            onDiagnostic,
+        ),
+        executeLogsQuery(
+            executor,
+            resourceId,
+            uaKql,
+            timespan,
+            'ingestionUserAgent',
+            [databaseId, containerId, db, coll],
+            onDiagnostic,
+        ),
     ]);
+
+    // Wait for every query's diagnostic before the collector handles this fetcher's failure.
+    const [agg, burst, ua] = results.map((result) => {
+        if (result.status === 'rejected') {
+            throw result.reason;
+        }
+        return result.value;
+    });
 
     if (agg.length === 0) {
         return undefined;
@@ -261,6 +364,7 @@ export async function fetchSharedThroughputTraffic(
     databaseId: string,
     sharedRu: number,
     timespan: LogsTimespan,
+    onDiagnostic?: LogsDiagnosticReporter,
 ): Promise<SharedThroughputInput> {
     const db = kqlLiteral(databaseId);
     const kql =
@@ -268,7 +372,15 @@ export async function fetchSharedThroughputTraffic(
         `| where DatabaseName == '${db}' and isnotempty(CollectionName) ` +
         '| summarize requests = count(), throttled = countif(StatusCode == 429), ru = sum(RequestCharge) ' +
         'by CollectionName';
-    const rows = tableToRecords(firstTable(await executor.queryResource(resourceId, kql, timespan)));
+    const rows = await executeLogsQuery(
+        executor,
+        resourceId,
+        kql,
+        timespan,
+        'sharedThroughput',
+        [databaseId, db],
+        onDiagnostic,
+    );
     const collections: CollectionTrafficInput[] = rows
         .filter((r) => str(r.CollectionName).length > 0)
         .map((r) => ({

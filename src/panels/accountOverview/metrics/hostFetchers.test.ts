@@ -16,7 +16,7 @@ import { fetchMetricSeries } from './hostFetchers';
 // a metric's coarsest grain, and carrying the empty-state reason through.
 
 type Field = 'average' | 'maximum' | 'total';
-type Options = { metricnames?: string; filter?: string; interval?: string };
+type Options = { metricnames?: string; filter?: string; interval?: string; aggregation?: string };
 
 /** Builds a single-series Azure Monitor response reading the given aggregation field. */
 function resp(field: Field, points: [number, number][]): { value: { timeseries: Series[] }[] } {
@@ -44,6 +44,30 @@ const T1 = 1_000;
 const T2 = 2_000;
 
 describe('fetchMetricSeries — multi-series combine', () => {
+    it('uses Count for the request-volume tile even when Total disagrees', async () => {
+        const calls: Options[] = [];
+        const client = recordingClient(
+            {
+                TotalRequests: {
+                    value: [
+                        {
+                            timeseries: [
+                                {
+                                    data: [{ timeStamp: iso(T1), count: 480, total: 358 }],
+                                },
+                            ],
+                        },
+                    ],
+                },
+            },
+            calls,
+        );
+        const result = await fetchMetricSeries('totalRequests', client, '/sub/acct', {}, '1H');
+        expect(result.points.map((point) => point.value)).toEqual([480]);
+        expect(
+            calls.filter((call) => call.metricnames === 'TotalRequests').every((call) => call.aggregation === 'Count'),
+        ).toBe(true);
+    });
     it('combines Direct + Gateway server-side latency by taking the worse (max) per bucket', async () => {
         const client = mockClient({
             ServerSideLatencyDirect: resp('average', [

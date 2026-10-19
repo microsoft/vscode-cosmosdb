@@ -115,7 +115,17 @@ beforeEach(() => {
         files.delete(from.toString());
         modifiedTimes.delete(from.toString());
     });
-    vi.spyOn(vscode.workspace.fs, 'delete').mockImplementation(async (uri) => {
+    vi.spyOn(vscode.workspace.fs, 'delete').mockImplementation(async (uri, options) => {
+        if (options?.recursive) {
+            const prefix = uri.toString() + '/';
+            for (const key of files.keys()) {
+                if (key.startsWith(prefix)) {
+                    files.delete(key);
+                    modifiedTimes.delete(key);
+                }
+            }
+            return;
+        }
         if (!files.delete(uri.toString())) {
             throw vscode.FileSystemError.FileNotFound(uri);
         }
@@ -126,6 +136,62 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('DataModelerProjectService', () => {
+    it('deletes all accounts, temporary files and legacy data while preserving other extension storage', async () => {
+        const second = new DataModelerProjectService('https://account-b.documents.azure.com');
+        await service.loadState();
+        await second.loadState();
+        await service.saveState(snapshot());
+        await second.saveState(snapshot());
+        const legacy = vscode.Uri.joinPath(storageUri, 'data-modeler.json');
+        const temporary = vscode.Uri.joinPath(service.folderUri, 'unfinished.tmp');
+        const unrelated = vscode.Uri.joinPath(storageUri, 'schemas', 'saved.json');
+        for (const uri of [legacy, temporary, unrelated]) {
+            files.set(uri.toString(), Buffer.from('not valid JSON'));
+        }
+        files.set(service.projectUri.toString(), Buffer.from('not valid JSON'));
+
+        await DataModelerProjectService.deleteAllData();
+
+        expect([...files.keys()]).toEqual([unrelated.toString()]);
+        expect(vscode.workspace.fs.delete).toHaveBeenCalledWith(service.folderUri, {
+            recursive: true,
+            useTrash: false,
+        });
+        await expect(service.saveState(snapshot())).rejects.toThrow('Load the saved data model');
+        await expect(second.saveState(snapshot())).rejects.toThrow('Load the saved data model');
+        expect(await service.loadState()).toBeNull();
+        const state = snapshot();
+        await service.saveState(state);
+        expect(await service.loadState()).toEqual(state);
+    });
+
+    it('serializes deletion after pending saves and rejects stale saves queued after deletion', async () => {
+        await service.loadState();
+        const state = snapshot();
+        const save = service.saveState(state);
+        const deletion = DataModelerProjectService.deleteAllData();
+        const staleSave = service.saveState(state);
+        await expect(staleSave).rejects.toThrow('Load the saved data model');
+        await Promise.all([save, deletion]);
+        expect(files.size).toBe(0);
+    });
+
+    it('allows deleting absent data repeatedly', async () => {
+        vi.mocked(vscode.workspace.fs.delete).mockRejectedValue(vscode.FileSystemError.FileNotFound());
+        await expect(DataModelerProjectService.deleteAllData()).resolves.toBeUndefined();
+        await expect(DataModelerProjectService.deleteAllData()).resolves.toBeUndefined();
+    });
+
+    it('surfaces deletion failures and allows retrying', async () => {
+        await service.loadState();
+        await service.saveState(snapshot());
+        vi.mocked(vscode.workspace.fs.delete).mockRejectedValueOnce(vscode.FileSystemError.NoPermissions());
+        await expect(DataModelerProjectService.deleteAllData()).rejects.toThrow(vscode.FileSystemError);
+        expect(files.has(service.projectUri.toString())).toBe(true);
+        await DataModelerProjectService.deleteAllData();
+        expect(files.size).toBe(0);
+    });
+
     it('uses global storage and does not create a project merely by opening with no saved state', async () => {
         expect(await service.loadState()).toBeNull();
         expect(vscode.workspace.fs.writeFile).not.toHaveBeenCalled();

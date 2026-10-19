@@ -962,6 +962,11 @@
       },
       {
         "category": "Cosmos DB",
+        "command": "cosmosDB.dataModeling.deleteAllData",
+        "title": "%cosmosdb.command.dataModeling.deleteAllData%"
+      },
+      {
+        "category": "Cosmos DB",
         "command": "cosmosDB.e2e.openQueryEditor",
         "title": "[E2E Test] Open Query Editor"
       },

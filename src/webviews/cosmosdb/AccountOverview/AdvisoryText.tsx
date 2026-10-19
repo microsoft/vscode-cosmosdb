@@ -8,6 +8,7 @@ import { parseAdvisoryText } from '../../../panels/accountOverview/advisoryText'
 
 const useStyles = makeStyles({
     value: {
+        fontWeight: tokens.fontWeightBold,
         backgroundColor: tokens.colorNeutralBackground3,
         color: tokens.colorNeutralForeground1,
         borderRadius: tokens.borderRadiusSmall,

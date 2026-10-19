@@ -5,7 +5,7 @@
 
 // @vitest-environment jsdom
 
-import { FluentProvider, webDarkTheme, webLightTheme } from '@fluentui/react-components';
+import { FluentProvider, tokens, webDarkTheme, webLightTheme } from '@fluentui/react-components';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { AdvisoryText } from './AdvisoryText';
@@ -23,12 +23,45 @@ describe('AdvisoryText', () => {
         for (const text of ['5%', '30 days', '~400 RU/s']) {
             const value = screen.getByText(text);
             expect(value.tagName).toBe('SPAN');
+            expect(value).toHaveStyle({ fontWeight: tokens.fontWeightBold, overflowWrap: 'anywhere' });
             expect(value).not.toHaveAttribute('tabindex');
             expect(value).not.toHaveAttribute('aria-label');
             expect(value).not.toHaveAttribute('aria-hidden');
             expect(value).not.toHaveAttribute('role');
             expect(value).not.toHaveAttribute('aria-live');
         }
+        expect(container.querySelector('p')).not.toHaveStyle({ fontWeight: tokens.fontWeightBold });
+        expect(container.querySelector('p')?.querySelectorAll('span')).toHaveLength(3);
+    });
+
+    it('preserves escaped delimiters, empty and unmatched markup and long highlighted values', () => {
+        const longValue = 'metric'.repeat(100);
+        const { container } = render(
+            <p>
+                <AdvisoryText text={'Plain \\`literal\\` and ``; `' + longValue + '`; `unfinished'} />
+            </p>,
+        );
+        expect(container.querySelector('p')?.textContent).toBe(
+            'Plain `literal` and ``; ' + longValue + '; `unfinished',
+        );
+        expect(container.querySelectorAll('span')).toHaveLength(1);
+        const value = screen.getByText(longValue);
+        expect(value).toHaveStyle({
+            fontWeight: tokens.fontWeightBold,
+            overflowWrap: 'anywhere',
+        });
+        const rules = Array.from(document.styleSheets).flatMap((sheet) => Array.from(sheet.cssRules));
+        const appliedStyles = rules
+            .filter((rule): rule is CSSStyleRule => rule.type === CSSRule.STYLE_RULE)
+            .filter((rule) => value.matches(rule.selectorText))
+            .map((rule) => rule.style.cssText)
+            .join('\n');
+        expect(appliedStyles).toContain(`background-color: ${tokens.colorNeutralBackground3};`);
+        expect(appliedStyles).toContain(`color: ${tokens.colorNeutralForeground1};`);
+        expect(appliedStyles).toContain(`border-radius: ${tokens.borderRadiusSmall};`);
+        expect(appliedStyles).toContain(`padding: 0 ${tokens.spacingHorizontalXXS};`);
+        const css = rules.map((rule) => rule.cssText).join('\n');
+        expect(css).toMatch(/@media \(forced-colors: active\)[\s\S]*outline: 1px solid CanvasText/);
     });
 
     it('renders HTML and other Markdown literally, including inside highlights', () => {

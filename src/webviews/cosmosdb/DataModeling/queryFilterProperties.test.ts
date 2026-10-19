@@ -22,6 +22,33 @@ describe('query property references', () => {
         ['SELECT * FROM c WHERE c["customer"].customerId = @customerId', ['customer/customerId']],
         ['SELECT customer.customerId FROM c', ['customer/customerId']],
         ['SELECT doc.customer.customerId FROM Orders AS doc', ['customer/customerId']],
+        ['SELECT * FROM c JOIN i IN c.items WHERE i.productId = @p', ['items/productId']],
+        ['SELECT i.productId, c.productId FROM c JOIN i IN c.items', ['items/productId', 'productId']],
+        ['SELECT i["productId"] FROM c JOIN i IN c["items"]', ['items/productId']],
+        ['SELECT i.productId FROM Orders AS doc JOIN i IN doc.orders.items', ['orders/items/productId']],
+        ['SELECT i.productId FROM i IN c.items', ['items/productId']],
+        ['SELECT i.productId FROM c JOIN i IN c.orders[0].items', ['orders/items/productId']],
+        ['SELECT p.productId FROM c JOIN i IN c.items JOIN p IN i.products', ['items/products/productId']],
+        [
+            'SELECT i.productId FROM c JOIN i IN c.items WHERE EXISTS (SELECT VALUE p.productId FROM p IN i.products)',
+            ['items/productId', 'items/products/productId'],
+        ],
+        [
+            'SELECT i.productId FROM c JOIN i IN c.items WHERE EXISTS (SELECT VALUE i.productId FROM i IN c.otherItems) ORDER BY i.createdAt',
+            ['items/productId', 'otherItems/productId', 'items/createdAt'],
+        ],
+        [
+            'SELECT i.productId FROM c JOIN i IN c.items WHERE EXISTS (SELECT VALUE i.productId FROM i)',
+            ['items/productId', 'productId'],
+        ],
+        [
+            'SELECT c.productId FROM c WHERE EXISTS (SELECT VALUE c.productId FROM c IN c.items)',
+            ['productId', 'items/productId'],
+        ],
+        [
+            'SELECT c.id FROM c WHERE EXISTS (SELECT VALUE i.productId FROM i IN c.items) AND EXISTS (SELECT VALUE i.productId FROM i IN c.otherItems)',
+            ['id', 'items/productId', 'otherItems/productId'],
+        ],
         ['SELECT VALUE doc FROM Orders AS doc', []],
         ['SELECT c.customer.c FROM c', ['customer/c']],
         [

@@ -55,6 +55,31 @@ function nestedModel(): DataModel {
 }
 
 describe('nested query property references', () => {
+    it.each([{ savedFilters: [] }, { savedFilters: ['items/productId'] }])(
+        'resolves iterator references with saved filters $savedFilters without selecting a same-named root property or warning on the nested one',
+        ({ savedFilters }) => {
+            const model = nestedModel();
+            const container = model.containers[0];
+            container.properties = ['productId', 'items/productId'].map((name) => ({
+                ...container.properties[0],
+                id: name,
+                name,
+            }));
+            container.reads[0].filters = savedFilters;
+            const onChange = vi.fn<(model: DataModel) => void>();
+            render(<Editor initialModel={model} onChange={onChange} />);
+            const sql = 'SELECT * FROM c JOIN i IN c.items WHERE i.productId = @p';
+            fireEvent.change(screen.getByRole('textbox', { name: 'Query for read 1' }), { target: { value: sql } });
+            const filters = screen.getByRole('combobox', { name: 'Filters on for read 1' });
+            expect(filters).toHaveTextContent(/^items\/productId$/);
+            expect(filters).toHaveAccessibleDescription(filtersHint);
+            expect(screen.queryByText(/Selected properties not referenced/)).not.toBeInTheDocument();
+            const edited = onChange.mock.lastCall![0];
+            expect(edited.containers[0].reads[0].filters).toEqual(['items/productId']);
+            expect(restore(edited)).toEqual(edited);
+        },
+    );
+
     const references = [
         'c.customer.customerId',
         'c["customer"]["customerId"]',

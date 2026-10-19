@@ -49,10 +49,11 @@ export interface DerivedAdvisory {
     rule: DerivedAdvisoryRule;
     severity: DerivedAdvisorySeverity;
     title: string;
-    /** Why this fired; ≤ 500 chars. */
+    /** Why this fired; ≤ 500 chars. Inline backticks mark values with units; literal data is escaped. */
     rationale: string;
+    /** Human-readable action using the same inline-backtick convention as rationale. */
     suggestedAction: string;
-    /** Human-readable reference to the configured threshold that fired the rule. */
+    /** Human-readable reference to the configured threshold; supports inline-backtick highlights. */
     thresholdReference: string;
     /** `databaseId/containerId` this advisory concerns, when container-scoped. */
     scope?: string;

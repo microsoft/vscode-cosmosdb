@@ -54,6 +54,7 @@ export interface InventoryThroughputOffer {
 }
 
 export interface SqlInventoryDetails {
+    databases: string[];
     rows: InventoryContainerRow[];
     offers: InventoryThroughputOffer[];
 }
@@ -212,7 +213,11 @@ export async function getSqlInventoryDetails(
         }
     }
 
-    return { rows, offers };
+    return {
+        databases: databases.map((database) => database.resource?.id ?? database.name ?? '').filter(Boolean),
+        rows,
+        offers,
+    };
 }
 
 export async function getSqlInventory(
@@ -232,6 +237,7 @@ export interface InventoryResult {
     /** When {@link available} is false, why the section could not load. See {@link UnavailableReason}. */
     reason?: UnavailableReason;
     rows: InventoryContainerRow[];
+    databases: string[];
 }
 
 /**
@@ -247,9 +253,9 @@ export async function getInventoryResult(
     isServerless: boolean,
 ): Promise<InventoryResult> {
     try {
-        const rows = await getSqlInventory(client, resourceGroup, accountName, isServerless);
-        return { available: true, rows };
+        const { rows, databases } = await getSqlInventoryDetails(client, resourceGroup, accountName, isServerless);
+        return { available: true, rows, databases };
     } catch (error) {
-        return { available: false, reason: classifyUnavailable(error), rows: [] };
+        return { available: false, reason: classifyUnavailable(error), rows: [], databases: [] };
     }
 }

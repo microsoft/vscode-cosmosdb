@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
+import { escapeAdvisoryText } from '../../../advisoryText';
 import { Detector, type DetectorContext } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
@@ -60,20 +61,20 @@ function evaluateSharedThroughputStarvation(
         title: l10n.t('Shared-throughput starvation in {database}', { database: input.databaseId }),
         rationale: clampRationale(
             l10n.t(
-                'Shared-throughput database {database} has {ru} RU/s across {count} collections. {mono} consumes {monoShare}% of the pool.',
+                'Shared-throughput database {database} has `{ru} RU/s` across `{count} collections`. {mono} consumes `{monoShare}%` of the pool.',
                 {
-                    database: input.databaseId,
+                    database: escapeAdvisoryText(input.databaseId),
                     ru: Math.round(input.sharedRu),
                     count: active.length,
-                    mono: monopolizer.containerId,
+                    mono: escapeAdvisoryText(monopolizer.containerId),
                     monoShare: Math.round(monoShare),
                 },
             ) +
                 ' ' +
                 l10n.t(
-                    '{victim} throttles at {victimRate}% despite using only {victimShare}% of the pool. It is being starved.',
+                    '{victim} throttles at `{victimRate}%` despite using only `{victimShare}%` of the pool. It is being starved.',
                     {
-                        victim: victim.containerId,
+                        victim: escapeAdvisoryText(victim.containerId),
                         victimRate: Math.round(throttleRate(victim)),
                         victimShare: Math.round(share(victim)),
                     },
@@ -88,7 +89,7 @@ function evaluateSharedThroughputStarvation(
                 'The exact internal RU split per collection is not exposed; this is inferred from the 429 + consumption disparity.',
             ),
         thresholdReference: l10n.t(
-            'Threshold: pool 429 ≥ {pool}%, one collection ≥ {dominance}% of RU, a sibling throttling ≥ {victim}% at ≤ {share}% share',
+            'Threshold: pool 429 ≥ `{pool}%`, one collection ≥ `{dominance}%` of RU, a sibling throttling ≥ `{victim}%` at ≤ `{share}%` share',
             {
                 pool: thresholds.poolThrottlePct,
                 dominance: thresholds.dominancePct,

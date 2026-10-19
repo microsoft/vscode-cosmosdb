@@ -24,6 +24,15 @@ export const accountInventoryProcedures = {
         // non-mutating, so a cast back to the mutable ARM shape is safe.
         const account = metadata.databaseAccount as DatabaseAccountGetResults;
         const experience = tryGetExperience(account);
+        const backupPolicy = account.backupPolicy;
+        const periodicBackup =
+            backupPolicy?.type === 'Periodic' && 'periodicModeProperties' in backupPolicy
+                ? backupPolicy.periodicModeProperties
+                : undefined;
+        const continuousBackup =
+            backupPolicy?.type === 'Continuous' && 'continuousModeProperties' in backupPolicy
+                ? backupPolicy.continuousModeProperties
+                : undefined;
 
         return {
             accountName: metadata.accountName,
@@ -37,6 +46,10 @@ export const accountInventoryProcedures = {
             consistencyLevel: account.consistencyPolicy?.defaultConsistencyLevel,
             freeTierEnabled: account.enableFreeTier ?? false,
             backupPolicyType: account.backupPolicy?.type,
+            automaticFailoverEnabled: account.enableAutomaticFailover,
+            backupIntervalMinutes: periodicBackup?.backupIntervalInMinutes,
+            backupRetentionHours: periodicBackup?.backupRetentionIntervalInHours,
+            continuousBackupTier: continuousBackup?.tier,
             // `-1` means "no cap"; `undefined` means the property was absent on this api-version (preview-only field).
             totalThroughputLimit: account.capacity?.totalThroughputLimit,
             writeRegions: (account.writeLocations ?? []).map((l) => l.locationName ?? '').filter(Boolean),

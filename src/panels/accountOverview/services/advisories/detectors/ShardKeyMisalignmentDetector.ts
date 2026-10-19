@@ -71,10 +71,13 @@ function evaluateShardKeyMisalignment(
         scope: containerKey(input.databaseId, input.containerId),
         title: l10n.t('Partition key misaligned in {container}', { container: input.containerId }),
         rationale: clampRationale(
-            l10n.t("{pct}% of this container's query executions fan out across ~{partitions} physical partitions.", {
-                pct,
-                partitions: containerPartitions,
-            }) +
+            l10n.t(
+                "`{pct}%` of this container's query executions fan out across `~{partitions} physical partitions`.",
+                {
+                    pct,
+                    partitions: containerPartitions,
+                },
+            ) +
                 ' ' +
                 l10n.t(
                     'The partition key is structurally misaligned with the workload (the data model, not a single bad query).',
@@ -90,7 +93,7 @@ function evaluateShardKeyMisalignment(
             l10n.t(
                 'Per-query fixes cannot resolve a fundamentally mismatched key, and the cost grows as the container adds partitions.',
             ),
-        thresholdReference: l10n.t('Threshold: ≥ {pct}% of executions fan out across ≥ {partitions} partitions', {
+        thresholdReference: l10n.t('Threshold: ≥ `{pct}%` of executions fan out across ≥ `{partitions} partitions`', {
             pct: thresholds.structuralPct,
             partitions: thresholds.minPartitions,
         }),

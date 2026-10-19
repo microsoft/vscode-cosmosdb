@@ -3,12 +3,35 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Button, Caption1, Link, makeStyles, Switch, Text, Title2, tokens, Tooltip } from '@fluentui/react-components';
-import { ArrowClockwise16Regular } from '@fluentui/react-icons';
+import {
+    Accordion,
+    AccordionHeader,
+    AccordionItem,
+    AccordionPanel,
+    Badge,
+    type BadgeProps,
+    Button,
+    Dropdown,
+    makeStyles,
+    mergeClasses,
+    Option,
+    Spinner,
+    Text,
+    tokens,
+    typographyStyles,
+} from '@fluentui/react-components';
+import { ArrowClockwise16Regular, Braces16Regular, Money16Regular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { useRef, useState } from 'react';
-import { type HealthState, type ProvisioningState } from '../../api/types';
-import { Pill, type PillTone } from './DashboardChrome';
+import { useId, useMemo, useState } from 'react';
+import { type AccountActionInput, type HealthState, type ProvisioningState, type TimeRange } from '../../api/types';
+import { type ContainerRef, type MetricScope } from './metrics/descriptors';
+
+const cosmosIcon = new URL('../../../../resources/azurecosmosdb.png', import.meta.url).href;
+const timeRanges: { value: TimeRange; label: string }[] = [
+    { value: '1H', label: l10n.t('Last hour') },
+    { value: '24H', label: l10n.t('Last 24 hours') },
+    { value: '7D', label: l10n.t('Last 7 days') },
+];
 
 export type AccountSummary = {
     accountName: string;
@@ -22,6 +45,10 @@ export type AccountSummary = {
     consistencyLevel?: string;
     freeTierEnabled: boolean;
     backupPolicyType?: string;
+    backupIntervalMinutes?: number;
+    backupRetentionHours?: number;
+    continuousBackupTier?: string;
+    automaticFailoverEnabled?: boolean;
     totalThroughputLimit?: number;
     writeRegions: string[];
     readRegions: string[];
@@ -34,11 +61,12 @@ const useStyles = makeStyles({
     root: {
         display: 'flex',
         flexDirection: 'column',
-        gap: tokens.spacingVerticalM,
+        gap: tokens.spacingVerticalXL,
+        minWidth: 0,
     },
     topRow: {
         display: 'flex',
-        alignItems: 'flex-start',
+        alignItems: 'center',
         justifyContent: 'space-between',
         gap: tokens.spacingHorizontalM,
         flexWrap: 'wrap',
@@ -46,71 +74,121 @@ const useStyles = makeStyles({
     titleBlock: {
         display: 'flex',
         flexDirection: 'column',
-        gap: '2px',
+        gap: tokens.spacingVerticalXXS,
         minWidth: 0,
     },
-    title: {
-        margin: 0,
-    },
-    titleRow: {
+    identity: {
         display: 'flex',
         alignItems: 'center',
-        gap: tokens.spacingHorizontalS,
-        flexWrap: 'wrap',
+        gap: tokens.spacingHorizontalM,
+        minWidth: 0,
+    },
+    icon: {
+        width: '32px',
+        height: '32px',
+        flexShrink: 0,
+    },
+    title: {
+        ...typographyStyles.subtitle1,
+        margin: 0,
+        overflowWrap: 'anywhere',
     },
     subtitle: {
+        ...typographyStyles.caption1,
         margin: 0,
-        color: 'var(--vscode-descriptionForeground)',
+        color: tokens.colorNeutralForeground2,
     },
     controls: {
         display: 'flex',
         alignItems: 'center',
-        gap: tokens.spacingHorizontalM,
+        gap: tokens.spacingHorizontalS,
         flexWrap: 'wrap',
+        minWidth: 0,
+        maxWidth: '100%',
+    },
+    select: {
+        minWidth: 0,
+        maxWidth: '100%',
     },
     refreshText: {
-        color: 'var(--vscode-descriptionForeground)',
-        fontSize: tokens.fontSizeBase200,
-        whiteSpace: 'nowrap',
+        ...typographyStyles.caption1,
+        color: tokens.colorNeutralForeground2,
+        overflowWrap: 'anywhere',
     },
-    chips: {
+    status: {
+        ...typographyStyles.body1,
+        border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke1}`,
+        borderRadius: tokens.borderRadiusLarge,
+        padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
+        backgroundColor: tokens.colorNeutralBackground2,
+    },
+    statusItems: {
         display: 'flex',
-        gap: tokens.spacingHorizontalXS,
+        alignItems: 'center',
+        rowGap: tokens.spacingVerticalS,
+        columnGap: tokens.spacingHorizontalL,
         flexWrap: 'wrap',
+        flex: 1,
+        minWidth: 0,
+        overflowWrap: 'anywhere',
+        '& > * + *': {
+            borderLeft: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
+            paddingLeft: tokens.spacingHorizontalL,
+        },
+        '@media (max-width: 700px)': {
+            flexBasis: '100%',
+        },
     },
-    essentialsToggleRow: {
-        display: 'flex',
-        justifyContent: 'flex-end',
+    statusValue: {
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: tokens.spacingHorizontalSNudge,
+    },
+    statusDot: {
+        width: '6px',
+        height: '6px',
+        borderRadius: tokens.borderRadiusCircular,
+        backgroundColor: 'currentColor',
+    },
+    detailsToggle: {
+        marginLeft: 'auto',
+    },
+    detailBody: {
+        borderTop: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke1}`,
+        margin: `${tokens.spacingVerticalS} calc(-1 * ${tokens.spacingHorizontalM}) calc(-1 * ${tokens.spacingVerticalS})`,
+        padding: `${tokens.spacingVerticalL} ${tokens.spacingHorizontalM}`,
     },
     essentialsGrid: {
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))',
         columnGap: tokens.spacingHorizontalXL,
         rowGap: tokens.spacingVerticalM,
-        padding: tokens.spacingHorizontalM,
-        borderRadius: tokens.borderRadiusMedium,
-        border: '1px solid var(--vscode-widget-border, var(--vscode-panel-border))',
-        backgroundColor: 'var(--vscode-editorWidget-background, var(--vscode-editor-background))',
+    },
+    detailFooter: {
+        display: 'flex',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: tokens.spacingHorizontalS,
+        marginTop: tokens.spacingVerticalM,
+    },
+    additionalPropertiesPanel: {
+        margin: `${tokens.spacingVerticalM} 0 0`,
     },
     essentialItem: {
         display: 'flex',
         flexDirection: 'column',
-        gap: '2px',
+        gap: tokens.spacingVerticalXXS,
         minWidth: 0,
     },
     essentialLabel: {
-        textTransform: 'uppercase',
-        letterSpacing: '0.04em',
-        fontSize: tokens.fontSizeBase100,
-        color: 'var(--vscode-descriptionForeground)',
+        ...typographyStyles.caption1,
+        color: tokens.colorNeutralForeground2,
     },
     essentialValue: {
+        ...typographyStyles.body1,
         display: 'block',
         maxWidth: '100%',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap',
-        fontSize: tokens.fontSizeBase200,
+        overflowWrap: 'anywhere',
     },
     srOnly: {
         position: 'absolute',
@@ -126,14 +204,13 @@ const useStyles = makeStyles({
 });
 
 function formatRefreshTime(timestamp: number): string {
-    return new Date(timestamp).toLocaleTimeString(undefined, {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
+    return new Date(timestamp).toLocaleString(undefined, {
+        dateStyle: 'short',
+        timeStyle: 'medium',
     });
 }
 
-function healthFromProvisioning(state: ProvisioningState | undefined): { tone: PillTone; label: string } {
+function healthFromProvisioning(state: ProvisioningState | undefined): { tone: BadgeProps['color']; label: string } {
     switch (state) {
         case 'Succeeded':
             return { tone: 'success', label: l10n.t('Healthy') };
@@ -146,12 +223,12 @@ function healthFromProvisioning(state: ProvisioningState | undefined): { tone: P
             return { tone: 'danger', label: l10n.t('Critical') };
         case undefined:
         default:
-            return { tone: 'neutral', label: l10n.t('Unknown') };
+            return { tone: 'subtle', label: l10n.t('Unknown') };
     }
 }
 
-/** Maps a derived {@link HealthState} (provisioning + throttling) to a pill tone and localized label. */
-function healthFromState(state: HealthState): { tone: PillTone; label: string } {
+/** Maps a derived {@link HealthState} (provisioning + throttling) to a badge color and localized label. */
+function healthFromState(state: HealthState): { tone: BadgeProps['color']; label: string } {
     switch (state) {
         case 'Healthy':
             return { tone: 'success', label: l10n.t('Healthy') };
@@ -162,83 +239,113 @@ function healthFromState(state: HealthState): { tone: PillTone; label: string } 
     }
 }
 
-/**
- * A single label/value row in the expandable Essentials panel. The value is truncated with an
- * ellipsis when it exceeds the available width; the full text is then revealed in a tooltip on
- * hover/focus. When the value is not truncated the tooltip is suppressed so it never repeats text
- * the user can already read.
- */
 const EssentialField = ({ label, value }: { label: string; value: string }) => {
     const styles = useStyles();
-    const valueRef = useRef<HTMLSpanElement>(null);
-    const [tooltipVisible, setTooltipVisible] = useState(false);
-
-    const handleVisibleChange = (_ev: unknown, data: { visible: boolean }) => {
-        const el = valueRef.current;
-        const overflowing = !!el && el.scrollWidth > el.clientWidth;
-        setTooltipVisible(data.visible && overflowing);
-    };
 
     return (
         <div className={styles.essentialItem}>
             <Text className={styles.essentialLabel}>{label}</Text>
-            <Tooltip
-                content={value}
-                relationship="label"
-                visible={tooltipVisible}
-                onVisibleChange={handleVisibleChange}
-            >
-                <Text ref={valueRef} className={styles.essentialValue}>
-                    {value}
-                </Text>
-            </Tooltip>
+            <Text className={styles.essentialValue}>{value}</Text>
         </div>
     );
 };
 
 export const AccountHeader = ({
+    navigationRevision = 0,
     summary,
     accountHealth,
     lastRefreshedAt,
-    paused,
-    onTogglePause,
     onRefresh,
-    autoRefreshIntervalsSeconds,
+    loading = false,
+    refreshDisabled = false,
+    defaultEssentialsOpen = false,
+    timeRange,
+    onTimeRangeChange,
+    containers,
+    selectedContainer,
+    onSelectContainer,
+    databaseIds,
+    accountActionBusy,
+    onAccountAction,
 }: {
+    navigationRevision?: number;
     summary: AccountSummary;
     accountHealth?: HealthState;
-    lastRefreshedAt: number;
-    paused: boolean;
-    onTogglePause: (paused: boolean) => void;
+    lastRefreshedAt?: number;
     onRefresh: () => void;
-    /** Auto-refresh cadences (in seconds), surfaced in the pause toggle's tooltip. */
-    autoRefreshIntervalsSeconds: { metrics: number; inventory: number; alerts: number };
+    loading?: boolean;
+    refreshDisabled?: boolean;
+    defaultEssentialsOpen?: boolean;
+    timeRange: TimeRange;
+    onTimeRangeChange: (range: TimeRange) => void;
+    containers: ContainerRef[];
+    selectedContainer?: MetricScope;
+    onSelectContainer: (scope?: MetricScope) => void;
+    databaseIds?: string[];
+    accountActionBusy: boolean;
+    onAccountAction: (input: AccountActionInput) => void;
 }) => {
     const styles = useStyles();
-    const [essentialsOpen, setEssentialsOpen] = useState(false);
-    const lastRefreshedLabel = formatRefreshTime(lastRefreshedAt);
+    const id = useId();
+    const controlsDisabled = loading || refreshDisabled;
+    // Dropdown has no disabledFocusable prop. Keep the trigger focusable while its disabled state blocks interaction.
+    const filterButtonProps = { disabled: false, 'aria-disabled': controlsDisabled, tabIndex: 0 };
+    const loadingDescription = loading
+        ? l10n.t('Updating…')
+        : refreshDisabled
+          ? l10n.t('Account data is still loading.')
+          : undefined;
+    const [essentialsOpen, setEssentialsOpen] = useState(defaultEssentialsOpen);
+    const [additionalPropertiesOpen, setAdditionalPropertiesOpen] = useState(false);
     const health = accountHealth ? healthFromState(accountHealth) : healthFromProvisioning(summary.provisioningState);
+    const databases = useMemo(
+        () => [...new Set(databaseIds ?? containers.map((container) => container.databaseId))].sort(),
+        [containers, databaseIds],
+    );
+    const selectedDatabaseIndex = selectedContainer ? databases.indexOf(selectedContainer.databaseId) : -1;
+    const selectedScopeLabel = selectedContainer?.databaseId ?? l10n.t('All databases');
+    const timeRangeLabel = timeRanges.find((range) => range.value === timeRange)?.label;
+    const throughputLimit =
+        summary.totalThroughputLimit === undefined
+            ? l10n.t('Unknown')
+            : summary.totalThroughputLimit === -1
+              ? l10n.t('No total throughput limit')
+              : l10n.t('{ru} RU/s', { ru: summary.totalThroughputLimit.toLocaleString() });
+    const capacityMode = summary.isServerless ? l10n.t('Serverless') : l10n.t('Provisioned throughput');
+    const retention =
+        summary.backupRetentionHours === undefined
+            ? summary.continuousBackupTier
+            : summary.backupRetentionHours % 24 === 0
+              ? l10n.t('{days} days retention', { days: summary.backupRetentionHours / 24 })
+              : l10n.t('{hours} hours retention', { hours: summary.backupRetentionHours });
+    const backupPolicy = retention
+        ? `${summary.backupPolicyType ?? l10n.t('Unknown')} (${retention})`
+        : (summary.backupPolicyType ?? l10n.t('Unknown'));
 
     const essentials: { label: string; value: string }[] = [
         { label: l10n.t('Status'), value: health.label },
         { label: l10n.t('Resource group'), value: summary.resourceGroup },
         { label: l10n.t('Subscription'), value: summary.subscriptionName },
         { label: l10n.t('Subscription ID'), value: summary.subscriptionId },
-        { label: l10n.t('API'), value: summary.apiType },
         { label: l10n.t('URI'), value: summary.documentEndpoint },
-        { label: l10n.t('Consistency'), value: summary.consistencyLevel ?? l10n.t('Unknown') },
         {
             label: l10n.t('Capacity mode'),
-            value: summary.isServerless ? l10n.t('Serverless') : l10n.t('Provisioned throughput'),
+            value: capacityMode,
         },
         {
             label: l10n.t('Total throughput limit'),
-            value:
-                summary.totalThroughputLimit !== undefined
-                    ? `${summary.totalThroughputLimit} RU/s`
-                    : l10n.t('No total throughput limit'),
+            value: throughputLimit,
         },
-        { label: l10n.t('Backup policy'), value: summary.backupPolicyType ?? l10n.t('Unknown') },
+        {
+            label: l10n.t('Backup policy'),
+            value:
+                summary.backupPolicyType === 'Periodic' && summary.backupIntervalMinutes !== undefined
+                    ? l10n.t('{policy}; backup every {minutes} minutes', {
+                          policy: backupPolicy,
+                          minutes: summary.backupIntervalMinutes,
+                      })
+                    : backupPolicy,
+        },
         { label: l10n.t('Free tier'), value: summary.freeTierEnabled ? l10n.t('Enabled') : l10n.t('Opted out') },
         {
             label: l10n.t('Write locations'),
@@ -246,95 +353,229 @@ export const AccountHeader = ({
         },
         { label: l10n.t('Read locations'), value: summary.readRegions.length ? summary.readRegions.join(', ') : '—' },
     ];
+    const additionalProperties = [
+        { label: l10n.t('API type'), value: summary.apiType },
+        { label: l10n.t('Consistency'), value: summary.consistencyLevel ?? l10n.t('Unknown') },
+        {
+            label: l10n.t('Automatic failover'),
+            value:
+                summary.automaticFailoverEnabled === undefined
+                    ? l10n.t('Unknown')
+                    : summary.automaticFailoverEnabled
+                      ? l10n.t('Enabled')
+                      : l10n.t('Disabled'),
+        },
+    ];
 
-    const regionsLabel = l10n.t('{write} write / {read} read', {
-        write: summary.writeRegionCount,
-        read: summary.readRegionCount,
-    });
-
-    const autoRefreshTooltip = (
-        <>
-            <div>{l10n.t('Auto-refresh cadence while this tab is active:')}</div>
-            <div>
-                {l10n.t('• Charts & partitions: every {seconds}s', {
-                    seconds: autoRefreshIntervalsSeconds.metrics,
-                })}
-            </div>
-            <div>
-                {l10n.t('• Inventory metrics: every {seconds}s', {
-                    seconds: autoRefreshIntervalsSeconds.inventory,
-                })}
-            </div>
-            <div>
-                {l10n.t('• Alerts & recommendations: every {seconds}s', {
-                    seconds: autoRefreshIntervalsSeconds.alerts,
-                })}
-            </div>
-        </>
-    );
+    const regionsLabel =
+        [...new Set([...summary.writeRegions, ...summary.readRegions])].join(', ') || l10n.t('Unknown');
 
     return (
-        <div className={styles.root}>
+        <header className={styles.root}>
             <output className={styles.srOnly} aria-live="polite">
                 {l10n.t('Account health: {status}', { status: health.label })}
             </output>
             <div className={styles.topRow}>
-                <div className={styles.titleBlock}>
-                    <div className={styles.titleRow}>
-                        <Title2 as="h1" className={styles.title}>
-                            {l10n.t('Account Overview')}
-                        </Title2>
-                        <Pill tone={health.tone}>{health.label}</Pill>
+                <div className={styles.identity}>
+                    <img className={styles.icon} src={cosmosIcon} alt="" />
+                    <div className={styles.titleBlock}>
+                        <h1 className={styles.title}>{summary.accountName}</h1>
+                        <p className={styles.subtitle}>{l10n.t('Azure Cosmos DB account')}</p>
                     </div>
-                    <Caption1 as="p" block className={styles.subtitle}>
-                        {l10n.t('Capacity, throughput, and indexing posture for this Cosmos DB account.')}
-                    </Caption1>
                 </div>
                 <div className={styles.controls}>
-                    <Tooltip content={autoRefreshTooltip} relationship="description">
-                        <Switch
-                            checked={paused}
-                            onChange={(_, data) => onTogglePause(data.checked)}
-                            label={l10n.t('Pause auto-refresh')}
-                        />
-                    </Tooltip>
-                    <Button
-                        appearance="subtle"
+                    {lastRefreshedAt !== undefined && (
+                        <time dateTime={new Date(lastRefreshedAt).toISOString()} className={styles.refreshText}>
+                            {l10n.t('Charts generated at {time}', { time: formatRefreshTime(lastRefreshedAt) })}
+                        </time>
+                    )}
+                    <Dropdown
+                        key={`time-${navigationRevision}`}
+                        className={styles.select}
                         size="small"
-                        icon={<ArrowClockwise16Regular />}
-                        onClick={onRefresh}
-                        aria-label={l10n.t('Refresh')}
+                        inlinePopup
+                        disabled={controlsDisabled}
+                        button={filterButtonProps}
+                        aria-label={l10n.t('Metric time range: {range}', { range: timeRangeLabel ?? timeRange })}
+                        aria-description={loadingDescription}
+                        value={timeRangeLabel ?? timeRange}
+                        selectedOptions={[timeRange]}
+                        onOptionSelect={(_, data) => {
+                            if (controlsDisabled) {
+                                return;
+                            }
+                            const range = timeRanges.find((range) => range.value === data.optionValue);
+                            if (range) {
+                                onTimeRangeChange(range.value);
+                            }
+                        }}
+                    >
+                        {timeRanges.map((range) => (
+                            <Option key={range.value} value={range.value}>
+                                {range.label}
+                            </Option>
+                        ))}
+                    </Dropdown>
+                    <Dropdown
+                        key={`database-${navigationRevision}`}
+                        className={styles.select}
+                        size="small"
+                        inlinePopup
+                        disabled={controlsDisabled}
+                        button={filterButtonProps}
+                        aria-label={l10n.t('Database scope for metrics: {scope}', { scope: selectedScopeLabel })}
+                        aria-description={loadingDescription}
+                        value={selectedScopeLabel}
+                        selectedOptions={[String(selectedDatabaseIndex)]}
+                        onOptionSelect={(_, data) => {
+                            if (controlsDisabled) {
+                                return;
+                            }
+                            if (data.optionValue === '-1') {
+                                onSelectContainer(undefined);
+                            } else {
+                                const databaseId = databases.find((_, index) => String(index) === data.optionValue);
+                                if (databaseId !== undefined) {
+                                    onSelectContainer({ databaseId });
+                                }
+                            }
+                        }}
+                    >
+                        <Option value="-1">{l10n.t('All databases')}</Option>
+                        {databases.map((database, index) => (
+                            <Option key={database} value={String(index)}>
+                                {database}
+                            </Option>
+                        ))}
+                    </Dropdown>
+                    <Button
+                        appearance="secondary"
+                        size="small"
+                        icon={loading ? <Spinner size="tiny" aria-hidden /> : <ArrowClockwise16Regular aria-hidden />}
+                        disabledFocusable={controlsDisabled}
+                        aria-busy={loading}
+                        aria-description={loadingDescription}
+                        onClick={controlsDisabled ? undefined : onRefresh}
                     >
                         {l10n.t('Refresh')}
                     </Button>
-                    <Text className={styles.refreshText}>
-                        {l10n.t('Last refreshed at {time}', { time: lastRefreshedLabel })}
-                    </Text>
                 </div>
             </div>
+            <p className={styles.subtitle}>
+                {l10n.t(
+                    'Time and database scope apply to metric trends. Inventory is account-wide; alerts and advisories use their own time windows.',
+                )}
+            </p>
 
-            <div className={styles.chips}>
-                <Pill tone="info">{summary.accountName}</Pill>
-                <Pill>{l10n.t('API: {api}', { api: summary.apiType })}</Pill>
-                {summary.isServerless && <Pill>{l10n.t('Serverless')}</Pill>}
-                {summary.freeTierEnabled && <Pill>{l10n.t('Free tier')}</Pill>}
-                <Pill>{l10n.t('Consistency: {level}', { level: summary.consistencyLevel ?? l10n.t('Unknown') })}</Pill>
-                <Pill>{l10n.t('Regions: {regions}', { regions: regionsLabel })}</Pill>
-                <Pill>{l10n.t('Resource group: {group}', { group: summary.resourceGroup })}</Pill>
-            </div>
-
-            <div className={styles.essentialsToggleRow}>
-                <Link as="button" onClick={() => setEssentialsOpen((open) => !open)} aria-expanded={essentialsOpen}>
-                    {essentialsOpen ? l10n.t('Show less') : l10n.t('More details')}
-                </Link>
-            </div>
-            {essentialsOpen && (
-                <div className={styles.essentialsGrid}>
-                    {essentials.map((field) => (
-                        <EssentialField key={field.label} label={field.label} value={field.value} />
-                    ))}
-                </div>
-            )}
-        </div>
+            <Accordion
+                className={styles.status}
+                collapsible
+                openItems={essentialsOpen ? ['details'] : []}
+                onToggle={(_, data) => setEssentialsOpen(data.openItems.includes('details'))}
+            >
+                <AccordionItem value="details">
+                    <div className={styles.topRow}>
+                        <div className={styles.statusItems}>
+                            <div className={styles.statusValue}>
+                                <span>{l10n.t('Status:')}</span>
+                                <Badge
+                                    appearance="tint"
+                                    shape="circular"
+                                    color={health.tone}
+                                    icon={<span className={styles.statusDot} aria-hidden />}
+                                >
+                                    {health.label}
+                                </Badge>
+                            </div>
+                            <span>{l10n.t('Regions: {regions}', { regions: regionsLabel })}</span>
+                            <span>{l10n.t('Capacity mode: {mode}', { mode: capacityMode })}</span>
+                            <span>{l10n.t('Total throughput limit: {limit}', { limit: throughputLimit })}</span>
+                        </div>
+                        <AccordionHeader
+                            as="h2"
+                            inline
+                            size="small"
+                            className={styles.detailsToggle}
+                            expandIconPosition="end"
+                            button={{ id: `${id}-toggle`, 'aria-controls': `${id}-details` }}
+                        >
+                            {l10n.t('Account details')}
+                        </AccordionHeader>
+                    </div>
+                    <AccordionPanel
+                        className={styles.detailBody}
+                        // AccordionPanel only supports a div root.
+                        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
+                        role="region"
+                        id={`${id}-details`}
+                        aria-labelledby={`${id}-toggle`}
+                        collapseMotion={{
+                            children: (Component, props) => <Component {...props} unmountOnExit={false} />,
+                        }}
+                    >
+                        <div className={styles.essentialsGrid}>
+                            {essentials.map((field) => (
+                                <EssentialField key={field.label} label={field.label} value={field.value} />
+                            ))}
+                        </div>
+                        <Accordion
+                            collapsible
+                            openItems={additionalPropertiesOpen ? ['properties'] : []}
+                            onToggle={(_, data) => setAdditionalPropertiesOpen(data.openItems.includes('properties'))}
+                        >
+                            <AccordionItem value="properties">
+                                <div className={styles.detailFooter}>
+                                    <Button
+                                        appearance="secondary"
+                                        size="small"
+                                        icon={<Money16Regular aria-hidden />}
+                                        disabled={accountActionBusy}
+                                        onClick={() => onAccountAction({ action: 'openCosts' })}
+                                    >
+                                        {l10n.t('View Cost')}
+                                    </Button>
+                                    <Button
+                                        appearance="secondary"
+                                        size="small"
+                                        icon={<Braces16Regular aria-hidden />}
+                                        disabled={accountActionBusy}
+                                        onClick={() => onAccountAction({ action: 'openJson' })}
+                                    >
+                                        {l10n.t('View JSON')}
+                                    </Button>
+                                    <AccordionHeader
+                                        as="h3"
+                                        inline
+                                        size="small"
+                                        className={styles.detailsToggle}
+                                        button={{
+                                            id: `${id}-properties-toggle`,
+                                            'aria-controls': `${id}-properties`,
+                                        }}
+                                    >
+                                        {l10n.t('Additional account properties')}
+                                    </AccordionHeader>
+                                </div>
+                                <AccordionPanel
+                                    className={mergeClasses(styles.essentialsGrid, styles.additionalPropertiesPanel)}
+                                    // AccordionPanel only supports a div root.
+                                    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
+                                    role="region"
+                                    id={`${id}-properties`}
+                                    aria-labelledby={`${id}-properties-toggle`}
+                                    collapseMotion={{
+                                        children: (Component, props) => <Component {...props} unmountOnExit={false} />,
+                                    }}
+                                >
+                                    {additionalProperties.map((field) => (
+                                        <EssentialField key={field.label} label={field.label} value={field.value} />
+                                    ))}
+                                </AccordionPanel>
+                            </AccordionItem>
+                        </Accordion>
+                    </AccordionPanel>
+                </AccordionItem>
+            </Accordion>
+        </header>
     );
 };

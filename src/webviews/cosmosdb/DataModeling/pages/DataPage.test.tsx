@@ -132,6 +132,36 @@ describe('DataPage document size limits', () => {
         { label: 'Maximum document size', field: 'maxSizeKb' },
     ] as const;
 
+    it.each(fields)('rejects negative $label edits and accepts zero', ({ label, field }) => {
+        const container = createBlankContainer();
+        container.document.avgSizeKb = field === 'avgSizeKb' ? 1 : 0;
+        const model: DataModel = { containers: [container], activeContainerId: container.id };
+        const onChange = vi.fn<(next: DataModel) => void>();
+        const { rerender } = render(<DataPage model={model} onChange={onChange} />);
+        const input = screen.getByRole('spinbutton', { name: label });
+        expect(screen.getByText(label)).toBeVisible();
+        expect(input).toHaveAccessibleName(label);
+
+        for (const value of ['-1', '-0.01']) {
+            fireEvent.change(input, { target: { value } });
+            expect(onChange).not.toHaveBeenCalled();
+            expect(input).toHaveValue(container.document[field]);
+            expect(input).toHaveAttribute('aria-invalid', 'true');
+            expect(input).toHaveAccessibleDescription('Document size cannot be negative.');
+            expect(screen.getByRole('alert')).toHaveTextContent('Document size cannot be negative.');
+        }
+
+        fireEvent.change(input, { target: { value: '0' } });
+        expect(onChange).toHaveBeenCalledOnce();
+        const next = onChange.mock.lastCall![0];
+        expect(next.containers[0].document[field]).toBe(0);
+        rerender(<DataPage model={next} onChange={onChange} />);
+        expect(input).toHaveValue(0);
+        expect(input).not.toHaveAttribute('aria-invalid', 'true');
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        expect(input).toHaveAttribute('min', '0');
+    });
+
     it.each(fields)('rejects oversized $label edits and accepts the inclusive boundary', ({ label, field }) => {
         const container = createBlankContainer();
         container.document.avgSizeKb = 0;

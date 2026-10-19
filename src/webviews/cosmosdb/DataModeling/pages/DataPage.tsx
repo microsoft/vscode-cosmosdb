@@ -154,6 +154,7 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
     const [uploadInfo, setUploadInfo] = useState<string>();
     const [uploadError, setUploadError] = useState<string>();
     const [sizeErrors, setSizeErrors] = useState<Partial<Record<DocumentSizeField, string>>>({});
+    const negativeSizeMessage = l10n.t('Document size cannot be negative.');
     const sizeLimitMessage = l10n.t('Document size cannot exceed 2 MB (2048 KB).');
     const sizeOrderMessage = l10n.t('Average document size cannot exceed maximum document size.');
     const { confirm, confirmationError } = useNativeConfirmation();
@@ -288,11 +289,13 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
         const size = Number(value) || 0;
         const document = { ...active.document, [field]: size };
         const error =
-            size > MAX_DOCUMENT_SIZE_KB
-                ? sizeLimitMessage
-                : document.avgSizeKb > document.maxSizeKb
-                  ? sizeOrderMessage
-                  : undefined;
+            size < 0
+                ? negativeSizeMessage
+                : size > MAX_DOCUMENT_SIZE_KB
+                  ? sizeLimitMessage
+                  : document.avgSizeKb > document.maxSizeKb
+                    ? sizeOrderMessage
+                    : undefined;
         setSizeErrors((previous) => ({ ...previous, [field]: error }));
         if (!error) {
             patchDocument({ [field]: size });
@@ -495,6 +498,7 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
                             <Input
                                 className={styles.kvInput}
                                 type="number"
+                                min={0}
                                 max={MAX_DOCUMENT_SIZE_KB}
                                 step="any"
                                 aria-label={l10n.t('Average document size')}
@@ -513,6 +517,7 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
                             <Input
                                 className={styles.kvInput}
                                 type="number"
+                                min={0}
                                 max={MAX_DOCUMENT_SIZE_KB}
                                 step="any"
                                 aria-label={l10n.t('Maximum document size')}

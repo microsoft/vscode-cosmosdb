@@ -59,7 +59,6 @@ import {
 } from './cosmosDBShell/CosmosDBShellExtension';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { ext } from './extensionVariables';
-import { AccountOverviewTab } from './panels/AccountOverviewTab';
 import { MigrationAssistantTab } from './panels/MigrationAssistantTab';
 import { QueryEditorTab } from './panels/QueryEditorTab';
 import { FabricService } from './services/FabricService';
@@ -194,7 +193,6 @@ export async function activateInternal(
             ext.isAIFeaturesEnabled = available;
             void vscode.commands.executeCommand('setContext', AI_FEATURES_ENABLED_CONTEXT_KEY, available);
             QueryEditorTab.notifyAIFeaturesChanged(available);
-            AccountOverviewTab.notifyAIFeaturesChanged(available);
             void MigrationAssistantTab.notifyAIFeaturesChanged(available);
         };
 

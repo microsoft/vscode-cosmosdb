@@ -24,7 +24,6 @@ import { type CosmosDBRecordIdentifier } from '../../cosmosdb/types/queryResult'
 import { type ModelingTelemetry } from '../../dataModeling/ModelingTelemetry';
 import { type DataModelerAccount, type DataModelerProjectService } from '../../services/DataModelerProjectService';
 import { type TelemetryContext } from '../../Telemetry';
-import { type CosmosDBAccountResourceItem } from '../../tree/cosmosdb/CosmosDBAccountResourceItem';
 import { openSurvey, promptAfterActionEventually } from '../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../utils/surveyTypes';
 import { accountOverviewRouterDef } from './routers/accountOverviewRouter';
@@ -165,18 +164,8 @@ export type MigrationRouterContext = CosmosDBRouterContext & {
     dispatchCommand: MigrationCommandDispatcher;
 };
 
-export type AccountOverviewEvent = { type: 'aiFeaturesEnabledChanged'; isEnabled: boolean };
-
 export type AccountOverviewRouterContext = CosmosDBRouterContext & {
     metadata: AzureResourceMetadata;
-    aiFeaturesChanged: TypedEventSink<AccountOverviewEvent>;
-    /**
-     * The account tree node the overview was opened from, when available. Footer
-     * actions (create database / delete account) pass it to their commands so the
-     * flow targets this account; the commands fall back to their own picker when
-     * it is absent.
-     */
-    accountNode?: CosmosDBAccountResourceItem;
 };
 
 export type DataModelingRouterContext = CosmosDBRouterContext & {

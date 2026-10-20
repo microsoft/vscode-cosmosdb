@@ -27,8 +27,7 @@ import { buildSdkDeployment, buildTerraformDeployment } from './deploymentExport
 import { createDeploymentModel, missingContainers } from './deploymentTemplate';
 
 const deployingAccounts = new Set<string>();
-const unavailableReason = () =>
-    l10n.t('Reopen the Data Modeler from the account in Explorer or Account Overview to deploy this model.');
+const unavailableReason = () => l10n.t('Reopen the Data Modeler from the account in Explorer to deploy this model.');
 
 function requireControlPlane(account: DataModelerAccount): CosmosDBControlPlane {
     if (!account.getControlPlane) throw new Error(unavailableReason());

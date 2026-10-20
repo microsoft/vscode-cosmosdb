@@ -15,9 +15,8 @@ import { getAccountInfo } from '../tree/cosmosdb/AccountInfo';
 import { type CosmosDBAccountResourceItem } from '../tree/cosmosdb/CosmosDBAccountResourceItem';
 import { ensureAIFeaturesEnabled } from '../utils/copilotUtils';
 import { pickAppResource } from '../utils/pickItem/pickAppResource';
-import { AccountOverviewTab } from './AccountOverviewTab';
 import { DataModelingWizardTab } from './DataModelingWizardTab';
-import { type AccountOverviewRouterContext, type DataModelingRouterContext } from './trpc/appRouter';
+import { type DataModelingRouterContext } from './trpc/appRouter';
 
 vi.mock('@microsoft/vscode-azext-utils', () => ({
     callWithTelemetryAndErrorHandling: vi.fn().mockResolvedValue(undefined),
@@ -40,8 +39,6 @@ vi.mock('@microsoft/vscode-ext-webview/host', () => {
 vi.mock('./trpc/appRouter', () => ({
     dataModelingAppRouter: {},
     dataModelingCallerFactory: vi.fn(),
-    accountOverviewAppRouter: {},
-    accountOverviewCallerFactory: vi.fn(),
 }));
 vi.mock('../utils/copilotUtils', () => ({ ensureAIFeaturesEnabled: vi.fn() }));
 vi.mock('@microsoft/vscode-azureresources-api', () => ({
@@ -114,7 +111,6 @@ beforeEach(() => {
 });
 afterEach(() => {
     for (const tab of DataModelingWizardTab.openTabs) tab.dispose();
-    for (const tab of AccountOverviewTab.openTabs) tab.dispose();
     vi.restoreAllMocks();
 });
 
@@ -141,28 +137,6 @@ describe('data modeler account scope', () => {
         expect(vscode.window.createWebviewPanel).not.toHaveBeenCalled();
     });
 
-    it('notifies an open Account Overview when AI availability changes and closes its stream on disposal', async () => {
-        const tab = AccountOverviewTab.render({ accountId: 'account' } as AzureResourceMetadata);
-        const ctx = vi.mocked(attachTrpc).mock.calls.at(-1)?.[1] as AccountOverviewRouterContext;
-        const iterator = ctx.aiFeaturesChanged[Symbol.asyncIterator]();
-        const enabled = iterator.next();
-        AccountOverviewTab.notifyAIFeaturesChanged(true);
-        expect(await enabled).toEqual({
-            value: { type: 'aiFeaturesEnabledChanged', isEnabled: true },
-            done: false,
-        });
-        const disabled = iterator.next();
-        AccountOverviewTab.notifyAIFeaturesChanged(false);
-        expect(await disabled).toEqual({
-            value: { type: 'aiFeaturesEnabledChanged', isEnabled: false },
-            done: false,
-        });
-        const closed = iterator.next();
-        tab.dispose();
-        expect((await closed).done).toBe(true);
-        expect(AccountOverviewTab.openTabs.has(tab)).toBe(false);
-    });
-
     it('reuses only the same account tab and binds each account to its own persistence service', () => {
         const first = render(firstAccount);
         const firstProject = lastContext().project;
@@ -179,7 +153,7 @@ describe('data modeler account scope', () => {
         expect(attachTrpc).toHaveBeenCalledTimes(2);
     });
 
-    it('uses the Account Overview descriptor directly without prompting or fetching credentials', async () => {
+    it('uses an account descriptor directly without prompting or fetching credentials', async () => {
         const context = actionContext();
         await open(context, firstAccount);
         expect(pickAppResource).not.toHaveBeenCalled();

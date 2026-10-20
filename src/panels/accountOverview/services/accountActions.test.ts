@@ -48,6 +48,13 @@ vi.mock('./accountJson', () => ({ openAccountJson: vi.fn() }));
 const accountId = '/subscriptions/sub-one/resourceGroups/rg-one/providers/Microsoft.DocumentDB/databaseAccounts/acct';
 const tenantId = 'tenant-not-to-mask';
 const databaseId = "customer's database";
+const nonNoSqlAccounts: DatabaseAccountGetResults[] = [
+    { kind: 'MongoDB', capabilities: [] },
+    { kind: 'GlobalDocumentDB', capabilities: [{ name: 'EnableTable' }] },
+    { kind: 'GlobalDocumentDB', capabilities: [{ name: 'EnableGremlin' }] },
+    { kind: 'GlobalDocumentDB', capabilities: [{ name: 'EnableCassandra' }] },
+    { kind: undefined },
+];
 
 function metadata(databaseAccount: DatabaseAccountGetResults = {}): AzureResourceMetadata {
     return {
@@ -289,30 +296,38 @@ describe('runAccountAction', () => {
         },
     );
 
-    it.each([
-        { kind: 'MongoDB', capabilities: [] },
-        { kind: 'GlobalDocumentDB', capabilities: [{ name: 'EnableTable' }] },
-        { kind: 'GlobalDocumentDB', capabilities: [{ name: 'EnableGremlin' }] },
-        { kind: 'GlobalDocumentDB', capabilities: [{ name: 'EnableCassandra' }] },
-        { kind: undefined },
-    ])('rejects non-NoSQL metadata before resolving a tree node: %j', async (account) => {
-        for (const input of [
-            { action: 'createDatabase' },
-            { action: 'createContainer', databaseId },
-            { action: 'createContainer' },
-            { action: 'openDataModeler' },
-        ] satisfies AccountActionInput[]) {
-            await expect(runAccountAction(actionContext(), metadata(account), input)).rejects.toThrow(
-                'only supported for NoSQL',
-            );
-        }
-        expect(ext.cosmosDBBranchDataProvider.findNodeById).not.toHaveBeenCalled();
-        expect(cosmosDBCreateDatabase).not.toHaveBeenCalled();
-        expect(cosmosDBCreateContainer).not.toHaveBeenCalled();
-        expect(openDataModelingWizard).not.toHaveBeenCalled();
-    });
+    it.each(nonNoSqlAccounts)(
+        'rejects creation for non-NoSQL metadata before resolving a tree node: %j',
+        async (account) => {
+            for (const input of [
+                { action: 'createDatabase' },
+                { action: 'createContainer', databaseId },
+                { action: 'createContainer' },
+            ] satisfies AccountActionInput[]) {
+                await expect(runAccountAction(actionContext(), metadata(account), input)).rejects.toThrow(
+                    'only supported for NoSQL',
+                );
+            }
+            expect(ext.cosmosDBBranchDataProvider.findNodeById).not.toHaveBeenCalled();
+            expect(cosmosDBCreateDatabase).not.toHaveBeenCalled();
+            expect(cosmosDBCreateContainer).not.toHaveBeenCalled();
+        },
+    );
 
-    it('rejects a non-NoSQL resolved account even when ARM metadata says NoSQL', async () => {
+    it.each(nonNoSqlAccounts)(
+        'opens Data Modeler for a verified account with non-NoSQL metadata: %j',
+        async (account) => {
+            const node = accountNode();
+            vi.mocked(ext.cosmosDBBranchDataProvider.findNodeById).mockResolvedValue(node);
+            const context = actionContext();
+            await expect(runAccountAction(context, metadata(account), { action: 'openDataModeler' })).resolves.toEqual({
+                status: 'completed',
+            });
+            expect(openDataModelingWizard).toHaveBeenCalledExactlyOnceWith(context, node);
+        },
+    );
+
+    it('rejects creation but opens Data Modeler on a non-NoSQL resolved account', async () => {
         const account = accountNode();
         account.experience = TableExperience;
         vi.mocked(ext.cosmosDBBranchDataProvider.findNodeById).mockResolvedValue(account);
@@ -320,10 +335,11 @@ describe('runAccountAction', () => {
             'only supported for NoSQL',
         );
         expect(cosmosDBCreateDatabase).not.toHaveBeenCalled();
-        await expect(runAccountAction(actionContext(), metadata(), { action: 'openDataModeler' })).rejects.toThrow(
-            'Data Modeler is only supported for NoSQL accounts.',
-        );
-        expect(openDataModelingWizard).not.toHaveBeenCalled();
+        const context = actionContext();
+        await expect(runAccountAction(context, metadata(), { action: 'openDataModeler' })).resolves.toEqual({
+            status: 'completed',
+        });
+        expect(openDataModelingWizard).toHaveBeenCalledExactlyOnceWith(context, account);
     });
 
     it('allows Delete on a verified non-NoSQL account', async () => {

@@ -40,10 +40,16 @@ npm run vitest
 docker compose up -d   # start the vnext-preview emulator
 node scripts/import-seed.mjs --all --endpoint https://localhost:8081   # seed once
 
-NODE_TLS_REJECT_UNAUTHORIZED=0 \
 COSMOS_ENDPOINT=https://localhost:8081 \
 npx vitest run --reporter=verbose
 ```
+
+The integration client scopes its self-signed certificate exception to HTTPS endpoints on `localhost`, `127.0.0.1`, or
+`[::1]` using the well-known emulator key. Endpoint discovery is disabled for those connections so the client stays on the
+requested emulator. This does not change TLS verification for dependency installation, GitHub Actions, or other clients.
+
+For other hosts or custom keys, configure a trusted certificate (for example, with `NODE_EXTRA_CA_CERTS`) rather than
+disabling TLS verification globally. The client TLS configuration checks also run offline, without `COSMOS_ENDPOINT`.
 
 ### Seed options
 

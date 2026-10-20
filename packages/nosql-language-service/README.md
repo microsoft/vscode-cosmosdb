@@ -492,8 +492,11 @@ node scripts/import-seed.mjs --all --endpoint https://localhost:8081
 
 # Run all tests including integration
 cd packages/nosql-language-service
-NODE_TLS_REJECT_UNAUTHORIZED=0 COSMOS_ENDPOINT=https://localhost:8081 npx vitest run
+COSMOS_ENDPOINT=https://localhost:8081 npx vitest run
 ```
+
+The integration client accepts the self-signed certificate only for HTTPS loopback endpoints using the well-known emulator
+key. Other HTTPS connections retain normal certificate validation; do not disable TLS verification globally.
 
 See [docs/test-suite.md](docs/test-suite.md) for the full fixture breakdown.
 

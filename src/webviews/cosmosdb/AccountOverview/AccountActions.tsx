@@ -61,7 +61,6 @@ export function AccountActions({
     const containerDescription = databaseId
         ? l10n.t('Create a container in database {database}.', { database: databaseId })
         : l10n.t('Choose a database in this account, then create a container.');
-    const modelerUnavailable = l10n.t('Data Modeler is not implemented yet.');
 
     return (
         <section className={styles.root} aria-label={l10n.t('Account actions')}>
@@ -97,11 +96,14 @@ export function AccountActions({
                 </Button>
                 <div className={styles.modeler}>
                     <span>{l10n.t('Design containers, partition keys, and relationships visually.')}</span>
-                    <Tooltip content={modelerUnavailable} relationship="description">
-                        <Button appearance="secondary" size="small" disabledFocusable>
-                            {l10n.t('Try Data Modeler')}
-                        </Button>
-                    </Tooltip>
+                    <Button
+                        appearance="secondary"
+                        size="small"
+                        disabled={busy || !supported}
+                        onClick={() => onAction({ action: 'openDataModeler' })}
+                    >
+                        {l10n.t('Try Data Modeler')}
+                    </Button>
                 </div>
             </div>
             {failure && (

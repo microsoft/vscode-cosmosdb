@@ -505,7 +505,7 @@
   "Data model deployed to \"{database}\": {created} container(s) created, {existing} left unchanged.": "Data model deployed to \"{database}\": {created} container(s) created, {existing} left unchanged.",
   "Data model deployment failed: {error}": "Data model deployment failed: {error}",
   "Data Modeler": "Data Modeler",
-  "Data Modeler is not implemented yet.": "Data Modeler is not implemented yet.",
+  "Data Modeler is only supported for NoSQL accounts.": "Data Modeler is only supported for NoSQL accounts.",
   "Data Modeler: {name}": "Data Modeler: {name}",
   "Data modeling steps": "Data modeling steps",
   "Database": "Database",

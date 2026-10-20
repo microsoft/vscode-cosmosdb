@@ -18,6 +18,7 @@ export const accountActionInput = z.discriminatedUnion('action', [
     z.object({ action: z.literal('deleteAccount') }),
     z.object({ action: z.literal('openCosts') }),
     z.object({ action: z.literal('openJson') }),
+    z.object({ action: z.literal('openDataModeler') }),
 ]);
 
 export type AccountActionInput = z.infer<typeof accountActionInput>;

@@ -10,6 +10,7 @@ import * as vscode from 'vscode';
 import { API, DBAccountKind, tryGetExperience } from '../../../AzureDBExperiences';
 import { cosmosDBCreateContainer } from '../../../commands/createContainer/createContainer';
 import { cosmosDBCreateDatabase } from '../../../commands/createDatabase/createDatabase';
+import { openDataModelingWizard } from '../../../commands/dataModeling/openDataModelingWizard';
 import { cosmosDBDeleteDatabaseAccount } from '../../../commands/deleteDatabaseAccount/deleteDatabaseAccount';
 import { type AzureResourceMetadata } from '../../../cosmosdb/AzureResourceMetadata';
 import { maskConnectionTelemetry } from '../../../cosmosdb/maskConnectionTelemetry';
@@ -49,12 +50,17 @@ export async function runAccountAction(
             await openAccountJson(context, metadata);
         } else {
             const isCreate = input.action === 'createDatabase' || input.action === 'createContainer';
+            const requiresNoSql = isCreate || input.action === 'openDataModeler';
+            const unsupportedMessage = () =>
+                input.action === 'openDataModeler'
+                    ? l10n.t('Data Modeler is only supported for NoSQL accounts.')
+                    : l10n.t('Creating databases and containers is only supported for NoSQL accounts.');
             if (
-                isCreate &&
+                requiresNoSql &&
                 (metadata.databaseAccount.kind !== DBAccountKind.GlobalDocumentDB ||
                     tryGetExperience(metadata.databaseAccount as DatabaseAccountGetResults)?.api !== API.Core)
             ) {
-                throw new Error(l10n.t('Creating databases and containers is only supported for NoSQL accounts.'));
+                throw new Error(unsupportedMessage());
             }
 
             const account = await ext.cosmosDBBranchDataProvider.findNodeById(metadata.accountId);
@@ -65,13 +71,15 @@ export async function runAccountAction(
             ) {
                 throw new Error(l10n.t('Unable to resolve this account in the Azure Resources view.'));
             }
-            if (isCreate && account.experience.api !== API.Core) {
-                throw new Error(l10n.t('Creating databases and containers is only supported for NoSQL accounts.'));
+            if (requiresNoSql && account.experience.api !== API.Core) {
+                throw new Error(unsupportedMessage());
             }
 
             // Registered command wrappers swallow cancellation and may swallow failures. Invoke their handlers
             // with the RPC action context and a verified node so no handler can fall back to an unscoped picker.
-            if (input.action === 'createDatabase') {
+            if (input.action === 'openDataModeler') {
+                await openDataModelingWizard(context, account);
+            } else if (input.action === 'createDatabase') {
                 await cosmosDBCreateDatabase(context, account);
             } else if (input.action === 'createContainer') {
                 const children = await account.getChildren();

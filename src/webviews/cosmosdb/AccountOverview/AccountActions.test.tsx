@@ -60,6 +60,7 @@ describe('AccountActions', () => {
         ['Add database', { action: 'createDatabase' }],
         ['Add container', { action: 'createContainer', databaseId: 'selected-db' }],
         ['Delete account', { action: 'deleteAccount' }],
+        ['Try Data Modeler', { action: 'openDataModeler' }],
     ] as const)('dispatches %s by keyboard with the correct scope', async (label, input) => {
         const user = userEvent.setup();
         const { props } = renderActions({ databaseId: 'selected-db' });
@@ -68,19 +69,21 @@ describe('AccountActions', () => {
         expect(props.onAction).toHaveBeenCalledExactlyOnceWith(input);
     });
 
-    it('keeps Data Modeler focusable with an explanation, but never dispatches an action', async () => {
+    it('opens Data Modeler when clicked', async () => {
         const user = userEvent.setup();
         const { props } = renderActions();
         const modeler = screen.getByRole('button', { name: 'Try Data Modeler' });
         expect(screen.getByText('Design containers, partition keys, and relationships visually.')).toBeVisible();
-        expect(modeler).toHaveAttribute('aria-disabled', 'true');
-        expect(modeler).not.toBeDisabled();
-        screen.getByRole('button', { name: 'Delete account' }).focus();
-        await user.tab();
-        expect(modeler).toHaveFocus();
-        await waitFor(() => expect(modeler).toHaveAccessibleDescription('Data Modeler is not implemented yet.'));
-        expect(await screen.findByRole('tooltip')).toHaveTextContent('Data Modeler is not implemented yet.');
-        await user.keyboard('{Enter} ');
+        expect(modeler).toBeEnabled();
+        await user.click(modeler);
+        expect(props.onAction).toHaveBeenCalledExactlyOnceWith({ action: 'openDataModeler' });
+    });
+
+    it.each([{ busy: true }, { supported: false }])('blocks Data Modeler for %j', async (overrides) => {
+        const user = userEvent.setup();
+        const { props } = renderActions(overrides);
+        const modeler = screen.getByRole('button', { name: 'Try Data Modeler' });
+        expect(modeler).toBeDisabled();
         await user.click(modeler);
         expect(props.onAction).not.toHaveBeenCalled();
     });

@@ -10,6 +10,7 @@ import * as vscode from 'vscode';
 import { CoreExperience, TableExperience } from '../../../AzureDBExperiences';
 import { cosmosDBCreateContainer } from '../../../commands/createContainer/createContainer';
 import { cosmosDBCreateDatabase } from '../../../commands/createDatabase/createDatabase';
+import { openDataModelingWizard } from '../../../commands/dataModeling/openDataModelingWizard';
 import { cosmosDBDeleteDatabaseAccount } from '../../../commands/deleteDatabaseAccount/deleteDatabaseAccount';
 import { AuthenticationMethod } from '../../../cosmosdb/AuthenticationMethod';
 import { type AzureResourceMetadata } from '../../../cosmosdb/AzureResourceMetadata';
@@ -28,6 +29,7 @@ vi.mock('vscode', async (importOriginal) => ({
 }));
 vi.mock('../../../commands/createContainer/createContainer', () => ({ cosmosDBCreateContainer: vi.fn() }));
 vi.mock('../../../commands/createDatabase/createDatabase', () => ({ cosmosDBCreateDatabase: vi.fn() }));
+vi.mock('../../../commands/dataModeling/openDataModelingWizard', () => ({ openDataModelingWizard: vi.fn() }));
 vi.mock('../../../commands/deleteDatabaseAccount/deleteDatabaseAccount', () => ({
     cosmosDBDeleteDatabaseAccount: vi.fn(),
 }));
@@ -119,6 +121,7 @@ describe('runAccountAction', () => {
         [{ action: 'createDatabase' }, cosmosDBCreateDatabase],
         [{ action: 'createContainer', databaseId }, cosmosDBCreateContainer],
         [{ action: 'deleteAccount' }, cosmosDBDeleteDatabaseAccount],
+        [{ action: 'openDataModeler' }, openDataModelingWizard],
     ] as const)('dispatches %j to its existing handler with the verified node', async (input, handler) => {
         const database = databaseNode();
         const account = accountNode([database]);
@@ -131,7 +134,12 @@ describe('runAccountAction', () => {
             context,
             input.action === 'createContainer' ? database : account,
         );
-        for (const other of [cosmosDBCreateDatabase, cosmosDBCreateContainer, cosmosDBDeleteDatabaseAccount]) {
+        for (const other of [
+            cosmosDBCreateDatabase,
+            cosmosDBCreateContainer,
+            cosmosDBDeleteDatabaseAccount,
+            openDataModelingWizard,
+        ]) {
             expect(other).toHaveBeenCalledTimes(other === handler ? 1 : 0);
         }
     });
@@ -251,6 +259,10 @@ describe('runAccountAction', () => {
                 'Unable to resolve this account',
             );
             expect(cosmosDBDeleteDatabaseAccount).not.toHaveBeenCalled();
+            await expect(runAccountAction(actionContext(), metadata(), { action: 'openDataModeler' })).rejects.toThrow(
+                'Unable to resolve this account',
+            );
+            expect(openDataModelingWizard).not.toHaveBeenCalled();
         },
     );
 
@@ -288,6 +300,7 @@ describe('runAccountAction', () => {
             { action: 'createDatabase' },
             { action: 'createContainer', databaseId },
             { action: 'createContainer' },
+            { action: 'openDataModeler' },
         ] satisfies AccountActionInput[]) {
             await expect(runAccountAction(actionContext(), metadata(account), input)).rejects.toThrow(
                 'only supported for NoSQL',
@@ -296,6 +309,7 @@ describe('runAccountAction', () => {
         expect(ext.cosmosDBBranchDataProvider.findNodeById).not.toHaveBeenCalled();
         expect(cosmosDBCreateDatabase).not.toHaveBeenCalled();
         expect(cosmosDBCreateContainer).not.toHaveBeenCalled();
+        expect(openDataModelingWizard).not.toHaveBeenCalled();
     });
 
     it('rejects a non-NoSQL resolved account even when ARM metadata says NoSQL', async () => {
@@ -306,6 +320,10 @@ describe('runAccountAction', () => {
             'only supported for NoSQL',
         );
         expect(cosmosDBCreateDatabase).not.toHaveBeenCalled();
+        await expect(runAccountAction(actionContext(), metadata(), { action: 'openDataModeler' })).rejects.toThrow(
+            'Data Modeler is only supported for NoSQL accounts.',
+        );
+        expect(openDataModelingWizard).not.toHaveBeenCalled();
     });
 
     it('allows Delete on a verified non-NoSQL account', async () => {
@@ -338,6 +356,7 @@ describe('runAccountAction', () => {
         [{ action: 'createContainer', databaseId }, cosmosDBCreateContainer],
         [{ action: 'deleteAccount' }, cosmosDBDeleteDatabaseAccount],
         [{ action: 'openJson' }, openAccountJson],
+        [{ action: 'openDataModeler' }, openDataModelingWizard],
     ] as const)('distinguishes cancellation from ordinary failure for %j', async (input, handler) => {
         const context = actionContext();
         vi.mocked(handler).mockRejectedValueOnce(new UserCancelledError());
@@ -441,6 +460,7 @@ describe('account action boundaries', () => {
 
     it('rejects an unknown action but allows account-scoped creation without a database target', () => {
         expect(accountActionInput.safeParse({ action: 'executeCommand' }).success).toBe(false);
+        expect(accountActionInput.parse({ action: 'openDataModeler' })).toEqual({ action: 'openDataModeler' });
         expect(accountActionInput.parse({ action: 'createContainer' })).toEqual({ action: 'createContainer' });
         expect(accountActionInput.parse({ action: 'createContainer', databaseId })).toEqual({
             action: 'createContainer',

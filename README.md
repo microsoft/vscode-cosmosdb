@@ -97,7 +97,8 @@ For the metrics, detections, and ARM endpoints behind the dashboard, see [`docs/
 ## Data Modeler
 
 **Data Modeler (Preview)** helps you choose partition keys for Azure Cosmos DB for NoSQL using GitHub Copilot.
-Open it from an account in **Explorer** or run **Data Modeling Wizard** from the Command Palette. Requires available
+Open it with **Try Data Modeler** in **Account Overview**, from an account in **Explorer**, or run
+**Data Modeling Wizard** from the Command Palette. Requires available
 GitHub Copilot models and AI features enabled.
 
 1. Choose a workload template or define your own schemas, queries, and scale estimates.

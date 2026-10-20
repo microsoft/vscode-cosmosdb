@@ -677,7 +677,7 @@ describe('header update feedback', () => {
 });
 
 describe('Account Overview account actions', () => {
-    it('never dispatches or refreshes from the keyboard-accessible Data Modeler placeholder', async () => {
+    it('launches Data Modeler by keyboard without refreshing the overview', async () => {
         const user = userEvent.setup();
         render(<AccountOverview />, { wrapper: Wrapper });
         await screen.findByRole('tab', { name: 'Monitoring' });
@@ -686,20 +686,21 @@ describe('Account Overview account actions', () => {
         const modeler = screen.getByRole('button', { name: 'Try Data Modeler' });
         expect(modeler).toHaveTextContent('Try Data Modeler');
         expect(modeler).toHaveAccessibleName('Try Data Modeler');
-        expect(modeler).toHaveAttribute('aria-disabled', 'true');
+        expect(modeler).toBeEnabled();
+        expect(modeler).not.toHaveAttribute('aria-disabled', 'true');
         screen.getByRole('button', { name: 'Delete account' }).focus();
         await user.tab();
         expect(modeler).toHaveFocus();
-        await waitFor(() => expect(modeler).toHaveAccessibleDescription('Data Modeler is not implemented yet.'));
-        await user.keyboard('{Enter} ');
-        await user.click(modeler);
-        expect(queries.accountAction).not.toHaveBeenCalled();
+        await user.keyboard('{Enter}');
+        expect(queries.accountAction).toHaveBeenCalledExactlyOnceWith({ action: 'openDataModeler' });
+        await waitFor(() => expect(modeler).toBeEnabled());
         expect(dataQueryCounts()).toEqual(counts);
     });
 
     it.each([
         ['View Cost', 'openCosts'],
         ['View JSON', 'openJson'],
+        ['Try Data Modeler', 'openDataModeler'],
     ] as const)('routes %s without refreshing data or resetting metric filters', async (label, action) => {
         const user = userEvent.setup();
         render(<AccountOverview />, { wrapper: Wrapper });
@@ -887,6 +888,7 @@ describe('Account Overview account actions', () => {
         ['Delete account', 'deleteAccount'],
         ['View Cost', 'openCosts'],
         ['View JSON', 'openJson'],
+        ['Try Data Modeler', 'openDataModeler'],
     ] as const)('keeps the dashboard and data unchanged when %s is cancelled', async (label, action) => {
         const user = userEvent.setup();
         queries.accountAction.mockResolvedValue({ status: 'cancelled' } satisfies AccountActionResult);
@@ -906,7 +908,7 @@ describe('Account Overview account actions', () => {
         expect(screen.queryByText('This Cosmos DB account has been deleted.')).not.toBeInTheDocument();
     });
 
-    it.each(['Add database', 'Add container', 'Delete account', 'View Cost', 'View JSON'])(
+    it.each(['Add database', 'Add container', 'Delete account', 'View Cost', 'View JSON', 'Try Data Modeler'])(
         'announces a rejected %s mutation without refreshing or unmounting, and allows retry',
         async (label) => {
             const user = userEvent.setup();

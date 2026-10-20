@@ -50,17 +50,12 @@ export async function runAccountAction(
             await openAccountJson(context, metadata);
         } else {
             const isCreate = input.action === 'createDatabase' || input.action === 'createContainer';
-            const requiresNoSql = isCreate || input.action === 'openDataModeler';
-            const unsupportedMessage = () =>
-                input.action === 'openDataModeler'
-                    ? l10n.t('Data Modeler is only supported for NoSQL accounts.')
-                    : l10n.t('Creating databases and containers is only supported for NoSQL accounts.');
             if (
-                requiresNoSql &&
+                isCreate &&
                 (metadata.databaseAccount.kind !== DBAccountKind.GlobalDocumentDB ||
                     tryGetExperience(metadata.databaseAccount as DatabaseAccountGetResults)?.api !== API.Core)
             ) {
-                throw new Error(unsupportedMessage());
+                throw new Error(l10n.t('Creating databases and containers is only supported for NoSQL accounts.'));
             }
 
             const account = await ext.cosmosDBBranchDataProvider.findNodeById(metadata.accountId);
@@ -71,8 +66,8 @@ export async function runAccountAction(
             ) {
                 throw new Error(l10n.t('Unable to resolve this account in the Azure Resources view.'));
             }
-            if (requiresNoSql && account.experience.api !== API.Core) {
-                throw new Error(unsupportedMessage());
+            if (isCreate && account.experience.api !== API.Core) {
+                throw new Error(l10n.t('Creating databases and containers is only supported for NoSQL accounts.'));
             }
 
             // Registered command wrappers swallow cancellation and may swallow failures. Invoke their handlers

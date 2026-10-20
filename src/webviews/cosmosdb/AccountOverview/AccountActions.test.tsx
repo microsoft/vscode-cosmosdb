@@ -40,11 +40,28 @@ function Wrapper({ children }: PropsWithChildren) {
 }
 
 function renderActions(overrides: Partial<ActionProps> = {}) {
-    const props: ActionProps = { busy: false, supported: true, onAction: vi.fn(), ...overrides };
+    const props: ActionProps = {
+        busy: false,
+        supported: true,
+        isAIFeaturesEnabled: true,
+        onAction: vi.fn(),
+        ...overrides,
+    };
     return { props, ...render(<AccountActions {...props} />, { wrapper: Wrapper }) };
 }
 
 describe('AccountActions', () => {
+    it('hides the entire Data Modeler promotion when AI features are disabled', () => {
+        renderActions({ isAIFeaturesEnabled: false });
+        expect(screen.queryByRole('button', { name: 'Try Data Modeler' })).not.toBeInTheDocument();
+        expect(
+            screen.queryByText('Design containers, partition keys, and relationships visually.'),
+        ).not.toBeInTheDocument();
+        for (const label of ['Add database', 'Add container', 'Delete account']) {
+            expect(screen.getByRole('button', { name: label })).toBeEnabled();
+        }
+    });
+
     it('names every action with its rendered visible label', () => {
         renderActions();
         const actions = within(screen.getByRole('region', { name: 'Account actions' }));

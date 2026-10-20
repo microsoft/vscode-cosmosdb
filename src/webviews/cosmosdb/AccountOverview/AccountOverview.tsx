@@ -146,6 +146,18 @@ export const OverviewDashboard = ({
     const trpcClient = useTrpcClient<AccountOverviewAppRouter>();
     const rpcEvents = useRpcEvents();
     const { announce } = useAnnounce();
+    const [isAIFeaturesEnabled, setIsAIFeaturesEnabled] = useState(false);
+
+    useEffect(() => {
+        const subscription = trpcClient.accountOverview.aiFeaturesEnabled.subscribe(undefined, {
+            onData: setIsAIFeaturesEnabled,
+            onError: (error) => {
+                setIsAIFeaturesEnabled(false);
+                console.error('Unable to receive Account Overview AI feature availability.', error);
+            },
+        });
+        return () => subscription.unsubscribe();
+    }, [trpcClient]);
 
     useEffect(
         () =>
@@ -755,6 +767,7 @@ export const OverviewDashboard = ({
                                 onAccountAction={(input) => void runAccountAction(input)}
                             />
                             <AccountActions
+                                isAIFeaturesEnabled={isAIFeaturesEnabled}
                                 busy={accountActionBusy}
                                 supported={inventory.supported}
                                 databaseId={selectedContainer?.databaseId}

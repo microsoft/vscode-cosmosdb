@@ -47,12 +47,14 @@ export type AccountActionFailure = 'action' | 'refresh';
 export function AccountActions({
     busy,
     supported,
+    isAIFeaturesEnabled,
     databaseId,
     failure,
     onAction,
 }: {
     busy: boolean;
     supported: boolean;
+    isAIFeaturesEnabled: boolean;
     databaseId?: string;
     failure?: AccountActionFailure;
     onAction: (input: AccountActionInput) => void;
@@ -94,17 +96,19 @@ export function AccountActions({
                 >
                     {l10n.t('Delete account')}
                 </Button>
-                <div className={styles.modeler}>
-                    <span>{l10n.t('Design containers, partition keys, and relationships visually.')}</span>
-                    <Button
-                        appearance="secondary"
-                        size="small"
-                        disabled={busy || !supported}
-                        onClick={() => onAction({ action: 'openDataModeler' })}
-                    >
-                        {l10n.t('Try Data Modeler')}
-                    </Button>
-                </div>
+                {isAIFeaturesEnabled && (
+                    <div className={styles.modeler}>
+                        <span>{l10n.t('Design containers, partition keys, and relationships visually.')}</span>
+                        <Button
+                            appearance="secondary"
+                            size="small"
+                            disabled={busy || !supported}
+                            onClick={() => onAction({ action: 'openDataModeler' })}
+                        >
+                            {l10n.t('Try Data Modeler')}
+                        </Button>
+                    </div>
+                )}
             </div>
             {failure && (
                 <MessageBar key={failure} intent="error" className={styles.failure}>

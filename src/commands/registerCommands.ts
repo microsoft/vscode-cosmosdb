@@ -36,7 +36,10 @@ import { openMigrationAssistant } from './migration/openMigrationAssistant';
 import { removeMigration } from './migration/removeMigration';
 import { newConnection } from './newConnection/newConnection';
 import { newEmulatorConnection } from './newEmulatorConnection/newEmulatorConnection';
-import { openAccountOverview } from './openAccountOverview/openAccountOverview';
+import {
+    openAccountOverview,
+    registerAccountOverviewNavigationCommands,
+} from './openAccountOverview/openAccountOverview';
 import { cosmosDBOpenItem } from './openDocument/openDocument';
 import { openNoSqlQueryEditor } from './openNoSqlQueryEditor/openNoSqlQueryEditor';
 import { cosmosDBOpenStoredProcedure } from './openStoredProcedure/openStoredProcedure';
@@ -93,6 +96,7 @@ export function registerAccountCommands() {
     registerCommandWithTreeNodeUnwrapping('cosmosDB.copyConnectionString', copyConnectionString);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.openUnsupportedAccount', openUnsupportedAccount);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.openAccountOverview', openAccountOverview);
+    registerAccountOverviewNavigationCommands();
 }
 
 export function registerDatabaseCommands() {

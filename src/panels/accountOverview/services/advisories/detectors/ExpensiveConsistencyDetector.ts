@@ -6,6 +6,7 @@
 import * as l10n from '@vscode/l10n';
 import { Detector, type DetectorContext } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
+import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import { type AccountConfigInput, type DerivedAdvisory } from '../core/types';
 
 // ─── Account-scoped configuration advisories (ARM config only) ─────────────────────
@@ -31,7 +32,10 @@ function normalizeConsistency(level: string | undefined): string {
  */
 function evaluateExpensiveConsistency(config: AccountConfigInput): DerivedAdvisory | undefined {
     const level = normalizeConsistency(config.consistencyLevel);
-    if (!PREMIUM_CONSISTENCY_LEVELS.has(level) || config.regionCount < 2) {
+    if (
+        !PREMIUM_CONSISTENCY_LEVELS.has(level) ||
+        config.regionCount < DIAGNOSTIC_POLICY.expensiveConsistency.minRegions
+    ) {
         return undefined;
     }
     const isStrong = level === 'strong';
@@ -42,15 +46,22 @@ function evaluateExpensiveConsistency(config: AccountConfigInput): DerivedAdviso
         severity: isStrong ? 'Medium' : 'Low',
         title: l10n.t('Premium consistency across regions'),
         rationale: clampRationale(
-            l10n.t(
-                'This account uses {level} consistency across {regions} regions. Across multiple regions this level raises write latency and tightens availability (Strong makes writes wait on additional regions), and the default Session consistency is sufficient for most workloads.',
-                { level: displayLevel, regions: config.regionCount },
-            ),
+            l10n.t('This account uses {level} consistency across `{regions} regions`.', {
+                level: displayLevel,
+                regions: config.regionCount,
+            }) +
+                ' ' +
+                l10n.t('Across multiple regions this level raises write latency and tightens availability.') +
+                ' ' +
+                l10n.t(
+                    'Strong makes writes wait on additional regions. The default Session consistency is sufficient for most workloads.',
+                ),
         ),
-        suggestedAction: l10n.t(
-            "Confirm the application genuinely needs this consistency level; if not, relax it to Session (or Bounded Staleness) after validating the application's tolerance.",
-        ),
-        thresholdReference: l10n.t('Threshold: Strong or Bounded Staleness across ≥ 2 regions'),
+        suggestedAction:
+            l10n.t('Confirm the application genuinely needs this consistency level.') +
+            ' ' +
+            l10n.t("If not, relax it to Session (or Bounded Staleness) after validating the application's tolerance."),
+        thresholdReference: l10n.t('Threshold: Strong or Bounded Staleness across ≥ `2 regions`'),
     };
 }
 

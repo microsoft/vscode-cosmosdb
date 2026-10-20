@@ -4,14 +4,15 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
+import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
 import { Detector, type DetectorContext } from '../core/Detector';
-import { clampRationale } from '../core/helpers';
+import { clampRationale, hasMinimumKnownResourceAge } from '../core/helpers';
+import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import { type ContainerStorageInput, type DerivedAdvisory, type DerivedAdvisorySeverity } from '../core/types';
 import {
     balanceRatio,
     GIB,
-    latestBytes,
     PARTITION_STORAGE_LIMIT_BYTES,
     STORAGE_SKEW_HIGH_BYTES,
     STORAGE_SKEW_MEDIUM_BYTES,
@@ -29,11 +30,19 @@ import {
  * healthy: they simply split as they grow. Pure.
  */
 function evaluateStorageSkewRisk(input: ContainerStorageInput, balanceThreshold: number): DerivedAdvisory | undefined {
-    if (balanceThreshold <= 0) {
+    if (
+        balanceThreshold <= 0 ||
+        !hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.storageSkew.minResourceAgeDays)
+    ) {
         return undefined;
     }
     const sizes = input.partitions
-        .map((partition) => latestBytes(partition))
+        .map((partition) => {
+            const values = partition.samples
+                .map((sample) => sample.bytes)
+                .filter((bytes): bytes is number => Number.isFinite(bytes));
+            return values.length > 0 ? Math.max(...values) : undefined;
+        })
         .filter((bytes): bytes is number => bytes !== undefined);
     const ratio = balanceRatio(sizes);
     if (ratio === undefined || ratio >= balanceThreshold) {
@@ -57,15 +66,29 @@ function evaluateStorageSkewRisk(input: ContainerStorageInput, balanceThreshold:
         severity,
         title: l10n.t('Uneven physical-partition storage in {container}', { container: input.containerId }),
         rationale: clampRationale(
-            l10n.t(
-                'Physical-partition storage in "{container}" is uneven: the coolest partition holds only {balance}× the busiest (below the {threshold}× balance floor), and the busiest is at {busiest} GiB, about {ceiling}% of the 50 GiB split ceiling. A single oversized partition hits the split wall long before its balanced siblings, capping the container.',
-                { container: input.containerId, balance, threshold, busiest: busiestGiB, ceiling: ceilingPercent },
-            ),
+            l10n.t('Physical-partition storage in "{container}" is uneven.', {
+                container: escapeAdvisoryText(input.containerId),
+            }) +
+                ' ' +
+                l10n.t(
+                    'The coolest partition holds only `{balance}×` the busiest (below the `{threshold}×` balance floor).',
+                    { balance, threshold },
+                ) +
+                ' ' +
+                l10n.t('The busiest is at `{busiest} GiB`, about `{ceiling}%` of the `50 GiB` split ceiling.', {
+                    busiest: busiestGiB,
+                    ceiling: ceilingPercent,
+                }) +
+                ' ' +
+                l10n.t(
+                    'A single oversized partition hits the split wall long before its balanced siblings, capping the container.',
+                ),
         ),
-        suggestedAction: l10n.t(
-            'Review the partition key for a higher-cardinality choice so data spreads evenly, and split or archive the oversized logical keys concentrating storage on one partition.',
-        ),
-        thresholdReference: l10n.t('Threshold: min/max partition size < {threshold}× with busiest ≥ 1 GiB', {
+        suggestedAction:
+            l10n.t('Review the partition key for a higher-cardinality choice so data spreads evenly.') +
+            ' ' +
+            l10n.t('Split or archive the oversized logical keys concentrating storage on one partition.'),
+        thresholdReference: l10n.t('Threshold: min/max partition size < `{threshold}×` with busiest ≥ `1 GiB`', {
             threshold,
         }),
         scope,
@@ -77,7 +100,7 @@ export class StorageSkewRiskDetector extends Detector {
     evaluate = evaluateStorageSkewRisk;
     run(ctx: DetectorContext): DerivedAdvisory[] {
         const out: DerivedAdvisory[] = [];
-        for (const storage of ctx.inputs.storage) {
+        for (const storage of ctx.inputs.storageSkew ?? ctx.inputs.storage) {
             const a = this.evaluate(storage, ctx.thresholds.storageSkewBalanceRatio);
             if (a) {
                 out.push(a);

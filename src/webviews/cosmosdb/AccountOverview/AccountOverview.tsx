@@ -3,12 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { makeStyles, Spinner, tokens } from '@fluentui/react-components';
-import { useTrpcClient } from '@microsoft/vscode-ext-webview/react';
+import { Button, makeStyles, Spinner, tokens, typographyStyles, useAnnounce } from '@fluentui/react-components';
+import { useRpcEvents, useTrpcClient } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+    type AccountActionInput,
     type AccountOverviewAppRouter,
+    type AccountOverviewTarget,
     type AlertsResult,
     type AlertTimeRange,
     type DerivedAdvisoriesResult,
@@ -23,6 +25,7 @@ import {
     type TimeRange,
     type UnavailableReason,
 } from '../../api/types';
+import { AccountActions, type AccountActionFailure } from './AccountActions';
 import { AccountHeader, type AccountSummary } from './AccountHeader';
 import { ActiveAlerts } from './ActiveAlerts';
 import { DashboardActionsProvider, DashboardCard, SectionHeader } from './DashboardChrome';
@@ -32,16 +35,25 @@ import { type ContainerRef, type MetricScope, METRIC_ORDER } from './metrics/des
 import { MetricsSection } from './metrics/MetricsSection';
 import { PartitionHealth } from './PartitionHealth';
 import { Recommendations } from './Recommendations';
-
-const AUTO_REFRESH_INTERVAL_MS = 60_000;
-/** Lightweight inventory metrics poll; staggered from the 60 s trends poll. */
-const INVENTORY_REFRESH_INTERVAL_MS = 30_000;
-/** Partition telemetry poll cadence (metric heatmaps refresh every 60 s). */
-const PARTITION_REFRESH_INTERVAL_MS = 60_000;
-/** Alerts + Advisor recommendations poll cadence. */
-const RAIL_REFRESH_INTERVAL_MS = 60_000;
+import { type OverviewTab, TabbedOverviewLayout } from './TabbedOverviewLayout';
+import { useOverviewNavigation } from './useOverviewNavigation';
 
 const HEALTH_ORDER: Record<HealthState, number> = { Healthy: 0, 'Needs Attention': 1, Critical: 2 };
+
+const NATIVE_ERROR_ACTIONS = new Set([
+    'accountOverview.openUrl',
+    'accountOverview.showOutput',
+    'accountOverview.revealInTree',
+    'accountOverview.openQueryEditor',
+]);
+
+async function runAuxiliaryAction(action: () => Promise<unknown>): Promise<void> {
+    try {
+        await action();
+    } catch {
+        // The RPC event subscriber owns native error notification; do not display or rethrow it again here.
+    }
+}
 
 /**
  * Final account-health formula: escalates the base health with
@@ -64,54 +76,28 @@ function escalateHealth(
 
 const useStyles = makeStyles({
     root: {
+        ...typographyStyles.body1,
         display: 'flex',
         flexDirection: 'column',
         gap: tokens.spacingVerticalL,
         padding: tokens.spacingHorizontalXXL,
-        color: 'var(--vscode-editor-foreground)',
-        backgroundColor: 'var(--vscode-editor-background)',
+        color: tokens.colorNeutralForeground1,
+        backgroundColor: tokens.colorNeutralBackground1,
         minHeight: '100vh',
         boxSizing: 'border-box',
-    },
-    layout: {
-        display: 'flex',
-        // Stretch the two columns to a common height so the rail can match the taller main column (the rail's own
-        // content never drives the row height because its growable card can shrink — see `advisoriesCard`).
-        alignItems: 'stretch',
-        gap: tokens.spacingHorizontalL,
-        flexWrap: 'wrap',
-    },
-    mainColumn: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: tokens.spacingVerticalL,
-        flex: '1 1 640px',
-        minWidth: 0,
-    },
-    rail: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: tokens.spacingVerticalL,
-        flex: '1 1 300px',
-        minWidth: 0,
-        // Allow the flex children to shrink below their content size so the growable advisories card can bound
-        // itself and scroll internally instead of stretching the whole panel taller.
-        minHeight: 0,
-        maxWidth: '420px',
-    },
-    // The Derived Advisories card fills whatever vertical space is left in the rail after the fixed cards, matching
-    // the main column's height. `flex: 1 1 0` + `minHeight: 0` lets it grow to fill yet shrink to nothing, so its
-    // (potentially long) content never drives the row taller; the list scrolls inside it instead.
-    advisoriesCard: {
-        flex: '1 1 0',
-        minHeight: 0,
-        overflow: 'hidden',
     },
     loading: {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         minHeight: '100vh',
+    },
+    creationOverlay: {
+        position: 'fixed',
+        inset: 0,
+        zIndex: 1000001,
+        backgroundColor: tokens.colorBackgroundOverlay,
+        cursor: 'wait',
     },
 });
 
@@ -120,15 +106,69 @@ type Inventory = {
     available: boolean;
     reason?: UnavailableReason;
     rows: InventoryContainerRow[];
+    databases?: string[];
 };
 
 export const AccountOverview = () => {
+    const { navigation, failed, retry } = useOverviewNavigation();
+    const [accountDeleted, setAccountDeleted] = useState(false);
+    return (
+        <>
+            {failed && (
+                <div role="alert">
+                    <p>{l10n.t('Account Overview navigation could not be loaded.')}</p>
+                    <Button onClick={retry}>{l10n.t('Retry')}</Button>
+                </div>
+            )}
+            {!navigation && !failed && <Spinner label={l10n.t('Loading Account Overview…')} />}
+            {accountDeleted && <output>{l10n.t('This Cosmos DB account has been deleted.')}</output>}
+            {navigation && !accountDeleted && (
+                <OverviewDashboard
+                    requestedTarget={navigation.target}
+                    navigationRevision={navigation.revision}
+                    onAccountDeleted={() => setAccountDeleted(true)}
+                />
+            )}
+        </>
+    );
+};
+
+export const OverviewDashboard = ({
+    requestedTarget = 'overview',
+    navigationRevision = 0,
+    onAccountDeleted,
+}: {
+    requestedTarget?: AccountOverviewTarget;
+    navigationRevision?: number;
+    onAccountDeleted: () => void;
+}) => {
     const styles = useStyles();
     const trpcClient = useTrpcClient<AccountOverviewAppRouter>();
+    const rpcEvents = useRpcEvents();
+    const { announce } = useAnnounce();
 
+    useEffect(
+        () =>
+            rpcEvents.onError((error, info) => {
+                if (info.type === 'mutation' && NATIVE_ERROR_ACTIONS.has(info.path)) {
+                    void trpcClient.accountOverview.showErrorMessage
+                        .mutate({ message: error.message })
+                        .catch((error: unknown) => {
+                            // Do not send notification failures back through the notification route.
+                            console.error('Unable to display Account Overview action error.', error);
+                        });
+                }
+            }),
+        [rpcEvents, trpcClient],
+    );
+
+    const requestedTab = requestedTarget === 'advisories' ? 'advisories' : 'monitoring';
+    const [selectedTab, setSelectedTab] = useState<OverviewTab>(requestedTab);
+    useEffect(() => setSelectedTab(requestedTab), [requestedTab, requestedTarget, navigationRevision]);
     const [summary, setSummary] = useState<AccountSummary | undefined>(undefined);
     const [inventory, setInventory] = useState<Inventory | undefined>(undefined);
     const [inventoryMetrics, setInventoryMetrics] = useState<InventoryMetricsResult | undefined>(undefined);
+    const [inventoryMetricsLoading, setInventoryMetricsLoading] = useState(true);
     const [trends, setTrends] = useState<Partial<Record<MetricKey, MetricSeriesResult>>>({});
     const [trendsLoading, setTrendsLoading] = useState(true);
     const [timeRange, setTimeRange] = useState<TimeRange>('24H');
@@ -145,10 +185,64 @@ export const AccountOverview = () => {
     const [derivedAdvisories, setDerivedAdvisories] = useState<DerivedAdvisoriesResult | undefined>(undefined);
     const [derivedLoading, setDerivedLoading] = useState(true);
     const [dismissedAdvisoryIds, setDismissedAdvisoryIds] = useState<ReadonlySet<string>>(() => new Set());
-    const [paused, setPaused] = useState(false);
-    const [lastRefreshedAt, setLastRefreshedAt] = useState(() => Date.now());
+    const [lastRefreshedAt, setLastRefreshedAt] = useState<number>();
+    const [refreshing, setRefreshing] = useState(false);
+    const refreshInFlight = useRef(false);
+    const [userUpdatePending, setUserUpdatePending] = useState(false);
+    const [pendingAccountAction, setPendingAccountAction] = useState<AccountActionInput['action']>();
+    const accountActionBusy = pendingAccountAction !== undefined;
+    const creationBusy = pendingAccountAction === 'createDatabase' || pendingAccountAction === 'createContainer';
+    const [accountActionFailure, setAccountActionFailure] = useState<AccountActionFailure>();
+    const accountActionInFlight = useRef(false);
+    const creationTrigger = useRef<HTMLElement | undefined>(undefined);
+    const inventoryRequestSeq = useRef(0);
+    const inventoryMetricsRequestSeq = useRef(0);
     // Monotonic id of the latest in-flight trends request; only that request may commit its result.
     const trendsRequestSeq = useRef(0);
+    const partitionRequestSeq = useRef(0);
+    const alertsRequestSeq = useRef(0);
+    const headerLoading =
+        refreshing ||
+        trendsLoading ||
+        inventoryMetricsLoading ||
+        partitionLoading ||
+        alertsLoading ||
+        recommendationsLoading ||
+        derivedLoading;
+    const headerUpdating =
+        refreshing || (userUpdatePending && (trendsLoading || inventoryMetricsLoading || partitionLoading));
+
+    const beginHeaderUpdate = useCallback(() => {
+        if (!userUpdatePending) {
+            announce(l10n.t('Updating Account Overview…'), { polite: true });
+        }
+        setUserUpdatePending(true);
+        setAccountActionFailure((failure) => (failure === 'refresh' ? undefined : failure));
+    }, [announce, userUpdatePending]);
+
+    useEffect(() => {
+        if (userUpdatePending && !headerUpdating) {
+            setUserUpdatePending(false);
+            announce(l10n.t('Account Overview update finished.'), { polite: true });
+        }
+    }, [userUpdatePending, headerUpdating, announce]);
+
+    useEffect(() => {
+        if (accountActionBusy) {
+            announce(l10n.t('Account action in progress…'), { polite: true });
+        }
+    }, [accountActionBusy, announce]);
+
+    useEffect(() => {
+        if (!creationBusy && creationTrigger.current) {
+            const trigger = creationTrigger.current;
+            creationTrigger.current = undefined;
+            // Do not take focus back from another VS Code editor or the native wizard.
+            if (trigger.isConnected && document.hasFocus()) {
+                trigger.focus({ preventScroll: true });
+            }
+        }
+    }, [creationBusy]);
 
     const reportEvent = useCallback(
         (eventName: string, properties?: Record<string, string>, measurements?: Record<string, number>) => {
@@ -162,6 +256,60 @@ export const AccountOverview = () => {
             setSummary(result);
         });
     }, [trpcClient]);
+
+    const fetchInventory = useCallback(async () => {
+        const requestId = ++inventoryRequestSeq.current;
+        const result = await trpcClient.accountOverview.getInventory.query();
+        if (requestId === inventoryRequestSeq.current) {
+            setInventory(result);
+        }
+        return result;
+    }, [trpcClient]);
+
+    const reloadInventory = useCallback(async () => {
+        try {
+            const result = await fetchInventory();
+            if (!result.available) {
+                setAccountActionFailure('refresh');
+            } else {
+                setAccountActionFailure((failure) => (failure === 'refresh' ? undefined : failure));
+            }
+        } catch {
+            setAccountActionFailure('refresh');
+        }
+    }, [fetchInventory]);
+
+    const runAccountAction = useCallback(
+        async (input: AccountActionInput) => {
+            if (accountActionInFlight.current) {
+                return;
+            }
+            accountActionInFlight.current = true;
+            if (input.action === 'createDatabase' || input.action === 'createContainer') {
+                creationTrigger.current =
+                    document.activeElement instanceof HTMLElement ? document.activeElement : undefined;
+            }
+            setPendingAccountAction(input.action);
+            setAccountActionFailure(undefined);
+            try {
+                const result = await trpcClient.accountOverview.runAccountAction.mutate(input);
+                if (result.status === 'cancelled') {
+                    return;
+                }
+                if (input.action === 'deleteAccount') {
+                    onAccountDeleted();
+                } else if (input.action === 'createDatabase' || input.action === 'createContainer') {
+                    await reloadInventory();
+                }
+            } catch {
+                setAccountActionFailure('action');
+            } finally {
+                accountActionInFlight.current = false;
+                setPendingAccountAction(undefined);
+            }
+        },
+        [trpcClient, reloadInventory, onAccountDeleted],
+    );
 
     const fetchTrends = useCallback(
         async (range: TimeRange, container?: MetricScope) => {
@@ -207,7 +355,7 @@ export const AccountOverview = () => {
                     }
                 });
                 setTrends(next);
-                setLastRefreshedAt(Date.now());
+                setLastRefreshedAt(Object.values(next).some((series) => series.available) ? Date.now() : undefined);
             } finally {
                 if (requestId === trendsRequestSeq.current) {
                     setTrendsLoading(false);
@@ -218,18 +366,33 @@ export const AccountOverview = () => {
     );
 
     const fetchInventoryMetrics = useCallback(
-        (range: TimeRange) => {
-            return trpcClient.accountOverview.getInventoryMetrics
-                .query({ timeRange: range })
-                .then((result: InventoryMetricsResult) => {
+        async (range: TimeRange) => {
+            const requestId = ++inventoryMetricsRequestSeq.current;
+            setInventoryMetricsLoading(true);
+            try {
+                const result = await trpcClient.accountOverview.getInventoryMetrics.query({ timeRange: range });
+                if (requestId === inventoryMetricsRequestSeq.current) {
                     setInventoryMetrics(result);
-                });
+                }
+                return true;
+            } catch {
+                if (requestId === inventoryMetricsRequestSeq.current) {
+                    setInventoryMetrics(undefined);
+                    setAccountActionFailure('refresh');
+                }
+                return false;
+            } finally {
+                if (requestId === inventoryMetricsRequestSeq.current) {
+                    setInventoryMetricsLoading(false);
+                }
+            }
         },
         [trpcClient],
     );
 
     const fetchPartitionHealth = useCallback(
         (container: ContainerRef, mode: PartitionDistributionMode, range: TimeRange) => {
+            const requestId = ++partitionRequestSeq.current;
             setPartitionLoading(true);
             return trpcClient.accountOverview.getPartitionHealth
                 .query({
@@ -239,22 +402,56 @@ export const AccountOverview = () => {
                     mode,
                 })
                 .then((result: PartitionHealthResult) => {
-                    setPartitionHealth(result);
+                    if (requestId === partitionRequestSeq.current) {
+                        setPartitionHealth(result);
+                    }
+                    return true;
                 })
-                .finally(() => setPartitionLoading(false));
+                .catch(() => {
+                    if (requestId === partitionRequestSeq.current) {
+                        setPartitionHealth(undefined);
+                        setAccountActionFailure('refresh');
+                    }
+                    return false;
+                })
+                .finally(() => {
+                    if (requestId === partitionRequestSeq.current) {
+                        setPartitionLoading(false);
+                    }
+                });
         },
         [trpcClient],
     );
 
     const fetchAlerts = useCallback(
-        (range: AlertTimeRange) => {
+        async (range: AlertTimeRange) => {
+            const requestId = ++alertsRequestSeq.current;
             setAlertsLoading(true);
-            return trpcClient.accountOverview.getAlerts
-                .query({ timeRange: range })
-                .then((result: AlertsResult) => {
+            try {
+                const result = await trpcClient.accountOverview.getAlerts.query({ timeRange: range });
+                if (requestId === alertsRequestSeq.current) {
                     setAlerts(result);
-                })
-                .finally(() => setAlertsLoading(false));
+                }
+                return true;
+            } catch {
+                if (requestId === alertsRequestSeq.current) {
+                    setAlerts({
+                        available: false,
+                        reason: 'noData',
+                        alerts: [],
+                        criticalCount: 0,
+                        warningCount: 0,
+                        timeRange: range,
+                        generatedAt: Date.now(),
+                    });
+                    setAccountActionFailure('refresh');
+                }
+                return false;
+            } finally {
+                if (requestId === alertsRequestSeq.current) {
+                    setAlertsLoading(false);
+                }
+            }
         },
         [trpcClient],
     );
@@ -287,24 +484,17 @@ export const AccountOverview = () => {
     useEffect(() => {
         let cancelled = false;
         void fetchSummary();
-        void trpcClient.accountOverview.getInventory
-            .query()
-            .then((result: Inventory) => {
-                if (!cancelled) {
-                    setInventory(result);
-                }
-            })
-            .catch(() => {
-                // A transport-level failure (the router already shapes ARM/RBAC errors) must still
-                // resolve the inventory state, otherwise the whole panel stays on the loading spinner.
-                if (!cancelled) {
-                    setInventory({ supported: true, available: false, reason: 'noData', rows: [] });
-                }
-            });
+        void fetchInventory().catch(() => {
+            // A transport-level failure (the router already shapes ARM/RBAC errors) must still
+            // resolve the inventory state, otherwise the whole panel stays on the loading spinner.
+            if (!cancelled) {
+                setInventory({ supported: true, available: false, reason: 'noData', rows: [] });
+            }
+        });
         return () => {
             cancelled = true;
         };
-    }, [trpcClient, fetchSummary]);
+    }, [fetchInventory, fetchSummary]);
 
     // Reload trends whenever the time range or selected container changes.
     useEffect(() => {
@@ -350,23 +540,31 @@ export const AccountOverview = () => {
         void fetchAlerts(alertTimeRange);
     }, [fetchAlerts, alertTimeRange]);
 
-    // One-time recommendations load (subscription-wide Advisor call; polled below).
+    // Initial recommendations load; subsequent loads are requested by Refresh.
     useEffect(() => {
         void fetchRecommendations();
     }, [fetchRecommendations]);
 
-    // One-time derived-advisories load (host-side derived-advisory engine over already-fetched telemetry; polled below).
+    // Initial advisory collection and calculation; subsequent runs are requested by Refresh.
     useEffect(() => {
         void fetchDerivedAdvisories();
     }, [fetchDerivedAdvisories]);
 
     const refresh = useCallback(() => {
         reportEvent('refreshTicked', { windowSize: timeRange });
-        void fetchSummary();
-        void fetchTrends(timeRange, selectedContainer);
-        void fetchAlerts(alertTimeRange);
-        void fetchRecommendations();
-        void fetchDerivedAdvisories();
+        return Promise.allSettled([
+            fetchSummary(),
+            fetchTrends(timeRange, selectedContainer),
+            fetchAlerts(alertTimeRange),
+            fetchRecommendations(),
+            fetchDerivedAdvisories(),
+        ]).then((outcomes) => {
+            const succeeded = outcomes.every((outcome) => outcome.status === 'fulfilled' && outcome.value !== false);
+            if (!succeeded) {
+                setAccountActionFailure('refresh');
+            }
+            return succeeded;
+        });
     }, [
         reportEvent,
         fetchSummary,
@@ -379,109 +577,87 @@ export const AccountOverview = () => {
         fetchDerivedAdvisories,
     ]);
 
-    // Auto-refresh: poll every 60s, but only while the panel is visible and not
-    // paused. Resume immediately when the panel becomes visible again.
-    useEffect(() => {
-        if (paused) {
+    const refreshAccount = useCallback(async () => {
+        if (refreshInFlight.current) {
             return;
         }
-        const intervalId = setInterval(() => {
-            if (document.visibilityState === 'visible') {
-                refresh();
+        refreshInFlight.current = true;
+        setRefreshing(true);
+        beginHeaderUpdate();
+        try {
+            const outcomes = await Promise.allSettled([
+                refresh(),
+                fetchInventory(),
+                fetchInventoryMetrics(timeRange),
+                ...(partitionContainer ? [fetchPartitionHealth(partitionContainer, partitionMode, timeRange)] : []),
+            ]);
+            const inventoryOutcome = outcomes[1];
+            if (
+                outcomes.some((outcome) => outcome.status === 'rejected' || outcome.value === false) ||
+                (inventoryOutcome.status === 'fulfilled' &&
+                    typeof inventoryOutcome.value === 'object' &&
+                    !inventoryOutcome.value.available)
+            ) {
+                setAccountActionFailure('refresh');
             }
-        }, AUTO_REFRESH_INTERVAL_MS);
-        const onVisibilityChange = () => {
-            if (document.visibilityState === 'visible') {
-                refresh();
-            }
-        };
-        document.addEventListener('visibilitychange', onVisibilityChange);
-        return () => {
-            clearInterval(intervalId);
-            document.removeEventListener('visibilitychange', onVisibilityChange);
-        };
-    }, [paused, refresh]);
+        } finally {
+            refreshInFlight.current = false;
+            setRefreshing(false);
+        }
+    }, [
+        beginHeaderUpdate,
+        refresh,
+        fetchInventory,
+        fetchInventoryMetrics,
+        fetchPartitionHealth,
+        timeRange,
+        partitionContainer,
+        partitionMode,
+    ]);
 
-    // Lightweight inventory-metrics poll (30s), staggered by half an interval from the 60s
-    // trends poll, gated on visibility and the pause toggle just like the trends refresh.
-    useEffect(() => {
-        if (paused) {
-            return;
-        }
-        const poll = () => {
-            if (document.visibilityState === 'visible') {
-                void fetchInventoryMetrics(timeRange);
+    const handleTimeRangeChange = useCallback(
+        (range: TimeRange) => {
+            if (range === timeRange) {
+                return;
             }
-        };
-        const stagger: { intervalId?: ReturnType<typeof setInterval> } = {};
-        const startTimeout = setTimeout(() => {
-            poll();
-            stagger.intervalId = setInterval(poll, INVENTORY_REFRESH_INTERVAL_MS);
-        }, INVENTORY_REFRESH_INTERVAL_MS / 2);
-        const onVisibilityChange = () => poll();
-        document.addEventListener('visibilitychange', onVisibilityChange);
-        return () => {
-            clearTimeout(startTimeout);
-            if (stagger.intervalId) {
-                clearInterval(stagger.intervalId);
-            }
-            document.removeEventListener('visibilitychange', onVisibilityChange);
-        };
-    }, [paused, fetchInventoryMetrics, timeRange]);
+            beginHeaderUpdate();
+            setTrendsLoading(true);
+            setInventoryMetricsLoading(true);
+            setTimeRange(range);
+        },
+        [beginHeaderUpdate, timeRange],
+    );
 
-    // Partition telemetry poll (60s), gated on visibility and the pause toggle.
-    useEffect(() => {
-        if (paused || !partitionContainer) {
-            return;
-        }
-        const poll = () => {
-            if (document.visibilityState === 'visible') {
-                void fetchPartitionHealth(partitionContainer, partitionMode, timeRange);
+    const handleScopeChange = useCallback(
+        (scope?: MetricScope) => {
+            if (
+                scope?.databaseId === selectedContainer?.databaseId &&
+                scope?.containerId === selectedContainer?.containerId
+            ) {
+                return;
             }
-        };
-        const intervalId = setInterval(poll, PARTITION_REFRESH_INTERVAL_MS);
-        const onVisibilityChange = () => poll();
-        document.addEventListener('visibilitychange', onVisibilityChange);
-        return () => {
-            clearInterval(intervalId);
-            document.removeEventListener('visibilitychange', onVisibilityChange);
-        };
-    }, [paused, partitionContainer, partitionMode, timeRange, fetchPartitionHealth]);
-
-    // Alerts + Advisor recommendations poll (60s), gated on visibility and pause.
-    // The Advisor call is shared subscription-wide on the host, so multiple open
-    // dashboards coalesce into one ARM read per tick.
-    useEffect(() => {
-        if (paused) {
-            return;
-        }
-        const poll = () => {
-            if (document.visibilityState === 'visible') {
-                void fetchAlerts(alertTimeRange);
-                void fetchRecommendations();
-                void fetchDerivedAdvisories();
-            }
-        };
-        const intervalId = setInterval(poll, RAIL_REFRESH_INTERVAL_MS);
-        const onVisibilityChange = () => poll();
-        document.addEventListener('visibilitychange', onVisibilityChange);
-        return () => {
-            clearInterval(intervalId);
-            document.removeEventListener('visibilitychange', onVisibilityChange);
-        };
-    }, [paused, alertTimeRange, fetchAlerts, fetchRecommendations, fetchDerivedAdvisories]);
+            beginHeaderUpdate();
+            setTrendsLoading(true);
+            setSelectedContainer(scope);
+        },
+        [beginHeaderUpdate, selectedContainer],
+    );
 
     const handleOpenUrl = useCallback(
         (url: string) => {
-            void trpcClient.accountOverview.openUrl.mutate({ url });
+            void runAuxiliaryAction(() => trpcClient.accountOverview.openUrl.mutate({ url }));
         },
         [trpcClient],
     );
 
+    const handleShowOutput = useCallback(() => {
+        void runAuxiliaryAction(() => trpcClient.accountOverview.showOutput.mutate());
+    }, [trpcClient]);
+
     const handleRevealInTree = useCallback(
         (databaseId: string, containerId: string) => {
             reportEvent('deepLinkFollowed', { target: 'tree' });
-            void trpcClient.accountOverview.revealInTree.mutate({ databaseId, containerId });
+            void runAuxiliaryAction(() => trpcClient.accountOverview.revealInTree.mutate({ databaseId, containerId }));
         },
         [trpcClient, reportEvent],
     );
@@ -489,7 +665,9 @@ export const AccountOverview = () => {
     const handleOpenQueryEditor = useCallback(
         (databaseId: string, containerId: string) => {
             reportEvent('deepLinkFollowed', { target: 'dataExplorer' });
-            void trpcClient.accountOverview.openQueryEditor.mutate({ databaseId, containerId });
+            void runAuxiliaryAction(() =>
+                trpcClient.accountOverview.openQueryEditor.mutate({ databaseId, containerId }),
+            );
         },
         [trpcClient, reportEvent],
     );
@@ -502,7 +680,21 @@ export const AccountOverview = () => {
         [reportEvent],
     );
 
-    const actions = useMemo(() => ({ reportEvent, openUrl: handleOpenUrl }), [reportEvent, handleOpenUrl]);
+    const handleAlertTimeRangeChange = useCallback(
+        (range: AlertTimeRange) => {
+            if (alertsLoading || refreshInFlight.current || range === alertTimeRange) {
+                return;
+            }
+            setAlertsLoading(true);
+            setAlertTimeRange(range);
+        },
+        [alertsLoading, alertTimeRange],
+    );
+
+    const actions = useMemo(
+        () => ({ reportEvent, openUrl: handleOpenUrl, showOutput: handleShowOutput }),
+        [reportEvent, handleOpenUrl, handleShowOutput],
+    );
 
     if (!summary || !inventory) {
         return (
@@ -534,36 +726,60 @@ export const AccountOverview = () => {
 
     return (
         <DashboardActionsProvider value={actions}>
-            <div className={styles.root}>
-                <div className={styles.layout}>
-                    <div className={styles.mainColumn}>
-                        <DashboardCard>
+            <div className={styles.root} inert={creationBusy} aria-busy={creationBusy}>
+                <TabbedOverviewLayout
+                    requestedTab={
+                        requestedTarget === 'overview' || requestedTarget === 'advisories' ? requestedTab : undefined
+                    }
+                    navigationRevision={navigationRevision}
+                    selectedTab={selectedTab}
+                    onTabSelect={setSelectedTab}
+                    header={
+                        <>
                             <AccountHeader
+                                navigationRevision={navigationRevision}
                                 summary={summary}
                                 accountHealth={accountHealth}
                                 lastRefreshedAt={lastRefreshedAt}
-                                paused={paused}
-                                onTogglePause={setPaused}
-                                onRefresh={refresh}
-                                autoRefreshIntervalsSeconds={{
-                                    metrics: AUTO_REFRESH_INTERVAL_MS / 1000,
-                                    inventory: INVENTORY_REFRESH_INTERVAL_MS / 1000,
-                                    alerts: RAIL_REFRESH_INTERVAL_MS / 1000,
-                                }}
+                                onRefresh={() => void refreshAccount()}
+                                loading={headerUpdating}
+                                refreshDisabled={headerLoading}
+                                defaultEssentialsOpen
+                                timeRange={timeRange}
+                                onTimeRangeChange={handleTimeRangeChange}
+                                containers={containers}
+                                selectedContainer={selectedContainer}
+                                onSelectContainer={handleScopeChange}
+                                databaseIds={inventory.databases}
+                                accountActionBusy={accountActionBusy}
+                                onAccountAction={(input) => void runAccountAction(input)}
                             />
-                        </DashboardCard>
-
+                            <AccountActions
+                                busy={accountActionBusy}
+                                supported={inventory.supported}
+                                databaseId={selectedContainer?.databaseId}
+                                failure={accountActionFailure}
+                                onAction={(input) => void runAccountAction(input)}
+                            />
+                        </>
+                    }
+                    monitoring={
                         <MetricsSection
                             order={METRIC_ORDER}
                             seriesByMetric={trends}
                             loading={trendsLoading}
                             timeRange={timeRange}
-                            onTimeRangeChange={setTimeRange}
-                            containers={containers}
-                            selectedContainer={selectedContainer}
-                            onSelectContainer={setSelectedContainer}
+                            chartAffordances
+                            requestedMetric={
+                                requestedTarget === 'overview' || requestedTarget === 'advisories'
+                                    ? undefined
+                                    : requestedTarget
+                            }
+                            navigationRevision={navigationRevision}
+                            active={selectedTab === 'monitoring'}
                         />
-
+                    }
+                    inventory={
                         <DashboardCard>
                             <SectionHeader
                                 title={l10n.t('Databases and Containers')}
@@ -572,6 +788,8 @@ export const AccountOverview = () => {
                                 )}
                             />
                             <InventoryTable
+                                navigationRevision={navigationRevision}
+                                active={selectedTab === 'databases'}
                                 rows={inventory.rows}
                                 supported={inventory.supported}
                                 available={inventory.available}
@@ -579,17 +797,22 @@ export const AccountOverview = () => {
                                 metrics={inventoryMetrics?.available ? inventoryMetrics.metrics : undefined}
                                 onRevealInTree={handleRevealInTree}
                                 onOpenQueryEditor={handleOpenQueryEditor}
+                                selectedContainer={partitionContainer}
+                                onSelectContainer={handleSelectPartitionContainer}
                             />
                         </DashboardCard>
-
+                    }
+                    partitionHealth={
                         <DashboardCard>
                             <SectionHeader
                                 title={l10n.t('Partition Key Distribution Health')}
                                 description={l10n.t(
-                                    'Physical-partition RU and storage distribution for the selected container, with hot partitions flagged.',
+                                    'Physical-partition RU and storage distribution, not logical partition-key values. Select a container in the inventory or below.',
                                 )}
                             />
                             <PartitionHealth
+                                active={selectedTab === 'databases'}
+                                navigationRevision={navigationRevision}
                                 result={partitionHealth}
                                 loading={partitionLoading}
                                 mode={partitionMode}
@@ -599,26 +822,27 @@ export const AccountOverview = () => {
                                 onSelectContainer={handleSelectPartitionContainer}
                             />
                         </DashboardCard>
-                    </div>
-
-                    <aside className={styles.rail} aria-label={l10n.t('Alerts and recommendations')}>
+                    }
+                    alerts={
                         <DashboardCard>
                             <SectionHeader
                                 title={l10n.t('Active Alerts')}
                                 description={l10n.t('Fired Azure Monitor alerts targeting this account.')}
                             />
                             <ActiveAlerts
+                                active={selectedTab === 'advisories'}
                                 result={alerts}
-                                loading={alertsLoading}
+                                loading={alertsLoading || refreshing}
                                 timeRange={alertTimeRange}
-                                onTimeRangeChange={setAlertTimeRange}
+                                onTimeRangeChange={handleAlertTimeRangeChange}
                                 onOpenUrl={handleOpenUrl}
                             />
                         </DashboardCard>
-
+                    }
+                    recommendations={
                         <DashboardCard>
                             <SectionHeader
-                                title={l10n.t('Recommendations')}
+                                title={l10n.t('Azure Advisor recommendations')}
                                 description={l10n.t('Azure Advisor guidance for this account.')}
                             />
                             <Recommendations
@@ -627,8 +851,9 @@ export const AccountOverview = () => {
                                 onOpenUrl={handleOpenUrl}
                             />
                         </DashboardCard>
-
-                        <DashboardCard className={styles.advisoriesCard}>
+                    }
+                    advisories={
+                        <DashboardCard>
                             <SectionHeader
                                 title={l10n.t('Derived Advisories')}
                                 description={l10n.t(
@@ -636,15 +861,25 @@ export const AccountOverview = () => {
                                 )}
                             />
                             <DerivedAdvisories
+                                active={selectedTab === 'advisories'}
+                                navigationRevision={navigationRevision}
                                 result={derivedAdvisories}
                                 loading={derivedLoading}
                                 dismissedIds={dismissedAdvisoryIds}
                                 onDismiss={handleDismissAdvisory}
                             />
                         </DashboardCard>
-                    </aside>
-                </div>
+                    }
+                />
             </div>
+            {creationBusy && (
+                <div
+                    className={styles.creationOverlay}
+                    aria-hidden
+                    // Keep clicks on the backdrop from moving focus away from the native VS Code wizard.
+                    onPointerDown={(event) => event.preventDefault()}
+                />
+            )}
         </DashboardActionsProvider>
     );
 };

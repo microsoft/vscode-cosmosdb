@@ -5,7 +5,15 @@
 
 import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
 import { API, tryGetExperience } from '../../../../AzureDBExperiences';
-import { collectDerivedAdvisories, type DerivedAdvisoriesResult } from '../../../accountOverview/services/advisories';
+import { ext } from '../../../../extensionVariables';
+import { createLogsOutputReporter } from '../../../accountOverview/logsOutput';
+import {
+    collectDerivedAdvisories,
+    computeDerivedAdvisories,
+    type AccountConfigInput,
+    type DerivedAdvisoriesResult,
+} from '../../../accountOverview/services/advisories';
+import { DETECTORS } from '../../../accountOverview/services/advisories/registry';
 import { classifyUnavailable, type UnavailableReason } from '../../../accountOverview/services/shared';
 import { type AccountOverviewRouterContext } from '../../appRouter';
 import { accountOverviewProcedure } from '../../trpc';
@@ -15,63 +23,105 @@ import { readAdvisoryThresholds, readHealthThresholds, readPartitionThresholds }
 //
 // The router prepares the clients and the configured thresholds, then hands off
 // the full fetch-and-evaluate pipeline to `collectDerivedAdvisories`. All that
-// remains here is the API guard, client acquisition, and error classification.
+// remains here is client acquisition and preserving config-only checks when workload collection is unavailable.
+
+type AdvisoryAccountMetadata = Pick<
+    AccountOverviewRouterContext['metadata'],
+    | 'databaseAccount'
+    | 'accountName'
+    | 'accountId'
+    | 'resourceGroup'
+    | 'isServerless'
+    | 'getMonitorClient'
+    | 'getClient'
+    | 'getLogsQueryClient'
+> & { subscription: { readonly name: string } };
+
+export async function getDerivedAdvisoriesForAccount(
+    metadata: AdvisoryAccountMetadata,
+): Promise<DerivedAdvisoriesResult> {
+    const account = metadata.databaseAccount as DatabaseAccountGetResults;
+    const api = tryGetExperience(account)?.api;
+    const accountConfig: AccountConfigInput = {
+        accountName: metadata.accountName,
+        tags: account.tags,
+        subscriptionName: metadata.subscription.name,
+        consistencyLevel: account.consistencyPolicy?.defaultConsistencyLevel,
+        regionCount: account.locations?.length ?? account.readLocations?.length ?? 0,
+        multiRegionWritesEnabled: account.enableMultipleWriteLocations ?? false,
+        writeRegionCount: account.writeLocations?.length ?? 0,
+        api,
+    };
+    const advisoryThresholds = readAdvisoryThresholds();
+    const configOnly = (reason: UnavailableReason): DerivedAdvisoriesResult => ({
+        available: true,
+        advisories: computeDerivedAdvisories(
+            {
+                weeklyRuPercents: [],
+                hasManualThroughput: false,
+                manualThroughput: [],
+                partitions: [],
+                storage: [],
+                indexing: [],
+                accountConfig,
+            },
+            advisoryThresholds,
+        ),
+        metricSource: {
+            available: false,
+            failures: DETECTORS.filter(
+                ({ rule }) =>
+                    rule !== 'ExpensiveConsistency' &&
+                    rule !== 'MultiRegionWriteAntipattern' &&
+                    rule !== 'CrossPartitionQuery' &&
+                    rule !== 'ShardKeyMisalignment' &&
+                    rule !== 'UncontrolledIngestion' &&
+                    rule !== 'SharedThroughputStarvation',
+            ).map(({ rule }) => ({ rule, reason })),
+        },
+        logSource: { available: false, reason },
+        generatedAt: Date.now(),
+    });
+
+    if (api !== API.Core) {
+        return configOnly('unsupported');
+    }
+
+    try {
+        const monitorClient = await metadata.getMonitorClient();
+        const cosmosClient = await metadata.getClient();
+        if (!monitorClient || !cosmosClient) {
+            return configOnly('noData');
+        }
+        // A failed optional log client must not suppress metric-backed or configuration checks.
+        const logsClient = await metadata.getLogsQueryClient().catch((error: unknown) => {
+            ext.outputChannel.warn(
+                `[Account Overview] Log Analytics client unavailable: ${classifyUnavailable(error)}.`,
+            );
+            return undefined;
+        });
+        const collected = await collectDerivedAdvisories({
+            monitorClient,
+            cosmosClient,
+            logsClient,
+            onLogsDiagnostic: createLogsOutputReporter((message) => ext.outputChannel.warn(message)),
+            accountId: metadata.accountId,
+            resourceGroup: metadata.resourceGroup,
+            accountName: metadata.accountName,
+            isServerless: metadata.isServerless,
+            healthThresholds: readHealthThresholds(),
+            partitionThresholds: readPartitionThresholds(),
+            advisoryThresholds,
+            accountConfig,
+        });
+        return { available: true, ...collected, generatedAt: Date.now() };
+    } catch (error) {
+        return configOnly(classifyUnavailable(error));
+    }
+}
 
 export const derivedAdvisoriesProcedures = {
-    getDerivedAdvisories: accountOverviewProcedure.query(
-        async ({ ctx }: { ctx: AccountOverviewRouterContext }): Promise<DerivedAdvisoriesResult> => {
-            const { metadata } = ctx;
-            const unavailable = (reason: UnavailableReason): DerivedAdvisoriesResult => ({
-                available: false,
-                reason,
-                advisories: [],
-                generatedAt: Date.now(),
-            });
-
-            const experience = tryGetExperience(metadata.databaseAccount as DatabaseAccountGetResults);
-            if (experience && experience.api !== API.Core) {
-                return unavailable('unsupported');
-            }
-
-            const monitorClient = await metadata.getMonitorClient();
-            const cosmosClient = await metadata.getClient();
-            if (!monitorClient || !cosmosClient) {
-                return unavailable('noData');
-            }
-            // Tier-2 (Log Analytics) is optional: if the client can't be acquired the collector still ships the
-            // Tier-1 advisories and reports Tier-2 as unavailable via `logSource`.
-            const logsClient = await metadata.getLogsQueryClient();
-
-            try {
-                const account = metadata.databaseAccount as DatabaseAccountGetResults;
-                const { advisories, logSource } = await collectDerivedAdvisories({
-                    monitorClient,
-                    cosmosClient,
-                    logsClient,
-                    accountId: metadata.accountId,
-                    resourceGroup: metadata.resourceGroup,
-                    accountName: metadata.accountName,
-                    isServerless: metadata.isServerless,
-                    healthThresholds: readHealthThresholds(),
-                    partitionThresholds: readPartitionThresholds(),
-                    advisoryThresholds: readAdvisoryThresholds(),
-                    accountConfig: {
-                        accountName: metadata.accountName,
-                        tags: account.tags,
-                        subscriptionName: metadata.subscription.name,
-                        consistencyLevel: account.consistencyPolicy?.defaultConsistencyLevel,
-                        regionCount: account.locations?.length ?? account.readLocations?.length ?? 0,
-                        multiRegionWritesEnabled: account.enableMultipleWriteLocations ?? false,
-                        writeRegionCount: account.writeLocations?.length ?? 0,
-                        // The derived-advisory engine only runs for the Core (SQL) API (guarded above).
-                        apiKind: 'core',
-                    },
-                });
-
-                return { available: true, advisories, logSource, generatedAt: Date.now() };
-            } catch (error) {
-                return unavailable(classifyUnavailable(error));
-            }
-        },
+    getDerivedAdvisories: accountOverviewProcedure.query(({ ctx }: { ctx: AccountOverviewRouterContext }) =>
+        getDerivedAdvisoriesForAccount(ctx.metadata),
     ),
 };

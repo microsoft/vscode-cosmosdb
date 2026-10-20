@@ -28,7 +28,7 @@ The panel is two columns:
 | `DataUsage`                 | Maximum     | `DatabaseName` / `CollectionName` | storage usage, 7-day storage growth                       |
 | `IndexUsage`                | Maximum     | `DatabaseName` / `CollectionName` | index usage, indexing-cost signal                         |
 | `DocumentCountV2`           | Maximum     | `DatabaseName` / `CollectionName` | per-container document count (best-effort snapshot gauge) |
-| `TotalRequests`             | Total       | `StatusCode`                      | request volume + throttling (429 share) bands             |
+| `TotalRequests`             | Count       | `StatusCode`                      | request volume + throttling (429 share) bands             |
 | `TotalRequestUnits`         | Total       | —                                 | RU-volume metric chart                                    |
 | `MetadataRequests`          | Total       | —                                 | metadata-ops metric chart                                 |
 | `PhysicalPartitionSizeInfo` | Maximum     | `PhysicalPartitionId`             | partition storage skew                                    |
@@ -38,33 +38,34 @@ Chart granularity follows the selected time range: `1H` → `PT1M`, `24H` → `P
 ## Detections we compute
 
 Numbered `AO-Dx` for our own reference and mapped to the nearest CODA equivalent (`DX-xxx`). The
-**CODA parity** column records how each rule compares to CODA's authoritative detector: ✅ at parity, 🟡
-partial, ❌ different signal. Reaching full parity with CODA — both the divergent native rules and the
-not-yet-ported detectors — is a tracked goal (see Phase 9/10 in the plan). All defaults live under
-`cosmosDB.accountOverview.*` and can be tuned without a redeploy.
+**CODA parity** column describes the detection signal, not identical report output or cloud permissions.
+The reference is CODA commit `53d43cec4e46885d8610751e24d937bc794a4550`. Diagnostic policy lives in
+`advisories/core/thresholds.ts`; only the existing tunable subset is exposed under `cosmosDB.accountOverview.*`.
+Charts retain their selected display windows, independently of the detectors' observation windows.
 
 | #      | Detection                       | Trigger (default)                                                                                        | Surface                                           | CODA map                 | CODA parity                                 |
 | ------ | ------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------- | ------------------------ | ------------------------------------------- |
 | AO-D1  | Account / row health            | peak RU ≥ 80 / 90 %; sustained 429                                                                       | Header pill + inventory row badges                | DX-005                   | RU bands ✅ (growth → AO-D9)                |
 | AO-D2  | Hot partition                   | busiest physical-partition p99 ≥ 90 % saturation while another < 70 % headroom (7-day)                   | Heatmap tile (flagged) **and** Derived Advisories | DX-006                   | ✅ p99 saturation + headroom (DX-006)       |
 | AO-D3  | Storage skew                    | coolest ÷ busiest partition size < 0.7, busiest ≥ 1 GiB                                                  | Heatmap (storage mode) **and** Derived Advisories | DX-015                   | ✅ balance ratio (DX-015)                   |
-| AO-D4  | Sustained throttling            | 429 rate ≥ 1 % with every partition p99 ≥ 90 % (uniform saturation, 7-day)                               | RU-chart bands **and** Derived Advisories         | DX-005 / DX-018          | ✅ 429-rate + uniform saturation (DX-005)   |
-| AO-D5  | Over-provisioning               | 7-day p99 RU < 30 % (manual only), 90 % peak guard, relative-materiality severity                        | Derived Advisories                                | DX-001                   | ✅ band + peak guard + materiality (DX-001) |
+| AO-D4  | Sustained throttling            | ≥ 1000 requests, 429 rate ≥ 1 %, busiest partition p99 ≥ 90 % and coolest ≥ 70 % (7-day)                 | RU-chart bands **and** Derived Advisories         | DX-005                   | ✅ 429-rate + uniform capacity pressure     |
+| AO-D5  | Over-provisioning               | per-offer 30-day p99 RU < 30 % (dedicated manual), 90 % peak guard, account-relative materiality         | Derived Advisories                                | DX-001                   | ✅ band + peak guard + materiality (DX-001) |
 | AO-D6  | Autoscale candidate             | peak ≥ 40 %, avg ≤ 30 %, peak/avg ≥ 5 (manual only)                                                      | Derived Advisories                                | DX-012                   | ✅ duty cycle (DX-012)                      |
 | AO-D7  | Indexing cost risk              | index/data storage > 0.3, 0 excluded paths                                                               | Derived Advisories                                | — (CODA gap)             | ⚠️ storage proxy; wants write-RU share      |
 | AO-D8  | Advisor + Alerts                | severity / impact from Azure                                                                             | Right rail (Active Alerts, Recommendations)       | — (ext-only passthrough) | ✅ passthrough                              |
 | AO-D9  | Rapid storage growth            | physical-partition size trajectory reaches 50 GiB within horizon (High ≤ 30 d, Med ≤ 90 d)               | Derived Advisories                                | DX-017                   | ✅ least-squares horizon (DX-017)           |
 | AO-D10 | Premium consistency             | Strong / Bounded Staleness across ≥ 2 regions (config fact)                                              | Derived Advisories                                | DX-016                   | ✅ config parity (DX-016)                   |
 | AO-D11 | Multi-region writes antipattern | multi-region writes enabled on wrong-API, single write region, or non-prod (config fact)                 | Derived Advisories                                | DX-008                   | ✅ config parity (DX-008)                   |
-| AO-D12 | Idle container                  | peak `TotalRequestUnits` ≤ 50 RU per bucket over 30 days (manual/autoscale); mode-aware recoverable RU/s | Derived Advisories                                | DX-004                   | ✅ idle signal + materiality (DX-004)       |
+| AO-D12 | Idle container                  | peak `TotalRequestUnits` ≤ 50 RU per 5-minute bucket over 30 days (dedicated manual/autoscale)           | Derived Advisories                                | DX-004                   | ✅ idle signal + materiality (DX-004)       |
 | AO-D13 | Partition-merge candidate       | physical partitions > max(ceil(RU/10 000), ceil(storage/50 GiB), 1) and ≥ 2                              | Derived Advisories                                | DX-009                   | ✅ actual vs needed (DX-009)                |
 | AO-D14 | Autoscale max over-provisioned  | peak `AutoscaledRU` < 30 % of the configured max (autoscale only), idle-floor materiality                | Derived Advisories                                | DX-011                   | ✅ peak band + autoscale billing (DX-011)   |
 | AO-D15 | Autoscale → manual candidate    | autoscale avg ≥ 66 % of max and peak/avg ≤ 1.3 (steady-high, autoscale only)                             | Derived Advisories                                | DX-013                   | ✅ duty cycle (DX-013)                      |
-| AO-D16 | Serverless candidate            | account-total peak in (10, 5000] RU/s and avg/peak < 0.10 over 30 days (skipped if serverless)           | Derived Advisories                                | DX-014                   | ✅ low/sporadic shape (DX-014)              |
+| AO-D16 | Serverless candidate            | account-total peak in [10, 5000] RU/s, avg/peak < 0.10, ≥ 24 observations over 30 days (not serverless)  | Derived Advisories                                | DX-014                   | ✅ low/sporadic shape (DX-014)              |
 | AO-D17 | Cross-partition query fan-out   | ≥ 10 % of query executions fan out (avg ≥ 1.5 partitions), container ≥ 2 partitions, ≥ 50 queries (logs) | Derived Advisories (Tier-2)                       | DX-002                   | ✅ fan-out share + volume (DX-002)          |
-| AO-D18 | Shard-key misalignment          | ≥ 60 % of executions fan out across ≥ 2 partitions (logs); supersedes AO-D17 on the container            | Derived Advisories (Tier-2)                       | DX-007                   | ✅ structural fan-out (DX-007)              |
+| AO-D18 | Shard-key misalignment          | ≥ 50 queries, ≥ 60 % fan-out rounded to one decimal, ≥ 2 partitions; supersedes AO-D17                   | Derived Advisories (Tier-2)                       | DX-007                   | ✅ structural fan-out (DX-007)              |
 | AO-D19 | Uncontrolled ingestion          | write-RU ≥ 80 % and 429 rate ≥ 10 % over ≥ 1000 requests (logs); burst factor as evidence                | Derived Advisories (Tier-2)                       | DX-010                   | ✅ write-dominance + throttling (DX-010)    |
 | AO-D20 | Shared-throughput starvation    | pool 429 ≥ 5 %, one collection ≥ 60 % of RU, a sibling throttling ≥ 5 % at ≤ 20 % share (logs)           | Derived Advisories (Tier-2)                       | DX-003                   | ✅ 429 + consumption disparity (DX-003)     |
+| AO-D21 | Serverless throttling           | ≥ 1000 requests and 429 rate ≥ 1 % over 7 days; Medium ≥ 5 %, High ≥ 20 %, no partition-RU dependency    | Derived Advisories                                | DX-018                   | ✅ dedicated serverless request-count check |
 
 ### Where each detection surfaces
 
@@ -93,30 +94,47 @@ text advisory, and a few in both places:
 | AO-D18 Shard-key misalignment          | ✅ advisory (Tier-2 logs)                  | —                                                 |
 | AO-D19 Uncontrolled ingestion          | ✅ advisory (Tier-2 logs)                  | —                                                 |
 | AO-D20 Shared-throughput starvation    | ✅ advisory (Tier-2 logs)                  | —                                                 |
+| AO-D21 Serverless throttling           | ✅ advisory                                | Request-count / throttling charts                 |
 
 **Passthrough vs derived:** the **Active Alerts** and **Recommendations** cards are Azure's own output
 (Azure Monitor fired alerts and Azure Advisor), surfaced verbatim. The **Derived Advisories** card is the
 only place our own `§13` rule engine writes to.
 
-**Tier-1 vs Tier-2 (partial coverage):** most advisories (AO-D1..16) are **Tier-1** — computed from Azure
-Monitor metrics + ARM config, always available. AO-D17..20 are **Tier-2**: they query the account's
-`CDB*` diagnostic-log tables via a resource-centric Log Analytics query, so they need **Diagnostic Settings →
-Log Analytics** enabled on the account **and** the **Log Analytics Reader** (or Monitoring Reader) role. When
-Tier-2 is unavailable the Derived Advisories card still renders every Tier-1 advisory and surfaces the gap
-explicitly — an inline, reason-specific notice ("diagnostic settings off" / "missing role" / "no data yet" /
-"transient error") plus a **Partial coverage** pill — rather than a card-level empty state that would hide the
-Tier-1 results.
+**Advisory details:** shared guidance appears above the resource list. Expand a resource for its specific details;
+each finding can be dismissed individually.
+
+**Data sources:** Tier-1 checks (AO-D1..16, AO-D21) use Azure Monitor metrics and ARM configuration.
+Tier-2 checks (AO-D17..20) use Log Analytics, queried by account resource ID rather than workspace ID.
+Export **DataPlaneRequests** and **QueryRuntimeStatistics** in **resource-specific** mode; legacy `AzureDiagnostics`
+schemas are not supported. Query access must be granted separately from log collection:
+see [Log Analytics access control](https://learn.microsoft.com/azure/azure-monitor/logs/manage-access).
+
+**Partial coverage:** failed checks do not discard successful findings or imply zero usage; configuration checks
+remain available when workload collection fails. The notice identifies failed checks, and **Show Output** opens
+local diagnostic details. Successful queries may still exclude inaccessible data sources.
+
+**Idle and partition-merge evidence:** query each known dedicated-throughput container by database and container ID,
+with at most five concurrent requests for these metrics. Do not enumerate containers through wildcard metric series
+or rely on a larger `top` limit. Missing or invalid samples remain unavailable, not zero: idle requires an observed RU
+peak, and partition-merge requires both an observed partition count and storage value. A failed container query does
+not discard evidence from other containers.
 
 ## Threshold grounding
 
 Every constant the rule engine ships is one of two kinds. A **platform limit** is a hard Azure number the
 detector is _structurally_ correct to use (e.g. a physical partition's 50 GiB ceiling) — these are grounded
 against public Azure documentation below. An **internal-guidance** constant is a heuristic cutoff calibrated
-by CODA's fleet analysis, not a published Azure number; each is exposed under
-`cosmosDB.accountOverview.advisories.*` and should be read as a tunable starting point, not an Azure-sanctioned
-threshold.
+by CODA's fleet analysis, not a published Azure number. The existing tunable subset is exposed under
+`cosmosDB.accountOverview.advisories.*`; other diagnostic cutoffs remain internal policy, not new settings.
+Neither should be read as an Azure-sanctioned threshold.
 
-### Grounded in public Azure documentation (platform limits)
+### Diagnostic policy source
+
+[`DIAGNOSTIC_POLICY`](../src/panels/accountOverview/services/advisories/core/thresholds.ts) centralizes diagnostic
+thresholds, observation windows, and minimum sample/age requirements. Supported VS Code settings override the defaults;
+platform limits and chart time ranges remain separate.
+
+### Grounded in public Azure documentation (platform facts and policy motivation)
 
 | Constant (code)                                                          | Default     | Grounding                                                                                                                                                                                                                     |
 | ------------------------------------------------------------------------ | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -127,26 +145,26 @@ threshold.
 | `OVERPROVISIONING_MIN_RU` (DX-001 right-size floor)                      | 400 RU/s    | Minimum manual throughput per container is **400 RU/s** — [Provision throughput](https://learn.microsoft.com/azure/cosmos-db/set-throughput).                                                                                 |
 | `autoscaleToManualAvgPercent` (DX-013 break-even)                        | 66 %        | Autoscale saves money only if `Tmax` is used **66% or fewer hours/month**; steadier use is cheaper on manual — [Autoscale](https://learn.microsoft.com/azure/cosmos-db/provision-throughput-autoscale#benefits-of-autoscale). |
 
-### Internal-guidance (CODA fleet-calibrated; tune via settings)
+### Internal-guidance (CODA fleet-calibrated; existing tunable subset via settings)
 
 The signals these ride on (e.g. `NormalizedRUConsumption` %, 429 rate) are Azure-published metrics; the
 cutoffs below are CODA guidance, not Azure limits.
 
-| Constant(s)                                                         | Default       | Role                                                                                    |
-| ------------------------------------------------------------------- | ------------- | --------------------------------------------------------------------------------------- |
-| `partitionSaturationPercent` / `partitionHeadroomPercent`           | 90 % / 70 %   | p99 bands separating a saturated partition from one with headroom (DX-005/006).         |
-| `throttleRatePercent`                                               | 1 %           | 429-rate floor above which throttling counts as active (DX-005).                        |
-| `overProvisioningBandPercent` + `OVERPROVISIONING_PEAK_GUARD_PCT`   | 30 % / 90 %   | Idle band + peak-saturation guard (DX-001).                                             |
-| Materiality `MATERIALITY_*` (rel `5 % / 1 %`, abs `5000 / 1000 RU`) | —             | Relative capacity-materiality severity (DX-001/004/011).                                |
-| Under-provisioning severity `20 % / 5 %`                            | —             | 429-rate severity bands (DX-005).                                                       |
-| Autoscale-candidate `40 % / 30 % / 5×`                              | —             | Duty-cycle burst signal (DX-012).                                                       |
-| `storageGrowthHorizonDays` + `30 / 90 d` severity                   | 180 d         | Days-to-50-GiB projection horizon (DX-017).                                             |
-| `storageSkewBalanceRatio` + `1 / 25 / 40 GiB`                       | 0.7           | Partition-balance ratio + materiality (DX-015).                                         |
-| `indexingUsageRatio`                                                | 0.3           | Index/data storage proxy (AO-D7; no CODA detector).                                     |
-| `idlePeakRuPerBucket`                                               | 50 RU         | Near-zero per-bucket floor for idle (DX-004).                                           |
-| `autoscaleToManualPeakToAvgRatio`                                   | 1.3           | Steadiness cap pairing with the 66 % floor (DX-013).                                    |
-| `serverlessSporadicRatio` + `serverlessPeakFloorRuPerSec`           | 0.1 / 10 RU/s | Sporadic-shape ratio + activity floor for serverless fit (DX-014).                      |
-| `ADVISORY_WINDOW_DAYS` / `ADVISORY_INTERVAL`                        | 30 d / `PT1H` | Look-back window + bucketing so periodic (monthly-batch) workloads aren't flagged idle. |
+| Constant(s)                                                                           | Default       | Role                                                                                    |
+| ------------------------------------------------------------------------------------- | ------------- | --------------------------------------------------------------------------------------- |
+| `partitionSaturationPercent` / `partitionHeadroomPercent`                             | 90 % / 70 %   | p99 bands separating a saturated partition from one with headroom (DX-005/006).         |
+| `throttleRatePercent`                                                                 | 1 %           | 429-rate floor above which throttling counts as active (DX-005).                        |
+| `overProvisioningBandPercent` + `DIAGNOSTIC_POLICY.overProvisioning.peakGuardPercent` | 30 % / 90 %   | Idle band + peak-saturation guard (DX-001/011).                                         |
+| `DIAGNOSTIC_POLICY.capacityMateriality` (rel `5 % / 1 %`, abs `5000 / 1000 RU`)       | —             | Relative capacity-materiality severity (DX-001/004/011).                                |
+| Under-provisioning severity `20 % / 5 %`                                              | —             | 429-rate severity bands (DX-005).                                                       |
+| Autoscale-candidate `40 % / 30 % / 5×`                                                | —             | Duty-cycle burst signal (DX-012).                                                       |
+| `storageGrowthHorizonDays` + `30 / 90 d` severity                                     | 180 d         | Days-to-50-GiB projection horizon (DX-017).                                             |
+| `storageSkewBalanceRatio` + `1 / 25 / 40 GiB`                                         | 0.7           | Partition-balance ratio + materiality (DX-015).                                         |
+| `indexingUsageRatio`                                                                  | 0.3           | Index/data storage proxy (AO-D7; no CODA detector).                                     |
+| `idlePeakRuPerBucket`                                                                 | 50 RU         | Near-zero per-bucket floor for idle (DX-004).                                           |
+| `autoscaleToManualPeakToAvgRatio`                                                     | 1.3           | Steadiness cap pairing with the 66 % floor (DX-013).                                    |
+| `serverlessSporadicRatio` + `serverlessPeakFloorRuPerSec`                             | 0.1 / 10 RU/s | Sporadic-shape ratio + activity floor for serverless fit (DX-014).                      |
+| `DIAGNOSTIC_POLICY.{idle,serverless,autoscaleUtilization}.observation`                | 30 d / `PT1H` | Look-back window + bucketing so periodic (monthly-batch) workloads aren't flagged idle. |
 
 ## Health model
 
@@ -174,17 +192,78 @@ activation hot path. Clients are created on the host from the account's `AzureSu
 The three lazy SDKs (`arm-monitor`, `arm-advisor`, `arm-alertsmanagement`) must **not** enter the main
 activation bundle — verified via `bundle-analysis/extension-report-vite.json`.
 
-### Action procedures (mutations, no ARM reads)
+### Action procedures
 
-`openUrl`, `revealInTree`, `openQueryEditor` (deep-links / existing extension commands) and `reportEvent`
-(telemetry). The dashboard never mutates Azure resources — all "fix" affordances deep-link out.
+`openUrl`, `revealInTree`, `openQueryEditor` (deep-links / existing extension commands), `showOutput` (extension Output), and `reportEvent`
+(telemetry). Failures of the four auxiliary actions are displayed once as native VS Code error notifications through
+the shared RPC event channel; their local catches neither redisplay nor rethrow the same error. Background query and
+telemetry errors do not use this notification path. A refused browser launch is an explicit action failure.
+Existing account-action and refresh feedback remains in the dashboard.
 
-### Polling
+`runAccountAction` invokes the existing scoped create/delete commands or opens account costs/JSON.
+Advisory guidance does not automatically modify Azure resources.
+Alert links and View Cost preserve `subscription.environment.portalUrl` and include the subscription's tenant,
+matching Azure Resources' portal selection convention. This preserves public, sovereign and configured `ms.portal`
+destinations without guessing the portal from a tenant ID.
 
-- Metric trend charts: every 60 s.
-- Lightweight ARM polls (account, throughput, inventory, alerts, advisor): every 30 s, staggered.
-- Polling pauses when the panel is hidden (`document.visibilityState !== 'visible'`) and via the header's
-  **Pause auto-refresh** toggle.
+### Loading and refresh
+
+- Data loads when Overview opens. There are no polling timers, refresh-on-visibility handlers or auto-refresh settings.
+- **Refresh** reloads every section: account summary, inventory, metric trends, inventory metrics, the selected
+  container's partition health, alerts, Azure Advisor recommendations and derived advisories. It waits for all requests.
+- Metric time-range changes reload trends, time-dependent inventory metrics and the selected partition view.
+  Database-scope changes reload trends only; partition selection/measure and alert-window changes reload their own data.
+  Switching tabs, showing a chart or returning to the editor does not itself fetch data.
+- **Charts generated at**, to the left of the header filters, shows the local date and time when the latest accepted
+  trend batch produced available chart results. It is absent before any chart results are available or when the whole
+  batch is unavailable. It is not a
+  timestamp for all sections, the Azure ingestion time or the latest metric sample.
+- A spinner inside **Refresh** indicates an explicit Refresh or header filter change, not initial loading.
+  The button keeps its Refresh label; no separate updating text is displayed.
+  Refresh and both header selectors remain unavailable while existing data requests finish, including initial loading.
+  They remain focusable and expose their disabled state to assistive technology; loading does not remove the active control
+  from the keyboard focus order. Header selectors cannot open or change selection while locked.
+  They unlock after completion or failure without resetting the selected database or period.
+  Individual sections show their own loading state.
+- Alert-window buttons are disabled but remain focusable while alerts load, including initial collection, a period change and manual Refresh.
+  They remain disabled until the whole manual Refresh settles. Repeated selection does not reload data; failed requests
+  unlock the buttons and replace stale alerts with an unavailable state. Latest-request guards also protect result publication.
+- Successful database/container creation retains its existing inventory reload. Filters and selections are preserved.
+
+### Keyboard and accessible feedback
+
+- Explicit Explorer navigation closes advisory dialogs and open selectors without resetting filters or selections.
+  Generic destinations focus their tab; metric destinations retain their existing chart-region focus.
+  Replayed navigation revisions and background data completion do not refocus or dismiss an open dialog.
+- Inventory uses a native table with 25 rows per page instead of scroll virtualization. All rows on the page stay mounted;
+  Previous/Next controls expose the current range and announce page changes. Logical row positions and total row count
+  include the header. Sorting and filtering apply to the full inventory and reset to page one; tab changes preserve the page.
+  Shortened results clamp the page. If a refresh removes the focused element, focus returns to the inventory region only
+  while its tab is active and the webview still owns focus; surviving controls keep their focus.
+- Sortable inventory headers use Fluent's keyboard-activated buttons and expose the current direction through `aria-sort`.
+  Enter or Space sorts; non-sortable headers remain ordinary column headings.
+- Alert-window selection retains focus during loading without allowing another request. Completion does not pull focus back
+  if the user has moved elsewhere.
+- Header time-range and database selectors also retain focus through loading success or failure, without restoring it
+  if the user has moved elsewhere. The Dropdown's disabled state blocks interaction while its button slot remains focusable.
+- Dismissing a focused advisory moves focus to the next remaining Dismiss button, or the previous one at the end of the list.
+  Removing the group's last finding closes the dialog and focuses the surviving Recommendations section.
+  Ordinary dialog closure continues to use Fluent's focus restoration to the originating card.
+- Heatmap values, accessible names and explanations use the same rounding precision. Partial coverage exposes its
+  explanation once as a description, separately from its name.
+- Each Advisor **Learn more** action references the visible recommendation text as its accessible description.
+  The visible label and recommendation-specific URL are unchanged; recommendations without a URL have no action.
+- Inventory filter names include their visible selection; partition selection includes both container and database.
+  Inventory icon actions have a resource-specific description without repeating the tooltip label.
+- Advisory cards describe their visible severity and explanation. Heatmap names are attached directly to visible figures,
+  not off-screen captions. Real screen-reader virtual-cursor behavior still needs manual verification.
+- Inventory filters show a result count and announce changes politely after 300 ms of inactivity.
+  Alert-window changes announce the returned count or unavailability. Hidden tabs and initial background collection stay
+  silent. Advisory analysis runs initially or through global Refresh, which keeps its existing shared feedback rather
+  than adding section-by-section announcements.
+- Essentials values, alert names and advisory titles wrap instead of depending on mouse-only truncation tooltips.
+  Section tabs wrap within the available width, retaining Fluent's horizontal Left/Right navigation and manual activation
+  with Enter or Space.
 
 ## Permissions (RBAC)
 

@@ -6,10 +6,8 @@
 import * as l10n from '@vscode/l10n';
 import { Detector, type DetectorContext } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
+import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import { type DerivedAdvisory, type ServerlessCandidateInput, type ServerlessCandidateThresholds } from '../core/types';
-
-/** DX-014: minimum number of buckets needed to judge the account-total RU shape. */
-const SERVERLESS_MIN_POINTS = 24;
 
 /**
  * ServerlessCandidate (CODA DX-014): the account's total consumed throughput is **low and sporadic** — a small
@@ -23,7 +21,7 @@ function evaluateServerlessCandidate(
     input: ServerlessCandidateInput,
     thresholds: ServerlessCandidateThresholds,
 ): DerivedAdvisory | undefined {
-    if (input.isServerless || input.sampleCount < SERVERLESS_MIN_POINTS) {
+    if (input.isServerless || input.sampleCount < DIAGNOSTIC_POLICY.serverless.minSamples) {
         return undefined;
     }
     if (input.peakRuPerSec < thresholds.peakFloorRuPerSec || input.peakRuPerSec > thresholds.peakCeilingRuPerSec) {
@@ -43,14 +41,19 @@ function evaluateServerlessCandidate(
         title: l10n.t('Account may suit serverless'),
         rationale: clampRationale(
             l10n.t(
-                'Account throughput is low and sporadic: peak {peak} RU/s, average {avg} RU/s (a {ratio}% average-to-peak with long idle stretches). Serverless (pay-per-RU, no provisioned floor) may cost less for this shape.',
+                'Account throughput is low and sporadic: peak `{peak} RU/s`, average `{avg} RU/s` (a `{ratio}%` average-to-peak with long idle stretches).',
                 { peak, avg, ratio: ratioPct },
+            ) +
+                ' ' +
+                l10n.t('Serverless (pay-per-RU, no provisioned floor) may cost less for this shape.'),
+        ),
+        suggestedAction:
+            l10n.t('Evaluate serverless: it is migration-class and requires a new, single-region account.') +
+            ' ' +
+            l10n.t(
+                'It has no shared-throughput databases and a `5,000 RU/s` per-partition cap. Validate those constraints fit before migrating data.',
             ),
-        ),
-        suggestedAction: l10n.t(
-            'Evaluate serverless: it is migration-class (a new, single-region account, no shared-throughput databases, 5,000 RU/s per-partition cap), so validate those constraints fit before migrating data.',
-        ),
-        thresholdReference: l10n.t('Threshold: peak in ({floor}, {ceiling}] RU/s and average/peak < {ratio}', {
+        thresholdReference: l10n.t('Threshold: peak in `({floor}, {ceiling}] RU/s` and average/peak < `{ratio}`', {
             floor: Math.round(thresholds.peakFloorRuPerSec),
             ceiling: Math.round(thresholds.peakCeilingRuPerSec),
             ratio: thresholds.sporadicRatio,

@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import {
-    Button,
+    Badge,
     Dropdown,
     makeStyles,
     mergeClasses,
@@ -12,6 +12,9 @@ import {
     Spinner,
     Text,
     tokens,
+    Toolbar,
+    ToolbarToggleButton,
+    typographyStyles,
     type OptionOnSelectData,
 } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
@@ -28,17 +31,15 @@ import { type ContainerRef } from './metrics/descriptors';
 const NO_CONTAINER = 'none';
 
 /**
- * Heat ramp toward `--vscode-errorForeground`. Text stays on `--vscode-foreground`
- * and the fill is mixed against the editor background so every level keeps
- * legible contrast in dark, light, and high-contrast themes; hot partitions get
- * a solid error-colored border in addition to the deepest fill.
+ * The heat ramp uses Fluent's danger surface pair. Hot partitions also have a danger border and a textual badge;
+ * intensity is not the only indication of a hot partition.
  */
 const LEVEL_FILL: Record<PartitionIntensityLevel, string> = {
-    1: 'color-mix(in srgb, var(--vscode-errorForeground) 10%, var(--vscode-editor-background))',
-    2: 'color-mix(in srgb, var(--vscode-errorForeground) 22%, var(--vscode-editor-background))',
-    3: 'color-mix(in srgb, var(--vscode-errorForeground) 36%, var(--vscode-editor-background))',
-    4: 'color-mix(in srgb, var(--vscode-errorForeground) 52%, var(--vscode-editor-background))',
-    5: 'color-mix(in srgb, var(--vscode-errorForeground) 70%, var(--vscode-editor-background))',
+    1: `color-mix(in srgb, ${tokens.colorStatusDangerBackground1} 10%, ${tokens.colorNeutralBackground1})`,
+    2: `color-mix(in srgb, ${tokens.colorStatusDangerBackground1} 22%, ${tokens.colorNeutralBackground1})`,
+    3: `color-mix(in srgb, ${tokens.colorStatusDangerBackground1} 36%, ${tokens.colorNeutralBackground1})`,
+    4: `color-mix(in srgb, ${tokens.colorStatusDangerBackground1} 52%, ${tokens.colorNeutralBackground1})`,
+    5: `color-mix(in srgb, ${tokens.colorStatusDangerBackground1} 70%, ${tokens.colorNeutralBackground1})`,
 };
 
 const useStyles = makeStyles({
@@ -55,21 +56,19 @@ const useStyles = makeStyles({
         flexWrap: 'wrap',
     },
     containerSelect: {
-        minWidth: '220px',
-    },
-    modeToggle: {
-        display: 'flex',
-        gap: tokens.spacingHorizontalXS,
+        minWidth: 0,
+        width: '220px',
+        maxWidth: '100%',
     },
     stats: {
+        ...typographyStyles.body1,
         display: 'flex',
         gap: tokens.spacingHorizontalL,
         flexWrap: 'wrap',
-        color: 'var(--vscode-descriptionForeground)',
-        fontSize: tokens.fontSizeBase200,
+        color: tokens.colorNeutralForeground2,
     },
     statValue: {
-        color: 'var(--vscode-foreground)',
+        color: tokens.colorNeutralForeground1,
         fontWeight: tokens.fontWeightSemibold,
     },
     heatmap: {
@@ -77,33 +76,22 @@ const useStyles = makeStyles({
         gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))',
         gap: tokens.spacingHorizontalS,
     },
-    srOnly: {
-        position: 'absolute',
-        width: '1px',
-        height: '1px',
-        padding: 0,
-        margin: '-1px',
-        overflow: 'hidden',
-        clipPath: 'inset(50%)',
-        whiteSpace: 'nowrap',
-        border: 0,
-    },
     tile: {
         display: 'flex',
         flexDirection: 'column',
-        gap: '2px',
+        gap: tokens.spacingVerticalXXS,
         padding: tokens.spacingHorizontalS,
         borderRadius: tokens.borderRadiusMedium,
-        border: '1px solid var(--vscode-widget-border, var(--vscode-panel-border))',
-        color: 'var(--vscode-foreground)',
+        border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke1}`,
+        color: tokens.colorStatusDangerForeground1,
         minWidth: 0,
     },
     tileHot: {
-        border: '1px solid var(--vscode-errorForeground)',
+        border: `${tokens.strokeWidthThin} solid ${tokens.colorStatusDangerBorder1}`,
     },
     tileId: {
-        fontFamily: 'var(--vscode-editor-font-family)',
-        fontSize: tokens.fontSizeBase200,
+        ...typographyStyles.body1,
+        fontFamily: tokens.fontFamilyMonospace,
         overflow: 'hidden',
         textOverflow: 'ellipsis',
         whiteSpace: 'nowrap',
@@ -119,14 +107,14 @@ const useStyles = makeStyles({
     listItem: {
         display: 'flex',
         flexDirection: 'column',
-        gap: '2px',
+        gap: tokens.spacingVerticalXXS,
         padding: tokens.spacingHorizontalM,
         borderRadius: tokens.borderRadiusMedium,
-        border: '1px solid var(--vscode-widget-border, var(--vscode-panel-border))',
-        backgroundColor: 'var(--vscode-editor-background)',
+        border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke1}`,
+        backgroundColor: tokens.colorNeutralBackground1,
     },
     listItemHot: {
-        borderLeft: '3px solid var(--vscode-errorForeground)',
+        borderLeft: `${tokens.strokeWidthThicker} solid ${tokens.colorStatusDangerBorder1}`,
     },
     listTitleRow: {
         display: 'flex',
@@ -135,27 +123,21 @@ const useStyles = makeStyles({
         flexWrap: 'wrap',
     },
     listTitle: {
-        fontFamily: 'var(--vscode-editor-font-family)',
-        fontWeight: tokens.fontWeightSemibold,
-    },
-    hotTag: {
-        color: 'var(--vscode-errorForeground)',
-        fontSize: tokens.fontSizeBase200,
-        textTransform: 'uppercase',
-        letterSpacing: '0.04em',
+        ...typographyStyles.body1Strong,
+        fontFamily: tokens.fontFamilyMonospace,
     },
     rationale: {
-        fontSize: tokens.fontSizeBase200,
-        color: 'var(--vscode-foreground)',
+        ...typographyStyles.body1,
+        color: tokens.colorNeutralForeground1,
     },
     action: {
-        fontSize: tokens.fontSizeBase200,
-        color: 'var(--vscode-descriptionForeground)',
+        ...typographyStyles.body1,
+        color: tokens.colorNeutralForeground2,
     },
     emptyState: {
         padding: tokens.spacingVerticalXL,
         textAlign: 'center',
-        color: 'var(--vscode-descriptionForeground)',
+        color: tokens.colorNeutralForeground2,
     },
     loading: {
         display: 'flex',
@@ -164,12 +146,15 @@ const useStyles = makeStyles({
     },
 });
 
+function roundShare(sharePercent: number): number {
+    return sharePercent >= 10 ? Math.round(sharePercent) : Math.round(sharePercent * 10) / 10;
+}
+
 function formatShare(sharePercent: number): string {
     if (!Number.isFinite(sharePercent)) {
         return '—';
     }
-    const rounded = sharePercent >= 10 ? Math.round(sharePercent) : Math.round(sharePercent * 10) / 10;
-    return `${rounded}%`;
+    return `${roundShare(sharePercent)}%`;
 }
 
 function partitionLabel(partitionId: string): string {
@@ -177,7 +162,7 @@ function partitionLabel(partitionId: string): string {
 }
 
 function rationaleFor(tile: PartitionTile, mode: PartitionDistributionMode): string {
-    const percent = Math.round(tile.sharePercent);
+    const percent = roundShare(tile.sharePercent);
     if (mode === 'ru') {
         return tile.hot
             ? l10n.t(
@@ -202,7 +187,7 @@ function suggestedActionFor(tile: PartitionTile, mode: PartitionDistributionMode
 
 function tileAriaLabel(tile: PartitionTile, mode: PartitionDistributionMode): string {
     const label = partitionLabel(tile.partitionId);
-    const percent = Math.round(tile.sharePercent);
+    const percent = roundShare(tile.sharePercent);
     if (mode === 'ru') {
         return tile.hot
             ? l10n.t('Physical partition {0}, {1} percent p99 utilization, flagged as hot', label, percent)
@@ -219,6 +204,7 @@ const HeatmapTile = ({ tile, mode }: { tile: PartitionTile; mode: PartitionDistr
         <figure
             className={mergeClasses(styles.tile, tile.hot && styles.tileHot)}
             style={{ backgroundColor: LEVEL_FILL[tile.level], margin: 0 }}
+            aria-label={tileAriaLabel(tile, mode)}
             title={
                 mode === 'ru'
                     ? l10n.t('{label}: {value} p99 utilization', {
@@ -231,7 +217,6 @@ const HeatmapTile = ({ tile, mode }: { tile: PartitionTile; mode: PartitionDistr
                       })
             }
         >
-            <figcaption className={styles.srOnly}>{tileAriaLabel(tile, mode)}</figcaption>
             <Text className={styles.tileId} aria-hidden="true">
                 {partitionLabel(tile.partitionId)}
             </Text>
@@ -243,6 +228,8 @@ const HeatmapTile = ({ tile, mode }: { tile: PartitionTile; mode: PartitionDistr
 };
 
 export const PartitionHealth = ({
+    active = true,
+    navigationRevision = 0,
     result,
     loading,
     mode,
@@ -251,6 +238,8 @@ export const PartitionHealth = ({
     selected,
     onSelectContainer,
 }: {
+    active?: boolean;
+    navigationRevision?: number;
     result?: PartitionHealthResult;
     loading: boolean;
     mode: PartitionDistributionMode;
@@ -262,7 +251,7 @@ export const PartitionHealth = ({
     const styles = useStyles();
 
     const selectedValue = selected ? `${selected.databaseId}/${selected.containerId}` : NO_CONTAINER;
-    const selectedText = selected ? selected.containerId : l10n.t('Select a container');
+    const selectedText = selected ? `${selected.containerId} · ${selected.databaseId}` : l10n.t('Select a container');
 
     const handleSelect = (_: unknown, data: OptionOnSelectData) => {
         const value = data.optionValue;
@@ -276,39 +265,37 @@ export const PartitionHealth = ({
     const toolbar = (
         <div className={styles.toolbar}>
             <Dropdown
+                key={`${active}-${navigationRevision}`}
                 className={styles.containerSelect}
-                aria-label={l10n.t('Select a container for partition health')}
+                aria-label={l10n.t('Select a container for partition health: {selection}', {
+                    selection: selectedText,
+                })}
                 value={selectedText}
                 selectedOptions={[selectedValue]}
                 onOptionSelect={handleSelect}
             >
                 {containers.map((c) => {
                     const value = `${c.databaseId}/${c.containerId}`;
+                    const text = `${c.containerId} · ${c.databaseId}`;
                     return (
-                        <Option key={value} value={value} text={c.containerId}>
-                            {`${c.containerId} · ${c.databaseId}`}
+                        <Option key={value} value={value} text={text}>
+                            {text}
                         </Option>
                     );
                 })}
             </Dropdown>
-            <div className={styles.modeToggle} role="toolbar" aria-label={l10n.t('Partition distribution measure')}>
-                <Button
-                    size="small"
-                    appearance={mode === 'ru' ? 'primary' : 'subtle'}
-                    aria-pressed={mode === 'ru'}
-                    onClick={() => onModeChange('ru')}
-                >
+            <Toolbar
+                size="small"
+                aria-label={l10n.t('Partition distribution measure')}
+                checkedValues={{ mode: [mode] }}
+            >
+                <ToolbarToggleButton name="mode" value="ru" onClick={() => onModeChange('ru')}>
                     {l10n.t('By RU Share')}
-                </Button>
-                <Button
-                    size="small"
-                    appearance={mode === 'storage' ? 'primary' : 'subtle'}
-                    aria-pressed={mode === 'storage'}
-                    onClick={() => onModeChange('storage')}
-                >
+                </ToolbarToggleButton>
+                <ToolbarToggleButton name="mode" value="storage" onClick={() => onModeChange('storage')}>
                     {l10n.t('By Storage Share')}
-                </Button>
-            </div>
+                </ToolbarToggleButton>
+            </Toolbar>
         </div>
     );
 
@@ -368,12 +355,13 @@ export const PartitionHealth = ({
                         <span className={styles.statValue}>{result.partitionCount}</span>
                     </span>
                 </div>
-                <figure className={styles.heatmap} style={{ margin: 0 }}>
-                    <figcaption className={styles.srOnly}>
-                        {l10n.t('Partition distribution heatmap with {count} physical partitions', {
-                            count: result.partitionCount,
-                        })}
-                    </figcaption>
+                <figure
+                    className={styles.heatmap}
+                    style={{ margin: 0 }}
+                    aria-label={l10n.t('Partition distribution heatmap with {count} physical partitions', {
+                        count: result.partitionCount,
+                    })}
+                >
                     {result.tiles.map((tile) => (
                         <HeatmapTile key={tile.partitionId} tile={tile} mode={result.mode} />
                     ))}
@@ -390,7 +378,11 @@ export const PartitionHealth = ({
                                     <Text className={styles.listTitle}>
                                         {`${partitionLabel(tile.partitionId)} — ${formatShare(tile.sharePercent)}`}
                                     </Text>
-                                    {tile.hot && <Text className={styles.hotTag}>{l10n.t('Hot')}</Text>}
+                                    {tile.hot && (
+                                        <Badge appearance="tint" shape="circular" color="danger">
+                                            {l10n.t('Hot')}
+                                        </Badge>
+                                    )}
                                 </div>
                                 <Text className={styles.rationale}>{rationaleFor(tile, result.mode)}</Text>
                                 {action && <Text className={styles.action}>{action}</Text>}

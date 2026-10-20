@@ -4,10 +4,12 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
+import { escapeAdvisoryText } from '../../../advisoryText';
 import { type ThroughputMode } from '../../inventory';
 import { containerKey } from '../../shared';
 import { Detector, type DetectorContext } from '../core/Detector';
-import { capacityMaterialitySeverity, clampRationale } from '../core/helpers';
+import { capacityMaterialitySeverity, clampRationale, hasMinimumKnownResourceAge } from '../core/helpers';
+import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import { type DerivedAdvisory, type IdleContainerInput } from '../core/types';
 
 // DX-004/011: autoscale bills between 10% and 100% of the configured max (`0.1*Tmax ≤ T ≤ Tmax`), so an idle
@@ -36,7 +38,12 @@ function evaluateIdleContainer(
     const isAutoscale = input.throughputMode === 'autoscale';
     const isManual = MANUAL_THROUGHPUT_MODES.has(input.throughputMode);
     // Only manual/autoscale containers have a provisioned offer to recover; serverless has none.
-    if ((!isAutoscale && !isManual) || input.provisionedRu === undefined || input.provisionedRu <= 0) {
+    if (
+        (!isAutoscale && !isManual) ||
+        input.provisionedRu === undefined ||
+        input.provisionedRu <= 0 ||
+        !hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.idle.minResourceAgeDays)
+    ) {
         return undefined;
     }
     // Consumed real RU in some bucket ⇒ active, not idle — DX-001 right-sizes it instead.
@@ -50,14 +57,29 @@ function evaluateIdleContainer(
     const recoverable = Math.round(recoverableRu);
     const provisioned = Math.round(input.provisionedRu);
     const rationale = isAutoscale
-        ? l10n.t(
-              'Container "{container}" consumed at most {peak} RU in any single bucket over the last 30 days, at or below the {threshold} RU idle floor. It serves ~no traffic. Decommissioning it recovers the autoscale idle floor (~{recoverable} RU/s of its {provisioned} RU/s max).',
-              { container: input.containerId, peak, threshold: Math.round(maxIdlePeakRu), recoverable, provisioned },
+        ? l10n.t('Container "{container}" consumed at most `{peak} RU` in any single bucket over the last `30 days`.', {
+              container: escapeAdvisoryText(input.containerId),
+              peak,
+          }) +
+          ' ' +
+          l10n.t('This is at or below the `{threshold} RU` idle floor. It serves ~no traffic.', {
+              threshold: Math.round(maxIdlePeakRu),
+          }) +
+          ' ' +
+          l10n.t(
+              'Decommissioning it recovers the autoscale idle floor (`~{recoverable} RU/s` of its `{provisioned} RU/s` max).',
+              { recoverable, provisioned },
           )
-        : l10n.t(
-              'Container "{container}" consumed at most {peak} RU in any single bucket over the last 30 days, at or below the {threshold} RU idle floor. It serves ~no traffic. Its full {recoverable} RU/s provisioned capacity is recoverable.',
-              { container: input.containerId, peak, threshold: Math.round(maxIdlePeakRu), recoverable },
-          );
+        : l10n.t('Container "{container}" consumed at most `{peak} RU` in any single bucket over the last `30 days`.', {
+              container: escapeAdvisoryText(input.containerId),
+              peak,
+          }) +
+          ' ' +
+          l10n.t('This is at or below the `{threshold} RU` idle floor. It serves ~no traffic.', {
+              threshold: Math.round(maxIdlePeakRu),
+          }) +
+          ' ' +
+          l10n.t('Its full `{recoverable} RU/s` provisioned capacity is recoverable.', { recoverable });
     return {
         id: `IdleContainer:${scope}`,
         rule: 'IdleContainer',
@@ -66,9 +88,9 @@ function evaluateIdleContainer(
         rationale: clampRationale(rationale),
         suggestedAction: l10n.t(
             'Review "{container}" for decommission, a TTL policy, or archival; confirm it is genuinely unused before removing it.',
-            { container: input.containerId },
+            { container: escapeAdvisoryText(input.containerId) },
         ),
-        thresholdReference: l10n.t('Threshold: peak ≤ {threshold} RU per bucket over 30 days', {
+        thresholdReference: l10n.t('Threshold: peak ≤ `{threshold} RU` per bucket over `30 days`', {
             threshold: Math.round(maxIdlePeakRu),
         }),
         scope,
@@ -77,6 +99,7 @@ function evaluateIdleContainer(
 
 export class IdleContainerDetector extends Detector {
     readonly rule = 'IdleContainer' as const;
+    readonly supersedes = ['OverProvisioning', 'AutoscaleMaxOverProvisioned'] as const;
     evaluate = evaluateIdleContainer;
     run(ctx: DetectorContext): DerivedAdvisory[] {
         const out: DerivedAdvisory[] = [];

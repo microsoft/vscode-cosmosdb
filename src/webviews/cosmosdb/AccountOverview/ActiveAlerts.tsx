@@ -3,12 +3,25 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Button, Link, makeStyles, mergeClasses, Spinner, Text, tokens } from '@fluentui/react-components';
+import {
+    Badge,
+    type BadgeProps,
+    Card,
+    Link,
+    makeStyles,
+    Spinner,
+    Text,
+    tokens,
+    Toolbar,
+    ToolbarToggleButton,
+    typographyStyles,
+    useAnnounce,
+} from '@fluentui/react-components';
 import { Open16Regular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { type ReactNode } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import { type AlertItem, type AlertSeverity, type AlertsResult, type AlertTimeRange } from '../../api/types';
-import { EmptyState, Pill, type PillTone, useDashboardActions } from './DashboardChrome';
+import { EmptyState, useDashboardActions } from './DashboardChrome';
 
 /**
  * Localized labels for each alert time-range. Keyed by {@link AlertTimeRange} so the
@@ -25,10 +38,10 @@ const TIME_RANGE_LABELS: Record<AlertTimeRange, string> = {
 /** Render order for the time-range filter buttons. */
 const TIME_RANGES = Object.keys(TIME_RANGE_LABELS) as AlertTimeRange[];
 
-const SEVERITY_TONE: Record<AlertSeverity, PillTone> = {
+const SEVERITY_TONE: Record<AlertSeverity, BadgeProps['color']> = {
     Critical: 'danger',
     Warning: 'warning',
-    Informational: 'neutral',
+    Informational: 'subtle',
 };
 
 const useStyles = makeStyles({
@@ -38,8 +51,6 @@ const useStyles = makeStyles({
         gap: tokens.spacingVerticalM,
     },
     filters: {
-        display: 'flex',
-        gap: tokens.spacingHorizontalXS,
         flexWrap: 'wrap',
     },
     list: {
@@ -48,43 +59,37 @@ const useStyles = makeStyles({
         gap: tokens.spacingVerticalS,
     },
     item: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '2px',
-        padding: tokens.spacingHorizontalM,
-        borderRadius: tokens.borderRadiusMedium,
-        border: '1px solid var(--vscode-widget-border, var(--vscode-panel-border))',
-        backgroundColor: 'var(--vscode-editor-background)',
-    },
-    itemInformational: {
-        opacity: 0.75,
+        gap: tokens.spacingVerticalXXS,
+        minWidth: 0,
+        overflow: 'visible',
     },
     titleRow: {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: tokens.spacingHorizontalS,
+        flexWrap: 'wrap',
     },
     title: {
-        fontWeight: tokens.fontWeightSemibold,
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap',
+        ...typographyStyles.body1Strong,
+        overflowWrap: 'anywhere',
+        minWidth: 0,
     },
     meta: {
-        fontSize: tokens.fontSizeBase200,
-        color: 'var(--vscode-descriptionForeground)',
+        ...typographyStyles.caption1,
+        color: tokens.colorNeutralForeground2,
+        overflowWrap: 'anywhere',
     },
     link: {
-        fontSize: tokens.fontSizeBase200,
+        ...typographyStyles.body1,
         display: 'inline-flex',
         alignItems: 'center',
-        gap: '4px',
+        gap: tokens.spacingHorizontalXS,
     },
     emptyState: {
         padding: tokens.spacingVerticalL,
         textAlign: 'center',
-        color: 'var(--vscode-descriptionForeground)',
+        color: tokens.colorNeutralForeground2,
     },
     loading: {
         display: 'flex',
@@ -123,12 +128,12 @@ const AlertRow = ({ alert, onOpenUrl }: { alert: AlertItem; onOpenUrl: (url: str
     const styles = useStyles();
     const started = formatStartedAt(alert.startedAt);
     return (
-        <div className={mergeClasses(styles.item, alert.severity === 'Informational' && styles.itemInformational)}>
+        <Card className={styles.item} appearance="outline" focusMode="off">
             <div className={styles.titleRow}>
-                <Text className={styles.title} title={alert.name}>
-                    {alert.name}
-                </Text>
-                <Pill tone={SEVERITY_TONE[alert.severity]}>{severityLabel(alert.severity)}</Pill>
+                <Text className={styles.title}>{alert.name}</Text>
+                <Badge appearance="outline" shape="circular" color={SEVERITY_TONE[alert.severity]}>
+                    {severityLabel(alert.severity)}
+                </Badge>
             </div>
             {(alert.alertRule || started) && (
                 <Text className={styles.meta}>{[alert.alertRule, started].filter(Boolean).join(' · ')}</Text>
@@ -137,12 +142,12 @@ const AlertRow = ({ alert, onOpenUrl }: { alert: AlertItem; onOpenUrl: (url: str
                 className={styles.link}
                 as="button"
                 onClick={() => onOpenUrl(alert.portalUrl)}
-                aria-label={l10n.t('View alert {name} in the Azure portal', { name: alert.name })}
+                aria-description={l10n.t('View alert {name} in the Azure portal', { name: alert.name })}
             >
-                <Open16Regular />
+                <Open16Regular aria-hidden />
                 {l10n.t('View in Azure portal')}
             </Link>
-        </div>
+        </Card>
     );
 };
 
@@ -152,15 +157,35 @@ export const ActiveAlerts = ({
     timeRange,
     onTimeRangeChange,
     onOpenUrl,
+    active = true,
 }: {
     result?: AlertsResult;
     loading: boolean;
     timeRange: AlertTimeRange;
     onTimeRangeChange: (range: AlertTimeRange) => void;
     onOpenUrl: (url: string) => void;
+    active?: boolean;
 }) => {
     const styles = useStyles();
     const { reportEvent } = useDashboardActions();
+    const { announce } = useAnnounce();
+    const pendingRange = useRef<AlertTimeRange | undefined>(undefined);
+
+    useEffect(() => {
+        if (!active) {
+            pendingRange.current = undefined;
+        }
+        if (loading || !pendingRange.current || result?.timeRange !== pendingRange.current) {
+            return;
+        }
+        pendingRange.current = undefined;
+        announce(
+            result.available
+                ? l10n.t('Active alerts in the selected window: {count}', { count: result.alerts.length })
+                : l10n.t('Alerts could not be loaded for the selected window.'),
+            { polite: true },
+        );
+    }, [active, loading, result, announce]);
 
     const openAlert = (url: string) => {
         reportEvent('deepLinkFollowed', { target: 'portal' });
@@ -168,19 +193,35 @@ export const ActiveAlerts = ({
     };
 
     const filters = (
-        <div className={styles.filters} role="toolbar" aria-label={l10n.t('Alert time range')}>
+        <Toolbar
+            className={styles.filters}
+            size="small"
+            aria-label={l10n.t('Alert time range')}
+            checkedValues={{ timeRange: [timeRange] }}
+        >
             {TIME_RANGES.map((range) => (
-                <Button
+                <ToolbarToggleButton
                     key={range}
-                    size="small"
-                    appearance={timeRange === range ? 'primary' : 'subtle'}
-                    aria-pressed={timeRange === range}
-                    onClick={() => onTimeRangeChange(range)}
+                    name="timeRange"
+                    value={range}
+                    disabled={loading}
+                    disabledFocusable={loading}
+                    aria-description={loading ? l10n.t('Alerts are still loading.') : undefined}
+                    onClick={
+                        loading
+                            ? undefined
+                            : () => {
+                                  if (range !== timeRange) {
+                                      pendingRange.current = range;
+                                      onTimeRangeChange(range);
+                                  }
+                              }
+                    }
                 >
                     {TIME_RANGE_LABELS[range]}
-                </Button>
+                </ToolbarToggleButton>
             ))}
-        </div>
+        </Toolbar>
     );
 
     let body: ReactNode;

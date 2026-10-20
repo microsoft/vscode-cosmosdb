@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { makeStyles, Spinner, Text, tokens } from '@fluentui/react-components';
+import { makeStyles, Spinner, Text, tokens, typographyStyles } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
 import { useMemo } from 'react';
 import {
@@ -31,10 +31,10 @@ import { formatAxisTick, formatMetricValue, type MetricViewDescriptor } from './
 const EMPTY_POINTS: MetricPoint[] = [];
 
 const SERIES_COLOR = 'var(--vscode-charts-blue, var(--vscode-textLink-foreground))';
-const THROTTLE_COLOR = 'var(--vscode-errorForeground)';
-const GRID_COLOR = 'var(--vscode-panel-border)';
-const AXIS_COLOR = 'var(--vscode-descriptionForeground)';
-const REFERENCE_COLOR = 'var(--vscode-charts-foreground, var(--vscode-descriptionForeground))';
+const THROTTLE_COLOR = tokens.colorStatusDangerForeground1;
+const GRID_COLOR = tokens.colorNeutralStroke2;
+const AXIS_COLOR = tokens.colorNeutralForeground2;
+const REFERENCE_COLOR = tokens.colorNeutralForeground2;
 
 const useStyles = makeStyles({
     chartArea: {
@@ -47,22 +47,23 @@ const useStyles = makeStyles({
         alignItems: 'center',
         justifyContent: 'center',
         height: '280px',
-        color: 'var(--vscode-descriptionForeground)',
+        color: tokens.colorNeutralForeground2,
         textAlign: 'center',
     },
     tooltip: {
+        ...typographyStyles.body1,
         padding: tokens.spacingHorizontalS,
         borderRadius: tokens.borderRadiusMedium,
-        border: '1px solid var(--vscode-editorHoverWidget-border, var(--vscode-widget-border))',
-        backgroundColor: 'var(--vscode-editorHoverWidget-background, var(--vscode-editorWidget-background))',
-        color: 'var(--vscode-editorHoverWidget-foreground, var(--vscode-foreground))',
-        fontSize: tokens.fontSizeBase200,
+        border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke1}`,
+        backgroundColor: tokens.colorNeutralBackground1,
+        color: tokens.colorNeutralForeground1,
+        boxShadow: tokens.shadow8,
         display: 'flex',
         flexDirection: 'column',
-        gap: '2px',
+        gap: tokens.spacingVerticalXXS,
     },
     throttleNote: {
-        color: 'var(--vscode-errorForeground)',
+        color: tokens.colorStatusDangerForeground1,
     },
     srOnly: {
         position: 'absolute',
@@ -155,6 +156,12 @@ export const MetricChart = ({
 
     const points = series?.points ?? EMPTY_POINTS;
     const bands = useMemo(() => throttlingBands(series?.points ?? EMPTY_POINTS), [series?.points]);
+    // Thin labels, not chart data; keep both ends of the time window available to the axis.
+    const timeTicks = useMemo(
+        () =>
+            points.filter((_, index) => index % 5 === 0 || index === points.length - 1).map((point) => point.timestamp),
+        [points],
+    );
 
     const yDomain = useMemo<[number, number | 'auto']>(() => {
         if (descriptor.yDomain === 'zeroTo100') {
@@ -197,15 +204,19 @@ export const MetricChart = ({
                         type="number"
                         scale="time"
                         domain={['dataMin', 'dataMax']}
+                        ticks={timeTicks}
+                        interval="preserveStartEnd"
+                        minTickGap={24}
+                        tickMargin={8}
                         tickFormatter={(ts: number) => formatTick(ts, timeRange)}
                         stroke={AXIS_COLOR}
-                        tick={{ fill: AXIS_COLOR, fontSize: 11 }}
+                        tick={{ fill: AXIS_COLOR, fontSize: tokens.fontSizeBase200, fontFamily: tokens.fontFamilyBase }}
                     />
                     <YAxis
                         domain={yDomain}
                         tickFormatter={(v: number) => formatAxisTick(descriptor.unit, v)}
                         stroke={AXIS_COLOR}
-                        tick={{ fill: AXIS_COLOR, fontSize: 11 }}
+                        tick={{ fill: AXIS_COLOR, fontSize: tokens.fontSizeBase200, fontFamily: tokens.fontFamilyBase }}
                         width={52}
                     />
                     <Tooltip content={<ChartTooltip descriptor={descriptor} />} />
@@ -229,7 +240,8 @@ export const MetricChart = ({
                                 value: ref.label,
                                 position: 'insideTopRight',
                                 fill: AXIS_COLOR,
-                                fontSize: 11,
+                                fontSize: tokens.fontSizeBase200,
+                                fontFamily: tokens.fontFamilyBase,
                             }}
                         />
                     ))}

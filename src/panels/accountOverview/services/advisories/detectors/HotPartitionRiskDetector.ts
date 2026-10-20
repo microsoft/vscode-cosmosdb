@@ -4,9 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
+import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
 import { Detector, type DetectorContext } from '../core/Detector';
-import { clampRationale } from '../core/helpers';
+import { clampRationale, hasMinimumKnownResourceAge } from '../core/helpers';
+import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import { type DerivedAdvisory, type DerivedAdvisorySeverity, type PartitionSaturationInput } from '../core/types';
 
 /**
@@ -23,7 +25,12 @@ function evaluateHotPartitionRisk(
     headroomPercent: number,
     throttleThresholdPercent: number,
 ): DerivedAdvisory | undefined {
-    if (input.partitionCount < 2 || input.maxP99 < saturationPercent || input.minP99 >= headroomPercent) {
+    if (
+        !hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.partitionSaturation.minResourceAgeDays) ||
+        input.partitionCount < DIAGNOSTIC_POLICY.partitionSaturation.minHotPartitions ||
+        input.maxP99 < saturationPercent ||
+        input.minP99 >= headroomPercent
+    ) {
         return undefined;
     }
     const scope = containerKey(input.databaseId, input.containerId);
@@ -47,14 +54,34 @@ function evaluateHotPartitionRisk(
         title: l10n.t('Hot physical partition in {container}', { container: input.containerId }),
         rationale: clampRationale(
             l10n.t(
-                'In "{container}", the busiest of {count} physical partitions ran at {busiest}% p99 utilization (at or above the {saturation}% saturation mark) while the coolest sat at {coolest}% (below the {headroom}% headroom mark). Load is concentrated by the partition key, not a global shortfall. ',
-                { container: input.containerId, count: input.partitionCount, busiest, saturation, coolest, headroom },
-            ) + impact,
+                'In "{container}", the busiest of `{count} physical partitions` ran at `{busiest}%` p99 utilization.',
+                {
+                    container: escapeAdvisoryText(input.containerId),
+                    count: input.partitionCount,
+                    busiest,
+                },
+            ) +
+                ' ' +
+                l10n.t(
+                    'This is at or above the `{saturation}%` saturation mark. The coolest sat at `{coolest}%`, below the `{headroom}%` headroom mark.',
+                    { saturation, coolest, headroom },
+                ) +
+                ' ' +
+                l10n.t('Load is concentrated by the partition key, not a global shortfall.') +
+                ' ' +
+                impact,
         ),
-        suggestedAction: l10n.t(
-            'Redesign the partition key for higher cardinality (avoid hotspots; consider synthetic or hierarchical keys) so traffic spreads across partitions. Adding RU/s will not fix a single hot partition.',
-        ),
-        thresholdReference: l10n.t('Threshold: busiest partition p99 ≥ {saturation}% while another < {headroom}%', {
+        suggestedAction:
+            l10n.t(
+                'Redesign the partition key for higher cardinality so traffic spreads across partitions. Re-keying an existing container is migration-class.',
+            ) +
+            ' ' +
+            l10n.t(
+                'Per-partition or per-region autoscale can soften the cost of feeding the hot partition while you redesign.',
+            ) +
+            ' ' +
+            l10n.t('It does not remove the throttling on a single hot key.'),
+        thresholdReference: l10n.t('Threshold: busiest partition p99 ≥ `{saturation}%` while another < `{headroom}%`', {
             saturation,
             headroom,
         }),

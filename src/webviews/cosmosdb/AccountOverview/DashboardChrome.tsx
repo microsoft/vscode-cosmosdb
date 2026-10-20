@@ -3,33 +3,35 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Link, makeStyles, mergeClasses, Subtitle2, Text, tokens } from '@fluentui/react-components';
+import {
+    Card,
+    Link,
+    makeStyles,
+    mergeClasses,
+    Subtitle2,
+    Text,
+    tokens,
+    typographyStyles,
+} from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
 import { createContext, type ReactNode, useContext, useEffect } from 'react';
 import { type UnavailableReason } from '../../api/types';
 
 /**
- * Shared visual chrome for the Account Overview dashboard: dark cards, section
- * titles, metric tiles, and pills. Every color is a `--vscode-*` token so the
- * layout tracks the active VS Code theme (dark, light, high-contrast).
+ * Shared visual chrome for the Account Overview dashboard: cards, section titles, and empty states.
+ * Fluent components and VS Code theme tokens keep the layout aligned with the active theme.
  */
 
 const useStyles = makeStyles({
     card: {
-        display: 'flex',
-        flexDirection: 'column',
         gap: tokens.spacingVerticalM,
-        padding: tokens.spacingHorizontalL,
-        borderRadius: tokens.borderRadiusLarge,
-        border: '1px solid var(--vscode-widget-border, var(--vscode-panel-border))',
-        backgroundColor: 'var(--vscode-editorWidget-background, var(--vscode-editor-background))',
-        boxSizing: 'border-box',
         minWidth: 0,
+        overflow: 'visible',
     },
     sectionHeader: {
         display: 'flex',
         flexDirection: 'column',
-        gap: '2px',
+        gap: tokens.spacingVerticalXXS,
     },
     sectionTitleRow: {
         display: 'flex',
@@ -42,62 +44,8 @@ const useStyles = makeStyles({
         margin: 0,
     },
     sectionDescription: {
-        color: 'var(--vscode-descriptionForeground)',
-        fontSize: tokens.fontSizeBase200,
-    },
-    metricTile: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: tokens.spacingVerticalXS,
-        padding: tokens.spacingHorizontalM,
-        borderRadius: tokens.borderRadiusMedium,
-        border: '1px solid var(--vscode-widget-border, var(--vscode-panel-border))',
-        backgroundColor: 'var(--vscode-editor-background)',
-        minWidth: 0,
-    },
-    metricLabel: {
-        textTransform: 'uppercase',
-        letterSpacing: '0.04em',
-        fontSize: tokens.fontSizeBase100,
-        color: 'var(--vscode-descriptionForeground)',
-    },
-    metricValue: {
-        fontSize: tokens.fontSizeHero700,
-        fontWeight: tokens.fontWeightSemibold,
-        lineHeight: tokens.lineHeightHero700,
-        overflowWrap: 'anywhere',
-    },
-    metricCaption: {
-        fontSize: tokens.fontSizeBase200,
-        color: 'var(--vscode-descriptionForeground)',
-        overflowWrap: 'anywhere',
-    },
-    pill: {
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '4px',
-        padding: '2px 8px',
-        borderRadius: tokens.borderRadiusCircular,
-        fontSize: tokens.fontSizeBase200,
-        border: '1px solid var(--vscode-widget-border, var(--vscode-panel-border))',
-        color: 'var(--vscode-foreground)',
-        whiteSpace: 'nowrap',
-    },
-    pillInfo: {
-        border: '1px solid var(--vscode-focusBorder)',
-        color: 'var(--vscode-textLink-foreground)',
-    },
-    pillSuccess: {
-        border: '1px solid var(--vscode-charts-green, var(--vscode-testing-iconPassed))',
-        color: 'var(--vscode-charts-green, var(--vscode-testing-iconPassed))',
-    },
-    pillWarning: {
-        border: '1px solid var(--vscode-charts-yellow, var(--vscode-editorWarning-foreground))',
-        color: 'var(--vscode-editorWarning-foreground)',
-    },
-    pillDanger: {
-        border: '1px solid var(--vscode-errorForeground)',
-        color: 'var(--vscode-errorForeground)',
+        ...typographyStyles.caption1,
+        color: tokens.colorNeutralForeground2,
     },
     emptyState: {
         display: 'flex',
@@ -106,15 +54,17 @@ const useStyles = makeStyles({
         gap: tokens.spacingVerticalXS,
         padding: tokens.spacingVerticalL,
         textAlign: 'center',
-        color: 'var(--vscode-descriptionForeground)',
+        color: tokens.colorNeutralForeground2,
     },
 });
 
-export type PillTone = 'neutral' | 'info' | 'success' | 'warning' | 'danger';
-
 export const DashboardCard = ({ className, children }: { className?: string; children: ReactNode }) => {
     const styles = useStyles();
-    return <div className={mergeClasses(styles.card, className)}>{children}</div>;
+    return (
+        <Card className={mergeClasses(styles.card, className)} size="large" appearance="outline" focusMode="off">
+            {children}
+        </Card>
+    );
 };
 
 export const SectionHeader = ({
@@ -140,39 +90,6 @@ export const SectionHeader = ({
     );
 };
 
-export const MetricTile = ({
-    label,
-    value,
-    caption,
-    className,
-}: {
-    label: string;
-    value: string;
-    caption?: string;
-    className?: string;
-}) => {
-    const styles = useStyles();
-    return (
-        <div className={mergeClasses(styles.metricTile, className)}>
-            <Text className={styles.metricLabel}>{label}</Text>
-            <Text className={styles.metricValue}>{value}</Text>
-            {caption && <Text className={styles.metricCaption}>{caption}</Text>}
-        </div>
-    );
-};
-
-export const Pill = ({ tone = 'neutral', children }: { tone?: PillTone; children: ReactNode }) => {
-    const styles = useStyles();
-    const toneClass: Record<PillTone, string | undefined> = {
-        neutral: undefined,
-        info: styles.pillInfo,
-        success: styles.pillSuccess,
-        warning: styles.pillWarning,
-        danger: styles.pillDanger,
-    };
-    return <span className={mergeClasses(styles.pill, toneClass[tone])}>{children}</span>;
-};
-
 // ─── Dashboard actions context ────────────────────────────────────────────────────
 //
 // A tiny context so shared chrome (e.g. EmptyState) can report telemetry and
@@ -188,13 +105,14 @@ export interface DashboardActions {
     ) => void;
     /** Opens an external URL in the user's browser via the host. */
     openUrl: (url: string) => void;
+    showOutput: () => void;
 }
 
 const noop = () => {
     /* no-op default */
 };
 
-const DashboardActionsContext = createContext<DashboardActions>({ reportEvent: noop, openUrl: noop });
+const DashboardActionsContext = createContext<DashboardActions>({ reportEvent: noop, openUrl: noop, showOutput: noop });
 
 export const DashboardActionsProvider = DashboardActionsContext.Provider;
 
@@ -233,7 +151,9 @@ export const EmptyState = ({ reason, requiredRole }: { reason?: UnavailableReaso
                 : l10n.t('Not enough permissions to load this section.');
             break;
         case 'logAnalyticsDisabled':
-            message = l10n.t('Enable diagnostic settings to a Log Analytics workspace to run log-based checks.');
+            message = l10n.t(
+                'Required log tables are unavailable. Check diagnostic categories, resource-specific export mode, ingestion, and Log Analytics access.',
+            );
             break;
         case 'noData':
         default:

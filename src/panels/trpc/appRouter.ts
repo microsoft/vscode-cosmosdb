@@ -26,6 +26,7 @@ import { type DataModelerAccount, type DataModelerProjectService } from '../../s
 import { type TelemetryContext } from '../../Telemetry';
 import { openSurvey, promptAfterActionEventually } from '../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../utils/surveyTypes';
+import { type AccountOverviewNavigation } from '../accountOverview/navigation';
 import { accountOverviewRouterDef } from './routers/accountOverviewRouter';
 import { type DataModelingEvent, dataModelingEventsRouterDef } from './routers/dataModelingEventsRouter';
 import { dataModelingRouterDef } from './routers/dataModelingRouter';
@@ -166,6 +167,8 @@ export type MigrationRouterContext = CosmosDBRouterContext & {
 
 export type AccountOverviewRouterContext = CosmosDBRouterContext & {
     metadata: AzureResourceMetadata;
+    getInitialization: () => AccountOverviewNavigation;
+    onNavigation: vscode.Event<AccountOverviewNavigation>;
 };
 
 export type DataModelingRouterContext = CosmosDBRouterContext & {

@@ -118,7 +118,7 @@
     }
   },
   "devDependencies": {
-    "@playwright/test": "~1.63.0",
+    "@playwright/test": "~1.64.0",
     "@testing-library/jest-dom": "~7.0.0",
     "@testing-library/react": "~16.3.2",
     "@testing-library/user-event": "~14.6.1",
@@ -133,7 +133,7 @@
     "@vitest/coverage-v8": "~4.1.11",
     "@vscode/l10n-dev": "~0.0.35",
     "@vscode/test-electron": "~3.1.0",
-    "@vscode/vsce": "~3.9.1",
+    "@vscode/vsce": "~4.0.0",
     "concurrently": "~10.0.4",
     "cross-env": "~10.1.0",
     "diff": "~9.0.0",
@@ -839,6 +839,61 @@
         "title": "%cosmosdb.command.account.overview.open%"
       },
       {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.openAccountOverview.overview",
+        "title": "%cosmosdb.command.account.overview.overview%"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.openAccountOverview.normalizedRu",
+        "title": "%cosmosdb.command.account.overview.normalizedRu%"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.openAccountOverview.totalRequests",
+        "title": "%cosmosdb.command.account.overview.totalRequests%"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.openAccountOverview.totalRequestUnits",
+        "title": "%cosmosdb.command.account.overview.totalRequestUnits%"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.openAccountOverview.metadataRequests",
+        "title": "%cosmosdb.command.account.overview.metadataRequests%"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.openAccountOverview.serverLatency",
+        "title": "%cosmosdb.command.account.overview.serverLatency%"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.openAccountOverview.serviceAvailability",
+        "title": "%cosmosdb.command.account.overview.serviceAvailability%"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.openAccountOverview.dataIndexUsage",
+        "title": "%cosmosdb.command.account.overview.dataIndexUsage%"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.openAccountOverview.provisionedThroughput",
+        "title": "%cosmosdb.command.account.overview.provisionedThroughput%"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.openAccountOverview.documentCount",
+        "title": "%cosmosdb.command.account.overview.documentCount%"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.openAccountOverview.advisories",
+        "title": "%cosmosdb.command.account.overview.advisories%"
+      },
+      {
         "category": "NoSQL",
         "command": "cosmosDB.createContainer",
         "title": "%cosmosdb.command.container.create%"
@@ -1009,6 +1064,10 @@
     ],
     "submenus": [
       {
+        "id": "cosmosDB.submenus.accountOverview",
+        "label": "%cosmosdb.command.account.overview.menu%"
+      },
+      {
         "id": "azureDatabases.submenus.workspaceActions",
         "label": "Azure Cosmos DB",
         "icon": {
@@ -1018,6 +1077,52 @@
       }
     ],
     "menus": {
+      "cosmosDB.submenus.accountOverview": [
+        {
+          "command": "cosmosDB.openAccountOverview.overview",
+          "group": "1_overview@1"
+        },
+        {
+          "command": "cosmosDB.openAccountOverview.normalizedRu",
+          "group": "2_monitoring@1"
+        },
+        {
+          "command": "cosmosDB.openAccountOverview.totalRequests",
+          "group": "2_monitoring@2"
+        },
+        {
+          "command": "cosmosDB.openAccountOverview.totalRequestUnits",
+          "group": "2_monitoring@3"
+        },
+        {
+          "command": "cosmosDB.openAccountOverview.metadataRequests",
+          "group": "2_monitoring@4"
+        },
+        {
+          "command": "cosmosDB.openAccountOverview.serverLatency",
+          "group": "2_monitoring@5"
+        },
+        {
+          "command": "cosmosDB.openAccountOverview.serviceAvailability",
+          "group": "2_monitoring@6"
+        },
+        {
+          "command": "cosmosDB.openAccountOverview.dataIndexUsage",
+          "group": "2_monitoring@7"
+        },
+        {
+          "command": "cosmosDB.openAccountOverview.provisionedThroughput",
+          "group": "2_monitoring@8"
+        },
+        {
+          "command": "cosmosDB.openAccountOverview.documentCount",
+          "group": "2_monitoring@9"
+        },
+        {
+          "command": "cosmosDB.openAccountOverview.advisories",
+          "group": "3_advisories@1"
+        }
+      ],
       "azureDatabases.submenus.workspaceActions": [
         {
           "command": "cosmosDB.newConnection",
@@ -1064,8 +1169,8 @@
           "group": "1@1"
         },
         {
-          "//": "[Account] Open Account Overview - Azure Resources accounts only (ARM metadata required)",
-          "command": "cosmosDB.openAccountOverview",
+          "//": "[Account] Account Overview navigation - Azure Resources accounts only (ARM metadata required)",
+          "submenu": "cosmosDB.submenus.accountOverview",
           "when": "view =~ /azure(ResourceGroups|FocusView)/ && viewItem =~ /hasarmmetadata/i",
           "group": "1@1"
         },

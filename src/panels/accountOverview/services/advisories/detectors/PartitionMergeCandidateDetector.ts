@@ -4,9 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
+import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
 import { Detector, type DetectorContext } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
+import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import { type DerivedAdvisory, type DerivedAdvisorySeverity, type PartitionMergeInput } from '../core/types';
 import { GIB } from './storageMath';
 
@@ -44,7 +46,8 @@ function evaluatePartitionMergeCandidate(input: PartitionMergeInput): DerivedAdv
     if (actual <= needed) {
         return undefined;
     }
-    const severity: DerivedAdvisorySeverity = actual >= 2 * needed ? 'Medium' : 'Low';
+    const severity: DerivedAdvisorySeverity =
+        actual >= DIAGNOSTIC_POLICY.partitionMerge.mediumExcessRatio * needed ? 'Medium' : 'Low';
     const scope = containerKey(input.databaseId, input.containerId);
     const ruSlice = provisionedRu > 0 ? Math.round(provisionedRu / actual) : 0;
     const gib = Math.round((storageBytes / GIB) * 10) / 10;
@@ -55,14 +58,31 @@ function evaluatePartitionMergeCandidate(input: PartitionMergeInput): DerivedAdv
         title: l10n.t('Container may be over-partitioned'),
         rationale: clampRationale(
             l10n.t(
-                'Container "{container}" has {actual} physical partitions but its {ru} RU/s and {gib} GiB only need {needed}. Each partition therefore gets just ~{slice} RU/s, so a single hot partition can throttle while the container looks under-utilised. This usually follows scaling RU/s down (or deleting data) after a high-throughput or large period.',
-                { container: input.containerId, actual, ru: Math.round(provisionedRu), gib, needed, slice: ruSlice },
-            ),
+                'Container "{container}" has `{actual} physical partitions` but its `{ru} RU/s` and `{gib} GiB` only need `{needed}`.',
+                {
+                    container: escapeAdvisoryText(input.containerId),
+                    actual,
+                    ru: Math.round(provisionedRu),
+                    gib,
+                    needed,
+                },
+            ) +
+                ' ' +
+                l10n.t(
+                    'Each partition gets just `~{slice} RU/s`, so a hot partition can throttle while the container looks under-utilised.',
+                    { slice: ruSlice },
+                ) +
+                ' ' +
+                l10n.t(
+                    'This usually follows scaling RU/s down (or deleting data) after a high-throughput or large period.',
+                ),
         ),
         suggestedAction: l10n.t(
             'Merge the physical partitions (Azure Portal or CLI) to consolidate the RU/s back onto fewer partitions.',
         ),
-        thresholdReference: l10n.t('Threshold: physical partitions > max(ceil(RU/10,000), ceil(storage/50 GiB), 1)'),
+        thresholdReference: l10n.t(
+            'Threshold: physical partitions > max(ceil(RU/`10,000`), ceil(storage/`50 GiB`), `1`)',
+        ),
         scope,
     };
 }

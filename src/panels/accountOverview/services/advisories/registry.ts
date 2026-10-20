@@ -16,6 +16,7 @@ import { multiRegionWriteAntipatternDetector } from './detectors/MultiRegionWrit
 import { overProvisioningDetector } from './detectors/OverProvisioningDetector';
 import { partitionMergeCandidateDetector } from './detectors/PartitionMergeCandidateDetector';
 import { serverlessCandidateDetector } from './detectors/ServerlessCandidateDetector';
+import { serverlessThrottlingDetector } from './detectors/ServerlessThrottlingDetector';
 import { shardKeyMisalignmentDetector } from './detectors/ShardKeyMisalignmentDetector';
 import { sharedThroughputStarvationDetector } from './detectors/SharedThroughputStarvationDetector';
 import { storageGrowthRiskDetector } from './detectors/StorageGrowthRiskDetector';
@@ -24,7 +25,7 @@ import { uncontrolledIngestionDetector } from './detectors/UncontrolledIngestion
 import { underProvisioningDetector } from './detectors/UnderProvisioningDetector';
 
 /**
- * Every derived-advisory detector, in evaluation order. Suppression (ShardKeyMisalignment supersedes
+ * Every derived-advisory detector, in evaluation order. Supersession (ShardKeyMisalignment supersedes
  * CrossPartitionQuery on the same scope) is applied by the engine and is order-independent, so ShardKey is listed
  * before CrossPartition here purely for readability.
  */
@@ -43,6 +44,7 @@ export const DETECTORS: readonly Detector[] = [
     autoscaleMaxOverProvisionedDetector,
     autoscaleToManualCandidateDetector,
     serverlessCandidateDetector,
+    serverlessThrottlingDetector,
     shardKeyMisalignmentDetector,
     crossPartitionQueryDetector,
     uncontrolledIngestionDetector,

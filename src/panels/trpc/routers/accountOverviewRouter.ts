@@ -10,6 +10,7 @@ import { alertsRecommendationsProcedures } from './accountOverview/alertsRecomme
 import { derivedAdvisoriesProcedures } from './accountOverview/derivedAdvisoriesRouter';
 import { inventoryMetricsProcedures } from './accountOverview/inventoryMetricsRouter';
 import { metricSeriesProcedures } from './accountOverview/metricSeriesRouter';
+import { navigationProcedures } from './accountOverview/navigationRouter';
 import { partitionHealthProcedures } from './accountOverview/partitionHealthRouter';
 
 // ─── Account Overview Router ────────────────────────────────────────────────
@@ -32,4 +33,5 @@ export const accountOverviewRouterDef = accountOverviewRouter({
     ...alertsRecommendationsProcedures,
     ...derivedAdvisoriesProcedures,
     ...actionsProcedures,
+    ...navigationProcedures,
 });

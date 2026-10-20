@@ -65,3 +65,5 @@ export type {
     QueryRouting,
 } from '../../panels/trpc/routers/dataModelingEventsRouter';
 export type { QueryEditorEvent } from '../../panels/trpc/routers/queryEditorEventsRouter';
+export type { AccountOverviewNavigation, AccountOverviewTarget } from '../../panels/accountOverview/navigation';
+export type { AccountActionInput, AccountActionResult } from '../../panels/accountOverview/accountActions';

@@ -3,7 +3,18 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { EarlyExitException, type IToken, MismatchedTokenException, NoViableAltException } from 'chevrotain';
+import {
+    EarlyExitException,
+    type EmbeddedActionsParser,
+    getLookaheadPaths,
+    type IParserErrorMessageProvider,
+    type IRecognitionException,
+    type IToken,
+    MismatchedTokenException,
+    NoViableAltException,
+    type Rule,
+    type TokenType,
+} from 'chevrotain';
 import { writeFileSync } from 'node:fs';
 import { isDeepStrictEqual } from 'node:util';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -22,6 +33,86 @@ import { fixtures as conversionFixtures } from '../test-fixtures/queries/select-
 import { fixtures as whereFixtures } from '../test-fixtures/queries/select-where.js';
 import { exceedsAstDepth, MAX_AST_DEPTH, QueryTooComplexError } from './queryComplexity.js';
 import { SqlParser } from './SqlParser.js';
+
+// Investigation-only adapter: these runtime hooks are not part of Chevrotain's public extension API.
+// Keep it in this excluded test file; a production solution should implement caching upstream.
+interface DiagnosticInternals {
+    maxLookahead: number;
+    errorMessageProvider: IParserErrorMessageProvider;
+    getCurrRuleFullName(): string;
+    LA(howMuch: number): IToken;
+    SAVE_ERROR(error: IRecognitionException): IRecognitionException;
+    raiseNoAltException(occurrence: number, customDescription?: string): never;
+}
+
+function diagnosticInternals(parser: EmbeddedActionsParser): DiagnosticInternals {
+    const value: unknown = parser;
+    function hasInternals(candidate: unknown): candidate is DiagnosticInternals {
+        if (!candidate || typeof candidate !== 'object') return false;
+        const provider: unknown = Reflect.get(candidate, 'errorMessageProvider');
+        return (
+            typeof Reflect.get(candidate, 'maxLookahead') === 'number' &&
+            ['getCurrRuleFullName', 'LA', 'SAVE_ERROR', 'raiseNoAltException'].every(
+                (name) => typeof Reflect.get(candidate, name) === 'function',
+            ) &&
+            typeof provider === 'object' &&
+            provider !== null &&
+            typeof Reflect.get(provider, 'buildNoViableAltMessage') === 'function'
+        );
+    }
+    if (!hasInternals(value)) {
+        throw new Error('The diagnostic cache prototype requires Chevrotain 13.2-compatible runtime hooks.');
+    }
+    return value;
+}
+
+function installDiagnosticCachePrototype(parser: EmbeddedActionsParser) {
+    const internals = diagnosticInternals(parser);
+    const original = internals.raiseNoAltException;
+    const paths = new Map<Rule, Map<string, TokenType[][][]>>();
+    const stats = { errors: 0, pathComputations: 0 };
+
+    internals.raiseNoAltException = (occurrence, customDescription): never => {
+        const ruleName = internals.getCurrRuleFullName();
+        const rule = parser.getGAstProductions()[ruleName];
+        let byOccurrence = paths.get(rule);
+        if (!byOccurrence) {
+            byOccurrence = new Map();
+            paths.set(rule, byOccurrence);
+        }
+        const key = `${occurrence}:${internals.maxLookahead}`;
+        let expectedPathsPerAlt = byOccurrence.get(key);
+        if (!expectedPathsPerAlt) {
+            expectedPathsPerAlt = getLookaheadPaths({
+                occurrence,
+                rule,
+                prodType: 'Alternation',
+                maxLookahead: internals.maxLookahead,
+            });
+            byOccurrence.set(key, expectedPathsPerAlt);
+            stats.pathComputations++;
+        }
+        stats.errors++;
+        const actual = Array.from({ length: internals.maxLookahead }, (_, index) => internals.LA(index + 1));
+        const previous = internals.LA(0);
+        const message = internals.errorMessageProvider.buildNoViableAltMessage({
+            expectedPathsPerAlt,
+            actual,
+            previous,
+            customUserDescription: customDescription,
+            ruleName,
+        });
+        throw internals.SAVE_ERROR(new NoViableAltException(message, internals.LA(1), previous));
+    };
+
+    return {
+        stats,
+        restore() {
+            internals.raiseNoAltException = original;
+            paths.clear();
+        },
+    };
+}
 
 function nodeKinds(value: unknown, kinds = new Set<string>()): Set<string> {
     if (Array.isArray(value)) {
@@ -190,11 +281,36 @@ function outcome(parser: SqlParser, query: string) {
 }
 
 const compareLookahead = process.env.COSMOSDB_COMPARE_LOOKAHEAD === '1';
+const compareDiagnosticCache = process.env.COSMOSDB_COMPARE_DIAGNOSTIC_CACHE === '1';
 const inputs = compareLookahead ? comparisonInputs() : [];
+
+describe.skipIf(!compareDiagnosticCache)('SqlParser — diagnostic cache isolation', () => {
+    it('reuses grammar paths across inputs without reusing diagnostic token positions', () => {
+        const parser = new SqlParser(3);
+        const cache = installDiagnosticCachePrototype(parser);
+        try {
+            const first = outcome(parser, 'SELECT * FROM c WHERE');
+            const computations = cache.stats.pathComputations;
+            const second = outcome(parser, 'SELECT c.id\nFROM c\nWHERE');
+            expect(first.parserErrors).toHaveLength(1);
+            expect(second.parserErrors).toHaveLength(1);
+            expect(computations).toBeGreaterThan(0);
+            expect(cache.stats.pathComputations).toBe(computations);
+            expect(cache.stats.errors).toBe(2);
+            expect(second.parserErrors[0].message).toBe(first.parserErrors[0].message);
+            expect(first.parserErrors[0].previousToken?.startLine).toBe(1);
+            expect(second.parserErrors[0].previousToken?.startLine).toBe(3);
+            expect(outcome(parser, 'SELECT * FROM c').parserErrors).toEqual([]);
+        } finally {
+            cache.restore();
+        }
+    });
+});
 
 describe.skipIf(!compareLookahead)('SqlParser — differential lookahead', () => {
     let current: SqlParser;
     let baseline: SqlParser;
+    let cache: ReturnType<typeof installDiagnosticCachePrototype> | undefined;
     const timings: Record<string, { count: number; currentMs: number; baselineMs: number }> = {};
     const differences: object[] = [];
     const unexpectedExceptions: object[] = [];
@@ -204,7 +320,8 @@ describe.skipIf(!compareLookahead)('SqlParser — differential lookahead', () =>
 
     beforeAll(() => {
         let start = performance.now();
-        current = new SqlParser();
+        current = compareDiagnosticCache ? new SqlParser(3) : new SqlParser();
+        if (compareDiagnosticCache) cache = installDiagnosticCachePrototype(current);
         constructionMs.current = performance.now() - start;
         start = performance.now();
         baseline = new SqlParser(3);
@@ -213,6 +330,8 @@ describe.skipIf(!compareLookahead)('SqlParser — differential lookahead', () =>
 
     afterAll(() => {
         const report = {
+            mode: compareDiagnosticCache ? 'cached-diagnostics' : 'two-token-lookahead',
+            cache: cache?.stats,
             inputCount: inputs.length,
             constructionMs,
             timings,
@@ -227,6 +346,8 @@ describe.skipIf(!compareLookahead)('SqlParser — differential lookahead', () =>
             '[lookahead comparison]',
             JSON.stringify({
                 inputCount: inputs.length,
+                mode: report.mode,
+                cache: report.cache,
                 constructionMs,
                 timings,
                 differences: differences.length,
@@ -235,6 +356,7 @@ describe.skipIf(!compareLookahead)('SqlParser — differential lookahead', () =>
                 roundTripDifferences: roundTripDifferences.length,
             }),
         );
+        cache?.restore();
     });
 
     it.each(inputs)('$kind $id', (input) => {

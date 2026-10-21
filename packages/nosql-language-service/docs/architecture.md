@@ -253,3 +253,27 @@ COSMOSDB_COMPARE_LOOKAHEAD=1 COSMOSDB_LOOKAHEAD_REPORT=/tmp/lookahead-comparison
 The optional JSON report preserves differing inputs/results, unexpected exceptions, shared printer failures,
 and aggregate timings by input kind. Timings are diagnostic measurements, not hardware-independent assertions.
 The legacy comparison is opt-in to avoid reintroducing its expensive invalid-input path into every coverage run.
+
+### Diagnostic-path caching prototype
+
+An additional opt-in mode keeps **three-token lookahead in both parsers** and memoizes only the expected-token
+paths used by `raiseNoAltException`. The cache is per parser and keyed by grammar-rule identity, alternation
+occurrence, and lookahead depth. It stores no query text, ASTs, actual tokens, or rendered diagnostic messages.
+Each error still uses the current tokens and the original message provider and error-registration/recovery machinery.
+
+```bash
+COSMOSDB_COMPARE_LOOKAHEAD=1 COSMOSDB_COMPARE_DIAGNOSTIC_CACHE=1 \
+  COSMOSDB_LOOKAHEAD_REPORT=/tmp/diagnostic-cache-comparison.json \
+  npm run vitest -- packages/nosql-language-service/src/parser/SqlParser.lookahead.test.ts
+```
+
+The report includes the mode and counts of error events versus path computations. Lazy caching leaves the first
+error at each grammar site expensive; subsequent errors reuse its paths, even for different input strings.
+Parser initialization and early-exit diagnostics are not optimized by this prototype.
+
+This adapter is confined to the test file and is **not a production integration**. Chevrotain 13.2 does not expose
+a supported hook for replacing this computation: its custom error-message provider runs after path enumeration.
+The prototype therefore validates the required runtime hooks and replaces only one parser instance's error method,
+restoring it after comparison. It assumes our message provider does not mutate the cached path arrays.
+The preferred production approach is an upstream cache in Chevrotain, with reset/grammar-lifetime and
+custom-provider mutation semantics handled there, rather than shipping an override of undocumented methods.

@@ -38,6 +38,8 @@ export interface InventoryContainerRow {
     partitionKeyPaths: string[];
     indexingMode: string;
     excludedPathCount: number;
+    /** Excluded paths other than the default root `_etag` exclusion, for indexing-cost advisories. */
+    userExcludedPathCount: number;
     compositeIndexCount: number;
     /** Static-inventory fallback; real per-row health comes from `getInventoryMetrics`. */
     health: 'Healthy';
@@ -207,6 +209,9 @@ export async function getSqlInventoryDetails(
                 partitionKeyPaths: container.resource?.partitionKey?.paths ?? [],
                 indexingMode: indexingPolicy?.indexingMode ?? 'consistent',
                 excludedPathCount: indexingPolicy?.excludedPaths?.length ?? 0,
+                userExcludedPathCount:
+                    indexingPolicy?.excludedPaths?.filter(({ path }) => path !== '/_etag/?' && path !== '/"_etag"/?')
+                        .length ?? 0,
                 compositeIndexCount: indexingPolicy?.compositeIndexes?.length ?? 0,
                 health: 'Healthy',
             });

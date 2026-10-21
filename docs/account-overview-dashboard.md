@@ -55,7 +55,7 @@ Charts retain their selected display windows, independently of the detectors' ob
 | AO-D4  | Sustained throttling            | ≥ 1000 requests, 429 rate ≥ 1 %, busiest partition p99 ≥ 90 % and coolest ≥ 70 % (7-day)                 | RU-chart bands **and** Derived Advisories         | DX-005                   | ✅ 429-rate + uniform capacity pressure     |
 | AO-D5  | Over-provisioning               | per-offer 30-day p99 RU < 30 % (dedicated manual), 90 % peak guard, account-relative materiality         | Derived Advisories                                | DX-001                   | ✅ band + peak guard + materiality (DX-001) |
 | AO-D6  | Autoscale candidate             | peak ≥ 40 %, avg ≤ 30 %, peak/avg ≥ 5 (manual only)                                                      | Derived Advisories                                | DX-012                   | ✅ duty cycle (DX-012)                      |
-| AO-D7  | Indexing cost risk              | index/data storage > 0.3, 0 excluded paths                                                               | Derived Advisories                                | — (CODA gap)             | ⚠️ storage proxy; wants write-RU share      |
+| AO-D7  | Indexing cost risk              | index/data storage > 0.3, 0 user-excluded paths                                                          | Derived Advisories                                | — (CODA gap)             | ⚠️ storage proxy; wants write-RU share      |
 | AO-D8  | Advisor + Alerts                | severity / impact from Azure                                                                             | Right rail (Active Alerts, Recommendations)       | — (ext-only passthrough) | ✅ passthrough                              |
 | AO-D9  | Rapid storage growth            | physical-partition size trajectory reaches 50 GiB within horizon (High ≤ 30 d, Med ≤ 90 d)               | Derived Advisories                                | DX-017                   | ✅ least-squares horizon (DX-017)           |
 | AO-D10 | Premium consistency             | Strong / Bounded Staleness across ≥ 2 regions (config fact)                                              | Derived Advisories                                | DX-016                   | ✅ config parity (DX-016)                   |
@@ -195,6 +195,12 @@ activation hot path. Clients are created on the host from the account's `AzureSu
 
 The three lazy SDKs (`arm-monitor`, `arm-advisor`, `arm-alertsmanagement`) must **not** enter the main
 activation bundle — verified via `bundle-analysis/extension-report-vite.json`.
+
+### Indexing exclusions
+
+For indexing-cost advisories, only the exact default root exclusions `/_etag/?` and `/"_etag"/?` are ignored.
+Nested `_etag` paths, other wildcard forms and application-property exclusions count as user exclusions.
+Inventory continues to retain the raw excluded-path count and does not change the account's indexing policy.
 
 ### Action procedures
 

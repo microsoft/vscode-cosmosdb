@@ -367,7 +367,7 @@ export async function collectDerivedAdvisories(
                       containerId: row.containerId,
                       indexUsageBytes: metrics?.indexUsageBytes,
                       dataUsageBytes: metrics?.dataUsageBytes,
-                      excludedPathCount: row.excludedPathCount,
+                      userExcludedPathCount: row.userExcludedPathCount,
                   };
               })
             : [];

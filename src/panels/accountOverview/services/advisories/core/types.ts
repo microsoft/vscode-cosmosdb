@@ -257,8 +257,8 @@ export interface IndexingUsageInput {
     indexUsageBytes?: number;
     /** Latest `DataUsage` bytes for the container, when reported. */
     dataUsageBytes?: number;
-    /** Number of paths excluded from indexing (0 ⇒ indexes everything). */
-    excludedPathCount: number;
+    /** Number of excluded paths other than the default root `_etag` exclusion. */
+    userExcludedPathCount: number;
 }
 
 /** Already-known ARM account configuration the config-only advisories (DX-016 / DX-008) read. */

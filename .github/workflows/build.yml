@@ -176,14 +176,14 @@ jobs:
           Write-Output "✅ VSIX filename is correct: $vsixFileName"
 
           # Compute a short commit SHA (7 chars) and a filesystem-safe branch slug.
-          # Use head_ref for pull_request events, otherwise ref_name.
-          $rawRef = if ("${{ github.event_name }}" -eq "pull_request") {
-              "${{ github.head_ref }}"
+          # Read refs as environment data so branch names cannot become PowerShell source.
+          $rawRef = if ($env:GITHUB_EVENT_NAME -eq 'pull_request') {
+              $env:GITHUB_HEAD_REF
           } else {
-              "${{ github.ref_name }}"
+              $env:GITHUB_REF_NAME
           }
           $branchSlug = ($rawRef -replace '[^A-Za-z0-9._-]', '-').Trim('-')
-          $shortSha = "${{ github.sha }}".Substring(0, 7)
+          $shortSha = $env:GITHUB_SHA.Substring(0, 7)
 
           # Artifact name convention:
           # - main / rel/* : <name>-<version>-<sha7>

@@ -340,6 +340,9 @@ export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
                     });
                 } else {
                     const closed = app.waitForEvent('close', { timeout: 10_000 });
+                    closed.catch(() => {
+                        /* Handle rejection if process cleanup throws before the normal await below. */
+                    });
                     const rootPid = app.process().pid;
                     if (rootPid !== undefined) {
                         const processes = execFileSync('ps', ['-axo', 'pid=,ppid='], { encoding: 'utf8' })

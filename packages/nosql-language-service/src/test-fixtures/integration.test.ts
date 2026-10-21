@@ -7,19 +7,21 @@
  * Integration test suite for the Cosmos DB query language SELECT fixtures.
  *
  * **Requires a running Cosmos DB Emulator.**
- * The suite is automatically skipped when the COSMOS_ENDPOINT environment
- * variable is not set, so it is safe to include in the package without
- * breaking the offline unit-test run.
+ * Query execution is skipped when the COSMOS_ENDPOINT environment variable is not set.
+ * Client TLS configuration checks always run, including in the offline unit-test suite.
  *
  * Environment variables:
  *   COSMOS_ENDPOINT  — emulator URL, e.g. https://localhost:8081
  *   COSMOS_KEY       — emulator master key
  *   COSMOS_DATABASE  — database name (default: nosql-test-db)
  *
- * Set NODE_TLS_REJECT_UNAUTHORIZED=0 when using the self-signed emulator cert.
+ * HTTPS loopback endpoints using the well-known emulator key get a client-scoped
+ * certificate exception. Other HTTPS connections retain normal certificate validation.
  */
 
-import { type Container, CosmosClient, type SqlQuerySpec } from '@azure/cosmos';
+import { type Container, CosmosClient, type CosmosClientOptions, type SqlQuerySpec } from '@azure/cosmos';
+import { readFileSync } from 'node:fs';
+import { Agent, globalAgent } from 'node:https';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { fixtures as negativeIntegrationFixtures } from './queries/negative-integration.js';
 import { fixtures as selectBasicFixtures } from './queries/select-basic.js';
@@ -38,10 +40,68 @@ const endpoint = process.env.COSMOS_ENDPOINT;
 // The emulator ships with a single fixed account and this key cannot be changed.
 // Override via COSMOS_KEY only when connecting to a non-emulator instance.
 // Docs: https://learn.microsoft.com/en-us/azure/cosmos-db/emulator#authentication
-const masterKey =
-    process.env.COSMOS_KEY ??
-    'C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==';
+const emulatorMasterKey = 'C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==';
+const masterKey = process.env.COSMOS_KEY ?? emulatorMasterKey;
 const databaseId = process.env.COSMOS_DATABASE ?? 'nosql-test-db';
+
+function getClientOptions(endpoint: string, key: string): CosmosClientOptions {
+    const options: CosmosClientOptions = { endpoint, key };
+    const url = new URL(endpoint);
+    if (
+        url.protocol === 'https:' &&
+        ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) &&
+        key === emulatorMasterKey
+    ) {
+        options.agent = new Agent({ rejectUnauthorized: false });
+        // Keep the certificate exception on the requested emulator, not server-advertised endpoints.
+        options.connectionPolicy = { enableEndpointDiscovery: false };
+    }
+    return options;
+}
+
+describe('integration client TLS configuration', () => {
+    it.each(['https://localhost:8081', 'https://127.0.0.1:8082', 'https://[::1]:8081', 'https://LOCALHOST:8081/'])(
+        'scopes the emulator certificate exception to %s',
+        (endpoint) => {
+            const tlsSetting = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
+            const globalVerification = globalAgent.options.rejectUnauthorized;
+            const options = getClientOptions(endpoint, emulatorMasterKey);
+
+            try {
+                expect(options.endpoint).toBe(endpoint);
+                expect(options.key).toBe(emulatorMasterKey);
+                expect(options.agent).toBeInstanceOf(Agent);
+                expect(options.agent).toMatchObject({ options: { rejectUnauthorized: false } });
+                expect(options.connectionPolicy).toEqual({ enableEndpointDiscovery: false });
+                expect(process.env.NODE_TLS_REJECT_UNAUTHORIZED).toBe(tlsSetting);
+                expect(globalAgent.options.rejectUnauthorized).toBe(globalVerification);
+            } finally {
+                options.agent?.destroy();
+            }
+        },
+    );
+
+    it.each([
+        { endpoint: 'https://cosmos.example.invalid', key: emulatorMasterKey },
+        { endpoint: 'https://localhost.example.invalid:8081', key: emulatorMasterKey },
+        { endpoint: 'https://localhost@cosmos.example.invalid:8081', key: emulatorMasterKey },
+        { endpoint: 'https://192.0.2.1:8081', key: emulatorMasterKey },
+        { endpoint: 'https://localhost:8081', key: 'custom-test-key' },
+        { endpoint: 'https://127.0.0.1:8081', key: 'custom-test-key' },
+        { endpoint: 'https://[::1]:8081', key: 'custom-test-key' },
+        { endpoint: 'http://localhost:8081', key: emulatorMasterKey },
+    ])('preserves default client options for $endpoint with key $key', ({ endpoint, key }) => {
+        expect(getClientOptions(endpoint, key)).toEqual({ endpoint, key });
+    });
+
+    it('keeps the integration workflow free of process-wide TLS overrides', () => {
+        const workflow = readFileSync(
+            new URL('../../../../.github/workflows/nosql-language-service.yml', import.meta.url),
+            'utf8',
+        );
+        expect(workflow).not.toMatch(/^\s*NODE_TLS_REJECT_UNAUTHORIZED\s*:/m);
+    });
+});
 
 // oxlint-disable-next-line
 if (!endpoint) {
@@ -53,7 +113,8 @@ if (!endpoint) {
 } else {
     // ── Client setup ────────────────────────────────────────────────────────
 
-    const client = new CosmosClient({ endpoint, key: masterKey });
+    const clientOptions = getClientOptions(endpoint, masterKey);
+    const client = new CosmosClient(clientOptions);
 
     /** Cache of { containerId → CosmosContainer } to avoid repeated lookups. */
     const containerCache = new Map<string, Container>();
@@ -67,6 +128,7 @@ if (!endpoint) {
 
     afterAll(async () => {
         client.dispose?.();
+        clientOptions.agent?.destroy();
     });
 
     // ── Query helper ────────────────────────────────────────────────────────

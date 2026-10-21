@@ -10,7 +10,10 @@ import { AuthenticationMethod } from '../../../../cosmosdb/AuthenticationMethod'
 import { getCosmosDBCredentials } from '../../../../cosmosdb/CosmosDBCredential';
 import { ext } from '../../../../extensionVariables';
 import { revealAzureResourceInExplorer } from '../../../../vscodeUriHandler';
-import { buildAlertPortalUrl } from '../../../accountOverview/services/alertsRecommendations';
+import {
+    buildAccountAlertsPortalUrl,
+    buildAlertPortalUrl,
+} from '../../../accountOverview/services/alertsRecommendations';
 import { QueryEditorTab } from '../../../QueryEditorTab';
 import { type AccountOverviewRouterContext } from '../../appRouter';
 import { accountOverviewRouter } from '../../trpc';
@@ -100,18 +103,22 @@ describe('Account Overview auxiliary action routes', () => {
         expect(vscode.window.showErrorMessage).not.toHaveBeenCalled();
     });
 
-    it.each([
+    describe.each([
         'https://portal.azure.com/',
         'https://ms.portal.azure.com',
         'https://portal.azure.us/',
         'https://portal.azure.cn',
-    ])(
-        'preserves the alert resource ID as one encoded portal route parameter at browser dispatch: %s',
-        async (portal) => {
+    ])('portal links at browser dispatch: %s', (portal) => {
+        it.each(['alert', 'account'] as const)('preserves the %s resource ID as one route parameter', async (page) => {
             const { caller } = createCaller();
+            const accountId =
+                '/subscriptions/sub/resourceGroups/a b/providers/Microsoft.DocumentDB/databaseAccounts/account';
             const id =
-                '/subscriptions/sub/resourceGroups/rg/providers/Microsoft.DocumentDB/databaseAccounts/account/providers/Microsoft.AlertsManagement/alerts/a b?#%2F';
-            const url = buildAlertPortalUrl(id, portal, 'tenant');
+                page === 'alert' ? `${accountId}/providers/Microsoft.AlertsManagement/alerts/a b?#%2F` : accountId;
+            const url =
+                page === 'alert'
+                    ? buildAlertPortalUrl(id, portal, 'tenant')
+                    : buildAccountAlertsPortalUrl(portal, 'tenant', id);
             let browserUrl = '';
             vi.mocked(vscode.env.openExternal).mockImplementationOnce(async (uri) => {
                 // VS Code's external opener serializes URI inputs with toString(true), then encodeURI.
@@ -122,18 +129,29 @@ describe('Account Overview auxiliary action routes', () => {
             expect(vscode.env.openExternal).toHaveBeenCalledExactlyOnceWith(vscode.Uri.parse(url));
             expect(vscode.commands.executeCommand).not.toHaveBeenCalled();
             expect(browserUrl).toBe(url);
-            expect(new URL(browserUrl).hash.split('/')).toEqual([
-                '#@tenant',
-                'view',
-                'Microsoft_Azure_Monitoring_Alerts',
-                'AlertDetails.ReactView',
-                'alertId',
-                encodeURIComponent(encodeURIComponent(id)),
-                'invokedFrom',
-                'CopyLinkFeature',
-            ]);
-        },
-    );
+            expect(new URL(browserUrl).hash.split('/')).toEqual(
+                page === 'alert'
+                    ? [
+                          '#@tenant',
+                          'view',
+                          'Microsoft_Azure_Monitoring_Alerts',
+                          'AlertDetails.ReactView',
+                          'alertId',
+                          encodeURIComponent(encodeURIComponent(id)),
+                          'invokedFrom',
+                          'CopyLinkFeature',
+                      ]
+                    : [
+                          '#@tenant',
+                          'blade',
+                          'Microsoft_Azure_Monitoring_Alerts',
+                          'AlertsSummaryBlade',
+                          'resourceId',
+                          encodeURIComponent(encodeURIComponent(id)),
+                      ],
+            );
+        });
+    });
 
     it.each([
         'https://example.invalid/a%2Fb?value=a%26b%3Dc#part%2Fone',

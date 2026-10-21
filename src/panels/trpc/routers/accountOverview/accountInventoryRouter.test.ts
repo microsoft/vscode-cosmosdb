@@ -53,7 +53,7 @@ describe('account summary procedure', () => {
         const { caller, metadata } = createCaller();
         const summary = await caller.getAccountSummary();
         expect(summary.alertsPortalUrl).toBe(
-            `https://portal.azure.us/#@tenant/blade/Microsoft_Azure_Monitoring_Alerts/AlertsSummaryBlade/resourceId/${encodeURIComponent(metadata.accountId)}`,
+            `https://portal.azure.us/#@tenant/blade/Microsoft_Azure_Monitoring_Alerts/AlertsSummaryBlade/resourceId/${encodeURIComponent(encodeURIComponent(metadata.accountId))}`,
         );
         expect(metadata.getClient).not.toHaveBeenCalled();
     });

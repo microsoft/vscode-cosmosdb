@@ -234,7 +234,7 @@ describe('buildAccountAlertsPortalUrl', () => {
                 '/subscriptions/sub/resourceGroups/a b/providers/Microsoft.DocumentDB/databaseAccounts/acct';
             const url = buildAccountAlertsPortalUrl(portal, 'tenant/name', resourceId);
             expect(url).toBe(
-                `${portal.replace(/\/$/, '')}/#@tenant%2Fname/blade/Microsoft_Azure_Monitoring_Alerts/AlertsSummaryBlade/resourceId/${encodeURIComponent(resourceId)}`,
+                `${portal.replace(/\/$/, '')}/#@tenant%2Fname/blade/Microsoft_Azure_Monitoring_Alerts/AlertsSummaryBlade/resourceId/${encodeURIComponent(encodeURIComponent(resourceId))}`,
             );
             expect(url).not.toContain('alertId/');
         },

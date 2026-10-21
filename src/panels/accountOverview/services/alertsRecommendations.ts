@@ -199,7 +199,8 @@ export function buildAlertPortalUrl(
 
 /** Opens the resource-scoped Alerts page used by the Cosmos DB portal's Monitoring summary. */
 export function buildAccountAlertsPortalUrl(portalBaseUrl: string, tenantId: string, resourceId: string): string {
-    return `${portalBaseUrl.replace(/\/$/, '')}/#@${encodeURIComponent(tenantId)}/blade/Microsoft_Azure_Monitoring_Alerts/AlertsSummaryBlade/resourceId/${encodeURIComponent(resourceId)}`;
+    const encodedResourceId = encodeURIComponent(encodeURIComponent(resourceId));
+    return `${portalBaseUrl.replace(/\/$/, '')}/#@${encodeURIComponent(tenantId)}/blade/Microsoft_Azure_Monitoring_Alerts/AlertsSummaryBlade/resourceId/${encodedResourceId}`;
 }
 
 const ALERT_SEVERITY_ORDER: Record<AlertSeverity, number> = { Critical: 0, Warning: 1, Informational: 2 };

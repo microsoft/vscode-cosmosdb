@@ -16,6 +16,9 @@ import '@testing-library/jest-dom/vitest';
 // query-generation input rely on. Provide minimal stubs so component tests can render under jsdom.
 if (typeof globalThis.ResizeObserver === 'undefined') {
     globalThis.ResizeObserver = class {
+        constructor(_callback: ResizeObserverCallback) {
+            // Match the browser constructor; jsdom has no layout changes to observe.
+        }
         observe(): void {}
         unobserve(): void {}
         disconnect(): void {}

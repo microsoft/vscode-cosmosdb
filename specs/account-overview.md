@@ -441,6 +441,8 @@ The list's period never determines the badge count; the portal maintains its own
 
 Account Alerts links remain usable after query failures.
 Alert details use `AlertDetails.ReactView` and double-encode the full alert ID as a single route parameter.
+Account Alerts uses `AlertsSummaryBlade` and double-encodes the full account ID as its `resourceId` route parameter.
+Both IDs remain a single parameter after VS Code's external opener serializes the URI.
 Portal URLs use the subscription's configured portal base and tenant; do not guess the cloud from a tenant ID.
 
 ### Advisor

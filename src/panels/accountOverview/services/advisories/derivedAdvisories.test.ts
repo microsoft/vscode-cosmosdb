@@ -339,9 +339,15 @@ describe('evaluateAutoscaleCandidate', () => {
 });
 
 describe('evaluateIndexingCostRisk', () => {
-    it('fires when index/data ratio is high and no paths are excluded', () => {
+    it('fires when index/data ratio is high and there are no user exclusions', () => {
         const advisory = evaluateIndexingCostRisk(
-            { databaseId: 'db', containerId: 'events', indexUsageBytes: 50, dataUsageBytes: 100, excludedPathCount: 0 },
+            {
+                databaseId: 'db',
+                containerId: 'events',
+                indexUsageBytes: 50,
+                dataUsageBytes: 100,
+                userExcludedPathCount: 0,
+            },
             0.3,
         );
         expect(advisory?.rule).toBe('IndexingCostRisk');
@@ -349,7 +355,7 @@ describe('evaluateIndexingCostRisk', () => {
         expect(advisory?.rationale).toContain('50%');
     });
 
-    it('does not fire when paths are excluded', () => {
+    it('does not fire when user paths are excluded', () => {
         expect(
             evaluateIndexingCostRisk(
                 {
@@ -357,7 +363,7 @@ describe('evaluateIndexingCostRisk', () => {
                     containerId: 'events',
                     indexUsageBytes: 50,
                     dataUsageBytes: 100,
-                    excludedPathCount: 2,
+                    userExcludedPathCount: 2,
                 },
                 0.3,
             ),
@@ -372,7 +378,7 @@ describe('evaluateIndexingCostRisk', () => {
                     containerId: 'events',
                     indexUsageBytes: 20,
                     dataUsageBytes: 100,
-                    excludedPathCount: 0,
+                    userExcludedPathCount: 0,
                 },
                 0.3,
             ),
@@ -384,14 +390,14 @@ describe('evaluateIndexingCostRisk', () => {
                     containerId: 'events',
                     indexUsageBytes: 50,
                     dataUsageBytes: 0,
-                    excludedPathCount: 0,
+                    userExcludedPathCount: 0,
                 },
                 0.3,
             ),
         ).toBeUndefined();
         expect(
             evaluateIndexingCostRisk(
-                { databaseId: 'db', containerId: 'events', dataUsageBytes: 100, excludedPathCount: 0 },
+                { databaseId: 'db', containerId: 'events', dataUsageBytes: 100, userExcludedPathCount: 0 },
                 0.3,
             ),
         ).toBeUndefined();
@@ -560,7 +566,7 @@ describe('compareAdvisories', () => {
         const high = evaluateHotPartitionRisk(partInput({ throttleRatePercent: 5 }), 90, 70, 1)!;
         const medium = evaluateOverProvisioning(10, 10, 30, true)!;
         const low = evaluateIndexingCostRisk(
-            { databaseId: 'db', containerId: 'b', indexUsageBytes: 50, dataUsageBytes: 100, excludedPathCount: 0 },
+            { databaseId: 'db', containerId: 'b', indexUsageBytes: 50, dataUsageBytes: 100, userExcludedPathCount: 0 },
             0.3,
         )!;
         const sorted = [low, medium, high].sort(compareAdvisories);
@@ -595,7 +601,7 @@ describe('computeDerivedAdvisories', () => {
                     containerId: 'events',
                     indexUsageBytes: 80,
                     dataUsageBytes: 100,
-                    excludedPathCount: 0,
+                    userExcludedPathCount: 0,
                 },
             ],
         };

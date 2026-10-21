@@ -5,7 +5,9 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { API } from '../../../../AzureDBExperiences';
+import type * as InventoryModule from '../inventory';
 import type * as RuTrendsModule from '../ruTrends';
+import type * as EngineModule from './engine';
 import type * as MetricsModule from './fetchers/metrics';
 
 vi.mock('../inventory', () => ({
@@ -47,7 +49,7 @@ vi.mock('./fetchers/metrics', () => ({
     getContainerPartitionCount: vi.fn(),
 }));
 
-import { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
+import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { MonitorClient, type Response as MetricsResponse } from '@azure/arm-monitor';
 import { getSqlInventoryDetails } from '../inventory';
 import { getInventoryMetrics } from '../inventoryMetrics';
@@ -120,6 +122,90 @@ function params(overrides: Partial<Parameters<typeof collectDerivedAdvisories>[0
 
 describe('collectDerivedAdvisories parity wiring', () => {
     it.each([
+        { paths: [], indexUsageBytes: 50, dataUsageBytes: 100, fires: true },
+        { paths: ['/_etag/?'], indexUsageBytes: 50, dataUsageBytes: 100, fires: true },
+        { paths: ['/"_etag"/?'], indexUsageBytes: 50, dataUsageBytes: 100, fires: true },
+        { paths: ['/_etag/?', '/payload/*'], indexUsageBytes: 50, dataUsageBytes: 100, fires: false },
+        { paths: ['/"_etag"/?', '/payload/*'], indexUsageBytes: 50, dataUsageBytes: 100, fires: false },
+        { paths: ['/payload/_etag/?'], indexUsageBytes: 50, dataUsageBytes: 100, fires: false },
+        { paths: ['/payload/"_etag"/?'], indexUsageBytes: 50, dataUsageBytes: 100, fires: false },
+        { paths: ['/_etag/*'], indexUsageBytes: 50, dataUsageBytes: 100, fires: false },
+        { paths: ['/_etag/?'], indexUsageBytes: 20, dataUsageBytes: 100, fires: false },
+        { paths: ['/_etag/?'], indexUsageBytes: 30, dataUsageBytes: 100, fires: false },
+        { paths: ['/_etag/?'], indexUsageBytes: undefined, dataUsageBytes: 100, fires: false },
+        { paths: ['/_etag/?'], indexUsageBytes: 50, dataUsageBytes: undefined, fires: false },
+        { paths: ['/_etag/?'], indexUsageBytes: 50, dataUsageBytes: 0, fires: false },
+        { paths: ['/_etag/?'], indexUsageBytes: 50, dataUsageBytes: -1, fires: false },
+        { paths: ['/_etag/?'], indexUsageBytes: -1, dataUsageBytes: 100, fires: false },
+    ])(
+        'evaluates indexing exclusions $paths with index=$indexUsageBytes, data=$dataUsageBytes: fires=$fires',
+        async ({ paths, indexUsageBytes, dataUsageBytes, fires }) => {
+            const inventory = await vi.importActual<typeof InventoryModule>('../inventory');
+            const engine = await vi.importActual<typeof EngineModule>('./engine');
+            vi.mocked(getSqlInventoryDetails).mockImplementation(inventory.getSqlInventoryDetails);
+            vi.mocked(computeDerivedAdvisories).mockImplementation(engine.computeDerivedAdvisories);
+            const indexingPolicy = {
+                indexingMode: 'consistent',
+                includedPaths: [{ path: '/*' }],
+                excludedPaths: paths.map((path) => ({ path })),
+            };
+            const originalPolicy = structuredClone(indexingPolicy);
+            const cosmosClient = new CosmosDBManagementClient({ getToken: async () => null }, 'sub');
+            vi.spyOn(cosmosClient.databaseAccounts, 'get').mockResolvedValue({});
+            vi.spyOn(cosmosClient.sqlResources, 'listSqlDatabases').mockImplementation(() =>
+                pagedItems([{ resource: { id: 'db' } }]),
+            );
+            vi.spyOn(cosmosClient.sqlResources, 'listSqlContainers').mockImplementation(() =>
+                pagedItems([{ resource: { id: 'events', indexingPolicy } }]),
+            );
+            vi.mocked(getThrottleRate).mockResolvedValue({ ratePercent: 0, totalRequests: 0 });
+            vi.mocked(getInventoryMetrics).mockResolvedValue({
+                available: true,
+                metrics: {
+                    'db/events': {
+                        databaseId: 'db',
+                        containerId: 'events',
+                        dataUsageBytes,
+                        indexUsageBytes,
+                        throttled: false,
+                        health: 'Healthy',
+                    },
+                },
+                accountHealth: 'Healthy',
+                generatedAt: 0,
+            });
+
+            const result = await collectDerivedAdvisories(
+                params({ cosmosClient, isServerless: true, logsClient: undefined }),
+            );
+
+            expect(result.advisories.filter((item) => item.rule === 'IndexingCostRisk')).toHaveLength(fires ? 1 : 0);
+            expect(getRuTrends).not.toHaveBeenCalled();
+            expect(getPartitionHealth).not.toHaveBeenCalled();
+            const collectedInventory = await vi.mocked(getSqlInventoryDetails).mock.results[0].value;
+            expect(collectedInventory.rows[0].excludedPathCount).toBe(paths.length);
+            expect(indexingPolicy).toEqual(originalPolicy);
+
+            vi.mocked(getInventoryMetrics).mockResolvedValue({
+                available: false,
+                reason: 'noData',
+                metrics: {},
+                accountHealth: 'Healthy',
+                generatedAt: 0,
+            });
+            const unavailable = await collectDerivedAdvisories(
+                params({ cosmosClient, isServerless: true, logsClient: undefined }),
+            );
+            expect(unavailable.advisories.some((item) => item.rule === 'IndexingCostRisk')).toBe(false);
+            expect(unavailable.metricSource.failures).toContainEqual({
+                rule: 'IndexingCostRisk',
+                reason: 'noData',
+                scope: undefined,
+            });
+        },
+    );
+
+    it.each([
         'complete',
         'missing idle',
         'missing partition count',
@@ -148,6 +234,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
                 partitionKeyPaths: [],
                 indexingMode: 'consistent',
                 excludedPathCount: 0,
+                userExcludedPathCount: 0,
                 compositeIndexCount: 0,
                 health: 'Healthy' as const,
             }));
@@ -306,6 +393,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
             partitionKeyPaths: [],
             indexingMode: 'consistent',
             excludedPathCount: 0,
+            userExcludedPathCount: 0,
             compositeIndexCount: 0,
             health: 'Healthy' as const,
         }));
@@ -367,6 +455,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
                     partitionKeyPaths: [],
                     indexingMode: 'consistent',
                     excludedPathCount: 0,
+                    userExcludedPathCount: 0,
                     compositeIndexCount: 0,
                     health: 'Healthy',
                 },
@@ -381,6 +470,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
                     partitionKeyPaths: [],
                     indexingMode: 'consistent',
                     excludedPathCount: 0,
+                    userExcludedPathCount: 0,
                     compositeIndexCount: 0,
                     health: 'Healthy',
                 },
@@ -395,6 +485,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
                     partitionKeyPaths: [],
                     indexingMode: 'consistent',
                     excludedPathCount: 0,
+                    userExcludedPathCount: 0,
                     compositeIndexCount: 0,
                     health: 'Healthy',
                 },
@@ -408,6 +499,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
                     partitionKeyPaths: [],
                     indexingMode: 'consistent',
                     excludedPathCount: 0,
+                    userExcludedPathCount: 0,
                     compositeIndexCount: 0,
                     health: 'Healthy',
                 },
@@ -558,6 +650,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
                     partitionKeyPaths: [],
                     indexingMode: 'consistent',
                     excludedPathCount: 0,
+                    userExcludedPathCount: 0,
                     compositeIndexCount: 0,
                     health: 'Healthy',
                 },

@@ -112,6 +112,7 @@ const rows: InventoryContainerRow[] = ['orders', 'products'].map((containerId) =
     partitionKeyPaths: ['/id'],
     indexingMode: 'consistent',
     excludedPathCount: 0,
+    userExcludedPathCount: 0,
     compositeIndexCount: 0,
     health: 'Healthy',
 }));

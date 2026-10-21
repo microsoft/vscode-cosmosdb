@@ -59,12 +59,21 @@ test.describe('webview smoke', () => {
         }) => {
             const queryEditor = await openQueryEditor(vscodeWindow);
             await expect(queryEditor.getByRole('button', { name: 'Run', exact: true })).toBeVisible();
+            if (process.env.COSMOSDB_E2E_SKIP_EMULATOR !== '1') {
+                await expect(queryEditor.getByRole('button', { name: 'Run', exact: true })).toBeEnabled({
+                    timeout: 30_000,
+                });
+            }
             await runCommand(vscodeWindow, 'Cosmos DB: [E2E Test] Open Document');
             await expect(vscodeWindow.getByRole('tab', { name: 'New Item.json' })).toHaveAttribute(
                 'aria-selected',
                 'true',
             );
-            const queryTab = vscodeWindow.getByRole('tab', { name: 'Query Editor' });
+            // Connecting renames the Query Editor tab; the only other tab here is the Document.
+            const editorTabs = vscodeWindow.locator('div[role="tab"]');
+            await expect(editorTabs).toHaveCount(2);
+            const queryTab = editorTabs.filter({ hasNotText: 'New Item.json' });
+            await expect(queryTab).toHaveCount(1);
             if (activeEditor === 'Query Editor') {
                 await queryTab.click();
                 await expect(queryTab).toHaveAttribute('aria-selected', 'true');
@@ -75,7 +84,7 @@ test.describe('webview smoke', () => {
             await expect(queryTab).toHaveAttribute('aria-selected', 'true');
             await expect(queryEditor.getByRole('button', { name: 'Run', exact: true })).toBeVisible();
             expect(queryEditor.isDetached()).toBe(false);
-            await expect(vscodeWindow.locator('div[role="tab"]')).toHaveCount(1);
+            await expect(editorTabs).toHaveCount(1);
         });
     }
 

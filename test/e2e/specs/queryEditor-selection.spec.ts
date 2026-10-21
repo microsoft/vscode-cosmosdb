@@ -105,6 +105,12 @@ test.describe('queryEditor-selection', { tag: '@queryEditor' }, () => {
     test('item hotkeys (Alt+V / Alt+E / Alt+I) open the Document panel', async () => {
         const qe = queryEditor!;
 
+        // The default query has no ordering; make row 0 match the document we close by name.
+        await qe.setQueryText(`SELECT * FROM c WHERE c.id = '${SEEDED_ID}'`);
+        await qe.run();
+        await expect(qe.tableRows()).toHaveCount(1);
+        await expect(qe.tableRows().first()).toContainText(SEEDED_ID);
+
         // These three result-panel hotkeys mirror the View / Edit / New item
         // buttons. focusResultPanel() before every press is essential: opening a
         // Document panel moves keyboard focus off the result grid, and Alt+E /

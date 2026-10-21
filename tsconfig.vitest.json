@@ -2,7 +2,7 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "module": "ESNext",
-    "types": ["vitest/globals", "node"],
+    "types": ["vitest/globals", "node", "@testing-library/jest-dom/vitest"],
     "typeRoots": ["./types", "./node_modules/@types", "./node_modules"],
     "composite": false
   },

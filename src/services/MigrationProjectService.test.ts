@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import * as path from 'path';
 import { type Mock } from 'vitest';
@@ -71,6 +71,39 @@ describe('MigrationProjectService paths', () => {
 
 describe('MigrationProjectService default input selections', () => {
     afterEach(() => vi.restoreAllMocks());
+
+    it.each(['ENOENT', 'FileNotFound'])('reinitializes after an externally deleted project (%s)', async (code) => {
+        const workspace = mkdtempSync(path.join(tmpdir(), 'migration-deleted-project-'));
+        const service = new MigrationProjectService(workspace);
+        const migrationRoot = path.join(workspace, MIGRATION_FOLDER);
+        const createDirectory = vi.spyOn(vscode.workspace.fs, 'createDirectory').mockImplementation(async (uri) => {
+            mkdirSync(uri.fsPath, { recursive: true });
+        });
+        const readFile = vi.spyOn(vscode.workspace.fs, 'readFile');
+        try {
+            const previous = await service.initialize('previous');
+            readFile.mockResolvedValue(Buffer.from(readFileSync(path.join(migrationRoot, 'project.json'))));
+            const loaded = await service.load({ readOnly: true });
+            expect(loaded?.sessionId).toBe(previous.sessionId);
+            rmSync(migrationRoot, { recursive: true });
+            readFile.mockRejectedValue(Object.assign(new Error('File not found'), { code }));
+            expect(await service.load({ readOnly: true })).toBeUndefined();
+            const next = service.createDefaultProject('next');
+            expect(next.sessionId).not.toBe(previous.sessionId);
+            expect(next.phases.discovery.status).toBe('not-started');
+            createDirectory.mockClear();
+            await service.save(next);
+            expect(createDirectory).toHaveBeenCalled();
+            expect(existsSync(service.getDefaultSubfolderPath('schema-ddl'))).toBe(true);
+            expect(existsSync(service.getDefaultSubfolderPath('volumetrics'))).toBe(true);
+            expect(existsSync(service.getDefaultSubfolderPath('access-patterns'))).toBe(true);
+            expect(readFileSync(path.join(migrationRoot, 'project.json'), 'utf8')).toContain('"name": "next"');
+            expect(readFileSync(path.join(migrationRoot, 'project.json'), 'utf8')).not.toContain(previous.sessionId);
+            await expect(service.save(loaded!)).rejects.toThrow('Project changed');
+        } finally {
+            rmSync(workspace, { recursive: true, force: true });
+        }
+    });
 
     it('normalizes optional nulls read-only and saves canonical fields without changing unrelated data', async () => {
         const workspace = mkdtempSync(path.join(tmpdir(), 'migration-compatible-save-'));

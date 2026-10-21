@@ -27,6 +27,7 @@ async function withCompletionChecker(source: string, check: (extensionPath: stri
     const extensionPath = fs.mkdtempSync(path.join(os.tmpdir(), 'migration worker test '));
     const scriptsPath = path.join(extensionPath, 'skills', 'cosmosdb-relational-migration', 'scripts');
     fs.mkdirSync(scriptsPath, { recursive: true });
+    fs.mkdirSync(path.join(extensionPath, '.cosmosdb-migration'));
     fs.writeFileSync(path.join(scriptsPath, 'check-phase-completion.mjs'), source);
     try {
         await check(extensionPath);
@@ -333,7 +334,8 @@ describe('migrationStateSync', () => {
                  }]));
              }`,
             async (extensionPath) => {
-                const workspace = '/workspace with spaces/"quoted"';
+                const workspace = path.join(extensionPath, 'workspace with spaces', '"quoted"');
+                fs.mkdirSync(path.join(workspace, '.cosmosdb-migration'), { recursive: true });
                 const completion = await readMigrationPhaseCompletion(extensionPath, workspace);
                 expect(Object.keys(completion)).toEqual([...migrationPhaseNames]);
                 expect(completion.discovery.errors).toEqual(['false', workspace]);
@@ -347,21 +349,54 @@ describe('migrationStateSync', () => {
         ['export function checkPhaseCompletions() { process.exit(0); }', 'exited without a result'],
     ])('rejects worker failures without hanging: %s', async (source, message) => {
         await withCompletionChecker(source, async (extensionPath) => {
-            await expect(readMigrationPhaseCompletion(extensionPath, '/workspace')).rejects.toThrow(message);
+            await expect(readMigrationPhaseCompletion(extensionPath, extensionPath)).rejects.toThrow(message);
         });
     });
 
     it('cancels an active worker and permits the next check', async () => {
         await withCompletionChecker('export function checkPhaseCompletions() { return {}; }', async (extensionPath) => {
             const controller = new AbortController();
-            const pending = readMigrationPhaseCompletion(extensionPath, '/workspace', controller.signal);
+            const pending = readMigrationPhaseCompletion(extensionPath, extensionPath, controller.signal);
             controller.abort();
             await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
-            await expect(readMigrationPhaseCompletion(extensionPath, '/workspace')).resolves.toEqual({});
+            await expect(readMigrationPhaseCompletion(extensionPath, extensionPath)).resolves.toEqual({});
             await expect(
-                readMigrationPhaseCompletion(extensionPath, '/workspace', controller.signal),
+                readMigrationPhaseCompletion(extensionPath, extensionPath, controller.signal),
             ).rejects.toMatchObject({ name: 'AbortError' });
         });
+    });
+
+    it('treats an absent migration folder as a new migration without creating files', async () => {
+        const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'migration-state-new-'));
+        const extensionPath = path.resolve(__dirname, '../../../..');
+        const migrationRoot = path.join(workspace, '.cosmosdb-migration');
+        try {
+            const fresh = await readMigrationPhaseCompletion(extensionPath, workspace);
+            expect(Object.keys(fresh)).toEqual([...migrationPhaseNames]);
+            for (const phase of migrationPhaseNames) {
+                expect(fresh[phase]).toEqual({
+                    phase,
+                    status: 'not-started',
+                    complete: false,
+                    freshness: 'not-applicable',
+                    staleInputs: [],
+                    artifacts: [],
+                    errors: [],
+                });
+            }
+            expect(fs.existsSync(migrationRoot)).toBe(false);
+            fs.mkdirSync(migrationRoot);
+            const missingProject = await readMigrationPhaseCompletion(extensionPath, workspace);
+            expect(missingProject.discovery.errors).toContain('project.json is missing or invalid');
+            fs.writeFileSync(path.join(migrationRoot, 'project.json'), '{');
+            const invalidProject = await readMigrationPhaseCompletion(extensionPath, workspace);
+            expect(invalidProject.discovery.errors).toContain('project.json is missing or invalid');
+            fs.rmSync(migrationRoot, { recursive: true });
+            expect(await readMigrationPhaseCompletion(extensionPath, workspace)).toEqual(fresh);
+            expect(fs.existsSync(migrationRoot)).toBe(false);
+        } finally {
+            fs.rmSync(workspace, { recursive: true });
+        }
     });
 
     it('uses status plus portable artifact validation', async () => {

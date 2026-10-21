@@ -193,6 +193,27 @@ export async function readMigrationPhaseCompletion(
     signal?: AbortSignal,
 ): Promise<MigrationPhaseCompletionMap> {
     signal?.throwIfAborted();
+    try {
+        await stat(path.join(workspacePath, '.cosmosdb-migration'));
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+        signal?.throwIfAborted();
+        return Object.fromEntries(
+            migrationPhaseNames.map((phase): [MigrationPhaseName, MigrationPhaseCompletion] => [
+                phase,
+                {
+                    phase,
+                    status: 'not-started',
+                    complete: false,
+                    freshness: 'not-applicable',
+                    staleInputs: [],
+                    artifacts: [],
+                    errors: [],
+                },
+            ]),
+        ) as MigrationPhaseCompletionMap;
+    }
+    signal?.throwIfAborted();
     const checkerPath = path.join(
         extensionPath,
         'skills',

@@ -208,7 +208,7 @@ export class MigrationProjectService {
     /**
      * Ensure the migration folder structure exists on disk.
      * Called lazily before the first write. Result is cached for the lifetime
-     * of the service instance; `reset()` invalidates the cache.
+     * of the service instance; `reset()` or observing a missing project invalidates the cache.
      */
     async ensureInitialized(): Promise<void> {
         if (this.initialized) {
@@ -270,7 +270,12 @@ export class MigrationProjectService {
             }
 
             return project;
-        } catch {
+        } catch (error) {
+            const code = (error as NodeJS.ErrnoException).code;
+            if (code === 'ENOENT' || code === 'FileNotFound') {
+                this.initialized = false;
+                this.projectRevision = 'missing';
+            }
             return undefined;
         }
     }

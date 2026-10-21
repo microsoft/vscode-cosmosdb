@@ -415,6 +415,9 @@ export class MigrationAssistantTab extends BaseTab {
             }
             const validationDurationMs = Date.now() - validationStart;
             if (abortController.signal.aborted) return;
+            if (isNewProject && !(await this.projectService.exists())) {
+                this.runTracker.clear();
+            }
 
             // Gather file lists. Hide the curated template files from the UI —
             // they are managed via the dedicated "Open Template" buttons and AI flows,

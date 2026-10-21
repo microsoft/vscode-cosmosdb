@@ -6,6 +6,7 @@
 import { accountOverviewRouter } from '../trpc';
 import { accountInventoryProcedures } from './accountOverview/accountInventoryRouter';
 import { actionsProcedures } from './accountOverview/actionsRouter';
+import { aiFeaturesProcedures } from './accountOverview/aiFeaturesRouter';
 import { alertsRecommendationsProcedures } from './accountOverview/alertsRecommendationsRouter';
 import { derivedAdvisoriesProcedures } from './accountOverview/derivedAdvisoriesRouter';
 import { inventoryMetricsProcedures } from './accountOverview/inventoryMetricsRouter';
@@ -34,4 +35,5 @@ export const accountOverviewRouterDef = accountOverviewRouter({
     ...derivedAdvisoriesProcedures,
     ...actionsProcedures,
     ...navigationProcedures,
+    ...aiFeaturesProcedures,
 });

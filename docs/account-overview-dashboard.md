@@ -5,6 +5,10 @@ Open it from an account node in the Azure resources tree (**Open Account Overvie
 Manager (ARM) and Azure Monitor calls run on the extension host; the webview holds no tokens and talks to
 the host over tRPC.
 
+For NoSQL accounts, **Try Data Modeler** opens the Data Modeler for the account shown in the overview without an
+account picker. It requires available GitHub Copilot models and AI features enabled. Launching it does not refresh
+the overview or change its selected filters.
+
 This document describes **what the dashboard ships today** — the metrics it renders, the detections it
 computes, where each one surfaces in the UI, and the ARM endpoints it calls. The broader detection
 methodology and fleet-grounded thresholds live in the CODA project (see [CODA reference](#coda-reference));

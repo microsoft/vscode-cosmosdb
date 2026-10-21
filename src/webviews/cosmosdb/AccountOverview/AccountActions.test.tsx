@@ -40,11 +40,28 @@ function Wrapper({ children }: PropsWithChildren) {
 }
 
 function renderActions(overrides: Partial<ActionProps> = {}) {
-    const props: ActionProps = { busy: false, supported: true, onAction: vi.fn(), ...overrides };
+    const props: ActionProps = {
+        busy: false,
+        supported: true,
+        isAIFeaturesEnabled: true,
+        onAction: vi.fn(),
+        ...overrides,
+    };
     return { props, ...render(<AccountActions {...props} />, { wrapper: Wrapper }) };
 }
 
 describe('AccountActions', () => {
+    it('hides the entire Data Modeler promotion when AI features are disabled', () => {
+        renderActions({ isAIFeaturesEnabled: false });
+        expect(screen.queryByRole('button', { name: 'Try Data Modeler' })).not.toBeInTheDocument();
+        expect(
+            screen.queryByText('Design containers, partition keys, and relationships visually.'),
+        ).not.toBeInTheDocument();
+        for (const label of ['Add database', 'Add container', 'Delete account']) {
+            expect(screen.getByRole('button', { name: label })).toBeEnabled();
+        }
+    });
+
     it('names every action with its rendered visible label', () => {
         renderActions();
         const actions = within(screen.getByRole('region', { name: 'Account actions' }));
@@ -60,6 +77,7 @@ describe('AccountActions', () => {
         ['Add database', { action: 'createDatabase' }],
         ['Add container', { action: 'createContainer', databaseId: 'selected-db' }],
         ['Delete account', { action: 'deleteAccount' }],
+        ['Try Data Modeler', { action: 'openDataModeler' }],
     ] as const)('dispatches %s by keyboard with the correct scope', async (label, input) => {
         const user = userEvent.setup();
         const { props } = renderActions({ databaseId: 'selected-db' });
@@ -68,19 +86,21 @@ describe('AccountActions', () => {
         expect(props.onAction).toHaveBeenCalledExactlyOnceWith(input);
     });
 
-    it('keeps Data Modeler focusable with an explanation, but never dispatches an action', async () => {
+    it('opens Data Modeler when clicked', async () => {
         const user = userEvent.setup();
         const { props } = renderActions();
         const modeler = screen.getByRole('button', { name: 'Try Data Modeler' });
         expect(screen.getByText('Design containers, partition keys, and relationships visually.')).toBeVisible();
-        expect(modeler).toHaveAttribute('aria-disabled', 'true');
-        expect(modeler).not.toBeDisabled();
-        screen.getByRole('button', { name: 'Delete account' }).focus();
-        await user.tab();
-        expect(modeler).toHaveFocus();
-        await waitFor(() => expect(modeler).toHaveAccessibleDescription('Data Modeler is not implemented yet.'));
-        expect(await screen.findByRole('tooltip')).toHaveTextContent('Data Modeler is not implemented yet.');
-        await user.keyboard('{Enter} ');
+        expect(modeler).toBeEnabled();
+        await user.click(modeler);
+        expect(props.onAction).toHaveBeenCalledExactlyOnceWith({ action: 'openDataModeler' });
+    });
+
+    it.each([{ busy: true }, { supported: false }])('blocks Data Modeler for %j', async (overrides) => {
+        const user = userEvent.setup();
+        const { props } = renderActions(overrides);
+        const modeler = screen.getByRole('button', { name: 'Try Data Modeler' });
+        expect(modeler).toBeDisabled();
         await user.click(modeler);
         expect(props.onAction).not.toHaveBeenCalled();
     });

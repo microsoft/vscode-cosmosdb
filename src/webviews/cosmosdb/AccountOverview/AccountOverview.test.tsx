@@ -45,6 +45,8 @@ const queries = vi.hoisted(() => ({
     recommendations: vi.fn(),
     advisories: vi.fn(),
     navigation: vi.fn(),
+    aiFeaturesEnabled: vi.fn(),
+    unsubscribeAI: vi.fn(),
     unsubscribe: vi.fn(),
     reportEvent: vi.fn(),
     reveal: vi.fn(),
@@ -73,6 +75,7 @@ vi.mock('@microsoft/vscode-ext-webview/react', () => {
             getRecommendations: { query: queries.recommendations },
             getDerivedAdvisories: { query: queries.advisories },
             navigation: { subscribe: queries.navigation },
+            aiFeaturesEnabled: { subscribe: queries.aiFeaturesEnabled },
             reportEvent: { mutate: queries.reportEvent },
             revealInTree: { mutate: queries.reveal },
             openQueryEditor: { mutate: queries.queryEditor },
@@ -119,6 +122,7 @@ type NavigationCallbacks = {
 };
 let callbacks: NavigationCallbacks;
 let initialTarget: AccountOverviewTarget;
+let aiCallbacks: { onData: (enabled: boolean) => void; onError: (error: Error) => void };
 
 function Wrapper({ children }: PropsWithChildren) {
     return <FluentProvider theme={webLightTheme}>{children}</FluentProvider>;
@@ -152,6 +156,11 @@ function dataQueryCounts() {
 beforeEach(() => {
     vi.resetAllMocks();
     initialTarget = 'overview';
+    queries.aiFeaturesEnabled.mockImplementation((_input: unknown, next: typeof aiCallbacks) => {
+        aiCallbacks = next;
+        next.onData(true);
+        return { unsubscribe: queries.unsubscribeAI };
+    });
     queries.navigation.mockImplementation((_input: unknown, next: NavigationCallbacks) => {
         callbacks = next;
         next.onData({ type: 'navigate', target: initialTarget, revision: 0 });
@@ -677,7 +686,45 @@ describe('header update feedback', () => {
 });
 
 describe('Account Overview account actions', () => {
-    it('never dispatches or refreshes from the keyboard-accessible Data Modeler placeholder', async () => {
+    it('keeps Data Modeler hidden until AI availability is received and follows live changes', async () => {
+        queries.aiFeaturesEnabled.mockImplementation((_input: unknown, next: typeof aiCallbacks) => {
+            aiCallbacks = next;
+            return { unsubscribe: queries.unsubscribeAI };
+        });
+        const { unmount } = render(<AccountOverview />, { wrapper: Wrapper });
+        await screen.findByRole('tab', { name: 'Monitoring' });
+        await waitFor(() => expect(queries.partition).toHaveBeenCalledTimes(1));
+        const counts = dataQueryCounts();
+        expect(screen.queryByRole('button', { name: 'Try Data Modeler' })).not.toBeInTheDocument();
+        act(() => aiCallbacks.onData(false));
+        expect(screen.queryByRole('button', { name: 'Try Data Modeler' })).not.toBeInTheDocument();
+        act(() => aiCallbacks.onData(true));
+        expect(screen.getByRole('button', { name: 'Try Data Modeler' })).toBeEnabled();
+        act(() => aiCallbacks.onData(false));
+        expect(screen.queryByRole('button', { name: 'Try Data Modeler' })).not.toBeInTheDocument();
+        expect(
+            screen.queryByText('Design containers, partition keys, and relationships visually.'),
+        ).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Add database' })).toBeEnabled();
+        expect(dataQueryCounts()).toEqual(counts);
+        unmount();
+        expect(queries.unsubscribeAI).toHaveBeenCalledOnce();
+    });
+
+    it('hides Data Modeler and reports AI availability subscription failures', async () => {
+        const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
+        render(<AccountOverview />, { wrapper: Wrapper });
+        await screen.findByRole('button', { name: 'Try Data Modeler' });
+        const error = new Error('Subscription disconnected');
+        act(() => aiCallbacks.onError(error));
+        expect(screen.queryByRole('button', { name: 'Try Data Modeler' })).not.toBeInTheDocument();
+        expect(errorLog).toHaveBeenCalledExactlyOnceWith(
+            'Unable to receive Account Overview AI feature availability.',
+            error,
+        );
+    });
+
+    it('launches Data Modeler by keyboard without refreshing the overview', async () => {
         const user = userEvent.setup();
         render(<AccountOverview />, { wrapper: Wrapper });
         await screen.findByRole('tab', { name: 'Monitoring' });
@@ -686,20 +733,21 @@ describe('Account Overview account actions', () => {
         const modeler = screen.getByRole('button', { name: 'Try Data Modeler' });
         expect(modeler).toHaveTextContent('Try Data Modeler');
         expect(modeler).toHaveAccessibleName('Try Data Modeler');
-        expect(modeler).toHaveAttribute('aria-disabled', 'true');
+        expect(modeler).toBeEnabled();
+        expect(modeler).not.toHaveAttribute('aria-disabled', 'true');
         screen.getByRole('button', { name: 'Delete account' }).focus();
         await user.tab();
         expect(modeler).toHaveFocus();
-        await waitFor(() => expect(modeler).toHaveAccessibleDescription('Data Modeler is not implemented yet.'));
-        await user.keyboard('{Enter} ');
-        await user.click(modeler);
-        expect(queries.accountAction).not.toHaveBeenCalled();
+        await user.keyboard('{Enter}');
+        expect(queries.accountAction).toHaveBeenCalledExactlyOnceWith({ action: 'openDataModeler' });
+        await waitFor(() => expect(modeler).toBeEnabled());
         expect(dataQueryCounts()).toEqual(counts);
     });
 
     it.each([
         ['View Cost', 'openCosts'],
         ['View JSON', 'openJson'],
+        ['Try Data Modeler', 'openDataModeler'],
     ] as const)('routes %s without refreshing data or resetting metric filters', async (label, action) => {
         const user = userEvent.setup();
         render(<AccountOverview />, { wrapper: Wrapper });
@@ -887,6 +935,7 @@ describe('Account Overview account actions', () => {
         ['Delete account', 'deleteAccount'],
         ['View Cost', 'openCosts'],
         ['View JSON', 'openJson'],
+        ['Try Data Modeler', 'openDataModeler'],
     ] as const)('keeps the dashboard and data unchanged when %s is cancelled', async (label, action) => {
         const user = userEvent.setup();
         queries.accountAction.mockResolvedValue({ status: 'cancelled' } satisfies AccountActionResult);
@@ -906,7 +955,7 @@ describe('Account Overview account actions', () => {
         expect(screen.queryByText('This Cosmos DB account has been deleted.')).not.toBeInTheDocument();
     });
 
-    it.each(['Add database', 'Add container', 'Delete account', 'View Cost', 'View JSON'])(
+    it.each(['Add database', 'Add container', 'Delete account', 'View Cost', 'View JSON', 'Try Data Modeler'])(
         'announces a rejected %s mutation without refreshing or unmounting, and allows retry',
         async (label) => {
             const user = userEvent.setup();

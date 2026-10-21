@@ -10,6 +10,7 @@ import * as vscode from 'vscode';
 import { API, DBAccountKind, tryGetExperience } from '../../../AzureDBExperiences';
 import { cosmosDBCreateContainer } from '../../../commands/createContainer/createContainer';
 import { cosmosDBCreateDatabase } from '../../../commands/createDatabase/createDatabase';
+import { openDataModelingWizard } from '../../../commands/dataModeling/openDataModelingWizard';
 import { cosmosDBDeleteDatabaseAccount } from '../../../commands/deleteDatabaseAccount/deleteDatabaseAccount';
 import { type AzureResourceMetadata } from '../../../cosmosdb/AzureResourceMetadata';
 import { maskConnectionTelemetry } from '../../../cosmosdb/maskConnectionTelemetry';
@@ -71,7 +72,9 @@ export async function runAccountAction(
 
             // Registered command wrappers swallow cancellation and may swallow failures. Invoke their handlers
             // with the RPC action context and a verified node so no handler can fall back to an unscoped picker.
-            if (input.action === 'createDatabase') {
+            if (input.action === 'openDataModeler') {
+                await openDataModelingWizard(context, account);
+            } else if (input.action === 'createDatabase') {
                 await cosmosDBCreateDatabase(context, account);
             } else if (input.action === 'createContainer') {
                 const children = await account.getChildren();

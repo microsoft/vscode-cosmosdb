@@ -8,7 +8,6 @@ import { QueryEditorPage } from '../fixtures/queryEditor';
 import { expect, test } from '../fixtures/vscode';
 import {
     captureNamedScreenshot,
-    closeActiveEditorTab,
     closeAllEditorTabs,
     maximizeWindow,
     resetNativeDialogStubs,
@@ -94,7 +93,7 @@ test.describe('queryEditor-crud', { tag: '@queryEditor' }, () => {
         await addPanel.save();
         addPanel.consoleHealth.assertNoConsoleErrors();
         addPanel.dispose();
-        await closeActiveEditorTab(vscodeWindow);
+        await qe.closeDocumentPanel(docId);
 
         // ── Query back: exactly our one probe document ─────────────────────────
         await qe.setQueryText(fetchById);
@@ -109,7 +108,7 @@ test.describe('queryEditor-crud', { tag: '@queryEditor' }, () => {
         expect(await viewPanel.frame.getByText(docId).count()).toBeGreaterThan(0);
         viewPanel.consoleHealth.assertNoConsoleErrors();
         viewPanel.dispose();
-        await closeActiveEditorTab(vscodeWindow);
+        await qe.closeDocumentPanel(docId);
 
         // ── Edit (editable) ────────────────────────────────────────────────────
         await qe.invokeSelectionAction(0, 'edit');
@@ -117,7 +116,7 @@ test.describe('queryEditor-crud', { tag: '@queryEditor' }, () => {
         await editPanel.expectEditable();
         editPanel.consoleHealth.assertNoConsoleErrors();
         editPanel.dispose();
-        await closeActiveEditorTab(vscodeWindow);
+        await qe.closeDocumentPanel(docId);
 
         // ── Delete (confirmed via the native modal) ────────────────────────────
         await stubMessageBoxButton(vscodeApp, 'Yes');
@@ -155,7 +154,7 @@ test.describe('queryEditor-crud', { tag: '@queryEditor' }, () => {
         await addPanel.setContent(probe);
         await addPanel.save();
         addPanel.dispose();
-        await closeActiveEditorTab(vscodeWindow);
+        await qe.closeDocumentPanel(docId);
 
         await qe.setQueryText(fetchById);
         await qe.run();

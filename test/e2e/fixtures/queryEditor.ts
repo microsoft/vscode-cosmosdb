@@ -24,7 +24,7 @@
 
 import { expect, type Frame, type Page } from '@playwright/test';
 import { startConsoleHealth, type ConsoleHealth } from './consoleHealth';
-import { captureNamedScreenshot, getWebviewByPredicate } from './webviewHelpers';
+import { captureNamedScreenshot, closeEditorTab, getWebviewByPredicate } from './webviewHelpers';
 import { openQueryEditor } from './webviews';
 
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -689,6 +689,12 @@ export class QueryEditorPage {
             },
             timeoutMs,
         );
+    }
+
+    /** Closes the named Document tab and waits for this editor's result table to regain visibility. */
+    async closeDocumentPanel(documentId: string): Promise<void> {
+        await closeEditorTab(this.window, `${documentId}.json`);
+        await expect(this.tableGrid()).toBeVisible({ timeout: DEFAULT_TIMEOUT_MS });
     }
 
     // ─── Editor text ──────────────────────────────────────────────────────

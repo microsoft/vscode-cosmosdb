@@ -5,12 +5,7 @@
 
 import { QueryEditorPage } from '../fixtures/queryEditor';
 import { expect, test } from '../fixtures/vscode';
-import {
-    captureNamedScreenshot,
-    closeActiveEditorTab,
-    closeAllEditorTabs,
-    maximizeWindow,
-} from '../fixtures/webviewHelpers';
+import { captureNamedScreenshot, closeAllEditorTabs, maximizeWindow } from '../fixtures/webviewHelpers';
 import { attachEmulator } from '../fixtures/webviews';
 
 /**
@@ -107,7 +102,7 @@ test.describe('queryEditor-selection', { tag: '@queryEditor' }, () => {
         qe.consoleHealth.assertNoConsoleErrors();
     });
 
-    test('item hotkeys (Alt+V / Alt+E / Alt+I) open the Document panel', async ({ vscodeWindow }) => {
+    test('item hotkeys (Alt+V / Alt+E / Alt+I) open the Document panel', async () => {
         const qe = queryEditor!;
 
         // These three result-panel hotkeys mirror the View / Edit / New item
@@ -124,7 +119,7 @@ test.describe('queryEditor-selection', { tag: '@queryEditor' }, () => {
         await qe.window.keyboard.press('Alt+V');
         let panel = await qe.waitForDocumentPanel();
         await expect(panel.getByText(/This item is read-only/)).toBeVisible();
-        await closeActiveEditorTab(vscodeWindow);
+        await qe.closeDocumentPanel(SEEDED_ID);
 
         // Edit (Alt+E) → an editable panel.
         await qe.focusResultPanel();
@@ -132,7 +127,7 @@ test.describe('queryEditor-selection', { tag: '@queryEditor' }, () => {
         await qe.window.keyboard.press('Alt+E');
         panel = await qe.waitForDocumentPanel();
         await expect(panel.getByText(/This item is editable/)).toBeVisible();
-        await closeActiveEditorTab(vscodeWindow);
+        await qe.closeDocumentPanel(SEEDED_ID);
 
         // New (Alt+I): no selection required → an add-mode (editable) panel.
         // Left unsaved, so no document is created.

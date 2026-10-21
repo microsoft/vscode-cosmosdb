@@ -4,8 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
-import { type CosmosDBAccountResourceItem } from '../../tree/cosmosdb/CosmosDBAccountResourceItem';
+import { type AzureResourceMetadata } from '../../cosmosdb/AzureResourceMetadata';
+
+export type DeleteAccountTarget = Pick<
+    AzureResourceMetadata,
+    'accountId' | 'accountName' | 'resourceGroup' | 'subscription'
+>;
 
 export interface DeleteWizardContext extends IActionContext {
-    node: CosmosDBAccountResourceItem;
+    account: DeleteAccountTarget;
 }

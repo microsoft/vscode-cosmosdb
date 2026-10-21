@@ -11,7 +11,7 @@ import { openDataModelingWizard } from '../commands/dataModeling/openDataModelin
 import { type AzureResourceMetadata } from '../cosmosdb/AzureResourceMetadata';
 import { getControlPlane } from '../cosmosdb/controlPlane';
 import { DataModelerProjectService } from '../services/DataModelerProjectService';
-import { getAccountInfo } from '../tree/cosmosdb/AccountInfo';
+import { getAccountInfo, type AccountInfo } from '../tree/cosmosdb/AccountInfo';
 import { type CosmosDBAccountResourceItem } from '../tree/cosmosdb/CosmosDBAccountResourceItem';
 import { ensureAIFeaturesEnabled } from '../utils/copilotUtils';
 import { pickAppResource } from '../utils/pickItem/pickAppResource';
@@ -161,6 +161,35 @@ describe('data modeler account scope', () => {
         expect(lastContext().project).toBe(DataModelerProjectService.getInstance(firstAccount.endpoint));
         expect(context.valuesToMask).toContain(firstAccount.endpoint);
         expect(context.valuesToMask).toContain(firstAccount.name);
+    });
+
+    it('preserves deployment and query capabilities when Overview passes AccountInfo without a tree node', async () => {
+        const metadata = { accountName: firstAccount.name } as AzureResourceMetadata;
+        const info: AccountInfo = {
+            ...firstAccount,
+            id: 'account-id',
+            credentials: [],
+            isEmulator: false,
+            isServerless: false,
+            azureMetadata: metadata,
+        };
+        await open(actionContext(), info);
+        expect(pickAppResource).not.toHaveBeenCalled();
+        expect(getAccountInfo).not.toHaveBeenCalled();
+        const account = lastContext().account;
+        expect(account.getControlPlane).toBeTypeOf('function');
+        account.getControlPlane?.();
+        expect(getControlPlane).toHaveBeenCalledExactlyOnceWith(info);
+        expect(account.getDeploymentTarget?.()).toBe(metadata);
+        expect(await account.getQueryConnection?.('database', 'container')).toEqual({
+            azureMetadata: metadata,
+            databaseId: 'database',
+            containerId: 'container',
+            endpoint: info.endpoint,
+            credentials: info.credentials,
+            isEmulator: false,
+        });
+        expect(account).not.toHaveProperty('credentials');
     });
 
     it('preserves the host-only deployment capability and updates it when reopening an endpoint-only tab', () => {

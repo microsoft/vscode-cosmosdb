@@ -3,20 +3,18 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { getResourceGroupFromId } from '@microsoft/vscode-azext-azureutils';
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
-import { type CosmosDBAccountResourceItem } from '../../tree/cosmosdb/CosmosDBAccountResourceItem';
 import { createActivityContextV2 } from '../../utils/activityUtils';
 import { createCosmosDBManagementClient } from '../../utils/azureClients';
+import { type DeleteAccountTarget } from './DeleteWizardContext';
 
-export async function deleteCosmosDBAccount(context: IActionContext, node: CosmosDBAccountResourceItem): Promise<void> {
+export async function deleteCosmosDBAccount(context: IActionContext, account: DeleteAccountTarget): Promise<void> {
     const activityContext = await createActivityContextV2();
-    const client = await createCosmosDBManagementClient({ ...context, ...activityContext }, node.account.subscription);
-    const resourceGroup = getResourceGroupFromId(node.account.id);
-    const accountName = node.account.name;
+    const client = await createCosmosDBManagementClient({ ...context, ...activityContext }, account.subscription);
+    const { resourceGroup, accountName } = account;
 
     const deletePromise = client.databaseAccounts.delete(resourceGroup, accountName).pollUntilDone();
 

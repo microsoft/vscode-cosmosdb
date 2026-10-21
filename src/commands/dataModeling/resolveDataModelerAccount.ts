@@ -7,13 +7,14 @@ import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import { getControlPlane } from '../../cosmosdb/controlPlane';
 import { type DataModelerAccount } from '../../services/DataModelerProjectService';
-import { getAccountInfo } from '../../tree/cosmosdb/AccountInfo';
+import { getAccountInfo, type AccountInfo } from '../../tree/cosmosdb/AccountInfo';
 import { type CosmosDBAccountAttachedResourceItem } from '../../tree/cosmosdb/CosmosDBAccountAttachedResourceItem';
 import { type CosmosDBAccountResourceItem } from '../../tree/cosmosdb/CosmosDBAccountResourceItem';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
 export type DataModelerAccountSource =
     | DataModelerAccount
+    | AccountInfo
     | CosmosDBAccountResourceItem
     | CosmosDBAccountAttachedResourceItem;
 
@@ -28,10 +29,10 @@ export async function resolveDataModelerAccount(
         return undefined;
     }
     let account: DataModelerAccount;
-    if ('endpoint' in source) {
+    if ('endpoint' in source && !('credentials' in source)) {
         account = source;
     } else {
-        const accountInfo = await getAccountInfo(source.account);
+        const accountInfo = 'credentials' in source ? source : await getAccountInfo(source.account);
         account = {
             endpoint: accountInfo.endpoint,
             name: accountInfo.name,

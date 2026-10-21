@@ -152,6 +152,14 @@ The extension integrates with GitHub Copilot to help you write, edit, and unders
 
 For more details, see the [AI Chat documentation](src/chat/README.md).
 
+## Migration Assistant (Preview)
+
+The Migration Assistant uses the `cosmosdb-relational-migration` Skill in GitHub Copilot Chat to guide relational database and application migrations. Phase actions open or resume Chat; the assistant tracks progress and validates the artifacts in `.cosmosdb-migration`.
+
+Migration projects started before the Skill was introduced can still be opened and inspected. Their existing artifacts need evidence validation before their phases can be treated as complete in the Skill workflow.
+
+Use `cosmosDB.experimental.migration.enabled` to show or hide the migration feature.
+
 ## Import into Azure Cosmos DB
 
 The extension allows you to import documents into Azure Cosmos DB.

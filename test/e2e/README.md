@@ -52,6 +52,21 @@ pay ~50 s of startup overhead; with worker scope it's ~5 s total.
 
 The consequence: tests **must reset editor state in their own `afterEach`**.
 Use `closeAllEditorTabs(vscodeWindow)` from `fixtures/webviewHelpers.ts`.
+This helper focuses the workbench before opening the command palette and waits
+for each editor to close. Cleanup failures fail the test rather than silently
+leaving a panel for the next test. Tests that resize the window must also restore
+the original viewport in `finally`.
+Use `resizeWindowViewport(vscodeApp, vscodeWindow, size)` for migration responsive
+checks: it resizes the native Electron window and waits for the renderer.
+Do not use `page.setViewportSize()` here; CDP device-metric overrides can leave
+the embedded webview and native window with mismatched input coordinates.
+
+Migration tests attach captured mock prompts and the webview accessibility tree
+before cleanup on failure. When simulating a fast agent, wait for the UI to
+observe the running state before writing completion: prompt capture happens
+before the launch-state update reaches the webview.
+`MigrationPage.completeSkillRun()` waits for both the running state and the
+completion update before the test can launch the next phase.
 
 ## Running
 
@@ -67,6 +82,11 @@ npm run e2e:coverage:query-editor
 # Author / debug
 npm run e2e:ui         # Playwright's UI mode — step through tests, time-travel
 npm run e2e:debug      # Playwright Inspector — pause + step + REPL at each action
+
+# Stress the complete offline migration suite without masking flakes with retries.
+# Keep the full file selected so cross-test state leaks remain observable.
+COSMOSDB_E2E_SKIP_EMULATOR=1 COSMOSDB_E2E_SCREENSHOT=trace-on-failure \
+  npm run e2e -- test/e2e/specs/migration.spec.ts --repeat-each=20 --retries=0 --workers=1
 ```
 
 To verify the Data Modeler's native **Add container** input, including invalid Enter submissions, valid correction,

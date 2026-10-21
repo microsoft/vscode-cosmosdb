@@ -5,6 +5,7 @@
 
 import { type TrpcClient } from '@microsoft/vscode-ext-webview/react';
 import { type MigrationAppRouter } from '../../../../panels/trpc/appRouter';
+import { isMigrationInspectionCommand } from './deriveMigrationPhaseStates';
 
 /**
  * Webview-side Channel adapter for the Migration Assistant.
@@ -20,6 +21,7 @@ import { type MigrationAppRouter } from '../../../../panels/trpc/appRouter';
  *
  * This is an internal compatibility shim, scoped to the migration feature
  * only. New code should call the tRPC client directly.
+ * Inspection commands bypass model-selection saves; launches wait for a successful save.
  */
 
 export type ChannelEventHandler = (...args: never[]) => void;
@@ -36,6 +38,7 @@ export interface Channel {
 export class MigrationChannel implements Channel {
     private readonly handlers = new Map<string, Set<ChannelEventHandler>>();
     private subscription: { unsubscribe(): void } | undefined;
+    private modelSelectionUpdate: Promise<void> = Promise.resolve();
 
     constructor(private readonly trpcClient: TrpcClient<MigrationAppRouter>) {
         // oxlint-disable-next-line typescript/no-unsafe-call, typescript/no-unsafe-member-access -- generic tRPC client typings
@@ -93,14 +96,22 @@ export class MigrationChannel implements Channel {
         if (!wrapper || typeof wrapper.commandName !== 'string') {
             throw new Error(`[MigrationChannel] Malformed command payload: ${JSON.stringify(message)}`);
         }
-        // oxlint-disable-next-line typescript/no-unsafe-member-access, typescript/no-unsafe-call -- generic tRPC client typings
-        await (
-            this.trpcClient as unknown as {
-                migration: {
-                    command: { mutate: (input: { commandName: string; params: unknown[] }) => Promise<unknown> };
-                };
-            }
-        ).migration.command.mutate({ commandName: wrapper.commandName, params: wrapper.params ?? [] });
+        const send = async (): Promise<void> => {
+            await (
+                this.trpcClient as unknown as {
+                    migration: {
+                        command: { mutate: (input: { commandName: string; params: unknown[] }) => Promise<unknown> };
+                    };
+                }
+            ).migration.command.mutate({ commandName: wrapper.commandName, params: wrapper.params ?? [] });
+        };
+        if (wrapper.commandName === 'setSelectedModel') {
+            this.modelSelectionUpdate = this.modelSelectionUpdate.catch(() => undefined).then(send);
+            await this.modelSelectionUpdate;
+        } else {
+            if (!isMigrationInspectionCommand(wrapper.commandName)) await this.modelSelectionUpdate;
+            await send();
+        }
     }
 
     public dispose(): void {

@@ -4,13 +4,300 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
-import * as vscode from 'vscode';
-import { type LanguageModelChat } from 'vscode';
 import { type ProjectJson } from '../../../services/MigrationProjectService';
-import { type ExtractionStats } from '../../../utils/ddlExtractor';
-import { type FileEncoding } from '../../../utils/decodeFileBytes';
 
-export type MigrationPhaseKey = 'discovery' | 'assessment' | 'schemaConversion' | 'provisioning';
+export type MigrationPhaseKey =
+    | 'preflight'
+    | 'discovery'
+    | 'assessment'
+    | 'schemaConversion'
+    | 'provisioning'
+    | 'codeMigration';
+
+function categoryKey(value: string): string {
+    return value
+        .trim()
+        .toLowerCase()
+        .replaceAll(/[\s_-]+/g, '');
+}
+
+function categories(values: Record<string, readonly string[]>): ReadonlyMap<string, string> {
+    return new Map(
+        Object.entries(values).flatMap(([label, aliases]) =>
+            [label, ...aliases].map((alias) => [categoryKey(alias), label] as const),
+        ),
+    );
+}
+
+const applicationDimensions = {
+    projectType: {
+        property: 'sourceProjectType',
+        categories: categories({
+            'Web API': ['api', 'rest api', 'restful api', 'asp.net web api', 'asp.net core web api'],
+            'Web application': ['web app', 'website', 'web'],
+            Service: ['backend', 'backend service'],
+            Microservices: ['microservice'],
+            Worker: ['background service', 'background worker', 'worker service'],
+            Console: ['console app', 'console application', 'cli', 'command line'],
+            Library: ['class library', 'package', 'sdk'],
+            Desktop: ['desktop app', 'desktop application'],
+            Mobile: ['mobile app', 'mobile application'],
+            Serverless: ['function app', 'azure functions', 'lambda'],
+            'Data pipeline': ['etl', 'batch', 'batch job'],
+            Frontend: ['front end', 'spa', 'single page application'],
+            'Full stack': ['full stack application'],
+            Monolith: ['monolithic application'],
+        }),
+    },
+    language: {
+        property: 'sourceLanguage',
+        categories: categories({
+            'C#': ['csharp', 'c sharp'],
+            'F#': ['fsharp', 'f sharp'],
+            'Visual Basic': ['vb', 'vb.net', 'visual basic .net'],
+            JavaScript: ['js', 'ecmascript'],
+            TypeScript: ['ts'],
+            Python: ['py'],
+            Java: [],
+            Kotlin: [],
+            Scala: [],
+            Go: ['golang'],
+            Ruby: [],
+            PHP: [],
+            Rust: [],
+            'C++': ['cpp', 'cplusplus'],
+            C: [],
+            Swift: [],
+            'Objective-C': ['objc', 'objective c'],
+            Dart: [],
+            Elixir: [],
+            Erlang: [],
+            R: [],
+            PowerShell: ['pwsh'],
+            SQL: ['t-sql', 'tsql', 'pl/sql'],
+        }),
+    },
+    frameworks: {
+        property: 'sourceFramework',
+        categories: categories({
+            '.NET': ['dotnet', '.net framework', '.net core'],
+            'ASP.NET': ['aspnet', 'asp.net mvc'],
+            'ASP.NET Core': ['aspnet core', 'aspnetcore'],
+            'Entity Framework': ['ef'],
+            'Entity Framework Core': ['ef core', 'efcore'],
+            Dapper: [],
+            Spring: ['spring framework'],
+            'Spring Boot': ['springboot'],
+            Hibernate: [],
+            'Jakarta EE': ['java ee'],
+            Django: [],
+            Flask: [],
+            FastAPI: [],
+            SQLAlchemy: ['sql alchemy'],
+            Express: ['express.js', 'expressjs'],
+            NestJS: ['nest.js'],
+            'Next.js': ['nextjs'],
+            React: ['react.js', 'reactjs'],
+            Angular: ['angularjs'],
+            Vue: ['vue.js', 'vuejs'],
+            Svelte: [],
+            Sequelize: [],
+            TypeORM: [],
+            Prisma: [],
+            Knex: ['knex.js'],
+            'Ruby on Rails': ['rails'],
+            'Active Record': ['activerecord'],
+            Laravel: [],
+            Symfony: [],
+            Eloquent: [],
+            GORM: [],
+            Diesel: [],
+        }),
+    },
+    databaseType: {
+        property: 'sourceDbType',
+        // Keep named SQLGlot dialects covered without trusting runtime/custom dialect identifiers.
+        // https://github.com/tobymao/sqlglot/blob/main/sqlglot/dialects/dialect.py
+        categories: categories({
+            PostgreSQL: ['postgres', 'azure database for postgresql', 'aurora postgresql', 'amazon aurora postgresql'],
+            MySQL: ['azure database for mysql', 'aurora mysql', 'amazon aurora mysql'],
+            MariaDB: [],
+            'SQL Server': [
+                'mssql',
+                'tsql',
+                't-sql',
+                'microsoft sql server',
+                'azure sql',
+                'azure sql database',
+                'azure sql managed instance',
+            ],
+            Oracle: ['oracle database'],
+            SQLite: [],
+            DB2: ['ibm db2'],
+            Athena: ['amazon athena', 'aws athena'],
+            BigQuery: ['google bigquery', 'google cloud bigquery'],
+            ClickHouse: [],
+            Databricks: ['databricks sql'],
+            DAX: ['data analysis expressions'],
+            Doris: ['apache doris'],
+            Dremio: [],
+            Drill: ['apache drill'],
+            Druid: ['apache druid'],
+            DuckDB: [],
+            Dune: ['dunesql', 'dune sql'],
+            Exasol: [],
+            Fabric: ['microsoft fabric', 'fabric warehouse', 'microsoft fabric warehouse'],
+            Hive: ['apache hive'],
+            Materialize: [],
+            Presto: ['prestodb'],
+            PRQL: [],
+            Redshift: ['amazon redshift', 'aws redshift'],
+            RisingWave: [],
+            Snowflake: [],
+            Solr: ['apache solr'],
+            Spark: ['spark2', 'apache spark', 'spark sql', 'apache spark sql'],
+            StarRocks: [],
+            Tableau: [],
+            Teradata: [],
+            Trino: [],
+        }),
+    },
+    databaseAccess: {
+        property: 'sourceDbAccess',
+        categories: categories({
+            ORM: [
+                'object relational mapping',
+                'object relational mapper',
+                'entity framework',
+                'ef',
+                'entity framework core',
+                'ef core',
+                'efcore',
+                'hibernate',
+                'jpa',
+                'spring data jpa',
+                'django orm',
+                'sqlalchemy',
+                'active record',
+                'activerecord',
+                'prisma',
+                'sequelize',
+                'typeorm',
+                'eloquent',
+                'gorm',
+                'diesel',
+            ],
+            'Micro ORM': ['micro-orm', 'dapper'],
+            'Query builder': ['knex', 'knex.js', 'jooq'],
+            'Direct SQL': ['sql', 'raw sql', 'sql queries', 'direct queries', 'native sql'],
+            'Stored procedures': ['stored procedure', 'sprocs'],
+            JDBC: ['jdbc driver', 'spring jdbc'],
+            ODBC: ['odbc driver', 'pyodbc'],
+            'ADO.NET': ['ado.net driver', 'ado net', 'adonet'],
+            'Native driver': [
+                'database driver',
+                'native sdk',
+                'psycopg',
+                'psycopg2',
+                'npgsql',
+                'mysql2',
+                'node-postgres',
+            ],
+            'HTTP API': ['rest', 'rest api', 'http', 'graphql'],
+        }),
+    },
+} as const;
+
+export const migrationApplicationTelemetryKeys = Object.values(applicationDimensions).map(
+    (dimension) => dimension.property,
+);
+
+type ApplicationDimension = keyof typeof applicationDimensions;
+
+function normalizeCategory(
+    value: unknown,
+    labels: ReadonlyMap<string, string>,
+): { value: string | undefined; sensitiveValues: string[] } {
+    const normalized = new Set<string>();
+    const sensitiveValues = new Set<string>();
+    for (const item of Array.isArray(value) ? value : [value]) {
+        if (typeof item !== 'string' || !item.trim()) continue;
+        let sensitive = false;
+        const tokens = item
+            .split(/[,;]/u)
+            .map((part) => part.trim())
+            .filter(Boolean);
+        if (!tokens.length) {
+            normalized.add('other');
+            sensitive = true;
+        }
+        for (const token of tokens) {
+            const key = categoryKey(token);
+            const exactLabel = key === 'other' ? 'other' : labels.get(key);
+            const label = exactLabel ?? labels.get(categoryKey(token.replace(/\s+v?\d+(?:\.\d+)*(?:\.x)?$/iu, '')));
+            normalized.add(label ?? 'other');
+            if (!exactLabel) {
+                sensitive = true;
+                sensitiveValues.add(token);
+            }
+        }
+        if (sensitive) {
+            sensitiveValues.add(item);
+            sensitiveValues.add(item.trim());
+        }
+    }
+    return {
+        value: normalized.size ? [...normalized].sort().join(', ') : undefined,
+        sensitiveValues: [...sensitiveValues],
+    };
+}
+
+/** Returns bounded migration dimensions; no file contents, paths, or names are emitted. */
+export function getMigrationTelemetryProperties(
+    project: ProjectJson | undefined,
+    phase?: MigrationPhaseKey,
+): Record<string, string> {
+    const properties: Record<string, string> = {};
+    if (phase) {
+        properties.phase = phase;
+        properties.hasCustomInstructions = String(!!project && getHasCustomInstructions(project, phase));
+    }
+    if (project?.migrationMode === 'plan' || project?.migrationMode === 'start') {
+        properties.migrationMode = project.migrationMode;
+    }
+    const details = project?.phases.discovery.applicationAnalysis;
+    for (const key of Object.keys(applicationDimensions) as ApplicationDimension[]) {
+        const dimension = applicationDimensions[key];
+        const normalized = normalizeCategory(details?.[key], dimension.categories);
+        if (normalized.value) properties[dimension.property] = normalized.value;
+    }
+    return properties;
+}
+
+/** Registers free-form application details for error masking; no file contents, paths, or names are emitted. */
+export function maskMigrationApplicationDetails(
+    context: Pick<IActionContext, 'valuesToMask'>,
+    details: unknown,
+    options: { preserveNormalizedDimensions?: boolean } = {},
+): void {
+    if (!details || typeof details !== 'object' || Array.isArray(details)) return;
+    const fields = details as Record<string, unknown>;
+    for (const key of ['projectName', 'projectType', 'language', 'frameworks', 'databaseType', 'databaseAccess']) {
+        const value = fields[key];
+        if (options.preserveNormalizedDimensions && Object.hasOwn(applicationDimensions, key)) {
+            context.valuesToMask.push(
+                ...normalizeCategory(value, applicationDimensions[key as ApplicationDimension].categories)
+                    .sensitiveValues,
+            );
+            continue;
+        }
+        for (const item of Array.isArray(value) ? value : [value]) {
+            if (typeof item !== 'string' || !item.trim()) continue;
+            context.valuesToMask.push(item);
+            if (item !== item.trim()) context.valuesToMask.push(item.trim());
+        }
+    }
+}
 
 /**
  * Stamps shared migration telemetry context on an `IActionContext`.
@@ -20,42 +307,21 @@ export function setMigrationTelemetryContext(
     context: IActionContext,
     project: ProjectJson | undefined,
     phase?: MigrationPhaseKey,
+    sessionId?: string,
 ): void {
     if (!project) return;
 
-    if (project.sessionId) {
-        context.telemetry.properties.sessionId = project.sessionId;
-    }
-
-    if (phase) {
-        context.telemetry.properties.phase = phase;
-        // Stamp a 0-based run index on every phase event so dashboards have a
-        // first-run baseline: 0 = first run, 1 = first re-run, …
-        // `incrementRunCount` bumps `runCounts[phase]` *after* this stamp, so the
-        // current run index is the number of prior runs (`undefined` → 0).
-        context.telemetry.measurements.runIndex = project.runCounts?.[phase] ?? 0;
-
-        // Check whether this phase has custom instructions set
-        const hasCustomInstructions = getHasCustomInstructions(project, phase);
-        context.telemetry.properties.hasCustomInstructions = String(hasCustomInstructions);
-    }
-
-    if (project.migrationMode) {
-        context.telemetry.properties.migrationMode = project.migrationMode;
-    }
-
-    const dbType = project.phases.discovery.applicationAnalysis?.databaseType;
-    if (dbType) {
-        context.telemetry.properties.sourceDbType = dbType;
-    }
+    const properties = getMigrationTelemetryProperties(project, phase);
+    if (sessionId) properties.sessionId = sessionId;
+    Object.assign(context.telemetry.properties, properties);
+    Object.assign(context.errorHandling.issueProperties, properties);
+    maskMigrationApplicationDetails(context, project.phases.discovery.applicationAnalysis, {
+        preserveNormalizedDimensions: true,
+    });
 
     // OII identifiers are emitted as-is under their predefined property names
-    // (`subscriptionId`, `tenantId`, `accountName`), but they should still be
-    // redacted from any error messages emitted alongside the event.
+    // (`subscriptionId`, `accountName`), but should still be redacted from accompanying errors.
     const targetEnv = project.phases.targetEnvironment;
-    if (targetEnv?.tenantId) {
-        context.valuesToMask.push(targetEnv.tenantId);
-    }
     if (targetEnv?.subscriptionId) {
         context.valuesToMask.push(targetEnv.subscriptionId);
     }
@@ -68,29 +334,9 @@ export function setMigrationTelemetryContext(
     if (targetEnv?.resourceGroup) {
         context.valuesToMask.push(targetEnv.resourceGroup);
     }
-
-    // Stamp issueProperties so Report Issue always includes basic migration context
-    if (project.sessionId) {
-        context.errorHandling.issueProperties.sessionId = project.sessionId;
+    for (const value of [project.name, project.sessionId, targetEnv?.endpoint]) {
+        if (value?.trim()) context.valuesToMask.push(value);
     }
-    if (phase) {
-        context.errorHandling.issueProperties.phase = phase;
-    }
-    if (project.migrationMode) {
-        context.errorHandling.issueProperties.migrationMode = project.migrationMode;
-    }
-    if (dbType) {
-        context.errorHandling.issueProperties.sourceDbType = dbType;
-    }
-}
-
-/**
- * Stamps AI model information on telemetry context.
- */
-export function setAiTelemetryContext(context: IActionContext, model: LanguageModelChat): void {
-    context.telemetry.properties.modelId = model.id;
-    context.telemetry.properties.modelFamily = model.family;
-    context.telemetry.properties.modelVendor = model.vendor;
 }
 
 /**
@@ -112,221 +358,17 @@ export function extractAccountNameFromEndpoint(endpoint: string): string | undef
     }
 }
 
-/**
- * Increments the run count for a phase and returns the new value.
- * Mutates `project.runCounts` in place — caller must persist.
- */
-export function incrementRunCount(project: ProjectJson, phase: MigrationPhaseKey): number {
-    if (!project.runCounts) {
-        project.runCounts = {};
-    }
-    const current = project.runCounts[phase] ?? 0;
-    project.runCounts[phase] = current + 1;
-    return current + 1;
-}
-
 function getHasCustomInstructions(project: ProjectJson, phase: MigrationPhaseKey): boolean {
     switch (phase) {
+        case 'preflight':
         case 'discovery':
-            return !!project.phases.discovery.discoveryInstructions;
+            return !!(project.migrationInstructions || project.phases.discovery.discoveryInstructions);
         case 'assessment':
-            return !!project.phases.assessment?.assessmentInstructions;
+            return !!(project.migrationInstructions || project.phases.assessment?.assessmentInstructions);
         case 'schemaConversion':
-            return !!project.phases.schemaConversion?.schemaConversionInstructions;
+            return !!(project.migrationInstructions || project.phases.schemaConversion?.schemaConversionInstructions);
         case 'provisioning':
-            return false; // No custom instructions field for provisioning
+        case 'codeMigration':
+            return !!project.migrationInstructions;
     }
-}
-
-/**
- * Enriches the telemetry context with error classification and report-issue metadata.
- * Call in catch blocks before rethrowing. No-op for cancellation errors (framework handles those).
- */
-export function enrichErrorContext(context: IActionContext, error: unknown): void {
-    // Cancellation is auto-handled by the framework — no enrichment needed
-    if (error instanceof vscode.CancellationError) {
-        return;
-    }
-
-    // Make this error reportable through the unified "Report Issue" command
-    context.errorHandling.forceIncludeInReportIssueCommand = true;
-
-    // Classify AI errors vs infrastructure errors
-    if (error instanceof vscode.LanguageModelError) {
-        context.telemetry.properties.errorCategory = 'ai';
-        context.telemetry.properties.aiErrorCode = error.code;
-        context.errorHandling.issueProperties.errorCategory = 'ai';
-        context.errorHandling.issueProperties.aiErrorCode = error.code;
-        if (error.code === 'Unknown' && error.cause !== undefined && error.cause !== null) {
-            const cause = error.cause;
-
-            // Bounded: constructor name for Errors, typeof for everything else.
-            // Both come from the JS runtime, not from user/model input.
-            context.telemetry.properties.aiErrorCauseType =
-                cause instanceof Error ? cause.constructor.name : typeof cause;
-
-            // Bounded: a short alphanumeric code if the cause exposes one.
-            // The regex enforces the allowlist — anything else is dropped.
-            const rawCode =
-                (cause as { code?: unknown }).code ??
-                (cause as { name?: unknown }).name ??
-                (cause as { status?: unknown }).status;
-            if (typeof rawCode === 'string' || typeof rawCode === 'number') {
-                const code = String(rawCode);
-                if (/^[A-Za-z0-9_.-]{1,64}$/.test(code)) {
-                    context.telemetry.properties.aiErrorCauseCode = code;
-                }
-            }
-
-            // Intentionally NOT stored: the raw `cause.message`. `issueProperties`
-            // is not a sanctioned PII channel (the same PII/EUII rules as telemetry
-            // apply), and a model error-cause message is unbounded — it may contain
-            // user/model content that `valuesToMask` cannot reliably cover. The
-            // bounded `aiErrorCauseType` / `aiErrorCauseCode` above are sufficient
-            // diagnostics for maintainers.
-        }
-    } else {
-        context.telemetry.properties.errorCategory = 'infrastructure';
-        context.errorHandling.issueProperties.errorCategory = 'infrastructure';
-    }
-
-    // Copy model info from telemetry.properties into issueProperties for the GitHub issue body
-    const modelId = context.telemetry.properties.modelId;
-    if (modelId && typeof modelId === 'string') {
-        context.errorHandling.issueProperties.modelId = modelId;
-    }
-    const modelFamily = context.telemetry.properties.modelFamily;
-    if (modelFamily && typeof modelFamily === 'string') {
-        context.errorHandling.issueProperties.modelFamily = modelFamily;
-    }
-}
-
-// ─── DDL extractor telemetry ────────────────────────────────────────────────
-
-/**
- * Adds per-call extractor stats to the supplied `IActionContext` (used by
- * `callWithTelemetryAndErrorHandling` for the `cosmosDB.migration.ddlExtractor.extract`
- * event) and accumulates phase-level rollups on the optional phase context for
- * dashboards/alerts that prefer one record per phase.
- *
- * When a `phaseContext` is supplied, the shared migration dimensions it already
- * carries (`sessionId`, `phase`, `sourceDbType`, `migrationMode`) are inherited
- * onto the per-call event so extractor stats can be sliced by source database
- * type / mode and correlated to a session. Those values are stamped upstream by
- * {@link setMigrationTelemetryContext} and are all telemetry-safe (an in-memory
- * session GUID and bounded enums).
- *
- * No file contents, paths, or names are emitted — only structural counts.
- */
-export function reportDdlExtractorStats(
-    callContext: IActionContext,
-    stats: ExtractionStats,
-    encoding: FileEncoding,
-    phaseContext?: IActionContext,
-): void {
-    callContext.telemetry.properties.encoding = encoding;
-
-    // Inherit the shared migration dimensions from the surrounding phase so this
-    // per-file event can be grouped by source DB type / mode and joined by session.
-    // Explicit allow-list only — never copy the whole property bag.
-    if (phaseContext) {
-        for (const key of ['sessionId', 'phase', 'sourceDbType', 'migrationMode'] as const) {
-            const value = phaseContext.telemetry.properties[key];
-            if (value !== undefined) {
-                callContext.telemetry.properties[key] = value;
-            }
-        }
-    }
-
-    const m = callContext.telemetry.measurements;
-    m.inputChars = stats.inputChars;
-    m.outputChars = stats.outputChars;
-    m.reductionRatio = round(stats.reductionRatio, 4);
-    m.durationMs = stats.durationMs;
-    m.warningsCount = stats.warnings.length;
-
-    m.createTable = stats.statementCounts.createTable;
-    m.alterTable = stats.statementCounts.alterTable;
-    m.createIndex = stats.statementCounts.createIndex;
-    m.createFulltextIndex = stats.statementCounts.createFulltextIndex;
-    m.createView = stats.statementCounts.createView;
-    m.createSequence = stats.statementCounts.createSequence;
-    m.createType = stats.statementCounts.createType;
-    m.createDomain = stats.statementCounts.createDomain;
-    m.createSchema = stats.statementCounts.createSchema;
-    m.otherStatements = stats.statementCounts.other;
-
-    m.dropAlterCheckReenable = stats.drops.alterTableCheckReenable;
-    m.dropAlterCheckConstraint = stats.drops.alterTableCheckConstraint;
-
-    m.stripWith = stats.strips.withOptionBlocks;
-    m.stripCheck = stats.strips.inlineCheckConstraints;
-    m.stripOnPrimary = stats.strips.onPrimary;
-    m.stripTextImageOn = stats.strips.textImageOn;
-    m.stripFileStreamOn = stats.strips.fileStreamOn;
-    m.stripCollate = stats.strips.collate;
-    m.stripRowGuidCol = stats.strips.rowGuidCol;
-    m.stripNotForReplication = stats.strips.notForReplication;
-
-    m.viewsSummarized = stats.views.summarized;
-    m.viewsRefsTotal = stats.views.referencedTablesTotal;
-
-    if (phaseContext) {
-        const pm = phaseContext.telemetry.measurements;
-        pm.ddlFilesProcessed = (pm.ddlFilesProcessed ?? 0) + 1;
-        pm.ddlInputCharsTotal = (pm.ddlInputCharsTotal ?? 0) + stats.inputChars;
-        pm.ddlOutputCharsTotal = (pm.ddlOutputCharsTotal ?? 0) + stats.outputChars;
-        pm.ddlDurationMsTotal = (pm.ddlDurationMsTotal ?? 0) + stats.durationMs;
-        pm.ddlWarningsTotal = (pm.ddlWarningsTotal ?? 0) + stats.warnings.length;
-        pm.ddlStatementsTotal =
-            (pm.ddlStatementsTotal ?? 0) +
-            stats.statementCounts.createTable +
-            stats.statementCounts.alterTable +
-            stats.statementCounts.createIndex +
-            stats.statementCounts.createFulltextIndex +
-            stats.statementCounts.createView +
-            stats.statementCounts.createSequence +
-            stats.statementCounts.createType +
-            stats.statementCounts.createDomain +
-            stats.statementCounts.createSchema +
-            stats.statementCounts.other;
-
-        // Recompute average reduction ratio across files seen so far in this phase
-        if (pm.ddlInputCharsTotal > 0) {
-            pm.ddlReductionRatioAvg = round(1 - pm.ddlOutputCharsTotal / pm.ddlInputCharsTotal, 4);
-        }
-    }
-}
-
-/** Returns a one-line, human-readable summary of an extraction for the output channel. */
-export function formatDdlExtractorSummary(
-    fileBaseName: string,
-    stats: ExtractionStats,
-    encoding: FileEncoding,
-): string {
-    const c = stats.statementCounts;
-    const pct = (stats.reductionRatio * 100).toFixed(1);
-    const parts: string[] = [];
-    if (c.createTable) parts.push(`${c.createTable} table${c.createTable === 1 ? '' : 's'}`);
-    if (c.alterTable) parts.push(`${c.alterTable} alter${c.alterTable === 1 ? '' : 's'}`);
-    if (c.createIndex || c.createFulltextIndex) {
-        parts.push(`${c.createIndex + c.createFulltextIndex} indexes`);
-    }
-    if (stats.views.summarized) parts.push(`${stats.views.summarized} views summarized`);
-    const detail = parts.length > 0 ? ` (${parts.join(', ')})` : '';
-    return (
-        `Schema "${fileBaseName}": ${formatBytes(stats.inputChars)} ${encoding} → ` +
-        `${formatBytes(stats.outputChars)} (-${pct}%) in ${stats.durationMs} ms${detail}`
-    );
-}
-
-function formatBytes(n: number): string {
-    if (n < 1024) return `${n} B`;
-    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
-    return `${(n / (1024 * 1024)).toFixed(2)} MB`;
-}
-
-function round(n: number, digits: number): number {
-    const f = 10 ** digits;
-    return Math.round(n * f) / f;
 }

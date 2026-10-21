@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { z } from 'zod';
+import { maskMigrationApplicationDetails } from '../../migration/helpers/migrationTelemetry';
 import { migrationProcedure, migrationRouter } from '../trpc';
 
 // ─── Migration Router ───────────────────────────────────────────────────────
@@ -23,6 +24,9 @@ export const migrationRouterDef = migrationRouter({
             }),
         )
         .mutation(async ({ input, ctx }) => {
+            if (input.commandName === 'updateAnalysisResult' && ctx.actionContext) {
+                maskMigrationApplicationDetails(ctx.actionContext, input.params[0]);
+            }
             return ctx.dispatchCommand(input.commandName, input.params);
         }),
 });

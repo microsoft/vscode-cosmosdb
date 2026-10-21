@@ -6,6 +6,8 @@
 import path from 'path';
 import { defineConfig } from 'vitest/config';
 
+const __dirname = import.meta.dirname;
+
 export default defineConfig({
     // Vite's built-in esbuild transform handles the automatic JSX runtime for the React component
     // tests (driven by the `jsx: react-jsx` compiler option), so no extra React plugin is needed.

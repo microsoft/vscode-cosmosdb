@@ -4,7 +4,7 @@
 # Design:
 #   - All these checks are fast, so they live as steps in ONE job (no per-job runner spin-up / dependency
 #     reinstall). The SLOW tests run in their own workflows so they execute IN PARALLEL with this job on
-#     separate runners: unit + integration in test.yml, Playwright in e2e.yml.
+#     separate runners: unit-tests.yml, integration-tests.yml and Playwright in e2e.yml.
 #   - "Run everything, then fail if anything failed": after `npm ci` succeeds, every analyzer step carries
 #     `if: ${{ !cancelled() && steps.install.outcome == 'success' }}`, so a failing analyzer does NOT stop the
 #     others — one run surfaces ALL problems (e.g. both a lint and a localization failure). Any failed step
@@ -48,7 +48,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: 📦 Using Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: 'npm'
@@ -176,14 +176,14 @@ jobs:
           Write-Output "✅ VSIX filename is correct: $vsixFileName"
 
           # Compute a short commit SHA (7 chars) and a filesystem-safe branch slug.
-          # Use head_ref for pull_request events, otherwise ref_name.
-          $rawRef = if ("${{ github.event_name }}" -eq "pull_request") {
-              "${{ github.head_ref }}"
+          # Read refs as environment data so branch names cannot become PowerShell source.
+          $rawRef = if ($env:GITHUB_EVENT_NAME -eq 'pull_request') {
+              $env:GITHUB_HEAD_REF
           } else {
-              "${{ github.ref_name }}"
+              $env:GITHUB_REF_NAME
           }
           $branchSlug = ($rawRef -replace '[^A-Za-z0-9._-]', '-').Trim('-')
-          $shortSha = "${{ github.sha }}".Substring(0, 7)
+          $shortSha = $env:GITHUB_SHA.Substring(0, 7)
 
           # Artifact name convention:
           # - main / rel/* : <name>-<version>-<sha7>
@@ -204,7 +204,7 @@ jobs:
       - name: 📤 Upload VSIX
         id: upload-vsix
         if: ${{ !cancelled() && steps.verify-vsix.outcome == 'success' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ steps.verify-vsix.outputs.artifact_name }}
           path: ${{ steps.verify-vsix.outputs.vsix_file }}
@@ -230,7 +230,7 @@ jobs:
         shell: bash
         run: |
           # ── Helpers ──────────────────────────────────────────────────
-          # Each CI workflow (build.yml, test.yml, e2e.yml, nosql-language-service.yml) posts and
+          # Each CI workflow (build, unit tests, integration tests, e2e and NoSQL language service) posts and
           # maintains its OWN PR comment, identified by a stable marker. The shell helpers below are
           # duplicated across workflows because GitHub Actions has no first-class way to share inline
           # shell — keep them in sync when editing.

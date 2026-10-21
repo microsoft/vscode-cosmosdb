@@ -49,6 +49,7 @@ import { AuthenticationMethod } from '../../cosmosdb/AuthenticationMethod';
 import { type CosmosDBCredential } from '../../cosmosdb/CosmosDBCredential';
 import { type NoSqlQueryConnection } from '../../cosmosdb/NoSqlQueryConnection';
 import { ext } from '../../extensionVariables';
+import { DataModelingWizardTab } from '../../panels/DataModelingWizardTab';
 import { DocumentTab } from '../../panels/DocumentTab';
 import { MigrationAssistantTab } from '../../panels/MigrationAssistantTab';
 import { QueryEditorTab } from '../../panels/QueryEditorTab';
@@ -217,6 +218,15 @@ export function registerE2eTestCommands(): void {
 
     // The `when` clauses in package.json menus look for this context key.
     void vscode.commands.executeCommand('setContext', E2E_TEST_CONTEXT_KEY, true);
+
+    // A unique endpoint gives each open a fresh saved-model key, so no "Continue your data model?" prompt appears.
+    registerCommand('cosmosDB.e2e.openDataModeler', (context: IActionContext): void => {
+        context.telemetry.properties.isE2eTest = 'true';
+        DataModelingWizardTab.render({
+            endpoint: `https://e2e-modeler.documents.azure.com/${Date.now()}`,
+            name: 'E2E Data Modeler',
+        });
+    });
 
     // Opens the Migration Assistant against a deterministic, pre-seeded project
     // (consent granted + application analysis populated + schema files present)

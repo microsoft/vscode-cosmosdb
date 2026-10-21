@@ -24,8 +24,11 @@ export interface DetectorContext {
 export abstract class Detector {
     /** The single rule this detector emits. */
     abstract readonly rule: DerivedAdvisoryRule;
-    /** Rules this detector suppresses on the same scope when it fires (declarative de-duplication, applied by the engine). */
-    readonly suppresses: readonly DerivedAdvisoryRule[] = [];
+    /**
+     * Rules this detector supersedes on the same scope when it fires.
+     * The engine retains their advisories with supersededBy set.
+     */
+    readonly supersedes: readonly DerivedAdvisoryRule[] = [];
     /** Runs the detector over the full context and returns every advisory it fires. */
     abstract run(ctx: DetectorContext): DerivedAdvisory[];
 }

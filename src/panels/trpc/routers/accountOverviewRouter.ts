@@ -6,10 +6,12 @@
 import { accountOverviewRouter } from '../trpc';
 import { accountInventoryProcedures } from './accountOverview/accountInventoryRouter';
 import { actionsProcedures } from './accountOverview/actionsRouter';
+import { aiFeaturesProcedures } from './accountOverview/aiFeaturesRouter';
 import { alertsRecommendationsProcedures } from './accountOverview/alertsRecommendationsRouter';
 import { derivedAdvisoriesProcedures } from './accountOverview/derivedAdvisoriesRouter';
 import { inventoryMetricsProcedures } from './accountOverview/inventoryMetricsRouter';
 import { metricSeriesProcedures } from './accountOverview/metricSeriesRouter';
+import { navigationProcedures } from './accountOverview/navigationRouter';
 import { partitionHealthProcedures } from './accountOverview/partitionHealthRouter';
 
 // ─── Account Overview Router ────────────────────────────────────────────────
@@ -32,4 +34,6 @@ export const accountOverviewRouterDef = accountOverviewRouter({
     ...alertsRecommendationsProcedures,
     ...derivedAdvisoriesProcedures,
     ...actionsProcedures,
+    ...navigationProcedures,
+    ...aiFeaturesProcedures,
 });

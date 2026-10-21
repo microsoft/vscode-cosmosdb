@@ -22,11 +22,11 @@ import {
     Text,
     tokens,
     Tooltip,
+    useAnnounce,
 } from '@fluentui/react-components';
 import { Code16Regular, Open16Regular } from '@fluentui/react-icons';
-import { useVirtualizer } from '@tanstack/react-virtual';
 import * as l10n from '@vscode/l10n';
-import { memo, type ReactNode, useCallback, useMemo, useRef, useState } from 'react';
+import { memo, type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Line, LineChart, ResponsiveContainer } from 'recharts';
 import {
     type ContainerMetrics,
@@ -36,12 +36,17 @@ import {
     type UnavailableReason,
 } from '../../api/types';
 import { EmptyState } from './DashboardChrome';
+import { type ContainerRef } from './metrics/descriptors';
 
 const useStyles = makeStyles({
     root: {
         display: 'flex',
         flexDirection: 'column',
         gap: tokens.spacingVerticalM,
+        minWidth: 0,
+        ':focus-visible': {
+            outline: `${tokens.strokeWidthThick} solid ${tokens.colorStrokeFocus2}`,
+        },
     },
     toolbar: {
         display: 'flex',
@@ -50,9 +55,14 @@ const useStyles = makeStyles({
         alignItems: 'center',
     },
     search: {
-        minWidth: '220px',
+        minWidth: 0,
+        width: '220px',
         flexGrow: 1,
         maxWidth: '360px',
+    },
+    filter: {
+        minWidth: 0,
+        maxWidth: '100%',
     },
     scrollArea: {
         overflowX: 'auto',
@@ -65,11 +75,7 @@ const useStyles = makeStyles({
         position: 'sticky',
         top: 0,
         zIndex: 1,
-        backgroundColor: 'var(--vscode-editor-background)',
-    },
-    spacerCell: {
-        padding: 0,
-        border: 0,
+        backgroundColor: tokens.colorNeutralBackground1,
     },
     table: {
         minWidth: '1040px',
@@ -77,10 +83,10 @@ const useStyles = makeStyles({
     emptyState: {
         padding: tokens.spacingVerticalXL,
         textAlign: 'center',
-        color: 'var(--vscode-descriptionForeground)',
+        color: tokens.colorNeutralForeground2,
     },
     monospace: {
-        fontFamily: 'var(--vscode-editor-font-family)',
+        fontFamily: tokens.fontFamilyMonospace,
     },
     sparkline: {
         width: '96px',
@@ -241,31 +247,39 @@ const SortableHeaderCell = memo(function SortableHeaderCell({
 }) {
     const handleClick = useCallback(() => onSort(columnKey), [onSort, columnKey]);
     return (
-        <TableHeaderCell sortDirection={activeSortKey === columnKey ? sortDirection : undefined} onClick={handleClick}>
+        <TableHeaderCell
+            sortable
+            sortDirection={activeSortKey === columnKey ? sortDirection : undefined}
+            onClick={handleClick}
+        >
             {children}
         </TableHeaderCell>
     );
 });
 
-const COLUMN_COUNT = 10;
-
 const InventoryRow = memo(function InventoryRow({
     row,
     metric,
     dataIndex,
-    measureRef,
     onRevealInTree,
     onOpenQueryEditor,
+    selected,
+    onSelectContainer,
 }: {
     row: InventoryContainerRow;
     metric: ContainerMetrics | undefined;
     dataIndex: number;
-    measureRef: (node: HTMLTableRowElement | null) => void;
     onRevealInTree: (databaseId: string, containerId: string) => void;
     onOpenQueryEditor: (databaseId: string, containerId: string) => void;
+    selected?: boolean;
+    onSelectContainer?: (container: ContainerRef) => void;
 }) {
     const styles = useStyles();
     const health = HEALTH_BADGE[rowHealth(row, metric)];
+    const resourceDescription = l10n.t('Container {container} in database {database}', {
+        container: row.containerId,
+        database: row.databaseId,
+    });
 
     const handleReveal = useCallback(
         () => onRevealInTree(row.databaseId, row.containerId),
@@ -277,9 +291,28 @@ const InventoryRow = memo(function InventoryRow({
     );
 
     return (
-        <TableRow ref={measureRef} data-index={dataIndex}>
+        <TableRow aria-rowindex={dataIndex + 2}>
             <TableCell>
-                <TableCellLayout>{row.containerId}</TableCellLayout>
+                <TableCellLayout>
+                    {onSelectContainer ? (
+                        <Button
+                            appearance={selected ? 'primary' : 'subtle'}
+                            size="small"
+                            aria-pressed={selected}
+                            aria-label={l10n.t('{container}: show partition health in {database}', {
+                                container: row.containerId,
+                                database: row.databaseId,
+                            })}
+                            onClick={() =>
+                                onSelectContainer({ databaseId: row.databaseId, containerId: row.containerId })
+                            }
+                        >
+                            <span aria-hidden="true">{row.containerId}</span>
+                        </Button>
+                    ) : (
+                        row.containerId
+                    )}
+                </TableCellLayout>
             </TableCell>
             <TableCell>{row.databaseId}</TableCell>
             <TableCell>
@@ -336,21 +369,23 @@ const InventoryRow = memo(function InventoryRow({
                 </Badge>
             </TableCell>
             <TableCell>
-                <Tooltip content={l10n.t('Reveal in tree')} relationship="description">
+                <Tooltip content={l10n.t('Reveal in tree')} relationship="label">
                     <Button
                         appearance="subtle"
                         size="small"
                         icon={REVEAL_ICON}
                         aria-label={l10n.t('Reveal in tree')}
+                        aria-description={resourceDescription}
                         onClick={handleReveal}
                     />
                 </Tooltip>
-                <Tooltip content={l10n.t('Open Query Editor')} relationship="description">
+                <Tooltip content={l10n.t('Open Query Editor')} relationship="label">
                     <Button
                         appearance="subtle"
                         size="small"
                         icon={QUERY_ICON}
                         aria-label={l10n.t('Open Query Editor')}
+                        aria-description={resourceDescription}
                         onClick={handleOpenQuery}
                     />
                 </Tooltip>
@@ -360,6 +395,7 @@ const InventoryRow = memo(function InventoryRow({
 });
 
 export const InventoryTable = ({
+    navigationRevision = 0,
     rows,
     supported,
     available,
@@ -367,7 +403,11 @@ export const InventoryTable = ({
     metrics,
     onRevealInTree,
     onOpenQueryEditor,
+    selectedContainer,
+    onSelectContainer,
+    active = true,
 }: {
+    navigationRevision?: number;
     rows: InventoryContainerRow[];
     supported: boolean;
     available: boolean;
@@ -375,8 +415,35 @@ export const InventoryTable = ({
     metrics?: Record<string, ContainerMetrics>;
     onRevealInTree: (databaseId: string, containerId: string) => void;
     onOpenQueryEditor: (databaseId: string, containerId: string) => void;
+    selectedContainer?: ContainerRef;
+    onSelectContainer?: (container: ContainerRef) => void;
+    active?: boolean;
 }) => {
     const styles = useStyles();
+    const { announce } = useAnnounce();
+    const filterChangePending = useRef(false);
+    const rootRef = useRef<HTMLElement>(null);
+    const scrollRef = useRef<HTMLDivElement>(null);
+    const focusedElement = useRef<HTMLElement | null>(null);
+    const previousNavigationRevision = useRef(navigationRevision);
+    useLayoutEffect(() => {
+        const navigating = previousNavigationRevision.current !== navigationRevision;
+        previousNavigationRevision.current = navigationRevision;
+        if (focusedElement.current && !focusedElement.current.isConnected) {
+            focusedElement.current = null;
+            const root = rootRef.current;
+            if (
+                active &&
+                !navigating &&
+                root &&
+                root.ownerDocument.hasFocus() &&
+                root.ownerDocument.activeElement === root.ownerDocument.body
+            ) {
+                root.focus({ preventScroll: true });
+            }
+        }
+    });
+    const [page, setPage] = useState(0);
     const [search, setSearch] = useState('');
     const [databaseFilter, setDatabaseFilter] = useState<string>('all');
     const [throughputFilter, setThroughputFilter] = useState<string>('all');
@@ -432,6 +499,7 @@ export const InventoryTable = ({
 
     const toggleSort = useCallback(
         (key: SortKey) => {
+            setPage(0);
             if (sortKey === key) {
                 setSortDirection((d) => (d === 'ascending' ? 'descending' : 'ascending'));
             } else {
@@ -444,195 +512,260 @@ export const InventoryTable = ({
 
     const databaseSelectedOptions = useMemo(() => [databaseFilter], [databaseFilter]);
     const throughputSelectedOptions = useMemo(() => [throughputFilter], [throughputFilter]);
+    const databaseText = databaseFilter === 'all' ? l10n.t('All databases') : databaseFilter;
+    const throughputText =
+        throughputFilter === 'all'
+            ? l10n.t('All throughput modes')
+            : THROUGHPUT_MODE_LABELS[throughputFilter as ThroughputMode];
 
-    const handleSearchChange = useCallback((_event: unknown, data: InputOnChangeData) => setSearch(data.value), []);
+    useEffect(() => {
+        if (!active || !available || !supported) {
+            filterChangePending.current = false;
+        }
+        if (!filterChangePending.current) {
+            return;
+        }
+        const timeout = setTimeout(() => {
+            filterChangePending.current = false;
+            announce(
+                filteredRows.length === 0
+                    ? l10n.t('No containers match the current filters.')
+                    : l10n.t('Containers matching the current filters: {count}', { count: filteredRows.length }),
+                { polite: true },
+            );
+        }, 300);
+        return () => clearTimeout(timeout);
+    }, [active, available, supported, search, databaseFilter, throughputFilter, filteredRows.length, announce]);
+
+    const handleSearchChange = useCallback((_event: unknown, data: InputOnChangeData) => {
+        filterChangePending.current = true;
+        setPage(0);
+        setSearch(data.value);
+    }, []);
     const handleDatabaseSelect = useCallback(
-        (_event: unknown, data: OptionOnSelectData) => setDatabaseFilter(data.optionValue ?? 'all'),
-        [],
+        (_event: unknown, data: OptionOnSelectData) => {
+            if (data.optionValue && data.optionValue !== databaseFilter) {
+                filterChangePending.current = true;
+                setPage(0);
+                setDatabaseFilter(data.optionValue);
+            }
+        },
+        [databaseFilter],
     );
     const handleThroughputSelect = useCallback(
-        (_event: unknown, data: OptionOnSelectData) => setThroughputFilter(data.optionValue ?? 'all'),
-        [],
+        (_event: unknown, data: OptionOnSelectData) => {
+            if (data.optionValue && data.optionValue !== throughputFilter) {
+                filterChangePending.current = true;
+                setPage(0);
+                setThroughputFilter(data.optionValue);
+            }
+        },
+        [throughputFilter],
     );
 
-    // Virtualize the row list so an account with thousands of collections renders only the visible
-    // rows (each row mounts two recharts sparklines, so a full render would be prohibitively heavy).
-    const scrollRef = useRef<HTMLDivElement>(null);
-    const rowVirtualizer = useVirtualizer({
-        count: sortedRows.length,
-        getScrollElement: () => scrollRef.current,
-        estimateSize: () => 48,
-        overscan: 12,
-    });
-    const virtualItems = rowVirtualizer.getVirtualItems();
-    const paddingTop = virtualItems.length > 0 ? virtualItems[0].start : 0;
-    const paddingBottom =
-        virtualItems.length > 0 ? rowVirtualizer.getTotalSize() - virtualItems[virtualItems.length - 1].end : 0;
+    // Bound the expensive sparklines without unmounting rows during keyboard or screen-reader navigation.
+    const pageSize = 25;
+    const pageCount = Math.max(1, Math.ceil(sortedRows.length / pageSize));
+    const currentPage = Math.min(page, pageCount - 1);
+    const start = currentPage * pageSize;
+    const pageRows = sortedRows.slice(start, start + pageSize);
+    const pageLabel = (index: number) =>
+        l10n.t('Page {page} of {pages}. Containers {start} to {end} of {total}.', {
+            page: index + 1,
+            pages: pageCount,
+            start: index * pageSize + 1,
+            end: Math.min((index + 1) * pageSize, sortedRows.length),
+            total: sortedRows.length,
+        });
+    const changePage = (next: number) => {
+        setPage(next);
+        announce(pageLabel(next), { polite: true });
+    };
+    useEffect(() => {
+        setPage(currentPage);
+    }, [currentPage]);
+    useLayoutEffect(() => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollTop = 0;
+        }
+    }, [currentPage, search, databaseFilter, throughputFilter, sortKey, sortDirection]);
 
-    if (!available) {
-        return <EmptyState reason={reason ?? 'noData'} requiredRole={l10n.t('Reader on the Cosmos DB account')} />;
-    }
-
-    if (!supported) {
-        return (
-            <Text className={styles.emptyState}>
-                {l10n.t('Databases and containers inventory is only available for NoSQL (Core) API accounts.')}
-            </Text>
-        );
-    }
-
-    if (rows.length === 0) {
-        return <Text className={styles.emptyState}>{l10n.t('This account has no databases or containers yet.')}</Text>;
-    }
+    const emptyContent = !available ? (
+        <EmptyState reason={reason ?? 'noData'} requiredRole={l10n.t('Reader on the Cosmos DB account')} />
+    ) : !supported ? (
+        <Text className={styles.emptyState}>
+            {l10n.t('Databases and containers inventory is only available for NoSQL (Core) API accounts.')}
+        </Text>
+    ) : rows.length === 0 ? (
+        <Text className={styles.emptyState}>{l10n.t('This account has no databases or containers yet.')}</Text>
+    ) : undefined;
 
     return (
-        <div className={styles.root}>
-            <div className={styles.toolbar}>
-                <Input
-                    className={styles.search}
-                    contentBefore={undefined}
-                    placeholder={l10n.t('Search containers or databases…')}
-                    value={search}
-                    onChange={handleSearchChange}
-                    aria-label={l10n.t('Search containers or databases')}
-                />
-                <Dropdown
-                    aria-label={l10n.t('Filter by database')}
-                    value={databaseFilter === 'all' ? l10n.t('All databases') : databaseFilter}
-                    selectedOptions={databaseSelectedOptions}
-                    onOptionSelect={handleDatabaseSelect}
-                >
-                    <Option value="all">{l10n.t('All databases')}</Option>
-                    {databases.map((db) => (
-                        <Option key={db} value={db}>
-                            {db}
-                        </Option>
-                    ))}
-                </Dropdown>
-                <Dropdown
-                    aria-label={l10n.t('Filter by throughput mode')}
-                    value={
-                        throughputFilter === 'all'
-                            ? l10n.t('All throughput modes')
-                            : THROUGHPUT_MODE_LABELS[throughputFilter as ThroughputMode]
-                    }
-                    selectedOptions={throughputSelectedOptions}
-                    onOptionSelect={handleThroughputSelect}
-                >
-                    <Option value="all">{l10n.t('All throughput modes')}</Option>
-                    {(Object.keys(THROUGHPUT_MODE_LABELS) as ThroughputMode[]).map((mode) => (
-                        <Option key={mode} value={mode}>
-                            {THROUGHPUT_MODE_LABELS[mode]}
-                        </Option>
-                    ))}
-                </Dropdown>
-            </div>
+        <section
+            ref={rootRef}
+            className={styles.root}
+            tabIndex={-1}
+            aria-label={l10n.t('Container inventory')}
+            onFocusCapture={(event) => {
+                focusedElement.current = event.target;
+            }}
+        >
+            {emptyContent ?? (
+                <>
+                    <div className={styles.toolbar}>
+                        <Input
+                            className={styles.search}
+                            contentBefore={undefined}
+                            placeholder={l10n.t('Search containers or databases…')}
+                            value={search}
+                            onChange={handleSearchChange}
+                            aria-label={l10n.t('Search containers or databases')}
+                        />
+                        <Dropdown
+                            key={`database-${active}-${navigationRevision}`}
+                            className={styles.filter}
+                            aria-label={l10n.t('Filter by database: {selection}', { selection: databaseText })}
+                            value={databaseText}
+                            selectedOptions={databaseSelectedOptions}
+                            onOptionSelect={handleDatabaseSelect}
+                        >
+                            <Option value="all">{l10n.t('All databases')}</Option>
+                            {databases.map((db) => (
+                                <Option key={db} value={db}>
+                                    {db}
+                                </Option>
+                            ))}
+                        </Dropdown>
+                        <Dropdown
+                            key={`throughput-${active}-${navigationRevision}`}
+                            className={styles.filter}
+                            aria-label={l10n.t('Filter by throughput mode: {selection}', { selection: throughputText })}
+                            value={throughputText}
+                            selectedOptions={throughputSelectedOptions}
+                            onOptionSelect={handleThroughputSelect}
+                        >
+                            <Option value="all">{l10n.t('All throughput modes')}</Option>
+                            {(Object.keys(THROUGHPUT_MODE_LABELS) as ThroughputMode[]).map((mode) => (
+                                <Option key={mode} value={mode}>
+                                    {THROUGHPUT_MODE_LABELS[mode]}
+                                </Option>
+                            ))}
+                        </Dropdown>
+                    </div>
+                    {sortedRows.length > 0 && (
+                        <nav className={styles.toolbar} aria-label={l10n.t('Container inventory pages')}>
+                            <Button
+                                size="small"
+                                disabledFocusable={currentPage === 0}
+                                onClick={currentPage > 0 ? () => changePage(currentPage - 1) : undefined}
+                            >
+                                {l10n.t('Previous page')}
+                            </Button>
+                            <Text>{pageLabel(currentPage)}</Text>
+                            <Button
+                                size="small"
+                                disabledFocusable={currentPage === pageCount - 1}
+                                onClick={currentPage < pageCount - 1 ? () => changePage(currentPage + 1) : undefined}
+                            >
+                                {l10n.t('Next page')}
+                            </Button>
+                        </nav>
+                    )}
 
-            {sortedRows.length === 0 ? (
-                <Text className={styles.emptyState}>{l10n.t('No containers match the current filters.')}</Text>
-            ) : (
-                <div className={styles.scrollArea} ref={scrollRef}>
-                    <Table className={styles.table} aria-label={l10n.t('Containers')}>
-                        <TableHeader className={styles.stickyHeader}>
-                            <TableRow>
-                                <SortableHeaderCell
-                                    columnKey="containerId"
-                                    activeSortKey={sortKey}
-                                    sortDirection={sortDirection}
-                                    onSort={toggleSort}
-                                >
-                                    {l10n.t('Container')}
-                                </SortableHeaderCell>
-                                <SortableHeaderCell
-                                    columnKey="databaseId"
-                                    activeSortKey={sortKey}
-                                    sortDirection={sortDirection}
-                                    onSort={toggleSort}
-                                >
-                                    {l10n.t('Database')}
-                                </SortableHeaderCell>
-                                <SortableHeaderCell
-                                    columnKey="throughputMode"
-                                    activeSortKey={sortKey}
-                                    sortDirection={sortDirection}
-                                    onSort={toggleSort}
-                                >
-                                    {l10n.t('Throughput')}
-                                </SortableHeaderCell>
-                                <TableHeaderCell>{l10n.t('Partition key')}</TableHeaderCell>
-                                <TableHeaderCell>{l10n.t('Indexing')}</TableHeaderCell>
-                                <SortableHeaderCell
-                                    columnKey="storageBytes"
-                                    activeSortKey={sortKey}
-                                    sortDirection={sortDirection}
-                                    onSort={toggleSort}
-                                >
-                                    {l10n.t('Storage')}
-                                </SortableHeaderCell>
-                                <SortableHeaderCell
-                                    columnKey="documentCount"
-                                    activeSortKey={sortKey}
-                                    sortDirection={sortDirection}
-                                    onSort={toggleSort}
-                                >
-                                    {l10n.t('Documents')}
-                                </SortableHeaderCell>
-                                <SortableHeaderCell
-                                    columnKey="peakRuPercent"
-                                    activeSortKey={sortKey}
-                                    sortDirection={sortDirection}
-                                    onSort={toggleSort}
-                                >
-                                    {l10n.t('Peak RU')}
-                                </SortableHeaderCell>
-                                <SortableHeaderCell
-                                    columnKey="health"
-                                    activeSortKey={sortKey}
-                                    sortDirection={sortDirection}
-                                    onSort={toggleSort}
-                                >
-                                    {l10n.t('Health')}
-                                </SortableHeaderCell>
-                                <TableHeaderCell>{l10n.t('Actions')}</TableHeaderCell>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {paddingTop > 0 && (
-                                <tr aria-hidden="true">
-                                    <td
-                                        className={styles.spacerCell}
-                                        colSpan={COLUMN_COUNT}
-                                        style={{ height: paddingTop }}
-                                    />
-                                </tr>
-                            )}
-                            {virtualItems.map((virtualRow) => {
-                                const row = sortedRows[virtualRow.index];
-                                return (
-                                    <InventoryRow
-                                        key={`${row.databaseId}/${row.containerId}`}
-                                        dataIndex={virtualRow.index}
-                                        measureRef={rowVirtualizer.measureElement}
-                                        row={row}
-                                        metric={metrics?.[containerKey(row)]}
-                                        onRevealInTree={onRevealInTree}
-                                        onOpenQueryEditor={onOpenQueryEditor}
-                                    />
-                                );
-                            })}
-                            {paddingBottom > 0 && (
-                                <tr aria-hidden="true">
-                                    <td
-                                        className={styles.spacerCell}
-                                        colSpan={COLUMN_COUNT}
-                                        style={{ height: paddingBottom }}
-                                    />
-                                </tr>
-                            )}
-                        </TableBody>
-                    </Table>
-                </div>
+                    {sortedRows.length === 0 ? (
+                        <Text className={styles.emptyState}>{l10n.t('No containers match the current filters.')}</Text>
+                    ) : (
+                        <div className={styles.scrollArea} ref={scrollRef}>
+                            <Table
+                                className={styles.table}
+                                aria-label={l10n.t('Containers')}
+                                aria-rowcount={sortedRows.length + 1}
+                            >
+                                <TableHeader className={styles.stickyHeader}>
+                                    <TableRow aria-rowindex={1}>
+                                        <SortableHeaderCell
+                                            columnKey="containerId"
+                                            activeSortKey={sortKey}
+                                            sortDirection={sortDirection}
+                                            onSort={toggleSort}
+                                        >
+                                            {l10n.t('Container')}
+                                        </SortableHeaderCell>
+                                        <SortableHeaderCell
+                                            columnKey="databaseId"
+                                            activeSortKey={sortKey}
+                                            sortDirection={sortDirection}
+                                            onSort={toggleSort}
+                                        >
+                                            {l10n.t('Database')}
+                                        </SortableHeaderCell>
+                                        <SortableHeaderCell
+                                            columnKey="throughputMode"
+                                            activeSortKey={sortKey}
+                                            sortDirection={sortDirection}
+                                            onSort={toggleSort}
+                                        >
+                                            {l10n.t('Throughput')}
+                                        </SortableHeaderCell>
+                                        <TableHeaderCell>{l10n.t('Partition key')}</TableHeaderCell>
+                                        <TableHeaderCell>{l10n.t('Indexing')}</TableHeaderCell>
+                                        <SortableHeaderCell
+                                            columnKey="storageBytes"
+                                            activeSortKey={sortKey}
+                                            sortDirection={sortDirection}
+                                            onSort={toggleSort}
+                                        >
+                                            {l10n.t('Storage')}
+                                        </SortableHeaderCell>
+                                        <SortableHeaderCell
+                                            columnKey="documentCount"
+                                            activeSortKey={sortKey}
+                                            sortDirection={sortDirection}
+                                            onSort={toggleSort}
+                                        >
+                                            {l10n.t('Documents')}
+                                        </SortableHeaderCell>
+                                        <SortableHeaderCell
+                                            columnKey="peakRuPercent"
+                                            activeSortKey={sortKey}
+                                            sortDirection={sortDirection}
+                                            onSort={toggleSort}
+                                        >
+                                            {l10n.t('Peak RU')}
+                                        </SortableHeaderCell>
+                                        <SortableHeaderCell
+                                            columnKey="health"
+                                            activeSortKey={sortKey}
+                                            sortDirection={sortDirection}
+                                            onSort={toggleSort}
+                                        >
+                                            {l10n.t('Health')}
+                                        </SortableHeaderCell>
+                                        <TableHeaderCell>{l10n.t('Actions')}</TableHeaderCell>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {pageRows.map((row, index) => (
+                                        <InventoryRow
+                                            key={containerKey(row)}
+                                            dataIndex={start + index}
+                                            row={row}
+                                            metric={metrics?.[containerKey(row)]}
+                                            onRevealInTree={onRevealInTree}
+                                            onOpenQueryEditor={onOpenQueryEditor}
+                                            selected={
+                                                selectedContainer?.databaseId === row.databaseId &&
+                                                selectedContainer?.containerId === row.containerId
+                                            }
+                                            onSelectContainer={onSelectContainer}
+                                        />
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    )}
+                </>
             )}
-        </div>
+        </section>
     );
 };

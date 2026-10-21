@@ -4,30 +4,29 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type MonitorClient } from '@azure/arm-monitor';
-import { DAY, escapeODataLiteral, HOUR, seriesContainerKey } from '../../shared';
+import { querySeries } from '../../ruTrends';
+import {
+    containerFilter,
+    escapeODataLiteral,
+    parseMonitorTimestamp,
+    pickPointValue,
+    type MetricAggregation,
+    type RangeConfig,
+} from '../../shared';
+import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 
 // ─── Batch-2 derived-advisory metric fetchers ─────────────────────────────────────
 //
 // The metrics-based Tier-1 detectors (DX-004 idle, DX-009 partition-merge, DX-011 autoscale-max, DX-013
 // autoscale→manual, DX-014 serverless) each need an Azure Monitor query path the rest of the dashboard does not
-// already fetch. They share a long 30-day look-back — long enough that a periodic (e.g. monthly-batch) workload
-// shows its spike and is not mistaken for idle — bucketed hourly to bound the number of datapoints per query.
+// already fetch. Idle reads 30 days in five-minute buckets so periodic workloads are not mistaken for idle;
+// autoscale/serverless use hourly buckets, while partition-merge reads the most recent six hours.
 // All series are read as `Total`/`Maximum` and folded to per-container (or account-total) shapes the pure
-// evaluators in `derivedAdvisories.ts` consume. Callers catch failures and degrade to an empty state.
+// evaluators consume. Callers report failed or missing evidence as incomplete coverage, never assumed zero usage.
 
-/** DX-004 / DX-014 look back this many days — long enough to avoid flagging periodic (monthly-batch) workloads. */
-const ADVISORY_WINDOW_DAYS = 30;
-/** Hourly buckets over the 30-day window bound the datapoint count while still isolating idle from active load. */
-const ADVISORY_INTERVAL = 'PT1H';
-/** Seconds per hourly bucket, to convert consumed RU (`Total`) into an average/peak RU/s. */
-const BUCKET_SECONDS = HOUR / 1000;
-/** Physical-partition count is slow-moving state; a short recent window at the metric's 5-minute grain suffices. */
-const PARTITION_COUNT_WINDOW_HOURS = 6;
-const PARTITION_COUNT_INTERVAL = 'PT5M';
-
-/** Builds the `start/end` ISO-8601 timespan for the 30-day advisory window ending now. */
-function advisoryTimespan(now = Date.now()): string {
-    const start = now - ADVISORY_WINDOW_DAYS * DAY;
+/** Builds the `start/end` ISO-8601 timespan for a diagnostic observation ending now. */
+function advisoryTimespan(observation: RangeConfig, now = Date.now()): string {
+    const start = now - observation.windowMs;
     return `${new Date(start).toISOString()}/${new Date(now).toISOString()}`;
 }
 
@@ -50,22 +49,30 @@ export async function getAccountConsumedRuShape(
     client: MonitorClient,
     resourceUri: string,
 ): Promise<AccountConsumedRuShape> {
+    const observation = DIAGNOSTIC_POLICY.serverless.observation;
     const response = await client.metrics.list(resourceUri, {
         metricnames: 'TotalRequestUnits',
         aggregation: 'Total',
-        timespan: advisoryTimespan(),
-        interval: ADVISORY_INTERVAL,
+        timespan: advisoryTimespan(observation),
+        interval: observation.interval,
     });
 
     const perBucket = new Map<number, number>();
     for (const metric of response.value ?? []) {
+        if (metric.errorCode && metric.errorCode !== 'Success') {
+            throw new Error(metric.errorMessage ?? metric.errorCode);
+        }
         for (const series of metric.timeseries ?? []) {
             for (const point of series.data ?? []) {
-                if (point.total === undefined) {
+                const value = pickPointValue(point, 'Total');
+                if (value === undefined) {
                     continue;
                 }
-                const ts = new Date(point.timeStamp).getTime();
-                perBucket.set(ts, (perBucket.get(ts) ?? 0) + point.total);
+                const ts = parseMonitorTimestamp(point.timeStamp);
+                if (ts === undefined) {
+                    continue;
+                }
+                perBucket.set(ts, (perBucket.get(ts) ?? 0) + value);
             }
         }
     }
@@ -73,97 +80,106 @@ export async function getAccountConsumedRuShape(
     if (perBucket.size === 0) {
         return { avgRuPerSec: 0, peakRuPerSec: 0, sampleCount: 0 };
     }
-    const ruPerSec = [...perBucket.values()].map((total) => total / BUCKET_SECONDS);
+    const bucketSeconds = observation.bucketMs / 1000;
+    const ruPerSec = [...perBucket.values()].map((total) => total / bucketSeconds);
     const avgRuPerSec = ruPerSec.reduce((sum, v) => sum + v, 0) / ruPerSec.length;
     const peakRuPerSec = Math.max(...ruPerSec);
     return { avgRuPerSec, peakRuPerSec, sampleCount: ruPerSec.length };
 }
 
 /**
- * Reads per-container `TotalRequestUnits` (`Total`) over the 30-day window, split by
- * `DatabaseName`/`CollectionName`, and returns each container's **peak RU consumed in any single bucket** — the
- * spike-aware idle gate for DX-004. Colliding series (per-region) are summed per bucket before taking the peak,
- * so the value is the container-total per-bucket peak. A container absent from the response (Azure pads idle
- * windows with zeros) simply never appears; the caller defaults it to a peak of 0, which is the idle signal.
+ * Reads one known container without wildcard dimensions, so Azure Monitor's series limit cannot omit other
+ * containers. Only observed numeric samples count as evidence; an empty response remains unknown, not zero.
  */
-export async function getContainerIdlePeaks(client: MonitorClient, resourceUri: string): Promise<Map<string, number>> {
-    const response = await client.metrics.list(resourceUri, {
-        metricnames: 'TotalRequestUnits',
-        aggregation: 'Total',
-        timespan: advisoryTimespan(),
-        interval: ADVISORY_INTERVAL,
-        filter: `DatabaseName eq '*' and CollectionName eq '*'`,
-    });
-
-    // containerKey → (timestamp → summed RU) so per-region series fold into a container-total per bucket.
-    const perContainer = new Map<string, Map<number, number>>();
-    for (const metric of response.value ?? []) {
-        for (const series of metric.timeseries ?? []) {
-            const key = seriesContainerKey(series.metadatavalues);
-            if (!key) {
-                continue;
-            }
-            const buckets = perContainer.get(key) ?? new Map<number, number>();
-            for (const point of series.data ?? []) {
-                if (point.total === undefined) {
-                    continue;
-                }
-                const ts = new Date(point.timeStamp).getTime();
-                buckets.set(ts, (buckets.get(ts) ?? 0) + point.total);
-            }
-            perContainer.set(key, buckets);
-        }
-    }
-
-    const peaks = new Map<string, number>();
-    for (const [key, buckets] of perContainer) {
-        const peak = buckets.size > 0 ? Math.max(...buckets.values()) : 0;
-        peaks.set(key, peak);
-    }
-    return peaks;
+async function getContainerMetricPeak(
+    client: MonitorClient,
+    resourceUri: string,
+    databaseId: string,
+    containerId: string,
+    metricName: string,
+    aggregation: MetricAggregation,
+    observation: RangeConfig,
+    now: number,
+): Promise<number | undefined> {
+    const buckets = await querySeries(
+        client,
+        resourceUri,
+        metricName,
+        aggregation,
+        advisoryTimespan(observation, now),
+        observation.interval,
+        containerFilter(databaseId, containerId),
+    );
+    return buckets.size > 0 ? Math.max(...buckets.values()) : undefined;
 }
 
 /**
- * Reads per-container `PhysicalPartitionCount` (`Maximum`) over a short recent window, split by
- * `DatabaseName`/`CollectionName`, and returns each container's actual physical-partition count for DX-009.
- * Colliding series are folded with `max` (the count is identical across regions).
+ * Reads a container's peak `TotalRequestUnits` per bucket for the spike-aware idle gate (DX-004).
+ * Regional series are summed per bucket before taking the peak.
  */
-export async function getContainerPartitionCounts(
+export async function getContainerIdlePeak(
     client: MonitorClient,
     resourceUri: string,
+    databaseId: string,
+    containerId: string,
     now = Date.now(),
-): Promise<Map<string, number>> {
-    const timespan = `${new Date(now - PARTITION_COUNT_WINDOW_HOURS * HOUR).toISOString()}/${new Date(now).toISOString()}`;
-    const response = await client.metrics.list(resourceUri, {
-        metricnames: 'PhysicalPartitionCount',
-        aggregation: 'Maximum',
-        timespan,
-        interval: PARTITION_COUNT_INTERVAL,
-        filter: `DatabaseName eq '*' and CollectionName eq '*'`,
-    });
+): Promise<number | undefined> {
+    return getContainerMetricPeak(
+        client,
+        resourceUri,
+        databaseId,
+        containerId,
+        'TotalRequestUnits',
+        'Total',
+        DIAGNOSTIC_POLICY.idle.observation,
+        now,
+    );
+}
 
-    const counts = new Map<string, number>();
-    for (const metric of response.value ?? []) {
-        for (const series of metric.timeseries ?? []) {
-            const key = seriesContainerKey(series.metadatavalues);
-            if (!key) {
-                continue;
-            }
-            let peak = counts.get(key) ?? 0;
-            for (const point of series.data ?? []) {
-                if (point.maximum === undefined) {
-                    continue;
-                }
-                peak = Math.max(peak, point.maximum);
-            }
-            counts.set(key, peak);
-        }
-    }
+/**
+ * Reads a container's peak `PhysicalPartitionCount` for DX-009. Regional counts are folded with `max`.
+ */
+export async function getContainerPartitionCount(
+    client: MonitorClient,
+    resourceUri: string,
+    databaseId: string,
+    containerId: string,
+    now = Date.now(),
+): Promise<number | undefined> {
+    const peak = await getContainerMetricPeak(
+        client,
+        resourceUri,
+        databaseId,
+        containerId,
+        'PhysicalPartitionCount',
+        'Maximum',
+        DIAGNOSTIC_POLICY.partitionMerge.countObservation,
+        now,
+    );
+    return peak === undefined ? undefined : Math.round(peak);
+}
 
-    for (const [key, value] of counts) {
-        counts.set(key, Math.round(value));
-    }
-    return counts;
+/**
+ * Reads a container's peak `DataUsage` over the same recent window as {@link getContainerPartitionCount}.
+ * Regional replicas are folded with `max`, not summed.
+ */
+export async function getContainerMergeStoragePeak(
+    client: MonitorClient,
+    resourceUri: string,
+    databaseId: string,
+    containerId: string,
+    now = Date.now(),
+): Promise<number | undefined> {
+    return getContainerMetricPeak(
+        client,
+        resourceUri,
+        databaseId,
+        containerId,
+        'DataUsage',
+        'Maximum',
+        DIAGNOSTIC_POLICY.partitionMerge.countObservation,
+        now,
+    );
 }
 
 /** Autoscale duty-cycle summary from the `AutoscaledRU`-as-%-of-configured-max series (DX-011 / DX-013). */
@@ -193,24 +209,32 @@ export async function getAutoscaleUtilization(
         return { peakPercent: 0, avgPercent: 0, sampleCount: 0 };
     }
     const filter = `DatabaseName eq '${escapeODataLiteral(databaseId)}' and CollectionName eq '${escapeODataLiteral(containerId)}' and PhysicalPartitionId eq '*'`;
+    const observation = DIAGNOSTIC_POLICY.autoscaleUtilization.observation;
     const response = await client.metrics.list(resourceUri, {
         metricnames: 'AutoscaledRU',
         aggregation: 'Maximum',
-        timespan: advisoryTimespan(),
-        interval: ADVISORY_INTERVAL,
+        timespan: advisoryTimespan(observation),
+        interval: observation.interval,
         filter,
     });
 
     // timestamp → summed AutoscaledRU across the container's physical partitions.
     const totals = new Map<number, number>();
     for (const metric of response.value ?? []) {
+        if (metric.errorCode && metric.errorCode !== 'Success') {
+            throw new Error(metric.errorMessage ?? metric.errorCode);
+        }
         for (const series of metric.timeseries ?? []) {
             for (const point of series.data ?? []) {
-                if (point.maximum === undefined) {
+                const value = pickPointValue(point, 'Maximum');
+                if (value === undefined) {
                     continue;
                 }
-                const ts = new Date(point.timeStamp).getTime();
-                totals.set(ts, (totals.get(ts) ?? 0) + point.maximum);
+                const ts = parseMonitorTimestamp(point.timeStamp);
+                if (ts === undefined) {
+                    continue;
+                }
+                totals.set(ts, (totals.get(ts) ?? 0) + value);
             }
         }
     }

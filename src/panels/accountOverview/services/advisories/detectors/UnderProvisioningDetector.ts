@@ -4,17 +4,12 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
+import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
 import { Detector, type DetectorContext } from '../core/Detector';
-import { clampRationale } from '../core/helpers';
+import { clampRationale, hasMinimumKnownResourceAge } from '../core/helpers';
+import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import { type DerivedAdvisory, type DerivedAdvisorySeverity, type PartitionSaturationInput } from '../core/types';
-
-/** Container 429 rate (%) at or above which under-provisioning severity is High. */
-const UNDER_PROVISIONING_HIGH_RATE_PCT = 20;
-/** Container 429 rate (%) at or above which under-provisioning severity is Medium (below this, Low). */
-const UNDER_PROVISIONING_MEDIUM_RATE_PCT = 5;
-/** Below this request count the 429 rate is too noisy to judge, so the rule abstains. */
-const UNDER_PROVISIONING_MIN_REQUESTS = 1_000;
 
 /**
  * SustainedThrottlingInRegion / genuine under-provisioning (DX-005): a container is sustaining 429 throttling
@@ -30,7 +25,10 @@ function evaluateUnderProvisioning(
     headroomPercent: number,
     throttleThresholdPercent: number,
 ): DerivedAdvisory | undefined {
-    if (input.totalRequests < UNDER_PROVISIONING_MIN_REQUESTS) {
+    if (
+        input.totalRequests < DIAGNOSTIC_POLICY.underProvisioning.minRequests ||
+        !hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.partitionSaturation.minResourceAgeDays)
+    ) {
         return undefined;
     }
     const throttling = input.throttleRatePercent >= throttleThresholdPercent;
@@ -44,24 +42,30 @@ function evaluateUnderProvisioning(
     const busiest = Math.round(input.maxP99);
     const coolest = Math.round(input.minP99);
     const severity: DerivedAdvisorySeverity =
-        input.throttleRatePercent >= UNDER_PROVISIONING_HIGH_RATE_PCT
+        input.throttleRatePercent >= DIAGNOSTIC_POLICY.underProvisioning.highThrottleRatePercent
             ? 'High'
-            : input.throttleRatePercent >= UNDER_PROVISIONING_MEDIUM_RATE_PCT
+            : input.throttleRatePercent >= DIAGNOSTIC_POLICY.underProvisioning.mediumThrottleRatePercent
               ? 'Medium'
               : 'Low';
 
     const action =
         input.throughputMode === 'autoscale'
             ? input.provisionedRu !== undefined
-                ? l10n.t('Raise the autoscale maximum above {ru} RU/s. It is pinned at the ceiling.', {
-                      ru: Math.round(input.provisionedRu).toLocaleString(),
-                  })
-                : l10n.t('Raise the autoscale maximum. It is pinned at the ceiling.')
+                ? l10n.t(
+                      'Raise the autoscale maximum above `{ru} RU/s`. The workload is pinned at the current ceiling.',
+                      {
+                          ru: Math.round(input.provisionedRu).toLocaleString(),
+                      },
+                  )
+                : l10n.t('Raise the autoscale maximum. The workload is pinned at the current ceiling.')
             : input.provisionedRu !== undefined
-              ? l10n.t('Raise provisioned throughput above {ru} RU/s, or convert to autoscale.', {
-                    ru: Math.round(input.provisionedRu).toLocaleString(),
-                })
-              : l10n.t('Raise provisioned throughput, or convert to autoscale.');
+              ? l10n.t(
+                    'Raise provisioned throughput above `{ru} RU/s`, or convert to autoscale if the demand is bursty.',
+                    {
+                        ru: Math.round(input.provisionedRu).toLocaleString(),
+                    },
+                )
+              : l10n.t('Raise provisioned throughput, or convert to autoscale if the demand is bursty.');
 
     return {
         id: `SustainedThrottlingInRegion:${scope}`,
@@ -69,16 +73,34 @@ function evaluateUnderProvisioning(
         severity,
         title: l10n.t('Sustained throttling in {container}', { container: input.containerId }),
         rationale: clampRationale(
-            l10n.t(
-                'In "{container}", {rate}% of requests were throttled (HTTP 429) while every physical partition was saturated (busiest p99 {busiest}%, coolest {coolest}%). Because all partitions are at capacity, not just one, this is a genuine capacity shortfall rather than a hot partition.',
-                { container: input.containerId, rate, busiest, coolest },
-            ),
+            l10n.t('In "{container}", `{rate}%` of requests were throttled (HTTP 429).', {
+                container: escapeAdvisoryText(input.containerId),
+                rate,
+            }) +
+                ' ' +
+                l10n.t(
+                    'The busiest partition reached `{busiest}%` p99 and even the coolest stayed at `{coolest}%` p99.',
+                    {
+                        busiest,
+                        coolest,
+                    },
+                ) +
+                ' ' +
+                l10n.t('The coolest partition still cleared the `{headroom}%` broad-saturation floor.', {
+                    headroom: Math.round(headroomPercent),
+                }) +
+                ' ' +
+                l10n.t('This indicates a genuine capacity shortfall rather than a single hot partition.'),
         ),
         suggestedAction: action,
-        thresholdReference: l10n.t('Threshold: 429 rate ≥ {rate}% with every partition p99 ≥ {saturation}%', {
-            rate: Math.round(throttleThresholdPercent),
-            saturation: Math.round(saturationPercent),
-        }),
+        thresholdReference: l10n.t(
+            'Threshold: 429 rate ≥ `{rate}%`, busiest partition p99 ≥ `{saturation}%`, coolest partition p99 ≥ `{headroom}%`',
+            {
+                rate: Math.round(throttleThresholdPercent),
+                saturation: Math.round(saturationPercent),
+                headroom: Math.round(headroomPercent),
+            },
+        ),
         scope,
     };
 }

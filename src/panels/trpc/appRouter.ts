@@ -21,10 +21,15 @@ import { type NoSqlQueryConnection } from '../../cosmosdb/NoSqlQueryConnection';
 import { type DocumentWriteResult } from '../../cosmosdb/session/DocumentSession';
 import { type QuerySession } from '../../cosmosdb/session/QuerySession';
 import { type CosmosDBRecordIdentifier } from '../../cosmosdb/types/queryResult';
+import { type ModelingTelemetry } from '../../dataModeling/ModelingTelemetry';
+import { type DataModelerAccount, type DataModelerProjectService } from '../../services/DataModelerProjectService';
 import { type TelemetryContext } from '../../Telemetry';
 import { openSurvey, promptAfterActionEventually } from '../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../utils/surveyTypes';
+import { type AccountOverviewNavigation } from '../accountOverview/navigation';
 import { accountOverviewRouterDef } from './routers/accountOverviewRouter';
+import { type DataModelingEvent, dataModelingEventsRouterDef } from './routers/dataModelingEventsRouter';
+import { dataModelingRouterDef } from './routers/dataModelingRouter';
 import { documentRouterDef } from './routers/documentRouter';
 import { migrationEventsRouterDef, type MigrationEvent } from './routers/migrationEventsRouter';
 import { migrationRouterDef } from './routers/migrationRouter';
@@ -35,6 +40,10 @@ import {
     accountOverviewCallerFactory,
     accountOverviewProcedure,
     accountOverviewRouter,
+    dataModelingCallerFactory,
+    dataModelingMergeRouters,
+    dataModelingProcedure,
+    dataModelingRouter,
     documentCallerFactory,
     documentProcedure,
     documentRouter,
@@ -158,6 +167,18 @@ export type MigrationRouterContext = CosmosDBRouterContext & {
 
 export type AccountOverviewRouterContext = CosmosDBRouterContext & {
     metadata: AzureResourceMetadata;
+    getInitialization: () => AccountOverviewNavigation;
+    onNavigation: vscode.Event<AccountOverviewNavigation>;
+};
+
+export type DataModelingRouterContext = CosmosDBRouterContext & {
+    modelingTelemetry?: ModelingTelemetry;
+    project: DataModelerProjectService;
+    account: DataModelerAccount;
+    panel: vscode.WebviewPanel;
+    eventSink: TypedEventSink<DataModelingEvent>;
+    /** Stable ID of the wizard that initiated this request. Never sent to telemetry. */
+    wizardTabId: string;
 };
 
 // ─── Common Procedures (per-instance) ───────────────────────────────────────
@@ -363,3 +384,14 @@ export const accountOverviewAppRouter = accountOverviewRouter({
 
 export type AccountOverviewAppRouter = typeof accountOverviewAppRouter;
 export { accountOverviewCallerFactory };
+
+// ─── Data Modeling App Router ───────────────────────────────────────────────
+
+export const dataModelingAppRouter = dataModelingRouter({
+    // oxlint-disable-next-line typescript/no-unsafe-assignment
+    common: buildCommonRouter(dataModelingProcedure, dataModelingRouter),
+    dataModeling: dataModelingMergeRouters(dataModelingRouterDef, dataModelingEventsRouterDef),
+});
+
+export type DataModelingAppRouter = typeof dataModelingAppRouter;
+export { dataModelingCallerFactory };

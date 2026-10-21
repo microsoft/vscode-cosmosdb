@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
+import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
 import { Detector, type DetectorContext } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
@@ -11,12 +12,12 @@ import { type DerivedAdvisory, type IndexingUsageInput } from '../core/types';
 
 /**
  * IndexingCostRisk (best-effort): index storage is a large fraction of data
- * storage AND the container excludes no paths (indexes everything). Pure.
+ * storage AND the container has no user exclusions. Pure.
  */
 function evaluateIndexingCostRisk(input: IndexingUsageInput, ratioThreshold: number): DerivedAdvisory | undefined {
-    const { indexUsageBytes, dataUsageBytes, excludedPathCount } = input;
+    const { indexUsageBytes, dataUsageBytes, userExcludedPathCount } = input;
     if (
-        excludedPathCount > 0 ||
+        userExcludedPathCount > 0 ||
         dataUsageBytes === undefined ||
         dataUsageBytes <= 0 ||
         indexUsageBytes === undefined ||
@@ -38,14 +39,14 @@ function evaluateIndexingCostRisk(input: IndexingUsageInput, ratioThreshold: num
         title: l10n.t('High indexing overhead in {container}', { container: input.containerId }),
         rationale: clampRationale(
             l10n.t(
-                'Index storage in "{container}" is {percent}% of its data size, above the {threshold}% threshold, and the container indexes every path (no exclusions). Indexing every property inflates storage and the RU cost of every write.',
-                { container: input.containerId, percent, threshold },
+                'Index storage in "{container}" is `{percent}%` of its data size, above the `{threshold}%` threshold, and the container has no user exclusions in its indexing policy. Indexing every property inflates storage and the RU cost of every write.',
+                { container: escapeAdvisoryText(input.containerId), percent, threshold },
             ),
         ),
         suggestedAction: l10n.t(
             'Exclude paths that are never used in filters from the indexing policy to cut write RU charges and index storage.',
         ),
-        thresholdReference: l10n.t('Threshold: index/data storage > {threshold}%', { threshold }),
+        thresholdReference: l10n.t('Threshold: index/data storage > `{threshold}%`', { threshold }),
         scope,
     };
 }

@@ -3,7 +3,7 @@
   "compilerOptions": {
     "outDir": "out",
     "rootDir": ".",
-    "types": ["node", "vitest/globals"],
+    "types": ["node", "vitest/globals", "@testing-library/jest-dom/vitest"],
     "typeRoots": ["./types", "./node_modules/@types", "./node_modules"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.json", "main.ts"],

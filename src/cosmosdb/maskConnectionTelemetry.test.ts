@@ -62,6 +62,25 @@ describe('maskConnectionTelemetry', () => {
         expect(context.valuesToMask).toEqual([connection.endpoint, connection.databaseId, connection.containerId]);
     });
 
+    it('masks partial connections with omitted credentials and container ID', () => {
+        const context = { valuesToMask: [] };
+
+        maskConnectionTelemetry(context, {
+            endpoint: connection.endpoint,
+            databaseId: connection.databaseId,
+        });
+
+        expect(context.valuesToMask).toEqual([connection.endpoint, connection.databaseId]);
+    });
+
+    it('preserves existing masks for an empty connection', () => {
+        const context = { valuesToMask: ['existing-mask'] };
+
+        maskConnectionTelemetry(context, {});
+
+        expect(context.valuesToMask).toEqual(['existing-mask']);
+    });
+
     it('excludes undefined, empty, and whitespace-only values but preserves nonblank values verbatim', () => {
         const context = { valuesToMask: [] };
 

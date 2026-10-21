@@ -15,6 +15,16 @@ The webview is loaded by `src/panels/BaseTab.ts` and ships as a single
   `http://localhost:18080/views.js` and the webview loads it cross-origin from
   `vscode-webview://<uuid>`. HMR is fully wired.
 
+### Host API changes require a host restart
+
+Vite HMR updates React webviews, not the extension host's in-memory tRPC routers. After adding or changing host
+procedures, ensure `vite-watch:ext` has rebuilt successfully (or run `npm run vite-dev-ext`), then restart the
+Extension Development Host or run **Developer: Reload Window** in the window running the extension.
+
+A webview error such as `No procedure found on path "dataModeling.getDeploymentOptions"` means the new UI is calling
+an API absent from the running host. Rebuilding files on disk or reloading only the webview is insufficient.
+Reopen the modeler after the host restart. Unsaved deployment choices and Bicep edits are intentionally transient.
+
 ---
 
 ## Shared webview theming
@@ -27,7 +37,22 @@ same-kind switches and `workbench.colorCustomizations`. Do not recreate a local 
 Importing the package root injects its adaptive stylesheet once per document, including overrides for portaled
 Fluent surfaces. The rules have zero specificity and intentionally affect existing Fluent controls. Do not copy
 the stylesheet or deep-import package internals. The current `style-src 'unsafe-inline'` policy already supports
-this and Griffel; no script-policy relaxation is needed. The optional `/components` entry is not used.
+this and Griffel; no script-policy relaxation is needed.
+
+The Data Modeler imports `Wizard`, `WizardStep`, `ContainerHeader`, and `ContainerFooter` from the public `/components`
+entry. Keep these components together so they share the package's layout, overflow, and focus context; do not copy their
+implementation into the extension. The wizard uses `headerBehavior="sticky-navigation"`: step navigation stays pinned,
+the workload header scrolls away (with a reduced-motion-aware fade), and the footer remains pinned. The package owns
+footer overflow elevation. The extension owns step state, navigation, page content, and localized
+labels, including the step-overflow button.
+
+The wizard header uses Fluent's decorative `DatabaseLinkRegular` icon in `ContainerHeader`'s `media` slot.
+The shared header supplies its sizing, alignment, and theme-aware accent color; the icon is hidden from screen readers.
+
+Until the package exposes a content-width prop, the Data Modeler scopes a
+`[data-header-behavior] > div { max-width: none; }` override under its own wrapper. This removes the package's
+760px content cap without changing padding or scroll behavior. The selector depends on the package's internal DOM;
+recheck it on upgrades and remove it when a public width option becomes available.
 
 [MonacoEditor.tsx](../src/webviews/MonacoEditor.tsx) consumes `useVSCodeMonacoTheme` from the public `/monaco` entry.
 It registers the latest theme before editor creation, composes the caller's `beforeMount`, and reapplies changed

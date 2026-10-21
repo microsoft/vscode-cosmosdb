@@ -13,7 +13,7 @@ export class DatabaseAccountDeleteStep extends AzureWizardExecuteStep<DeleteWiza
     public priority: number = 100;
 
     public async execute(context: DeleteWizardContext): Promise<void> {
-        await ext.state.showDeleting(context.node.id, () => deleteCosmosDBAccount(context, context.node));
+        await ext.state.showDeleting(context.account.accountId, () => deleteCosmosDBAccount(context, context.account));
         ext.cosmosDBBranchDataProvider.refresh();
     }
 

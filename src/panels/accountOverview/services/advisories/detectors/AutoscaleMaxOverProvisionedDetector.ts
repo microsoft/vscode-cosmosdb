@@ -4,15 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
+import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
 import { Detector, type DetectorContext } from '../core/Detector';
-import { capacityMaterialitySeverity, clampRationale } from '../core/helpers';
+import { capacityMaterialitySeverity, clampRationale, hasMinimumKnownResourceAge } from '../core/helpers';
+import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import { type AutoscaleUtilizationInput, type DerivedAdvisory } from '../core/types';
 
-/** Do not flag over-provisioning when the busiest sample reached this % — a recurring batch needs peak capacity. */
-const OVERPROVISIONING_PEAK_GUARD_PCT = 90;
-/** Headroom multiplier applied to observed p99 demand when sizing the right-size target (CODA DX-001). */
-const OVERPROVISIONING_HEADROOM = 1.3;
 // Platform minimum RU/s floor a right-size recommendation never drops below — a container's minimum manual
 // throughput is 400 RU/s:
 // https://learn.microsoft.com/azure/cosmos-db/set-throughput
@@ -37,23 +35,33 @@ function evaluateAutoscaleMaxOverProvisioned(
     bandPercent: number,
     scopeProvisionedRu?: number,
 ): DerivedAdvisory | undefined {
-    if (input.sampleCount === 0 || input.configuredMaxRu === undefined || input.configuredMaxRu <= 0) {
+    if (
+        input.sampleCount < DIAGNOSTIC_POLICY.autoscaleUtilization.minSamples ||
+        input.configuredMaxRu === undefined ||
+        input.configuredMaxRu <= 0 ||
+        !hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.autoscaleUtilization.minResourceAgeDays)
+    ) {
         return undefined;
     }
     const peak = input.peakPercent;
     // Peak at/above the saturation guard, or at/above the moderate band, means the max is genuinely needed.
-    if (peak >= OVERPROVISIONING_PEAK_GUARD_PCT || peak >= bandPercent) {
+    if (peak >= DIAGNOSTIC_POLICY.overProvisioning.peakGuardPercent || peak >= bandPercent) {
         return undefined;
     }
     const max = input.configuredMaxRu;
     const peakConsumed = (peak / 100) * max;
     const recommended = Math.min(
         max,
-        Math.max(OVERPROVISIONING_MIN_RU, Math.ceil(peakConsumed * OVERPROVISIONING_HEADROOM), Math.ceil(peakConsumed)),
+        Math.max(
+            OVERPROVISIONING_MIN_RU,
+            Math.ceil(peakConsumed * DIAGNOSTIC_POLICY.overProvisioning.headroomMultiplier),
+            Math.ceil(peakConsumed),
+        ),
     );
     const floor = (ru: number): number => Math.max(OVERPROVISIONING_MIN_RU, AUTOSCALE_IDLE_FRACTION * ru);
-    const wastedRu = Math.max(0, Math.round(floor(max) - floor(recommended)));
-    const severity = capacityMaterialitySeverity(wastedRu, scopeProvisionedRu);
+    const wastedExact = Math.max(0, floor(max) - floor(recommended));
+    const wastedRu = Math.round(wastedExact);
+    const severity = capacityMaterialitySeverity(wastedExact, scopeProvisionedRu);
     const scope = containerKey(input.databaseId, input.containerId);
     const peakPct = Math.round(peak);
     const recommend = Math.round(recommended);
@@ -64,21 +72,28 @@ function evaluateAutoscaleMaxOverProvisioned(
         title: l10n.t('Autoscale max may be set too high'),
         rationale: clampRationale(
             l10n.t(
-                'Autoscale on "{container}" never provisioned more than {peak}% of its {max} RU/s max over the window, below the {band}% band. Autoscale bills a 10% idle floor of the max even at zero load, so an over-high max wastes ~{wasted} RU/s of that floor.',
+                'Autoscale on "{container}" never provisioned more than `{peak}%` of its `{max} RU/s` max over the window, below the `{band}%` band.',
                 {
-                    container: input.containerId,
+                    container: escapeAdvisoryText(input.containerId),
                     peak: peakPct,
                     max: Math.round(max),
                     band: Math.round(bandPercent),
-                    wasted: wastedRu,
                 },
-            ),
+            ) +
+                ' ' +
+                l10n.t(
+                    'Autoscale bills a `10%` idle floor of the max even at zero load, so an over-high max wastes `~{wasted} RU/s` of that floor.',
+                    { wasted: wastedRu },
+                ),
         ),
-        suggestedAction: l10n.t(
-            'Lower the autoscale max toward the peak-provisioned level (≈ {recommended} RU/s) so the idle floor tracks real demand while still covering the peak.',
-            { recommended: recommend },
-        ),
-        thresholdReference: l10n.t('Threshold: peak AutoscaledRU < {band}% of the configured max', {
+        suggestedAction:
+            l10n.t('Lower the autoscale max on "{container}" toward `~{recommended} RU/s`.', {
+                container: escapeAdvisoryText(input.containerId),
+                recommended: recommend,
+            }) +
+            ' ' +
+            l10n.t('The idle floor will track real demand while the ceiling still covers the observed peak.'),
+        thresholdReference: l10n.t('Threshold: peak AutoscaledRU < `{band}%` of the configured max', {
             band: Math.round(bandPercent),
         }),
         scope,

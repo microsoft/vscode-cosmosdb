@@ -93,6 +93,10 @@ async function getAccountInfoForResource(account: CosmosDBAccountModel): Promise
         throw new Error(l10n.t('Failed to connect to Cosmos DB account'));
     }
 
+    return getAccountInfoFromMetadata(azureMetadata);
+}
+
+export async function getAccountInfoFromMetadata(azureMetadata: AzureResourceMetadata): Promise<AccountInfo> {
     const credentials = await getCosmosDBCredentials({
         accountName: azureMetadata.accountName,
         documentEndpoint: azureMetadata.documentEndpoint,

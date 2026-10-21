@@ -8,6 +8,7 @@ import path from 'path';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { TelemetryContext } from '../Telemetry';
+import { escapeHtml } from '../utils/sanitization';
 
 const DEV_SERVER_HOST = 'http://localhost:18080';
 
@@ -156,9 +157,9 @@ export class BaseTab {
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>${params.title}</title>
     <meta http-equiv="Content-Security-Policy" content="${params.csp}" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${escapeHtml(params.title)}</title>
     <style>
       html, body, #root { height: 100%; margin: 0; }
       .initial-loader {

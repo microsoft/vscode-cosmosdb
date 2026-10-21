@@ -13,9 +13,9 @@ import { type NoSqlQueryConnection } from './NoSqlQueryConnection';
  */
 export function maskConnectionTelemetry(
     context: Pick<IActionContext, 'valuesToMask'>,
-    connection: NoSqlQueryConnection,
+    connection: Partial<NoSqlQueryConnection>,
 ): void {
-    const credentialValues = connection.credentials.map((credential) => {
+    const credentialValues = (connection.credentials ?? []).map((credential) => {
         switch (credential.type) {
             case AuthenticationMethod.accountKey:
                 return credential.key;

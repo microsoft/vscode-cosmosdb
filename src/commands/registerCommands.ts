@@ -18,6 +18,8 @@ import { cosmosDBCreateDocument } from './createDocument/createDocument';
 import { createServer } from './createServer/createServer';
 import { cosmosDBCreateStoredProcedure } from './createStoredProcedure/createStoredProcedure';
 import { cosmosDBCreateTrigger } from './createTrigger/createTrigger';
+import { deleteAllDataModelerData } from './dataModeling/deleteAllDataModelerData';
+import { openDataModelingWizard } from './dataModeling/openDataModelingWizard';
 import { deleteAllSavedSchemas } from './deleteAllSavedSchemas/deleteAllSavedSchemas';
 import { cosmosDBDeleteContainer } from './deleteContainer/deleteContainer';
 import { cosmosDBDeleteDatabase } from './deleteDatabase/deleteDatabase';
@@ -34,7 +36,10 @@ import { openMigrationAssistant } from './migration/openMigrationAssistant';
 import { removeMigration } from './migration/removeMigration';
 import { newConnection } from './newConnection/newConnection';
 import { newEmulatorConnection } from './newEmulatorConnection/newEmulatorConnection';
-import { openAccountOverview } from './openAccountOverview/openAccountOverview';
+import {
+    openAccountOverview,
+    registerAccountOverviewNavigationCommands,
+} from './openAccountOverview/openAccountOverview';
 import { cosmosDBOpenItem } from './openDocument/openDocument';
 import { openNoSqlQueryEditor } from './openNoSqlQueryEditor/openNoSqlQueryEditor';
 import { cosmosDBOpenStoredProcedure } from './openStoredProcedure/openStoredProcedure';
@@ -79,6 +84,7 @@ export function registerCommands(): void {
     registerMigrationCommands();
 
     registerCommand('cosmosDB.quickStart.reset', resetQuickStart);
+    registerCommand('cosmosDB.dataModeling.deleteAllData', deleteAllDataModelerData);
 }
 
 export function registerAccountCommands() {
@@ -90,6 +96,7 @@ export function registerAccountCommands() {
     registerCommandWithTreeNodeUnwrapping('cosmosDB.copyConnectionString', copyConnectionString);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.openUnsupportedAccount', openUnsupportedAccount);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.openAccountOverview', openAccountOverview);
+    registerAccountOverviewNavigationCommands();
 }
 
 export function registerDatabaseCommands() {
@@ -128,6 +135,8 @@ export function registerTriggerCommands() {
     registerCommandWithTreeNodeUnwrapping('cosmosDB.createTrigger', cosmosDBCreateTrigger);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.openTrigger', cosmosDBOpenTrigger, doubleClickDebounceDelay);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteTrigger', cosmosDBDeleteTrigger);
+
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.dataModeling.open', openDataModelingWizard);
 }
 
 export function registerMigrationCommands() {

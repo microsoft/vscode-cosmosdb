@@ -17,5 +17,4 @@ export interface CreateContainerWizardContext extends IActionContext {
     accountInfo: AccountInfo;
     databaseId: string;
     experience: Experience;
-    nodeId: string;
 }

@@ -10,24 +10,28 @@ import { DETECTORS } from './registry';
 
 /**
  * Runs every registered detector over already-fetched telemetry, applies each detector's declared
- * per-scope suppressions, sorts by severity, and returns the surviving advisories. Pure.
+ * per-scope supersessions, sorts by severity, and returns every advisory with superseded ones marked.
+ * Pure.
  */
 export function computeDerivedAdvisories(
     inputs: DerivedAdvisoryInputs,
     thresholds: DerivedAdvisoryThresholds,
 ): DerivedAdvisory[] {
     const ctx: DetectorContext = { inputs, thresholds };
-    const suppressed = new Set<string>();
+    const supersessions = new Map<string, string>();
     const collected: DerivedAdvisory[] = [];
     for (const detector of DETECTORS) {
         for (const advisory of detector.run(ctx)) {
             collected.push(advisory);
-            for (const rule of detector.suppresses) {
-                suppressed.add(`${rule}::${advisory.scope ?? ''}`);
+            for (const rule of detector.supersedes) {
+                supersessions.set(`${rule}::${advisory.scope ?? ''}`, advisory.rule);
             }
         }
     }
-    const result = collected.filter((a) => !suppressed.has(`${a.rule}::${a.scope ?? ''}`));
+    const result = collected.map((advisory) => {
+        const supersededBy = supersessions.get(`${advisory.rule}::${advisory.scope ?? ''}`);
+        return supersededBy && supersededBy !== advisory.rule ? { ...advisory, supersededBy } : advisory;
+    });
     result.sort(compareAdvisories);
     return result;
 }

@@ -1,0 +1,155 @@
+# Extension-host and live Shell MCP integration tests; no database or emulator is required.
+# Runs independently of unit-tests.yml. Each suite still runs when the other fails.
+
+name: Integration Tests
+
+permissions:
+  contents: read
+  pull-requests: write
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - rel/*
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: >-
+    test-${{ github.workflow }}-${{
+    github.ref == 'refs/heads/main' && github.run_id ||
+    startsWith(github.ref, 'refs/heads/rel/') && github.run_id ||
+    github.event_name == 'pull_request' &&
+    format('{0}-{1}', github.event.pull_request.head.repo.full_name, github.head_ref) ||
+    format('{0}-{1}', github.repository, github.ref_name) }}
+
+jobs:
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+
+      - name: Install dependencies
+        id: install
+        run: npm ci
+
+      - name: Set up .NET for Shell MCP tests
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install current Cosmos DB Shell
+        run: dotnet tool install CosmosDBShell --prerelease --tool-path "$RUNNER_TEMP/cosmosdb-shell"
+
+      - name: Shell MCP Integration Tests
+        id: shell-mcp-tests
+        env:
+          COSMOSDB_SHELL_MCP_TEST_PATH: ${{ runner.temp }}/cosmosdb-shell/cosmosdbshell
+        run: npm run test:shell-mcp
+
+      - name: Build extension
+        id: build
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run vite-prod
+
+      - name: Extension Host Integration Tests
+        id: integration-tests
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        # xvfb provides Electron's display. Keep the command inside an if so bash's errexit does not bypass retries.
+        run: |
+          exit_code=1
+          for i in 1 2 3; do
+              if xvfb-run -a npm test; then
+                  exit_code=0
+                  break
+              else
+                  exit_code=$?
+              fi
+              echo "Attempt $i failed with exit code $exit_code"
+              if [ $i -lt 3 ]; then sleep 15; fi
+          done
+          exit $exit_code
+
+      - name: Generate Job Summary
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INTEGRATION_TEST_RESULT: ${{ steps.integration-tests.outcome }}
+          SHELL_MCP_TEST_RESULT: ${{ steps.shell-mcp-tests.outcome }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        shell: bash
+        run: |
+          # See build.yml for the rationale behind these helpers. Keep them in sync.
+          result_icon() {
+              case "$1" in
+                  success)   echo "✅" ;;
+                  failure)   echo "❌" ;;
+                  cancelled) echo "⚪" ;;
+                  skipped)   echo "⏭️" ;;
+                  *)         echo "❓" ;;
+              esac
+          }
+
+          post_or_update_comment() {
+              local pr=$1
+              local marker=$2
+              local body_file=$3
+              local meaningful=${4:-true}
+              local existing_id
+              existing_id=$(gh api --paginate "repos/${REPO}/issues/${pr}/comments" \
+                  --jq ".[] | select(.body | contains(\"${marker}\")) | .id" 2>/dev/null | head -1)
+
+              if [ "$meaningful" != "true" ] && [ -n "$existing_id" ]; then
+                  echo "ℹ️ All checks skipped — keeping existing PR #${pr} comment ${existing_id} unchanged"
+                  return 0
+              fi
+              if [ -n "$existing_id" ]; then
+                  if gh api --method PATCH "repos/${REPO}/issues/comments/${existing_id}" \
+                          --field body=@"${body_file}" >/dev/null 2>&1; then
+                      echo "✅ PR #${pr} comment updated (id ${existing_id})"
+                      return 0
+                  fi
+                  echo "::warning::Failed to PATCH comment ${existing_id}, posting a new one"
+              fi
+              if gh pr comment "${pr}" --repo "${REPO}" --body-file "${body_file}" >/dev/null 2>&1; then
+                  echo "✅ PR #${pr} new comment posted"
+                  return 0
+              fi
+              echo "::warning::Unable to post PR comment on #${pr} (likely a fork PR with a read-only GITHUB_TOKEN). Skipping."
+              return 0
+          }
+
+          int_icon=$(result_icon "$INTEGRATION_TEST_RESULT")
+          shell_icon=$(result_icon "$SHELL_MCP_TEST_RESULT")
+          MARKER="<!-- ci-summary:integration-tests -->"
+          cat >> "$GITHUB_STEP_SUMMARY" << SUMMARY_EOF
+          ${MARKER}
+          # Integration Tests
+
+          - **Shell MCP Integration Tests:** ${shell_icon} ${SHELL_MCP_TEST_RESULT}
+          - **Integration Tests (extension host):** ${int_icon} ${INTEGRATION_TEST_RESULT}
+          SUMMARY_EOF
+
+          comment_meaningful=false
+          for r in "$INTEGRATION_TEST_RESULT" "$SHELL_MCP_TEST_RESULT"; do
+              case "$r" in
+                  success|failure) comment_meaningful=true ;;
+              esac
+          done
+          if [ "${EVENT_NAME}" = "pull_request" ] && [ -n "${PR_NUMBER:-}" ]; then
+              post_or_update_comment "${PR_NUMBER}" "${MARKER}" "${GITHUB_STEP_SUMMARY}" "${comment_meaningful}"
+          fi

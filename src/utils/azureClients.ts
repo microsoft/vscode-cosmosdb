@@ -13,7 +13,7 @@ import { type PostgreSQLManagementFlexibleServerClient } from '@azure/arm-postgr
 import { type TokenCredential } from '@azure/core-auth';
 import { type KnownMonitorLogsQueryAudience, type LogsQueryClient } from '@azure/monitor-query-logs';
 import { createAzureClient, createAzureSubscriptionClient } from '@microsoft/vscode-azext-azureutils';
-import { createSubscriptionContext, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { createCredential, createSubscriptionContext, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 
 // `@azure/arm-cosmosdb` is imported eagerly: it's used by virtually every
@@ -124,22 +124,30 @@ export async function createMonitorClient(
 // only enters the lazy chunk loaded when the dashboard opens, never the activation hot path. Unlike the classic
 // ARM SDKs it is a modular client — `new LogsQueryClient(credential, options)` with no subscriptionId and a
 // data-plane audience (`https://api.loganalytics.io` and sovereign-cloud equivalents) — so it is constructed
-// directly with the subscription's credential rather than via `createAzureClient`.
+// directly with a scoped subscription credential rather than via `createAzureClient`.
 export async function createLogsQueryClient(
     context: IActionContext,
     subscription: AzureSubscription,
 ): Promise<LogsQueryClient> {
     context.valuesToMask.push(subscription.subscriptionId);
-    const subContext = createSubscriptionContext(subscription);
     const { LogsQueryClient, KnownMonitorLogsQueryAudience } = await import('@azure/monitor-query-logs');
     const audience = logAnalyticsAudience(subscription.environment?.name, KnownMonitorLogsQueryAudience);
-    return new LogsQueryClient(subContext.credentials, audience ? { audience } : undefined);
+    const scopes = [`${audience}/.default`];
+    // The default subscription credential always returns an ARM token, ignoring the SDK's requested scopes.
+    const credential = createCredential(() =>
+        subscription.authentication.getSessionWithScopes(scopes, { createIfNone: true }),
+    );
+    return new LogsQueryClient(credential, {
+        audience,
+        // SDK 1.0.0 does not derive its endpoint or credential scopes from the audience option.
+        endpoint: `${audience}/v1`,
+        credentials: { scopes },
+    });
 }
 
 /**
- * Maps an Azure environment name to the Log Analytics data-plane audience. Returns `undefined` for the public
- * cloud (the SDK default) and for unknown environments; the sovereign clouds override the Microsoft Entra audience
- * so the token is issued for the correct Log Analytics endpoint.
+ * Maps an Azure environment name to the Log Analytics data-plane audience and endpoint. Public and unknown
+ * environments use the public cloud, matching the SDK default.
  *
  * The audience values are read from the SDK's own `KnownMonitorLogsQueryAudience` enum rather than hardcoded here,
  * so if Azure ever changes a sovereign endpoint the mapping tracks the SDK instead of silently drifting. The enum
@@ -150,14 +158,14 @@ export async function createLogsQueryClient(
 function logAnalyticsAudience(
     environmentName: string | undefined,
     audiences: typeof KnownMonitorLogsQueryAudience,
-): string | undefined {
+): string {
     switch (environmentName) {
         case 'AzureChinaCloud':
             return audiences.AzureChina;
         case 'AzureUSGovernment':
             return audiences.AzureGovernment;
         default:
-            return undefined;
+            return audiences.AzurePublicCloud;
     }
 }
 

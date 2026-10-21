@@ -14,10 +14,10 @@ export class CosmosDBExecuteStep extends AzureWizardExecuteStep<CreateContainerW
     public priority: number = 100;
 
     public async execute(context: CreateContainerWizardContext): Promise<void> {
-        const { containerName, partitionKey, throughput, maxThroughput, databaseId, nodeId } = context;
+        const { containerName, partitionKey, throughput, maxThroughput, databaseId, accountInfo } = context;
 
         return ext.state.showCreatingChild(
-            nodeId,
+            `${accountInfo.id}/${databaseId}`,
             l10n.t('Creating "{nodeName}"…', { nodeName: containerName! }),
             async () => {
                 await new Promise((resolve) => setTimeout(resolve, 250));

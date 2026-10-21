@@ -8,15 +8,15 @@ import { isUserCancelledError, type IActionContext } from '@microsoft/vscode-aze
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { API, DBAccountKind, tryGetExperience } from '../../../AzureDBExperiences';
-import { cosmosDBCreateContainer } from '../../../commands/createContainer/createContainer';
-import { cosmosDBCreateDatabase } from '../../../commands/createDatabase/createDatabase';
+import { createContainer } from '../../../commands/createContainer/createContainer';
+import { createDatabase } from '../../../commands/createDatabase/createDatabase';
 import { openDataModelingWizard } from '../../../commands/dataModeling/openDataModelingWizard';
-import { cosmosDBDeleteDatabaseAccount } from '../../../commands/deleteDatabaseAccount/deleteDatabaseAccount';
+import { deleteDatabaseAccount } from '../../../commands/deleteDatabaseAccount/deleteDatabaseAccount';
 import { type AzureResourceMetadata } from '../../../cosmosdb/AzureResourceMetadata';
+import { getControlPlane } from '../../../cosmosdb/controlPlane';
 import { maskConnectionTelemetry } from '../../../cosmosdb/maskConnectionTelemetry';
-import { ext } from '../../../extensionVariables';
-import { CosmosDBAccountResourceItem } from '../../../tree/cosmosdb/CosmosDBAccountResourceItem';
-import { CosmosDBDatabaseResourceItem } from '../../../tree/cosmosdb/CosmosDBDatabaseResourceItem';
+import { getAccountInfoFromMetadata } from '../../../tree/cosmosdb/AccountInfo';
+import { compareResourceIds } from '../../../utils/strings';
 import { type AccountActionInput, type AccountActionResult } from '../accountActions';
 import { getAccountOverviewMaskedValues, getResourceMaskedValues } from '../resourceMasking';
 import { openAccountJson } from './accountJson';
@@ -48,74 +48,52 @@ export async function runAccountAction(
             }
         } else if (input.action === 'openJson') {
             await openAccountJson(context, metadata);
+        } else if (input.action === 'deleteAccount') {
+            await deleteDatabaseAccount(context, metadata);
+        } else if (input.action === 'openDataModeler') {
+            const accountInfo = await getAccountInfoFromMetadata(metadata);
+            maskConnectionTelemetry(context, accountInfo);
+            await openDataModelingWizard(context, accountInfo);
         } else {
-            const isCreate = input.action === 'createDatabase' || input.action === 'createContainer';
-            if (
-                isCreate &&
-                (metadata.databaseAccount.kind !== DBAccountKind.GlobalDocumentDB ||
-                    tryGetExperience(metadata.databaseAccount as DatabaseAccountGetResults)?.api !== API.Core)
-            ) {
+            const experience = tryGetExperience(metadata.databaseAccount as DatabaseAccountGetResults);
+            if (metadata.databaseAccount.kind !== DBAccountKind.GlobalDocumentDB || experience?.api !== API.Core) {
                 throw new Error(l10n.t('Creating databases and containers is only supported for NoSQL accounts.'));
             }
 
-            const account = await ext.cosmosDBBranchDataProvider.findNodeById(metadata.accountId);
-            if (
-                !(account instanceof CosmosDBAccountResourceItem) ||
-                account.id.toLowerCase() !== metadata.accountId.toLowerCase() ||
-                account.account.id.toLowerCase() !== metadata.accountId.toLowerCase()
-            ) {
-                throw new Error(l10n.t('Unable to resolve this account in the Azure Resources view.'));
-            }
-            if (isCreate && account.experience.api !== API.Core) {
-                throw new Error(l10n.t('Creating databases and containers is only supported for NoSQL accounts.'));
-            }
+            const accountInfo = await getAccountInfoFromMetadata(metadata);
+            maskConnectionTelemetry(context, {
+                ...accountInfo,
+                databaseId: input.action === 'createContainer' ? input.databaseId : undefined,
+            });
 
-            // Registered command wrappers swallow cancellation and may swallow failures. Invoke their handlers
-            // with the RPC action context and a verified node so no handler can fall back to an unscoped picker.
-            if (input.action === 'openDataModeler') {
-                await openDataModelingWizard(context, account);
-            } else if (input.action === 'createDatabase') {
-                await cosmosDBCreateDatabase(context, account);
-            } else if (input.action === 'createContainer') {
-                const children = await account.getChildren();
-                const databases = children.filter(
-                    (node): node is CosmosDBDatabaseResourceItem =>
-                        node instanceof CosmosDBDatabaseResourceItem &&
-                        node.id === `${account.id}/${node.model.database.id}` &&
-                        node.model.accountInfo.id.toLowerCase() === metadata.accountId.toLowerCase() &&
-                        node.experience.api === API.Core,
+            // Call the shared wizard entrypoints, not the Explorer adapters or registered command wrappers.
+            if (input.action === 'createDatabase') {
+                await createDatabase(context, accountInfo, experience);
+            } else {
+                const databases = (await getControlPlane(accountInfo).listDatabases()).sort((a, b) =>
+                    compareResourceIds(a.id, b.id),
                 );
-                let database: CosmosDBDatabaseResourceItem | undefined;
+                context.valuesToMask.push(...getResourceMaskedValues(databases.map((database) => database.id)));
+                let databaseId: string | undefined;
                 if (input.databaseId !== undefined) {
-                    database = databases.find((node) => node.model.database.id === input.databaseId);
+                    databaseId = databases.find((database) => database.id === input.databaseId)?.id;
                 } else {
                     if (databases.length === 0) {
                         throw new Error(
                             l10n.t('This account has no databases. Create a database before adding a container.'),
                         );
                     }
-                    context.valuesToMask.push(
-                        ...getResourceMaskedValues(databases.map((node) => node.model.database.id)),
-                    );
-                    database = (
+                    databaseId = (
                         await context.ui.showQuickPick(
-                            databases.map((node) => ({ label: node.model.database.id, data: node })),
+                            databases.map((database) => ({ label: database.id, data: database.id })),
                             { placeHolder: l10n.t('Select a database for the new container') },
                         )
                     ).data;
                 }
-                if (!database || !databases.includes(database)) {
+                if (databaseId === undefined || !databases.some((database) => database.id === databaseId)) {
                     throw new Error(l10n.t('Unable to resolve the selected database in this account.'));
                 }
-                maskConnectionTelemetry(context, {
-                    ...database.model.accountInfo,
-                    databaseId: database.model.database.id,
-                    containerId: '',
-                });
-                await cosmosDBCreateContainer(context, database);
-            } else {
-                // The shared handler confirms according to extension settings and awaits ARM deletion.
-                await cosmosDBDeleteDatabaseAccount(context, account);
+                await createContainer(context, accountInfo, databaseId, experience);
             }
         }
         return { status: 'completed' };

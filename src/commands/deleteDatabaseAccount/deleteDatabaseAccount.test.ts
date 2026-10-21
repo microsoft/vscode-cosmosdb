@@ -3,14 +3,18 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { getResourceGroupFromId } from '@microsoft/vscode-azext-azureutils';
 import type * as AzExtUtils from '@microsoft/vscode-azext-utils';
-import { AzureWizard, UserCancelledError, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { AzureWizard, UserCancelledError } from '@microsoft/vscode-azext-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { type CosmosDBAccountResourceItem } from '../../tree/cosmosdb/CosmosDBAccountResourceItem';
+import { CoreExperience } from '../../AzureDBExperiences';
+import { armTestSubscription, createArmTestContext } from '../../cosmosdb/armTestUtils';
+import { NoSqlAccountResourceItem } from '../../tree/nosql/NoSqlAccountResourceItem';
 import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { DatabaseAccountDeleteStep } from './DatabaseAccountDeleteStep';
-import { cosmosDBDeleteDatabaseAccount } from './deleteDatabaseAccount';
+import { cosmosDBDeleteDatabaseAccount, deleteDatabaseAccount } from './deleteDatabaseAccount';
+import { type DeleteAccountTarget } from './DeleteWizardContext';
 
 const { execute } = vi.hoisted(() => ({ execute: vi.fn() }));
 
@@ -26,45 +30,65 @@ vi.mock('@microsoft/vscode-azext-utils', async (importOriginal) => ({
 vi.mock('@microsoft/vscode-azureresources-api', () => ({
     AzExtResourceType: { AzureCosmosDb: 'AzureCosmosDb' },
 }));
+vi.mock('@microsoft/vscode-azext-azureutils', () => ({
+    createAuthorizationManagementClient: vi.fn(),
+    getResourceGroupFromId: vi.fn(),
+}));
+vi.mock('@microsoft/vscode-azext-azureauth', () => ({ getSessionFromVSCode: vi.fn() }));
+vi.mock('../../utils/azureClients', () => ({ createCosmosDBManagementClient: vi.fn() }));
 vi.mock('../../utils/dialogs/getConfirmation', () => ({ getConfirmationAsInSettings: vi.fn() }));
 vi.mock('../../utils/pickItem/pickAppResource', () => ({ pickAppResource: vi.fn() }));
 vi.mock('./DatabaseAccountDeleteStep', () => ({ DatabaseAccountDeleteStep: class {} }));
 
-describe('cosmosDBDeleteDatabaseAccount', () => {
-    const account = { account: { name: 'account-to-delete' } } as CosmosDBAccountResourceItem;
+describe('deleteDatabaseAccount', () => {
+    const account: DeleteAccountTarget = {
+        accountId:
+            '/subscriptions/sub-1/resourceGroups/rg/providers/Microsoft.DocumentDB/databaseAccounts/account-to-delete',
+        accountName: 'account-to-delete',
+        resourceGroup: 'rg',
+        subscription: armTestSubscription,
+    };
 
     beforeEach(() => {
         vi.resetAllMocks();
+        vi.mocked(getResourceGroupFromId).mockReturnValue('rg');
     });
 
     it('uses the settings-aware confirmation with the account name before deleting', async () => {
-        const context = {} as IActionContext;
+        const context = createArmTestContext();
         vi.mocked(getConfirmationAsInSettings).mockImplementation(async () => {
             expect(execute).not.toHaveBeenCalled();
+            expect(context.valuesToMask).toEqual(
+                expect.arrayContaining([
+                    account.accountId,
+                    account.accountName,
+                    account.resourceGroup,
+                    account.subscription.subscriptionId,
+                ]),
+            );
             return true;
         });
 
-        await cosmosDBDeleteDatabaseAccount(context, account);
+        await deleteDatabaseAccount(context, account);
 
         expect(getConfirmationAsInSettings).toHaveBeenCalledExactlyOnceWith(
             'Delete Database Account "account-to-delete"',
             'Are you sure you want to delete account "account-to-delete" and its contents?',
             'account-to-delete',
         );
-        expect(AzureWizard).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ node: account }), {
+        expect(AzureWizard).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ account }), {
             title: 'Delete Database Account "account-to-delete"',
             executeSteps: [expect.any(DatabaseAccountDeleteStep)],
         });
         expect(execute).toHaveBeenCalledOnce();
         expect(pickAppResource).not.toHaveBeenCalled();
+        expect(vi.mocked(AzureWizard).mock.calls[0][0]).not.toHaveProperty('node');
     });
 
     it('reports a declined confirmation as cancellation without deleting', async () => {
         vi.mocked(getConfirmationAsInSettings).mockResolvedValue(false);
 
-        await expect(cosmosDBDeleteDatabaseAccount({} as IActionContext, account)).rejects.toBeInstanceOf(
-            UserCancelledError,
-        );
+        await expect(deleteDatabaseAccount(createArmTestContext(), account)).rejects.toBeInstanceOf(UserCancelledError);
 
         expect(AzureWizard).not.toHaveBeenCalled();
         expect(execute).not.toHaveBeenCalled();
@@ -74,7 +98,7 @@ describe('cosmosDBDeleteDatabaseAccount', () => {
         const cancellation = new UserCancelledError();
         vi.mocked(getConfirmationAsInSettings).mockRejectedValue(cancellation);
 
-        await expect(cosmosDBDeleteDatabaseAccount({} as IActionContext, account)).rejects.toBe(cancellation);
+        await expect(deleteDatabaseAccount(createArmTestContext(), account)).rejects.toBe(cancellation);
 
         expect(execute).not.toHaveBeenCalled();
     });
@@ -84,6 +108,30 @@ describe('cosmosDBDeleteDatabaseAccount', () => {
         vi.mocked(getConfirmationAsInSettings).mockResolvedValue(true);
         execute.mockRejectedValue(failure);
 
-        await expect(cosmosDBDeleteDatabaseAccount({} as IActionContext, account)).rejects.toBe(failure);
+        await expect(deleteDatabaseAccount(createArmTestContext(), account)).rejects.toBe(failure);
+    });
+
+    it.each([false, true])('keeps the Explorer adapter as metadata extraction, picker=%s', async (usePicker) => {
+        const node = new NoSqlAccountResourceItem(
+            {
+                id: account.accountId,
+                name: account.accountName,
+                type: 'microsoft.documentdb/databaseaccounts',
+                subscription: account.subscription,
+                azureResourceType: { type: 'microsoft.documentdb/databaseaccounts' },
+                raw: {},
+            },
+            CoreExperience,
+        );
+        vi.mocked(pickAppResource).mockResolvedValueOnce(node);
+        vi.mocked(getConfirmationAsInSettings).mockResolvedValueOnce(true);
+        await cosmosDBDeleteDatabaseAccount(createArmTestContext(), usePicker ? undefined : node);
+        expect(AzureWizard).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ account }), {
+            title: 'Delete Database Account "account-to-delete"',
+            executeSteps: [expect.any(DatabaseAccountDeleteStep)],
+        });
+        expect(pickAppResource).toHaveBeenCalledTimes(Number(usePicker));
+        expect(getResourceGroupFromId).toHaveBeenCalledExactlyOnceWith(account.accountId);
+        expect(execute).toHaveBeenCalledOnce();
     });
 });

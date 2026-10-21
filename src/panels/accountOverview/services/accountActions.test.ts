@@ -4,22 +4,28 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
-import { UserCancelledError, type IActionContext, type IAzureQuickPickItem } from '@microsoft/vscode-azext-utils';
+import { UserCancelledError, type IAzureQuickPickItem } from '@microsoft/vscode-azext-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
-import { CoreExperience, TableExperience } from '../../../AzureDBExperiences';
-import { cosmosDBCreateContainer } from '../../../commands/createContainer/createContainer';
-import { cosmosDBCreateDatabase } from '../../../commands/createDatabase/createDatabase';
+import { CoreExperience } from '../../../AzureDBExperiences';
+import { cosmosDBCreateContainer, createContainer } from '../../../commands/createContainer/createContainer';
+import { cosmosDBCreateDatabase, createDatabase } from '../../../commands/createDatabase/createDatabase';
 import { openDataModelingWizard } from '../../../commands/dataModeling/openDataModelingWizard';
-import { cosmosDBDeleteDatabaseAccount } from '../../../commands/deleteDatabaseAccount/deleteDatabaseAccount';
+import {
+    cosmosDBDeleteDatabaseAccount,
+    deleteDatabaseAccount,
+} from '../../../commands/deleteDatabaseAccount/deleteDatabaseAccount';
+import { armTestSubscription, createArmTestContext } from '../../../cosmosdb/armTestUtils';
 import { AuthenticationMethod } from '../../../cosmosdb/AuthenticationMethod';
-import { type AzureResourceMetadata } from '../../../cosmosdb/AzureResourceMetadata';
-import { ext } from '../../../extensionVariables';
-import { CosmosDBAccountResourceItem } from '../../../tree/cosmosdb/CosmosDBAccountResourceItem';
-import { CosmosDBDatabaseResourceItem } from '../../../tree/cosmosdb/CosmosDBDatabaseResourceItem';
+import { AzureResourceMetadata } from '../../../cosmosdb/AzureResourceMetadata';
+import { getControlPlane, type CosmosDBControlPlane } from '../../../cosmosdb/controlPlane';
+import { getCosmosDBCredentials, type CosmosDBCredential } from '../../../cosmosdb/CosmosDBCredential';
+import { createCosmosDBManagementClient } from '../../../utils/azureClients';
 import { accountActionInput, type AccountActionInput } from '../accountActions';
 import { buildAccountCostsUrl, runAccountAction } from './accountActions';
 import { openAccountJson } from './accountJson';
+
+const mocks = vi.hoisted(() => ({ listDatabases: vi.fn<CosmosDBControlPlane['listDatabases']>() }));
 
 vi.mock('@vscode/extension-telemetry', () => ({ default: class {} }));
 vi.mock('@microsoft/vscode-azureresources-api', () => ({}));
@@ -27,21 +33,31 @@ vi.mock('vscode', async (importOriginal) => ({
     ...(await importOriginal<typeof vscode>()),
     env: { openExternal: vi.fn() },
 }));
-vi.mock('../../../commands/createContainer/createContainer', () => ({ cosmosDBCreateContainer: vi.fn() }));
-vi.mock('../../../commands/createDatabase/createDatabase', () => ({ cosmosDBCreateDatabase: vi.fn() }));
+vi.mock('../../../commands/createContainer/createContainer', () => ({
+    cosmosDBCreateContainer: vi.fn(),
+    createContainer: vi.fn(),
+}));
+vi.mock('../../../commands/createDatabase/createDatabase', () => ({
+    cosmosDBCreateDatabase: vi.fn(),
+    createDatabase: vi.fn(),
+}));
 vi.mock('../../../commands/dataModeling/openDataModelingWizard', () => ({ openDataModelingWizard: vi.fn() }));
 vi.mock('../../../commands/deleteDatabaseAccount/deleteDatabaseAccount', () => ({
     cosmosDBDeleteDatabaseAccount: vi.fn(),
+    deleteDatabaseAccount: vi.fn(),
+}));
+vi.mock('../../../utils/azureClients', () => ({ createCosmosDBManagementClient: vi.fn() }));
+vi.mock('../../../cosmosdb/CosmosDBCredential', () => ({ getCosmosDBCredentials: vi.fn() }));
+vi.mock('../../../services/FabricService', () => ({ FabricService: {} }));
+vi.mock('../../../cosmosdb/controlPlane', () => ({
+    getControlPlane: vi.fn(() => ({ listDatabases: mocks.listDatabases })),
 }));
 vi.mock('../../../extensionVariables', () => ({
-    ext: { cosmosDBBranchDataProvider: { findNodeById: vi.fn() } },
-}));
-// Class prototypes keep instanceof meaningful without loading control-plane clients or constructing tree UI.
-vi.mock('../../../tree/cosmosdb/CosmosDBAccountResourceItem', () => ({
-    CosmosDBAccountResourceItem: class {},
-}));
-vi.mock('../../../tree/cosmosdb/CosmosDBDatabaseResourceItem', () => ({
-    CosmosDBDatabaseResourceItem: class {},
+    ext: {
+        get cosmosDBBranchDataProvider() {
+            throw new Error('Account Overview actions must not resolve Explorer nodes.');
+        },
+    },
 }));
 vi.mock('./accountJson', () => ({ openAccountJson: vi.fn() }));
 
@@ -56,133 +72,130 @@ const nonNoSqlAccounts: DatabaseAccountGetResults[] = [
     { kind: undefined },
 ];
 
-function metadata(databaseAccount: DatabaseAccountGetResults = {}): AzureResourceMetadata {
-    return {
-        accountId,
-        accountName: 'acct',
-        resourceGroup: 'rg-one',
-        documentEndpoint: 'https://acct.documents.azure.com:443/',
-        subscription: {
-            subscriptionId: 'sub-one',
-            name: 'Production',
-            tenantId,
-            environment: { portalUrl: 'https://portal.azure.us/' },
-        },
-        databaseAccount: { kind: 'GlobalDocumentDB', ...databaseAccount },
-    } as AzureResourceMetadata;
-}
-
-function actionContext(): IActionContext {
-    return {
-        valuesToMask: [],
-        errorHandling: {},
-        telemetry: { properties: {}, measurements: {} },
-        ui: { showQuickPick: vi.fn() },
-    } as unknown as IActionContext;
-}
-
-function databaseNode(id = databaseId) {
-    return Object.assign(Object.create(CosmosDBDatabaseResourceItem.prototype) as CosmosDBDatabaseResourceItem, {
-        id: `${accountId}/${id}`,
-        experience: CoreExperience,
-        model: {
-            database: { id },
-            accountInfo: {
-                id: accountId,
-                endpoint: 'https://data-endpoint.documents.azure.com/',
-                credentials: [
-                    { type: AuthenticationMethod.accountKey, key: 'secret-account-key' },
-                    { type: AuthenticationMethod.managedIdentity, clientId: 'private-client-id' },
-                    { type: AuthenticationMethod.entraId, tenantId },
-                ],
+class TestMetadata extends AzureResourceMetadata {
+    public constructor(databaseAccount: DatabaseAccountGetResults = {}) {
+        super(
+            {
+                ...armTestSubscription,
+                subscriptionId: 'sub-one',
+                name: 'Production',
+                tenantId,
+                environment: { ...armTestSubscription.environment, portalUrl: 'https://portal.azure.us/' },
             },
-        },
-    });
+            accountId,
+            'acct',
+            'rg-one',
+            { kind: 'GlobalDocumentDB', documentEndpoint: 'https://acct.documents.azure.com:443/', ...databaseAccount },
+        );
+    }
 }
 
-function accountNode(children = [databaseNode()]) {
-    return Object.assign(Object.create(CosmosDBAccountResourceItem.prototype) as CosmosDBAccountResourceItem, {
-        id: accountId,
-        account: { id: accountId },
-        experience: CoreExperience,
-        getChildren: vi.fn().mockResolvedValue(children),
-    });
+function metadata(databaseAccount: DatabaseAccountGetResults = {}): AzureResourceMetadata {
+    return new TestMetadata(databaseAccount);
+}
+
+function actionContext() {
+    const context = createArmTestContext();
+    context.ui.showQuickPick = vi.fn();
+    return context;
+}
+
+const credentials: CosmosDBCredential[] = [
+    { type: AuthenticationMethod.accountKey, key: 'secret-account-key' },
+    { type: AuthenticationMethod.managedIdentity, clientId: 'private-client-id' },
+    { type: AuthenticationMethod.entraId, tenantId },
+];
+
+function database(id: string): Awaited<ReturnType<CosmosDBControlPlane['listDatabases']>>[number] {
+    return { id, _rid: 'rid', _ts: 0, _self: '', _etag: 'etag' };
 }
 
 beforeEach(() => {
     vi.resetAllMocks();
-    vi.mocked(ext.cosmosDBBranchDataProvider.findNodeById).mockResolvedValue(accountNode());
+    vi.mocked(getCosmosDBCredentials).mockResolvedValue(credentials);
+    mocks.listDatabases.mockResolvedValue([database(databaseId), database('second-db')]);
     vi.spyOn(vscode.env, 'openExternal').mockResolvedValue(true);
     vi.spyOn(vscode.commands, 'executeCommand').mockResolvedValue(undefined);
     vi.spyOn(vscode.window, 'showQuickPick').mockResolvedValue(undefined);
 });
 
 afterEach(() => {
+    expect(cosmosDBCreateDatabase).not.toHaveBeenCalled();
+    expect(cosmosDBCreateContainer).not.toHaveBeenCalled();
+    expect(cosmosDBDeleteDatabaseAccount).not.toHaveBeenCalled();
+    expect(createCosmosDBManagementClient).not.toHaveBeenCalled();
     expect(vscode.commands.executeCommand).not.toHaveBeenCalled();
     expect(vscode.window.showQuickPick).not.toHaveBeenCalled();
     vi.restoreAllMocks();
 });
 
-describe('runAccountAction', () => {
-    it.each([
-        [{ action: 'createDatabase' }, cosmosDBCreateDatabase],
-        [{ action: 'createContainer', databaseId }, cosmosDBCreateContainer],
-        [{ action: 'deleteAccount' }, cosmosDBDeleteDatabaseAccount],
-        [{ action: 'openDataModeler' }, openDataModelingWizard],
-    ] as const)('dispatches %j to its existing handler with the verified node', async (input, handler) => {
-        const database = databaseNode();
-        const account = accountNode([database]);
-        vi.mocked(ext.cosmosDBBranchDataProvider.findNodeById).mockResolvedValue(account);
+describe('runAccountAction without Explorer nodes', () => {
+    it('creates a database directly from metadata-derived AccountInfo', async () => {
         const context = actionContext();
-        await expect(runAccountAction(context, metadata(), input)).resolves.toEqual({ status: 'completed' });
-        expect(context.ui.showQuickPick).not.toHaveBeenCalled();
-        expect(ext.cosmosDBBranchDataProvider.findNodeById).toHaveBeenCalledExactlyOnceWith(accountId);
-        expect(handler).toHaveBeenCalledExactlyOnceWith(
+        const resource = metadata({ capabilities: [{ name: 'EnableServerless' }] });
+        await expect(runAccountAction(context, resource, { action: 'createDatabase' })).resolves.toEqual({
+            status: 'completed',
+        });
+        expect(getCosmosDBCredentials).toHaveBeenCalledExactlyOnceWith({
+            accountName: 'acct',
+            documentEndpoint: resource.documentEndpoint,
+            isEmulator: false,
+            tenantId,
+            arm: resource,
+        });
+        expect(createDatabase).toHaveBeenCalledExactlyOnceWith(
             context,
-            input.action === 'createContainer' ? database : account,
+            {
+                azureMetadata: resource,
+                credentials,
+                endpoint: resource.documentEndpoint,
+                id: accountId,
+                isEmulator: false,
+                isServerless: true,
+                name: 'acct',
+            },
+            CoreExperience,
         );
-        for (const other of [
-            cosmosDBCreateDatabase,
-            cosmosDBCreateContainer,
-            cosmosDBDeleteDatabaseAccount,
-            openDataModelingWizard,
-        ]) {
-            expect(other).toHaveBeenCalledTimes(other === handler ? 1 : 0);
-        }
+        expect(getControlPlane).not.toHaveBeenCalled();
+        expect(context.ui.showQuickPick).not.toHaveBeenCalled();
     });
 
-    it('picks a database only from the current account when the database scope is omitted', async () => {
-        const first = databaseNode();
-        const second = databaseNode('second-db');
-        const otherAccount = databaseNode('other-account-db');
-        otherAccount.model.accountInfo.id = `${accountId}-other`;
-        const wrongTreeId = databaseNode('wrong-tree-db');
-        wrongTreeId.id = `${accountId}-other/wrong-tree-db`;
-        const unsupported = databaseNode('table-db');
-        unsupported.experience = TableExperience;
-        const account = accountNode([first, second, otherAccount, wrongTreeId, unsupported]);
-        vi.mocked(ext.cosmosDBBranchDataProvider.findNodeById).mockResolvedValue(account);
+    it('validates the selected database through the account control plane', async () => {
         const context = actionContext();
-        const selection: IAzureQuickPickItem<CosmosDBDatabaseResourceItem> = { label: 'second-db', data: second };
-        vi.mocked(context.ui.showQuickPick).mockResolvedValue(selection);
+        const resource = metadata();
+        await expect(runAccountAction(context, resource, { action: 'createContainer', databaseId })).resolves.toEqual({
+            status: 'completed',
+        });
+        const info = vi.mocked(createContainer).mock.calls[0][1];
+        expect(info.azureMetadata).toBe(resource);
+        expect(info.credentials).toBe(credentials);
+        expect(getControlPlane).toHaveBeenCalledExactlyOnceWith(info);
+        expect(mocks.listDatabases).toHaveBeenCalledExactlyOnceWith();
+        expect(createContainer).toHaveBeenCalledExactlyOnceWith(context, info, databaseId, CoreExperience);
+        expect(context.ui.showQuickPick).not.toHaveBeenCalled();
+    });
 
+    it('picks a database from the current account using plain IDs, not tree models', async () => {
+        mocks.listDatabases.mockResolvedValue([database('second-db'), database(databaseId)]);
+        const context = actionContext();
+        const selection: IAzureQuickPickItem<string> = { label: 'second-db', data: 'second-db' };
+        vi.mocked(context.ui.showQuickPick).mockResolvedValue(selection);
         await expect(runAccountAction(context, metadata(), { action: 'createContainer' })).resolves.toEqual({
             status: 'completed',
         });
-        expect(account.getChildren).toHaveBeenCalledExactlyOnceWith();
         expect(context.ui.showQuickPick).toHaveBeenCalledExactlyOnceWith(
             [
-                { label: databaseId, data: first },
-                { label: 'second-db', data: second },
+                { label: databaseId, data: databaseId },
+                { label: 'second-db', data: 'second-db' },
             ],
             { placeHolder: 'Select a database for the new container' },
         );
-        expect(cosmosDBCreateContainer).toHaveBeenCalledExactlyOnceWith(context, second);
-        expect(context.valuesToMask).toEqual(
-            expect.arrayContaining([databaseId, 'second-db', 'secret-account-key', 'private-client-id']),
+        expect(createContainer).toHaveBeenCalledExactlyOnceWith(
+            context,
+            expect.objectContaining({ id: accountId }),
+            'second-db',
+            CoreExperience,
         );
-        expect(context.telemetry.properties).toEqual({});
-        expect(context.telemetry.measurements).toEqual({});
     });
 
     it('masks database names before prompting and preserves picker cancellation', async () => {
@@ -196,181 +209,113 @@ describe('runAccountAction', () => {
         await expect(runAccountAction(context, metadata(), { action: 'createContainer' })).resolves.toEqual({
             status: 'cancelled',
         });
-        expect(cosmosDBCreateContainer).not.toHaveBeenCalled();
+        expect(createContainer).not.toHaveBeenCalled();
         expect(context.telemetry.properties.result).toBe('Canceled');
     });
 
     it('propagates database listing failures without opening an unscoped picker', async () => {
         const failure = new Error('Unable to list databases');
-        const account = accountNode();
-        vi.mocked(account.getChildren).mockRejectedValueOnce(failure);
-        vi.mocked(ext.cosmosDBBranchDataProvider.findNodeById).mockResolvedValue(account);
+        mocks.listDatabases.mockRejectedValueOnce(failure);
         const context = actionContext();
         await expect(runAccountAction(context, metadata(), { action: 'createContainer' })).rejects.toBe(failure);
         expect(context.ui.showQuickPick).not.toHaveBeenCalled();
-        expect(cosmosDBCreateContainer).not.toHaveBeenCalled();
+        expect(createContainer).not.toHaveBeenCalled();
     });
 
     it('reports an empty account instead of starting an unscoped wizard', async () => {
-        const account = accountNode([]);
-        vi.mocked(account.getChildren).mockResolvedValue([
-            { id: `${accountId}/no-databases`, getTreeItem: () => ({ label: 'Create Database…' }) },
-        ]);
-        vi.mocked(ext.cosmosDBBranchDataProvider.findNodeById).mockResolvedValue(account);
+        mocks.listDatabases.mockResolvedValue([]);
         const context = actionContext();
         await expect(runAccountAction(context, metadata(), { action: 'createContainer' })).rejects.toThrow(
             'This account has no databases. Create a database before adding a container.',
         );
         expect(context.ui.showQuickPick).not.toHaveBeenCalled();
-        expect(cosmosDBCreateContainer).not.toHaveBeenCalled();
+        expect(createContainer).not.toHaveBeenCalled();
     });
 
-    it('does not replace a stale explicitly selected database with a picker', async () => {
+    it.each(['missing-db', databaseId.toUpperCase()])('rejects a stale or case-mismatched database %s', async (id) => {
         const context = actionContext();
         await expect(
-            runAccountAction(context, metadata(), { action: 'createContainer', databaseId: 'missing-db' }),
+            runAccountAction(context, metadata(), { action: 'createContainer', databaseId: id }),
         ).rejects.toThrow('Unable to resolve the selected database in this account.');
         expect(context.ui.showQuickPick).not.toHaveBeenCalled();
-        expect(cosmosDBCreateContainer).not.toHaveBeenCalled();
+        expect(createContainer).not.toHaveBeenCalled();
     });
 
-    it('accepts case-insensitive ARM account IDs', async () => {
-        const account = accountNode();
-        account.id = accountId.toUpperCase();
-        account.account.id = accountId.toUpperCase();
-        vi.mocked(ext.cosmosDBBranchDataProvider.findNodeById).mockResolvedValue(account);
-        await expect(runAccountAction(actionContext(), metadata(), { action: 'createDatabase' })).resolves.toEqual({
-            status: 'completed',
-        });
-    });
-
-    it.each(['missing', 'plain object', 'wrong tree ID', 'wrong account ID'] as const)(
-        'rejects %s instead of falling back to an unscoped account picker',
-        async (variant) => {
-            const account = accountNode();
-            if (variant === 'wrong tree ID') {
-                account.id = `${accountId}-other`;
-            } else if (variant === 'wrong account ID') {
-                account.account.id = `${accountId}-other`;
-            }
-            const resolved =
-                variant === 'missing'
-                    ? undefined
-                    : variant === 'plain object'
-                      ? { id: accountId, account: { id: accountId }, experience: CoreExperience }
-                      : account;
-            vi.mocked(ext.cosmosDBBranchDataProvider.findNodeById).mockResolvedValue(
-                resolved as CosmosDBAccountResourceItem | undefined,
-            );
-            await expect(runAccountAction(actionContext(), metadata(), { action: 'deleteAccount' })).rejects.toThrow(
-                'Unable to resolve this account',
-            );
-            expect(cosmosDBDeleteDatabaseAccount).not.toHaveBeenCalled();
-            await expect(runAccountAction(actionContext(), metadata(), { action: 'openDataModeler' })).rejects.toThrow(
-                'Unable to resolve this account',
-            );
-            expect(openDataModelingWizard).not.toHaveBeenCalled();
-        },
-    );
-
-    it.each(['missing', 'plain object', 'wrong database', 'wrong tree ID', 'wrong account', 'wrong API'] as const)(
-        'rejects a %s database without invoking Create Container',
-        async (variant) => {
-            const database = databaseNode();
-            if (variant === 'wrong database') {
-                database.model.database.id = 'other-db';
-            } else if (variant === 'wrong tree ID') {
-                database.id = `${accountId}/other-db`;
-            } else if (variant === 'wrong account') {
-                database.model.accountInfo.id = `${accountId}-other`;
-            } else if (variant === 'wrong API') {
-                database.experience = TableExperience;
-            }
-            const children =
-                variant === 'missing' ? [] : variant === 'plain object' ? [Object.assign({}, database)] : [database];
-            vi.mocked(ext.cosmosDBBranchDataProvider.findNodeById).mockResolvedValue(accountNode(children));
-            await expect(
-                runAccountAction(actionContext(), metadata(), { action: 'createContainer', databaseId }),
-            ).rejects.toThrow('Unable to resolve the selected database');
-            expect(cosmosDBCreateContainer).not.toHaveBeenCalled();
-        },
-    );
-
-    it.each(nonNoSqlAccounts)(
-        'rejects creation for non-NoSQL metadata before resolving a tree node: %j',
-        async (account) => {
-            for (const input of [
-                { action: 'createDatabase' },
-                { action: 'createContainer', databaseId },
-                { action: 'createContainer' },
-            ] satisfies AccountActionInput[]) {
-                await expect(runAccountAction(actionContext(), metadata(account), input)).rejects.toThrow(
-                    'only supported for NoSQL',
-                );
-            }
-            expect(ext.cosmosDBBranchDataProvider.findNodeById).not.toHaveBeenCalled();
-            expect(cosmosDBCreateDatabase).not.toHaveBeenCalled();
-            expect(cosmosDBCreateContainer).not.toHaveBeenCalled();
-        },
-    );
-
-    it.each(nonNoSqlAccounts)(
-        'opens Data Modeler for a verified account with non-NoSQL metadata: %j',
-        async (account) => {
-            const node = accountNode();
-            vi.mocked(ext.cosmosDBBranchDataProvider.findNodeById).mockResolvedValue(node);
-            const context = actionContext();
-            await expect(runAccountAction(context, metadata(account), { action: 'openDataModeler' })).resolves.toEqual({
-                status: 'completed',
-            });
-            expect(openDataModelingWizard).toHaveBeenCalledExactlyOnceWith(context, node);
-        },
-    );
-
-    it('rejects creation but opens Data Modeler on a non-NoSQL resolved account', async () => {
-        const account = accountNode();
-        account.experience = TableExperience;
-        vi.mocked(ext.cosmosDBBranchDataProvider.findNodeById).mockResolvedValue(account);
-        await expect(runAccountAction(actionContext(), metadata(), { action: 'createDatabase' })).rejects.toThrow(
-            'only supported for NoSQL',
-        );
-        expect(cosmosDBCreateDatabase).not.toHaveBeenCalled();
+    it.each([undefined, 'other-account-db'])('rejects a picker result outside the account: %s', async (selection) => {
         const context = actionContext();
-        await expect(runAccountAction(context, metadata(), { action: 'openDataModeler' })).resolves.toEqual({
+        const item: IAzureQuickPickItem<string | undefined> = { label: 'invalid', data: selection };
+        vi.mocked(context.ui.showQuickPick).mockResolvedValue(item);
+        await expect(runAccountAction(context, metadata(), { action: 'createContainer' })).rejects.toThrow(
+            'Unable to resolve the selected database in this account.',
+        );
+        expect(createContainer).not.toHaveBeenCalled();
+    });
+
+    it.each(nonNoSqlAccounts)('rejects creation for non-NoSQL metadata: %j', async (account) => {
+        for (const input of [
+            { action: 'createDatabase' },
+            { action: 'createContainer', databaseId },
+            { action: 'createContainer' },
+        ] satisfies AccountActionInput[]) {
+            await expect(runAccountAction(actionContext(), metadata(account), input)).rejects.toThrow(
+                'only supported for NoSQL',
+            );
+        }
+        expect(getCosmosDBCredentials).not.toHaveBeenCalled();
+        expect(createDatabase).not.toHaveBeenCalled();
+        expect(createContainer).not.toHaveBeenCalled();
+    });
+
+    it.each([{}, ...nonNoSqlAccounts])('opens Data Modeler without an Explorer node for %j', async (account) => {
+        const context = actionContext();
+        const resource = metadata(account);
+        await expect(runAccountAction(context, resource, { action: 'openDataModeler' })).resolves.toEqual({
             status: 'completed',
         });
-        expect(openDataModelingWizard).toHaveBeenCalledExactlyOnceWith(context, account);
-    });
-
-    it('allows Delete on a verified non-NoSQL account', async () => {
-        const account = accountNode();
-        account.experience = TableExperience;
-        vi.mocked(ext.cosmosDBBranchDataProvider.findNodeById).mockResolvedValue(account);
-        await expect(
-            runAccountAction(actionContext(), metadata({ kind: 'MongoDB' }), { action: 'deleteAccount' }),
-        ).resolves.toEqual({ status: 'completed' });
-        expect(cosmosDBDeleteDatabaseAccount).toHaveBeenCalledOnce();
-    });
-
-    it('does not report Delete completed before its existing handler finishes', async () => {
-        let finish!: () => void;
-        const deletion = new Promise<void>((resolve) => {
-            finish = resolve;
+        expect(getCosmosDBCredentials).toHaveBeenCalledExactlyOnceWith({
+            accountName: 'acct',
+            documentEndpoint: resource.documentEndpoint,
+            isEmulator: false,
+            tenantId,
+            arm: resource,
         });
-        vi.mocked(cosmosDBDeleteDatabaseAccount).mockReturnValueOnce(deletion);
+        expect(openDataModelingWizard).toHaveBeenCalledExactlyOnceWith(
+            context,
+            expect.objectContaining({
+                azureMetadata: resource,
+                credentials,
+                id: accountId,
+            }),
+        );
+        expect(mocks.listDatabases).not.toHaveBeenCalled();
+    });
+
+    it('deletes a non-NoSQL account from metadata without acquiring data-plane credentials', async () => {
+        const context = actionContext();
+        const resource = metadata({ kind: 'MongoDB' });
+        await expect(runAccountAction(context, resource, { action: 'deleteAccount' })).resolves.toEqual({
+            status: 'completed',
+        });
+        expect(deleteDatabaseAccount).toHaveBeenCalledExactlyOnceWith(context, resource);
+        expect(getCosmosDBCredentials).not.toHaveBeenCalled();
+    });
+
+    it('waits for deletion before reporting completion', async () => {
+        const deletion = Promise.withResolvers<void>();
+        vi.mocked(deleteDatabaseAccount).mockReturnValueOnce(deletion.promise);
         const settled = vi.fn();
         const action = runAccountAction(actionContext(), metadata(), { action: 'deleteAccount' }).then(settled);
-        await vi.waitFor(() => expect(cosmosDBDeleteDatabaseAccount).toHaveBeenCalledOnce());
+        expect(deleteDatabaseAccount).toHaveBeenCalledOnce();
         expect(settled).not.toHaveBeenCalled();
-        finish();
+        deletion.resolve();
         await action;
         expect(settled).toHaveBeenCalledExactlyOnceWith({ status: 'completed' });
     });
 
     it.each([
-        [{ action: 'createDatabase' }, cosmosDBCreateDatabase],
-        [{ action: 'createContainer', databaseId }, cosmosDBCreateContainer],
-        [{ action: 'deleteAccount' }, cosmosDBDeleteDatabaseAccount],
+        [{ action: 'createDatabase' }, createDatabase],
+        [{ action: 'createContainer', databaseId }, createContainer],
+        [{ action: 'deleteAccount' }, deleteDatabaseAccount],
         [{ action: 'openJson' }, openAccountJson],
         [{ action: 'openDataModeler' }, openDataModelingWizard],
     ] as const)('distinguishes cancellation from ordinary failure for %j', async (input, handler) => {
@@ -385,10 +330,10 @@ describe('runAccountAction', () => {
         expect(failureContext.telemetry.properties).toEqual({});
     });
 
-    it('registers error-path masks before tree lookup without explicitly masking the tenant', async () => {
+    it('registers error-path masks before acquiring credentials without explicitly masking the tenant', async () => {
         const context = actionContext();
-        const failure = new Error('lookup failed');
-        vi.mocked(ext.cosmosDBBranchDataProvider.findNodeById).mockImplementationOnce(async () => {
+        const failure = new Error('credentials failed');
+        vi.mocked(getCosmosDBCredentials).mockImplementationOnce(async () => {
             expect(context.errorHandling.suppressDisplay).toBe(true);
             expect(context.valuesToMask).toEqual(
                 expect.arrayContaining([
@@ -414,43 +359,43 @@ describe('runAccountAction', () => {
         expect(context.telemetry.measurements).toEqual({});
     });
 
-    it('masks database credentials before invoking the container handler', async () => {
+    it('masks connection credentials before accessing the control plane', async () => {
         const context = actionContext();
-        vi.mocked(cosmosDBCreateContainer).mockImplementationOnce(async () => {
+        mocks.listDatabases.mockImplementationOnce(async () => {
             expect(context.valuesToMask).toEqual(
                 expect.arrayContaining([
                     'secret-account-key',
                     'private-client-id',
-                    'https://data-endpoint.documents.azure.com/',
+                    'https://acct.documents.azure.com:443/',
                     databaseId,
                 ]),
             );
             expect(context.valuesToMask).not.toContain(tenantId);
-            throw new Error('container failed');
+            throw new Error('listing failed');
         });
         await expect(runAccountAction(context, metadata(), { action: 'createContainer', databaseId })).rejects.toThrow(
-            'container failed',
+            'listing failed',
         );
         expect(context.telemetry.properties).toEqual({});
     });
 
-    it('dispatches JSON without resolving a tree node', async () => {
+    it('dispatches JSON directly from metadata', async () => {
         const context = actionContext();
         const resource = metadata();
         await expect(runAccountAction(context, resource, { action: 'openJson' })).resolves.toEqual({
             status: 'completed',
         });
         expect(openAccountJson).toHaveBeenCalledExactlyOnceWith(context, resource);
-        expect(ext.cosmosDBBranchDataProvider.findNodeById).not.toHaveBeenCalled();
+        expect(getCosmosDBCredentials).not.toHaveBeenCalled();
     });
 
-    it('opens costs in the metadata sovereign portal and rejects a refused browser launch', async () => {
+    it('opens costs in the sovereign portal and rejects a refused browser launch', async () => {
         await expect(runAccountAction(actionContext(), metadata(), { action: 'openCosts' })).resolves.toEqual({
             status: 'completed',
         });
         const uri = vi.mocked(vscode.env.openExternal).mock.calls[0][0];
         expect(uri).toEqual(vscode.Uri.parse(buildAccountCostsUrl('https://portal.azure.us/', tenantId, accountId)));
-        expect(ext.cosmosDBBranchDataProvider.findNodeById).not.toHaveBeenCalled();
+        expect(getCosmosDBCredentials).not.toHaveBeenCalled();
         vi.mocked(vscode.env.openExternal).mockResolvedValueOnce(false);
         await expect(runAccountAction(actionContext(), metadata(), { action: 'openCosts' })).rejects.toThrow(
             'Unable to open account costs',

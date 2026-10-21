@@ -8,7 +8,6 @@ import { type AccountInfo } from '../../tree/cosmosdb/AccountInfo';
 
 export interface CreateDatabaseWizardContext extends IActionContext {
     accountInfo: AccountInfo;
-    nodeId: string;
 
     databaseName?: string;
 }

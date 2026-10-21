@@ -204,7 +204,10 @@ the shared RPC event channel; their local catches neither redisplay nor rethrow 
 telemetry errors do not use this notification path. A refused browser launch is an explicit action failure.
 Existing account-action and refresh feedback remains in the dashboard.
 
-`runAccountAction` invokes the existing scoped create/delete commands or opens account costs/JSON.
+`runAccountAction` invokes shared resource-scoped create/delete wizards or opens account costs/JSON.
+Creation, deletion and Data Modeler use the account already open in Overview; they do not require its Explorer
+node to be loaded and do not fall back to an account picker. Container creation lists databases through the
+account's control plane. Explorer and Fabric commands adapt their selection to the same wizard entrypoints.
 Advisory guidance does not automatically modify Azure resources.
 Alert links and View Cost preserve `subscription.environment.portalUrl` and include the subscription's tenant,
 matching Azure Resources' portal selection convention. This preserves public, sovereign and configured `ms.portal`

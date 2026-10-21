@@ -6,6 +6,9 @@
 import { AzureWizard, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
+import { type Experience } from '../../AzureDBExperiences';
+import { maskConnectionTelemetry } from '../../cosmosdb/maskConnectionTelemetry';
+import { type AccountInfo } from '../../tree/cosmosdb/AccountInfo';
 import { type CosmosDBDatabaseResourceItem } from '../../tree/cosmosdb/CosmosDBDatabaseResourceItem';
 import { isFabricTreeElement, type FabricTreeElement } from '../../tree/fabric-resources-view/FabricTreeElement';
 import { isTreeElement, type TreeElement } from '../../tree/TreeElement';
@@ -48,16 +51,27 @@ export async function cosmosDBCreateContainer(
 
     const dbNode = element as CosmosDBDatabaseResourceItem;
 
-    context.telemetry.properties.experience = dbNode.experience.api;
-    context.telemetry.properties.isServerless = dbNode.model.accountInfo.isServerless?.toString();
-    context.telemetry.properties.isEmulator = dbNode.model.accountInfo.isEmulator?.toString();
+    await createContainer(context, dbNode.model.accountInfo, dbNode.model.database.id, dbNode.experience);
+}
+
+export async function createContainer(
+    context: IActionContext,
+    accountInfo: AccountInfo,
+    databaseId: string,
+    experience: Experience,
+): Promise<void> {
+    context.valuesToMask.push(accountInfo.id, accountInfo.name);
+    maskConnectionTelemetry(context, { ...accountInfo, databaseId });
+
+    context.telemetry.properties.experience = experience.api;
+    context.telemetry.properties.isServerless = accountInfo.isServerless.toString();
+    context.telemetry.properties.isEmulator = accountInfo.isEmulator.toString();
 
     const wizardContext: CreateContainerWizardContext = {
         ...context,
-        accountInfo: dbNode.model.accountInfo,
-        databaseId: dbNode.model.database.id,
-        experience: element.experience,
-        nodeId: element.id,
+        accountInfo,
+        databaseId,
+        experience,
         throughput: undefined,
         maxThroughput: undefined,
     };

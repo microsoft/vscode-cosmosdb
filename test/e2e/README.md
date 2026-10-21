@@ -53,6 +53,11 @@ pay ~50 s of startup overhead; with worker scope it's ~5 s total.
 The consequence: tests **must reset editor state in their own `afterEach`**.
 Use `closeAllEditorTabs(vscodeWindow)` from `fixtures/webviewHelpers.ts`.
 
+The activation handshake waits for the contributed Azure activity-bar entry before opening it, then waits for
+the Cosmos DB Accounts tree item. It does not use the command palette during startup: before extension registration
+finishes, a search for `View: Show Azure` can offer unrelated commands instead.
+If the tree item never appears, the report includes an `activation-failure` screenshot.
+
 ## Running
 
 ```bash

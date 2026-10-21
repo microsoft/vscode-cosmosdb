@@ -51,6 +51,8 @@
   "cosmosdb.command.migration.open": "Nuova migrazione…",
   "cosmosdb.command.migration.openExisting": "Migrazione di Cosmos DB…",
   "cosmosdb.command.migration.remove": "Rimuovi migrazione…",
+  "cosmosdb.command.dataModeling.open": "Data Modeling Wizard",
+  "cosmosdb.command.dataModeling.deleteAllData": "Delete All Data Modeler Data",
   "cosmosdb.configuration.batch.size": "Dimensioni del batch da usare per l'esecuzione di query sulle risorse del database di Azure.",
   "cosmosdb.configuration.confirmation.style": "Comportamento da usare quando si confermano operazioni che non possono essere annullate, ad esempio l'eliminazione di risorse.",
   "cosmosdb.configuration.confirmation.style.button": "Conferma clic pulsante",

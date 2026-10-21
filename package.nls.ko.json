@@ -51,6 +51,8 @@
   "cosmosdb.command.migration.open": "새 마이그레이션…",
   "cosmosdb.command.migration.openExisting": "Cosmos DB 마이그레이션…",
   "cosmosdb.command.migration.remove": "마이그레이션 제거…",
+  "cosmosdb.command.dataModeling.open": "Data Modeling Wizard",
+  "cosmosdb.command.dataModeling.deleteAllData": "Delete All Data Modeler Data",
   "cosmosdb.configuration.batch.size": "Azure Database 리소스를 쿼리할 때 사용할 일괄 처리 크기입니다.",
   "cosmosdb.configuration.confirmation.style": "리소스 삭제와 같이 실행 취소할 수 없는 작업을 확인할 때 사용할 동작입니다.",
   "cosmosdb.configuration.confirmation.style.button": "단추 클릭 확인",

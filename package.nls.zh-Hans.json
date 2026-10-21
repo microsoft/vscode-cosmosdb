@@ -51,6 +51,8 @@
   "cosmosdb.command.migration.open": "新迁移...",
   "cosmosdb.command.migration.openExisting": "Cosmos DB 迁移...",
   "cosmosdb.command.migration.remove": "移除迁移...",
+  "cosmosdb.command.dataModeling.open": "Data Modeling Wizard",
+  "cosmosdb.command.dataModeling.deleteAllData": "Delete All Data Modeler Data",
   "cosmosdb.configuration.batch.size": "查询 Azure 数据库资源时使用的批处理大小。",
   "cosmosdb.configuration.confirmation.style": "确认无法撤销的操作(如删除资源)时使用的行为。",
   "cosmosdb.configuration.confirmation.style.button": "按钮单击确认",

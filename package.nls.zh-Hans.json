@@ -12,7 +12,7 @@
   "cosmosdb.command.account.overview.metadataRequests": "Metadata requests",
   "cosmosdb.command.account.overview.serverLatency": "Server-side latency",
   "cosmosdb.command.account.overview.serviceAvailability": "Service availability",
-  "cosmosdb.command.account.overview.dataIndexUsage": "Data + index usage",
+  "cosmosdb.command.account.overview.dataIndexUsage": "数据 + 索引使用情况",
   "cosmosdb.command.account.overview.provisionedThroughput": "Provisioned throughput",
   "cosmosdb.command.account.overview.documentCount": "Document count",
   "cosmosdb.command.account.overview.advisories": "Advisories",

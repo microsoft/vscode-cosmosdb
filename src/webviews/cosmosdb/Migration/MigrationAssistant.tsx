@@ -629,6 +629,42 @@ function migrationOutcomeLabel(outcome: NonNullable<ReturnType<typeof getMigrati
     }
 }
 
+interface MigrationArtifactProps {
+    phase: MigrationPhaseName;
+    completion: Partial<MigrationCompletionMap> | null;
+    workspacePath: string;
+    onOpenFile: (filePath: string) => void;
+}
+
+function canOpenMigrationArtifact(artifact: { canOpen?: boolean; path: string }): boolean {
+    return (
+        artifact.canOpen === true &&
+        !artifact.path.split(/[\\/]/).includes('..') &&
+        !/^(?:[\\/]|[a-z]+:)/i.test(artifact.path)
+    );
+}
+
+export function MigrationGeneratedArtifacts({ phase, completion, workspacePath, onOpenFile }: MigrationArtifactProps) {
+    const artifactPaths = [
+        ...new Set(
+            (completion?.[phase]?.artifacts ?? []).filter(canOpenMigrationArtifact).map((artifact) => artifact.path),
+        ),
+    ].sort((left, right) => left.localeCompare(right));
+    if (!artifactPaths.length) return null;
+    return (
+        <details data-testid={`migration-${phase}-artifacts`}>
+            <summary aria-description={migrationPhaseLabel(phase)}>{l10n.t('Generated Artifacts')}</summary>
+            <ul>
+                {artifactPaths.map((artifactPath) => (
+                    <li key={artifactPath}>
+                        <Link onClick={() => onOpenFile(`${workspacePath}/${artifactPath}`)}>{artifactPath}</Link>
+                    </li>
+                ))}
+            </ul>
+        </details>
+    );
+}
+
 export function MigrationPhaseDiagnostics({
     phase,
     completion,
@@ -639,12 +675,8 @@ export function MigrationPhaseDiagnostics({
     onReview,
     onGoToPhase,
     reviewDisabled = false,
-}: {
-    phase: MigrationPhaseName;
-    completion: Partial<MigrationCompletionMap> | null;
+}: MigrationArtifactProps & {
     activity: MigrationRunActivity | null;
-    workspacePath: string;
-    onOpenFile: (filePath: string) => void;
     onReload: () => void;
     onReview?: (phase: MigrationPhaseName) => void | Promise<void>;
     onGoToPhase?: (phase: MigrationPhaseName) => void;
@@ -764,17 +796,11 @@ export function MigrationPhaseDiagnostics({
         const timer = setTimeout(() => announce(announcement), 200);
         return () => clearTimeout(timer);
     }, [announcement, announce]);
-    if (!outcome && !compatibilityChanges.length) return null;
     const lastPage = Math.max(0, Math.ceil(diagnostics.length / 20) - 1);
     const currentPage = Math.min(page, lastPage);
     const prerequisite = getMigrationPrerequisite(phase, completion);
-    const artifacts =
-        result?.artifacts.filter(
-            (artifact) =>
-                artifact.canOpen === true &&
-                !artifact.path.split(/[\\/]/).includes('..') &&
-                !/^(?:[\\/]|[a-z]+:)/i.test(artifact.path),
-        ) ?? [];
+    const artifacts = result?.artifacts.filter(canOpenMigrationArtifact) ?? [];
+    if (!outcome && !compatibilityChanges.length) return null;
     const startReview = async (): Promise<void> => {
         if (!onReview || reviewPending) return;
         setReviewPending(true);
@@ -924,9 +950,7 @@ export function MigrationPhaseDiagnostics({
                                         <Button
                                             size="small"
                                             icon={<DocumentRegular />}
-                                            onClick={() =>
-                                                onOpenFile(`${workspacePath}/${diagnostic.path!.split('#')[0]}`)
-                                            }
+                                            onClick={() => onOpenFile(`${workspacePath}/${diagnostic.path!}`)}
                                         >
                                             {l10n.t('Open Artifact')}
                                         </Button>
@@ -947,20 +971,6 @@ export function MigrationPhaseDiagnostics({
                         {l10n.t('Next diagnostics')}
                     </Button>
                 </div>
-            )}
-            {artifacts.length > 0 && (
-                <details>
-                    <summary>{l10n.t('Available artifacts')}</summary>
-                    <ul>
-                        {artifacts.map((artifact) => (
-                            <li key={artifact.path}>
-                                <Link onClick={() => onOpenFile(`${workspacePath}/${artifact.path.split('#')[0]}`)}>
-                                    {artifact.path}
-                                </Link>
-                            </li>
-                        ))}
-                    </ul>
-                </details>
             )}
             <div className={styles.actionGroup}>
                 {onReview && outcome && (
@@ -1797,6 +1807,14 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
             }
         />
     );
+    const generatedArtifacts = (phase: MigrationPhaseName) => (
+        <MigrationGeneratedArtifacts
+            phase={phase}
+            completion={state.phaseCompletion}
+            workspacePath={state.workspacePath}
+            onOpenFile={handleOpenFile}
+        />
+    );
 
     return (
         <div className={styles.root} ref={rootRef}>
@@ -2405,6 +2423,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                     </div>
                 </div>
                 {phaseDiagnostics('preflight')}
+                {generatedArtifacts('preflight')}
             </div>
 
             {/* Migration Phases */}
@@ -2477,6 +2496,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                     </MigrationActionButton>
                                 }
 
+                                {generatedArtifacts('discovery')}
                                 {phaseDiagnostics('discovery')}
 
                                 {phase1State === 'complete' && (
@@ -2570,6 +2590,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                                     ? l10n.t('Re-Run Assessment')
                                                     : l10n.t('Run Assessment')}
                                             </MigrationActionButton>
+                                            {generatedArtifacts('assessment')}
                                         </>
                                     }
                                 </div>
@@ -2745,6 +2766,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                                 : l10n.t('Run Schema Conversion')}
                                         </MigrationActionButton>
                                     }
+                                    {generatedArtifacts('schema-conversion')}
                                 </div>
 
                                 {phaseDiagnostics('schema-conversion')}
@@ -3193,6 +3215,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                         }
                                     </>
                                 )}
+                                {generatedArtifacts('provisioning')}
                             </div>
                         </AccordionPanel>
                     </AccordionItem>
@@ -3201,7 +3224,6 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
 
             {/* Additional Migration Instructions */}
             <div className={styles.configSection} data-testid="migration-phase-code-migration">
-                {phaseDiagnostics('code-migration')}
                 <Field
                     label={
                         <>
@@ -3225,10 +3247,11 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                         rows={3}
                     />
                 </Field>
+                {phaseDiagnostics('code-migration')}
             </div>
 
             {/* Footer */}
-            <div className={styles.footer}>
+            <div className={styles.footer} data-testid="migration-footer">
                 <Button appearance="secondary" size="small" onClick={handleReset} disabled={isRunActive}>
                     {l10n.t('Reset Project')}
                 </Button>

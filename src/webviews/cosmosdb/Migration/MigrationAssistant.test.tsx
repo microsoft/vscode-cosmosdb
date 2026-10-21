@@ -6,10 +6,14 @@
 // @vitest-environment jsdom
 
 import { FluentProvider, webLightTheme } from '@fluentui/react-components';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MigrationAssistant } from './MigrationAssistant';
-import { type MigrationPhaseName, type MigrationRunActivity } from './state/deriveMigrationPhaseStates';
+import {
+    type MigrationCompletionMap,
+    type MigrationPhaseName,
+    type MigrationRunActivity,
+} from './state/deriveMigrationPhaseStates';
 import { type MigrationState } from './state/MigrationContext';
 
 const { state, announce, postMessage, dispatch, client } = vi.hoisted(() => ({
@@ -57,6 +61,40 @@ function activity(phase: MigrationPhaseName | 'all', status: MigrationRunActivit
         updatedAt: '2026-10-16T12:00:01Z',
         detail: '',
     };
+}
+
+function addGeneratedArtifacts() {
+    const completion = (phase: MigrationPhaseName): MigrationCompletionMap[MigrationPhaseName] => ({
+        phase,
+        status: 'complete',
+        complete: true,
+        ready: true,
+        freshness: 'current',
+        staleInputs: [],
+        artifacts: [
+            {
+                path: `.cosmosdb-migration/${phase}.json`,
+                description: phase,
+                state: 'present',
+                conditional: false,
+                canOpen: true,
+            },
+        ],
+        errors: [],
+    });
+    state.phaseCompletion = {
+        preflight: completion('preflight'),
+        discovery: completion('discovery'),
+        assessment: completion('assessment'),
+        'schema-conversion': completion('schema-conversion'),
+        provisioning: completion('provisioning'),
+        'code-migration': completion('code-migration'),
+    };
+    state.discoveryState = 'complete';
+    state.assessmentState = 'complete';
+    state.schemaConversionState = 'complete';
+    state.provisioningState = 'complete';
+    state.connectionVerified = true;
 }
 
 beforeEach(() => {
@@ -123,6 +161,93 @@ beforeEach(() => {
 });
 
 describe('migration accessibility', () => {
+    it('places one collapsed Generated Artifacts expander directly below each generation action', () => {
+        addGeneratedArtifacts();
+        render(renderAssistant());
+        for (const phase of [
+            'Phase 2: Domain Assessment',
+            'Phase 3: Schema Conversion',
+            'Phase 4: Target Provisioning',
+        ]) {
+            fireEvent.click(screen.getByRole('button', { name: new RegExp(phase) }));
+        }
+        const actions = [
+            ['discovery', 'migration-run-discovery'],
+            ['assessment', 'migration-run-assessment'],
+            ['schema-conversion', 'migration-run-conversion'],
+            ['provisioning', 'migration-populate-sample-data'],
+        ] as const;
+        for (const [phase, actionId] of actions) {
+            const section = screen.getByTestId(`migration-phase-${phase}`);
+            const expander = within(section).getByTestId(`migration-${phase}-artifacts`);
+            expect(expander).not.toHaveAttribute('open');
+            expect(within(section).getAllByText('Generated Artifacts')).toHaveLength(1);
+            expect(expander.previousElementSibling?.contains(screen.getByTestId(actionId))).toBe(true);
+        }
+        const details = screen.getByTestId('migration-phase-preflight');
+        expect(within(details).getAllByText('Generated Artifacts')).toHaveLength(1);
+        expect(details.lastElementChild).toBe(screen.getByTestId('migration-preflight-artifacts'));
+        expect(screen.queryByText('Available artifacts')).not.toBeInTheDocument();
+    });
+
+    it.each([
+        { action: 'plan', label: 'Plan Migration', running: false },
+        { action: 'migrate', label: 'Migrate Application', running: false },
+        { action: 'plan', label: 'Plan Migration', running: true },
+        { action: 'migrate', label: 'Migrate Application', running: true },
+    ] as const)(
+        'keeps $action in the floating footer without an artifact expander (running: $running)',
+        ({ action, label, running }) => {
+            addGeneratedArtifacts();
+            state.codeMigrationAction = action;
+            state.hasCodeMigrationPlan = true;
+            state.codeMigrationPlanPath = '/workspace/.cosmosdb-migration/code-migration-plan.md';
+            state.runActivity = running ? activity('code-migration', 'running') : null;
+            render(renderAssistant());
+            const footer = screen.getByTestId('migration-footer');
+            const button = within(footer).getByTestId('migration-action-button');
+            expect(button).toHaveAccessibleName(running ? new RegExp(label) : label);
+            expect(screen.getByTestId('migration-phase-code-migration')).not.toContainElement(button);
+            expect(screen.queryByTestId('migration-code-migration-artifacts')).not.toBeInTheDocument();
+            const planLink = within(footer).getByRole('button', { name: 'View Plan' });
+            expect(planLink).toHaveTextContent('View Plan');
+            expect(planLink).toHaveAccessibleName('View Plan');
+            fireEvent.click(planLink);
+            expect(postMessage).toHaveBeenCalledWith({
+                type: 'event',
+                name: 'command',
+                params: [{ commandName: 'previewMarkdown', params: [state.codeMigrationPlanPath] }],
+            });
+        },
+    );
+
+    it('keeps generated artifacts outside diagnostics when a phase is blocked', () => {
+        addGeneratedArtifacts();
+        state.runActivity = activity('discovery', 'blocked');
+        render(renderAssistant());
+        const expander = screen.getByTestId('migration-discovery-artifacts');
+        expect(expander.nextElementSibling).toBe(screen.getByTestId('migration-discovery-diagnostics'));
+        expect(expander).not.toHaveAttribute('open');
+        fireEvent.click(within(expander).getByText('Generated Artifacts'));
+        fireEvent.click(within(expander).getByRole('button', { name: '.cosmosdb-migration/discovery.json' }));
+        expect(postMessage).toHaveBeenCalledWith({
+            type: 'event',
+            name: 'command',
+            params: [{ commandName: 'openFile', params: ['/workspace/.cosmosdb-migration/discovery.json'] }],
+        });
+    });
+
+    it('keeps provisioning artifacts visible when connection verification is no longer available', () => {
+        addGeneratedArtifacts();
+        state.connectionVerified = false;
+        render(renderAssistant());
+        fireEvent.click(screen.getByRole('button', { name: /Phase 4: Target Provisioning/ }));
+        expect(screen.queryByTestId('migration-populate-sample-data')).not.toBeInTheDocument();
+        expect(
+            within(screen.getByTestId('migration-provisioning-artifacts')).getByText('Generated Artifacts'),
+        ).toBeVisible();
+    });
+
     it('shows prerequisites on focus, keeps them on pointer exit, and dismisses them with Escape', () => {
         vi.useFakeTimers();
         try {

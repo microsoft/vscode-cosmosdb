@@ -60,6 +60,7 @@ import {
     toMigrationProjectView,
 } from './migration/helpers/migrationStateSync';
 import { setMigrationTelemetryContext } from './migration/helpers/migrationTelemetry';
+import { openMigrationArtifact } from './migration/helpers/openMigrationArtifact';
 import { testConnection } from './migration/helpers/testConnection';
 import { getAccessPatternsTemplateContent } from './migration/templates/accessPatternsTemplate';
 import { getVolumetricsTemplateContent } from './migration/templates/volumetricsTemplate';
@@ -1419,8 +1420,7 @@ export class MigrationAssistantTab extends BaseTab {
     }
 
     private async openFile(filePath: string): Promise<void> {
-        const uri = vscode.Uri.file(filePath);
-        await vscode.window.showTextDocument(uri, { preview: true });
+        await openMigrationArtifact(filePath);
     }
 
     private async revealInExplorer(filePath: string): Promise<void> {

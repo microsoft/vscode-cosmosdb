@@ -3,10 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { summarizeStorage } from '../metrics/storage';
 import {
     DEFAULT_HEALTH_THRESHOLDS,
-    deriveAccountHealth,
     deriveRowHealth,
     getInventoryMetrics,
     type HealthThresholds,
@@ -21,8 +21,8 @@ describe('deriveRowHealth', () => {
         expect(deriveRowHealth({ peakRuPercent: 10, throttled: false }, thresholds)).toBe('Healthy');
     });
 
-    it('is Healthy when metrics are missing', () => {
-        expect(deriveRowHealth({ peakRuPercent: undefined, throttled: false }, thresholds)).toBe('Healthy');
+    it('does not infer Healthy from missing metrics', () => {
+        expect(deriveRowHealth({ peakRuPercent: undefined, throttled: false }, thresholds)).toBeUndefined();
     });
 
     it('flips to Needs Attention when peak crosses the warning threshold', () => {
@@ -38,40 +38,162 @@ describe('deriveRowHealth', () => {
     });
 });
 
-describe('deriveAccountHealth', () => {
-    it('is Healthy when provisioning succeeded and nothing is throttling', () => {
-        expect(deriveAccountHealth('Succeeded', false)).toBe('Healthy');
-    });
-
-    it('is Critical when sustained throttling is detected', () => {
-        expect(deriveAccountHealth('Succeeded', true)).toBe('Critical');
-    });
-
-    it('is Needs Attention while the account is mid-operation', () => {
-        expect(deriveAccountHealth('Updating', false)).toBe('Needs Attention');
-    });
-
-    it('is Critical for failed/unknown provisioning states', () => {
-        expect(deriveAccountHealth('Failed', false)).toBe('Critical');
-    });
-
-    it('is Healthy when provisioning state is unknown and no throttling', () => {
-        expect(deriveAccountHealth(undefined, false)).toBe('Healthy');
-    });
-});
-
 // ─── getInventoryMetrics with a mocked MonitorClient ────────────────────────
 
 describe('getInventoryMetrics', () => {
     const base = Date.now();
     const minute = 60 * 1000;
 
+    describe.each([
+        { missingMetric: 'DataUsage', isServerless: false },
+        { missingMetric: 'IndexUsage', isServerless: false },
+        { missingMetric: 'DataUsage', isServerless: true },
+        { missingMetric: 'IndexUsage', isServerless: true },
+    ])('without $missingMetric observations (Serverless: $isServerless)', ({ missingMetric, isServerless }) => {
+        it.each([403, 500, 'noData'] as const)('does not publish partial storage as a total (%s)', async (failure) => {
+            const observedMetric = missingMetric === 'DataUsage' ? 'IndexUsage' : 'DataUsage';
+            const client = mockClient({
+                [observedMetric]: {
+                    value: [
+                        {
+                            timeseries: [
+                                { metadatavalues: dims('db', 'c1'), data: [{ timeStamp: iso(base), maximum: GB }] },
+                            ],
+                        },
+                    ],
+                },
+                DocumentCountV2: {
+                    value: [
+                        {
+                            timeseries: [
+                                { metadatavalues: dims('db', 'c1'), data: [{ timeStamp: iso(base), maximum: 42 }] },
+                            ],
+                        },
+                    ],
+                },
+                NormalizedRUConsumption: {
+                    value: [
+                        {
+                            timeseries: [
+                                { metadatavalues: dims('db', 'c1'), data: [{ timeStamp: iso(base), maximum: 25 }] },
+                            ],
+                        },
+                    ],
+                },
+                TotalRequests: {
+                    value: [
+                        {
+                            timeseries: [
+                                {
+                                    metadatavalues: dims('db', 'c1', '429'),
+                                    data: Array.from({ length: 6 }, (_, index) => ({
+                                        timeStamp: iso(base - index * minute),
+                                        count: 100,
+                                    })),
+                                },
+                            ],
+                        },
+                    ],
+                },
+            });
+            const original = client.metrics.list.bind(client.metrics);
+            vi.spyOn(client.metrics, 'list').mockImplementation((resource, options) => {
+                if (options?.metricnames === missingMetric && failure !== 'noData') {
+                    return Promise.reject(Object.assign(new Error('Storage query failed'), { statusCode: failure }));
+                }
+                return original(resource, options);
+            });
+
+            const result = await getInventoryMetrics(client, '/sub/acct', '24H', thresholds, undefined, isServerless);
+            const row = result.metrics['db/c1'];
+            const missingComponent = missingMetric === 'DataUsage' ? 'data' : 'index';
+            const observedComponent = missingMetric === 'DataUsage' ? 'index' : 'data';
+            expect(summarizeStorage(row.storage)).toEqual({ status: 'partial', bytes: GB });
+            expect(row.storage[missingComponent]).toEqual({
+                status: 'unavailable',
+                reason: failure === 403 ? 'rbac' : failure === 500 ? 'error' : 'noData',
+            });
+            expect(row.storage[observedComponent]).toEqual({ status: 'available', bytes: GB, timestamp: base });
+            expect(row.documentCount).toBe(42);
+            expect(row.peakRuPercent).toBe(isServerless ? undefined : 25);
+            expect(row.throttled).toBe(true);
+            expect(row.health).toBe('Critical');
+            expect(result).not.toHaveProperty('accountHealth');
+        });
+    });
+
+    it('skips Serverless normalized RU without treating storage observations as health evidence', async () => {
+        const client = mockClient({
+            DataUsage: {
+                value: [
+                    {
+                        timeseries: [
+                            { metadatavalues: dims('db', 'c1'), data: [{ timeStamp: iso(base), maximum: 100 }] },
+                        ],
+                    },
+                ],
+            },
+        });
+        const list = vi.spyOn(client.metrics, 'list');
+        const result = await getInventoryMetrics(client, '/sub/acct', '24H', thresholds, undefined, true);
+        expect(result.available).toBe(true);
+        expect(result.metrics['db/c1'].storage.data).toEqual({ status: 'available', bytes: 100, timestamp: base });
+        expect(summarizeStorage(result.metrics['db/c1'].storage)).toEqual({ status: 'partial', bytes: 100 });
+        expect(result.metrics['db/c1'].peakRuPercent).toBeUndefined();
+        expect(result.metrics['db/c1'].ruSparkline).toBeUndefined();
+        expect(result.metrics['db/c1'].health).toBeUndefined();
+        expect(list).not.toHaveBeenCalledWith(
+            expect.anything(),
+            expect.objectContaining({
+                metricnames: 'NormalizedRUConsumption',
+            }),
+        );
+    });
+
+    it.each([false, true])(
+        'retains Serverless 429 health without storage (storage failure: %s)',
+        async (failStorage) => {
+            const client = mockClient({
+                TotalRequests: {
+                    value: [
+                        {
+                            timeseries: [
+                                {
+                                    metadatavalues: dims('db', 'hot', '429'),
+                                    data: Array.from({ length: 6 }, (_, index) => ({
+                                        timeStamp: iso(base - index * minute),
+                                        count: 100,
+                                    })),
+                                },
+                            ],
+                        },
+                    ],
+                },
+            });
+            const original = client.metrics.list.bind(client.metrics);
+            vi.spyOn(client.metrics, 'list').mockImplementation((resource, options) => {
+                if (failStorage && options?.metricnames === 'DataUsage') {
+                    return Promise.reject(Object.assign(new Error('Denied'), { statusCode: 403 }));
+                }
+                return original(resource, options);
+            });
+            const result = await getInventoryMetrics(client, '/sub/acct', '24H', thresholds, undefined, true);
+            expect(result.metrics['db/hot']).toMatchObject({ throttled: true, health: 'Critical' });
+            expect(result.metrics['db/hot'].peakRuPercent).toBeUndefined();
+            expect(result.reason).toBe(failStorage ? 'rbac' : undefined);
+        },
+    );
+
+    it('keeps Serverless health unknown when no telemetry is available', async () => {
+        const result = await getInventoryMetrics(mockClient({}), '/sub/acct', '24H', thresholds, undefined, true);
+        expect(result).toMatchObject({ available: false, reason: 'noData', metrics: {} });
+    });
+
     it('returns available: false when storage and RU series are both empty', async () => {
         const client = mockClient({});
-        const result = await getInventoryMetrics(client, '/sub/acct', '24H', 'Succeeded', thresholds);
+        const result = await getInventoryMetrics(client, '/sub/acct', '24H', thresholds);
         expect(result.available).toBe(false);
         expect(result.metrics).toEqual({});
-        expect(result.accountHealth).toBe('Healthy');
     });
 
     it('computes storage, growth, peak, and health per container', async () => {
@@ -135,11 +257,11 @@ describe('getInventoryMetrics', () => {
             },
         });
 
-        const result = await getInventoryMetrics(client, '/sub/acct', '24H', 'Succeeded', thresholds);
+        const result = await getInventoryMetrics(client, '/sub/acct', '24H', thresholds);
         expect(result.available).toBe(true);
 
         const c1 = result.metrics[containerKey('db', 'c1')];
-        expect(c1.storageBytes).toBe(350);
+        expect(summarizeStorage(c1.storage)).toEqual({ status: 'complete', bytes: 350 });
         expect(c1.storageGrowthBytes).toBe(200);
         expect(c1.peakRuPercent).toBe(95);
         expect(c1.health).toBe('Critical');
@@ -148,9 +270,6 @@ describe('getInventoryMetrics', () => {
         expect(result.metrics[containerKey('db', 'c3')].storageGrowthBytes).toBe(12 * GB);
         expect(result.metrics[containerKey('db', 'c3')].health).toBe('Healthy');
         expect(result.metrics[containerKey('db', 'c4')].health).toBe('Healthy');
-
-        // No throttling reported → account health tracks provisioning only.
-        expect(result.accountHealth).toBe('Healthy');
     });
 
     it('marks a container Critical and the account Critical on sustained throttling', async () => {
@@ -192,16 +311,24 @@ describe('getInventoryMetrics', () => {
             },
         });
 
-        const result = await getInventoryMetrics(client, '/sub/acct', '1H', 'Succeeded', thresholds);
+        const result = await getInventoryMetrics(client, '/sub/acct', '1H', thresholds);
         const hot = result.metrics[containerKey('db', 'hot')];
         expect(hot.throttled).toBe(true);
         expect(hot.health).toBe('Critical');
-        expect(result.accountHealth).toBe('Critical');
     });
 
     it('ignores null and invalid Count samples but preserves zero-count buckets for throttling health', async () => {
         const client = mockClient({
             DataUsage: {
+                value: [
+                    {
+                        timeseries: [
+                            { metadatavalues: dims('db', 'c1'), data: [{ timeStamp: iso(base), maximum: 0 }] },
+                        ],
+                    },
+                ],
+            },
+            IndexUsage: {
                 value: [
                     {
                         timeseries: [
@@ -244,9 +371,9 @@ describe('getInventoryMetrics', () => {
             },
         });
 
-        const result = await getInventoryMetrics(client, '/sub/acct', '1H', 'Succeeded', thresholds);
+        const result = await getInventoryMetrics(client, '/sub/acct', '1H', thresholds);
         const row = result.metrics[containerKey('db', 'c1')];
-        expect(row.storageBytes).toBe(0);
+        expect(summarizeStorage(row.storage)).toEqual({ status: 'complete', bytes: 0 });
         expect(row.throttled).toBe(false);
         expect(row.health).toBe('Healthy');
     });
@@ -301,7 +428,7 @@ describe('getInventoryMetrics', () => {
             },
         });
 
-        const result = await getInventoryMetrics(client, '/sub/acct', '24H', 'Succeeded', thresholds);
+        const result = await getInventoryMetrics(client, '/sub/acct', '24H', thresholds);
         const c1 = result.metrics[containerKey('db', 'c1')];
         expect(c1.documentCount).toBe(1500);
         expect(c1.storageSparkline).toEqual([100, 200, 300]);

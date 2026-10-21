@@ -167,13 +167,7 @@ describe('unavailable reason plumbing', () => {
     });
 
     it('tags a 403 inventory-metrics failure as rbac', async () => {
-        const result = await getInventoryMetrics(
-            throwingClient({ statusCode: 403 }),
-            '/sub/acct',
-            '24H',
-            'Succeeded',
-            thresholds,
-        );
+        const result = await getInventoryMetrics(throwingClient({ statusCode: 403 }), '/sub/acct', '24H', thresholds);
         expect(result.available).toBe(false);
         expect(result.reason).toBe('rbac');
     });

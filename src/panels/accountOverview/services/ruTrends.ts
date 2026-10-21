@@ -259,6 +259,18 @@ export async function queryThrottlingWindows(
     bucketMs: number,
     filter: string | undefined,
 ): Promise<Set<number>> {
+    return (await queryThrottlingSummary(client, resourceUri, timespan, interval, bucketMs, filter)).timestamps;
+}
+
+/** Keeps missing request observations distinct from observed counts, including zero traffic. */
+export async function queryThrottlingSummary(
+    client: MonitorClient,
+    resourceUri: string,
+    timespan: string,
+    interval: string,
+    bucketMs: number,
+    filter: string | undefined,
+): Promise<{ timestamps: Set<number>; hasObservations: boolean }> {
     const statusFilter = filter ? `${filter} and StatusCode eq '*'` : `StatusCode eq '*'`;
     const response = await client.metrics.list(resourceUri, {
         metricnames: 'TotalRequests',
@@ -270,6 +282,9 @@ export async function queryThrottlingWindows(
 
     const totals = new Map<number, { total: number; throttled: number }>();
     for (const metric of response.value ?? []) {
+        if (metric.errorCode && metric.errorCode !== 'Success') {
+            throw new Error(metric.errorMessage ?? metric.errorCode);
+        }
         for (const series of metric.timeseries ?? []) {
             const statusCode = series.metadatavalues?.find((m) => m.name?.value?.toLowerCase() === 'statuscode')?.value;
             const isThrottle = isThrottledStatusCode(statusCode);
@@ -297,5 +312,8 @@ export async function queryThrottlingWindows(
         .map(([ts]) => ts)
         .sort((a, b) => a - b);
 
-    return sustainedTimestamps(overThreshold, bucketMs);
+    return {
+        timestamps: sustainedTimestamps(overThreshold, bucketMs),
+        hasObservations: totals.size > 0,
+    };
 }

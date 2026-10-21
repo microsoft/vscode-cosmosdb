@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type MetricAggregation, type TimeRange, type UnavailableReason } from '../services/shared';
+import { type StorageMeasurement } from './storage';
 
 // ─── Metric provider contract (shared, pure) ────────────────────────────────────
 //
@@ -44,6 +45,38 @@ export const METRIC_KEYS: readonly MetricKey[] = [
     'documentCount',
 ];
 
+export type MetricInapplicabilityReason = 'serverlessNormalizedRu' | 'serverlessProvisionedThroughput';
+
+/** Applicability is independent of observations, request failures, and the State / Activity emission family. */
+export type MetricApplicability =
+    | { status: 'unknown' }
+    | { status: 'applicable' }
+    | { status: 'notApplicable'; reason: MetricInapplicabilityReason };
+
+export function getMetricApplicability(metric: MetricKey, isServerless: boolean | undefined): MetricApplicability {
+    if (isServerless === undefined) {
+        return { status: 'unknown' };
+    }
+    if (isServerless && metric === 'normalizedRu') {
+        return { status: 'notApplicable', reason: 'serverlessNormalizedRu' };
+    }
+    if (isServerless && metric === 'provisionedThroughput') {
+        return { status: 'notApplicable', reason: 'serverlessProvisionedThroughput' };
+    }
+    return { status: 'applicable' };
+}
+
+export function getAccountMetricApplicability(
+    isServerless: boolean | undefined,
+): Record<MetricKey, MetricApplicability> {
+    return Object.fromEntries(
+        METRIC_KEYS.map((metric) => [metric, getMetricApplicability(metric, isServerless)]),
+    ) as Record<MetricKey, MetricApplicability>;
+}
+
+/** Metric-specific failures do not change the shared unavailable contract used by health and advisories. */
+export type MetricUnavailableReason = UnavailableReason | 'error';
+
 /**
  * Azure Monitor aggregation to read for a metric. Re-exported from the service
  * layer (`shared`) so both sides can refer to it through the contract. Each maps
@@ -59,6 +92,8 @@ export interface MetricPoint {
     timestamp: number;
     /** The metric's value for the bucket (in the metric's {@link MetricUnit}), when present. */
     value?: number;
+    /** Storage components aligned to this exact bucket; value is present only for a complete total. */
+    storage?: StorageMeasurement;
     /**
      * True when the bucket falls inside a sustained-throttling (429) window. Only
      * populated by providers that track throttling (`normalizedRu`, `totalRequests`);
@@ -76,11 +111,14 @@ export interface MetricPoint {
 export interface MetricSeriesResult {
     /** Which metric this series is for. */
     metric: MetricKey;
-    /** False when Azure Monitor returned no usable series for this API/SKU. */
+    applicability: MetricApplicability;
+    /** False for missing observations, request failures, or known inapplicability. */
     available: boolean;
-    /** When `available` is false, why. See {@link UnavailableReason}. */
-    reason?: UnavailableReason;
+    /** Observation/fetch failure reason. Known inapplicability carries its own reason in `applicability`. */
+    reason?: MetricUnavailableReason;
     points: MetricPoint[];
+    /** Storage components in the latest observed bucket, including partial or failed reads. */
+    storage?: StorageMeasurement;
     /** Scalar summary for the tile (peak of the series), when any value is present. */
     peak?: number;
     timeRange: TimeRange;

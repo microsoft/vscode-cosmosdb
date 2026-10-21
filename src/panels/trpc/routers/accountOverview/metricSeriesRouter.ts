@@ -4,8 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { z } from 'zod';
-import { METRIC_KEYS, type MetricKey, type MetricSeriesResult } from '../../../accountOverview/metrics/contracts';
-import { fetchMetricSeries } from '../../../accountOverview/metrics/hostFetchers';
+import {
+    getMetricApplicability,
+    METRIC_KEYS,
+    type MetricKey,
+    type MetricSeriesResult,
+} from '../../../accountOverview/metrics/contracts';
+import { emptyMetricSeriesResult, fetchMetricSeries } from '../../../accountOverview/metrics/hostFetchers';
 import { type TimeRange } from '../../../accountOverview/services';
 import { type AccountOverviewRouterContext } from '../../appRouter';
 import { accountOverviewProcedure } from '../../trpc';
@@ -40,17 +45,16 @@ export const metricSeriesProcedures = {
                 input: { metric: MetricKey; timeRange: TimeRange; databaseId?: string; containerId?: string };
             }): Promise<MetricSeriesResult> => {
                 const { metadata } = ctx;
+                const applicability = getMetricApplicability(input.metric, metadata.isServerless);
+                const scope = { databaseId: input.databaseId, containerId: input.containerId };
+                if (applicability.status === 'notApplicable') {
+                    return emptyMetricSeriesResult(input.metric, scope, input.timeRange, applicability);
+                }
                 const client = await metadata.getMonitorClient();
                 if (!client) {
                     return {
-                        metric: input.metric,
-                        available: false,
-                        reason: 'noData',
-                        points: [],
-                        timeRange: input.timeRange,
-                        databaseId: input.databaseId,
-                        containerId: input.containerId,
-                        generatedAt: Date.now(),
+                        ...emptyMetricSeriesResult(input.metric, scope, input.timeRange, applicability),
+                        reason: 'error',
                     };
                 }
 
@@ -58,8 +62,9 @@ export const metricSeriesProcedures = {
                     input.metric,
                     client,
                     metadata.accountId,
-                    { databaseId: input.databaseId, containerId: input.containerId },
+                    scope,
                     input.timeRange,
+                    metadata.isServerless,
                 );
             },
         ),

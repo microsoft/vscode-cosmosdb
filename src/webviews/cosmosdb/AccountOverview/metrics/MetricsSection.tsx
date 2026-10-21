@@ -6,7 +6,7 @@
 import { makeStyles, Text, tokens, typographyStyles } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { type MetricKey, type MetricSeriesResult, type TimeRange } from '../../../api/types';
+import { type MetricApplicability, type MetricKey, type MetricSeriesResult, type TimeRange } from '../../../api/types';
 import { DashboardCard, SectionHeader } from '../DashboardChrome';
 import { METRIC_GROUPS, type MetricGroup, METRIC_VIEWS } from './descriptors';
 import { MetricChart } from './MetricChart';
@@ -72,6 +72,7 @@ const useStyles = makeStyles({
 export const MetricsSection = ({
     order,
     seriesByMetric,
+    applicabilityByMetric,
     loading,
     timeRange,
     chartAffordances = false,
@@ -81,6 +82,7 @@ export const MetricsSection = ({
 }: {
     order: readonly MetricKey[];
     seriesByMetric: Partial<Record<MetricKey, MetricSeriesResult>>;
+    applicabilityByMetric?: Partial<Record<MetricKey, MetricApplicability>>;
     loading: boolean;
     timeRange: TimeRange;
     chartAffordances?: boolean;
@@ -90,7 +92,11 @@ export const MetricsSection = ({
 }) => {
     const styles = useStyles();
     const groupLabelId = useId();
-    const [selectedMetric, setSelectedMetric] = useState<MetricKey>(requestedMetric ?? 'normalizedRu');
+    const [explicitMetric, setSelectedMetric] = useState<MetricKey | undefined>(requestedMetric);
+    const normalizedRuApplicability = applicabilityByMetric?.normalizedRu ?? seriesByMetric.normalizedRu?.applicability;
+    const selectedMetric =
+        explicitMetric ??
+        (normalizedRuApplicability?.status === 'notApplicable' ? 'totalRequestUnits' : 'normalizedRu');
     const chartRef = useRef<HTMLElement>(null);
     const handledNavigation = useRef<number | undefined>(undefined);
 
@@ -110,15 +116,22 @@ export const MetricsSection = ({
 
     const activeDescriptor = METRIC_VIEWS[selectedMetric];
     const activeSeries = seriesByMetric[selectedMetric];
+    const activeApplicability = applicabilityByMetric?.[selectedMetric] ?? activeSeries?.applicability;
 
-    // Group tiles by emission family (state first, then activity). Array.sort is stable, so the
-    // caller's order is preserved within each family.
+    // Keep applicable tiles grouped State → Activity; inapplicable tiles retain their source order at the end.
     const groupedOrder = useMemo(
         () =>
-            [...order].sort(
-                (a, b) => GROUP_ORDER.indexOf(METRIC_VIEWS[a].group) - GROUP_ORDER.indexOf(METRIC_VIEWS[b].group),
-            ),
-        [order],
+            [...order].sort((a, b) => {
+                const aNotApplicable =
+                    (applicabilityByMetric?.[a] ?? seriesByMetric[a]?.applicability)?.status === 'notApplicable';
+                const bNotApplicable =
+                    (applicabilityByMetric?.[b] ?? seriesByMetric[b]?.applicability)?.status === 'notApplicable';
+                if (aNotApplicable || bNotApplicable) {
+                    return Number(aNotApplicable) - Number(bNotApplicable);
+                }
+                return GROUP_ORDER.indexOf(METRIC_VIEWS[a].group) - GROUP_ORDER.indexOf(METRIC_VIEWS[b].group);
+            }),
+        [order, applicabilityByMetric, seriesByMetric],
     );
 
     return (
@@ -129,6 +142,7 @@ export const MetricsSection = ({
                         key={key}
                         descriptor={METRIC_VIEWS[key]}
                         series={seriesByMetric[key]}
+                        applicability={applicabilityByMetric?.[key] ?? seriesByMetric[key]?.applicability}
                         loading={loading}
                         selected={key === selectedMetric}
                         onSelect={() => setSelectedMetric(key)}
@@ -176,6 +190,7 @@ export const MetricsSection = ({
                     <MetricChart
                         descriptor={activeDescriptor}
                         series={activeSeries}
+                        applicability={activeApplicability}
                         loading={loading}
                         timeRange={timeRange}
                     />

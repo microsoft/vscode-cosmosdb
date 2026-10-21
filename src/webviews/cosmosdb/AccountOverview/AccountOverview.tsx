@@ -185,7 +185,10 @@ export const OverviewDashboard = ({
     const [trendsLoading, setTrendsLoading] = useState(true);
     const [timeRange, setTimeRange] = useState<TimeRange>('24H');
     const [selectedContainer, setSelectedContainer] = useState<MetricScope | undefined>(undefined);
-    const [partitionMode, setPartitionMode] = useState<PartitionDistributionMode>('ru');
+    const [selectedPartitionMode, setPartitionMode] = useState<PartitionDistributionMode>('ru');
+    const normalizedRuApplicability = summary?.metricApplicability.normalizedRu;
+    const normalizedRuStatus = normalizedRuApplicability?.status;
+    const partitionMode = normalizedRuApplicability?.status === 'notApplicable' ? 'storage' : selectedPartitionMode;
     const [partitionContainer, setPartitionContainer] = useState<ContainerRef | undefined>(undefined);
     const [partitionHealth, setPartitionHealth] = useState<PartitionHealthResult | undefined>(undefined);
     const [partitionLoading, setPartitionLoading] = useState(false);
@@ -356,8 +359,9 @@ export const OverviewDashboard = ({
                     } else {
                         next[metric] = {
                             metric,
+                            applicability: { status: 'unknown' },
                             available: false,
-                            reason: 'noData',
+                            reason: 'error',
                             points: [],
                             timeRange: range,
                             databaseId: container?.databaseId,
@@ -421,7 +425,19 @@ export const OverviewDashboard = ({
                 })
                 .catch(() => {
                     if (requestId === partitionRequestSeq.current) {
-                        setPartitionHealth(undefined);
+                        setPartitionHealth({
+                            available: false,
+                            reason: 'error',
+                            mode,
+                            databaseId: container.databaseId,
+                            containerId: container.containerId,
+                            tiles: [],
+                            skewScore: 0,
+                            topPartitionShare: 0,
+                            partitionCount: 0,
+                            topN: 0,
+                            generatedAt: Date.now(),
+                        });
                         setAccountActionFailure('refresh');
                     }
                     return false;
@@ -540,12 +556,12 @@ export const OverviewDashboard = ({
 
     // Reload partition health whenever the container, measure, or time range changes.
     useEffect(() => {
-        if (!partitionContainer) {
+        if (!partitionContainer || !normalizedRuStatus || normalizedRuStatus === 'unknown') {
             return;
         }
         setPartitionHealth(undefined);
         void fetchPartitionHealth(partitionContainer, partitionMode, timeRange);
-    }, [fetchPartitionHealth, partitionContainer, partitionMode, timeRange]);
+    }, [fetchPartitionHealth, partitionContainer, partitionMode, timeRange, normalizedRuStatus]);
 
     // Reload alerts whenever the alert time-range filter changes.
     useEffect(() => {
@@ -780,6 +796,7 @@ export const OverviewDashboard = ({
                         <MetricsSection
                             order={METRIC_ORDER}
                             seriesByMetric={trends}
+                            applicabilityByMetric={summary.metricApplicability}
                             loading={trendsLoading}
                             timeRange={timeRange}
                             chartAffordances
@@ -807,7 +824,9 @@ export const OverviewDashboard = ({
                                 supported={inventory.supported}
                                 available={inventory.available}
                                 reason={inventory.reason}
-                                metrics={inventoryMetrics?.available ? inventoryMetrics.metrics : undefined}
+                                metrics={inventoryMetrics?.metrics}
+                                storageFallback={inventoryMetrics?.storageFallback}
+                                normalizedRuApplicability={normalizedRuApplicability}
                                 onRevealInTree={handleRevealInTree}
                                 onOpenQueryEditor={handleOpenQueryEditor}
                                 selectedContainer={partitionContainer}
@@ -819,9 +838,15 @@ export const OverviewDashboard = ({
                         <DashboardCard>
                             <SectionHeader
                                 title={l10n.t('Partition Key Distribution Health')}
-                                description={l10n.t(
-                                    'Physical-partition RU and storage distribution, not logical partition-key values. Select a container in the inventory or below.',
-                                )}
+                                description={
+                                    normalizedRuApplicability?.status === 'notApplicable'
+                                        ? l10n.t(
+                                              'Physical-partition storage distribution, not logical partition-key values. Select a container in the inventory or below.',
+                                          )
+                                        : l10n.t(
+                                              'Physical-partition RU and storage distribution, not logical partition-key values. Select a container in the inventory or below.',
+                                          )
+                                }
                             />
                             <PartitionHealth
                                 active={selectedTab === 'databases'}
@@ -829,6 +854,7 @@ export const OverviewDashboard = ({
                                 result={partitionHealth}
                                 loading={partitionLoading}
                                 mode={partitionMode}
+                                normalizedRuApplicability={normalizedRuApplicability}
                                 onModeChange={setPartitionMode}
                                 containers={containers}
                                 selected={partitionContainer}

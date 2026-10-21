@@ -165,13 +165,20 @@ describe('collectDerivedAdvisories parity wiring', () => {
                     'db/events': {
                         databaseId: 'db',
                         containerId: 'events',
-                        dataUsageBytes,
-                        indexUsageBytes,
+                        storage: {
+                            data:
+                                dataUsageBytes === undefined
+                                    ? { status: 'unavailable', reason: 'noData' }
+                                    : { status: 'available', bytes: dataUsageBytes, timestamp: 0 },
+                            index:
+                                indexUsageBytes === undefined
+                                    ? { status: 'unavailable', reason: 'noData' }
+                                    : { status: 'available', bytes: indexUsageBytes, timestamp: 0 },
+                        },
                         throttled: false,
                         health: 'Healthy',
                     },
                 },
-                accountHealth: 'Healthy',
                 generatedAt: 0,
             });
 
@@ -180,6 +187,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
             );
 
             expect(result.advisories.filter((item) => item.rule === 'IndexingCostRisk')).toHaveLength(fires ? 1 : 0);
+            expect(vi.mocked(getInventoryMetrics).mock.calls[0][5]).toBe(true);
             expect(getRuTrends).not.toHaveBeenCalled();
             expect(getPartitionHealth).not.toHaveBeenCalled();
             const collectedInventory = await vi.mocked(getSqlInventoryDetails).mock.results[0].value;
@@ -190,7 +198,6 @@ describe('collectDerivedAdvisories parity wiring', () => {
                 available: false,
                 reason: 'noData',
                 metrics: {},
-                accountHealth: 'Healthy',
                 generatedAt: 0,
             });
             const unavailable = await collectDerivedAdvisories(
@@ -253,7 +260,6 @@ describe('collectDerivedAdvisories parity wiring', () => {
             vi.mocked(getInventoryMetrics).mockResolvedValue({
                 available: false,
                 metrics: {},
-                accountHealth: 'Healthy',
                 generatedAt: 0,
             });
             vi.mocked(getPartitionHealth).mockRejectedValue(new Error('unavailable'));
@@ -414,7 +420,6 @@ describe('collectDerivedAdvisories parity wiring', () => {
         vi.mocked(getInventoryMetrics).mockResolvedValue({
             available: false,
             metrics: {},
-            accountHealth: 'Healthy',
             generatedAt: 0,
         });
         vi.mocked(getPartitionHealth).mockRejectedValue(new Error('unavailable'));
@@ -544,7 +549,6 @@ describe('collectDerivedAdvisories parity wiring', () => {
         vi.mocked(getInventoryMetrics).mockResolvedValue({
             available: true,
             metrics: {},
-            accountHealth: 'Healthy',
             generatedAt: 1,
         });
         vi.mocked(getPartitionHealth).mockResolvedValue({
@@ -677,7 +681,6 @@ describe('collectDerivedAdvisories parity wiring', () => {
         vi.mocked(getInventoryMetrics).mockResolvedValue({
             available: true,
             metrics: {},
-            accountHealth: 'Healthy',
             generatedAt: 1,
         });
         vi.mocked(getPartitionHealth).mockResolvedValue({

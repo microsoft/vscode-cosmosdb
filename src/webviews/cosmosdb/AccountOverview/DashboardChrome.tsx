@@ -130,7 +130,13 @@ export const DIAGNOSTIC_SETTINGS_URL = 'https://learn.microsoft.com/azure/cosmos
  * so users never see a silent blank. For `rbac` it names the required role and links to the Azure
  * RBAC docs. Emits an `emptyStateShown` telemetry event once per reason.
  */
-export const EmptyState = ({ reason, requiredRole }: { reason?: UnavailableReason; requiredRole?: string }) => {
+export const EmptyState = ({
+    reason,
+    requiredRole,
+}: {
+    reason?: UnavailableReason | 'error';
+    requiredRole?: string;
+}) => {
     const styles = useStyles();
     const { reportEvent, openUrl } = useDashboardActions();
 
@@ -142,6 +148,9 @@ export const EmptyState = ({ reason, requiredRole }: { reason?: UnavailableReaso
 
     let message: string;
     switch (reason) {
+        case 'error':
+            message = l10n.t('Unable to load telemetry. Try refreshing.');
+            break;
         case 'unsupported':
             message = l10n.t('Telemetry unavailable for this API or SKU.');
             break;

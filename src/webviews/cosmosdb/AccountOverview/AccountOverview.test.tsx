@@ -19,6 +19,7 @@ import { act, createEvent, fireEvent, render, screen, waitFor, within } from '@t
 import userEvent from '@testing-library/user-event';
 import { type PropsWithChildren } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { getAccountMetricApplicability } from '../../../panels/accountOverview/metrics/contracts';
 import {
     type AccountActionResult,
     type AccountOverviewNavigation,
@@ -96,6 +97,7 @@ const summary: AccountSummary = {
     apiType: 'NoSQL',
     documentEndpoint: 'https://example.invalid',
     isServerless: false,
+    metricApplicability: getAccountMetricApplicability(false),
     provisioningState: 'Succeeded',
     freeTierEnabled: false,
     writeRegions: ['East US'],
@@ -211,6 +213,130 @@ beforeEach(() => {
 });
 
 afterEach(() => vi.restoreAllMocks());
+
+describe('Serverless metric selection', () => {
+    const serverlessSummary: AccountSummary = {
+        ...summary,
+        isServerless: true,
+        metricApplicability: getAccountMetricApplicability(true),
+    };
+
+    it('uses the late account summary for the default without waiting for metric samples', async () => {
+        const pending = Promise.withResolvers<AccountSummary>();
+        queries.summary.mockReturnValue(pending.promise);
+        render(<AccountOverview />, { wrapper: Wrapper });
+        expect(screen.queryByRole('button', { name: /^Total request units/ })).not.toBeInTheDocument();
+        await waitFor(() => expect(queries.inventory).toHaveBeenCalled());
+        expect(queries.partition).not.toHaveBeenCalled();
+        await act(async () => pending.resolve(serverlessSummary));
+        expect(await screen.findByRole('button', { name: /^Total request units/ })).toHaveAttribute(
+            'aria-pressed',
+            'true',
+        );
+        expect(screen.getByRole('button', { name: /^Normalized RU/ })).toHaveTextContent('Not applicable');
+        expect(screen.getByRole('button', { name: /^Provisioned throughput/ })).toHaveTextContent('Not applicable');
+        await waitFor(() =>
+            expect(queries.partition).toHaveBeenCalledWith(expect.objectContaining({ mode: 'storage' })),
+        );
+        expect(queries.partition.mock.calls.every(([input]) => input.mode === 'storage')).toBe(true);
+    });
+
+    it('preserves explicit inapplicable selection through Refresh, time and database scope changes', async () => {
+        const user = userEvent.setup();
+        queries.summary.mockResolvedValue(serverlessSummary);
+        render(<AccountOverview />, { wrapper: Wrapper });
+        const tile = await screen.findByRole('button', { name: /^Normalized RU/ });
+        await user.click(tile);
+        const refresh = screen.getByRole('button', { name: 'Refresh' });
+        await waitFor(() => expect(refresh).not.toHaveAttribute('aria-disabled', 'true'));
+        await user.click(refresh);
+        await waitFor(() => expect(queries.summary).toHaveBeenCalledTimes(2));
+        await chooseHeaderOption(user, /Metric time range/, 'Last hour');
+        await chooseHeaderOption(user, /Database scope for metrics/, 'database');
+        await waitFor(() =>
+            expect(queries.metric).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    metric: 'normalizedRu',
+                    timeRange: '1H',
+                    databaseId: 'database',
+                }),
+            ),
+        );
+        expect(screen.getByRole('button', { name: /^Normalized RU/ })).toBe(tile);
+        expect(tile).toHaveAttribute('aria-pressed', 'true');
+        expect(tile).toHaveTextContent('Not applicable');
+    });
+
+    it('honors a deep link to a Serverless-inapplicable metric', async () => {
+        initialTarget = 'provisionedThroughput';
+        queries.summary.mockResolvedValue(serverlessSummary);
+        render(<AccountOverview />, { wrapper: Wrapper });
+        const region = await screen.findByRole('region', { name: 'Provisioned throughput trend' });
+        expect(region).toHaveFocus();
+        expect(screen.getByRole('button', { name: /^Provisioned throughput/ })).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it.each([
+        ['noData', 'No telemetry available for this selection yet.'],
+        ['rbac', 'Not enough permissions: your role is missing Monitoring Reader.'],
+        ['error', 'Unable to load telemetry. Try refreshing.'],
+    ])('keeps storage distribution visible with its real %s outcome and no mode toggle', async (reason, message) => {
+        const user = userEvent.setup();
+        queries.summary.mockResolvedValue(serverlessSummary);
+        queries.partition.mockResolvedValue({ mode: 'storage', available: false, reason, tiles: [] });
+        render(<AccountOverview />, { wrapper: Wrapper });
+        await user.click(await screen.findByRole('tab', { name: 'Databases and Containers' }));
+        expect(await screen.findByText('Storage distribution')).toBeVisible();
+        expect(screen.getByText('Partition Key Distribution Health')).toBeVisible();
+        const partitionCard = screen
+            .getByText('Partition Key Distribution Health')
+            .closest<HTMLElement>(`.${cardClassNames.root}`)!;
+        expect(await within(partitionCard).findByText(message)).toBeVisible();
+        expect(screen.queryByRole('toolbar', { name: 'Partition distribution measure' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'By RU Share' })).not.toBeInTheDocument();
+        expect(screen.getByText(/^Physical-partition storage distribution/)).toBeVisible();
+        const inventory = screen.getByRole('table', { name: 'Containers' });
+        expect(within(inventory).getAllByText('Not applicable')).toHaveLength(rows.length);
+        expect(within(inventory).getAllByText('Unknown')).toHaveLength(rows.length);
+        expect(within(inventory).queryByText('0%')).not.toBeInTheDocument();
+        expect(within(inventory).queryByText('Healthy')).not.toBeInTheDocument();
+        await chooseHeaderOption(user, /Metric time range/, 'Last hour');
+        await waitFor(() =>
+            expect(queries.partition).toHaveBeenLastCalledWith(
+                expect.objectContaining({
+                    mode: 'storage',
+                    timeRange: '1H',
+                }),
+            ),
+        );
+    });
+
+    it.each([undefined, -1, 0, 4000])(
+        'retains Provisioned RU default and both controls with cap %s',
+        async (totalThroughputLimit) => {
+            queries.summary.mockResolvedValue({ ...summary, totalThroughputLimit });
+            const user = userEvent.setup();
+            render(<AccountOverview />, { wrapper: Wrapper });
+            await user.click(await screen.findByRole('tab', { name: 'Databases and Containers' }));
+            const ru = screen.getByRole('button', { name: 'By RU Share' });
+            const storage = screen.getByRole('button', { name: 'By Storage Share' });
+            expect(ru).toHaveTextContent('By RU Share');
+            expect(ru).toHaveAccessibleName('By RU Share');
+            expect(storage).toHaveTextContent('By Storage Share');
+            expect(storage).toHaveAccessibleName('By Storage Share');
+            expect(ru).toHaveAttribute('aria-pressed', 'true');
+            expect(queries.partition).toHaveBeenCalledWith(expect.objectContaining({ mode: 'ru' }));
+            await user.click(storage);
+            await waitFor(() =>
+                expect(queries.partition).toHaveBeenLastCalledWith(expect.objectContaining({ mode: 'storage' })),
+            );
+            await user.click(ru);
+            await waitFor(() =>
+                expect(queries.partition).toHaveBeenLastCalledWith(expect.objectContaining({ mode: 'ru' })),
+            );
+        },
+    );
+});
 
 describe('header update feedback', () => {
     async function showReadyOverview() {
@@ -1386,6 +1512,91 @@ describe('inventory accessibility', () => {
         onSelectContainer: vi.fn(),
     };
 
+    it('shows partial storage and exposes component reasons on keyboard focus', async () => {
+        const user = userEvent.setup();
+        const row = rows[0];
+        render(
+            <InventoryTable
+                {...inventoryProps}
+                rows={[row]}
+                metrics={{
+                    [`${row.databaseId}/${row.containerId}`]: {
+                        databaseId: row.databaseId,
+                        containerId: row.containerId,
+                        throttled: false,
+                        storage: {
+                            data: { status: 'available', bytes: 1024 ** 3, timestamp: 1000 },
+                            index: { status: 'unavailable', reason: 'rbac' },
+                        },
+                        storageGrowthBytes: 1024 ** 2,
+                    },
+                }}
+            />,
+            { wrapper: Wrapper },
+        );
+        const label = screen.getByText('1 GB · Partial data');
+        expect(label).toBeVisible();
+        expect(screen.getByText('Data growth: +1 MB / 7 days')).toBeVisible();
+        await user.click(screen.getByRole('button', { name: 'orders: show partition health in database' }));
+        await user.tab();
+        expect(label).toHaveFocus();
+        expect(await screen.findByRole('tooltip')).toHaveTextContent('Data: 1 GB; indexes: No permission.');
+        expect(label).toHaveAccessibleDescription('Data: 1 GB; indexes: No permission.');
+        expect(label).not.toHaveAttribute('aria-label');
+        await user.keyboard('{Escape}');
+        await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument());
+        expect(label).toHaveFocus();
+    });
+
+    it('preserves storage failure reasons for rows missing from every metric response', async () => {
+        const user = userEvent.setup();
+        render(
+            <InventoryTable
+                {...inventoryProps}
+                rows={[rows[0]]}
+                metrics={{}}
+                storageFallback={{
+                    data: { status: 'unavailable', reason: 'rbac' },
+                    index: { status: 'unavailable', reason: 'error' },
+                }}
+            />,
+            { wrapper: Wrapper },
+        );
+        await user.click(screen.getByRole('button', { name: 'orders: show partition health in database' }));
+        await user.tab();
+        expect(document.activeElement).toHaveTextContent('—');
+        expect(await screen.findByRole('tooltip')).toHaveTextContent('Data: No permission; indexes: Unable to load.');
+        expect(document.activeElement).toHaveAccessibleDescription('Data: No permission; indexes: Unable to load.');
+    });
+
+    it('exposes the Serverless metric explanation on keyboard focus without replacing the visible label', async () => {
+        const user = userEvent.setup();
+        render(
+            <InventoryTable
+                {...inventoryProps}
+                rows={[rows[0]]}
+                normalizedRuApplicability={getAccountMetricApplicability(true).normalizedRu}
+            />,
+            { wrapper: Wrapper },
+        );
+        const label = screen.getByText('Not applicable');
+        const explanation =
+            'Normalized RU is not applicable to serverless accounts because they do not have provisioned throughput.';
+        await user.click(screen.getByRole('button', { name: 'orders: show partition health in database' }));
+        await user.tab();
+        expect(label).toHaveFocus();
+        expect(label).toHaveTextContent('Not applicable');
+        expect(label).not.toHaveAttribute('aria-label');
+        expect(label).not.toHaveAttribute('title');
+        expect(await screen.findByRole('tooltip')).toHaveTextContent(explanation);
+        expect(label).toHaveAccessibleDescription(explanation);
+        await user.keyboard('{Escape}');
+        await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument());
+        expect(label).toHaveFocus();
+        await user.tab();
+        expect(screen.getByRole('button', { name: 'Reveal in tree' })).toHaveFocus();
+    });
+
     it('pages a native table with total row count, logical row positions and stable boundary controls', async () => {
         const user = userEvent.setup();
         render(<InventoryTable {...inventoryProps} rows={manyRows} />, { wrapper: Wrapper });
@@ -1571,7 +1782,15 @@ describe('inventory accessibility', () => {
         render(<AccountOverview />, { wrapper: Wrapper });
         await user.click(await screen.findByRole('tab', { name: 'Databases and Containers' }));
         const table = screen.getByRole('table', { name: 'Containers' });
-        for (const name of ['Container', 'Database', 'Throughput', 'Storage', 'Documents', 'Peak RU', 'Health']) {
+        for (const name of [
+            'Container',
+            'Database',
+            'Throughput',
+            'Storage',
+            'Documents',
+            'Peak normalized RU',
+            'Health',
+        ]) {
             const header = within(table).getByRole('columnheader', { name });
             const button = within(header).getByRole('button', { name });
             expect(button).toHaveTextContent(name);

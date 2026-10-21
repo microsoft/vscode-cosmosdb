@@ -11,7 +11,7 @@ import { cloneElement, type ReactElement } from 'react';
 import type * as Recharts from 'recharts';
 import { expect, it, vi } from 'vitest';
 import { unavailableStorage } from '../../../../panels/accountOverview/metrics/storage';
-import { type StorageMeasurement } from '../../../api/types';
+import { type MetricSeriesResult, type StorageMeasurement } from '../../../api/types';
 import { METRIC_VIEWS } from './descriptors';
 import { MetricChart } from './MetricChart';
 
@@ -20,6 +20,29 @@ vi.mock('recharts', async (importOriginal) => ({
     ResponsiveContainer: ({ children }: { children: ReactElement<{ width: number; height: number }> }) =>
         cloneElement(children, { width: 800, height: 280 }),
 }));
+
+it.each([true, false])('exposes an asynchronous load failure as a status (storage: %s)', (isStorage) => {
+    const descriptor = isStorage ? METRIC_VIEWS.dataIndexUsage : METRIC_VIEWS.totalRequests;
+    const { rerender } = render(<MetricChart descriptor={descriptor} loading={true} timeRange="24H" />);
+    const series: MetricSeriesResult = {
+        metric: isStorage ? 'dataIndexUsage' : 'totalRequests',
+        applicability: { status: 'applicable' },
+        available: false,
+        reason: 'error',
+        points: [],
+        timeRange: '24H',
+        generatedAt: 1000,
+        ...(isStorage ? { storage: unavailableStorage('error') } : {}),
+    };
+    rerender(<MetricChart descriptor={descriptor} loading={false} timeRange="24H" series={series} />);
+    const status = screen.getByRole('status');
+    expect(status).toBeVisible();
+    expect(status).toHaveTextContent(
+        isStorage
+            ? /Storage unavailable\s*Data: Unable to load; indexes: Unable to load\./
+            : 'Unable to load metric data. Use Refresh to try again.',
+    );
+});
 
 it('renders isolated storage observations on both real chart lines without bridging a missing bucket', async () => {
     const first: StorageMeasurement = {

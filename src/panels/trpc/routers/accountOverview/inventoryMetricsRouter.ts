@@ -63,7 +63,7 @@ export const inventoryMetricsProcedures = {
                         available: false,
                         reason: 'noData',
                         metrics: {},
-                        storageFallback: unavailableStorage('noData'),
+                        storageFallback: unavailableStorage('error'),
                         accountHealth: deriveAccountHealth(provisioningState, false),
                         generatedAt: Date.now(),
                     };

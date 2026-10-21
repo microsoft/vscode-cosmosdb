@@ -243,12 +243,14 @@ export const MetricChart = ({
         return (
             <div className={styles.emptyState}>
                 {storage ? (
-                    <div className={styles.explanation}>
-                        <Text as="p">{l10n.t('Storage unavailable')}</Text>
-                        <Text as="p">{storageDescription(storage)}</Text>
-                    </div>
+                    <output className={styles.explanation}>
+                        <Text>{l10n.t('Storage unavailable')}</Text>
+                        <Text>{storageDescription(storage)}</Text>
+                    </output>
                 ) : series?.reason === 'error' ? (
-                    <Text>{l10n.t('Unable to load metric data. Use Refresh to try again.')}</Text>
+                    <output>
+                        <Text>{l10n.t('Unable to load metric data. Use Refresh to try again.')}</Text>
+                    </output>
                 ) : (
                     <EmptyState reason={series?.reason ?? 'noData'} requiredRole={l10n.t('Monitoring Reader')} />
                 )}

@@ -49,6 +49,15 @@ function createCaller(account: DatabaseAccountGetResults = {}) {
 beforeEach(() => vi.resetAllMocks());
 
 describe('account summary procedure', () => {
+    it('provides an account-scoped portal alerts link without querying alert services', async () => {
+        const { caller, metadata } = createCaller();
+        const summary = await caller.getAccountSummary();
+        expect(summary.alertsPortalUrl).toBe(
+            `https://portal.azure.us/#@tenant/blade/Microsoft_Azure_Monitoring_Alerts/AlertsSummaryBlade/resourceId/${encodeURIComponent(metadata.accountId)}`,
+        );
+        expect(metadata.getClient).not.toHaveBeenCalled();
+    });
+
     it.each([undefined, -1, 0, 4000])(
         'does not use total throughput cap %s to determine metric applicability',
         async (limit) => {

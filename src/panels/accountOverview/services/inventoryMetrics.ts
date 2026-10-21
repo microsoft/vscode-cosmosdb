@@ -76,8 +76,6 @@ export interface InventoryMetricsResult {
     reason?: UnavailableReason;
     /** Per-container metrics keyed as `${databaseId}/${containerId}`. */
     metrics: Record<string, ContainerMetrics>;
-    /** Account health supplied by the router from provisioning and per-container throttling. */
-    accountHealth?: HealthState;
     /** Reasons for containers absent from the metric response (including when all reads failed). */
     storageFallback?: StorageMeasurement;
     /** Epoch milliseconds when the server produced this snapshot. */
@@ -107,7 +105,7 @@ export function deriveRowHealth(
 
 /**
  * Fetches storage, 7-day growth, recent RU peak, and per-row throttling for
- * every container in the account.
+ * every container in the account. Critical rows can raise account health to Needs Attention, not Critical.
  * A primary storage/RU failure sets `available: false` but retains independent observations and 429 signals.
  * Diagnostic callers supply `peakConfig`; chart callers keep the time-range preset for RU.
  */

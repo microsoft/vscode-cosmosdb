@@ -29,6 +29,7 @@ import * as l10n from '@vscode/l10n';
 import { memo, type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Line, LineChart, ResponsiveContainer } from 'recharts';
 import { summarizeStorage } from '../../../panels/accountOverview/metrics/storage';
+import { rowHealth } from '../../../panels/accountOverview/overviewHealthModel';
 import {
     type ContainerMetrics,
     type HealthState,
@@ -71,7 +72,6 @@ const useStyles = makeStyles({
         overflowX: 'auto',
         overflowY: 'auto',
         maxWidth: '100%',
-        maxHeight: '640px',
         position: 'relative',
     },
     stickyHeader: {
@@ -229,17 +229,6 @@ function formatGrowth(bytes: number): string {
     }
     const sign = bytes > 0 ? '+' : '−';
     return `${sign}${formatBytes(Math.abs(bytes))}`;
-}
-
-function rowHealth(
-    row: InventoryContainerRow,
-    metric: ContainerMetrics | undefined,
-    normalizedRuApplicability?: MetricApplicability,
-): HealthState | 'Unknown' {
-    if (metric) {
-        return metric.health ?? 'Unknown';
-    }
-    return normalizedRuApplicability?.status === 'notApplicable' ? 'Unknown' : row.health;
 }
 
 function formatRU(row: InventoryContainerRow): string {
@@ -473,6 +462,7 @@ export const InventoryTable = ({
     const filterChangePending = useRef(false);
     const rootRef = useRef<HTMLElement>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const tableRef = useRef<HTMLTableElement>(null);
     const focusedElement = useRef<HTMLElement | null>(null);
     const previousNavigationRevision = useRef(navigationRevision);
     useLayoutEffect(() => {
@@ -525,6 +515,12 @@ export const InventoryTable = ({
         const factor = sortDirection === 'ascending' ? 1 : -1;
         const metricOf = (row: InventoryContainerRow) => metrics?.[containerKey(row)];
         return [...filteredRows].sort((a, b) => {
+            const criticalFirst =
+                Number(rowHealth(b, metricOf(b), normalizedRuApplicability) === 'Critical') -
+                Number(rowHealth(a, metricOf(a), normalizedRuApplicability) === 'Critical');
+            if (criticalFirst !== 0) {
+                return criticalFirst;
+            }
             switch (sortKey) {
                 case 'throughputRU':
                     return factor * ((a.throughputRU ?? -1) - (b.throughputRU ?? -1));
@@ -650,6 +646,31 @@ export const InventoryTable = ({
         }
     }, [currentPage, search, databaseFilter, throughputFilter, sortKey, sortDirection]);
 
+    useLayoutEffect(() => {
+        const scrollArea = scrollRef.current;
+        const table = tableRef.current;
+        if (!active || !scrollArea || !table) {
+            return;
+        }
+        const visibleRowCount = 5;
+        const visibleRows = Array.from(table.rows).slice(0, visibleRowCount + 1);
+        if (table.rows.length <= visibleRowCount + 1) {
+            scrollArea.style.removeProperty('max-height');
+            return;
+        }
+        const updateHeight = () => {
+            const rowsHeight = visibleRows.reduce((height, row) => height + row.getBoundingClientRect().height, 0);
+            // Keep all five rows visible even when a horizontal scrollbar occupies part of the viewport.
+            const scrollbarHeight = scrollArea.offsetHeight - scrollArea.clientHeight;
+            scrollArea.style.maxHeight = `${rowsHeight + scrollbarHeight}px`;
+        };
+        updateHeight();
+        const observer = new ResizeObserver(updateHeight);
+        visibleRows.forEach((row) => observer.observe(row));
+        observer.observe(scrollArea);
+        return () => observer.disconnect();
+    }, [active, available, supported, currentPage, sortedRows]);
+
     const emptyContent = !available ? (
         <EmptyState reason={reason ?? 'noData'} requiredRole={l10n.t('Reader on the Cosmos DB account')} />
     ) : !supported ? (
@@ -737,8 +758,12 @@ export const InventoryTable = ({
                     ) : (
                         <div className={styles.scrollArea} ref={scrollRef}>
                             <Table
+                                ref={tableRef}
                                 className={styles.table}
                                 aria-label={l10n.t('Containers')}
+                                aria-description={l10n.t(
+                                    'Critical containers appear first. Column sorting applies within critical and other containers separately.',
+                                )}
                                 aria-rowcount={sortedRows.length + 1}
                             >
                                 <TableHeader className={styles.stickyHeader}>

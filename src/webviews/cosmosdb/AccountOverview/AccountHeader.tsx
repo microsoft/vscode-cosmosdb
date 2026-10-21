@@ -8,8 +8,6 @@ import {
     AccordionHeader,
     AccordionItem,
     AccordionPanel,
-    Badge,
-    type BadgeProps,
     Button,
     Dropdown,
     makeStyles,
@@ -24,6 +22,7 @@ import {
 import { ArrowClockwise16Regular, Braces16Regular, Money16Regular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useId, useMemo, useState } from 'react';
+import { type OverviewHealthCheck } from '../../../panels/accountOverview/overviewHealthModel';
 import {
     type AccountActionInput,
     type HealthState,
@@ -32,6 +31,7 @@ import {
     type ProvisioningState,
     type TimeRange,
 } from '../../api/types';
+import { AccountHealthStatus, PROVISIONING_LABELS } from './AccountHealthStatus';
 import { type ContainerRef, type MetricScope } from './metrics/descriptors';
 
 const cosmosIcon = new URL('../../../../resources/azurecosmosdb.png', import.meta.url).href;
@@ -43,6 +43,7 @@ const timeRanges: { value: TimeRange; label: string }[] = [
 
 export type AccountSummary = {
     accountName: string;
+    alertsPortalUrl?: string;
     resourceGroup: string;
     subscriptionId: string;
     subscriptionName: string;
@@ -148,22 +149,11 @@ const useStyles = makeStyles({
             flexBasis: '100%',
         },
     },
-    statusValue: {
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: tokens.spacingHorizontalSNudge,
-    },
     throughputLimit: {
         ':focus-visible': {
             outline: `${tokens.strokeWidthThick} solid ${tokens.colorStrokeFocus2}`,
             outlineOffset: tokens.strokeWidthThick,
         },
-    },
-    statusDot: {
-        width: '6px',
-        height: '6px',
-        borderRadius: tokens.borderRadiusCircular,
-        backgroundColor: 'currentColor',
     },
     detailsToggle: {
         marginLeft: 'auto',
@@ -205,17 +195,6 @@ const useStyles = makeStyles({
         maxWidth: '100%',
         overflowWrap: 'anywhere',
     },
-    srOnly: {
-        position: 'absolute',
-        width: '1px',
-        height: '1px',
-        padding: 0,
-        margin: '-1px',
-        overflow: 'hidden',
-        clipPath: 'inset(50%)',
-        whiteSpace: 'nowrap',
-        border: 0,
-    },
 });
 
 function formatRefreshTime(timestamp: number): string {
@@ -223,35 +202,6 @@ function formatRefreshTime(timestamp: number): string {
         dateStyle: 'short',
         timeStyle: 'medium',
     });
-}
-
-function healthFromProvisioning(state: ProvisioningState | undefined): { tone: BadgeProps['color']; label: string } {
-    switch (state) {
-        case 'Succeeded':
-            return { tone: 'success', label: l10n.t('Healthy') };
-        case 'Creating':
-        case 'Updating':
-        case 'Deleting':
-            return { tone: 'warning', label: l10n.t('Needs Attention') };
-        case 'Failed':
-        case 'Canceled':
-            return { tone: 'danger', label: l10n.t('Critical') };
-        case undefined:
-        default:
-            return { tone: 'subtle', label: l10n.t('Unknown') };
-    }
-}
-
-/** Maps a derived {@link HealthState} (provisioning + throttling) to a badge color and localized label. */
-function healthFromState(state: HealthState): { tone: BadgeProps['color']; label: string } {
-    switch (state) {
-        case 'Healthy':
-            return { tone: 'success', label: l10n.t('Healthy') };
-        case 'Needs Attention':
-            return { tone: 'warning', label: l10n.t('Needs Attention') };
-        case 'Critical':
-            return { tone: 'danger', label: l10n.t('Critical') };
-    }
 }
 
 const EssentialField = ({ label, value }: { label: string; value: string }) => {
@@ -269,6 +219,8 @@ export const AccountHeader = ({
     navigationRevision = 0,
     summary,
     accountHealth,
+    healthChecks,
+    activeAlertsUnavailable = false,
     lastRefreshedAt,
     onRefresh,
     loading = false,
@@ -286,6 +238,8 @@ export const AccountHeader = ({
     navigationRevision?: number;
     summary: AccountSummary;
     accountHealth?: HealthState;
+    healthChecks?: OverviewHealthCheck[];
+    activeAlertsUnavailable?: boolean;
     lastRefreshedAt?: number;
     onRefresh: () => void;
     loading?: boolean;
@@ -312,7 +266,6 @@ export const AccountHeader = ({
           : undefined;
     const [essentialsOpen, setEssentialsOpen] = useState(defaultEssentialsOpen);
     const [additionalPropertiesOpen, setAdditionalPropertiesOpen] = useState(false);
-    const health = accountHealth ? healthFromState(accountHealth) : healthFromProvisioning(summary.provisioningState);
     const databases = useMemo(
         () => [...new Set(databaseIds ?? containers.map((container) => container.databaseId))].sort(),
         [containers, databaseIds],
@@ -346,7 +299,10 @@ export const AccountHeader = ({
         : (summary.backupPolicyType ?? l10n.t('Unknown'));
 
     const essentials: { label: string; value: string }[] = [
-        { label: l10n.t('Status'), value: health.label },
+        {
+            label: l10n.t('Status'),
+            value: (summary.provisioningState && PROVISIONING_LABELS[summary.provisioningState]) ?? l10n.t('Unknown'),
+        },
         { label: l10n.t('Resource group'), value: summary.resourceGroup },
         { label: l10n.t('Subscription'), value: summary.subscriptionName },
         { label: l10n.t('Subscription ID'), value: summary.subscriptionId },
@@ -395,9 +351,6 @@ export const AccountHeader = ({
 
     return (
         <header className={styles.root}>
-            <output className={styles.srOnly} aria-live="polite">
-                {l10n.t('Account health: {status}', { status: health.label })}
-            </output>
             <div className={styles.topRow}>
                 <div className={styles.identity}>
                     <img className={styles.icon} src={cosmosIcon} alt="" />
@@ -499,17 +452,12 @@ export const AccountHeader = ({
                 <AccordionItem value="details">
                     <div className={styles.topRow}>
                         <div className={styles.statusItems}>
-                            <div className={styles.statusValue}>
-                                <span>{l10n.t('Status:')}</span>
-                                <Badge
-                                    appearance="tint"
-                                    shape="circular"
-                                    color={health.tone}
-                                    icon={<span className={styles.statusDot} aria-hidden />}
-                                >
-                                    {health.label}
-                                </Badge>
-                            </div>
+                            <AccountHealthStatus
+                                provisioningState={summary.provisioningState}
+                                accountHealth={accountHealth}
+                                healthChecks={healthChecks}
+                                activeAlertsUnavailable={activeAlertsUnavailable}
+                            />
                             <span>{l10n.t('Regions: {regions}', { regions: regionsLabel })}</span>
                             <span>{l10n.t('Capacity mode: {mode}', { mode: capacityMode })}</span>
                             <Tooltip content={throughputLimitExplanation} relationship="description">

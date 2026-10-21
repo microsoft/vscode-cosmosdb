@@ -10,6 +10,7 @@ import { AuthenticationMethod } from '../../../../cosmosdb/AuthenticationMethod'
 import { getCosmosDBCredentials } from '../../../../cosmosdb/CosmosDBCredential';
 import { ext } from '../../../../extensionVariables';
 import { revealAzureResourceInExplorer } from '../../../../vscodeUriHandler';
+import { buildAlertPortalUrl } from '../../../accountOverview/services/alertsRecommendations';
 import { QueryEditorTab } from '../../../QueryEditorTab';
 import { type AccountOverviewRouterContext } from '../../appRouter';
 import { accountOverviewRouter } from '../../trpc';
@@ -83,16 +84,73 @@ describe('Account Overview auxiliary action routes', () => {
         });
         await caller.openUrl({ url });
         expect(vscode.env.openExternal).toHaveBeenCalledExactlyOnceWith(vscode.Uri.parse(url));
+        expect(vscode.commands.executeCommand).not.toHaveBeenCalled();
         expect(vscode.window.showErrorMessage).not.toHaveBeenCalled();
     });
 
-    it('rejects a refused browser launch instead of returning success', async () => {
+    it.each([
+        'https://example.invalid',
+        'http://example.invalid',
+        buildAlertPortalUrl('/subscriptions/sub/providers/Microsoft.AlertsManagement/alerts/alert'),
+        'mailto:support@example.invalid',
+    ])('rejects a refused external launch instead of returning success: %s', async (url) => {
         const { caller } = createCaller();
         vi.mocked(vscode.env.openExternal).mockResolvedValueOnce(false);
-        await expect(caller.openUrl({ url: 'https://example.invalid' })).rejects.toThrow(
-            'Unable to open the link in your browser.',
-        );
+        await expect(caller.openUrl({ url })).rejects.toThrow('Unable to open the link in your browser.');
         expect(vscode.window.showErrorMessage).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        'https://portal.azure.com/',
+        'https://ms.portal.azure.com',
+        'https://portal.azure.us/',
+        'https://portal.azure.cn',
+    ])(
+        'preserves the alert resource ID as one encoded portal route parameter at browser dispatch: %s',
+        async (portal) => {
+            const { caller } = createCaller();
+            const id =
+                '/subscriptions/sub/resourceGroups/rg/providers/Microsoft.DocumentDB/databaseAccounts/account/providers/Microsoft.AlertsManagement/alerts/a b?#%2F';
+            const url = buildAlertPortalUrl(id, portal, 'tenant');
+            let browserUrl = '';
+            vi.mocked(vscode.env.openExternal).mockImplementationOnce(async (uri) => {
+                // VS Code's external opener serializes URI inputs with toString(true), then encodeURI.
+                browserUrl = encodeURI(uri.toString(true));
+                return true;
+            });
+            await caller.openUrl({ url });
+            expect(vscode.env.openExternal).toHaveBeenCalledExactlyOnceWith(vscode.Uri.parse(url));
+            expect(vscode.commands.executeCommand).not.toHaveBeenCalled();
+            expect(browserUrl).toBe(url);
+            expect(new URL(browserUrl).hash.split('/')).toEqual([
+                '#@tenant',
+                'view',
+                'Microsoft_Azure_Monitoring_Alerts',
+                'AlertDetails.ReactView',
+                'alertId',
+                encodeURIComponent(encodeURIComponent(id)),
+                'invokedFrom',
+                'CopyLinkFeature',
+            ]);
+        },
+    );
+
+    it.each([
+        'https://example.invalid/a%2Fb?value=a%26b%3Dc#part%2Fone',
+        'http://example.invalid/a%20b?value=%252F#part%23two',
+    ])('passes prepared HTTP URLs to the external opener without router-specific encoding: %s', async (url) => {
+        const { caller } = createCaller();
+        await caller.openUrl({ url });
+        expect(vscode.env.openExternal).toHaveBeenCalledExactlyOnceWith(vscode.Uri.parse(url));
+        expect(vscode.commands.executeCommand).not.toHaveBeenCalled();
+    });
+
+    it('continues to use the external opener for non-HTTP schemes', async () => {
+        const { caller } = createCaller();
+        const url = 'mailto:support@example.invalid';
+        await caller.openUrl({ url });
+        expect(vscode.env.openExternal).toHaveBeenCalledExactlyOnceWith(vscode.Uri.parse(url));
+        expect(vscode.commands.executeCommand).not.toHaveBeenCalled();
     });
 
     it('propagates browser errors to the single RPC notification owner', async () => {

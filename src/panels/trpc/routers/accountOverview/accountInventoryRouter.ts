@@ -7,6 +7,7 @@ import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
 import * as l10n from '@vscode/l10n';
 import { API, tryGetExperience } from '../../../../AzureDBExperiences';
 import { getAccountMetricApplicability } from '../../../accountOverview/metrics/contracts';
+import { buildAccountAlertsPortalUrl } from '../../../accountOverview/services/alertsRecommendations';
 import { getInventoryResult, type InventoryContainerRow } from '../../../accountOverview/services/inventory';
 import { type ProvisioningState } from '../../../accountOverview/services/shared';
 import { type AccountOverviewRouterContext } from '../../appRouter';
@@ -37,6 +38,11 @@ export const accountInventoryProcedures = {
 
         return {
             accountName: metadata.accountName,
+            alertsPortalUrl: buildAccountAlertsPortalUrl(
+                metadata.subscription.environment.portalUrl,
+                metadata.subscription.tenantId,
+                metadata.accountId,
+            ),
             resourceGroup: metadata.resourceGroup,
             subscriptionId: metadata.subscription.subscriptionId,
             subscriptionName: metadata.subscription.name,

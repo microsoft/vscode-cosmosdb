@@ -19,10 +19,13 @@ export type {
     QueryEditorAppRouter,
 } from '../../panels/trpc/appRouter';
 export type {
+    AccountHealthResult,
     AccountHealthSignals,
     AlertItem,
+    AlertMonitorCondition,
     AlertSeverity,
     AlertsResult,
+    ActiveAlertSummary,
     AlertTimeRange,
     ContainerMetrics,
     DerivedAdvisoriesResult,

@@ -1,325 +1,313 @@
-# Account Overview Dashboard
+# Account Overview guide
 
-A read-only, at-a-glance dashboard for a single Cosmos DB (NoSQL) account, hosted as a VS Code webview.
-Open it from an account node in the Azure resources tree (**Open Account Overview**). All Azure Resource
-Manager (ARM) and Azure Monitor calls run on the extension host; the webview holds no tokens and talks to
-the host over tRPC.
+Account Overview helps you answer three questions about an Azure Cosmos DB for NoSQL account:
+**What is happening? Which resources need attention? What should I investigate next?**
 
-For NoSQL accounts, **Try Data Modeler** opens the Data Modeler for the account shown in the overview without an
-account picker. It requires available GitHub Copilot models and AI features enabled. Launching it does not refresh
-the overview or change its selected filters.
+In the Azure resources Explorer, open your account's **Account Overview → Overview**.
+The account stays the same as you move between tabs or select a database.
+Reading the dashboard does not change Azure resources. Actions such as **Add database**, **Add container**
+and **Delete account** are separate, explicit operations with the extension's usual wizard or confirmation.
 
-This document describes **what the dashboard ships today** — the metrics it renders, the detections it
-computes, where each one surfaces in the UI, and the ARM endpoints it calls. The broader detection
-methodology and fleet-grounded thresholds live in the CODA project (see [CODA reference](#coda-reference));
-this page is _what we have_, not what CODA has.
+This guide explains the current repository implementation. Maintainers and coding agents should use the
+[implementation specification](../specs/account-overview.md) for exact calculations, lifecycle rules and known limitations.
 
-## Layout
+## Start here
 
-The panel is two columns:
+1. Check **Health** beside the account name. Focus or hover over the badge to see what was checked and what is unknown.
+2. Use **Monitoring** to compare traffic, throughput, storage and latency over the last hour, day or week.
+3. Open **Databases and Containers** to find a particular container and investigate its physical partitions.
+4. Open **Advisories** for suggested investigations, Azure Advisor recommendations and Azure Monitor alerts.
+5. Select **Refresh** when you want a new snapshot. Overview does not update automatically.
 
-- **Main column (left)** — account header, metric charts, the inventory table, and the partition-health
-  heatmap. Several detections surface **inline** here (health badges, flagged tiles, throttling bands).
-- **Right rail (`aside`)** — three cards: **Active Alerts** and **Recommendations** (both Azure
-  passthrough), and **Derived Advisories** (our client-side rule engine).
+The header remains visible across the three tabs. Expand **Account details** for provisioning status,
+capacity mode, account properties, **View Cost** and **View JSON**.
+The Explorer's metric shortcuts select a chart in the same dashboard, preserving your filters.
 
-## Metrics rendered (Azure Monitor)
+## Understanding health
 
-| Metric (Azure Monitor name) | Aggregation | Split dimension                   | Feeds                                                     |
-| --------------------------- | ----------- | --------------------------------- | --------------------------------------------------------- |
-| `NormalizedRUConsumption`   | Maximum     | — / `PartitionKeyRangeId`         | RU trend chart, per-row peak RU, hot-partition share      |
-| `ProvisionedThroughput`     | Maximum     | —                                 | provisioned RU/s reference line (min interval `PT5M`)     |
-| `DataUsage`                 | Maximum     | `DatabaseName` / `CollectionName` | storage usage, 7-day storage growth                       |
-| `IndexUsage`                | Maximum     | `DatabaseName` / `CollectionName` | index usage, indexing-cost signal                         |
-| `DocumentCountV2`           | Maximum     | `DatabaseName` / `CollectionName` | per-container document count (best-effort snapshot gauge) |
-| `TotalRequests`             | Count       | `StatusCode`                      | request volume + throttling (429 share) bands             |
-| `TotalRequestUnits`         | Total       | —                                 | RU-volume metric chart                                    |
-| `MetadataRequests`          | Total       | —                                 | metadata-ops metric chart                                 |
-| `PhysicalPartitionSizeInfo` | Maximum     | `PhysicalPartitionId`             | partition storage skew                                    |
+**Health is an extension diagnostic summary, not Azure Resource Health or an availability guarantee.**
+It combines provisioning problems, account-wide throttling, active Azure alerts, selected Azure Advisor
+recommendations and critical containers.
 
-Chart granularity follows the selected time range: `1H` → `PT1M`, `24H` → `PT5M`, `7D` → `PT1H`.
+| Badge               | What it means                                                                                                                                                                       |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Critical**        | Account provisioning failed/was canceled, sustained account-wide throttling was detected, or a Sev0/Sev1 active alert was found.                                                    |
+| **Needs Attention** | The account is being created/updated/deleted, a Sev2/Sev3 active alert exists, a High-impact Performance/Cost Advisor recommendation exists, or at least one container is Critical. |
+| **Healthy**         | Account request observations support a healthy result and none of the available contributing signals escalates it. This does not mean every check has complete data.                |
+| **Unknown**         | There is insufficient evidence for a healthy result, or active alerts could not be checked and there is no known problem to show instead.                                           |
 
-## Detections we compute
+Known problems take priority over Healthy or Unknown. One unavailable check does not erase a known critical alert.
+If an alert refresh fails, Overview retains previously known alert problems until a successful check replaces them.
+The checklist tells you whether each check passed, found a problem, is still running, or could not be assessed.
 
-Numbered `AO-Dx` for our own reference and mapped to the nearest CODA equivalent (`DX-xxx`). The
-**CODA parity** column describes the detection signal, not identical report output or cloud permissions.
-The reference is CODA commit `53d43cec4e46885d8610751e24d937bc794a4550`. Diagnostic policy lives in
-`advisories/core/thresholds.ts`; only the existing tunable subset is exposed under `cosmosDB.accountOverview.*`.
-Charts retain their selected display windows, independently of the detectors' observation windows.
+### What counts as account throttling?
 
-| #      | Detection                       | Trigger (default)                                                                                        | Surface                                           | CODA map                 | CODA parity                                 |
-| ------ | ------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------- | ------------------------ | ------------------------------------------- |
-| AO-D1  | Account / row health            | peak RU ≥ 80 / 90 %; sustained 429                                                                       | Header pill + inventory row badges                | DX-005                   | RU bands ✅ (growth → AO-D9)                |
-| AO-D2  | Hot partition                   | busiest physical-partition p99 ≥ 90 % saturation while another < 70 % headroom (7-day)                   | Heatmap tile (flagged) **and** Derived Advisories | DX-006                   | ✅ p99 saturation + headroom (DX-006)       |
-| AO-D3  | Storage skew                    | coolest ÷ busiest partition size < 0.7, busiest ≥ 1 GiB                                                  | Heatmap (storage mode) **and** Derived Advisories | DX-015                   | ✅ balance ratio (DX-015)                   |
-| AO-D4  | Sustained throttling            | ≥ 1000 requests, 429 rate ≥ 1 %, busiest partition p99 ≥ 90 % and coolest ≥ 70 % (7-day)                 | RU-chart bands **and** Derived Advisories         | DX-005                   | ✅ 429-rate + uniform capacity pressure     |
-| AO-D5  | Over-provisioning               | per-offer 30-day p99 RU < 30 % (dedicated manual), 90 % peak guard, account-relative materiality         | Derived Advisories                                | DX-001                   | ✅ band + peak guard + materiality (DX-001) |
-| AO-D6  | Autoscale candidate             | peak ≥ 40 %, avg ≤ 30 %, peak/avg ≥ 5 (manual only)                                                      | Derived Advisories                                | DX-012                   | ✅ duty cycle (DX-012)                      |
-| AO-D7  | Indexing cost risk              | index/data storage > 0.3, 0 user-excluded paths                                                          | Derived Advisories                                | — (CODA gap)             | ⚠️ storage proxy; wants write-RU share      |
-| AO-D8  | Advisor + Alerts                | severity / impact from Azure                                                                             | Right rail (Active Alerts, Recommendations)       | — (ext-only passthrough) | ✅ passthrough                              |
-| AO-D9  | Rapid storage growth            | physical-partition size trajectory reaches 50 GiB within horizon (High ≤ 30 d, Med ≤ 90 d)               | Derived Advisories                                | DX-017                   | ✅ least-squares horizon (DX-017)           |
-| AO-D10 | Premium consistency             | Strong / Bounded Staleness across ≥ 2 regions (config fact)                                              | Derived Advisories                                | DX-016                   | ✅ config parity (DX-016)                   |
-| AO-D11 | Multi-region writes antipattern | multi-region writes enabled on wrong-API, single write region, or non-prod (config fact)                 | Derived Advisories                                | DX-008                   | ✅ config parity (DX-008)                   |
-| AO-D12 | Idle container                  | peak `TotalRequestUnits` ≤ 50 RU per 5-minute bucket over 30 days (dedicated manual/autoscale)           | Derived Advisories                                | DX-004                   | ✅ idle signal + materiality (DX-004)       |
-| AO-D13 | Partition-merge candidate       | physical partitions > max(ceil(RU/10 000), ceil(storage/50 GiB), 1) and ≥ 2                              | Derived Advisories                                | DX-009                   | ✅ actual vs needed (DX-009)                |
-| AO-D14 | Autoscale max over-provisioned  | peak `AutoscaledRU` < 30 % of the configured max (autoscale only), idle-floor materiality                | Derived Advisories                                | DX-011                   | ✅ peak band + autoscale billing (DX-011)   |
-| AO-D15 | Autoscale → manual candidate    | autoscale avg ≥ 66 % of max and peak/avg ≤ 1.3 (steady-high, autoscale only)                             | Derived Advisories                                | DX-013                   | ✅ duty cycle (DX-013)                      |
-| AO-D16 | Serverless candidate            | account-total peak in [10, 5000] RU/s, avg/peak < 0.10, ≥ 24 observations over 30 days (not serverless)  | Derived Advisories                                | DX-014                   | ✅ low/sporadic shape (DX-014)              |
-| AO-D17 | Cross-partition query fan-out   | ≥ 10 % of query executions fan out (avg ≥ 1.5 partitions), container ≥ 2 partitions, ≥ 50 queries (logs) | Derived Advisories (Tier-2)                       | DX-002                   | ✅ fan-out share + volume (DX-002)          |
-| AO-D18 | Shard-key misalignment          | ≥ 50 queries, ≥ 60 % fan-out rounded to one decimal, ≥ 2 partitions; supersedes AO-D17                   | Derived Advisories (Tier-2)                       | DX-007                   | ✅ structural fan-out (DX-007)              |
-| AO-D19 | Uncontrolled ingestion          | write-RU ≥ 80 % and 429 rate ≥ 10 % over ≥ 1000 requests (logs); burst factor as evidence                | Derived Advisories (Tier-2)                       | DX-010                   | ✅ write-dominance + throttling (DX-010)    |
-| AO-D20 | Shared-throughput starvation    | pool 429 ≥ 5 %, one collection ≥ 60 % of RU, a sibling throttling ≥ 5 % at ≤ 20 % share (logs)           | Derived Advisories (Tier-2)                       | DX-003                   | ✅ 429 + consumption disparity (DX-003)     |
-| AO-D21 | Serverless throttling           | ≥ 1000 requests and 429 rate ≥ 1 % over 7 days; Medium ≥ 5 %, High ≥ 20 %, no partition-RU dependency    | Derived Advisories                                | DX-018                   | ✅ dedicated serverless request-count check |
+HTTP **429** means a request was throttled. For the health badge, Overview checks the **whole account**
+over the last hour, in one-minute buckets. It flags a run lasting at least five minutes when **more than 1%**
+of requests in each qualifying bucket received 429.
 
-### Where each detection surfaces
+For example, five consecutive minutes above 1% can make account health Critical.
+A single busy container does not do so by itself: its 429s are compared with all account requests.
+Changing the selected database or chart period does not change this account-wide check.
+Actual observations of zero requests are valid; missing observations are not the same as zero.
 
-Detections are **not** confined to the right rail. Some render inline in the charts/tables, some only as a
-text advisory, and a few in both places:
+### Why can a tab be red while account health only needs attention?
 
-| Detection                              | Right rail (Derived Advisories)            | Main column (chart / table)                       |
-| -------------------------------------- | ------------------------------------------ | ------------------------------------------------- |
-| AO-D1 Account / row health             | —                                          | Health pill (header) + per-row badges (inventory) |
-| AO-D2 Hot partition                    | ✅ advisory                                | ✅ flagged tile in the partition heatmap          |
-| AO-D3 Storage skew                     | ✅ advisory                                | ✅ heatmap in storage mode                        |
-| AO-D4 Sustained throttling             | ✅ advisory                                | ✅ shaded bands on the RU trend chart             |
-| AO-D5 Over-provisioning                | ✅ advisory                                | —                                                 |
-| AO-D6 Autoscale candidate              | ✅ advisory                                | —                                                 |
-| AO-D7 Indexing cost risk               | ✅ advisory                                | —                                                 |
-| AO-D8 Advisor + Alerts (passthrough)   | ✅ (Active Alerts + Recommendations cards) | —                                                 |
-| AO-D9 Rapid storage growth             | ✅ advisory                                | —                                                 |
-| AO-D10 Premium consistency             | ✅ advisory                                | —                                                 |
-| AO-D11 Multi-region writes antipattern | ✅ advisory                                | —                                                 |
-| AO-D12 Idle container                  | ✅ advisory                                | —                                                 |
-| AO-D13 Partition-merge candidate       | ✅ advisory                                | —                                                 |
-| AO-D14 Autoscale max over-provisioned  | ✅ advisory                                | —                                                 |
-| AO-D15 Autoscale → manual candidate    | ✅ advisory                                | —                                                 |
-| AO-D16 Serverless candidate            | ✅ advisory                                | —                                                 |
-| AO-D17 Cross-partition query fan-out   | ✅ advisory (Tier-2 logs)                  | —                                                 |
-| AO-D18 Shard-key misalignment          | ✅ advisory (Tier-2 logs)                  | —                                                 |
-| AO-D19 Uncontrolled ingestion          | ✅ advisory (Tier-2 logs)                  | —                                                 |
-| AO-D20 Shared-throughput starvation    | ✅ advisory (Tier-2 logs)                  | —                                                 |
-| AO-D21 Serverless throttling           | ✅ advisory                                | Request-count / throttling charts                 |
+Tab warning icons point to the **source** of a problem, not a copy of the overall badge:
 
-**Passthrough vs derived:** the **Active Alerts** and **Recommendations** cards are Azure's own output
-(Azure Monitor fired alerts and Azure Advisor), surfaced verbatim. The **Derived Advisories** card is the
-only place our own `§13` rule engine writes to.
+- **Monitoring:** sustained account-wide throttling.
+- **Databases and Containers:** critical or warning container health.
+- **Advisories:** active alert severity or qualifying Azure Advisor recommendations.
 
-**Advisory details:** shared guidance appears above the resource list. Expand a resource for its specific details;
-each finding can be dismissed individually.
+A Critical container gives its tab a red indicator but raises the account only to Needs Attention.
+Warning-only containers give a yellow indicator without raising account health.
+Informational alerts and the extension's Derived Advisories do not escalate account health.
 
-**Data sources:** Tier-1 checks (AO-D1..16, AO-D21) use Azure Monitor metrics and ARM configuration.
-Tier-2 checks (AO-D17..20) use Log Analytics, queried by account resource ID rather than workspace ID.
-Export **DataPlaneRequests** and **QueryRuntimeStatistics** in **resource-specific** mode; legacy `AzureDiagnostics`
-schemas are not supported. Query access must be granted separately from log collection:
-see [Log Analytics access control](https://learn.microsoft.com/azure/azure-monitor/logs/manage-access).
+### Health and Status are different
 
-**Partial coverage:** failed checks do not discard successful findings or imply zero usage; configuration checks
-remain available when workload collection fails. The notice identifies failed checks, and **Show Output** opens
-local diagnostic details. Successful queries may still exclude inaccessible data sources.
+**Status** in Account details describes Azure provisioning; **Online** means provisioning succeeded.
+It does not prove that the workload is healthy.
 
-**Idle and partition-merge evidence:** query each known dedicated-throughput container by database and container ID,
-with at most five concurrent requests for these metrics. Do not enumerate containers through wildcard metric series
-or rely on a larger `top` limit. Missing or invalid samples remain unavailable, not zero: idle requires an observed RU
-peak, and partition-merge requires both an observed partition count and storage value. A failed container query does
-not discard evidence from other containers.
+The health badge does **not** evaluate HTTP 5xx, service availability, latency, storage limits or index health.
+Those charts and advisories may still contain important information when the badge is Healthy.
+Also check any **Not assessed** entries: Healthy is not an all-clear for every possible issue.
 
-## Threshold grounding
+## Reading Monitoring
 
-Every constant the rule engine ships is one of two kinds. A **platform limit** is a hard Azure number the
-detector is _structurally_ correct to use (e.g. a physical partition's 50 GiB ceiling) — these are grounded
-against public Azure documentation below. An **internal-guidance** constant is a heuristic cutoff calibrated
-by CODA's fleet analysis, not a published Azure number. The existing tunable subset is exposed under
-`cosmosDB.accountOverview.advisories.*`; other diagnostic cutoffs remain internal policy, not new settings.
-Neither should be read as an Azure-sanctioned threshold.
+Choose a period (**1 hour**, **24 hours** or **7 days**) and either **All databases** or one database.
+Select a metric tile to show its chart. Switching charts does not trigger another data collection.
+**Service availability always describes the account**, even when a database is selected.
 
-### Diagnostic policy source
+The number on a tile is not always the last point on its chart:
 
-[`DIAGNOSTIC_POLICY`](../src/panels/accountOverview/services/advisories/core/thresholds.ts) centralizes diagnostic
-thresholds, observation windows, and minimum sample/age requirements. Supported VS Code settings override the defaults;
-platform limits and chart time ranges remain separate.
+| Metric                     | Meaning of the tile                                                                                                                  |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| **Normalized RU**          | Highest observed throughput utilization in the selected period. 100% is the provisioned-capacity reference, not “100 RU/s.”          |
+| **Total requests**         | Sum of observed request counts in the selected period.                                                                               |
+| **Total request units**    | Total observed RU consumed in the period. This is usage volume, not RU/s or your configured throughput.                              |
+| **Metadata requests**      | Total observed metadata/control-plane requests, a separate metric from Total requests.                                               |
+| **Server-side latency**    | Highest observed bucket average, taking the higher of Direct and Gateway latency. It is not a client round-trip time or p99 latency. |
+| **Service availability**   | Latest available account-level availability reading. It is not an average calculated by Overview over the selected period.           |
+| **Data + index usage**     | Data and index storage in the newest observed chart bucket, including a partial reading when only one component is available.        |
+| **Provisioned throughput** | Latest observed provisioned RU/s. This is different from the account's total throughput limit.                                       |
+| **Document count**         | Latest combined snapshot from collections that reported observations; not the number of documents created during the period.         |
 
-### Grounded in public Azure documentation (platform facts and policy motivation)
+Charts normally use one-minute buckets for 1 hour, five-minute buckets for 24 hours, and hourly buckets for 7 days.
+Some metrics are coarser: storage, throughput and document count start at five minutes;
+service availability uses hourly readings. A wider window can therefore smooth short spikes.
+Tile values may be rounded; thresholds use the underlying values.
 
-| Constant (code)                                                          | Default     | Grounding                                                                                                                                                                                                                     |
-| ------------------------------------------------------------------------ | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `RU_PER_PARTITION` (DX-009 needed-partition math; DX-005/006 base)       | 10,000 RU/s | A physical partition serves up to **10,000 RU/s** — [Partitioning](https://learn.microsoft.com/azure/cosmos-db/partitioning#physical-partitions).                                                                             |
-| `BYTES_PER_PARTITION` / `PARTITION_STORAGE_LIMIT_BYTES` (DX-009/015/017) | 50 GiB      | A physical partition stores up to **50 GB** — [Partitioning](https://learn.microsoft.com/azure/cosmos-db/partitioning#physical-partitions).                                                                                   |
-| `AUTOSCALE_IDLE_FRACTION` (DX-011 recoverable idle-floor)                | 0.1         | Autoscale bills between **10% and 100%** of `Tmax` (`0.1*Tmax ≤ T ≤ Tmax`) — [Autoscale](https://learn.microsoft.com/azure/cosmos-db/provision-throughput-autoscale#how-autoscale-throughput-works).                          |
-| `serverlessPeakCeilingRuPerSec` (DX-014 serverless fit ceiling)          | 5,000 RU/s  | A serverless container caps at **5,000 RU/s** — [Serverless performance](https://learn.microsoft.com/azure/cosmos-db/serverless-performance#request-unit-changes).                                                            |
-| `OVERPROVISIONING_MIN_RU` (DX-001 right-size floor)                      | 400 RU/s    | Minimum manual throughput per container is **400 RU/s** — [Provision throughput](https://learn.microsoft.com/azure/cosmos-db/set-throughput).                                                                                 |
-| `autoscaleToManualAvgPercent` (DX-013 break-even)                        | 66 %        | Autoscale saves money only if `Tmax` is used **66% or fewer hours/month**; steadier use is cheaper on manual — [Autoscale](https://learn.microsoft.com/azure/cosmos-db/provision-throughput-autoscale#benefits-of-autoscale). |
+**State** tiles describe stored or provisioned state. **Activity** tiles describe request activity.
+These groups help explain why some readings remain visible on an idle account while others are blank;
+they do not guarantee that Azure has returned every expected sample.
 
-### Internal-guidance (CODA fleet-calibrated; existing tunable subset via settings)
+### Shaded throttling periods
 
-The signals these ride on (e.g. `NormalizedRUConsumption` %, 429 rate) are Azure-published metrics; the
-cutoffs below are CODA guidance, not Azure limits.
+Normalized RU and Total requests charts can mark periods with sustained 429s.
+These overlays follow the selected **chart scope, period and bucket size**.
+The account health badge uses its separate account-wide, one-minute check.
+Consequently a chart band and the health badge can differ without contradicting each other.
+If overlay collection fails, the main chart can still be shown without bands.
 
-| Constant(s)                                                                           | Default       | Role                                                                                    |
-| ------------------------------------------------------------------------------------- | ------------- | --------------------------------------------------------------------------------------- |
-| `partitionSaturationPercent` / `partitionHeadroomPercent`                             | 90 % / 70 %   | p99 bands separating a saturated partition from one with headroom (DX-005/006).         |
-| `throttleRatePercent`                                                                 | 1 %           | 429-rate floor above which throttling counts as active (DX-005).                        |
-| `overProvisioningBandPercent` + `DIAGNOSTIC_POLICY.overProvisioning.peakGuardPercent` | 30 % / 90 %   | Idle band + peak-saturation guard (DX-001/011).                                         |
-| `DIAGNOSTIC_POLICY.capacityMateriality` (rel `5 % / 1 %`, abs `5000 / 1000 RU`)       | —             | Relative capacity-materiality severity (DX-001/004/011).                                |
-| Under-provisioning severity `20 % / 5 %`                                              | —             | 429-rate severity bands (DX-005).                                                       |
-| Autoscale-candidate `40 % / 30 % / 5×`                                                | —             | Duty-cycle burst signal (DX-012).                                                       |
-| `storageGrowthHorizonDays` + `30 / 90 d` severity                                     | 180 d         | Days-to-50-GiB projection horizon (DX-017).                                             |
-| `storageSkewBalanceRatio` + `1 / 25 / 40 GiB`                                         | 0.7           | Partition-balance ratio + materiality (DX-015).                                         |
-| `indexingUsageRatio`                                                                  | 0.3           | Index/data storage proxy (AO-D7; no CODA detector).                                     |
-| `idlePeakRuPerBucket`                                                                 | 50 RU         | Near-zero per-bucket floor for idle (DX-004).                                           |
-| `autoscaleToManualPeakToAvgRatio`                                                     | 1.3           | Steadiness cap pairing with the 66 % floor (DX-013).                                    |
-| `serverlessSporadicRatio` + `serverlessPeakFloorRuPerSec`                             | 0.1 / 10 RU/s | Sporadic-shape ratio + activity floor for serverless fit (DX-014).                      |
-| `DIAGNOSTIC_POLICY.{idle,serverless,autoscaleUtilization}.observation`                | 30 d / `PT1H` | Look-back window + bucketing so periodic (monthly-batch) workloads aren't flagged idle. |
+### Storage: data, indexes and partial readings
 
-## Health model
+The storage chart shows **Data** as a solid line and **Indexes** as a dashed line.
+Its point details explain what was observed for each component.
 
-- **Account health** (`Healthy / Needs Attention / Critical`): base state from ARM `provisioningState` plus
-  sustained throttling, then **escalated** (never downgraded) by fired alerts (Sev0/1 → Critical; Sev2/3 →
-  Needs Attention) and high-impact Advisor Performance/Cost recommendations.
-- **Row health** (per database/container): `Critical` on throttling or `peakRuPercent ≥ 90 %`;
-  `Needs Attention` on `peakRuPercent ≥ 80 %`; else `Healthy` only with an observed RU peak, otherwise `Unknown`.
-  Rows absent from the metric response retain the static inventory fallback, except on Serverless.
-  Storage growth no longer feeds row health —
-  proximity to the 50 GiB per-partition limit surfaces as the **AO-D9 / `StorageGrowthRisk`** derived
-  advisory instead.
+- Both readings available: the tile can show their total.
+- Only one available: the tile shows the available amount with **Partial data**. It is not the full storage size.
+- Neither available: a dash replaces the number.
 
-## Data sources — ARM endpoints
+A missing component is never silently treated as a measured zero. Missing chart buckets remain gaps.
+For example, a 2 GB data reading with indexes unavailable means “at least the observed 2 GB,” not “2 GB total.”
+The tile uses the newest observed bucket rather than showing an older complete total as if it were current.
 
-Each ARM SDK below is **dynamically imported** so it stays in the dashboard's lazy chunk, off the extension
-activation hot path. Clients are created on the host from the account's `AzureSubscription` credentials
-(Entra ID / AAD; no account keys).
+The inventory table uses each component's latest observation over seven days.
+Monitoring uses the selected scope/period and aligns components at the same timestamp.
+Azure's aggregation and collection coverage also differ, so these views are **not guaranteed to match exactly**.
+Current byte labels use binary sizes: for example, a displayed GB uses 1,024³ bytes.
 
-| Data source             | SDK (lazy) / client                                      | api-version          | Operations called                                                                                                                                                              | tRPC procedure(s)                                                                      |
-| ----------------------- | -------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
-| Cosmos DB control plane | `@azure/arm-cosmosdb` · `CosmosDBManagementClient`       | `2024-11-15`         | Account config read from the tree's `DatabaseAccountGetResults`; `sqlResources.listSqlDatabases`, `getSqlDatabaseThroughput`, `listSqlContainers`, `getSqlContainerThroughput` | `getAccountSummary`, `getInventory`                                                    |
-| Azure Monitor metrics   | `@azure/arm-monitor` · `MonitorClient`                   | `2019-07-01`         | `metrics.list(resourceUri, { metricnames, aggregation, timespan, interval, filter })`                                                                                          | `getMetricSeries`, `getInventoryMetrics`, `getPartitionHealth`, `getDerivedAdvisories` |
-| Azure Advisor           | `@azure/arm-advisor` · `AdvisorManagementClient`         | `2024-11-18-preview` | `recommendations.list()` — **one subscription-wide call**, coalesced/cached (~55 s) and sharded client-side by `accountId` across open panels                                  | `getRecommendations`                                                                   |
-| Azure Monitor Alerts    | `@azure/arm-alertsmanagement` · `AlertsManagementClient` | `2019-05-05-preview` | `alerts.getAll(scope, { timeRange, … })`                                                                                                                                       | `getAlerts`                                                                            |
+### Serverless accounts
 
-The three lazy SDKs (`arm-monitor`, `arm-advisor`, `arm-alertsmanagement`) must **not** enter the main
-activation bundle — verified via `bundle-analysis/extension-report-vite.json`.
+**Normalized RU** and **Provisioned throughput** show **Not applicable** because Serverless has no provisioned RU/s.
+The tiles remain visible with explanations; they are not failed queries or zero utilization.
+The first chart is **Total request units** instead of Normalized RU.
+Partition investigation shows **Storage distribution**, without an RU/Storage switch.
+Request counts, consumed RU and account-wide throttling remain useful on Serverless.
 
-### Metric applicability and storage observations
+### No data is not zero
 
-- Account metadata, not the total-throughput cap or missing samples, determines Serverless applicability.
-  Normalized RU and provisioned throughput show **Not applicable** on Serverless and skip their Monitor queries.
-  Its initial chart is Total request units; an explicit metric selection survives Refresh and scope changes.
-  Partition distribution uses Storage only, including requests from older callers that select RU.
-- A provisioned account's absent/null cap is **Unknown**; only `-1` explicitly disables the cap.
-  Serverless has no provisioned-throughput cap. This setting limits allocation, not observed consumption.
-- Data and index storage each retain their own observation or failure reason. Both present means a complete sum;
-  one present means **Partial data**, never a complete total. No observations means no numeric total.
-  Chart components align at exact timestamps without forward-fill; inventory components use their latest
-  observations over seven days and can have different timestamps. Growth is the DataUsage delta only.
-- Request failures are distinct from a successful response containing no samples. Storage failures preserve
-  independent observations and row-level 429 evidence; keyboard-focusable explanations expose component failures.
-- Account health still combines provisioning and container throttling with the displayed alerts and Advisor.
-  The metric changes do not introduce an independent account-wide request-health or active-alert summary.
+| Display                             | How to interpret it                                                                         |
+| ----------------------------------- | ------------------------------------------------------------------------------------------- |
+| **0**                               | A numeric zero was observed.                                                                |
+| **No data**                         | No usable result is available. It does not establish that the account is healthy or unused. |
+| **Not applicable**                  | The metric does not apply to this capacity mode.                                            |
+| **Not supported**                   | This source/view is not supported for the account/API.                                      |
+| **No permission / Access required** | Your Azure identity cannot read the source at the required scope.                           |
+| **Unable to load**                  | The metric request failed; retry or investigate access/connectivity.                        |
+| **Partial data / Partial coverage** | Some readings or checks succeeded, but the result is incomplete.                            |
 
-### Indexing exclusions
+Some older data sources also use No data for request failures. If the result is unexpected, try Refresh,
+check the account in Azure Portal, and use **Show Output** where diagnostic details are offered.
 
-For indexing-cost advisories, only the exact default root exclusions `/_etag/?` and `/"_etag"/?` are ignored.
-Nested `_etag` paths, other wildcard forms and application-property exclusions count as user exclusions.
-Inventory continues to retain the raw excluded-path count and does not change the account's indexing policy.
+## Databases and Containers
 
-### Action procedures
+Use the inventory table to search, filter and sort containers. Critical containers come first even when sorting
+another column; pagination shows 25 containers per page. The table scrolls within the panel.
+Container actions let you locate a resource in Explorer or open its query editor.
 
-`openUrl`, `revealInTree`, `openQueryEditor` (deep-links / existing extension commands), `showOutput` (extension Output), and `reportEvent`
-(telemetry). Failures of the four auxiliary actions are displayed once as native VS Code error notifications through
-the shared RPC event channel; their local catches neither redisplay nor rethrow the same error. Background query and
-telemetry errors do not use this notification path. A refused browser launch is an explicit action failure.
-Existing account-action and refresh feedback remains in the dashboard.
+The main measurements are:
 
-`runAccountAction` invokes shared resource-scoped create/delete wizards or opens account costs/JSON.
-Creation, deletion and Data Modeler use the account already open in Overview; they do not require its Explorer
-node to be loaded and do not fall back to an account picker. Container creation lists databases through the
-account's control plane. Explorer and Fabric commands adapt their selection to the same wizard entrypoints.
-Advisory guidance does not automatically modify Azure resources.
-Alert links and View Cost preserve `subscription.environment.portalUrl` and include the subscription's tenant,
-matching Azure Resources' portal selection convention. This preserves public, sovereign and configured `ms.portal`
-destinations without guessing the portal from a tenant ID.
+- **Peak RU:** highest normalized RU in the selected chart period.
+- **Storage:** latest observed data plus index storage, with partial-data details.
+- **Data growth:** latest minus first observed **data** size over seven days. Index growth is not included.
+- **Document count:** latest observed count for the container, not a live data-plane count.
 
-### Loading and refresh
+### Container health
 
-- Data loads when Overview opens. There are no polling timers, refresh-on-visibility handlers or auto-refresh settings.
-- **Refresh** reloads every section: account summary, inventory, metric trends, inventory metrics, the selected
-  container's partition health, alerts, Azure Advisor recommendations and derived advisories. It waits for all requests.
-- Metric time-range changes reload trends, time-dependent inventory metrics and the selected partition view.
-  Database-scope changes reload trends only; partition selection/measure and alert-window changes reload their own data.
-  Switching tabs, showing a chart or returning to the editor does not itself fetch data.
-- **Charts generated at**, to the left of the header filters, shows the local date and time when the latest accepted
-  trend batch produced available chart results. It is absent before any chart results are available or when the whole
-  batch is unavailable. It is not a
-  timestamp for all sections, the Azure ingestion time or the latest metric sample.
-- A spinner inside **Refresh** indicates an explicit Refresh or header filter change, not initial loading.
-  The button keeps its Refresh label; no separate updating text is displayed.
-  Refresh and both header selectors remain unavailable while existing data requests finish, including initial loading.
-  They remain focusable and expose their disabled state to assistive technology; loading does not remove the active control
-  from the keyboard focus order. Header selectors cannot open or change selection while locked.
-  They unlock after completion or failure without resetting the selected database or period.
-  Individual sections show their own loading state.
-- Alert-window buttons are disabled but remain focusable while alerts load, including initial collection, a period change and manual Refresh.
-  They remain disabled until the whole manual Refresh settles. Repeated selection does not reload data; failed requests
-  unlock the buttons and replace stale alerts with an unavailable state. Latest-request guards also protect result publication.
-- Successful database/container creation retains its existing inventory reload. Filters and selections are preserved.
+With the default settings, a container is Critical at a peak RU of **90% or more**, or when sustained 429s
+are detected for that container. A peak of **80% or more** gives Needs Attention.
+Lower observed RU gives Healthy. Container 429 checks use the last hour even when Peak RU uses another period.
+Storage growth does not directly change the row's health.
 
-### Keyboard and accessible feedback
+Missing metric health normally shows Unknown, including Serverless without a throttling signal.
+There is a current limitation: a provisioned row with no metric result at all can retain its initial Healthy label.
+Use the account checklist's unassessed count and the actual metric values rather than treating that row label
+as proof that telemetry was collected.
 
-- Explicit Explorer navigation closes advisory dialogs and open selectors without resetting filters or selections.
-  Generic destinations focus their tab; metric destinations retain their existing chart-region focus.
-  Replayed navigation revisions and background data completion do not refocus or dismiss an open dialog.
-- Inventory uses a native table with 25 rows per page instead of scroll virtualization. All rows on the page stay mounted;
-  Previous/Next controls expose the current range and announce page changes. Logical row positions and total row count
-  include the header. Sorting and filtering apply to the full inventory and reset to page one; tab changes preserve the page.
-  Shortened results clamp the page. If a refresh removes the focused element, focus returns to the inventory region only
-  while its tab is active and the webview still owns focus; surviving controls keep their focus.
-- Sortable inventory headers use Fluent's keyboard-activated buttons and expose the current direction through `aria-sort`.
-  Enter or Space sorts; non-sortable headers remain ordinary column headings.
-- Alert-window selection retains focus during loading without allowing another request. Completion does not pull focus back
-  if the user has moved elsewhere.
-- Header time-range and database selectors also retain focus through loading success or failure, without restoring it
-  if the user has moved elsewhere. The Dropdown's disabled state blocks interaction while its button slot remains focusable.
-- Dismissing a focused advisory moves focus to the next remaining Dismiss button, or the previous one at the end of the list.
-  Removing the group's last finding closes the dialog and focuses the surviving Recommendations section.
-  Ordinary dialog closure continues to use Fluent's focus restoration to the originating card.
-- Heatmap values, accessible names and explanations use the same rounding precision. Partial coverage exposes its
-  explanation once as a description, separately from its name.
-- Each Advisor **Learn more** action references the visible recommendation text as its accessible description.
-  The visible label and recommendation-specific URL are unchanged; recommendations without a URL have no action.
-- Inventory filter names include their visible selection; partition selection includes both container and database.
-  Inventory icon actions have a resource-specific description without repeating the tooltip label.
-- Advisory cards describe their visible severity and explanation. Heatmap names are attached directly to visible figures,
-  not off-screen captions. Real screen-reader virtual-cursor behavior still needs manual verification.
-- Inventory filters show a result count and announce changes politely after 300 ms of inactivity.
-  Alert-window changes announce the returned count or unavailability. Hidden tabs and initial background collection stay
-  silent. Advisory analysis runs initially or through global Refresh, which keeps its existing shared feedback rather
-  than adding section-by-section announcements.
-- Essentials values, alert names and advisory titles wrap instead of depending on mouse-only truncation tooltips.
-  Section tabs wrap within the available width, retaining Fluent's horizontal Left/Right navigation and manual activation
-  with Enter or Space.
+### Physical-partition distribution
 
-## Permissions (RBAC)
+Select a container in the partition section; this selection is independent of the header database filter.
 
-Each section reads with the user's Azure credentials and renders an **Access required** empty state (naming
-the missing role) if a role is absent; the rest of the dashboard keeps working. See the role matrix in the
-[README](../README.md#account-overview-dashboard). Least-privilege action strings per data source are
-catalogued in CODA's [`docs/permissions.md`](https://github.com/azure-data-database-platform/coda/blob/main/docs/permissions.md).
+**RU mode** shows each partition's p99 normalized utilization in the selected period.
+P99 is a high-end value that is less sensitive to one isolated spike than a maximum.
+The percentage is that partition's utilization, **not its share of all account RU**.
+A partition is flagged hot when it reaches at least 90% while another is below 70%.
+If all partitions are busy, this is not classified as uneven distribution; it may instead indicate insufficient throughput.
 
-## Checks & validations
+**Storage mode** compares partition sizes. With default settings, a partition is flagged when it has at least
+1 GiB and the smallest sibling is less than 70% of its size.
+Its percentage is a share of the observed partition-size peaks, not a share of the account's capacity limit.
+The view uses physical partitions, not individual logical partition-key values.
 
-- Unit tests per host service — `src/panels/accountOverview/services/*.test.ts`,
-  `src/panels/accountOverview/metrics/*.test.ts`.
-- Multi-panel Advisor rate-limit smoke test — asserts subscription-wide coalescing (reads are independent of
-  the number of open panels).
-- Bundle budget — the three ARM SDKs stay in the lazy chunk.
-- Accessibility — `accessibility-aria-expert` checklist (live regions, focus management, heatmap SR labels,
-  chart text alternatives, keyboard reach).
-- Localization — every user-facing string via `l10n.t(...)`; run `npm run l10n` after string changes.
+## Advisories and alerts
 
-## CODA reference
+### Derived Advisories: investigations suggested by the extension
 
-The numbered detection taxonomy (`DX-001…DX-018`), fleet-grounded thresholds, RU-materiality, and $-savings
-methodology live in the CODA project — a read-only Cosmos DB diagnostic engine. We treat it as the reference
-source of truth for detection methodology:
-[`azure-data-database-platform/coda`](https://github.com/azure-data-database-platform/coda) (EMU) — see
-`docs/detections/`, `docs/evidence/`, and `docs/permissions.md`. A rule-by-rule critique of the dashboard's
-current thresholds against CODA is in `docs/exploration/vscode-coda-integration/THRESHOLD-CRITIQUE.md` there.
+These findings help you investigate hot partitions, throttling, uneven or growing storage, indexing overhead,
+unused or oversized throughput, possible capacity-mode changes, expensive configuration choices,
+query fan-out and shared-throughput contention.
+
+Open a finding for its evidence and suggested action. Shared guidance appears before resource-specific details.
+Dismissal hides that finding in the current dashboard; it does not fix the resource or dismiss an Azure alert.
+Dismissals survive Refresh but reset when the dashboard is remounted.
+
+**High / Medium / Low ranks the finding; it does not directly set account health.**
+Some checks use seven days of history, others 30 days, while log-based checks use 24 hours.
+Changing the chart period does not change those diagnostic windows.
+For example, a quiet last hour can coexist with a recommendation based on a burst earlier in the month.
+
+Recommendations are heuristics, not automatic changes, guaranteed savings or proof that a proposed RU target is legal.
+Validate workload requirements, current Azure limits and migration constraints before acting.
+Some minimum-throughput cases can currently suggest no actual reduction; check the before/after values.
+**Partial coverage** means successful findings are still useful but some checks could not run.
+No findings does not prove that every resource was checked or that no problem exists.
+
+Certain query/ingestion checks need resource-specific diagnostic logs in Log Analytics.
+Without those logs or access to them, other available checks still run. See [Permissions](#permissions).
+Advanced thresholds can be found in VS Code Settings under `cosmosDB.accountOverview`;
+the numbers in this guide are defaults.
+
+### Azure Advisor recommendations
+
+These are recommendations from Azure, separate from the extension's derived findings.
+Only **High-impact Performance or Cost** recommendations raise account health to Needs Attention.
+Refresh may reuse an Advisor response collected in the last 55 seconds; it does not ask Azure to rerun its analysis.
+
+### Azure Monitor alerts
+
+The list has **Active** and **Resolved** modes plus **1h / 1d / 7d / 30d** periods.
+It starts with Active over 1 day. **View in Azure portal** opens the individual alert;
+**Open alerts in Azure portal** opens the account's Alerts page.
+
+**Active means the alert condition is Fired. It does not mean the incident workflow is New or unclosed.**
+Azure's New/Acknowledged/Closed workflow state is a separate field, and Overview does not filter or change it.
+
+The account-wide summary checks retained Fired alerts independently of the list's time filter.
+For example, an alert outside the selected one-day list can still contribute to health.
+Conversely, switching the list to Resolved does not make resolved alerts affect health.
+Sev0/Sev1 raise health to Critical; Sev2/Sev3 raise it to Needs Attention; Sev4 does not raise it.
+
+The summary is limited by Azure retention, your access and propagation delays.
+A Closed-but-Fired alert can still affect current health.
+There is not yet a separate notification specifically for unclosed active incidents.
+
+## Refresh and timestamps
+
+Overview loads when opened. It does not refresh on a timer or just because you return to the editor.
+**Refresh** reloads all sections and waits for them to finish, including failures.
+While data is loading, affected selectors and Refresh cannot start another update; your selected values are retained.
+
+Changing the chart period reloads charts, inventory RU metrics and the selected partition view.
+Changing the header database reloads charts only.
+Alert-list filters reload only the list, not the account-wide alert summary.
+Switching tabs does not reload data.
+
+**Charts generated at** shows when the displayed chart batch was produced, in local time.
+It does not describe every section's freshness or when Azure observed the latest sample.
+Azure Monitor ingestion delays and different collection windows can explain differences from Portal or another section.
+
+## Account actions and capacity
+
+**Add database** and **Add container** use the existing native VS Code wizards for this account.
+With All databases selected, Add container asks you to choose a database in the same account.
+Overview is dimmed while a creation wizard runs. Cancel returns without changes; successful creation refreshes inventory.
+Delete account uses the existing confirmation and requires permission to delete the resource.
+
+**View Cost** opens account-scoped Azure Portal Cost Analysis.
+**View JSON** opens the ARM account resource as formatted JSON; it does not retrieve account keys or connection strings.
+**Try Data Modeler** opens the modeler for this account without an account picker.
+It requires AI features enabled and available GitHub Copilot models.
+
+**Capacity mode** and **Total throughput limit** are different:
+
+- Capacity mode tells you whether the account is Serverless or uses provisioned throughput.
+- Total throughput limit caps the RU/s that can be allocated across throughput-bearing resources.
+  It is not current usage or an estimate of available performance.
+
+For provisioned accounts, **No total throughput limit** means the account-wide cap is disabled.
+An explicit **0 RU/s** is not the disabled value; **Unknown** means the cap metadata is absent.
+Serverless shows No total throughput limit because a provisioned-throughput allocation cap does not apply.
+Disabling an account cap does not remove per-resource throughput or service limits.
+See [Limit total account throughput](https://learn.microsoft.com/azure/cosmos-db/limit-total-account-throughput).
+
+## Permissions
+
+Overview uses your signed-in Azure identity. The following are typical role assignments;
+equivalent custom-role permissions and assignment scope can also determine access.
+Missing access to one source does not grant or remove access to another.
+
+| Source                                              | Typical read access                                           |
+| --------------------------------------------------- | ------------------------------------------------------------- |
+| Account properties, inventory and throughput offers | Reader on the account or a containing scope                   |
+| Monitor metrics and alerts                          | Monitoring Reader at the relevant scope                       |
+| Azure Advisor subscription read                     | Reader on the subscription                                    |
+| Log-based derived checks                            | Log Analytics Reader or equivalent effective log-query access |
+
+Log-based checks additionally require **DataPlaneRequests** and **QueryRuntimeStatistics** sent to Log Analytics
+in **resource-specific** mode. Legacy AzureDiagnostics tables are not used by these checks.
+Log collection and permission to query the logs are separate requirements.
+Creating/deleting resources requires the corresponding Azure write permissions.
+
+See [Azure RBAC](https://learn.microsoft.com/azure/role-based-access-control/overview) and
+[Log Analytics access control](https://learn.microsoft.com/azure/azure-monitor/logs/manage-access).
+
+## Keyboard use
+
+Use Tab to reach controls and focusable badges. Focus a health/metric badge for its explanation.
+Use Left/Right to move between tab labels, then Enter or Space to activate.
+Sortable table headers support Enter/Space; pagination and filters expose their selected values.
+Loading controls remain in the keyboard focus order but cannot start duplicate requests.
+
+Labels and explanations accompany color indicators. However, complete screen-reader access to individual chart values
+and an exact-data table alternative are not yet established; do not rely on chart color alone to investigate an issue.

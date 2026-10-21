@@ -51,16 +51,12 @@ test.describe('queryEditor-selection-run', { tag: '@queryEditor' }, () => {
         // Select + run the first line → only prod-00001 comes back.
         await qe.selectQueryLine(0);
         await qe.run();
-        await qe.waitForResults(ID_ONE);
-        await expect.poll(() => qe.tableRows().count()).toBe(1);
-        await expect(qe.resultRegion().getByText(ID_TWO)).toHaveCount(0);
+        await expect(qe.tableRows()).toHaveText([ID_ONE]);
 
         // Select + run the second line → the result flips to prod-00002 only.
         await qe.selectQueryLine(1);
         await qe.run();
-        await qe.waitForResults(ID_TWO);
-        await expect.poll(() => qe.tableRows().count()).toBe(1);
-        await expect(qe.resultRegion().getByText(ID_ONE)).toHaveCount(0);
+        await expect(qe.tableRows()).toHaveText([ID_TWO]);
 
         qe.consoleHealth.assertNoConsoleErrors();
     });

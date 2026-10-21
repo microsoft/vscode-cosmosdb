@@ -3024,17 +3024,23 @@ describe('tabbed Account Overview', () => {
     it('selects charts from both keyboard-accessible tiles and eye buttons', async () => {
         const user = userEvent.setup();
         render(<AccountOverview />, { wrapper: Wrapper });
-        await screen.findByRole('tab', { name: 'Monitoring' });
+        const monitoring = await screen.findByRole('tab', { name: 'Monitoring' });
+        // Initial navigation focuses this tab after it mounts; let it finish before moving to a tile.
+        await waitFor(() => expect(monitoring).toHaveFocus());
         const tile = screen.getByRole('button', { name: /^Document count/ });
         expect(tile).toHaveTextContent('Document count');
         expect(tile).toHaveAccessibleName(/Document count/);
         tile.focus();
+        expect(tile).toHaveFocus();
         await user.keyboard('{Enter}');
+        expect(tile).toHaveFocus();
         expect(screen.getByRole('heading', { name: 'Document count trend' })).toBeVisible();
         expect(tile).toHaveAttribute('aria-pressed', 'true');
         const eye = screen.getByRole('button', { name: 'Show chart: Server-side latency' });
         eye.focus();
+        expect(eye).toHaveFocus();
         await user.keyboard(' ');
+        expect(eye).toHaveFocus();
         expect(screen.getByRole('heading', { name: 'Server-side latency trend' })).toBeVisible();
         expect(eye).toHaveAttribute('aria-pressed', 'true');
     });

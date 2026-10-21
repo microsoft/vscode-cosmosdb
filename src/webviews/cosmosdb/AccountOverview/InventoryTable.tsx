@@ -665,7 +665,9 @@ export const InventoryTable = ({
             scrollArea.style.maxHeight = `${rowsHeight + scrollbarHeight}px`;
         };
         updateHeight();
-        const observer = new ResizeObserver(updateHeight);
+        const observer = new ResizeObserver(() => {
+            updateHeight();
+        });
         visibleRows.forEach((row) => observer.observe(row));
         observer.observe(scrollArea);
         return () => observer.disconnect();

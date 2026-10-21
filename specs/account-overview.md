@@ -221,6 +221,10 @@ Data growth is `last DataUsage - first DataUsage` within that seven-day series, 
 not percentage growth and not a projection. Fewer observations do not imply a full seven-day history;
 one observation produces a zero difference. Sparklines retain at most 24 sampled values including endpoints.
 
+If `getMonitorClient()` returns undefined, inventory returns no metric rows and both `storageFallback` components
+have reason `error`; the legacy top-level reason remains `noData`. Storage explanations MUST use the component
+reasons so client initialization failure is shown as Unable to load, not No data.
+
 **Known limitation:** generic Monitoring storage uses unsplit scope queries and maximum collision merging.
 It is not a canonical sum of all per-container snapshots; do not claim inventory/account-storage reconciliation.
 
@@ -669,6 +673,8 @@ Background query unavailability is not routed through the auxiliary-action notif
 
 Visible labels MUST remain in computed accessible names. Tooltip descriptions MUST preserve the visible label.
 Status feedback uses existing announcement infrastructure; the health badge keeps one polite output.
+The chart's storage-unavailable and metric-request-error messages use visible `<output>` elements with implicit
+status semantics, matching the shared empty state.
 Color is supplemented by labels/descriptions for severity, partial data and inapplicability.
 Hidden tabs suppress list-result announcements; background initial collection does not announce list counts.
 Inventory filter results announce politely after 300 ms; page changes announce the displayed range.

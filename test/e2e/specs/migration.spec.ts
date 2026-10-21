@@ -761,7 +761,11 @@ test.describe('Migration Assistant', () => {
             await expect(preflight.getByTestId('migration-preflight-diagnostics')).toBeVisible();
             await expect(preflight.locator(':scope > :last-child')).toHaveAttribute(
                 'data-testid',
-                'migration-preflight-diagnostics',
+                'migration-preflight-artifacts',
+            );
+            await expect(diagnostics.locator('xpath=following-sibling::*[1]')).toHaveAttribute(
+                'data-testid',
+                'migration-preflight-artifacts',
             );
             await expect(diagnostics.getByText('Blocked', { exact: true })).toBeVisible();
             await expect(diagnostics.getByText('Source schema needs review.', { exact: true })).toBeVisible();

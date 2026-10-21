@@ -468,6 +468,9 @@ For comparison only, omitted model values mean `consistent` and `true`, matching
 generated Bicep. Explicit model values, including `none` and `false`, remain binding.
 Verification does not fill missing observations or change canonical model bytes or hashes.
 
+Preserve indexing-policy readback as returned. The verifier accounts for known equivalent
+service representations on both Azure and the emulator; do not normalize evidence manually.
+
 ### Readback Evidence
 
 Record `target.endpoint` as the account service endpoint used to construct the client

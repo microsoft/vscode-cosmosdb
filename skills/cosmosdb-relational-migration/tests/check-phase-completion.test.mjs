@@ -943,6 +943,26 @@ test('requires every fixed and declared provisioning artifact', () => {
     );
     const partialEvidence = readPhaseEvidence(verificationManifestPath);
     const partialVerification = partialEvidence.verification;
+    const serviceReadback = structuredClone(partialVerification);
+    serviceReadback.containers[0].indexingPolicy = {
+        indexingMode: 'Consistent',
+        automatic: true,
+        includedPaths: [{ path: '/"_ts"/?', indexes: [] }, { path: '/*', indexes: [] }],
+        excludedPaths: [],
+        compositeIndexes: [], spatialIndexes: [], vectorIndexes: [], fullTextIndexes: [],
+        supportSpatialLegacyCoordinates: false, usePolygonsSmallerThanAHemisphere: false,
+    };
+    verificationSummary(workspace, project, serviceReadback);
+    const rawReadback = fs.readFileSync(verificationManifestPath, 'utf8');
+    assert.equal(checkPhaseCompletion(workspace, 'provisioning').complete, true);
+    assert.equal(fs.readFileSync(verificationManifestPath, 'utf8'), rawReadback);
+    serviceReadback.containers[0].indexingPolicy.includedPaths.push({ path: '/unexpected/?' });
+    verificationSummary(workspace, project, serviceReadback);
+    const indexDrift = checkPhaseCompletion(workspace, 'provisioning');
+    assert.equal(indexDrift.complete, false);
+    assert(indexDrift.artifacts.find(artifact => artifact.description === 'Provisioning verification manifest')
+        .diagnostics.some(error => error.path === '$.containers[0].indexingPolicy.includedPaths'
+            && error.message.includes('container "Items"')));
     for (const [mutate, diagnosticPath] of [
         [report => { delete report.target.endpoint; }, '$.target.endpoint'],
         [report => { delete report.sampleItems[0].document; }, '$.sampleItems[0].document'],

@@ -68,6 +68,180 @@ test('accepts exact target and point-read evidence', () => {
     assert.deepEqual(validateProvisioningVerification(model, sampleData, project, report), []);
 });
 
+for (const targetType of ['azure', 'emulator']) {
+    test(`accepts equivalent ${targetType} indexing readback without changing either input`, () => {
+        const { model, sampleData, project, report } = inputs();
+        if (targetType === 'emulator') {
+            project.phases.targetEnvironment = { type: 'emulator', endpoint: 'https://localhost:8081/' };
+            report.target = { ...project.phases.targetEnvironment };
+            Object.assign(report.containers[0], { capacityMode: 'provisioned', maxThroughput: 1000 });
+        }
+        model.containers[0].indexingPolicy = {
+            indexingMode: 'consistent', automatic: true,
+            includedPaths: [{ path: '/tenantId/?' }, { path: '/itemId/?' }],
+            excludedPaths: [{ path: '/*' }, { path: '/"_etag"/?' }],
+        };
+        report.modelSha256 = modelSha256(model);
+        const servicePolicy = {
+            indexingMode: 'Consistent', automatic: true,
+            includedPaths: [{ path: '/"_ts"/?', indexes: [] }, { path: '/itemId/?', indexes: [] }, { path: '/tenantId/?', indexes: [] }],
+            excludedPaths: [{ path: '/"_etag"/?', indexes: [] }, { path: '/*', indexes: [] }],
+            compositeIndexes: [], spatialIndexes: [], vectorIndexes: [], fullTextIndexes: [],
+            supportSpatialLegacyCoordinates: false, usePolygonsSmallerThanAHemisphere: false,
+        };
+        // Check each representation difference independently as well as the combined SDK/shell readback.
+        for (const policy of [
+            ...Object.entries(servicePolicy).map(([key, value]) => ({ ...model.containers[0].indexingPolicy, [key]: value })),
+            servicePolicy,
+        ]) {
+            report.containers[0].indexingPolicy = structuredClone(policy);
+            const originalModel = structuredClone(model);
+            const originalReport = structuredClone(report);
+            assert.deepEqual(validateProvisioningVerification(model, sampleData, project, report), []);
+            assert.deepEqual(model, originalModel);
+            assert.deepEqual(report, originalReport);
+            assert.equal(modelSha256(model), report.modelSha256);
+        }
+        const mutations = [
+            ['includedPaths', policy => { policy.includedPaths.pop(); }],
+            ['includedPaths', policy => { policy.includedPaths.push({ path: '/unexpected/?' }); }],
+            ['includedPaths', policy => { policy.includedPaths.push({ path: '/tenantId/?' }); }],
+            ['excludedPaths', policy => { policy.excludedPaths.pop(); }],
+            ['includedPaths', policy => { policy.includedPaths[1].path = '/ItemId/?'; }],
+            ['includedPaths', policy => { policy.includedPaths[0].indexes.push({ kind: 'Range', dataType: 'Number', precision: -1 }); }],
+            ['includedPaths', policy => { policy.includedPaths[1].indexes.push({ kind: 'Hash', dataType: 'String', precision: 3 }); }],
+            ['excludedPaths', policy => { policy.excludedPaths[0].indexes.push({ kind: 'Range', dataType: 'Number', precision: -1 }); }],
+            ['indexingMode', policy => { policy.indexingMode = 'None'; }],
+            ['indexingMode', policy => { policy.indexingMode = 'Lazy'; }],
+            ['automatic', policy => { policy.automatic = false; }],
+            ['compositeIndexes', policy => { policy.compositeIndexes.push([{ path: '/itemId', order: 'ascending' }]); }],
+            ['spatialIndexes', policy => { policy.spatialIndexes.push({ path: '/location/*', types: ['Point'] }); }],
+            ['vectorIndexes', policy => { policy.vectorIndexes.push({ path: '/embedding', type: 'flat' }); }],
+            ['fullTextIndexes', policy => { policy.fullTextIndexes.push({ path: '/text' }); }],
+            ['supportSpatialLegacyCoordinates', policy => { policy.supportSpatialLegacyCoordinates = true; }],
+            ['usePolygonsSmallerThanAHemisphere', policy => { policy.usePolygonsSmallerThanAHemisphere = true; }],
+            ['unrecognizedDefault', policy => { policy.unrecognizedDefault = false; }],
+            ['unrecognizedIndexes', policy => { policy.unrecognizedIndexes = []; }],
+            ['includedPaths', policy => { policy.includedPaths[0].unrecognizedDefault = false; }],
+        ];
+        for (const [field, mutate] of mutations) {
+            const changed = structuredClone(report);
+            mutate(changed.containers[0].indexingPolicy);
+            const fields = field === 'indexingMode' ? [field, 'includedPaths'] : [field];
+            assert.deepEqual(validateProvisioningVerification(model, sampleData, project, changed), fields.map(name => ({
+                path: `$.containers[0].indexingPolicy.${name}`,
+                message: 'does not match the model and effective target configuration for container "Items"',
+            })), mutate.toString());
+        }
+    });
+}
+
+test('rejects malformed indexing readback rather than treating it as default metadata', () => {
+    const { model, sampleData, project, report } = inputs();
+    for (const policy of [undefined, null, [], false, 'consistent']) {
+        const changed = structuredClone(report);
+        changed.containers[0].indexingPolicy = policy;
+        assert(validateProvisioningVerification(model, sampleData, project, changed)
+            .some(error => error.path === '$.containers[0].indexingPolicy'));
+    }
+    for (const [field, values] of [
+        ['indexingMode', [undefined, null, false, [], 'CONSISTENT', 'consistent ']],
+        ['automatic', [undefined, null, 'true', 1]],
+        ['includedPaths', [undefined, null, {}, [null], [undefined], [{ path: '/*', indexes: null }]]],
+        ['excludedPaths', [undefined, null, false, [null]]],
+        ['compositeIndexes', [null, {}, [null], [[]]]],
+        ['spatialIndexes', [null, {}, [null]]],
+        ['vectorIndexes', [null, {}, [null]]],
+        ['fullTextIndexes', [null, {}, [null]]],
+        ['supportSpatialLegacyCoordinates', [null, 0, 'false']],
+        ['usePolygonsSmallerThanAHemisphere', [null, 0, 'false']],
+    ]) {
+        for (const value of values) {
+            const changed = structuredClone(report);
+            changed.containers[0].indexingPolicy[field] = value;
+            assert(validateProvisioningVerification(model, sampleData, project, changed)
+                .some(error => error.path === `$.containers[0].indexingPolicy.${field}`), `${field}: ${JSON.stringify(value)}`);
+        }
+    }
+});
+
+test('does not ignore timestamp paths outside consistent mode or other system paths', () => {
+    const { model, sampleData, project, report } = inputs();
+    model.containers[0].indexingPolicy.indexingMode = 'none';
+    report.modelSha256 = modelSha256(model);
+    report.containers[0].indexingPolicy = structuredClone(model.containers[0].indexingPolicy);
+    report.containers[0].indexingPolicy.indexingMode = 'None';
+    assert.deepEqual(validateProvisioningVerification(model, sampleData, project, report), []);
+    report.containers[0].indexingPolicy.includedPaths.push({ path: '/"_ts"/?' });
+    assert(validateProvisioningVerification(model, sampleData, project, report)
+        .some(error => error.path === '$.containers[0].indexingPolicy.includedPaths'));
+
+    const consistent = inputs();
+    for (const path of ['/"_Ts"/?', '/"_etag"/?', '/_ts/*', '/metadata/_ts/?']) {
+        const changed = structuredClone(consistent.report);
+        changed.containers[0].indexingPolicy.includedPaths.push({ path });
+        assert(validateProvisioningVerification(consistent.model, consistent.sampleData, consistent.project, changed)
+            .some(error => error.path === '$.containers[0].indexingPolicy.includedPaths'));
+    }
+});
+
+test('compares composite definitions independently of outer order and known enum casing only', () => {
+    const { model, sampleData, project, report } = inputs();
+    model.containers[0].indexingPolicy.compositeIndexes = [
+        [{ path: '/itemId', order: 'ascending' }, { path: '/tenantId', order: 'descending' }],
+        [{ path: '/tenantId', order: 'ascending' }, { path: '/itemId', order: 'ascending' }],
+    ];
+    report.modelSha256 = modelSha256(model);
+    report.containers[0].indexingPolicy = structuredClone(model.containers[0].indexingPolicy);
+    report.containers[0].indexingPolicy.compositeIndexes.reverse();
+    for (const group of report.containers[0].indexingPolicy.compositeIndexes) {
+        for (const entry of group) entry.order = entry.order === 'ascending' ? 'Ascending' : 'Descending';
+    }
+    const originalModel = structuredClone(model);
+    const originalReport = structuredClone(report);
+    assert.deepEqual(validateProvisioningVerification(model, sampleData, project, report), []);
+    assert.deepEqual(model, originalModel);
+    assert.deepEqual(report, originalReport);
+    for (const mutate of [
+        groups => { groups[0].reverse(); },
+        groups => { groups[0][0].order = 'Descending'; },
+        groups => { groups[0][0].order = 'ASCENDING'; },
+        groups => { delete groups[0][0].order; },
+        groups => { groups[0][0].path = '/TenantId'; },
+        groups => { groups[0][0].extra = false; },
+        groups => { groups.pop(); },
+        groups => { groups.push(structuredClone(groups[0])); },
+        groups => { groups[0] = null; },
+        groups => { groups[0][0] = null; },
+    ]) {
+        const changed = structuredClone(report);
+        mutate(changed.containers[0].indexingPolicy.compositeIndexes);
+        assert.deepEqual(validateProvisioningVerification(model, sampleData, project, changed), [{
+            path: '$.containers[0].indexingPolicy.compositeIndexes',
+            message: 'does not match the model and effective target configuration for container "Items"',
+        }], mutate.toString());
+    }
+});
+
+test('compares full-text index membership independently of order without discarding metadata', () => {
+    const { model, sampleData, project, report } = inputs();
+    model.containers[0].fullTextPolicy = {
+        defaultLanguage: 'en-US',
+        fullTextPaths: [{ path: '/description', language: 'en-US' }, { path: '/title', language: 'en-US' }],
+    };
+    model.containers[0].indexingPolicy.fullTextIndexes = [{ path: '/description' }, { path: '/title' }];
+    report.modelSha256 = modelSha256(model);
+    report.containers[0].fullTextPolicy = structuredClone(model.containers[0].fullTextPolicy);
+    report.containers[0].indexingPolicy = structuredClone(model.containers[0].indexingPolicy);
+    report.containers[0].indexingPolicy.fullTextIndexes.reverse();
+    const original = structuredClone(report);
+    assert.deepEqual(validateProvisioningVerification(model, sampleData, project, report), []);
+    assert.deepEqual(report, original);
+    report.containers[0].indexingPolicy.fullTextIndexes[0].extra = false;
+    assert(validateProvisioningVerification(model, sampleData, project, report)
+        .some(error => error.path === '$.containers[0].indexingPolicy.fullTextIndexes'));
+});
+
 test('verifies unique-key readback independent of order without allowing policy drift', () => {
     const { model, sampleData, project, report } = inputs();
     const originalHash = modelSha256(model);
@@ -101,7 +275,7 @@ test('accepts empty service unique-key defaults but rejects unexpected constrain
     assert.deepEqual(validateProvisioningVerification(model, sampleData, project, report), []);
     report.containers[0].uniqueKeyPolicy.uniqueKeys.push({ paths: ['/id'] });
     assert(validateProvisioningVerification(model, sampleData, project, report)
-        .some(error => error.path === '$.containers'));
+        .some(error => error.path === '$.containers[0].uniqueKeyPolicy'));
 });
 
 test('binds endpoint-only targets and normalizes host casing, default ports, and trailing slashes', () => {
@@ -151,7 +325,7 @@ test('requires provisioned emulator observations while preserving the serverless
 
     assert(
         validateProvisioningVerification(model, sampleData, project, report)
-            .some(error => error.path === '$.containers'),
+            .some(error => error.path === '$.containers[0].capacityMode'),
     );
     Object.assign(report.containers[0], { capacityMode: 'provisioned', maxThroughput: 1000 });
     assert.deepEqual(validateProvisioningVerification(model, sampleData, project, report), []);
@@ -163,14 +337,14 @@ test('requires provisioned emulator observations while preserving the serverless
         changed.containers[0].maxThroughput = maxThroughput;
         assert(
             validateProvisioningVerification(model, sampleData, project, changed)
-                .some(error => error.path === '$.containers'),
+                .some(error => error.path === '$.containers[0].maxThroughput'),
         );
     }
     const azure = inputs();
     azure.report.containers = report.containers;
     assert(
         validateProvisioningVerification(azure.model, azure.sampleData, azure.project, azure.report)
-            .some(error => error.path === '$.containers'),
+            .some(error => error.path === '$.containers[0].capacityMode'),
     );
 });
 
@@ -186,7 +360,8 @@ test('verifies a serverless model on provisioned Azure without changing its cano
     for (const change of [{ maxThroughput: 1000 }, { maxThroughput: undefined }, { capacityMode: 'serverless' }]) {
         const changed = structuredClone(report);
         Object.assign(changed.containers[0], change);
-        assert(validateProvisioningVerification(model, sampleData, project, changed).some(error => error.path === '$.containers'));
+        assert(validateProvisioningVerification(model, sampleData, project, changed)
+            .some(error => error.path === `$.containers[0].${Object.keys(change)[0]}`));
     }
     delete project.phases.targetEnvironment.maxThroughput;
     assert(validateProvisioningVerification(model, sampleData, project, report)
@@ -335,7 +510,7 @@ test('preserves explicit indexing settings and rejects drift from their effectiv
             Object.assign(observed.containers[0].indexingPolicy, change);
             assert(
                 validateProvisioningVerification(model, sampleData, project, observed)
-                    .some(error => error.path === '$.containers'),
+                    .some(error => error.path === `$.containers[0].indexingPolicy.${Object.keys(change)[0]}`),
             );
         }
     }
@@ -359,7 +534,7 @@ test('does not infer missing observations or accept drift when model defaults ar
         Object.assign(observed.containers[0].indexingPolicy, change);
         assert(
             validateProvisioningVerification(model, sampleData, project, observed)
-                .some(error => error.path === '$.containers'),
+                .some(error => error.path === `$.containers[0].indexingPolicy.${Object.keys(change)[0]}`),
         );
     }
 });
@@ -396,7 +571,7 @@ test('verifies full-text policies and indexes and rejects missing or changed rea
         mutate(observed.containers[0]);
         assert(
             validateProvisioningVerification(model, sampleData, project, observed).some(
-                (error) => error.path === '$.containers',
+                (error) => error.path.startsWith('$.containers[0].'),
             ),
         );
     }
@@ -408,7 +583,32 @@ test('rejects stale model hashes and container drift', () => {
     report.containers[0].partitionKeys = ['/wrong'];
     const errors = validateProvisioningVerification(model, sampleData, project, report);
     assert(errors.some((error) => error.path === '$.modelSha256'));
-    assert(errors.some((error) => error.path === '$.containers'));
+    assert(errors.some((error) => error.path === '$.containers[0].partitionKeys'));
+});
+
+test('identifies missing, duplicate, unexpected and malformed container observations', () => {
+    const { model, sampleData, project, report } = inputs();
+    for (const [containers, diagnosticPath, message] of [
+        [undefined, '$.containers', 'must be an array'],
+        [null, '$.containers', 'must be an array'],
+        [[], '$.containers', 'missing readback for modeled container "Items"'],
+        [[null], '$.containers[0]', 'must be an object'],
+        [[{}], '$.containers[0].name', 'must be a nonempty container name'],
+        [[{ name: 1 }], '$.containers[0].name', 'must be a nonempty container name'],
+        [[{ name: '' }], '$.containers[0].name', 'must be a nonempty container name'],
+        [[report.containers[0], structuredClone(report.containers[0])],
+            '$.containers[1].name', 'duplicates readback for container "Items"'],
+        [[report.containers[0], { ...report.containers[0], name: 'Other' }],
+            '$.containers[1].name', 'is not a modeled container: "Other"'],
+        [[{ ...report.containers[0], name: 'items' }], '$.containers[0].name', 'is not a modeled container: "items"'],
+        [[{ ...report.containers[0], extra: false }], '$.containers[0].extra', 'is not allowed'],
+    ]) {
+        const changed = { ...report, containers };
+        const original = structuredClone(changed);
+        assert(validateProvisioningVerification(model, sampleData, project, changed)
+            .some(error => error.path === diagnosticPath && error.message === message), message);
+        assert.deepEqual(changed, original);
+    }
 });
 
 test('requires every point-read and no failures', () => {
@@ -450,4 +650,18 @@ test('accepts observed containers and point reads in any order', () => {
     report.containers.reverse();
     report.sampleItems.reverse();
     assert.deepEqual(validateProvisioningVerification(model, sampleData, project, report), []);
+
+    const changed = structuredClone(report);
+    changed.containers[0].indexingPolicy = { ...changed.containers[0].indexingPolicy, automatic: false };
+    changed.containers[1].partitionKeys = ['/wrong'];
+    assert.deepEqual(validateProvisioningVerification(model, sampleData, project, changed), [
+        {
+            path: '$.containers[0].indexingPolicy.automatic',
+            message: 'does not match the model and effective target configuration for container "Other"',
+        },
+        {
+            path: '$.containers[1].partitionKeys',
+            message: 'does not match the model and effective target configuration for container "Items"',
+        },
+    ]);
 });

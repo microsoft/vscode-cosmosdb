@@ -74,6 +74,66 @@ function equal(left, right) {
     return JSON.stringify(stable(left)) === JSON.stringify(stable(right));
 }
 
+function sortUnordered(values) {
+    return [...values].sort((left, right) =>
+        String(JSON.stringify(stable(left))).localeCompare(String(JSON.stringify(stable(right)))),
+    );
+}
+
+function comparableIndexingPolicy(policy) {
+    if (!isObject(policy)) return policy;
+    const normalized = { ...policy };
+    if (['Consistent', 'None', 'Lazy'].includes(normalized.indexingMode)) {
+        normalized.indexingMode = normalized.indexingMode.toLowerCase();
+    }
+    for (const key of ['compositeIndexes', 'spatialIndexes', 'vectorIndexes', 'fullTextIndexes']) {
+        if (Array.isArray(normalized[key]) && normalized[key].length === 0) delete normalized[key];
+    }
+    for (const key of ['supportSpatialLegacyCoordinates', 'usePolygonsSmallerThanAHemisphere']) {
+        if (normalized[key] === false) delete normalized[key];
+    }
+    for (const key of ['includedPaths', 'excludedPaths']) {
+        if (!Array.isArray(normalized[key])) continue;
+        let entries = normalized[key].map(entry => {
+            if (!isObject(entry)) return entry;
+            const result = { ...entry };
+            if (Array.isArray(result.indexes) && result.indexes.length === 0) delete result.indexes;
+            return result;
+        });
+        // Consistent indexing always includes _ts. Only discard the exact default entry, not extra index settings.
+        if (key === 'includedPaths' && normalized.indexingMode === 'consistent') {
+            entries = entries.filter(entry => !equal(entry, { path: '/"_ts"/?' }));
+        }
+        normalized[key] = sortUnordered(entries);
+    }
+    if (Array.isArray(normalized.compositeIndexes)) {
+        // Composite definitions are unordered, but the property sequence within each definition is significant.
+        normalized.compositeIndexes = sortUnordered(normalized.compositeIndexes.map(group =>
+            Array.isArray(group) ? group.map(entry =>
+                isObject(entry) && ['Ascending', 'Descending'].includes(entry.order)
+                    ? { ...entry, order: entry.order.toLowerCase() }
+                    : entry,
+            ) : group,
+        ));
+    }
+    if (Array.isArray(normalized.fullTextIndexes)) {
+        normalized.fullTextIndexes = sortUnordered(normalized.fullTextIndexes);
+    }
+    return normalized;
+}
+
+function compareConfiguration(observed, expected, jsonPath, containerName, errors) {
+    if (equal(observed, expected)) return;
+    if (isObject(observed) && isObject(expected)) {
+        for (const key of new Set([...Object.keys(expected), ...Object.keys(observed)])) {
+            compareConfiguration(observed[key], expected[key], `${jsonPath}.${key}`, containerName, errors);
+        }
+    } else {
+        addError(errors, jsonPath,
+            `does not match the model and effective target configuration for container ${JSON.stringify(containerName)}`);
+    }
+}
+
 function endpointOrigin(value, targetType) {
     if (typeof value !== 'string' || !value.trim()) throw new Error();
     const endpoint = new URL(value);
@@ -105,10 +165,6 @@ function expectedContainers(model, targetEnvironment) {
         ...(container.uniqueKeyPolicy === undefined ? {} : { uniqueKeyPolicy: container.uniqueKeyPolicy }),
         ...getProvisioningCapacity(model, container, targetEnvironment),
     }));
-}
-
-function sortContainers(containers) {
-    return [...containers].sort((left, right) => String(left?.name).localeCompare(String(right?.name)));
 }
 
 function sortSampleItems(items) {
@@ -186,28 +242,51 @@ export function validateProvisioningVerification(
     if (!Array.isArray(report.containers)) {
         addError(errors, '$.containers', 'must be an array');
     } else {
-        const observed = report.containers.map((container, index) => {
-            const containerPath = `$.containers[${index}]`;
-            if (!checkObject(container, containerPath, CONTAINER_KEYS, errors)) return container;
-            if (container.uniqueKeyPolicy === undefined) return container;
-            const normalized = { ...container };
-            if (equal(container.uniqueKeyPolicy, { uniqueKeys: [] })) {
-                delete normalized.uniqueKeyPolicy;
-            } else {
-                const policyErrors = [];
-                checkUniqueKeyPolicy(container.uniqueKeyPolicy, `${containerPath}.uniqueKeyPolicy`, policyErrors);
-                errors.push(...policyErrors);
-                if (policyErrors.length === 0) normalized.uniqueKeyPolicy = canonicalUniqueKeyPolicy(container.uniqueKeyPolicy);
-            }
-            return normalized;
-        });
+        let expected;
         try {
-            const expected = expectedContainers(model, project.phases?.targetEnvironment);
-            if (!equal(sortContainers(observed), sortContainers(expected))) {
-                addError(errors, '$.containers', 'does not match the model and effective target configuration');
-            }
+            expected = expectedContainers(model, project.phases?.targetEnvironment);
         } catch (error) {
             addError(errors, '$.project.phases.targetEnvironment', error.message);
+        }
+        const expectedByName = new Map(expected?.map(container => [container.name, container]));
+        const observedNames = new Set();
+        report.containers.forEach((container, index) => {
+            const containerPath = `$.containers[${index}]`;
+            if (!checkObject(container, containerPath, CONTAINER_KEYS, errors)) return;
+            if (typeof container.name !== 'string' || !container.name) {
+                addError(errors, `${containerPath}.name`, 'must be a nonempty container name');
+                return;
+            }
+            if (observedNames.has(container.name)) {
+                addError(errors, `${containerPath}.name`, `duplicates readback for container ${JSON.stringify(container.name)}`);
+            }
+            observedNames.add(container.name);
+            const normalized = { ...container, indexingPolicy: comparableIndexingPolicy(container.indexingPolicy) };
+            if (container.uniqueKeyPolicy !== undefined) {
+                if (equal(container.uniqueKeyPolicy, { uniqueKeys: [] })) {
+                    delete normalized.uniqueKeyPolicy;
+                } else {
+                    const policyErrors = [];
+                    checkUniqueKeyPolicy(container.uniqueKeyPolicy, `${containerPath}.uniqueKeyPolicy`, policyErrors);
+                    errors.push(...policyErrors);
+                    if (policyErrors.length === 0) normalized.uniqueKeyPolicy = canonicalUniqueKeyPolicy(container.uniqueKeyPolicy);
+                }
+            }
+            if (!expected) return;
+            const expectedContainer = expectedByName.get(container.name);
+            if (!expectedContainer) {
+                addError(errors, `${containerPath}.name`, `is not a modeled container: ${JSON.stringify(container.name)}`);
+                return;
+            }
+            compareConfiguration(normalized, {
+                ...expectedContainer,
+                indexingPolicy: comparableIndexingPolicy(expectedContainer.indexingPolicy),
+            }, containerPath, container.name, errors);
+        });
+        for (const name of expectedByName.keys()) {
+            if (!observedNames.has(name)) {
+                addError(errors, '$.containers', `missing readback for modeled container ${JSON.stringify(name)}`);
+            }
         }
     }
 

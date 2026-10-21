@@ -285,6 +285,8 @@ describe('catalog query fields', () => {
         expect(query).toHaveValue(originalQuery);
     });
 
+    // Incomplete-query diagnostics are CPU-heavy under CI coverage; keep the extra budget scoped to this test.
+    // Parser optimization is tracked separately in https://github.com/microsoft/vscode-cosmosdb/pull/3434.
     it('auto-selects references on SQL edits, retains missing selections, and handles incomplete queries', () => {
         const onChange = vi.fn();
         render(<Editor initialModel={buildDataModel('multitenant')} onChange={onChange} />);
@@ -301,7 +303,7 @@ describe('catalog query fields', () => {
         expect(filters).toHaveAccessibleDescription(
             `Selected properties not referenced in the query: tenantId ${filtersHint}`,
         );
-    });
+    }, 30_000);
 
     it('allows keyboard selection and deselection, including clearing all properties', async () => {
         const user = userEvent.setup();

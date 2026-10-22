@@ -62,6 +62,11 @@ Query Editor flows use `QueryEditorPage.closeDocumentPanel(documentId)`, which a
 Tests that close a document by ID must select that document explicitly rather than assume unordered query result positions.
 Tab-closing regressions should run with and without the emulator: connecting renames the Query Editor tab.
 
+The activation handshake waits for the contributed Azure activity-bar entry before opening it, then waits for
+the Cosmos DB Accounts tree item. It does not use the command palette during startup: before extension registration
+finishes, a search for `View: Show Azure` can offer unrelated commands instead.
+If the tree item never appears, the report includes an `activation-failure` screenshot.
+
 ## Running
 
 ```bash

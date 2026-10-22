@@ -51,6 +51,9 @@ that worker. With per-test launch (the naive approach), a 10-test file would
 pay ~50 s of startup overhead; with worker scope it's ~5 s total.
 
 The consequence: tests **must reset editor state in their own `afterEach`**.
+The fixture-lifecycle spec intentionally exits VS Code before worker teardown to
+verify that an already-closed application does not cause a shutdown timeout.
+It disables window-dependent automatic fixtures because no live window remains.
 Use `closeAllEditorTabs(vscodeWindow)` from `fixtures/webviewHelpers.ts`.
 
 During a test, use `closeEditorTab(vscodeWindow, name)` to close a specific tab rather than whichever editor has focus.

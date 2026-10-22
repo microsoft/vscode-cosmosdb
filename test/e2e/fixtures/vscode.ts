@@ -330,44 +330,63 @@ export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
                 throw err;
             });
 
-            await disableNativeDialogs(app);
-
-            await use(app);
-
-            // VS Code spawns helper processes (extension host, renderers,
-            // utility) that keep the app alive, so `app.close()` reliably hangs
-            // past the worker-teardown timeout. Every one of those processes
-            // carries this worker's unique `--user-data-dir` in its argv, so a
-            // targeted `pkill -f` tears the whole instance down without touching
-            // other workers. Windows uses named pipes and closes cleanly, so
-            // fall back to `app.close()` there.
-            if (process.platform === 'win32') {
-                await app.close().catch(() => {
-                    /* close races with Electron teardown are expected */
-                });
-            } else {
+            let appClosed = false;
+            app.once('close', () => {
+                appClosed = true;
+            });
+            const stopApplication = async (): Promise<void> => {
+                if (appClosed) return;
+                // Stop only the launched process tree; other VS Code instances may be running on this machine.
+                if (process.platform === 'win32') {
+                    await app.close().catch(() => {
+                        /* close races with Electron teardown are expected */
+                    });
+                } else {
+                    const closed = app.waitForEvent('close', { timeout: 10_000 });
+                    closed.catch(() => {
+                        /* Handle rejection if process cleanup throws before the normal await below. */
+                    });
+                    const rootPid = app.process().pid;
+                    if (rootPid !== undefined) {
+                        const processes = execFileSync('ps', ['-axo', 'pid=,ppid='], { encoding: 'utf8' })
+                            .trim()
+                            .split('\n')
+                            .map((line) => line.trim().split(/\s+/).map(Number));
+                        const pids = [rootPid];
+                        for (let index = 0; index < pids.length; index++) {
+                            for (const [pid, parentPid] of processes) {
+                                if (parentPid === pids[index]) pids.push(pid);
+                            }
+                        }
+                        for (const pid of pids.reverse()) {
+                            try {
+                                process.kill(pid, 'SIGKILL');
+                            } catch (error) {
+                                if (!(error instanceof Error && 'code' in error && error.code === 'ESRCH')) throw error;
+                            }
+                        }
+                    }
+                    // Detached helpers can inherit these pipes and delay the child process's close event after exit.
+                    app.process().stdin?.destroy();
+                    app.process().stdout?.destroy();
+                    app.process().stderr?.destroy();
+                    await closed;
+                }
+            };
+            try {
+                await disableNativeDialogs(app);
+                await use(app);
+            } finally {
                 try {
-                    execFileSync('pkill', ['-9', '-f', userDataDir]);
-                } catch {
-                    // `pkill` is missing or matched nothing. Fall back to killing
-                    // the launched process directly so teardown can't hang on
-                    // `app.close()` (VS Code keeps helper processes alive).
-                    try {
-                        app.process().kill('SIGKILL');
-                    } catch {
-                        /* already exited */
+                    await stopApplication();
+                } finally {
+                    // Best-effort cleanup; on Windows file handles can linger briefly.
+                    removeDirQuietly(workerDir);
+                    // The POSIX user-data dir lives outside workerDir (short-path workaround above).
+                    if (userDataDir !== path.join(workerDir, 'user-data')) {
+                        removeDirQuietly(userDataDir);
                     }
                 }
-                await app.close().catch(() => {
-                    /* connection already dropped once the processes were killed */
-                });
-            }
-            // Best-effort cleanup; on Windows file handles can linger briefly.
-            removeDirQuietly(workerDir);
-            // The POSIX user-data dir lives outside workerDir (short-path
-            // workaround above), so remove it separately.
-            if (userDataDir !== path.join(workerDir, 'user-data')) {
-                removeDirQuietly(userDataDir);
             }
         },
         { scope: 'worker' },

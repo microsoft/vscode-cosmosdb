@@ -91,6 +91,8 @@ function seedUserSettings(userDataDir: string): void {
         // VS Code 1.112+ overlays a "sticky" container on tree headers that
         // intercepts pointer events — breaks hover/click on tree items.
         'workbench.tree.enableStickyScroll': false,
+        // Native macOS context menus live outside the renderer and cannot be located by Playwright.
+        'window.menuStyle': 'custom',
         // Preview tabs reuse the same tab as you click around, which makes
         // "open multiple files" flows brittle. Force every editor to be
         // a real tab.
@@ -124,9 +126,6 @@ function seedUserSettings(userDataDir: string): void {
         // exercise Quick Start itself opt back in by re-enabling this setting.
         'cosmosDB.quickStart.enabled': false,
     };
-    if (process.platform === 'darwin') {
-        settings['window.menuStyle'] = 'custom';
-    }
     const settingsPath = path.join(userDataDir, 'User', 'settings.json');
     mkdirSync(path.dirname(settingsPath), { recursive: true });
     writeFileSync(settingsPath, JSON.stringify(settings, null, 4), 'utf-8');

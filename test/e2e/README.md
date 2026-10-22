@@ -236,7 +236,10 @@ Conventions every Query Editor spec follows:
 - **`queryEditor-tree-open.spec.ts`** is the only tree-driven spec: it expands the
   attached emulator in the Cosmos DB Workspaces tree and invokes the production
   "Open Query Editor" container action. Keep tree navigation out of the other
-  specs (it is slower and more brittle than the command shortcut).
+  specs (it is slower and more brittle than the command shortcut). The test profile
+  uses `window.menuStyle: custom` so context menus are inspectable on macOS as well.
+- **selected-query execution** uses platform-specific Monaco navigation keys so
+  the requested query line is selected on macOS, Windows, and Linux.
 - **`queryEditor-crud.spec.ts`** is **self-contained**: it creates its OWN
   document with a unique id, queries for exactly that document, then deletes it —
   so it never mutates the shared seed data. Document content is set via the OS

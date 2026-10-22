@@ -6,15 +6,22 @@
 import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
 import { z } from 'zod';
 import { API, tryGetExperience } from '../../../../AzureDBExperiences';
-import {
-    deriveAccountHealth,
-    getInventoryMetrics,
-    type InventoryMetricsResult,
-} from '../../../accountOverview/services/inventoryMetrics';
-import { type ProvisioningState, type TimeRange } from '../../../accountOverview/services/shared';
+import { unavailableStorage } from '../../../accountOverview/metrics/storage';
+import { getInventoryMetrics, type InventoryMetricsResult } from '../../../accountOverview/services/inventoryMetrics';
+import { type HealthState, type ProvisioningState, type TimeRange } from '../../../accountOverview/services/shared';
 import { type AccountOverviewRouterContext } from '../../appRouter';
 import { accountOverviewProcedure } from '../../trpc';
 import { readHealthThresholds } from './thresholds';
+
+function deriveAccountHealth(
+    provisioningState: ProvisioningState | undefined,
+    hasSustainedThrottling: boolean,
+): HealthState {
+    if (provisioningState !== undefined && provisioningState !== 'Succeeded') {
+        return ['Creating', 'Updating', 'Deleting'].includes(provisioningState) ? 'Needs Attention' : 'Critical';
+    }
+    return hasSustainedThrottling ? 'Critical' : 'Healthy';
+}
 
 // ─── Zone: Inventory metrics + per-row health ───────────────────────────────────
 //
@@ -44,6 +51,7 @@ export const inventoryMetricsProcedures = {
                         available: false,
                         reason: 'unsupported',
                         metrics: {},
+                        storageFallback: unavailableStorage('unsupported'),
                         accountHealth: deriveAccountHealth(provisioningState, false),
                         generatedAt: Date.now(),
                     };
@@ -55,18 +63,27 @@ export const inventoryMetricsProcedures = {
                         available: false,
                         reason: 'noData',
                         metrics: {},
+                        storageFallback: unavailableStorage('error'),
                         accountHealth: deriveAccountHealth(provisioningState, false),
                         generatedAt: Date.now(),
                     };
                 }
 
-                return getInventoryMetrics(
+                const result = await getInventoryMetrics(
                     client,
                     metadata.accountId,
                     input.timeRange,
-                    provisioningState,
                     readHealthThresholds(),
+                    undefined,
+                    metadata.isServerless,
                 );
+                return {
+                    ...result,
+                    accountHealth: deriveAccountHealth(
+                        provisioningState,
+                        Object.values(result.metrics).some((metric) => metric.throttled),
+                    ),
+                };
             },
         ),
 };

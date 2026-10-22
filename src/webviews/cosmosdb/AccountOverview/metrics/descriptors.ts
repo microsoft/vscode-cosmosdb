@@ -5,7 +5,55 @@
 
 import { tokens } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
-import { type MetricKey, type MetricPoint, type MetricUnit } from '../../../api/types';
+import {
+    type MetricInapplicabilityReason,
+    type MetricKey,
+    type MetricPoint,
+    type MetricUnit,
+    type MetricUnavailableReason,
+    type StorageMeasurement,
+    type StorageObservation,
+} from '../../../api/types';
+
+export function unavailableCaption(reason: MetricUnavailableReason | undefined): string {
+    switch (reason) {
+        case 'rbac':
+            return l10n.t('No permission');
+        case 'unsupported':
+            return l10n.t('Not supported');
+        case 'logAnalyticsDisabled':
+            return l10n.t('Logs not enabled');
+        case 'error':
+            return l10n.t('Unable to load');
+        case 'noData':
+        default:
+            return l10n.t('No data');
+    }
+}
+
+export function storageObservationLabel(observation: StorageObservation): string {
+    return observation.status === 'available'
+        ? formatMetricValue('bytes', observation.bytes)
+        : unavailableCaption(observation.reason);
+}
+
+export function storageDescription(storage: StorageMeasurement): string {
+    return l10n.t('Data: {data}; indexes: {index}.', {
+        data: storageObservationLabel(storage.data),
+        index: storageObservationLabel(storage.index),
+    });
+}
+
+export function metricInapplicabilityExplanation(reason: MetricInapplicabilityReason): string {
+    switch (reason) {
+        case 'serverlessNormalizedRu':
+            return l10n.t(
+                'Normalized RU is not applicable to serverless accounts because they do not have provisioned throughput.',
+            );
+        case 'serverlessProvisionedThroughput':
+            return l10n.t('Provisioned throughput is not applicable to serverless accounts.');
+    }
+}
 
 // ─── Metric render descriptors (webview half of the contract) ───────────────────
 //
@@ -44,7 +92,7 @@ export type TilePick = 'latest' | 'peak' | 'sum';
 
 /**
  * Emission family a metric belongs to. This is what explains the empty-state pattern on an idle
- * account: `state` gauges are reported continuously by the platform (always populated), while
+ * account: applicable `state` gauges are reported continuously by the platform, while
  * `activity` metrics are request-path flows Azure only samples when traffic actually reaches the
  * data plane — so they read blank while the account is idle even though state tiles keep values.
  */

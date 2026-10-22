@@ -6,7 +6,7 @@
 import { type MonitorClient } from '@azure/arm-monitor';
 import { querySeries, queryThrottlingWindows } from '../services/ruTrends';
 import {
-    classifyUnavailable,
+    metricFailureReason,
     containerFilter,
     effectiveInterval,
     escapeODataLiteral,
@@ -17,7 +17,14 @@ import {
     seriesContainerKey,
     type TimeRange,
 } from '../services/shared';
-import { type MetricKey, type MetricPoint, type MetricSeriesResult } from './contracts';
+import {
+    getMetricApplicability,
+    type MetricApplicability,
+    type MetricKey,
+    type MetricPoint,
+    type MetricSeriesResult,
+} from './contracts';
+import { storageObservation, summarizeStorage, type StorageMeasurement } from './storage';
 
 // ─── Host fetcher registry — "one server per metric type" ───────────────────────
 //
@@ -26,8 +33,8 @@ import { type MetricKey, type MetricPoint, type MetricSeriesResult } from './con
 // a metric name + aggregation, so they share the descriptor-driven `genericSeries`
 // fetcher; the few that need extra signal (throttling overlay) register an
 // override. A metric that reads more than one Azure Monitor series (server-side
-// latency across Direct + Gateway, data + index storage) lists them in `SPECS`
-// and the generic fetcher combines them. Adding a typical metric later is a
+// latency across Direct + Gateway) lists them in `SPECS` and the generic fetcher combines them.
+// Storage has a dedicated fetcher that preserves component status and gaps. Adding a typical metric later is a
 // one-line `SPECS` entry — the generic fetcher picks it up automatically.
 
 /** Account-wide (both undefined) or container-scoped Azure Monitor query. */
@@ -60,7 +67,7 @@ interface HostMetricSpec {
  * - `totalRequestUnits` (consumed RU) and `metadataRequests` (control-plane calls, not part of
  *   `TotalRequests`) are additive request-path counters read with `Total`. `TotalRequests` uses `Count`.
  * - `serviceAvailability` is account-only and emitted only at `PT1H`.
- * - `dataIndexUsage` sums `DataUsage` + `IndexUsage`; both start at `PT5M`.
+ * - `dataIndexUsage` retains `DataUsage` + `IndexUsage` separately; both start at `PT5M`.
  * - `documentCount` reads `DocumentCountV2` (the flat `DocumentCount` is deprecated) with `Maximum`. It is a
  *   per-collection snapshot gauge (documents currently stored, replicated per region), not an additive counter,
  *   so it uses a dedicated {@link documentCountFetcher} that splits by collection and sums each collection's
@@ -102,9 +109,15 @@ type MetricFetcher = (
     range: TimeRange,
 ) => Promise<MetricSeriesResult>;
 
-function baseResult(metric: MetricKey, scope: MetricScope, range: TimeRange): MetricSeriesResult {
+export function emptyMetricSeriesResult(
+    metric: MetricKey,
+    scope: MetricScope,
+    range: TimeRange,
+    applicability: MetricApplicability = { status: 'unknown' },
+): MetricSeriesResult {
     return {
         metric,
+        applicability,
         available: false,
         points: [],
         timeRange: range,
@@ -160,7 +173,7 @@ function genericSeries(metric: MetricKey): MetricFetcher {
         const end = Date.now();
         const timespan = `${new Date(end - config.windowMs).toISOString()}/${new Date(end).toISOString()}`;
         const filter = spec.accountOnly ? undefined : containerFilter(scope.databaseId, scope.containerId);
-        const base = baseResult(metric, scope, range);
+        const base = emptyMetricSeriesResult(metric, scope, range);
 
         let maps: Map<number, number>[];
         try {
@@ -170,7 +183,7 @@ function genericSeries(metric: MetricKey): MetricFetcher {
                 ),
             );
         } catch (error) {
-            return { ...base, reason: classifyUnavailable(error) };
+            return { ...base, reason: metricFailureReason(error) };
         }
         const buckets = mergeBuckets(maps, combine);
         if (buckets.size === 0) {
@@ -180,6 +193,54 @@ function genericSeries(metric: MetricKey): MetricFetcher {
         return { ...base, available: true, points, peak };
     };
 }
+
+const storageFetcher: MetricFetcher = async (client, resourceUri, scope, range) => {
+    const config = RANGE_CONFIG[range];
+    const interval = effectiveInterval(config.interval, SPECS.dataIndexUsage.minInterval);
+    const bucketMs = Math.max(config.bucketMs, 5 * 60 * 1000);
+    const end = Date.now();
+    const timespan = `${new Date(end - config.windowMs).toISOString()}/${new Date(end).toISOString()}`;
+    const filter = containerFilter(scope.databaseId, scope.containerId);
+    const base = emptyMetricSeriesResult('dataIndexUsage', scope, range);
+    const [dataOutcome, indexOutcome] = await Promise.allSettled(
+        SPECS.dataIndexUsage.metricNames.map((name) =>
+            querySeries(client, resourceUri, name, 'Maximum', timespan, interval, filter),
+        ),
+    );
+    const data = dataOutcome.status === 'fulfilled' ? dataOutcome.value : new Map<number, number>();
+    const index = indexOutcome.status === 'fulfilled' ? indexOutcome.value : new Map<number, number>();
+    const dataReason = dataOutcome.status === 'rejected' ? metricFailureReason(dataOutcome.reason) : 'noData';
+    const indexReason = indexOutcome.status === 'rejected' ? metricFailureReason(indexOutcome.reason) : 'noData';
+    const fallback: StorageMeasurement = {
+        data: { status: 'unavailable', reason: dataReason },
+        index: { status: 'unavailable', reason: indexReason },
+    };
+    const timestamps = [...new Set([...data.keys(), ...index.keys()])].sort((a, b) => a - b);
+    // Retain a gap even when both queries omit the same bucket; do not connect observations across it.
+    const timeline = timestamps.flatMap((timestamp, i) =>
+        i > 0 && timestamp - timestamps[i - 1] > bucketMs ? [timestamps[i - 1] + bucketMs, timestamp] : [timestamp],
+    );
+    const points: MetricPoint[] = timeline.map((timestamp) => {
+        const storage: StorageMeasurement = {
+            data: storageObservation(data, dataReason, timestamp),
+            index: storageObservation(index, indexReason, timestamp),
+        };
+        const summary = summarizeStorage(storage);
+        return { timestamp, storage, value: summary.status === 'complete' ? summary.bytes : undefined };
+    });
+    const available = timestamps.length > 0;
+    return {
+        ...base,
+        available,
+        reason: available ? undefined : dataReason !== 'noData' ? dataReason : indexReason,
+        points,
+        storage: points.at(-1)?.storage ?? fallback,
+        peak: points.reduce<number | undefined>(
+            (peak, point) => (point.value === undefined ? peak : Math.max(peak ?? 0, point.value)),
+            undefined,
+        ),
+    };
+};
 
 /**
  * `normalizedRu` and `totalRequests` both overlay sustained-throttling (429)
@@ -273,7 +334,7 @@ function documentCountFetcher(): MetricFetcher {
         const interval = effectiveInterval(config.interval, spec.minInterval);
         const end = Date.now();
         const timespan = `${new Date(end - config.windowMs).toISOString()}/${new Date(end).toISOString()}`;
-        const base = baseResult('documentCount', scope, range);
+        const base = emptyMetricSeriesResult('documentCount', scope, range);
         // Split on the container dimensions: a specific container when drilled in, every collection in the
         // selected database when scoped to a database, otherwise every collection in the account.
         const filter = scope.containerId
@@ -292,7 +353,7 @@ function documentCountFetcher(): MetricFetcher {
                 filter,
             });
         } catch (error) {
-            return { ...base, reason: classifyUnavailable(error) };
+            return { ...base, reason: metricFailureReason(error) };
         }
 
         // Per-collection `timestamp → count`, folding a collection's regions with `max` (replicas share the count).
@@ -331,7 +392,7 @@ const FETCHERS: Record<MetricKey, MetricFetcher> = {
     metadataRequests: genericSeries('metadataRequests'),
     serverLatency: genericSeries('serverLatency'),
     serviceAvailability: genericSeries('serviceAvailability'),
-    dataIndexUsage: genericSeries('dataIndexUsage'),
+    dataIndexUsage: storageFetcher,
     provisionedThroughput: genericSeries('provisionedThroughput'),
     documentCount: documentCountFetcher(),
 };
@@ -342,12 +403,17 @@ const FETCHERS: Record<MetricKey, MetricFetcher> = {
  * metrics that need extra signal). Never throws — Azure Monitor failures resolve to
  * an `available: false` result so the webview renders an explicit empty-state.
  */
-export function fetchMetricSeries(
+export async function fetchMetricSeries(
     metric: MetricKey,
     client: MonitorClient,
     resourceUri: string,
     scope: MetricScope,
     range: TimeRange,
+    isServerless?: boolean,
 ): Promise<MetricSeriesResult> {
-    return FETCHERS[metric](client, resourceUri, scope, range);
+    const applicability = getMetricApplicability(metric, isServerless);
+    if (applicability.status === 'notApplicable') {
+        return emptyMetricSeriesResult(metric, scope, range, applicability);
+    }
+    return { ...(await FETCHERS[metric](client, resourceUri, scope, range)), applicability };
 }

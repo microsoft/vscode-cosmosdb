@@ -4,9 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type MonitorClient } from '@azure/arm-monitor';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { dims, iso, mockClient, throwingClient, type Series } from '../services/testFixtures';
+import { getAccountMetricApplicability, getMetricApplicability, METRIC_KEYS } from './contracts';
 import { fetchMetricSeries } from './hostFetchers';
+import { summarizeStorage, unavailableStorage } from './storage';
 
 // ─── Host metric fetcher registry ───────────────────────────────────────────────
 //
@@ -42,6 +44,107 @@ function recordingClient(
 
 const T1 = 1_000;
 const T2 = 2_000;
+
+describe('metric applicability', () => {
+    it('marks only the two provisioned-capacity metrics inapplicable for confirmed Serverless', () => {
+        const applicability = getAccountMetricApplicability(true);
+        expect(METRIC_KEYS.filter((key) => applicability[key].status === 'notApplicable')).toEqual([
+            'normalizedRu',
+            'provisionedThroughput',
+        ]);
+        expect(applicability.normalizedRu).toEqual({ status: 'notApplicable', reason: 'serverlessNormalizedRu' });
+        expect(applicability.provisionedThroughput).toEqual({
+            status: 'notApplicable',
+            reason: 'serverlessProvisionedThroughput',
+        });
+    });
+
+    it.each(METRIC_KEYS)(
+        'keeps %s applicable for Provisioned and unknown when capacity metadata is unavailable',
+        (metric) => {
+            expect(getMetricApplicability(metric, false)).toEqual({ status: 'applicable' });
+            expect(getMetricApplicability(metric, undefined)).toEqual({ status: 'unknown' });
+        },
+    );
+
+    it.each(['normalizedRu', 'provisionedThroughput'] as const)(
+        'never queries Monitor or synthesizes zeroes for serverless %s',
+        async (metric) => {
+            const calls: Options[] = [];
+            const result = await fetchMetricSeries(
+                metric,
+                recordingClient({}, calls),
+                '/account',
+                { databaseId: 'db' },
+                '7D',
+                true,
+            );
+            expect(calls).toEqual([]);
+            expect(result).toMatchObject({
+                metric,
+                applicability: { status: 'notApplicable' },
+                available: false,
+                points: [],
+                databaseId: 'db',
+                timeRange: '7D',
+            });
+            expect(result.peak).toBeUndefined();
+            expect(result.reason).toBeUndefined();
+        },
+    );
+
+    it.each(['normalizedRu', 'provisionedThroughput'] as const)(
+        'distinguishes empty, zero, and failed Provisioned %s observations',
+        async (metric) => {
+            const empty = await fetchMetricSeries(metric, mockClient({}), '/account', {}, '1H', false);
+            expect(empty).toMatchObject({
+                applicability: { status: 'applicable' },
+                available: false,
+                reason: 'noData',
+            });
+            const zero = await fetchMetricSeries(
+                metric,
+                mockClient({
+                    NormalizedRUConsumption: resp('maximum', [[T1, 0]]),
+                    ProvisionedThroughput: resp('maximum', [[T1, 0]]),
+                }),
+                '/account',
+                {},
+                '1H',
+                false,
+            );
+            expect(zero).toMatchObject({ applicability: { status: 'applicable' }, available: true, peak: 0 });
+            expect(zero.points[0].value).toBe(0);
+            const denied = await fetchMetricSeries(
+                metric,
+                throwingClient({ statusCode: 403 }),
+                '/account',
+                {},
+                '1H',
+                false,
+            );
+            expect(denied).toMatchObject({ applicability: { status: 'applicable' }, available: false, reason: 'rbac' });
+            const failed = await fetchMetricSeries(
+                metric,
+                throwingClient(new Error('network failure')),
+                '/account',
+                {},
+                '1H',
+                false,
+            );
+            expect(failed).toMatchObject({
+                applicability: { status: 'applicable' },
+                available: false,
+                reason: 'error',
+            });
+        },
+    );
+
+    it('does not infer inapplicability for another empty Serverless metric', async () => {
+        const result = await fetchMetricSeries('totalRequestUnits', mockClient({}), '/account', {}, '24H', true);
+        expect(result).toMatchObject({ applicability: { status: 'applicable' }, reason: 'noData', available: false });
+    });
+});
 
 describe('fetchMetricSeries — multi-series combine', () => {
     it('uses Count for the request-volume tile even when Total disagrees', async () => {
@@ -104,6 +207,92 @@ describe('fetchMetricSeries — multi-series combine', () => {
         expect(result.available).toBe(true);
         expect(result.points.map((p) => p.value)).toEqual([110, 220]);
         expect(result.peak).toBe(220);
+        expect(result.storage).toEqual({
+            data: { status: 'available', bytes: 200, timestamp: T2 },
+            index: { status: 'available', bytes: 20, timestamp: T2 },
+        });
+    });
+
+    it.each(['DataUsage', 'IndexUsage'])('retains the other storage component when %s fails', async (failedMetric) => {
+        const client = mockClient({
+            DataUsage: resp('maximum', [[T1, 100]]),
+            IndexUsage: resp('maximum', [[T1, 10]]),
+        });
+        const original = client.metrics.list.bind(client.metrics);
+        vi.spyOn(client.metrics, 'list').mockImplementation((resource, options) =>
+            options?.metricnames === failedMetric
+                ? Promise.reject(Object.assign(new Error('Denied'), { statusCode: 403 }))
+                : original(resource, options),
+        );
+        const result = await fetchMetricSeries('dataIndexUsage', client, '/sub/acct', {}, '24H');
+        expect(result.available).toBe(true);
+        expect(result.points[0].value).toBeUndefined();
+        expect(result.peak).toBeUndefined();
+        expect(result.storage?.[failedMetric === 'DataUsage' ? 'data' : 'index']).toEqual({
+            status: 'unavailable',
+            reason: 'rbac',
+        });
+        expect(result.storage && summarizeStorage(result.storage)).toEqual({
+            status: 'partial',
+            bytes: failedMetric === 'DataUsage' ? 10 : 100,
+        });
+    });
+
+    it('keeps disjoint storage buckets partial and inserts gaps missing from both components', async () => {
+        const step = 5 * 60 * 1000;
+        const client = mockClient({
+            DataUsage: resp('maximum', [
+                [T1, 0],
+                [T1 + step, 100],
+                [T1 + step * 3, 300],
+            ]),
+            IndexUsage: resp('maximum', [
+                [T1, 0],
+                [T1 + step * 4, 40],
+            ]),
+        });
+        const result = await fetchMetricSeries('dataIndexUsage', client, '/sub/acct', {}, '1H');
+        expect(result.points.map((point) => point.timestamp)).toEqual(
+            Array.from({ length: 5 }, (_, i) => T1 + step * i),
+        );
+        expect(result.points.map((point) => point.value)).toEqual([0, undefined, undefined, undefined, undefined]);
+        expect(result.points[2].storage).toEqual(unavailableStorage('noData'));
+        expect(result.storage).toEqual({
+            data: { status: 'unavailable', reason: 'noData' },
+            index: { status: 'available', bytes: 40, timestamp: T1 + step * 4 },
+        });
+    });
+
+    it('keeps independent failure reasons even when neither storage query succeeds', async () => {
+        const client = mockClient({});
+        vi.spyOn(client.metrics, 'list').mockImplementation((_resource, options) =>
+            Promise.reject(
+                Object.assign(new Error('Failed'), {
+                    statusCode: options?.metricnames === 'DataUsage' ? 403 : 500,
+                }),
+            ),
+        );
+        const result = await fetchMetricSeries('dataIndexUsage', client, '/sub/acct', {}, '24H');
+        expect(result.available).toBe(false);
+        expect(result.points).toEqual([]);
+        expect(result.storage).toEqual({
+            data: { status: 'unavailable', reason: 'rbac' },
+            index: { status: 'unavailable', reason: 'error' },
+        });
+    });
+
+    it('queries storage components with identical scope, timespan and minimum grain', async () => {
+        const client = mockClient({});
+        const list = vi.spyOn(client.metrics, 'list');
+        await fetchMetricSeries('dataIndexUsage', client, '/sub/acct', { databaseId: "d'b", containerId: 'c' }, '1H');
+        const [dataCall, indexCall] = list.mock.calls;
+        expect(dataCall[1]).toMatchObject({
+            metricnames: 'DataUsage',
+            aggregation: 'Maximum',
+            interval: 'PT5M',
+            filter: "CollectionName eq 'c' and DatabaseName eq 'd''b'",
+        });
+        expect(indexCall[1]).toEqual({ ...dataCall[1], metricnames: 'IndexUsage' });
     });
 
     it('reports noData when every combined series is empty', async () => {

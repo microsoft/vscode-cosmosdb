@@ -6,6 +6,7 @@
 import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
 import * as l10n from '@vscode/l10n';
 import { API, tryGetExperience } from '../../../../AzureDBExperiences';
+import { getAccountMetricApplicability } from '../../../accountOverview/metrics/contracts';
 import { getInventoryResult, type InventoryContainerRow } from '../../../accountOverview/services/inventory';
 import { type ProvisioningState } from '../../../accountOverview/services/shared';
 import { type AccountOverviewRouterContext } from '../../appRouter';
@@ -42,6 +43,7 @@ export const accountInventoryProcedures = {
             apiType: experience?.shortName ?? l10n.t('Unknown'),
             documentEndpoint: metadata.documentEndpoint,
             isServerless: metadata.isServerless,
+            metricApplicability: getAccountMetricApplicability(metadata.isServerless),
             provisioningState: account.provisioningState as ProvisioningState | undefined,
             consistencyLevel: account.consistencyPolicy?.defaultConsistencyLevel,
             freeTierEnabled: account.enableFreeTier ?? false,
@@ -50,8 +52,8 @@ export const accountInventoryProcedures = {
             backupIntervalMinutes: periodicBackup?.backupIntervalInMinutes,
             backupRetentionHours: periodicBackup?.backupRetentionIntervalInHours,
             continuousBackupTier: continuousBackup?.tier,
-            // `-1` means "no cap"; `undefined` means the property was absent on this api-version (preview-only field).
-            totalThroughputLimit: account.capacity?.totalThroughputLimit,
+            // Only -1 explicitly disables the cap. An absent/null value is unknown, not unlimited.
+            totalThroughputLimit: account.capacity?.totalThroughputLimit ?? undefined,
             writeRegions: (account.writeLocations ?? []).map((l) => l.locationName ?? '').filter(Boolean),
             readRegions: (account.readLocations ?? []).map((l) => l.locationName ?? '').filter(Boolean),
             writeRegionCount: account.writeLocations?.length ?? 0,

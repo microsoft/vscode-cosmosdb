@@ -20,6 +20,7 @@ import {
 import * as l10n from '@vscode/l10n';
 import { type ReactNode } from 'react';
 import {
+    type MetricApplicability,
     type PartitionDistributionMode,
     type PartitionHealthResult,
     type PartitionIntensityLevel,
@@ -233,6 +234,7 @@ export const PartitionHealth = ({
     result,
     loading,
     mode,
+    normalizedRuApplicability,
     onModeChange,
     containers,
     selected,
@@ -243,6 +245,7 @@ export const PartitionHealth = ({
     result?: PartitionHealthResult;
     loading: boolean;
     mode: PartitionDistributionMode;
+    normalizedRuApplicability?: MetricApplicability;
     onModeChange: (mode: PartitionDistributionMode) => void;
     containers: ContainerRef[];
     selected?: ContainerRef;
@@ -284,18 +287,22 @@ export const PartitionHealth = ({
                     );
                 })}
             </Dropdown>
-            <Toolbar
-                size="small"
-                aria-label={l10n.t('Partition distribution measure')}
-                checkedValues={{ mode: [mode] }}
-            >
-                <ToolbarToggleButton name="mode" value="ru" onClick={() => onModeChange('ru')}>
-                    {l10n.t('By RU Share')}
-                </ToolbarToggleButton>
-                <ToolbarToggleButton name="mode" value="storage" onClick={() => onModeChange('storage')}>
-                    {l10n.t('By Storage Share')}
-                </ToolbarToggleButton>
-            </Toolbar>
+            {normalizedRuApplicability?.status === 'notApplicable' ? (
+                <Text>{l10n.t('Storage distribution')}</Text>
+            ) : (
+                <Toolbar
+                    size="small"
+                    aria-label={l10n.t('Partition distribution measure')}
+                    checkedValues={{ mode: [mode] }}
+                >
+                    <ToolbarToggleButton name="mode" value="ru" onClick={() => onModeChange('ru')}>
+                        {l10n.t('By RU Share')}
+                    </ToolbarToggleButton>
+                    <ToolbarToggleButton name="mode" value="storage" onClick={() => onModeChange('storage')}>
+                        {l10n.t('By Storage Share')}
+                    </ToolbarToggleButton>
+                </Toolbar>
+            )}
         </div>
     );
 
@@ -323,7 +330,7 @@ export const PartitionHealth = ({
         body = (
             <div className={styles.root}>
                 <div className={styles.stats}>
-                    {mode === 'ru' ? (
+                    {result.mode === 'ru' ? (
                         <>
                             <span>
                                 {l10n.t('Busiest partition p99:')}{' '}

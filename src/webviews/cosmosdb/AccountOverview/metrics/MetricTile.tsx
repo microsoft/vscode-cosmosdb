@@ -11,12 +11,23 @@ import {
     Text,
     textClassNames,
     tokens,
+    Tooltip,
     typographyStyles,
 } from '@fluentui/react-components';
 import { Eye16Regular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { type MetricSeriesResult, type UnavailableReason } from '../../../api/types';
-import { formatMetricValue, METRIC_GROUPS, type MetricViewDescriptor, tileScalar } from './descriptors';
+import { useId, useState } from 'react';
+import { summarizeStorage } from '../../../../panels/accountOverview/metrics/storage';
+import { type MetricApplicability, type MetricSeriesResult } from '../../../api/types';
+import {
+    formatMetricValue,
+    METRIC_GROUPS,
+    metricInapplicabilityExplanation,
+    type MetricViewDescriptor,
+    tileScalar,
+    storageDescription,
+    unavailableCaption,
+} from './descriptors';
 
 // ─── Metric tile ────────────────────────────────────────────────────────────────
 //
@@ -24,21 +35,6 @@ import { formatMetricValue, METRIC_GROUPS, type MetricViewDescriptor, tileScalar
 // chart is expanded inline below the tile row (see `MetricsSection`). The scalar is
 // derived from the series via the descriptor's tile-pick; an unavailable series
 // renders a muted em dash rather than an error.
-
-/** Distinct, localized caption for an unavailable tile so RBAC/unsupported don't look like empty telemetry. */
-function unavailableCaption(reason: UnavailableReason | undefined): string {
-    switch (reason) {
-        case 'rbac':
-            return l10n.t('No permission');
-        case 'unsupported':
-            return l10n.t('Not supported');
-        case 'logAnalyticsDisabled':
-            return l10n.t('Logs not enabled');
-        case 'noData':
-        default:
-            return l10n.t('No data');
-    }
-}
 
 const useStyles = makeStyles({
     tile: {
@@ -121,6 +117,7 @@ const useStyles = makeStyles({
 export const MetricTile = ({
     descriptor,
     series,
+    applicability = series?.applicability,
     loading,
     selected,
     onSelect,
@@ -129,6 +126,7 @@ export const MetricTile = ({
 }: {
     descriptor: MetricViewDescriptor;
     series?: MetricSeriesResult;
+    applicability?: MetricApplicability;
     loading: boolean;
     selected: boolean;
     onSelect: () => void;
@@ -136,7 +134,23 @@ export const MetricTile = ({
     groupLabelId?: string;
 }) => {
     const styles = useStyles();
-    const group = METRIC_GROUPS[descriptor.group];
+    const explanationId = useId();
+    const [tooltipVisible, setTooltipVisible] = useState(false);
+    const notApplicable = applicability?.status === 'notApplicable';
+    const explanation = notApplicable
+        ? metricInapplicabilityExplanation(applicability.reason)
+        : series?.storage
+          ? storageDescription(series.storage)
+          : undefined;
+    const describedBy = [groupLabelId, explanation ? explanationId : undefined].filter(Boolean).join(' ') || undefined;
+    const group = notApplicable
+        ? {
+              ...METRIC_GROUPS[descriptor.group],
+              color: tokens.colorNeutralForeground2,
+              background: tokens.colorNeutralBackground2,
+              border: tokens.colorNeutralStrokeAccessible,
+          }
+        : METRIC_GROUPS[descriptor.group];
     const selectedStyle = selected
         ? {
               backgroundColor: group.background,
@@ -147,57 +161,63 @@ export const MetricTile = ({
         : undefined;
     const selectedTextStyle = selected ? { color: group.color } : undefined;
 
-    const scalar = series?.available ? tileScalar(descriptor, series.points, series.peak) : undefined;
-    const value = series?.available ? formatMetricValue(descriptor.unit, scalar) : '—';
-    const caption =
-        loading && !series
-            ? l10n.t('Loading…')
+    const hasData = !notApplicable && series?.available;
+    const storageSummary = series?.storage ? summarizeStorage(series.storage) : undefined;
+    const scalar = hasData
+        ? storageSummary
+            ? storageSummary.bytes
+            : tileScalar(descriptor, series.points, series.peak)
+        : undefined;
+    const value = hasData ? formatMetricValue(descriptor.unit, scalar) : '—';
+    const caption = notApplicable
+        ? l10n.t('Not applicable')
+        : loading && !series
+          ? l10n.t('Loading…')
+          : storageSummary?.status === 'partial'
+            ? l10n.t('Partial data')
             : series?.available
               ? descriptor.seriesLabel
               : unavailableCaption(series?.reason);
 
-    if (chartAffordances) {
-        return (
-            <div
-                className={mergeClasses(styles.interactiveCard, !selected && styles.interactiveUnselected)}
-                style={{
-                    ...selectedStyle,
-                    borderLeftColor: group.color,
-                    borderLeftWidth: selected ? 6 : 3,
-                    paddingLeft: selected ? 0 : 3,
-                }}
+    const tile = chartAffordances ? (
+        <div
+            className={mergeClasses(styles.interactiveCard, !selected && styles.interactiveUnselected)}
+            style={{
+                ...selectedStyle,
+                borderLeftColor: group.color,
+                borderLeftWidth: selected ? 6 : 3,
+                paddingLeft: selected ? 0 : 3,
+            }}
+        >
+            <button
+                type="button"
+                className={mergeClasses(styles.tile, styles.cardButton)}
+                aria-pressed={selected}
+                aria-describedby={describedBy}
+                onClick={onSelect}
             >
-                <button
-                    type="button"
-                    className={mergeClasses(styles.tile, styles.cardButton)}
-                    aria-pressed={selected}
-                    aria-describedby={groupLabelId}
-                    onClick={onSelect}
-                >
-                    <Text className={styles.label} style={selectedTextStyle}>
-                        {descriptor.label}
-                    </Text>
-                    <Text className={styles.value} style={selectedTextStyle}>
-                        {value}
-                    </Text>
-                    <Text className={styles.caption} style={selectedTextStyle}>
-                        {caption}
-                    </Text>
-                </button>
-                <Button
-                    className={styles.eye}
-                    appearance="subtle"
-                    size="small"
-                    icon={<Eye16Regular aria-hidden="true" />}
-                    aria-label={l10n.t('Show chart: {metric}', { metric: descriptor.label })}
-                    aria-pressed={selected}
-                    onClick={onSelect}
-                />
-            </div>
-        );
-    }
-
-    return (
+                <Text block className={styles.label} style={selectedTextStyle}>
+                    {descriptor.label}
+                </Text>
+                <Text block className={styles.value} style={selectedTextStyle}>
+                    {value}
+                </Text>
+                <Text block className={styles.caption} style={selectedTextStyle}>
+                    {caption}
+                </Text>
+            </button>
+            <Button
+                className={styles.eye}
+                appearance="subtle"
+                size="small"
+                icon={<Eye16Regular aria-hidden="true" />}
+                aria-label={l10n.t('Show chart: {metric}', { metric: descriptor.label })}
+                aria-pressed={selected}
+                aria-describedby={describedBy}
+                onClick={onSelect}
+            />
+        </div>
+    ) : (
         <button
             type="button"
             className={styles.tile}
@@ -207,18 +227,31 @@ export const MetricTile = ({
                 boxShadow: selected ? `0 0 0 ${tokens.strokeWidthThin} ${group.border}` : undefined,
             }}
             aria-pressed={selected}
+            aria-describedby={describedBy}
             onClick={onSelect}
         >
-            <Text className={styles.label} style={selectedTextStyle}>
+            <Text block className={styles.label} style={selectedTextStyle}>
                 {descriptor.label}
             </Text>
-            <Text className={styles.value} style={selectedTextStyle}>
+            <Text block className={styles.value} style={selectedTextStyle}>
                 {value}
             </Text>
-            <Text className={styles.caption} style={selectedTextStyle}>
+            <Text block className={styles.caption} style={selectedTextStyle}>
                 {caption}
             </Text>
-            <Text className={styles.visuallyHidden}>{group.label}</Text>
+            {!groupLabelId && <Text className={styles.visuallyHidden}>{group.label}</Text>}
         </button>
+    );
+
+    // Keep the wrapper mounted when applicability changes so a focused tile or eye button is not replaced.
+    return (
+        <Tooltip
+            content={{ id: explanationId, children: explanation ?? '' }}
+            relationship={explanation ? 'description' : 'inaccessible'}
+            visible={!!explanation && tooltipVisible}
+            onVisibleChange={(_, data) => setTooltipVisible(!!explanation && data.visible)}
+        >
+            {tile}
+        </Tooltip>
     );
 };

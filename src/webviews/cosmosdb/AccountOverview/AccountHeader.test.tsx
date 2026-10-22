@@ -18,6 +18,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { type ComponentProps, type PropsWithChildren } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { getAccountMetricApplicability } from '../../../panels/accountOverview/metrics/contracts';
 import { AccountHeader, type AccountSummary } from './AccountHeader';
 
 type HeaderProps = ComponentProps<typeof AccountHeader>;
@@ -30,6 +31,7 @@ const summary: AccountSummary = {
     apiType: 'NoSQL',
     documentEndpoint: 'https://example.invalid',
     isServerless: false,
+    metricApplicability: getAccountMetricApplicability(false),
     provisioningState: 'Succeeded',
     consistencyLevel: 'Session',
     freeTierEnabled: false,
@@ -446,6 +448,8 @@ describe('AccountHeader', () => {
         expect(screen.queryByRole('switch', { name: 'Pause auto-refresh' })).not.toBeInTheDocument();
         refresh.focus();
         await user.tab();
+        expect(screen.getByText(/^Total throughput limit:/)).toHaveFocus();
+        await user.tab();
         expect(screen.getByRole('button', { name: 'Account details' })).toHaveFocus();
         rerender(<AccountHeader {...props} loading />);
         expect(time).toBeVisible();
@@ -668,4 +672,22 @@ describe('AccountHeader', () => {
         expect(screen.getByText('Capacity mode: Serverless')).toBeVisible();
         expect(screen.getByText('Regions: Unknown')).toBeVisible();
     });
+
+    it.each([undefined, null, -1, 0, 4000])(
+        'explains why Serverless has no total throughput limit even with ARM value %s',
+        async (totalThroughputLimit) => {
+            const user = userEvent.setup();
+            renderHeader({ summary: { ...summary, isServerless: true, totalThroughputLimit } });
+            const limit = screen.getByText('Total throughput limit: No total throughput limit');
+            expect(limit).toHaveAccessibleDescription(
+                'The account-wide provisioned-throughput cap is not applicable to serverless accounts.',
+            );
+            await user.hover(limit);
+            expect(await screen.findByRole('tooltip')).toHaveTextContent(
+                'The account-wide provisioned-throughput cap is not applicable to serverless accounts.',
+            );
+            expect(limit).toHaveAttribute('tabindex', '0');
+            expect(screen.getByText('Capacity mode: Serverless')).toBeVisible();
+        },
+    );
 });

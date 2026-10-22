@@ -28,15 +28,18 @@ import { Code16Regular, Open16Regular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { memo, type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Line, LineChart, ResponsiveContainer } from 'recharts';
+import { summarizeStorage } from '../../../panels/accountOverview/metrics/storage';
 import {
     type ContainerMetrics,
     type HealthState,
     type InventoryContainerRow,
+    type MetricApplicability,
+    type StorageMeasurement,
     type ThroughputMode,
     type UnavailableReason,
 } from '../../api/types';
 import { EmptyState } from './DashboardChrome';
-import { type ContainerRef } from './metrics/descriptors';
+import { type ContainerRef, metricInapplicabilityExplanation, storageDescription } from './metrics/descriptors';
 
 const useStyles = makeStyles({
     root: {
@@ -88,6 +91,12 @@ const useStyles = makeStyles({
     monospace: {
         fontFamily: tokens.fontFamilyMonospace,
     },
+    metricExplanation: {
+        ':focus-visible': {
+            outline: `${tokens.strokeWidthThick} solid ${tokens.colorStrokeFocus2}`,
+            outlineOffset: tokens.strokeWidthThin,
+        },
+    },
     sparkline: {
         width: '96px',
         height: '24px',
@@ -108,13 +117,22 @@ const THROUGHPUT_MODE_LABELS: Record<ThroughputMode, string> = {
     unknown: l10n.t('Unknown'),
 };
 
-const HEALTH_BADGE: Record<HealthState, { color: 'success' | 'warning' | 'danger'; label: string }> = {
+const HEALTH_BADGE: Record<
+    HealthState | 'Unknown',
+    { color: 'success' | 'warning' | 'danger' | 'subtle'; label: string }
+> = {
+    Unknown: { color: 'subtle', label: l10n.t('Unknown') },
     Healthy: { color: 'success', label: l10n.t('Healthy') },
     'Needs Attention': { color: 'warning', label: l10n.t('Needs Attention') },
     Critical: { color: 'danger', label: l10n.t('Critical') },
 };
 
-const HEALTH_ORDER: Record<HealthState, number> = { Healthy: 0, 'Needs Attention': 1, Critical: 2 };
+const HEALTH_ORDER: Record<HealthState | 'Unknown', number> = {
+    Unknown: -1,
+    Healthy: 0,
+    'Needs Attention': 1,
+    Critical: 2,
+};
 
 type SortKey =
     | 'containerId'
@@ -213,8 +231,15 @@ function formatGrowth(bytes: number): string {
     return `${sign}${formatBytes(Math.abs(bytes))}`;
 }
 
-function rowHealth(row: InventoryContainerRow, metric: ContainerMetrics | undefined): HealthState {
-    return metric?.health ?? row.health;
+function rowHealth(
+    row: InventoryContainerRow,
+    metric: ContainerMetrics | undefined,
+    normalizedRuApplicability?: MetricApplicability,
+): HealthState | 'Unknown' {
+    if (metric) {
+        return metric.health ?? 'Unknown';
+    }
+    return normalizedRuApplicability?.status === 'notApplicable' ? 'Unknown' : row.health;
 }
 
 function formatRU(row: InventoryContainerRow): string {
@@ -260,6 +285,8 @@ const SortableHeaderCell = memo(function SortableHeaderCell({
 const InventoryRow = memo(function InventoryRow({
     row,
     metric,
+    storageFallback,
+    normalizedRuApplicability,
     dataIndex,
     onRevealInTree,
     onOpenQueryEditor,
@@ -268,6 +295,8 @@ const InventoryRow = memo(function InventoryRow({
 }: {
     row: InventoryContainerRow;
     metric: ContainerMetrics | undefined;
+    storageFallback?: StorageMeasurement;
+    normalizedRuApplicability?: MetricApplicability;
     dataIndex: number;
     onRevealInTree: (databaseId: string, containerId: string) => void;
     onOpenQueryEditor: (databaseId: string, containerId: string) => void;
@@ -275,7 +304,9 @@ const InventoryRow = memo(function InventoryRow({
     onSelectContainer?: (container: ContainerRef) => void;
 }) {
     const styles = useStyles();
-    const health = HEALTH_BADGE[rowHealth(row, metric)];
+    const storage = metric?.storage ?? storageFallback;
+    const storageSummary = storage ? summarizeStorage(storage) : undefined;
+    const health = HEALTH_BADGE[rowHealth(row, metric, normalizedRuApplicability)];
     const resourceDescription = l10n.t('Container {container} in database {database}', {
         container: row.containerId,
         database: row.databaseId,
@@ -331,18 +362,23 @@ const InventoryRow = memo(function InventoryRow({
                 })}
             </TableCell>
             <TableCell>
-                {metric?.storageBytes !== undefined && Number.isFinite(metric.storageBytes) ? (
+                {storage ? (
                     <TableCellLayout
                         description={
-                            metric.storageGrowthBytes !== undefined && Number.isFinite(metric.storageGrowthBytes)
-                                ? l10n.t('{delta} / 7 days', {
+                            metric?.storageGrowthBytes !== undefined && Number.isFinite(metric.storageGrowthBytes)
+                                ? l10n.t('Data growth: {delta} / 7 days', {
                                       delta: formatGrowth(metric.storageGrowthBytes),
                                   })
                                 : undefined
                         }
                     >
-                        {formatBytes(metric.storageBytes)}
-                        <Sparkline values={metric.storageSparkline} />
+                        <Tooltip content={storageDescription(storage)} relationship="description">
+                            <Text tabIndex={0} className={styles.metricExplanation}>
+                                {storageSummary?.bytes !== undefined ? formatBytes(storageSummary.bytes) : '—'}
+                                {storageSummary?.status === 'partial' && <> · {l10n.t('Partial data')}</>}
+                            </Text>
+                        </Tooltip>
+                        <Sparkline values={metric?.storageSparkline} />
                     </TableCellLayout>
                 ) : (
                     <Text className={styles.monospace}>{'—'}</Text>
@@ -354,7 +390,16 @@ const InventoryRow = memo(function InventoryRow({
                     : '—'}
             </TableCell>
             <TableCell>
-                {metric?.peakRuPercent !== undefined && Number.isFinite(metric.peakRuPercent) ? (
+                {normalizedRuApplicability?.status === 'notApplicable' ? (
+                    <Tooltip
+                        content={metricInapplicabilityExplanation(normalizedRuApplicability.reason)}
+                        relationship="description"
+                    >
+                        <Text tabIndex={0} className={styles.metricExplanation}>
+                            {l10n.t('Not applicable')}
+                        </Text>
+                    </Tooltip>
+                ) : metric?.peakRuPercent !== undefined && Number.isFinite(metric.peakRuPercent) ? (
                     <TableCellLayout>
                         {`${Math.round(metric.peakRuPercent)}%`}
                         <Sparkline values={metric.ruSparkline} />
@@ -401,6 +446,8 @@ export const InventoryTable = ({
     available,
     reason,
     metrics,
+    storageFallback,
+    normalizedRuApplicability,
     onRevealInTree,
     onOpenQueryEditor,
     selectedContainer,
@@ -413,6 +460,8 @@ export const InventoryTable = ({
     available: boolean;
     reason?: UnavailableReason;
     metrics?: Record<string, ContainerMetrics>;
+    storageFallback?: StorageMeasurement;
+    normalizedRuApplicability?: MetricApplicability;
     onRevealInTree: (databaseId: string, containerId: string) => void;
     onOpenQueryEditor: (databaseId: string, containerId: string) => void;
     selectedContainer?: ContainerRef;
@@ -479,14 +528,25 @@ export const InventoryTable = ({
             switch (sortKey) {
                 case 'throughputRU':
                     return factor * ((a.throughputRU ?? -1) - (b.throughputRU ?? -1));
-                case 'storageBytes':
-                    return factor * ((metricOf(a)?.storageBytes ?? -1) - (metricOf(b)?.storageBytes ?? -1));
+                case 'storageBytes': {
+                    const aStorage = metricOf(a)?.storage;
+                    const bStorage = metricOf(b)?.storage;
+                    return (
+                        factor *
+                        ((aStorage ? (summarizeStorage(aStorage).bytes ?? -1) : -1) -
+                            (bStorage ? (summarizeStorage(bStorage).bytes ?? -1) : -1))
+                    );
+                }
                 case 'documentCount':
                     return factor * ((metricOf(a)?.documentCount ?? -1) - (metricOf(b)?.documentCount ?? -1));
                 case 'peakRuPercent':
                     return factor * ((metricOf(a)?.peakRuPercent ?? -1) - (metricOf(b)?.peakRuPercent ?? -1));
                 case 'health':
-                    return factor * (HEALTH_ORDER[rowHealth(a, metricOf(a))] - HEALTH_ORDER[rowHealth(b, metricOf(b))]);
+                    return (
+                        factor *
+                        (HEALTH_ORDER[rowHealth(a, metricOf(a), normalizedRuApplicability)] -
+                            HEALTH_ORDER[rowHealth(b, metricOf(b), normalizedRuApplicability)])
+                    );
                 case 'containerId':
                 case 'databaseId':
                 case 'throughputMode':
@@ -495,7 +555,7 @@ export const InventoryTable = ({
                     return 0;
             }
         });
-    }, [filteredRows, sortKey, sortDirection, metrics]);
+    }, [filteredRows, sortKey, sortDirection, metrics, normalizedRuApplicability]);
 
     const toggleSort = useCallback(
         (key: SortKey) => {
@@ -731,7 +791,7 @@ export const InventoryTable = ({
                                             sortDirection={sortDirection}
                                             onSort={toggleSort}
                                         >
-                                            {l10n.t('Peak RU')}
+                                            {l10n.t('Peak normalized RU')}
                                         </SortableHeaderCell>
                                         <SortableHeaderCell
                                             columnKey="health"
@@ -751,6 +811,8 @@ export const InventoryTable = ({
                                             dataIndex={start + index}
                                             row={row}
                                             metric={metrics?.[containerKey(row)]}
+                                            storageFallback={storageFallback}
+                                            normalizedRuApplicability={normalizedRuApplicability}
                                             onRevealInTree={onRevealInTree}
                                             onOpenQueryEditor={onOpenQueryEditor}
                                             selected={

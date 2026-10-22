@@ -53,6 +53,12 @@ pay ~50 s of startup overhead; with worker scope it's ~5 s total.
 The consequence: tests **must reset editor state in their own `afterEach`**.
 Use `closeAllEditorTabs(vscodeWindow)` from `fixtures/webviewHelpers.ts`.
 
+During a test, use `closeEditorTab(vscodeWindow, name)` to close a specific tab rather than whichever editor has focus.
+This helper requires a unique matching tab and waits for that tab to disappear; failures are not swallowed.
+Query Editor flows use `QueryEditorPage.closeDocumentPanel(documentId)`, which also waits for the result table to be visible.
+Tests that close a document by ID must select that document explicitly rather than assume unordered query result positions.
+Tab-closing regressions should run with and without the emulator: connecting renames the Query Editor tab.
+
 ## Running
 
 ```bash

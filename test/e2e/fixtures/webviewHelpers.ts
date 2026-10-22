@@ -23,7 +23,7 @@
  * the webview to be fully populated (React mounted, expected UI present).
  */
 
-import { test, type ElectronApplication, type Frame, type Page } from '@playwright/test';
+import { expect, test, type ElectronApplication, type Frame, type Page } from '@playwright/test';
 import { resolveCapturePlan, shouldCapture } from '../helpers/captureMode';
 
 const COMMAND_PALETTE_SHORTCUT = process.platform === 'darwin' ? 'Meta+Shift+P' : 'Control+Shift+P';
@@ -348,39 +348,16 @@ export async function closeAllEditorTabs(page: Page): Promise<void> {
 }
 
 /**
- * Closes only the *active* editor tab via
- * `workbench.action.revertAndCloseActiveEditor`, reverting any unsaved changes
- * so no save prompt blocks the test. Use this to dismiss a Document panel that a
- * Query Editor drill-in (New / View / Edit item) opened while keeping the Query
- * Editor tab itself open. Returns once the tab count has dropped (or after a
- * best-effort timeout).
+ * Closes the editor tab matching `name`, regardless of which editor currently has focus.
+ * Unlike best-effort teardown, an in-test close must fail if the intended tab does not disappear.
  */
-export async function closeActiveEditorTab(page: Page): Promise<void> {
-    if (page.isClosed()) return;
-
-    const before = await page.locator(TAB_SELECTOR).count();
-    if (before === 0) return;
-
-    try {
-        await page.keyboard.press('Escape');
-        await page.waitForTimeout(150);
-
-        const input = page.locator(QUICK_INPUT_SELECTOR).first();
-        await page.keyboard.press(COMMAND_PALETTE_SHORTCUT);
-        await input.waitFor({ state: 'visible', timeout: 2_000 });
-        await input.fill('>workbench.action.revertAndCloseActiveEditor');
-        await page.waitForTimeout(150);
-        await page.keyboard.press('Enter');
-
-        // Wait for the tab count to actually drop so callers can rely on the
-        // previous editor regaining focus.
-        for (let attempt = 0; attempt < 20; attempt++) {
-            if ((await page.locator(TAB_SELECTOR).count()) < before) return;
-            await page.waitForTimeout(150);
-        }
-    } catch {
-        // Best-effort — never fail a test on cleanup.
-    }
+export async function closeEditorTab(page: Page, name: string): Promise<void> {
+    const tab = page.getByRole('tab', { name });
+    await expect(tab).toHaveCount(1);
+    await tab.click();
+    await expect(tab).toHaveAttribute('aria-selected', 'true');
+    await tab.getByRole('button', { name: /^Close/ }).click();
+    await expect(tab).toHaveCount(0);
 }
 
 /**

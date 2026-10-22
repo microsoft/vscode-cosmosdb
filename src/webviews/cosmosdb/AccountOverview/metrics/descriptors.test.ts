@@ -66,4 +66,9 @@ describe.each([
             ),
         ).toBeGreaterThan(3);
     });
+
+    it('keeps the neutral inapplicable selection readable without a family color', () => {
+        expect(contrast(theme.colorNeutralForeground2, theme.colorNeutralBackground2)).toBeGreaterThanOrEqual(4.5);
+        expect(contrast(theme.colorNeutralStrokeAccessible, theme.colorNeutralBackground2)).toBeGreaterThan(3);
+    });
 });

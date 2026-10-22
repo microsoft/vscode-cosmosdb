@@ -24,7 +24,7 @@
 
 import { expect, type Frame, type Page } from '@playwright/test';
 import { startConsoleHealth, type ConsoleHealth } from './consoleHealth';
-import { captureNamedScreenshot, getWebviewByPredicate } from './webviewHelpers';
+import { captureNamedScreenshot, closeEditorTab, getWebviewByPredicate } from './webviewHelpers';
 import { openQueryEditor } from './webviews';
 
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -691,6 +691,12 @@ export class QueryEditorPage {
         );
     }
 
+    /** Closes the named Document tab and waits for this editor's result table to regain visibility. */
+    async closeDocumentPanel(documentId: string): Promise<void> {
+        await closeEditorTab(this.window, `${documentId}.json`);
+        await expect(this.tableGrid()).toBeVisible({ timeout: DEFAULT_TIMEOUT_MS });
+    }
+
     // ─── Editor text ──────────────────────────────────────────────────────
 
     /**
@@ -711,19 +717,18 @@ export class QueryEditorPage {
      * active selection. The Query Editor tracks the Monaco selection into
      * `querySelectedValue`, and Run executes that selection in preference to the
      * full editor text — so this drives the "run only the selected fragment"
-     * path. Navigates by keyboard (Ctrl+Home + ArrowDown) to avoid fragile
-     * per-line click coordinates; the first `Home` lands on the first
-     * non-whitespace column, so any auto-indent is excluded from the selection.
+     * path. Uses platform-specific document/line navigation and ArrowDown to avoid fragile per-line click coordinates.
      */
     async selectQueryLine(lineIndex: number): Promise<void> {
+        const isMac = process.platform === 'darwin';
         await this.frame.locator('.monaco-editor').first().click();
         await this.frame.locator('textarea.inputarea').first().waitFor({ state: 'attached', timeout: 5_000 });
-        await this.window.keyboard.press('Control+Home');
+        await this.window.keyboard.press(isMac ? 'Meta+ArrowUp' : 'Control+Home');
         for (let i = 0; i < lineIndex; i++) {
             await this.window.keyboard.press('ArrowDown');
         }
-        await this.window.keyboard.press('Home');
-        await this.window.keyboard.press('Shift+End');
+        await this.window.keyboard.press(isMac ? 'Meta+ArrowLeft' : 'Home');
+        await this.window.keyboard.press(isMac ? 'Meta+Shift+ArrowRight' : 'Shift+End');
         // Let the selection-change event flush into querySelectedValue before the
         // caller triggers Run.
         await this.window.waitForTimeout(200);

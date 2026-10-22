@@ -18,12 +18,20 @@ import {
     Spinner,
     Text,
     tokens,
+    Tooltip,
     typographyStyles,
 } from '@fluentui/react-components';
 import { ArrowClockwise16Regular, Braces16Regular, Money16Regular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useId, useMemo, useState } from 'react';
-import { type AccountActionInput, type HealthState, type ProvisioningState, type TimeRange } from '../../api/types';
+import {
+    type AccountActionInput,
+    type HealthState,
+    type MetricApplicability,
+    type MetricKey,
+    type ProvisioningState,
+    type TimeRange,
+} from '../../api/types';
 import { type ContainerRef, type MetricScope } from './metrics/descriptors';
 
 const cosmosIcon = new URL('../../../../resources/azurecosmosdb.png', import.meta.url).href;
@@ -41,6 +49,7 @@ export type AccountSummary = {
     apiType: string;
     documentEndpoint: string;
     isServerless: boolean;
+    metricApplicability: Record<MetricKey, MetricApplicability>;
     provisioningState?: ProvisioningState;
     consistencyLevel?: string;
     freeTierEnabled: boolean;
@@ -49,7 +58,7 @@ export type AccountSummary = {
     backupRetentionHours?: number;
     continuousBackupTier?: string;
     automaticFailoverEnabled?: boolean;
-    totalThroughputLimit?: number;
+    totalThroughputLimit?: number | null;
     writeRegions: string[];
     readRegions: string[];
     writeRegionCount: number;
@@ -143,6 +152,12 @@ const useStyles = makeStyles({
         display: 'inline-flex',
         alignItems: 'center',
         gap: tokens.spacingHorizontalSNudge,
+    },
+    throughputLimit: {
+        ':focus-visible': {
+            outline: `${tokens.strokeWidthThick} solid ${tokens.colorStrokeFocus2}`,
+            outlineOffset: tokens.strokeWidthThick,
+        },
     },
     statusDot: {
         width: '6px',
@@ -306,11 +321,19 @@ export const AccountHeader = ({
     const selectedScopeLabel = selectedContainer?.databaseId ?? l10n.t('All databases');
     const timeRangeLabel = timeRanges.find((range) => range.value === timeRange)?.label;
     const throughputLimit =
-        summary.totalThroughputLimit === undefined
-            ? l10n.t('Unknown')
-            : summary.totalThroughputLimit === -1
-              ? l10n.t('No total throughput limit')
-              : l10n.t('{ru} RU/s', { ru: summary.totalThroughputLimit.toLocaleString() });
+        summary.isServerless || summary.totalThroughputLimit === -1
+            ? l10n.t('No total throughput limit')
+            : summary.totalThroughputLimit !== undefined &&
+                summary.totalThroughputLimit !== null &&
+                Number.isFinite(summary.totalThroughputLimit) &&
+                summary.totalThroughputLimit >= 0
+              ? l10n.t('{ru} RU/s', { ru: summary.totalThroughputLimit.toLocaleString() })
+              : l10n.t('Unknown');
+    const throughputLimitExplanation = summary.isServerless
+        ? l10n.t('The account-wide provisioned-throughput cap is not applicable to serverless accounts.')
+        : l10n.t(
+              'This account-wide cap limits throughput allocation, not consumed RU or available performance. Autoscale resources count at their configured maximum.',
+          );
     const capacityMode = summary.isServerless ? l10n.t('Serverless') : l10n.t('Provisioned throughput');
     const retention =
         summary.backupRetentionHours === undefined
@@ -489,7 +512,12 @@ export const AccountHeader = ({
                             </div>
                             <span>{l10n.t('Regions: {regions}', { regions: regionsLabel })}</span>
                             <span>{l10n.t('Capacity mode: {mode}', { mode: capacityMode })}</span>
-                            <span>{l10n.t('Total throughput limit: {limit}', { limit: throughputLimit })}</span>
+                            <Tooltip content={throughputLimitExplanation} relationship="description">
+                                {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Tooltip focus. */}
+                                <span tabIndex={0} className={styles.throughputLimit}>
+                                    {l10n.t('Total throughput limit: {limit}', { limit: throughputLimit })}
+                                </span>
+                            </Tooltip>
                         </div>
                         <AccordionHeader
                             as="h2"

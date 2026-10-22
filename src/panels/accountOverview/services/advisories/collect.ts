@@ -351,9 +351,9 @@ export async function collectDerivedAdvisories(
                   monitorClient,
                   accountId,
                   manualObservation.timeRange,
-                  undefined,
                   healthThresholds,
                   manualObservation,
+                  isServerless,
               );
     if (inventoryMetrics && !inventoryMetrics.available) {
         addMetricFailure(metricFailures, 'IndexingCostRisk', inventoryMetrics.reason ?? 'noData');
@@ -365,8 +365,10 @@ export async function collectDerivedAdvisories(
                   return {
                       databaseId: row.databaseId,
                       containerId: row.containerId,
-                      indexUsageBytes: metrics?.indexUsageBytes,
-                      dataUsageBytes: metrics?.dataUsageBytes,
+                      indexUsageBytes:
+                          metrics?.storage.index.status === 'available' ? metrics.storage.index.bytes : undefined,
+                      dataUsageBytes:
+                          metrics?.storage.data.status === 'available' ? metrics.storage.data.bytes : undefined,
                       userExcludedPathCount: row.userExcludedPathCount,
                   };
               })
@@ -431,7 +433,7 @@ export async function collectDerivedAdvisories(
             addMetricFailure(metricFailures, 'SustainedThrottlingInRegion', partition.reason, scope);
             addMetricFailure(metricFailures, 'HotPartitionRisk', partition.reason, scope);
         } else if (!partition.value?.available) {
-            const reason = partition.value?.reason ?? 'noData';
+            const reason = partition.value?.reason === 'error' ? 'noData' : (partition.value?.reason ?? 'noData');
             addMetricFailure(metricFailures, 'SustainedThrottlingInRegion', reason, scope);
             addMetricFailure(metricFailures, 'HotPartitionRisk', reason, scope);
         } else if (throttle.reason) {

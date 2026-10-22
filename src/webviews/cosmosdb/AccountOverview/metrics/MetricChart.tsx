@@ -8,6 +8,7 @@ import * as l10n from '@vscode/l10n';
 import { useMemo } from 'react';
 import {
     CartesianGrid,
+    Legend,
     Line,
     LineChart,
     ReferenceArea,
@@ -17,9 +18,22 @@ import {
     XAxis,
     YAxis,
 } from 'recharts';
-import { type MetricPoint, type MetricSeriesResult, type TimeRange } from '../../../api/types';
+import { summarizeStorage } from '../../../../panels/accountOverview/metrics/storage';
+import {
+    type MetricApplicability,
+    type MetricPoint,
+    type MetricSeriesResult,
+    type TimeRange,
+} from '../../../api/types';
 import { EmptyState } from '../DashboardChrome';
-import { formatAxisTick, formatMetricValue, type MetricViewDescriptor } from './descriptors';
+import {
+    formatAxisTick,
+    formatMetricValue,
+    metricInapplicabilityExplanation,
+    storageDescription,
+    storageObservationLabel,
+    type MetricViewDescriptor,
+} from './descriptors';
 
 // ─── Metric chart ───────────────────────────────────────────────────────────────
 //
@@ -31,6 +45,7 @@ import { formatAxisTick, formatMetricValue, type MetricViewDescriptor } from './
 const EMPTY_POINTS: MetricPoint[] = [];
 
 const SERIES_COLOR = 'var(--vscode-charts-blue, var(--vscode-textLink-foreground))';
+const INDEX_COLOR = 'var(--vscode-charts-orange, var(--vscode-textLink-foreground))';
 const THROTTLE_COLOR = tokens.colorStatusDangerForeground1;
 const GRID_COLOR = tokens.colorNeutralStroke2;
 const AXIS_COLOR = tokens.colorNeutralForeground2;
@@ -49,6 +64,17 @@ const useStyles = makeStyles({
         height: '280px',
         color: tokens.colorNeutralForeground2,
         textAlign: 'center',
+    },
+    explanation: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: tokens.spacingVerticalS,
+        minWidth: 0,
+        maxWidth: '640px',
+        overflowWrap: 'anywhere',
+        '& > p': {
+            margin: 0,
+        },
     },
     tooltip: {
         ...typographyStyles.body1,
@@ -133,7 +159,14 @@ const ChartTooltip = ({ active, payload, descriptor }: ChartTooltipProps) => {
     return (
         <div className={styles.tooltip}>
             <Text weight="semibold">{formatTimestamp(point.timestamp)}</Text>
-            <Text>{`${descriptor.seriesLabel}: ${formatMetricValue(descriptor.unit, point.value)}`}</Text>
+            {point.storage ? (
+                <>
+                    <Text>{storageDescription(point.storage)}</Text>
+                    {summarizeStorage(point.storage).status === 'partial' && <Text>{l10n.t('Partial data')}</Text>}
+                </>
+            ) : (
+                <Text>{`${descriptor.seriesLabel}: ${formatMetricValue(descriptor.unit, point.value)}`}</Text>
+            )}
             {point.throttled && (
                 <Text className={styles.throttleNote}>{l10n.t('Sustained throttling (429s) in this window')}</Text>
             )}
@@ -144,17 +177,29 @@ const ChartTooltip = ({ active, payload, descriptor }: ChartTooltipProps) => {
 export const MetricChart = ({
     descriptor,
     series,
+    applicability = series?.applicability,
     loading,
     timeRange,
 }: {
     descriptor: MetricViewDescriptor;
     series?: MetricSeriesResult;
+    applicability?: MetricApplicability;
     loading: boolean;
     timeRange: TimeRange;
 }) => {
     const styles = useStyles();
 
     const points = series?.points ?? EMPTY_POINTS;
+    const storage = series?.storage;
+    const chartPoints = useMemo(
+        () =>
+            points.map((point) => ({
+                ...point,
+                dataBytes: point.storage?.data.status === 'available' ? point.storage.data.bytes : undefined,
+                indexBytes: point.storage?.index.status === 'available' ? point.storage.index.bytes : undefined,
+            })),
+        [points],
+    );
     const bands = useMemo(() => throttlingBands(series?.points ?? EMPTY_POINTS), [series?.points]);
     // Thin labels, not chart data; keep both ends of the time window available to the axis.
     const timeTicks = useMemo(
@@ -171,6 +216,21 @@ export const MetricChart = ({
         return [0, 'auto'];
     }, [descriptor.yDomain, series?.peak]);
 
+    if (applicability?.status === 'notApplicable') {
+        return (
+            <div className={styles.emptyState}>
+                <div className={styles.explanation}>
+                    <Text as="p" block weight="semibold">
+                        {l10n.t('Not applicable')}
+                    </Text>
+                    <Text as="p" block>
+                        {metricInapplicabilityExplanation(applicability.reason)}
+                    </Text>
+                </div>
+            </div>
+        );
+    }
+
     if (loading && points.length === 0) {
         return (
             <div className={styles.emptyState}>
@@ -182,80 +242,148 @@ export const MetricChart = ({
     if (!series?.available || points.length === 0) {
         return (
             <div className={styles.emptyState}>
-                <EmptyState reason={series?.reason ?? 'noData'} requiredRole={l10n.t('Monitoring Reader')} />
+                {storage ? (
+                    <output className={styles.explanation}>
+                        <Text>{l10n.t('Storage unavailable')}</Text>
+                        <Text>{storageDescription(storage)}</Text>
+                    </output>
+                ) : series?.reason === 'error' ? (
+                    <output>
+                        <Text>{l10n.t('Unable to load metric data. Use Refresh to try again.')}</Text>
+                    </output>
+                ) : (
+                    <EmptyState reason={series?.reason ?? 'noData'} requiredRole={l10n.t('Monitoring Reader')} />
+                )}
             </div>
         );
     }
 
     return (
-        <figure className={styles.chartArea} style={{ margin: 0 }}>
-            <figcaption className={styles.srOnly}>
-                {l10n.t(
-                    '{0} over the selected window, peak {1}.',
-                    descriptor.label,
-                    formatMetricValue(descriptor.unit, series.peak),
-                )}
-            </figcaption>
-            <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={points} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
-                    <CartesianGrid stroke={GRID_COLOR} strokeDasharray="3 3" vertical={false} />
-                    <XAxis
-                        dataKey="timestamp"
-                        type="number"
-                        scale="time"
-                        domain={['dataMin', 'dataMax']}
-                        ticks={timeTicks}
-                        interval="preserveStartEnd"
-                        minTickGap={24}
-                        tickMargin={8}
-                        tickFormatter={(ts: number) => formatTick(ts, timeRange)}
-                        stroke={AXIS_COLOR}
-                        tick={{ fill: AXIS_COLOR, fontSize: tokens.fontSizeBase200, fontFamily: tokens.fontFamilyBase }}
-                    />
-                    <YAxis
-                        domain={yDomain}
-                        tickFormatter={(v: number) => formatAxisTick(descriptor.unit, v)}
-                        stroke={AXIS_COLOR}
-                        tick={{ fill: AXIS_COLOR, fontSize: tokens.fontSizeBase200, fontFamily: tokens.fontFamilyBase }}
-                        width={52}
-                    />
-                    <Tooltip content={<ChartTooltip descriptor={descriptor} />} />
-                    {bands.map((band) => (
-                        <ReferenceArea
-                            key={`${band.x1}-${band.x2}`}
-                            x1={band.x1}
-                            x2={band.x2}
-                            fill={THROTTLE_COLOR}
-                            fillOpacity={0.15}
-                            ifOverflow="extendDomain"
-                        />
-                    ))}
-                    {descriptor.referenceLines?.map((ref) => (
-                        <ReferenceLine
-                            key={ref.label}
-                            y={ref.value}
-                            stroke={REFERENCE_COLOR}
-                            strokeDasharray="6 4"
-                            label={{
-                                value: ref.label,
-                                position: 'insideTopRight',
+        <figure
+            style={{ margin: 0 }}
+            aria-label={storage ? descriptor.label : undefined}
+            aria-description={
+                storage
+                    ? `${storageDescription(storage)} ${l10n.t(
+                          'Data uses a solid line; indexes use a dashed line. Missing observations appear as gaps.',
+                      )}`
+                    : undefined
+            }
+        >
+            {!storage && (
+                <figcaption className={styles.srOnly}>
+                    {l10n.t(
+                        '{0} over the selected window, peak {1}.',
+                        descriptor.label,
+                        formatMetricValue(descriptor.unit, series.peak),
+                    )}
+                </figcaption>
+            )}
+            <div className={styles.chartArea}>
+                <ResponsiveContainer width="100%" height="100%">
+                    <LineChart accessibilityLayer data={chartPoints} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
+                        <CartesianGrid stroke={GRID_COLOR} strokeDasharray="3 3" vertical={false} />
+                        <XAxis
+                            dataKey="timestamp"
+                            type="number"
+                            scale="time"
+                            domain={['dataMin', 'dataMax']}
+                            ticks={timeTicks}
+                            interval="preserveStartEnd"
+                            minTickGap={24}
+                            tickMargin={8}
+                            tickFormatter={(ts: number) => formatTick(ts, timeRange)}
+                            stroke={AXIS_COLOR}
+                            tick={{
                                 fill: AXIS_COLOR,
                                 fontSize: tokens.fontSizeBase200,
                                 fontFamily: tokens.fontFamilyBase,
                             }}
                         />
-                    ))}
-                    <Line
-                        type="monotone"
-                        dataKey="value"
-                        stroke={SERIES_COLOR}
-                        strokeWidth={2}
-                        dot={false}
-                        isAnimationActive={false}
-                        connectNulls
-                    />
-                </LineChart>
-            </ResponsiveContainer>
+                        <YAxis
+                            domain={yDomain}
+                            tickFormatter={(v: number) => formatAxisTick(descriptor.unit, v)}
+                            stroke={AXIS_COLOR}
+                            tick={{
+                                fill: AXIS_COLOR,
+                                fontSize: tokens.fontSizeBase200,
+                                fontFamily: tokens.fontFamilyBase,
+                            }}
+                            width={52}
+                        />
+                        <Tooltip filterNull={!storage} content={<ChartTooltip descriptor={descriptor} />} />
+                        {storage && <Legend />}
+                        {bands.map((band) => (
+                            <ReferenceArea
+                                key={`${band.x1}-${band.x2}`}
+                                x1={band.x1}
+                                x2={band.x2}
+                                fill={THROTTLE_COLOR}
+                                fillOpacity={0.15}
+                                ifOverflow="extendDomain"
+                            />
+                        ))}
+                        {descriptor.referenceLines?.map((ref) => (
+                            <ReferenceLine
+                                key={ref.label}
+                                y={ref.value}
+                                stroke={REFERENCE_COLOR}
+                                strokeDasharray="6 4"
+                                label={{
+                                    value: ref.label,
+                                    position: 'insideTopRight',
+                                    fill: AXIS_COLOR,
+                                    fontSize: tokens.fontSizeBase200,
+                                    fontFamily: tokens.fontFamilyBase,
+                                }}
+                            />
+                        ))}
+                        {storage ? (
+                            <>
+                                <Line
+                                    name={
+                                        points.some((point) => point.storage?.data.status === 'available')
+                                            ? l10n.t('Data')
+                                            : `${l10n.t('Data')} — ${storageObservationLabel(storage.data)}`
+                                    }
+                                    type="linear"
+                                    dataKey="dataBytes"
+                                    stroke={SERIES_COLOR}
+                                    strokeWidth={2}
+                                    dot={{ r: 2 }}
+                                    isAnimationActive={false}
+                                    connectNulls={false}
+                                />
+                                <Line
+                                    name={
+                                        points.some((point) => point.storage?.index.status === 'available')
+                                            ? l10n.t('Indexes')
+                                            : `${l10n.t('Indexes')} — ${storageObservationLabel(storage.index)}`
+                                    }
+                                    type="linear"
+                                    dataKey="indexBytes"
+                                    stroke={INDEX_COLOR}
+                                    strokeDasharray="6 4"
+                                    strokeWidth={2}
+                                    dot={{ r: 2 }}
+                                    isAnimationActive={false}
+                                    connectNulls={false}
+                                />
+                            </>
+                        ) : (
+                            <Line
+                                type="monotone"
+                                dataKey="value"
+                                stroke={SERIES_COLOR}
+                                strokeWidth={2}
+                                dot={false}
+                                isAnimationActive={false}
+                                connectNulls
+                            />
+                        )}
+                    </LineChart>
+                </ResponsiveContainer>
+            </div>
         </figure>
     );
 };

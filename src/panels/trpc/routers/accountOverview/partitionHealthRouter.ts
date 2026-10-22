@@ -6,13 +6,13 @@
 import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
 import { z } from 'zod';
 import { API, tryGetExperience } from '../../../../AzureDBExperiences';
+import { getMetricApplicability, type MetricUnavailableReason } from '../../../accountOverview/metrics/contracts';
 import {
     DEFAULT_PARTITION_THRESHOLDS,
     getPartitionHealth,
     type PartitionDistributionMode,
     type PartitionHealthResult,
     type TimeRange,
-    type UnavailableReason,
 } from '../../../accountOverview/services';
 import { type AccountOverviewRouterContext } from '../../appRouter';
 import { accountOverviewProcedure } from '../../trpc';
@@ -48,10 +48,14 @@ export const partitionHealthProcedures = {
                 };
             }): Promise<PartitionHealthResult> => {
                 const { metadata } = ctx;
-                const unavailable = (reason: UnavailableReason): PartitionHealthResult => ({
+                const mode =
+                    getMetricApplicability('normalizedRu', metadata.isServerless).status === 'notApplicable'
+                        ? 'storage'
+                        : input.mode;
+                const unavailable = (reason: MetricUnavailableReason): PartitionHealthResult => ({
                     available: false,
                     reason,
-                    mode: input.mode,
+                    mode,
                     databaseId: input.databaseId,
                     containerId: input.containerId,
                     tiles: [],
@@ -69,13 +73,13 @@ export const partitionHealthProcedures = {
 
                 const client = await metadata.getMonitorClient();
                 if (!client) {
-                    return unavailable('noData');
+                    return unavailable('error');
                 }
 
                 return getPartitionHealth(
                     client,
                     metadata.accountId,
-                    input.mode,
+                    mode,
                     input.timeRange,
                     input.databaseId,
                     input.containerId,

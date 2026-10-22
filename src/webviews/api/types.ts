@@ -47,11 +47,15 @@ export type {
 } from '../../panels/accountOverview/services';
 export type {
     MetricAggregation,
+    MetricApplicability,
+    MetricInapplicabilityReason,
     MetricKey,
     MetricPoint,
     MetricSeriesResult,
     MetricUnit,
+    MetricUnavailableReason,
 } from '../../panels/accountOverview/metrics/contracts';
+export { type StorageMeasurement, type StorageObservation } from '../../panels/accountOverview/metrics/storage';
 export type { InventoryContainerRow, ThroughputMode } from '../../panels/trpc/routers/accountOverviewRouter';
 export type {
     CandidateAssessment,

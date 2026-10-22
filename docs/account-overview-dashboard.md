@@ -176,7 +176,9 @@ cutoffs below are CODA guidance, not Azure limits.
   sustained throttling, then **escalated** (never downgraded) by fired alerts (Sev0/1 → Critical; Sev2/3 →
   Needs Attention) and high-impact Advisor Performance/Cost recommendations.
 - **Row health** (per database/container): `Critical` on throttling or `peakRuPercent ≥ 90 %`;
-  `Needs Attention` on `peakRuPercent ≥ 80 %`; else `Healthy`. Storage growth no longer feeds row health —
+  `Needs Attention` on `peakRuPercent ≥ 80 %`; else `Healthy` only with an observed RU peak, otherwise `Unknown`.
+  Rows absent from the metric response retain the static inventory fallback, except on Serverless.
+  Storage growth no longer feeds row health —
   proximity to the 50 GiB per-partition limit surfaces as the **AO-D9 / `StorageGrowthRisk`** derived
   advisory instead.
 
@@ -195,6 +197,23 @@ activation hot path. Clients are created on the host from the account's `AzureSu
 
 The three lazy SDKs (`arm-monitor`, `arm-advisor`, `arm-alertsmanagement`) must **not** enter the main
 activation bundle — verified via `bundle-analysis/extension-report-vite.json`.
+
+### Metric applicability and storage observations
+
+- Account metadata, not the total-throughput cap or missing samples, determines Serverless applicability.
+  Normalized RU and provisioned throughput show **Not applicable** on Serverless and skip their Monitor queries.
+  Its initial chart is Total request units; an explicit metric selection survives Refresh and scope changes.
+  Partition distribution uses Storage only, including requests from older callers that select RU.
+- A provisioned account's absent/null cap is **Unknown**; only `-1` explicitly disables the cap.
+  Serverless has no provisioned-throughput cap. This setting limits allocation, not observed consumption.
+- Data and index storage each retain their own observation or failure reason. Both present means a complete sum;
+  one present means **Partial data**, never a complete total. No observations means no numeric total.
+  Chart components align at exact timestamps without forward-fill; inventory components use their latest
+  observations over seven days and can have different timestamps. Growth is the DataUsage delta only.
+- Request failures are distinct from a successful response containing no samples. Storage failures preserve
+  independent observations and row-level 429 evidence; keyboard-focusable explanations expose component failures.
+- Account health still combines provisioning and container throttling with the displayed alerts and Advisor.
+  The metric changes do not introduce an independent account-wide request-health or active-alert summary.
 
 ### Indexing exclusions
 

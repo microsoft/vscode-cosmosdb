@@ -220,8 +220,7 @@ describe('diagnostic metric observations', () => {
         {
             name: 'inventory peak',
             metric: 'NormalizedRUConsumption',
-            run: (client) =>
-                getInventoryMetrics(client, 'resource', '7D', undefined, DEFAULT_HEALTH_THRESHOLDS, custom),
+            run: (client) => getInventoryMetrics(client, 'resource', '7D', DEFAULT_HEALTH_THRESHOLDS, custom),
         },
     ];
 

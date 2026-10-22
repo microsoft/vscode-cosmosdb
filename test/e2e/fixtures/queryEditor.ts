@@ -711,12 +711,12 @@ export class QueryEditorPage {
      * active selection. The Query Editor tracks the Monaco selection into
      * `querySelectedValue`, and Run executes that selection in preference to the
      * full editor text — so this drives the "run only the selected fragment"
-     * path. Uses platform-specific document and line navigation to avoid fragile per-line click coordinates.
+     * path. Uses platform-specific document/line navigation and ArrowDown to avoid fragile per-line click coordinates.
      */
     async selectQueryLine(lineIndex: number): Promise<void> {
+        const isMac = process.platform === 'darwin';
         await this.frame.locator('.monaco-editor').first().click();
         await this.frame.locator('textarea.inputarea').first().waitFor({ state: 'attached', timeout: 5_000 });
-        const isMac = process.platform === 'darwin';
         await this.window.keyboard.press(isMac ? 'Meta+ArrowUp' : 'Control+Home');
         for (let i = 0; i < lineIndex; i++) {
             await this.window.keyboard.press('ArrowDown');

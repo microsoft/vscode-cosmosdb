@@ -16,6 +16,7 @@ import {
     Spinner,
     Text,
     tokens,
+    Toolbar,
     Tooltip,
     typographyStyles,
 } from '@fluentui/react-components';
@@ -31,6 +32,7 @@ import {
     type ProvisioningState,
     type TimeRange,
 } from '../../api/types';
+import { ProvideFeedbackButton } from '../../common/ProvideFeedbackButton';
 import { AccountHealthStatus, PROVISIONING_LABELS } from './AccountHealthStatus';
 import { type ContainerRef, type MetricScope } from './metrics/descriptors';
 
@@ -223,6 +225,7 @@ export const AccountHeader = ({
     activeAlertsUnavailable = false,
     lastRefreshedAt,
     onRefresh,
+    onProvideFeedback,
     loading = false,
     refreshDisabled = false,
     defaultEssentialsOpen = false,
@@ -242,6 +245,7 @@ export const AccountHeader = ({
     activeAlertsUnavailable?: boolean;
     lastRefreshedAt?: number;
     onRefresh: () => void;
+    onProvideFeedback?: () => Promise<void>;
     loading?: boolean;
     refreshDisabled?: boolean;
     defaultEssentialsOpen?: boolean;
@@ -430,6 +434,11 @@ export const AccountHeader = ({
                     >
                         {l10n.t('Refresh')}
                     </Button>
+                    {onProvideFeedback && (
+                        <Toolbar size="small" aria-label={l10n.t('Provide Feedback')}>
+                            <ProvideFeedbackButton type="button" onProvideFeedback={onProvideFeedback} />
+                        </Toolbar>
+                    )}
                 </div>
             </div>
             <p className={styles.subtitle}>

@@ -237,6 +237,12 @@ Refresh may reuse an Advisor response collected in the last 55 seconds; it does 
 The list has **Active** and **Resolved** modes plus **1h / 1d / 7d / 30d** periods.
 It starts with Active over 1 day. **View in Azure portal** opens the individual alert;
 **Open alerts in Azure portal** opens the account's Alerts page.
+Each period displays its matching count in parentheses. Switching Active/Resolved switches these counts too.
+Resource Graph calculates all period counts in one aggregate query, without downloading alerts to count them.
+Periods are nested lookback windows based on when an alert started and its current condition, not when it resolved.
+Azure Monitor retains alert instances for 30 days; the dashboard does not imply 60/90-day coverage.
+After a filter change, assistive technology announces the matching aggregate count, not the loaded row count.
+Unavailable counts display a dash rather than zero. Counts and details can differ temporarily due to source propagation.
 
 **Active means the alert condition is Fired. It does not mean the incident workflow is New or unclosed.**
 Azure's New/Acknowledged/Closed workflow state is a separate field, and Overview does not filter or change it.

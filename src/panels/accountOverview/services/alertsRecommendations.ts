@@ -76,6 +76,8 @@ export interface ActiveAlertSummary {
     totalCount: number;
     criticalCount: number;
     warningCount: number;
+    /** Nested lookback counts by alert start time and current monitor condition. */
+    periodCounts?: Record<AlertTimeRange, Record<AlertMonitorCondition, number>>;
     generatedAt: number;
 }
 
@@ -89,11 +91,18 @@ const alertCountsSchema = z.object({
             totalCount: z.number().int().nonnegative(),
             criticalCount: z.number().int().nonnegative(),
             warningCount: z.number().int().nonnegative(),
+            periodCounts: z.record(
+                z.enum(ALERT_TIME_RANGES),
+                z.object({
+                    Fired: z.number().int().nonnegative(),
+                    Resolved: z.number().int().nonnegative(),
+                }),
+            ),
         }),
     ]),
 });
 
-/** Counts all retained Fired alerts in Resource Graph, independently of the displayed list's time filter. */
+/** Counts retained Fired alerts and all supported list windows without enumerating alert instances. */
 export async function getActiveAlertSummary(
     client: CosmosDBManagementClient | undefined,
     subscriptionId: string,
@@ -125,8 +134,14 @@ export async function getActiveAlertSummary(
                     query: `alertsmanagementresources
 | where type =~ 'microsoft.alertsmanagement/alerts'
 | where tostring(properties.essentials.targetResource) =~ ${JSON.stringify(resourceId)}
-| where tostring(properties.essentials.monitorCondition) =~ 'Fired'
-| summarize totalCount=count(), criticalCount=countif(tostring(properties.essentials.severity) in~ ('Sev0', 'Sev1')), warningCount=countif(tostring(properties.essentials.severity) in~ ('Sev2', 'Sev3'))`,
+| extend fired = tostring(properties.essentials.monitorCondition) =~ 'Fired', resolved = tostring(properties.essentials.monitorCondition) =~ 'Resolved', startedAt = todatetime(properties.essentials.startDateTime)
+| summarize totalCount=countif(fired), criticalCount=countif(fired and tostring(properties.essentials.severity) in~ ('Sev0', 'Sev1')), warningCount=countif(fired and tostring(properties.essentials.severity) in~ ('Sev2', 'Sev3')), ${ALERT_TIME_RANGES.map(
+                        (range) =>
+                            `fired${range}=countif(fired and startedAt >= ago(${range})), resolved${range}=countif(resolved and startedAt >= ago(${range}))`,
+                    ).join(', ')}
+| project totalCount, criticalCount, warningCount, periodCounts=pack(${ALERT_TIME_RANGES.map(
+                        (range) => `'${range}', pack('Fired', fired${range}, 'Resolved', resolved${range})`,
+                    ).join(', ')})`,
                     options: { resultFormat: 'objectArray', allowPartialScopes: false },
                 }),
             }),
@@ -138,6 +153,20 @@ export async function getActiveAlertSummary(
         const counts = result.data[0];
         if (counts.criticalCount + counts.warningCount > counts.totalCount) {
             throw new Error('Invalid active alert counts returned by Resource Graph.');
+        }
+        let previousFired = 0;
+        let previousResolved = 0;
+        for (const range of ALERT_TIME_RANGES) {
+            const period = counts.periodCounts[range];
+            if (
+                period.Fired < previousFired ||
+                period.Resolved < previousResolved ||
+                period.Fired > counts.totalCount
+            ) {
+                throw new Error('Invalid alert period counts returned by Resource Graph.');
+            }
+            previousFired = period.Fired;
+            previousResolved = period.Resolved;
         }
         return { available: true, ...counts, generatedAt };
     } catch (error) {

@@ -76,12 +76,22 @@ The default tab is Monitoring unless explicit navigation requests another destin
 Chart window defaults to `24H`; chart scope defaults to all databases.
 The alert list defaults to `1d` and `Fired`. Partition selection defaults to the first inventory row.
 Provisioned accounts initially select Normalized RU; confirmed Serverless accounts select Total request units.
-Once a metric is explicitly selected, late metadata, Refresh and filter changes MUST preserve it.
-Explicit navigation to an inapplicable metric displays its explanation rather than selecting a different metric.
+Once an applicable metric is explicitly selected, late metadata, Refresh and filter changes MUST preserve it.
+Explicit navigation to an inapplicable metric selects consumed RU. Metadata removing a focused metric moves focus
+to the selected applicable tile while the webview owns focus.
 
 There is no polling, refresh-on-editor-visibility, or automatic refresh timer.
 Opening a panel starts initial reads even for sections on hidden tabs.
 Switching tabs preserves filters, selection and local section state.
+
+### Manual feedback
+
+The header uses the same shared smiley/menu component as Query Editor, adjacent to Refresh.
+The menu dispatches `accountOverview.provideFeedback`, opening the existing NoSQL survey with an Overview-specific
+bounded trigger name. The shared survey helper enforces `telemetry.feedback.enabled`; a live subscription also updates
+button visibility and disposes its configuration listener on unsubscribe/abort.
+Feedback remains usable during metric loading. Action failures use the existing native notification route.
+No Overview usage scoring, additional questionnaire or automatic survey prompt is introduced.
 
 ### Refresh dependency matrix
 

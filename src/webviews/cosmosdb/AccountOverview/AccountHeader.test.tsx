@@ -86,6 +86,26 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('AccountHeader', () => {
+    it('places the shared feedback menu beside Refresh and keeps it usable while metrics load', async () => {
+        const user = userEvent.setup();
+        const onProvideFeedback = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
+        renderHeader({ onProvideFeedback, loading: true });
+        const refresh = screen.getByRole('button', { name: 'Refresh' });
+        const feedback = screen.getByRole('button', { name: 'Provide Feedback' });
+        expect(refresh.nextElementSibling).toBe(feedback);
+        expect(screen.queryByRole('toolbar')).not.toBeInTheDocument();
+        expect(feedback).toHaveAccessibleName('Provide Feedback');
+        expect(feedback).not.toBeDisabled();
+        feedback.focus();
+        await user.keyboard('{Enter}');
+        const item = await screen.findByRole('menuitem', { name: 'Provide Feedback' });
+        expect(item).toHaveTextContent('Provide Feedback');
+        expect(item).toHaveAccessibleName('Provide Feedback');
+        await user.click(item);
+        expect(onProvideFeedback).toHaveBeenCalledOnce();
+        expect(feedback).toHaveFocus();
+    });
+
     it('locks Refresh and both filters during initial loading without showing a refresh operation', async () => {
         const user = userEvent.setup();
         const { props, rerender } = renderHeader({ refreshDisabled: true });

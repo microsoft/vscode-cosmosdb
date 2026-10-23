@@ -24,6 +24,8 @@ export default defineConfig([
             'node_modules',
             'packages/*/dist',
             'packages/*/node_modules',
+            'packages/docs/.vitepress/cache',
+            'packages/docs/.vitepress/dist',
             'playwright-report',
             'test/e2e/.results',
             'test/e2e/.reports',

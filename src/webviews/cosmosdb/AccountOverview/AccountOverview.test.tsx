@@ -10,6 +10,7 @@ import {
     badgeClassNames,
     cardClassNames,
     FluentProvider,
+    tabClassNames,
     toggleButtonClassNames,
     toolbarClassNames,
     webLightTheme,
@@ -22,9 +23,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getAccountMetricApplicability } from '../../../panels/accountOverview/metrics/contracts';
 import {
     type AccountActionResult,
+    type AccountHealthResult,
     type AccountOverviewNavigation,
     type AccountOverviewTarget,
+    type ActiveAlertSummary,
+    type AlertMonitorCondition,
     type AlertsResult,
+    type AlertTimeRange,
+    type ContainerMetrics,
     type InventoryContainerRow,
     type MetricKey,
     type PartitionHealthResult,
@@ -32,7 +38,7 @@ import {
     type TimeRange,
 } from '../../api/types';
 import { type AccountSummary } from './AccountHeader';
-import { AccountOverview } from './AccountOverview';
+import { AccountOverview, OverviewDashboard } from './AccountOverview';
 import { InventoryTable } from './InventoryTable';
 import { METRIC_ORDER, METRIC_VIEWS } from './metrics/descriptors';
 
@@ -40,9 +46,11 @@ const queries = vi.hoisted(() => ({
     summary: vi.fn(),
     inventory: vi.fn(),
     inventoryMetrics: vi.fn(),
+    accountHealth: vi.fn(),
     metric: vi.fn(),
     partition: vi.fn(),
     alerts: vi.fn(),
+    activeAlerts: vi.fn(),
     recommendations: vi.fn(),
     advisories: vi.fn(),
     navigation: vi.fn(),
@@ -70,9 +78,11 @@ vi.mock('@microsoft/vscode-ext-webview/react', () => {
             getAccountSummary: { query: queries.summary },
             getInventory: { query: queries.inventory },
             getInventoryMetrics: { query: queries.inventoryMetrics },
+            getAccountHealth: { query: queries.accountHealth },
             getMetricSeries: { query: queries.metric },
             getPartitionHealth: { query: queries.partition },
             getAlerts: { query: queries.alerts },
+            getActiveAlertSummary: { query: queries.activeAlerts },
             getRecommendations: { query: queries.recommendations },
             getDerivedAdvisories: { query: queries.advisories },
             navigation: { subscribe: queries.navigation },
@@ -91,6 +101,8 @@ vi.mock('./metrics/MetricChart', () => ({ MetricChart: () => null }));
 
 const summary: AccountSummary = {
     accountName: 'test-account',
+    alertsPortalUrl:
+        'https://portal.azure.us/#@tenant/blade/Microsoft_Azure_Monitoring_Alerts/AlertsSummaryBlade/resourceId/account',
     resourceGroup: 'test-group',
     subscriptionId: 'test-subscription',
     subscriptionName: 'Test subscription',
@@ -147,9 +159,11 @@ function dataQueryCounts() {
         'summary',
         'inventory',
         'inventoryMetrics',
+        'accountHealth',
         'metric',
         'partition',
         'alerts',
+        'activeAlerts',
         'recommendations',
         'advisories',
     ] as const;
@@ -174,18 +188,29 @@ beforeEach(() => {
     queries.accountAction.mockResolvedValue({ status: 'completed' } satisfies AccountActionResult);
     queries.showErrorMessage.mockResolvedValue(undefined);
     queries.inventoryMetrics.mockResolvedValue({ available: false, reason: 'noData', metrics: {} });
+    queries.accountHealth.mockResolvedValue({ available: false, reason: 'noData', generatedAt: 0 });
     queries.metric.mockImplementation(({ metric, timeRange }: { metric: MetricKey; timeRange: TimeRange }) =>
         Promise.resolve({ metric, timeRange, available: false, reason: 'noData', points: [], generatedAt: 0 }),
     );
     queries.partition.mockResolvedValue({ available: false, reason: 'noData', tiles: [] });
-    queries.alerts.mockResolvedValue({
-        available: true,
-        alerts: [],
-        criticalCount: 0,
-        warningCount: 0,
-        timeRange: '1d',
-        generatedAt: 0,
-    });
+    queries.activeAlerts.mockResolvedValue(activeAlertSummary());
+    queries.alerts.mockImplementation(
+        async ({
+            timeRange,
+            monitorCondition,
+        }: {
+            timeRange: AlertTimeRange;
+            monitorCondition: AlertMonitorCondition;
+        }) => ({
+            available: true,
+            alerts: [],
+            criticalCount: 0,
+            warningCount: 0,
+            timeRange,
+            monitorCondition,
+            generatedAt: 0,
+        }),
+    );
     queries.recommendations.mockResolvedValue({
         available: true,
         recommendations: [],
@@ -212,7 +237,261 @@ beforeEach(() => {
     });
 });
 
+function activeAlertSummary(severity?: 'Critical' | 'Warning'): ActiveAlertSummary {
+    return {
+        available: true,
+        totalCount: severity ? 1 : 0,
+        criticalCount: severity === 'Critical' ? 1 : 0,
+        warningCount: severity === 'Warning' ? 1 : 0,
+        generatedAt: 0,
+    };
+}
+
 afterEach(() => vi.restoreAllMocks());
+
+describe('account-wide health collection', () => {
+    it.each([false, true])('does not wait for inventory metrics (Serverless: %s)', async (isServerless) => {
+        const pending = Promise.withResolvers<unknown>();
+        queries.summary.mockResolvedValue({
+            ...summary,
+            isServerless,
+            metricApplicability: getAccountMetricApplicability(isServerless),
+        });
+        queries.inventoryMetrics.mockReturnValue(pending.promise);
+        queries.accountHealth.mockResolvedValue({ available: true, health: 'Healthy', generatedAt: 0 });
+        render(<AccountOverview />, { wrapper: Wrapper });
+        try {
+            expect(await screen.findByText('Account health: Healthy')).toBeVisible();
+            expect(queries.accountHealth).toHaveBeenCalledExactlyOnceWith();
+            expect(queries.inventoryMetrics).toHaveBeenCalledOnce();
+            expect(screen.getByRole('button', { name: 'Refresh' })).toHaveAttribute('aria-disabled', 'true');
+        } finally {
+            await act(async () => pending.resolve({ available: false, reason: 'noData', metrics: {} }));
+        }
+    });
+
+    it.each(['Healthy', 'Critical', undefined] as const)(
+        'raises account health at least to Needs Attention for a Critical container (base: %s)',
+        async (baseHealth) => {
+            queries.accountHealth.mockResolvedValue({
+                available: baseHealth !== undefined,
+                health: baseHealth,
+                generatedAt: 0,
+            });
+            queries.inventoryMetrics.mockResolvedValue({
+                available: true,
+                metrics: {
+                    'database/orders': {
+                        databaseId: 'database',
+                        containerId: 'orders',
+                        throttled: true,
+                        health: 'Critical',
+                    },
+                },
+            });
+            const user = userEvent.setup();
+            render(<AccountOverview />, { wrapper: Wrapper });
+            expect(
+                await screen.findByText(
+                    `Account health: ${baseHealth === 'Critical' ? 'Critical' : 'Needs Attention'}`,
+                ),
+            ).toBeVisible();
+            const tab = screen.getByRole('tab', { name: 'Databases and Containers' });
+            expect(tab).toHaveAccessibleName('Databases and Containers');
+            expect(tab).toHaveTextContent('Databases and Containers');
+            expect(tab).toHaveAccessibleDescription(
+                'Critical containers: 1. Account health is at least Needs Attention. Critical containers appear first in the table.',
+            );
+            expect(tab.querySelector('svg')).toBeInTheDocument();
+            await user.click(tab);
+            expect(within(screen.getByRole('table', { name: 'Containers' })).getByText('Critical')).toBeVisible();
+            await user.type(screen.getByRole('textbox', { name: 'Search containers or databases' }), 'products');
+            expect(
+                within(screen.getByRole('table', { name: 'Containers' })).queryByText('Critical'),
+            ).not.toBeInTheDocument();
+            expect(tab).toHaveAccessibleDescription(/Critical containers: 1/);
+            expect(
+                screen.getByText(`Account health: ${baseHealth === 'Critical' ? 'Critical' : 'Needs Attention'}`),
+            ).toBeVisible();
+        },
+    );
+
+    it('shows local warnings without escalating account health, and no indicator for unknown rows', async () => {
+        queries.accountHealth.mockResolvedValue({ available: true, health: 'Healthy', generatedAt: 0 });
+        queries.inventoryMetrics.mockResolvedValue({
+            available: true,
+            metrics: {
+                'database/orders': { health: 'Needs Attention', throttled: false },
+                'database/products': { throttled: false },
+            },
+        });
+        render(<AccountOverview />, { wrapper: Wrapper });
+        expect(await screen.findByText('Account health: Healthy')).toBeVisible();
+        expect(screen.getByRole('tab', { name: 'Databases and Containers' })).toHaveAccessibleDescription(
+            'Containers needing attention: 1. These warnings do not escalate account health.',
+        );
+        queries.inventoryMetrics.mockResolvedValue({
+            available: true,
+            metrics: { 'database/orders': { throttled: false }, 'database/products': { throttled: false } },
+        });
+        const refresh = screen.getByRole('button', { name: 'Refresh' });
+        await waitFor(() => expect(refresh).not.toHaveAttribute('aria-disabled', 'true'));
+        await userEvent.setup().click(refresh);
+        await waitFor(() => expect(refresh).toHaveAttribute('aria-busy', 'false'));
+        expect(screen.getByRole('tab', { name: 'Databases and Containers' })).not.toHaveAccessibleDescription();
+        expect(screen.getByRole('tab', { name: 'Databases and Containers' }).querySelector('svg')).toBeNull();
+    });
+
+    it('retains tab focus as late Critical container evidence arrives and clears the signal on recovery', async () => {
+        const pending = Promise.withResolvers<unknown>();
+        queries.inventoryMetrics.mockReturnValueOnce(pending.promise);
+        queries.accountHealth.mockResolvedValue({ available: true, health: 'Healthy', generatedAt: 0 });
+        const user = userEvent.setup();
+        render(<AccountOverview />, { wrapper: Wrapper });
+        const tab = await screen.findByRole('tab', { name: 'Databases and Containers' });
+        await user.click(tab);
+        await act(async () =>
+            pending.resolve({
+                available: false,
+                metrics: { 'database/orders': { health: 'Critical', throttled: true } },
+            }),
+        );
+        expect(tab).toHaveFocus();
+        expect(screen.getByRole('tab', { name: 'Databases and Containers' })).toBe(tab);
+        expect(tab).toHaveAccessibleDescription(/Critical containers: 1/);
+        expect(screen.getByText('Account health: Needs Attention')).toBeVisible();
+        queries.inventoryMetrics.mockResolvedValue({
+            available: true,
+            metrics: { 'database/orders': { health: 'Healthy', throttled: false } },
+        });
+        const refresh = screen.getByRole('button', { name: 'Refresh' });
+        await waitFor(() => expect(refresh).not.toHaveAttribute('aria-disabled', 'true'));
+        await user.click(refresh);
+        await waitFor(() => expect(refresh).toHaveAttribute('aria-busy', 'false'));
+        expect(screen.getByText('Account health: Healthy')).toBeVisible();
+        expect(tab).not.toHaveAccessibleDescription();
+    });
+
+    it('identifies account-wide throttling in Monitoring', async () => {
+        queries.accountHealth.mockResolvedValue({
+            available: true,
+            health: 'Critical',
+            hasSustainedThrottling: true,
+            generatedAt: 0,
+        });
+        render(<AccountOverview />, { wrapper: Wrapper });
+        expect(await screen.findByText('Account health: Critical')).toBeVisible();
+        const tab = screen.getByRole('tab', { name: 'Monitoring' });
+        expect(tab).toHaveAccessibleName('Monitoring');
+        expect(tab).toHaveAccessibleDescription(/Critical: sustained account-wide throttling/);
+    });
+
+    it('points provisioning failures to Account details rather than Monitoring', async () => {
+        queries.accountHealth.mockResolvedValue({
+            available: true,
+            health: 'Critical',
+            hasSustainedThrottling: false,
+            generatedAt: 0,
+        });
+        queries.summary.mockResolvedValue({ ...summary, provisioningState: 'Failed' });
+        render(<AccountOverview />, { wrapper: Wrapper });
+        expect(await screen.findByText('Account health: Critical')).toBeVisible();
+        expect(screen.getByRole('tab', { name: 'Monitoring' })).not.toHaveAccessibleDescription();
+        expect(screen.getByLabelText('Critical', { selector: `.${badgeClassNames.root}` })).toHaveAccessibleDescription(
+            /Resource provisioning state: Failed/,
+        );
+    });
+
+    it.each(['Critical', 'Warning', 'Advisor'] as const)(
+        'identifies the %s health source on Advisories',
+        async (source) => {
+            queries.accountHealth.mockResolvedValue({ available: true, health: 'Healthy', generatedAt: 0 });
+            if (source === 'Advisor') {
+                queries.recommendations.mockResolvedValue({
+                    available: true,
+                    recommendations: [],
+                    hasHighImpactPerfCost: true,
+                    generatedAt: 0,
+                });
+            } else {
+                queries.activeAlerts.mockResolvedValue(activeAlertSummary(source));
+            }
+            const user = userEvent.setup();
+            render(<AccountOverview />, { wrapper: Wrapper });
+            expect(
+                await screen.findByText(`Account health: ${source === 'Critical' ? 'Critical' : 'Needs Attention'}`),
+            ).toBeVisible();
+            const tab = screen.getByRole('tab', { name: 'Advisories' });
+            const explanation =
+                source === 'Advisor'
+                    ? 'High-impact Performance or Cost recommendations make account health at least Needs Attention.'
+                    : source === 'Critical'
+                      ? 'Critical active alerts make account health Critical.'
+                      : 'Warning active alerts make account health at least Needs Attention.';
+            expect(tab).toHaveAccessibleName('Advisories');
+            expect(tab).toHaveTextContent('Advisories');
+            expect(tab).toHaveAccessibleDescription(explanation);
+            const label = within(tab.querySelector(`.${tabClassNames.content}`)!).getByText('Advisories');
+            const icon = tab.querySelector('svg')!;
+            expect(icon).toHaveAttribute('aria-hidden', 'true');
+            expect(label.compareDocumentPosition(icon) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+            await user.keyboard('{Tab}');
+            act(() => tab.focus());
+            expect(await screen.findByRole('tooltip')).toHaveTextContent(explanation);
+            await user.keyboard('{Escape}');
+            expect(tab).toHaveFocus();
+        },
+    );
+
+    it('clears successful evidence on a failed refresh without changing Essentials provisioning status', async () => {
+        queries.accountHealth.mockResolvedValue({ available: true, health: 'Healthy', generatedAt: 0 });
+        const user = userEvent.setup();
+        render(<AccountOverview />, { wrapper: Wrapper });
+        const refresh = await screen.findByRole('button', { name: 'Refresh' });
+        await waitFor(() => expect(refresh).not.toHaveAttribute('aria-disabled', 'true'));
+        expect(screen.getByText('Account health: Healthy')).toBeVisible();
+        queries.accountHealth.mockRejectedValueOnce(new Error('Monitor unavailable'));
+        await user.click(refresh);
+        await waitFor(() => expect(refresh).toHaveAttribute('aria-busy', 'false'));
+        expect(screen.getByText('Account health: Unknown')).toBeVisible();
+        await user.click(screen.getByRole('button', { name: 'Account details' }));
+        const details = within(screen.getByRole('region', { name: 'Account details' }));
+        expect(within(details.getByText('Status').parentElement!).getByText('Online')).toBeVisible();
+        expect(queries.accountHealth).toHaveBeenCalledTimes(2);
+    });
+
+    it('ignores an old health response after a newer request has completed', async () => {
+        const pending = Promise.withResolvers<AccountHealthResult>();
+        queries.accountHealth
+            .mockReturnValueOnce(pending.promise)
+            .mockResolvedValue({ available: true, health: 'Healthy', generatedAt: 1 });
+        render(<OverviewDashboard onAccountDeleted={vi.fn()} />, { wrapper: Wrapper, reactStrictMode: true });
+        expect(await screen.findByText('Account health: Healthy')).toBeVisible();
+        await act(async () => pending.resolve({ available: true, health: 'Critical', generatedAt: 0 }));
+        expect(screen.getByText('Account health: Healthy')).toBeVisible();
+    });
+
+    it.each([
+        ['noData', 'No data'],
+        ['rbac', 'No permission'],
+        ['error', 'Unable to load'],
+    ] as const)('explains Unknown health for %s while provisioning Status remains Online', async (reason, caption) => {
+        queries.accountHealth.mockResolvedValue({ available: false, reason, generatedAt: 0 });
+        render(<AccountOverview />, { wrapper: Wrapper });
+        expect(await screen.findByText('Account health: Unknown')).toBeVisible();
+        const badge = screen.getByLabelText('Unknown', { selector: `.${badgeClassNames.root}` });
+        expect(badge).toHaveAttribute('tabindex', '0');
+        expect(badge).toHaveAccessibleDescription(
+            expect.stringContaining(
+                `Account-wide request health over the last 1 hour could not be assessed: ${caption}.`,
+            ),
+        );
+        const user = userEvent.setup();
+        await user.click(screen.getByRole('button', { name: 'Account details' }));
+        const details = within(screen.getByRole('region', { name: 'Account details' }));
+        expect(within(details.getByText('Status').parentElement!).getByText('Online')).toBeVisible();
+    });
+});
 
 describe('Serverless metric selection', () => {
     const serverlessSummary: AccountSummary = {
@@ -265,6 +544,7 @@ describe('Serverless metric selection', () => {
         expect(screen.getByRole('button', { name: /^Normalized RU/ })).toBe(tile);
         expect(tile).toHaveAttribute('aria-pressed', 'true');
         expect(tile).toHaveTextContent('Not applicable');
+        expect(screen.getByRole('status')).toHaveTextContent('Account health: Unknown');
     });
 
     it('honors a deep link to a Serverless-inapplicable metric', async () => {
@@ -309,6 +589,38 @@ describe('Serverless metric selection', () => {
                 }),
             ),
         );
+    });
+
+    it.each(['Critical', 'Needs Attention'] as const)(
+        'retains active alert health %s without normalized RU',
+        async (health) => {
+            queries.summary.mockResolvedValue(serverlessSummary);
+            queries.activeAlerts.mockResolvedValue(activeAlertSummary(health === 'Critical' ? 'Critical' : 'Warning'));
+            render(<AccountOverview />, { wrapper: Wrapper });
+            expect(await screen.findByText(`Account health: ${health}`)).toBeVisible();
+        },
+    );
+
+    it('retains 429 health even when storage is unavailable', async () => {
+        queries.summary.mockResolvedValue(serverlessSummary);
+        queries.accountHealth.mockResolvedValue({ available: true, health: 'Critical', generatedAt: 0 });
+        queries.inventoryMetrics.mockResolvedValue({
+            available: false,
+            reason: 'rbac',
+            metrics: {
+                'database/orders': {
+                    databaseId: 'database',
+                    containerId: 'orders',
+                    throttled: true,
+                    health: 'Critical',
+                },
+            },
+        });
+        const user = userEvent.setup();
+        render(<AccountOverview />, { wrapper: Wrapper });
+        expect(await screen.findByText('Account health: Critical')).toBeVisible();
+        await user.click(screen.getByRole('tab', { name: 'Databases and Containers' }));
+        expect(within(screen.getByRole('table', { name: 'Containers' })).getByText('Critical')).toBeVisible();
     });
 
     it.each([undefined, -1, 0, 4000])(
@@ -363,9 +675,11 @@ describe('header update feedback', () => {
                 summary: 1,
                 inventory: 1,
                 inventoryMetrics: 1,
+                accountHealth: 1,
                 metric: METRIC_ORDER.length,
                 partition: 1,
                 alerts: 1,
+                activeAlerts: 1,
                 recommendations: 1,
                 advisories: 1,
             });
@@ -1298,7 +1612,7 @@ describe('Account Overview account actions', () => {
         expect(queries.metric).toHaveBeenLastCalledWith(
             expect.objectContaining({ timeRange: '7D', databaseId: 'other-empty-db', containerId: undefined }),
         );
-        expect(queries.alerts).toHaveBeenLastCalledWith({ timeRange: '30d' });
+        expect(queries.alerts).toHaveBeenLastCalledWith({ timeRange: '30d', monitorCondition: 'Fired' });
         await user.click(screen.getByRole('tab', { name: 'Advisories' }));
         expect(
             within(screen.getByRole('toolbar', { name: 'Alert time range' })).getByRole('button', { name: '30d' }),
@@ -1369,6 +1683,7 @@ describe('alert window serialization', () => {
             criticalCount: 0,
             warningCount: 0,
             timeRange,
+            monitorCondition: 'Fired',
             generatedAt: 0,
         };
     }
@@ -1404,12 +1719,12 @@ describe('alert window serialization', () => {
         next.focus();
         await user.keyboard('{Enter} ');
         expect(queries.alerts).toHaveBeenCalledTimes(2);
-        expect(queries.alerts).toHaveBeenLastCalledWith({ timeRange: '7d' });
+        expect(queries.alerts).toHaveBeenLastCalledWith({ timeRange: '7d', monitorCondition: 'Fired' });
         await act(async () => pending.resolve(alertResult('7d')));
         expect(screen.getByText('7d alert')).toBeVisible();
         queries.alerts.mockResolvedValueOnce(alertResult('30d'));
         await user.click(next);
-        expect(queries.alerts).toHaveBeenLastCalledWith({ timeRange: '30d' });
+        expect(queries.alerts).toHaveBeenLastCalledWith({ timeRange: '30d', monitorCondition: 'Fired' });
         expect(await screen.findByText('30d alert')).toBeVisible();
         expect(screen.queryByText('7d alert')).not.toBeInTheDocument();
         await user.click(next);
@@ -1499,6 +1814,348 @@ describe('alert window serialization', () => {
     });
 });
 
+describe('alert monitor condition and active health', () => {
+    type AlertFilter = { timeRange: AlertTimeRange; monitorCondition: AlertMonitorCondition };
+
+    function result(filter: AlertFilter, severity?: 'Critical' | 'Warning'): AlertsResult {
+        return {
+            ...filter,
+            available: true,
+            alerts: severity
+                ? [
+                      {
+                          id: `${filter.monitorCondition}-${filter.timeRange}`,
+                          name: `${filter.monitorCondition} ${filter.timeRange} alert`,
+                          monitorCondition: filter.monitorCondition,
+                          alertState: 'Closed',
+                          severity,
+                          rawSeverity: severity === 'Critical' ? 'Sev1' : 'Sev2',
+                          portalUrl:
+                              'https://portal.azure.us/#@tenant/view/Microsoft_Azure_Monitoring_Alerts/AlertDetails.ReactView/alertId/encoded/invokedFrom/CopyLinkFeature',
+                      },
+                  ]
+                : [],
+            criticalCount: severity === 'Critical' ? 1 : 0,
+            warningCount: severity === 'Warning' ? 1 : 0,
+            generatedAt: 0,
+        };
+    }
+
+    const activeFilter: AlertFilter = { timeRange: '1d', monitorCondition: 'Fired' };
+    const resolvedFilter: AlertFilter = { timeRange: '1d', monitorCondition: 'Resolved' };
+
+    async function showAlerts() {
+        initialTarget = 'advisories';
+        const user = userEvent.setup();
+        render(<AccountOverview />, { wrapper: Wrapper });
+        const refresh = await screen.findByRole('button', { name: 'Refresh' });
+        await waitFor(() => expect(refresh).not.toHaveAttribute('aria-disabled', 'true'));
+        return {
+            user,
+            refresh,
+            modes: within(screen.getByRole('toolbar', { name: 'Alert monitor condition' })),
+            windows: within(screen.getByRole('toolbar', { name: 'Alert time range' })),
+        };
+    }
+
+    it('shows out-of-window Fired counts and health without changing the filtered list', async () => {
+        queries.accountHealth.mockResolvedValue({ available: true, health: 'Healthy', generatedAt: 0 });
+        queries.activeAlerts.mockResolvedValue({ ...activeAlertSummary('Critical'), totalCount: 3, warningCount: 1 });
+        const { user, modes, windows } = await showAlerts();
+        expect(screen.getByText('Account health: Critical')).toBeInTheDocument();
+        expect(screen.getByText('No active alerts in the selected window.')).toBeVisible();
+        expect(screen.getByText(/Active alerts for this account: 3 \(1 critical, 1 warning\)/)).toBeVisible();
+        expect(screen.getByText(/Older active alerts may be outside the selected list period/)).toBeVisible();
+        await user.click(windows.getByRole('button', { name: '7d' }));
+        await user.click(modes.getByRole('button', { name: 'Resolved' }));
+        expect(screen.getByText('No resolved alerts in the selected window.')).toBeVisible();
+        expect(screen.getByText('Account health: Critical')).toBeInTheDocument();
+        expect(queries.activeAlerts).toHaveBeenCalledExactlyOnceWith();
+    });
+
+    it('opens the general portal alerts page by keyboard even when both alert queries fail', async () => {
+        queries.activeAlerts.mockResolvedValue({ ...activeAlertSummary(), available: false, reason: 'rbac' });
+        queries.alerts.mockImplementation(async (filter: AlertFilter) => ({
+            ...result(filter),
+            available: false,
+            reason: 'rbac',
+        }));
+        const { user } = await showAlerts();
+        const link = screen.getByRole('link', { name: 'Open alerts in Azure portal' });
+        expect(link).toHaveTextContent('Open alerts in Azure portal');
+        expect(link).toHaveAccessibleName('Open alerts in Azure portal');
+        expect(link).toHaveAccessibleDescription(
+            'Opens Azure Monitor alerts for this account. The portal has its own time and condition filters.',
+        );
+        expect(link).toHaveAttribute('href', summary.alertsPortalUrl);
+        expect(link.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+        act(() => link.focus());
+        await user.keyboard('{Enter}');
+        expect(queries.openUrl).toHaveBeenCalledExactlyOnceWith({ url: summary.alertsPortalUrl });
+        expect(link).toHaveFocus();
+    });
+
+    it('ignores stale Resource Graph results after a newer check', async () => {
+        const stale = Promise.withResolvers<ActiveAlertSummary>();
+        queries.activeAlerts.mockReturnValueOnce(stale.promise);
+        queries.accountHealth.mockResolvedValue({ available: true, health: 'Healthy', generatedAt: 0 });
+        render(<OverviewDashboard requestedTarget="advisories" onAccountDeleted={vi.fn()} />, {
+            wrapper: Wrapper,
+            reactStrictMode: true,
+        });
+        const refresh = await screen.findByRole('button', { name: 'Refresh' });
+        await waitFor(() => expect(refresh).not.toHaveAttribute('aria-disabled', 'true'));
+        expect(queries.activeAlerts).toHaveBeenCalledTimes(2);
+        await act(async () => stale.resolve(activeAlertSummary('Critical')));
+        expect(screen.getByText('Account health: Healthy')).toBeInTheDocument();
+        expect(screen.getByText(/Active alerts for this account: 0/)).toBeVisible();
+    });
+
+    it('provides a keyboard-accessible structured health checklist without declaring missing data passed', async () => {
+        queries.accountHealth.mockResolvedValue({
+            available: true,
+            health: 'Healthy',
+            hasSustainedThrottling: false,
+            generatedAt: 0,
+        });
+        const { user, refresh } = await showAlerts();
+        const badge = screen.getByLabelText('Healthy', { selector: `.${badgeClassNames.root}` });
+        expect(badge).toHaveTextContent('Healthy');
+        expect(badge).toHaveAccessibleName('Healthy');
+        expect(badge).toHaveAccessibleDescription(/Resource provisioning — Passed/);
+        expect(badge).toHaveAccessibleDescription(/Container health — Not assessed/);
+        expect(badge).toHaveAccessibleDescription(/Active Azure Monitor alerts — Passed/);
+        expect(badge).toHaveAttribute('tabindex', '0');
+        act(() => refresh.focus());
+        await user.tab();
+        expect(badge).toHaveFocus();
+        const tooltip = await screen.findByRole('tooltip');
+        const checks = within(tooltip).getAllByRole('listitem');
+        expect(checks).toHaveLength(5);
+        expect(checks[0]).toHaveTextContent('Resource provisioning — Passed');
+        expect(checks[2]).toHaveTextContent('Container health — Not assessed');
+        expect(tooltip).toHaveTextContent(
+            'HTTP 5xx errors, availability, latency, storage limits, and index health are not assessed',
+        );
+        await user.keyboard('{Escape}');
+        await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument());
+        expect(badge).toHaveFocus();
+    });
+
+    it('defaults to Active, combines both conditions with every window and exposes no incident workflow', async () => {
+        const { user, modes, windows } = await showAlerts();
+        expect(queries.alerts).toHaveBeenCalledExactlyOnceWith(activeFilter);
+        expect(modes.getAllByRole('button')).toHaveLength(2);
+        expect(modes.getByRole('button', { pressed: true })).toHaveAccessibleName('Active');
+        expect(screen.getByText('No active alerts in the selected window.')).toBeVisible();
+        expect(screen.queryByRole('button', { name: /^(All|New|Acknowledged|Closed)$/ })).toBeNull();
+        for (const [label, monitorCondition] of [
+            ['Resolved', 'Resolved'],
+            ['Active', 'Fired'],
+        ] as const) {
+            await user.click(modes.getByRole('button', { name: label }));
+            for (const timeRange of ['1h', '1d', '7d', '30d'] as const) {
+                queries.alerts.mockClear();
+                await user.click(windows.getByRole('button', { name: timeRange }));
+                expect(queries.alerts).toHaveBeenLastCalledWith({ timeRange, monitorCondition });
+                expect(queries.alerts).toHaveBeenCalledTimes(1);
+                expect(queries.activeAlerts).toHaveBeenCalledExactlyOnceWith();
+                expect(screen.getByText(`No ${label.toLowerCase()} alerts in the selected window.`)).toBeVisible();
+            }
+            const count = queries.alerts.mock.calls.length;
+            await user.click(modes.getByRole('button', { name: label }));
+            expect(queries.alerts).toHaveBeenCalledTimes(count);
+        }
+    });
+
+    it.each(['empty', 'rbac', 'rejected'] as const)(
+        'shows resolved loading and %s feedback, preserving keyboard focus',
+        async (outcome) => {
+            queries.alerts.mockImplementation(async (filter: AlertFilter) => result(filter, 'Warning'));
+            queries.activeAlerts.mockResolvedValue(activeAlertSummary('Warning'));
+            const { user, modes, windows } = await showAlerts();
+            const pending = Promise.withResolvers<AlertsResult>();
+            queries.alerts.mockImplementation((filter: AlertFilter) =>
+                filter.monitorCondition === 'Resolved' ? pending.promise : Promise.resolve(result(filter, 'Warning')),
+            );
+            queries.announce.mockClear();
+            modes.getByRole('button', { name: 'Active' }).focus();
+            await user.keyboard('{ArrowRight}{Enter}');
+            const selected = modes.getByRole('button', { name: 'Resolved' });
+            expect(selected).toHaveFocus();
+            expect(selected).toHaveTextContent('Resolved');
+            expect(selected).toHaveAccessibleName('Resolved');
+            expect(screen.getByText('Loading resolved alerts…')).toBeVisible();
+            expect(screen.queryByText('Fired 1d alert')).toBeNull();
+            for (const button of [...modes.getAllByRole('button'), ...windows.getAllByRole('button')]) {
+                expect(button).toHaveAttribute('aria-disabled', 'true');
+                fireEvent.click(button);
+            }
+            await user.keyboard(' ');
+            expect(queries.alerts).toHaveBeenCalledTimes(2);
+            await act(async () => {
+                if (outcome === 'rejected') {
+                    pending.reject(new Error('Transport failed'));
+                } else {
+                    pending.resolve({
+                        ...result(resolvedFilter),
+                        available: outcome === 'empty',
+                        reason: outcome === 'rbac' ? 'rbac' : undefined,
+                    });
+                }
+            });
+            expect(selected).toHaveFocus();
+            expect(selected).not.toHaveAttribute('aria-disabled', 'true');
+            expect(screen.queryByText('Loading resolved alerts…')).toBeNull();
+            expect(queries.announce).toHaveBeenCalledExactlyOnceWith(
+                outcome === 'empty'
+                    ? 'Resolved alerts in the selected window: 0'
+                    : 'Resolved alerts could not be loaded for the selected window.',
+                { polite: true },
+            );
+            expect(screen.queryAllByText('No resolved alerts in the selected window.')).toHaveLength(
+                outcome === 'empty' ? 1 : 0,
+            );
+            expect(screen.getByText('Account health: Needs Attention')).toBeInTheDocument();
+        },
+    );
+
+    it.each([
+        [undefined, 'Healthy'],
+        ['Warning', 'Needs Attention'],
+        ['Critical', 'Critical'],
+    ] as const)(
+        'keeps health at %s signals while loading and viewing historical Critical alerts',
+        async (severity, health) => {
+            queries.accountHealth.mockResolvedValue({ available: true, health: 'Healthy', generatedAt: 0 });
+            queries.alerts.mockImplementation(async (filter: AlertFilter) => result(filter, severity));
+            queries.activeAlerts.mockResolvedValue(activeAlertSummary(severity));
+            const { user, modes } = await showAlerts();
+            const pending = Promise.withResolvers<AlertsResult>();
+            queries.alerts.mockImplementation((filter: AlertFilter) =>
+                filter.monitorCondition === 'Resolved' ? pending.promise : Promise.resolve(result(filter, severity)),
+            );
+            await user.click(modes.getByRole('button', { name: 'Resolved' }));
+            expect(screen.getByText(`Account health: ${health}`)).toBeInTheDocument();
+            await act(async () => pending.resolve(result(resolvedFilter, 'Critical')));
+            expect(screen.getByText('Resolved 1d alert')).toBeVisible();
+            expect(screen.getByText(`Account health: ${health}`)).toBeInTheDocument();
+            const portal = screen.getByRole('button', { name: 'View in Azure portal' });
+            expect(portal).toHaveAccessibleDescription('View alert Resolved 1d alert in the Azure portal');
+            await user.click(portal);
+            expect(queries.openUrl).toHaveBeenCalledExactlyOnceWith({
+                url: result(resolvedFilter, 'Critical').alerts[0].portalUrl,
+            });
+            expect(screen.queryByText('Closed')).toBeNull();
+        },
+    );
+
+    it.each([undefined, 'Critical'] as const)(
+        'retains known %s signals on active failure and only clears them on successful Refresh',
+        async (severity) => {
+            queries.accountHealth.mockResolvedValue({ available: true, health: 'Healthy', generatedAt: 0 });
+            queries.alerts.mockImplementation(async (filter: AlertFilter) => result(filter, severity));
+            queries.activeAlerts.mockResolvedValue(activeAlertSummary(severity));
+            const { user, modes, refresh, windows } = await showAlerts();
+            await user.click(modes.getByRole('button', { name: 'Resolved' }));
+            await user.click(windows.getByRole('button', { name: '7d' }));
+            const pending = Promise.withResolvers<ActiveAlertSummary>();
+            queries.alerts.mockClear();
+            queries.activeAlerts.mockReturnValueOnce(pending.promise);
+            queries.alerts.mockImplementation(async (filter: AlertFilter) => result(filter, 'Critical'));
+            await user.click(refresh);
+            expect(queries.alerts.mock.calls).toEqual([[{ timeRange: '7d', monitorCondition: 'Resolved' }]]);
+            expect(screen.getByText(`Account health: ${severity ?? 'Healthy'}`)).toBeInTheDocument();
+            expect(refresh).toHaveAttribute('aria-busy', 'true');
+            await act(async () => pending.reject(new Error('Cannot check active alerts')));
+            await waitFor(() => expect(refresh).toHaveAttribute('aria-busy', 'false'));
+            expect(screen.getByText('Resolved 7d alert')).toBeVisible();
+            expect(screen.getByText(`Account health: ${severity ?? 'Unknown'}`)).toBeInTheDocument();
+            queries.alerts.mockImplementation(async (filter: AlertFilter) =>
+                result(filter, filter.monitorCondition === 'Resolved' ? 'Critical' : undefined),
+            );
+            queries.activeAlerts.mockResolvedValue(activeAlertSummary());
+            await user.click(refresh);
+            await waitFor(() => expect(refresh).toHaveAttribute('aria-busy', 'false'));
+            expect(screen.getByText('Account health: Healthy')).toBeInTheDocument();
+            expect(screen.getByText('Resolved 7d alert')).toBeVisible();
+        },
+    );
+
+    it('does not claim Healthy when the initial active query is unavailable', async () => {
+        queries.accountHealth.mockResolvedValue({ available: true, health: 'Healthy', generatedAt: 0 });
+        queries.activeAlerts.mockResolvedValue({
+            ...activeAlertSummary(),
+            available: false,
+            reason: 'rbac',
+        });
+        await showAlerts();
+        expect(screen.getByText('Account health: Unknown')).toBeInTheDocument();
+        expect(screen.queryByText('Account health: Healthy')).toBeNull();
+    });
+
+    it.each([false, true])(
+        'ignores a stale initial response after condition/window changes and during Refresh (reject: %s)',
+        async (reject) => {
+            const user = userEvent.setup();
+            const stale = Promise.withResolvers<AlertsResult>();
+            queries.alerts.mockReturnValueOnce(stale.promise);
+            queries.accountHealth.mockResolvedValue({ available: true, health: 'Healthy', generatedAt: 0 });
+            render(<OverviewDashboard requestedTarget="advisories" onAccountDeleted={vi.fn()} />, {
+                wrapper: Wrapper,
+                reactStrictMode: true,
+            });
+            const refresh = await screen.findByRole('button', { name: 'Refresh' });
+            await waitFor(() => expect(refresh).not.toHaveAttribute('aria-disabled', 'true'));
+            expect(queries.alerts).toHaveBeenCalledTimes(2);
+            const modes = within(screen.getByRole('toolbar', { name: 'Alert monitor condition' }));
+            await user.click(modes.getByRole('button', { name: 'Resolved' }));
+            await user.click(
+                within(screen.getByRole('toolbar', { name: 'Alert time range' })).getByRole('button', { name: '7d' }),
+            );
+            const latest = Promise.withResolvers<AlertsResult>();
+            queries.alerts.mockImplementation((filter: AlertFilter) =>
+                filter.monitorCondition === 'Resolved' ? latest.promise : Promise.resolve(result(filter)),
+            );
+            await user.click(refresh);
+            await act(async () => {
+                if (reject) {
+                    stale.reject(new Error('Stale failure'));
+                } else {
+                    stale.resolve(result(activeFilter, 'Critical'));
+                }
+            });
+            expect(screen.getByText('Account health: Healthy')).toBeInTheDocument();
+            expect(screen.queryByText('Fired 1d alert')).toBeNull();
+            expect(modes.getByRole('button', { name: 'Resolved' })).toHaveAttribute('aria-disabled', 'true');
+            expect(screen.getByText('Loading resolved alerts…')).toBeVisible();
+            expect(screen.queryByRole('group', { name: 'Error' })).toBeNull();
+            await act(async () =>
+                latest.resolve(result({ timeRange: '7d', monitorCondition: 'Resolved' }, 'Critical')),
+            );
+            await waitFor(() => expect(refresh).toHaveAttribute('aria-busy', 'false'));
+            expect(screen.getByText('Resolved 7d alert')).toBeVisible();
+            expect(screen.getByText('Account health: Healthy')).toBeInTheDocument();
+        },
+    );
+
+    it('does not announce a resolved result from a hidden tab or replay it on return', async () => {
+        const { user, modes } = await showAlerts();
+        const pending = Promise.withResolvers<AlertsResult>();
+        queries.alerts.mockImplementation((filter: AlertFilter) =>
+            filter.monitorCondition === 'Resolved' ? pending.promise : Promise.resolve(result(filter)),
+        );
+        await user.click(modes.getByRole('button', { name: 'Resolved' }));
+        await user.click(screen.getByRole('tab', { name: 'Monitoring' }));
+        queries.announce.mockClear();
+        await act(async () => pending.resolve(result(resolvedFilter)));
+        expect(queries.announce).not.toHaveBeenCalled();
+        await user.click(screen.getByRole('tab', { name: 'Advisories' }));
+        expect(queries.announce).not.toHaveBeenCalled();
+        expect(screen.getByText('No resolved alerts in the selected window.')).toBeVisible();
+    });
+});
+
 describe('inventory accessibility', () => {
     const manyRows = Array.from({ length: 53 }, (_, index) => ({
         ...rows[0],
@@ -1511,6 +2168,53 @@ describe('inventory accessibility', () => {
         onOpenQueryEditor: vi.fn(),
         onSelectContainer: vi.fn(),
     };
+
+    it('pins Critical rows before pagination for every column and direction without discarding filters', async () => {
+        const user = userEvent.setup();
+        const metrics = Object.fromEntries(
+            manyRows.map((row, index) => [
+                `${row.databaseId}/${row.containerId}`,
+                {
+                    databaseId: row.databaseId,
+                    containerId: row.containerId,
+                    throttled: index >= 50,
+                    health: index >= 50 ? 'Critical' : index === 0 ? 'Needs Attention' : 'Healthy',
+                    storage: {
+                        data: { status: 'unavailable', reason: 'noData' },
+                        index: { status: 'unavailable', reason: 'noData' },
+                    },
+                } satisfies ContainerMetrics,
+            ]),
+        );
+        render(<InventoryTable {...inventoryProps} rows={manyRows} metrics={metrics} />, { wrapper: Wrapper });
+        const table = screen.getByRole('table', { name: 'Containers' });
+        const expectCriticalFirst = () => {
+            const visible = within(table).getAllByRole('row').slice(1);
+            expect(visible).toHaveLength(25);
+            visible.slice(0, 3).forEach((row) => expect(within(row).getByText('Critical')).toBeVisible());
+            visible.slice(3).forEach((row) => expect(within(row).queryByText('Critical')).toBeNull());
+        };
+        expectCriticalFirst();
+        for (const name of [
+            'Container',
+            'Database',
+            'Throughput',
+            'Storage',
+            'Documents',
+            'Peak normalized RU',
+            'Health',
+        ]) {
+            const sort = within(screen.getByRole('columnheader', { name })).getByRole('button');
+            await user.click(sort);
+            expectCriticalFirst();
+            await user.click(sort);
+            expectCriticalFirst();
+        }
+        const search = screen.getByRole('textbox', { name: 'Search containers or databases' });
+        await user.type(search, 'container-000');
+        expect(within(table).getAllByRole('row')).toHaveLength(2);
+        expect(within(table).queryByText('Critical')).toBeNull();
+    });
 
     it('shows partial storage and exposes component reasons on keyboard focus', async () => {
         const user = userEvent.setup();
@@ -1595,6 +2299,48 @@ describe('inventory accessibility', () => {
         expect(label).toHaveFocus();
         await user.tab();
         expect(screen.getByRole('button', { name: 'Reveal in tree' })).toHaveFocus();
+    });
+
+    it('caps the viewport at the header and five measured rows, and shrinks with filtered results', async () => {
+        let rowHeight = 40;
+        vi.spyOn(HTMLTableRowElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+            this: HTMLTableRowElement,
+        ) {
+            return DOMRect.fromRect({ height: this.rowIndex === 0 ? 32 : rowHeight + this.rowIndex * 2 });
+        });
+        let resizeRows = () => {};
+        const disconnect = vi.fn();
+        vi.spyOn(globalThis, 'ResizeObserver').mockImplementation(function (callback: ResizeObserverCallback) {
+            const observer: ResizeObserver = {
+                observe(target: Element) {
+                    if (target instanceof HTMLTableRowElement) {
+                        resizeRows = () => callback([], observer);
+                    }
+                },
+                unobserve() {},
+                disconnect,
+            };
+            return observer;
+        });
+        const user = userEvent.setup();
+        const { unmount } = render(<InventoryTable {...inventoryProps} rows={manyRows} />, { wrapper: Wrapper });
+        const table = screen.getByRole('table', { name: 'Containers' });
+        const viewport = table.parentElement;
+        expect(viewport).toHaveStyle({ maxHeight: '262px' });
+        expect(within(table).getAllByRole('row')).toHaveLength(26);
+
+        rowHeight = 60;
+        act(resizeRows);
+        expect(viewport).toHaveStyle({ maxHeight: '362px' });
+        const search = screen.getByRole('textbox', { name: 'Search containers or databases' });
+        await user.type(search, 'container-000');
+        expect(viewport?.style.maxHeight).toBe('');
+        expect(within(table).getAllByRole('row')).toHaveLength(2);
+        expect(search).toHaveFocus();
+        await user.clear(search);
+        expect(viewport).toHaveStyle({ maxHeight: '362px' });
+        unmount();
+        expect(disconnect).toHaveBeenCalled();
     });
 
     it('pages a native table with total row count, logical row positions and stable boundary controls', async () => {
@@ -1884,6 +2630,7 @@ describe('local result announcements', () => {
                     pending.resolve({
                         available: true,
                         timeRange: '7d',
+                        monitorCondition: 'Fired',
                         alerts: [],
                         criticalCount: 0,
                         warningCount: 0,
@@ -1893,7 +2640,7 @@ describe('local result announcements', () => {
             });
             expect(queries.announce).toHaveBeenCalledExactlyOnceWith(
                 fails
-                    ? 'Alerts could not be loaded for the selected window.'
+                    ? 'Active alerts could not be loaded for the selected window.'
                     : 'Active alerts in the selected window: 0',
                 { polite: true },
             );
@@ -2047,6 +2794,7 @@ describe('tabbed Account Overview', () => {
             pending.resolve({
                 available: true,
                 timeRange: '1d',
+                monitorCondition: 'Fired',
                 alerts: [],
                 criticalCount: 0,
                 warningCount: 0,
@@ -2128,6 +2876,7 @@ describe('tabbed Account Overview', () => {
 
     it.each([
         ['Advisories', 'Alert time range', ['1h', '1d', '7d', '30d'], '1d'],
+        ['Advisories', 'Alert monitor condition', ['Active', 'Resolved'], 'Active'],
         [
             'Databases and Containers',
             'Partition distribution measure',
@@ -2177,6 +2926,7 @@ describe('tabbed Account Overview', () => {
             criticalCount: 1,
             warningCount: 1,
             timeRange: '1d',
+            monitorCondition: 'Fired',
             generatedAt: 0,
         } satisfies AlertsResult);
         queries.recommendations.mockResolvedValue({
@@ -2256,7 +3006,7 @@ describe('tabbed Account Overview', () => {
         await user.click(screen.getByRole('tab', { name: 'Advisories' }));
         expect(screen.getByRole('heading', { name: 'Derived Advisories' })).toBeVisible();
         expect(screen.getByRole('heading', { name: 'Azure Advisor recommendations' })).toBeVisible();
-        expect(screen.getByRole('heading', { name: 'Active Alerts' })).toBeVisible();
+        expect(screen.getByRole('heading', { name: 'Alerts' })).toBeVisible();
         expect(screen.queryByRole('heading', { name: 'Normalized RU trend' })).not.toBeInTheDocument();
     });
 
@@ -2274,17 +3024,23 @@ describe('tabbed Account Overview', () => {
     it('selects charts from both keyboard-accessible tiles and eye buttons', async () => {
         const user = userEvent.setup();
         render(<AccountOverview />, { wrapper: Wrapper });
-        await screen.findByRole('tab', { name: 'Monitoring' });
+        const monitoring = await screen.findByRole('tab', { name: 'Monitoring' });
+        // Initial navigation focuses this tab after it mounts; let it finish before moving to a tile.
+        await waitFor(() => expect(monitoring).toHaveFocus());
         const tile = screen.getByRole('button', { name: /^Document count/ });
         expect(tile).toHaveTextContent('Document count');
         expect(tile).toHaveAccessibleName(/Document count/);
         tile.focus();
+        expect(tile).toHaveFocus();
         await user.keyboard('{Enter}');
+        expect(tile).toHaveFocus();
         expect(screen.getByRole('heading', { name: 'Document count trend' })).toBeVisible();
         expect(tile).toHaveAttribute('aria-pressed', 'true');
         const eye = screen.getByRole('button', { name: 'Show chart: Server-side latency' });
         eye.focus();
+        expect(eye).toHaveFocus();
         await user.keyboard(' ');
+        expect(eye).toHaveFocus();
         expect(screen.getByRole('heading', { name: 'Server-side latency trend' })).toBeVisible();
         expect(eye).toHaveAttribute('aria-pressed', 'true');
     });

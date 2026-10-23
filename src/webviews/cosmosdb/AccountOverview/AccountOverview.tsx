@@ -7,14 +7,15 @@ import { Button, makeStyles, Spinner, tokens, typographyStyles, useAnnounce } fr
 import { useRpcEvents, useTrpcClient } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { deriveOverviewHealth } from '../../../panels/accountOverview/overviewHealthModel';
 import {
     type AccountActionInput,
     type AccountOverviewAppRouter,
     type AccountOverviewTarget,
+    type AlertMonitorCondition,
     type AlertsResult,
     type AlertTimeRange,
     type DerivedAdvisoriesResult,
-    type HealthState,
     type InventoryContainerRow,
     type InventoryMetricsResult,
     type MetricKey,
@@ -27,6 +28,7 @@ import {
 } from '../../api/types';
 import { AccountActions, type AccountActionFailure } from './AccountActions';
 import { AccountHeader, type AccountSummary } from './AccountHeader';
+import { healthIndicatorDescriptions } from './AccountHealthStatus';
 import { ActiveAlerts } from './ActiveAlerts';
 import { DashboardActionsProvider, DashboardCard, SectionHeader } from './DashboardChrome';
 import { DerivedAdvisories } from './DerivedAdvisories';
@@ -36,9 +38,8 @@ import { MetricsSection } from './metrics/MetricsSection';
 import { PartitionHealth } from './PartitionHealth';
 import { Recommendations } from './Recommendations';
 import { type OverviewTab, TabbedOverviewLayout } from './TabbedOverviewLayout';
+import { useOverviewHealthSignals } from './useOverviewHealthSignals';
 import { useOverviewNavigation } from './useOverviewNavigation';
-
-const HEALTH_ORDER: Record<HealthState, number> = { Healthy: 0, 'Needs Attention': 1, Critical: 2 };
 
 const NATIVE_ERROR_ACTIONS = new Set([
     'accountOverview.openUrl',
@@ -53,25 +54,6 @@ async function runAuxiliaryAction(action: () => Promise<unknown>): Promise<void>
     } catch {
         // The RPC event subscriber owns native error notification; do not display or rethrow it again here.
     }
-}
-
-/**
- * Final account-health formula: escalates the base health with
- * alert/recommendation signals — Sev0/Sev1 → Critical; Sev2/Sev3 or a
- * High-impact Perf/Cost rec → Needs Attention. Mirrors the host-side
- * `escalateAccountHealth` (unit-tested there).
- */
-function escalateHealth(
-    base: HealthState,
-    signals: { hasCriticalAlert: boolean; hasWarningAlert: boolean; hasHighImpactPerfCostRec: boolean },
-): HealthState {
-    let signalHealth: HealthState = 'Healthy';
-    if (signals.hasCriticalAlert) {
-        signalHealth = 'Critical';
-    } else if (signals.hasWarningAlert || signals.hasHighImpactPerfCostRec) {
-        signalHealth = 'Needs Attention';
-    }
-    return HEALTH_ORDER[base] >= HEALTH_ORDER[signalHealth] ? base : signalHealth;
 }
 
 const useStyles = makeStyles({
@@ -195,6 +177,7 @@ export const OverviewDashboard = ({
     const [alerts, setAlerts] = useState<AlertsResult | undefined>(undefined);
     const [alertsLoading, setAlertsLoading] = useState(true);
     const [alertTimeRange, setAlertTimeRange] = useState<AlertTimeRange>('1d');
+    const [alertMonitorCondition, setAlertMonitorCondition] = useState<AlertMonitorCondition>('Fired');
     const [recommendations, setRecommendations] = useState<RecommendationsResult | undefined>(undefined);
     const [recommendationsLoading, setRecommendationsLoading] = useState(true);
     const [derivedAdvisories, setDerivedAdvisories] = useState<DerivedAdvisoriesResult | undefined>(undefined);
@@ -208,6 +191,15 @@ export const OverviewDashboard = ({
     const accountActionBusy = pendingAccountAction !== undefined;
     const creationBusy = pendingAccountAction === 'createDatabase' || pendingAccountAction === 'createContainer';
     const [accountActionFailure, setAccountActionFailure] = useState<AccountActionFailure>();
+    const handleHealthError = useCallback(() => setAccountActionFailure('refresh'), []);
+    const {
+        account: accountHealthResult,
+        accountLoading: accountHealthLoading,
+        activeAlerts,
+        activeAlertsLoading,
+        activeAlertsUnavailable,
+        refresh: refreshHealthSignals,
+    } = useOverviewHealthSignals(trpcClient, handleHealthError);
     const accountActionInFlight = useRef(false);
     const creationTrigger = useRef<HTMLElement | undefined>(undefined);
     const inventoryRequestSeq = useRef(0);
@@ -220,8 +212,10 @@ export const OverviewDashboard = ({
         refreshing ||
         trendsLoading ||
         inventoryMetricsLoading ||
+        accountHealthLoading ||
         partitionLoading ||
         alertsLoading ||
+        activeAlertsLoading ||
         recommendationsLoading ||
         derivedLoading;
     const headerUpdating =
@@ -452,29 +446,39 @@ export const OverviewDashboard = ({
     );
 
     const fetchAlerts = useCallback(
-        async (range: AlertTimeRange) => {
+        async (range: AlertTimeRange, monitorCondition: AlertMonitorCondition) => {
             const requestId = ++alertsRequestSeq.current;
             setAlertsLoading(true);
-            try {
-                const result = await trpcClient.accountOverview.getAlerts.query({ timeRange: range });
-                if (requestId === alertsRequestSeq.current) {
-                    setAlerts(result);
-                }
-                return true;
-            } catch {
-                if (requestId === alertsRequestSeq.current) {
-                    setAlerts({
+            let succeeded = true;
+            const readAlerts = async (condition: AlertMonitorCondition): Promise<AlertsResult> => {
+                try {
+                    return await trpcClient.accountOverview.getAlerts.query({
+                        timeRange: range,
+                        monitorCondition: condition,
+                    });
+                } catch {
+                    succeeded = false;
+                    if (requestId === alertsRequestSeq.current) {
+                        setAccountActionFailure('refresh');
+                    }
+                    return {
                         available: false,
                         reason: 'noData',
                         alerts: [],
                         criticalCount: 0,
                         warningCount: 0,
                         timeRange: range,
+                        monitorCondition: condition,
                         generatedAt: Date.now(),
-                    });
-                    setAccountActionFailure('refresh');
+                    };
                 }
-                return false;
+            };
+            try {
+                const result = await readAlerts(monitorCondition);
+                if (requestId === alertsRequestSeq.current) {
+                    setAlerts(result);
+                }
+                return succeeded;
             } finally {
                 if (requestId === alertsRequestSeq.current) {
                     setAlertsLoading(false);
@@ -563,10 +567,14 @@ export const OverviewDashboard = ({
         void fetchPartitionHealth(partitionContainer, partitionMode, timeRange);
     }, [fetchPartitionHealth, partitionContainer, partitionMode, timeRange, normalizedRuStatus]);
 
-    // Reload alerts whenever the alert time-range filter changes.
+    // Only the displayed list follows the alert filters; health uses the independent Resource Graph summary.
     useEffect(() => {
-        void fetchAlerts(alertTimeRange);
-    }, [fetchAlerts, alertTimeRange]);
+        void fetchAlerts(alertTimeRange, alertMonitorCondition);
+        return () => {
+            // oxlint-disable-next-line react-hooks/exhaustive-deps -- Invalidate all requests, including a later Refresh.
+            alertsRequestSeq.current++;
+        };
+    }, [fetchAlerts, alertTimeRange, alertMonitorCondition]);
 
     // Initial recommendations load; subsequent loads are requested by Refresh.
     useEffect(() => {
@@ -583,7 +591,7 @@ export const OverviewDashboard = ({
         return Promise.allSettled([
             fetchSummary(),
             fetchTrends(timeRange, selectedContainer),
-            fetchAlerts(alertTimeRange),
+            fetchAlerts(alertTimeRange, alertMonitorCondition),
             fetchRecommendations(),
             fetchDerivedAdvisories(),
         ]).then((outcomes) => {
@@ -601,6 +609,7 @@ export const OverviewDashboard = ({
         selectedContainer,
         fetchAlerts,
         alertTimeRange,
+        alertMonitorCondition,
         fetchRecommendations,
         fetchDerivedAdvisories,
     ]);
@@ -617,6 +626,7 @@ export const OverviewDashboard = ({
                 refresh(),
                 fetchInventory(),
                 fetchInventoryMetrics(timeRange),
+                refreshHealthSignals(),
                 ...(partitionContainer ? [fetchPartitionHealth(partitionContainer, partitionMode, timeRange)] : []),
             ]);
             const inventoryOutcome = outcomes[1];
@@ -637,6 +647,7 @@ export const OverviewDashboard = ({
         refresh,
         fetchInventory,
         fetchInventoryMetrics,
+        refreshHealthSignals,
         fetchPartitionHealth,
         timeRange,
         partitionContainer,
@@ -719,6 +730,17 @@ export const OverviewDashboard = ({
         [alertsLoading, alertTimeRange],
     );
 
+    const handleAlertMonitorConditionChange = useCallback(
+        (condition: AlertMonitorCondition) => {
+            if (alertsLoading || refreshInFlight.current || condition === alertMonitorCondition) {
+                return;
+            }
+            setAlertsLoading(true);
+            setAlertMonitorCondition(condition);
+        },
+        [alertsLoading, alertMonitorCondition],
+    );
+
     const actions = useMemo(
         () => ({ reportEvent, openUrl: handleOpenUrl, showOutput: handleShowOutput }),
         [reportEvent, handleOpenUrl, handleShowOutput],
@@ -737,20 +759,19 @@ export const OverviewDashboard = ({
         containerId: row.containerId,
     }));
 
-    const baseHealth = inventoryMetrics?.accountHealth;
-    const healthSignals = {
-        hasCriticalAlert: alerts?.available ? alerts.criticalCount > 0 : false,
-        hasWarningAlert: alerts?.available ? alerts.warningCount > 0 : false,
-        hasHighImpactPerfCostRec: recommendations?.available ? recommendations.hasHighImpactPerfCost : false,
-    };
-    const anySignal =
-        healthSignals.hasCriticalAlert || healthSignals.hasWarningAlert || healthSignals.hasHighImpactPerfCostRec;
-    const accountHealth =
-        baseHealth !== undefined
-            ? escalateHealth(baseHealth, healthSignals)
-            : anySignal
-              ? escalateHealth('Healthy', healthSignals)
-              : undefined;
+    const health = deriveOverviewHealth({
+        account: accountHealthResult,
+        accountLoading: accountHealthLoading,
+        activeAlerts,
+        activeAlertsLoading,
+        activeAlertsUnavailable,
+        inventory,
+        inventoryMetrics,
+        inventoryMetricsLoading,
+        normalizedRuApplicability,
+        recommendations,
+        recommendationsLoading,
+    });
 
     return (
         <DashboardActionsProvider value={actions}>
@@ -762,12 +783,15 @@ export const OverviewDashboard = ({
                     navigationRevision={navigationRevision}
                     selectedTab={selectedTab}
                     onTabSelect={setSelectedTab}
+                    healthIndicators={healthIndicatorDescriptions(health.indicators)}
                     header={
                         <>
                             <AccountHeader
                                 navigationRevision={navigationRevision}
                                 summary={summary}
-                                accountHealth={accountHealth}
+                                accountHealth={health.health}
+                                healthChecks={health.checks}
+                                activeAlertsUnavailable={activeAlertsUnavailable}
                                 lastRefreshedAt={lastRefreshedAt}
                                 onRefresh={() => void refreshAccount()}
                                 loading={headerUpdating}
@@ -865,15 +889,25 @@ export const OverviewDashboard = ({
                     alerts={
                         <DashboardCard>
                             <SectionHeader
-                                title={l10n.t('Active Alerts')}
-                                description={l10n.t('Fired Azure Monitor alerts targeting this account.')}
+                                title={l10n.t('Alerts')}
+                                description={
+                                    alertMonitorCondition === 'Fired'
+                                        ? l10n.t('Active Azure Monitor alerts targeting this account.')
+                                        : l10n.t('Resolved Azure Monitor alerts targeting this account.')
+                                }
                             />
                             <ActiveAlerts
                                 active={selectedTab === 'advisories'}
                                 result={alerts}
+                                portalUrl={summary.alertsPortalUrl}
+                                activeSummary={activeAlerts}
+                                activeSummaryLoading={activeAlertsLoading}
+                                activeSummaryUnavailable={activeAlertsUnavailable}
                                 loading={alertsLoading || refreshing}
                                 timeRange={alertTimeRange}
+                                monitorCondition={alertMonitorCondition}
                                 onTimeRangeChange={handleAlertTimeRangeChange}
+                                onMonitorConditionChange={handleAlertMonitorConditionChange}
                                 onOpenUrl={handleOpenUrl}
                             />
                         </DashboardCard>

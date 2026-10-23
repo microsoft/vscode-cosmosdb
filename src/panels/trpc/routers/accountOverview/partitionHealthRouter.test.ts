@@ -9,6 +9,7 @@ import { AzureResourceMetadata } from '../../../../cosmosdb/AzureResourceMetadat
 import { iso, mockClient, pdims, throwingClient } from '../../../accountOverview/services/testFixtures';
 import { type AccountOverviewRouterContext } from '../../appRouter';
 import { accountOverviewRouter } from '../../trpc';
+import { accountHealthProcedures } from './accountHealthRouter';
 import { inventoryMetricsProcedures } from './inventoryMetricsRouter';
 import { metricSeriesProcedures } from './metricSeriesRouter';
 import { partitionHealthProcedures } from './partitionHealthRouter';
@@ -38,6 +39,7 @@ class TestMetadata extends AzureResourceMetadata {
 
 function createCaller(metadata: TestMetadata) {
     return accountOverviewRouter({
+        ...accountHealthProcedures,
         ...partitionHealthProcedures,
         ...inventoryMetricsProcedures,
         ...metricSeriesProcedures,
@@ -50,6 +52,52 @@ function createCaller(metadata: TestMetadata) {
 }
 
 const selection = { databaseId: 'db', containerId: 'container', timeRange: '24H' as const };
+
+describe('Account Health scope', () => {
+    it.each([false, true])(
+        'uses an account aggregate for Serverless=%s without loading inventory',
+        async (serverless) => {
+            const metadata = new TestMetadata(serverless);
+            const client = mockClient({
+                TotalRequests: {
+                    value: [
+                        {
+                            timeseries: [
+                                {
+                                    metadatavalues: [{ name: { value: 'StatusCode' }, value: '200' }],
+                                    data: [{ timeStamp: iso(Date.now()), count: 100 }],
+                                },
+                            ],
+                        },
+                    ],
+                },
+            });
+            const list = vi.spyOn(client.metrics, 'list');
+            metadata.getMonitorClient.mockResolvedValue(client);
+            expect(await createCaller(metadata).getAccountHealth()).toMatchObject({
+                available: true,
+                health: 'Healthy',
+            });
+            expect(list).toHaveBeenCalledExactlyOnceWith(
+                '/account',
+                expect.objectContaining({
+                    metricnames: 'TotalRequests',
+                    filter: "StatusCode eq '*'",
+                }),
+            );
+        },
+    );
+
+    it('does not infer health when the Monitor client is unavailable', async () => {
+        const metadata = new TestMetadata(false);
+        metadata.getMonitorClient.mockResolvedValue(undefined);
+        expect(await createCaller(metadata).getAccountHealth()).toMatchObject({
+            available: false,
+            health: undefined,
+            reason: 'noData',
+        });
+    });
+});
 
 describe('Partition Health metric applicability', () => {
     it.each(['ru', 'storage'] as const)(

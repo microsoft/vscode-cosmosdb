@@ -50,7 +50,8 @@ export const actionsProcedures = {
      */
     openUrl: accountOverviewProcedure.input(z.object({ url: z.string() })).mutation(async ({ ctx, input }) => {
         nonNullProp(ctx, 'actionContext').valuesToMask.push(...getResourceMaskedValues([input.url]));
-        if (!(await vscode.env.openExternal(vscode.Uri.parse(input.url)))) {
+        const uri = vscode.Uri.parse(input.url);
+        if (!(await vscode.env.openExternal(uri))) {
             throw new Error(l10n.t('Unable to open the link in your browser.'));
         }
     }),

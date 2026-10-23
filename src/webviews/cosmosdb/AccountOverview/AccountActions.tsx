@@ -10,12 +10,12 @@ import {
     MessageBarBody,
     MessageBarTitle,
     tokens,
-    Tooltip,
     typographyStyles,
 } from '@fluentui/react-components';
 import { Add16Regular, Delete16Regular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { type AccountActionInput } from '../../api/types';
+import { ThemedTooltip as Tooltip } from '../../common/ThemedTooltip';
 
 const useStyles = makeStyles({
     root: {

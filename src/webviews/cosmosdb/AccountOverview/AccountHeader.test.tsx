@@ -702,19 +702,14 @@ describe('AccountHeader', () => {
     });
 
     it.each([undefined, null, -1, 0, 4000])(
-        'explains why Serverless has no total throughput limit even with ARM value %s',
-        async (totalThroughputLimit) => {
-            const user = userEvent.setup();
-            renderHeader({ summary: { ...summary, isServerless: true, totalThroughputLimit } });
-            const limit = screen.getByText('Total throughput limit: No total throughput limit');
-            expect(limit).toHaveAccessibleDescription(
-                'The account-wide provisioned-throughput cap is not applicable to serverless accounts.',
-            );
-            await user.hover(limit);
-            expect(await screen.findByRole('tooltip')).toHaveTextContent(
-                'The account-wide provisioned-throughput cap is not applicable to serverless accounts.',
-            );
-            expect(limit).toHaveAttribute('tabindex', '0');
+        'omits the Serverless throughput limit in status and details even with ARM value %s',
+        (totalThroughputLimit) => {
+            renderHeader({
+                summary: { ...summary, isServerless: true, totalThroughputLimit },
+                defaultEssentialsOpen: true,
+            });
+            expect(screen.queryByText(/^Total throughput limit/)).not.toBeInTheDocument();
+            expect(screen.queryByText('Total throughput limit')).not.toBeInTheDocument();
             expect(screen.getByText('Capacity mode: Serverless')).toBeVisible();
         },
     );

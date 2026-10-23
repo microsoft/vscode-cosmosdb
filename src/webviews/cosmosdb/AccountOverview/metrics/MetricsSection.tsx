@@ -5,7 +5,7 @@
 
 import { makeStyles, Text, tokens, typographyStyles } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { type MetricApplicability, type MetricKey, type MetricSeriesResult, type TimeRange } from '../../../api/types';
 import { DashboardCard, SectionHeader } from '../DashboardChrome';
 import { METRIC_GROUPS, type MetricGroup, METRIC_VIEWS } from './descriptors';
@@ -94,11 +94,28 @@ export const MetricsSection = ({
     const groupLabelId = useId();
     const [explicitMetric, setSelectedMetric] = useState<MetricKey | undefined>(requestedMetric);
     const normalizedRuApplicability = applicabilityByMetric?.normalizedRu ?? seriesByMetric.normalizedRu?.applicability;
-    const selectedMetric =
+    const candidateMetric =
         explicitMetric ??
         (normalizedRuApplicability?.status === 'notApplicable' ? 'totalRequestUnits' : 'normalizedRu');
+    const selectedMetric =
+        (applicabilityByMetric?.[candidateMetric] ?? seriesByMetric[candidateMetric]?.applicability)?.status ===
+        'notApplicable'
+            ? 'totalRequestUnits'
+            : candidateMetric;
     const chartRef = useRef<HTMLElement>(null);
+    const gridRef = useRef<HTMLDivElement>(null);
+    const focusedTile = useRef<HTMLElement | null>(null);
     const handledNavigation = useRef<number | undefined>(undefined);
+
+    useLayoutEffect(() => {
+        const focused = focusedTile.current;
+        if (focused && !focused.isConnected) {
+            focusedTile.current = null;
+            if (active && document.hasFocus() && document.activeElement === document.body) {
+                gridRef.current?.querySelector<HTMLElement>('[aria-pressed="true"]')?.focus({ preventScroll: true });
+            }
+        }
+    });
 
     useEffect(() => {
         if (requestedMetric) {
@@ -107,7 +124,7 @@ export const MetricsSection = ({
     }, [requestedMetric, navigationRevision]);
 
     useEffect(() => {
-        if (active && requestedMetric === selectedMetric && handledNavigation.current !== navigationRevision) {
+        if (active && requestedMetric && handledNavigation.current !== navigationRevision) {
             handledNavigation.current = navigationRevision;
             chartRef.current?.focus({ preventScroll: true });
             chartRef.current?.scrollIntoView({ block: 'nearest' });
@@ -118,25 +135,29 @@ export const MetricsSection = ({
     const activeSeries = seriesByMetric[selectedMetric];
     const activeApplicability = applicabilityByMetric?.[selectedMetric] ?? activeSeries?.applicability;
 
-    // Keep applicable tiles grouped State → Activity; inapplicable tiles retain their source order at the end.
     const groupedOrder = useMemo(
         () =>
-            [...order].sort((a, b) => {
-                const aNotApplicable =
-                    (applicabilityByMetric?.[a] ?? seriesByMetric[a]?.applicability)?.status === 'notApplicable';
-                const bNotApplicable =
-                    (applicabilityByMetric?.[b] ?? seriesByMetric[b]?.applicability)?.status === 'notApplicable';
-                if (aNotApplicable || bNotApplicable) {
-                    return Number(aNotApplicable) - Number(bNotApplicable);
-                }
-                return GROUP_ORDER.indexOf(METRIC_VIEWS[a].group) - GROUP_ORDER.indexOf(METRIC_VIEWS[b].group);
-            }),
+            order
+                .filter(
+                    (key) =>
+                        (applicabilityByMetric?.[key] ?? seriesByMetric[key]?.applicability)?.status !==
+                        'notApplicable',
+                )
+                .sort(
+                    (a, b) => GROUP_ORDER.indexOf(METRIC_VIEWS[a].group) - GROUP_ORDER.indexOf(METRIC_VIEWS[b].group),
+                ),
         [order, applicabilityByMetric, seriesByMetric],
     );
 
     return (
         <>
-            <div className={styles.grid}>
+            <div
+                className={styles.grid}
+                ref={gridRef}
+                onFocusCapture={(event) => {
+                    focusedTile.current = event.target;
+                }}
+            >
                 {groupedOrder.map((key) => (
                     <MetricTile
                         key={key}

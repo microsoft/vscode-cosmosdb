@@ -274,7 +274,7 @@ export const AccountHeader = ({
     const selectedScopeLabel = selectedContainer?.databaseId ?? l10n.t('All databases');
     const timeRangeLabel = timeRanges.find((range) => range.value === timeRange)?.label;
     const throughputLimit =
-        summary.isServerless || summary.totalThroughputLimit === -1
+        summary.totalThroughputLimit === -1
             ? l10n.t('No total throughput limit')
             : summary.totalThroughputLimit !== undefined &&
                 summary.totalThroughputLimit !== null &&
@@ -282,11 +282,9 @@ export const AccountHeader = ({
                 summary.totalThroughputLimit >= 0
               ? l10n.t('{ru} RU/s', { ru: summary.totalThroughputLimit.toLocaleString() })
               : l10n.t('Unknown');
-    const throughputLimitExplanation = summary.isServerless
-        ? l10n.t('The account-wide provisioned-throughput cap is not applicable to serverless accounts.')
-        : l10n.t(
-              'This account-wide cap limits throughput allocation, not consumed RU or available performance. Autoscale resources count at their configured maximum.',
-          );
+    const throughputLimitExplanation = l10n.t(
+        'This account-wide cap limits throughput allocation, not consumed RU or available performance. Autoscale resources count at their configured maximum.',
+    );
     const capacityMode = summary.isServerless ? l10n.t('Serverless') : l10n.t('Provisioned throughput');
     const retention =
         summary.backupRetentionHours === undefined
@@ -311,10 +309,7 @@ export const AccountHeader = ({
             label: l10n.t('Capacity mode'),
             value: capacityMode,
         },
-        {
-            label: l10n.t('Total throughput limit'),
-            value: throughputLimit,
-        },
+        ...(!summary.isServerless ? [{ label: l10n.t('Total throughput limit'), value: throughputLimit }] : []),
         {
             label: l10n.t('Backup policy'),
             value:
@@ -460,12 +455,14 @@ export const AccountHeader = ({
                             />
                             <span>{l10n.t('Regions: {regions}', { regions: regionsLabel })}</span>
                             <span>{l10n.t('Capacity mode: {mode}', { mode: capacityMode })}</span>
-                            <Tooltip content={throughputLimitExplanation} relationship="description">
-                                {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Tooltip focus. */}
-                                <span tabIndex={0} className={styles.throughputLimit}>
-                                    {l10n.t('Total throughput limit: {limit}', { limit: throughputLimit })}
-                                </span>
-                            </Tooltip>
+                            {!summary.isServerless && (
+                                <Tooltip content={throughputLimitExplanation} relationship="description">
+                                    {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Tooltip focus. */}
+                                    <span tabIndex={0} className={styles.throughputLimit}>
+                                        {l10n.t('Total throughput limit: {limit}', { limit: throughputLimit })}
+                                    </span>
+                                </Tooltip>
+                            )}
                         </div>
                         <AccordionHeader
                             as="h2"

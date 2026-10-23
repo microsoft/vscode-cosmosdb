@@ -1724,7 +1724,6 @@
   "The account consumption pattern is intermittent enough that serverless may cost less than provisioned throughput.": "The account consumption pattern is intermittent enough that serverless may cost less than provisioned throughput.",
   "The account still carries the write-conflict surface (and `2×` write cost across any second write region).": "The account still carries the write-conflict surface (and `2×` write cost across any second write region).",
   "The account-wide active alert check is unavailable. The filtered list is shown below.": "The account-wide active alert check is unavailable. The filtered list is shown below.",
-  "The account-wide provisioned-throughput cap is not applicable to serverless accounts.": "The account-wide provisioned-throughput cap is not applicable to serverless accounts.",
   "The AI step \"{label}\" reached the {maxRounds}-round tool-call limit without finishing. Results may be incomplete.": "The AI step \"{label}\" reached the {maxRounds}-round tool-call limit without finishing. Results may be incomplete.",
   "The apply context is no longer available. Read the Query Editor context again, then retry applying the query.": "The apply context is no longer available. Read the Query Editor context again, then retry applying the query.",
   "The architecture or deployment style of your application. Examples: Web API, Microservice, Monolithic MVC": "The architecture or deployment style of your application. Examples: Web API, Microservice, Monolithic MVC",

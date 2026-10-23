@@ -512,19 +512,19 @@ describe('Serverless metric selection', () => {
             'aria-pressed',
             'true',
         );
-        expect(screen.getByRole('button', { name: /^Normalized RU/ })).toHaveTextContent('Not applicable');
-        expect(screen.getByRole('button', { name: /^Provisioned throughput/ })).toHaveTextContent('Not applicable');
+        expect(screen.queryByRole('button', { name: /^Normalized RU/ })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /^Provisioned throughput/ })).not.toBeInTheDocument();
         await waitFor(() =>
             expect(queries.partition).toHaveBeenCalledWith(expect.objectContaining({ mode: 'storage' })),
         );
         expect(queries.partition.mock.calls.every(([input]) => input.mode === 'storage')).toBe(true);
     });
 
-    it('preserves explicit inapplicable selection through Refresh, time and database scope changes', async () => {
+    it('preserves an applicable selection through Refresh, time and database scope changes', async () => {
         const user = userEvent.setup();
         queries.summary.mockResolvedValue(serverlessSummary);
         render(<AccountOverview />, { wrapper: Wrapper });
-        const tile = await screen.findByRole('button', { name: /^Normalized RU/ });
+        const tile = await screen.findByRole('button', { name: /^Total requests/ });
         await user.click(tile);
         const refresh = screen.getByRole('button', { name: 'Refresh' });
         await waitFor(() => expect(refresh).not.toHaveAttribute('aria-disabled', 'true'));
@@ -535,25 +535,25 @@ describe('Serverless metric selection', () => {
         await waitFor(() =>
             expect(queries.metric).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    metric: 'normalizedRu',
+                    metric: 'totalRequests',
                     timeRange: '1H',
                     databaseId: 'database',
                 }),
             ),
         );
-        expect(screen.getByRole('button', { name: /^Normalized RU/ })).toBe(tile);
+        expect(screen.getByRole('button', { name: /^Total requests/ })).toBe(tile);
         expect(tile).toHaveAttribute('aria-pressed', 'true');
-        expect(tile).toHaveTextContent('Not applicable');
+        expect(screen.queryByText('Not applicable')).not.toBeInTheDocument();
         expect(screen.getByRole('status')).toHaveTextContent('Account health: Unknown');
     });
 
-    it('honors a deep link to a Serverless-inapplicable metric', async () => {
+    it('redirects a deep link to a Serverless-inapplicable metric to consumed RU', async () => {
         initialTarget = 'provisionedThroughput';
         queries.summary.mockResolvedValue(serverlessSummary);
         render(<AccountOverview />, { wrapper: Wrapper });
-        const region = await screen.findByRole('region', { name: 'Provisioned throughput trend' });
+        const region = await screen.findByRole('region', { name: 'Total request units trend' });
         expect(region).toHaveFocus();
-        expect(screen.getByRole('button', { name: /^Provisioned throughput/ })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: /^Total request units/ })).toHaveAttribute('aria-pressed', 'true');
     });
 
     it.each([
@@ -576,7 +576,9 @@ describe('Serverless metric selection', () => {
         expect(screen.queryByRole('button', { name: 'By RU Share' })).not.toBeInTheDocument();
         expect(screen.getByText(/^Physical-partition storage distribution/)).toBeVisible();
         const inventory = screen.getByRole('table', { name: 'Containers' });
-        expect(within(inventory).getAllByText('Not applicable')).toHaveLength(rows.length);
+        expect(within(inventory).queryByText('Not applicable')).not.toBeInTheDocument();
+        expect(within(inventory).queryByRole('columnheader', { name: 'Throughput' })).not.toBeInTheDocument();
+        expect(within(inventory).queryByRole('columnheader', { name: 'Peak normalized RU' })).not.toBeInTheDocument();
         expect(within(inventory).getAllByText('Unknown')).toHaveLength(rows.length);
         expect(within(inventory).queryByText('0%')).not.toBeInTheDocument();
         expect(within(inventory).queryByText('Healthy')).not.toBeInTheDocument();
@@ -2273,7 +2275,7 @@ describe('inventory accessibility', () => {
         expect(document.activeElement).toHaveAccessibleDescription('Data: No permission; indexes: Unable to load.');
     });
 
-    it('exposes the Serverless metric explanation on keyboard focus without replacing the visible label', async () => {
+    it('omits Serverless throughput controls and cells from keyboard and table navigation', async () => {
         const user = userEvent.setup();
         render(
             <InventoryTable
@@ -2283,20 +2285,14 @@ describe('inventory accessibility', () => {
             />,
             { wrapper: Wrapper },
         );
-        const label = screen.getByText('Not applicable');
-        const explanation =
-            'Normalized RU is not applicable to serverless accounts because they do not have provisioned throughput.';
+        expect(screen.queryByText('Not applicable')).not.toBeInTheDocument();
+        expect(screen.queryByRole('combobox', { name: /throughput mode/ })).not.toBeInTheDocument();
+        expect(screen.queryByRole('columnheader', { name: 'Throughput' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('columnheader', { name: 'Peak normalized RU' })).not.toBeInTheDocument();
+        const tableRows = within(screen.getByRole('table')).getAllByRole('row');
+        expect(within(tableRows[0]).getAllByRole('columnheader')).toHaveLength(8);
+        expect(within(tableRows[1]).getAllByRole('cell')).toHaveLength(8);
         await user.click(screen.getByRole('button', { name: 'orders: show partition health in database' }));
-        await user.tab();
-        expect(label).toHaveFocus();
-        expect(label).toHaveTextContent('Not applicable');
-        expect(label).not.toHaveAttribute('aria-label');
-        expect(label).not.toHaveAttribute('title');
-        expect(await screen.findByRole('tooltip')).toHaveTextContent(explanation);
-        expect(label).toHaveAccessibleDescription(explanation);
-        await user.keyboard('{Escape}');
-        await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument());
-        expect(label).toHaveFocus();
         await user.tab();
         expect(screen.getByRole('button', { name: 'Reveal in tree' })).toHaveFocus();
     });

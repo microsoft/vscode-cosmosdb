@@ -167,7 +167,7 @@ Latency is server-side, not end-to-end latency or a latency percentile.
 Latest means the last **observed** value, not a claim that Azure has a sample for the current instant.
 
 The UI groups applicable tiles State then Activity, preserving descriptor order within each group.
-Inapplicable tiles follow in descriptor order. Family affects presentation, not applicability or health.
+Inapplicable tiles are omitted. Family affects presentation, not applicability or health.
 Formatting rounds percent/ms to integers, count/RU values compactly, and byte values with binary divisors
 1024/1024²/1024³ despite the current KB/MB/GB labels. Comparisons operate on unrounded values unless specified otherwise.
 
@@ -175,18 +175,21 @@ Formatting rounds percent/ms to integers, count/RU values compactly, and byte va
 
 Confirmed Serverless metadata makes only `normalizedRu` and `provisionedThroughput` not applicable.
 Their router returns a structured reason before Monitor-client acquisition/query.
+The UI omits their tiles, inventory throughput/normalized-RU columns and throughput-mode filter.
+The header omits the provisioned-throughput cap. Inapplicable chart links select consumed RU instead.
+If metadata removes a focused tile, focus moves to the selected applicable tile without stealing focus from another editor.
 An account throughput cap, absent metric data or failed request MUST NOT establish Serverless.
 Unknown capacity metadata yields unknown applicability, not not-applicable.
 
-| State                                 | Required interpretation                                              |
-| ------------------------------------- | -------------------------------------------------------------------- |
-| Observed zero                         | Render 0 in the metric's unit                                        |
-| `available: false`, `reason: noData`  | No usable observations/result; not evidence of good health           |
-| `applicability.status: notApplicable` | Render dash and Not applicable with the metadata-derived explanation |
-| `reason: rbac`                        | Permission-related failure                                           |
-| `reason: unsupported`                 | An explicitly unsupported source/API                                 |
-| Metric `reason: error`                | Request failed; distinct from a successful empty query               |
-| Loading                               | Pending operation; not an observation or a proof of absence          |
+| State                                 | Required interpretation                                     |
+| ------------------------------------- | ----------------------------------------------------------- |
+| Observed zero                         | Render 0 in the metric's unit                               |
+| `available: false`, `reason: noData`  | No usable observations/result; not evidence of good health  |
+| `applicability.status: notApplicable` | Omit the metric tile, table column and associated controls  |
+| `reason: rbac`                        | Permission-related failure                                  |
+| `reason: unsupported`                 | An explicitly unsupported source/API                        |
+| Metric `reason: error`                | Request failed; distinct from a successful empty query      |
+| Loading                               | Pending operation; not an observation or a proof of absence |
 
 Metric fetchers, storage components and account request-health use `metricFailureReason`: recognized 403/Forbidden/
 AuthorizationFailed becomes `rbac`, other caught failures become `error`.
@@ -646,7 +649,7 @@ Suggested advisory actions do not execute Azure changes automatically.
 
 Total throughput limit formatting: positive value -> RU/s; zero -> explicit 0 RU/s;
 exactly -1 -> No total throughput limit; absent/null -> Unknown.
-Serverless displays No total throughput limit with an inapplicability explanation.
+Serverless omits Total throughput limit in both the status strip and Account details.
 This cap MUST NOT drive metric applicability, utilization or health.
 
 ### Source acquisition

@@ -129,8 +129,9 @@ Current byte labels use binary sizes: for example, a displayed GB uses 1,024³ b
 
 ### Serverless accounts
 
-**Normalized RU** and **Provisioned throughput** show **Not applicable** because Serverless has no provisioned RU/s.
-The tiles remain visible with explanations; they are not failed queries or zero utilization.
+**Normalized RU** and **Provisioned throughput** tiles are hidden because Serverless has no provisioned RU/s.
+The inventory also hides Throughput, Peak normalized RU and the throughput-mode filter.
+The account header and details omit Total throughput limit; Capacity mode still identifies Serverless.
 The first chart is **Total request units** instead of Normalized RU.
 Partition investigation shows **Storage distribution**, without an RU/Storage switch.
 Request counts, consumed RU and account-wide throttling remain useful on Serverless.
@@ -277,7 +278,7 @@ It requires AI features enabled and available GitHub Copilot models.
 
 For provisioned accounts, **No total throughput limit** means the account-wide cap is disabled.
 An explicit **0 RU/s** is not the disabled value; **Unknown** means the cap metadata is absent.
-Serverless shows No total throughput limit because a provisioned-throughput allocation cap does not apply.
+Serverless hides Total throughput limit because a provisioned-throughput allocation cap does not apply.
 Disabling an account cap does not remove per-resource throughput or service limits.
 See [Limit total account throughput](https://learn.microsoft.com/azure/cosmos-db/limit-total-account-throughput).
 

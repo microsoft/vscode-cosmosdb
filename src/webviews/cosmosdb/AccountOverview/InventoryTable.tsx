@@ -40,7 +40,7 @@ import {
     type UnavailableReason,
 } from '../../api/types';
 import { EmptyState } from './DashboardChrome';
-import { type ContainerRef, metricInapplicabilityExplanation, storageDescription } from './metrics/descriptors';
+import { type ContainerRef, storageDescription } from './metrics/descriptors';
 
 const useStyles = makeStyles({
     root: {
@@ -296,6 +296,7 @@ const InventoryRow = memo(function InventoryRow({
     const storage = metric?.storage ?? storageFallback;
     const storageSummary = storage ? summarizeStorage(storage) : undefined;
     const health = HEALTH_BADGE[rowHealth(row, metric, normalizedRuApplicability)];
+    const showProvisionedMetrics = normalizedRuApplicability?.status !== 'notApplicable';
     const resourceDescription = l10n.t('Container {container} in database {database}', {
         container: row.containerId,
         database: row.databaseId,
@@ -335,11 +336,13 @@ const InventoryRow = memo(function InventoryRow({
                 </TableCellLayout>
             </TableCell>
             <TableCell>{row.databaseId}</TableCell>
-            <TableCell>
-                <TableCellLayout description={formatRU(row)}>
-                    {THROUGHPUT_MODE_LABELS[row.throughputMode]}
-                </TableCellLayout>
-            </TableCell>
+            {showProvisionedMetrics && (
+                <TableCell>
+                    <TableCellLayout description={formatRU(row)}>
+                        {THROUGHPUT_MODE_LABELS[row.throughputMode]}
+                    </TableCellLayout>
+                </TableCell>
+            )}
             <TableCell>
                 <Text className={styles.monospace}>{row.partitionKeyPaths.join(', ') || l10n.t('N/A')}</Text>
             </TableCell>
@@ -378,25 +381,18 @@ const InventoryRow = memo(function InventoryRow({
                     ? formatCount(metric.documentCount)
                     : '—'}
             </TableCell>
-            <TableCell>
-                {normalizedRuApplicability?.status === 'notApplicable' ? (
-                    <Tooltip
-                        content={metricInapplicabilityExplanation(normalizedRuApplicability.reason)}
-                        relationship="description"
-                    >
-                        <Text tabIndex={0} className={styles.metricExplanation}>
-                            {l10n.t('Not applicable')}
-                        </Text>
-                    </Tooltip>
-                ) : metric?.peakRuPercent !== undefined && Number.isFinite(metric.peakRuPercent) ? (
-                    <TableCellLayout>
-                        {`${Math.round(metric.peakRuPercent)}%`}
-                        <Sparkline values={metric.ruSparkline} />
-                    </TableCellLayout>
-                ) : (
-                    '—'
-                )}
-            </TableCell>
+            {showProvisionedMetrics && (
+                <TableCell>
+                    {metric?.peakRuPercent !== undefined && Number.isFinite(metric.peakRuPercent) ? (
+                        <TableCellLayout>
+                            {`${Math.round(metric.peakRuPercent)}%`}
+                            <Sparkline values={metric.ruSparkline} />
+                        </TableCellLayout>
+                    ) : (
+                        '—'
+                    )}
+                </TableCell>
+            )}
             <TableCell>
                 <Badge appearance="tint" color={health.color}>
                     {health.label}
@@ -488,6 +484,18 @@ export const InventoryTable = ({
     const [throughputFilter, setThroughputFilter] = useState<string>('all');
     const [sortKey, setSortKey] = useState<SortKey>('containerId');
     const [sortDirection, setSortDirection] = useState<SortDirection>('ascending');
+    const showProvisionedMetrics = normalizedRuApplicability?.status !== 'notApplicable';
+
+    useEffect(() => {
+        if (!showProvisionedMetrics) {
+            setThroughputFilter('all');
+            if (sortKey === 'throughputMode' || sortKey === 'throughputRU' || sortKey === 'peakRuPercent') {
+                setSortKey('containerId');
+                setSortDirection('ascending');
+                setPage(0);
+            }
+        }
+    }, [showProvisionedMetrics, sortKey]);
 
     const databases = useMemo(() => [...new Set(rows.map((r) => r.databaseId))].sort(), [rows]);
 
@@ -497,7 +505,7 @@ export const InventoryTable = ({
             if (databaseFilter !== 'all' && row.databaseId !== databaseFilter) {
                 return false;
             }
-            if (throughputFilter !== 'all' && row.throughputMode !== throughputFilter) {
+            if (showProvisionedMetrics && throughputFilter !== 'all' && row.throughputMode !== throughputFilter) {
                 return false;
             }
             if (
@@ -509,7 +517,7 @@ export const InventoryTable = ({
             }
             return true;
         });
-    }, [rows, search, databaseFilter, throughputFilter]);
+    }, [rows, search, databaseFilter, throughputFilter, showProvisionedMetrics]);
 
     const sortedRows = useMemo(() => {
         const factor = sortDirection === 'ascending' ? 1 : -1;
@@ -719,21 +727,25 @@ export const InventoryTable = ({
                                 </Option>
                             ))}
                         </Dropdown>
-                        <Dropdown
-                            key={`throughput-${active}-${navigationRevision}`}
-                            className={styles.filter}
-                            aria-label={l10n.t('Filter by throughput mode: {selection}', { selection: throughputText })}
-                            value={throughputText}
-                            selectedOptions={throughputSelectedOptions}
-                            onOptionSelect={handleThroughputSelect}
-                        >
-                            <Option value="all">{l10n.t('All throughput modes')}</Option>
-                            {(Object.keys(THROUGHPUT_MODE_LABELS) as ThroughputMode[]).map((mode) => (
-                                <Option key={mode} value={mode}>
-                                    {THROUGHPUT_MODE_LABELS[mode]}
-                                </Option>
-                            ))}
-                        </Dropdown>
+                        {showProvisionedMetrics && (
+                            <Dropdown
+                                key={`throughput-${active}-${navigationRevision}`}
+                                className={styles.filter}
+                                aria-label={l10n.t('Filter by throughput mode: {selection}', {
+                                    selection: throughputText,
+                                })}
+                                value={throughputText}
+                                selectedOptions={throughputSelectedOptions}
+                                onOptionSelect={handleThroughputSelect}
+                            >
+                                <Option value="all">{l10n.t('All throughput modes')}</Option>
+                                {(Object.keys(THROUGHPUT_MODE_LABELS) as ThroughputMode[]).map((mode) => (
+                                    <Option key={mode} value={mode}>
+                                        {THROUGHPUT_MODE_LABELS[mode]}
+                                    </Option>
+                                ))}
+                            </Dropdown>
+                        )}
                     </div>
                     {sortedRows.length > 0 && (
                         <nav className={styles.toolbar} aria-label={l10n.t('Container inventory pages')}>
@@ -786,14 +798,16 @@ export const InventoryTable = ({
                                         >
                                             {l10n.t('Database')}
                                         </SortableHeaderCell>
-                                        <SortableHeaderCell
-                                            columnKey="throughputMode"
-                                            activeSortKey={sortKey}
-                                            sortDirection={sortDirection}
-                                            onSort={toggleSort}
-                                        >
-                                            {l10n.t('Throughput')}
-                                        </SortableHeaderCell>
+                                        {showProvisionedMetrics && (
+                                            <SortableHeaderCell
+                                                columnKey="throughputMode"
+                                                activeSortKey={sortKey}
+                                                sortDirection={sortDirection}
+                                                onSort={toggleSort}
+                                            >
+                                                {l10n.t('Throughput')}
+                                            </SortableHeaderCell>
+                                        )}
                                         <TableHeaderCell>{l10n.t('Partition key')}</TableHeaderCell>
                                         <TableHeaderCell>{l10n.t('Indexing')}</TableHeaderCell>
                                         <SortableHeaderCell
@@ -812,14 +826,16 @@ export const InventoryTable = ({
                                         >
                                             {l10n.t('Documents')}
                                         </SortableHeaderCell>
-                                        <SortableHeaderCell
-                                            columnKey="peakRuPercent"
-                                            activeSortKey={sortKey}
-                                            sortDirection={sortDirection}
-                                            onSort={toggleSort}
-                                        >
-                                            {l10n.t('Peak normalized RU')}
-                                        </SortableHeaderCell>
+                                        {showProvisionedMetrics && (
+                                            <SortableHeaderCell
+                                                columnKey="peakRuPercent"
+                                                activeSortKey={sortKey}
+                                                sortDirection={sortDirection}
+                                                onSort={toggleSort}
+                                            >
+                                                {l10n.t('Peak normalized RU')}
+                                            </SortableHeaderCell>
+                                        )}
                                         <SortableHeaderCell
                                             columnKey="health"
                                             activeSortKey={sortKey}

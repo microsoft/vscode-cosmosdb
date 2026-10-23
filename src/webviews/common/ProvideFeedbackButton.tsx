@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Menu, MenuItem, MenuList, MenuPopover, MenuTrigger, ToolbarButton, Tooltip } from '@fluentui/react-components';
+import { Button, Menu, MenuItem, MenuList, MenuPopover, MenuTrigger, Tooltip } from '@fluentui/react-components';
 import { CommentCheckmarkRegular, EmojiSmileSlightRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { type ToolbarOverflowItemProps } from './ToolbarOverflow/ToolbarOverflowItem';
@@ -22,8 +22,11 @@ export const ProvideFeedbackButton = ({
             <Menu>
                 <MenuTrigger>
                     <Tooltip content={l10n.t('Provide Feedback')} relationship="label" appearance="inverted" withArrow>
-                        <ToolbarButton
+                        <Button
                             ref={ref}
+                            type="button"
+                            appearance="subtle"
+                            size="small"
                             aria-label={l10n.t('Provide Feedback')}
                             data-quickstart={quickStartId}
                             icon={<EmojiSmileSlightRegular />}

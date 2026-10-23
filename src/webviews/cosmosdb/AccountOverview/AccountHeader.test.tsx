@@ -92,7 +92,8 @@ describe('AccountHeader', () => {
         renderHeader({ onProvideFeedback, loading: true });
         const refresh = screen.getByRole('button', { name: 'Refresh' });
         const feedback = screen.getByRole('button', { name: 'Provide Feedback' });
-        expect(refresh.nextElementSibling).toContainElement(feedback);
+        expect(refresh.nextElementSibling).toBe(feedback);
+        expect(screen.queryByRole('toolbar')).not.toBeInTheDocument();
         expect(feedback).toHaveAccessibleName('Provide Feedback');
         expect(feedback).not.toBeDisabled();
         feedback.focus();

@@ -5,7 +5,7 @@
 
 // @vitest-environment jsdom
 
-import { FluentProvider, Menu, MenuList, webLightTheme } from '@fluentui/react-components';
+import { FluentProvider, Menu, MenuList, Toolbar, ToolbarButton, webLightTheme } from '@fluentui/react-components';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createRef, type PropsWithChildren } from 'react';
@@ -61,11 +61,29 @@ it('preserves the direct action in the Query Editor overflow menu', async () => 
     expect(provideFeedback).toHaveBeenCalledOnce();
 });
 
+it('supports arrow-key navigation in the Query Editor toolbar', async () => {
+    const user = userEvent.setup();
+    render(
+        <Toolbar size="small" aria-label="Query actions">
+            <ToolbarButton>Run query</ToolbarButton>
+            <QueryEditorFeedbackButton type="button" />
+            <ToolbarButton>Connection</ToolbarButton>
+        </Toolbar>,
+        { wrapper: Wrapper },
+    );
+    screen.getByRole('button', { name: 'Run query' }).focus();
+    await user.keyboard('{ArrowRight}');
+    expect(screen.getByRole('button', { name: 'Provide Feedback' })).toHaveFocus();
+    await user.keyboard('{ArrowRight}');
+    expect(screen.getByRole('button', { name: 'Connection' })).toHaveFocus();
+});
+
 it('uses the supplied callback without a Query Editor dispatcher or quick-start target', async () => {
     const user = userEvent.setup();
     const onProvideFeedback = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
     render(<ProvideFeedbackButton type="button" onProvideFeedback={onProvideFeedback} />, { wrapper: Wrapper });
     const button = screen.getByRole('button', { name: 'Provide Feedback' });
+    expect(button).toHaveAttribute('type', 'button');
     expect(button).not.toHaveAttribute('data-quickstart');
     button.focus();
     await user.keyboard('{Enter}');

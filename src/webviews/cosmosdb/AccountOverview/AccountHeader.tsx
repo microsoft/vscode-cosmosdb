@@ -16,7 +16,6 @@ import {
     Spinner,
     Text,
     tokens,
-    Toolbar,
     Tooltip,
     typographyStyles,
 } from '@fluentui/react-components';
@@ -434,11 +433,7 @@ export const AccountHeader = ({
                     >
                         {l10n.t('Refresh')}
                     </Button>
-                    {onProvideFeedback && (
-                        <Toolbar size="small" aria-label={l10n.t('Provide Feedback')}>
-                            <ProvideFeedbackButton type="button" onProvideFeedback={onProvideFeedback} />
-                        </Toolbar>
-                    )}
+                    {onProvideFeedback && <ProvideFeedbackButton type="button" onProvideFeedback={onProvideFeedback} />}
                 </div>
             </div>
             <p className={styles.subtitle}>

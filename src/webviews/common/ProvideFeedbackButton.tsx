@@ -3,9 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Button, Menu, MenuItem, MenuList, MenuPopover, MenuTrigger, Tooltip } from '@fluentui/react-components';
+import { Button, Menu, MenuItem, MenuList, MenuPopover, MenuTrigger } from '@fluentui/react-components';
 import { CommentCheckmarkRegular, EmojiSmileSlightRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
+import { ThemedTooltip } from './ThemedTooltip';
 import { type ToolbarOverflowItemProps } from './ToolbarOverflow/ToolbarOverflowItem';
 
 export const ProvideFeedbackButton = ({
@@ -21,7 +22,12 @@ export const ProvideFeedbackButton = ({
         return (
             <Menu>
                 <MenuTrigger>
-                    <Tooltip content={l10n.t('Provide Feedback')} relationship="label" appearance="inverted" withArrow>
+                    <ThemedTooltip
+                        content={l10n.t('Provide Feedback')}
+                        relationship="label"
+                        appearance="inverted"
+                        withArrow
+                    >
                         <Button
                             ref={ref}
                             type="button"
@@ -31,7 +37,7 @@ export const ProvideFeedbackButton = ({
                             data-quickstart={quickStartId}
                             icon={<EmojiSmileSlightRegular />}
                         />
-                    </Tooltip>
+                    </ThemedTooltip>
                 </MenuTrigger>
                 <MenuPopover>
                     <MenuList>

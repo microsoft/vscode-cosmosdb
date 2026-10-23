@@ -322,6 +322,9 @@ See [Azure RBAC](https://learn.microsoft.com/azure/role-based-access-control/ove
 
 ## Keyboard use
 
+Tooltips, including chart-value popups, use a light surface with dark text in dark themes.
+They follow theme changes while Overview remains open; light and high-contrast themes retain their existing colors.
+
 Use Tab to reach controls and focusable badges. Focus a health/metric badge for its explanation.
 Use Left/Right to move between tab labels, then Enter or Space to activate.
 Sortable table headers support Enter/Space; pagination and filters expose their selected values.

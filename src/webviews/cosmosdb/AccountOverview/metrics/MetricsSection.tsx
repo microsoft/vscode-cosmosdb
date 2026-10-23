@@ -7,6 +7,7 @@ import { makeStyles, Text, tokens, typographyStyles } from '@fluentui/react-comp
 import * as l10n from '@vscode/l10n';
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { type MetricApplicability, type MetricKey, type MetricSeriesResult, type TimeRange } from '../../../api/types';
+import { ThemedTooltip } from '../../../common/ThemedTooltip';
 import { DashboardCard, SectionHeader } from '../DashboardChrome';
 import { METRIC_GROUPS, type MetricGroup, METRIC_VIEWS } from './descriptors';
 import { MetricChart } from './MetricChart';
@@ -39,6 +40,10 @@ const useStyles = makeStyles({
         alignItems: 'center',
         gap: tokens.spacingHorizontalXS,
         cursor: 'default',
+        ':focus-visible': {
+            outline: `${tokens.strokeWidthThick} solid ${tokens.colorStrokeFocus2}`,
+            outlineOffset: tokens.strokeWidthThin,
+        },
     },
     legendSwatch: {
         width: '10px',
@@ -177,22 +182,23 @@ export const MetricsSection = ({
                 {(Object.keys(METRIC_GROUPS) as MetricGroup[]).map((groupKey) => {
                     const meta = METRIC_GROUPS[groupKey];
                     return (
-                        <span
-                            key={groupKey}
-                            className={styles.legendItem}
-                            title={meta.description}
-                            aria-description={chartAffordances ? meta.description : undefined}
-                        >
-                            <span
-                                className={styles.legendSwatch}
-                                style={{ backgroundColor: meta.color }}
-                                aria-hidden="true"
-                            />
-                            <Text id={`${groupLabelId}-${groupKey}`} className={styles.legendText}>
-                                {meta.label}
+                        <ThemedTooltip key={groupKey} content={meta.description} relationship="inaccessible">
+                            <Text
+                                className={styles.legendItem}
+                                tabIndex={0}
+                                aria-description={chartAffordances ? meta.description : undefined}
+                            >
+                                <span
+                                    className={styles.legendSwatch}
+                                    style={{ backgroundColor: meta.color }}
+                                    aria-hidden="true"
+                                />
+                                <Text id={`${groupLabelId}-${groupKey}`} className={styles.legendText}>
+                                    {meta.label}
+                                </Text>
+                                {!chartAffordances && <Text className={styles.visuallyHidden}>{meta.description}</Text>}
                             </Text>
-                            {!chartAffordances && <Text className={styles.visuallyHidden}>{meta.description}</Text>}
-                        </span>
+                        </ThemedTooltip>
                     );
                 })}
             </div>

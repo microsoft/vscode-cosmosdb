@@ -12,7 +12,7 @@ import { type ComponentProps, type PropsWithChildren } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getAccountMetricApplicability } from '../../../../panels/accountOverview/metrics/contracts';
 import { type MetricKey, type MetricPoint, type MetricSeriesResult, type StorageMeasurement } from '../../../api/types';
-import { METRIC_ORDER, METRIC_VIEWS } from './descriptors';
+import { METRIC_GROUPS, METRIC_ORDER, METRIC_VIEWS } from './descriptors';
 import { MetricsSection } from './MetricsSection';
 
 vi.mock('recharts', () => ({
@@ -101,6 +101,18 @@ beforeEach(() => {
     });
 });
 afterEach(() => vi.restoreAllMocks());
+
+it('uses a focusable themed tooltip instead of a native title for metric-group explanations', async () => {
+    const user = userEvent.setup();
+    renderMetrics({ chartAffordances: true });
+    const legend = screen.getByText(METRIC_GROUPS.state.label).parentElement!;
+    expect(legend).not.toHaveAttribute('title');
+    expect(legend).toHaveAttribute('tabindex', '0');
+    expect(legend).toHaveAccessibleDescription(METRIC_GROUPS.state.description);
+    await user.click(legend);
+    expect(legend).toHaveFocus();
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(METRIC_GROUPS.state.description);
+});
 
 describe.each([false, true])('storage breakdown with chartAffordances=%s', (chartAffordances) => {
     const complete: StorageMeasurement = {

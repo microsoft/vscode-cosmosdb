@@ -3,10 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { makeStyles, Tab, TabList, tokens, Tooltip } from '@fluentui/react-components';
+import { makeStyles, Tab, TabList, tokens } from '@fluentui/react-components';
 import { Warning16Filled } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { type ReactNode, useEffect, useId, useRef } from 'react';
+import { ThemedTooltip as Tooltip } from '../../common/ThemedTooltip';
 
 export type OverviewTab = 'monitoring' | 'databases' | 'advisories';
 

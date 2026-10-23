@@ -21,7 +21,6 @@ import {
     TableRow,
     Text,
     tokens,
-    Tooltip,
     useAnnounce,
 } from '@fluentui/react-components';
 import { Code16Regular, Open16Regular } from '@fluentui/react-icons';
@@ -41,6 +40,7 @@ import {
     type ThroughputMode,
     type UnavailableReason,
 } from '../../api/types';
+import { ThemedTooltip as Tooltip } from '../../common/ThemedTooltip';
 import { EmptyState } from './DashboardChrome';
 import { type ContainerRef, storageDescription, unavailableCaption } from './metrics/descriptors';
 

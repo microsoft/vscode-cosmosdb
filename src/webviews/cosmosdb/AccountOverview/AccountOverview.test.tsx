@@ -2761,14 +2761,18 @@ describe('inventory accessibility', () => {
             await user.click(await screen.findByRole('tab', { name: 'Databases and Containers' }));
             for (const [index, percent] of formatted.entries()) {
                 const name = `Physical partition PKR-${index}, ${percent} percent ${mode === 'ru' ? 'p99 utilization' : 'of storage'}${index === 4 ? ', flagged as hot' : ''}`;
-                const tile = screen.getByTitle(
-                    `PKR-${index}: ${percent}% ${mode === 'ru' ? 'p99 utilization' : 'share'}`,
-                );
+                const tile = screen.getByRole('figure', { name });
                 expect(tile).toHaveRole('figure');
                 expect(tile).toHaveAccessibleName(name);
+                expect(tile).not.toHaveAttribute('title');
+                expect(tile).toHaveAttribute('tabindex', '0');
                 expect(tile.querySelector('figcaption')).toBeNull();
                 expect(within(tile).getByText(`${percent}%`)).toBeVisible();
             }
+            await user.click(screen.getByRole('figure', { name: /^Physical partition PKR-0,/ }));
+            expect(await screen.findByRole('tooltip')).toHaveTextContent(
+                `PKR-0: 0.4% ${mode === 'ru' ? 'p99 utilization' : 'share'}`,
+            );
             expect(
                 screen.getByText(mode === 'ru' ? 'Ran at 0.4% p99 utilization.' : 'Holds 0.4% of container storage.'),
             ).toBeVisible();

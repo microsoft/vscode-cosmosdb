@@ -16,7 +16,6 @@ import {
     Spinner,
     Text,
     tokens,
-    Tooltip,
     typographyStyles,
 } from '@fluentui/react-components';
 import { ArrowClockwise16Regular, Braces16Regular, Money16Regular } from '@fluentui/react-icons';
@@ -32,6 +31,7 @@ import {
     type TimeRange,
 } from '../../api/types';
 import { ProvideFeedbackButton } from '../../common/ProvideFeedbackButton';
+import { ThemedTooltip as Tooltip } from '../../common/ThemedTooltip';
 import { AccountHealthStatus, PROVISIONING_LABELS } from './AccountHealthStatus';
 import { type ContainerRef, type MetricScope } from './metrics/descriptors';
 

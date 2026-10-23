@@ -243,6 +243,12 @@ function activeAlertSummary(severity?: 'Critical' | 'Warning'): ActiveAlertSumma
         totalCount: severity ? 1 : 0,
         criticalCount: severity === 'Critical' ? 1 : 0,
         warningCount: severity === 'Warning' ? 1 : 0,
+        periodCounts: {
+            '1h': { Fired: 0, Resolved: 0 },
+            '1d': { Fired: 0, Resolved: 0 },
+            '7d': { Fired: 0, Resolved: 0 },
+            '30d': { Fired: 0, Resolved: 0 },
+        },
         generatedAt: 0,
     };
 }
@@ -1030,7 +1036,7 @@ describe('header update feedback', () => {
                 await user.click(screen.getByRole('tab', { name: 'Advisories' }));
                 await user.click(
                     within(screen.getByRole('toolbar', { name: 'Alert time range' })).getByRole('button', {
-                        name: '30d',
+                        name: /^30d \(/,
                     }),
                 );
                 expected.alerts++;
@@ -1079,7 +1085,7 @@ describe('header update feedback', () => {
         clock.mockReturnValue(generatedAt + 60_000);
         await user.click(screen.getByRole('tab', { name: 'Advisories' }));
         await user.click(
-            within(screen.getByRole('toolbar', { name: 'Alert time range' })).getByRole('button', { name: '30d' }),
+            within(screen.getByRole('toolbar', { name: 'Alert time range' })).getByRole('button', { name: /^30d \(/ }),
         );
         expect(timestamp).toHaveAttribute('datetime', new Date(generatedAt).toISOString());
         await user.click(refresh);
@@ -1565,7 +1571,7 @@ describe('Account Overview account actions', () => {
         await chooseHeaderOption(user, /^Database scope for metrics:/, 'other-empty-db');
         await user.click(screen.getByRole('tab', { name: 'Advisories' }));
         await user.click(
-            within(screen.getByRole('toolbar', { name: 'Alert time range' })).getByRole('button', { name: '30d' }),
+            within(screen.getByRole('toolbar', { name: 'Alert time range' })).getByRole('button', { name: /^30d \(/ }),
         );
         await user.click(screen.getByRole('button', { name: 'Account details' }));
         await user.click(screen.getByRole('tab', { name: 'Databases and Containers' }));
@@ -1617,7 +1623,7 @@ describe('Account Overview account actions', () => {
         expect(queries.alerts).toHaveBeenLastCalledWith({ timeRange: '30d', monitorCondition: 'Fired' });
         await user.click(screen.getByRole('tab', { name: 'Advisories' }));
         expect(
-            within(screen.getByRole('toolbar', { name: 'Alert time range' })).getByRole('button', { name: '30d' }),
+            within(screen.getByRole('toolbar', { name: 'Alert time range' })).getByRole('button', { name: /^30d \(/ }),
         ).toHaveAttribute('aria-pressed', 'true');
     });
 
@@ -1713,8 +1719,8 @@ describe('alert window serialization', () => {
         const { user, controls } = await showAlerts();
         const pending = Promise.withResolvers<AlertsResult>();
         queries.alerts.mockReturnValueOnce(pending.promise);
-        await user.click(controls.getByRole('button', { name: '7d' }));
-        const next = controls.getByRole('button', { name: '30d' });
+        await user.click(controls.getByRole('button', { name: /^7d \(/ }));
+        const next = controls.getByRole('button', { name: /^30d \(/ });
         expect(next).toHaveAttribute('aria-disabled', 'true');
         await user.click(next);
         fireEvent.click(next);
@@ -1750,11 +1756,11 @@ describe('alert window serialization', () => {
                 expect(button).toHaveAttribute('aria-disabled', 'true');
             }
             expect(queries.alerts).toHaveBeenCalledTimes(2);
-            await user.click(controls.getByRole('button', { name: '7d' }));
+            await user.click(controls.getByRole('button', { name: /^7d \(/ }));
             expect(queries.alerts).toHaveBeenCalledTimes(2);
             await act(async () => pending.resolve(previous));
             await waitFor(() =>
-                expect(controls.getByRole('button', { name: '7d' })).not.toHaveAttribute('aria-disabled', 'true'),
+                expect(controls.getByRole('button', { name: /^7d \(/ })).not.toHaveAttribute('aria-disabled', 'true'),
             );
             const failureMessage = screen.queryByRole('group', { name: 'Error' })?.textContent ?? '';
             expect(failureMessage.includes('Account data could not be refreshed.')).toBe(alertsFail);
@@ -1766,10 +1772,10 @@ describe('alert window serialization', () => {
         queries.alerts.mockResolvedValueOnce(alertResult('1d'));
         const { user, controls } = await showAlerts();
         queries.alerts.mockRejectedValueOnce(new Error('Alert request failed'));
-        await user.click(controls.getByRole('button', { name: '7d' }));
+        await user.click(controls.getByRole('button', { name: /^7d \(/ }));
         expect(screen.queryByText('1d alert')).not.toBeInTheDocument();
         expect(screen.getByRole('group', { name: 'Error' })).toHaveTextContent('Account data could not be refreshed.');
-        const next = controls.getByRole('button', { name: '30d' });
+        const next = controls.getByRole('button', { name: /^30d \(/ });
         expect(next).toBeEnabled();
         expect(next).not.toHaveAttribute('aria-disabled', 'true');
         queries.alerts.mockResolvedValueOnce(alertResult('30d'));
@@ -1782,11 +1788,11 @@ describe('alert window serialization', () => {
         const { user, controls } = await showAlerts();
         const pending = Promise.withResolvers<AlertsResult>();
         queries.alerts.mockReturnValueOnce(pending.promise);
-        controls.getByRole('button', { name: '1d' }).focus();
+        controls.getByRole('button', { name: /^1d \(/ }).focus();
         await user.keyboard('{ArrowRight}{Enter}');
-        const selected = controls.getByRole('button', { name: '7d' });
-        expect(selected).toHaveTextContent('7d');
-        expect(selected).toHaveAccessibleName('7d');
+        const selected = controls.getByRole('button', { name: /^7d \(/ });
+        expect(selected).toHaveTextContent('7d (0)');
+        expect(selected).toHaveAccessibleName('7d (0)');
         expect(selected).toHaveFocus();
         expect(selected).toHaveAttribute('aria-disabled', 'true');
         await user.keyboard('{Enter} ');
@@ -1806,7 +1812,7 @@ describe('alert window serialization', () => {
         const { user, controls } = await showAlerts();
         const pending = Promise.withResolvers<AlertsResult>();
         queries.alerts.mockReturnValueOnce(pending.promise);
-        await user.click(controls.getByRole('button', { name: '7d' }));
+        await user.click(controls.getByRole('button', { name: /^7d \(/ }));
         const destination = screen.getByRole('tab', { name: 'Monitoring' });
         await user.click(destination);
         queries.announce.mockClear();
@@ -1860,6 +1866,59 @@ describe('alert monitor condition and active health', () => {
         };
     }
 
+    it('shows and announces Graph totals for the selected condition rather than the number of list rows', async () => {
+        queries.activeAlerts.mockResolvedValue({
+            ...activeAlertSummary('Critical'),
+            totalCount: 100,
+            periodCounts: {
+                '1h': { Fired: 2, Resolved: 4 },
+                '1d': { Fired: 10, Resolved: 20 },
+                '7d': { Fired: 30, Resolved: 40 },
+                '30d': { Fired: 100, Resolved: 200 },
+            },
+        } satisfies ActiveAlertSummary);
+        queries.alerts.mockImplementation(async (filter: AlertFilter) => result(filter, 'Warning'));
+        const { user, modes, windows } = await showAlerts();
+        for (const [label, count] of [
+            ['1h', 2],
+            ['1d', 10],
+            ['7d', 30],
+            ['30d', 100],
+        ] as const) {
+            const button = windows.getByRole('button', { name: `${label} (${count})` });
+            expect(button).toHaveTextContent(`${label} (${count})`);
+            expect(button).toHaveAccessibleName(`${label} (${count})`);
+        }
+        queries.announce.mockClear();
+        await user.click(windows.getByRole('button', { name: '7d (30)' }));
+        expect(queries.announce).toHaveBeenCalledExactlyOnceWith('Active alerts in the selected window: 30', {
+            polite: true,
+        });
+        queries.announce.mockClear();
+        await user.click(modes.getByRole('button', { name: 'Resolved' }));
+        expect(windows.getByRole('button', { name: '7d (40)' })).toHaveAttribute('aria-pressed', 'true');
+        expect(windows.getByRole('button', { name: '30d (200)' })).toBeVisible();
+        expect(queries.announce).toHaveBeenCalledExactlyOnceWith('Resolved alerts in the selected window: 40', {
+            polite: true,
+        });
+        expect(screen.getByText('Resolved 7d alert')).toBeVisible();
+        expect(queries.activeAlerts).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not display stale or zero counts when the aggregate fails', async () => {
+        const { user, refresh, windows } = await showAlerts();
+        queries.activeAlerts.mockRejectedValueOnce(new Error('Graph unavailable'));
+        await user.click(refresh);
+        await waitFor(() => expect(refresh).not.toHaveAttribute('aria-disabled', 'true'));
+        expect(windows.getByRole('button', { name: '1h (—)' })).toBeVisible();
+        queries.announce.mockClear();
+        await user.click(windows.getByRole('button', { name: '7d (—)' }));
+        expect(queries.announce).toHaveBeenCalledExactlyOnceWith(
+            'The active alert count is unavailable for the selected window.',
+            { polite: true },
+        );
+    });
+
     it('shows out-of-window Fired counts and health without changing the filtered list', async () => {
         queries.accountHealth.mockResolvedValue({ available: true, health: 'Healthy', generatedAt: 0 });
         queries.activeAlerts.mockResolvedValue({ ...activeAlertSummary('Critical'), totalCount: 3, warningCount: 1 });
@@ -1868,7 +1927,7 @@ describe('alert monitor condition and active health', () => {
         expect(screen.getByText('No active alerts in the selected window.')).toBeVisible();
         expect(screen.getByText(/Active alerts for this account: 3 \(1 critical, 1 warning\)/)).toBeVisible();
         expect(screen.getByText(/Older active alerts may be outside the selected list period/)).toBeVisible();
-        await user.click(windows.getByRole('button', { name: '7d' }));
+        await user.click(windows.getByRole('button', { name: /^7d \(/ }));
         await user.click(modes.getByRole('button', { name: 'Resolved' }));
         expect(screen.getByText('No resolved alerts in the selected window.')).toBeVisible();
         expect(screen.getByText('Account health: Critical')).toBeInTheDocument();
@@ -1958,7 +2017,7 @@ describe('alert monitor condition and active health', () => {
             await user.click(modes.getByRole('button', { name: label }));
             for (const timeRange of ['1h', '1d', '7d', '30d'] as const) {
                 queries.alerts.mockClear();
-                await user.click(windows.getByRole('button', { name: timeRange }));
+                await user.click(windows.getByRole('button', { name: `${timeRange} (0)` }));
                 expect(queries.alerts).toHaveBeenLastCalledWith({ timeRange, monitorCondition });
                 expect(queries.alerts).toHaveBeenCalledTimes(1);
                 expect(queries.activeAlerts).toHaveBeenCalledExactlyOnceWith();
@@ -2060,7 +2119,7 @@ describe('alert monitor condition and active health', () => {
             queries.activeAlerts.mockResolvedValue(activeAlertSummary(severity));
             const { user, modes, refresh, windows } = await showAlerts();
             await user.click(modes.getByRole('button', { name: 'Resolved' }));
-            await user.click(windows.getByRole('button', { name: '7d' }));
+            await user.click(windows.getByRole('button', { name: /^7d \(/ }));
             const pending = Promise.withResolvers<ActiveAlertSummary>();
             queries.alerts.mockClear();
             queries.activeAlerts.mockReturnValueOnce(pending.promise);
@@ -2113,7 +2172,9 @@ describe('alert monitor condition and active health', () => {
             const modes = within(screen.getByRole('toolbar', { name: 'Alert monitor condition' }));
             await user.click(modes.getByRole('button', { name: 'Resolved' }));
             await user.click(
-                within(screen.getByRole('toolbar', { name: 'Alert time range' })).getByRole('button', { name: '7d' }),
+                within(screen.getByRole('toolbar', { name: 'Alert time range' })).getByRole('button', {
+                    name: /^7d \(/,
+                }),
             );
             const latest = Promise.withResolvers<AlertsResult>();
             queries.alerts.mockImplementation((filter: AlertFilter) =>
@@ -2611,7 +2672,7 @@ describe('local result announcements', () => {
             render(<AccountOverview />, { wrapper: Wrapper });
             await user.click(await screen.findByRole('tab', { name: 'Advisories' }));
             const windowButton = within(screen.getByRole('toolbar', { name: 'Alert time range' })).getByRole('button', {
-                name: '7d',
+                name: /^7d \(/,
             });
             await waitFor(() => expect(windowButton).not.toHaveAttribute('aria-disabled', 'true'));
             queries.announce.mockClear();
@@ -2871,7 +2932,7 @@ describe('tabbed Account Overview', () => {
     });
 
     it.each([
-        ['Advisories', 'Alert time range', ['1h', '1d', '7d', '30d'], '1d'],
+        ['Advisories', 'Alert time range', ['1h (0)', '1d (0)', '7d (0)', '30d (0)'], '1d (0)'],
         ['Advisories', 'Alert monitor condition', ['Active', 'Resolved'], 'Active'],
         [
             'Databases and Containers',

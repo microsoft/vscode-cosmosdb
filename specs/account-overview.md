@@ -415,6 +415,10 @@ Source: [alerts/recommendations service](../src/panels/accountOverview/services/
 `getAlerts` iterates Alerts Management `alerts.getAll` under subscription scope with `targetResource = account ID`,
 the selected Azure `timeRange` and selected `monitorCondition`.
 Windows are `1h`, `1d`, `7d`, `30d`; Active maps to Fired and Resolved maps to Resolved.
+Each window displays the Resource Graph aggregate for the selected condition. Counts are based on alert start time,
+not resolution time; windows are cumulative lookbacks. Retention is 30 days, not 90.
+Switching filters announces the matching aggregate rather than counting loaded detail rows.
+Unavailable/stale aggregate checks display a dash and announce count unavailability, not zero.
 Each load queries only the selected condition. No All or workflow-state filter exists.
 Failures replace stale list rows with an unavailable result; they do not erase retained account-wide health evidence.
 An available empty list means no returned matches for these Azure filters, not no account-wide alerts.
@@ -428,12 +432,14 @@ The DTO retains raw severity, monitor condition and workflow state. No state is 
 One Resource Graph POST targets the account's configured Resource Manager endpoint,
 `/providers/Microsoft.ResourceGraph/resources?api-version=2022-10-01`, using the existing authenticated ARM pipeline.
 The request limits subscriptions to the bound subscription, sets object-array results and `allowPartialScopes: false`.
-Its `alertsmanagementresources` query filters case-insensitively by alert resource type, exact target account ID,
-and Fired monitor condition, then computes total, Sev0/1 and Sev2/3 counts.
-There is **no time predicate and no alertState predicate**.
+Its `alertsmanagementresources` query filters case-insensitively by alert resource type and exact target account ID.
+It computes total, Sev0/1 and Sev2/3 counts using Fired-only `countif` expressions without a time restriction.
+The same query also computes Fired/Resolved counts for every supported window with start-time predicates.
+There is no workflow-state predicate. No alert instances are downloaded to compute counts.
 
 The parser accepts exactly one aggregate row, one total record, no continuation token, no truncation,
-and non-negative integer counts; critical + warning must not exceed total.
+and non-negative integer counts; critical + warning must not exceed total. All period/condition counts must be present,
+monotonic across expanding windows, and Fired counts must not exceed the account-wide total.
 Malformed/non-success responses become unavailable, not a successful zero-count summary.
 Successful counts mean all retained results visible through this query, not an unbounded incident history.
 Azure retention, RBAC and Resource Graph propagation can omit or delay evidence.

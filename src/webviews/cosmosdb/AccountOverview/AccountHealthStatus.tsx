@@ -121,7 +121,7 @@ function describeCheck(check: OverviewHealthCheck): { label: string; detail: str
         }
         case 'containers':
             return {
-                label: l10n.t('Container health'),
+                label: l10n.t('Container throttling'),
                 outcome: check.outcome,
                 detail:
                     l10n.t('Critical containers: {critical}. Warning containers: {warning}. Not assessed: {unknown}.', {
@@ -131,7 +131,7 @@ function describeCheck(check: OverviewHealthCheck): { label: string; detail: str
                     }) +
                     ' ' +
                     l10n.t(
-                        'A Critical container raises account health to Needs Attention; warning-only containers do not. Container RU peaks use the selected chart period.',
+                        'A Critical container raises account health to Needs Attention; warning-only containers do not. Provisioned containers use normalized RU peaks over the selected chart period and sustained 429 responses. Serverless containers use request observations and sustained 429 responses only.',
                     ),
             };
         case 'alerts':

@@ -374,11 +374,17 @@ A successful summary replaces it, including zero counts, which can clear old ale
 Stale adverse alerts continue to drive account and tab severity.
 Alert-list filters/results MUST NOT clear or replace the independent Fired summary.
 
-Metric row health: sustained row 429 OR peak RU >= critical threshold -> Critical;
-otherwise peak RU >= warning threshold -> Needs Attention;
-otherwise an observed RU peak -> Healthy; otherwise undefined.
+The table labels its row diagnostic **Throttling**, not overall Health, and renders internal Healthy as **Passed**.
+Provisioned metric row health: sustained row 429 OR peak RU >= critical threshold -> Critical;
+otherwise peak RU >= warning threshold -> Needs Attention; otherwise an observed RU peak -> Healthy;
+otherwise undefined. Serverless ignores normalized RU: sustained row 429 -> Critical; observed requests without
+sustained 429 -> Healthy; missing observations or a failed request read -> undefined.
 Default critical/warning thresholds are 90/80, independently configurable.
-Storage growth does not participate.
+Both modes use the sustained-throttling share/duration policy in §3.5 over the last hour.
+Observed zero Count buckets are evidence; empty/null/invalid buckets are not.
+`ContainerMetrics.throttled` is true/false only with usable per-container request observations; otherwise it is absent,
+with `throttlingReason` distinguishing noData, rbac and error. Embedded metric errors are failures, not clear checks.
+Storage growth and consumed RU do not participate.
 
 The shared `rowHealth` display fallback is intentionally more specific:
 
@@ -389,7 +395,7 @@ The shared `rowHealth` display fallback is intentionally more specific:
 | No metric object and normalized RU is not applicable | Unknown                                        |
 | No metric object otherwise                           | Inventory row's existing static `health` value |
 
-The final fallback can display a provisioned row as Healthy without observations.
+The final fallback can display a provisioned row as Passed (internal Healthy) without observations.
 This is a **known compatibility limitation**, not evidence to generalize into a missing-data policy.
 The container checklist independently counts rows with no metric health as unassessed.
 

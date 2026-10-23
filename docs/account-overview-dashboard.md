@@ -168,15 +168,22 @@ The main measurements are:
 - **Data growth:** latest minus first observed **data** size over seven days. Index growth is not included.
 - **Document count:** latest observed count for the container, not a live data-plane count.
 
-### Container health
+### Container throttling
 
-With the default settings, a container is Critical at a peak RU of **90% or more**, or when sustained 429s
-are detected for that container. A peak of **80% or more** gives Needs Attention.
-Lower observed RU gives Healthy. Container 429 checks use the last hour even when Peak RU uses another period.
-Storage growth does not directly change the row's health.
+The **Throttling** column is a scoped diagnostic, not an overall container-health assessment.
+For **Provisioned** containers, the default thresholds are Critical at a normalized RU peak of **90% or more**
+or sustained 429s, and Needs Attention at a peak of **80% or more**. Lower observed RU gives Passed.
+For **Serverless**, normalized RU is not required: usable request observations without sustained 429s give Passed,
+sustained 429s give Critical, and missing observations or a failed request check give Unknown.
 
-Missing metric health normally shows Unknown, including Serverless without a throttling signal.
-There is a current limitation: a provisioned row with no metric result at all can retain its initial Healthy label.
+Sustained 429s mean **more than 1% of all requests** for **at least five minutes** in the last hour, not an absolute
+number of 429s. Observed zero counts are usable observations; an empty response is not.
+Container 429 checks use the last hour even when Peak RU uses another period.
+Storage growth does not directly change this assessment. Consumed RU remains useful for Serverless cost and load
+analysis, but is not a percentage of available capacity.
+
+Missing metric health normally shows Unknown.
+There is a current limitation: a provisioned row with no metric result at all can retain its initial Passed label.
 Use the account checklist's unassessed count and the actual metric values rather than treating that row label
 as proof that telemetry was collected.
 

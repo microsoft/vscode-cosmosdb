@@ -574,6 +574,43 @@ describe('Serverless metric selection', () => {
         metricApplicability: getAccountMetricApplicability(true),
     };
 
+    it.each([
+        { health: 'Healthy', throttled: false, label: 'Passed', reason: undefined },
+        { health: 'Critical', throttled: true, label: 'Critical', reason: undefined },
+        { health: undefined, throttled: undefined, label: 'Unknown', reason: 'noData' },
+        { health: undefined, throttled: undefined, label: 'Unknown', reason: 'rbac' },
+        { health: undefined, throttled: undefined, label: 'Unknown', reason: 'error' },
+    ])('shows scoped Serverless throttling: $label ($reason)', async ({ health, throttled, label, reason }) => {
+        queries.summary.mockResolvedValue(serverlessSummary);
+        queries.inventoryMetrics.mockResolvedValue({
+            available: true,
+            metrics: { 'database/orders': { health, throttled, throttlingReason: reason } },
+        });
+        const user = userEvent.setup();
+        render(<AccountOverview />, { wrapper: Wrapper });
+        await user.click(await screen.findByRole('tab', { name: 'Databases and Containers' }));
+        const inventory = screen.getByRole('table', { name: 'Containers' });
+        expect(within(inventory).getByRole('columnheader', { name: 'Throttling' })).toBeVisible();
+        expect(within(inventory).queryByRole('columnheader', { name: 'Health' })).not.toBeInTheDocument();
+        const row = within(inventory)
+            .getByRole('button', { name: 'orders: show partition health in database' })
+            .closest('tr')!;
+        const badge = within(row).getByLabelText(label);
+        expect(badge).toHaveTextContent(label);
+        expect(badge).toHaveAccessibleName(label);
+        expect(badge).toHaveAttribute('tabindex', '0');
+        expect(badge).toHaveAccessibleDescription(/Uses container request observations, not normalized RU/);
+        expect(badge).toHaveAccessibleDescription(/429 responses exceed 1% of all requests for at least 5 minutes/);
+        expect(badge).toHaveAccessibleDescription(/not overall container health/);
+        const captions: Record<string, string> = {
+            noData: 'No data',
+            rbac: 'No permission',
+            error: 'Unable to load',
+        };
+        expect(badge).toHaveAccessibleDescription(new RegExp(reason ? captions[reason] : 'Passed means'));
+        expect(within(inventory).queryByText('Healthy')).not.toBeInTheDocument();
+    });
+
     it('uses the late account summary for the default without waiting for metric samples', async () => {
         const pending = Promise.withResolvers<AccountSummary>();
         queries.summary.mockReturnValue(pending.promise);
@@ -2052,7 +2089,7 @@ describe('alert monitor condition and active health', () => {
         expect(badge).toHaveTextContent('Healthy');
         expect(badge).toHaveAccessibleName('Healthy');
         expect(badge).toHaveAccessibleDescription(/Resource provisioning — Passed/);
-        expect(badge).toHaveAccessibleDescription(/Container health — Not assessed/);
+        expect(badge).toHaveAccessibleDescription(/Container throttling — Not assessed/);
         expect(badge).toHaveAccessibleDescription(/Active Azure Monitor alerts — Passed/);
         expect(badge).toHaveAttribute('tabindex', '0');
         act(() => refresh.focus());
@@ -2064,7 +2101,7 @@ describe('alert monitor condition and active health', () => {
         const checks = within(tooltip).getAllByRole('listitem');
         expect(checks).toHaveLength(5);
         expect(checks[0]).toHaveTextContent('Resource provisioning — Passed');
-        expect(checks[2]).toHaveTextContent('Container health — Not assessed');
+        expect(checks[2]).toHaveTextContent('Container throttling — Not assessed');
         expect(tooltip).toHaveTextContent(
             'HTTP 5xx errors, availability, latency, storage limits, and index health are not assessed',
         );
@@ -2335,7 +2372,7 @@ describe('inventory accessibility', () => {
             'Storage',
             'Documents',
             'Peak normalized RU',
-            'Health',
+            'Throttling',
         ]) {
             const sort = within(screen.getByRole('columnheader', { name })).getByRole('button');
             await user.click(sort);
@@ -2424,6 +2461,11 @@ describe('inventory accessibility', () => {
         expect(within(tableRows[0]).getAllByRole('columnheader')).toHaveLength(8);
         expect(within(tableRows[1]).getAllByRole('cell')).toHaveLength(8);
         await user.click(screen.getByRole('button', { name: 'orders: show partition health in database' }));
+        await user.tab();
+        const badge = within(tableRows[1]).getByLabelText('Unknown');
+        expect(badge).toHaveFocus();
+        expect(badge).toHaveAccessibleName('Unknown');
+        expect(badge).toHaveAccessibleDescription(/Uses container request observations, not normalized RU/);
         await user.tab();
         expect(screen.getByRole('button', { name: 'Reveal in tree' })).toHaveFocus();
     });
@@ -2662,7 +2704,7 @@ describe('inventory accessibility', () => {
             'Storage',
             'Documents',
             'Peak normalized RU',
-            'Health',
+            'Throttling',
         ]) {
             const header = within(table).getByRole('columnheader', { name });
             const button = within(header).getByRole('button', { name });

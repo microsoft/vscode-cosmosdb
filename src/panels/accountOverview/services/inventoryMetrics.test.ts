@@ -36,6 +36,12 @@ describe('deriveRowHealth', () => {
     it('is Critical when throttled regardless of peak', () => {
         expect(deriveRowHealth({ peakRuPercent: 1, throttled: true }, thresholds)).toBe('Critical');
     });
+
+    it('does not use a normalized RU value to assess Serverless', () => {
+        expect(deriveRowHealth({ peakRuPercent: 100, throttled: false }, thresholds, true)).toBe('Healthy');
+        expect(deriveRowHealth({ peakRuPercent: 100 }, thresholds, true)).toBeUndefined();
+        expect(deriveRowHealth({ throttled: true }, thresholds, true)).toBe('Critical');
+    });
 });
 
 // ─── getInventoryMetrics with a mocked MonitorClient ────────────────────────
@@ -43,6 +49,146 @@ describe('deriveRowHealth', () => {
 describe('getInventoryMetrics', () => {
     const base = Date.now();
     const minute = 60 * 1000;
+
+    it('passes Serverless throttling from request observations without storage or normalized RU', async () => {
+        const client = mockClient({
+            TotalRequests: {
+                value: [
+                    {
+                        timeseries: [
+                            {
+                                metadatavalues: dims('db', 'c1', '200'),
+                                data: [{ timeStamp: iso(base), count: 20 }],
+                            },
+                        ],
+                    },
+                ],
+            },
+        });
+        const result = await getInventoryMetrics(client, '/sub/acct', '24H', thresholds, undefined, true);
+        expect(result.metrics['db/c1']).toMatchObject({ throttled: false, health: 'Healthy' });
+        expect(result.metrics['db/c1'].peakRuPercent).toBeUndefined();
+    });
+
+    it.each(['rbac', 'error', 'embedded'] as const)(
+        'does not report a failed request check as clear (%s)',
+        async (failure) => {
+            const client = mockClient({
+                TotalRequests: { value: [{ timeseries: [] }] },
+                DataUsage: {
+                    value: [
+                        {
+                            timeseries: [
+                                {
+                                    metadatavalues: dims('db', 'c1'),
+                                    data: [{ timeStamp: iso(base), maximum: 100 }],
+                                },
+                            ],
+                        },
+                    ],
+                },
+            });
+            const original = client.metrics.list.bind(client.metrics);
+            vi.spyOn(client.metrics, 'list').mockImplementation((resource, options) =>
+                options?.metricnames === 'TotalRequests'
+                    ? failure === 'embedded'
+                        ? original(resource, options).then((response) => ({
+                              ...response,
+                              value: (response.value ?? []).map((metric) => ({
+                                  ...metric,
+                                  errorCode: 'BadRequest',
+                                  errorMessage: 'Request query failed',
+                              })),
+                          }))
+                        : Promise.reject(
+                              Object.assign(new Error('Request query failed'), {
+                                  statusCode: failure === 'rbac' ? 403 : 500,
+                              }),
+                          )
+                    : original(resource, options),
+            );
+            const result = await getInventoryMetrics(client, '/sub/acct', '24H', thresholds, undefined, true);
+            expect(result.metrics['db/c1'].throttled).toBeUndefined();
+            expect(result.metrics['db/c1'].throttlingReason).toBe(failure === 'rbac' ? 'rbac' : 'error');
+            expect(result.metrics['db/c1'].health).toBeUndefined();
+        },
+    );
+
+    it.each([
+        { throttled: 10, successful: 10, buckets: 5, gap: false, health: 'Critical' },
+        { throttled: 10, successful: 999_990, buckets: 5, gap: false, health: 'Healthy' },
+        { throttled: 1, successful: 99, buckets: 5, gap: false, health: 'Healthy' },
+        { throttled: 2, successful: 98, buckets: 5, gap: false, health: 'Critical' },
+        { throttled: 2, successful: 98, buckets: 4, gap: false, health: 'Healthy' },
+        { throttled: 2, successful: 98, buckets: 5, gap: true, health: 'Healthy' },
+        { throttled: 0, successful: 0, buckets: 5, gap: false, health: 'Healthy' },
+    ])('assesses Serverless share and duration: $throttled/$successful, $buckets buckets, gap $gap', async (input) => {
+        const points = (count: number) =>
+            Array.from({ length: input.buckets }, (_, index) => ({
+                timeStamp: iso(base - (index + (input.gap && index >= 3 ? 1 : 0)) * minute),
+                count,
+            }));
+        const client = mockClient({
+            TotalRequests: {
+                value: [
+                    {
+                        timeseries: [
+                            { metadatavalues: dims('db', 'c1', '429'), data: points(input.throttled) },
+                            { metadatavalues: dims('db', 'c1', '200'), data: points(input.successful) },
+                        ],
+                    },
+                ],
+            },
+        });
+        const result = await getInventoryMetrics(client, '/sub/acct', '7D', thresholds, undefined, true);
+        expect(result.metrics['db/c1']).toMatchObject({
+            throttled: input.health === 'Critical',
+            health: input.health,
+        });
+        expect(result.metrics['db/c1'].throttlingReason).toBeUndefined();
+    });
+
+    it.each([
+        { name: 'empty', status: '200', points: [] },
+        { name: 'null', status: '200', points: [{ timeStamp: iso(base), count: null }] },
+        { name: 'invalid timestamp', status: '200', points: [{ timeStamp: 'invalid', count: 10 }] },
+        { name: 'non-finite', status: '200', points: [{ timeStamp: iso(base), count: NaN }] },
+        { name: 'negative', status: '200', points: [{ timeStamp: iso(base), count: -1 }] },
+        { name: 'missing status', status: undefined, points: [{ timeStamp: iso(base), count: 10 }] },
+    ])('keeps Serverless Unknown for $name request observations', async ({ status, points }) => {
+        const client = mockClient({
+            DataUsage: {
+                value: [
+                    {
+                        timeseries: [
+                            {
+                                metadatavalues: dims('db', 'c1'),
+                                data: [{ timeStamp: iso(base), maximum: 100 }],
+                            },
+                        ],
+                    },
+                ],
+            },
+            TotalRequests: {
+                value: [
+                    {
+                        timeseries: [
+                            { metadatavalues: dims('db', 'c1', status), data: points },
+                            {
+                                metadatavalues: dims('db', 'observed', '200'),
+                                data: [{ timeStamp: iso(base), count: 10 }],
+                            },
+                        ],
+                    },
+                ],
+            },
+        });
+        const result = await getInventoryMetrics(client, '/sub/acct', '24H', thresholds, undefined, true);
+        expect(result.metrics['db/c1'].throttled).toBeUndefined();
+        expect(result.metrics['db/c1'].health).toBeUndefined();
+        expect(result.metrics['db/c1'].throttlingReason).toBe('noData');
+        expect(result.metrics['db/observed']).toMatchObject({ throttled: false, health: 'Healthy' });
+    });
 
     describe.each([
         { missingMetric: 'DataUsage', isServerless: false },

@@ -30,6 +30,8 @@ import { memo, type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo,
 import { Line, LineChart, ResponsiveContainer } from 'recharts';
 import { summarizeStorage } from '../../../panels/accountOverview/metrics/storage';
 import { rowHealth } from '../../../panels/accountOverview/overviewHealthModel';
+import { DIAGNOSTIC_POLICY } from '../../../panels/accountOverview/services/advisories/core/thresholds';
+import { HOUR, MINUTE } from '../../../panels/accountOverview/services/units';
 import {
     type ContainerMetrics,
     type HealthState,
@@ -40,7 +42,7 @@ import {
     type UnavailableReason,
 } from '../../api/types';
 import { EmptyState } from './DashboardChrome';
-import { type ContainerRef, storageDescription } from './metrics/descriptors';
+import { type ContainerRef, storageDescription, unavailableCaption } from './metrics/descriptors';
 
 const useStyles = makeStyles({
     root: {
@@ -122,7 +124,7 @@ const HEALTH_BADGE: Record<
     { color: 'success' | 'warning' | 'danger' | 'subtle'; label: string }
 > = {
     Unknown: { color: 'subtle', label: l10n.t('Unknown') },
-    Healthy: { color: 'success', label: l10n.t('Healthy') },
+    Healthy: { color: 'success', label: l10n.t('Passed') },
     'Needs Attention': { color: 'warning', label: l10n.t('Needs Attention') },
     Critical: { color: 'danger', label: l10n.t('Critical') },
 };
@@ -297,6 +299,30 @@ const InventoryRow = memo(function InventoryRow({
     const storageSummary = storage ? summarizeStorage(storage) : undefined;
     const health = HEALTH_BADGE[rowHealth(row, metric, normalizedRuApplicability)];
     const showProvisionedMetrics = normalizedRuApplicability?.status !== 'notApplicable';
+    const policy = DIAGNOSTIC_POLICY.sustainedThrottling;
+    const throttlingDescription = [
+        showProvisionedMetrics
+            ? l10n.t('Uses normalized RU peaks over the selected chart period and sustained container 429 responses.')
+            : l10n.t(
+                  'Uses container request observations, not normalized RU. Passed means no sustained 429 threshold breach was detected.',
+              ),
+        l10n.t(
+            'Sustained throttling means 429 responses exceed {percent}% of all requests for at least {minutes} minutes in the last {hours} hour.',
+            {
+                percent: (policy.shareThreshold * 100).toLocaleString(),
+                minutes: (policy.minDurationMs / MINUTE).toLocaleString(),
+                hours: (policy.observation.windowMs / HOUR).toLocaleString(),
+            },
+        ),
+        metric?.throttled === undefined
+            ? l10n.t('Request observations unavailable: {reason}.', {
+                  reason: unavailableCaption(metric?.throttlingReason ?? 'noData'),
+              })
+            : undefined,
+        l10n.t('This is a throttling assessment, not overall container health.'),
+    ]
+        .filter(Boolean)
+        .join(' ');
     const resourceDescription = l10n.t('Container {container} in database {database}', {
         container: row.containerId,
         database: row.databaseId,
@@ -394,9 +420,18 @@ const InventoryRow = memo(function InventoryRow({
                 </TableCell>
             )}
             <TableCell>
-                <Badge appearance="tint" color={health.color}>
-                    {health.label}
-                </Badge>
+                <Tooltip content={throttlingDescription} relationship="description">
+                    <Badge
+                        appearance="tint"
+                        color={health.color}
+                        tabIndex={0}
+                        className={styles.metricExplanation}
+                        aria-label={health.label}
+                        aria-description={throttlingDescription}
+                    >
+                        <span aria-hidden="true">{health.label}</span>
+                    </Badge>
+                </Tooltip>
             </TableCell>
             <TableCell>
                 <Tooltip content={l10n.t('Reveal in tree')} relationship="label">
@@ -842,7 +877,7 @@ export const InventoryTable = ({
                                             sortDirection={sortDirection}
                                             onSort={toggleSort}
                                         >
-                                            {l10n.t('Health')}
+                                            {l10n.t('Throttling')}
                                         </SortableHeaderCell>
                                         <TableHeaderCell>{l10n.t('Actions')}</TableHeaderCell>
                                     </TableRow>

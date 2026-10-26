@@ -48,6 +48,7 @@ export function AccountActions({
     busy,
     supported,
     isAIFeaturesEnabled,
+    isDataModelerEnabled,
     databaseId,
     failure,
     onAction,
@@ -55,6 +56,7 @@ export function AccountActions({
     busy: boolean;
     supported: boolean;
     isAIFeaturesEnabled: boolean;
+    isDataModelerEnabled: boolean;
     databaseId?: string;
     failure?: AccountActionFailure;
     onAction: (input: AccountActionInput) => void;
@@ -96,7 +98,7 @@ export function AccountActions({
                 >
                     {l10n.t('Delete account')}
                 </Button>
-                {isAIFeaturesEnabled && (
+                {isAIFeaturesEnabled && isDataModelerEnabled && (
                     <div className={styles.modeler}>
                         <span>{l10n.t('Design containers, partition keys, and relationships visually.')}</span>
                         <Button

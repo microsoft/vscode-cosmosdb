@@ -1737,6 +1737,7 @@
   "The Cosmos DB Shell version could not be determined. Using escaped compatibility navigation.": "The Cosmos DB Shell version could not be determined. Using escaped compatibility navigation.",
   "The custom cloud choice is not configured. Please configure the setting `{0}.{1}`.": "The custom cloud choice is not configured. Please configure the setting `{0}.{1}`.",
   "The data modeler state is invalid and could not be saved.": "The data modeler state is invalid and could not be saved.",
+  "The Data Modeler wizard is disabled in settings.": "The Data Modeler wizard is disabled in settings.",
   "The Data Modeling wizard is no longer open. Recommendation failed: {reason}": "The Data Modeling wizard is no longer open. Recommendation failed: {reason}",
   "The Data Modeling wizard is no longer open. Show this complete recommendation in the chat response.": "The Data Modeling wizard is no longer open. Show this complete recommendation in the chat response.",
   "The database \"{name}\" already exists in the account.": "The database \"{name}\" already exists in the account.",

@@ -1017,7 +1017,7 @@
         "category": "Cosmos DB",
         "command": "cosmosDB.dataModeling.open",
         "title": "%cosmosdb.command.dataModeling.open%",
-        "enablement": "cosmosDB.aiFeaturesEnabled",
+        "enablement": "cosmosDB.aiFeaturesEnabled && config.cosmosDB.experimental.dataModeler.enabled",
         "icon": "$(type-hierarchy)"
       },
       {
@@ -1383,7 +1383,7 @@
       "commandPalette": [
         {
           "command": "cosmosDB.dataModeling.open",
-          "when": "cosmosDB.aiFeaturesEnabled"
+          "when": "cosmosDB.aiFeaturesEnabled && config.cosmosDB.experimental.dataModeler.enabled"
         },
         {
           "command": "cosmosDB.migration.open",
@@ -1772,6 +1772,14 @@
             "type": "boolean",
             "default": true,
             "description": "%cosmosdb.configuration.quickStart.enabled%"
+          },
+          "cosmosDB.experimental.dataModeler.enabled": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "%cosmosdb.configuration.experimental.dataModeler.enabled%",
+            "tags": [
+              "experimental"
+            ]
           },
           "cosmosDB.experimental.migration.enabled": {
             "type": "boolean",

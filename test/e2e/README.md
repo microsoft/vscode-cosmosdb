@@ -51,6 +51,9 @@ that worker. With per-test launch (the naive approach), a 10-test file would
 pay ~50 s of startup overhead; with worker scope it's ~5 s total.
 
 The consequence: tests **must reset editor state in their own `afterEach`**.
+The fixture-lifecycle spec intentionally exits VS Code before worker teardown to
+verify that an already-closed application does not cause a shutdown timeout.
+It disables window-dependent automatic fixtures because no live window remains.
 Use `closeAllEditorTabs(vscodeWindow)` from `fixtures/webviewHelpers.ts`.
 This helper focuses the workbench before opening the command palette and waits
 for each editor to close. Cleanup failures fail the test rather than silently
@@ -67,6 +70,17 @@ observe the running state before writing completion: prompt capture happens
 before the launch-state update reaches the webview.
 `MigrationPage.completeSkillRun()` waits for both the running state and the
 completion update before the test can launch the next phase.
+
+During a test, use `closeEditorTab(vscodeWindow, name)` to close a specific tab rather than whichever editor has focus.
+This helper requires a unique matching tab and waits for that tab to disappear; failures are not swallowed.
+Query Editor flows use `QueryEditorPage.closeDocumentPanel(documentId)`, which also waits for the result table to be visible.
+Tests that close a document by ID must select that document explicitly rather than assume unordered query result positions.
+Tab-closing regressions should run with and without the emulator: connecting renames the Query Editor tab.
+
+The activation handshake waits for the contributed Azure activity-bar entry before opening it, then waits for
+the Cosmos DB Accounts tree item. It does not use the command palette during startup: before extension registration
+finishes, a search for `View: Show Azure` can offer unrelated commands instead.
+If the tree item never appears, the report includes an `activation-failure` screenshot.
 
 ## Running
 
@@ -247,7 +261,10 @@ Conventions every Query Editor spec follows:
 - **`queryEditor-tree-open.spec.ts`** is the only tree-driven spec: it expands the
   attached emulator in the Cosmos DB Workspaces tree and invokes the production
   "Open Query Editor" container action. Keep tree navigation out of the other
-  specs (it is slower and more brittle than the command shortcut).
+  specs (it is slower and more brittle than the command shortcut). The test profile
+  uses `window.menuStyle: custom` so context menus are inspectable on macOS as well.
+- **selected-query execution** uses platform-specific Monaco navigation keys so
+  the requested query line is selected on macOS, Windows, and Linux.
 - **`queryEditor-crud.spec.ts`** is **self-contained**: it creates its OWN
   document with a unique id, queries for exactly that document, then deletes it —
   so it never mutates the shared seed data. Document content is set via the OS

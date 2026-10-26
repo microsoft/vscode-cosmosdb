@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { expect, test } from '../fixtures/vscode';
-import { closeAllEditorTabs } from '../fixtures/webviewHelpers';
+import { closeAllEditorTabs, closeEditorTab, runCommand } from '../fixtures/webviewHelpers';
 import { openDocument, openMigrationAssistant, openQueryEditor } from '../fixtures/webviews';
 
 /**
@@ -52,6 +52,41 @@ test.describe('webview smoke', () => {
         const webview = await openDocument(vscodeWindow);
         await expect(webview.locator('#root')).toBeVisible();
     });
+
+    for (const activeEditor of ['Document', 'Query Editor']) {
+        test(`closing a named Document tab preserves the Query Editor with ${activeEditor} active`, async ({
+            vscodeWindow,
+        }) => {
+            const queryEditor = await openQueryEditor(vscodeWindow);
+            await expect(queryEditor.getByRole('button', { name: 'Run', exact: true })).toBeVisible();
+            if (process.env.COSMOSDB_E2E_SKIP_EMULATOR !== '1') {
+                await expect(queryEditor.getByRole('button', { name: 'Run', exact: true })).toBeEnabled({
+                    timeout: 30_000,
+                });
+            }
+            await runCommand(vscodeWindow, 'Cosmos DB: [E2E Test] Open Document');
+            await expect(vscodeWindow.getByRole('tab', { name: 'New Item.json' })).toHaveAttribute(
+                'aria-selected',
+                'true',
+            );
+            // Connecting renames the Query Editor tab; the only other tab here is the Document.
+            const editorTabs = vscodeWindow.locator('div[role="tab"]');
+            await expect(editorTabs).toHaveCount(2);
+            const queryTab = editorTabs.filter({ hasNotText: 'New Item.json' });
+            await expect(queryTab).toHaveCount(1);
+            if (activeEditor === 'Query Editor') {
+                await queryTab.click();
+                await expect(queryTab).toHaveAttribute('aria-selected', 'true');
+            }
+
+            await closeEditorTab(vscodeWindow, 'New Item.json');
+
+            await expect(queryTab).toHaveAttribute('aria-selected', 'true');
+            await expect(queryEditor.getByRole('button', { name: 'Run', exact: true })).toBeVisible();
+            expect(queryEditor.isDetached()).toBe(false);
+            await expect(editorTabs).toHaveCount(1);
+        });
+    }
 
     test('Fluent and Monaco follow live theme colors without remounting', async ({ vscodeWindow }, testInfo) => {
         const webview = await openDocument(vscodeWindow);

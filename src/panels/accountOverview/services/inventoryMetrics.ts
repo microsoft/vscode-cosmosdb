@@ -4,6 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type MonitorClient } from '@azure/arm-monitor';
+import { getMetricApplicability } from '../metrics/contracts';
+import { storageObservation, type StorageMeasurement } from '../metrics/storage';
 import { DIAGNOSTIC_POLICY } from './advisories/core/thresholds';
 import {
     classifyUnavailable,
@@ -11,9 +13,9 @@ import {
     type HealthState,
     isThrottledStatusCode,
     lastValue,
+    metricFailureReason,
     parseMonitorTimestamp,
     pickPointValue,
-    type ProvisioningState,
     RANGE_CONFIG,
     type RangeConfig,
     seriesContainerKey,
@@ -30,9 +32,9 @@ import {
 // last `DataUsage` datapoint), and the recent RU peak
 // (`max(NormalizedRUConsumption)` over the chart window). Each metric is fetched
 // once for the whole account, split by the `DatabaseName`/`CollectionName`
-// dimensions, then keyed back to individual containers. All Azure Monitor
-// failures degrade to `available: false` so the webview renders an explicit
-// empty-state rather than surfacing an error.
+// dimensions, then keyed back to individual containers. Primary storage/RU failures
+// set `available: false` while independent observations remain usable.
+// Storage retains each component's value or failure reason; callers distinguish partial sums from complete totals.
 
 /** Per-row health thresholds, sourced from `cosmosDB.accountOverview.*`. */
 export interface HealthThresholds {
@@ -50,12 +52,8 @@ export const DEFAULT_HEALTH_THRESHOLDS: HealthThresholds = {
 export interface ContainerMetrics {
     databaseId: string;
     containerId: string;
-    /** Latest `DataUsage + IndexUsage` in bytes, when reported. */
-    storageBytes?: number;
-    /** Latest `DataUsage` in bytes, when reported (feeds the IndexingCostRisk rule). */
-    dataUsageBytes?: number;
-    /** Latest `IndexUsage` in bytes, when reported (feeds the IndexingCostRisk rule). */
-    indexUsageBytes?: number;
+    /** Latest observations for data and index storage, with independent unavailable reasons. */
+    storage: StorageMeasurement;
     /** `DataUsage` delta between the first and last datapoint over 7 days, in bytes. */
     storageGrowthBytes?: number;
     /** `max(NormalizedRUConsumption)` over the selected window (percentage). */
@@ -68,28 +66,21 @@ export interface ContainerMetrics {
     ruSparkline?: number[];
     /** True when the container saw sustained throttling in the last hour. */
     throttled: boolean;
-    health: HealthState;
+    health?: HealthState;
 }
 
 export interface InventoryMetricsResult {
-    /** False when Azure Monitor returned no usable series for this API/SKU. */
+    /** False when a primary storage/RU query failed or Azure Monitor returned no container series. */
     available: boolean;
     /** When `available` is false, why: `noData` | `unsupported` | `rbac`. */
     reason?: UnavailableReason;
     /** Per-container metrics keyed as `${databaseId}/${containerId}`. */
     metrics: Record<string, ContainerMetrics>;
-    /** Account-level health pill (provisioning + throttling only). */
-    accountHealth: HealthState;
+    /** Reasons for containers absent from the metric response (including when all reads failed). */
+    storageFallback?: StorageMeasurement;
     /** Epoch milliseconds when the server produced this snapshot. */
     generatedAt: number;
 }
-
-/** Provisioning states that ARM reports while an account is mid-operation but not failed. */
-const TRANSITIONAL_PROVISIONING_STATES: ReadonlySet<ProvisioningState> = new Set<ProvisioningState>([
-    'Creating',
-    'Updating',
-    'Deleting',
-]);
 
 /**
  * Derives per-row health from the collected metrics and configured thresholds.
@@ -101,7 +92,7 @@ const TRANSITIONAL_PROVISIONING_STATES: ReadonlySet<ProvisioningState> = new Set
 export function deriveRowHealth(
     metrics: Pick<ContainerMetrics, 'peakRuPercent' | 'throttled'>,
     thresholds: HealthThresholds,
-): HealthState {
+): HealthState | undefined {
     const peak = metrics.peakRuPercent;
     if (metrics.throttled || (peak !== undefined && peak >= thresholds.criticalRuPercent)) {
         return 'Critical';
@@ -109,50 +100,25 @@ export function deriveRowHealth(
     if (peak !== undefined && peak >= thresholds.warningRuPercent) {
         return 'Needs Attention';
     }
-    return 'Healthy';
-}
-
-/**
- * Derives the account-level health pill from provisioning state and whether any
- * container is throttling. Alerts/Advisor inputs are intentionally excluded.
- * Pure for unit testing.
- */
-export function deriveAccountHealth(
-    provisioningState: ProvisioningState | undefined,
-    hasSustainedThrottling: boolean,
-): HealthState {
-    if (provisioningState !== undefined && provisioningState !== 'Succeeded') {
-        return TRANSITIONAL_PROVISIONING_STATES.has(provisioningState) ? 'Needs Attention' : 'Critical';
-    }
-    if (hasSustainedThrottling) {
-        return 'Critical';
-    }
-    return 'Healthy';
+    return peak === undefined ? undefined : 'Healthy';
 }
 
 /**
  * Fetches storage, 7-day growth, recent RU peak, and per-row throttling for
- * every container in the account, then folds them into per-row and account-level
- * health. Any failure of the primary storage/RU queries degrades the whole
- * result to `available: false`.
+ * every container in the account. Critical rows can raise account health to Needs Attention, not Critical.
+ * A primary storage/RU failure sets `available: false` but retains independent observations and 429 signals.
  * Diagnostic callers supply `peakConfig`; chart callers keep the time-range preset for RU.
  */
 export async function getInventoryMetrics(
     client: MonitorClient,
     resourceUri: string,
     timeRange: TimeRange,
-    provisioningState: ProvisioningState | undefined,
     thresholds: HealthThresholds,
     peakConfig: RangeConfig = RANGE_CONFIG[timeRange],
+    isServerless = false,
 ): Promise<InventoryMetricsResult> {
     const generatedAt = Date.now();
-    const empty = (available: boolean, hasThrottling: boolean, reason?: UnavailableReason): InventoryMetricsResult => ({
-        available,
-        reason,
-        metrics: {},
-        accountHealth: deriveAccountHealth(provisioningState, hasThrottling),
-        generatedAt,
-    });
+    const normalizedRuApplicable = getMetricApplicability('normalizedRu', isServerless).status === 'applicable';
 
     const peakTimespan = `${new Date(generatedAt - peakConfig.windowMs).toISOString()}/${new Date(generatedAt).toISOString()}`;
     const weekConfig = DIAGNOSTIC_POLICY.inventoryStorage.observation;
@@ -160,28 +126,27 @@ export async function getInventoryMetrics(
     const hourConfig = DIAGNOSTIC_POLICY.sustainedThrottling.observation;
     const hourTimespan = `${new Date(generatedAt - hourConfig.windowMs).toISOString()}/${new Date(generatedAt).toISOString()}`;
 
-    let dataUsage: Map<string, Map<number, number>>;
-    let peakRu: Map<string, Map<number, number>>;
-    try {
-        [dataUsage, peakRu] = await Promise.all([
-            querySplitSeries(client, resourceUri, 'DataUsage', weekTimespan, weekConfig.interval),
-            querySplitSeries(client, resourceUri, 'NormalizedRUConsumption', peakTimespan, peakConfig.interval),
-        ]);
-    } catch (error) {
-        return empty(false, false, classifyUnavailable(error));
-    }
+    const [storageOutcome, ruOutcome, indexOutcome] = await Promise.allSettled([
+        querySplitSeries(client, resourceUri, 'DataUsage', weekTimespan, weekConfig.interval),
+        normalizedRuApplicable
+            ? querySplitSeries(client, resourceUri, 'NormalizedRUConsumption', peakTimespan, peakConfig.interval)
+            : Promise.resolve(new Map<string, Map<number, number>>()),
+        querySplitSeries(client, resourceUri, 'IndexUsage', weekTimespan, weekConfig.interval),
+    ]);
+    const dataUsage =
+        storageOutcome.status === 'fulfilled' ? storageOutcome.value : new Map<string, Map<number, number>>();
+    const peakRu = ruOutcome.status === 'fulfilled' ? ruOutcome.value : new Map<string, Map<number, number>>();
+    const failure = [storageOutcome, ruOutcome].find((outcome) => outcome.status === 'rejected');
+    const reason = failure?.status === 'rejected' ? classifyUnavailable(failure.reason) : undefined;
 
-    if (dataUsage.size === 0 && peakRu.size === 0) {
-        return empty(false, false, 'noData');
-    }
-
-    // Index storage and throttling are best-effort; missing data must not sink the row.
-    let indexUsage = new Map<string, Map<number, number>>();
-    try {
-        indexUsage = await querySplitSeries(client, resourceUri, 'IndexUsage', weekTimespan, weekConfig.interval);
-    } catch {
-        // ignore
-    }
+    const indexUsage =
+        indexOutcome.status === 'fulfilled' ? indexOutcome.value : new Map<string, Map<number, number>>();
+    const dataReason = storageOutcome.status === 'rejected' ? metricFailureReason(storageOutcome.reason) : 'noData';
+    const indexReason = indexOutcome.status === 'rejected' ? metricFailureReason(indexOutcome.reason) : 'noData';
+    const storageFallback: StorageMeasurement = {
+        data: { status: 'unavailable', reason: dataReason },
+        index: { status: 'unavailable', reason: indexReason },
+    };
 
     // Document count is best-effort. `DocumentCountV2` is a snapshot gauge (documents currently stored, replicated
     // per region), so it is read with `Maximum` (the default): `Total` would sum every raw sample inside an interval
@@ -217,6 +182,7 @@ export async function getInventoryMetrics(
         ...peakRu.keys(),
         ...indexUsage.keys(),
         ...documentCount.keys(),
+        ...throttledContainers,
     ]);
     const metrics: Record<string, ContainerMetrics> = {};
 
@@ -230,10 +196,10 @@ export async function getInventoryMetrics(
         const ruSeries = peakRu.get(key);
         const docSeries = documentCount.get(key);
 
-        const latestData = dataSeries ? lastValue(dataSeries) : undefined;
-        const latestIndex = indexSeries ? lastValue(indexSeries) : undefined;
-        const storageBytes =
-            latestData !== undefined || latestIndex !== undefined ? (latestData ?? 0) + (latestIndex ?? 0) : undefined;
+        const storage: StorageMeasurement = {
+            data: dataSeries ? storageObservation(dataSeries) : storageFallback.data,
+            index: indexSeries ? storageObservation(indexSeries) : storageFallback.index,
+        };
 
         let storageGrowthBytes: number | undefined;
         if (dataSeries) {
@@ -247,13 +213,11 @@ export async function getInventoryMetrics(
         const peakRuPercent = ruSeries && ruSeries.size > 0 ? Math.max(...ruSeries.values()) : undefined;
         const throttled = throttledContainers.has(key);
 
-        const partial = { storageBytes, storageGrowthBytes, peakRuPercent, throttled };
+        const partial = { storage, storageGrowthBytes, peakRuPercent, throttled };
         metrics[key] = {
             databaseId,
             containerId,
             ...partial,
-            dataUsageBytes: latestData,
-            indexUsageBytes: latestIndex,
             documentCount: docSeries ? lastValue(docSeries) : undefined,
             storageSparkline: toSparkline(dataSeries),
             ruSparkline: toSparkline(ruSeries),
@@ -262,9 +226,10 @@ export async function getInventoryMetrics(
     }
 
     return {
-        available: true,
+        available: reason === undefined && keys.size > 0,
+        reason: reason ?? (keys.size === 0 ? 'noData' : undefined),
         metrics,
-        accountHealth: deriveAccountHealth(provisioningState, throttledContainers.size > 0),
+        storageFallback,
         generatedAt,
     };
 }
@@ -293,6 +258,9 @@ async function querySplitSeries(
 
     const byContainer = new Map<string, Map<number, number>>();
     for (const metric of response.value ?? []) {
+        if (metric.errorCode && metric.errorCode !== 'Success') {
+            throw new Error(metric.errorMessage ?? metric.errorCode);
+        }
         for (const series of metric.timeseries ?? []) {
             const key = seriesContainerKey(series.metadatavalues);
             if (!key) {

@@ -20,7 +20,14 @@ import {
 import { Open16Regular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { type ReactNode, useEffect, useRef } from 'react';
-import { type AlertItem, type AlertSeverity, type AlertsResult, type AlertTimeRange } from '../../api/types';
+import {
+    type ActiveAlertSummary,
+    type AlertItem,
+    type AlertMonitorCondition,
+    type AlertSeverity,
+    type AlertsResult,
+    type AlertTimeRange,
+} from '../../api/types';
 import { EmptyState, useDashboardActions } from './DashboardChrome';
 
 /**
@@ -37,6 +44,12 @@ const TIME_RANGE_LABELS: Record<AlertTimeRange, string> = {
 
 /** Render order for the time-range filter buttons. */
 const TIME_RANGES = Object.keys(TIME_RANGE_LABELS) as AlertTimeRange[];
+
+const CONDITION_LABELS: Record<AlertMonitorCondition, string> = {
+    Fired: l10n.t('Active'),
+    Resolved: l10n.t('Resolved'),
+};
+const MONITOR_CONDITIONS = Object.keys(CONDITION_LABELS) as AlertMonitorCondition[];
 
 const SEVERITY_TONE: Record<AlertSeverity, BadgeProps['color']> = {
     Critical: 'danger',
@@ -153,36 +166,59 @@ const AlertRow = ({ alert, onOpenUrl }: { alert: AlertItem; onOpenUrl: (url: str
 
 export const ActiveAlerts = ({
     result,
+    portalUrl,
+    activeSummary,
+    activeSummaryLoading = false,
+    activeSummaryUnavailable = false,
     loading,
     timeRange,
+    monitorCondition,
     onTimeRangeChange,
+    onMonitorConditionChange,
     onOpenUrl,
     active = true,
 }: {
     result?: AlertsResult;
+    portalUrl?: string;
+    activeSummary?: ActiveAlertSummary;
+    activeSummaryLoading?: boolean;
+    activeSummaryUnavailable?: boolean;
     loading: boolean;
     timeRange: AlertTimeRange;
+    monitorCondition: AlertMonitorCondition;
     onTimeRangeChange: (range: AlertTimeRange) => void;
+    onMonitorConditionChange: (condition: AlertMonitorCondition) => void;
     onOpenUrl: (url: string) => void;
     active?: boolean;
 }) => {
     const styles = useStyles();
     const { reportEvent } = useDashboardActions();
     const { announce } = useAnnounce();
-    const pendingRange = useRef<AlertTimeRange | undefined>(undefined);
+    const pendingFilter = useRef<{ timeRange: AlertTimeRange; monitorCondition: AlertMonitorCondition } | undefined>(
+        undefined,
+    );
 
     useEffect(() => {
         if (!active) {
-            pendingRange.current = undefined;
+            pendingFilter.current = undefined;
         }
-        if (loading || !pendingRange.current || result?.timeRange !== pendingRange.current) {
+        if (
+            loading ||
+            !pendingFilter.current ||
+            result?.timeRange !== pendingFilter.current.timeRange ||
+            result?.monitorCondition !== pendingFilter.current.monitorCondition
+        ) {
             return;
         }
-        pendingRange.current = undefined;
+        pendingFilter.current = undefined;
         announce(
             result.available
-                ? l10n.t('Active alerts in the selected window: {count}', { count: result.alerts.length })
-                : l10n.t('Alerts could not be loaded for the selected window.'),
+                ? result.monitorCondition === 'Fired'
+                    ? l10n.t('Active alerts in the selected window: {count}', { count: result.alerts.length })
+                    : l10n.t('Resolved alerts in the selected window: {count}', { count: result.alerts.length })
+                : result.monitorCondition === 'Fired'
+                  ? l10n.t('Active alerts could not be loaded for the selected window.')
+                  : l10n.t('Resolved alerts could not be loaded for the selected window.'),
             { polite: true },
         );
     }, [active, loading, result, announce]);
@@ -212,7 +248,7 @@ export const ActiveAlerts = ({
                             ? undefined
                             : () => {
                                   if (range !== timeRange) {
-                                      pendingRange.current = range;
+                                      pendingFilter.current = { timeRange: range, monitorCondition };
                                       onTimeRangeChange(range);
                                   }
                               }
@@ -225,16 +261,29 @@ export const ActiveAlerts = ({
     );
 
     let body: ReactNode;
-    if (loading && !result) {
+    if (loading) {
         body = (
             <div className={styles.loading}>
-                <Spinner size="small" label={l10n.t('Loading alerts…')} />
+                <Spinner
+                    size="small"
+                    label={
+                        monitorCondition === 'Fired'
+                            ? l10n.t('Loading active alerts…')
+                            : l10n.t('Loading resolved alerts…')
+                    }
+                />
             </div>
         );
     } else if (!result || !result.available) {
         body = <EmptyState reason={result?.reason ?? 'noData'} requiredRole={l10n.t('Monitoring Reader')} />;
     } else if (result.alerts.length === 0) {
-        body = <Text className={styles.emptyState}>{l10n.t('No active alerts in the selected window.')}</Text>;
+        body = (
+            <Text className={styles.emptyState}>
+                {monitorCondition === 'Fired'
+                    ? l10n.t('No active alerts in the selected window.')
+                    : l10n.t('No resolved alerts in the selected window.')}
+            </Text>
+        );
     } else {
         body = (
             <div className={styles.list}>
@@ -247,6 +296,73 @@ export const ActiveAlerts = ({
 
     return (
         <div className={styles.root}>
+            <output aria-live="polite" aria-atomic="true">
+                {activeSummaryLoading ? (
+                    <Text>{l10n.t('Checking all active alerts…')}</Text>
+                ) : activeSummaryUnavailable || !activeSummary?.available ? (
+                    <Text>
+                        {l10n.t(
+                            'The account-wide active alert check is unavailable. The filtered list is shown below.',
+                        )}
+                    </Text>
+                ) : (
+                    <Text>
+                        {l10n.t('Active alerts for this account: {total} ({critical} critical, {warning} warning).', {
+                            total: activeSummary.totalCount,
+                            critical: activeSummary.criticalCount,
+                            warning: activeSummary.warningCount,
+                        })}{' '}
+                        {l10n.t(
+                            'This count covers all Fired alerts retained in Azure Resource Graph, regardless of the filters below. Older active alerts may be outside the selected list period.',
+                        )}
+                    </Text>
+                )}
+            </output>
+            {portalUrl && (
+                <Link
+                    className={styles.link}
+                    href={portalUrl}
+                    aria-description={l10n.t(
+                        'Opens Azure Monitor alerts for this account. The portal has its own time and condition filters.',
+                    )}
+                    onClick={(event) => {
+                        event.preventDefault();
+                        openAlert(portalUrl);
+                    }}
+                >
+                    <Open16Regular aria-hidden />
+                    {l10n.t('Open alerts in Azure portal')}
+                </Link>
+            )}
+            <Toolbar
+                className={styles.filters}
+                size="small"
+                aria-label={l10n.t('Alert monitor condition')}
+                checkedValues={{ monitorCondition: [monitorCondition] }}
+            >
+                {MONITOR_CONDITIONS.map((condition) => (
+                    <ToolbarToggleButton
+                        key={condition}
+                        name="monitorCondition"
+                        value={condition}
+                        disabled={loading}
+                        disabledFocusable={loading}
+                        aria-description={loading ? l10n.t('Alerts are still loading.') : undefined}
+                        onClick={
+                            loading
+                                ? undefined
+                                : () => {
+                                      if (condition !== monitorCondition) {
+                                          pendingFilter.current = { timeRange, monitorCondition: condition };
+                                          onMonitorConditionChange(condition);
+                                      }
+                                  }
+                        }
+                    >
+                        {CONDITION_LABELS[condition]}
+                    </ToolbarToggleButton>
+                ))}
+            </Toolbar>
             {filters}
             {body}
         </div>

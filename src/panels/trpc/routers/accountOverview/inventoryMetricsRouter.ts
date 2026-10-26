@@ -6,12 +6,9 @@
 import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
 import { z } from 'zod';
 import { API, tryGetExperience } from '../../../../AzureDBExperiences';
-import {
-    deriveAccountHealth,
-    getInventoryMetrics,
-    type InventoryMetricsResult,
-} from '../../../accountOverview/services/inventoryMetrics';
-import { type ProvisioningState, type TimeRange } from '../../../accountOverview/services/shared';
+import { unavailableStorage } from '../../../accountOverview/metrics/storage';
+import { getInventoryMetrics, type InventoryMetricsResult } from '../../../accountOverview/services/inventoryMetrics';
+import { type TimeRange } from '../../../accountOverview/services/shared';
 import { type AccountOverviewRouterContext } from '../../appRouter';
 import { accountOverviewProcedure } from '../../trpc';
 import { readHealthThresholds } from './thresholds';
@@ -19,7 +16,7 @@ import { readHealthThresholds } from './thresholds';
 // ─── Zone: Inventory metrics + per-row health ───────────────────────────────────
 //
 // Backfills the inventory table with the Azure Monitor columns. The router
-// resolves the account's provisioning state / API and the Monitor client, reads
+// resolves the account's API and the Monitor client, reads
 // the configured thresholds, then delegates to `getInventoryMetrics`.
 
 export const inventoryMetricsProcedures = {
@@ -34,9 +31,6 @@ export const inventoryMetricsProcedures = {
                 input: { timeRange: TimeRange };
             }): Promise<InventoryMetricsResult> => {
                 const { metadata } = ctx;
-                const provisioningState = (metadata.databaseAccount as DatabaseAccountGetResults).provisioningState as
-                    | ProvisioningState
-                    | undefined;
                 const experience = tryGetExperience(metadata.databaseAccount as DatabaseAccountGetResults);
 
                 if (experience && experience.api !== API.Core) {
@@ -44,7 +38,7 @@ export const inventoryMetricsProcedures = {
                         available: false,
                         reason: 'unsupported',
                         metrics: {},
-                        accountHealth: deriveAccountHealth(provisioningState, false),
+                        storageFallback: unavailableStorage('unsupported'),
                         generatedAt: Date.now(),
                     };
                 }
@@ -55,7 +49,7 @@ export const inventoryMetricsProcedures = {
                         available: false,
                         reason: 'noData',
                         metrics: {},
-                        accountHealth: deriveAccountHealth(provisioningState, false),
+                        storageFallback: unavailableStorage('error'),
                         generatedAt: Date.now(),
                     };
                 }
@@ -64,8 +58,9 @@ export const inventoryMetricsProcedures = {
                     client,
                     metadata.accountId,
                     input.timeRange,
-                    provisioningState,
                     readHealthThresholds(),
+                    undefined,
+                    metadata.isServerless,
                 );
             },
         ),

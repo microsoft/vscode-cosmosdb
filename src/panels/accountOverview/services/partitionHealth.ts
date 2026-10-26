@@ -4,8 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type MonitorClient } from '@azure/arm-monitor';
+import { type MetricUnavailableReason } from '../metrics/contracts';
 import { DIAGNOSTIC_POLICY } from './advisories/core/thresholds';
 import {
+    metricFailureReason,
     classifyUnavailable,
     DEFAULT_PARTITION_HEADROOM_PCT,
     DEFAULT_PARTITION_SATURATION_PCT,
@@ -81,8 +83,8 @@ export interface PartitionTile {
 export interface PartitionHealthResult {
     /** False when Azure Monitor exposes no per-partition series for this API/SKU. */
     available: boolean;
-    /** When `available` is false, why: `noData` | `unsupported` | `rbac`. */
-    reason?: UnavailableReason;
+    /** Missing observations, unsupported API, or the actual request failure. */
+    reason?: MetricUnavailableReason;
     mode: PartitionDistributionMode;
     databaseId: string;
     containerId: string;
@@ -273,7 +275,7 @@ export async function getPartitionHealth(
                 containerId,
             );
         } catch (error) {
-            return { ...empty, reason: classifyUnavailable(error) };
+            return { ...empty, reason: metricFailureReason(error) };
         }
         if (matrix.size === 0) {
             return { ...empty, reason: 'noData' };
@@ -309,7 +311,7 @@ export async function getPartitionHealth(
             containerId,
         );
     } catch (error) {
-        return { ...empty, reason: classifyUnavailable(error) };
+        return { ...empty, reason: metricFailureReason(error) };
     }
     if (matrix.size === 0) {
         return { ...empty, reason: 'noData' };

@@ -5,11 +5,21 @@
 
 import { type AdvisorManagementClient, type ResourceRecommendationBase } from '@azure/arm-advisor';
 import { type AlertsManagementClient } from '@azure/arm-alertsmanagement';
-import { classifyUnavailable, type HealthState, type UnavailableReason } from './shared';
+import { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
+import {
+    createDefaultHttpClient,
+    createHttpHeaders,
+    createPipelineRequest,
+    RestError,
+} from '@azure/core-rest-pipeline';
+import { z } from 'zod';
+import { classifyUnavailable, type UnavailableReason } from './shared';
+
+export { escalateAccountHealth, type AccountHealthSignals } from '../overviewHealthModel';
 
 // ─── Alerts and Advisor recommendations ───────────────────────────────────────────
 //
-// The dashboard right-rail is server-authored: Active Alerts come from Azure
+// The dashboard right-rail is server-authored: Alerts come from Azure
 // Alerts Management (filtered to this account's resourceId) and Recommendations
 // come from Azure Advisor. Advisor has no per-resource list endpoint, so we make
 // one subscription-wide call and shard the results client-side by accountId —
@@ -26,6 +36,9 @@ export const ALERT_TIME_RANGES = ['1h', '1d', '7d', '30d'] as const;
 /** Alerts Management time-range filter values, derived from {@link ALERT_TIME_RANGES}. */
 export type AlertTimeRange = (typeof ALERT_TIME_RANGES)[number];
 
+export const ALERT_MONITOR_CONDITIONS = ['Fired', 'Resolved'] as const;
+export type AlertMonitorCondition = (typeof ALERT_MONITOR_CONDITIONS)[number];
+
 export interface AlertItem {
     id: string;
     name: string;
@@ -38,7 +51,7 @@ export interface AlertItem {
     targetResource?: string;
     /** Alert start time in epoch milliseconds. */
     startedAt?: number;
-    /** Deep link to the alert's "AlertDetails" blade in the Azure portal. */
+    /** Deep link to the alert's details view in the Azure portal. */
     portalUrl: string;
 }
 
@@ -48,12 +61,88 @@ export interface AlertsResult {
     /** When `available` is false, why: `noData` | `unsupported` | `rbac`. */
     reason?: UnavailableReason;
     alerts: AlertItem[];
-    /** Count of Sev0/Sev1 alerts (drives the account health pill → Critical). */
+    /** Count of Sev0/Sev1 alerts in this result. Only Fired results may drive account health. */
     criticalCount: number;
-    /** Count of Sev2/Sev3 alerts (drives the account health pill → Needs Attention). */
+    /** Count of Sev2/Sev3 alerts in this result. Only Fired results may drive account health. */
     warningCount: number;
     timeRange: AlertTimeRange;
+    monitorCondition: AlertMonitorCondition;
     generatedAt: number;
+}
+
+export interface ActiveAlertSummary {
+    available: boolean;
+    reason?: UnavailableReason;
+    totalCount: number;
+    criticalCount: number;
+    warningCount: number;
+    generatedAt: number;
+}
+
+const alertCountsSchema = z.object({
+    count: z.literal(1),
+    totalRecords: z.literal(1),
+    resultTruncated: z.union([z.literal(false), z.literal('false')]),
+    $skipToken: z.undefined().optional(),
+    data: z.tuple([
+        z.object({
+            totalCount: z.number().int().nonnegative(),
+            criticalCount: z.number().int().nonnegative(),
+            warningCount: z.number().int().nonnegative(),
+        }),
+    ]),
+});
+
+/** Counts all retained Fired alerts in Resource Graph, independently of the displayed list's time filter. */
+export async function getActiveAlertSummary(
+    client: CosmosDBManagementClient | undefined,
+    subscriptionId: string,
+    resourceId: string,
+    resourceManagerEndpoint: string,
+): Promise<ActiveAlertSummary> {
+    const generatedAt = Date.now();
+    const unavailable = (reason: UnavailableReason): ActiveAlertSummary => ({
+        available: false,
+        reason,
+        totalCount: 0,
+        criticalCount: 0,
+        warningCount: 0,
+        generatedAt,
+    });
+    if (!client) {
+        return unavailable('noData');
+    }
+    try {
+        // Reuse the authenticated ARM pipeline, including sovereign-cloud authentication and retries.
+        const response = await client.pipeline.sendRequest(
+            createDefaultHttpClient(),
+            createPipelineRequest({
+                url: `${resourceManagerEndpoint.replace(/\/+$/, '')}/providers/Microsoft.ResourceGraph/resources?api-version=2022-10-01`,
+                method: 'POST',
+                headers: createHttpHeaders({ 'Content-Type': 'application/json' }),
+                body: JSON.stringify({
+                    subscriptions: [subscriptionId],
+                    query: `alertsmanagementresources
+| where type =~ 'microsoft.alertsmanagement/alerts'
+| where tostring(properties.essentials.targetResource) =~ ${JSON.stringify(resourceId)}
+| where tostring(properties.essentials.monitorCondition) =~ 'Fired'
+| summarize totalCount=count(), criticalCount=countif(tostring(properties.essentials.severity) in~ ('Sev0', 'Sev1')), warningCount=countif(tostring(properties.essentials.severity) in~ ('Sev2', 'Sev3'))`,
+                    options: { resultFormat: 'objectArray', allowPartialScopes: false },
+                }),
+            }),
+        );
+        if (response.status < 200 || response.status >= 300) {
+            throw new RestError('Unable to query active alerts in Resource Graph.', { statusCode: response.status });
+        }
+        const result = alertCountsSchema.parse(JSON.parse(response.bodyAsText ?? 'null'));
+        const counts = result.data[0];
+        if (counts.criticalCount + counts.warningCount > counts.totalCount) {
+            throw new Error('Invalid active alert counts returned by Resource Graph.');
+        }
+        return { available: true, ...counts, generatedAt };
+    } catch (error) {
+        return unavailable(classifyUnavailable(error));
+    }
 }
 
 export type RecommendationImpact = 'High' | 'Medium' | 'Low';
@@ -96,14 +185,22 @@ export function mapAlertSeverity(raw: string | undefined): AlertSeverity {
     }
 }
 
-/** Builds the standard Azure portal deep link to a single alert's details blade. Pure. */
+/** Links directly to the current alert details view, avoiding the legacy blade redirect. Pure. */
 export function buildAlertPortalUrl(
     alertId: string,
     portalBaseUrl = 'https://portal.azure.com',
     tenantId?: string,
 ): string {
     const tenant = tenantId ? `@${encodeURIComponent(tenantId)}/` : '';
-    return `${portalBaseUrl.replace(/\/$/, '')}/#${tenant}blade/Microsoft_Azure_Monitoring/AlertDetailsTemplateBlade/alertId/${encodeURIComponent(alertId)}`;
+    // Double-encode the route parameter so Uri.parse and the external opener do not expose its slashes as separators.
+    const encodedAlertId = encodeURIComponent(encodeURIComponent(alertId));
+    return `${portalBaseUrl.replace(/\/$/, '')}/#${tenant}view/Microsoft_Azure_Monitoring_Alerts/AlertDetails.ReactView/alertId/${encodedAlertId}/invokedFrom/CopyLinkFeature`;
+}
+
+/** Opens the resource-scoped Alerts page used by the Cosmos DB portal's Monitoring summary. */
+export function buildAccountAlertsPortalUrl(portalBaseUrl: string, tenantId: string, resourceId: string): string {
+    const encodedResourceId = encodeURIComponent(encodeURIComponent(resourceId));
+    return `${portalBaseUrl.replace(/\/$/, '')}/#@${encodeURIComponent(tenantId)}/blade/Microsoft_Azure_Monitoring_Alerts/AlertsSummaryBlade/resourceId/${encodedResourceId}`;
 }
 
 const ALERT_SEVERITY_ORDER: Record<AlertSeverity, number> = { Critical: 0, Warning: 1, Informational: 2 };
@@ -140,37 +237,6 @@ export function isHighImpactPerfCost(rec: Pick<RecommendationItem, 'impact' | 'c
     return rec.impact === 'High' && PERF_COST_CATEGORIES.has(rec.category);
 }
 
-/** Signals folded into the account health pill's final formula. */
-export interface AccountHealthSignals {
-    /** A Sev0 or Sev1 alert is active. */
-    hasCriticalAlert: boolean;
-    /** A Sev2 or Sev3 alert is active. */
-    hasWarningAlert: boolean;
-    /** A High-impact Performance/Cost recommendation is present. */
-    hasHighImpactPerfCostRec: boolean;
-}
-
-const HEALTH_ORDER: Record<HealthState, number> = { Healthy: 0, 'Needs Attention': 1, Critical: 2 };
-
-function worstHealth(a: HealthState, b: HealthState): HealthState {
-    return HEALTH_ORDER[a] >= HEALTH_ORDER[b] ? a : b;
-}
-
-/**
- * Upgrades the base health (provisioning + throttling) with the alert/recommendation
- * signals: Sev0/Sev1 → Critical; Sev2/Sev3 or a High-impact Perf/Cost rec → Needs Attention.
- * Never downgrades the base. Pure for testing.
- */
-export function escalateAccountHealth(base: HealthState, signals: AccountHealthSignals): HealthState {
-    let signalHealth: HealthState = 'Healthy';
-    if (signals.hasCriticalAlert) {
-        signalHealth = 'Critical';
-    } else if (signals.hasWarningAlert || signals.hasHighImpactPerfCostRec) {
-        signalHealth = 'Needs Attention';
-    }
-    return worstHealth(base, signalHealth);
-}
-
 function extractPotentialBenefit(props: Record<string, string> | undefined): string | undefined {
     if (!props) {
         return undefined;
@@ -184,14 +250,16 @@ function extractPotentialBenefit(props: Record<string, string> | undefined): str
 }
 
 /**
- * Reads all active alerts for `resourceId` in the given time range. `Fired`
- * monitor-condition only (open alerts). Returns `available: false` on any error.
+ * Reads alerts for `resourceId` in the given time range and monitor condition.
+ * Incident workflow (`alertState`) is deliberately not filtered or modified.
+ * Returns `available: false` on any error.
  */
-export async function getActiveAlerts(
+export async function getAlerts(
     client: AlertsManagementClient,
     subscriptionId: string,
     resourceId: string,
     timeRange: AlertTimeRange,
+    monitorCondition: AlertMonitorCondition,
     portalBaseUrl?: string,
     tenantId?: string,
 ): Promise<AlertsResult> {
@@ -203,7 +271,7 @@ export async function getActiveAlerts(
         for await (const alert of client.alerts.getAll(scope, {
             targetResource: resourceId,
             timeRange,
-            monitorCondition: 'Fired',
+            monitorCondition,
         })) {
             const essentials = alert.properties?.essentials;
             const id = alert.id ?? '';
@@ -228,6 +296,7 @@ export async function getActiveAlerts(
             criticalCount: 0,
             warningCount: 0,
             timeRange,
+            monitorCondition,
             generatedAt,
         };
     }
@@ -235,7 +304,7 @@ export async function getActiveAlerts(
     alerts.sort(compareAlerts);
     const criticalCount = alerts.filter((a) => a.severity === 'Critical').length;
     const warningCount = alerts.filter((a) => a.severity === 'Warning').length;
-    return { available: true, alerts, criticalCount, warningCount, timeRange, generatedAt };
+    return { available: true, alerts, criticalCount, warningCount, timeRange, monitorCondition, generatedAt };
 }
 
 interface AdvisorCacheEntry {

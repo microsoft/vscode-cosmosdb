@@ -26,9 +26,14 @@ function createCaller(account: DatabaseAccountGetResults = {}) {
         accountId: '/subscriptions/sub/resourceGroups/rg/providers/Microsoft.DocumentDB/databaseAccounts/acct',
         accountName: 'acct',
         resourceGroup: 'rg',
-        subscription: { subscriptionId: 'sub', name: 'Production' },
+        subscription: {
+            subscriptionId: 'sub',
+            name: 'Production',
+            tenantId: 'tenant',
+            environment: { portalUrl: 'https://portal.azure.us/' },
+        },
         documentEndpoint: 'https://acct.documents.azure.com/',
-        isServerless: false,
+        isServerless: account.capabilities?.some((capability) => capability.name === 'EnableServerless') ?? false,
         databaseAccount: { kind: 'GlobalDocumentDB', ...account },
         getClient: vi.fn<AzureResourceMetadata['getClient']>().mockResolvedValue(undefined),
     };
@@ -44,6 +49,45 @@ function createCaller(account: DatabaseAccountGetResults = {}) {
 beforeEach(() => vi.resetAllMocks());
 
 describe('account summary procedure', () => {
+    it('provides an account-scoped portal alerts link without querying alert services', async () => {
+        const { caller, metadata } = createCaller();
+        const summary = await caller.getAccountSummary();
+        expect(summary.alertsPortalUrl).toBe(
+            `https://portal.azure.us/#@tenant/blade/Microsoft_Azure_Monitoring_Alerts/AlertsSummaryBlade/resourceId/${encodeURIComponent(encodeURIComponent(metadata.accountId))}`,
+        );
+        expect(metadata.getClient).not.toHaveBeenCalled();
+    });
+
+    it.each([undefined, -1, 0, 4000])(
+        'does not use total throughput cap %s to determine metric applicability',
+        async (limit) => {
+            const { caller } = createCaller({ capacity: { totalThroughputLimit: limit } });
+            const summary = await caller.getAccountSummary();
+            expect(summary.isServerless).toBe(false);
+            expect(summary.totalThroughputLimit).toBe(limit);
+            expect(Object.values(summary.metricApplicability).every((value) => value.status === 'applicable')).toBe(
+                true,
+            );
+        },
+    );
+
+    it('preserves unknown cap metadata and derives Serverless applicability only from capabilities', async () => {
+        const { caller } = createCaller({ capabilities: [{ name: 'EnableServerless' }] });
+        const summary = await caller.getAccountSummary();
+        expect(summary.isServerless).toBe(true);
+        expect(summary.totalThroughputLimit).toBeUndefined();
+        expect(summary.metricApplicability.normalizedRu.status).toBe('notApplicable');
+        expect(summary.metricApplicability.provisionedThroughput.status).toBe('notApplicable');
+        expect(summary.metricApplicability.totalRequestUnits.status).toBe('applicable');
+    });
+
+    it('normalizes a null ARM limit to absent, not unlimited', async () => {
+        const { caller, metadata } = createCaller();
+        Object.defineProperty(metadata.databaseAccount, 'capacity', { value: { totalThroughputLimit: null } });
+        const summary = await caller.getAccountSummary();
+        expect(summary.totalThroughputLimit).toBeUndefined();
+        expect(summary.metricApplicability.normalizedRu.status).toBe('applicable');
+    });
     it('returns periodic backup settings and explicit failover false without fabricating continuous settings', async () => {
         const { caller, metadata } = createCaller({
             enableAutomaticFailover: false,

@@ -28,15 +28,19 @@ import { Code16Regular, Open16Regular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { memo, type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Line, LineChart, ResponsiveContainer } from 'recharts';
+import { summarizeStorage } from '../../../panels/accountOverview/metrics/storage';
+import { rowHealth } from '../../../panels/accountOverview/overviewHealthModel';
 import {
     type ContainerMetrics,
     type HealthState,
     type InventoryContainerRow,
+    type MetricApplicability,
+    type StorageMeasurement,
     type ThroughputMode,
     type UnavailableReason,
 } from '../../api/types';
 import { EmptyState } from './DashboardChrome';
-import { type ContainerRef } from './metrics/descriptors';
+import { type ContainerRef, metricInapplicabilityExplanation, storageDescription } from './metrics/descriptors';
 
 const useStyles = makeStyles({
     root: {
@@ -68,7 +72,6 @@ const useStyles = makeStyles({
         overflowX: 'auto',
         overflowY: 'auto',
         maxWidth: '100%',
-        maxHeight: '640px',
         position: 'relative',
     },
     stickyHeader: {
@@ -87,6 +90,12 @@ const useStyles = makeStyles({
     },
     monospace: {
         fontFamily: tokens.fontFamilyMonospace,
+    },
+    metricExplanation: {
+        ':focus-visible': {
+            outline: `${tokens.strokeWidthThick} solid ${tokens.colorStrokeFocus2}`,
+            outlineOffset: tokens.strokeWidthThin,
+        },
     },
     sparkline: {
         width: '96px',
@@ -108,13 +117,22 @@ const THROUGHPUT_MODE_LABELS: Record<ThroughputMode, string> = {
     unknown: l10n.t('Unknown'),
 };
 
-const HEALTH_BADGE: Record<HealthState, { color: 'success' | 'warning' | 'danger'; label: string }> = {
+const HEALTH_BADGE: Record<
+    HealthState | 'Unknown',
+    { color: 'success' | 'warning' | 'danger' | 'subtle'; label: string }
+> = {
+    Unknown: { color: 'subtle', label: l10n.t('Unknown') },
     Healthy: { color: 'success', label: l10n.t('Healthy') },
     'Needs Attention': { color: 'warning', label: l10n.t('Needs Attention') },
     Critical: { color: 'danger', label: l10n.t('Critical') },
 };
 
-const HEALTH_ORDER: Record<HealthState, number> = { Healthy: 0, 'Needs Attention': 1, Critical: 2 };
+const HEALTH_ORDER: Record<HealthState | 'Unknown', number> = {
+    Unknown: -1,
+    Healthy: 0,
+    'Needs Attention': 1,
+    Critical: 2,
+};
 
 type SortKey =
     | 'containerId'
@@ -213,10 +231,6 @@ function formatGrowth(bytes: number): string {
     return `${sign}${formatBytes(Math.abs(bytes))}`;
 }
 
-function rowHealth(row: InventoryContainerRow, metric: ContainerMetrics | undefined): HealthState {
-    return metric?.health ?? row.health;
-}
-
 function formatRU(row: InventoryContainerRow): string {
     if (row.throughputMode === 'serverless') {
         return l10n.t('N/A');
@@ -260,6 +274,8 @@ const SortableHeaderCell = memo(function SortableHeaderCell({
 const InventoryRow = memo(function InventoryRow({
     row,
     metric,
+    storageFallback,
+    normalizedRuApplicability,
     dataIndex,
     onRevealInTree,
     onOpenQueryEditor,
@@ -268,6 +284,8 @@ const InventoryRow = memo(function InventoryRow({
 }: {
     row: InventoryContainerRow;
     metric: ContainerMetrics | undefined;
+    storageFallback?: StorageMeasurement;
+    normalizedRuApplicability?: MetricApplicability;
     dataIndex: number;
     onRevealInTree: (databaseId: string, containerId: string) => void;
     onOpenQueryEditor: (databaseId: string, containerId: string) => void;
@@ -275,7 +293,9 @@ const InventoryRow = memo(function InventoryRow({
     onSelectContainer?: (container: ContainerRef) => void;
 }) {
     const styles = useStyles();
-    const health = HEALTH_BADGE[rowHealth(row, metric)];
+    const storage = metric?.storage ?? storageFallback;
+    const storageSummary = storage ? summarizeStorage(storage) : undefined;
+    const health = HEALTH_BADGE[rowHealth(row, metric, normalizedRuApplicability)];
     const resourceDescription = l10n.t('Container {container} in database {database}', {
         container: row.containerId,
         database: row.databaseId,
@@ -331,18 +351,23 @@ const InventoryRow = memo(function InventoryRow({
                 })}
             </TableCell>
             <TableCell>
-                {metric?.storageBytes !== undefined && Number.isFinite(metric.storageBytes) ? (
+                {storage ? (
                     <TableCellLayout
                         description={
-                            metric.storageGrowthBytes !== undefined && Number.isFinite(metric.storageGrowthBytes)
-                                ? l10n.t('{delta} / 7 days', {
+                            metric?.storageGrowthBytes !== undefined && Number.isFinite(metric.storageGrowthBytes)
+                                ? l10n.t('Data growth: {delta} / 7 days', {
                                       delta: formatGrowth(metric.storageGrowthBytes),
                                   })
                                 : undefined
                         }
                     >
-                        {formatBytes(metric.storageBytes)}
-                        <Sparkline values={metric.storageSparkline} />
+                        <Tooltip content={storageDescription(storage)} relationship="description">
+                            <Text tabIndex={0} className={styles.metricExplanation}>
+                                {storageSummary?.bytes !== undefined ? formatBytes(storageSummary.bytes) : '—'}
+                                {storageSummary?.status === 'partial' && <> · {l10n.t('Partial data')}</>}
+                            </Text>
+                        </Tooltip>
+                        <Sparkline values={metric?.storageSparkline} />
                     </TableCellLayout>
                 ) : (
                     <Text className={styles.monospace}>{'—'}</Text>
@@ -354,7 +379,16 @@ const InventoryRow = memo(function InventoryRow({
                     : '—'}
             </TableCell>
             <TableCell>
-                {metric?.peakRuPercent !== undefined && Number.isFinite(metric.peakRuPercent) ? (
+                {normalizedRuApplicability?.status === 'notApplicable' ? (
+                    <Tooltip
+                        content={metricInapplicabilityExplanation(normalizedRuApplicability.reason)}
+                        relationship="description"
+                    >
+                        <Text tabIndex={0} className={styles.metricExplanation}>
+                            {l10n.t('Not applicable')}
+                        </Text>
+                    </Tooltip>
+                ) : metric?.peakRuPercent !== undefined && Number.isFinite(metric.peakRuPercent) ? (
                     <TableCellLayout>
                         {`${Math.round(metric.peakRuPercent)}%`}
                         <Sparkline values={metric.ruSparkline} />
@@ -401,6 +435,8 @@ export const InventoryTable = ({
     available,
     reason,
     metrics,
+    storageFallback,
+    normalizedRuApplicability,
     onRevealInTree,
     onOpenQueryEditor,
     selectedContainer,
@@ -413,6 +449,8 @@ export const InventoryTable = ({
     available: boolean;
     reason?: UnavailableReason;
     metrics?: Record<string, ContainerMetrics>;
+    storageFallback?: StorageMeasurement;
+    normalizedRuApplicability?: MetricApplicability;
     onRevealInTree: (databaseId: string, containerId: string) => void;
     onOpenQueryEditor: (databaseId: string, containerId: string) => void;
     selectedContainer?: ContainerRef;
@@ -424,6 +462,7 @@ export const InventoryTable = ({
     const filterChangePending = useRef(false);
     const rootRef = useRef<HTMLElement>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const tableRef = useRef<HTMLTableElement>(null);
     const focusedElement = useRef<HTMLElement | null>(null);
     const previousNavigationRevision = useRef(navigationRevision);
     useLayoutEffect(() => {
@@ -476,17 +515,34 @@ export const InventoryTable = ({
         const factor = sortDirection === 'ascending' ? 1 : -1;
         const metricOf = (row: InventoryContainerRow) => metrics?.[containerKey(row)];
         return [...filteredRows].sort((a, b) => {
+            const criticalFirst =
+                Number(rowHealth(b, metricOf(b), normalizedRuApplicability) === 'Critical') -
+                Number(rowHealth(a, metricOf(a), normalizedRuApplicability) === 'Critical');
+            if (criticalFirst !== 0) {
+                return criticalFirst;
+            }
             switch (sortKey) {
                 case 'throughputRU':
                     return factor * ((a.throughputRU ?? -1) - (b.throughputRU ?? -1));
-                case 'storageBytes':
-                    return factor * ((metricOf(a)?.storageBytes ?? -1) - (metricOf(b)?.storageBytes ?? -1));
+                case 'storageBytes': {
+                    const aStorage = metricOf(a)?.storage;
+                    const bStorage = metricOf(b)?.storage;
+                    return (
+                        factor *
+                        ((aStorage ? (summarizeStorage(aStorage).bytes ?? -1) : -1) -
+                            (bStorage ? (summarizeStorage(bStorage).bytes ?? -1) : -1))
+                    );
+                }
                 case 'documentCount':
                     return factor * ((metricOf(a)?.documentCount ?? -1) - (metricOf(b)?.documentCount ?? -1));
                 case 'peakRuPercent':
                     return factor * ((metricOf(a)?.peakRuPercent ?? -1) - (metricOf(b)?.peakRuPercent ?? -1));
                 case 'health':
-                    return factor * (HEALTH_ORDER[rowHealth(a, metricOf(a))] - HEALTH_ORDER[rowHealth(b, metricOf(b))]);
+                    return (
+                        factor *
+                        (HEALTH_ORDER[rowHealth(a, metricOf(a), normalizedRuApplicability)] -
+                            HEALTH_ORDER[rowHealth(b, metricOf(b), normalizedRuApplicability)])
+                    );
                 case 'containerId':
                 case 'databaseId':
                 case 'throughputMode':
@@ -495,7 +551,7 @@ export const InventoryTable = ({
                     return 0;
             }
         });
-    }, [filteredRows, sortKey, sortDirection, metrics]);
+    }, [filteredRows, sortKey, sortDirection, metrics, normalizedRuApplicability]);
 
     const toggleSort = useCallback(
         (key: SortKey) => {
@@ -590,6 +646,33 @@ export const InventoryTable = ({
         }
     }, [currentPage, search, databaseFilter, throughputFilter, sortKey, sortDirection]);
 
+    useLayoutEffect(() => {
+        const scrollArea = scrollRef.current;
+        const table = tableRef.current;
+        if (!active || !scrollArea || !table) {
+            return;
+        }
+        const visibleRowCount = 5;
+        const visibleRows = Array.from(table.rows).slice(0, visibleRowCount + 1);
+        if (table.rows.length <= visibleRowCount + 1) {
+            scrollArea.style.removeProperty('max-height');
+            return;
+        }
+        const updateHeight = () => {
+            const rowsHeight = visibleRows.reduce((height, row) => height + row.getBoundingClientRect().height, 0);
+            // Keep all five rows visible even when a horizontal scrollbar occupies part of the viewport.
+            const scrollbarHeight = scrollArea.offsetHeight - scrollArea.clientHeight;
+            scrollArea.style.maxHeight = `${rowsHeight + scrollbarHeight}px`;
+        };
+        updateHeight();
+        const observer = new ResizeObserver(() => {
+            updateHeight();
+        });
+        visibleRows.forEach((row) => observer.observe(row));
+        observer.observe(scrollArea);
+        return () => observer.disconnect();
+    }, [active, available, supported, currentPage, sortedRows]);
+
     const emptyContent = !available ? (
         <EmptyState reason={reason ?? 'noData'} requiredRole={l10n.t('Reader on the Cosmos DB account')} />
     ) : !supported ? (
@@ -677,8 +760,12 @@ export const InventoryTable = ({
                     ) : (
                         <div className={styles.scrollArea} ref={scrollRef}>
                             <Table
+                                ref={tableRef}
                                 className={styles.table}
                                 aria-label={l10n.t('Containers')}
+                                aria-description={l10n.t(
+                                    'Critical containers appear first. Column sorting applies within critical and other containers separately.',
+                                )}
                                 aria-rowcount={sortedRows.length + 1}
                             >
                                 <TableHeader className={styles.stickyHeader}>
@@ -731,7 +818,7 @@ export const InventoryTable = ({
                                             sortDirection={sortDirection}
                                             onSort={toggleSort}
                                         >
-                                            {l10n.t('Peak RU')}
+                                            {l10n.t('Peak normalized RU')}
                                         </SortableHeaderCell>
                                         <SortableHeaderCell
                                             columnKey="health"
@@ -751,6 +838,8 @@ export const InventoryTable = ({
                                             dataIndex={start + index}
                                             row={row}
                                             metric={metrics?.[containerKey(row)]}
+                                            storageFallback={storageFallback}
+                                            normalizedRuApplicability={normalizedRuApplicability}
                                             onRevealInTree={onRevealInTree}
                                             onOpenQueryEditor={onOpenQueryEditor}
                                             selected={

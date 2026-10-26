@@ -14,10 +14,11 @@ import {
     optionClassNames,
     webLightTheme,
 } from '@fluentui/react-components';
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { type ComponentProps, type PropsWithChildren } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { getAccountMetricApplicability } from '../../../panels/accountOverview/metrics/contracts';
 import { AccountHeader, type AccountSummary } from './AccountHeader';
 
 type HeaderProps = ComponentProps<typeof AccountHeader>;
@@ -30,6 +31,7 @@ const summary: AccountSummary = {
     apiType: 'NoSQL',
     documentEndpoint: 'https://example.invalid',
     isServerless: false,
+    metricApplicability: getAccountMetricApplicability(false),
     provisioningState: 'Succeeded',
     consistencyLevel: 'Session',
     freeTierEnabled: false,
@@ -249,7 +251,7 @@ describe('AccountHeader', () => {
         const region = screen.getByRole('region', { name: 'Account details' });
         const details = within(region);
         const fields = [
-            ['Status', 'Healthy'],
+            ['Status', 'Online'],
             ['Resource group', summary.resourceGroup],
             ['Subscription', summary.subscriptionName],
             ['Subscription ID', summary.subscriptionId],
@@ -446,6 +448,8 @@ describe('AccountHeader', () => {
         expect(screen.queryByRole('switch', { name: 'Pause auto-refresh' })).not.toBeInTheDocument();
         refresh.focus();
         await user.tab();
+        expect(screen.getByText(/^Total throughput limit:/)).toHaveFocus();
+        await user.tab();
         expect(screen.getByRole('button', { name: 'Account details' })).toHaveFocus();
         rerender(<AccountHeader {...props} loading />);
         expect(time).toBeVisible();
@@ -620,20 +624,20 @@ describe('AccountHeader', () => {
     });
 
     it.each([
-        ['Succeeded', 'Healthy'],
-        ['Creating', 'Needs Attention'],
-        ['Updating', 'Needs Attention'],
-        ['Deleting', 'Needs Attention'],
-        ['Failed', 'Critical'],
-        ['Canceled', 'Critical'],
-        [undefined, 'Unknown'],
-    ] as const)('falls back to provisioning health for %s', (provisioningState, label) => {
+        ['Succeeded', 'Unknown', false],
+        ['Creating', 'Needs Attention', true],
+        ['Updating', 'Needs Attention', true],
+        ['Deleting', 'Needs Attention', true],
+        ['Failed', 'Critical', true],
+        ['Canceled', 'Critical', true],
+        [undefined, 'Unknown', false],
+    ] as const)('falls back to provisioning health for %s', (provisioningState, label, focusable) => {
         renderHeader({ summary: { ...summary, provisioningState } });
         expect(screen.getByRole('status')).toHaveTextContent(`Account health: ${label}`);
-        const badge = screen.getAllByText(label)[0];
+        const badge = screen.getByLabelText(label, { selector: `.${badgeClassNames.root}` });
         expect(badge).toBeVisible();
         expect(badge).toHaveClass(badgeClassNames.root);
-        expect(badge).not.toHaveAttribute('tabindex');
+        expect(badge.tabIndex).toBe(focusable ? 0 : -1);
         expect(badge).not.toHaveAttribute('aria-hidden');
         expect(badge.querySelector(`.${badgeClassNames.icon} > span`)).toHaveAttribute('aria-hidden', 'true');
         expect(badge.parentElement?.tagName).toBe('DIV');
@@ -642,17 +646,45 @@ describe('AccountHeader', () => {
     it.each([
         ['Succeeded', 'Critical'],
         ['Succeeded', 'Needs Attention'],
-        ['Failed', 'Healthy'],
-    ] as const)('prioritizes derived %s / %s health in the status and details', (provisioningState, accountHealth) => {
+        ['Failed', 'Critical'],
+    ] as const)('separates %s provisioning status from %s health', (provisioningState, accountHealth) => {
         renderHeader({ summary: { ...summary, provisioningState }, accountHealth, defaultEssentialsOpen: true });
         expect(screen.getByRole('status')).toHaveTextContent(`Account health: ${accountHealth}`);
-        expect(screen.getAllByText(accountHealth)).toHaveLength(2);
+        expect(screen.getAllByText(accountHealth)).toHaveLength(1);
         const details = within(screen.getByRole('region', { name: 'Account details' }));
-        expect(details.getByText(accountHealth)).toBeVisible();
+        expect(
+            within(details.getByText('Status').parentElement!).getByText(
+                provisioningState === 'Succeeded' ? 'Online' : provisioningState,
+            ),
+        ).toBeVisible();
+        expect(details.queryByText(accountHealth)).not.toBeInTheDocument();
+    });
+
+    it('does not let a successful request signal hide a failed provisioning state', () => {
+        renderHeader({ summary: { ...summary, provisioningState: 'Failed' }, accountHealth: 'Healthy' });
+        expect(screen.getByRole('status')).toHaveTextContent('Account health: Critical');
+    });
+
+    it('exposes the health explanation on keyboard focus without replacing the visible badge name', async () => {
+        const user = userEvent.setup();
+        renderHeader({ summary: { ...summary, provisioningState: 'Failed' } });
+        const badge = screen.getByLabelText('Critical', { selector: `.${badgeClassNames.root}` });
+        await user.keyboard('{Tab}');
+        act(() => badge.focus());
+        expect(badge).toHaveFocus();
+        expect(badge).toHaveAccessibleName('Critical');
+        expect(badge).toHaveAccessibleDescription(
+            'Resource provisioning state: Failed. See Status in Account details.',
+        );
+        expect(await screen.findByRole('tooltip')).toHaveTextContent('Resource provisioning state: Failed.');
+        await user.keyboard('{Escape}');
+        expect(badge).toHaveFocus();
     });
 
     it.each([
         [undefined, 'Unknown'],
+        [null, 'Unknown'],
+        [-2, 'Unknown'],
         [-1, 'No total throughput limit'],
         [0, '0 RU/s'],
         [4000, `${(4000).toLocaleString()} RU/s`],
@@ -668,4 +700,22 @@ describe('AccountHeader', () => {
         expect(screen.getByText('Capacity mode: Serverless')).toBeVisible();
         expect(screen.getByText('Regions: Unknown')).toBeVisible();
     });
+
+    it.each([undefined, null, -1, 0, 4000])(
+        'explains why Serverless has no total throughput limit even with ARM value %s',
+        async (totalThroughputLimit) => {
+            const user = userEvent.setup();
+            renderHeader({ summary: { ...summary, isServerless: true, totalThroughputLimit } });
+            const limit = screen.getByText('Total throughput limit: No total throughput limit');
+            expect(limit).toHaveAccessibleDescription(
+                'The account-wide provisioned-throughput cap is not applicable to serverless accounts.',
+            );
+            await user.hover(limit);
+            expect(await screen.findByRole('tooltip')).toHaveTextContent(
+                'The account-wide provisioned-throughput cap is not applicable to serverless accounts.',
+            );
+            expect(limit).toHaveAttribute('tabindex', '0');
+            expect(screen.getByText('Capacity mode: Serverless')).toBeVisible();
+        },
+    );
 });

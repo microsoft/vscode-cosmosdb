@@ -7,10 +7,14 @@ import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
 import { z } from 'zod';
 import { API, tryGetExperience } from '../../../../AzureDBExperiences';
 import {
+    ALERT_MONITOR_CONDITIONS,
     ALERT_TIME_RANGES,
+    type ActiveAlertSummary,
+    type AlertMonitorCondition,
     type AlertsResult,
     type AlertTimeRange,
-    getActiveAlerts,
+    getAlerts,
+    getActiveAlertSummary,
     getRecommendations,
     type RecommendationsResult,
     type UnavailableReason,
@@ -18,27 +22,49 @@ import {
 import { type AccountOverviewRouterContext } from '../../appRouter';
 import { accountOverviewProcedure } from '../../trpc';
 
-// ─── Zone: Active alerts + Advisor recommendations (right rail) ─────────────────
+// ─── Zone: Alerts + Advisor recommendations (right rail) ────────────────────────
 //
 // The router resolves the account API and the Alerts Management / Advisor
-// clients, and builds the empty-state shapes; `getActiveAlerts` and
+// clients, and builds the empty-state shapes; `getAlerts` and
 // `getRecommendations` own the ARM calls and shaping.
 
 export const alertsRecommendationsProcedures = {
+    getActiveAlertSummary: accountOverviewProcedure.query(
+        async ({ ctx }: { ctx: AccountOverviewRouterContext }): Promise<ActiveAlertSummary> => {
+            const { metadata } = ctx;
+            const experience = tryGetExperience(metadata.databaseAccount as DatabaseAccountGetResults);
+            if (experience && experience.api !== API.Core) {
+                return {
+                    available: false,
+                    reason: 'unsupported',
+                    totalCount: 0,
+                    criticalCount: 0,
+                    warningCount: 0,
+                    generatedAt: Date.now(),
+                };
+            }
+            return getActiveAlertSummary(
+                await metadata.getClient(),
+                metadata.subscription.subscriptionId,
+                metadata.accountId,
+                metadata.subscription.environment.resourceManagerEndpointUrl,
+            );
+        },
+    ),
     /**
-     * Active Azure Monitor alerts for this account, filtered to the account's
-     * `resourceId` and the selected time range. `Fired` alerts only. Non-Core
+     * Azure Monitor alerts for this account, filtered to the account's
+     * `resourceId`, selected time range and monitor condition. Non-Core
      * accounts and any Alerts Management error degrade to `available: false`.
      */
     getAlerts: accountOverviewProcedure
-        .input(z.object({ timeRange: z.enum(ALERT_TIME_RANGES) }))
+        .input(z.object({ timeRange: z.enum(ALERT_TIME_RANGES), monitorCondition: z.enum(ALERT_MONITOR_CONDITIONS) }))
         .query(
             async ({
                 ctx,
                 input,
             }: {
                 ctx: AccountOverviewRouterContext;
-                input: { timeRange: AlertTimeRange };
+                input: { timeRange: AlertTimeRange; monitorCondition: AlertMonitorCondition };
             }): Promise<AlertsResult> => {
                 const { metadata } = ctx;
                 const unavailable = (reason: UnavailableReason): AlertsResult => ({
@@ -48,6 +74,7 @@ export const alertsRecommendationsProcedures = {
                     criticalCount: 0,
                     warningCount: 0,
                     timeRange: input.timeRange,
+                    monitorCondition: input.monitorCondition,
                     generatedAt: Date.now(),
                 });
 
@@ -61,11 +88,12 @@ export const alertsRecommendationsProcedures = {
                     return unavailable('noData');
                 }
 
-                return getActiveAlerts(
+                return getAlerts(
                     client,
                     metadata.subscription.subscriptionId,
                     metadata.accountId,
                     input.timeRange,
+                    input.monitorCondition,
                     metadata.subscription.environment.portalUrl,
                     metadata.subscription.tenantId,
                 );

@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { accountOverviewRouter } from '../trpc';
+import { accountHealthProcedures } from './accountOverview/accountHealthRouter';
 import { accountInventoryProcedures } from './accountOverview/accountInventoryRouter';
 import { actionsProcedures } from './accountOverview/actionsRouter';
 import { aiFeaturesProcedures } from './accountOverview/aiFeaturesRouter';
@@ -27,6 +28,7 @@ import { partitionHealthProcedures } from './accountOverview/partitionHealthRout
 export type { InventoryContainerRow, ThroughputMode } from '../../accountOverview/services/inventory';
 
 export const accountOverviewRouterDef = accountOverviewRouter({
+    ...accountHealthProcedures,
     ...accountInventoryProcedures,
     ...metricSeriesProcedures,
     ...inventoryMetricsProcedures,

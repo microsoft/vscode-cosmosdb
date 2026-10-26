@@ -3,11 +3,16 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { makeStyles, Tab, TabList, tokens } from '@fluentui/react-components';
+import { makeStyles, Tab, TabList, tokens, Tooltip } from '@fluentui/react-components';
+import { Warning16Filled } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { type ReactNode, useEffect, useId, useRef } from 'react';
 
 export type OverviewTab = 'monitoring' | 'databases' | 'advisories';
+
+export type TabHealthIndicators = Partial<
+    Record<OverviewTab, { severity: 'Critical' | 'Needs Attention'; description: string }>
+>;
 
 const useStyles = makeStyles({
     tabs: {
@@ -18,9 +23,20 @@ const useStyles = makeStyles({
         maxWidth: '100%',
     },
     tabContent: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: tokens.spacingHorizontalXS,
         whiteSpace: 'normal',
         overflowWrap: 'anywhere',
         minWidth: 0,
+    },
+    critical: {
+        color: tokens.colorPaletteRedForeground1,
+        flexShrink: 0,
+    },
+    warning: {
+        color: tokens.colorPaletteYellowForeground2,
+        flexShrink: 0,
     },
     content: {
         display: 'flex',
@@ -43,6 +59,7 @@ export const TabbedOverviewLayout = ({
     alerts,
     requestedTab,
     navigationRevision = 0,
+    healthIndicators = {},
 }: {
     selectedTab: OverviewTab;
     onTabSelect: (tab: OverviewTab) => void;
@@ -55,6 +72,7 @@ export const TabbedOverviewLayout = ({
     alerts: ReactNode;
     requestedTab?: OverviewTab;
     navigationRevision?: number;
+    healthIndicators?: TabHealthIndicators;
 }) => {
     const styles = useStyles();
     const id = useId();
@@ -105,25 +123,45 @@ export const TabbedOverviewLayout = ({
                     }
                 }}
             >
-                {sections.map(({ tab, label }) => (
-                    <Tab
-                        ref={(element) => {
-                            if (element) {
-                                tabRefs.current.set(tab, element);
-                            } else {
-                                tabRefs.current.delete(tab);
-                            }
-                        }}
-                        key={tab}
-                        id={`${id}-${tab}`}
-                        aria-controls={`${id}-${tab}-panel`}
-                        value={tab}
-                        className={styles.tab}
-                        content={{ className: styles.tabContent }}
-                    >
-                        {label}
-                    </Tab>
-                ))}
+                {sections.map(({ tab, label }) => {
+                    const indicator = healthIndicators[tab];
+                    const element = (
+                        <Tab
+                            ref={(element) => {
+                                if (element) {
+                                    tabRefs.current.set(tab, element);
+                                } else {
+                                    tabRefs.current.delete(tab);
+                                }
+                            }}
+                            key={tab}
+                            id={`${id}-${tab}`}
+                            aria-controls={`${id}-${tab}-panel`}
+                            value={tab}
+                            className={styles.tab}
+                            content={{ className: styles.tabContent }}
+                            aria-description={indicator?.description}
+                        >
+                            <span>{label}</span>
+                            {indicator && (
+                                <Warning16Filled
+                                    aria-hidden
+                                    className={indicator.severity === 'Critical' ? styles.critical : styles.warning}
+                                />
+                            )}
+                        </Tab>
+                    );
+                    return (
+                        <Tooltip
+                            key={tab}
+                            content={indicator?.description ?? ''}
+                            relationship="description"
+                            visible={indicator ? undefined : false}
+                        >
+                            {element}
+                        </Tooltip>
+                    );
+                })}
             </TabList>
             {sections.map(({ tab, content }) => (
                 <div

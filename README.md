@@ -60,7 +60,7 @@ The Account Overview Dashboard gives you an at-a-glance view of a Cosmos DB acco
 
 The dashboard has three tabs: **Monitoring**, **Databases and Containers**, and **Advisories**. The Account Overview submenu also provides shortcuts to each monitoring metric and to Advisories. Metric shortcuts select the corresponding card and focus its chart in the existing Monitoring tab, preserving the time range and database scope; they do not open separate dashboards.
 
-Expand **Account details** for **View Cost**, **View JSON**, and **Additional account properties**. **View Cost** opens Azure Portal Cost Analysis scoped to the account in its Azure cloud. **View JSON** retrieves the account resource from Azure Resource Manager and opens formatted JSON in VS Code without requesting keys or connection strings. The action bar reuses the existing database/container creation wizards and account deletion confirmation. **Add container** uses the database selected in the header; with **All databases**, it first asks you to choose a database within this account, including empty databases. These creation/deletion actions require the corresponding Azure write permissions. **Try Data Modeler** is currently a disabled preview placeholder.
+Expand **Account details** for **View Cost**, **View JSON**, and **Additional account properties**. **View Cost** opens Azure Portal Cost Analysis scoped to the account in its Azure cloud. **View JSON** retrieves the account resource from Azure Resource Manager and opens formatted JSON in VS Code without requesting keys or connection strings. The action bar reuses the existing database/container creation wizards and account deletion confirmation. **Add container** uses the database selected in the header; with **All databases**, it first asks you to choose a database within this account, including empty databases. These creation/deletion actions require the corresponding Azure write permissions. **Try Data Modeler** opens the modeler for this account; it requires AI features enabled and available GitHub Copilot models.
 
 While **Add database** or **Add container** runs its native VS Code wizard, Overview is dimmed and unavailable to mouse and keyboard interaction. Cancel in the wizard to return without changes. After successful creation, Overview unlocks once inventory refresh finishes. Failures appear in a Fluent error message bar and are announced assertively to screen readers without moving focus.
 
@@ -68,17 +68,20 @@ Overview loads on opening and does not auto-refresh, including when you return t
 
 The **Refresh** button shows a spinner for an explicit Refresh or a metric time/database-scope change, not for the initial load. Its label stays **Refresh**, with no separate updating text. Refresh and the header's database/time-range selectors are unavailable while data requests finish, including initial loading, so another filter change cannot overlap the current load. They become available again after completion or failure, retaining the selected values. Each section retains its own loading state. User-requested updates are announced to screen readers.
 
-Every section reads from Azure Resource Manager and Azure Monitor. When a section can't load, it shows an explicit empty state instead of a blank panel:
+Sections read Azure resource metadata, Monitor metrics/alerts, Advisor recommendations and configured diagnostic logs.
+When a source is unavailable, its section shows an explicit state rather than treating missing data as zero:
 
-- **No data** — the account is healthy but has no data for the selected window.
+- **No data** — no usable result is available for the selected window/source; this does not establish that the account is healthy.
 - **Not supported** — the section doesn't apply to this account's API (for example, inventory metrics are only available for NoSQL (Core) API accounts).
 - **Access required** — your Azure role doesn't grant permission to read the underlying data.
 
 ### Required Azure roles
 
-Data is fetched with your Azure credentials, so each section requires the corresponding role assignment. If a role is missing, that section shows an "Access required" empty state naming the role below; the rest of the dashboard continues to work.
+Data is fetched with your Azure credentials. The table lists typical read roles; equivalent custom permissions
+and assignment scope also determine access. A permission failure is shown for the affected source while
+independent sections remain usable.
 
-| Dashboard section                                      | Minimum Azure role              |
+| Dashboard section                                      | Typical read role               |
 | ------------------------------------------------------ | ------------------------------- |
 | Account header, inventory, throughput                  | Reader on the Cosmos DB account |
 | RU trends, partition health, Tier-1 derived advisories | Monitoring Reader               |
@@ -86,13 +89,15 @@ Data is fetched with your Azure credentials, so each section requires the corres
 | Active alerts                                          | Monitoring Reader               |
 | Advisor recommendations                                | Reader on the subscription      |
 
-Tier-2 derived advisories (cross-partition query fan-out, shard-key misalignment, uncontrolled ingestion, and shared-throughput starvation) additionally read the account's `CDB*` diagnostic-log tables, so they require **Diagnostic Settings → Log Analytics** enabled on the account plus the [Log Analytics Reader](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/monitor#log-analytics-reader) role (Monitoring Reader also works). When these are missing, the Derived Advisories card still renders every Tier-1 advisory and flags the Tier-2 gap with a "Partial coverage" notice.
+Tier-2 derived advisories (cross-partition query fan-out, shard-key misalignment, uncontrolled ingestion, and shared-throughput starvation) additionally read the account's resource-specific `CDB*` diagnostic-log tables. They require diagnostic-log collection and effective query access, such as [Log Analytics Reader](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/monitor#log-analytics-reader). Missing log evidence leaves successful independent findings visible and reports the gap as **Partial coverage**. See the [guide's log setup and permissions](./docs/account-overview-dashboard.md#permissions).
 
 Derived advisory explanations, suggested actions and threshold references highlight numeric evidence and its units on a subtle theme-aware background. Their underlying strings remain readable plain text: paired backticks mark a highlighted phrase (for example, `` `400 RU/s` ``), not HTML or general Markdown. Translations retain those delimiters around the complete value and unit in the translated word order. Literal backticks and backslashes in resource names or query text are escaped before interpolation. Highlights remain ordinary inline text for screen readers, without extra announcements or keyboard stops.
 
 Learn more about assigning roles in [Azure role-based access control](https://learn.microsoft.com/azure/role-based-access-control/overview).
 
-For the metrics, detections, and ARM endpoints behind the dashboard, see [`docs/account-overview-dashboard.md`](./docs/account-overview-dashboard.md).
+For explanations of health, charts, alerts and everyday use, read the [Account Overview guide](./docs/account-overview-dashboard.md).
+When implementing or changing Account Overview calculations, refresh behavior, actions or diagnostics, use the
+[implementation specification](./specs/account-overview.md) for exact rules, rationale and regression requirements.
 
 ## Data Modeler
 

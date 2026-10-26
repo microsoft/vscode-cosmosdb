@@ -4,15 +4,21 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type AdvisorManagementClient, type ResourceRecommendationBase } from '@azure/arm-advisor';
-import { type Alert, type AlertsManagementClient } from '@azure/arm-alertsmanagement';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { type Alert, AlertsManagementClient } from '@azure/arm-alertsmanagement';
+import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
+import { createHttpHeaders } from '@azure/core-rest-pipeline';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+    ALERT_MONITOR_CONDITIONS,
+    ALERT_TIME_RANGES,
     __resetAdvisorCache,
     buildAlertPortalUrl,
+    buildAccountAlertsPortalUrl,
     compareAlerts,
     compareRecommendations,
     escalateAccountHealth,
-    getActiveAlerts,
+    getAlerts,
+    getActiveAlertSummary,
     getRecommendations,
     isHighImpactPerfCost,
     mapAlertSeverity,
@@ -20,6 +26,106 @@ import {
     type AlertItem,
     type RecommendationItem,
 } from './alertsRecommendations';
+import { pagedItems } from './testFixtures';
+
+describe('Resource Graph active alert summary', () => {
+    const accountId = '/subscriptions/sub/resourceGroups/rg/providers/Microsoft.DocumentDB/databaseAccounts/account';
+    const counts = { totalCount: 9, criticalCount: 2, warningCount: 3 };
+    const complete = { count: 1, totalRecords: 1, resultTruncated: 'false', data: [counts] };
+
+    function graphClient(body: unknown = complete, status = 200) {
+        const client = new CosmosDBManagementClient({ getToken: async () => null }, 'sub');
+        const send = vi.spyOn(client.pipeline, 'sendRequest').mockImplementation(async (_http, request) => ({
+            request,
+            status,
+            headers: createHttpHeaders(),
+            bodyAsText: JSON.stringify(body),
+        }));
+        return { client, send };
+    }
+
+    it('aggregates only Fired by account and severity without time filtering or enumerating instances', async () => {
+        const { client, send } = graphClient();
+        const result = await getActiveAlertSummary(client, 'sub', accountId, 'https://management.azure.com/');
+        expect(result).toMatchObject({ available: true, ...counts });
+        expect(send).toHaveBeenCalledOnce();
+        const request = send.mock.calls[0][1];
+        expect(request.url).toBe(
+            'https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2022-10-01',
+        );
+        expect(request.method).toBe('POST');
+        expect(request.headers.get('Content-Type')).toBe('application/json');
+        const body = JSON.parse(String(request.body)) as {
+            subscriptions: string[];
+            query: string;
+            options: { resultFormat: string; allowPartialScopes: boolean };
+        };
+        expect(body.subscriptions).toEqual(['sub']);
+        expect(body.options).toEqual({ resultFormat: 'objectArray', allowPartialScopes: false });
+        expect(body.query).toContain('alertsmanagementresources');
+        expect(body.query).toContain(`targetResource) =~ "${accountId}"`);
+        expect(body.query).toContain("monitorCondition) =~ 'Fired'");
+        expect(body.query).toContain("in~ ('Sev0', 'Sev1')");
+        expect(body.query).toContain("in~ ('Sev2', 'Sev3')");
+        expect(body.query).not.toMatch(/ago\(|startDateTime|alertState|timeRange/);
+    });
+
+    it('uses the sovereign ARM endpoint and escapes the account literal', async () => {
+        const { client, send } = graphClient();
+        const resourceId = `${accountId}"\\\n| take 1`;
+        await getActiveAlertSummary(client, 'sub', resourceId, 'https://management.usgovcloudapi.net/');
+        expect(send.mock.calls[0][1].url).toMatch(/^https:\/\/management\.usgovcloudapi\.net\//);
+        const body = JSON.parse(String(send.mock.calls[0][1].body)) as { query: string };
+        expect(body.query).toContain(`targetResource) =~ ${JSON.stringify(resourceId)}\n`);
+    });
+
+    it('accepts an explicit zero aggregate as no active alerts', async () => {
+        const { client } = graphClient({
+            ...complete,
+            resultTruncated: false,
+            data: [{ totalCount: 0, criticalCount: 0, warningCount: 0 }],
+        });
+        expect(await getActiveAlertSummary(client, 'sub', accountId, 'https://management.azure.com')).toMatchObject({
+            available: true,
+            totalCount: 0,
+        });
+    });
+
+    it.each([
+        null,
+        { ...complete, resultTruncated: 'true' },
+        { ...complete, $skipToken: 'more' },
+        { ...complete, count: 0, totalRecords: 0, data: [] },
+        { ...complete, totalRecords: 2 },
+        { ...complete, data: [{ totalCount: 1, criticalCount: 2, warningCount: 0 }] },
+        { ...complete, data: [{ totalCount: -1, criticalCount: 0, warningCount: 0 }] },
+    ])('does not interpret a malformed or partial aggregate as recovery: %j', async (body) => {
+        const { client } = graphClient(body);
+        expect(await getActiveAlertSummary(client, 'sub', accountId, 'https://management.azure.com')).toMatchObject({
+            available: false,
+            reason: 'noData',
+        });
+    });
+
+    it.each([401, 403, 500])('surfaces HTTP %s as unavailable rather than no alerts', async (status) => {
+        const { client } = graphClient({}, status);
+        expect(await getActiveAlertSummary(client, 'sub', accountId, 'https://management.azure.com')).toMatchObject({
+            available: false,
+            reason: status === 403 ? 'rbac' : 'noData',
+        });
+    });
+
+    it('handles a missing client and transport errors as unavailable', async () => {
+        expect(await getActiveAlertSummary(undefined, 'sub', accountId, 'https://management.azure.com')).toMatchObject({
+            available: false,
+        });
+        const { client, send } = graphClient();
+        send.mockRejectedValueOnce(new Error('Network unavailable'));
+        expect(await getActiveAlertSummary(client, 'sub', accountId, 'https://management.azure.com')).toMatchObject({
+            available: false,
+        });
+    });
+});
 
 function asyncIterable<T>(items: T[]): AsyncIterableIterator<T> {
     return (async function* () {
@@ -109,12 +215,30 @@ describe('mapAlertSeverity', () => {
 });
 
 describe('buildAlertPortalUrl', () => {
-    it('builds an AlertDetails blade deep link with an encoded id', () => {
-        const id = '/subscriptions/s/providers/Microsoft.AlertsManagement/alerts/abc';
+    it.each([
+        '/subscriptions/s/providers/Microsoft.AlertsManagement/alerts/abc',
+        '/subscriptions/s/providers/Microsoft.AlertsManagement/alerts/a b?#%2F',
+    ])('double-encodes the alert ID in the URL builder: %s', (id) => {
         const url = buildAlertPortalUrl(id);
-        expect(url).toContain('AlertDetailsTemplateBlade/alertId/');
-        expect(url).toContain(encodeURIComponent(id));
+        expect(url).toBe(
+            `https://portal.azure.com/#view/Microsoft_Azure_Monitoring_Alerts/AlertDetails.ReactView/alertId/${encodeURIComponent(encodeURIComponent(id))}/invokedFrom/CopyLinkFeature`,
+        );
     });
+});
+
+describe('buildAccountAlertsPortalUrl', () => {
+    it.each(['https://portal.azure.com/', 'https://portal.azure.us', 'https://portal.azure.cn/'])(
+        'preserves cloud, tenant and resource scope for %s',
+        (portal) => {
+            const resourceId =
+                '/subscriptions/sub/resourceGroups/a b/providers/Microsoft.DocumentDB/databaseAccounts/acct';
+            const url = buildAccountAlertsPortalUrl(portal, 'tenant/name', resourceId);
+            expect(url).toBe(
+                `${portal.replace(/\/$/, '')}/#@tenant%2Fname/blade/Microsoft_Azure_Monitoring_Alerts/AlertsSummaryBlade/resourceId/${encodeURIComponent(encodeURIComponent(resourceId))}`,
+            );
+            expect(url).not.toContain('alertId/');
+        },
+    );
 });
 
 describe('compareAlerts', () => {
@@ -227,7 +351,33 @@ describe('escalateAccountHealth', () => {
     });
 });
 
-describe('getActiveAlerts', () => {
+describe('getAlerts', () => {
+    it.each(ALERT_MONITOR_CONDITIONS)(
+        'filters %s by monitor condition, not incident state, in every window',
+        async (condition) => {
+            const client = new AlertsManagementClient({ getToken: async () => null });
+            const getAll = vi.spyOn(client.alerts, 'getAll');
+            for (const timeRange of ALERT_TIME_RANGES) {
+                getAll.mockReturnValueOnce(
+                    pagedItems([makeAlert('/alert', 'Sev1', { monitorCondition: condition, alertState: 'Closed' })]),
+                );
+                const result = await getAlerts(client, 'sub', '/acct', timeRange, condition);
+                expect(getAll).toHaveBeenLastCalledWith('/subscriptions/sub', {
+                    targetResource: '/acct',
+                    timeRange,
+                    monitorCondition: condition,
+                });
+                expect(result).toMatchObject({
+                    available: true,
+                    timeRange,
+                    monitorCondition: condition,
+                    criticalCount: 1,
+                });
+                expect(result.alerts[0]).toMatchObject({ monitorCondition: condition, alertState: 'Closed' });
+            }
+        },
+    );
+
     it.each([
         'https://portal.azure.com/',
         'https://ms.portal.azure.com',
@@ -235,16 +385,17 @@ describe('getActiveAlerts', () => {
         'https://portal.azure.cn',
     ])('preserves the configured portal %s and tenant when constructing alert links', async (portal) => {
         const id = '/subscriptions/sub/providers/Microsoft.AlertsManagement/alerts/a b?#%';
-        const result = await getActiveAlerts(
+        const result = await getAlerts(
             mockAlertsClient([makeAlert(id, 'Sev1')]),
             'sub',
             '/acct',
             '1d',
+            'Fired',
             portal,
             'tenant/# ?@',
         );
         expect(result.alerts[0].portalUrl).toBe(
-            `${portal.replace(/\/$/, '')}/#@tenant%2F%23%20%3F%40/blade/Microsoft_Azure_Monitoring/AlertDetailsTemplateBlade/alertId/${encodeURIComponent(id)}`,
+            `${portal.replace(/\/$/, '')}/#@tenant%2F%23%20%3F%40/view/Microsoft_Azure_Monitoring_Alerts/AlertDetails.ReactView/alertId/${encodeURIComponent(encodeURIComponent(id))}/invokedFrom/CopyLinkFeature`,
         );
     });
 
@@ -255,24 +406,28 @@ describe('getActiveAlerts', () => {
             makeAlert('/a/info', 'Sev4'),
         ]);
 
-        const result = await getActiveAlerts(client, 'sub1', '/acct', '1d');
+        const result = await getAlerts(client, 'sub1', '/acct', '1d', 'Fired');
 
         expect(result.available).toBe(true);
         expect(result.criticalCount).toBe(1);
         expect(result.warningCount).toBe(1);
         expect(result.alerts.map((a) => a.severity)).toEqual(['Critical', 'Warning', 'Informational']);
-        expect(result.alerts[0].portalUrl).toContain('AlertDetailsTemplateBlade');
+        expect(result.alerts[0].portalUrl).toContain('AlertDetails.ReactView');
         expect(result.alerts[0].startedAt).toBe(2000);
     });
 
-    it('returns available: false when Alerts Management throws', async () => {
-        const result = await getActiveAlerts(mockAlertsClient([], true), 'sub1', '/acct', '7d');
-        expect(result.available).toBe(false);
-        expect(result.alerts).toEqual([]);
-    });
+    it.each(ALERT_MONITOR_CONDITIONS)(
+        'returns unavailable with the %s filter when Alerts Management throws',
+        async (condition) => {
+            const result = await getAlerts(mockAlertsClient([], true), 'sub1', '/acct', '7d', condition);
+            expect(result.available).toBe(false);
+            expect(result.alerts).toEqual([]);
+            expect(result).toMatchObject({ timeRange: '7d', monitorCondition: condition });
+        },
+    );
 
     it('returns available: true with no alerts when the scope is clean', async () => {
-        const result = await getActiveAlerts(mockAlertsClient([]), 'sub1', '/acct', '30d');
+        const result = await getAlerts(mockAlertsClient([]), 'sub1', '/acct', '30d', 'Fired');
         expect(result.available).toBe(true);
         expect(result.alerts).toEqual([]);
         expect(result.criticalCount).toBe(0);

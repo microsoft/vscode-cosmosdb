@@ -44,6 +44,12 @@ export function classifyUnavailable(error: unknown): UnavailableReason {
     return 'noData';
 }
 
+/** Metric request failures are distinct from successful requests with no observations. */
+export function metricFailureReason(error: unknown): UnavailableReason | 'error' {
+    const reason = classifyUnavailable(error);
+    return reason === 'noData' ? 'error' : reason;
+}
+
 /** Shared vocabulary for both per-row and account-level health. */
 export type HealthState = 'Healthy' | 'Needs Attention' | 'Critical';
 

@@ -91,6 +91,8 @@ The menu dispatches `accountOverview.provideFeedback`, opening the existing NoSQ
 bounded trigger name. The shared survey helper enforces `telemetry.feedback.enabled`; a live subscription also updates
 button visibility and disposes its configuration listener on unsubscribe/abort.
 Feedback remains usable during metric loading. Action failures use the existing native notification route.
+The feedback mutation waits for the browser launch; both a refused launch (`false`) and a rejected launch propagate
+to that notification route rather than completing successfully. The survey helper does not display a duplicate notification.
 No Overview usage scoring, additional questionnaire or automatic survey prompt is introduced.
 
 ### Refresh dependency matrix
@@ -137,6 +139,8 @@ or the freshness of every section.
 navigation revision, and preserves data filters. Generic navigation focuses the destination tab;
 metric navigation selects the metric and focuses its chart region. A replayed revision or background completion
 MUST NOT refocus the view or dismiss a dialog.
+Metric navigation MUST wait for the requested selection to commit before focusing the chart, including when
+an inapplicable metric resolves to consumed RU, so the focus event exposes the destination's name and content.
 
 ## 3. Metric calculations
 
@@ -384,6 +388,9 @@ Both modes use the sustained-throttling share/duration policy in §3.5 over the 
 Observed zero Count buckets are evidence; empty/null/invalid buckets are not.
 `ContainerMetrics.throttled` is true/false only with usable per-container request observations; otherwise it is absent,
 with `throttlingReason` distinguishing noData, rbac and error. Embedded metric errors are failures, not clear checks.
+Embedded errors retain their service code for permission classification. `throttlingFallbackReason` carries the
+request-check outcome to rows absent from the metric snapshot, including when every Monitor read failed.
+The fallback is independent of storage/RU failure reasons; successful reads without request observations use noData.
 Storage growth and consumed RU do not participate.
 
 The shared `rowHealth` display fallback is intentionally more specific:

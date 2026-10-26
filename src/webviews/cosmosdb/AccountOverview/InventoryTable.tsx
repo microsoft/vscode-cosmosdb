@@ -36,6 +36,7 @@ import {
     type HealthState,
     type InventoryContainerRow,
     type MetricApplicability,
+    type MetricUnavailableReason,
     type StorageMeasurement,
     type ThroughputMode,
     type UnavailableReason,
@@ -277,6 +278,7 @@ const InventoryRow = memo(function InventoryRow({
     row,
     metric,
     storageFallback,
+    throttlingFallbackReason,
     normalizedRuApplicability,
     dataIndex,
     onRevealInTree,
@@ -287,6 +289,7 @@ const InventoryRow = memo(function InventoryRow({
     row: InventoryContainerRow;
     metric: ContainerMetrics | undefined;
     storageFallback?: StorageMeasurement;
+    throttlingFallbackReason?: MetricUnavailableReason;
     normalizedRuApplicability?: MetricApplicability;
     dataIndex: number;
     onRevealInTree: (databaseId: string, containerId: string) => void;
@@ -316,7 +319,7 @@ const InventoryRow = memo(function InventoryRow({
         ),
         metric?.throttled === undefined
             ? l10n.t('Request observations unavailable: {reason}.', {
-                  reason: unavailableCaption(metric?.throttlingReason ?? 'noData'),
+                  reason: unavailableCaption(metric?.throttlingReason ?? throttlingFallbackReason ?? 'noData'),
               })
             : undefined,
         l10n.t('This is a throttling assessment, not overall container health.'),
@@ -467,6 +470,7 @@ export const InventoryTable = ({
     reason,
     metrics,
     storageFallback,
+    throttlingFallbackReason,
     normalizedRuApplicability,
     onRevealInTree,
     onOpenQueryEditor,
@@ -481,6 +485,7 @@ export const InventoryTable = ({
     reason?: UnavailableReason;
     metrics?: Record<string, ContainerMetrics>;
     storageFallback?: StorageMeasurement;
+    throttlingFallbackReason?: MetricUnavailableReason;
     normalizedRuApplicability?: MetricApplicability;
     onRevealInTree: (databaseId: string, containerId: string) => void;
     onOpenQueryEditor: (databaseId: string, containerId: string) => void;
@@ -890,6 +895,7 @@ export const InventoryTable = ({
                                             row={row}
                                             metric={metrics?.[containerKey(row)]}
                                             storageFallback={storageFallback}
+                                            throttlingFallbackReason={throttlingFallbackReason}
                                             normalizedRuApplicability={normalizedRuApplicability}
                                             onRevealInTree={onRevealInTree}
                                             onOpenQueryEditor={onOpenQueryEditor}

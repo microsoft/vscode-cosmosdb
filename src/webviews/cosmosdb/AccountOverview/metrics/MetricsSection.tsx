@@ -129,12 +129,17 @@ export const MetricsSection = ({
     }, [requestedMetric, navigationRevision]);
 
     useEffect(() => {
-        if (active && requestedMetric && handledNavigation.current !== navigationRevision) {
+        if (
+            active &&
+            requestedMetric &&
+            explicitMetric === requestedMetric &&
+            handledNavigation.current !== navigationRevision
+        ) {
             handledNavigation.current = navigationRevision;
             chartRef.current?.focus({ preventScroll: true });
             chartRef.current?.scrollIntoView({ block: 'nearest' });
         }
-    }, [active, requestedMetric, selectedMetric, navigationRevision]);
+    }, [active, requestedMetric, explicitMetric, navigationRevision]);
 
     const activeDescriptor = METRIC_VIEWS[selectedMetric];
     const activeSeries = seriesByMetric[selectedMetric];

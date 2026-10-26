@@ -280,6 +280,59 @@ describe.each([false, true])('metric applicability with chartAffordances=%s', (c
         expect(screen.queryByRole('region', { name: 'Provisioned throughput trend' })).not.toBeInTheDocument();
     });
 
+    it.each([
+        { requestedMetric: 'dataIndexUsage', destination: 'Data + index usage trend', applicability: provisioned },
+        {
+            requestedMetric: 'provisionedThroughput',
+            destination: 'Total request units trend',
+            applicability: serverless,
+        },
+    ] as const)(
+        'focuses only the committed destination for $requestedMetric navigation',
+        async ({ requestedMetric, destination, applicability }) => {
+            const user = userEvent.setup();
+            const { update } = renderMetrics({
+                chartAffordances,
+                applicabilityByMetric: applicability,
+                requestedMetric: 'totalRequests',
+                navigationRevision: 1,
+            });
+            await user.click(metricTile('documentCount'));
+            const chart = screen.getByRole('region', { name: 'Document count trend' });
+            const focusedNames: (string | null)[] = [];
+            chart.addEventListener('focus', () => focusedNames.push(chart.getAttribute('aria-label')));
+
+            update({ requestedMetric, navigationRevision: 2 });
+
+            expect(focusedNames).toEqual([destination]);
+            expect(chart).toHaveAccessibleName(destination);
+            expect(chart).toHaveFocus();
+            expect(chart).toHaveTextContent(destination);
+
+            await user.click(metricTile('documentCount'));
+            update({ requestedMetric, navigationRevision: 2 });
+            expect(metricTile('documentCount')).toHaveFocus();
+            expect(focusedNames).toEqual([destination]);
+        },
+    );
+
+    it('defers navigation focus until Monitoring is active', () => {
+        const { update } = renderMetrics({
+            chartAffordances,
+            active: false,
+            requestedMetric: 'normalizedRu',
+            navigationRevision: 1,
+        });
+        const chart = screen.getByRole('region', { name: 'Normalized RU trend' });
+        const focusedNames: (string | null)[] = [];
+        chart.addEventListener('focus', () => focusedNames.push(chart.getAttribute('aria-label')));
+        update({ active: false, requestedMetric: 'totalRequests', navigationRevision: 2 });
+        expect(focusedNames).toEqual([]);
+        update({ active: true, requestedMetric: 'totalRequests', navigationRevision: 2 });
+        expect(focusedNames).toEqual(['Total requests trend']);
+        expect(chart).toHaveFocus();
+    });
+
     it('does not show stale samples or a zero line after known inapplicability arrives', () => {
         const { update } = renderMetrics({
             chartAffordances,

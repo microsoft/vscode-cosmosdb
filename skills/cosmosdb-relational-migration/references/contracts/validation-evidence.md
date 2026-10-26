@@ -275,6 +275,8 @@ Pass `--manifest <root-manifest.json>` to the merge command when reconciling
 estimates for shared containers. Read `capacityEvidence` from that manifest. Its
 shape is `{ "version": 1, "containers": [...] }`.
 Each container entry has `name`, `operations`, `storage`, and optional `sizing`.
+Here, sharing a physical container between domains is distinct from multiple containers sharing database throughput.
+All capacity evidence uses version 1. Shared or hybrid allocation adds the database-pool fields described below.
 
 Each operation has a stable `id`, contributing `domains`, `ruPerOperation`,
 `operationsPerSecond`, `window`, and `source` provenance. Both numeric fields are
@@ -324,6 +326,31 @@ indeterminate aggregate estimates rather than silently selecting totals. Do not 
 missing optional estimates into `blockingIssues`. Required throughput configuration
 and validation of supplied numeric evidence still apply; label estimated demand
 explicitly when production measurements are unavailable.
+
+## Database Throughput Pools
+
+For shared or hybrid allocation, keep `capacityEvidence.version: 1`, retain the `containers` contribution array,
+and add one `databasePool` with `containerNames`, `demandBasis: "peak" | "average"`, and `sizing`.
+Membership must exactly match the selected physical containers whose model `throughputMode` is `shared`.
+Every member needs its own validated operation/storage contributions, including single-domain containers.
+Dedicated containers remain outside the pool. Unknown versions, duplicate/missing members, and unselected domains fail.
+
+`databasePool.sizing` accepts only `monthlyGrowthPercent`, `spikyOrSeasonal`, and `peakToAverageRatio` from the existing
+calculator. Do not insert an independently selected RU maximum or a second copy of operations. Within each physical
+container, deduplicate matching operation/window identities. Across containers, the same operation ID incurs separate
+work and is counted separately. Sum coincident windows across all members, then use the largest combined window.
+Use a common window when overlap is unknown; different windows assert evidence-backed noncoincidence.
+
+For `peak`, the combined demand receives no additional headroom, and `peakToAverageRatio` is forbidden. For `average`,
+apply the declared ratio or the existing 2x/3x rule once at database scope. Round once to 1,000-RU/s increments.
+The pool also requires known projected storage for all members. Preserve each container's GiB estimate; convert the
+sum to decimal GB for the autoscale storage floor of 10 RU/s per GB, rounded up to a 1,000-RU/s maximum increment.
+Use the larger workload/storage recommendation. Unknown material sizing inputs need evidence or a reviewed estimate,
+not zero. Existing-resource service minima and history still require live inspection before deployment.
+
+The merge derives root `databaseMaxThroughput`; shared members never receive a container `maxThroughput`.
+Existing root/domain hash and deterministic-merge checks bind both membership and capacity. Keep the allocation table,
+cost/isolation tradeoffs, observation windows, storage units, and evidence assumptions in the existing root summary.
 
 ## Identity Mapping
 

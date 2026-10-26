@@ -66,6 +66,67 @@ function inputs() {
     return { model, sampleData, project };
 }
 
+test('places shared autoscale on the database and keeps hybrid container capacity independent', () => {
+    for (const type of ['azure', 'provision', 'emulator']) {
+        const { model, sampleData, project } = inputs();
+        model.databaseMaxThroughput = 8000;
+        model.containers[0].throughputMode = 'shared';
+        delete model.containers[0].maxThroughput;
+        const dedicated = structuredClone(model.containers[0]);
+        dedicated.name = 'ZDedicated';
+        dedicated.throughputMode = 'dedicated';
+        dedicated.maxThroughput = 5000;
+        Object.assign(dedicated.entities[0], { name: 'Dedicated', docType: 'dedicated', idTemplate: 'dedicated-{Id}' });
+        model.containers.push(dedicated);
+        sampleData.sampleData.push({ containerName: 'ZDedicated', items: [
+            { ...sampleData.sampleData[0].items[0], id: 'dedicated-1', docType: 'dedicated' },
+        ] });
+        project.phases.targetEnvironment.type = type;
+        const original = structuredClone({ model, sampleData, project });
+        const artifacts = buildProvisioningArtifacts(model, sampleData, project);
+        const database = artifacts['main.bicep'].split('resource database')[1].split('resource container_0')[0];
+        const containers = artifacts['main.bicep'].split(/resource container_\d+/u).slice(1);
+        assert.match(database, /autoscaleSettings: \{\s+maxThroughput: 8000/u);
+        assert.doesNotMatch(containers[0], /autoscaleSettings|maxThroughput/u);
+        assert.match(containers[1], /autoscaleSettings: \{\s+maxThroughput: 5000/u);
+        assert.doesNotMatch(artifacts['seed-data.csh'], /^(?:create|index|throughput)\b/mu);
+        assert.match(artifacts['seed-data.csh'], /mkitem .*--upsert/u);
+        assert.deepEqual(validateProvisioningArtifacts(artifacts, model, sampleData, project), []);
+        assert.deepEqual({ model, sampleData, project }, original);
+        artifacts['main.bicep'] = artifacts['main.bicep'].replace('maxThroughput: 8000', 'maxThroughput: 5000');
+        assert(validateProvisioningArtifacts(artifacts, model, sampleData, project).length > 0);
+    }
+});
+
+test('does not fall back to dedicated throughput or a serverless emulator for a shared model', () => {
+    const { model, sampleData, project } = inputs();
+    model.databaseMaxThroughput = 4000;
+    model.containers[0].throughputMode = 'shared';
+    delete model.containers[0].maxThroughput;
+    for (const type of ['azure', 'provision', 'emulator']) {
+        project.phases.targetEnvironment.type = type;
+        project.phases.targetEnvironment.capacityMode = 'serverless';
+        assert.throws(() => buildProvisioningArtifacts(model, sampleData, project), /Shared database throughput requires a provisioned target/u);
+    }
+    delete model.databaseMaxThroughput;
+    assert.throws(() => buildProvisioningArtifacts(model, sampleData, project), /databaseMaxThroughput/u);
+});
+
+test('seed-only Shell capability checks do not require resource mutation commands', () => {
+    const calls = [];
+    const run = (_executable, args) => {
+        const command = args.at(-1).split(' ')[1];
+        calls.push(command);
+        if (!['connect', 'cat', 'mkitem'].includes(command)) return { status: 1 };
+        return { status: 0, stdout: JSON.stringify({ command, options: [
+            { names: ['subscription', 'resource-group', 'database', 'container', 'upsert'] },
+        ] }) };
+    };
+    assert.deepEqual(checkSeedShell('shell', run, { seedOnly: true }), []);
+    assert.deepEqual(calls, ['connect', 'cat', 'mkitem']);
+    assert(checkSeedShell('shell', run).length > 0);
+});
+
 test('Azure seeding never replays Bicep resource operations', () => {
     const { model, sampleData, project } = inputs();
     for (const type of ['azure', 'provision']) {

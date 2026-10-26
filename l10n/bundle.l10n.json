@@ -1556,6 +1556,7 @@
   "Severe": "Severe",
   "Share your feedback": "Share your feedback",
   "Shared (database)": "Shared (database)",
+  "Shared database throughput requires the migration Skill provisioning workflow.": "Shared database throughput requires the migration Skill provisioning workflow.",
   "Shared throughput": "Shared throughput",
   "Shared-throughput database {database} has `{ru} RU/s` across `{count} collections`. {mono} consumes `{monoShare}%` of the pool.": "Shared-throughput database {database} has `{ru} RU/s` across `{count} collections`. {mono} consumes `{monoShare}%` of the pool.",
   "Shared-throughput starvation": "Shared-throughput starvation",

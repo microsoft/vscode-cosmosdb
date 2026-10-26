@@ -89,6 +89,46 @@ planning does not authorize production-data transfer or temporary bulk-import sc
 Carry import-specific runtime checks forward; successful sample seeding does not
 prove production-import feasibility or clear those checks.
 
+## Shared and Hybrid Throughput
+
+Dedicated autoscale remains the default. For an accepted shared/hybrid model, use the existing generated Bicep to
+provision the database pool and any dedicated containers, followed by the deterministic seed-only Shell script.
+Database autoscale comes from root `databaseMaxThroughput`; shared members omit container throughput settings.
+Do not change allocation because a selected tool lacks support. For an emulator, provision equivalent database/container
+allocation through a supported SDK before seeding; a serverless emulator cannot verify a shared-throughput design.
+The capacity-mismatch tolerance above applies only to models without shared allocation.
+
+Before applying changes, inspect account capacity, database throughput, current shared members, each modeled container's
+allocation and ordered keys, service-reported throughput minima, and pending scale operations. Distinguish absent resources
+from denied or failed reads. Include existing and planned shared members in the 25-container limit. If unmodeled shared
+containers consume the pool, stop for a scoped design decision; do not resize their pool using only migration-subset demand.
+Unmodeled dedicated containers and an unrelated existing pool remain outside managed scope and must be preserved.
+
+Shared-to-dedicated and dedicated-to-shared container transitions require data movement to a different container.
+Never delete, recreate, rename, or copy data automatically. A database created without throughput cannot acquire a pool
+through an implicit adoption step, and manual-to-autoscale conversion requires a separately supported operation.
+Reject these incompatibilities before applying the template. Review the incremental deployment preview and stop on
+account changes or effects outside the authorized scope. Wait for observed provisioning/scale convergence before seeding;
+a pending offer replacement is not success. Keep partial failures incomplete without destructive rollback.
+
+All provisioning verification uses `verification.version: 1` in the existing manifest. Explicit container allocation
+requires allocation-aware observations. For shared/hybrid models, record observed
+`phases.targetEnvironment.capacityMode: "provisioned"` and the following readback, never values copied from expectations:
+
+- `databaseThroughput: { mode: "autoscale", maxThroughput, isReplacePending: false }`, matching the accepted pool maximum.
+- Each shared container: `capacityMode: "provisioned"`, `throughputMode: "shared"`, `dedicatedThroughputPresent: false`.
+   Omit its `maxThroughput`, `scalingMode`, and `isReplacePending`; scaling belongs to the database.
+- Each dedicated container when the model explicitly declares allocation: `throughputMode: "dedicated"`, `dedicatedThroughputPresent: true`,
+   `scalingMode: "autoscale"`, `isReplacePending: false`, and the exact container `maxThroughput`.
+
+Retain the existing target/model hash, ordered partition keys, policy comparisons, sample point reads, and empty failure
+requirements. Missing observations or allocation drift fail independently of numeric throughput drift. A failed or
+empty offer read is not proof of shared allocation. These allocation fields also apply to explicitly allocated
+dedicated-only models. Models with omitted allocation remain dedicated and use their container capacity observations;
+serverless models omit provisioned-throughput fields. Required evidence follows the model, not a separate format version.
+These validators check recorded evidence, not whether a remote read actually occurred. No new project checkpoint fields
+or provisioning framework are introduced.
+
 ## Account Creation and Adoption
 
 The existing version 1 target fields determine artifact generation. Only
@@ -324,6 +364,9 @@ node <skill-root>/scripts/generate-provisioning-artifacts.mjs \
 The check executes only local `help` commands. It does not connect, inspect credentials,
 install software, or mutate resources. Missing capabilities or invalid command help
 block script execution; report the diagnostic and request a compatible executable.
+For a seed-only script, add `--seed-only` to check only its connect, file-read, and upsert commands; unsupported resource
+creation or throughput commands do not block this route. Continue verifying the Shell version and documented loop/pipe
+syntax. Capability help is not proof that a script ran or that allocation was deployed correctly.
 For a version at or above the minimum, investigate the capability failure rather than
 automatically updating it. Never remove `--upsert` or substitute create-only writes to make
 an old installation work. Artifact generation itself still requires only Node.js.
@@ -345,7 +388,7 @@ creation, indexing, and throughput. Do not replay `create`, `index set`, or
 `throughput` commands against Bicep-created resources. Unspecified targets also
 produce data-only scripts; select and verify a target before execution.
 
-Only emulator scripts without container-level full-text or unique-key policies
+Only emulator scripts without shared throughput, container-level full-text, or unique-key policies
 include resource operations. They reuse configured names, apply `index set` after
 create-if-missing, and use `--scale=auto --ru=<maxThroughput>` plus
 `throughput autoscale` for provisioned capacity. Review changes and immutable settings
@@ -458,8 +501,9 @@ ignored during comparison, but path case and constraint membership must match.
 An absent policy and the service default `{ "uniqueKeys": [] }` both mean no constraints.
 Read the settings from the target, never copy expected configuration as evidence.
 
-Record each container's observed `capacityMode` and, for provisioned capacity, its
-autoscale `maxThroughput`. Match effective target settings, including selected Azure
+Record each container's observed `capacityMode` and, for dedicated provisioned capacity, its
+autoscale `maxThroughput`. Models with explicit allocation use the allocation observations described above.
+Match effective target settings, including selected Azure
 maxima or emulator overrides, without changing the canonical model hash. Missing or
 mismatched observations fail verification; never substitute expected capacity for readback.
 

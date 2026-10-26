@@ -9,6 +9,7 @@
     "version": { "const": 1 },
     "databaseName": { "$ref": "#/$defs/resourceName" },
     "capacityMode": { "enum": ["serverless", "provisioned"] },
+    "databaseMaxThroughput": { "type": "integer", "minimum": 1000, "multipleOf": 1000 },
     "domain": { "type": "string", "minLength": 1 },
     "sourceType": { "type": "string", "minLength": 1 },
     "containers": {
@@ -25,7 +26,64 @@
       "items": { "$ref": "#/$defs/crossPartitionQuery" }
     }
   },
+  "allOf": [
+    {
+      "if": { "properties": { "domain": { "const": "all" } }, "required": ["domain"] },
+      "then": { "required": ["databaseName", "capacityMode"] }
+    },
+    {
+      "if": { "required": ["databaseMaxThroughput"] },
+      "then": {
+        "required": ["capacityMode"],
+        "properties": {
+          "domain": { "const": "all" },
+          "capacityMode": { "const": "provisioned" },
+          "containers": { "contains": { "$ref": "#/$defs/sharedContainer" } }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "containers": { "contains": { "required": ["throughputMode"] } } },
+        "required": ["containers"]
+      },
+      "then": { "required": ["capacityMode"], "properties": { "capacityMode": { "const": "provisioned" } } }
+    },
+    {
+      "if": {
+        "properties": { "domain": { "const": "all" }, "containers": { "contains": { "$ref": "#/$defs/sharedContainer" } } },
+        "required": ["domain", "containers"]
+      },
+      "then": { "required": ["databaseMaxThroughput"] }
+    },
+    {
+      "properties": { "containers": { "contains": { "$ref": "#/$defs/sharedContainer" }, "minContains": 0, "maxContains": 25 } }
+    },
+    {
+      "if": { "properties": { "capacityMode": { "const": "provisioned" } }, "required": ["capacityMode"] },
+      "then": {
+        "properties": { "containers": { "items": {
+          "if": { "$ref": "#/$defs/sharedContainer" },
+          "then": { "not": { "required": ["maxThroughput"] } },
+          "else": { "required": ["maxThroughput"] }
+        } } }
+      }
+    },
+    {
+      "if": { "properties": { "capacityMode": { "const": "serverless" } }, "required": ["capacityMode"] },
+      "then": {
+        "not": { "required": ["databaseMaxThroughput"] },
+        "properties": { "containers": { "items": { "not": { "anyOf": [
+          { "required": ["maxThroughput"] }, { "required": ["throughputMode"] }
+        ] } } } }
+      }
+    }
+  ],
   "$defs": {
+    "sharedContainer": {
+      "properties": { "throughputMode": { "const": "shared" } },
+      "required": ["throughputMode"]
+    },
     "resourceName": {
       "type": "string",
       "minLength": 1,
@@ -233,6 +291,7 @@
         "fullTextPolicy": { "$ref": "#/$defs/fullTextPolicy" },
         "uniqueKeyPolicy": { "$ref": "#/$defs/uniqueKeyPolicy" },
         "maxThroughput": { "type": "integer", "minimum": 1000, "multipleOf": 1000 },
+        "throughputMode": { "enum": ["shared", "dedicated"] },
         "estimatedStorageGB": { "type": "number", "minimum": 0 },
         "estimatedRowCount": { "type": "integer", "minimum": 0 }
       }

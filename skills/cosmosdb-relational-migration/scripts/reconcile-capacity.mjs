@@ -12,7 +12,7 @@ function text(value, field) {
     return value;
 }
 
-export function reconcileCapacity(evidence, domains, capacityMode) {
+function reconcileOperations(evidence, domains) {
     if (!evidence || !Array.isArray(evidence.operations) || !Array.isArray(evidence.storage)) throw new Error('Shared container requires operation and storage contribution evidence');
     const covered = new Set();
     const contributions = new Map();
@@ -32,6 +32,12 @@ export function reconcileCapacity(evidence, domains, capacityMode) {
     for (const [, operation] of [...contributions].sort(([left], [right]) => left.localeCompare(right))) {
         windows.set(operation.window, (windows.get(operation.window) ?? 0) + operation.ruPerOperation * operation.operationsPerSecond);
     }
+    if ([...windows.values()].some(value => !Number.isFinite(value))) throw new Error('Capacity arithmetic overflow');
+    return windows;
+}
+
+export function reconcileCapacity(evidence, domains, capacityMode) {
+    const windows = reconcileOperations(evidence, domains);
     const peak = Math.max(0, ...windows.values());
     const result = {};
     if (capacityMode === 'provisioned') {
@@ -72,4 +78,47 @@ export function reconcileCapacity(evidence, domains, capacityMode) {
     }
     if (Object.values(result).some(value => !Number.isFinite(value))) throw new Error('Capacity arithmetic overflow');
     return result;
+}
+
+export function reconcileDatabasePool(pool, members, evidence) {
+    if (!pool || !Array.isArray(pool.containerNames) || !['peak', 'average'].includes(pool.demandBasis) ||
+        !pool.sizing || typeof pool.sizing !== 'object' || Array.isArray(pool.sizing)) {
+        throw new Error('Database pool requires containerNames, demandBasis (peak or average), and sizing');
+    }
+    if (Object.keys(pool).some(key => !['containerNames', 'demandBasis', 'sizing'].includes(key)) ||
+        Object.keys(pool.sizing).some(key => !['monthlyGrowthPercent', 'spikyOrSeasonal', 'peakToAverageRatio'].includes(key))) {
+        throw new Error('Unsupported database pool sizing field');
+    }
+    const names = members.map(member => member.container.name).sort();
+    if (new Set(pool.containerNames).size !== pool.containerNames.length ||
+        JSON.stringify([...pool.containerNames].sort()) !== JSON.stringify(names)) {
+        throw new Error('Database pool membership must exactly match the shared containers');
+    }
+    if (pool.demandBasis === 'peak' && pool.sizing.peakToAverageRatio !== undefined) {
+        throw new Error('Peak database demand must not apply an average-to-peak ratio');
+    }
+    const windows = new Map();
+    let storageBytes = 0;
+    for (const { container, domains } of [...members].sort((left, right) => left.container.name.localeCompare(right.container.name))) {
+        const contribution = evidence.find(entry => entry.name === container.name);
+        const storage = reconcileCapacity(contribution, domains, 'serverless');
+        if (storage.estimatedStorageGB === undefined) throw new Error(`Shared container ${container.name} requires known projected storage for pool sizing`);
+        storageBytes += storage.estimatedStorageGB * 1024 ** 3;
+        for (const [window, demand] of reconcileOperations(contribution, domains)) {
+            windows.set(window, (windows.get(window) ?? 0) + demand);
+        }
+    }
+    const demand = Math.max(0, ...windows.values());
+    if (!Number.isFinite(demand) || demand <= 0 || !Number.isFinite(storageBytes)) {
+        throw new Error('Database pool requires positive finite demand and finite storage');
+    }
+    const capacity = calculateCapacity({
+        ...pool.sizing,
+        monthlyGrowthPercent: pool.sizing.monthlyGrowthPercent ?? undefined,
+        ...(pool.demandBasis === 'peak' ? { estimatedPeakRuPerSecond: demand } : { estimatedAverageRuPerSecond: demand }),
+    });
+    const storageFloor = Math.ceil((storageBytes / 1e9 * 10) / 1000) * 1000;
+    const maximum = Math.max(capacity.recommendedAutoscaleMaxRuPerSecond, storageFloor);
+    if (!Number.isFinite(maximum)) throw new Error('Database pool capacity arithmetic overflow');
+    return maximum;
 }

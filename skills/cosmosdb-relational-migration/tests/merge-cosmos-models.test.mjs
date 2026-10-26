@@ -63,6 +63,98 @@ function domainModel(domain, containerName, entityValue, options = {}) {
 const mergeOptions = { databaseName: 'migration-db', capacityMode: 'serverless' };
 const mergeScriptPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'merge-cosmos-models.mjs');
 
+function sharedInputs(demands = [4000, 4000]) {
+    const domains = ['Sales', 'Catalog'].map((name, index) => {
+        const model = domainModel(name, `Shared${index}`, entity(`Item${index}`, `${name}.Items`));
+        model.capacityMode = 'provisioned';
+        model.containers[0].throughputMode = 'shared';
+        return { domainName: name, model };
+    });
+    const capacityEvidence = {
+        version: 1,
+        containers: domains.map(({ domainName, model }, index) => ({
+            name: model.containers[0].name,
+            operations: [{ id: 'read', window: 'concurrent', source: 'workload', domains: [domainName], ruPerOperation: 1, operationsPerSecond: demands[index] }],
+            storage: [{ id: 'rows', source: 'volumetrics', kind: 'primary', rows: 1, bytesPerItem: 1000 }],
+            sizing: { monthlyGrowthPercent: 0 },
+        })),
+        databasePool: { containerNames: ['Shared0', 'Shared1'], demandBasis: 'peak', sizing: {} },
+    };
+    return { domains, options: { databaseName: 'migration-db', capacityMode: 'provisioned', capacityEvidence } };
+}
+
+test('sizes shared demand once and retains independent hybrid capacity', () => {
+    for (const [demands, basis, expected] of [
+        [[4000, 4000], 'peak', 8000], [[600, 600], 'peak', 2000], [[600, 600], 'average', 3000],
+    ]) {
+        const { domains, options } = sharedInputs(demands);
+        options.capacityEvidence.databasePool.demandBasis = basis;
+        const dedicated = domainModel('Dedicated', 'Dedicated', entity('Dedicated', 'Dedicated.Items'));
+        dedicated.capacityMode = 'provisioned';
+        Object.assign(dedicated.containers[0], { throughputMode: 'dedicated', maxThroughput: 5000 });
+        domains.push({ domainName: 'Dedicated', model: dedicated });
+        const result = mergeCosmosModels(domains, options);
+        assert.deepEqual(result.errors, []);
+        assert.deepEqual(result.conflicts, []);
+        assert.equal(result.model.databaseMaxThroughput, expected);
+        assert.equal(result.model.containers.find(container => container.name === 'Dedicated').maxThroughput, 5000);
+        assert(result.model.containers.filter(container => container.throughputMode === 'shared').every(container => container.maxThroughput === undefined));
+        assert.equal(canonicalStringify(mergeCosmosModels([...domains].reverse(), options).model), canonicalStringify(result.model));
+    }
+});
+
+test('applies peak windows, average headroom, and decimal-GB storage floors at pool scope', () => {
+    const { domains, options } = sharedInputs();
+    options.capacityEvidence.containers[1].operations[0].window = 'other';
+    assert.equal(mergeCosmosModels(domains, options).model.databaseMaxThroughput, 4000);
+    options.capacityEvidence.databasePool.demandBasis = 'average';
+    options.capacityEvidence.databasePool.sizing.spikyOrSeasonal = true;
+    assert.equal(mergeCosmosModels(domains, options).model.databaseMaxThroughput, 12000);
+    options.capacityEvidence.databasePool.demandBasis = 'peak';
+    options.capacityEvidence.containers[0].storage[0].bytesPerItem = 900e9;
+    assert.equal(mergeCosmosModels(domains, options).model.databaseMaxThroughput, 10000);
+});
+
+test('rejects incomplete or contradictory shared pool evidence', () => {
+    for (const change of [
+        options => { options.capacityEvidence.version = 2; },
+        options => { options.capacityEvidence.version = 3; },
+        options => { delete options.capacityEvidence.databasePool; },
+        options => { options.capacityEvidence.databasePool.containerNames.pop(); },
+        options => { options.capacityEvidence.databasePool.containerNames.push('Shared0'); },
+        options => { options.capacityEvidence.databasePool.containerNames[0] = 'Unknown'; },
+        options => { options.capacityEvidence.containers.pop(); },
+        options => { options.capacityEvidence.containers[0].operations[0].domains = ['Unknown']; },
+        options => { options.capacityEvidence.containers[0].storage[0].rows = null; },
+        options => { options.capacityEvidence.databasePool.sizing.estimatedPeakRuPerSecond = 1; },
+        options => { options.capacityEvidence.databasePool.sizing.peakToAverageRatio = 2; },
+        options => { options.capacityMode = 'serverless'; },
+    ]) {
+        const { domains, options } = sharedInputs();
+        change(options);
+        const result = mergeCosmosModels(domains, options);
+        assert.equal(result.model, undefined, change.toString());
+        assert(result.conflicts.length > 0, change.toString());
+    }
+});
+
+test('rejects same-container allocation conflicts and accepts omitted versus explicit dedicated allocation', () => {
+    const { domains, options } = sharedInputs();
+    domains[1].model.containers[0].name = domains[0].model.containers[0].name;
+    domains[1].model.containers[0].throughputMode = 'dedicated';
+    domains[1].model.containers[0].maxThroughput = 4000;
+    assert(mergeCosmosModels(domains, options).conflicts.some(conflict => conflict.includes('allocation differs')));
+    delete domains[0].model.containers[0].throughputMode;
+    domains[0].model.containers[0].maxThroughput = 4000;
+    options.capacityEvidence.version = 1;
+    delete options.capacityEvidence.databasePool;
+    options.capacityEvidence.containers = [options.capacityEvidence.containers[0]];
+    options.capacityEvidence.containers[0].operations[0].domains = ['Sales', 'Catalog'];
+    const result = mergeCosmosModels(domains, options);
+    assert.deepEqual(result.conflicts, []);
+    assert.equal(result.model.containers[0].throughputMode, 'dedicated');
+});
+
 test('surfaces _etag warnings while merging and blocks explicit indexing without replacing output', () => {
     const model = domainModel('Sales', 'Orders', entity('Order', 'Sales.Orders'));
     model.containers[0].indexingPolicy.excludedPaths = [];

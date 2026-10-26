@@ -22,6 +22,30 @@ function validateUpdatedModels(value) {
     return validateConversionEvidence(value.project, value.inventory, value.domainModels, value.root, value.evidence);
 }
 
+test('binds shared pool capacity and allocation to domain and workload evidence', () => {
+    const value = fixture();
+    const domain = value.domainModels[0].model;
+    domain.capacityMode = 'provisioned';
+    domain.containers[0].throughputMode = 'shared';
+    value.evidence.capacityMode = 'provisioned';
+    value.evidence.capacityEvidence = {
+        version: 1,
+        containers: [{ name: 'Orders', operations: [
+            { id: 'read', domains: ['Orders'], source: 'workload', window: 'peak', ruPerOperation: 1, operationsPerSecond: 4000 },
+        ], storage: [{ id: 'rows', kind: 'primary', source: 'volumetrics', rows: 1, bytesPerItem: 1000 }], sizing: { monthlyGrowthPercent: 0 } }],
+        databasePool: { containerNames: ['Orders'], demandBasis: 'peak', sizing: {} },
+    };
+    assert.deepEqual(validateUpdatedModels(value), []);
+    value.root.databaseMaxThroughput += 1000;
+    assert(validateConversionEvidence(value.project, value.inventory, value.domainModels, value.root, value.evidence)
+        .some(error => error.message.includes('deterministic merge')));
+    value.root.databaseMaxThroughput -= 1000;
+    delete value.root.databaseMaxThroughput;
+    value.root.containers[0].throughputMode = 'dedicated';
+    value.root.containers[0].maxThroughput = 4000;
+    assert(validateConversionEvidence(value.project, value.inventory, value.domainModels, value.root, value.evidence).length > 0);
+});
+
 test('binds selected domains, source ownership and root bytes to accepted inputs', () => {
     const { project, inventory, domainModels, evidence, root } = fixture();
     assert.deepEqual(validateConversionEvidence(project, inventory, domainModels, root, evidence), []);

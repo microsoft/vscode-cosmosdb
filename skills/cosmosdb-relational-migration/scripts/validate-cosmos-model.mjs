@@ -12,6 +12,7 @@ const ROOT_KEYS = new Set([
     'version',
     'databaseName',
     'capacityMode',
+    'databaseMaxThroughput',
     'domain',
     'sourceType',
     'containers',
@@ -26,6 +27,7 @@ const CONTAINER_KEYS = new Set([
     'fullTextPolicy',
     'uniqueKeyPolicy',
     'maxThroughput',
+    'throughputMode',
     'estimatedStorageGB',
     'estimatedRowCount',
 ]);
@@ -588,7 +590,18 @@ function checkContainer(container, jsonPath, entityNames, capacityMode, errors, 
             addError(errors, `${jsonPath}.maxThroughput`, 'must be an integer multiple of 1000 and at least 1000');
         }
     }
-    if (capacityMode === 'provisioned' && container.maxThroughput === undefined) {
+    if (container.throughputMode !== undefined) {
+        if (!['shared', 'dedicated'].includes(container.throughputMode)) {
+            addError(errors, `${jsonPath}.throughputMode`, 'must be shared or dedicated');
+        }
+        if (capacityMode !== 'provisioned') {
+            addError(errors, `${jsonPath}.throughputMode`, 'requires explicit provisioned capacity');
+        }
+    }
+    if (container.throughputMode === 'shared' && container.maxThroughput !== undefined) {
+        addError(errors, `${jsonPath}.maxThroughput`, 'must be omitted for shared database throughput');
+    }
+    if (capacityMode === 'provisioned' && container.throughputMode !== 'shared' && container.maxThroughput === undefined) {
         addError(errors, `${jsonPath}.maxThroughput`, 'is required for provisioned capacity');
     }
     if (capacityMode === 'serverless' && container.maxThroughput !== undefined) {
@@ -679,6 +692,19 @@ export function validateCosmosModel(model, { referenceRegistry = [], warnings = 
         if (!CAPACITY_MODES.has(model.capacityMode)) addError(errors, '$.capacityMode', 'is required for the root model');
     }
     if (!checkArray(model.containers, '$.containers', errors, { min: 1 })) return errors;
+    const sharedCount = model.containers.filter(container => container?.throughputMode === 'shared').length;
+    if (model.databaseMaxThroughput !== undefined) {
+        if (model.domain !== 'all' || model.capacityMode !== 'provisioned' || sharedCount === 0) {
+            addError(errors, '$.databaseMaxThroughput', 'requires a provisioned root model with shared containers');
+        }
+        if (!Number.isInteger(model.databaseMaxThroughput) || model.databaseMaxThroughput < 1000 || model.databaseMaxThroughput % 1000 !== 0) {
+            addError(errors, '$.databaseMaxThroughput', 'must be an integer multiple of 1000 and at least 1000');
+        }
+    }
+    if (model.domain === 'all' && sharedCount > 0 && model.databaseMaxThroughput === undefined) {
+        addError(errors, '$.databaseMaxThroughput', 'is required when the root model contains shared containers');
+    }
+    if (sharedCount > 25) addError(errors, '$.containers', 'must contain at most 25 shared-throughput containers');
     checkUnique(model.containers.map((container) => container?.name), '$.containers', 'container name', errors);
     const entityNames = new Set(
         model.containers.flatMap((container) => container?.entities ?? []).map((entity) => entity?.name?.toLowerCase()).filter(Boolean),
@@ -808,6 +834,7 @@ function canonicalContainer(container) {
     if (container.uniqueKeyPolicy !== undefined)
         result.uniqueKeyPolicy = canonicalUniqueKeyPolicy(container.uniqueKeyPolicy);
     if (container.maxThroughput !== undefined) result.maxThroughput = container.maxThroughput;
+    if (container.throughputMode !== undefined) result.throughputMode = container.throughputMode;
     if (container.estimatedStorageGB !== undefined) result.estimatedStorageGB = container.estimatedStorageGB;
     if (container.estimatedRowCount !== undefined) result.estimatedRowCount = container.estimatedRowCount;
     return result;
@@ -847,6 +874,7 @@ export function canonicalizeCosmosModel(model) {
     const result = { version: 1 };
     if (model.databaseName !== undefined) result.databaseName = model.databaseName;
     if (model.capacityMode !== undefined) result.capacityMode = model.capacityMode;
+    if (model.databaseMaxThroughput !== undefined) result.databaseMaxThroughput = model.databaseMaxThroughput;
     result.domain = model.domain;
     if (model.sourceType !== undefined) result.sourceType = model.sourceType;
     result.containers = model.containers.map(canonicalContainer).sort((a, b) => a.name.localeCompare(b.name));

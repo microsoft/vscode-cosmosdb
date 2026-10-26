@@ -519,6 +519,29 @@ sample documents.
 
 ## Cross-Domain Merge
 
+### Throughput Allocation
+
+Keep `capacityMode` as the account choice: `serverless` or `provisioned`. Dedicated container autoscale is the default
+recommendation for new workloads. Shared or hybrid allocation requires an explicit reviewed choice based on workload,
+peak overlap, storage growth, contention, and isolation. Consult current peer guidance; shared throughput is not a
+per-container reservation or a general cost-saving guarantee.
+
+For provisioned models, set each new container's `throughputMode` to `dedicated` or `shared`. Dedicated containers require
+their own `maxThroughput`; shared containers forbid it. The merged root requires `databaseMaxThroughput` if and only if
+any container is shared. Domain candidates declare explicit provisioned capacity and membership but omit the final
+database maximum. The merge derives that maximum from the
+[database-pool evidence](../contracts/validation-evidence.md#database-throughput-pools).
+
+All autoscale maxima are integers of at least 1,000 RU/s in 1,000-RU/s increments. Allow at most 25 distinct shared
+physical containers; additional dedicated containers do not consume that allowance. Serverless models omit all
+allocation/throughput fields. Existing provisioned models with omitted `throughputMode` remain dedicated and retain
+their canonical bytes; do not rewrite them solely to add the field. Conflicting domain capacity modes or shared versus
+dedicated allocation for the same physical container fail the merge. Omitted and explicit dedicated modes are compatible.
+
+Keep the root summary's allocation and maxima consistent with the canonical model. A combined capacity upper bound is
+the database maximum plus dedicated maxima, not a per-container guarantee or a bill estimate. Account/container adoption
+must preserve existing allocation; an incompatible target requires a separately scoped migration, not an in-place switch.
+
 Load only validated per-domain `cosmos-model.json` files. Merge in stable domain order
 using deterministic rules for disjoint containers and entities. Never silently choose
 between incompatible partition keys, ownership, duplicate entity definitions, or

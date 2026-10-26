@@ -26,6 +26,7 @@ const ROOT_KEYS = new Set([
     'modelSha256',
     'target',
     'databaseName',
+    'databaseThroughput',
     'containers',
     'sampleItems',
     'failures',
@@ -39,6 +40,10 @@ const CONTAINER_KEYS = new Set([
     'uniqueKeyPolicy',
     'capacityMode',
     'maxThroughput',
+    'throughputMode',
+    'dedicatedThroughputPresent',
+    'scalingMode',
+    'isReplacePending',
 ]);
 const SAMPLE_KEYS = new Set(['containerName', 'id', 'partitionKeyValues', 'found', 'document']);
 const SYSTEM_PROPERTIES = new Set(['_rid', '_self', '_etag', '_attachments', '_ts', '_lsn']);
@@ -153,18 +158,28 @@ export function modelSha256(model) {
 }
 
 function expectedContainers(model, targetEnvironment) {
-    return canonicalizeCosmosModel(model).containers.map((container) => ({
-        name: container.name,
-        partitionKeys: container.partitionKeys.map((partitionKey) => partitionKey.path),
-        indexingPolicy: {
-            ...container.indexingPolicy,
-            indexingMode: container.indexingPolicy.indexingMode ?? 'consistent',
-            automatic: container.indexingPolicy.automatic ?? true,
-        },
-        ...(container.fullTextPolicy === undefined ? {} : { fullTextPolicy: container.fullTextPolicy }),
-        ...(container.uniqueKeyPolicy === undefined ? {} : { uniqueKeyPolicy: container.uniqueKeyPolicy }),
-        ...getProvisioningCapacity(model, container, targetEnvironment),
-    }));
+    const explicitAllocation = model.containers.some(container => container.throughputMode !== undefined);
+    return canonicalizeCosmosModel(model).containers.map((container) => {
+        const capacity = getProvisioningCapacity(model, container, targetEnvironment);
+        const allocation = container.throughputMode ?? 'dedicated';
+        return {
+            name: container.name,
+            partitionKeys: container.partitionKeys.map((partitionKey) => partitionKey.path),
+            indexingPolicy: {
+                ...container.indexingPolicy,
+                indexingMode: container.indexingPolicy.indexingMode ?? 'consistent',
+                automatic: container.indexingPolicy.automatic ?? true,
+            },
+            ...(container.fullTextPolicy === undefined ? {} : { fullTextPolicy: container.fullTextPolicy }),
+            ...(container.uniqueKeyPolicy === undefined ? {} : { uniqueKeyPolicy: container.uniqueKeyPolicy }),
+            ...capacity,
+            ...(explicitAllocation && capacity.capacityMode === 'provisioned' ? {
+                throughputMode: allocation,
+                dedicatedThroughputPresent: allocation === 'dedicated',
+                ...(allocation === 'dedicated' ? { scalingMode: 'autoscale', isReplacePending: false } : {}),
+            } : {}),
+        };
+    });
 }
 
 function sortSampleItems(items) {
@@ -208,7 +223,24 @@ export function validateProvisioningVerification(
     const errors = [...modelErrors, ...sampleErrors];
     if (errors.length > 0) return errors;
     if (!checkObject(report, '$', ROOT_KEYS, errors)) return errors;
+    const shared = model.containers.some(container => container.throughputMode === 'shared');
     if (report.version !== 1) addError(errors, '$.version', 'must equal 1');
+    if (shared) {
+        if (project.phases?.targetEnvironment?.capacityMode !== 'provisioned') {
+            addError(errors, '$.project.phases.targetEnvironment.capacityMode', 'record the observed provisioned account mode for shared throughput');
+        }
+        const keys = new Set(['mode', 'maxThroughput', 'isReplacePending']);
+        if (checkObject(report.databaseThroughput, '$.databaseThroughput', keys, errors)) {
+            const expected = { mode: 'autoscale', maxThroughput: model.databaseMaxThroughput, isReplacePending: false };
+            for (const key of keys) {
+                if (report.databaseThroughput[key] !== expected[key]) {
+                    addError(errors, `$.databaseThroughput.${key}`, 'must match the accepted database autoscale maximum with no pending replacement');
+                }
+            }
+        }
+    } else if (report.databaseThroughput !== undefined) {
+        addError(errors, '$.databaseThroughput', 'must be omitted when the model does not manage shared database throughput');
+    }
     if (typeof report.verifiedAt !== 'string' || !Number.isFinite(Date.parse(report.verifiedAt))) {
         addError(errors, '$.verifiedAt', 'must be an ISO date-time string');
     }

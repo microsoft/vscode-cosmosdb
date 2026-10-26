@@ -57,7 +57,14 @@ function isNewAccountTarget(targetEnvironment) {
     return targetEnvironment?.type === 'provision' && !targetEnvironment.endpoint;
 }
 
+function validateAllocation(model) {
+    if (model.databaseMaxThroughput === undefined && !model.containers.some(container => container.throughputMode !== undefined)) return;
+    const errors = validateCosmosModel(model);
+    if (errors.length || model.domain !== 'all') throw new Error(`Provisioning requires a valid root throughput allocation: ${JSON.stringify(errors)}`);
+}
+
 export function buildBicep(model, targetEnvironment) {
+    validateAllocation(model);
     const createAccount = isNewAccountTarget(targetEnvironment);
     const bicepTarget = targetEnvironment?.type === 'emulator' ? undefined : targetEnvironment;
     const capacityMode = bicepTarget?.capacityMode ?? model.capacityMode;
@@ -101,6 +108,13 @@ export function buildBicep(model, targetEnvironment) {
         '    resource: {',
         '      id: databaseName',
         '    }',
+        ...(model.databaseMaxThroughput === undefined ? [] : [
+            '    options: {',
+            '      autoscaleSettings: {',
+            `        maxThroughput: ${model.databaseMaxThroughput}`,
+            '      }',
+            '    }',
+        ]),
         '  }',
         '}',
         '',
@@ -147,7 +161,7 @@ export function buildBicep(model, targetEnvironment) {
         }
         emitIndexingPolicy(lines, container.indexingPolicy, '      ');
         lines.push('    }');
-        if (capacity.capacityMode === 'provisioned') {
+        if (capacity.capacityMode === 'provisioned' && capacity.throughputMode !== 'shared') {
             lines.push('    options: {', '      autoscaleSettings: {');
             lines.push(`        maxThroughput: ${capacity.maxThroughput}`);
             lines.push('      }', '    }');
@@ -198,13 +212,27 @@ export function buildBicepParams(model, project) {
 }
 
 export function getProvisioningCapacity(model, container, targetEnvironment) {
+    if (container.throughputMode !== undefined &&
+        (!['shared', 'dedicated'].includes(container.throughputMode) || model.capacityMode !== 'provisioned')) {
+        throw new Error('Container throughput allocation requires explicit provisioned capacity and a supported mode.');
+    }
     const emulator = targetEnvironment?.type === 'emulator';
     const capacityMode = targetEnvironment?.capacityMode ?? (emulator ? 'provisioned' : model.capacityMode);
     if (!['serverless', 'provisioned'].includes(capacityMode)) throw new Error('Target capacityMode must be serverless or provisioned.');
+    if (model.containers?.some(member => member.throughputMode === 'shared') && capacityMode !== 'provisioned') {
+        throw new Error('Shared database throughput requires a provisioned target, including emulator targets.');
+    }
     if (model.capacityMode === 'provisioned' && capacityMode === 'serverless' && !emulator) {
         throw new Error('A serverless Azure account cannot satisfy a provisioned-capacity model. Select or create a provisioned account.');
     }
     if (capacityMode === 'serverless') return { capacityMode };
+    if (container.throughputMode === 'shared') {
+        if (model.capacityMode !== 'provisioned' || container.maxThroughput !== undefined ||
+            !Number.isInteger(model.databaseMaxThroughput) || model.databaseMaxThroughput < 1000 || model.databaseMaxThroughput % 1000 !== 0) {
+            throw new Error('Shared containers require a valid database autoscale maximum and no container maximum.');
+        }
+        return { capacityMode, throughputMode: 'shared' };
+    }
     const maxThroughput = model.capacityMode === 'provisioned'
         ? container.maxThroughput
         : targetEnvironment?.maxThroughput ?? (emulator ? 1000 : undefined);
@@ -215,9 +243,13 @@ export function getProvisioningCapacity(model, container, targetEnvironment) {
 }
 
 export function buildSeedScript(model, targetEnvironment) {
+    validateAllocation(model);
+    if (model.containers.some(container => container.throughputMode === 'shared')) {
+        for (const container of model.containers) getProvisioningCapacity(model, container, targetEnvironment);
+    }
     const databaseName = escapeShell(model.databaseName);
     const seedOnly = targetEnvironment?.type !== 'emulator' || model.containers.some((container) =>
-        container.fullTextPolicy !== undefined || container.uniqueKeyPolicy !== undefined);
+        container.fullTextPolicy !== undefined || container.uniqueKeyPolicy !== undefined || container.throughputMode === 'shared');
     let connection = 'connect $1';
     if (
         ['azure', 'provision'].includes(targetEnvironment?.type) &&
@@ -265,9 +297,13 @@ export function buildSeedScript(model, targetEnvironment) {
     return lines.join('\n');
 }
 
-export function checkSeedShell(executable, run = spawnSync) {
+export function checkSeedShell(executable, run = spawnSync, { seedOnly = false } = {}) {
     const errors = [];
-    const requiredOptions = {
+    const requiredOptions = seedOnly ? {
+        connect: ['subscription', 'resource-group'],
+        cat: [],
+        mkitem: ['upsert', 'database', 'container'],
+    } : {
         connect: ['subscription', 'resource-group'],
         create: ['scale', 'ru', 'database', 'index_policy'],
         mkitem: ['upsert', 'database', 'container'],
@@ -378,7 +414,7 @@ function parseArguments(argv) {
 export function runCli(argv) {
         if (showHelp(argv, `
 Usage: node generate-provisioning-artifacts.mjs --model <model.json> --sample-data <sample-data.json> --project <project.json> --output <directory> [--check | --force]
-             node generate-provisioning-artifacts.mjs --check-shell <executable>
+             node generate-provisioning-artifacts.mjs --check-shell <executable> [--seed-only]
 
 Generate deterministic local provisioning files. Does not deploy or seed resources.
 Paths resolve from the current working directory. All four paths are required for generation.
@@ -389,7 +425,8 @@ Paths resolve from the current working directory. All four paths are required fo
     --output <directory>  Destination for generated files; existing differing files are protected.
     --check               Compare existing files with expected content; no writes.
     --force               Replace differing generated files; use only for authorized regeneration.
-    --check-shell <exe>   Separate mode: execute a local Shell compatibility probe; no other options.
+    --check-shell <exe>   Separate mode: execute a local Shell compatibility probe; only --seed-only may accompany it.
+    --seed-only           With --check-shell: check only connect, file read, and upsert capabilities.
 
 Outputs JSON with written filenames or validation results.
 Exit: 0 on success; 1 for invalid input, mismatches, protected files, or probe failures.
@@ -397,8 +434,10 @@ Exit: 0 on success; 1 for invalid input, mismatches, protected files, or probe f
     try {
         if (argv[0] === '--check-shell') {
             const executable = requireOptionValue(argv, 0);
-            if (argv.length !== 2) throw new Error('Usage: generate-provisioning-artifacts.mjs --check-shell <executable>');
-            const errors = checkSeedShell(executable);
+            if (argv.length !== 2 && !(argv.length === 3 && argv[2] === '--seed-only')) {
+                throw new Error('Usage: generate-provisioning-artifacts.mjs --check-shell <executable> [--seed-only]');
+            }
+            const errors = checkSeedShell(executable, spawnSync, { seedOnly: argv[2] === '--seed-only' });
             process.stdout.write(`${JSON.stringify({ valid: errors.length === 0, errors }, null, 2)}\n`);
             return errors.length === 0 ? 0 : 1;
         }

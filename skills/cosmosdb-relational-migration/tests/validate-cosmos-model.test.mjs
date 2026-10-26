@@ -208,6 +208,71 @@ test('rejects malformed, duplicate, and over-limit unique-key policies', () => {
     }
 });
 
+function sharedModel() {
+    const model = validModel();
+    model.databaseMaxThroughput = 4000;
+    model.containers[0].throughputMode = 'shared';
+    delete model.containers[0].maxThroughput;
+    return model;
+}
+
+test('preserves explicit allocation and does not inject fields into existing dedicated models', () => {
+    const existing = validateAndCanonicalize(validModel()).model;
+    assert.equal(Object.hasOwn(existing, 'databaseMaxThroughput'), false);
+    assert.equal(Object.hasOwn(existing.containers[0], 'throughputMode'), false);
+    assert.equal(canonicalStringify(validateAndCanonicalize(existing).model), canonicalStringify(existing));
+    const shared = validateAndCanonicalize(sharedModel());
+    assert.deepEqual(shared.errors, []);
+    assert.equal(shared.model.databaseMaxThroughput, 4000);
+    assert.equal(shared.model.containers[0].throughputMode, 'shared');
+    assert.equal(Object.hasOwn(shared.model.containers[0], 'maxThroughput'), false);
+    const dedicated = validModel();
+    dedicated.containers[0].throughputMode = 'dedicated';
+    assert.equal(validateAndCanonicalize(dedicated).model.containers[0].throughputMode, 'dedicated');
+});
+
+const allocationCases = [
+    ['dedicated default', true, model => { delete model.databaseMaxThroughput; delete model.containers[0].throughputMode; model.containers[0].maxThroughput = 4000; }],
+    ['shared root', true, () => {}],
+    ['shared domain', true, model => { model.domain = 'Sales'; delete model.databaseMaxThroughput; }],
+    ['domain pool maximum', false, model => { model.domain = 'Sales'; }],
+    ['missing pool', false, model => { delete model.databaseMaxThroughput; }],
+    ['unused pool', false, model => { model.containers[0].throughputMode = 'dedicated'; model.containers[0].maxThroughput = 4000; }],
+    ['shared container maximum', false, model => { model.containers[0].maxThroughput = 4000; }],
+    ['missing dedicated maximum', false, model => { delete model.databaseMaxThroughput; model.containers[0].throughputMode = 'dedicated'; }],
+    ['unknown allocation', false, model => { model.containers[0].throughputMode = 'automatic'; }],
+    ['serverless allocation', false, model => { model.capacityMode = 'serverless'; }],
+    ['implicit domain capacity', false, model => { model.domain = 'Sales'; delete model.databaseMaxThroughput; delete model.capacityMode; }],
+    ...[null, 0, -1000, 1500, 1000.5, '4000'].map(value => ['invalid pool maximum', false, model => { model.databaseMaxThroughput = value; }]),
+];
+
+test('validates the shared and dedicated allocation matrix', () => {
+    for (const [name, valid, change] of allocationCases) {
+        const model = sharedModel();
+        change(model);
+        assert.equal(validateCosmosModel(model).length === 0, valid, name);
+    }
+});
+
+test('counts shared physical containers separately from dedicated containers', () => {
+    const model = sharedModel();
+    const template = model.containers[0];
+    model.containers = Array.from({ length: 26 }, (_, index) => {
+        const container = structuredClone(template);
+        container.name += index;
+        for (const entity of container.entities) {
+            entity.name += index;
+            entity.idTemplate = entity.idTemplate.replace('-', `${index}-`);
+            for (const relationship of entity.relationships ?? []) relationship.targetEntity += index;
+        }
+        return container;
+    });
+    assert(validateCosmosModel(model).some(error => error.message.includes('at most 25')));
+    model.containers[25].throughputMode = 'dedicated';
+    model.containers[25].maxThroughput = 1000;
+    assert.deepEqual(validateCosmosModel(model), []);
+});
+
 test('schema and runtime agree on target JSON types without restricting source database types', () => {
     const schema = JSON.parse(fs.readFileSync(new URL('../schemas/cosmos-model.schema.json', import.meta.url), 'utf8'));
     assert.deepEqual(schema.$defs.attribute.properties.type.enum, TARGET_JSON_TYPES);

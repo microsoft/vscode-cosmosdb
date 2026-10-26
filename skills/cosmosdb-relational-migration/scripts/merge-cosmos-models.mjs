@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { requireOptionValue } from './cli-arguments.mjs';
 import { showHelp } from './cli-help.mjs';
 import { readDomainModel, readPhaseEvidence } from './phase-summary.mjs';
-import { reconcileCapacity } from './reconcile-capacity.mjs';
+import { reconcileCapacity, reconcileDatabasePool } from './reconcile-capacity.mjs';
 import {
     canonicalFullTextPolicy,
     canonicalStringify,
@@ -116,6 +116,9 @@ export function mergeCosmosModels(domainModels, { databaseName, capacityMode, ca
     );
     for (const { domainName, model } of orderedDomains) {
         errors.push(...validateDomainInput(domainName, model, referenceRegistry));
+        if (model.capacityMode !== undefined && model.capacityMode !== capacityMode) {
+            conflicts.push(`Domain "${domainName}": capacity mode differs from the selected root mode`);
+        }
         if (model.sourceType) sourceTypes.add(model.sourceType);
         accessPatterns.push(
             ...(model.accessPatterns ?? []).map((pattern) => ({ ...clone(pattern), name: `${domainName}: ${pattern.name}` })),
@@ -134,6 +137,11 @@ export function mergeCosmosModels(domainModels, { databaseName, capacityMode, ca
 
             const context = `Container "${incomingContainer.name}" in domains "${existing.domains.join(', ')}" and "${domainName}"`;
             existing.domains.push(domainName);
+            if ((existing.container.throughputMode ?? 'dedicated') !== (incomingContainer.throughputMode ?? 'dedicated')) {
+                conflicts.push(`${context}: throughput allocation differs`);
+            } else if (incomingContainer.throughputMode !== undefined) {
+                existing.container.throughputMode = incomingContainer.throughputMode;
+            }
             if (
                 Array.isArray(existing.container.partitionKeys) &&
                 Array.isArray(incomingContainer.partitionKeys) &&
@@ -179,20 +187,33 @@ export function mergeCosmosModels(domainModels, { databaseName, capacityMode, ca
         }
     }
 
+    const sharedMembers = [...containers.values()].filter(({ container }) => container.throughputMode === 'shared');
+    let databaseMaxThroughput;
+    if (sharedMembers.length && (capacityMode !== 'provisioned' || capacityEvidence?.version !== 1)) {
+        conflicts.push('Shared throughput requires provisioned capacity and capacity evidence');
+    }
+    if (!sharedMembers.length && capacityEvidence?.databasePool !== undefined) {
+        conflicts.push('Database pool evidence requires shared containers');
+    }
     if (capacityEvidence !== undefined && (capacityEvidence?.version !== 1 || !Array.isArray(capacityEvidence.containers))) {
         conflicts.push('Capacity evidence must be version 1 with a containers array');
     } else {
-        const evidenceNames = (capacityEvidence?.containers ?? []).map(entry => entry.name);
-        if (new Set(evidenceNames).size !== evidenceNames.length || evidenceNames.some(name => !containers.has(name.toLowerCase()))) conflicts.push('Unknown or duplicate capacity evidence container');
+        const evidenceNames = (capacityEvidence?.containers ?? []).map(entry => entry?.name);
+        if (new Set(evidenceNames).size !== evidenceNames.length || evidenceNames.some(name => typeof name !== 'string' || containers.get(name.toLowerCase())?.container.name !== name)) conflicts.push('Unknown or duplicate capacity evidence container');
         for (const { container, domains, hasEstimates } of containers.values()) {
-            const evidence = capacityEvidence?.containers.find(entry => entry.name === container.name);
-            if (evidence || (domains.length > 1 && hasEstimates)) {
+            const evidence = capacityEvidence?.containers.find(entry => entry?.name === container.name);
+            if (evidence || container.throughputMode === 'shared' || (domains.length > 1 && hasEstimates)) {
                 try {
-                    const reconciled = reconcileCapacity(evidence, domains, capacityMode);
+                    const reconciled = reconcileCapacity(evidence, domains, container.throughputMode === 'shared' ? 'serverless' : capacityMode);
                     for (const field of ['maxThroughput', 'estimatedStorageGB', 'estimatedRowCount']) delete container[field];
                     Object.assign(container, reconciled);
                 } catch (error) { conflicts.push(`Container "${container.name}": ${error.message}`); }
             }
+        }
+        if (sharedMembers.length && capacityEvidence?.version === 1) {
+            try {
+                databaseMaxThroughput = reconcileDatabasePool(capacityEvidence.databasePool, sharedMembers, capacityEvidence.containers);
+            } catch (error) { conflicts.push(`Database pool: ${error.message}`); }
         }
     }
     if (sourceTypes.size > 1) conflicts.push(`Source types differ: ${[...sourceTypes].sort().join(', ')}`);
@@ -202,6 +223,7 @@ export function mergeCosmosModels(domainModels, { databaseName, capacityMode, ca
         version: 1,
         databaseName,
         capacityMode,
+        ...(databaseMaxThroughput === undefined ? {} : { databaseMaxThroughput }),
         domain: 'all',
         sourceType: sourceTypes.size === 1 ? [...sourceTypes][0] : undefined,
         containers: [...containers.values()].map(({ container }) => container),

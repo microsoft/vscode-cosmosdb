@@ -832,7 +832,7 @@ test('keeps Azure seed scripts data-only while preserving emulator provisioning'
     assert.match(provisioning, /Azure seed scripts are always data-only/u);
     assert.match(provisioning, /Deploy and verify `main.bicep` first/u);
     assert.match(provisioning, /Do not replay `create`, `index set`, or\s+`throughput` commands against Bicep-created resources/u);
-    assert.match(provisioning, /Only emulator scripts without container-level full-text or unique-key policies\s+include resource operations/u);
+    assert.match(provisioning, /Only emulator scripts without shared throughput, container-level full-text, or unique-key policies\s+include resource operations/u);
     assert.match(provisioning, /never delete\/recreate containers/u);
     assert.match(provisioning, /not live mutation, configuration convergence, or write success/u);
     assert.match(conversion, /validator rejects explicit root `id` entries/u);

@@ -15,7 +15,9 @@ import {
 import { buildCompatibilityReport } from '../scripts/check-sdk-compatibility.mjs';
 import { buildFreshnessManifest, fileSha256 } from '../scripts/freshness.mjs';
 import { buildProvisioningArtifacts } from '../scripts/generate-provisioning-artifacts.mjs';
+import { mergeCosmosModels } from '../scripts/merge-cosmos-models.mjs';
 import { readPhaseEvidence } from '../scripts/phase-summary.mjs';
+import { modelHash } from '../scripts/validate-conversion-evidence.mjs';
 import {
     canonicalizeCosmosModel,
     canonicalStringify,
@@ -139,6 +141,64 @@ function prepareConversionChain(workspace, project, model, language = 'TypeScrip
         canonicalStringify(canonicalizeCosmosModel(model)),
     );
 }
+
+test('completes a shared-throughput workflow only with matching allocation and database readback', () => {
+    const project = { version: 1, phases: {} };
+    const workspace = workspaceWithProject(project);
+    const root = '.cosmosdb-migration/phases';
+    try {
+        prepareConversionChain(workspace, project, provisioningModel());
+        const domain = { ...provisioningModel(), domain: 'Items', capacityMode: 'provisioned' };
+        domain.containers[0].throughputMode = 'shared';
+        const evidence = readPhaseEvidence(path.join(workspace, root, '3-schema-conversion/manifest.json'));
+        evidence.capacityMode = 'provisioned';
+        evidence.capacityEvidence = {
+            version: 1,
+            containers: [{ name: 'Items', operations: [
+                { id: 'read', domains: ['Items'], source: 'workload', window: 'peak', ruPerOperation: 1, operationsPerSecond: 4000 },
+            ], storage: [{ id: 'rows', kind: 'primary', source: 'volumetrics', rows: 1, bytesPerItem: 1000 }], sizing: { monthlyGrowthPercent: 0 } }],
+            databasePool: { containerNames: ['Items'], demandBasis: 'peak', sizing: {} },
+        };
+        evidence.domainSha256.Items = modelHash(domain);
+        const merged = mergeCosmosModels([{ domainName: 'Items', model: domain }], evidence);
+        assert.deepEqual(merged.errors, []);
+        assert.deepEqual(merged.conflicts, []);
+        const model = merged.model;
+        write(workspace, `${root}/3-schema-conversion/domains/Items/cosmos-model.json`, canonicalStringify(canonicalizeCosmosModel(domain)));
+        write(workspace, `${root}/3-schema-conversion/model.json`, canonicalStringify(model));
+        write(workspace, `${root}/3-schema-conversion/manifest.json`, JSON.stringify(evidence));
+        project.freshness['schema-conversion'] = buildFreshnessManifest(workspace, project, 'schema-conversion');
+        project.phases.targetEnvironment = { type: 'azure', accountName: 'test-account', endpoint: 'https://test-account.documents.azure.com/', capacityMode: 'provisioned', verified: true, verifiedAt: '2026-10-26T00:00:00.000Z' };
+        project.phases.provisioning = { status: 'complete', databaseName: model.databaseName, containersCreated: ['Items'], sampleDataInserted: true, completedAt: '2026-10-26T00:00:00.000Z' };
+        const document = { id: 'item-1', docType: 'item', itemId: '1', tenantId: 'tenant-1', pk: 'tenant-1' };
+        const sampleData = { sampleData: [{ containerName: 'Items', items: [document] }] };
+        write(workspace, `${root}/4-provisioning/sample-data.json`, JSON.stringify(sampleData));
+        for (const [name, content] of Object.entries(buildProvisioningArtifacts(model, sampleData, project))) {
+            write(workspace, `${root}/4-provisioning/${name}`, content);
+        }
+        const verification = {
+            version: 1, verifiedAt: '2026-10-26T00:00:00.000Z', modelSha256: modelSha256(model),
+            target: { type: 'azure', accountName: 'test-account', endpoint: project.phases.targetEnvironment.endpoint },
+            databaseName: model.databaseName,
+            databaseThroughput: { mode: 'autoscale', maxThroughput: 4000, isReplacePending: false },
+            containers: [{ name: 'Items', partitionKeys: ['/pk'], indexingPolicy: { ...model.containers[0].indexingPolicy, indexingMode: 'consistent', automatic: true },
+                capacityMode: 'provisioned', throughputMode: 'shared', dedicatedThroughputPresent: false }],
+            sampleItems: [{ containerName: 'Items', id: document.id, partitionKeyValues: ['tenant-1'], found: true, document }],
+            failures: [],
+        };
+        verificationSummary(workspace, project, verification);
+        assert.equal(checkPhaseCompletion(workspace, 'schema-conversion').complete, true);
+        const result = checkPhaseCompletion(workspace, 'provisioning');
+        assert.equal(result.complete, true, JSON.stringify(result));
+        verification.containers[0].dedicatedThroughputPresent = true;
+        verificationSummary(workspace, project, verification);
+        assert.equal(checkPhaseCompletion(workspace, 'provisioning').complete, false);
+        verification.containers[0].dedicatedThroughputPresent = false;
+        verification.version = 2;
+        verificationSummary(workspace, project, verification);
+        assert.equal(checkPhaseCompletion(workspace, 'provisioning').complete, false);
+    } finally { fs.rmSync(workspace, { recursive: true, force: true }); }
+});
 
 test('batch completion matches individual results with one checkpoint read and freshness evaluation', (context) => {
     const project = { version: 1, phases: {} };

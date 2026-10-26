@@ -63,6 +63,88 @@ function inputs() {
     return { model, sampleData, project, report };
 }
 
+function sharedInputs() {
+    const values = inputs();
+    const { model, project, report } = values;
+    model.capacityMode = 'provisioned';
+    model.databaseMaxThroughput = 4000;
+    model.containers[0].throughputMode = 'shared';
+    project.phases.targetEnvironment.capacityMode = 'provisioned';
+    report.modelSha256 = modelSha256(model);
+    report.databaseThroughput = { mode: 'autoscale', maxThroughput: 4000, isReplacePending: false };
+    Object.assign(report.containers[0], { capacityMode: 'provisioned', throughputMode: 'shared', dedicatedThroughputPresent: false });
+    return values;
+}
+
+test('accepts explicit shared and hybrid allocation readback without rewriting evidence', () => {
+    for (const hybrid of [false, true]) {
+        const { model, sampleData, project, report } = sharedInputs();
+        if (hybrid) {
+            const dedicated = structuredClone(model.containers[0]);
+            Object.assign(dedicated, { name: 'Dedicated', throughputMode: 'dedicated', maxThroughput: 5000 });
+            Object.assign(dedicated.entities[0], { name: 'Dedicated', docType: 'dedicated', idTemplate: 'dedicated-{Id}' });
+            model.containers.push(dedicated);
+            const document = { ...sampleData.sampleData[0].items[0], id: 'dedicated-1', docType: 'dedicated' };
+            sampleData.sampleData.push({ containerName: 'Dedicated', items: [document] });
+            report.containers.push({ ...report.containers[0], name: 'Dedicated', throughputMode: 'dedicated',
+                dedicatedThroughputPresent: true, maxThroughput: 5000, scalingMode: 'autoscale', isReplacePending: false });
+            report.sampleItems.push({ ...report.sampleItems[0], containerName: 'Dedicated', id: 'dedicated-1', document });
+            report.modelSha256 = modelSha256(model);
+        }
+        const original = structuredClone({ model, sampleData, project, report });
+        assert.deepEqual(validateProvisioningVerification(model, sampleData, project, report), []);
+        assert.deepEqual({ model, sampleData, project, report }, original);
+        if (hybrid) {
+            report.containers[1].isReplacePending = true;
+            assert(validateProvisioningVerification(model, sampleData, project, report).some(error => error.path.endsWith('.isReplacePending')));
+        }
+    }
+});
+
+test('rejects missing, mismatched, and pending shared-allocation observations', () => {
+    for (const change of [
+        report => { report.version = 2; },
+        report => { delete report.databaseThroughput; },
+        report => { report.databaseThroughput.maxThroughput = 5000; },
+        report => { report.databaseThroughput.mode = 'manual'; },
+        report => { report.databaseThroughput.isReplacePending = true; },
+        report => { delete report.databaseThroughput.isReplacePending; },
+        report => { report.containers[0].dedicatedThroughputPresent = true; },
+        report => { delete report.containers[0].dedicatedThroughputPresent; },
+        report => { report.containers[0].throughputMode = 'dedicated'; },
+        report => { delete report.containers[0].throughputMode; },
+        report => { report.containers[0].maxThroughput = 4000; },
+        report => { report.containers[0].isReplacePending = false; },
+        report => { report.containers[0].scalingMode = 'autoscale'; },
+    ]) {
+        const { model, sampleData, project, report } = sharedInputs();
+        change(report);
+        assert(validateProvisioningVerification(model, sampleData, project, report).length > 0, change.toString());
+    }
+    const { model, sampleData, project, report } = sharedInputs();
+    delete project.phases.targetEnvironment.capacityMode;
+    assert(validateProvisioningVerification(model, sampleData, project, report).some(error => error.path.endsWith('capacityMode')));
+});
+
+test('accepts explicit dedicated evidence without managing an unrelated database pool', () => {
+    const { model, sampleData, project, report } = sharedInputs();
+    delete model.databaseMaxThroughput;
+    delete report.databaseThroughput;
+    Object.assign(model.containers[0], { throughputMode: 'dedicated', maxThroughput: 4000 });
+    Object.assign(report.containers[0], { throughputMode: 'dedicated', maxThroughput: 4000,
+        dedicatedThroughputPresent: true, scalingMode: 'autoscale', isReplacePending: false });
+    report.modelSha256 = modelSha256(model);
+    assert.deepEqual(validateProvisioningVerification(model, sampleData, project, report), []);
+    for (const field of ['throughputMode', 'dedicatedThroughputPresent', 'scalingMode', 'isReplacePending']) {
+        const incomplete = structuredClone(report);
+        delete incomplete.containers[0][field];
+        assert(validateProvisioningVerification(model, sampleData, project, incomplete)
+            .some(error => error.path === `$.containers[0].${field}`));
+    }
+    report.databaseThroughput = { mode: 'autoscale', maxThroughput: 4000, isReplacePending: false };
+    assert(validateProvisioningVerification(model, sampleData, project, report).some(error => error.path === '$.databaseThroughput'));
+});
+
 test('accepts exact target and point-read evidence', () => {
     const { model, sampleData, project, report } = inputs();
     assert.deepEqual(validateProvisioningVerification(model, sampleData, project, report), []);

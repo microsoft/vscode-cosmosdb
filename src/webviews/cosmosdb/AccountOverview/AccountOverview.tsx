@@ -850,6 +850,7 @@ export const OverviewDashboard = ({
                                 reason={inventory.reason}
                                 metrics={inventoryMetrics?.metrics}
                                 storageFallback={inventoryMetrics?.storageFallback}
+                                throttlingFallbackReason={inventoryMetrics?.throttlingFallbackReason}
                                 normalizedRuApplicability={normalizedRuApplicability}
                                 onRevealInTree={handleRevealInTree}
                                 onOpenQueryEditor={handleOpenQueryEditor}

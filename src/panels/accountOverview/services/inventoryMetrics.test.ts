@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { RestError } from '@azure/core-rest-pipeline';
 import { describe, expect, it, vi } from 'vitest';
 import { summarizeStorage } from '../metrics/storage';
 import {
@@ -70,7 +71,7 @@ describe('getInventoryMetrics', () => {
         expect(result.metrics['db/c1'].peakRuPercent).toBeUndefined();
     });
 
-    it.each(['rbac', 'error', 'embedded'] as const)(
+    it.each(['rbac', 'error', 'embedded', 'embeddedForbidden', 'embeddedAuthorization'] as const)(
         'does not report a failed request check as clear (%s)',
         async (failure) => {
             const client = mockClient({
@@ -91,17 +92,22 @@ describe('getInventoryMetrics', () => {
             const original = client.metrics.list.bind(client.metrics);
             vi.spyOn(client.metrics, 'list').mockImplementation((resource, options) =>
                 options?.metricnames === 'TotalRequests'
-                    ? failure === 'embedded'
+                    ? failure.startsWith('embedded')
                         ? original(resource, options).then((response) => ({
                               ...response,
                               value: (response.value ?? []).map((metric) => ({
                                   ...metric,
-                                  errorCode: 'BadRequest',
+                                  errorCode:
+                                      failure === 'embeddedForbidden'
+                                          ? 'Forbidden'
+                                          : failure === 'embeddedAuthorization'
+                                            ? 'AuthorizationFailed'
+                                            : 'BadRequest',
                                   errorMessage: 'Request query failed',
                               })),
                           }))
                         : Promise.reject(
-                              Object.assign(new Error('Request query failed'), {
+                              new RestError('Request query failed', {
                                   statusCode: failure === 'rbac' ? 403 : 500,
                               }),
                           )
@@ -109,8 +115,68 @@ describe('getInventoryMetrics', () => {
             );
             const result = await getInventoryMetrics(client, '/sub/acct', '24H', thresholds, undefined, true);
             expect(result.metrics['db/c1'].throttled).toBeUndefined();
-            expect(result.metrics['db/c1'].throttlingReason).toBe(failure === 'rbac' ? 'rbac' : 'error');
+            const reason =
+                failure === 'rbac' || failure === 'embeddedForbidden' || failure === 'embeddedAuthorization'
+                    ? 'rbac'
+                    : 'error';
+            expect(result.metrics['db/c1'].throttlingReason).toBe(reason);
+            expect(result.throttlingFallbackReason).toBe(reason);
             expect(result.metrics['db/c1'].health).toBeUndefined();
+        },
+    );
+
+    describe.each([false, true])('snapshot fallback (Serverless: %s)', (isServerless) => {
+        it.each([403, 500, 'empty'] as const)(
+            'preserves the request-check outcome when no metric rows exist (%s)',
+            async (failure) => {
+                const client = mockClient({});
+                if (failure !== 'empty') {
+                    vi.spyOn(client.metrics, 'list').mockRejectedValue(
+                        new RestError('Monitor unavailable', { statusCode: failure }),
+                    );
+                }
+                const result = await getInventoryMetrics(
+                    client,
+                    '/sub/acct',
+                    '24H',
+                    thresholds,
+                    undefined,
+                    isServerless,
+                );
+                expect(result.metrics).toEqual({});
+                expect(result.throttlingFallbackReason).toBe(
+                    failure === 403 ? 'rbac' : failure === 500 ? 'error' : 'noData',
+                );
+            },
+        );
+    });
+
+    it.each(['Forbidden', 'AuthorizationFailed', 'BadRequest'])(
+        'preserves embedded %s failures when every metric has no series',
+        async (code) => {
+            const client = mockClient({});
+            vi.spyOn(client.metrics, 'list').mockResolvedValue({
+                timespan: `${iso(base - minute)}/${iso(base)}`,
+                value: [
+                    {
+                        id: '/metric',
+                        type: 'Microsoft.Insights/metrics',
+                        name: { value: 'metric' },
+                        unit: 'Count',
+                        timeseries: [],
+                        errorCode: code,
+                        errorMessage: 'Metric unavailable',
+                    },
+                ],
+            });
+            const result = await getInventoryMetrics(client, '/sub/acct', '24H', thresholds);
+            const reason = code === 'BadRequest' ? 'error' : 'rbac';
+            expect(result.metrics).toEqual({});
+            expect(result.throttlingFallbackReason).toBe(reason);
+            expect(result.storageFallback).toEqual({
+                data: { status: 'unavailable', reason },
+                index: { status: 'unavailable', reason },
+            });
         },
     );
 

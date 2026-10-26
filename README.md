@@ -102,6 +102,9 @@ When implementing or changing Account Overview calculations, refresh behavior, a
 ## Data Modeler
 
 **Data Modeler (Preview)** helps you choose partition keys for Azure Cosmos DB for NoSQL using GitHub Copilot.
+The `cosmosDB.experimental.dataModeler.enabled` setting defaults to `true`. Set it to `false` to hide the
+Command Palette entry and Account Overview promotion without disabling other AI features. Changes take effect immediately;
+existing modeler tabs and the command to delete saved modeler data remain available.
 Open it with **Try Data Modeler** in **Account Overview**, from an account in **Explorer**, or run
 **Data Modeling Wizard** from the Command Palette. Requires available
 GitHub Copilot models and AI features enabled.

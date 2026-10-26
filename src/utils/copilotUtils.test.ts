@@ -158,11 +158,18 @@ describe('copilotUtils', () => {
                 manifest.contributes.commands.find(
                     (command: { command: string }) => command.command === 'cosmosDB.dataModeling.open',
                 ).enablement,
-            ).toBe(AI_FEATURES_ENABLED_CONTEXT_KEY);
+            ).toBe(`${AI_FEATURES_ENABLED_CONTEXT_KEY} && config.cosmosDB.experimental.dataModeler.enabled`);
             expect(manifest.contributes.menus.commandPalette).toContainEqual({
                 command: 'cosmosDB.dataModeling.open',
-                when: AI_FEATURES_ENABLED_CONTEXT_KEY,
+                when: `${AI_FEATURES_ENABLED_CONTEXT_KEY} && config.cosmosDB.experimental.dataModeler.enabled`,
             });
+            const configuration = manifest.contributes.configuration;
+            const sections = Array.isArray(configuration) ? configuration : [configuration];
+            expect(
+                sections.find((section: { properties: Record<string, unknown> }) =>
+                    Object.hasOwn(section.properties, 'cosmosDB.experimental.dataModeler.enabled'),
+                ).properties['cosmosDB.experimental.dataModeler.enabled'],
+            ).toMatchObject({ type: 'boolean', default: true });
         });
 
         it.each([

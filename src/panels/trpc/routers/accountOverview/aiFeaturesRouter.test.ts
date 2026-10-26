@@ -4,6 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import * as vscode from 'vscode';
+import { DATA_MODELER_ENABLED_SETTING } from '../../../../commands/dataModeling/dataModelerFeatureFlag';
 import { ext } from '../../../../extensionVariables';
 import { onCopilotAvailabilityChanged } from '../../../../utils/copilotUtils';
 import { type AccountOverviewRouterContext } from '../../appRouter';
@@ -22,10 +24,24 @@ const router = accountOverviewRouter(aiFeaturesProcedures);
 const dispose = vi.fn();
 const cleanups: (() => Promise<void>)[] = [];
 let onAvailabilityChanged: (enabled: boolean) => void;
+let onConfigurationChanged: (event: vscode.ConfigurationChangeEvent) => void;
+let modelerEnabled: boolean | undefined;
+const disposeConfiguration = vi.fn();
 
 beforeEach(() => {
     vi.resetAllMocks();
     ext.isAIFeaturesEnabled = false;
+    modelerEnabled = undefined;
+    vi.mocked(vscode.workspace.getConfiguration).mockReturnValue({
+        get: vi.fn().mockImplementation((_key, fallback) => modelerEnabled ?? fallback),
+        has: vi.fn(),
+        inspect: vi.fn(),
+        update: vi.fn(),
+    });
+    vi.mocked(vscode.workspace.onDidChangeConfiguration).mockImplementation((callback) => {
+        onConfigurationChanged = callback;
+        return { dispose: disposeConfiguration };
+    });
     vi.mocked(onCopilotAvailabilityChanged).mockImplementation((callback) => {
         onAvailabilityChanged = callback;
         return { dispose };
@@ -38,16 +54,18 @@ afterEach(async () => {
     }
 });
 
-async function subscribe(controller = new AbortController()) {
-    const iterable = await router
-        .createCaller({
-            webviewName: 'cosmosDbAccountOverview',
-            metadata: {} as AccountOverviewRouterContext['metadata'],
-            getInitialization: () => ({ type: 'navigate', target: 'overview', revision: 0 }),
-            onNavigation: () => ({ dispose() {} }),
-            signal: controller.signal,
-        })
-        .aiFeaturesEnabled();
+async function subscribe(
+    controller = new AbortController(),
+    procedure: 'aiFeaturesEnabled' | 'dataModelerEnabled' = 'aiFeaturesEnabled',
+) {
+    const caller = router.createCaller({
+        webviewName: 'cosmosDbAccountOverview',
+        metadata: {} as AccountOverviewRouterContext['metadata'],
+        getInitialization: () => ({ type: 'navigate', target: 'overview', revision: 0 }),
+        onNavigation: () => ({ dispose() {} }),
+        signal: controller.signal,
+    });
+    const iterable = await caller[procedure]();
     const iterator = iterable[Symbol.asyncIterator]();
     cleanups.push(async () => {
         controller.abort();
@@ -55,6 +73,38 @@ async function subscribe(controller = new AbortController()) {
     });
     return { iterator, controller };
 }
+
+describe('Account Overview Data Modeler flag subscription', () => {
+    it.each([true, false, undefined])('starts with flag %s (unset defaults to enabled)', async (enabled) => {
+        modelerEnabled = enabled;
+        const { iterator } = await subscribe(new AbortController(), 'dataModelerEnabled');
+        await expect(iterator.next()).resolves.toEqual({ done: false, value: enabled ?? true });
+        expect(vscode.workspace.getConfiguration).toHaveBeenCalledWith('cosmosDB');
+    });
+
+    it('delivers live flag changes and ignores unrelated settings', async () => {
+        const { iterator } = await subscribe(new AbortController(), 'dataModelerEnabled');
+        await iterator.next();
+        onConfigurationChanged({ affectsConfiguration: () => false });
+        for (const enabled of [false, true, false]) {
+            modelerEnabled = enabled;
+            const pending = iterator.next();
+            onConfigurationChanged({ affectsConfiguration: (key) => key === DATA_MODELER_ENABLED_SETTING });
+            await expect(pending).resolves.toEqual({ done: false, value: enabled });
+        }
+        await iterator.return?.();
+        expect(disposeConfiguration).toHaveBeenCalledOnce();
+    });
+
+    it('aborts an idle subscription and disposes its configuration listener', async () => {
+        const { iterator, controller } = await subscribe(new AbortController(), 'dataModelerEnabled');
+        await iterator.next();
+        const pending = iterator.next();
+        controller.abort();
+        await expect(pending).resolves.toEqual({ done: true, value: undefined });
+        expect(disposeConfiguration).toHaveBeenCalledOnce();
+    });
+});
 
 describe('Account Overview AI availability subscription', () => {
     it.each([true, false, undefined])('starts with shared AI availability %s', async (enabled) => {

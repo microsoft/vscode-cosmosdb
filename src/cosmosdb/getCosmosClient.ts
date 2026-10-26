@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { createDefaultHttpClient } from '@azure/core-rest-pipeline';
 import { CosmosClient, type CosmosClientOptions } from '@azure/cosmos';
 import { ManagedIdentityCredential } from '@azure/identity';
 import { appendExtensionUserAgent } from '@microsoft/vscode-azext-utils';
@@ -12,6 +13,7 @@ import * as https from 'https';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { type AccountInfo } from '../tree/cosmosdb/AccountInfo';
+import { withAbortSignals } from '../utils/timeout';
 import { AuthenticationMethod, getPreferredAuthenticationMethod } from './AuthenticationMethod';
 import { getCosmosDBKeyCredential, type CosmosDBCredential } from './CosmosDBCredential';
 import { createCosmosHttpClient } from './createCosmosHttpClient';
@@ -21,6 +23,8 @@ import { getAccessTokenForVSCode } from './utils/azureSessionHelper';
 export type GetCosmosClientOptions = Partial<CosmosClientOptions> & {
     wwwAuthenticate?: string; // Optional challenge for EntraID authentication
     isLlmTool?: boolean;
+    // Bounds the lifetime of an operation-scoped client, including SDK discovery and authentication.
+    abortSignal?: AbortSignal;
 };
 
 export function getCosmosClient(connection: NoSqlQueryConnection, options?: GetCosmosClientOptions): CosmosClient;
@@ -68,11 +72,12 @@ export function getCosmosClient(
         .get<boolean>(ext.settingsKeys.enableEndpointDiscovery);
     const connectionPolicy = {
         enableEndpointDiscovery: enableEndpointDiscovery === undefined ? true : enableEndpointDiscovery,
+        ...(options?.abortSignal ? { enableBackgroundEndpointRefreshing: false } : {}),
     };
 
     const keyCred = getCosmosDBKeyCredential(credentials);
 
-    const { isLlmTool = false, ...clientOptions } = options ?? {};
+    const { isLlmTool = false, abortSignal, ...clientOptions } = options ?? {};
     const agent =
         clientOptions.agent ??
         (isEmulator && endpoint.startsWith('https:') ? new https.Agent({ rejectUnauthorized: false }) : undefined);
@@ -95,18 +100,25 @@ export function getCosmosClient(
     if (keyCred) {
         commonProperties.key = keyCred?.key;
     } else if (nonKeyCredentials.length > 0) {
-        commonProperties.aadCredentials = {
-            getToken: async (scopes, _options) => {
+        const aadCredentials: NonNullable<CosmosClientOptions['aadCredentials']> = {
+            getToken: async (scopes, tokenOptions) => {
                 // Fix scopes for test environments
                 const normalizedAuthScopes = normalizeCosmosScopes(scopes);
 
                 // Track errors for better diagnostics
                 const errors: string[] = [];
 
+                const ensureActive = () => {
+                    if (tokenOptions?.abortSignal?.aborted) {
+                        throw new DOMException('This operation was aborted', 'AbortError');
+                    }
+                };
+
                 async function tryCredential(
                     credential: CosmosDBCredential,
                     forcePrompt: boolean,
                 ): Promise<{ token: string; expiresOnTimestamp: number } | null> {
+                    ensureActive();
                     try {
                         switch (credential.type) {
                             case AuthenticationMethod.accountKey:
@@ -115,19 +127,24 @@ export function getCosmosClient(
 
                             case AuthenticationMethod.entraId: {
                                 const { wwwAuthenticate } = options || {};
-                                return await getAccessTokenForVSCode(
+                                // VS Code authentication cannot be aborted; discard results after cancellation.
+                                const token = await getAccessTokenForVSCode(
                                     wwwAuthenticate
                                         ? { scopes: normalizedAuthScopes, wwwAuthenticate }
                                         : normalizedAuthScopes,
                                     credential.tenantId,
                                     { createIfNone: forcePrompt },
                                 );
+                                ensureActive();
+                                return token;
                             }
 
                             case AuthenticationMethod.managedIdentity: {
                                 const { clientId } = credential;
                                 const auth = new ManagedIdentityCredential({ clientId });
-                                return await auth.getToken(normalizedAuthScopes);
+                                const token = await auth.getToken(normalizedAuthScopes, tokenOptions);
+                                ensureActive();
+                                return token;
                             }
 
                             default:
@@ -139,6 +156,10 @@ export function getCosmosClient(
                                 return null;
                         }
                     } catch (e) {
+                        ensureActive();
+                        if (e instanceof Error && e.name === 'AbortError') {
+                            throw e;
+                        }
                         const message = l10n.t('{type} auth failed: {error}', {
                             type: credential.type,
                             error: e instanceof Error ? e.message : String(e),
@@ -190,11 +211,37 @@ export function getCosmosClient(
                 throw new Error(l10n.t('Failed to acquire token: {errors}', { errors: errors.join('; ') }));
             },
         };
+        commonProperties.aadCredentials = {
+            getToken: (scopes, tokenOptions) =>
+                withAbortSignals([abortSignal, tokenOptions?.abortSignal], (signal) =>
+                    aadCredentials.getToken(scopes, { ...tokenOptions, abortSignal: signal }),
+                ),
+        };
     } else {
         throw Error(l10n.t('No credential available to create CosmosClient.'));
     }
 
-    return new CosmosClient(merge(clientOptions, commonProperties));
+    const cosmosClientOptions = merge(clientOptions, commonProperties);
+    if (abortSignal) {
+        // Wrap after merging so merge cannot replace the captured transport's sendRequest with this wrapper.
+        // The SDK drops operation signals during endpoint discovery and token acquisition.
+        const httpClient = cosmosClientOptions.httpClient ?? createDefaultHttpClient();
+        cosmosClientOptions.httpClient = {
+            sendRequest: async (request) => {
+                const requestSignal = request.abortSignal;
+                try {
+                    return await withAbortSignals([abortSignal, requestSignal], (signal) => {
+                        request.abortSignal = signal;
+                        return httpClient.sendRequest(request);
+                    });
+                } finally {
+                    request.abortSignal = requestSignal;
+                }
+            },
+        };
+    }
+
+    return new CosmosClient(cosmosClientOptions);
 }
 
 function normalizeCosmosScopes(scopes: string | string[]): string[] {

@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { RestError, type CosmosClient } from '@azure/cosmos';
+import { RestError } from '@azure/cosmos';
 import { createGenericElement } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
@@ -43,9 +43,7 @@ export abstract class CosmosDBAccountAttachedResourceItem
     public async getChildren(): Promise<TreeElement[]> {
         const accountInfo = await getAccountInfo(this.account);
 
-        const databases = await withClaimsChallengeHandling(accountInfo, async (cosmosClient) =>
-            this.getDatabases(accountInfo, cosmosClient),
-        );
+        const databases = await this.getDatabases(accountInfo);
 
         if (databases.length === 0) {
             // no databases in there:
@@ -105,21 +103,23 @@ export abstract class CosmosDBAccountAttachedResourceItem
         return Promise.resolve(this.account.connectionString);
     }
 
-    protected async getDatabases(
-        accountInfo: AccountInfo,
-        cosmosClient: CosmosClient,
-    ): Promise<DatabaseResource[]> | never {
-        const getResources = async () => {
-            const result = await cosmosClient.databases.readAll().fetchAll();
-            return result.resources;
-        };
+    protected async getDatabases(accountInfo: AccountInfo): Promise<DatabaseResource[]> | never {
+        const getResources = (abortSignal: AbortSignal) =>
+            withClaimsChallengeHandling(
+                accountInfo,
+                async (cosmosClient) => {
+                    const result = await cosmosClient.databases.readAll({ abortSignal }).fetchAll();
+                    return result.resources;
+                },
+                { abortSignal },
+            );
 
         try {
             // Apply timeout to prevent hanging indefinitely on unreachable hosts
             if (this.account.isEmulator) {
                 return await rejectOnTimeout(
                     CosmosDBTimeouts.EMULATOR_CONNECTION_TIMEOUT_MS,
-                    () => getResources(),
+                    getResources,
                     l10n.t(
                         "Unable to reach emulator. Please ensure it is started and connected to the port specified by the 'cosmosDB.emulator.port' setting, then try again.",
                     ),
@@ -127,7 +127,7 @@ export abstract class CosmosDBAccountAttachedResourceItem
             } else {
                 return await rejectOnTimeout(
                     CosmosDBTimeouts.CONNECTION_TIMEOUT_MS,
-                    () => getResources(),
+                    getResources,
                     l10n.t('Connection timed out. Please verify the connection string and that the host is reachable.'),
                 );
             }

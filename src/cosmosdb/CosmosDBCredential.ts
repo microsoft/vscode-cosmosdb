@@ -9,7 +9,7 @@ import { callWithTelemetryAndErrorHandling, parseError, type IActionContext } fr
 import * as l10n from '@vscode/l10n';
 import { CosmosDBTimeouts } from '../constants';
 import { ext } from '../extensionVariables';
-import { rejectOnTimeout } from '../utils/timeout';
+import { rejectOnTimeout, withAbortSignals } from '../utils/timeout';
 import { AuthenticationMethod, getPreferredAuthenticationMethod } from './AuthenticationMethod';
 import { type AzureResourceMetadata } from './AzureResourceMetadata';
 import { getCosmosClient } from './getCosmosClient';
@@ -218,10 +218,11 @@ async function getKeyCredentialWithoutARM(
     if (masterKey) {
         context.telemetry.properties.receivedKeyCreds = 'true';
 
-        keyCred = {
+        const credential: CosmosDBKeyCredential = {
             type: AuthenticationMethod.accountKey,
             key: masterKey,
         };
+        keyCred = credential;
 
         // If the account is the emulator, we just return the only supported key credential
         if (isEmulator) {
@@ -232,14 +233,20 @@ async function getKeyCredentialWithoutARM(
             // Since here we don't have subscription,
             // we can't get DatabaseAccountGetResults to retrieve disableLocalAuth property
             // Will try to connect to the account and catch if it fails due to local auth being disabled.
-            const cosmosClient = getCosmosClient(documentEndpoint, [keyCred], isEmulator);
             const timeout: number = isEmulator
                 ? CosmosDBTimeouts.EMULATOR_CONNECTION_TIMEOUT_MS
                 : CosmosDBTimeouts.CONNECTION_TIMEOUT_MS;
             // Apply timeout to prevent hanging indefinitely on unreachable hosts
             await rejectOnTimeout(
                 timeout,
-                () => cosmosClient.getDatabaseAccount(),
+                async (abortSignal) => {
+                    const cosmosClient = getCosmosClient(documentEndpoint, [credential], isEmulator, { abortSignal });
+                    try {
+                        await withAbortSignals([abortSignal], () => cosmosClient.getDatabaseAccount({ abortSignal }));
+                    } finally {
+                        cosmosClient.dispose();
+                    }
+                },
                 l10n.t('Connection timed out while verifying account credentials.'),
             );
         } catch (e) {

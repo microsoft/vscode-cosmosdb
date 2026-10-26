@@ -51,8 +51,8 @@
   "cosmosdb.command.migration.open": "Nouvelle migration...",
   "cosmosdb.command.migration.openExisting": "Migration de Cosmos DB...",
   "cosmosdb.command.migration.remove": "Supprimer la migration...",
-  "cosmosdb.command.dataModeling.open": "Data Modeling Wizard",
-  "cosmosdb.command.dataModeling.deleteAllData": "Delete All Data Modeler Data",
+  "cosmosdb.command.dataModeling.open": "Assistant de modélisation des données",
+  "cosmosdb.command.dataModeling.deleteAllData": "Supprimer toutes les données du modeleur de données",
   "cosmosdb.configuration.batch.size": "Taille du lot à utiliser lors de l'interrogation des ressources Azure Database.",
   "cosmosdb.configuration.confirmation.style": "Comportement à adopter lors de la confirmation d'opérations irréversibles, telles que la suppression de ressources.",
   "cosmosdb.configuration.confirmation.style.button": "Confirmation du clic sur le bouton",
@@ -119,5 +119,6 @@
   "cosmosdb.configuration.accountOverview.advisories.sharedThroughputVictimThrottlePct": "Vue d’ensemble du compte : taux de requêtes limitées (429) (pourcentage) à partir duquel une collection sœur à faible consommation est considérée comme une victime en manque de ressources dans l’avertissement sur la famine de débit partagé.",
   "cosmosdb.configuration.accountOverview.advisories.sharedThroughputVictimSharePct": "Vue d’ensemble du compte : part (pourcentage) des unités de requête du pool partagé en dessous de laquelle une collection sœur limitée compte comme une victime privée de ressources (consommant peu tout en étant limitée) dans l’avertissement de famine de débit partagé.",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Expérimental) Affichez les estimations d’utilisation des jetons dans l’interface utilisateur de l’Assistant Migration.",
-  "cosmosdb.configuration.experimental.migration.enabled": "(Expérimental) Activer la fonctionnalité Migration Azure Cosmos DB (Préversion). Lorsque vous désactivez cette option, le nœud Migrations Cosmos DB et ses commandes sont masqués."
+  "cosmosdb.configuration.experimental.migration.enabled": "(Expérimental) Activer la fonctionnalité Migration Azure Cosmos DB (Préversion). Lorsque vous désactivez cette option, le nœud Migrations Cosmos DB et ses commandes sont masqués.",
+  "cosmosdb.configuration.experimental.dataModeler.enabled": "(Experimental) Enable the Data Modeler wizard. When disabled, its Command Palette entry and Account Overview promotion are hidden."
 }

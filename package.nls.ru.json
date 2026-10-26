@@ -51,8 +51,8 @@
   "cosmosdb.command.migration.open": "Новая миграция...",
   "cosmosdb.command.migration.openExisting": "Миграция Cosmos DB...",
   "cosmosdb.command.migration.remove": "Удалить миграцию…",
-  "cosmosdb.command.dataModeling.open": "Data Modeling Wizard",
-  "cosmosdb.command.dataModeling.deleteAllData": "Delete All Data Modeler Data",
+  "cosmosdb.command.dataModeling.open": "Мастер моделирования данных",
+  "cosmosdb.command.dataModeling.deleteAllData": "Удалить все данные моделирования данных",
   "cosmosdb.configuration.batch.size": "Размер пакета, который будет использоваться при запросе ресурсов базы данных Azure.",
   "cosmosdb.configuration.confirmation.style": "Поведение при подтверждении необратимых операций, таких как удаление ресурсов.",
   "cosmosdb.configuration.confirmation.style.button": "Подтверждение нажатия кнопки",
@@ -119,5 +119,6 @@
   "cosmosdb.configuration.accountOverview.advisories.sharedThroughputVictimThrottlePct": "Обзор учетной записи: доля запросов с ограничением по скорости (429) в процентах, при достижении или превышении которой считается, что коллекция этого же уровня с низким потреблением считается обладающей недостаточным количеством ресурсов в предупреждении \"Нехватка общей пропускной способности\".",
   "cosmosdb.configuration.accountOverview.advisories.sharedThroughputVictimSharePct": "Обзор учетной записи: доля единиц запросов общего пула (в процентах), при достижении или ниже которой регулируемое подключение того же уровня считается обладающим недостаточным количеством ресурсов (потребляет мало ресурсов, но регулируется) в предупреждении \"Нехватка общей пропускной способности\".",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Экспериментальная функция) Показывать оценки использования токенов в пользовательском интерфейсе помощника по миграции.",
-  "cosmosdb.configuration.experimental.migration.enabled": "(Экспериментальная функция) Включите функцию миграции Cosmos DB (предварительная версия). Если она отключена, узел миграции Cosmos DB и связанные с ним команды скрыты."
+  "cosmosdb.configuration.experimental.migration.enabled": "(Экспериментальная функция) Включите функцию миграции Cosmos DB (предварительная версия). Если она отключена, узел миграции Cosmos DB и связанные с ним команды скрыты.",
+  "cosmosdb.configuration.experimental.dataModeler.enabled": "(Experimental) Enable the Data Modeler wizard. When disabled, its Command Palette entry and Account Overview promotion are hidden."
 }

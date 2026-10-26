@@ -55,6 +55,8 @@ const queries = vi.hoisted(() => ({
     advisories: vi.fn(),
     navigation: vi.fn(),
     aiFeaturesEnabled: vi.fn(),
+    dataModelerEnabled: vi.fn(),
+    unsubscribeDataModeler: vi.fn(),
     unsubscribeAI: vi.fn(),
     unsubscribe: vi.fn(),
     reportEvent: vi.fn(),
@@ -87,6 +89,7 @@ vi.mock('@microsoft/vscode-ext-webview/react', () => {
             getDerivedAdvisories: { query: queries.advisories },
             navigation: { subscribe: queries.navigation },
             aiFeaturesEnabled: { subscribe: queries.aiFeaturesEnabled },
+            dataModelerEnabled: { subscribe: queries.dataModelerEnabled },
             reportEvent: { mutate: queries.reportEvent },
             revealInTree: { mutate: queries.reveal },
             openQueryEditor: { mutate: queries.queryEditor },
@@ -138,6 +141,7 @@ type NavigationCallbacks = {
 let callbacks: NavigationCallbacks;
 let initialTarget: AccountOverviewTarget;
 let aiCallbacks: { onData: (enabled: boolean) => void; onError: (error: Error) => void };
+let modelerCallbacks: typeof aiCallbacks;
 
 function Wrapper({ children }: PropsWithChildren) {
     return <FluentProvider theme={webLightTheme}>{children}</FluentProvider>;
@@ -173,6 +177,11 @@ function dataQueryCounts() {
 beforeEach(() => {
     vi.resetAllMocks();
     initialTarget = 'overview';
+    queries.dataModelerEnabled.mockImplementation((_input: unknown, next: typeof modelerCallbacks) => {
+        modelerCallbacks = next;
+        next.onData(true);
+        return { unsubscribe: queries.unsubscribeDataModeler };
+    });
     queries.aiFeaturesEnabled.mockImplementation((_input: unknown, next: typeof aiCallbacks) => {
         aiCallbacks = next;
         next.onData(true);
@@ -541,6 +550,32 @@ describe('Serverless metric selection', () => {
         };
         expect(badge).toHaveAccessibleDescription(new RegExp(reason ? captions[reason] : 'Passed means'));
         expect(within(inventory).queryByText('Healthy')).not.toBeInTheDocument();
+    });
+
+    it.each([
+        ['noData', 'No data'],
+        ['rbac', 'No permission'],
+        ['error', 'Unable to load'],
+    ] as const)('preserves the %s request-check fallback for missing inventory metrics', async (reason, caption) => {
+        queries.summary.mockResolvedValue(serverlessSummary);
+        queries.inventoryMetrics.mockResolvedValue({
+            available: false,
+            metrics: {},
+            throttlingFallbackReason: reason,
+        });
+        const user = userEvent.setup();
+        render(<AccountOverview />, { wrapper: Wrapper });
+        await user.click(await screen.findByRole('tab', { name: 'Databases and Containers' }));
+        const inventory = screen.getByRole('table', { name: 'Containers' });
+        const row = within(inventory)
+            .getByRole('button', { name: 'orders: show partition health in database' })
+            .closest('tr')!;
+        const badge = within(row).getByLabelText('Unknown');
+        expect(badge).toHaveTextContent('Unknown');
+        expect(badge).toHaveAccessibleName('Unknown');
+        expect(badge).toHaveAccessibleDescription(
+            expect.stringContaining(`Request observations unavailable: ${caption}.`),
+        );
     });
 
     it('uses the late account summary for the default without waiting for metric samples', async () => {
@@ -1172,6 +1207,37 @@ describe('header update feedback', () => {
 });
 
 describe('Account Overview account actions', () => {
+    it('follows live Data Modeler flag changes without refreshing account data', async () => {
+        const { unmount } = render(<AccountOverview />, { wrapper: Wrapper });
+        await screen.findByRole('button', { name: 'Try Data Modeler' });
+        await waitFor(() => expect(queries.partition).toHaveBeenCalledTimes(1));
+        const counts = dataQueryCounts();
+        act(() => modelerCallbacks.onData(false));
+        expect(screen.queryByRole('button', { name: 'Try Data Modeler' })).not.toBeInTheDocument();
+        expect(
+            screen.queryByText('Design containers, partition keys, and relationships visually.'),
+        ).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Add database' })).toBeEnabled();
+        act(() => modelerCallbacks.onData(true));
+        expect(screen.getByRole('button', { name: 'Try Data Modeler' })).toBeEnabled();
+        expect(dataQueryCounts()).toEqual(counts);
+        unmount();
+        expect(queries.unsubscribeDataModeler).toHaveBeenCalledOnce();
+    });
+
+    it('hides Data Modeler and reports feature flag subscription failures', async () => {
+        const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
+        render(<AccountOverview />, { wrapper: Wrapper });
+        await screen.findByRole('button', { name: 'Try Data Modeler' });
+        const error = new Error('Subscription disconnected');
+        act(() => modelerCallbacks.onError(error));
+        expect(screen.queryByRole('button', { name: 'Try Data Modeler' })).not.toBeInTheDocument();
+        expect(errorLog).toHaveBeenCalledExactlyOnceWith(
+            'Unable to receive Account Overview Data Modeler availability.',
+            error,
+        );
+    });
+
     it('keeps Data Modeler hidden until AI availability is received and follows live changes', async () => {
         queries.aiFeaturesEnabled.mockImplementation((_input: unknown, next: typeof aiCallbacks) => {
             aiCallbacks = next;

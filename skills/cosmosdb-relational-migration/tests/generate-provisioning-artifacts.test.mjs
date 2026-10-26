@@ -635,6 +635,11 @@ test('CLI refuses to overwrite a modified artifact without force', () => {
         fs.writeFileSync(path.join(root, 'main.bicep'), 'user edit\n');
         assert.equal(runCli(args), 1);
         assert.equal(fs.readFileSync(path.join(root, 'main.bicep'), 'utf8'), 'user edit\n');
+        fs.rmSync(path.join(root, 'main.bicep'));
+        fs.writeFileSync(path.join(root, 'seed-data.csh'), 'late user edit\n');
+        assert.equal(runCli(args), 1);
+        assert.equal(fs.existsSync(path.join(root, 'main.bicep')), false);
+        assert.equal(fs.readFileSync(path.join(root, 'seed-data.csh'), 'utf8'), 'late user edit\n');
     } finally {
         fs.rmSync(root, { recursive: true });
     }

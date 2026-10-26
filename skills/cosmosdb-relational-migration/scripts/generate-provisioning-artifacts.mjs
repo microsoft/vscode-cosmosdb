@@ -432,6 +432,12 @@ Exit: 0 on success; 1 for invalid input, mismatches, protected files, or probe f
             return errors.length === 0 ? 0 : 1;
         }
         for (const [name, content] of Object.entries(expected)) {
+            const filePath = path.join(options.outputPath, name);
+            if (fs.existsSync(filePath) && fs.readFileSync(filePath, 'utf8') !== content && !options.force) {
+                throw new Error(`Refusing to overwrite modified artifact without --force: ${filePath}`);
+            }
+        }
+        for (const [name, content] of Object.entries(expected)) {
             writeAtomic(path.join(options.outputPath, name), content, options.force);
         }
         process.stdout.write(`${JSON.stringify({ written: Object.keys(expected) }, null, 2)}\n`);

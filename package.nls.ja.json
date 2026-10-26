@@ -119,5 +119,6 @@
   "cosmosdb.configuration.accountOverview.advisories.sharedThroughputVictimThrottlePct": "アカウントの概要: 共有スループットの枯渇アドバイザリで、消費量の少ない兄弟コレクションが枯渇した被害対象としてカウントされる、レート制限 (429) 要求レート (%)。",
   "cosmosdb.configuration.accountOverview.advisories.sharedThroughputVictimSharePct": "アカウントの概要: 共有スループットの枯渇アドバイザリで、調整されている兄弟コレクションが枯渇した被害対象としてカウントされる共有プールの要求ユニットの割合 (%)。これを下回ると、調整されながら消費量が少ない状態になります。",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(試験段階) 移行アシスタント UI にトークン使用量の見積もりを表示します。",
-  "cosmosdb.configuration.experimental.migration.enabled": "(試験段階) Cosmos DB 移行 (プレビュー) 機能を有効にします。無効にすると、Cosmos DB 移行ノードとそのコマンドは非表示になります。"
+  "cosmosdb.configuration.experimental.migration.enabled": "(試験段階) Cosmos DB 移行 (プレビュー) 機能を有効にします。無効にすると、Cosmos DB 移行ノードとそのコマンドは非表示になります。",
+  "cosmosdb.configuration.experimental.dataModeler.enabled": "(Experimental) Enable the Data Modeler wizard. When disabled, its Command Palette entry and Account Overview promotion are hidden."
 }

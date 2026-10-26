@@ -119,5 +119,6 @@
   "cosmosdb.configuration.accountOverview.advisories.sharedThroughputVictimThrottlePct": "Hesap Genel Bakış: paylaşılan işleme kapasitesi açlık uyarısında, düşük tüketimli bir kardeş koleksiyonun aç kalmış kurban olarak sayılması için eşik olan, hız sınırı uygulanmış (429) istek oranı (yüzde).",
   "cosmosdb.configuration.accountOverview.advisories.sharedThroughputVictimSharePct": "Hesap Genel Bakış: paylaşılan havuzun istek birimlerinin payı (yüzde) eşiği; bu eşiğe ulaşıldığında veya altına düşüldüğünde, hız sınırı uygulanmış bir kardeş koleksiyonun aç kalmış kurban olarak sayılması için yeterlidir (hız sınırı uygulanırken az tüketen) ve bu, paylaşılan İşleme Kapasitesi açlığı uyarısında değerlendirilir.",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Deneysel) Migration Assistant kullanıcı arabiriminde belirteç kullanım tahminlerini göster.",
-  "cosmosdb.configuration.experimental.migration.enabled": "(Deneysel) Cosmos DB Geçişi (Önizleme) özelliğini etkinleştirin. Devre dışı bırakıldığında, Cosmos DB Geçişleri düğümü ve komutları gizlenir."
+  "cosmosdb.configuration.experimental.migration.enabled": "(Deneysel) Cosmos DB Geçişi (Önizleme) özelliğini etkinleştirin. Devre dışı bırakıldığında, Cosmos DB Geçişleri düğümü ve komutları gizlenir.",
+  "cosmosdb.configuration.experimental.dataModeler.enabled": "(Experimental) Enable the Data Modeler wizard. When disabled, its Command Palette entry and Account Overview promotion are hidden."
 }

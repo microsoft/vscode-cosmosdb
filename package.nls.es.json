@@ -119,5 +119,6 @@
   "cosmosdb.configuration.accountOverview.advisories.sharedThroughputVictimThrottlePct": "Información general de la cuenta: tasa de solicitudes limitada por 429 (porcentaje) en la que, o por encima de ella, una colección secundaria de bajo consumo cuenta como víctima por inanición en el aviso de inanición de rendimiento compartido.",
   "cosmosdb.configuration.accountOverview.advisories.sharedThroughputVictimSharePct": "Información general de la cuenta: recurso compartido (porcentaje) de las unidades de solicitud del grupo compartido en o por debajo del cual una colección de elementos del mismo nivel limitada cuenta como una víctima de hadas (que consume poco mientras se limita) en el aviso Deserción de rendimiento compartido.",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Experimental) Mostrar estimaciones del uso de tokens en la interfaz de usuario de Migration Assistant.",
-  "cosmosdb.configuration.experimental.migration.enabled": "(Experimental) Habilite la característica migración de Cosmos DB (versión preliminar). Cuando se deshabilita, se ocultan el nodo migraciones de Cosmos DB y sus comandos."
+  "cosmosdb.configuration.experimental.migration.enabled": "(Experimental) Habilite la característica migración de Cosmos DB (versión preliminar). Cuando se deshabilita, se ocultan el nodo migraciones de Cosmos DB y sus comandos.",
+  "cosmosdb.configuration.experimental.dataModeler.enabled": "(Experimental) Enable the Data Modeler wizard. When disabled, its Command Palette entry and Account Overview promotion are hidden."
 }

@@ -119,5 +119,6 @@
   "cosmosdb.configuration.accountOverview.advisories.sharedThroughputVictimThrottlePct": "계정 개요: 공유 처리량 고갈 권고에서 사용량이 적은 형제 컬렉션이 기아 피해자로 간주되는 기준이 되는 속도 제한(429) 요청 비율(%)입니다.",
   "cosmosdb.configuration.accountOverview.advisories.sharedThroughputVictimSharePct": "계정 개요: Shared-throughput Starvation 권고에서 제한을 받는 형제 컬렉션이 기아 피해자로 간주되는 공유 풀의 요청 단위 비율(%)입니다. 이 값 이하이면 제한을 받는 동안에도 거의 소비하지 않는 것으로 봅니다.",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(실험적) Migration Assistant UI에 토큰 사용량 예상값을 표시합니다.",
-  "cosmosdb.configuration.experimental.migration.enabled": "(실험적) Cosmos DB 마이그레이션(미리 보기) 기능을 사용하도록 설정하세요. 이 기능을 사용하지 않도록 설정하면 Cosmos DB 마이그레이션 노드와 해당 명령이 숨겨집니다."
+  "cosmosdb.configuration.experimental.migration.enabled": "(실험적) Cosmos DB 마이그레이션(미리 보기) 기능을 사용하도록 설정하세요. 이 기능을 사용하지 않도록 설정하면 Cosmos DB 마이그레이션 노드와 해당 명령이 숨겨집니다.",
+  "cosmosdb.configuration.experimental.dataModeler.enabled": "(Experimental) Enable the Data Modeler wizard. When disabled, its Command Palette entry and Account Overview promotion are hidden."
 }

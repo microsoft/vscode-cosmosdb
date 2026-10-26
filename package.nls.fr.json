@@ -119,5 +119,6 @@
   "cosmosdb.configuration.accountOverview.advisories.sharedThroughputVictimThrottlePct": "Vue d’ensemble du compte : taux de requêtes limitées (429) (pourcentage) à partir duquel une collection sœur à faible consommation est considérée comme une victime en manque de ressources dans l’avertissement sur la famine de débit partagé.",
   "cosmosdb.configuration.accountOverview.advisories.sharedThroughputVictimSharePct": "Vue d’ensemble du compte : part (pourcentage) des unités de requête du pool partagé en dessous de laquelle une collection sœur limitée compte comme une victime privée de ressources (consommant peu tout en étant limitée) dans l’avertissement de famine de débit partagé.",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Expérimental) Affichez les estimations d’utilisation des jetons dans l’interface utilisateur de l’Assistant Migration.",
-  "cosmosdb.configuration.experimental.migration.enabled": "(Expérimental) Activer la fonctionnalité Migration Azure Cosmos DB (Préversion). Lorsque vous désactivez cette option, le nœud Migrations Cosmos DB et ses commandes sont masqués."
+  "cosmosdb.configuration.experimental.migration.enabled": "(Expérimental) Activer la fonctionnalité Migration Azure Cosmos DB (Préversion). Lorsque vous désactivez cette option, le nœud Migrations Cosmos DB et ses commandes sont masqués.",
+  "cosmosdb.configuration.experimental.dataModeler.enabled": "(Experimental) Enable the Data Modeler wizard. When disabled, its Command Palette entry and Account Overview promotion are hidden."
 }

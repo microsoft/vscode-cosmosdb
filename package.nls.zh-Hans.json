@@ -119,5 +119,6 @@
   "cosmosdb.configuration.accountOverview.advisories.sharedThroughputVictimThrottlePct": "帐户概述:受速率限制(429)的请求速率百分比；达到或超过该值时，低消耗的同级集合会在共享吞吐量不足公告中被视为资源不足受害方。",
   "cosmosdb.configuration.accountOverview.advisories.sharedThroughputVictimSharePct": "帐户概述: 共享池的请求单位数占比(百分比)，达到或低于该值时，受限同级集合在共享吞吐量资源不足公告中被视为资源不足受害方(受到限制时消耗很少)。",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(实验性)在迁移助手 UI 中显示令牌使用情况估计值。",
-  "cosmosdb.configuration.experimental.migration.enabled": "(实验性)启用 Cosmos DB 迁移(预览)功能。禁用时，将隐藏 Cosmos DB 迁移节点及其命令。"
+  "cosmosdb.configuration.experimental.migration.enabled": "(实验性)启用 Cosmos DB 迁移(预览)功能。禁用时，将隐藏 Cosmos DB 迁移节点及其命令。",
+  "cosmosdb.configuration.experimental.dataModeler.enabled": "(Experimental) Enable the Data Modeler wizard. When disabled, its Command Palette entry and Account Overview promotion are hidden."
 }

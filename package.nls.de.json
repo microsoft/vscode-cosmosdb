@@ -119,5 +119,6 @@
   "cosmosdb.configuration.accountOverview.advisories.sharedThroughputVictimThrottlePct": "Kontoübersicht: Anteil der auf Anforderungsraten begrenzten Anforderungen (429) in Prozent, bei oder über dem eine Sammlung mit geringem Verbrauch als ausgehungertes Opfer in der Empfehlung für Starvation bei gemeinsamem Durchsatz zählt.",
   "cosmosdb.configuration.accountOverview.advisories.sharedThroughputVictimSharePct": "Kontoübersicht: Freigabe (Prozent) der Anforderungseinheiten des freigegebenen Pools bei oder unterhalb derer eine gedrosselte gleichgeordnete Sammlung in der Ratgeberempfehlung für den gemeinsam genutzten Durchsatz als ausgehungertes Opfer (geringe Drosselung) zählt.",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Experimentell) Schätzungen zur Tokennutzung in der Benutzeroberfläche des Migration Assistant anzeigen.",
-  "cosmosdb.configuration.experimental.migration.enabled": "(Experimentell) Aktivieren Sie die Funktion „Cosmos DB-Migration“ (Vorschau). Wenn sie deaktiviert ist, werden der Knoten „Cosmos DB-Migrationen“ und die zugehörigen Befehle ausgeblendet."
+  "cosmosdb.configuration.experimental.migration.enabled": "(Experimentell) Aktivieren Sie die Funktion „Cosmos DB-Migration“ (Vorschau). Wenn sie deaktiviert ist, werden der Knoten „Cosmos DB-Migrationen“ und die zugehörigen Befehle ausgeblendet.",
+  "cosmosdb.configuration.experimental.dataModeler.enabled": "(Experimental) Enable the Data Modeler wizard. When disabled, its Command Palette entry and Account Overview promotion are hidden."
 }

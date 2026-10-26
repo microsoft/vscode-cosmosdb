@@ -119,5 +119,6 @@
   "cosmosdb.configuration.accountOverview.advisories.sharedThroughputVictimThrottlePct": "Přehled účtu: Podíl požadavků omezených kvůli limitu (429) v procentech, při jehož dosažení nebo překročení se kolekce na stejné úrovni s nízkou spotřebou považuje v doporučení týkajícím se nedostatku sdílené propustnosti za kolekci s nedostatečným přídělem prostředků.",
   "cosmosdb.configuration.accountOverview.advisories.sharedThroughputVictimSharePct": "Přehled účtu: Podíl (v procentech) jednotek požadavků sdíleného fondu, při jehož dosažení nebo podkročení se omezená kolekce na stejné úrovni považuje v doporučení týkajícím se nedostatku sdílené propustnosti za kolekci s nedostatečným přídělem prostředků (má nízkou spotřebu, přestože je omezována).",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Experimentální) Zobrazovat v uživatelském rozhraní Pomocníka s migrací odhady využití tokenů",
-  "cosmosdb.configuration.experimental.migration.enabled": "(Experimentální) Povolte funkci Migrace Cosmos DB (Preview). Pokud je tato možnost zakázaná, uzel Migrace Cosmos DB a jeho příkazy jsou skryté."
+  "cosmosdb.configuration.experimental.migration.enabled": "(Experimentální) Povolte funkci Migrace Cosmos DB (Preview). Pokud je tato možnost zakázaná, uzel Migrace Cosmos DB a jeho příkazy jsou skryté.",
+  "cosmosdb.configuration.experimental.dataModeler.enabled": "(Experimental) Enable the Data Modeler wizard. When disabled, its Command Palette entry and Account Overview promotion are hidden."
 }

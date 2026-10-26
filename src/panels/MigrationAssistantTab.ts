@@ -388,7 +388,7 @@ export class MigrationAssistantTab extends BaseTab {
             case 'checkGitignore':
                 return this.checkGitignore();
             case 'openFile':
-                return this.openFile(params[0] as string);
+                return this.openFile(params[0] as string, params[1] as string | undefined);
             case 'revealInExplorer':
                 return this.revealInExplorer(params[0] as string);
             case 'openGeneratedBicep':
@@ -1480,8 +1480,8 @@ export class MigrationAssistantTab extends BaseTab {
         await this.selectedModelUpdate;
     }
 
-    private async openFile(filePath: string): Promise<void> {
-        await openMigrationArtifact(filePath);
+    private async openFile(filePath: string, propertyPath?: string): Promise<void> {
+        await openMigrationArtifact(filePath, propertyPath);
     }
 
     private async revealInExplorer(filePath: string): Promise<void> {

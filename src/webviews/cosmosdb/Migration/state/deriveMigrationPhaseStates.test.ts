@@ -500,53 +500,67 @@ describe('migration phase outcomes', () => {
         expect(getMigrationPrerequisite('assessment', { assessment: completion().assessment })).toBeUndefined();
     });
 
-    it('shows completed provisioning artifacts collapsed without diagnostics or repair actions', () => {
-        const phases = completion({ provisioning: true });
-        const files = ['main.bicep', 'main.bicepparam', 'seed-data.csh', 'sample-data.json', 'summary.md'];
-        phases.provisioning.artifacts = files.map((file) => ({
-            path: `.cosmosdb-migration/phases/4-provisioning/${file}`,
-            description: file,
-            conditional: false,
-            state: 'present',
-            canOpen: true,
-        }));
-        phases.provisioning.artifacts.push({
-            path: '.cosmosdb-migration/project.json#phases.provisioning.completedAt',
-            description: 'Completion time',
-            conditional: false,
-            state: 'present',
-            canOpen: true,
-        });
-        const onOpenFile = vi.fn();
-        render(
-            createElement(MigrationGeneratedArtifacts, {
-                phase: 'provisioning',
-                completion: phases,
-                workspacePath: '/workspace',
-                onOpenFile,
-            }),
-        );
-        const summary = screen.getByText('Generated Artifacts');
-        expect(summary.parentElement).not.toHaveAttribute('open');
-        expect(summary).toHaveAccessibleName('Generated Artifacts');
-        expect(summary).toHaveAccessibleDescription('Target Provisioning');
-        fireEvent.click(summary);
-        for (const file of files) {
-            const artifactPath = `.cosmosdb-migration/phases/4-provisioning/${file}`;
-            const link = screen.getByRole('button', { name: artifactPath });
-            expect(link).toBeVisible();
-            expect(link).toHaveTextContent(artifactPath);
-            expect(link).toHaveAccessibleName(artifactPath);
-            fireEvent.click(link);
-            expect(onOpenFile).toHaveBeenLastCalledWith(`/workspace/${artifactPath}`);
-        }
-        const propertyPath = '.cosmosdb-migration/project.json#phases.provisioning.completedAt';
-        fireEvent.click(screen.getByRole('button', { name: propertyPath }));
-        expect(onOpenFile).toHaveBeenLastCalledWith(`/workspace/${propertyPath}`);
-        expect(screen.queryByTestId('migration-provisioning-diagnostics')).not.toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: 'Review and Fix' })).not.toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: 'Refresh Status' })).not.toBeInTheDocument();
-    });
+    it.each(['/workspace', '/work/C#/shop', 'C:\\work\\C#\\shop'])(
+        'shows completed provisioning artifacts with exact file and property targets under %s',
+        (workspacePath) => {
+            const phases = completion({ provisioning: true });
+            const files = [
+                'main.bicep',
+                'main#draft.bicep',
+                'model.json#draft',
+                'main.bicepparam',
+                'seed-data.csh',
+                'sample-data.json',
+                'summary.md',
+            ];
+            phases.provisioning.artifacts = files.map((file) => ({
+                path: `.cosmosdb-migration/phases/4-provisioning/${file}`,
+                description: file,
+                conditional: false,
+                state: 'present',
+                canOpen: true,
+            }));
+            phases.provisioning.artifacts.push({
+                path: '.cosmosdb-migration/project.json#phases.provisioning.completedAt',
+                description: 'Completion time',
+                conditional: false,
+                state: 'present',
+                canOpen: true,
+            });
+            const onOpenFile = vi.fn();
+            render(
+                createElement(MigrationGeneratedArtifacts, {
+                    phase: 'provisioning',
+                    completion: phases,
+                    workspacePath,
+                    onOpenFile,
+                }),
+            );
+            const summary = screen.getByText('Generated Artifacts');
+            expect(summary.parentElement).not.toHaveAttribute('open');
+            expect(summary).toHaveAccessibleName('Generated Artifacts');
+            expect(summary).toHaveAccessibleDescription('Target Provisioning');
+            fireEvent.click(summary);
+            for (const file of files) {
+                const artifactPath = `.cosmosdb-migration/phases/4-provisioning/${file}`;
+                const link = screen.getByRole('button', { name: artifactPath });
+                expect(link).toBeVisible();
+                expect(link).toHaveTextContent(artifactPath);
+                expect(link).toHaveAccessibleName(artifactPath);
+                fireEvent.click(link);
+                expect(onOpenFile).toHaveBeenLastCalledWith(`${workspacePath}/${artifactPath}`);
+            }
+            const propertyPath = '.cosmosdb-migration/project.json#phases.provisioning.completedAt';
+            fireEvent.click(screen.getByRole('button', { name: propertyPath }));
+            expect(onOpenFile).toHaveBeenLastCalledWith(
+                `${workspacePath}/.cosmosdb-migration/project.json`,
+                'phases.provisioning.completedAt',
+            );
+            expect(screen.queryByTestId('migration-provisioning-diagnostics')).not.toBeInTheDocument();
+            expect(screen.queryByRole('button', { name: 'Review and Fix' })).not.toBeInTheDocument();
+            expect(screen.queryByRole('button', { name: 'Refresh Status' })).not.toBeInTheDocument();
+        },
+    );
 
     it('deduplicates and alphabetizes artifact paths without merging JSON properties or changing validation entries', () => {
         const phases = completion({ discovery: true });
@@ -578,11 +592,18 @@ describe('migration phase outcomes', () => {
         fireEvent.click(summary);
         const links = screen.getAllByRole('button');
         const expectedPaths = [manifest, report, project, completedAt, databaseName];
+        const expectedLocations = [
+            [`/workspace/${manifest}`],
+            [`/workspace/${report}`],
+            [`/workspace/${project}`],
+            [`/workspace/${project}`, 'phases.provisioning.completedAt'],
+            [`/workspace/${project}`, 'phases.provisioning.databaseName'],
+        ];
         expect(links.map((link) => link.textContent)).toEqual(expectedPaths);
         links.forEach((link, index) => {
             expect(link).toHaveAccessibleName(expectedPaths[index]);
             fireEvent.click(link);
-            expect(onOpenFile).toHaveBeenLastCalledWith(`/workspace/${expectedPaths[index]}`);
+            expect(onOpenFile).toHaveBeenLastCalledWith(...expectedLocations[index]);
         });
         expect(phases.discovery.artifacts.map((artifact) => artifact.path)).toEqual(paths);
     });
@@ -680,6 +701,40 @@ describe('migration phase outcomes', () => {
         expect(review.parentElement?.firstElementChild).toBe(review);
         fireEvent.click(review);
         expect(onRestart).toHaveBeenCalledWith('schema-conversion');
+    });
+
+    it('opens diagnostic checkpoint properties separately from a workspace path containing a hash', () => {
+        const phases = completion();
+        phases['schema-conversion'].artifacts = [
+            {
+                path: '.cosmosdb-migration/project.json#phases.schemaConversion.domains',
+                description: 'Checkpoint metadata',
+                conditional: false,
+                state: 'invalid',
+                canOpen: true,
+                diagnostics: ['Needs review'],
+            },
+        ];
+        const onOpenFile = vi.fn();
+        render(
+            createElement(MigrationPhaseDiagnostics, {
+                phase: 'schema-conversion',
+                completion: phases,
+                activity,
+                workspacePath: '/work/C#/shop',
+                onOpenFile,
+                onReload: vi.fn(),
+            }),
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Checkpoint metadata Invalid' }));
+        const openArtifact = screen.getByRole('button', { name: 'Open Artifact' });
+        expect(openArtifact).toHaveTextContent('Open Artifact');
+        expect(openArtifact).toHaveAccessibleName('Open Artifact');
+        fireEvent.click(openArtifact);
+        expect(onOpenFile).toHaveBeenCalledWith(
+            '/work/C#/shop/.cosmosdb-migration/project.json',
+            'phases.schemaConversion.domains',
+        );
     });
 
     it('directs a blocked phase without run detail to persisted diagnostics rather than Chat', () => {

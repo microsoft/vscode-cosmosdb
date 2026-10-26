@@ -10,6 +10,7 @@ import { Worker } from 'node:worker_threads';
 import * as path from 'path';
 import { type ProjectJson } from '../../../services/MigrationProjectService';
 import {
+    getMigrationArtifactLocation,
     type MigrationExecution,
     type MigrationFreshnessCause,
 } from '../../../webviews/cosmosdb/Migration/state/deriveMigrationPhaseStates';
@@ -136,7 +137,8 @@ async function addArtifactAccess(
                     artifact.canOpen = false;
                     return;
                 }
-                const artifactPath = artifact.path.split('#')[0];
+                const artifactPath =
+                    'state' in artifact ? getMigrationArtifactLocation(artifact.path)[0] : artifact.path;
                 let check = access.get(artifactPath);
                 if (!check) {
                     check = (async () => {

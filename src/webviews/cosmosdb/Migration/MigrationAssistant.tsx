@@ -73,6 +73,7 @@ import { CosmosDBIcon } from '../../icons/CosmosDBIcon';
 import { BaseContextProvider, type DispatchToastFn } from '../../utils/context/BaseContextProvider';
 import { ErrorBoundary } from '../../utils/ErrorBoundary';
 import {
+    getMigrationArtifactLocation,
     getMigrationPhaseOutcome,
     getMigrationPrerequisite,
     getMigrationRunPhase,
@@ -633,7 +634,7 @@ interface MigrationArtifactProps {
     phase: MigrationPhaseName;
     completion: Partial<MigrationCompletionMap> | null;
     workspacePath: string;
-    onOpenFile: (filePath: string) => void;
+    onOpenFile: (filePath: string, propertyPath?: string) => void;
 }
 
 function canOpenMigrationArtifact(artifact: { canOpen?: boolean; path: string }): boolean {
@@ -657,7 +658,9 @@ export function MigrationGeneratedArtifacts({ phase, completion, workspacePath, 
             <ul>
                 {artifactPaths.map((artifactPath) => (
                     <li key={artifactPath}>
-                        <Link onClick={() => onOpenFile(`${workspacePath}/${artifactPath}`)}>{artifactPath}</Link>
+                        <Link onClick={() => onOpenFile(...getMigrationArtifactLocation(artifactPath, workspacePath))}>
+                            {artifactPath}
+                        </Link>
                     </li>
                 ))}
             </ul>
@@ -950,7 +953,11 @@ export function MigrationPhaseDiagnostics({
                                         <Button
                                             size="small"
                                             icon={<DocumentRegular />}
-                                            onClick={() => onOpenFile(`${workspacePath}/${diagnostic.path!}`)}
+                                            onClick={() =>
+                                                onOpenFile(
+                                                    ...getMigrationArtifactLocation(diagnostic.path!, workspacePath),
+                                                )
+                                            }
                                         >
                                             {l10n.t('Open Artifact')}
                                         </Button>
@@ -1683,7 +1690,10 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
     const handleAddToGitignore = useCallback(() => sendCommand('addToGitignore'), [sendCommand]);
     const handleRemoveFromGitignore = useCallback(() => sendCommand('removeFromGitignore'), [sendCommand]);
 
-    const handleOpenFile = useCallback((filePath: string) => sendCommand('openFile', filePath), [sendCommand]);
+    const handleOpenFile = useCallback(
+        (...location: [filePath: string, propertyPath?: string]) => sendCommand('openFile', ...location),
+        [sendCommand],
+    );
     const handleRevealInExplorer = useCallback(
         (filePath: string) => sendCommand('revealInExplorer', filePath),
         [sendCommand],

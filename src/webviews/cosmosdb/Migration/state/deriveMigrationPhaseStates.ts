@@ -219,6 +219,18 @@ export interface MigrationPhaseCompletionState {
 
 export type MigrationCompletionMap = Record<MigrationPhaseName, MigrationPhaseCompletionState>;
 
+export function getMigrationArtifactLocation(
+    artifactPath: string,
+    workspacePath?: string,
+): [filePath: string, propertyPath?: string] {
+    const checkpointPath = '.cosmosdb-migration/project.json';
+    const propertyPrefix = `${checkpointPath}#`;
+    const isProperty = artifactPath.startsWith(propertyPrefix);
+    const filePath = isProperty ? checkpointPath : artifactPath;
+    const resolvedPath = workspacePath ? `${workspacePath}/${filePath}` : filePath;
+    return isProperty ? [resolvedPath, artifactPath.slice(propertyPrefix.length)] : [resolvedPath];
+}
+
 export function getMigrationRunPhase(
     activity: MigrationRunActivity | null | undefined,
     completion: Partial<MigrationCompletionMap> | null | undefined,

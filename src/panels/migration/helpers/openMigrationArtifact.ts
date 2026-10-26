@@ -6,15 +6,13 @@
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 
-export async function openMigrationArtifact(filePath: string): Promise<void> {
-    const fragmentIndex = filePath.indexOf('#');
-    const uri = vscode.Uri.file(fragmentIndex < 0 ? filePath : filePath.slice(0, fragmentIndex));
-    if (fragmentIndex < 0) {
+export async function openMigrationArtifact(filePath: string, propertyPath?: string): Promise<void> {
+    const uri = vscode.Uri.file(filePath);
+    if (propertyPath === undefined) {
         await vscode.window.showTextDocument(uri, { preview: true });
         return;
     }
 
-    const propertyPath = filePath.slice(fragmentIndex + 1);
     let symbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[] | undefined>(
         'vscode.executeDocumentSymbolProvider',
         uri,

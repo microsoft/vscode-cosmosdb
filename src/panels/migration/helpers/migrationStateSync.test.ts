@@ -24,7 +24,7 @@ import {
 } from './migrationStateSync';
 
 async function withCompletionChecker(source: string, check: (extensionPath: string) => Promise<void>): Promise<void> {
-    const extensionPath = fs.mkdtempSync(path.join(os.tmpdir(), 'migration worker test '));
+    const extensionPath = fs.mkdtempSync(path.join(os.tmpdir(), 'migration C# worker test '));
     const scriptsPath = path.join(extensionPath, 'skills', 'cosmosdb-relational-migration', 'scripts');
     fs.mkdirSync(scriptsPath, { recursive: true });
     fs.mkdirSync(path.join(extensionPath, '.cosmosdb-migration'));
@@ -37,6 +37,46 @@ async function withCompletionChecker(source: string, check: (extensionPath: stri
 }
 
 describe('migrationStateSync', () => {
+    it('distinguishes checkpoint selectors from literal hashes in artifacts and freshness paths', async () => {
+        const artifacts = [
+            { path: 'main#draft.bicep', state: 'present' },
+            { path: 'model.json#draft', state: 'present' },
+            { path: 'missing#draft.bicep', state: 'present' },
+            { path: '.cosmosdb-migration/project.json#phases.provisioning.completedAt', state: 'present' },
+        ];
+        const freshnessCauses = [
+            { phase: 'discovery', id: 'source', path: 'src/C#/service.ts', reason: 'Changed' },
+            { phase: 'discovery', id: 'notes', path: '.cosmosdb-migration/project.json#notes', reason: 'Changed' },
+            { phase: 'discovery', id: 'missing', path: '.cosmosdb-migration/project.json#missing', reason: 'Missing' },
+        ];
+        await withCompletionChecker(
+            `export function checkPhaseCompletions() {
+                return { preflight: { artifacts: ${JSON.stringify(artifacts)}, freshnessCauses: ${JSON.stringify(freshnessCauses)} } };
+            }`,
+            async (workspace) => {
+                fs.mkdirSync(path.join(workspace, 'src', 'C#'), { recursive: true });
+                for (const file of [
+                    'main#draft.bicep',
+                    'model.json#draft',
+                    'missing',
+                    '.cosmosdb-migration/project.json',
+                    '.cosmosdb-migration/project.json#notes',
+                    'src/C#/service.ts',
+                ]) {
+                    fs.writeFileSync(path.join(workspace, file), '{}');
+                }
+                const result = await readMigrationPhaseCompletion(workspace, workspace);
+                expect(result.preflight.artifacts.map((artifact) => artifact.canOpen)).toEqual([
+                    true,
+                    true,
+                    false,
+                    true,
+                ]);
+                expect(result.preflight.freshnessCauses?.map((cause) => cause.canOpen)).toEqual([true, true, false]);
+            },
+        );
+    });
+
     it('preserves artifact diagnostics and opens only existing workspace files', async () => {
         const artifacts = [
             {

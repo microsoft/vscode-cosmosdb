@@ -20,16 +20,22 @@ describe('opening migration artifacts', () => {
     });
     afterEach(() => vi.restoreAllMocks());
 
-    it('opens ordinary artifacts without requesting document symbols', async () => {
-        await openMigrationArtifact('/workspace/.cosmosdb-migration/phases/4-provisioning/main.bicep');
-        expect(vscode.window.showTextDocument).toHaveBeenCalledWith(
-            vscode.Uri.file('/workspace/.cosmosdb-migration/phases/4-provisioning/main.bicep'),
-            { preview: true },
-        );
+    it.each([
+        '/workspace/.cosmosdb-migration/phases/4-provisioning/main.bicep',
+        '/work/C#/shop/.cosmosdb-migration/phases/4-provisioning/main.bicep',
+        '/workspace/.cosmosdb-migration/phases/4-provisioning/main#draft.bicep',
+        '/workspace/model.json#literal',
+    ])('opens ordinary artifacts without requesting document symbols: %s', async (filePath) => {
+        await openMigrationArtifact(filePath);
+        expect(vscode.window.showTextDocument).toHaveBeenCalledWith(vscode.Uri.file(filePath), { preview: true });
         expect(vscode.commands.executeCommand).not.toHaveBeenCalled();
     });
 
-    it('selects the exact nested JSON property rather than another property with the same name', async () => {
+    it.each([
+        '/workspace/.cosmosdb-migration/project.json',
+        '/work/C#/shop/.cosmosdb-migration/project.json',
+        '/work/C#/shop/.cosmosdb-migration/project#draft.json',
+    ])('selects the exact nested JSON property in %s', async (filePath) => {
         const completedAt = property('completedAt', 120);
         vi.mocked(vscode.commands.executeCommand).mockResolvedValue([
             property('completedAt', 1),
@@ -38,8 +44,8 @@ describe('opening migration artifacts', () => {
                 property('provisioning', 100, [completedAt]),
             ]),
         ]);
-        await openMigrationArtifact('/workspace/.cosmosdb-migration/project.json#phases.provisioning.completedAt');
-        const uri = vscode.Uri.file('/workspace/.cosmosdb-migration/project.json');
+        await openMigrationArtifact(filePath, 'phases.provisioning.completedAt');
+        const uri = vscode.Uri.file(filePath);
         expect(vscode.commands.executeCommand).toHaveBeenCalledWith('vscode.executeDocumentSymbolProvider', uri);
         expect(vscode.window.showTextDocument).toHaveBeenCalledWith(uri, {
             preview: true,
@@ -53,15 +59,17 @@ describe('opening migration artifacts', () => {
         { symbols: [property('phases', 2, [property('provisioning', 3)])] },
     ])('reports unresolved properties instead of opening the wrong location (%j)', async ({ symbols }) => {
         vi.mocked(vscode.commands.executeCommand).mockResolvedValue(symbols);
-        await expect(openMigrationArtifact('/workspace/project.json#phases.provisioning.completedAt')).rejects.toThrow(
-            'Could not locate JSON property "phases.provisioning.completedAt".',
-        );
+        await expect(
+            openMigrationArtifact('/workspace/project.json', 'phases.provisioning.completedAt'),
+        ).rejects.toThrow('Could not locate JSON property "phases.provisioning.completedAt".');
         expect(vscode.window.showTextDocument).not.toHaveBeenCalled();
     });
 
     it('propagates document-symbol provider errors', async () => {
         vi.mocked(vscode.commands.executeCommand).mockRejectedValue(new Error('Provider unavailable'));
-        await expect(openMigrationArtifact('/workspace/project.json#phases')).rejects.toThrow('Provider unavailable');
+        await expect(openMigrationArtifact('/workspace/project.json', 'phases')).rejects.toThrow(
+            'Provider unavailable',
+        );
         expect(vscode.window.showTextDocument).not.toHaveBeenCalled();
     });
 });

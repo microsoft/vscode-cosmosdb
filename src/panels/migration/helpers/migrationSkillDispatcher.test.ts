@@ -49,7 +49,7 @@ vi.mock('vscode', () => ({
         executeCommand: vi.fn().mockResolvedValue(undefined),
         getCommands: vi.fn().mockResolvedValue([]),
     },
-    window: { showWarningMessage: vi.fn() },
+    window: { showWarningMessage: vi.fn(), showTextDocument: vi.fn() },
     workspace: {
         get workspaceFolders() {
             return [{ uri: { fsPath: '/workspace/shop' }, name: 'shop', index: 0 }];
@@ -115,6 +115,34 @@ describe('MigrationAssistantTab AI launch guards', () => {
             skillChatSession: { dispatch, openChat },
             publishRunActivity: vi.fn(),
         });
+    });
+
+    it.each([
+        ['/work/C#/shop/.cosmosdb-migration/main#draft.bicep', undefined],
+        ['/work/C#/shop/.cosmosdb-migration/project.json', 'phases.provisioning.completedAt'],
+    ])('forwards the literal artifact path and optional property selector: %s', async (filePath, propertyPath) => {
+        const selection = { start: { line: 42, character: 4 }, end: { line: 42, character: 17 } };
+        if (propertyPath) {
+            vi.mocked(vscode.commands.executeCommand).mockResolvedValueOnce([
+                {
+                    name: 'phases',
+                    children: [
+                        {
+                            name: 'provisioning',
+                            children: [{ name: 'completedAt', selectionRange: selection, children: [] }],
+                        },
+                    ],
+                },
+            ]);
+        }
+        await tab.dispatchCommand('openFile', propertyPath ? [filePath, propertyPath] : [filePath]);
+        expect(vscode.window.showTextDocument).toHaveBeenCalledWith(vscode.Uri.file(filePath), {
+            preview: true,
+            ...(propertyPath ? { selection } : {}),
+        });
+        expect(vi.mocked(vscode.commands.executeCommand).mock.calls).toEqual(
+            propertyPath ? [['vscode.executeDocumentSymbolProvider', vscode.Uri.file(filePath)]] : [],
+        );
     });
 
     it('waits for a pending project save before launching', async () => {

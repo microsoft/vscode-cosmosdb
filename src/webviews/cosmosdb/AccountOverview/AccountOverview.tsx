@@ -131,6 +131,7 @@ export const OverviewDashboard = ({
     const { announce } = useAnnounce();
     const [isAIFeaturesEnabled, setIsAIFeaturesEnabled] = useState(false);
     const [feedbackEnabled, setFeedbackEnabled] = useState(false);
+    const [isDataModelerEnabled, setIsDataModelerEnabled] = useState(false);
 
     useEffect(() => {
         const subscription = trpcClient.accountOverview.feedbackEnabled.subscribe(undefined, {
@@ -138,6 +139,17 @@ export const OverviewDashboard = ({
             onError: (error) => {
                 setFeedbackEnabled(false);
                 console.error('Unable to receive Account Overview feedback availability.', error);
+            },
+        });
+        return () => subscription.unsubscribe();
+    }, [trpcClient]);
+
+    useEffect(() => {
+        const subscription = trpcClient.accountOverview.dataModelerEnabled.subscribe(undefined, {
+            onData: setIsDataModelerEnabled,
+            onError: (error) => {
+                setIsDataModelerEnabled(false);
+                console.error('Unable to receive Account Overview Data Modeler availability.', error);
             },
         });
         return () => subscription.unsubscribe();
@@ -829,6 +841,7 @@ export const OverviewDashboard = ({
                             />
                             <AccountActions
                                 isAIFeaturesEnabled={isAIFeaturesEnabled}
+                                isDataModelerEnabled={isDataModelerEnabled}
                                 busy={accountActionBusy}
                                 supported={inventory.supported}
                                 databaseId={selectedContainer?.databaseId}

@@ -1749,6 +1749,7 @@
   "The Data Modeling wizard is no longer open. Show this complete recommendation in the chat response.": "The Data Modeling wizard is no longer open. Show this complete recommendation in the chat response.",
   "The database \"{name}\" already exists in the account.": "The database \"{name}\" already exists in the account.",
   "The default port: 8081": "The default port: 8081",
+  "The endpoint specified in this link is not supported.": "The endpoint specified in this link is not supported.",
   "The entered value does not match the original.": "The entered value does not match the original.",
   "The exact internal RU split per collection is not exposed; this is inferred from the 429 + consumption disparity.": "The exact internal RU split per collection is not exposed; this is inferred from the 429 + consumption disparity.",
   "The fastest-growing physical partition in \"{container}\" is at `{current} GiB` and growing about `{perDay} GiB/day`.": "The fastest-growing physical partition in \"{container}\" is at `{current} GiB` and growing about `{perDay} GiB/day`.",

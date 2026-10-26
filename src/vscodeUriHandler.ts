@@ -33,6 +33,7 @@ const supportedProviders = [
     // 'Microsoft.DocumentDB/mongoClusters', // discontinued API, uncomment if we add support for MongoDB Clusters
     // 'Microsoft.DBforPostgreSQL/serverGroupsv2', // uncomment once we support Cosmos DB for PostgreSQL
 ];
+const fabricEndpointDomain = 'cosmos.fabric.microsoft.com';
 
 /**
  * Global URI handler for processing external URIs related to Azure Cosmos DB.
@@ -179,6 +180,10 @@ async function handleConnectionStringRequest(
             await openAppropriateEditorForAzure(resource);
         }
     } else {
+        const hostName = parsedConnection.connectionString.hostName;
+        if (hostName !== fabricEndpointDomain && !hostName.endsWith(`.${fabricEndpointDomain}`)) {
+            throw new Error(l10n.t('The endpoint specified in this link is not supported.'));
+        }
         // Create storage item for the connection
         if (parsedConnection.api === API.Core) {
             const isEmulator = getIsEmulatorConnection(parsedConnection.connectionString);

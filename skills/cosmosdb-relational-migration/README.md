@@ -52,8 +52,19 @@ The installation should contain two independent skill folders:
 
 ## Get Started
 
+Open the application source and, at minimum, **strongly consider supplying current
+database DDL**. DDL is the most important migration input: it establishes the source
+schema and relationships. Inferring it from code is possible, but not recommended
+because code may omit database constraints, indexes, or behavior.
+
+Real workload measurements are the next most useful input. You do not need to fill
+in templates before starting: the agent can prefill volumetrics from supplied evidence
+for human review and automatically prepares access patterns during preflight. See
+[Prepare Inputs](#prepare-inputs) for examples and sample prompts.
+
 ```text
 Run a relational database migration to Azure Cosmos DB.
+Use db/schema.sql as the source DDL. Run in interactive mode.
 ```
 
 The default mode is interactive when the host can pause and receive your answers;
@@ -170,13 +181,171 @@ using the same source database, while evaluating its own requirements. Memory is
 it does not force old choices, transfer permissions, or require a pack format or memory
 validation. See the [memory workflow](./references/workflow/memory.md).
 
-## Inputs and Results
+## Prepare Inputs
 
-Start with the application source. You can also supply DDL, application details,
-volumetric data, access-pattern descriptions, and relevant logs or query samples.
-Existing DDL remains authoritative; the skill can infer schema from code when no DDL
-is selected. The [volumetrics](./assets/volumetrics-template.md) and
-[access-patterns](./assets/access-patterns-template.md) templates show the expected inputs.
+Start with the application source, prioritize current DDL, and add real workload
+evidence where available. The recommended preparation is:
+
+1. Export the current source schema as DDL.
+2. Gather logs or comparable measurements so the agent can prefill volumetrics for review.
+3. Optionally add business access requirements; the agent prepares the access-patterns
+    template automatically during preflight.
+
+You do not need complete production measurements before starting: missing facts can
+remain explicitly unknown, and inferred values must be distinguished from observed data.
+
+### Supply Input Files
+
+Identify the application project root and the files to use in your request. Files
+already inside that project can stay where they are; files outside it are copied into
+the migration input folders only after approval. For example, with paths relative to
+your application project:
+
+```text
+Run the preflight phase of a relational database migration to Azure Cosmos DB
+in interactive mode for this application. Use db/schema.sql as the source DDL,
+docs/workload.csv for volumetrics, and docs/access-patterns.md for access patterns.
+```
+
+Alternatively, place raw inputs in the default folders:
+
+```text
+.cosmosdb-migration/phases/1-discovery/
+|-- schema-ddl/        # Source schema SQL files
+|-- volumetrics/       # Row-count reports, monitoring exports, workload logs
+`-- access-patterns/   # Query samples, workload descriptions, query logs
+```
+
+These folders are discovered recursively unless an explicit file selection is already
+configured. When adding files to an existing migration, ask the agent to include them;
+an explicit selection does not automatically pick up new files. The curated checkpoints
+are `volumetrics/volumetrics.md` and `access-patterns/access-patterns.md`; keep raw
+evidence in separate files. You do not need to edit checkpoint JSON yourself.
+
+### DDL
+
+**DDL is the most important input and is highly recommended.** Supply a schema-only
+SQL export representing the current source database, and identify
+the database engine, version, and SQL dialect when known. Include schema-qualified table
+names, columns and types, nullability, primary and foreign keys, constraints, defaults,
+and indexes. Include relevant views, stored procedures, triggers, and sequences when
+they define behavior the application relies on. Multiple files are supported; identify
+the complete set, including referenced definitions. A data dump is not required.
+
+Selected DDL is authoritative and is not rewritten to match application code. Conflicts
+with ORM mappings or queries are reported for review. If no DDL is selected, inference
+from application models, migrations, and queries is possible, but not recommended:
+these sources may not represent the complete deployed database. Inferred DDL records
+provenance and uncertainty and needs careful human review. Incomplete or malformed
+supplied DDL must be corrected or deselected; it does not silently trigger code-based
+inference.
+
+Sample prompt:
+
+```text
+Run the preflight phase of a relational database migration to Azure Cosmos DB
+for this application in interactive mode. Use db/schema.sql as the source DDL
+for our PostgreSQL 16 database.
+```
+
+### Volumetrics
+
+**Prefer real logs or comparable measured data over manually guessed values.** Ask the
+agent to use that evidence to prefill the
+[volumetrics template](./assets/volumetrics-template.md), then have someone familiar
+with the workload review the result. Useful evidence includes:
+
+- Database query or audit logs with timestamps, operation types, and durations.
+- PostgreSQL `pg_stat_statements` snapshots or SQL Server Query Store exports with
+    their collection intervals and execution counts.
+- Monitoring exports showing average and peak read/write rates over representative periods.
+- Table statistics or sizing reports with row counts, average row sizes, and historical growth.
+- Application telemetry or load-test reports from a comparable workload, clearly labeled
+    with their environment and differences from production.
+
+Volumetrics are important because a good Cosmos DB model must fit the workload, not
+just reproduce the relational schema. Data volume, growth, and key distribution help
+evaluate partition keys and avoid hot partitions. Read/write rates, item sizes, and
+peaks inform throughput and cost estimates. Relationship sizes and retention help
+decide when to embed data or keep it separate, avoiding unbounded documents and
+expensive updates. Missing or unrepresentative measurements make those decisions
+less reliable; measurements inform estimates, not a guarantee of target RU consumption.
+
+The template captures, per schema-qualified table or entity:
+
+- Current or estimated row count and average row size in KB.
+- Monthly growth, with units such as rows/month or percent/month.
+- Average read and write TPS (transactions per second).
+- Peak rates and time windows, batch or initial-load behavior, and retention policies.
+- Known size outliers, key or tenant skew, and regional or consistency requirements.
+
+You may also fill in the template yourself. State the source, collection period, units,
+and whether the data is production,
+test, or synthetic. For logs, explain what each event counts so rates can be interpreted
+correctly; returned query row counts are not table cardinality.
+
+Mark estimates as `(estimated)`. Leave unknown numeric cells empty and explain the gap
+in Notes rather than entering zero. The agent preserves valid supplied values and uses
+direct evidence before estimating missing values from schema or code.
+
+Sample prompt, with evidence paths relative to the application project:
+
+```text
+Prepare volumetrics for this relational database migration to Azure Cosmos DB.
+Use docs/workload/query-log.csv, docs/workload/table-sizes.csv, and
+docs/workload/monitoring.json to prefill the volumetrics template for human review.
+Run only the volumetrics preflight step in interactive mode.
+```
+
+### Access Patterns
+
+**Providing a completed access-patterns template is optional.** The agent automatically
+creates and fills the [access-patterns template](./assets/access-patterns-template.md)
+during preflight by inspecting application code, repositories, API handlers, queries,
+and available workload evidence. Review the result for business requirements or
+operations that are not visible in the code, such as planned reports or background jobs.
+
+If you supply patterns yourself, describe reads and writes separately. For each operation,
+provide its name, tables or entities,
+frequency in TPS when known, and latency requirement with units. For reads, list filter
+and lookup fields; for writes, distinguish single-item operations from batches.
+
+For example, describe "List a customer's recent orders" with its customer filter,
+date range, sort order, page size, frequency, and latency target. Describe "Create an
+order and its lines" with the affected tables, typical batch size, and whether all
+writes must succeed atomically. Include joins, result sizes, pagination, reporting,
+search requirements, and transaction boundaries in the notes where relevant.
+
+Link patterns to repository methods, API handlers, SQL examples, stored procedures,
+or query logs. Distinguish observed behavior from code-evidenced patterns and business
+requirements; label estimated frequencies. Where access is unknown, say so instead of
+inventing a pattern. The agent can inspect code and queries to fill gaps and records
+tables with no observed application access explicitly.
+
+Sample prompt:
+
+```text
+Run the access-patterns preflight step for this relational database migration
+to Azure Cosmos DB in interactive mode. I have not filled in an access-patterns
+template. Our requirements also include a nightly sales report and customer
+order-history searches with a 200 ms latency target.
+```
+
+### Application Context and Missing Inputs
+
+Provide the project name and type, language, source database, database-access mechanism
+(such as an ORM or raw SQL), and frameworks when known. Mention migration constraints
+and known discrepancies between the code and database. The agent can infer missing
+details from the application, but preserves valid engineer-supplied information.
+
+Remove credentials and sensitive data from supplied logs and query samples while
+preserving the structure needed for analysis. Preflight reviews the inputs together,
+reports contradictions, and prepares the curated workload documents. Unknown measurements
+can remain documented gaps; unresolved table identities or contradictory comparable
+evidence may block readiness. See the [preflight reference](./references/phases/preflight.md)
+for the full input checks.
+
+## Results
 
 The skill keeps checkpoints and generated artifacts under `.cosmosdb-migration/` in
 the application workspace. Results include human-readable reports, a canonical

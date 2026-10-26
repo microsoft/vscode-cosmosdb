@@ -161,6 +161,41 @@ beforeEach(() => {
 });
 
 describe('migration accessibility', () => {
+    it.each([
+        { consentGiven: false, isAIFeaturesEnabled: true },
+        { consentGiven: true, isAIFeaturesEnabled: false },
+    ])(
+        'disables account provisioning when consent is $consentGiven and AI availability is $isAIFeaturesEnabled',
+        (settings) => {
+            state.targetType = 'provision';
+            state.targetAccountName = 'migration-account';
+            state.targetResourceGroup = 'migration-resources';
+            const { rerender } = render(renderAssistant());
+            fireEvent.click(screen.getByRole('button', { name: /Phase 4: Target Provisioning/ }));
+            const button = screen.getByRole('button', { name: 'Provision New Account' });
+            expect(button).toHaveTextContent('Provision New Account');
+            expect(button).toBeEnabled();
+
+            Object.assign(state, settings);
+            rerender(renderAssistant());
+            expect(button).toBeDisabled();
+            postMessage.mockClear();
+            fireEvent.click(button);
+            expect(postMessage).not.toHaveBeenCalled();
+
+            state.consentGiven = true;
+            state.isAIFeaturesEnabled = true;
+            rerender(renderAssistant());
+            expect(button).toBeEnabled();
+            fireEvent.click(button);
+            expect(postMessage).toHaveBeenCalledWith({
+                type: 'event',
+                name: 'command',
+                params: [{ commandName: 'provisionAccount', params: [] }],
+            });
+        },
+    );
+
     it('places one collapsed Generated Artifacts expander directly below each generation action', () => {
         addGeneratedArtifacts();
         render(renderAssistant());

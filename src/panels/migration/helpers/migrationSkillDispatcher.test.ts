@@ -5,8 +5,11 @@
 
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { MigrationProjectService } from '../../../services/MigrationProjectService';
+import { ext } from '../../../extensionVariables';
+import { MigrationProjectService, type ProjectJson } from '../../../services/MigrationProjectService';
 import { getAvailableModelsInfo } from '../../../utils/aiUtils';
+import { MigrationRunTracker } from '../../../webviews/cosmosdb/Migration/state/deriveMigrationPhaseStates';
+import { MigrationAssistantTab } from '../../MigrationAssistantTab';
 import { capturePrompt, isMigrationAiMockEnabled } from './e2eMigrationAiMock';
 import {
     buildMigrationSkillPrompt,
@@ -15,6 +18,19 @@ import {
 } from './migrationSkillDispatcher';
 
 vi.mock('../../../utils/aiUtils', () => ({ getAvailableModelsInfo: vi.fn() }));
+
+vi.mock('@microsoft/vscode-azext-azureutils', () => ({}));
+vi.mock('@microsoft/vscode-azext-utils', () => ({}));
+vi.mock('@microsoft/vscode-azureresources-api', () => ({}));
+vi.mock('../../../cosmosdb/CosmosDBCredential', () => ({}));
+vi.mock('../../../extensionVariables', () => ({ ext: { isAIFeaturesEnabled: true } }));
+vi.mock('../../../tree/cosmosdb/AccountInfo', () => ({}));
+vi.mock('../../../tree/workspace-view/migration/MigrationWorkspaceItem', () => ({}));
+vi.mock('../../../utils/azureClients', () => ({}));
+vi.mock('../../../utils/pickItem/pickAppResource', () => ({}));
+vi.mock('../../BaseTab', () => ({ BaseTab: class {} }));
+vi.mock('./testConnection', () => ({}));
+vi.mock('../../trpc/appRouter', () => ({}));
 
 vi.mock('./e2eMigrationAiMock', () => ({
     capturePrompt: vi.fn(),
@@ -35,6 +51,104 @@ vi.mock('vscode', () => ({
         fs: { stat: vi.fn() },
     },
 }));
+
+describe('MigrationAssistantTab AI launch guards', () => {
+    const launchCommands = [
+        { command: 'analyzeApplication', params: [] },
+        { command: 'analyzeDatabaseSchema', params: [] },
+        { command: 'analyzeVolumetrics', params: [] },
+        { command: 'analyzeAccessPatterns', params: [] },
+        { command: 'runDiscovery', params: [] },
+        { command: 'runAssessment', params: [] },
+        { command: 'runSchemaConversion', params: [] },
+        { command: 'provisionAccount', params: [] },
+        { command: 'populateSampleData', params: [] },
+        { command: 'planMigration', params: [] },
+        { command: 'migrateApplication', params: [] },
+        { command: 'reviewMigrationPhase', params: ['assessment'] },
+    ];
+    const dispatch = vi.fn();
+    const begin = vi.fn();
+    let project: ProjectJson;
+    let runTracker: MigrationRunTracker;
+    let tab: { dispatchCommand(commandName: string, params: unknown[]): Promise<unknown> };
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        ext.isAIFeaturesEnabled = true;
+        dispatch.mockResolvedValue('migration prompt');
+        begin.mockReturnValue('run-1');
+        project = {
+            version: 1,
+            name: 'Migration',
+            sourceCode: 'parent',
+            consentGiven: true,
+            phases: {
+                discovery: { status: 'complete' },
+                targetEnvironment: { type: 'provision', accountName: 'migration-account' },
+            },
+        };
+        runTracker = new MigrationRunTracker();
+        tab = Object.assign(Object.create(MigrationAssistantTab.prototype) as typeof tab, {
+            workspacePath: '/workspace',
+            project,
+            selectedModelId: 'selected',
+            selectedModelUpdate: Promise.resolve(),
+            runTracker,
+            skillTelemetry: { begin, dispatched: vi.fn() },
+            skillChatSession: { dispatch },
+            publishRunActivity: vi.fn(),
+        });
+    });
+
+    it.each(launchCommands)('rejects $command after consent is revoked', async ({ command, params }) => {
+        project.consentGiven = false;
+
+        await expect(tab.dispatchCommand(command, params)).rejects.toThrow(
+            'AI consent is required to use this action.',
+        );
+
+        expect(dispatch).not.toHaveBeenCalled();
+        expect(begin).not.toHaveBeenCalled();
+        expect(runTracker.snapshot()).toBeNull();
+    });
+
+    it.each(launchCommands)('rejects $command when AI features are unavailable', async ({ command, params }) => {
+        ext.isAIFeaturesEnabled = false;
+
+        await expect(tab.dispatchCommand(command, params)).rejects.toThrow(
+            'GitHub Copilot must be active to use this action.',
+        );
+
+        expect(dispatch).not.toHaveBeenCalled();
+        expect(begin).not.toHaveBeenCalled();
+        expect(runTracker.snapshot()).toBeNull();
+    });
+
+    it('rejects an account launch when consent has never been recorded', async () => {
+        delete project.consentGiven;
+
+        await expect(tab.dispatchCommand('provisionAccount', [])).rejects.toThrow(
+            'AI consent is required to use this action.',
+        );
+
+        expect(dispatch).not.toHaveBeenCalled();
+        expect(begin).not.toHaveBeenCalled();
+        expect(runTracker.snapshot()).toBeNull();
+    });
+
+    it.each(launchCommands)('allows $command with consent and available AI features', async ({ command, params }) => {
+        await tab.dispatchCommand(command, params);
+
+        expect(dispatch).toHaveBeenCalledOnce();
+        expect(dispatch).toHaveBeenCalledWith(
+            expect.objectContaining({ workspacePath: '/workspace', runId: 'run-1' }),
+            'selected',
+            expect.any(Function),
+        );
+        expect(begin).toHaveBeenCalledOnce();
+    });
+});
 
 describe('migrationSkillDispatcher', () => {
     beforeEach(() => {

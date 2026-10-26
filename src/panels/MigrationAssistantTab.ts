@@ -971,12 +971,6 @@ export class MigrationAssistantTab extends BaseTab {
         if (!this.project.name.trim()) {
             throw new Error(l10n.t('Enter a project name before starting Discovery.'));
         }
-        if (!this.project.consentGiven) {
-            throw new Error(l10n.t('AI consent is required to use this action.'));
-        }
-        if (!ext.isAIFeaturesEnabled) {
-            throw new Error(l10n.t('GitHub Copilot must be active to use this action.'));
-        }
         if (!this.selectedModelId) {
             throw new Error(l10n.t('The selected migration model is unavailable. Please select an available model.'));
         }
@@ -990,8 +984,6 @@ export class MigrationAssistantTab extends BaseTab {
     private async reviewMigrationPhase(requestedPhase: unknown): Promise<void> {
         const phase = migrationPhaseNames.find((candidate) => candidate === requestedPhase);
         if (!phase) throw new Error(l10n.t('Select a valid migration phase to review.'));
-        if (!this.project?.consentGiven) throw new Error(l10n.t('AI consent is required to use this action.'));
-        if (!ext.isAIFeaturesEnabled) throw new Error(l10n.t('GitHub Copilot must be active to use this action.'));
         await this.dispatchMigrationSkill({
             workspacePath: this.workspacePath,
             phase,
@@ -1342,6 +1334,12 @@ export class MigrationAssistantTab extends BaseTab {
     }
 
     private async dispatchMigrationSkill(invocation: MigrationSkillInvocation): Promise<void> {
+        if (!this.project?.consentGiven) {
+            throw new Error(l10n.t('AI consent is required to use this action.'));
+        }
+        if (!ext.isAIFeaturesEnabled) {
+            throw new Error(l10n.t('GitHub Copilot must be active to use this action.'));
+        }
         if (isMigrationRunActive(this.runTracker.snapshot())) {
             throw new Error(l10n.t('A migration run is already active. Open Chat to finish or stop it.'));
         }

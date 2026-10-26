@@ -3089,6 +3089,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                                     onClick={handleProvisionAccount}
                                                     disabled={
                                                         isPhase4Disabled ||
+                                                        isAiActionDisabled ||
                                                         !state.targetResourceGroup ||
                                                         !state.targetAccountName ||
                                                         !state.targetLocation ||

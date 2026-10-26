@@ -7,6 +7,7 @@ import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { attachTrpc } from '@microsoft/vscode-ext-webview/host';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
+import { isDataModelerFeatureEnabled } from '../commands/dataModeling/dataModelerFeatureFlag';
 import { openDataModelingWizard } from '../commands/dataModeling/openDataModelingWizard';
 import { type AzureResourceMetadata } from '../cosmosdb/AzureResourceMetadata';
 import { getControlPlane } from '../cosmosdb/controlPlane';
@@ -41,6 +42,7 @@ vi.mock('./trpc/appRouter', () => ({
     dataModelingCallerFactory: vi.fn(),
 }));
 vi.mock('../utils/copilotUtils', () => ({ ensureAIFeaturesEnabled: vi.fn() }));
+vi.mock('../commands/dataModeling/dataModelerFeatureFlag', () => ({ isDataModelerFeatureEnabled: vi.fn() }));
 vi.mock('@microsoft/vscode-azureresources-api', () => ({
     AzExtResourceType: { AzureCosmosDb: 'Microsoft.DocumentDB/databaseAccounts' },
 }));
@@ -106,6 +108,7 @@ function actionContext(): IActionContext {
 
 beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(isDataModelerFeatureEnabled).mockReset().mockReturnValue(true);
     vi.mocked(ensureAIFeaturesEnabled).mockReset().mockResolvedValue(undefined);
     vi.spyOn(vscode.window, 'createWebviewPanel').mockImplementation(() => panel());
 });
@@ -117,6 +120,22 @@ afterEach(() => {
 describe('data modeler account scope', () => {
     const render = DataModelingWizardTab.render.bind(DataModelingWizardTab);
     const open = openDataModelingWizard;
+
+    it.each([undefined, firstAccount])('rejects opens when the Data Modeler flag is disabled', async (source) => {
+        vi.mocked(isDataModelerFeatureEnabled).mockReturnValue(false);
+        await expect(open(actionContext(), source)).rejects.toThrow('The Data Modeler wizard is disabled in settings.');
+        expect(ensureAIFeaturesEnabled).not.toHaveBeenCalled();
+        expect(pickAppResource).not.toHaveBeenCalled();
+        expect(vscode.window.createWebviewPanel).not.toHaveBeenCalled();
+    });
+
+    it('rechecks the feature flag after account resolution', async () => {
+        vi.mocked(isDataModelerFeatureEnabled).mockReturnValueOnce(true).mockReturnValueOnce(false);
+        await expect(open(actionContext(), firstAccount)).rejects.toThrow(
+            'The Data Modeler wizard is disabled in settings.',
+        );
+        expect(vscode.window.createWebviewPanel).not.toHaveBeenCalled();
+    });
 
     it.each([undefined, firstAccount])(
         'rejects direct opens before resolving an account when AI is unavailable',

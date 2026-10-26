@@ -448,7 +448,7 @@ async function createAttachedForConnection(
 
 /**
  * Reveals an attached account in the Azure Workspace Explorer.
- * First focuses on the Azure Workspace view, then reveals the specified resource in the tree.
+ * First expands the account, then reveals the requested database or container within it.
  *
  * @param accountId - The ID of the account to reveal
  * @param database - Optional database name to reveal within the account
@@ -460,12 +460,20 @@ async function revealAttachedInWorkspaceExplorer(
     database?: string,
     container?: string,
 ): Promise<void> {
-    const fullResourceId = `${accountId}${database ? `/${database}${container ? `/${container}` : ''}` : ''}`;
-    await ext.rgApiV2.resources.revealWorkspaceResource(fullResourceId, {
+    await ext.rgApiV2.resources.revealWorkspaceResource(accountId, {
         select: true,
         focus: true,
         expand: true,
     });
+
+    if (database) {
+        const fullResourceId = `${accountId}/${database}${container ? `/${container}` : ''}`;
+        await ext.rgApiV2.resources.revealWorkspaceResource(fullResourceId, {
+            select: true,
+            focus: true,
+            expand: true,
+        });
+    }
 }
 
 /**

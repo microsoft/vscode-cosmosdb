@@ -295,6 +295,8 @@ describe('external URI connection domains', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        mocks.revealWorkspaceResource.mockReset().mockResolvedValue(undefined);
+        mocks.getAccountInfo.mockReset();
         cancellation = new vscode.CancellationTokenSource();
         vi.spyOn(vscode.window, 'withProgress').mockImplementation((_options, task) =>
             task({ report: vi.fn() }, cancellation.token),
@@ -338,10 +340,109 @@ describe('external URI connection domains', () => {
             false,
         );
         expect(mocks.refresh).toHaveBeenCalledOnce();
+        expect(mocks.revealWorkspaceResource).toHaveBeenCalledTimes(3);
+        expect(mocks.revealWorkspaceResource).toHaveBeenNthCalledWith(
+            2,
+            `attachedAccounts/${new URL(endpoint).hostname}:443`,
+            { select: true, focus: true, expand: true },
+        );
         expect(mocks.revealWorkspaceResource).toHaveBeenLastCalledWith(
             `attachedAccounts/${new URL(endpoint).hostname}:443/database`,
             { select: true, focus: true, expand: true },
         );
+    });
+
+    it('reveals the attached account only once when no database is specified', async () => {
+        await globalUriHandler(makeUri({ cs: 'AccountEndpoint=https://account.cosmos.fabric.microsoft.com/;' }));
+
+        expect(mocks.revealWorkspaceResource.mock.calls).toEqual([
+            ['attachedAccounts', { select: true, focus: true, expand: true }],
+            ['attachedAccounts/account.cosmos.fabric.microsoft.com:443', { select: true, focus: true, expand: true }],
+        ]);
+        expect(mocks.getAccountInfo).not.toHaveBeenCalled();
+        expect(mocks.openNoSqlQueryEditor).not.toHaveBeenCalled();
+    });
+
+    it('expands the account before revealing a container and opening its editor', async () => {
+        const endpoint = 'https://account.cosmos.fabric.microsoft.com:443/';
+        const accountId = 'attachedAccounts/account.cosmos.fabric.microsoft.com:443';
+        mocks.getAccountInfo.mockResolvedValueOnce({ endpoint, credentials: [] });
+
+        await globalUriHandler(
+            makeUri({ cs: `AccountEndpoint=${endpoint};`, database: 'database', container: 'container' }),
+        );
+
+        expect(mocks.revealWorkspaceResource.mock.calls).toEqual([
+            ['attachedAccounts', { select: true, focus: true, expand: true }],
+            [accountId, { select: true, focus: true, expand: true }],
+            [`${accountId}/database/container`, { select: true, focus: true, expand: true }],
+        ]);
+        expect(mocks.openNoSqlQueryEditor).toHaveBeenCalledExactlyOnceWith(expect.anything(), {
+            databaseId: 'database',
+            containerId: 'container',
+            endpoint,
+            credentials: [],
+            isEmulator: false,
+        });
+    });
+
+    it('reveals the account even when descendant reveal silently finds no target', async () => {
+        const accountId = 'attachedAccounts/account.cosmos.fabric.microsoft.com:443';
+        const revealed: string[] = [];
+        mocks.revealWorkspaceResource.mockImplementation(async (id: string) => {
+            if (id === 'attachedAccounts' || id === accountId) {
+                revealed.push(id);
+            }
+        });
+
+        await globalUriHandler(
+            makeUri({
+                cs: 'AccountEndpoint=https://account.cosmos.fabric.microsoft.com/;',
+                database: 'missing-database',
+            }),
+        );
+
+        expect(revealed).toEqual(['attachedAccounts', accountId]);
+        expect(mocks.revealWorkspaceResource).toHaveBeenLastCalledWith(`${accountId}/missing-database`, {
+            select: true,
+            focus: true,
+            expand: true,
+        });
+    });
+
+    it('waits for account reveal before attempting to reveal the database', async () => {
+        const accountId = 'attachedAccounts/account.cosmos.fabric.microsoft.com:443';
+        let finishAccountReveal!: () => void;
+        let signalAccountReveal!: () => void;
+        const accountReveal = new Promise<void>((resolve) => {
+            finishAccountReveal = resolve;
+        });
+        const accountRevealStarted = new Promise<void>((resolve) => {
+            signalAccountReveal = resolve;
+        });
+        mocks.revealWorkspaceResource.mockImplementation(async (id: string) => {
+            if (id === accountId) {
+                signalAccountReveal();
+                await accountReveal;
+            }
+        });
+
+        const handling = globalUriHandler(
+            makeUri({ cs: 'AccountEndpoint=https://account.cosmos.fabric.microsoft.com/;', database: 'database' }),
+        );
+        try {
+            await accountRevealStarted;
+            expect(mocks.revealWorkspaceResource.mock.calls.map(([id]) => id)).toEqual(['attachedAccounts', accountId]);
+        } finally {
+            finishAccountReveal();
+            await handling;
+        }
+
+        expect(mocks.revealWorkspaceResource).toHaveBeenLastCalledWith(`${accountId}/database`, {
+            select: true,
+            focus: true,
+            expand: true,
+        });
     });
 
     it.each([

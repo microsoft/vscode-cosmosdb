@@ -10,8 +10,8 @@ import { ExperienceKind } from '../../../../utils/surveyTypes';
 import { accountOverviewProcedure } from '../../trpc';
 
 export const feedbackProcedures = {
-    provideFeedback: accountOverviewProcedure.mutation(() => {
-        openSurvey(ExperienceKind.NoSQL, 'cosmosDB.accountOverview.provideFeedback');
+    provideFeedback: accountOverviewProcedure.mutation(async () => {
+        await openSurvey(ExperienceKind.NoSQL, 'cosmosDB.accountOverview.provideFeedback');
     }),
     feedbackEnabled: accountOverviewProcedure.subscription(async function* ({ ctx }) {
         const sink = new TypedEventSink<{ type: 'feedbackEnabledChanged'; enabled: boolean }>();

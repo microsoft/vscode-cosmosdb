@@ -814,8 +814,8 @@ export const queryEditorRouterDef = queryEditorRouter({
             await vscode.env.clipboard.writeText(text);
         }),
 
-    provideFeedback: queryEditorProcedure.mutation(() => {
-        openSurvey(ExperienceKind.NoSQL, 'cosmosDB.nosql.queryEditor.provideFeedback');
+    provideFeedback: queryEditorProcedure.mutation(async () => {
+        await openSurvey(ExperienceKind.NoSQL, 'cosmosDB.nosql.queryEditor.provideFeedback');
     }),
 
     // ─── Schema Routes ──────────────────────────────────────────────────────

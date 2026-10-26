@@ -3,18 +3,50 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { workspace, type ConfigurationChangeEvent } from 'vscode';
+import type * as vscode from 'vscode';
+import { env, Uri, workspace, type ConfigurationChangeEvent } from 'vscode';
+import type * as surveyModule from '../../../../utils/survey';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../../../../utils/survey';
 import { ExperienceKind } from '../../../../utils/surveyTypes';
 import { type AccountOverviewRouterContext } from '../../appRouter';
 import { accountOverviewRouter } from '../../trpc';
 import { feedbackProcedures } from './feedbackRouter';
 
-vi.mock('../../../../utils/survey', () => ({
-    getIsSurveyDisabledGlobally: vi.fn(),
-    openSurvey: vi.fn(),
-    promptAfterActionEventually: vi.fn(),
+vi.mock('../../../../utils/survey', async (importOriginal) => {
+    const survey = await importOriginal<typeof surveyModule>();
+    return {
+        ...survey,
+        getIsSurveyDisabledGlobally: vi.fn(survey.getIsSurveyDisabledGlobally),
+        openSurvey: vi.fn(survey.openSurvey),
+        promptAfterActionEventually: vi.fn(),
+    };
+});
+vi.mock('@microsoft/vscode-azext-utils', () => ({
+    callWithTelemetryAndErrorHandling: vi.fn(
+        async (
+            _eventName: string,
+            callback: (context: Pick<IActionContext, 'telemetry' | 'errorHandling'>) => void | Promise<void>,
+        ) => {
+            const context: Pick<IActionContext, 'telemetry' | 'errorHandling'> = {
+                telemetry: { properties: {}, measurements: {} },
+                errorHandling: { issueProperties: {} },
+            };
+            try {
+                await callback(context);
+            } catch (error) {
+                if (context.errorHandling.rethrow) {
+                    throw error;
+                }
+            }
+        },
+    ),
+}));
+vi.mock('../../../../extensionVariables', () => ({ ext: {} }));
+vi.mock('vscode', async (importOriginal) => ({
+    ...(await importOriginal<typeof vscode>()),
+    env: { openExternal: vi.fn() },
 }));
 vi.mock('../../trpc', async () => {
     const { initWebviewTrpc } = await import('@microsoft/vscode-ext-webview');
@@ -40,6 +72,13 @@ function createCaller(signal?: AbortSignal) {
 beforeEach(() => {
     vi.resetAllMocks();
     vi.mocked(getIsSurveyDisabledGlobally).mockReturnValue(false);
+    vi.mocked(env.openExternal).mockResolvedValue(true);
+    vi.spyOn(workspace, 'getConfiguration').mockReturnValue({
+        get: vi.fn().mockReturnValue(true),
+        has: vi.fn(),
+        inspect: vi.fn(),
+        update: vi.fn(),
+    });
     vi.spyOn(workspace, 'onDidChangeConfiguration').mockImplementation((listener) => {
         onConfigurationChanged = listener;
         return { dispose };
@@ -71,6 +110,42 @@ describe('Account Overview feedback', () => {
             'cosmosDB.accountOverview.provideFeedback',
         );
         expect(promptAfterActionEventually).not.toHaveBeenCalled();
+        expect(env.openExternal).toHaveBeenCalledExactlyOnceWith(Uri.parse('https://aka.ms/AzureDatabasesSurvey'));
+    });
+
+    it('rejects the mutation when the browser refuses to open the survey', async () => {
+        vi.mocked(env.openExternal).mockResolvedValue(false);
+        await expect(createCaller().provideFeedback()).rejects.toThrow('Unable to open the link in your browser.');
+    });
+
+    it('propagates a rejected browser launch through the mutation', async () => {
+        const error = new Error('Browser launch failed');
+        const launch = Promise.reject(error);
+        // The old fire-and-forget implementation must fail the assertion without an unhandled test rejection.
+        void launch.catch(() => {});
+        vi.mocked(env.openExternal).mockReturnValue(launch);
+        await expect(createCaller().provideFeedback()).rejects.toThrow(error.message);
+    });
+
+    it('waits for the browser launch before resolving the mutation', async () => {
+        const launch = Promise.withResolvers<boolean>();
+        vi.mocked(env.openExternal).mockReturnValue(launch.promise);
+        const completed = vi.fn();
+        const result = createCaller().provideFeedback().then(completed);
+        try {
+            await vi.waitFor(() => expect(env.openExternal).toHaveBeenCalledOnce());
+            expect(completed).not.toHaveBeenCalled();
+        } finally {
+            launch.resolve(true);
+            await result;
+        }
+        expect(completed).toHaveBeenCalledOnce();
+    });
+
+    it('does not launch the browser when feedback is disabled', async () => {
+        vi.mocked(workspace.getConfiguration().get).mockReturnValue(false);
+        await createCaller().provideFeedback();
+        expect(env.openExternal).not.toHaveBeenCalled();
     });
 
     it.each([true, false])(

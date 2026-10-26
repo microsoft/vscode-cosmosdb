@@ -168,7 +168,7 @@ describe('Survey Scoring', () => {
             });
 
             // Call openSurvey which will use calculateScoreMetrics internally
-            openSurvey(undefined);
+            await openSurvey(undefined);
 
             // Calculate fullScore manually for verification
             const fullScore = Math.min(

@@ -91,6 +91,8 @@ The menu dispatches `accountOverview.provideFeedback`, opening the existing NoSQ
 bounded trigger name. The shared survey helper enforces `telemetry.feedback.enabled`; a live subscription also updates
 button visibility and disposes its configuration listener on unsubscribe/abort.
 Feedback remains usable during metric loading. Action failures use the existing native notification route.
+The feedback mutation waits for the browser launch; both a refused launch (`false`) and a rejected launch propagate
+to that notification route rather than completing successfully. The survey helper does not display a duplicate notification.
 No Overview usage scoring, additional questionnaire or automatic survey prompt is introduced.
 
 ### Refresh dependency matrix

@@ -3,7 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import * as path from 'path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
 import { ext } from '../../../extensionVariables';
 import { MigrationProjectService, type ProjectJson } from '../../../services/MigrationProjectService';
@@ -25,7 +28,9 @@ vi.mock('@microsoft/vscode-azureresources-api', () => ({}));
 vi.mock('../../../cosmosdb/CosmosDBCredential', () => ({}));
 vi.mock('../../../extensionVariables', () => ({ ext: { isAIFeaturesEnabled: true } }));
 vi.mock('../../../tree/cosmosdb/AccountInfo', () => ({}));
-vi.mock('../../../tree/workspace-view/migration/MigrationWorkspaceItem', () => ({}));
+vi.mock('../../../tree/workspace-view/migration/MigrationWorkspaceItem', () => ({
+    MigrationWorkspaceItem: { addMigration: vi.fn().mockResolvedValue(undefined) },
+}));
 vi.mock('../../../utils/azureClients', () => ({}));
 vi.mock('../../../utils/pickItem/pickAppResource', () => ({}));
 vi.mock('../../BaseTab', () => ({ BaseTab: class {} }));
@@ -44,6 +49,7 @@ vi.mock('vscode', () => ({
         executeCommand: vi.fn().mockResolvedValue(undefined),
         getCommands: vi.fn().mockResolvedValue([]),
     },
+    window: { showWarningMessage: vi.fn() },
     workspace: {
         get workspaceFolders() {
             return [{ uri: { fsPath: '/workspace/shop' }, name: 'shop', index: 0 }];
@@ -69,15 +75,22 @@ describe('MigrationAssistantTab AI launch guards', () => {
     ];
     const dispatch = vi.fn();
     const begin = vi.fn();
+    const save = vi.fn();
+    const openChat = vi.fn();
     let project: ProjectJson;
     let runTracker: MigrationRunTracker;
-    let tab: { dispatchCommand(commandName: string, params: unknown[]): Promise<unknown> };
+    let tab: {
+        dispatchCommand(commandName: string, params: unknown[]): Promise<unknown>;
+        refreshFileState(): Promise<void>;
+    };
 
     beforeEach(() => {
         vi.clearAllMocks();
         ext.isAIFeaturesEnabled = true;
         dispatch.mockResolvedValue('migration prompt');
         begin.mockReturnValue('run-1');
+        save.mockReset().mockResolvedValue(undefined);
+        vi.mocked(vscode.window.showWarningMessage).mockReset();
         project = {
             version: 1,
             name: 'Migration',
@@ -94,11 +107,233 @@ describe('MigrationAssistantTab AI launch guards', () => {
             project,
             selectedModelId: 'selected',
             selectedModelUpdate: Promise.resolve(),
+            projectUpdate: Promise.resolve(),
+            pendingCommands: Promise.resolve(),
+            projectService: { save },
             runTracker,
-            skillTelemetry: { begin, dispatched: vi.fn() },
-            skillChatSession: { dispatch },
+            skillTelemetry: { begin, dispatched: vi.fn(), confirmedStopped: vi.fn() },
+            skillChatSession: { dispatch, openChat },
             publishRunActivity: vi.fn(),
         });
+    });
+
+    it('waits for a pending project save before launching', async () => {
+        let finish!: () => void;
+        save.mockReturnValueOnce(
+            new Promise<void>((resolve) => {
+                finish = resolve;
+            }),
+        );
+
+        const update = tab.dispatchCommand('updateDiscoveryInstructions', ['Keep source identifiers']);
+        const launch = tab.dispatchCommand('runDiscovery', []);
+        await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
+        expect(dispatch).not.toHaveBeenCalled();
+        expect(begin).not.toHaveBeenCalled();
+        expect(runTracker.snapshot()).toBeNull();
+
+        finish();
+        await Promise.all([update, launch]);
+        expect(project.phases.discovery.discoveryInstructions).toBe('Keep source identifiers');
+        expect(dispatch).toHaveBeenCalledOnce();
+    });
+
+    it('serializes settings changes and drains them before launching', async () => {
+        let finish!: () => void;
+        const persisted: string[] = [];
+        save.mockImplementation(async (value: ProjectJson) => {
+            persisted.push(value.phases.discovery.discoveryInstructions ?? '');
+            if (persisted.length === 1)
+                await new Promise<void>((resolve) => {
+                    finish = resolve;
+                });
+        });
+
+        const first = tab.dispatchCommand('updateDiscoveryInstructions', ['First edit']);
+        const second = tab.dispatchCommand('updateDiscoveryInstructions', ['Final edit']);
+        const launch = tab.dispatchCommand('runDiscovery', []);
+        await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
+        expect(project.phases.discovery.discoveryInstructions).toBe('First edit');
+        expect(dispatch).not.toHaveBeenCalled();
+
+        finish();
+        await Promise.all([first, second, launch]);
+        expect(persisted).toEqual(['First edit', 'Final edit']);
+        expect(dispatch).toHaveBeenCalledOnce();
+    });
+
+    it('blocks launches after a failed save until a settings retry succeeds', async () => {
+        save.mockRejectedValueOnce(new Error('Write failed'));
+        await expect(tab.dispatchCommand('updateDiscoveryInstructions', ['Unsaved edit'])).rejects.toThrow(
+            'Write failed',
+        );
+        await expect(tab.dispatchCommand('runDiscovery', [])).rejects.toThrow('Write failed');
+        expect(dispatch).not.toHaveBeenCalled();
+        expect(begin).not.toHaveBeenCalled();
+        expect(runTracker.snapshot()).toBeNull();
+
+        await tab.dispatchCommand('updateDiscoveryInstructions', ['Reviewed edit']);
+        await tab.dispatchCommand('runDiscovery', []);
+        expect(dispatch).toHaveBeenCalledOnce();
+    });
+
+    it('rejects a queued launch when the pending settings save fails', async () => {
+        let fail!: (error: Error) => void;
+        save.mockReturnValueOnce(
+            new Promise<void>((_resolve, reject) => {
+                fail = reject;
+            }),
+        );
+        const results = Promise.allSettled([
+            tab.dispatchCommand('updateConsent', [true]),
+            tab.dispatchCommand('runDiscovery', []),
+        ]);
+        await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
+
+        fail(new Error('Write failed'));
+        expect(await results).toEqual([
+            { status: 'rejected', reason: new Error('Write failed') },
+            { status: 'rejected', reason: new Error('Write failed') },
+        ]);
+        expect(dispatch).not.toHaveBeenCalled();
+        expect(begin).not.toHaveBeenCalled();
+        expect(runTracker.snapshot()).toBeNull();
+    });
+
+    it('persists consecutive edits without self-conflicts before dispatching the agent', async () => {
+        const workspace = mkdtempSync(path.join(tmpdir(), 'migration-settings-handoff-'));
+        const service = new MigrationProjectService(workspace);
+        const initialize = vi.spyOn(service, 'ensureInitialized').mockResolvedValue(undefined);
+        let finish!: () => void;
+        initialize.mockReturnValueOnce(
+            new Promise<void>((resolve) => {
+                finish = resolve;
+            }),
+        );
+        save.mockImplementation((value: ProjectJson) => service.save(value));
+        Object.assign(project, { futureFeature: { enabled: true } });
+        const projectPath = path.join(workspace, '.cosmosdb-migration', 'project.json');
+        dispatch.mockImplementationOnce(async () => {
+            const persisted = JSON.parse(readFileSync(projectPath, 'utf8')) as ProjectJson & {
+                futureFeature: { enabled: boolean };
+            };
+            expect(persisted.name).toBe('Renamed migration');
+            expect(persisted.phases.discovery.discoveryInstructions).toBe('Final instructions');
+            expect(persisted.futureFeature).toEqual({ enabled: true });
+        });
+
+        const operations = [
+            tab.dispatchCommand('updateDiscoveryInstructions', ['Final instructions']),
+            tab.dispatchCommand('updateProjectName', ['Renamed migration']),
+            tab.dispatchCommand('runDiscovery', []),
+        ];
+        try {
+            await vi.waitFor(() => expect(initialize).toHaveBeenCalledOnce());
+            expect(save).toHaveBeenCalledOnce();
+            expect(dispatch).not.toHaveBeenCalled();
+            finish();
+            await Promise.all(operations);
+            expect(save).toHaveBeenCalledTimes(2);
+            expect(dispatch).toHaveBeenCalledOnce();
+        } finally {
+            finish();
+            await Promise.allSettled(operations);
+            initialize.mockRestore();
+            rmSync(workspace, { recursive: true, force: true });
+        }
+    });
+
+    it('keeps Open Chat available during a pending save without allowing a launch', async () => {
+        let finish!: () => void;
+        save.mockReturnValueOnce(
+            new Promise<void>((resolve) => {
+                finish = resolve;
+            }),
+        );
+        const update = tab.dispatchCommand('updateDiscoveryInstructions', ['Pending edit']);
+        const launch = tab.dispatchCommand('runDiscovery', []);
+        await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
+
+        await tab.dispatchCommand('openMigrationChat', []);
+        expect(openChat).toHaveBeenCalledOnce();
+        expect(dispatch).not.toHaveBeenCalled();
+
+        finish();
+        await Promise.all([update, launch]);
+    });
+
+    it('allows status reload and confirmed-stop recovery while Chat dispatch is pending', async () => {
+        let finish!: () => void;
+        dispatch.mockReturnValueOnce(
+            new Promise<void>((resolve) => {
+                finish = resolve;
+            }),
+        );
+        const load = vi.fn().mockResolvedValue(undefined);
+        Object.assign(tab, { loadProject: load });
+        const launch = tab.dispatchCommand('runDiscovery', []);
+        try {
+            await vi.waitFor(() => expect(dispatch).toHaveBeenCalledOnce());
+            const refresh = tab.dispatchCommand('loadProject', []);
+            await vi.waitFor(() => expect(load).toHaveBeenCalledOnce());
+            await refresh;
+            await expect(tab.dispatchCommand('runAssessment', [])).rejects.toThrow('A migration is active.');
+
+            vi.mocked(vscode.window.showWarningMessage).mockResolvedValueOnce('Agent Has Stopped' as never);
+            await tab.dispatchCommand('confirmMigrationStopped', []);
+            await tab.dispatchCommand('updateDiscoveryInstructions', ['After confirmed stop']);
+            expect(save).toHaveBeenCalledOnce();
+            expect(runTracker.snapshot()?.activity).toBe('cancelled');
+        } finally {
+            finish();
+            await launch;
+        }
+        expect(runTracker.snapshot()?.activity).toBe('cancelled');
+    });
+
+    it('queues watcher reloads behind pending settings', async () => {
+        let finish!: () => void;
+        const load = vi.fn().mockResolvedValue(undefined);
+        Object.assign(tab, { loadProject: load });
+        save.mockReturnValueOnce(
+            new Promise<void>((resolve) => {
+                finish = resolve;
+            }),
+        );
+        const update = tab.dispatchCommand('updateDiscoveryInstructions', ['Pending edit']);
+        const refresh = tab.refreshFileState();
+        await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
+        expect(load).not.toHaveBeenCalled();
+
+        finish();
+        await Promise.all([update, refresh]);
+        expect(load).toHaveBeenCalledOnce();
+    });
+
+    it('preserves unsaved settings on automatic refresh and cancelled reload', async () => {
+        const load = vi.fn().mockImplementation(async () => {
+            project.phases.discovery.discoveryInstructions = 'Saved instructions';
+        });
+        Object.assign(tab, { loadProject: load });
+        save.mockRejectedValueOnce(new Error('Save failed'));
+        await expect(tab.dispatchCommand('updateDiscoveryInstructions', ['Unsaved edit'])).rejects.toThrow(
+            'Save failed',
+        );
+
+        await tab.refreshFileState();
+        expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
+        await tab.dispatchCommand('loadProject', []);
+        expect(vscode.window.showWarningMessage).toHaveBeenCalledOnce();
+        expect(load).not.toHaveBeenCalled();
+        expect(project.phases.discovery.discoveryInstructions).toBe('Unsaved edit');
+        await expect(tab.dispatchCommand('runDiscovery', [])).rejects.toThrow('Save failed');
+
+        vi.mocked(vscode.window.showWarningMessage).mockResolvedValueOnce('Reload Saved Settings' as never);
+        await tab.dispatchCommand('loadProject', []);
+        expect(load).toHaveBeenCalledOnce();
+        expect(project.phases.discovery.discoveryInstructions).toBe('Saved instructions');
+        await tab.dispatchCommand('runDiscovery', []);
+        expect(dispatch).toHaveBeenCalledOnce();
     });
 
     it.each(launchCommands)('rejects $command after consent is revoked', async ({ command, params }) => {

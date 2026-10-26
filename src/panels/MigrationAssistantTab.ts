@@ -94,6 +94,9 @@ export class MigrationAssistantTab extends BaseTab {
     private readonly skillChatSession = new MigrationSkillChatSession();
     private selectedModelId: string | null = null;
     private selectedModelUpdate: Promise<void> = Promise.resolve();
+    private projectUpdate: Promise<void> = Promise.resolve();
+    private pendingCommands: Promise<void> = Promise.resolve();
+    private releasePendingCommand: (() => void) | undefined;
     private modelsRequestGeneration = 0;
 
     private readonly eventSink: TypedEventSink<MigrationEvent>;
@@ -246,6 +249,34 @@ export class MigrationAssistantTab extends BaseTab {
     }
 
     private async dispatchCommand(commandName: string, params: unknown[]): Promise<unknown> {
+        if (
+            (isMigrationInspectionCommand(commandName) && commandName !== 'loadProject') ||
+            (isMigrationRunActive(this.runTracker.snapshot()) && !isMigrationInspectionCommand(commandName))
+        ) {
+            return this.executeCommand(commandName, params);
+        }
+        return this.enqueueCommand(() => this.executeCommand(commandName, params));
+    }
+
+    private enqueueCommand(execute: () => Promise<unknown>): Promise<unknown> {
+        let release!: () => void;
+        const finished = new Promise<void>((resolve) => {
+            release = resolve;
+        });
+        const command = this.pendingCommands.then(async () => {
+            this.releasePendingCommand = release;
+            try {
+                return await execute();
+            } finally {
+                if (this.releasePendingCommand === release) this.releasePendingCommand = undefined;
+                release();
+            }
+        });
+        this.pendingCommands = finished;
+        return command;
+    }
+
+    private async executeCommand(commandName: string, params: unknown[]): Promise<unknown> {
         if (isMigrationRunActive(this.runTracker.snapshot()) && !isMigrationInspectionCommand(commandName)) {
             throw new Error(
                 l10n.t(
@@ -259,7 +290,7 @@ export class MigrationAssistantTab extends BaseTab {
             case 'confirmMigrationStopped':
                 return this.confirmMigrationStopped();
             case 'loadProject':
-                return this.loadProject();
+                return this.reloadProject();
             case 'reviewMigrationPhase':
                 return this.reviewMigrationPhase(params[0]);
             case 'updateProjectName':
@@ -375,12 +406,31 @@ export class MigrationAssistantTab extends BaseTab {
         }
     }
 
+    private async reloadProject(): Promise<void> {
+        try {
+            await this.projectUpdate;
+        } catch {
+            const reload = l10n.t('Reload Saved Settings');
+            const answer = await vscode.window.showWarningMessage(
+                l10n.t(
+                    'Some migration settings could not be saved. Reload the saved project and discard these unsaved changes?',
+                ),
+                { modal: true },
+                reload,
+            );
+            if (answer !== reload) return;
+            this.projectUpdate = Promise.resolve();
+        }
+        await this.loadProject();
+    }
+
     private async loadProject(): Promise<void> {
         const generation = ++this.loadGeneration;
         this.phaseCompletionAbort?.abort();
         const abortController = new AbortController();
         this.phaseCompletionAbort = abortController;
         await callWithTelemetryAndErrorHandling('cosmosDB.migration.loadProject', async (context) => {
+            await this.projectUpdate;
             const project = await this.projectService.load({ readOnly: true });
             if (abortController.signal.aborted) return;
             this.project = project;
@@ -700,7 +750,14 @@ export class MigrationAssistantTab extends BaseTab {
 
     /** Reload the authoritative project and phase state after a debounced disk change. */
     private async refreshFileState(): Promise<void> {
-        await this.loadProject();
+        await this.enqueueCommand(async () => {
+            try {
+                await this.projectUpdate;
+            } catch {
+                return;
+            }
+            await this.loadProject();
+        });
     }
 
     private async updateProjectName(name: string): Promise<void> {
@@ -719,14 +776,16 @@ export class MigrationAssistantTab extends BaseTab {
      * Save the project and (re)register the workspace item so the tree reflects the current name.
      */
     private async saveProject(): Promise<void> {
-        if (!this.project) return;
+        const project = this.project;
+        if (!project) return;
 
-        await this.projectService.save(this.project);
-
-        // addMigration dedupes by path, so calling it on every save keeps the tree entry's
-        // name in sync with the latest project.json (e.g. after a rename). It also
-        // refreshes the tree view internally when the entry changes.
-        await MigrationWorkspaceItem.addMigration(this.project.name, this.workspacePath);
+        this.projectUpdate = this.projectUpdate
+            .catch(() => undefined)
+            .then(async () => {
+                await this.projectService.save(project);
+                await MigrationWorkspaceItem.addMigration(project.name, this.workspacePath);
+            });
+        await this.projectUpdate;
     }
 
     private async createTemplate(subfolder: 'volumetrics' | 'access-patterns'): Promise<void> {
@@ -1284,6 +1343,7 @@ export class MigrationAssistantTab extends BaseTab {
         if (confirm !== resetItem) return;
 
         this.project = await this.projectService.reset(this.project);
+        this.projectUpdate = Promise.resolve();
         this.runTracker.clear();
         this.publishRunActivity();
         await vscode.commands.executeCommand('workbench.files.action.refreshFilesExplorer');
@@ -1334,6 +1394,8 @@ export class MigrationAssistantTab extends BaseTab {
     }
 
     private async dispatchMigrationSkill(invocation: MigrationSkillInvocation): Promise<void> {
+        await this.projectUpdate;
+        await this.selectedModelUpdate;
         if (!this.project?.consentGiven) {
             throw new Error(l10n.t('AI consent is required to use this action.'));
         }
@@ -1347,8 +1409,9 @@ export class MigrationAssistantTab extends BaseTab {
         const isReview = invocation.intent === 'review-and-fix';
         if (!isReview) this.runTracker.begin(runId, invocation);
         this.publishRunActivity();
+        this.releasePendingCommand?.();
+        this.releasePendingCommand = undefined;
         try {
-            await this.selectedModelUpdate;
             await this.skillChatSession.dispatch({ ...invocation, runId }, this.selectedModelId, (model, newSession) =>
                 this.skillTelemetry.dispatchInfo(runId, model, newSession),
             );

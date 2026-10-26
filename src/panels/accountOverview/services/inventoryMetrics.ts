@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type MonitorClient } from '@azure/arm-monitor';
+import { RestError } from '@azure/core-rest-pipeline';
 import { getMetricApplicability, type MetricUnavailableReason } from '../metrics/contracts';
 import { storageObservation, type StorageMeasurement } from '../metrics/storage';
 import { DIAGNOSTIC_POLICY } from './advisories/core/thresholds';
@@ -79,6 +80,8 @@ export interface InventoryMetricsResult {
     metrics: Record<string, ContainerMetrics>;
     /** Reasons for containers absent from the metric response (including when all reads failed). */
     storageFallback?: StorageMeasurement;
+    /** Request-check failure or lack of observations for containers absent from the metric response. */
+    throttlingFallbackReason?: MetricUnavailableReason;
     /** Epoch milliseconds when the server produced this snapshot. */
     generatedAt: number;
 }
@@ -234,6 +237,7 @@ export async function getInventoryMetrics(
         reason: reason ?? (keys.size === 0 ? 'noData' : undefined),
         metrics,
         storageFallback,
+        throttlingFallbackReason: throttlingReason,
         generatedAt,
     };
 }
@@ -263,7 +267,7 @@ async function querySplitSeries(
     const byContainer = new Map<string, Map<number, number>>();
     for (const metric of response.value ?? []) {
         if (metric.errorCode && metric.errorCode !== 'Success') {
-            throw new Error(metric.errorMessage ?? metric.errorCode);
+            throw new RestError(metric.errorMessage ?? metric.errorCode, { code: metric.errorCode });
         }
         for (const series of metric.timeseries ?? []) {
             const key = seriesContainerKey(series.metadatavalues);
@@ -332,7 +336,7 @@ async function queryThrottlingByContainer(
     const perContainer = new Map<string, Map<number, { total: number; throttled: number }>>();
     for (const metric of response.value ?? []) {
         if (metric.errorCode && metric.errorCode !== 'Success') {
-            throw new Error(metric.errorMessage ?? metric.errorCode);
+            throw new RestError(metric.errorMessage ?? metric.errorCode, { code: metric.errorCode });
         }
         for (const series of metric.timeseries ?? []) {
             const key = seriesContainerKey(series.metadatavalues);

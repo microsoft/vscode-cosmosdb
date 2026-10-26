@@ -641,6 +641,32 @@ describe('Serverless metric selection', () => {
         expect(within(inventory).queryByText('Healthy')).not.toBeInTheDocument();
     });
 
+    it.each([
+        ['noData', 'No data'],
+        ['rbac', 'No permission'],
+        ['error', 'Unable to load'],
+    ] as const)('preserves the %s request-check fallback for missing inventory metrics', async (reason, caption) => {
+        queries.summary.mockResolvedValue(serverlessSummary);
+        queries.inventoryMetrics.mockResolvedValue({
+            available: false,
+            metrics: {},
+            throttlingFallbackReason: reason,
+        });
+        const user = userEvent.setup();
+        render(<AccountOverview />, { wrapper: Wrapper });
+        await user.click(await screen.findByRole('tab', { name: 'Databases and Containers' }));
+        const inventory = screen.getByRole('table', { name: 'Containers' });
+        const row = within(inventory)
+            .getByRole('button', { name: 'orders: show partition health in database' })
+            .closest('tr')!;
+        const badge = within(row).getByLabelText('Unknown');
+        expect(badge).toHaveTextContent('Unknown');
+        expect(badge).toHaveAccessibleName('Unknown');
+        expect(badge).toHaveAccessibleDescription(
+            expect.stringContaining(`Request observations unavailable: ${caption}.`),
+        );
+    });
+
     it('uses the late account summary for the default without waiting for metric samples', async () => {
         const pending = Promise.withResolvers<AccountSummary>();
         queries.summary.mockReturnValue(pending.promise);

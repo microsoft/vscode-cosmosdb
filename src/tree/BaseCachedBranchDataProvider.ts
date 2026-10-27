@@ -24,6 +24,11 @@ import { type TreeElement } from './TreeElement';
 import { isTreeElementWithContextValue, TreeElementWithContextValue } from './TreeElementWithContextValue';
 import { isTreeElementWithExperience } from './TreeElementWithExperience';
 
+// Structural compatibility until the Azure Resources API package publishes explicit operation contexts.
+interface ResourceTreeOperationContext {
+    propagateErrors?: boolean;
+}
+
 /**
  * Abstract base class that implements a cached tree data provider for Visual Studio Code extensions.
  *
@@ -57,6 +62,7 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
     private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<TreeElement | undefined>();
     private readonly nodeCache = new Map<string, TreeElement>();
     private readonly childToParentMap = new Map<string, string>();
+    private readonly parentByElement = new WeakMap<TreeElement, TreeElement>();
 
     /**
      * Gets the name of the provider, used primarily in telemetry and logging.
@@ -108,35 +114,37 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
         return this.onDidChangeTreeDataEmitter.event;
     }
 
-    async getChildren(element: TreeElement): Promise<TreeElement[]> {
+    async getChildren(element: TreeElement, options?: ResourceTreeOperationContext): Promise<TreeElement[]> {
+        let failure: { error: unknown } | undefined;
         try {
-            return (
+            const result =
                 (await callWithTelemetryAndErrorHandling(
                     `${this.providerName}.getChildren`,
                     async (context: IActionContext) => {
-                        context.errorHandling.suppressDisplay = true;
-                        context.errorHandling.rethrow = true;
-                        context.errorHandling.forceIncludeInReportIssueCommand = true;
+                        try {
+                            context.errorHandling.suppressDisplay = true;
+                            context.errorHandling.rethrow = true;
+                            context.errorHandling.forceIncludeInReportIssueCommand = true;
 
-                        if (isTreeElementWithContextValue(element)) {
-                            context.telemetry.properties.parentContext = element.contextValue;
-                        }
-                        if (isTreeElementWithExperience(element)) {
-                            context.telemetry.properties.experience = element.experience?.api ?? API.Common;
-                        }
-                        context.telemetry.properties.parentNodeContext =
-                            (await element.getTreeItem()).contextValue ?? 'unknown';
+                            if (isTreeElementWithContextValue(element)) {
+                                context.telemetry.properties.parentContext = element.contextValue;
+                            }
+                            if (isTreeElementWithExperience(element)) {
+                                context.telemetry.properties.experience = element.experience?.api ?? API.Common;
+                            }
+                            context.telemetry.properties.parentNodeContext =
+                                (await element.getTreeItem()).contextValue ?? 'unknown';
 
-                        context.telemetry.properties.view = this.contextValue;
+                            context.telemetry.properties.view = this.contextValue;
 
-                        // TODO: values to mask. New TreeElements do not have valueToMask field
-                        // I assume this array should be filled after element.getChildren() call
-                        // And these values should be masked in the context
+                            // TODO: values to mask. New TreeElements do not have valueToMask field
+                            // I assume this array should be filled after element.getChildren() call
+                            // And these values should be masked in the context
 
-                        // TODO: we should return cached children instead of always calling getChildrenFromElement
-                        // however this can only work if we can also cache the root resource elements, which is
-                        // currently not possible because Refresh is not being called for them.
-                        /*
+                            // TODO: we should return cached children instead of always calling getChildrenFromElement
+                            // however this can only work if we can also cache the root resource elements, which is
+                            // currently not possible because Refresh is not being called for them.
+                            /*
                         // Cache lookup
                         const cached = this.getDirectChildNodesFromCache(element);
                         if (cached) {
@@ -144,15 +152,26 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
                             return cached;
                         }
                         */
-                        // Invalidate cache instead, to ensure getParent lookups work
-                        this.pruneCache(element.id, false);
-                        const children = await this.getChildrenFromElement(element);
-
-                        return children.map((child) => this.processChild(child, element));
+                            // Invalidate cache instead, to ensure getParent lookups work
+                            this.pruneCache(element.id, false);
+                            const children = await this.getChildrenFromElement(element);
+                            return children.map((child) => this.processChild(child, element));
+                        } catch (error) {
+                            if (options?.propagateErrors) {
+                                failure = { error };
+                            }
+                            throw error;
+                        }
                     },
-                )) ?? []
-            );
+                )) ?? [];
+            if (failure) {
+                throw failure.error;
+            }
+            return result;
         } catch (error) {
+            if (options?.propagateErrors) {
+                throw error;
+            }
             return [
                 this.createErrorElement(
                     l10n.t('Error: {0}', parseError(error).message),
@@ -162,9 +181,10 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
         }
     }
 
-    async getResourceItem(resource: T): Promise<TreeElement> {
-        return (
-            (await callWithTelemetryAndErrorHandling(
+    async getResourceItem(resource: T, options?: ResourceTreeOperationContext): Promise<TreeElement> {
+        let failure: { error: unknown } | undefined;
+        const result =
+            (await callWithTelemetryAndErrorHandling<TreeElement>(
                 `${this.providerName}.getResourceItem`,
                 (context: IActionContext) => {
                     try {
@@ -205,14 +225,21 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
                         }
                         return undefined as unknown as TreeElement;
                     } catch (error) {
+                        if (options?.propagateErrors) {
+                            failure = { error };
+                            throw error;
+                        }
                         return this.createErrorElement(
                             l10n.t('Error creating resource: {0}', parseError(error).message),
                             `error-${Date.now()}`,
                         );
                     }
                 },
-            )) ?? (null as unknown as TreeElement)
-        );
+            )) ?? (null as unknown as TreeElement);
+        if (failure) {
+            throw failure.error;
+        }
+        return result;
     }
 
     async getTreeItem(element: TreeElement): Promise<vscode.TreeItem> {
@@ -221,6 +248,10 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
 
     // Common getParent implementation
     getParent(element: TreeElement): TreeElement | null | undefined {
+        const parent = this.parentByElement.get(element);
+        if (parent) {
+            return parent;
+        }
         // Cache lookup
         if (element?.id && this.childToParentMap.has(element.id)) {
             const parentId = this.childToParentMap.get(element.id);
@@ -351,6 +382,7 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
 
         // Cache and wrap new element
         const wrapped = this.wrapElement(child);
+        this.parentByElement.set(wrapped, parent);
         if (child.id) {
             this.nodeCache.set(child.id, wrapped);
             if (parent.id) {

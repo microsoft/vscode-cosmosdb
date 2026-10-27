@@ -32,7 +32,8 @@ azure:
 Run the emulator locally or in Docker, and keep production endpoints in environment-specific profiles or deployment configuration. For SDK-specific SSL and gateway-mode details, also apply the linked emulator configuration rules.
 
 Related rules:
-- `sdk-emulator-ssl`
-- `sdk-local-dev-config`
+- [tooling-emulator-fidelity](tooling-emulator-fidelity.md) - Interpret test results and verify resource changes.
+- [sdk-emulator-ssl](sdk-emulator-ssl.md) - Configure SDK certificates and connection mode.
+- [sdk-local-dev-config](sdk-local-dev-config.md) - Keep local configuration separate from cloud environments.
 
 Reference: [Use the Azure Cosmos DB Emulator for local development](https://learn.microsoft.com/azure/cosmos-db/emulator)

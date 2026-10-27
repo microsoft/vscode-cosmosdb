@@ -145,6 +145,51 @@ test('accepts explicit dedicated evidence without managing an unrelated database
     assert(validateProvisioningVerification(model, sampleData, project, report).some(error => error.path === '$.databaseThroughput'));
 });
 
+test('accepts emulator null pending status only with matching shared and dedicated throughput readback', () => {
+    for (const allocation of ['shared', 'dedicated']) {
+        const { model, sampleData, project, report } = sharedInputs();
+        project.phases.targetEnvironment = { type: 'emulator', endpoint: 'https://localhost:8081/', capacityMode: 'provisioned' };
+        report.target = { type: 'emulator', endpoint: 'https://localhost:8081/' };
+        let offer = report.databaseThroughput;
+        if (allocation === 'dedicated') {
+            delete model.databaseMaxThroughput;
+            delete report.databaseThroughput;
+            Object.assign(model.containers[0], { throughputMode: 'dedicated', maxThroughput: 4000 });
+            Object.assign(report.containers[0], { throughputMode: 'dedicated', dedicatedThroughputPresent: true,
+                scalingMode: 'autoscale', maxThroughput: 4000 });
+            report.modelSha256 = modelSha256(model);
+            offer = report.containers[0];
+        }
+        offer.isReplacePending = null;
+        const original = structuredClone({ model, sampleData, project, report });
+        assert.deepEqual(validateProvisioningVerification(model, sampleData, project, report), []);
+        assert.deepEqual({ model, sampleData, project, report }, original);
+
+        for (const field of ['maxThroughput', allocation === 'shared' ? 'mode' : 'scalingMode']) {
+            const observed = offer[field];
+            offer[field] = field === 'maxThroughput' ? 5000 : 'manual';
+            assert(validateProvisioningVerification(model, sampleData, project, report).some(error => error.path.endsWith(`.${field}`)));
+            delete offer[field];
+            assert(validateProvisioningVerification(model, sampleData, project, report).some(error => error.path.endsWith(`.${field}`)));
+            offer[field] = observed;
+        }
+        report.containers[0].dedicatedThroughputPresent = allocation === 'shared';
+        assert(validateProvisioningVerification(model, sampleData, project, report).some(error => error.path.endsWith('.dedicatedThroughputPresent')));
+        report.containers[0].dedicatedThroughputPresent = allocation === 'dedicated';
+        for (const pending of [true, undefined, 'false', 0]) {
+            if (pending === undefined) delete offer.isReplacePending;
+            else offer.isReplacePending = pending;
+            assert(validateProvisioningVerification(model, sampleData, project, report).some(error => error.path.endsWith('.isReplacePending')));
+        }
+        offer.isReplacePending = null;
+        for (const type of ['azure', 'provision']) {
+            project.phases.targetEnvironment.type = type;
+            report.target.type = type;
+            assert(validateProvisioningVerification(model, sampleData, project, report).some(error => error.path.endsWith('.isReplacePending')));
+        }
+    }
+});
+
 test('accepts exact target and point-read evidence', () => {
     const { model, sampleData, project, report } = inputs();
     assert.deepEqual(validateProvisioningVerification(model, sampleData, project, report), []);

@@ -5,7 +5,21 @@
 
 import { type TrpcClient } from '@microsoft/vscode-ext-webview/react';
 import { type MigrationAppRouter } from '../../../../panels/trpc/appRouter';
-import { isMigrationInspectionCommand } from './deriveMigrationPhaseStates';
+
+const modelDependentCommands = new Set([
+    'analyzeVolumetrics',
+    'analyzeAccessPatterns',
+    'analyzeDatabaseSchema',
+    'analyzeApplication',
+    'runDiscovery',
+    'runAssessment',
+    'runSchemaConversion',
+    'reviewMigrationPhase',
+    'provisionAccount',
+    'populateSampleData',
+    'planMigration',
+    'migrateApplication',
+]);
 
 /**
  * Webview-side Channel adapter for the Migration Assistant.
@@ -21,7 +35,7 @@ import { isMigrationInspectionCommand } from './deriveMigrationPhaseStates';
  *
  * This is an internal compatibility shim, scoped to the migration feature
  * only. New code should call the tRPC client directly.
- * Inspection commands bypass model-selection saves; launches wait for a successful save.
+ * Independent commands bypass model-selection saves; launches wait for a successful save.
  */
 
 export type ChannelEventHandler = (...args: never[]) => void;
@@ -109,7 +123,7 @@ export class MigrationChannel implements Channel {
             this.modelSelectionUpdate = this.modelSelectionUpdate.catch(() => undefined).then(send);
             await this.modelSelectionUpdate;
         } else {
-            if (!isMigrationInspectionCommand(wrapper.commandName)) await this.modelSelectionUpdate;
+            if (modelDependentCommands.has(wrapper.commandName)) await this.modelSelectionUpdate;
             await send();
         }
     }

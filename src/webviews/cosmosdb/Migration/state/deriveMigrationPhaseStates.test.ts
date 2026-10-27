@@ -192,14 +192,27 @@ describe('migration selection command ordering', () => {
         channel.dispose();
     });
 
-    it('blocks dispatch after a failed save and recovers on an explicit new choice', async () => {
+    it.each([
+        'analyzeVolumetrics',
+        'analyzeAccessPatterns',
+        'analyzeDatabaseSchema',
+        'analyzeApplication',
+        'runDiscovery',
+        'runAssessment',
+        'runSchemaConversion',
+        'reviewMigrationPhase',
+        'provisionAccount',
+        'populateSampleData',
+        'planMigration',
+        'migrateApplication',
+    ])('blocks %s after a failed save and recovers on an explicit new choice', async (command) => {
         const { channel, mutate, post } = setup();
         mutate.mockRejectedValueOnce(new Error('save failed'));
         await expect(post('setSelectedModel', 'auto')).rejects.toThrow('save failed');
-        await expect(post('runDiscovery')).rejects.toThrow('save failed');
+        await expect(post(command)).rejects.toThrow('save failed');
         expect(mutate).toHaveBeenCalledTimes(1);
         await post('setSelectedModel', 'first');
-        await post('runDiscovery');
+        await post(command);
         expect(mutate).toHaveBeenCalledTimes(3);
         channel.dispose();
     });
@@ -217,6 +230,9 @@ describe('migration selection command ordering', () => {
         'openVolumetricsTemplate',
         'openAccessPatternsTemplate',
         'confirmMigrationStopped',
+        'resetProject',
+        'updateConsent',
+        'updateProjectName',
     ])('allows %s after a failed save without unblocking launches', async (command) => {
         const { channel, mutate, post } = setup();
         try {
@@ -230,36 +246,39 @@ describe('migration selection command ordering', () => {
         }
     });
 
-    it('allows inspection while a save is pending but keeps launches ordered', async () => {
-        const { channel, mutate, post } = setup();
-        let finish!: () => void;
-        mutate.mockReturnValueOnce(
-            new Promise<void>((resolve) => {
-                finish = resolve;
-            }),
-        );
-        const selection = post('setSelectedModel', 'auto');
-        const launch = post('runDiscovery');
-        await vi.waitFor(() => expect(mutate).toHaveBeenCalledTimes(1));
-        const inspection = post('loadProject');
-        try {
-            await vi.waitFor(() => {
-                expect(mutate.mock.calls.map(([input]) => input.commandName)).toEqual([
-                    'setSelectedModel',
-                    'loadProject',
-                ]);
-            });
-        } finally {
-            finish();
-            await Promise.all([selection, launch, inspection]);
-            channel.dispose();
-        }
-        expect(mutate.mock.calls.map(([input]) => input.commandName)).toEqual([
-            'setSelectedModel',
-            'loadProject',
-            'runDiscovery',
-        ]);
-    });
+    it.each(['loadProject', 'resetProject', 'updateConsent', 'updateProjectName'])(
+        'allows %s while a save is pending but keeps launches ordered',
+        async (command) => {
+            const { channel, mutate, post } = setup();
+            let finish!: () => void;
+            mutate.mockReturnValueOnce(
+                new Promise<void>((resolve) => {
+                    finish = resolve;
+                }),
+            );
+            const selection = post('setSelectedModel', 'auto');
+            const launch = post('runDiscovery');
+            await vi.waitFor(() => expect(mutate).toHaveBeenCalledTimes(1));
+            const independent = post(command);
+            try {
+                await vi.waitFor(() => {
+                    expect(mutate.mock.calls.map(([input]) => input.commandName)).toEqual([
+                        'setSelectedModel',
+                        command,
+                    ]);
+                });
+            } finally {
+                finish();
+                await Promise.all([selection, launch, independent]);
+                channel.dispose();
+            }
+            expect(mutate.mock.calls.map(([input]) => input.commandName)).toEqual([
+                'setSelectedModel',
+                command,
+                'runDiscovery',
+            ]);
+        },
+    );
 
     it('surfaces inspection errors instead of the earlier model-save error', async () => {
         const { channel, mutate, post } = setup();

@@ -51,8 +51,8 @@
   "cosmosdb.command.migration.open": "Nova Migração…",
   "cosmosdb.command.migration.openExisting": "Migração do Cosmos DB…",
   "cosmosdb.command.migration.remove": "Remover Migração...",
-  "cosmosdb.command.dataModeling.open": "Data Modeling Wizard",
-  "cosmosdb.command.dataModeling.deleteAllData": "Delete All Data Modeler Data",
+  "cosmosdb.command.dataModeling.open": "Assistente de Modelagem de Dados",
+  "cosmosdb.command.dataModeling.deleteAllData": "Excluir Todos os Dados do Modelador de Dados",
   "cosmosdb.configuration.batch.size": "O tamanho do lote a ser usado ao consultar recursos do Banco de Dados do Azure.",
   "cosmosdb.configuration.confirmation.style": "O comportamento a ser usado ao confirmar operações que não podem ser desfeitas, como excluir recursos.",
   "cosmosdb.configuration.confirmation.style.button": "Confirmação do Clique do Botão",
@@ -119,5 +119,6 @@
   "cosmosdb.configuration.accountOverview.advisories.sharedThroughputVictimThrottlePct": "Visão Geral da Conta: taxa de solicitações limitadas por taxa (429) em percentual, a partir da qual uma coleção irmã de baixo consumo é considerada uma vítima em estado de fome no aviso de Privação de Taxa de Transferência Compartilhada.",
   "cosmosdb.configuration.accountOverview.advisories.sharedThroughputVictimSharePct": "Visão Geral da Conta: participação (%) das unidades de solicitação do pool compartilhado na qual ou abaixo da qual uma coleção irmã limitada por taxa é considerada uma vítima em estado de fome (consumindo pouco enquanto sofre limitação) no aviso de Privação de Taxa de Transferência Compartilhada.",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Experimental) Mostrar estimativas de uso de tokens na interface do usuário do Assistente de Migração.",
-  "cosmosdb.configuration.experimental.migration.enabled": "(Experimental) Habilite o Cosmos DB migração (Versão prévia). Quando desabilitado, o nó Migrações do Cosmos DB e seus comandos permanecem ocultos."
+  "cosmosdb.configuration.experimental.migration.enabled": "(Experimental) Habilite o Cosmos DB migração (Versão prévia). Quando desabilitado, o nó Migrações do Cosmos DB e seus comandos permanecem ocultos.",
+  "cosmosdb.configuration.experimental.dataModeler.enabled": "(Experimental) Enable the Data Modeler wizard. When disabled, its Command Palette entry and Account Overview promotion are hidden."
 }

@@ -70,11 +70,12 @@ export function getIsSurveyDisabledGlobally(): boolean {
 }
 
 /**
- * Opens the survey in the default browser, determining the appropriate URL based on user experience
+ * Opens the survey in the default browser, determining the appropriate URL based on user experience.
+ * Propagates launch failures to the caller's error handler.
  * @param experience The experience type to open survey for, or undefined to use the highest score experience
  * @param triggerAction Optional action that triggered the survey for telemetry
  */
-export function openSurvey(experience: ExperienceKind | undefined, triggerAction?: string): void {
+export async function openSurvey(experience: ExperienceKind | undefined, triggerAction?: string): Promise<void> {
     if (getIsSurveyDisabledGlobally()) {
         return;
     }
@@ -85,17 +86,22 @@ export function openSurvey(experience: ExperienceKind | undefined, triggerAction
         experience = fullScore > 0 ? highestExperience[0] : ExperienceKind.NoSQL;
     }
 
-    void callWithTelemetryAndErrorHandling('survey.open', (context: IActionContext) => {
+    await callWithTelemetryAndErrorHandling('survey.open', async (context: IActionContext) => {
+        context.errorHandling.suppressDisplay = true;
+        context.errorHandling.rethrow = true;
         context.telemetry.properties.isCandidate = (
             surveyState.isCandidate === undefined ? false : surveyState.isCandidate
         ).toString();
         context.telemetry.properties.experience = experience;
         context.telemetry.properties.triggerAction = triggerAction;
-        void env.openExternal(
+        const opened = await env.openExternal(
             //NOTE: Customer Voice does not support URL parameters, keeping this comment for reference if we switch to another platform which supports that
             //void env.openExternal(Uri.parse(`${surveyUrl}?o=${encodeURIComponent(process.platform)}&v=${encodeURIComponent(extensionVersion)}&m=${encodeURIComponent(env.machineId)}`));
             Uri.parse(experience === ExperienceKind.Mongo ? SurveyConfig.urls.MONGO : SurveyConfig.urls.NOSQL),
         );
+        if (!opened) {
+            throw new Error(l10n.t('Unable to open the link in your browser.'));
+        }
     });
 }
 
@@ -339,7 +345,7 @@ async function surveyPromptIfCandidate(
             title: l10n.t('Take Survey'),
             run: async () => {
                 context.telemetry.properties.takeShortSurvey = 'true';
-                openSurvey(experience, triggerAction);
+                await openSurvey(experience, triggerAction);
                 await ext.context.globalState.update(StateKeys.SKIP_VERSION, extensionVersion);
                 await ext.context.globalState.update(StateKeys.SESSION_COUNT, 0);
                 await ext.context.globalState.update(StateKeys.SURVEY_TAKEN_DATE, date);

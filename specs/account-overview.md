@@ -76,12 +76,24 @@ The default tab is Monitoring unless explicit navigation requests another destin
 Chart window defaults to `24H`; chart scope defaults to all databases.
 The alert list defaults to `1d` and `Fired`. Partition selection defaults to the first inventory row.
 Provisioned accounts initially select Normalized RU; confirmed Serverless accounts select Total request units.
-Once a metric is explicitly selected, late metadata, Refresh and filter changes MUST preserve it.
-Explicit navigation to an inapplicable metric displays its explanation rather than selecting a different metric.
+Once an applicable metric is explicitly selected, late metadata, Refresh and filter changes MUST preserve it.
+Explicit navigation to an inapplicable metric selects consumed RU. Metadata removing a focused metric moves focus
+to the selected applicable tile while the webview owns focus.
 
 There is no polling, refresh-on-editor-visibility, or automatic refresh timer.
 Opening a panel starts initial reads even for sections on hidden tabs.
 Switching tabs preserves filters, selection and local section state.
+
+### Manual feedback
+
+The header uses the same shared smiley/menu component as Query Editor, adjacent to Refresh.
+The menu dispatches `accountOverview.provideFeedback`, opening the existing NoSQL survey with an Overview-specific
+bounded trigger name. The shared survey helper enforces `telemetry.feedback.enabled`; a live subscription also updates
+button visibility and disposes its configuration listener on unsubscribe/abort.
+Feedback remains usable during metric loading. Action failures use the existing native notification route.
+The feedback mutation waits for the browser launch; both a refused launch (`false`) and a rejected launch propagate
+to that notification route rather than completing successfully. The survey helper does not display a duplicate notification.
+No Overview usage scoring, additional questionnaire or automatic survey prompt is introduced.
 
 ### Refresh dependency matrix
 
@@ -127,6 +139,8 @@ or the freshness of every section.
 navigation revision, and preserves data filters. Generic navigation focuses the destination tab;
 metric navigation selects the metric and focuses its chart region. A replayed revision or background completion
 MUST NOT refocus the view or dismiss a dialog.
+Metric navigation MUST wait for the requested selection to commit before focusing the chart, including when
+an inapplicable metric resolves to consumed RU, so the focus event exposes the destination's name and content.
 
 ## 3. Metric calculations
 
@@ -167,7 +181,7 @@ Latency is server-side, not end-to-end latency or a latency percentile.
 Latest means the last **observed** value, not a claim that Azure has a sample for the current instant.
 
 The UI groups applicable tiles State then Activity, preserving descriptor order within each group.
-Inapplicable tiles follow in descriptor order. Family affects presentation, not applicability or health.
+Inapplicable tiles are omitted. Family affects presentation, not applicability or health.
 Formatting rounds percent/ms to integers, count/RU values compactly, and byte values with binary divisors
 1024/1024²/1024³ despite the current KB/MB/GB labels. Comparisons operate on unrounded values unless specified otherwise.
 
@@ -175,18 +189,21 @@ Formatting rounds percent/ms to integers, count/RU values compactly, and byte va
 
 Confirmed Serverless metadata makes only `normalizedRu` and `provisionedThroughput` not applicable.
 Their router returns a structured reason before Monitor-client acquisition/query.
+The UI omits their tiles, inventory throughput/normalized-RU columns and throughput-mode filter.
+The header omits the provisioned-throughput cap. Inapplicable chart links select consumed RU instead.
+If metadata removes a focused tile, focus moves to the selected applicable tile without stealing focus from another editor.
 An account throughput cap, absent metric data or failed request MUST NOT establish Serverless.
 Unknown capacity metadata yields unknown applicability, not not-applicable.
 
-| State                                 | Required interpretation                                              |
-| ------------------------------------- | -------------------------------------------------------------------- |
-| Observed zero                         | Render 0 in the metric's unit                                        |
-| `available: false`, `reason: noData`  | No usable observations/result; not evidence of good health           |
-| `applicability.status: notApplicable` | Render dash and Not applicable with the metadata-derived explanation |
-| `reason: rbac`                        | Permission-related failure                                           |
-| `reason: unsupported`                 | An explicitly unsupported source/API                                 |
-| Metric `reason: error`                | Request failed; distinct from a successful empty query               |
-| Loading                               | Pending operation; not an observation or a proof of absence          |
+| State                                 | Required interpretation                                     |
+| ------------------------------------- | ----------------------------------------------------------- |
+| Observed zero                         | Render 0 in the metric's unit                               |
+| `available: false`, `reason: noData`  | No usable observations/result; not evidence of good health  |
+| `applicability.status: notApplicable` | Omit the metric tile, table column and associated controls  |
+| `reason: rbac`                        | Permission-related failure                                  |
+| `reason: unsupported`                 | An explicitly unsupported source/API                        |
+| Metric `reason: error`                | Request failed; distinct from a successful empty query      |
+| Loading                               | Pending operation; not an observation or a proof of absence |
 
 Metric fetchers, storage components and account request-health use `metricFailureReason`: recognized 403/Forbidden/
 AuthorizationFailed becomes `rbac`, other caught failures become `error`.
@@ -361,11 +378,20 @@ A successful summary replaces it, including zero counts, which can clear old ale
 Stale adverse alerts continue to drive account and tab severity.
 Alert-list filters/results MUST NOT clear or replace the independent Fired summary.
 
-Metric row health: sustained row 429 OR peak RU >= critical threshold -> Critical;
-otherwise peak RU >= warning threshold -> Needs Attention;
-otherwise an observed RU peak -> Healthy; otherwise undefined.
+The table labels its row diagnostic **Throttling**, not overall Health, and renders internal Healthy as **Passed**.
+Provisioned metric row health: sustained row 429 OR peak RU >= critical threshold -> Critical;
+otherwise peak RU >= warning threshold -> Needs Attention; otherwise an observed RU peak -> Healthy;
+otherwise undefined. Serverless ignores normalized RU: sustained row 429 -> Critical; observed requests without
+sustained 429 -> Healthy; missing observations or a failed request read -> undefined.
 Default critical/warning thresholds are 90/80, independently configurable.
-Storage growth does not participate.
+Both modes use the sustained-throttling share/duration policy in §3.5 over the last hour.
+Observed zero Count buckets are evidence; empty/null/invalid buckets are not.
+`ContainerMetrics.throttled` is true/false only with usable per-container request observations; otherwise it is absent,
+with `throttlingReason` distinguishing noData, rbac and error. Embedded metric errors are failures, not clear checks.
+Embedded errors retain their service code for permission classification. `throttlingFallbackReason` carries the
+request-check outcome to rows absent from the metric snapshot, including when every Monitor read failed.
+The fallback is independent of storage/RU failure reasons; successful reads without request observations use noData.
+Storage growth and consumed RU do not participate.
 
 The shared `rowHealth` display fallback is intentionally more specific:
 
@@ -376,7 +402,7 @@ The shared `rowHealth` display fallback is intentionally more specific:
 | No metric object and normalized RU is not applicable | Unknown                                        |
 | No metric object otherwise                           | Inventory row's existing static `health` value |
 
-The final fallback can display a provisioned row as Healthy without observations.
+The final fallback can display a provisioned row as Passed (internal Healthy) without observations.
 This is a **known compatibility limitation**, not evidence to generalize into a missing-data policy.
 The container checklist independently counts rows with no metric health as unassessed.
 
@@ -412,6 +438,10 @@ Source: [alerts/recommendations service](../src/panels/accountOverview/services/
 `getAlerts` iterates Alerts Management `alerts.getAll` under subscription scope with `targetResource = account ID`,
 the selected Azure `timeRange` and selected `monitorCondition`.
 Windows are `1h`, `1d`, `7d`, `30d`; Active maps to Fired and Resolved maps to Resolved.
+Each window displays the Resource Graph aggregate for the selected condition. Counts are based on alert start time,
+not resolution time; windows are cumulative lookbacks. Retention is 30 days, not 90.
+Switching filters announces the matching aggregate rather than counting loaded detail rows.
+Unavailable/stale aggregate checks display a dash and announce count unavailability, not zero.
 Each load queries only the selected condition. No All or workflow-state filter exists.
 Failures replace stale list rows with an unavailable result; they do not erase retained account-wide health evidence.
 An available empty list means no returned matches for these Azure filters, not no account-wide alerts.
@@ -425,12 +455,14 @@ The DTO retains raw severity, monitor condition and workflow state. No state is 
 One Resource Graph POST targets the account's configured Resource Manager endpoint,
 `/providers/Microsoft.ResourceGraph/resources?api-version=2022-10-01`, using the existing authenticated ARM pipeline.
 The request limits subscriptions to the bound subscription, sets object-array results and `allowPartialScopes: false`.
-Its `alertsmanagementresources` query filters case-insensitively by alert resource type, exact target account ID,
-and Fired monitor condition, then computes total, Sev0/1 and Sev2/3 counts.
-There is **no time predicate and no alertState predicate**.
+Its `alertsmanagementresources` query filters case-insensitively by alert resource type and exact target account ID.
+It computes total, Sev0/1 and Sev2/3 counts using Fired-only `countif` expressions without a time restriction.
+The same query also computes Fired/Resolved counts for every supported window with start-time predicates.
+There is no workflow-state predicate. No alert instances are downloaded to compute counts.
 
 The parser accepts exactly one aggregate row, one total record, no continuation token, no truncation,
-and non-negative integer counts; critical + warning must not exceed total.
+and non-negative integer counts; critical + warning must not exceed total. All period/condition counts must be present,
+monotonic across expanding windows, and Fired counts must not exceed the account-wide total.
 Malformed/non-success responses become unavailable, not a successful zero-count summary.
 Successful counts mean all retained results visible through this query, not an unbounded incident history.
 Azure retention, RBAC and Resource Graph propagation can omit or delay evidence.
@@ -646,7 +678,7 @@ Suggested advisory actions do not execute Azure changes automatically.
 
 Total throughput limit formatting: positive value -> RU/s; zero -> explicit 0 RU/s;
 exactly -1 -> No total throughput limit; absent/null -> Unknown.
-Serverless displays No total throughput limit with an inapplicability explanation.
+Serverless omits Total throughput limit in both the status strip and Account details.
 This cap MUST NOT drive metric applicability, utilization or health.
 
 ### Source acquisition
@@ -674,6 +706,12 @@ A refused browser launch is a failure. Account-action/global-refresh feedback st
 Background query unavailability is not routed through the auxiliary-action notification path.
 
 Visible labels MUST remain in computed accessible names. Tooltip descriptions MUST preserve the visible label.
+Overview uses the shared `ThemedTooltip`, which defaults to Fluent's standard `appearance="inverted"` in `vscode-dark`.
+This appearance uses `colorNeutralBackgroundStatic` and `colorNeutralForegroundStaticInverted`: a static dark surface
+with light text, not a custom light surface or an inversion of the active theme's colors.
+Explicit appearance props are preserved. Chart-value popups retain their own styles without custom color inversion.
+Light and high-contrast themes default to normal styling. Open tooltips follow theme-kind changes without moving focus.
+The wrapper MUST preserve content-slot props, accessible relationships and Fluent nested-trigger traversal.
 Status feedback uses existing announcement infrastructure; the health badge keeps one polite output.
 The chart's storage-unavailable and metric-request-error messages use visible `<output>` elements with implicit
 status semantics, matching the shared empty state.

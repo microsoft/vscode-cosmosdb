@@ -197,7 +197,7 @@
     "recharts": "~3.10.0",
     "semver": "~7.8.0",
     "vscode-languageclient": "~10.1.0",
-    "zod": "~4.6.0"
+    "zod": "~4.6.7"
   },
   "overrides": {
     "@prantlf/jsonlint": {
@@ -1503,6 +1503,13 @@
             "type": "integer",
             "default": 8081,
             "description": "%cosmosdb.configuration.emulator.port%"
+          },
+          "cosmosDB.connectionTimeout": {
+            "type": "integer",
+            "default": 30,
+            "minimum": 1,
+            "maximum": 2147483,
+            "description": "%cosmosdb.configuration.connection.timeout%"
           },
           "cosmosDB.enableEndpointDiscovery": {
             "type": "boolean",

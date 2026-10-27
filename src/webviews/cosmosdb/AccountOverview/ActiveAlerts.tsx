@@ -197,6 +197,10 @@ export const ActiveAlerts = ({
     const pendingFilter = useRef<{ timeRange: AlertTimeRange; monitorCondition: AlertMonitorCondition } | undefined>(
         undefined,
     );
+    const periodCounts =
+        activeSummary?.available && !activeSummaryLoading && !activeSummaryUnavailable
+            ? activeSummary.periodCounts
+            : undefined;
 
     useEffect(() => {
         if (!active) {
@@ -204,6 +208,7 @@ export const ActiveAlerts = ({
         }
         if (
             loading ||
+            activeSummaryLoading ||
             !pendingFilter.current ||
             result?.timeRange !== pendingFilter.current.timeRange ||
             result?.monitorCondition !== pendingFilter.current.monitorCondition
@@ -213,15 +218,23 @@ export const ActiveAlerts = ({
         pendingFilter.current = undefined;
         announce(
             result.available
-                ? result.monitorCondition === 'Fired'
-                    ? l10n.t('Active alerts in the selected window: {count}', { count: result.alerts.length })
-                    : l10n.t('Resolved alerts in the selected window: {count}', { count: result.alerts.length })
+                ? periodCounts
+                    ? result.monitorCondition === 'Fired'
+                        ? l10n.t('Active alerts in the selected window: {count}', {
+                              count: periodCounts[result.timeRange].Fired,
+                          })
+                        : l10n.t('Resolved alerts in the selected window: {count}', {
+                              count: periodCounts[result.timeRange].Resolved,
+                          })
+                    : result.monitorCondition === 'Fired'
+                      ? l10n.t('The active alert count is unavailable for the selected window.')
+                      : l10n.t('The resolved alert count is unavailable for the selected window.')
                 : result.monitorCondition === 'Fired'
                   ? l10n.t('Active alerts could not be loaded for the selected window.')
                   : l10n.t('Resolved alerts could not be loaded for the selected window.'),
             { polite: true },
         );
-    }, [active, loading, result, announce]);
+    }, [active, loading, activeSummaryLoading, periodCounts, result, announce]);
 
     const openAlert = (url: string) => {
         reportEvent('deepLinkFollowed', { target: 'portal' });
@@ -254,7 +267,7 @@ export const ActiveAlerts = ({
                               }
                     }
                 >
-                    {TIME_RANGE_LABELS[range]}
+                    {`${TIME_RANGE_LABELS[range]} (${periodCounts?.[range][monitorCondition].toLocaleString() ?? '—'})`}
                 </ToolbarToggleButton>
             ))}
         </Toolbar>
@@ -364,6 +377,11 @@ export const ActiveAlerts = ({
                 ))}
             </Toolbar>
             {filters}
+            <Text>
+                {l10n.t(
+                    'Periods use the alert start time and current condition. Azure Monitor retains alert instances for 30 days.',
+                )}
+            </Text>
             {body}
         </div>
     );

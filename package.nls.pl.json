@@ -51,8 +51,8 @@
   "cosmosdb.command.migration.open": "Nowa migracja...",
   "cosmosdb.command.migration.openExisting": "Migracja usługi Cosmos DB...",
   "cosmosdb.command.migration.remove": "Usuń migrację...",
-  "cosmosdb.command.dataModeling.open": "Data Modeling Wizard",
-  "cosmosdb.command.dataModeling.deleteAllData": "Delete All Data Modeler Data",
+  "cosmosdb.command.dataModeling.open": "Kreator modelowania danych",
+  "cosmosdb.command.dataModeling.deleteAllData": "Usuń wszystkie dane narzędzia do modelowania danych",
   "cosmosdb.configuration.batch.size": "Rozmiar partii, który ma być używany podczas wykonywania zapytań dotyczących zasobów bazy danych platformy Azure.",
   "cosmosdb.configuration.confirmation.style": "Zachowanie stosowane przy potwierdzaniu operacji, których nie można cofnąć, np. usuwania zasobów.",
   "cosmosdb.configuration.confirmation.style.button": "Potwierdzenie kliknięcia przycisku",
@@ -119,5 +119,6 @@
   "cosmosdb.configuration.accountOverview.advisories.sharedThroughputVictimThrottlePct": "Przegląd konta: wskaźnik żądań z ograniczeniem szybkości (429) (%), przy którym lub powyżej którego kolekcja podrzędna o niskim zużyciu jest liczona jako ofiara głodu w poradzie dotyczącej głodu w środowisku o współdzielonej przepływności.",
   "cosmosdb.configuration.accountOverview.advisories.sharedThroughputVictimSharePct": "Przegląd konta: udział (%) jednostek żądań puli współdzielonej, przy którym lub poniżej którego ograniczana kolekcja podrzędna jest uznawana za ofiarę głodu (zużywa mało, mimo że jest ograniczana) w poradzie dotyczącej głodu w środowisku o współdzielonej przepływności.",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Eksperymentalne) Pokaż szacowane użycie tokenu w interfejsie użytkownika narzędzia Migration Assistant.",
-  "cosmosdb.configuration.experimental.migration.enabled": "(Eksperymentalne) Włącz funkcję Migracja usługi Cosmos DB (wersja zapoznawcza). Gdy ta funkcja jest wyłączona, węzeł Migracje usługi Cosmos DB i jego polecenia są ukryte."
+  "cosmosdb.configuration.experimental.migration.enabled": "(Eksperymentalne) Włącz funkcję Migracja usługi Cosmos DB (wersja zapoznawcza). Gdy ta funkcja jest wyłączona, węzeł Migracje usługi Cosmos DB i jego polecenia są ukryte.",
+  "cosmosdb.configuration.experimental.dataModeler.enabled": "(Experimental) Enable the Data Modeler wizard. When disabled, its Command Palette entry and Account Overview promotion are hidden."
 }

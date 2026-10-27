@@ -239,6 +239,7 @@ class ExtensionService {
     // — Constants (replaces nested settingsKeys namespace) ———————————————————————
     readonly settingsKeys = {
         documentLabelFields: 'cosmosDB.documentLabelFields',
+        connectionTimeout: 'cosmosDB.connectionTimeout',
         enableEndpointDiscovery: 'cosmosDB.enableEndpointDiscovery',
         batchSize: 'azureDatabases.batchSize',
         confirmationStyle: 'azureDatabases.confirmationStyle',

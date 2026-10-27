@@ -51,8 +51,8 @@
   "cosmosdb.command.migration.open": "新移轉...",
   "cosmosdb.command.migration.openExisting": "Cosmos DB 移轉...",
   "cosmosdb.command.migration.remove": "移除移轉...",
-  "cosmosdb.command.dataModeling.open": "Data Modeling Wizard",
-  "cosmosdb.command.dataModeling.deleteAllData": "Delete All Data Modeler Data",
+  "cosmosdb.command.dataModeling.open": "資料模型精靈",
+  "cosmosdb.command.dataModeling.deleteAllData": "刪除資料模型程式的所有資料",
   "cosmosdb.configuration.batch.size": "查詢 Azure 資料庫資源時使用的批次大小。",
   "cosmosdb.configuration.confirmation.style": "確認無法復原的作業 (例如刪除資源) 時所使用的行為。",
   "cosmosdb.configuration.confirmation.style.button": "按鈕點擊確認",
@@ -119,5 +119,6 @@
   "cosmosdb.configuration.accountOverview.advisories.sharedThroughputVictimThrottlePct": "帳戶概觀: 速率限制 (429) 要求速率 (%) 等於或高於此值時，低使用量的同層級集合會在「共用輸送量耗盡」建議中視為耗盡的受害者。",
   "cosmosdb.configuration.accountOverview.advisories.sharedThroughputVictimSharePct": "帳戶概觀: 共用集區的要求單位占比 (%) 等於或低於此值時，在「共用輸送量耗盡」建議中，遭節流且只消耗少量資源的同層級集合會被視為耗盡的受害者。",
   "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(實驗性) 在 [移轉小幫手] UI 中顯示權杖使用量估計值。",
-  "cosmosdb.configuration.experimental.migration.enabled": "(實驗性) 啟用 Cosmos DB 移轉 (預覽) 功能。停用時，系統會隱藏 Cosmos DB 移轉節點及其命令。"
+  "cosmosdb.configuration.experimental.migration.enabled": "(實驗性) 啟用 Cosmos DB 移轉 (預覽) 功能。停用時，系統會隱藏 Cosmos DB 移轉節點及其命令。",
+  "cosmosdb.configuration.experimental.dataModeler.enabled": "(Experimental) Enable the Data Modeler wizard. When disabled, its Command Palette entry and Account Overview promotion are hidden."
 }

@@ -6,7 +6,7 @@
 import { type MonitorClient } from '@azure/arm-monitor';
 import { type MetricUnavailableReason } from '../metrics/contracts';
 import { deriveAccountHealth } from '../overviewHealthModel';
-import { DIAGNOSTIC_POLICY } from './advisories/core/thresholds';
+import { HEALTH_POLICY } from './healthPolicy';
 import { queryThrottlingSummary } from './ruTrends';
 import { type HealthState, metricFailureReason, type ProvisioningState } from './shared';
 
@@ -37,7 +37,7 @@ export async function getAccountHealth(
     if (!client) {
         return { ...base, reason: 'noData' };
     }
-    const config = DIAGNOSTIC_POLICY.sustainedThrottling.observation;
+    const config = HEALTH_POLICY.sustainedThrottling.observation;
     const timespan = `${new Date(generatedAt - config.windowMs).toISOString()}/${new Date(generatedAt).toISOString()}`;
     try {
         const signal = await queryThrottlingSummary(

@@ -29,7 +29,7 @@ import { memo, type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo,
 import { Line, LineChart, ResponsiveContainer } from 'recharts';
 import { summarizeStorage } from '../../../panels/accountOverview/metrics/storage';
 import { rowHealth } from '../../../panels/accountOverview/overviewHealthModel';
-import { DIAGNOSTIC_POLICY } from '../../../panels/accountOverview/services/advisories/core/thresholds';
+import { HEALTH_POLICY } from '../../../panels/accountOverview/services/healthPolicy';
 import { HOUR, MINUTE } from '../../../panels/accountOverview/services/units';
 import {
     type ContainerMetrics,
@@ -302,7 +302,7 @@ const InventoryRow = memo(function InventoryRow({
     const storageSummary = storage ? summarizeStorage(storage) : undefined;
     const health = HEALTH_BADGE[rowHealth(row, metric, normalizedRuApplicability)];
     const showProvisionedMetrics = normalizedRuApplicability?.status !== 'notApplicable';
-    const policy = DIAGNOSTIC_POLICY.sustainedThrottling;
+    const policy = HEALTH_POLICY.sustainedThrottling;
     const throttlingDescription = [
         showProvisionedMetrics
             ? l10n.t('Uses normalized RU peaks over the selected chart period and sustained container 429 responses.')

@@ -5,10 +5,8 @@
 
 import * as vscode from 'vscode';
 import {
-    DEFAULT_ADVISORY_THRESHOLDS,
     DEFAULT_HEALTH_THRESHOLDS,
     DEFAULT_PARTITION_THRESHOLDS,
-    type DerivedAdvisoryThresholds,
     type HealthThresholds,
     type PartitionThresholds,
 } from '../../../accountOverview/services';
@@ -30,19 +28,13 @@ export function readHealthThresholds(): HealthThresholds {
     };
 }
 
-/**
- * Reads the partition-distribution thresholds, falling back to defaults. The RU saturation/headroom marks and the
- * storage balance ratio are shared with the derived-advisory engine (`advisories.partitionSaturationPercent`,
- * `advisories.partitionHeadroomPercent`, `advisories.storageSkewBalanceRatio`) so the heatmap and the
- * HotPartitionRisk / StorageSkewRisk advisories flag the same partitions; only the ranked-list length is
- * partition-specific (`partition.topN`).
- */
+/** Reads user Health/view controls only, never the former advisories.* keys or Derived Advisory policy. */
 export function readPartitionThresholds(): PartitionThresholds {
     const config = vscode.workspace.getConfiguration('cosmosDB.accountOverview');
     const topN = config.get<number>('partition.topN');
-    const saturationPercent = config.get<number>('advisories.partitionSaturationPercent');
-    const headroomPercent = config.get<number>('advisories.partitionHeadroomPercent');
-    const skewBalanceRatio = config.get<number>('advisories.storageSkewBalanceRatio');
+    const saturationPercent = config.get<number>('health.partitionSaturationPercent');
+    const headroomPercent = config.get<number>('health.partitionHeadroomPercent');
+    const skewBalanceRatio = config.get<number>('health.storageSkewBalanceRatio');
     return {
         saturationPercent:
             saturationPercent !== undefined && saturationPercent > 0
@@ -57,143 +49,5 @@ export function readPartitionThresholds(): PartitionThresholds {
                 ? skewBalanceRatio
                 : DEFAULT_PARTITION_THRESHOLDS.skewBalanceRatio,
         topN: topN !== undefined && topN >= 1 ? Math.floor(topN) : DEFAULT_PARTITION_THRESHOLDS.topN,
-    };
-}
-
-/** Reads the derived-advisory thresholds from `cosmosDB.accountOverview.*`, falling back to defaults. */
-export function readAdvisoryThresholds(): DerivedAdvisoryThresholds {
-    const config = vscode.workspace.getConfiguration('cosmosDB.accountOverview');
-    const positive = (value: number | undefined, fallback: number): number =>
-        value !== undefined && value >= 0 ? value : fallback;
-    return {
-        // HotPartitionRisk (DX-006) and SustainedThrottlingInRegion (DX-005) share the per-partition saturation and
-        // headroom marks with the heatmap so both flag the same partitions.
-        partitionSaturationPercent: positive(
-            config.get<number>('advisories.partitionSaturationPercent'),
-            DEFAULT_ADVISORY_THRESHOLDS.partitionSaturationPercent,
-        ),
-        partitionHeadroomPercent: positive(
-            config.get<number>('advisories.partitionHeadroomPercent'),
-            DEFAULT_ADVISORY_THRESHOLDS.partitionHeadroomPercent,
-        ),
-        throttleRatePercent: positive(
-            config.get<number>('advisories.throttleRatePercent'),
-            DEFAULT_ADVISORY_THRESHOLDS.throttleRatePercent,
-        ),
-        overProvisioningBandPercent: positive(
-            config.get<number>('advisories.overProvisioningBandPercent'),
-            DEFAULT_ADVISORY_THRESHOLDS.overProvisioningBandPercent,
-        ),
-        autoscaleMaxPercent: positive(
-            config.get<number>('advisories.autoscaleMaxPercent'),
-            DEFAULT_ADVISORY_THRESHOLDS.autoscaleMaxPercent,
-        ),
-        autoscaleAvgPercent: positive(
-            config.get<number>('advisories.autoscaleAvgPercent'),
-            DEFAULT_ADVISORY_THRESHOLDS.autoscaleAvgPercent,
-        ),
-        autoscalePeakToAvgRatio: positive(
-            config.get<number>('advisories.autoscalePeakToAvgRatio'),
-            DEFAULT_ADVISORY_THRESHOLDS.autoscalePeakToAvgRatio,
-        ),
-        storageGrowthHorizonDays: positive(
-            config.get<number>('advisories.storageGrowthHorizonDays'),
-            DEFAULT_ADVISORY_THRESHOLDS.storageGrowthHorizonDays,
-        ),
-        storageSkewBalanceRatio: positive(
-            config.get<number>('advisories.storageSkewBalanceRatio'),
-            DEFAULT_ADVISORY_THRESHOLDS.storageSkewBalanceRatio,
-        ),
-        indexingUsageRatio: positive(
-            config.get<number>('advisories.indexingUsageRatio'),
-            DEFAULT_ADVISORY_THRESHOLDS.indexingUsageRatio,
-        ),
-        idlePeakRuPerBucket: positive(
-            config.get<number>('advisories.idlePeakRuPerBucket'),
-            DEFAULT_ADVISORY_THRESHOLDS.idlePeakRuPerBucket,
-        ),
-        autoscaleToManualAvgPercent: positive(
-            config.get<number>('advisories.autoscaleToManualAvgPercent'),
-            DEFAULT_ADVISORY_THRESHOLDS.autoscaleToManualAvgPercent,
-        ),
-        autoscaleToManualPeakToAvgRatio: positive(
-            config.get<number>('advisories.autoscaleToManualPeakToAvgRatio'),
-            DEFAULT_ADVISORY_THRESHOLDS.autoscaleToManualPeakToAvgRatio,
-        ),
-        serverlessSporadicRatio: positive(
-            config.get<number>('advisories.serverlessSporadicRatio'),
-            DEFAULT_ADVISORY_THRESHOLDS.serverlessSporadicRatio,
-        ),
-        serverlessPeakFloorRuPerSec: positive(
-            config.get<number>('advisories.serverlessPeakFloorRuPerSec'),
-            DEFAULT_ADVISORY_THRESHOLDS.serverlessPeakFloorRuPerSec,
-        ),
-        serverlessPeakCeilingRuPerSec: positive(
-            config.get<number>('advisories.serverlessPeakCeilingRuPerSec'),
-            DEFAULT_ADVISORY_THRESHOLDS.serverlessPeakCeilingRuPerSec,
-        ),
-        // Tier-2 (Log Analytics) — CrossPartitionQuery (DX-002) / ShardKeyMisalignment (DX-007).
-        crossPartitionMinQueries: positive(
-            config.get<number>('advisories.crossPartitionMinQueries'),
-            DEFAULT_ADVISORY_THRESHOLDS.crossPartitionMinQueries,
-        ),
-        crossPartitionFanoutThreshold: positive(
-            config.get<number>('advisories.crossPartitionFanoutThreshold'),
-            DEFAULT_ADVISORY_THRESHOLDS.crossPartitionFanoutThreshold,
-        ),
-        crossPartitionHighPct: positive(
-            config.get<number>('advisories.crossPartitionHighPct'),
-            DEFAULT_ADVISORY_THRESHOLDS.crossPartitionHighPct,
-        ),
-        crossPartitionMedPct: positive(
-            config.get<number>('advisories.crossPartitionMedPct'),
-            DEFAULT_ADVISORY_THRESHOLDS.crossPartitionMedPct,
-        ),
-        shardKeyStructuralPct: positive(
-            config.get<number>('advisories.shardKeyStructuralPct'),
-            DEFAULT_ADVISORY_THRESHOLDS.shardKeyStructuralPct,
-        ),
-        shardKeyHighPct: positive(
-            config.get<number>('advisories.shardKeyHighPct'),
-            DEFAULT_ADVISORY_THRESHOLDS.shardKeyHighPct,
-        ),
-        // Tier-2 (Log Analytics) — UncontrolledIngestion (DX-010).
-        ingestionWriteRuPctFloor: positive(
-            config.get<number>('advisories.ingestionWriteRuPctFloor'),
-            DEFAULT_ADVISORY_THRESHOLDS.ingestionWriteRuPctFloor,
-        ),
-        ingestionThrottleRatePct: positive(
-            config.get<number>('advisories.ingestionThrottleRatePct'),
-            DEFAULT_ADVISORY_THRESHOLDS.ingestionThrottleRatePct,
-        ),
-        ingestionHighPct: positive(
-            config.get<number>('advisories.ingestionHighPct'),
-            DEFAULT_ADVISORY_THRESHOLDS.ingestionHighPct,
-        ),
-        ingestionMinRequests: positive(
-            config.get<number>('advisories.ingestionMinRequests'),
-            DEFAULT_ADVISORY_THRESHOLDS.ingestionMinRequests,
-        ),
-        // Tier-2 (Log Analytics) — SharedThroughputStarvation (DX-003).
-        sharedThroughputMinRequests: positive(
-            config.get<number>('advisories.sharedThroughputMinRequests'),
-            DEFAULT_ADVISORY_THRESHOLDS.sharedThroughputMinRequests,
-        ),
-        sharedThroughputPoolThrottlePct: positive(
-            config.get<number>('advisories.sharedThroughputPoolThrottlePct'),
-            DEFAULT_ADVISORY_THRESHOLDS.sharedThroughputPoolThrottlePct,
-        ),
-        sharedThroughputDominancePct: positive(
-            config.get<number>('advisories.sharedThroughputDominancePct'),
-            DEFAULT_ADVISORY_THRESHOLDS.sharedThroughputDominancePct,
-        ),
-        sharedThroughputVictimThrottlePct: positive(
-            config.get<number>('advisories.sharedThroughputVictimThrottlePct'),
-            DEFAULT_ADVISORY_THRESHOLDS.sharedThroughputVictimThrottlePct,
-        ),
-        sharedThroughputVictimSharePct: positive(
-            config.get<number>('advisories.sharedThroughputVictimSharePct'),
-            DEFAULT_ADVISORY_THRESHOLDS.sharedThroughputVictimSharePct,
-        ),
     };
 }

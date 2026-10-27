@@ -13,7 +13,7 @@ import {
     provisioningHealthCheck,
     resolveAccountHealth,
 } from '../../../panels/accountOverview/overviewHealthModel';
-import { DIAGNOSTIC_POLICY } from '../../../panels/accountOverview/services/advisories/core/thresholds';
+import { HEALTH_POLICY } from '../../../panels/accountOverview/services/healthPolicy';
 import { HOUR, MINUTE } from '../../../panels/accountOverview/services/units';
 import { type HealthState, type ProvisioningState } from '../../api/types';
 import { ThemedTooltip as Tooltip } from '../../common/ThemedTooltip';
@@ -90,7 +90,7 @@ function describeCheck(check: OverviewHealthCheck): { label: string; detail: str
                 }),
             };
         case 'requests': {
-            const policy = DIAGNOSTIC_POLICY.sustainedThrottling;
+            const policy = HEALTH_POLICY.sustainedThrottling;
             const duration = new Intl.NumberFormat(undefined, {
                 style: 'unit',
                 unit: 'minute',

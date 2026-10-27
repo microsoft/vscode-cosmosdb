@@ -329,6 +329,9 @@ RU excess is p99/saturation threshold. Storage excess is
 `(1 - coolest/value) / (1 - balanceThreshold)` for a balance threshold strictly between 0 and 1.
 RU `skewScore` is the maximum over timestamps of `100 * max(positive values) / sum(positive values)`;
 storage `skewScore` equals the largest storage share. Neither is an account-health input.
+User saturation, headroom and storage-balance overrides affect this view only, not Derived Advisories.
+The shared metric reader accepts an explicit internal percentile for Derived collection; the interactive view
+retains the fixed Health p99 policy.
 
 ## 5. Health
 
@@ -539,12 +542,28 @@ Known age below a rule's minimum suppresses that rule; unknown/non-finite age do
 Collector age derives from resource/offer creation metadata with account creation as fallback.
 Manual/autoscale utilization rules require at least 24 finite observations; this is not 24 days or complete coverage.
 
-Runtime settings are read by [router threshold preparation](../src/panels/trpc/routers/accountOverview/thresholds.ts).
-The tables below state defaults. Only the registered setting subset is configurable.
-Health thresholds use nullish fallback; partition saturation/headroom/skew require positive overrides,
-and partition `topN >= 1` is floored. Advisory overrides accept non-negative values.
-Consequently an explicit zero can differ between heatmap and advisory settings; do not promise equality for zero overrides.
-The header sustained-429 policy is independent of `advisories.throttleRatePercent`.
+User controls are read only by [router threshold preparation](../src/panels/trpc/routers/accountOverview/thresholds.ts).
+Exactly six `cosmosDB.accountOverview.*` properties are registered in the localized **Account Overview** Settings category:
+`health.criticalRuPercent`, `health.warningRuPercent`, `partition.topN`,
+`health.partitionSaturationPercent`, `health.partitionHeadroomPercent` and `health.storageSkewBalanceRatio`.
+The three Partition Health keys were renamed from `advisories.*` to `health.*`, preserving defaults, constraints,
+implicit scope and descriptions. Former keys are unregistered and ignored, with no legacy aliases or automatic migration.
+Health thresholds retain nullish fallback; partition marks require positive overrides, and `topN >= 1` is floored.
+
+[`healthPolicy.ts`](../src/panels/accountOverview/services/healthPolicy.ts) owns Health/view defaults (`OVERVIEW_DEFAULTS`)
+and fixed Health observation/evidence rules (`HEALTH_POLICY`). Settings registration and runtime readers determine
+configurability independently of the constant names. Sustained-429 share/duration/window and partition percentile/minimum
+count/materiality have no hidden setting overrides; neither do provisioning-state handling, Fired-alert severity or
+qualifying Azure Advisor impact.
+The latter state/severity rules remain in the pure Health model and Azure-source normalization.
+
+[`advisories/core/thresholds.ts`](../src/panels/accountOverview/services/advisories/core/thresholds.ts) owns the independent,
+internal Derived Advisory policy maintained against CODA. The router uses its defaults directly, for both normal collection
+and configuration-only fallback, without reading any VS Code settings. The collector does not accept user Health or
+partition-threshold objects. The other 28 former advisory settings are unregistered and ignored even when explicitly
+present in user/workspace JSON. No user files are rewritten, and no CODA import/synchronization is introduced here.
+All numeric internal policies and no-override behavior are preserved. The tables below describe internal policy,
+not user-configurable defaults; changing Health/view settings must not change Derived findings.
 
 ### 7.2 Rule predicates and severity
 

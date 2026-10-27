@@ -11,12 +11,12 @@ import {
     type InventoryThroughputOffer,
     type ThroughputMode,
 } from '../inventory';
-import { getInventoryMetrics, type HealthThresholds } from '../inventoryMetrics';
+import { DEFAULT_HEALTH_THRESHOLDS, getInventoryMetrics } from '../inventoryMetrics';
 import {
     getPartitionHealth,
     getPartitionStorageSeries,
+    DEFAULT_PARTITION_THRESHOLDS,
     type PartitionStorageResult,
-    type PartitionThresholds,
 } from '../partitionHealth';
 import { getContainerCreatedAt, getKnownResourceAgeDays, getSystemCreatedAt } from '../resourceAge';
 import { getRuTrends, getThrottleRate } from '../ruTrends';
@@ -103,8 +103,6 @@ export interface CollectDerivedAdvisoriesParams {
     resourceGroup: string;
     accountName: string;
     isServerless: boolean;
-    healthThresholds: HealthThresholds;
-    partitionThresholds: PartitionThresholds;
     advisoryThresholds: DerivedAdvisoryThresholds;
     /** Account-level ARM configuration for the config-only advisories (DX-016 / DX-008). */
     accountConfig?: AccountConfigInput;
@@ -223,8 +221,6 @@ export async function collectDerivedAdvisories(
         resourceGroup,
         accountName,
         isServerless,
-        healthThresholds,
-        partitionThresholds,
         advisoryThresholds,
         accountConfig,
         logsClient,
@@ -351,7 +347,7 @@ export async function collectDerivedAdvisories(
                   monitorClient,
                   accountId,
                   manualObservation.timeRange,
-                  healthThresholds,
+                  DEFAULT_HEALTH_THRESHOLDS,
                   manualObservation,
                   isServerless,
               );
@@ -384,8 +380,14 @@ export async function collectDerivedAdvisories(
                     saturationObservation.timeRange,
                     row.databaseId,
                     row.containerId,
-                    partitionThresholds,
+                    {
+                        ...DEFAULT_PARTITION_THRESHOLDS,
+                        saturationPercent: advisoryThresholds.partitionSaturationPercent,
+                        headroomPercent: advisoryThresholds.partitionHeadroomPercent,
+                        skewBalanceRatio: advisoryThresholds.storageSkewBalanceRatio,
+                    },
                     saturationObservation,
+                    DIAGNOSTIC_POLICY.partitionSaturation.percentile,
                 ),
             ),
             capture(

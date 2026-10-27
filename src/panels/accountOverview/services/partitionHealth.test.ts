@@ -224,6 +224,40 @@ describe('getPartitionHealth', () => {
         expect(result.tiles.every((t) => !t.hot)).toBe(true);
     });
 
+    it('uses an explicit internal percentile without changing the interactive Health p99', async () => {
+        const client = mockClient({
+            NormalizedRUConsumption: {
+                value: [
+                    {
+                        timeseries: [
+                            {
+                                metadatavalues: pdims('db', 'c1', 'PhysicalPartitionId', '0'),
+                                data: [
+                                    { timeStamp: iso(base - 60_000), maximum: 0 },
+                                    { timeStamp: iso(base), maximum: 100 },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            },
+        });
+        const interactive = await getPartitionHealth(client, '/sub/acct', 'ru', '7D', 'db', 'c1', partitionThresholds);
+        const derived = await getPartitionHealth(
+            client,
+            '/sub/acct',
+            'ru',
+            '7D',
+            'db',
+            'c1',
+            partitionThresholds,
+            undefined,
+            50,
+        );
+        expect(interactive.maxSaturationPercent).toBe(99);
+        expect(derived.maxSaturationPercent).toBe(50);
+    });
+
     it('ranks storage partitions by their peak reported size over the window', async () => {
         const client = mockClient({
             PhysicalPartitionSizeInfo: {

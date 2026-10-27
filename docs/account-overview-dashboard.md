@@ -227,8 +227,9 @@ No findings does not prove that every resource was checked or that no problem ex
 
 Certain query/ingestion checks need resource-specific diagnostic logs in Log Analytics.
 Without those logs or access to them, other available checks still run. See [Permissions](#permissions).
-Advanced thresholds can be found in VS Code Settings under `cosmosDB.accountOverview`;
-the numbers in this guide are defaults.
+Derived Advisory thresholds follow an internal policy maintained against CODA; they cannot be overridden through
+VS Code Settings or `settings.json`. Health and view controls remain configurable separately.
+See [Account Overview settings](#account-overview-settings).
 
 ### Azure Advisor recommendations
 
@@ -259,6 +260,47 @@ Sev0/Sev1 raise health to Critical; Sev2/Sev3 raise it to Needs Attention; Sev4 
 The summary is limited by Azure retention, your access and propagation delays.
 A Closed-but-Fired alert can still affect current health.
 There is not yet a separate notification specifically for unclosed active incidents.
+
+## Account Overview settings
+
+Open Settings (`Ctrl+,` on Windows/Linux, `Cmd+,` on macOS), expand **Extensions → Azure Cosmos DB**,
+and select **Account Overview**. This category contains exactly six Health and view controls.
+General extension settings and **Authentication** remain in their existing categories.
+
+All keys below have the prefix `cosmosDB.accountOverview.`:
+
+| Key                                 | Default | Applies to                            |
+| ----------------------------------- | ------- | ------------------------------------- |
+| `health.criticalRuPercent`          | 90      | Container critical normalized RU peak |
+| `health.warningRuPercent`           | 80      | Container warning normalized RU peak  |
+| `health.partitionSaturationPercent` | 90      | Partition Health RU saturation        |
+| `health.partitionHeadroomPercent`   | 70      | Partition Health RU headroom          |
+| `health.storageSkewBalanceRatio`    | 0.7     | Partition Health storage-skew flags   |
+| `partition.topN`                    | 5       | Partition ranked-list length          |
+
+All five `health.*` controls are independent of Derived Advisories.
+With user overrides, the heatmap flags and Derived findings can differ.
+Defaults, allowed ranges and scopes are unchanged. The three Partition Health keys were renamed from `advisories.*`
+to `health.*`; move any custom partition thresholds to the new keys to retain them.
+All former `advisories.*` keys are unregistered and ignored even if left in `settings.json`.
+Existing overrides for the other three controls remain valid; no configuration files are rewritten automatically.
+
+Search for **Account Overview** or an existing full setting ID such as
+`cosmosDB.accountOverview.health.criticalRuPercent` to find a setting directly.
+Choose the **User** or **Workspace** tab to edit that scope; use the setting's gear menu and **Reset Setting**
+to remove its override at the selected scope.
+
+The fixed Health rules are not hidden user settings: sustained 429s require more than 1% in each bucket for at
+least five minutes over the last hour (one-minute buckets; gaps over 1.5 buckets break a run).
+Partition Health uses p99 RU observations, requires at least two partitions, and requires at least 1 GiB for a
+storage-skew flag. Provisioning state, Fired-alert severity and High-impact Performance/Cost Azure Advisor findings
+also affect account health as described above; there are no additional extension-setting overrides for these rules.
+
+Maintainers can find Health/view defaults (`OVERVIEW_DEFAULTS`) and fixed Health rules (`HEALTH_POLICY`) in
+[`healthPolicy.ts`](../src/panels/accountOverview/services/healthPolicy.ts), and the independent Derived policy in
+[`advisories/core/thresholds.ts`](../src/panels/accountOverview/services/advisories/core/thresholds.ts).
+Settings registration and runtime readers determine which values can be overridden, not the constant names.
+Derived policy is maintained locally against CODA; this separation does not add an automatic CODA download or sync.
 
 ## Refresh and timestamps
 

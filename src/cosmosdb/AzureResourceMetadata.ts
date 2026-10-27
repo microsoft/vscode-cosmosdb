@@ -20,6 +20,7 @@ import {
     createMonitorClient,
 } from '../utils/azureClients';
 import { nonNullProp } from '../utils/nonNull';
+import { callWithResourceTreeErrorHandling, type ResourceTreeOperationContext } from '../utils/resourceTreeOperations';
 import { SERVERLESS_CAPABILITY_NAME } from './cosmosdb-shared-constants';
 
 /**
@@ -49,34 +50,47 @@ export class AzureResourceMetadata {
      * If any of these properties will be undefined, null or empty string, then this function will return undefined.
      * @param account
      */
-    public static async create(account: CosmosDBAccountModel): Promise<AzureResourceMetadata | undefined> {
-        return callWithTelemetryAndErrorHandling('cosmosDB.getAzureSpecificMetadata', async () => {
-            const subscription = nonNullProp(account, 'subscription');
-            const accountId = nonNullProp(account, 'id');
-            const accountName = nonNullProp(account, 'name');
-            const resourceGroup = nonNullProp(account, 'resourceGroup');
+    public static async create(
+        account: CosmosDBAccountModel,
+        options?: ResourceTreeOperationContext,
+    ): Promise<AzureResourceMetadata | undefined> {
+        return callWithResourceTreeErrorHandling(
+            'cosmosDB.getAzureSpecificMetadata',
+            async (context) => {
+                const subscription = nonNullProp(account, 'subscription');
+                const accountId = nonNullProp(account, 'id');
+                const accountName = nonNullProp(account, 'name');
+                const resourceGroup = nonNullProp(account, 'resourceGroup');
+                context.valuesToMask.push(
+                    ...[subscription.subscriptionId, accountId, accountName, resourceGroup].filter(
+                        (value) => value.trim().length > 0,
+                    ),
+                );
 
-            const client = await callWithTelemetryAndErrorHandling(
-                'createCosmosDBManagementClient',
-                async (context: IActionContext) => {
-                    context.telemetry.suppressIfSuccessful = true;
-                    context.errorHandling.forceIncludeInReportIssueCommand = true;
-                    context.valuesToMask.push(subscription.subscriptionId);
-                    return createCosmosDBManagementClient(context, subscription);
-                },
-            );
+                const client = await callWithResourceTreeErrorHandling(
+                    'createCosmosDBManagementClient',
+                    async (context: IActionContext) => {
+                        context.telemetry.suppressIfSuccessful = true;
+                        context.errorHandling.forceIncludeInReportIssueCommand = true;
+                        context.valuesToMask.push(subscription.subscriptionId);
+                        return createCosmosDBManagementClient(context, subscription);
+                    },
+                    options,
+                );
 
-            if (!client) {
-                throw new Error(l10n.t('Failed to create CosmosDB management client.'));
-            }
+                if (!client) {
+                    throw new Error(l10n.t('Failed to create CosmosDB management client.'));
+                }
 
-            const databaseAccount = await client.databaseAccounts.get(resourceGroup, accountName);
+                const databaseAccount = await client.databaseAccounts.get(resourceGroup, accountName);
 
-            // Database account has to have document endpoint
-            nonNullProp(databaseAccount, 'documentEndpoint', `of the database account ${accountId}`);
+                // Database account has to have document endpoint
+                nonNullProp(databaseAccount, 'documentEndpoint', `of the database account ${accountId}`);
 
-            return new AzureResourceMetadata(subscription, accountId, accountName, resourceGroup, databaseAccount);
-        });
+                return new AzureResourceMetadata(subscription, accountId, accountName, resourceGroup, databaseAccount);
+            },
+            options,
+        );
     }
 
     protected constructor(
@@ -97,13 +111,17 @@ export class AzureResourceMetadata {
         return this.databaseAccount.capabilities?.some((cap) => cap.name === SERVERLESS_CAPABILITY_NAME) ?? false;
     }
 
-    public getClient(): Promise<CosmosDBManagementClient | undefined> {
-        return callWithTelemetryAndErrorHandling('createCosmosDBManagementClient', async (context: IActionContext) => {
-            context.telemetry.suppressIfSuccessful = true;
-            context.errorHandling.forceIncludeInReportIssueCommand = true;
-            context.valuesToMask.push(this.subscription.subscriptionId);
-            return createCosmosDBManagementClient(context, this.subscription);
-        });
+    public getClient(options?: ResourceTreeOperationContext): Promise<CosmosDBManagementClient | undefined> {
+        return callWithResourceTreeErrorHandling(
+            'createCosmosDBManagementClient',
+            async (context: IActionContext) => {
+                context.telemetry.suppressIfSuccessful = true;
+                context.errorHandling.forceIncludeInReportIssueCommand = true;
+                context.valuesToMask.push(this.subscription.subscriptionId);
+                return createCosmosDBManagementClient(context, this.subscription);
+            },
+            options,
+        );
     }
 
     /**

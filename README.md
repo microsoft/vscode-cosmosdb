@@ -191,6 +191,7 @@ Saved filters are unchanged. If no Azure account is signed in, Azure Resources p
 and then resumes opening the resource. If multiple accounts or tenants match, it prompts you to choose one.
 The editor uses the exact provider model returned for the selected identity, without an unqualified cache lookup.
 Explicit resource loading propagates cancellation and errors; ordinary background tree browsing remains unchanged.
+This includes authentication cancellation during account metadata and ARM credential initialization.
 Older Azure Resources versions require the subscription to be visible and do not support tenant-specific reveals.
 
 ## Corporate proxies

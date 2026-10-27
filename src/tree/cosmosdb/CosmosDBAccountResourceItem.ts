@@ -12,6 +12,7 @@ import { getCosmosDBEntraIdCredential } from '../../cosmosdb/CosmosDBCredential'
 import { getSignedInPrincipalIdForAccountEndpoint } from '../../cosmosdb/utils/azureSessionHelper';
 import { ensureRbacPermissionV2, isRbacException, showRbacPermissionError } from '../../cosmosdb/utils/rbacUtils';
 import { ext } from '../../extensionVariables';
+import { type ResourceTreeOperationContext } from '../../utils/resourceTreeOperations';
 import { compareResourceIds } from '../../utils/strings';
 import { CosmosDBAccountResourceItemBase } from '../azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
 import { type TreeElement } from '../TreeElement';
@@ -37,8 +38,8 @@ export abstract class CosmosDBAccountResourceItem extends CosmosDBAccountResourc
         this.contextValue = TreeElementWithContextValue.createContextValue([this.contextValue, 'hasArmMetadata']);
     }
 
-    public async getChildren(): Promise<TreeElement[]> {
-        const accountInfo = await getAccountInfo(this.account);
+    public async getChildren(options?: ResourceTreeOperationContext): Promise<TreeElement[]> {
+        const accountInfo = await getAccountInfo(this.account, options);
         const databases = await this.getDatabases(accountInfo);
         const sortedDatabases = databases.sort((a, b) => compareResourceIds(a.id, b.id));
 

@@ -107,7 +107,7 @@
     "cosmosdb-best-practices": {
       "repo": "AzureCosmosDB/cosmosdb-agent-kit",
       "path": "skills/cosmosdb-best-practices",
-      "commit": "110f3e91e8f0279ef599bc6aa971c7f3f5183568",
+      "commit": "3ddc18fcd4d6fe0fae154f408395ff83c39495ee",
       "exclude": [
         "metadata.json",
         "README.md",

@@ -42,8 +42,8 @@ describe('ThemedTooltip', () => {
     it.each([
         {
             kind: 'vscode-dark',
-            background: tokens.colorNeutralBackgroundInverted,
-            color: tokens.colorNeutralForegroundInverted,
+            background: tokens.colorNeutralBackgroundStatic,
+            color: tokens.colorNeutralForegroundStaticInverted,
         },
         { kind: 'vscode-light', background: tokens.colorNeutralBackground1, color: tokens.colorNeutralForeground1 },
         {
@@ -56,7 +56,7 @@ describe('ThemedTooltip', () => {
             background: tokens.colorNeutralBackground1,
             color: tokens.colorNeutralForeground1,
         },
-    ])('uses the appropriate foreground and surface in $kind', ({ kind, background, color }) => {
+    ])('uses the standard Fluent foreground and surface in $kind', ({ kind, background, color }) => {
         document.body.setAttribute('data-vscode-theme-kind', kind);
         render(
             <ThemedTooltip content="Details" relationship="description" visible withArrow>
@@ -71,8 +71,32 @@ describe('ThemedTooltip', () => {
         expect(button).toHaveTextContent('Inspect');
         expect(button).toHaveAccessibleName('Inspect');
         expect(button).toHaveAccessibleDescription('Details');
-        expect(webDarkTheme.colorNeutralBackgroundInverted).toBe('#ffffff');
-        expect(webDarkTheme.colorNeutralForegroundInverted).toBe('#242424');
+    });
+
+    it.each([
+        {
+            kind: 'vscode-dark',
+            appearance: 'normal',
+            background: tokens.colorNeutralBackground1,
+            color: tokens.colorNeutralForeground1,
+        },
+        {
+            kind: 'vscode-light',
+            appearance: 'inverted',
+            background: tokens.colorNeutralBackgroundStatic,
+            color: tokens.colorNeutralForegroundStaticInverted,
+        },
+    ] as const)('preserves explicit $appearance appearance in $kind', ({ kind, appearance, background, color }) => {
+        document.body.setAttribute('data-vscode-theme-kind', kind);
+        render(
+            <ThemedTooltip content="Details" relationship="description" appearance={appearance} visible>
+                <Button>Inspect</Button>
+            </ThemedTooltip>,
+            { wrapper: Wrapper },
+        );
+        const tooltip = screen.getByRole('tooltip');
+        expect(getComputedStyle(tooltip).backgroundColor).toBe(background);
+        expect(getComputedStyle(tooltip).color).toBe(color);
     });
 
     it('updates an open tooltip when the theme changes without moving focus', async () => {
@@ -88,10 +112,10 @@ describe('ThemedTooltip', () => {
         await act(async () => document.body.setAttribute('data-vscode-theme-kind', 'vscode-dark'));
         await waitFor(() =>
             expect(getComputedStyle(screen.getByRole('tooltip')).backgroundColor).toBe(
-                tokens.colorNeutralBackgroundInverted,
+                tokens.colorNeutralBackgroundStatic,
             ),
         );
-        expect(getComputedStyle(screen.getByRole('tooltip')).color).toBe(tokens.colorNeutralForegroundInverted);
+        expect(getComputedStyle(screen.getByRole('tooltip')).color).toBe(tokens.colorNeutralForegroundStaticInverted);
         expect(button).toHaveFocus();
         await act(async () => document.body.setAttribute('data-vscode-theme-kind', 'vscode-high-contrast'));
         await waitFor(() =>
@@ -121,7 +145,7 @@ describe('ThemedTooltip', () => {
         const tooltip = screen.getByRole('tooltip');
         expect(tooltip).toHaveAttribute('id', 'custom-tooltip');
         expect(tooltip).toHaveClass('custom-content');
-        expect(tooltip).toHaveStyle({ maxWidth: '360px', backgroundColor: tokens.colorNeutralBackgroundInverted });
+        expect(tooltip).toHaveStyle({ maxWidth: '360px', backgroundColor: tokens.colorNeutralBackgroundStatic });
         expect(tooltip.querySelector('strong')).toHaveTextContent('Details');
         expect(screen.getByRole('button', { name: 'Inspect' })).toHaveAccessibleDescription('Details');
     });

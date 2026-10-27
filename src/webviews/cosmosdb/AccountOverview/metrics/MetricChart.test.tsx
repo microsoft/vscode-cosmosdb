@@ -29,48 +29,35 @@ describe('chart tooltip theme', () => {
         else document.body.setAttribute('data-vscode-theme-kind', initialKind);
     });
 
-    it.each([
-        {
-            kind: 'vscode-dark',
-            background: tokens.colorNeutralBackgroundInverted,
-            color: tokens.colorNeutralForegroundInverted,
+    it.each(['vscode-dark', 'vscode-light', 'vscode-high-contrast', 'vscode-high-contrast-light'])(
+        'preserves chart tooltip styling and keyboard-accessible values in %s',
+        async (kind) => {
+            document.body.setAttribute('data-vscode-theme-kind', kind);
+            render(
+                <FluentProvider theme={kind === 'vscode-dark' ? webDarkTheme : webLightTheme}>
+                    <MetricChart
+                        descriptor={METRIC_VIEWS.totalRequests}
+                        loading={false}
+                        timeRange="24H"
+                        series={{
+                            metric: 'totalRequests',
+                            applicability: { status: 'applicable' },
+                            available: true,
+                            points: [{ timestamp: 1000, value: 100, throttled: true }],
+                            timeRange: '24H',
+                            generatedAt: 1000,
+                        }}
+                    />
+                </FluentProvider>,
+            );
+            fireEvent.focus(screen.getByRole('application'));
+            const note = await screen.findByText('Sustained throttling (429s) in this window');
+            expect(getComputedStyle(note.parentElement!).backgroundColor).toBe(tokens.colorNeutralBackground1);
+            expect(getComputedStyle(note.parentElement!).color).toBe(tokens.colorNeutralForeground1);
+            expect(getComputedStyle(note).color).toBe(tokens.colorStatusDangerForeground1);
+            expect(note).toBeVisible();
         },
-        { kind: 'vscode-light', background: tokens.colorNeutralBackground1, color: tokens.colorNeutralForeground1 },
-        {
-            kind: 'vscode-high-contrast',
-            background: tokens.colorNeutralBackground1,
-            color: tokens.colorNeutralForeground1,
-        },
-        {
-            kind: 'vscode-high-contrast-light',
-            background: tokens.colorNeutralBackground1,
-            color: tokens.colorNeutralForeground1,
-        },
-    ])('keeps keyboard-accessible chart values readable in $kind', async ({ kind, background, color }) => {
-        document.body.setAttribute('data-vscode-theme-kind', kind);
-        render(
-            <FluentProvider theme={kind === 'vscode-dark' ? webDarkTheme : webLightTheme}>
-                <MetricChart
-                    descriptor={METRIC_VIEWS.totalRequests}
-                    loading={false}
-                    timeRange="24H"
-                    series={{
-                        metric: 'totalRequests',
-                        applicability: { status: 'applicable' },
-                        available: true,
-                        points: [{ timestamp: 1000, value: 100, throttled: true }],
-                        timeRange: '24H',
-                        generatedAt: 1000,
-                    }}
-                />
-            </FluentProvider>,
-        );
-        fireEvent.focus(screen.getByRole('application'));
-        const note = await screen.findByText('Sustained throttling (429s) in this window');
-        expect(getComputedStyle(note.parentElement!).backgroundColor).toBe(background);
-        expect(getComputedStyle(note.parentElement!).color).toBe(color);
-        expect(note).toBeVisible();
-    });
+    );
 });
 
 it.each([true, false])('exposes an asynchronous load failure as a status (storage: %s)', (isStorage) => {

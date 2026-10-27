@@ -706,9 +706,8 @@ A refused browser launch is a failure. Account-action/global-refresh feedback st
 Background query unavailability is not routed through the auxiliary-action notification path.
 
 Visible labels MUST remain in computed accessible names. Tooltip descriptions MUST preserve the visible label.
-Overview uses the shared `ThemedTooltip`; chart-value popups reuse its theme-aware surface class.
-Only `vscode-dark` inverts the foreground and background, using `colorNeutralForegroundInverted` and
-`colorNeutralBackgroundInverted` rather than Fluent's static `appearance="inverted"` colors.
+Overview uses the shared `ThemedTooltip`, which defaults to Fluent's standard `appearance="inverted"` in `vscode-dark`.
+Explicit appearance props are preserved. Chart-value popups retain their own styles without custom color inversion.
 Light and high-contrast themes retain existing styling. Open tooltips follow theme-kind changes without moving focus.
 The wrapper MUST preserve content-slot props, accessible relationships and Fluent nested-trigger traversal.
 Status feedback uses existing announcement infrastructure; the health badge keeps one polite output.

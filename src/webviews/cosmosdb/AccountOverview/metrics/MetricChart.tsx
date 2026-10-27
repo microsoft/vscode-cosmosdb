@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { makeStyles, mergeClasses, Spinner, Text, tokens, typographyStyles } from '@fluentui/react-components';
+import { makeStyles, Spinner, Text, tokens, typographyStyles } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
 import { useMemo } from 'react';
 import {
@@ -25,7 +25,6 @@ import {
     type MetricSeriesResult,
     type TimeRange,
 } from '../../../api/types';
-import { useThemedTooltipClassName } from '../../../common/ThemedTooltip';
 import { EmptyState } from '../DashboardChrome';
 import {
     formatAxisTick,
@@ -153,13 +152,12 @@ interface ChartTooltipProps {
 
 const ChartTooltip = ({ active, payload, descriptor }: ChartTooltipProps) => {
     const styles = useStyles();
-    const themedTooltipClassName = useThemedTooltipClassName();
     if (!active || !payload || payload.length === 0) {
         return null;
     }
     const point = payload[0].payload;
     return (
-        <div className={mergeClasses(styles.tooltip, themedTooltipClassName)}>
+        <div className={styles.tooltip}>
             <Text weight="semibold">{formatTimestamp(point.timestamp)}</Text>
             {point.storage ? (
                 <>
@@ -170,9 +168,7 @@ const ChartTooltip = ({ active, payload, descriptor }: ChartTooltipProps) => {
                 <Text>{`${descriptor.seriesLabel}: ${formatMetricValue(descriptor.unit, point.value)}`}</Text>
             )}
             {point.throttled && (
-                <Text className={themedTooltipClassName ? undefined : styles.throttleNote}>
-                    {l10n.t('Sustained throttling (429s) in this window')}
-                </Text>
+                <Text className={styles.throttleNote}>{l10n.t('Sustained throttling (429s) in this window')}</Text>
             )}
         </div>
     );

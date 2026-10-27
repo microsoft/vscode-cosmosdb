@@ -253,7 +253,9 @@ export async function getAvailableModelsInfo(
                 if (stateKey !== MIGRATION_SELECTED_MODEL_KEY) return true;
                 const metadata = getComparableModelMetadata(model);
                 if (!metadata) return true;
-                const duplicate = uniqueModels.find((entry) => isEqual(entry.metadata, metadata));
+                const duplicate = uniqueModels.find(
+                    (entry) => tryReadModelMetadata(() => isEqual(entry.metadata, metadata)) === true,
+                );
                 if (duplicate) {
                     if (savedModelId === model.id) savedModelId = duplicate.id;
                     return false;

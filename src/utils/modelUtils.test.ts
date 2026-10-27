@@ -147,6 +147,53 @@ describe('migration model availability', () => {
         ]);
     });
 
+    it.each(['first', 'second', 'both'])(
+        'preserves registrations when the %s nested capability getter throws during comparison',
+        async (throwingRegistration) => {
+            const registrations = ['first', 'second'].map((id): vscode.LanguageModelChat => {
+                const capabilities = { supportsToolCalling: false };
+                if (throwingRegistration === id || throwingRegistration === 'both') {
+                    Object.defineProperty(capabilities, 'supportsToolCalling', {
+                        enumerable: true,
+                        get: () => {
+                            throw new Error('Nested capability unavailable');
+                        },
+                    });
+                }
+                return {
+                    ...models[1],
+                    id,
+                    version: 'model-v1',
+                    category: 'powerful',
+                    capabilities,
+                    sendRequest: vi.fn(),
+                    countTokens: vi.fn(),
+                };
+            });
+            const unrelatedModel = { ...models[2], id: 'unrelated' };
+            vi.mocked(vscode.lm.selectChatModels).mockResolvedValue([
+                ...registrations,
+                unrelatedModel,
+            ] as vscode.LanguageModelChat[]);
+            vi.mocked(ext.context.globalState.get).mockReturnValue('second');
+
+            const available = await getAvailableModelsInfo(MIGRATION_SELECTED_MODEL_KEY);
+            expect(available.models).toEqual([
+                ...registrations.map(({ id }) => ({
+                    ...models[1],
+                    id,
+                    category: 'powerful',
+                    ...(throwingRegistration === id || throwingRegistration === 'both'
+                        ? {}
+                        : { supportsToolCalling: false }),
+                })),
+                unrelatedModel,
+            ]);
+            expect(available.savedModelId).toBe('second');
+            expect(ext.context.globalState.update).not.toHaveBeenCalled();
+        },
+    );
+
     it.each(['category', 'capabilities'])('retains the model list if reading %s throws', async (property) => {
         const unavailable = Object.defineProperty({ ...models[1] }, property, {
             get: () => {

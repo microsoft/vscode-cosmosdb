@@ -10,28 +10,12 @@ import { maskConnectionTelemetry } from './maskConnectionTelemetry';
 
 type MaskingContext = Pick<IActionContext, 'valuesToMask'>;
 
-/** Registers ARM identifiers on this action only. No names or identifiers are emitted. */
-export function maskAzureResourceTelemetry(
-    context: MaskingContext,
-    resource: {
-        resourceId?: string;
-        subscriptionId?: string;
-        resourceGroup?: string;
-        accountName?: string;
-    },
-): void {
-    addMasks(context, [resource.resourceId, resource.subscriptionId, resource.resourceGroup, resource.accountName]);
-}
-
-/** Reads only already-available tree model values, without loading metadata or credentials. Nothing is emitted. */
+/** Masks available connection secrets and provider child identifiers, not Azure OII. Nothing is emitted. */
 export function maskTreeElementTelemetry(context: MaskingContext, element: unknown): void {
     const node = objectValue(element);
     const account = objectValue(node?.account);
     const model = objectValue(node?.model);
     const accountInfo = objectValue(model?.accountInfo);
-    const metadata = objectValue(accountInfo?.azureMetadata);
-    const subscription = objectValue(account?.subscription);
-    const metadataSubscription = objectValue(metadata?.subscription);
     const database = objectValue(model?.database);
     const container = objectValue(model?.container);
     const credentials = Array.isArray(accountInfo?.credentials)
@@ -45,19 +29,8 @@ export function maskTreeElementTelemetry(context: MaskingContext, element: unkno
         credentials,
     });
     addMasks(context, [
-        node?.id,
-        account?.id,
-        account?.name,
-        account?.resourceGroup,
-        subscription?.subscriptionId,
         account?.connectionString,
         account?.documentEndpoint,
-        accountInfo?.id,
-        accountInfo?.name,
-        metadata?.accountId,
-        metadata?.accountName,
-        metadata?.resourceGroup,
-        metadataSubscription?.subscriptionId,
         objectValue(model?.item)?.id,
         objectValue(model?.procedure)?.id,
         objectValue(model?.trigger)?.id,

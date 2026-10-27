@@ -98,7 +98,7 @@ beforeEach(() => {
 
 describe('Azure resource URI handling', () => {
     it.each(['resourceId', 'connectionString'])(
-        'registers standalone ARM identifiers before %s reveal failure',
+        'masks child data but not Azure OII before %s reveal failure',
         async (kind) => {
             let masksAtReveal: string[] | undefined;
             mocks.reveal.mockImplementationOnce(async () => {
@@ -113,15 +113,25 @@ describe('Azure resource URI handling', () => {
                           subscriptionId: parsedId.subscriptionId,
                           resourceGroup: parsedId.resourceGroup,
                       };
+            Object.assign(params, { tenantId, database: 'private-database', container: 'private-container' });
 
             await expect(
                 globalUriHandler(
                     vscode.Uri.parse(`vscode://ms-azuretools.vscode-cosmosdb?${new URLSearchParams(params)}`),
                 ),
             ).rejects.toThrow('Cannot load account in rg');
-            expect(masksAtReveal).toEqual(
-                expect.arrayContaining([parsedId.subscriptionId, parsedId.resourceGroup, parsedId.resourceName]),
-            );
+            expect(masksAtReveal).toEqual(expect.arrayContaining(['private-database', 'private-container']));
+            expect(
+                masksAtReveal?.filter((value) =>
+                    [
+                        accountId,
+                        tenantId,
+                        parsedId.subscriptionId,
+                        parsedId.resourceGroup,
+                        parsedId.resourceName,
+                    ].includes(value),
+                ),
+            ).toEqual([]);
         },
     );
 

@@ -19,7 +19,6 @@ import {
     parseCosmosDBConnectionString,
     type ParsedCosmosDBConnectionString,
 } from './cosmosdb/cosmosDBConnectionStrings';
-import { maskAzureResourceTelemetry } from './cosmosdb/maskResourceTelemetry';
 import { ext } from './extensionVariables';
 import { StorageNames, StorageService, type StorageItem } from './services/StorageService';
 import { getAccountInfo } from './tree/cosmosdb/AccountInfo';
@@ -298,16 +297,8 @@ export async function revealAzureResourceInExplorer(
         id.slice(0, resourceId.rawId.length).toLowerCase() === resourceId.rawId.toLowerCase() &&
         id.slice(resourceId.rawId.length) === fullId.slice(resourceId.rawId.length);
 
-    // The error paths below embed the resource id, database, and container names into thrown error
-    // messages. Those values can reach telemetry/error reporting, so mask them up front when a context
-    // is available (database and container names are user data / EUII).
+    // Provider child names are user data; the ARM account identity is OII and is not explicitly masked.
     if (context) {
-        maskAzureResourceTelemetry(context, {
-            resourceId: resourceId.rawId,
-            subscriptionId: resourceId.subscriptionId,
-            resourceGroup: resourceId.resourceGroup,
-            accountName: resourceId.resourceName,
-        });
         for (const value of [database, container]) {
             if (value?.trim()) {
                 context.valuesToMask.push(value);
@@ -713,10 +704,7 @@ function extractAndValidateParams(context: IActionContext, query: string): UriPa
             case 'connectionString':
             case 'database':
             case 'container':
-            case 'resourceId':
-            case 'subscriptionId':
-            case 'resourceGroup':
-                if (value !== undefined) {
+                if (value?.trim()) {
                     context.valuesToMask.push(value);
                 }
                 break;

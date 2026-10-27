@@ -56,16 +56,11 @@ export class AzureResourceMetadata {
     ): Promise<AzureResourceMetadata | undefined> {
         return callWithResourceTreeErrorHandling(
             'cosmosDB.getAzureSpecificMetadata',
-            async (context) => {
+            async () => {
                 const subscription = nonNullProp(account, 'subscription');
                 const accountId = nonNullProp(account, 'id');
                 const accountName = nonNullProp(account, 'name');
                 const resourceGroup = nonNullProp(account, 'resourceGroup');
-                context.valuesToMask.push(
-                    ...[subscription.subscriptionId, accountId, accountName, resourceGroup].filter(
-                        (value) => value.trim().length > 0,
-                    ),
-                );
 
                 const client = await callWithResourceTreeErrorHandling(
                     'createCosmosDBManagementClient',

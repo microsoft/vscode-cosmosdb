@@ -258,7 +258,7 @@ describe('decorated NoSQL tree loading cancellation', () => {
         await expect(provider.getChildren(root, { propagateErrors: true })).resolves.toEqual([]);
     });
 
-    it('registers account identifiers on the outer action before nested metadata loading fails', async () => {
+    it('does not add Azure OII masks when metadata loading fails', async () => {
         const provider = new CosmosDBBranchDataProvider();
         const root = await provider.getResourceItem(account);
         const failure = new Error(`Cannot load ${account.name} in ${account.resourceGroup}`);
@@ -272,17 +272,11 @@ describe('decorated NoSQL tree loading cancellation', () => {
         });
 
         await expect(provider.getChildren(root, { propagateErrors: true })).rejects.toBe(failure);
-        expect(outerMasks).toEqual(
-            expect.arrayContaining([
-                account.id,
-                account.name,
-                account.resourceGroup,
-                account.subscription.subscriptionId,
-            ]),
-        );
+        expect(outerMasks).toEqual([]);
         const outer = mocks.actions.find((action) => action.event === 'CosmosDBBranchDataProvider.getChildren');
         const inner = mocks.actions.find((action) => action.event === 'cosmosDB.getAzureSpecificMetadata');
         expect(outer?.context).not.toBe(inner?.context);
+        expect(inner?.context.valuesToMask).toEqual([]);
     });
 
     it('registers loaded connection and database identifiers before container loading fails', async () => {
@@ -303,14 +297,12 @@ describe('decorated NoSQL tree loading cancellation', () => {
 
         await expect(provider.getChildren(database, { propagateErrors: true })).rejects.toBe(failure);
         expect(outerMasks).toEqual(
-            expect.arrayContaining([
-                account.name,
-                account.resourceGroup,
-                account.subscription.subscriptionId,
-                'private-database',
-                'https://account.documents.azure.com',
-                'test-key',
-            ]),
+            expect.arrayContaining(['private-database', 'https://account.documents.azure.com', 'test-key']),
         );
+        expect(
+            outerMasks?.filter((value) =>
+                [account.id, account.name, account.resourceGroup, account.subscription.subscriptionId].includes(value),
+            ),
+        ).toEqual([]);
     });
 });

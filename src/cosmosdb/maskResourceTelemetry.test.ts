@@ -6,7 +6,7 @@
 import { maskUserInfo } from '@microsoft/vscode-azext-utils';
 import { describe, expect, it, vi } from 'vitest';
 import { AuthenticationMethod } from './AuthenticationMethod';
-import { maskAzureResourceTelemetry, maskTreeElementTelemetry } from './maskResourceTelemetry';
+import { maskTreeElementTelemetry } from './maskResourceTelemetry';
 
 vi.mock('../extensionVariables', () => ({ ext: {} }));
 vi.mock('@vscode/extension-telemetry', () => ({ default: vi.fn() }));
@@ -22,14 +22,14 @@ describe('resource telemetry masks', () => {
     };
     const error = `Cannot load ${resource.accountName} in ${resource.resourceGroup} using ${resource.subscriptionId}`;
 
-    it('redacts standalone resource names, not just occurrences of the full ARM ID', () => {
-        const context = { valuesToMask: [resource.resourceId] };
-        expect(maskUserInfo(error, context.valuesToMask)).toContain(resource.accountName);
-        maskAzureResourceTelemetry(context, resource);
-        expect(maskUserInfo(error, context.valuesToMask)).toBe('Cannot load --- in --- using ---');
+    it('does not register the full ARM resource identity as a mask', () => {
+        const context = { valuesToMask: [] };
+        maskTreeElementTelemetry(context, { id: resource.resourceId });
+        expect(context.valuesToMask).toEqual([]);
+        expect(maskUserInfo(error, context.valuesToMask)).toBe(error);
     });
 
-    it('masks a root account before metadata is available', () => {
+    it('does not mask Azure account, resource-group, subscription, or tenant OII', () => {
         const context = { valuesToMask: [] };
         maskTreeElementTelemetry(context, {
             id: resource.resourceId,
@@ -40,11 +40,11 @@ describe('resource telemetry masks', () => {
                 subscription: { subscriptionId: resource.subscriptionId, tenantId: 'allowed-tenant' },
             },
         });
-        expect(maskUserInfo(error, context.valuesToMask)).toBe('Cannot load --- in --- using ---');
-        expect(context.valuesToMask).not.toContain('allowed-tenant');
+        expect(context.valuesToMask).toEqual([]);
+        expect(maskUserInfo(error, context.valuesToMask)).toBe(error);
     });
 
-    it('masks account metadata, connection credentials, and child IDs from loaded models', () => {
+    it('masks connection credentials and child IDs, not Azure account metadata', () => {
         const context = { valuesToMask: [] };
         maskTreeElementTelemetry(context, {
             id: `${resource.resourceId}/private-database/private-container`,
@@ -74,7 +74,6 @@ describe('resource telemetry masks', () => {
         });
         expect(context.valuesToMask).toEqual(
             expect.arrayContaining([
-                ...Object.values(resource),
                 'https://private-account.documents.azure.com',
                 'private-credential',
                 'private-client',
@@ -87,6 +86,7 @@ describe('resource telemetry masks', () => {
         );
         expect(context.valuesToMask).not.toContain('allowed-tenant');
         expect(context.valuesToMask).not.toContain('not-a-mask');
+        expect(context.valuesToMask.filter((value) => Object.values(resource).includes(value))).toEqual([]);
     });
 
     it('masks attached connection values independently without adding tenant IDs', () => {
@@ -112,7 +112,6 @@ describe('resource telemetry masks', () => {
             errorHandling: { rethrow: true },
         };
         const before = structuredClone(context);
-        maskAzureResourceTelemetry(context, { resourceId: '', accountName: ' \t ', resourceGroup: undefined });
         maskTreeElementTelemetry(context, {
             id: '',
             account: { id: '', name: ' ', connectionString: 'AccountKey=;Database= \t ' },

@@ -2,13 +2,13 @@
 name: cosmosdb-best-practices
 description: |
   Azure Cosmos DB performance optimization and best practices guidelines for NoSQL,
-  partitioning, unique keys, queries, and SDK usage. Use when writing, reviewing, or refactoring
+  partitioning, queries, and SDK usage. Use when writing, reviewing, or refactoring
   code that interacts with Azure Cosmos DB, designing data models, optimizing queries,
   or implementing high-performance database operations.
   USE FOR: Cosmos DB NoSQL, partition key design, RU optimization, point reads,
   cross-partition queries, SDK singleton, CosmosClient, container modeling,
   change feed, bulk operations, vector search, full-text search, hierarchical
-  partition keys, global distribution, autoscale throughput, indexing policy.
+  partition keys, global distribution, autoscale throughput, indexing policy,
   DO NOT USE FOR: PostgreSQL, MySQL, MongoDB (non-Azure), DynamoDB, Cassandra,
   Azure SQL, Cosmos DB for PostgreSQL (vCore), Cosmos DB for MongoDB vCore, Azure DocumentDB,
   general SQL databases, Redis, Elasticsearch.
@@ -21,7 +21,14 @@ metadata:
 
 # Azure Cosmos DB Best Practices
 
-Comprehensive performance optimization guide for Azure Cosmos DB applications, containing 100+ rules across 12 categories, prioritized by impact to guide automated refactoring and code generation.
+Comprehensive performance optimization guide for Azure Cosmos DB applications, containing 100+ rules across 13 categories, prioritized by impact to guide automated refactoring and code generation.
+
+Before answering, read the linked rule files relevant to the user's question.
+The quick reference below is an index, not the full guidance: SDK APIs, limits,
+configuration prerequisites, and caveats live in the rule bodies. Use the
+language-specific integration rule when one exists rather than substituting a
+generic pattern. Keep answers concise, but include the constraints that make the
+recommendation correct for the user's scenario.
 
 ## When to Apply
 
@@ -52,6 +59,8 @@ Reference these guidelines when:
 | 9 | Design Patterns | HIGH | `pattern-` |
 | 10 | Developer Tooling | MEDIUM | `tooling-` |
 | 11 | Vector Search | HIGH | `vector-` |
+| 12 | Full-Text Search | HIGH | `fts-` |
+| 13 | Security | HIGH | `security-` |
 
 ## Quick Reference
 
@@ -61,7 +70,7 @@ Reference these guidelines when:
 - [model-reference-large](rules/model-reference-large.md) - Reference data when items get too large
 - [model-avoid-2mb-limit](rules/model-avoid-2mb-limit.md) - Keep items well under 2MB limit
 - [model-id-constraints](rules/model-id-constraints.md) - Follow ID value length and character constraints
-- [model-unique-keys](rules/model-unique-keys.md) - Enforce partition-scoped uniqueness with creation-time policies
+- [model-unique-keys](rules/model-unique-keys.md) - Enforce business-key uniqueness within the correct logical partition scope
 - [model-nesting-depth](rules/model-nesting-depth.md) - Stay within 128-level nesting depth limit
 - [model-numeric-precision](rules/model-numeric-precision.md) - Understand IEEE 754 numeric precision limits
 - [model-denormalize-reads](rules/model-denormalize-reads.md) - Denormalize for read-heavy workloads including pre-computed aggregates
@@ -69,6 +78,7 @@ Reference these guidelines when:
 - [model-type-discriminator](rules/model-type-discriminator.md) - Use type discriminators for polymorphic data
 - [model-json-serialization](rules/model-json-serialization.md) - Handle JSON serialization correctly for Cosmos DB documents
 - [model-relationship-references](rules/model-relationship-references.md) - Use ID references with transient hydration for document relationships
+- [model-ttl-expiration](rules/model-ttl-expiration.md) - Configure TTL relative to the item's last update, with container defaults and item overrides
 
 ### 2. Partition Key Design (CRITICAL)
 
@@ -95,6 +105,7 @@ Reference these guidelines when:
 - [query-latest-by-timestamp](rules/query-latest-by-timestamp.md) - Query "latest" documents with explicit ORDER BY and TOP 1
 - [query-olap-detection](rules/query-olap-detection.md) - Detect and redirect analytical queries away from transactional containers
 - [query-point-reads](rules/query-point-reads.md) - Use point reads (ReadItem) instead of queries when id and partition key are known
+- [query-distinct-keyword](rules/query-distinct-keyword.md) - Return unique values with DISTINCT instead of client-side deduplication
 
 ### 4. SDK Best Practices (HIGH)
 
@@ -130,6 +141,16 @@ Reference these guidelines when:
 - [sdk-langgraph-mcp-tool-filtering](rules/sdk-langgraph-mcp-tool-filtering.md) - Filter MCP tools by name prefix for per-agent assignment
 - [sdk-dotnet-namespace-collision](rules/sdk-dotnet-namespace-collision.md) - Avoid `Microsoft.Azure.Cosmos` namespace collisions with domain models (User, Database, Container, etc.)
 - [sdk-ingestion-rate-control](rules/sdk-ingestion-rate-control.md) - Rate-control high-volume ingestion (concurrency, retry-after, throughput control)
+- [sdk-go-partition-key-metadata](rules/sdk-go-partition-key-metadata.md) - Upgrade stale Go SDKs to serialize partition-key kind metadata correctly across SDKs
+- [sdk-python-client-kwargs](rules/sdk-python-client-kwargs.md) - Configure Python v4 clients with flat keyword arguments instead of legacy ConnectionPolicy objects
+- [sdk-langchain-js-chat-history](rules/sdk-langchain-js-chat-history.md) - Persist isolated JS/TS conversations with AzureCosmosDBNoSQLChatMessageHistory
+- [sdk-langchain-js-embedding-model](rules/sdk-langchain-js-embedding-model.md) - Configure the Azure OpenAI deployment name for JS/TS embeddings
+- [sdk-langchain-js-filter-injection](rules/sdk-langchain-js-filter-injection.md) - Bind vector-store filter values through a parameterized filterClause
+- [sdk-langchain-js-fulltext-prerequisites](rules/sdk-langchain-js-fulltext-prerequisites.md) - Configure account capability, text policy, and indexes before hybrid search
+- [sdk-langchain-js-managed-identity](rules/sdk-langchain-js-managed-identity.md) - Authenticate JS/TS LangChain with managed identity and data-plane RBAC
+- [sdk-langchain-js-search-types](rules/sdk-langchain-js-search-types.md) - Choose vector, full-text, or hybrid retrieval for the query
+- [sdk-langchain-js-semantic-cache](rules/sdk-langchain-js-semantic-cache.md) - Reuse equivalent LLM responses with AzureCosmosDBNoSQLSemanticCache
+- [sdk-langchain-js-vectorstore-init](rules/sdk-langchain-js-vectorstore-init.md) - Initialize JS/TS vector stores with embeddings and pre-provisioned RBAC resources
 
 ### 5. Indexing Strategies (MEDIUM-HIGH)
 
@@ -185,11 +206,15 @@ Reference these guidelines when:
 - [pattern-langgraph-async-cosmos-routing](rules/pattern-langgraph-async-cosmos-routing.md) - Wrap Cosmos DB sync calls in asyncio.to_thread for LangGraph routing functions
 - [pattern-langgraph-async-cosmos-writes](rules/pattern-langgraph-async-cosmos-writes.md) - Use asyncio.to_thread for active agent writes in async node functions
 - [pattern-langgraph-agent-name-attribution](rules/pattern-langgraph-agent-name-attribution.md) - Tag AI messages with agent name for API response attribution
+- [pattern-ai-grounding-access](rules/pattern-ai-grounding-access.md) - Use point reads for AI grounding when the item id and partition key are known
 
 ### 10. Developer Tooling (MEDIUM)
 
 - [tooling-vscode-extension](rules/tooling-vscode-extension.md) - Use the VS Code extension for routine inspection and management
 - [tooling-emulator-setup](rules/tooling-emulator-setup.md) - Use the Emulator for local development and testing
+- [tooling-cosmosdb-shell-target](rules/tooling-cosmosdb-shell-target.md) - Verify the Cosmos DB Shell account and target before reading data
+- [tooling-cosmosdb-shell-writes](rules/tooling-cosmosdb-shell-writes.md) - Scope, preview, and confirm Cosmos DB Shell writes and deletions
+- [tooling-cosmosdb-shell-setup](rules/tooling-cosmosdb-shell-setup.md) - Diagnose Cosmos DB Shell MCP problems without changing the user's environment
 
 ### 11. Vector Search (HIGH)
 
@@ -208,6 +233,15 @@ Reference these guidelines when:
 - [fts-contains-query](rules/fts-keyword-matching.md) - Use `FullTextContains` / `FullTextContainsAll` / `FullTextContainsAny` instead of `CONTAINS(LOWER(...))`
 - [fts-score-ranking](rules/fts-relevance-ranking.md) - Use `ORDER BY RANK FullTextScore(path, term)` for BM25 relevance ranking
 - [fts-hybrid-query](rules/fts-hybrid-queries.md) - Combine FTS predicates with selective indexed equality/range filters; predicate text order does not control execution
+
+### 13. Security (HIGH)
+
+- [security-continuous-backup](rules/security-continuous-backup.md) - Enable continuous backup for point-in-time recovery
+- [security-disable-local-auth](rules/security-disable-local-auth.md) - Disable shared-key authentication after migrating clients to Entra ID
+- [security-managed-identity](rules/security-managed-identity.md) - Use managed identity and DefaultAzureCredential instead of stored keys
+- [security-network-restrict](rules/security-network-restrict.md) - Restrict public access and prefer private endpoints for production
+- [security-private-endpoint-dns](rules/security-private-endpoint-dns.md) - Configure private DNS records and VNet links while retaining the account hostname
+- [security-rbac-least-privilege](rules/security-rbac-least-privilege.md) - Assign narrowly scoped Cosmos DB data-plane roles
 
 ## How to Use
 

@@ -49,6 +49,7 @@
     "onLanguageModelTool:cosmosdb_sampleContainerSchema",
     "onLanguageModelTool:cosmosdb_getQueryEditorContext",
     "onLanguageModelTool:cosmosdb_applyQueryToEditor",
+    "onLanguageModelTool:cosmosdb_applyDataModelingQuery",
     "onLanguageModelTool:cosmosdb_executeCurrentQuery",
     "onLanguageModelTool:cosmosdb_openQueryEditor",
     "onLanguageModelTool:cosmosdb_listOpenConnections",
@@ -266,6 +267,65 @@
       }
     },
     "languageModelTools": [
+      {
+        "name": "cosmosdb_applyDataModelingQuery",
+        "displayName": "Apply Data Modeler Query",
+        "modelDescription": "Applies a generated Cosmos DB NoSQL SELECT query to the originating Data Modeler read-query row. Use the wizardTabId and requestId from the generation request. This does not execute the query or update a Query Editor. Send either query (SQL only) or error explaining why generation could not be completed, never both. The query is applied only if the original row and modeled schema have not changed.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "cosmosdb_applyDataModelingQuery",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "wizardTabId": {
+              "type": "string",
+              "format": "uuid",
+              "description": "The wizardTabId from the generation request."
+            },
+            "requestId": {
+              "type": "string",
+              "format": "uuid",
+              "description": "The requestId from the generation request."
+            },
+            "query": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The generated Cosmos DB NoSQL SELECT query, SQL only."
+            },
+            "error": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Why a query could not be generated. Send instead of query."
+            }
+          },
+          "required": [
+            "wizardTabId",
+            "requestId"
+          ],
+          "oneOf": [
+            {
+              "required": [
+                "query"
+              ],
+              "not": {
+                "required": [
+                  "error"
+                ]
+              }
+            },
+            {
+              "required": [
+                "error"
+              ],
+              "not": {
+                "required": [
+                  "query"
+                ]
+              }
+            }
+          ],
+          "additionalProperties": false
+        }
+      },
       {
         "name": "cosmosdb_reportPartitionKeyRecommendation",
         "displayName": "Report Partition Key Recommendation",

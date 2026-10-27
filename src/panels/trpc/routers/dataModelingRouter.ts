@@ -13,6 +13,7 @@ import {
     generateDeploymentTemplate,
     getDeploymentOptions,
 } from '../../../commands/dataModeling/deployDataModel';
+import { buildQueryGenerationPrompt } from '../../../dataModeling/DataModelingQueryGeneration';
 import {
     DeploymentRequestSchema,
     DownloadDeploymentTemplateInputSchema,
@@ -23,6 +24,7 @@ import {
 } from '../../../dataModeling/deploymentModel';
 import { ModelingAdvisorSnapshotSchema, WizardStateSchema } from '../../../dataModeling/modelingAdvisorSchema';
 import { ModelingTelemetryEventSchema } from '../../../dataModeling/modelingTelemetrySchema';
+import { QueryGenerationOutcomeSchema, QueryGenerationRequestSchema } from '../../../dataModeling/queryGeneration';
 import { buildRecommendationPrompt } from '../../../dataModeling/recommendationPrompt';
 import { ensureAIFeaturesEnabled } from '../../../utils/copilotUtils';
 import { openUrl } from '../../../utils/openUrl';
@@ -49,6 +51,22 @@ const stateProcedure = dataModelingProcedure.use(({ ctx, next }) => {
 });
 
 export const dataModelingRouterDef = dataModelingRouter({
+    generateQuery: stateProcedure.input(QueryGenerationRequestSchema).mutation(async ({ ctx, input }) => {
+        await ensureAIFeaturesEnabled();
+        ctx.queryGeneration.begin(input);
+        try {
+            await vscode.commands.executeCommand('workbench.action.chat.open', {
+                mode: 'agent',
+                query: buildQueryGenerationPrompt(input, ctx.wizardTabId),
+            });
+        } catch (error) {
+            ctx.queryGeneration.cancel(input.requestId);
+            throw error;
+        }
+    }),
+    acknowledgeQuery: stateProcedure
+        .input(z.object({ requestId: z.string().uuid(), outcome: QueryGenerationOutcomeSchema }))
+        .mutation(({ ctx, input }) => ctx.queryGeneration.acknowledge(input.requestId, input.outcome)),
     recordTelemetry: stateProcedure.input(ModelingTelemetryEventSchema).mutation(({ ctx, input }) => {
         ctx.modelingTelemetry?.record(input);
     }),

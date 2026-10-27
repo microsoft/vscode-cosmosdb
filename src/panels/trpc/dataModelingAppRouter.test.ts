@@ -7,6 +7,7 @@ import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { TypedEventSink } from '@microsoft/vscode-ext-webview';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { generateDeploymentTemplate, getDeploymentOptions } from '../../commands/dataModeling/deployDataModel';
+import { DataModelingQueryGeneration } from '../../dataModeling/DataModelingQueryGeneration';
 import { dataModelingAppRouter, dataModelingCallerFactory, type DataModelingRouterContext } from './appRouter';
 
 vi.mock('../../commands/dataModeling/deployDataModel', () => ({
@@ -76,6 +77,8 @@ describe('assembled Data Modeler host router', () => {
             'dataModeling.generateDeploymentTemplate',
             'dataModeling.downloadDeploymentTemplate',
             'dataModeling.deploy',
+            'dataModeling.generateQuery',
+            'dataModeling.acknowledgeQuery',
         ] as const) {
             expect(dataModelingAppRouter._def.procedures).toHaveProperty([path]);
         }
@@ -86,6 +89,7 @@ describe('assembled Data Modeler host router', () => {
             account: { endpoint: 'https://source.documents.azure.com/', name: 'source' },
             webviewName: 'cosmosDbDataModeling',
             wizardTabId: 'wizard',
+            queryGeneration: new DataModelingQueryGeneration(),
             project: {} as DataModelingRouterContext['project'],
             panel: {} as DataModelingRouterContext['panel'],
             eventSink: new TypedEventSink(),

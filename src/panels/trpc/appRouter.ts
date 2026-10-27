@@ -21,6 +21,7 @@ import { type NoSqlQueryConnection } from '../../cosmosdb/NoSqlQueryConnection';
 import { type DocumentWriteResult } from '../../cosmosdb/session/DocumentSession';
 import { type QuerySession } from '../../cosmosdb/session/QuerySession';
 import { type CosmosDBRecordIdentifier } from '../../cosmosdb/types/queryResult';
+import { type DataModelingQueryGeneration } from '../../dataModeling/DataModelingQueryGeneration';
 import { type ModelingTelemetry } from '../../dataModeling/ModelingTelemetry';
 import { type DataModelerAccount, type DataModelerProjectService } from '../../services/DataModelerProjectService';
 import { type TelemetryContext } from '../../Telemetry';
@@ -172,6 +173,7 @@ export type AccountOverviewRouterContext = CosmosDBRouterContext & {
 };
 
 export type DataModelingRouterContext = CosmosDBRouterContext & {
+    queryGeneration: DataModelingQueryGeneration;
     modelingTelemetry?: ModelingTelemetry;
     project: DataModelerProjectService;
     account: DataModelerAccount;

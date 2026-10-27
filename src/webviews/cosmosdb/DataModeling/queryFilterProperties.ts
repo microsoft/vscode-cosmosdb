@@ -115,3 +115,18 @@ export function readFilterProperties(read: Pick<ReadQuery, 'filters'>): string[]
         ? read.filters
         : queryPropertyNames(read.filters.trim() ? `SELECT ${read.filters} FROM c` : '').names;
 }
+
+export function queryTextPatch(
+    read: ReadQuery,
+    query: string,
+    propertyNames: string[],
+): Pick<ReadQuery, 'query' | 'filters'> {
+    const referenced = queryPropertyNames(query);
+    const selected = readFilterProperties(read);
+    return {
+        query,
+        filters: referenced.valid
+            ? [...new Set([...selected, ...propertyNames.filter((name) => referenced.names.includes(name))])]
+            : selected,
+    };
+}

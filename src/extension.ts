@@ -32,6 +32,7 @@ import * as fabric from '@microsoft/vscode-fabric-api';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import {
+    registerApplyDataModelingQueryTool,
     registerApplyQueryToEditorTool,
     registerExecuteCurrentQueryTool,
     registerFocusQueryEditorTool,
@@ -216,6 +217,7 @@ export async function activateInternal(
 
         // Data Modeling wizard: receives Copilot's partition-key recommendation.
         registerReportPartitionKeyRecommendationTool(context);
+        registerApplyDataModelingQueryTool(context);
 
         // Suppress "Report an Issue" button for all errors in favor of the command
         registerErrorHandler((c) => (c.errorHandling.suppressReportIssue = true));

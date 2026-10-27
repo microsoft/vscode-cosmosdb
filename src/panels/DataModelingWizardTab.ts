@@ -7,6 +7,7 @@ import { TypedEventSink } from '@microsoft/vscode-ext-webview';
 import { attachTrpc } from '@microsoft/vscode-ext-webview/host';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
+import { DataModelingQueryGeneration } from '../dataModeling/DataModelingQueryGeneration';
 import { ModelingTelemetry } from '../dataModeling/ModelingTelemetry';
 import { ext } from '../extensionVariables';
 import { DataModelerProjectService, type DataModelerAccount } from '../services/DataModelerProjectService';
@@ -26,6 +27,7 @@ export class DataModelingWizardTab extends BaseTab {
 
     public readonly eventSink: TypedEventSink<DataModelingEvent>;
     public readonly modelingTelemetry: ModelingTelemetry;
+    public readonly queryGeneration = new DataModelingQueryGeneration();
 
     protected constructor(
         panel: vscode.WebviewPanel,
@@ -118,6 +120,7 @@ export class DataModelingWizardTab extends BaseTab {
     public dispose(): void {
         if (this.isDisposed) return;
         this.modelingTelemetry.dispose();
+        this.queryGeneration.dispose();
         DataModelingWizardTab.openTabs.delete(this);
         this.eventSink.close();
         super.dispose();
@@ -132,6 +135,7 @@ export class DataModelingWizardTab extends BaseTab {
             eventSink: this.eventSink,
             wizardTabId: this.getId(),
             modelingTelemetry: this.modelingTelemetry,
+            queryGeneration: this.queryGeneration,
         };
     }
 }

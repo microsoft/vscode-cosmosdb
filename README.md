@@ -106,6 +106,12 @@ GitHub Copilot models and AI features enabled.
 3. Deploy selected databases and containers directly, or export editable **Bicep**, **Terraform**, or **C# SDK** code.
    Deployment requires resource-creation permissions and may incur Azure charges; it does not upload documents.
 
+On a container's **Queries** tab, enter a read description and select the sparkle button inside the description box.
+This opens Copilot Chat in agent mode with the modeled schema and partition key. Copilot uses the
+`cosmosdb_applyDataModelingQuery` tool to fill that row's **Query** and update its filter selections without executing
+anything or requiring a deployed container. Review the generated SQL before using it. Results are rejected if the
+description, query, filters, or schema changed while Copilot was working; select the sparkle button again to retry.
+
 Work is saved locally per account so you can resume later; saved sessions expire 30 days after their last save.
 To permanently clear local Data Modeler data for every account, run **Cosmos DB: Delete All Data Modeler Data**
 from the Command Palette and confirm. This closes all Data Modeler tabs and removes saved sessions, including legacy

@@ -29,6 +29,8 @@ const client = vi.hoisted(() => ({
         loadState: { query: vi.fn() },
         saveState: { mutate: vi.fn() },
         requestRecommendation: { mutate: vi.fn() },
+        generateQuery: { mutate: vi.fn() },
+        acknowledgeQuery: { mutate: vi.fn() },
         recordTelemetry: { mutate: vi.fn() },
         getDeploymentOptions: { query: vi.fn() },
         generateDeploymentTemplate: { query: vi.fn() },
@@ -207,6 +209,8 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         client.dataModeling.promptContainerName.mutate.mockResolvedValue(undefined);
         client.dataModeling.saveState.mutate.mockResolvedValue(undefined);
         client.dataModeling.requestRecommendation.mutate.mockResolvedValue(undefined);
+        client.dataModeling.generateQuery.mutate.mockResolvedValue(undefined);
+        client.dataModeling.acknowledgeQuery.mutate.mockResolvedValue(undefined);
         client.dataModeling.recordTelemetry.mutate.mockResolvedValue(undefined);
         client.dataModeling.getDeploymentOptions.query.mockResolvedValue({
             accountName: 'source',
@@ -220,6 +224,42 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         client.dataModeling.downloadDeploymentTemplate.mutate.mockResolvedValue('saved');
         client.dataModeling.openDataExplorer.mutate.mockResolvedValue(undefined);
         client.dataModeling.events.subscribe.mockReturnValue({ unsubscribe: vi.fn() });
+    });
+
+    it('opens Chat from the description sparkle, receives SQL, and autosaves the correct row without touching recommendations', async () => {
+        const saved = restored();
+        saved.wizard.dataModel.containers[0].reads = [
+            { id: 'query', pattern: 'Get an order by id', query: '', filters: [], qps: 20 },
+        ];
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        render(<DataModelingWizard />);
+        await continueExisting();
+        await userEvent.click(screen.getByRole('tab', { name: 'Queries' }));
+        const button = screen.getByRole('button', { name: 'Generate query for read 1 with Copilot' });
+        expect(button.closest('.fui-Input')).toContainElement(
+            screen.getByRole('textbox', { name: 'Description for read 1' }),
+        );
+        await userEvent.click(button);
+        expect(client.dataModeling.generateQuery.mutate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                read: { id: 'query', pattern: 'Get an order by id' },
+            }),
+        );
+        const request = client.dataModeling.generateQuery.mutate.mock.lastCall![0] as { requestId: string };
+        const callbacks = client.dataModeling.events.subscribe.mock.lastCall![1] as {
+            onData: (event: DataModelingEvent) => void;
+        };
+        const query = 'SELECT *\nFROM c WHERE c.id = @id';
+        await act(async () => callbacks.onData({ type: 'queryGenerated', requestId: request.requestId, query }));
+        expect(screen.getByRole('textbox', { name: 'Query for read 1' })).toHaveValue(query);
+        await waitFor(() => expect(lastSave().wizard.dataModel.containers[0].reads[0].query).toBe(query));
+        expect(lastSave().wizard.dataModel.containers[0].reads[0].qps).toBe(20);
+        expect(lastSave().recommendation).toEqual(saved.recommendation);
+        expect(client.dataModeling.acknowledgeQuery.mutate).toHaveBeenCalledWith({
+            requestId: request.requestId,
+            outcome: 'applied',
+        });
+        expect(screen.getByRole('status')).toHaveTextContent('Query generated');
     });
 
     it('uses the shared sticky-navigation layout and keeps the footer outside its scroll region', async () => {

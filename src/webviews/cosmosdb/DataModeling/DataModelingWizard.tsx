@@ -42,6 +42,7 @@ import { WorkloadPage } from './pages/WorkloadPage';
 import { getScenarioList } from './scenarios';
 import { useModelingPageVisible, useModelingTelemetryReporter, useModelingUsage } from './useModelingTelemetry';
 import { useNativeConfirmation } from './useNativeConfirmation';
+import { useQueryGeneration } from './useQueryGeneration';
 
 /**
  * Root of the Data-Modeling (Partition Key Advisor) wizard.
@@ -298,6 +299,16 @@ const HydratedDataModelingWizard = ({
             })),
         [setSnapshot],
     );
+    const setDataModel = useCallback(
+        (dataModel: DataModel) => setState((prev) => ({ ...prev, dataModel })),
+        [setState],
+    );
+    const {
+        generate: generateQuery,
+        statuses: queryStatuses,
+        receive: receiveQuery,
+        subscriptionFailed: querySubscriptionFailed,
+    } = useQueryGeneration(state.dataModel, setDataModel);
     const reachedSteps =
         state.reachedSteps ??
         buildStepValues(state.dataModel).slice(0, snapshot.recommendation.value ? undefined : state.step);
@@ -371,6 +382,10 @@ const HydratedDataModelingWizard = ({
     useEffect(() => {
         const subscription = trpcClient.dataModeling.events.subscribe(undefined, {
             onData: (event: DataModelingEvent) => {
+                if (event.type === 'queryGenerated') {
+                    receiveQuery(event);
+                    return;
+                }
                 if (event.requestId && event.requestId !== requestId.current) {
                     return;
                 }
@@ -421,6 +436,7 @@ const HydratedDataModelingWizard = ({
                 });
             },
             onError: () => {
+                querySubscriptionFailed();
                 if (requestPending.current) {
                     report({
                         type: 'recommendationClientFailure',
@@ -444,7 +460,7 @@ const HydratedDataModelingWizard = ({
             },
         });
         return () => subscription.unsubscribe();
-    }, [trpcClient, setSnapshot, report]);
+    }, [trpcClient, setSnapshot, report, receiveQuery, querySubscriptionFailed]);
 
     useEffect(() => {
         if (editingContainerId) {
@@ -525,11 +541,6 @@ const HydratedDataModelingWizard = ({
     const scenarioLabel = useMemo(
         () => getScenarioList().find((s) => s.id === state.scenario)?.title,
         [state.scenario],
-    );
-
-    const setDataModel = useCallback(
-        (dataModel: DataModel) => setState((prev) => ({ ...prev, dataModel })),
-        [setState],
     );
 
     const startEditingContainerName = (containerId: string, entity: string) => {
@@ -1087,6 +1098,8 @@ const HydratedDataModelingWizard = ({
                                 onTelemetry={report}
                                 onChangeData={onChangeData}
                                 onChange={setDataModel}
+                                onGenerateQuery={generateQuery}
+                                queryStatuses={queryStatuses}
                             />
                         </WizardStep>
                     ))}

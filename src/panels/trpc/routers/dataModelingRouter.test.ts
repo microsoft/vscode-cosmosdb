@@ -13,7 +13,9 @@ import {
     getDeploymentOptions,
 } from '../../../commands/dataModeling/deployDataModel';
 import { type AzureResourceMetadata } from '../../../cosmosdb/AzureResourceMetadata';
+import { DataModelingQueryGeneration } from '../../../dataModeling/DataModelingQueryGeneration';
 import { type ModelingTelemetry } from '../../../dataModeling/ModelingTelemetry';
+import { queryGenerationContext } from '../../../dataModeling/queryGeneration';
 import { ensureAIFeaturesEnabled } from '../../../utils/copilotUtils';
 import { openUrl } from '../../../utils/openUrl';
 import { applyScenario, createInitialState } from '../../../webviews/cosmosdb/DataModeling/dataModel';
@@ -94,6 +96,7 @@ function context(): DataModelingRouterContext {
         account: { endpoint: 'https://source.documents.azure.com/', getControlPlane: vi.fn() },
         webviewName: 'cosmosDbDataModeling',
         wizardTabId: 'wizard',
+        queryGeneration: new DataModelingQueryGeneration(),
         project: {} as DataModelingRouterContext['project'],
         panel: {} as DataModelingRouterContext['panel'],
         eventSink: {} as DataModelingRouterContext['eventSink'],
@@ -624,6 +627,56 @@ describe('recommendation prompt', () => {
             caller.openDataExplorer({ databaseId: 'PRIVATE DATABASE', containerId: 'PRIVATE CONTAINER' }),
         ).rejects.toThrow();
         expect(openDataExplorer).toHaveBeenCalledWith('error', expect.any(Number));
+    });
+
+    it('launches query generation in agent Chat with modeled schema and correlated tool routing', async () => {
+        const ctx = context();
+        const begin = vi.spyOn(ctx.queryGeneration, 'begin');
+        const container = applyScenario(createInitialState(), 'ecommerce').dataModel.containers[0];
+        const request = {
+            requestId: '12345678-1234-4123-8123-123456789001',
+            ...queryGenerationContext(container, container.reads[0]),
+        };
+        await dataModelingRouterDef.createCaller(ctx).generateQuery(request);
+        expect(ensureAIFeaturesEnabled).toHaveBeenCalled();
+        expect(begin).toHaveBeenCalledWith(request);
+        expect(vscode.commands.executeCommand).toHaveBeenCalledWith('workbench.action.chat.open', {
+            mode: 'agent',
+            query: expect.stringContaining('#cosmosdb_applyDataModelingQuery'),
+        });
+        expect(ctx.actionContext?.telemetry.suppressAll).toBe(true);
+    });
+
+    it('invalidates query requests if Chat cannot open and forwards delivery acknowledgements', async () => {
+        const ctx = context();
+        const cancel = vi.spyOn(ctx.queryGeneration, 'cancel');
+        const acknowledge = vi.spyOn(ctx.queryGeneration, 'acknowledge');
+        const container = applyScenario(createInitialState(), 'ecommerce').dataModel.containers[0];
+        const request = {
+            requestId: '12345678-1234-4123-8123-123456789001',
+            ...queryGenerationContext(container, container.reads[0]),
+        };
+        vi.mocked(vscode.commands.executeCommand).mockRejectedValueOnce(new Error('Chat unavailable'));
+        const caller = dataModelingRouterDef.createCaller(ctx);
+        await expect(caller.generateQuery(request)).rejects.toThrow('Chat unavailable');
+        expect(cancel).toHaveBeenCalledWith(request.requestId);
+        await caller.acknowledgeQuery({ requestId: request.requestId, outcome: 'stale' });
+        expect(acknowledge).toHaveBeenCalledWith(request.requestId, 'stale');
+    });
+
+    it('rejects empty descriptions and unavailable AI before registering query requests', async () => {
+        const ctx = context();
+        const begin = vi.spyOn(ctx.queryGeneration, 'begin');
+        const container = applyScenario(createInitialState(), 'ecommerce').dataModel.containers[0];
+        const request = {
+            requestId: '12345678-1234-4123-8123-123456789001',
+            ...queryGenerationContext(container, container.reads[0]),
+        };
+        const caller = dataModelingRouterDef.createCaller(ctx);
+        await expect(caller.generateQuery({ ...request, read: { ...request.read, pattern: ' ' } })).rejects.toThrow();
+        vi.mocked(ensureAIFeaturesEnabled).mockRejectedValueOnce(new Error('AI disabled'));
+        await expect(caller.generateQuery(request)).rejects.toThrow('AI disabled');
+        expect(begin).not.toHaveBeenCalled();
     });
 
     it('delegates the workflow to the skill and includes verified default context and tool routing', async () => {

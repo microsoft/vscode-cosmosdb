@@ -13,6 +13,7 @@ export {
 export { USER_DATA_END, USER_DATA_START, wrapUserDataForAgent } from './chatUtils';
 
 // Language model tools
+export { registerApplyDataModelingQueryTool } from './applyDataModelingQueryTool';
 export { APPLY_QUERY_TO_EDITOR_TOOL_NAME, registerApplyQueryToEditorTool } from './applyQueryToEditorTool';
 export { EXECUTE_CURRENT_QUERY_TOOL_NAME, registerExecuteCurrentQueryTool } from './executeCurrentQueryTool';
 export { FOCUS_QUERY_EDITOR_TOOL_NAME, registerFocusQueryEditorTool } from './focusQueryEditorTool';

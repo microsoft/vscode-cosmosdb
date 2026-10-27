@@ -55,6 +55,35 @@ function nestedModel(): DataModel {
 }
 
 describe('nested query property references', () => {
+    it('names the sparkle button, disables blank descriptions, and exposes launch status', async () => {
+        const model = nestedModel();
+        const generate = vi.fn().mockResolvedValue(undefined);
+        const { rerender } = render(<QueriesPage model={model} onChange={vi.fn()} onGenerateQuery={generate} />);
+        const label = 'Generate query for read 1 with Copilot';
+        expect(screen.getByRole('button', { name: label })).toBeDisabled();
+        model.containers[0].reads[0].pattern = 'Get customer orders';
+        rerender(<QueriesPage model={model} onChange={vi.fn()} onGenerateQuery={generate} />);
+        const button = screen.getByRole('button', { name: label });
+        button.focus();
+        await userEvent.keyboard('{Enter}');
+        expect(generate).toHaveBeenCalledWith(model.containers[0].id, 'read');
+        rerender(
+            <QueriesPage
+                model={model}
+                onChange={vi.fn()}
+                onGenerateQuery={generate}
+                queryStatuses={{
+                    [JSON.stringify([model.containers[0].id, 'read'])]: {
+                        opening: true,
+                        message: 'Opening Copilot Chat…',
+                    },
+                }}
+            />,
+        );
+        expect(screen.getByRole('button', { name: label })).toBeDisabled();
+        expect(screen.getByRole('status')).toHaveTextContent('Opening Copilot Chat…');
+    });
+
     it.each([{ savedFilters: [] }, { savedFilters: ['items/productId'] }])(
         'resolves iterator references with saved filters $savedFilters without selecting a same-named root property or warning on the nested one',
         ({ savedFilters }) => {
@@ -164,7 +193,7 @@ describe('catalog query fields', () => {
             expect(control.closest('.fui-Field')).toContainElement(caption);
             expect(control.compareDocumentPosition(caption) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
         }
-        expect(screen.getByRole('textbox', { name: 'Query for read 1' }).tagName).toBe('INPUT');
+        expect(screen.getByRole('textbox', { name: 'Query for read 1' }).tagName).toBe('TEXTAREA');
         const filters = screen.getByRole('combobox', { name: 'Filters on for read 1' });
         expect(filters).toHaveTextContent('tenantId');
         expect(filters).toHaveAccessibleName('Filters on for read 1');

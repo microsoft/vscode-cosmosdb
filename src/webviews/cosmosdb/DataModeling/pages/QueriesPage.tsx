@@ -3,14 +3,27 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Button, Dropdown, Field, Input, makeStyles, Option, shorthands, tokens } from '@fluentui/react-components';
-import { AddRegular, DismissRegular } from '@fluentui/react-icons';
+import {
+    Button,
+    Dropdown,
+    Field,
+    Input,
+    makeStyles,
+    Option,
+    shorthands,
+    Spinner,
+    Textarea,
+    tokens,
+    Tooltip,
+} from '@fluentui/react-components';
+import { AddRegular, DismissRegular, SparkleRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { InlineGuidance, MetricPill, PillRow, SubPanel } from '../components/primitives';
 import { getActiveContainer, getAvgDocSizeKb, updateActiveContainer, type DataModel } from '../dataModel';
 import { type ReadQuery, type WriteOps } from '../models';
-import { queryPropertyNames, readFilterProperties } from '../queryFilterProperties';
+import { queryPropertyNames, queryTextPatch, readFilterProperties } from '../queryFilterProperties';
 import { nextId } from '../scenarios';
+import { queryGenerationKey, type QueryGenerationStatus } from '../useQueryGeneration';
 
 /**
  * Queries tab of a container step. Self-contained editor for the active container's read
@@ -83,9 +96,11 @@ const useStyles = makeStyles({
 export interface QueriesPageProps {
     model: DataModel;
     onChange: (next: DataModel) => void;
+    onGenerateQuery?: (containerId: string, readId: string) => Promise<void>;
+    queryStatuses?: Record<string, QueryGenerationStatus>;
 }
 
-export function QueriesPage({ model, onChange }: QueriesPageProps) {
+export function QueriesPage({ model, onChange, onGenerateQuery, queryStatuses }: QueriesPageProps) {
     const styles = useStyles();
     const patternLabel = l10n.t('Description');
     const queryLabel = l10n.t('Query');
@@ -136,6 +151,8 @@ export function QueriesPage({ model, onChange }: QueriesPageProps) {
                     <p>{l10n.t('“Get all X for Y” → Y is your partition key candidate.')}</p>
                 </InlineGuidance>
                 {reads.map((r, index) => {
+                    const generation = active ? queryStatuses?.[queryGenerationKey(active.id, r.id)] : undefined;
+                    const generateLabel = l10n.t('Generate query for read {n} with Copilot', { n: index + 1 });
                     const selected = readFilterProperties(r);
                     const referenced = queryPropertyNames(r.query ?? '');
                     const missing = selected.filter((name) => !referenced.names.includes(name));
@@ -169,7 +186,30 @@ export function QueriesPage({ model, onChange }: QueriesPageProps) {
                                         value={r.pattern}
                                         placeholder={l10n.t('e.g., Get all orders for a customer')}
                                         onChange={(_, data) => patchRead(r.id, { pattern: data.value })}
+                                        contentAfter={
+                                            onGenerateQuery && active ? (
+                                                <Tooltip content={generateLabel} relationship="description">
+                                                    <Button
+                                                        appearance="subtle"
+                                                        size="small"
+                                                        icon={
+                                                            generation?.opening ? (
+                                                                <Spinner size="tiny" aria-hidden="true" />
+                                                            ) : (
+                                                                <SparkleRegular />
+                                                            )
+                                                        }
+                                                        aria-label={generateLabel}
+                                                        disabled={!r.pattern.trim() || generation?.opening}
+                                                        onClick={() => void onGenerateQuery(active.id, r.id)}
+                                                    />
+                                                </Tooltip>
+                                            ) : undefined
+                                        }
                                     />
+                                    {generation?.message ? (
+                                        <output aria-live="polite">{generation.message}</output>
+                                    ) : null}
                                 </Field>
                                 <Field
                                     label={qpsLabel}
@@ -197,30 +237,18 @@ export function QueriesPage({ model, onChange }: QueriesPageProps) {
                                         className={styles.input}
                                         hint={{ children: queryHint, className: styles.hint, title: queryHint }}
                                     >
-                                        <Input
+                                        <Textarea
                                             className={styles.input}
                                             aria-label={l10n.t('{label} for read {n}', {
                                                 label: queryLabel,
                                                 n: index + 1,
                                             })}
+                                            resize="vertical"
                                             value={r.query ?? ''}
                                             placeholder="SELECT * FROM c WHERE customerId = @customerId"
-                                            onChange={(_, data) => {
-                                                const next = queryPropertyNames(data.value);
-                                                patchRead(r.id, {
-                                                    query: data.value,
-                                                    filters: next.valid
-                                                        ? [
-                                                              ...new Set([
-                                                                  ...selected,
-                                                                  ...propertyNames.filter((name) =>
-                                                                      next.names.includes(name),
-                                                                  ),
-                                                              ]),
-                                                          ]
-                                                        : selected,
-                                                });
-                                            }}
+                                            onChange={(_, data) =>
+                                                patchRead(r.id, queryTextPatch(r, data.value, propertyNames))
+                                            }
                                         />
                                     </Field>
                                     <Field

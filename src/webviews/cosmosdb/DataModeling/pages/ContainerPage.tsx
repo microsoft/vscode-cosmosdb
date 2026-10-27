@@ -11,7 +11,7 @@ import { type ModelingSection, type ModelingTelemetryEvent } from '../../../../d
 import { type DataModel } from '../dataModel';
 import { useModelingPageVisible } from '../useModelingTelemetry';
 import { DataPage } from './DataPage';
-import { QueriesPage } from './QueriesPage';
+import { QueriesPage, type QueriesPageProps } from './QueriesPage';
 import { ScalePage } from './ScalePage';
 
 /**
@@ -48,6 +48,8 @@ export interface ContainerPageProps {
     onVisit?: (containerId: string, section: ModelingSection) => void;
     onEdited?: (section: ModelingSection) => void;
     onTelemetry?: (event: ModelingTelemetryEvent) => void;
+    onGenerateQuery?: QueriesPageProps['onGenerateQuery'];
+    queryStatuses?: QueriesPageProps['queryStatuses'];
 }
 
 export function ContainerPage({
@@ -62,6 +64,8 @@ export function ContainerPage({
     onVisit,
     onEdited,
     onTelemetry,
+    onGenerateQuery,
+    queryStatuses,
 }: ContainerPageProps) {
     const styles = useStyles();
     const id = useId();
@@ -126,7 +130,14 @@ export function ContainerPage({
                 hidden={tab !== 'queries'}
                 tabIndex={0}
             >
-                {tab === 'queries' ? <QueriesPage model={model} onChange={change} /> : null}
+                {tab === 'queries' ? (
+                    <QueriesPage
+                        model={model}
+                        onChange={change}
+                        onGenerateQuery={onGenerateQuery}
+                        queryStatuses={queryStatuses}
+                    />
+                ) : null}
             </div>
             <div
                 role="tabpanel"

@@ -5,12 +5,14 @@
 
 import { type TypedEventSink } from '@microsoft/vscode-ext-webview';
 import { z } from 'zod';
+import { QueryGenerationResultSchema } from '../../../dataModeling/queryGeneration';
 import { PartitionKeyRecommendationSchema } from '../../../dataModeling/recommendationSchema';
 import { dataModelingProcedure, dataModelingRouter } from '../trpc';
 
 export * from '../../../dataModeling/recommendationSchema';
 
 export const DataModelingEventSchema = z.discriminatedUnion('type', [
+    QueryGenerationResultSchema.safeExtend({ type: z.literal('queryGenerated') }),
     z.object({
         type: z.literal('recommendationReceived'),
         recommendation: PartitionKeyRecommendationSchema,

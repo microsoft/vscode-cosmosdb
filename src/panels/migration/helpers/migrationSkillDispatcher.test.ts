@@ -1,0 +1,1072 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import * as path from 'path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import * as vscode from 'vscode';
+import { ext } from '../../../extensionVariables';
+import { MigrationProjectService, type ProjectJson } from '../../../services/MigrationProjectService';
+import { getAvailableModelsInfo } from '../../../utils/aiUtils';
+import { MigrationRunTracker } from '../../../webviews/cosmosdb/Migration/state/deriveMigrationPhaseStates';
+import { MigrationAssistantTab } from '../../MigrationAssistantTab';
+import { capturePrompt, isMigrationAiMockEnabled } from './e2eMigrationAiMock';
+import {
+    buildMigrationSkillPrompt,
+    MigrationSkillChatSession,
+    type MigrationSkillInvocation,
+} from './migrationSkillDispatcher';
+
+vi.mock('../../../utils/aiUtils', () => ({ getAvailableModelsInfo: vi.fn() }));
+
+vi.mock('@microsoft/vscode-azext-azureutils', () => ({}));
+vi.mock('@microsoft/vscode-azext-utils', () => ({}));
+vi.mock('@microsoft/vscode-azureresources-api', () => ({}));
+vi.mock('../../../cosmosdb/CosmosDBCredential', () => ({}));
+vi.mock('../../../extensionVariables', () => ({ ext: { isAIFeaturesEnabled: true } }));
+vi.mock('../../../tree/cosmosdb/AccountInfo', () => ({}));
+vi.mock('../../../tree/workspace-view/migration/MigrationWorkspaceItem', () => ({
+    MigrationWorkspaceItem: { addMigration: vi.fn().mockResolvedValue(undefined) },
+}));
+vi.mock('../../../utils/azureClients', () => ({}));
+vi.mock('../../../utils/pickItem/pickAppResource', () => ({}));
+vi.mock('../../BaseTab', () => ({ BaseTab: class {} }));
+vi.mock('./testConnection', () => ({}));
+vi.mock('../../trpc/appRouter', () => ({}));
+
+vi.mock('./e2eMigrationAiMock', () => ({
+    capturePrompt: vi.fn(),
+    isMigrationAiMockEnabled: vi.fn().mockReturnValue(false),
+}));
+
+vi.mock('vscode', () => ({
+    Uri: { file: (fsPath: string) => ({ fsPath }) },
+    FileType: { File: 1, Directory: 2 },
+    commands: {
+        executeCommand: vi.fn().mockResolvedValue(undefined),
+        getCommands: vi.fn().mockResolvedValue([]),
+    },
+    window: { showWarningMessage: vi.fn(), showTextDocument: vi.fn() },
+    workspace: {
+        get workspaceFolders() {
+            return [{ uri: { fsPath: '/workspace/shop' }, name: 'shop', index: 0 }];
+        },
+        fs: { stat: vi.fn() },
+    },
+}));
+
+describe('MigrationAssistantTab AI launch guards', () => {
+    const launchCommands = [
+        { command: 'analyzeApplication', params: [] },
+        { command: 'analyzeDatabaseSchema', params: [] },
+        { command: 'analyzeVolumetrics', params: [] },
+        { command: 'analyzeAccessPatterns', params: [] },
+        { command: 'runDiscovery', params: [] },
+        { command: 'runAssessment', params: [] },
+        { command: 'runSchemaConversion', params: [] },
+        { command: 'provisionAccount', params: [] },
+        { command: 'populateSampleData', params: [] },
+        { command: 'planMigration', params: [] },
+        { command: 'migrateApplication', params: [] },
+        { command: 'reviewMigrationPhase', params: ['assessment'] },
+    ];
+    const dispatch = vi.fn();
+    const begin = vi.fn();
+    const save = vi.fn();
+    const openChat = vi.fn();
+    let project: ProjectJson;
+    let runTracker: MigrationRunTracker;
+    let tab: {
+        dispatchCommand(commandName: string, params: unknown[]): Promise<unknown>;
+        refreshFileState(): Promise<void>;
+    };
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        ext.isAIFeaturesEnabled = true;
+        dispatch.mockResolvedValue('migration prompt');
+        begin.mockReturnValue('run-1');
+        save.mockReset().mockResolvedValue(undefined);
+        vi.mocked(vscode.window.showWarningMessage).mockReset();
+        project = {
+            version: 1,
+            name: 'Migration',
+            sourceCode: 'parent',
+            consentGiven: true,
+            phases: {
+                discovery: { status: 'complete' },
+                targetEnvironment: { type: 'provision', accountName: 'migration-account' },
+            },
+        };
+        runTracker = new MigrationRunTracker();
+        tab = Object.assign(Object.create(MigrationAssistantTab.prototype) as typeof tab, {
+            workspacePath: '/workspace',
+            project,
+            selectedModelId: 'selected',
+            selectedModelUpdate: Promise.resolve(),
+            projectUpdate: Promise.resolve(),
+            pendingCommands: Promise.resolve(),
+            projectService: { save },
+            runTracker,
+            skillTelemetry: { begin, dispatched: vi.fn(), confirmedStopped: vi.fn() },
+            skillChatSession: { dispatch, openChat },
+            publishRunActivity: vi.fn(),
+        });
+    });
+
+    it.each([
+        ['/work/C#/shop/.cosmosdb-migration/main#draft.bicep', undefined],
+        ['/work/C#/shop/.cosmosdb-migration/project.json', 'phases.provisioning.completedAt'],
+    ])('forwards the literal artifact path and optional property selector: %s', async (filePath, propertyPath) => {
+        const selection = { start: { line: 42, character: 4 }, end: { line: 42, character: 17 } };
+        if (propertyPath) {
+            vi.mocked(vscode.commands.executeCommand).mockResolvedValueOnce([
+                {
+                    name: 'phases',
+                    children: [
+                        {
+                            name: 'provisioning',
+                            children: [{ name: 'completedAt', selectionRange: selection, children: [] }],
+                        },
+                    ],
+                },
+            ]);
+        }
+        await tab.dispatchCommand('openFile', propertyPath ? [filePath, propertyPath] : [filePath]);
+        expect(vscode.window.showTextDocument).toHaveBeenCalledWith(vscode.Uri.file(filePath), {
+            preview: true,
+            ...(propertyPath ? { selection } : {}),
+        });
+        expect(vi.mocked(vscode.commands.executeCommand).mock.calls).toEqual(
+            propertyPath ? [['vscode.executeDocumentSymbolProvider', vscode.Uri.file(filePath)]] : [],
+        );
+    });
+
+    it('waits for a pending project save before launching', async () => {
+        let finish!: () => void;
+        save.mockReturnValueOnce(
+            new Promise<void>((resolve) => {
+                finish = resolve;
+            }),
+        );
+
+        const update = tab.dispatchCommand('updateDiscoveryInstructions', ['Keep source identifiers']);
+        const launch = tab.dispatchCommand('runDiscovery', []);
+        await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
+        expect(dispatch).not.toHaveBeenCalled();
+        expect(begin).not.toHaveBeenCalled();
+        expect(runTracker.snapshot()).toBeNull();
+
+        finish();
+        await Promise.all([update, launch]);
+        expect(project.phases.discovery.discoveryInstructions).toBe('Keep source identifiers');
+        expect(dispatch).toHaveBeenCalledOnce();
+    });
+
+    it('serializes settings changes and drains them before launching', async () => {
+        let finish!: () => void;
+        const persisted: string[] = [];
+        save.mockImplementation(async (value: ProjectJson) => {
+            persisted.push(value.phases.discovery.discoveryInstructions ?? '');
+            if (persisted.length === 1)
+                await new Promise<void>((resolve) => {
+                    finish = resolve;
+                });
+        });
+
+        const first = tab.dispatchCommand('updateDiscoveryInstructions', ['First edit']);
+        const second = tab.dispatchCommand('updateDiscoveryInstructions', ['Final edit']);
+        const launch = tab.dispatchCommand('runDiscovery', []);
+        await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
+        expect(project.phases.discovery.discoveryInstructions).toBe('First edit');
+        expect(dispatch).not.toHaveBeenCalled();
+
+        finish();
+        await Promise.all([first, second, launch]);
+        expect(persisted).toEqual(['First edit', 'Final edit']);
+        expect(dispatch).toHaveBeenCalledOnce();
+    });
+
+    it('blocks launches after a failed save until a settings retry succeeds', async () => {
+        save.mockRejectedValueOnce(new Error('Write failed'));
+        await expect(tab.dispatchCommand('updateDiscoveryInstructions', ['Unsaved edit'])).rejects.toThrow(
+            'Write failed',
+        );
+        await expect(tab.dispatchCommand('runDiscovery', [])).rejects.toThrow('Write failed');
+        expect(dispatch).not.toHaveBeenCalled();
+        expect(begin).not.toHaveBeenCalled();
+        expect(runTracker.snapshot()).toBeNull();
+
+        await tab.dispatchCommand('updateDiscoveryInstructions', ['Reviewed edit']);
+        await tab.dispatchCommand('runDiscovery', []);
+        expect(dispatch).toHaveBeenCalledOnce();
+    });
+
+    it('rejects a queued launch when the pending settings save fails', async () => {
+        let fail!: (error: Error) => void;
+        save.mockReturnValueOnce(
+            new Promise<void>((_resolve, reject) => {
+                fail = reject;
+            }),
+        );
+        const results = Promise.allSettled([
+            tab.dispatchCommand('updateConsent', [true]),
+            tab.dispatchCommand('runDiscovery', []),
+        ]);
+        await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
+
+        fail(new Error('Write failed'));
+        expect(await results).toEqual([
+            { status: 'rejected', reason: new Error('Write failed') },
+            { status: 'rejected', reason: new Error('Write failed') },
+        ]);
+        expect(dispatch).not.toHaveBeenCalled();
+        expect(begin).not.toHaveBeenCalled();
+        expect(runTracker.snapshot()).toBeNull();
+    });
+
+    it('persists consecutive edits without self-conflicts before dispatching the agent', async () => {
+        const workspace = mkdtempSync(path.join(tmpdir(), 'migration-settings-handoff-'));
+        const service = new MigrationProjectService(workspace);
+        const initialize = vi.spyOn(service, 'ensureInitialized').mockResolvedValue(undefined);
+        let finish!: () => void;
+        initialize.mockReturnValueOnce(
+            new Promise<void>((resolve) => {
+                finish = resolve;
+            }),
+        );
+        save.mockImplementation((value: ProjectJson) => service.save(value));
+        Object.assign(project, { futureFeature: { enabled: true } });
+        const projectPath = path.join(workspace, '.cosmosdb-migration', 'project.json');
+        dispatch.mockImplementationOnce(async () => {
+            const persisted = JSON.parse(readFileSync(projectPath, 'utf8')) as ProjectJson & {
+                futureFeature: { enabled: boolean };
+            };
+            expect(persisted.name).toBe('Renamed migration');
+            expect(persisted.phases.discovery.discoveryInstructions).toBe('Final instructions');
+            expect(persisted.futureFeature).toEqual({ enabled: true });
+        });
+
+        const operations = [
+            tab.dispatchCommand('updateDiscoveryInstructions', ['Final instructions']),
+            tab.dispatchCommand('updateProjectName', ['Renamed migration']),
+            tab.dispatchCommand('runDiscovery', []),
+        ];
+        try {
+            await vi.waitFor(() => expect(initialize).toHaveBeenCalledOnce());
+            expect(save).toHaveBeenCalledOnce();
+            expect(dispatch).not.toHaveBeenCalled();
+            finish();
+            await Promise.all(operations);
+            expect(save).toHaveBeenCalledTimes(2);
+            expect(dispatch).toHaveBeenCalledOnce();
+        } finally {
+            finish();
+            await Promise.allSettled(operations);
+            initialize.mockRestore();
+            rmSync(workspace, { recursive: true, force: true });
+        }
+    });
+
+    it('keeps Open Chat available during a pending save without allowing a launch', async () => {
+        let finish!: () => void;
+        save.mockReturnValueOnce(
+            new Promise<void>((resolve) => {
+                finish = resolve;
+            }),
+        );
+        const update = tab.dispatchCommand('updateDiscoveryInstructions', ['Pending edit']);
+        const launch = tab.dispatchCommand('runDiscovery', []);
+        await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
+
+        await tab.dispatchCommand('openMigrationChat', []);
+        expect(openChat).toHaveBeenCalledOnce();
+        expect(dispatch).not.toHaveBeenCalled();
+
+        finish();
+        await Promise.all([update, launch]);
+    });
+
+    it('allows status reload and confirmed-stop recovery while Chat dispatch is pending', async () => {
+        let finish!: () => void;
+        dispatch.mockReturnValueOnce(
+            new Promise<void>((resolve) => {
+                finish = resolve;
+            }),
+        );
+        const load = vi.fn().mockResolvedValue(undefined);
+        Object.assign(tab, { loadProject: load });
+        const launch = tab.dispatchCommand('runDiscovery', []);
+        try {
+            await vi.waitFor(() => expect(dispatch).toHaveBeenCalledOnce());
+            const refresh = tab.dispatchCommand('loadProject', []);
+            await vi.waitFor(() => expect(load).toHaveBeenCalledOnce());
+            await refresh;
+            await expect(tab.dispatchCommand('runAssessment', [])).rejects.toThrow('A migration is active.');
+
+            vi.mocked(vscode.window.showWarningMessage).mockResolvedValueOnce('Agent Has Stopped' as never);
+            await tab.dispatchCommand('confirmMigrationStopped', []);
+            await tab.dispatchCommand('updateDiscoveryInstructions', ['After confirmed stop']);
+            expect(save).toHaveBeenCalledOnce();
+            expect(runTracker.snapshot()?.activity).toBe('cancelled');
+        } finally {
+            finish();
+            await launch;
+        }
+        expect(runTracker.snapshot()?.activity).toBe('cancelled');
+    });
+
+    it('queues watcher reloads behind pending settings', async () => {
+        let finish!: () => void;
+        const load = vi.fn().mockResolvedValue(undefined);
+        Object.assign(tab, { loadProject: load });
+        save.mockReturnValueOnce(
+            new Promise<void>((resolve) => {
+                finish = resolve;
+            }),
+        );
+        const update = tab.dispatchCommand('updateDiscoveryInstructions', ['Pending edit']);
+        const refresh = tab.refreshFileState();
+        await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
+        expect(load).not.toHaveBeenCalled();
+
+        finish();
+        await Promise.all([update, refresh]);
+        expect(load).toHaveBeenCalledOnce();
+    });
+
+    it('preserves unsaved settings on automatic refresh and cancelled reload', async () => {
+        const load = vi.fn().mockImplementation(async () => {
+            project.phases.discovery.discoveryInstructions = 'Saved instructions';
+        });
+        Object.assign(tab, { loadProject: load });
+        save.mockRejectedValueOnce(new Error('Save failed'));
+        await expect(tab.dispatchCommand('updateDiscoveryInstructions', ['Unsaved edit'])).rejects.toThrow(
+            'Save failed',
+        );
+
+        await tab.refreshFileState();
+        expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
+        await tab.dispatchCommand('loadProject', []);
+        expect(vscode.window.showWarningMessage).toHaveBeenCalledOnce();
+        expect(load).not.toHaveBeenCalled();
+        expect(project.phases.discovery.discoveryInstructions).toBe('Unsaved edit');
+        await expect(tab.dispatchCommand('runDiscovery', [])).rejects.toThrow('Save failed');
+
+        vi.mocked(vscode.window.showWarningMessage).mockResolvedValueOnce('Reload Saved Settings' as never);
+        await tab.dispatchCommand('loadProject', []);
+        expect(load).toHaveBeenCalledOnce();
+        expect(project.phases.discovery.discoveryInstructions).toBe('Saved instructions');
+        await tab.dispatchCommand('runDiscovery', []);
+        expect(dispatch).toHaveBeenCalledOnce();
+    });
+
+    it.each(launchCommands)('rejects $command after consent is revoked', async ({ command, params }) => {
+        project.consentGiven = false;
+
+        await expect(tab.dispatchCommand(command, params)).rejects.toThrow(
+            'AI consent is required to use this action.',
+        );
+
+        expect(dispatch).not.toHaveBeenCalled();
+        expect(begin).not.toHaveBeenCalled();
+        expect(runTracker.snapshot()).toBeNull();
+    });
+
+    it.each(launchCommands)('rejects $command when AI features are unavailable', async ({ command, params }) => {
+        ext.isAIFeaturesEnabled = false;
+
+        await expect(tab.dispatchCommand(command, params)).rejects.toThrow(
+            'GitHub Copilot must be active to use this action.',
+        );
+
+        expect(dispatch).not.toHaveBeenCalled();
+        expect(begin).not.toHaveBeenCalled();
+        expect(runTracker.snapshot()).toBeNull();
+    });
+
+    it('rejects an account launch when consent has never been recorded', async () => {
+        delete project.consentGiven;
+
+        await expect(tab.dispatchCommand('provisionAccount', [])).rejects.toThrow(
+            'AI consent is required to use this action.',
+        );
+
+        expect(dispatch).not.toHaveBeenCalled();
+        expect(begin).not.toHaveBeenCalled();
+        expect(runTracker.snapshot()).toBeNull();
+    });
+
+    it.each(launchCommands)('allows $command with consent and available AI features', async ({ command, params }) => {
+        await tab.dispatchCommand(command, params);
+
+        expect(dispatch).toHaveBeenCalledOnce();
+        expect(dispatch).toHaveBeenCalledWith(
+            expect.objectContaining({ workspacePath: '/workspace', runId: 'run-1' }),
+            'selected',
+            expect.any(Function),
+        );
+        expect(begin).toHaveBeenCalledOnce();
+    });
+});
+
+describe('migrationSkillDispatcher', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.mocked(vscode.workspace.fs.stat).mockRejectedValue(new Error('File not found'));
+        vi.mocked(vscode.commands.executeCommand).mockResolvedValue(undefined);
+        vi.mocked(vscode.commands.getCommands).mockResolvedValue([]);
+        vi.mocked(getAvailableModelsInfo).mockResolvedValue({
+            models: ['auto', 'selected'].map((id) => ({
+                id,
+                name: id,
+                vendor: 'copilot',
+                family: id,
+                maxInputTokens: 128_000,
+            })),
+            savedModelId: null,
+        });
+        vi.mocked(isMigrationAiMockEnabled).mockReturnValue(false);
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    function mockArtifacts(...files: string[]): void {
+        vi.mocked(vscode.workspace.fs.stat).mockImplementation(async (uri) => {
+            if (files.includes(uri.fsPath)) {
+                return { type: vscode.FileType.File, ctime: 0, mtime: 0, size: 1 };
+            }
+            throw new Error('File not found');
+        });
+    }
+
+    it('omits the project path when it is the sole workspace root', () => {
+        const prompt = buildMigrationSkillPrompt({ workspacePath: '/workspace/shop' });
+
+        expect(prompt).toBe(
+            [
+                'Run a relational database migration to Azure Cosmos DB.',
+                'Use the cosmosdb-relational-migration skill.',
+            ].join('\n'),
+        );
+    });
+
+    it.each([
+        ['/workspace/shop', '/workspace/other'],
+        ['/workspace/other', '/workspace/shop'],
+        ['/workspace'],
+        ['/workspace/other'],
+        [],
+    ])('includes the selected project scope for workspace folders %j', (...roots: string[]) => {
+        vi.spyOn(vscode.workspace, 'workspaceFolders', 'get').mockReturnValue(
+            roots.map((root, index) => ({ uri: vscode.Uri.file(root), name: root, index })),
+        );
+
+        for (const hasExistingArtifacts of [false, true]) {
+            const prompt = buildMigrationSkillPrompt(
+                { workspacePath: '/workspace/shop', phase: 'code-migration', codeMigrationAction: 'migrate' },
+                hasExistingArtifacts,
+            );
+
+            expect(prompt).toContain(`Workspace: ${JSON.stringify(path.resolve('/workspace/shop'))}`);
+            expect(prompt).not.toContain('/workspace/other');
+        }
+    });
+
+    it('normalizes the project path before comparing it with the sole workspace root', () => {
+        const prompt = buildMigrationSkillPrompt({ workspacePath: '/workspace/shop/../shop/' });
+
+        expect(prompt).not.toContain('Workspace:');
+    });
+
+    it.each([
+        undefined,
+        'preflight',
+        'discovery',
+        'assessment',
+        'schema-conversion',
+        'provisioning',
+        'code-migration',
+    ] as const)('retains project scope for new and resumed %s requests', (phase) => {
+        const workspacePath = '/workspace/My Shop';
+        for (const hasExistingArtifacts of [false, true]) {
+            const prompt = buildMigrationSkillPrompt(
+                { workspacePath, phase, runId: 'scoped-run' },
+                hasExistingArtifacts,
+            );
+            expect(prompt).toContain(`Workspace: ${JSON.stringify(path.resolve(workspacePath))}`);
+            expect(prompt.split('\n').at(-1)).toBe('Run ID: scoped-run');
+        }
+    });
+
+    it.each(['preflight', 'assessment', 'provisioning', 'code-migration'] as const)(
+        'reviews %s blockers without authorizing regeneration or mutations',
+        (phase) => {
+            for (const hasExistingArtifacts of [false, true]) {
+                const prompt = buildMigrationSkillPrompt(
+                    {
+                        workspacePath: '/workspace/Other App',
+                        phase,
+                        intent: 'review-and-fix',
+                        mode: 'interactive',
+                        runId: 'review-run',
+                    },
+                    hasExistingArtifacts,
+                );
+                expect(prompt).toContain(
+                    `Review the ${phase.replaceAll('-', ' ')} migration blockers and propose fixes for approval.`,
+                );
+                expect(prompt).toContain('Use the cosmosdb-relational-migration skill.');
+                expect(prompt).toContain('Run in interactive mode.');
+                expect(prompt).toContain('Do not change files or resources before explicit approval.');
+                expect(prompt).toContain(`Workspace: ${JSON.stringify(path.resolve('/workspace/Other App'))}`);
+                expect(prompt).not.toMatch(/Regenerate|Allow provisioning|Migrate the application code/);
+                expect(prompt.split('\n').at(-1)).toBe('Run ID: review-run');
+            }
+        },
+    );
+
+    it.each([
+        { mode: 'autonomous' as const },
+        { allowProvisioning: true },
+        { provisioningStep: 'resources-and-data' as const },
+        { preflightStep: 'volumetrics' as const },
+        { codeMigrationAction: 'migrate' as const },
+    ])('rejects conflicting execution authorization on a blocker review: %j', (change) => {
+        expect(() =>
+            buildMigrationSkillPrompt({
+                workspacePath: '/workspace/shop',
+                phase: 'assessment',
+                intent: 'review-and-fix',
+                ...change,
+            }),
+        ).toThrow('cannot preauthorize');
+    });
+
+    it('supplies only phase routing inputs for WebView-triggered runs', () => {
+        const prompt = buildMigrationSkillPrompt({
+            workspacePath: '/workspace/shop',
+            mode: 'interactive',
+            phase: 'assessment',
+        });
+
+        expect(prompt).toBe(
+            [
+                'Run the assessment phase of a relational database migration to Azure Cosmos DB.',
+                'Use the cosmosdb-relational-migration skill.',
+            ].join('\n'),
+        );
+    });
+
+    it.each([
+        ['preflight', 'preflight'],
+        ['discovery', 'discovery'],
+        ['assessment', 'assessment'],
+        ['schema-conversion', 'schema conversion'],
+        ['provisioning', 'provisioning'],
+    ] as const)('regenerates %s only when its artifacts are known to exist', (phase, label) => {
+        const invocation = { workspacePath: '/workspace/shop', phase };
+
+        expect(buildMigrationSkillPrompt(invocation)).toContain(`Run the ${label} phase`);
+        expect(buildMigrationSkillPrompt(invocation, true)).toContain(`Regenerate the ${label} results`);
+    });
+
+    it('does not request blanket regeneration for an unscoped run', () => {
+        expect(buildMigrationSkillPrompt({ workspacePath: '/workspace/shop' }, true)).not.toContain('Regenerate');
+    });
+
+    it('keeps the run identifier on a separate final line', () => {
+        const prompt = buildMigrationSkillPrompt({ workspacePath: '/workspace/shop', runId: 'run-123' });
+
+        expect(prompt.split('\n').at(-1)).toBe('Run ID: run-123');
+        expect(prompt).not.toContain('/workspace/shop');
+    });
+
+    it('uses persisted phase instructions without asking the agent to rewrite them', () => {
+        const prompt = buildMigrationSkillPrompt({
+            workspacePath: '/workspace/shop',
+            mode: 'autonomous',
+            phase: 'schema-conversion',
+            allowProvisioning: true,
+        });
+
+        expect(prompt).toContain('Run the schema conversion phase');
+        expect(prompt).toContain('Run in autonomous mode.');
+        expect(prompt).toContain('Allow provisioning for this invocation.');
+        expect(prompt).not.toContain('project.json');
+    });
+
+    it('focuses a preflight invocation without treating the step as additional instructions', () => {
+        const prompt = buildMigrationSkillPrompt({
+            workspacePath: '/workspace/shop',
+            phase: 'preflight',
+            preflightStep: 'volumetrics',
+        });
+
+        expect(prompt).toContain('Run the preflight phase');
+        expect(prompt).toContain('Run only the volumetrics preflight step.');
+        expect(prompt).not.toContain('readiness gate');
+    });
+
+    it('does not infer assessment artifacts from the phase alone', () => {
+        const prompt = buildMigrationSkillPrompt({
+            workspacePath: '/workspace/shop',
+            mode: 'interactive',
+            phase: 'assessment',
+        });
+
+        expect(prompt).toContain('Run the assessment phase');
+        expect(prompt).not.toContain('project.json');
+    });
+
+    it('builds an adaptive schema-conversion invocation without an analysis mode', () => {
+        const prompt = buildMigrationSkillPrompt({
+            workspacePath: '/workspace/shop',
+            phase: 'schema-conversion',
+            includeUnmappedDomains: true,
+        });
+
+        expect(prompt).toContain('Run the schema conversion phase');
+        expect(prompt).toContain('Include unmapped domains.');
+        expect(prompt).not.toMatch(/fast|thorough/iu);
+    });
+
+    it('builds an explicitly authorized focused provisioning invocation', () => {
+        const prompt = buildMigrationSkillPrompt({
+            workspacePath: '/workspace/shop',
+            phase: 'provisioning',
+            provisioningStep: 'resources-and-data',
+            allowProvisioning: true,
+        });
+
+        expect(prompt).toContain('Run the provisioning phase');
+        expect(prompt).toContain('Run only the resources-and-data provisioning step.');
+        expect(prompt).toContain('Allow provisioning for this invocation.');
+        expect(prompt).not.toContain('recompute provisioning completion');
+    });
+
+    it('rejects focused provisioning without explicit authorization', () => {
+        expect(() =>
+            buildMigrationSkillPrompt({
+                workspacePath: '/workspace/shop',
+                phase: 'provisioning',
+                provisioningStep: 'resources-and-data',
+            }),
+        ).toThrow(/explicit authorization/u);
+    });
+
+    it('rejects provisioning steps outside the provisioning phase', () => {
+        expect(() =>
+            buildMigrationSkillPrompt({
+                workspacePath: '/workspace/shop',
+                phase: 'assessment',
+                provisioningStep: 'target-account',
+                allowProvisioning: true,
+            }),
+        ).toThrow(/requires phase provisioning/u);
+    });
+
+    it('asks the Skill to plan without exposing a mode parameter', () => {
+        const prompt = buildMigrationSkillPrompt({
+            workspacePath: '/workspace/shop',
+            phase: 'code-migration',
+            codeMigrationAction: 'plan',
+        });
+
+        expect(prompt).toContain('Run the code migration phase');
+        expect(prompt).toContain('Create the application code migration plan.');
+        expect(prompt).not.toContain('execution blocker');
+        expect(prompt).not.toContain('Do not modify application files');
+        expect(prompt).not.toContain('code migration mode');
+        expect(prompt).not.toContain('project.json');
+        expect(prompt).not.toContain('Allow provisioning');
+    });
+
+    it('asks the Skill to migrate immediately', () => {
+        const prompt = buildMigrationSkillPrompt({
+            workspacePath: '/workspace/shop',
+            phase: 'code-migration',
+            codeMigrationAction: 'migrate',
+        });
+
+        expect(prompt).toContain('Migrate the application code using the validated migration plan.');
+        expect(prompt).not.toContain('code migration mode');
+    });
+
+    it('defaults a code-migration invocation to planning', () => {
+        const prompt = buildMigrationSkillPrompt({
+            workspacePath: '/workspace/shop',
+            phase: 'code-migration',
+        });
+
+        expect(prompt).toContain('Create the application code migration plan.');
+    });
+
+    it('updates an existing code migration plan without requesting application changes', () => {
+        const prompt = buildMigrationSkillPrompt(
+            { workspacePath: '/workspace/shop', phase: 'code-migration', codeMigrationAction: 'plan' },
+            true,
+        );
+
+        expect(prompt).toContain('Update the application code migration plan.');
+        expect(prompt).not.toContain('Regenerate');
+        expect(prompt).not.toContain('Migrate the application code');
+    });
+
+    it('keeps code execution explicit even when earlier outputs exist', () => {
+        const prompt = buildMigrationSkillPrompt(
+            { workspacePath: '/workspace/shop', phase: 'code-migration', codeMigrationAction: 'migrate' },
+            true,
+        );
+
+        expect(prompt).toContain('Migrate the application code using the validated migration plan.');
+        expect(prompt).not.toContain('Regenerate');
+    });
+
+    it('rejects a code migration action outside the code-migration phase', () => {
+        expect(() =>
+            buildMigrationSkillPrompt({
+                workspacePath: '/workspace/shop',
+                phase: 'assessment',
+                codeMigrationAction: 'plan',
+            }),
+        ).toThrow(/requires phase code-migration/u);
+    });
+
+    it('opens Copilot Chat in Agent mode with the built prompt', async () => {
+        const invocation = { workspacePath: '/workspace/shop', phase: 'discovery' as const };
+        const query = await new MigrationSkillChatSession().dispatch(invocation, 'selected');
+
+        expect(vscode.commands.executeCommand).toHaveBeenNthCalledWith(1, 'workbench.action.chat.newChat');
+        expect(vscode.commands.executeCommand).toHaveBeenNthCalledWith(2, 'workbench.action.chat.open', {
+            mode: 'agent',
+            query,
+            modelSelector: { vendor: 'copilot', id: 'selected' },
+        });
+        expect(query).toBe(buildMigrationSkillPrompt(invocation));
+    });
+
+    it('reports the resolved launch model and Chat reuse before handoff', async () => {
+        const onDispatch = vi.fn();
+        const session = new MigrationSkillChatSession();
+        const invocation = { workspacePath: '/workspace/shop', phase: 'assessment' as const };
+        await session.dispatch(invocation, 'selected', onDispatch);
+        await session.dispatch(invocation, 'auto', onDispatch);
+        expect(onDispatch).toHaveBeenNthCalledWith(
+            1,
+            expect.objectContaining({ id: 'selected', vendor: 'copilot' }),
+            true,
+        );
+        expect(onDispatch).toHaveBeenNthCalledWith(
+            2,
+            expect.objectContaining({ id: 'auto', vendor: 'copilot' }),
+            false,
+        );
+        expect(onDispatch.mock.invocationCallOrder[0]).toBeLessThan(
+            vi.mocked(vscode.commands.executeCommand).mock.invocationCallOrder[0],
+        );
+    });
+
+    it('opens a fresh review conversation without reading or rewriting the checkpoint', async () => {
+        const session = new MigrationSkillChatSession();
+        const load = vi.spyOn(MigrationProjectService.prototype, 'load');
+        const invocation: MigrationSkillInvocation = {
+            workspacePath: '/workspace/shop',
+            phase: 'assessment',
+            intent: 'review-and-fix',
+        };
+        await session.dispatch(invocation, 'selected');
+        await session.dispatch(invocation, 'selected');
+        const newChats = vi
+            .mocked(vscode.commands.executeCommand)
+            .mock.calls.filter(([command]) => command === 'workbench.action.chat.newChat');
+        expect(newChats).toHaveLength(2);
+        expect(load).not.toHaveBeenCalled();
+        expect(vscode.workspace.fs.stat).not.toHaveBeenCalled();
+    });
+
+    it('adds project scope to a reused chat session after another folder is added', async () => {
+        const session = new MigrationSkillChatSession();
+        const invocation = { workspacePath: '/workspace/shop', phase: 'discovery' as const };
+        const initialQuery = await session.dispatch(invocation, 'selected');
+        expect(initialQuery).not.toContain('Workspace:');
+
+        vi.spyOn(vscode.workspace, 'workspaceFolders', 'get').mockReturnValue(
+            ['/workspace/other', '/workspace/shop'].map((root, index) => ({
+                uri: vscode.Uri.file(root),
+                name: root,
+                index,
+            })),
+        );
+        const resumedQuery = await session.dispatch(invocation, 'selected');
+        expect(resumedQuery).toContain(`Workspace: ${JSON.stringify(path.resolve(invocation.workspacePath))}`);
+        expect(vscode.commands.executeCommand).toHaveBeenLastCalledWith('workbench.action.chat.open', {
+            mode: 'agent',
+            query: resumedQuery,
+            modelSelector: { vendor: 'copilot', id: 'selected' },
+        });
+    });
+
+    it.each([
+        ['preflight', 'phases/1-discovery/preflight-manifest.json'],
+        ['discovery', 'phases/1-discovery/discovery-report.md'],
+        ['assessment', 'phases/2-assessment/assessment-summary.md'],
+        ['schema-conversion', 'phases/3-schema-conversion/model.json'],
+        ['provisioning', 'phases/4-provisioning/sample-data.json'],
+    ] as const)('detects existing %s outputs before dispatch', async (phase, artifact) => {
+        mockArtifacts(`/workspace/shop/.cosmosdb-migration/${artifact}`);
+        const invocation = { workspacePath: '/workspace/shop', phase };
+
+        const query = await new MigrationSkillChatSession().dispatch(invocation, 'selected');
+
+        expect(query).toBe(buildMigrationSkillPrompt(invocation, true));
+    });
+
+    it.each(['discovery', 'assessment', 'schema-conversion'] as const)(
+        'does not regenerate %s just because preflight outputs exist',
+        async (phase) => {
+            mockArtifacts('/workspace/shop/.cosmosdb-migration/phases/1-discovery/preflight-manifest.json');
+            const invocation = { workspacePath: '/workspace/shop', phase };
+
+            const query = await new MigrationSkillChatSession().dispatch(invocation, 'selected');
+
+            expect(query).toBe(buildMigrationSkillPrompt(invocation));
+        },
+    );
+
+    it.each([
+        ['volumetrics', 'volumetrics/volumetrics.md'],
+        ['access-patterns', 'access-patterns/access-patterns.md'],
+    ] as const)('checks only the requested %s preflight output', async (preflightStep, artifact) => {
+        const invocation: MigrationSkillInvocation = {
+            workspacePath: '/workspace/shop',
+            phase: 'preflight',
+            preflightStep,
+        };
+        const session = new MigrationSkillChatSession();
+        mockArtifacts('/workspace/shop/.cosmosdb-migration/phases/1-discovery/preflight-manifest.json');
+
+        expect(await session.dispatch(invocation, 'selected')).toBe(buildMigrationSkillPrompt(invocation));
+        mockArtifacts(`/workspace/shop/.cosmosdb-migration/phases/1-discovery/${artifact}`);
+        expect(await session.dispatch(invocation, 'selected')).toBe(buildMigrationSkillPrompt(invocation, true));
+    });
+
+    it('recognizes completed application analysis without using unrelated preflight files', async () => {
+        const load = vi.spyOn(MigrationProjectService.prototype, 'load').mockResolvedValue(undefined);
+        const invocation: MigrationSkillInvocation = {
+            workspacePath: '/workspace/shop',
+            phase: 'preflight',
+            preflightStep: 'application-details',
+        };
+        const session = new MigrationSkillChatSession();
+
+        expect(await session.dispatch(invocation, 'selected')).toBe(buildMigrationSkillPrompt(invocation));
+        load.mockResolvedValue({
+            version: 1,
+            name: 'shop',
+            sourceCode: 'parent',
+            phases: {
+                discovery: { status: 'not-started', applicationAnalysis: { completedAt: '2026-10-08T00:00:00Z' } },
+            },
+        });
+        expect(await session.dispatch(invocation, 'selected')).toBe(buildMigrationSkillPrompt(invocation, true));
+        expect(load).toHaveBeenLastCalledWith({ readOnly: true });
+    });
+
+    it.each([
+        { phase: 'preflight', preflightStep: 'schema-acquisition' },
+        { phase: 'provisioning', provisioningStep: 'target-account', allowProvisioning: true },
+    ] satisfies Partial<MigrationSkillInvocation>[])(
+        'does not regenerate input or target configuration for %j',
+        async (scope) => {
+            const invocation = { workspacePath: '/workspace/shop', ...scope };
+            const query = await new MigrationSkillChatSession().dispatch(invocation, 'selected');
+
+            expect(query).toBe(buildMigrationSkillPrompt(invocation));
+            expect(vscode.workspace.fs.stat).not.toHaveBeenCalled();
+        },
+    );
+
+    it('does not infer resource-and-data outputs from account deployment files', async () => {
+        const invocation: MigrationSkillInvocation = {
+            workspacePath: '/workspace/shop',
+            phase: 'provisioning',
+            provisioningStep: 'resources-and-data',
+            allowProvisioning: true,
+        };
+        const session = new MigrationSkillChatSession();
+        mockArtifacts(
+            '/workspace/shop/.cosmosdb-migration/phases/4-provisioning/main.bicep',
+            '/workspace/shop/.cosmosdb-migration/phases/4-provisioning/main.bicepparam',
+            '/workspace/shop/.cosmosdb-migration/phases/4-provisioning/summary.md',
+            '/workspace/shop/.cosmosdb-migration/phases/4-provisioning/manifest.json',
+        );
+
+        expect(await session.dispatch(invocation, 'selected')).toBe(buildMigrationSkillPrompt(invocation));
+        mockArtifacts('/workspace/shop/.cosmosdb-migration/phases/4-provisioning/sample-data.json');
+        expect(await session.dispatch(invocation, 'selected')).toBe(buildMigrationSkillPrompt(invocation, true));
+    });
+
+    it('checks for the code migration plan before choosing create or update', async () => {
+        const invocation: MigrationSkillInvocation = { workspacePath: '/workspace/shop', phase: 'code-migration' };
+        const session = new MigrationSkillChatSession();
+        mockArtifacts('/workspace/shop/.cosmosdb-migration/code-migration-manifest.json');
+
+        expect(await session.dispatch(invocation, 'selected')).toContain('Create the application code migration plan.');
+        mockArtifacts('/workspace/shop/.cosmosdb-migration/code-migration-plan.md');
+        expect(await session.dispatch(invocation, 'selected')).toContain('Update the application code migration plan.');
+    });
+
+    it('does not count directories as generated artifacts', async () => {
+        vi.mocked(vscode.workspace.fs.stat).mockResolvedValue({
+            type: vscode.FileType.Directory,
+            ctime: 0,
+            mtime: 0,
+            size: 0,
+        });
+        const invocation: MigrationSkillInvocation = { workspacePath: '/workspace/shop', phase: 'assessment' };
+
+        expect(await new MigrationSkillChatSession().dispatch(invocation, 'selected')).toBe(
+            buildMigrationSkillPrompt(invocation),
+        );
+    });
+
+    it.each(['gpt-5.6-sol-fast', null])(
+        'opens a local chat for the exact Fast variant with selection %s',
+        async (selection) => {
+            vi.mocked(vscode.commands.getCommands).mockResolvedValue([
+                'workbench.action.chat.newChat',
+                'workbench.action.chat.newLocalChat',
+            ]);
+            vi.mocked(getAvailableModelsInfo).mockResolvedValue({
+                models: [
+                    { id: 'gpt-5.6-sol', name: 'GPT-5.6 Sol (Internal only)' },
+                    { id: 'gpt-5.6-sol-fast', name: 'GPT-5.6 Sol Fast (Internal only)' },
+                ].map((model) => ({
+                    ...model,
+                    vendor: 'copilot',
+                    family: 'gpt-5.6-sol',
+                    maxInputTokens: 128_000,
+                })),
+                savedModelId: 'gpt-5.6-sol-fast',
+            });
+
+            const query = await new MigrationSkillChatSession().dispatch(
+                { workspacePath: '/workspace/shop', phase: 'discovery' },
+                selection,
+            );
+
+            expect(vscode.commands.getCommands).toHaveBeenCalledExactlyOnceWith(true);
+            expect(vscode.commands.executeCommand).toHaveBeenNthCalledWith(1, 'workbench.action.chat.newLocalChat');
+            expect(vscode.commands.executeCommand).toHaveBeenLastCalledWith('workbench.action.chat.open', {
+                mode: 'agent',
+                query,
+                modelSelector: { vendor: 'copilot', id: 'gpt-5.6-sol-fast' },
+            });
+        },
+    );
+
+    it('captures Skill prompts without opening Chat in E2E mock mode', async () => {
+        vi.mocked(isMigrationAiMockEnabled).mockReturnValue(true);
+        const invocation = { workspacePath: '/workspace/shop', phase: 'assessment' as const };
+        const session = new MigrationSkillChatSession();
+        const query = await session.dispatch(invocation, 'auto');
+
+        expect(capturePrompt).toHaveBeenCalledWith('skill-assessment', query, {
+            newSession: true,
+            modelSelector: { vendor: 'copilot', id: 'auto' },
+        });
+        await session.dispatch(invocation, 'selected');
+        expect(capturePrompt).toHaveBeenLastCalledWith('skill-assessment', query, {
+            newSession: false,
+            modelSelector: { vendor: 'copilot', id: 'selected' },
+        });
+        expect(vscode.commands.executeCommand).not.toHaveBeenCalled();
+    });
+
+    it.each(['workbench.action.chat.newChat', 'workbench.action.chat.newLocalChat'])(
+        'initializes once using %s and applies the selection on every dispatch',
+        async (newChatCommand) => {
+            vi.mocked(vscode.commands.getCommands).mockResolvedValue([newChatCommand]);
+            const session = new MigrationSkillChatSession();
+            await session.dispatch({ workspacePath: '/shop', phase: 'preflight' }, 'auto');
+            await session.dispatch({ workspacePath: '/shop', phase: 'discovery' }, 'selected');
+            expect(vscode.commands.executeCommand).toHaveBeenCalledTimes(3);
+            expect(vscode.commands.executeCommand).toHaveBeenNthCalledWith(1, newChatCommand);
+            expect(vscode.commands.executeCommand).toHaveBeenNthCalledWith(
+                2,
+                'workbench.action.chat.open',
+                expect.objectContaining({ modelSelector: { vendor: 'copilot', id: 'auto' } }),
+            );
+            expect(vscode.commands.executeCommand).toHaveBeenNthCalledWith(
+                3,
+                'workbench.action.chat.open',
+                expect.objectContaining({ modelSelector: { vendor: 'copilot', id: 'selected' } }),
+            );
+            await new MigrationSkillChatSession().dispatch({ workspacePath: '/shop' }, 'selected');
+            expect(vscode.commands.executeCommand).toHaveBeenNthCalledWith(4, newChatCommand);
+        },
+    );
+
+    it('does not create Chat or submit when the selected model is unavailable', async () => {
+        await expect(new MigrationSkillChatSession().dispatch({ workspacePath: '/shop' }, 'missing')).rejects.toThrow(
+            'selected migration model is unavailable',
+        );
+        expect(vscode.commands.executeCommand).not.toHaveBeenCalled();
+    });
+
+    it('retries initialization after rejection without submitting a prompt', async () => {
+        const session = new MigrationSkillChatSession();
+        vi.mocked(vscode.commands.executeCommand).mockRejectedValueOnce(new Error('initialization failed'));
+        await expect(session.dispatch({ workspacePath: '/shop' }, 'auto')).rejects.toThrow('initialization failed');
+        expect(vscode.commands.executeCommand).toHaveBeenCalledTimes(1);
+        await session.dispatch({ workspacePath: '/shop' }, 'auto');
+        expect(vscode.commands.executeCommand).toHaveBeenNthCalledWith(2, 'workbench.action.chat.newChat');
+    });
+
+    it('retains initialization after submission rejection', async () => {
+        const session = new MigrationSkillChatSession();
+        vi.mocked(vscode.commands.executeCommand)
+            .mockResolvedValueOnce(undefined)
+            .mockRejectedValueOnce(new Error('submission failed'));
+        await expect(session.dispatch({ workspacePath: '/shop' }, 'auto')).rejects.toThrow('submission failed');
+        await session.dispatch({ workspacePath: '/shop' }, 'auto');
+        expect(vscode.commands.executeCommand).toHaveBeenCalledTimes(3);
+        expect(vscode.commands.executeCommand).toHaveBeenLastCalledWith(
+            'workbench.action.chat.open',
+            expect.anything(),
+        );
+    });
+
+    it('rejects a duplicate launch while the first dispatch is pending', async () => {
+        let finish!: () => void;
+        const pending = new Promise<void>((resolve) => {
+            finish = resolve;
+        });
+        vi.mocked(vscode.commands.executeCommand).mockReturnValueOnce(pending);
+        const session = new MigrationSkillChatSession();
+        const first = session.dispatch({ workspacePath: '/shop' }, 'auto');
+        await expect(session.dispatch({ workspacePath: '/shop' }, 'selected')).rejects.toThrow(
+            'A migration launch is already pending.',
+        );
+        await vi.waitFor(() => expect(vscode.commands.executeCommand).toHaveBeenCalledTimes(1));
+        finish();
+        await first;
+        expect(vscode.commands.executeCommand).toHaveBeenCalledTimes(2);
+    });
+
+    it('opens Chat without initializing a session, submitting a prompt, or selecting a model', async () => {
+        const session = new MigrationSkillChatSession();
+        await session.openChat();
+        expect(vscode.commands.executeCommand).toHaveBeenCalledExactlyOnceWith('workbench.action.chat.open');
+        expect(getAvailableModelsInfo).not.toHaveBeenCalled();
+        expect(capturePrompt).not.toHaveBeenCalled();
+        await session.dispatch({ workspacePath: '/shop' }, 'auto');
+        expect(vscode.commands.executeCommand).toHaveBeenNthCalledWith(2, 'workbench.action.chat.newChat');
+    });
+});

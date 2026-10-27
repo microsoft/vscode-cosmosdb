@@ -55,6 +55,21 @@ The fixture-lifecycle spec intentionally exits VS Code before worker teardown to
 verify that an already-closed application does not cause a shutdown timeout.
 It disables window-dependent automatic fixtures because no live window remains.
 Use `closeAllEditorTabs(vscodeWindow)` from `fixtures/webviewHelpers.ts`.
+This helper focuses the workbench before opening the command palette and waits
+for each editor to close. Cleanup failures fail the test rather than silently
+leaving a panel for the next test. Tests that resize the window must also restore
+the original viewport in `finally`.
+Use `resizeWindowViewport(vscodeApp, vscodeWindow, size)` for migration responsive
+checks: it resizes the native Electron window and waits for the renderer.
+Do not use `page.setViewportSize()` here; CDP device-metric overrides can leave
+the embedded webview and native window with mismatched input coordinates.
+
+Migration tests attach captured mock prompts and the webview accessibility tree
+before cleanup on failure. When simulating a fast agent, wait for the UI to
+observe the running state before writing completion: prompt capture happens
+before the launch-state update reaches the webview.
+`MigrationPage.completeSkillRun()` waits for both the running state and the
+completion update before the test can launch the next phase.
 
 During a test, use `closeEditorTab(vscodeWindow, name)` to close a specific tab rather than whichever editor has focus.
 This helper requires a unique matching tab and waits for that tab to disappear; failures are not swallowed.
@@ -81,6 +96,11 @@ npm run e2e:coverage:query-editor
 # Author / debug
 npm run e2e:ui         # Playwright's UI mode — step through tests, time-travel
 npm run e2e:debug      # Playwright Inspector — pause + step + REPL at each action
+
+# Stress the complete offline migration suite without masking flakes with retries.
+# Keep the full file selected so cross-test state leaks remain observable.
+COSMOSDB_E2E_SKIP_EMULATOR=1 COSMOSDB_E2E_SCREENSHOT=trace-on-failure \
+  npm run e2e -- test/e2e/specs/migration.spec.ts --repeat-each=20 --retries=0 --workers=1
 ```
 
 To verify the Data Modeler's native **Add container** input, including invalid Enter submissions, valid correction,

@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as l10n from '@vscode/l10n';
 import { COSMOS_DB_DATA_CONTRIBUTOR_ROLE_DEFINITION_ID } from '../../../cosmosdb/cosmosdb-shared-constants';
 import { type CosmosContainer, type CosmosModel, type IndexingPolicy } from '../cosmosModel';
 
@@ -48,6 +49,12 @@ export interface BicepTemplateOptions {
  * existing-account mode limits the export to the database and containers.
  */
 export function buildBicepTemplate(model: CosmosModel, options: BicepTemplateOptions = {}): string {
+    if (
+        model.databaseMaxThroughput !== undefined ||
+        model.containers.some((container) => container.throughputMode === 'shared')
+    ) {
+        throw new Error(l10n.t('Shared database throughput requires the migration Skill provisioning workflow.'));
+    }
     const databaseName = model.databaseName ?? DEFAULT_DATABASE_NAME;
     const isProvisioned = model.capacityMode === 'provisioned';
     const lines: string[] = [];

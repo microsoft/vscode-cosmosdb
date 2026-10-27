@@ -322,6 +322,11 @@ See [Azure RBAC](https://learn.microsoft.com/azure/role-based-access-control/ove
 
 ## Keyboard use
 
+Overview tooltips use Fluent UI's standard `inverted` appearance in dark themes: a dark surface with light text,
+not a custom light surface. They follow theme changes while Overview remains open; light and high-contrast themes
+retain normal styling unless a tooltip explicitly sets its appearance.
+Chart-value popups retain their existing chart colors in every theme, without custom color inversion.
+
 Use Tab to reach controls and focusable badges. Focus a health/metric badge for its explanation.
 Use Left/Right to move between tab labels, then Enter or Space to activate.
 Sortable table headers support Enter/Space; pagination and filters expose their selected values.

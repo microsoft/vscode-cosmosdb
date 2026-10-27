@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Badge, type BadgeProps, makeStyles, mergeClasses, tokens, Tooltip } from '@fluentui/react-components';
+import { Badge, type BadgeProps, makeStyles, mergeClasses, tokens } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
 import {
     type HealthCheckOutcome,
@@ -16,6 +16,7 @@ import {
 import { DIAGNOSTIC_POLICY } from '../../../panels/accountOverview/services/advisories/core/thresholds';
 import { HOUR, MINUTE } from '../../../panels/accountOverview/services/units';
 import { type HealthState, type ProvisioningState } from '../../api/types';
+import { ThemedTooltip as Tooltip } from '../../common/ThemedTooltip';
 import { unavailableCaption } from './metrics/descriptors';
 import { type TabHealthIndicators } from './TabbedOverviewLayout';
 

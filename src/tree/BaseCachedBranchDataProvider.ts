@@ -17,6 +17,7 @@ import {
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { API } from '../AzureDBExperiences';
+import { maskTreeElementTelemetry } from '../cosmosdb/maskResourceTelemetry';
 import { ext } from '../extensionVariables';
 import { callWithResourceTreeErrorHandling, type ResourceTreeOperationContext } from '../utils/resourceTreeOperations';
 import { type FabricArtifact } from './fabric/models/FabricArtifact';
@@ -115,6 +116,7 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
                 (await callWithResourceTreeErrorHandling(
                     `${this.providerName}.getChildren`,
                     async (context: IActionContext) => {
+                        maskTreeElementTelemetry(context, element);
                         context.errorHandling.suppressDisplay = true;
                         context.errorHandling.rethrow = true;
                         context.errorHandling.forceIncludeInReportIssueCommand = true;
@@ -129,10 +131,6 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
                             (await element.getTreeItem()).contextValue ?? 'unknown';
 
                         context.telemetry.properties.view = this.contextValue;
-
-                        // TODO: values to mask. New TreeElements do not have valueToMask field
-                        // I assume this array should be filled after element.getChildren() call
-                        // And these values should be masked in the context
 
                         // TODO: we should return cached children instead of always calling getChildrenFromElement
                         // however this can only work if we can also cache the root resource elements, which is

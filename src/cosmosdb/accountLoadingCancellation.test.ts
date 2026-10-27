@@ -13,7 +13,10 @@ import { type TreeElement } from '../tree/TreeElement';
 import { createCosmosDBManagementClient } from '../utils/azureClients';
 import { armTestSubscription, createArmTestClient, createArmTestContext } from './armTestUtils';
 
-const mocks = vi.hoisted<{ temporaryChildren: TreeElement[] }>(() => ({ temporaryChildren: [] }));
+const mocks = vi.hoisted<{
+    temporaryChildren: TreeElement[];
+    actions: { event: string; context: IActionContext }[];
+}>(() => ({ temporaryChildren: [], actions: [] }));
 
 vi.mock('../utils/azureClients', () => ({ createCosmosDBManagementClient: vi.fn() }));
 vi.mock('@microsoft/vscode-azext-azureutils', () => ({
@@ -60,8 +63,9 @@ vi.mock('@microsoft/vscode-azext-utils', () => ({
     UserCancelledError: class extends Error {
         _isUserCancelledError = true;
     },
-    callWithTelemetryAndErrorHandling: async (_event: string, callback: (context: IActionContext) => unknown) => {
+    callWithTelemetryAndErrorHandling: async (event: string, callback: (context: IActionContext) => unknown) => {
         const context = createArmTestContext();
+        mocks.actions.push({ event, context });
         try {
             return await callback(context);
         } catch (error) {
@@ -111,6 +115,7 @@ describe('decorated NoSQL tree loading cancellation', () => {
     beforeEach(() => {
         vi.restoreAllMocks();
         mocks.temporaryChildren = [];
+        mocks.actions = [];
         databaseIds = [];
         containerIds = [];
         client = createArmTestClient();
@@ -251,5 +256,61 @@ describe('decorated NoSQL tree loading cancellation', () => {
 
         expect((await provider.getChildren(root)).map((item) => item.id)).toEqual(['temporary']);
         await expect(provider.getChildren(root, { propagateErrors: true })).resolves.toEqual([]);
+    });
+
+    it('registers account identifiers on the outer action before nested metadata loading fails', async () => {
+        const provider = new CosmosDBBranchDataProvider();
+        const root = await provider.getResourceItem(account);
+        const failure = new Error(`Cannot load ${account.name} in ${account.resourceGroup}`);
+        let outerMasks: string[] | undefined;
+        vi.mocked(client.databaseAccounts.get).mockImplementationOnce(async () => {
+            outerMasks = [
+                ...(mocks.actions.find((action) => action.event === 'CosmosDBBranchDataProvider.getChildren')?.context
+                    .valuesToMask ?? []),
+            ];
+            throw failure;
+        });
+
+        await expect(provider.getChildren(root, { propagateErrors: true })).rejects.toBe(failure);
+        expect(outerMasks).toEqual(
+            expect.arrayContaining([
+                account.id,
+                account.name,
+                account.resourceGroup,
+                account.subscription.subscriptionId,
+            ]),
+        );
+        const outer = mocks.actions.find((action) => action.event === 'CosmosDBBranchDataProvider.getChildren');
+        const inner = mocks.actions.find((action) => action.event === 'cosmosDB.getAzureSpecificMetadata');
+        expect(outer?.context).not.toBe(inner?.context);
+    });
+
+    it('registers loaded connection and database identifiers before container loading fails', async () => {
+        databaseIds = ['private-database'];
+        const provider = new CosmosDBBranchDataProvider();
+        const root = await provider.getResourceItem(account);
+        const [database] = await provider.getChildren(root, { propagateErrors: true });
+        mocks.actions = [];
+        const failure = new Error('Container discovery failed');
+        let outerMasks: string[] | undefined;
+        vi.mocked(createCosmosDBManagementClient).mockImplementationOnce(async () => {
+            outerMasks = [
+                ...(mocks.actions.find((action) => action.event === 'CosmosDBBranchDataProvider.getChildren')?.context
+                    .valuesToMask ?? []),
+            ];
+            throw failure;
+        });
+
+        await expect(provider.getChildren(database, { propagateErrors: true })).rejects.toBe(failure);
+        expect(outerMasks).toEqual(
+            expect.arrayContaining([
+                account.name,
+                account.resourceGroup,
+                account.subscription.subscriptionId,
+                'private-database',
+                'https://account.documents.azure.com',
+                'test-key',
+            ]),
+        );
     });
 });

@@ -97,6 +97,34 @@ beforeEach(() => {
 });
 
 describe('Azure resource URI handling', () => {
+    it.each(['resourceId', 'connectionString'])(
+        'registers standalone ARM identifiers before %s reveal failure',
+        async (kind) => {
+            let masksAtReveal: string[] | undefined;
+            mocks.reveal.mockImplementationOnce(async () => {
+                masksAtReveal = [...(mocks.context?.valuesToMask ?? [])];
+                throw new Error('Cannot load account in rg');
+            });
+            const params: Record<string, string> =
+                kind === 'resourceId'
+                    ? { resourceId: accountId }
+                    : {
+                          cs: 'AccountEndpoint=https://account.documents.azure.com;AccountKey=unused;',
+                          subscriptionId: parsedId.subscriptionId,
+                          resourceGroup: parsedId.resourceGroup,
+                      };
+
+            await expect(
+                globalUriHandler(
+                    vscode.Uri.parse(`vscode://ms-azuretools.vscode-cosmosdb?${new URLSearchParams(params)}`),
+                ),
+            ).rejects.toThrow('Cannot load account in rg');
+            expect(masksAtReveal).toEqual(
+                expect.arrayContaining([parsedId.subscriptionId, parsedId.resourceGroup, parsedId.resourceName]),
+            );
+        },
+    );
+
     it('passes tenantId and the session visibility policy for resource IDs', async () => {
         await globalUriHandler(
             vscode.Uri.parse(

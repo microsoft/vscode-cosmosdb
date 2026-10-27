@@ -6,6 +6,13 @@
 // TODO: Removes after switching to 1.104.*
 
 declare module 'vscode' {
+    export interface LanguageModelChat {
+        readonly category?: string;
+        readonly capabilities?: {
+            readonly supportsToolCalling?: boolean;
+        };
+    }
+
     // https://github.com/microsoft/vscode/issues/260156
 
     /**********

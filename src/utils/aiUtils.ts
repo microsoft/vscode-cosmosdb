@@ -12,10 +12,11 @@
 
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
+import { isEqual } from 'es-toolkit';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { createMockLanguageModel, type CreateMockLanguageModelOptions } from './languageModelMockUtils';
-import { isAutoModel, SELECTED_MODEL_KEY } from './modelUtils';
+import { isAutoModel, MIGRATION_SELECTED_MODEL_KEY, SELECTED_MODEL_KEY, type ModelInfo } from './modelUtils';
 
 /**
  * Master switch to control whether third-party (non-Copilot) language models are allowed.
@@ -173,12 +174,34 @@ export async function getSelectedModel(options?: GetSelectedModelOptions): Promi
 }
 
 /** Minimal descriptor for an available Copilot model, suitable for passing to webviews. */
-export interface AvailableModelDescriptor {
-    id: string;
-    name: string;
-    family: string;
-    vendor: string;
-    maxInputTokens: number;
+export type AvailableModelDescriptor = ModelInfo;
+
+function getComparableModelMetadata(model: vscode.LanguageModelChat): Record<string, unknown> | undefined {
+    try {
+        if (!model.version) return undefined;
+        return Object.fromEntries(
+            Object.entries(model).filter(
+                ([key, value]) => key !== 'id' && key !== 'family' && typeof value !== 'function',
+            ),
+        );
+    } catch {
+        return undefined;
+    }
+}
+
+function getOptionalModelMetadata(
+    model: vscode.LanguageModelChat,
+): Pick<ModelInfo, 'category' | 'supportsToolCalling'> {
+    try {
+        const category = model.category;
+        const supportsToolCalling = model.capabilities?.supportsToolCalling;
+        return {
+            ...(typeof category === 'string' ? { category } : {}),
+            ...(typeof supportsToolCalling === 'boolean' ? { supportsToolCalling } : {}),
+        };
+    } catch {
+        return {};
+    }
 }
 
 /**
@@ -217,16 +240,30 @@ export async function getAvailableModelsInfo(
     }
     try {
         const allModels = await vscode.lm.selectChatModels(modelSelector);
-        const savedModelId = ext.context.globalState.get<string>(stateKey) ?? null;
+        let savedModelId = ext.context.globalState.get<string>(stateKey) ?? null;
+        const uniqueModels: { id: string; metadata: Record<string, unknown> }[] = [];
 
         const models = allModels
             .filter((model) => options?.includeAuto || !isAutoModel(model))
+            .filter((model) => {
+                if (stateKey !== MIGRATION_SELECTED_MODEL_KEY) return true;
+                const metadata = getComparableModelMetadata(model);
+                if (!metadata) return true;
+                const duplicate = uniqueModels.find((entry) => isEqual(entry.metadata, metadata));
+                if (duplicate) {
+                    if (savedModelId === model.id) savedModelId = duplicate.id;
+                    return false;
+                }
+                uniqueModels.push({ id: model.id, metadata });
+                return true;
+            })
             .map((m) => ({
                 id: m.id,
                 name: m.name,
                 family: m.family,
                 vendor: m.vendor,
                 maxInputTokens: m.maxInputTokens,
+                ...getOptionalModelMetadata(m),
             }));
 
         return { models, savedModelId };

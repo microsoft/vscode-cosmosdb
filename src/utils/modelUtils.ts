@@ -27,15 +27,142 @@ export interface ModelInfo {
     family: string;
     vendor: string;
     maxInputTokens: number;
+    category?: string;
+    supportsToolCalling?: boolean;
 }
 
 export function isAutoModel(model: Pick<ModelInfo, 'id' | 'name'>): boolean {
     return model.id === 'auto' || model.name.toLowerCase() === 'auto';
 }
 
+export type MigrationModelTier = 'preferred' | 'capable' | 'auto' | 'notRecommended';
+
+export type MigrationModelReason =
+    | 'powerfulCategory'
+    | 'versatileCategory'
+    | 'lightweightCategory'
+    | 'noToolCalling'
+    | 'reasoningFamily'
+    | 'generalPurpose'
+    | 'compactFamily'
+    | 'limitedContext'
+    | 'lightweightFamily'
+    | 'legacyFamily'
+    | 'unknownFamily'
+    | 'automatic';
+
+export const MIGRATION_MODEL_TIERS: readonly MigrationModelTier[] = ['preferred', 'auto', 'capable', 'notRecommended'];
+
+export function getMigrationModelAssessment(model: ModelInfo): {
+    tier: MigrationModelTier;
+    reason: MigrationModelReason;
+} {
+    if (isAutoModel(model)) return { tier: 'auto', reason: 'automatic' };
+    if (model.supportsToolCalling === false) return { tier: 'notRecommended', reason: 'noToolCalling' };
+    if (model.maxInputTokens < RECOMMENDED_MIN_TOKENS) {
+        return { tier: 'notRecommended', reason: 'limitedContext' };
+    }
+
+    switch (model.category) {
+        case 'powerful':
+            return { tier: 'preferred', reason: 'powerfulCategory' };
+        case 'versatile':
+            return { tier: 'capable', reason: 'versatileCategory' };
+        case 'lightweight':
+            return { tier: 'notRecommended', reason: 'lightweightCategory' };
+        case undefined:
+        default:
+            break;
+    }
+
+    // TODO: Review and remove this family-based fallback once the model category API is stable
+    // and available across supported VS Code versions.
+    const identifiers = [model.family, model.name].map((value) => value.toLowerCase().replace(/[\s_]+/g, '-'));
+    const matches = (pattern: RegExp): boolean => identifiers.some((value) => pattern.test(value));
+    const knownFamily = matches(
+        /^(?:gpt-(?:4o|4\.1|5(?:\.\d+)?)(?:-|$)|gpt-6(?:[.-]\d+)*-(?:astra|sol|terra|luna|codex)(?:-|$)|o[134](?:-|$)|claude-(?:(?:opus|sonnet|haiku)(?:-|$)|[345][\d.-]*-(?:opus|sonnet|haiku)(?:-|$))|gemini-(?:1\.5|[234](?:\.\d+)?)-(?:pro|flash|argon)(?:-|$)|grok-4(?:[.-]|$)|mai-code-1\.1-flash(?:-|$))/,
+    );
+
+    if (knownFamily && (matches(/\b(?:nano|haiku|luna)\b/) || matches(/^mai-code-1\.1-flash(?:-|$)/))) {
+        return { tier: 'notRecommended', reason: 'lightweightFamily' };
+    }
+    if (matches(/^(?:gpt-3\.5(?:-|$)|gpt-4(?:-turbo)?(?:-\d+)?$)/)) {
+        return { tier: 'notRecommended', reason: 'legacyFamily' };
+    }
+    if (knownFamily && matches(/\b(?:mini|flash|lite)\b/)) {
+        return { tier: 'capable', reason: 'compactFamily' };
+    }
+    if (matches(/^gpt-[56](?:[.-]\d+)*-(?:terra|chat)(?:-|$)/) || (knownFamily && matches(/\bsonnet\b/))) {
+        return { tier: 'capable', reason: 'generalPurpose' };
+    }
+    if (
+        matches(
+            /^(?:claude-opus-[45](?:[.-]|$)|claude-[45][\d.-]*-opus(?:-|$)|gpt-5(?:[.-]|$)|gpt-6(?:[.-]\d+)*-(?:astra|sol|codex)(?:-|$)|o[134](?:-|$)|gemini-(?:2\.5|3(?:\.\d+)?)-pro(?:-|$)|gemini-4(?:\.\d+)?-argon(?:-|$))/,
+        )
+    ) {
+        return { tier: 'preferred', reason: 'reasoningFamily' };
+    }
+    if (knownFamily) {
+        return { tier: 'capable', reason: 'generalPurpose' };
+    }
+    return { tier: 'notRecommended', reason: 'unknownFamily' };
+}
+
+function getMigrationModelPreference(model: ModelInfo): {
+    familyRank: number;
+    family: string | undefined;
+    version: number[];
+} {
+    for (const identifier of [model.family, model.name]) {
+        const normalized = identifier
+            .toLowerCase()
+            .replace(/[\s_]+/g, '-')
+            .replace(/-(?:\d{8}|\d{4}-\d{2}-\d{2})(?=-|$)/g, '');
+        const match = /^(.*?)(\d+(?:[.-]\d+)*)(?=-|$)(.*)$/.exec(normalized);
+        if (!match || !/[a-z]/.test(match[1])) continue;
+
+        let family = `${match[1]}${match[3]}`.replace(/-+/g, '-').replace(/^-|-$/g, '');
+        const preferredFamily = /^(gpt-astra|claude-opus|gpt-sol)(?:-|$)/.exec(family)?.[1];
+        if (preferredFamily) family = preferredFamily;
+        const familyRank = preferredFamily ? ['gpt-astra', 'claude-opus', 'gpt-sol'].indexOf(preferredFamily) : 3;
+        return { familyRank, family, version: match[2].split(/[.-]/).map(Number) };
+    }
+    return { familyRank: 3, family: undefined, version: [] };
+}
+
 export function getMigrationModels<Model extends ModelInfo>(models: readonly Model[]): Model[] {
-    const concreteModels = models.filter((model) => !isAutoModel(model));
-    return [...concreteModels, ...models.filter(isAutoModel)];
+    const familyOrders = new Map<string, number>();
+    const rankedModels = models.map((model, index) => {
+        const tier = getMigrationModelAssessment(model).tier;
+        const preference = getMigrationModelPreference(model);
+        const familyRank = tier === 'preferred' ? preference.familyRank : 3;
+        const familyKey = JSON.stringify([
+            tier,
+            familyRank,
+            model.vendor,
+            preference.family ?? null,
+            preference.family === undefined ? model.id : null,
+        ]);
+        const familyOrder = familyOrders.get(familyKey) ?? index;
+        familyOrders.set(familyKey, familyOrder);
+        return { model, tier, familyRank, familyOrder, version: preference.version };
+    });
+    return rankedModels
+        .sort((first, second) => {
+            const groupDifference =
+                MIGRATION_MODEL_TIERS.indexOf(first.tier) - MIGRATION_MODEL_TIERS.indexOf(second.tier) ||
+                first.familyRank - second.familyRank ||
+                first.familyOrder - second.familyOrder;
+            if (groupDifference !== 0) return groupDifference;
+
+            const versionLength = Math.max(first.version.length, second.version.length);
+            for (let index = 0; index < versionLength; index++) {
+                const versionDifference = (second.version[index] ?? 0) - (first.version[index] ?? 0);
+                if (versionDifference !== 0) return versionDifference;
+            }
+            return 0;
+        })
+        .map(({ model }) => model);
 }
 
 /**

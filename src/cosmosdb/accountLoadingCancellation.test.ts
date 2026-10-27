@@ -3,31 +3,47 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { createHttpHeaders } from '@azure/core-rest-pipeline';
 import { UserCancelledError, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
-import { CoreExperience } from '../AzureDBExperiences';
-import { BaseCachedBranchDataProvider } from '../tree/BaseCachedBranchDataProvider';
-import { type AccountInfo } from '../tree/cosmosdb/AccountInfo';
-import { CosmosDBAccountResourceItem } from '../tree/cosmosdb/CosmosDBAccountResourceItem';
+import { CosmosDBBranchDataProvider } from '../tree/azure-resources-view/cosmosdb/CosmosDBBranchDataProvider';
 import { type CosmosDBAccountModel } from '../tree/cosmosdb/models/CosmosDBAccountModel';
-import { type DatabaseResource } from '../tree/cosmosdb/models/CosmosDBTypes';
 import { type TreeElement } from '../tree/TreeElement';
 import { createCosmosDBManagementClient } from '../utils/azureClients';
 import { armTestSubscription, createArmTestClient, createArmTestContext } from './armTestUtils';
 
+const mocks = vi.hoisted<{ temporaryChildren: TreeElement[] }>(() => ({ temporaryChildren: [] }));
+
 vi.mock('../utils/azureClients', () => ({ createCosmosDBManagementClient: vi.fn() }));
+vi.mock('@microsoft/vscode-azext-azureutils', () => ({
+    createAuthorizationManagementClient: vi.fn(),
+    getResourceGroupFromId: vi.fn(),
+}));
 vi.mock('../constants', () => ({ getThemeAgnosticIconURI: () => undefined, CosmosDBTimeouts: {} }));
 vi.mock('../extensionVariables', () => ({
     ext: {
-        state: { wrapItemInStateHandling: (item: TreeElement) => item },
+        state: {
+            wrapItemInStateHandling: (item: TreeElement) => {
+                const originalGetChildren = item.getChildren?.bind(item);
+                if (originalGetChildren) {
+                    // Reproduce the SDK state wrapper, which drops arguments and adds temporary UI nodes.
+                    item.getChildren = async () => [
+                        ...mocks.temporaryChildren,
+                        ...((await originalGetChildren()) ?? []),
+                    ];
+                }
+                return item;
+            },
+        },
         outputChannel: { warn: vi.fn(), show: vi.fn() },
         settingsKeys: { cosmosDbAuthentication: 'cosmosDB.preferredAuthentication' },
     },
 }));
 vi.mock('../services/FabricService', () => ({ FabricService: { isArtifact: () => false } }));
-vi.mock('./controlPlane', () => ({ getControlPlane: vi.fn() }));
-vi.mock('./utils/rbacUtils', () => ({}));
+vi.mock('../services/SchemaService', () => ({ SchemaService: { getInstance: vi.fn() } }));
+vi.mock('../utils/survey', () => ({ countExperienceUsageForSurvey: vi.fn() }));
+vi.mock('./withClaimsChallengeHandling', () => ({ withClaimsChallengeHandling: vi.fn() }));
 vi.mock('./utils/azureSessionHelper', () => ({}));
 vi.mock('./utils/managedIdentityUtils', () => ({ getManagedIdentityAuth: async () => undefined }));
 vi.mock('./getCosmosClient', () => ({ getCosmosClient: vi.fn() }));
@@ -83,49 +99,46 @@ const account: CosmosDBAccountModel = {
     resourceGroup: 'rg',
     subscription: armTestSubscription,
     azureResourceType: { type: 'microsoft.documentdb/databaseaccounts' },
+    tags: { defaultExperience: 'Core (SQL)' },
     raw: {},
 };
 
-class TestAccount extends CosmosDBAccountResourceItem {
-    public databaseReads = 0;
-
-    constructor(model: CosmosDBAccountModel) {
-        super(model, CoreExperience);
-    }
-
-    protected override getDatabases(_info: AccountInfo): Promise<DatabaseResource[]> {
-        this.databaseReads++;
-        return Promise.resolve([]);
-    }
-
-    protected getChildrenImpl(): Promise<TreeElement[]> {
-        return Promise.resolve([]);
-    }
-}
-
-class TestProvider extends BaseCachedBranchDataProvider<CosmosDBAccountModel> {
-    protected readonly providerName = 'AccountLoadingTest';
-    protected readonly contextValue = 'test';
-
-    protected createResourceItem(_context: IActionContext, model: CosmosDBAccountModel): TestAccount {
-        return new TestAccount(model);
-    }
-}
-
-describe('explicit account loading cancellation', () => {
+describe('decorated NoSQL tree loading cancellation', () => {
     let client: ReturnType<typeof createArmTestClient>;
+    let databaseIds: string[];
+    let containerIds: string[];
 
     beforeEach(() => {
         vi.restoreAllMocks();
+        mocks.temporaryChildren = [];
+        databaseIds = [];
+        containerIds = [];
         client = createArmTestClient();
         vi.mocked(createCosmosDBManagementClient).mockReset().mockResolvedValue(client);
         vi.spyOn(client.databaseAccounts, 'get').mockResolvedValue({
             documentEndpoint: 'https://account.documents.azure.com',
         });
         vi.spyOn(client.databaseAccounts, 'listKeys').mockResolvedValue({ primaryMasterKey: 'test-key' });
+        vi.spyOn(client.pipeline, 'sendRequest').mockImplementation(async (_httpClient, request) => ({
+            request,
+            status: 200,
+            headers: createHttpHeaders(),
+            bodyAsText: JSON.stringify({
+                value: (request.url.includes('/containers') ? containerIds : databaseIds).map((id) => ({
+                    name: id,
+                    properties: { resource: { id } },
+                })),
+            }),
+        }));
     });
 
-    for (const stage of ['metadata client', 'metadata request', 'credential client', 'key request']) {
+    for (const stage of [
+        'metadata client',
+        'metadata request',
+        'credential client',
+        'key request',
+        'database client',
+    ]) {
         for (const kind of ['user', 'VS Code']) {
             it(`preserves ${kind} cancellation during ${stage}`, async () => {
                 const error = kind === 'user' ? new UserCancelledError() : new vscode.CancellationError();
@@ -137,11 +150,16 @@ describe('explicit account loading cancellation', () => {
                     vi.mocked(createCosmosDBManagementClient)
                         .mockResolvedValueOnce(client)
                         .mockRejectedValueOnce(error);
+                } else if (stage === 'database client') {
+                    vi.mocked(createCosmosDBManagementClient)
+                        .mockResolvedValueOnce(client)
+                        .mockResolvedValueOnce(client)
+                        .mockRejectedValueOnce(error);
                 } else {
                     vi.mocked(client.databaseAccounts.listKeys).mockRejectedValueOnce(error);
                 }
 
-                const provider = new TestProvider();
+                const provider = new CosmosDBBranchDataProvider();
                 const node = await provider.getResourceItem(account);
                 await expect(provider.getChildren(node, { propagateErrors: true })).rejects.toBe(error);
                 await expect(provider.getChildren(node, { propagateErrors: true })).resolves.toEqual([]);
@@ -149,15 +167,20 @@ describe('explicit account loading cancellation', () => {
         }
     }
 
-    for (const stage of ['metadata client', 'metadata request']) {
+    for (const stage of ['metadata client', 'metadata request', 'database client']) {
         it(`preserves ordinary errors during ${stage}`, async () => {
             const error = new Error('Metadata loading failed');
             if (stage === 'metadata client') {
                 vi.mocked(createCosmosDBManagementClient).mockRejectedValueOnce(error);
-            } else {
+            } else if (stage === 'metadata request') {
                 vi.mocked(client.databaseAccounts.get).mockRejectedValueOnce(error);
+            } else {
+                vi.mocked(createCosmosDBManagementClient)
+                    .mockResolvedValueOnce(client)
+                    .mockResolvedValueOnce(client)
+                    .mockRejectedValueOnce(error);
             }
-            const provider = new TestProvider();
+            const provider = new CosmosDBBranchDataProvider();
             const node = await provider.getResourceItem(account);
             await expect(provider.getChildren(node, { propagateErrors: true })).rejects.toBe(error);
         });
@@ -166,10 +189,15 @@ describe('explicit account loading cancellation', () => {
             const error = new UserCancelledError();
             if (stage === 'metadata client') {
                 vi.mocked(createCosmosDBManagementClient).mockRejectedValueOnce(error);
-            } else {
+            } else if (stage === 'metadata request') {
                 vi.mocked(client.databaseAccounts.get).mockRejectedValueOnce(error);
+            } else {
+                vi.mocked(createCosmosDBManagementClient)
+                    .mockResolvedValueOnce(client)
+                    .mockResolvedValueOnce(client)
+                    .mockRejectedValueOnce(error);
             }
-            const provider = new TestProvider();
+            const provider = new CosmosDBBranchDataProvider();
             const node = await provider.getResourceItem(account);
             const children = await provider.getChildren(node);
             expect(children).toHaveLength(1);
@@ -179,8 +207,49 @@ describe('explicit account loading cancellation', () => {
 
     it('does not turn ordinary key-auth fallback into an explicit loading failure', async () => {
         vi.mocked(client.databaseAccounts.listKeys).mockRejectedValueOnce(new Error('Key access unavailable'));
-        const provider = new TestProvider();
+        const provider = new CosmosDBBranchDataProvider();
         const node = await provider.getResourceItem(account);
         await expect(provider.getChildren(node, { propagateErrors: true })).resolves.toEqual([]);
+    });
+
+    it.each(['user', 'VS Code', 'ordinary'])('preserves %s errors during container client creation', async (kind) => {
+        databaseIds = ['db'];
+        containerIds = ['items'];
+        const provider = new CosmosDBBranchDataProvider();
+        const root = await provider.getResourceItem(account);
+        const [database] = await provider.getChildren(root, { propagateErrors: true });
+        expect(database.id).toBe(`${account.id}/db`);
+        const failure =
+            kind === 'user'
+                ? new UserCancelledError()
+                : kind === 'VS Code'
+                  ? new vscode.CancellationError()
+                  : new Error('Container client failed');
+        vi.mocked(createCosmosDBManagementClient).mockRejectedValueOnce(failure);
+
+        await expect(provider.getChildren(database, { propagateErrors: true })).rejects.toBe(failure);
+        const containers = await provider.getChildren(database, { propagateErrors: true });
+        expect(containers.map((item) => item.id)).toEqual([`${account.id}/db/items`]);
+    });
+
+    it('does not retain an explicit policy in the account metadata for subsequent browsing', async () => {
+        databaseIds = ['db'];
+        const provider = new CosmosDBBranchDataProvider();
+        const root = await provider.getResourceItem(account);
+        const [database] = await provider.getChildren(root, { propagateErrors: true });
+        vi.mocked(createCosmosDBManagementClient).mockRejectedValueOnce(new UserCancelledError());
+
+        const children = await provider.getChildren(database);
+        expect(children).toHaveLength(1);
+        expect((await children[0].getTreeItem()).label).toContain('Failed to connect to Cosmos DB account');
+    });
+
+    it('keeps state-manager temporary children in browsing but excludes them from explicit resolution', async () => {
+        const provider = new CosmosDBBranchDataProvider();
+        const root = await provider.getResourceItem(account);
+        mocks.temporaryChildren = [{ id: 'temporary', getTreeItem: () => ({ label: 'Creating database...' }) }];
+
+        expect((await provider.getChildren(root)).map((item) => item.id)).toEqual(['temporary']);
+        await expect(provider.getChildren(root, { propagateErrors: true })).resolves.toEqual([]);
     });
 });

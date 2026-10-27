@@ -192,6 +192,7 @@ and then resumes opening the resource. If multiple accounts or tenants match, it
 The editor uses the exact provider model returned for the selected identity, without an unqualified cache lookup.
 Explicit resource loading propagates cancellation and errors; ordinary background tree browsing remains unchanged.
 This includes authentication cancellation during account metadata and ARM credential initialization.
+The same policy is forwarded through decorated tree nodes and ARM client initialization for database/container listing.
 Older Azure Resources versions require the subscription to be visible and do not support tenant-specific reveals.
 
 ## Corporate proxies

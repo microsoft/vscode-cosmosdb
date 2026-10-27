@@ -40,7 +40,7 @@ export abstract class CosmosDBAccountResourceItem extends CosmosDBAccountResourc
 
     public async getChildren(options?: ResourceTreeOperationContext): Promise<TreeElement[]> {
         const accountInfo = await getAccountInfo(this.account, options);
-        const databases = await this.getDatabases(accountInfo);
+        const databases = await this.getDatabases(accountInfo, options);
         const sortedDatabases = databases.sort((a, b) => compareResourceIds(a.id, b.id));
 
         return this.getChildrenImpl(accountInfo, sortedDatabases);
@@ -63,8 +63,11 @@ export abstract class CosmosDBAccountResourceItem extends CosmosDBAccountResourc
         }
     }
 
-    protected async getDatabases(accountInfo: AccountInfo): Promise<DatabaseResource[]> | never {
-        const controlPlane = getControlPlane(accountInfo);
+    protected async getDatabases(
+        accountInfo: AccountInfo,
+        options?: ResourceTreeOperationContext,
+    ): Promise<DatabaseResource[]> | never {
+        const controlPlane = getControlPlane(accountInfo, options);
 
         try {
             return await controlPlane.listDatabases();

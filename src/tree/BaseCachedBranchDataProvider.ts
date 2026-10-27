@@ -387,9 +387,17 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
                 try {
                     // Set the data provider for the element
                     element.dataProvider = this;
-                    return ext.state.wrapItemInStateHandling(element, (item) =>
+                    const getChildren = element.getChildren?.bind(element);
+                    const wrapped = ext.state.wrapItemInStateHandling(element, (item) =>
                         this.refresh(item as TreeElement),
                     ) as TreeElement;
+                    const getChildrenWithState = wrapped.getChildren?.bind(wrapped);
+                    if (getChildren && getChildrenWithState) {
+                        // The SDK state wrapper drops options; explicit loads also must not include temporary UI children.
+                        wrapped.getChildren = (options) =>
+                            options?.propagateErrors ? getChildren(options) : getChildrenWithState(options);
+                    }
+                    return wrapped;
                 } catch (error) {
                     context.telemetry.properties.wrapError = parseError(error).message;
                     throw error; // Rethrow to ensure the error is logged

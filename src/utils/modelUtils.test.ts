@@ -519,6 +519,47 @@ describe('getMigrationModels', () => {
         ]);
     });
 
+    it.each([
+        ['claude-opus-4', 'Claude Opus 4.5', 'Claude Opus 4.6', 'powerful'],
+        ['claude-4-opus', 'Claude Opus 4.5', 'Claude Opus 4.6', 'powerful'],
+        ['claude-sonnet-5', 'Claude Sonnet 5', 'Claude Sonnet 5.5', 'versatile'],
+        ['gpt-6-sol', 'GPT-6 Sol', 'GPT-6.1 Sol', 'powerful'],
+        ['grok-4', 'Grok 4.6', 'Grok 4.7', 'versatile'],
+        ['claude-opus-4', 'Claude Opus 4.5', 'Claude Opus 4.6', undefined],
+        ['custom-2', 'Custom 2.9', 'Custom 2.10', undefined],
+    ])('refines shared API family %s using matching display-name versions', (family, older, newer, category) => {
+        const candidates = [older, newer].map((name) =>
+            makeModel({ id: name, name, family, category, maxInputTokens: 200_000 }),
+        );
+        const available = getMigrationModels(candidates);
+        expect(available.map((model) => model.name)).toEqual([newer, older]);
+        expect(resolveSelectedModelId(available, null)).toBe(newer);
+        expect(resolveSelectedModelId(available, older)).toBe(older);
+        expect(candidates.map((model) => model.name)).toEqual([older, newer]);
+    });
+
+    it.each([
+        ['claude-opus-4', 'Claude Sonnet 4.9', 'claude-opus-4.6'],
+        ['claude-opus-4.5', 'Claude Opus 4.9', 'claude-opus-4.6'],
+        ['claude-opus-4.5', 'Claude Opus 4.4.9', 'claude-opus-4.6'],
+        ['gpt-6-sol', 'GPT-7.9 Sol', 'gpt-6.1-sol'],
+        ['gpt-6-sol', 'GPT-6.9 Sol Fast', 'gpt-6.1-sol'],
+        ['gpt-6-sol', 'GPT-6.9 Astra', 'gpt-6.1-sol'],
+        ['gpt-6-sol', 'Deployment 99', 'gpt-6.1-sol'],
+    ])('keeps API version %s when display name %s is inconsistent', (family, name, newerFamily) => {
+        const candidates = [
+            makeModel({ id: 'older', name, family, category: 'powerful', maxInputTokens: 200_000 }),
+            makeModel({
+                id: 'newer',
+                name: 'Deployment',
+                family: newerFamily,
+                category: 'powerful',
+                maxInputTokens: 200_000,
+            }),
+        ];
+        expect(getMigrationModels(candidates).map((model) => model.id)).toEqual(['newer', 'older']);
+    });
+
     it('preserves provider order for equal versions and sorts other powerful families numerically', () => {
         const names = ['Unknown 9', 'GPT-5.6 Sol Fast', 'Unknown 10', 'GPT-5.6.0 Sol', 'GPT-5.6 Sol'];
         const candidates = names.map((name) =>

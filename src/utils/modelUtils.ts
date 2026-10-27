@@ -113,21 +113,34 @@ function getMigrationModelPreference(model: ModelInfo): {
     family: string | undefined;
     version: number[];
 } {
-    for (const identifier of [model.family, model.name]) {
+    const [apiPreference, namePreference] = [model.family, model.name].map((identifier) => {
         const normalized = identifier
             .toLowerCase()
             .replace(/[\s_]+/g, '-')
             .replace(/-(?:\d{8}|\d{4}-\d{2}-\d{2})(?=-|$)/g, '');
         const match = /^(.*?)(\d+(?:[.-]\d+)*)(?=-|$)(.*)$/.exec(normalized);
-        if (!match || !/[a-z]/.test(match[1])) continue;
+        if (!match || !/[a-z]/.test(match[1])) return undefined;
 
-        let family = `${match[1]}${match[3]}`.replace(/-+/g, '-').replace(/^-|-$/g, '');
+        const family = `${match[1]}${match[3]}`.replace(/-+/g, '-').replace(/^-|-$/g, '');
         const preferredFamily = /^(gpt-astra|claude-opus|gpt-sol)(?:-|$)/.exec(family)?.[1];
-        if (preferredFamily) family = preferredFamily;
         const familyRank = preferredFamily ? ['gpt-astra', 'claude-opus', 'gpt-sol'].indexOf(preferredFamily) : 3;
-        return { familyRank, family, version: match[2].split(/[.-]/).map(Number) };
+        return {
+            familyRank,
+            family: preferredFamily ?? family,
+            version: match[2].split(/[.-]/).map(Number),
+            identifierFamily: family,
+        };
+    });
+    if (!apiPreference) return namePreference ?? { familyRank: 3, family: undefined, version: [] };
+    if (
+        namePreference &&
+        namePreference.identifierFamily === apiPreference.identifierFamily &&
+        namePreference.version.length > apiPreference.version.length &&
+        apiPreference.version.every((part, index) => part === namePreference.version[index])
+    ) {
+        return { ...apiPreference, version: namePreference.version };
     }
-    return { familyRank: 3, family: undefined, version: [] };
+    return apiPreference;
 }
 
 export function getMigrationModels<Model extends ModelInfo>(models: readonly Model[]): Model[] {

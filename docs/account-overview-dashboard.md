@@ -22,6 +22,10 @@ This guide explains the current repository implementation. Maintainers and codin
 The header remains visible across the three tabs. Expand **Account details** for provisioning status,
 capacity mode, account properties, **View Cost** and **View JSON**.
 The Explorer's metric shortcuts select a chart in the same dashboard, preserving your filters.
+Use the smiley **Provide Feedback** button beside **Refresh**, then choose **Provide Feedback** in its menu,
+to open the same NoSQL survey available in Query Editor. The button respects VS Code's
+`telemetry.feedback.enabled` preference, including changes made while Overview is open.
+Opening Overview does not accumulate survey usage or trigger an automatic feedback prompt.
 
 ## Understanding health
 

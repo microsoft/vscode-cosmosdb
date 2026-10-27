@@ -46,6 +46,7 @@ const NATIVE_ERROR_ACTIONS = new Set([
     'accountOverview.showOutput',
     'accountOverview.revealInTree',
     'accountOverview.openQueryEditor',
+    'accountOverview.provideFeedback',
 ]);
 
 async function runAuxiliaryAction(action: () => Promise<unknown>): Promise<void> {
@@ -129,7 +130,19 @@ export const OverviewDashboard = ({
     const rpcEvents = useRpcEvents();
     const { announce } = useAnnounce();
     const [isAIFeaturesEnabled, setIsAIFeaturesEnabled] = useState(false);
+    const [feedbackEnabled, setFeedbackEnabled] = useState(false);
     const [isDataModelerEnabled, setIsDataModelerEnabled] = useState(false);
+
+    useEffect(() => {
+        const subscription = trpcClient.accountOverview.feedbackEnabled.subscribe(undefined, {
+            onData: setFeedbackEnabled,
+            onError: (error) => {
+                setFeedbackEnabled(false);
+                console.error('Unable to receive Account Overview feedback availability.', error);
+            },
+        });
+        return () => subscription.unsubscribe();
+    }, [trpcClient]);
 
     useEffect(() => {
         const subscription = trpcClient.accountOverview.dataModelerEnabled.subscribe(undefined, {
@@ -806,6 +819,14 @@ export const OverviewDashboard = ({
                                 activeAlertsUnavailable={activeAlertsUnavailable}
                                 lastRefreshedAt={lastRefreshedAt}
                                 onRefresh={() => void refreshAccount()}
+                                onProvideFeedback={
+                                    feedbackEnabled
+                                        ? () =>
+                                              runAuxiliaryAction(() =>
+                                                  trpcClient.accountOverview.provideFeedback.mutate(),
+                                              )
+                                        : undefined
+                                }
                                 loading={headerUpdating}
                                 refreshDisabled={headerLoading}
                                 defaultEssentialsOpen

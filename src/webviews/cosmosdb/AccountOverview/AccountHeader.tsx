@@ -31,6 +31,7 @@ import {
     type ProvisioningState,
     type TimeRange,
 } from '../../api/types';
+import { ProvideFeedbackButton } from '../../common/ProvideFeedbackButton';
 import { AccountHealthStatus, PROVISIONING_LABELS } from './AccountHealthStatus';
 import { type ContainerRef, type MetricScope } from './metrics/descriptors';
 
@@ -223,6 +224,7 @@ export const AccountHeader = ({
     activeAlertsUnavailable = false,
     lastRefreshedAt,
     onRefresh,
+    onProvideFeedback,
     loading = false,
     refreshDisabled = false,
     defaultEssentialsOpen = false,
@@ -242,6 +244,7 @@ export const AccountHeader = ({
     activeAlertsUnavailable?: boolean;
     lastRefreshedAt?: number;
     onRefresh: () => void;
+    onProvideFeedback?: () => Promise<void>;
     loading?: boolean;
     refreshDisabled?: boolean;
     defaultEssentialsOpen?: boolean;
@@ -430,6 +433,7 @@ export const AccountHeader = ({
                     >
                         {l10n.t('Refresh')}
                     </Button>
+                    {onProvideFeedback && <ProvideFeedbackButton type="button" onProvideFeedback={onProvideFeedback} />}
                 </div>
             </div>
             <p className={styles.subtitle}>

@@ -3,50 +3,17 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Menu, MenuItem, MenuList, MenuPopover, MenuTrigger, ToolbarButton, Tooltip } from '@fluentui/react-components';
-import { CommentCheckmarkRegular, EmojiSmileSlightRegular } from '@fluentui/react-icons';
-import * as l10n from '@vscode/l10n';
-import { useCallback } from 'react';
+import { ProvideFeedbackButton as SharedProvideFeedbackButton } from '../../../common/ProvideFeedbackButton';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
 import { useQueryEditorDispatcher } from '../state/QueryEditorContext';
 
 export const ProvideFeedbackButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
     const dispatcher = useQueryEditorDispatcher();
-    const { ref, type } = props;
-
-    const provideFeedback = useCallback(() => dispatcher.provideFeedback(), [dispatcher]);
-
-    if (type === 'button') {
-        return (
-            <Menu>
-                <MenuTrigger>
-                    <Tooltip content={l10n.t('Provide Feedback')} relationship="label" appearance="inverted" withArrow>
-                        <ToolbarButton
-                            ref={ref}
-                            aria-label={l10n.t('Provide Feedback')}
-                            data-quickstart="provide-feedback"
-                            icon={<EmojiSmileSlightRegular />}
-                        />
-                    </Tooltip>
-                </MenuTrigger>
-                <MenuPopover>
-                    <MenuList>
-                        <MenuItem icon={<CommentCheckmarkRegular />} onClick={() => void provideFeedback()}>
-                            {l10n.t('Provide Feedback')}
-                        </MenuItem>
-                    </MenuList>
-                </MenuPopover>
-            </Menu>
-        );
-    } else {
-        return (
-            <MenuItem
-                aria-label={l10n.t('Provide Feedback')}
-                icon={<EmojiSmileSlightRegular />}
-                onClick={() => void dispatcher.provideFeedback()}
-            >
-                {l10n.t('Provide Feedback')}
-            </MenuItem>
-        );
-    }
+    return (
+        <SharedProvideFeedbackButton
+            {...props}
+            quickStartId="provide-feedback"
+            onProvideFeedback={() => dispatcher.provideFeedback()}
+        />
+    );
 };

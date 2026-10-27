@@ -55,6 +55,9 @@ const queries = vi.hoisted(() => ({
     advisories: vi.fn(),
     navigation: vi.fn(),
     aiFeaturesEnabled: vi.fn(),
+    feedbackEnabled: vi.fn(),
+    provideFeedback: vi.fn(),
+    unsubscribeFeedback: vi.fn(),
     dataModelerEnabled: vi.fn(),
     unsubscribeDataModeler: vi.fn(),
     unsubscribeAI: vi.fn(),
@@ -89,6 +92,8 @@ vi.mock('@microsoft/vscode-ext-webview/react', () => {
             getDerivedAdvisories: { query: queries.advisories },
             navigation: { subscribe: queries.navigation },
             aiFeaturesEnabled: { subscribe: queries.aiFeaturesEnabled },
+            feedbackEnabled: { subscribe: queries.feedbackEnabled },
+            provideFeedback: { mutate: queries.provideFeedback },
             dataModelerEnabled: { subscribe: queries.dataModelerEnabled },
             reportEvent: { mutate: queries.reportEvent },
             revealInTree: { mutate: queries.reveal },
@@ -141,6 +146,7 @@ type NavigationCallbacks = {
 let callbacks: NavigationCallbacks;
 let initialTarget: AccountOverviewTarget;
 let aiCallbacks: { onData: (enabled: boolean) => void; onError: (error: Error) => void };
+let feedbackCallbacks: { onData: (enabled: boolean) => void; onError: (error: Error) => void };
 let modelerCallbacks: typeof aiCallbacks;
 
 function Wrapper({ children }: PropsWithChildren) {
@@ -177,6 +183,12 @@ function dataQueryCounts() {
 beforeEach(() => {
     vi.resetAllMocks();
     initialTarget = 'overview';
+    queries.feedbackEnabled.mockImplementation((_input: unknown, next: typeof feedbackCallbacks) => {
+        feedbackCallbacks = next;
+        next.onData(true);
+        return { unsubscribe: queries.unsubscribeFeedback };
+    });
+    queries.provideFeedback.mockResolvedValue(undefined);
     queries.dataModelerEnabled.mockImplementation((_input: unknown, next: typeof modelerCallbacks) => {
         modelerCallbacks = next;
         next.onData(true);
@@ -263,6 +275,83 @@ function activeAlertSummary(severity?: 'Critical' | 'Warning'): ActiveAlertSumma
 }
 
 afterEach(() => vi.restoreAllMocks());
+
+describe('Account Overview feedback control', () => {
+    it('keeps feedback and Data Modeler availability independent', async () => {
+        const { unmount } = render(<AccountOverview />, { wrapper: Wrapper });
+        await screen.findByRole('button', { name: 'Try Data Modeler' });
+        expect(screen.getByRole('button', { name: 'Provide Feedback' })).toBeEnabled();
+
+        act(() => modelerCallbacks.onData(false));
+        expect(screen.queryByRole('button', { name: 'Try Data Modeler' })).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Provide Feedback' })).toBeEnabled();
+
+        act(() => {
+            modelerCallbacks.onData(true);
+            feedbackCallbacks.onData(false);
+        });
+        expect(screen.getByRole('button', { name: 'Try Data Modeler' })).toBeEnabled();
+        expect(screen.queryByRole('button', { name: 'Provide Feedback' })).not.toBeInTheDocument();
+
+        unmount();
+        expect(queries.unsubscribeFeedback).toHaveBeenCalledOnce();
+        expect(queries.unsubscribeDataModeler).toHaveBeenCalledOnce();
+    });
+
+    it('opens the feedback action from the shared menu and updates visibility without refetching data', async () => {
+        const user = userEvent.setup();
+        const { unmount } = render(<AccountOverview />, { wrapper: Wrapper });
+        await waitFor(() =>
+            expect(screen.getByRole('button', { name: 'Refresh' })).not.toHaveAttribute('aria-disabled', 'true'),
+        );
+        await user.click(screen.getByRole('tab', { name: 'Monitoring' }));
+        const feedback = await screen.findByRole('button', { name: 'Provide Feedback' });
+        await user.click(feedback);
+        expect(queries.provideFeedback).not.toHaveBeenCalled();
+        await user.click(await screen.findByRole('menuitem', { name: 'Provide Feedback' }));
+        expect(queries.provideFeedback).toHaveBeenCalledExactlyOnceWith();
+        const counts = dataQueryCounts();
+        act(() => feedbackCallbacks.onData(false));
+        expect(screen.queryByRole('button', { name: 'Provide Feedback' })).not.toBeInTheDocument();
+        act(() => feedbackCallbacks.onData(true));
+        expect(screen.getByRole('button', { name: 'Provide Feedback' })).toBeVisible();
+        expect(dataQueryCounts()).toEqual(counts);
+        expect(queries.feedbackEnabled).toHaveBeenCalledTimes(1);
+        unmount();
+        expect(queries.unsubscribeFeedback).toHaveBeenCalledOnce();
+    });
+
+    it('routes feedback failures to the existing native action error handler', async () => {
+        const user = userEvent.setup();
+        queries.provideFeedback.mockImplementation(async () => {
+            const error = new Error('Unable to open feedback');
+            rpcEvents.emitError(error, { id: 1, path: 'accountOverview.provideFeedback', type: 'mutation' });
+            throw error;
+        });
+        render(<AccountOverview />, { wrapper: Wrapper });
+        await user.click(await screen.findByRole('button', { name: 'Provide Feedback' }));
+        await user.click(await screen.findByRole('menuitem', { name: 'Provide Feedback' }));
+        expect(queries.showErrorMessage).toHaveBeenCalledExactlyOnceWith({ message: 'Unable to open feedback' });
+    });
+
+    it('hides the control when feedback is disabled and on a subscription failure', async () => {
+        queries.feedbackEnabled.mockImplementation((_input: unknown, next: typeof feedbackCallbacks) => {
+            feedbackCallbacks = next;
+            next.onData(false);
+            return { unsubscribe: queries.unsubscribeFeedback };
+        });
+        render(<AccountOverview />, { wrapper: Wrapper });
+        await screen.findByRole('button', { name: 'Refresh' });
+        expect(screen.queryByRole('button', { name: 'Provide Feedback' })).not.toBeInTheDocument();
+        act(() => feedbackCallbacks.onData(true));
+        expect(screen.getByRole('button', { name: 'Provide Feedback' })).toBeVisible();
+        const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const error = new Error('Subscription failed');
+        act(() => feedbackCallbacks.onError(error));
+        expect(screen.queryByRole('button', { name: 'Provide Feedback' })).not.toBeInTheDocument();
+        expect(log).toHaveBeenCalledWith('Unable to receive Account Overview feedback availability.', error);
+    });
+});
 
 describe('account-wide health collection', () => {
     it.each([false, true])('does not wait for inventory metrics (Serverless: %s)', async (isServerless) => {
@@ -2091,6 +2180,8 @@ describe('alert monitor condition and active health', () => {
         expect(badge).toHaveAccessibleDescription(/Active Azure Monitor alerts — Passed/);
         expect(badge).toHaveAttribute('tabindex', '0');
         act(() => refresh.focus());
+        await user.tab();
+        expect(screen.getByRole('button', { name: 'Provide Feedback' })).toHaveFocus();
         await user.tab();
         expect(badge).toHaveFocus();
         const tooltip = await screen.findByRole('tooltip');

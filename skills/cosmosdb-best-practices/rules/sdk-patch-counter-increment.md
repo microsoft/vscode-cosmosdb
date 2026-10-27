@@ -70,10 +70,10 @@ return container.patchItem(videoId, new PartitionKey(videoId), ops, Video.class)
 - `move(from, to)` — rename a field
 
 **Key Points:**
-- `increment()` requires the field to already exist as a numeric type in the document; initialize it to `0` on document creation
+- `increment(path, value)` creates a missing object field with the specified value. An existing target must be numeric. Parent objects must already exist; increment does not create missing ancestors.
 - At most 10 patch operations per `patchItem` call
 - Patch is idempotent for `set`/`replace` but **not** for `increment` — a retried increment will double-count. Use conditional patch (`setFilterPredicate`) or accept the retry risk for high-volume counters
 - RU cost varies with item size, the update, and indexing policy. Patch is billed like other database operations, not as a fixed 1-RU write. It avoids a separate application read; measure the patch response with `CosmosItemResponse.getRequestCharge()` to evaluate actual costs.
 - Prefer Patch over Stored Procedures for simple counter increments — Patch is natively supported without custom server-side code
 
-References: [Partial document update (Patch API)](https://learn.microsoft.com/azure/cosmos-db/partial-document-update), [Patch RU pricing](https://learn.microsoft.com/azure/cosmos-db/partial-document-update-faq#how-is-ru-s-pricing-calculated-), [read/write cost factors](https://learn.microsoft.com/azure/cosmos-db/optimize-cost-reads-writes)
+References: [Supported patch operations](https://learn.microsoft.com/azure/cosmos-db/partial-document-update#supported-operations), [Patch troubleshooting](https://learn.microsoft.com/azure/cosmos-db/partial-document-update-getting-started#troubleshooting), [Patch RU pricing](https://learn.microsoft.com/azure/cosmos-db/partial-document-update-faq#how-is-ru-s-pricing-calculated-), [read/write cost factors](https://learn.microsoft.com/azure/cosmos-db/optimize-cost-reads-writes)

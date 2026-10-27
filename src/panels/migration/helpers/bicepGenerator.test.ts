@@ -21,6 +21,15 @@ function buildModel(partial: Partial<CosmosModel> = {}): CosmosModel {
 }
 
 describe('bicepGenerator', () => {
+    it('rejects shared allocation rather than exporting a dedicated-only template', () => {
+        for (const model of [
+            buildModel({ databaseMaxThroughput: 4000 }),
+            buildModel({ containers: [container({ name: 'Shared', throughputMode: 'shared' })] }),
+        ]) {
+            expect(() => buildBicepTemplate(model)).toThrow('migration Skill provisioning workflow');
+        }
+    });
+
     it('generates a complete selected-container template with safely escaped literal resource names', () => {
         const template = buildBicepTemplate(
             buildModel({

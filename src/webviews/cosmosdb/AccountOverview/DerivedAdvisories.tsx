@@ -27,7 +27,6 @@ import {
     MessageBarTitle,
     Text,
     tokens,
-    Tooltip,
     typographyStyles,
     useRestoreFocusTarget,
 } from '@fluentui/react-components';
@@ -41,6 +40,7 @@ import {
     type DerivedAdvisoriesResult,
     type UnavailableReason,
 } from '../../api/types';
+import { ThemedTooltip as Tooltip } from '../../common/ThemedTooltip';
 import { AdvisoryText } from './AdvisoryText';
 import { DIAGNOSTIC_SETTINGS_URL, EmptyState, useDashboardActions } from './DashboardChrome';
 

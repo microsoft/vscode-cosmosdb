@@ -29,6 +29,15 @@ export interface ModelInfo {
     maxInputTokens: number;
 }
 
+export function isAutoModel(model: Pick<ModelInfo, 'id' | 'name'>): boolean {
+    return model.id === 'auto' || model.name.toLowerCase() === 'auto';
+}
+
+export function getMigrationModels<Model extends ModelInfo>(models: readonly Model[]): Model[] {
+    const concreteModels = models.filter((model) => !isAutoModel(model));
+    return [...concreteModels, ...models.filter(isAutoModel)];
+}
+
 /**
  * Formats a token count into a compact human-readable string (e.g. 128000 → "128k").
  */

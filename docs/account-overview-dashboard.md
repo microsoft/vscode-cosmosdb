@@ -22,6 +22,10 @@ This guide explains the current repository implementation. Maintainers and codin
 The header remains visible across the three tabs. Expand **Account details** for provisioning status,
 capacity mode, account properties, **View Cost** and **View JSON**.
 The Explorer's metric shortcuts select a chart in the same dashboard, preserving your filters.
+Use the smiley **Provide Feedback** button beside **Refresh**, then choose **Provide Feedback** in its menu,
+to open the same NoSQL survey available in Query Editor. The button respects VS Code's
+`telemetry.feedback.enabled` preference, including changes made while Overview is open.
+Opening Overview does not accumulate survey usage or trigger an automatic feedback prompt.
 
 ## Understanding health
 
@@ -129,8 +133,9 @@ Current byte labels use binary sizes: for example, a displayed GB uses 1,024³ b
 
 ### Serverless accounts
 
-**Normalized RU** and **Provisioned throughput** show **Not applicable** because Serverless has no provisioned RU/s.
-The tiles remain visible with explanations; they are not failed queries or zero utilization.
+**Normalized RU** and **Provisioned throughput** tiles are hidden because Serverless has no provisioned RU/s.
+The inventory also hides Throughput, Peak normalized RU and the throughput-mode filter.
+The account header and details omit Total throughput limit; Capacity mode still identifies Serverless.
 The first chart is **Total request units** instead of Normalized RU.
 Partition investigation shows **Storage distribution**, without an RU/Storage switch.
 Request counts, consumed RU and account-wide throttling remain useful on Serverless.
@@ -163,15 +168,22 @@ The main measurements are:
 - **Data growth:** latest minus first observed **data** size over seven days. Index growth is not included.
 - **Document count:** latest observed count for the container, not a live data-plane count.
 
-### Container health
+### Container throttling
 
-With the default settings, a container is Critical at a peak RU of **90% or more**, or when sustained 429s
-are detected for that container. A peak of **80% or more** gives Needs Attention.
-Lower observed RU gives Healthy. Container 429 checks use the last hour even when Peak RU uses another period.
-Storage growth does not directly change the row's health.
+The **Throttling** column is a scoped diagnostic, not an overall container-health assessment.
+For **Provisioned** containers, the default thresholds are Critical at a normalized RU peak of **90% or more**
+or sustained 429s, and Needs Attention at a peak of **80% or more**. Lower observed RU gives Passed.
+For **Serverless**, normalized RU is not required: usable request observations without sustained 429s give Passed,
+sustained 429s give Critical, and missing observations or a failed request check give Unknown.
 
-Missing metric health normally shows Unknown, including Serverless without a throttling signal.
-There is a current limitation: a provisioned row with no metric result at all can retain its initial Healthy label.
+Sustained 429s mean **more than 1% of all requests** for **at least five minutes** in the last hour, not an absolute
+number of 429s. Observed zero counts are usable observations; an empty response is not.
+Container 429 checks use the last hour even when Peak RU uses another period.
+Storage growth does not directly change this assessment. Consumed RU remains useful for Serverless cost and load
+analysis, but is not a percentage of available capacity.
+
+Missing metric health normally shows Unknown.
+There is a current limitation: a provisioned row with no metric result at all can retain its initial Passed label.
 Use the account checklist's unassessed count and the actual metric values rather than treating that row label
 as proof that telemetry was collected.
 
@@ -215,8 +227,9 @@ No findings does not prove that every resource was checked or that no problem ex
 
 Certain query/ingestion checks need resource-specific diagnostic logs in Log Analytics.
 Without those logs or access to them, other available checks still run. See [Permissions](#permissions).
-Advanced thresholds can be found in VS Code Settings under `cosmosDB.accountOverview`;
-the numbers in this guide are defaults.
+Derived Advisory thresholds follow an internal policy maintained against CODA; they cannot be overridden through
+VS Code Settings or `settings.json`. Health and view controls remain configurable separately.
+See [Account Overview settings](#account-overview-settings).
 
 ### Azure Advisor recommendations
 
@@ -229,6 +242,12 @@ Refresh may reuse an Advisor response collected in the last 55 seconds; it does 
 The list has **Active** and **Resolved** modes plus **1h / 1d / 7d / 30d** periods.
 It starts with Active over 1 day. **View in Azure portal** opens the individual alert;
 **Open alerts in Azure portal** opens the account's Alerts page.
+Each period displays its matching count in parentheses. Switching Active/Resolved switches these counts too.
+Resource Graph calculates all period counts in one aggregate query, without downloading alerts to count them.
+Periods are nested lookback windows based on when an alert started and its current condition, not when it resolved.
+Azure Monitor retains alert instances for 30 days; the dashboard does not imply 60/90-day coverage.
+After a filter change, assistive technology announces the matching aggregate count, not the loaded row count.
+Unavailable counts display a dash rather than zero. Counts and details can differ temporarily due to source propagation.
 
 **Active means the alert condition is Fired. It does not mean the incident workflow is New or unclosed.**
 Azure's New/Acknowledged/Closed workflow state is a separate field, and Overview does not filter or change it.
@@ -241,6 +260,47 @@ Sev0/Sev1 raise health to Critical; Sev2/Sev3 raise it to Needs Attention; Sev4 
 The summary is limited by Azure retention, your access and propagation delays.
 A Closed-but-Fired alert can still affect current health.
 There is not yet a separate notification specifically for unclosed active incidents.
+
+## Account Overview settings
+
+Open Settings (`Ctrl+,` on Windows/Linux, `Cmd+,` on macOS), expand **Extensions → Azure Cosmos DB**,
+and select **Account Overview**. This category contains exactly six Health and view controls.
+General extension settings and **Authentication** remain in their existing categories.
+
+All keys below have the prefix `cosmosDB.accountOverview.`:
+
+| Key                                 | Default | Applies to                            |
+| ----------------------------------- | ------- | ------------------------------------- |
+| `health.criticalRuPercent`          | 90      | Container critical normalized RU peak |
+| `health.warningRuPercent`           | 80      | Container warning normalized RU peak  |
+| `health.partitionSaturationPercent` | 90      | Partition Health RU saturation        |
+| `health.partitionHeadroomPercent`   | 70      | Partition Health RU headroom          |
+| `health.storageSkewBalanceRatio`    | 0.7     | Partition Health storage-skew flags   |
+| `partition.topN`                    | 5       | Partition ranked-list length          |
+
+All five `health.*` controls are independent of Derived Advisories.
+With user overrides, the heatmap flags and Derived findings can differ.
+Defaults, allowed ranges and scopes are unchanged. The three Partition Health keys were renamed from `advisories.*`
+to `health.*`; move any custom partition thresholds to the new keys to retain them.
+All former `advisories.*` keys are unregistered and ignored even if left in `settings.json`.
+Existing overrides for the other three controls remain valid; no configuration files are rewritten automatically.
+
+Search for **Account Overview** or an existing full setting ID such as
+`cosmosDB.accountOverview.health.criticalRuPercent` to find a setting directly.
+Choose the **User** or **Workspace** tab to edit that scope; use the setting's gear menu and **Reset Setting**
+to remove its override at the selected scope.
+
+The fixed Health rules are not hidden user settings: sustained 429s require more than 1% in each bucket for at
+least five minutes over the last hour (one-minute buckets; gaps over 1.5 buckets break a run).
+Partition Health uses p99 RU observations, requires at least two partitions, and requires at least 1 GiB for a
+storage-skew flag. Provisioning state, Fired-alert severity and High-impact Performance/Cost Azure Advisor findings
+also affect account health as described above; there are no additional extension-setting overrides for these rules.
+
+Maintainers can find Health/view defaults (`OVERVIEW_DEFAULTS`) and fixed Health rules (`HEALTH_POLICY`) in
+[`healthPolicy.ts`](../src/panels/accountOverview/services/healthPolicy.ts), and the independent Derived policy in
+[`advisories/core/thresholds.ts`](../src/panels/accountOverview/services/advisories/core/thresholds.ts).
+Settings registration and runtime readers determine which values can be overridden, not the constant names.
+Derived policy is maintained locally against CODA; this separation does not add an automatic CODA download or sync.
 
 ## Refresh and timestamps
 
@@ -277,7 +337,7 @@ It requires AI features enabled and available GitHub Copilot models.
 
 For provisioned accounts, **No total throughput limit** means the account-wide cap is disabled.
 An explicit **0 RU/s** is not the disabled value; **Unknown** means the cap metadata is absent.
-Serverless shows No total throughput limit because a provisioned-throughput allocation cap does not apply.
+Serverless hides Total throughput limit because a provisioned-throughput allocation cap does not apply.
 Disabling an account cap does not remove per-resource throughput or service limits.
 See [Limit total account throughput](https://learn.microsoft.com/azure/cosmos-db/limit-total-account-throughput).
 
@@ -303,6 +363,11 @@ See [Azure RBAC](https://learn.microsoft.com/azure/role-based-access-control/ove
 [Log Analytics access control](https://learn.microsoft.com/azure/azure-monitor/logs/manage-access).
 
 ## Keyboard use
+
+Overview tooltips use Fluent UI's standard `inverted` appearance in dark themes: a dark surface with light text,
+not a custom light surface. They follow theme changes while Overview remains open; light and high-contrast themes
+retain normal styling unless a tooltip explicitly sets its appearance.
+Chart-value popups retain their existing chart colors in every theme, without custom color inversion.
 
 Use Tab to reach controls and focusable badges. Focus a health/metric badge for its explanation.
 Use Left/Right to move between tab labels, then Enter or Space to activate.

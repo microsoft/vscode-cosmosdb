@@ -30,7 +30,13 @@ import { pagedItems } from './testFixtures';
 
 describe('Resource Graph active alert summary', () => {
     const accountId = '/subscriptions/sub/resourceGroups/rg/providers/Microsoft.DocumentDB/databaseAccounts/account';
-    const counts = { totalCount: 9, criticalCount: 2, warningCount: 3 };
+    const periodCounts = {
+        '1h': { Fired: 1, Resolved: 2 },
+        '1d': { Fired: 3, Resolved: 5 },
+        '7d': { Fired: 5, Resolved: 10 },
+        '30d': { Fired: 9, Resolved: 20 },
+    };
+    const counts = { totalCount: 9, criticalCount: 2, warningCount: 3, periodCounts };
     const complete = { count: 1, totalRecords: 1, resultTruncated: 'false', data: [counts] };
 
     function graphClient(body: unknown = complete, status = 200) {
@@ -44,7 +50,7 @@ describe('Resource Graph active alert summary', () => {
         return { client, send };
     }
 
-    it('aggregates only Fired by account and severity without time filtering or enumerating instances', async () => {
+    it('aggregates account-wide Fired health and both conditions in nested periods in one request', async () => {
         const { client, send } = graphClient();
         const result = await getActiveAlertSummary(client, 'sub', accountId, 'https://management.azure.com/');
         expect(result).toMatchObject({ available: true, ...counts });
@@ -67,7 +73,14 @@ describe('Resource Graph active alert summary', () => {
         expect(body.query).toContain("monitorCondition) =~ 'Fired'");
         expect(body.query).toContain("in~ ('Sev0', 'Sev1')");
         expect(body.query).toContain("in~ ('Sev2', 'Sev3')");
-        expect(body.query).not.toMatch(/ago\(|startDateTime|alertState|timeRange/);
+        expect(body.query).toContain('totalCount=countif(fired)');
+        expect(body.query).toContain('criticalCount=countif(fired and');
+        expect(body.query).not.toContain('| where tostring(properties.essentials.monitorCondition)');
+        for (const range of ALERT_TIME_RANGES) {
+            expect(body.query).toContain(`fired${range}=countif(fired and startedAt >= ago(${range}))`);
+            expect(body.query).toContain(`resolved${range}=countif(resolved and startedAt >= ago(${range}))`);
+        }
+        expect(body.query).not.toMatch(/alertState|take |limit /);
     });
 
     it('uses the sovereign ARM endpoint and escapes the account literal', async () => {
@@ -83,7 +96,19 @@ describe('Resource Graph active alert summary', () => {
         const { client } = graphClient({
             ...complete,
             resultTruncated: false,
-            data: [{ totalCount: 0, criticalCount: 0, warningCount: 0 }],
+            data: [
+                {
+                    totalCount: 0,
+                    criticalCount: 0,
+                    warningCount: 0,
+                    periodCounts: {
+                        '1h': { Fired: 0, Resolved: 0 },
+                        '1d': { Fired: 0, Resolved: 0 },
+                        '7d': { Fired: 0, Resolved: 0 },
+                        '30d': { Fired: 0, Resolved: 0 },
+                    },
+                },
+            ],
         });
         expect(await getActiveAlertSummary(client, 'sub', accountId, 'https://management.azure.com')).toMatchObject({
             available: true,
@@ -99,6 +124,10 @@ describe('Resource Graph active alert summary', () => {
         { ...complete, totalRecords: 2 },
         { ...complete, data: [{ totalCount: 1, criticalCount: 2, warningCount: 0 }] },
         { ...complete, data: [{ totalCount: -1, criticalCount: 0, warningCount: 0 }] },
+        { ...complete, data: [{ ...counts, periodCounts: {} }] },
+        { ...complete, data: [{ ...counts, periodCounts: { ...periodCounts, '1h': { Fired: 4, Resolved: 2 } } }] },
+        { ...complete, data: [{ ...counts, periodCounts: { ...periodCounts, '30d': { Fired: 10, Resolved: 20 } } }] },
+        { ...complete, data: [{ ...counts, periodCounts: { ...periodCounts, '1d': { Fired: 3, Resolved: -1 } } }] },
     ])('does not interpret a malformed or partial aggregate as recovery: %j', async (body) => {
         const { client } = graphClient(body);
         expect(await getActiveAlertSummary(client, 'sub', accountId, 'https://management.azure.com')).toMatchObject({

@@ -11,7 +11,6 @@ import {
     Text,
     textClassNames,
     tokens,
-    Tooltip,
     typographyStyles,
 } from '@fluentui/react-components';
 import { Eye16Regular } from '@fluentui/react-icons';
@@ -19,6 +18,7 @@ import * as l10n from '@vscode/l10n';
 import { useId, useState } from 'react';
 import { summarizeStorage } from '../../../../panels/accountOverview/metrics/storage';
 import { type MetricApplicability, type MetricSeriesResult } from '../../../api/types';
+import { ThemedTooltip as Tooltip } from '../../../common/ThemedTooltip';
 import {
     formatMetricValue,
     METRIC_GROUPS,

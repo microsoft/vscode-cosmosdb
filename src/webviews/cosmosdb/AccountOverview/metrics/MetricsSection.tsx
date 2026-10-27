@@ -5,8 +5,9 @@
 
 import { makeStyles, Text, tokens, typographyStyles } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { type MetricApplicability, type MetricKey, type MetricSeriesResult, type TimeRange } from '../../../api/types';
+import { ThemedTooltip } from '../../../common/ThemedTooltip';
 import { DashboardCard, SectionHeader } from '../DashboardChrome';
 import { METRIC_GROUPS, type MetricGroup, METRIC_VIEWS } from './descriptors';
 import { MetricChart } from './MetricChart';
@@ -39,6 +40,10 @@ const useStyles = makeStyles({
         alignItems: 'center',
         gap: tokens.spacingHorizontalXS,
         cursor: 'default',
+        ':focus-visible': {
+            outline: `${tokens.strokeWidthThick} solid ${tokens.colorStrokeFocus2}`,
+            outlineOffset: tokens.strokeWidthThin,
+        },
     },
     legendSwatch: {
         width: '10px',
@@ -94,11 +99,28 @@ export const MetricsSection = ({
     const groupLabelId = useId();
     const [explicitMetric, setSelectedMetric] = useState<MetricKey | undefined>(requestedMetric);
     const normalizedRuApplicability = applicabilityByMetric?.normalizedRu ?? seriesByMetric.normalizedRu?.applicability;
-    const selectedMetric =
+    const candidateMetric =
         explicitMetric ??
         (normalizedRuApplicability?.status === 'notApplicable' ? 'totalRequestUnits' : 'normalizedRu');
+    const selectedMetric =
+        (applicabilityByMetric?.[candidateMetric] ?? seriesByMetric[candidateMetric]?.applicability)?.status ===
+        'notApplicable'
+            ? 'totalRequestUnits'
+            : candidateMetric;
     const chartRef = useRef<HTMLElement>(null);
+    const gridRef = useRef<HTMLDivElement>(null);
+    const focusedTile = useRef<HTMLElement | null>(null);
     const handledNavigation = useRef<number | undefined>(undefined);
+
+    useLayoutEffect(() => {
+        const focused = focusedTile.current;
+        if (focused && !focused.isConnected) {
+            focusedTile.current = null;
+            if (active && document.hasFocus() && document.activeElement === document.body) {
+                gridRef.current?.querySelector<HTMLElement>('[aria-pressed="true"]')?.focus({ preventScroll: true });
+            }
+        }
+    });
 
     useEffect(() => {
         if (requestedMetric) {
@@ -107,36 +129,45 @@ export const MetricsSection = ({
     }, [requestedMetric, navigationRevision]);
 
     useEffect(() => {
-        if (active && requestedMetric === selectedMetric && handledNavigation.current !== navigationRevision) {
+        if (
+            active &&
+            requestedMetric &&
+            explicitMetric === requestedMetric &&
+            handledNavigation.current !== navigationRevision
+        ) {
             handledNavigation.current = navigationRevision;
             chartRef.current?.focus({ preventScroll: true });
             chartRef.current?.scrollIntoView({ block: 'nearest' });
         }
-    }, [active, requestedMetric, selectedMetric, navigationRevision]);
+    }, [active, requestedMetric, explicitMetric, navigationRevision]);
 
     const activeDescriptor = METRIC_VIEWS[selectedMetric];
     const activeSeries = seriesByMetric[selectedMetric];
     const activeApplicability = applicabilityByMetric?.[selectedMetric] ?? activeSeries?.applicability;
 
-    // Keep applicable tiles grouped State → Activity; inapplicable tiles retain their source order at the end.
     const groupedOrder = useMemo(
         () =>
-            [...order].sort((a, b) => {
-                const aNotApplicable =
-                    (applicabilityByMetric?.[a] ?? seriesByMetric[a]?.applicability)?.status === 'notApplicable';
-                const bNotApplicable =
-                    (applicabilityByMetric?.[b] ?? seriesByMetric[b]?.applicability)?.status === 'notApplicable';
-                if (aNotApplicable || bNotApplicable) {
-                    return Number(aNotApplicable) - Number(bNotApplicable);
-                }
-                return GROUP_ORDER.indexOf(METRIC_VIEWS[a].group) - GROUP_ORDER.indexOf(METRIC_VIEWS[b].group);
-            }),
+            order
+                .filter(
+                    (key) =>
+                        (applicabilityByMetric?.[key] ?? seriesByMetric[key]?.applicability)?.status !==
+                        'notApplicable',
+                )
+                .sort(
+                    (a, b) => GROUP_ORDER.indexOf(METRIC_VIEWS[a].group) - GROUP_ORDER.indexOf(METRIC_VIEWS[b].group),
+                ),
         [order, applicabilityByMetric, seriesByMetric],
     );
 
     return (
         <>
-            <div className={styles.grid}>
+            <div
+                className={styles.grid}
+                ref={gridRef}
+                onFocusCapture={(event) => {
+                    focusedTile.current = event.target;
+                }}
+            >
                 {groupedOrder.map((key) => (
                     <MetricTile
                         key={key}
@@ -156,22 +187,23 @@ export const MetricsSection = ({
                 {(Object.keys(METRIC_GROUPS) as MetricGroup[]).map((groupKey) => {
                     const meta = METRIC_GROUPS[groupKey];
                     return (
-                        <span
-                            key={groupKey}
-                            className={styles.legendItem}
-                            title={meta.description}
-                            aria-description={chartAffordances ? meta.description : undefined}
-                        >
-                            <span
-                                className={styles.legendSwatch}
-                                style={{ backgroundColor: meta.color }}
-                                aria-hidden="true"
-                            />
-                            <Text id={`${groupLabelId}-${groupKey}`} className={styles.legendText}>
-                                {meta.label}
+                        <ThemedTooltip key={groupKey} content={meta.description} relationship="inaccessible">
+                            <Text
+                                className={styles.legendItem}
+                                tabIndex={0}
+                                aria-description={chartAffordances ? meta.description : undefined}
+                            >
+                                <span
+                                    className={styles.legendSwatch}
+                                    style={{ backgroundColor: meta.color }}
+                                    aria-hidden="true"
+                                />
+                                <Text id={`${groupLabelId}-${groupKey}`} className={styles.legendText}>
+                                    {meta.label}
+                                </Text>
+                                {!chartAffordances && <Text className={styles.visuallyHidden}>{meta.description}</Text>}
                             </Text>
-                            {!chartAffordances && <Text className={styles.visuallyHidden}>{meta.description}</Text>}
-                        </span>
+                        </ThemedTooltip>
                     );
                 })}
             </div>

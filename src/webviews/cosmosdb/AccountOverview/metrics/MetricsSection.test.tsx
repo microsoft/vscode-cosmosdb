@@ -5,14 +5,14 @@
 
 // @vitest-environment jsdom
 
-import { FluentProvider, tokens, webLightTheme } from '@fluentui/react-components';
+import { FluentProvider, webLightTheme } from '@fluentui/react-components';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { type ComponentProps, type PropsWithChildren } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getAccountMetricApplicability } from '../../../../panels/accountOverview/metrics/contracts';
 import { type MetricKey, type MetricPoint, type MetricSeriesResult, type StorageMeasurement } from '../../../api/types';
-import { METRIC_ORDER, METRIC_VIEWS, metricInapplicabilityExplanation } from './descriptors';
+import { METRIC_GROUPS, METRIC_ORDER, METRIC_VIEWS } from './descriptors';
 import { MetricsSection } from './MetricsSection';
 
 vi.mock('recharts', () => ({
@@ -54,8 +54,6 @@ function Wrapper({ children }: PropsWithChildren) {
 type Props = ComponentProps<typeof MetricsSection>;
 const provisioned = getAccountMetricApplicability(false);
 const serverless = getAccountMetricApplicability(true);
-const normalizedExplanation = metricInapplicabilityExplanation('serverlessNormalizedRu');
-const throughputExplanation = metricInapplicabilityExplanation('serverlessProvisionedThroughput');
 
 function renderMetrics(overrides: Partial<Props> = {}) {
     const props: Props = {
@@ -103,6 +101,18 @@ beforeEach(() => {
     });
 });
 afterEach(() => vi.restoreAllMocks());
+
+it('uses a focusable themed tooltip instead of a native title for metric-group explanations', async () => {
+    const user = userEvent.setup();
+    renderMetrics({ chartAffordances: true });
+    const legend = screen.getByText(METRIC_GROUPS.state.label).parentElement!;
+    expect(legend).not.toHaveAttribute('title');
+    expect(legend).toHaveAttribute('tabindex', '0');
+    expect(legend).toHaveAccessibleDescription(METRIC_GROUPS.state.description);
+    await user.click(legend);
+    expect(legend).toHaveFocus();
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(METRIC_GROUPS.state.description);
+});
 
 describe.each([false, true])('storage breakdown with chartAffordances=%s', (chartAffordances) => {
     const complete: StorageMeasurement = {
@@ -184,7 +194,7 @@ describe.each([false, true])('storage breakdown with chartAffordances=%s', (char
 });
 
 describe.each([false, true])('metric applicability with chartAffordances=%s', (chartAffordances) => {
-    it('puts only inapplicable tiles last, retaining original order, and defaults to consumed RU', () => {
+    it('hides inapplicable tiles and defaults to consumed RU even while loading', () => {
         renderMetrics({ chartAffordances, applicabilityByMetric: serverless, loading: true });
         expect(tileLabels()).toEqual([
             'Data + index usage',
@@ -194,82 +204,14 @@ describe.each([false, true])('metric applicability with chartAffordances=%s', (c
             'Metadata requests',
             'Server-side latency',
             'Service availability',
-            'Normalized RU',
-            'Provisioned throughput',
         ]);
         expect(metricTile('totalRequestUnits')).toHaveAttribute('aria-pressed', 'true');
         for (const metric of ['normalizedRu', 'provisionedThroughput'] as const) {
-            const tile = metricTile(metric);
-            expect(tile).toHaveTextContent('—Not applicable');
-            expect(tile).not.toHaveTextContent('Loading');
-            expect(tile).not.toBeDisabled();
+            expect(
+                screen.queryByRole('button', { name: new RegExp(METRIC_VIEWS[metric].label) }),
+            ).not.toBeInTheDocument();
         }
-        expect(metricTile('normalizedRu')).toHaveAccessibleDescription(`State ${normalizedExplanation}`);
-        expect(metricTile('provisionedThroughput')).toHaveAccessibleDescription(`State ${throughputExplanation}`);
-    });
-
-    it('uses the same explanatory state for keyboard activation and mouse selection', async () => {
-        const user = userEvent.setup();
-        renderMetrics({ chartAffordances, applicabilityByMetric: serverless, loading: true });
-        const tile = metricTile('normalizedRu');
-        act(() => tile.focus());
-        await user.keyboard('{Enter}');
-        expect(tile).toHaveFocus();
-        expect(tile).toHaveAttribute('aria-pressed', 'true');
-        const chart = screen.getByRole('region', { name: 'Normalized RU trend' });
-        expect(within(chart).getByText('Not applicable')).toBeVisible();
-        expect(within(chart).getByText(normalizedExplanation)).toBeVisible();
-        expect(within(chart).queryByRole('progressbar')).not.toBeInTheDocument();
-        expect(within(chart).queryByTestId('metric-plot')).not.toBeInTheDocument();
-        expect(within(chart).queryByText(/telemetry.*yet/)).not.toBeInTheDocument();
-        await user.click(metricTile('provisionedThroughput'));
-        expect(
-            within(screen.getByRole('region', { name: 'Provisioned throughput trend' })).getByText(
-                throughputExplanation,
-            ),
-        ).toBeVisible();
-    });
-
-    it('separates the Not applicable chart status from its explanation into readable blocks', () => {
-        renderMetrics({ chartAffordances, applicabilityByMetric: serverless, requestedMetric: 'normalizedRu' });
-        const chart = screen.getByRole('region', { name: 'Normalized RU trend' });
-        const status = within(chart).getByText('Not applicable');
-        const explanation = within(chart).getByText(normalizedExplanation);
-        expect(status.tagName).toBe('P');
-        expect(explanation.tagName).toBe('P');
-        expect(status).toHaveStyle({ display: 'block' });
-        expect(explanation).toHaveStyle({ display: 'block' });
-        expect(status.parentElement).toHaveStyle({
-            display: 'flex',
-            flexDirection: 'column',
-            gap: tokens.spacingVerticalS,
-            overflowWrap: 'anywhere',
-        });
-        expect(chart).toHaveAccessibleName('Normalized RU trend');
-        expect(chart).toHaveFocus();
-        expect(status).not.toHaveAttribute('aria-hidden');
-        expect(explanation).not.toHaveAttribute('aria-hidden');
-    });
-
-    it('shows the reason on hover and keyboard focus without replacing the visible accessible name', async () => {
-        const user = userEvent.setup();
-        renderMetrics({ chartAffordances, applicabilityByMetric: serverless });
-        const tile = metricTile('normalizedRu');
-        expect(tile).toHaveAccessibleName('Normalized RU — Not applicable');
-        const descriptions = tile.getAttribute('aria-describedby')!.split(' ');
-        expect(descriptions).toHaveLength(2);
-        expect(document.getElementById(descriptions[0])).toHaveTextContent('State');
-        expect(document.getElementById(descriptions[1])).toHaveTextContent(normalizedExplanation);
-        await user.hover(tile);
-        expect(await screen.findByRole('tooltip')).toHaveTextContent(normalizedExplanation);
-        await user.unhover(tile);
-        const provisionedTile = metricTile('provisionedThroughput');
-        fireEvent.keyDown(document, { key: 'Tab' });
-        act(() => provisionedTile.focus());
-        await waitFor(() => expect(screen.getByRole('tooltip')).toHaveTextContent(throughputExplanation));
-        await user.keyboard('{Escape}');
-        expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
-        expect(provisionedTile).toHaveFocus();
+        expect(screen.queryByText('Not applicable')).not.toBeInTheDocument();
     });
 
     it('does not reorder applicable tiles for loading, empty, permission, or other failures', () => {
@@ -303,41 +245,92 @@ describe.each([false, true])('metric applicability with chartAffordances=%s', (c
         expect(screen.queryByText('Not applicable')).not.toBeInTheDocument();
         update({ applicabilityByMetric: serverless, loading: false });
         expect(metricTile('totalRequestUnits')).toHaveAttribute('aria-pressed', 'true');
-        await user.click(metricTile('normalizedRu'));
-        const focused = metricTile('normalizedRu');
+        await user.click(metricTile('totalRequests'));
+        const focused = metricTile('totalRequests');
         update({ applicabilityByMetric: { ...serverless }, loading: true, timeRange: '7D' });
         expect(focused).toHaveFocus();
         expect(focused).toHaveAttribute('aria-pressed', 'true');
-        expect(
-            within(screen.getByRole('region', { name: 'Normalized RU trend' })).getByText('Not applicable'),
-        ).toBeVisible();
+        expect(screen.getByRole('region', { name: 'Total requests trend' })).toBeVisible();
         update({ applicabilityByMetric: provisioned, loading: false });
-        expect(metricTile('normalizedRu')).toBe(focused);
+        expect(metricTile('totalRequests')).toBe(focused);
         expect(focused).toHaveFocus();
         expect(focused).toHaveAttribute('aria-pressed', 'true');
     });
 
-    it('does not overwrite a user selection made before metadata arrives', async () => {
+    it('moves focus to consumed RU when metadata removes the focused metric', async () => {
         const user = userEvent.setup();
         const { update } = renderMetrics({ chartAffordances, loading: true });
         await user.click(metricTile('normalizedRu'));
         const focused = metricTile('normalizedRu');
         update({ applicabilityByMetric: serverless, loading: true });
-        expect(metricTile('normalizedRu')).toBe(focused);
-        expect(focused).toHaveFocus();
-        expect(focused).toHaveAttribute('aria-pressed', 'true');
+        expect(focused).not.toBeInTheDocument();
+        expect(metricTile('totalRequestUnits')).toHaveFocus();
+        expect(metricTile('totalRequestUnits')).toHaveAttribute('aria-pressed', 'true');
     });
 
-    it('honors explicit navigation to an inapplicable metric without redirecting', () => {
+    it('redirects explicit navigation to an inapplicable metric to consumed RU', () => {
         renderMetrics({
             chartAffordances,
             applicabilityByMetric: serverless,
             requestedMetric: 'provisionedThroughput',
         });
-        expect(metricTile('provisionedThroughput')).toHaveAttribute('aria-pressed', 'true');
-        const chart = screen.getByRole('region', { name: 'Provisioned throughput trend' });
+        expect(metricTile('totalRequestUnits')).toHaveAttribute('aria-pressed', 'true');
+        const chart = screen.getByRole('region', { name: 'Total request units trend' });
         expect(chart).toHaveFocus();
-        expect(within(chart).getByText(throughputExplanation)).toBeVisible();
+        expect(screen.queryByRole('region', { name: 'Provisioned throughput trend' })).not.toBeInTheDocument();
+    });
+
+    it.each([
+        { requestedMetric: 'dataIndexUsage', destination: 'Data + index usage trend', applicability: provisioned },
+        {
+            requestedMetric: 'provisionedThroughput',
+            destination: 'Total request units trend',
+            applicability: serverless,
+        },
+    ] as const)(
+        'focuses only the committed destination for $requestedMetric navigation',
+        async ({ requestedMetric, destination, applicability }) => {
+            const user = userEvent.setup();
+            const { update } = renderMetrics({
+                chartAffordances,
+                applicabilityByMetric: applicability,
+                requestedMetric: 'totalRequests',
+                navigationRevision: 1,
+            });
+            await user.click(metricTile('documentCount'));
+            const chart = screen.getByRole('region', { name: 'Document count trend' });
+            const focusedNames: (string | null)[] = [];
+            chart.addEventListener('focus', () => focusedNames.push(chart.getAttribute('aria-label')));
+
+            update({ requestedMetric, navigationRevision: 2 });
+
+            expect(focusedNames).toEqual([destination]);
+            expect(chart).toHaveAccessibleName(destination);
+            expect(chart).toHaveFocus();
+            expect(chart).toHaveTextContent(destination);
+
+            await user.click(metricTile('documentCount'));
+            update({ requestedMetric, navigationRevision: 2 });
+            expect(metricTile('documentCount')).toHaveFocus();
+            expect(focusedNames).toEqual([destination]);
+        },
+    );
+
+    it('defers navigation focus until Monitoring is active', () => {
+        const { update } = renderMetrics({
+            chartAffordances,
+            active: false,
+            requestedMetric: 'normalizedRu',
+            navigationRevision: 1,
+        });
+        const chart = screen.getByRole('region', { name: 'Normalized RU trend' });
+        const focusedNames: (string | null)[] = [];
+        chart.addEventListener('focus', () => focusedNames.push(chart.getAttribute('aria-label')));
+        update({ active: false, requestedMetric: 'totalRequests', navigationRevision: 2 });
+        expect(focusedNames).toEqual([]);
+        update({ active: true, requestedMetric: 'totalRequests', navigationRevision: 2 });
+        expect(focusedNames).toEqual(['Total requests trend']);
+        expect(chart).toHaveFocus();
     });
 
     it('does not show stale samples or a zero line after known inapplicability arrives', () => {
@@ -355,12 +348,9 @@ describe.each([false, true])('metric applicability with chartAffordances=%s', (c
         });
         expect(screen.getByTestId('metric-plot')).toBeVisible();
         update({ applicabilityByMetric: serverless, loading: true });
-        expect(metricTile('normalizedRu')).toHaveTextContent('—Not applicable');
+        expect(screen.queryByRole('button', { name: /^Normalized RU/ })).not.toBeInTheDocument();
         expect(screen.queryByTestId('metric-plot')).not.toBeInTheDocument();
-        expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
-        expect(
-            within(screen.getByRole('region', { name: 'Normalized RU trend' })).getByText(normalizedExplanation),
-        ).toBeVisible();
+        expect(screen.getByRole('region', { name: 'Total request units trend' })).toBeVisible();
     });
 
     it('retains a real measured zero in both tile and chart', async () => {
@@ -388,17 +378,15 @@ describe.each([false, true])('metric applicability with chartAffordances=%s', (c
     });
 });
 
-it('uses the same selection and accessible explanation for the eye button', async () => {
+it('uses the same selection for an applicable eye button and omits inapplicable eye buttons', async () => {
     const user = userEvent.setup();
     renderMetrics({ chartAffordances: true, applicabilityByMetric: serverless });
-    const eye = screen.getByRole('button', { name: 'Show chart: Normalized RU' });
-    expect(eye).toHaveAccessibleDescription(`State ${normalizedExplanation}`);
+    const eye = screen.getByRole('button', { name: 'Show chart: Total requests' });
+    expect(screen.queryByRole('button', { name: 'Show chart: Normalized RU' })).not.toBeInTheDocument();
     await user.click(eye);
     expect(eye).toHaveFocus();
     expect(eye).toHaveAttribute('aria-pressed', 'true');
-    expect(
-        within(screen.getByRole('region', { name: 'Normalized RU trend' })).getByText(normalizedExplanation),
-    ).toBeVisible();
+    expect(screen.getByRole('region', { name: 'Total requests trend' })).toBeVisible();
 });
 
 it.each([

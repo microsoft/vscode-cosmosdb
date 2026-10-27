@@ -5,6 +5,8 @@
 
 import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { CosmosClient } from '@azure/cosmos';
+import Ajv2020 from 'ajv/dist/2020.js';
+import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
 import { type CosmosModel } from '../cosmosModel';
@@ -47,6 +49,133 @@ const expectedDefinition = {
 const operations = (): CosmosModelProvisioningOperations => ({ createDatabase: vi.fn(), createContainer: vi.fn() });
 
 describe('shared migration resource pipeline', () => {
+    it('validates shared and dedicated allocation using the published JSON Schema', () => {
+        const schema = JSON.parse(
+            readFileSync(
+                new URL(
+                    '../../../../skills/cosmosdb-relational-migration/schemas/cosmos-model.schema.json',
+                    import.meta.url,
+                ),
+                'utf8',
+            ),
+        ) as object;
+        const validate = new Ajv2020({ strict: false }).compile(schema);
+        const cases: [boolean, (model: CosmosModel) => void][] = [
+            [true, () => {}],
+            [
+                true,
+                (definition) => {
+                    definition.domain = 'Items';
+                    delete definition.databaseMaxThroughput;
+                },
+            ],
+            [
+                true,
+                (definition) => {
+                    delete definition.databaseMaxThroughput;
+                    definition.containers[0].throughputMode = 'dedicated';
+                    definition.containers[0].maxThroughput = 4000;
+                },
+            ],
+            [
+                false,
+                (definition) => {
+                    delete definition.databaseMaxThroughput;
+                },
+            ],
+            [
+                false,
+                (definition) => {
+                    definition.domain = 'Items';
+                },
+            ],
+            [
+                false,
+                (definition) => {
+                    definition.containers[0].maxThroughput = 4000;
+                },
+            ],
+            [
+                false,
+                (definition) => {
+                    definition.capacityMode = 'serverless';
+                },
+            ],
+            [
+                false,
+                (definition) => {
+                    definition.databaseMaxThroughput = 1500;
+                },
+            ],
+            [
+                false,
+                (definition) => {
+                    delete definition.capacityMode;
+                },
+            ],
+        ];
+        for (const [valid, change] of cases) {
+            const definition: CosmosModel = {
+                version: 1,
+                domain: 'all',
+                databaseName: 'db',
+                capacityMode: 'provisioned',
+                databaseMaxThroughput: 4000,
+                containers: [
+                    {
+                        name: 'Items',
+                        throughputMode: 'shared',
+                        partitionKeys: [{ path: '/pk' }],
+                        indexingPolicy: { includedPaths: [{ path: '/*' }], excludedPaths: [] },
+                        entities: [
+                            {
+                                name: 'Item',
+                                docType: 'item',
+                                sourceTable: 'Items',
+                                idTemplate: 'item-{Id}',
+                                attributes: [
+                                    {
+                                        target: 'id',
+                                        type: 'string',
+                                        isId: true,
+                                        source: { table: 'Items', column: 'Id', type: 'int' },
+                                    },
+                                    {
+                                        target: 'itemId',
+                                        type: 'number',
+                                        source: { table: 'Items', column: 'Id', type: 'int' },
+                                    },
+                                    {
+                                        target: 'pk',
+                                        type: 'string',
+                                        isPartitionKey: true,
+                                        source: { table: 'Items', column: 'Pk', type: 'text' },
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            };
+            change(definition);
+            expect(validate(definition)).toBe(valid);
+        }
+    });
+
+    it('rejects shared allocation before any direct resource mutation', async () => {
+        for (const shared of [
+            { ...model, databaseMaxThroughput: 4000 },
+            { ...model, containers: [{ ...model.containers[0], throughputMode: 'shared' as const }] },
+        ]) {
+            const ops = operations();
+            await expect(provisionCosmosModel(shared, 'db', ops)).rejects.toThrow(
+                'migration Skill provisioning workflow',
+            );
+            expect(ops.createDatabase).not.toHaveBeenCalled();
+            expect(ops.createContainer).not.toHaveBeenCalled();
+        }
+    });
+
     it('preserves creation order, hierarchical keys, sanitized indexes and autoscale throughput', async () => {
         const ops = operations();
         const progress = vi.fn();

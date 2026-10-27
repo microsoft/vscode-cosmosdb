@@ -34,6 +34,7 @@ const supportedProviders = [
     // 'Microsoft.DocumentDB/mongoClusters', // discontinued API, uncomment if we add support for MongoDB Clusters
     // 'Microsoft.DBforPostgreSQL/serverGroupsv2', // uncomment once we support Cosmos DB for PostgreSQL
 ];
+const fabricEndpointDomain = 'cosmos.fabric.microsoft.com';
 
 // Optional until the Azure Resources API package publishes the result-returning reveal capability.
 interface DeepLinkResourcesApi {
@@ -201,6 +202,10 @@ async function handleConnectionStringRequest(
             await openAppropriateEditorForAzure(resource);
         }
     } else {
+        const hostName = parsedConnection.connectionString.hostName;
+        if (hostName !== fabricEndpointDomain && !hostName.endsWith(`.${fabricEndpointDomain}`)) {
+            throw new Error(l10n.t('The endpoint specified in this link is not supported.'));
+        }
         // Create storage item for the connection
         if (parsedConnection.api === API.Core) {
             const isEmulator = getIsEmulatorConnection(parsedConnection.connectionString);
@@ -495,7 +500,7 @@ async function createAttachedForConnection(
 
 /**
  * Reveals an attached account in the Azure Workspace Explorer.
- * First focuses on the Azure Workspace view, then reveals the specified resource in the tree.
+ * First expands the account, then reveals the requested database or container within it.
  *
  * @param accountId - The ID of the account to reveal
  * @param database - Optional database name to reveal within the account
@@ -507,12 +512,20 @@ async function revealAttachedInWorkspaceExplorer(
     database?: string,
     container?: string,
 ): Promise<void> {
-    const fullResourceId = `${accountId}${database ? `/${database}${container ? `/${container}` : ''}` : ''}`;
-    await ext.rgApiV2.resources.revealWorkspaceResource(fullResourceId, {
+    await ext.rgApiV2.resources.revealWorkspaceResource(accountId, {
         select: true,
         focus: true,
         expand: true,
     });
+
+    if (database) {
+        const fullResourceId = `${accountId}/${database}${container ? `/${container}` : ''}`;
+        await ext.rgApiV2.resources.revealWorkspaceResource(fullResourceId, {
+            select: true,
+            focus: true,
+            expand: true,
+        });
+    }
 }
 
 /**

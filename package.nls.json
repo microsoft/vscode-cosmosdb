@@ -63,6 +63,7 @@
   "cosmosdb.configuration.confirmation.style.word.description": "Prompts with an input box where you enter the name of the resource to confirm deletion.",
   "cosmosdb.configuration.document.label.fields": "The field values to display as labels in the treeview for Cosmos DB and MongoDB documents, in priority order",
   "cosmosdb.configuration.emulator.port": "Port to use when connecting to a CosmosDB Emulator instance",
+  "cosmosdb.configuration.connection.timeout": "Connection timeout for attached Cosmos DB accounts, in seconds.",
   "cosmosdb.configuration.endpoint.discovery": "Flag to enable/disable automatic redirecting of requests based on read/write operations.",
   "cosmosdb.configuration.oauth.enable": "Always authenticate using Entra ID RBAC when connecting to Cosmos DB NoSQL Accounts. [Enable RBAC and assign Roles](https://aka.ms/cosmos-native-rbac).",
   "cosmosdb.configuration.operation.summaries": "Show detailed operation summaries, displaying messages for actions such as database drops, document additions, deletions, or similar events.",

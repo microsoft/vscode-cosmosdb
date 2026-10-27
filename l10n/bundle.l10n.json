@@ -1234,6 +1234,7 @@
   "Open Stored Procedure": "Open Stored Procedure",
   "Open the selected document in a read-only tab to inspect its full contents.": "Open the selected document in a read-only tab to inspect its full contents.",
   "Open the selected document in an editable tab to change and save it.": "Open the selected document in an editable tab to change and save it.",
+  "Open Timeout Setting": "Open Timeout Setting",
   "Open Trigger": "Open Trigger",
   "Open Volumetrics Template": "Open Volumetrics Template",
   "Opened a Query Editor connected to database \"{0}\" / container \"{1}\". You can now generate, apply, or run queries.": "Opened a Query Editor connected to database \"{0}\" / container \"{1}\". You can now generate, apply, or run queries.",

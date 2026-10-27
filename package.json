@@ -1500,6 +1500,13 @@
             "default": 8081,
             "description": "%cosmosdb.configuration.emulator.port%"
           },
+          "cosmosDB.connectionTimeout": {
+            "type": "integer",
+            "default": 30,
+            "minimum": 1,
+            "maximum": 2147483,
+            "description": "%cosmosdb.configuration.connection.timeout%"
+          },
           "cosmosDB.enableEndpointDiscovery": {
             "type": "boolean",
             "default": true,

@@ -157,6 +157,71 @@ describe('migration model availability', () => {
         expect((await getAvailableModelsInfo()).models).toEqual(models.slice(1));
     });
 
+    it.each([true, false])('preserves tool support %s when the category getter throws', async (supportsToolCalling) => {
+        const model: vscode.LanguageModelChat = {
+            ...models[1],
+            name: 'GPT-6 Astra',
+            family: 'gpt-6-astra',
+            version: 'gpt-6-astra',
+            capabilities: { supportsToolCalling },
+            sendRequest: vi.fn(),
+            countTokens: vi.fn(),
+        };
+        Object.defineProperty(model, 'category', {
+            enumerable: true,
+            get: () => {
+                throw new Error('Category unavailable');
+            },
+        });
+        vi.mocked(vscode.lm.selectChatModels).mockResolvedValue([model]);
+
+        const available = (await getAvailableModelsInfo(MIGRATION_SELECTED_MODEL_KEY)).models;
+        expect(available).toHaveLength(1);
+        expect(available[0]).toMatchObject({ supportsToolCalling });
+        expect(available[0]).not.toHaveProperty('category');
+        expect(getMigrationModelAssessment(available[0])).toEqual(
+            supportsToolCalling
+                ? { tier: 'preferred', reason: 'reasoningFamily' }
+                : { tier: 'notRecommended', reason: 'noToolCalling' },
+        );
+    });
+
+    it.each(['capabilities', 'supportsToolCalling'])(
+        'preserves provider categories when %s throws',
+        async (property) => {
+            for (const [category, tier] of [
+                ['powerful', 'preferred'],
+                ['versatile', 'capable'],
+                ['lightweight', 'notRecommended'],
+            ]) {
+                const capabilities = {};
+                const model: vscode.LanguageModelChat = {
+                    ...models[1],
+                    name: 'GPT-6 Astra',
+                    family: 'gpt-6-astra',
+                    version: 'gpt-6-astra',
+                    category,
+                    capabilities,
+                    sendRequest: vi.fn(),
+                    countTokens: vi.fn(),
+                };
+                Object.defineProperty(property === 'capabilities' ? model : capabilities, property, {
+                    enumerable: true,
+                    get: () => {
+                        throw new Error('Capability unavailable');
+                    },
+                });
+                vi.mocked(vscode.lm.selectChatModels).mockResolvedValue([model]);
+
+                const available = (await getAvailableModelsInfo(MIGRATION_SELECTED_MODEL_KEY)).models;
+                expect(available).toHaveLength(1);
+                expect(available[0]).toMatchObject({ category });
+                expect(available[0]).not.toHaveProperty('supportsToolCalling');
+                expect({ category, tier: getMigrationModelAssessment(available[0]).tier }).toEqual({ category, tier });
+            }
+        },
+    );
+
     it('accepts partial metadata and ignores malformed optional fields', async () => {
         vi.mocked(vscode.lm.selectChatModels).mockResolvedValue([
             { ...models[1], category: 'powerful' },

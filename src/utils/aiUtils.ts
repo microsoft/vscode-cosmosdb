@@ -189,19 +189,23 @@ function getComparableModelMetadata(model: vscode.LanguageModelChat): Record<str
     }
 }
 
+function tryReadModelMetadata<Value>(read: () => Value): Value | undefined {
+    try {
+        return read();
+    } catch {
+        return undefined;
+    }
+}
+
 function getOptionalModelMetadata(
     model: vscode.LanguageModelChat,
 ): Pick<ModelInfo, 'category' | 'supportsToolCalling'> {
-    try {
-        const category = model.category;
-        const supportsToolCalling = model.capabilities?.supportsToolCalling;
-        return {
-            ...(typeof category === 'string' ? { category } : {}),
-            ...(typeof supportsToolCalling === 'boolean' ? { supportsToolCalling } : {}),
-        };
-    } catch {
-        return {};
-    }
+    const category = tryReadModelMetadata(() => model.category);
+    const supportsToolCalling = tryReadModelMetadata(() => model.capabilities?.supportsToolCalling);
+    return {
+        ...(typeof category === 'string' ? { category } : {}),
+        ...(typeof supportsToolCalling === 'boolean' ? { supportsToolCalling } : {}),
+    };
 }
 
 /**

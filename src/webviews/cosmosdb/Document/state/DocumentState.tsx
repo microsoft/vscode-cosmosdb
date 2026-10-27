@@ -10,6 +10,12 @@ import { type CosmosDBRecordIdentifier } from '../../../../cosmosdb/types/queryR
 
 export type OpenDocumentMode = 'add' | 'edit' | 'view';
 
+export type DocumentConflictState = {
+    message: string;
+    serverDocumentContent: string;
+    partitionKey: PartitionKeyDefinition;
+};
+
 export type DispatchAction =
     | {
           type: 'initState';
@@ -17,6 +23,10 @@ export type DispatchAction =
           documentId: CosmosDBRecordIdentifier | undefined;
           databaseId: string;
           containerId: string;
+      }
+    | {
+          type: 'setConflict';
+          conflict: DocumentConflictState | undefined;
       }
     | {
           type: 'setDirty';
@@ -81,6 +91,7 @@ export type DocumentState = {
     isRefreshing: boolean; // Document is being refreshed
     isCleaningUp: boolean; // The original document is being deleted after a partition key move
     isReady: boolean; // Document is being initialized
+    conflict?: DocumentConflictState; // Document save conflict details
 
     currentDocumentContent: string; // Current content of the document
     cleanupRequiredMessage: string | undefined; // A partition key move created the destination but did not delete the source
@@ -100,6 +111,7 @@ export const defaultState: DocumentState = {
     isRefreshing: false,
     isCleaningUp: false,
     isReady: false,
+    conflict: undefined,
     currentDocumentContent: '',
     cleanupRequiredMessage: undefined,
     error: undefined,
@@ -134,7 +146,12 @@ export function dispatch(state: DocumentState, action: DispatchAction): Document
                 currentDocumentContent: action.documentContent,
                 partitionKey: action.partitionKey,
                 isDirty: false,
+                isValid: true,
+                error: undefined,
+                conflict: undefined,
             };
+        case 'setConflict':
+            return { ...state, conflict: action.conflict };
         case 'setMode':
             return { ...state, mode: action.mode };
         case 'setValid':

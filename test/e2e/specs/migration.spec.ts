@@ -1263,9 +1263,13 @@ test.describe('Migration Assistant', () => {
         await expect(migration.modelDropdown).toContainText('E2E Mock Model');
         await expect(frame.getByText(/Estimating tokens|Token estimate unavailable|^~.+ tokens$/)).toHaveCount(0);
         await migration.modelDropdown.click();
-        const autoOption = frame.getByRole('option', { name: 'Auto', exact: true });
-        await expect(autoOption).toHaveText('Auto');
-        await expect(autoOption).toHaveAccessibleName('Auto');
+        const autoOption = frame
+            .getByRole('group', { name: 'Automatic selection', exact: true })
+            .getByRole('option', { name: /^Auto\b/ });
+        await expect(autoOption.getByText('Auto', { exact: true })).toBeVisible();
+        await expect(autoOption).toHaveAccessibleName(
+            'Auto copilot | Copilot chooses the model; reasoning capability may vary',
+        );
         await autoOption.click();
         const firstCount = readCapturedPrompts().length;
         await migration.generateSchemaButton.click();

@@ -76,7 +76,13 @@ export async function collectMigrationTelemetryEvidence(
 ): Promise<MigrationTelemetryEvidence> {
     const phase = invocation.phase;
     if (!phase) return { validation: 'unavailable', measurements: {} };
-    const completion = completions[phase];
+    const completion = {
+        ...completions[phase],
+        artifacts: completions[phase].artifacts.map((artifact) => ({
+            ...artifact,
+            path: artifact.path.replaceAll('\\', '/'),
+        })),
+    };
     if (completion.staleInputs.some((input) => input.id === 'completion-check')) {
         return { validation: 'unavailable', measurements: {}, errorCategory: 'completionCheck' };
     }

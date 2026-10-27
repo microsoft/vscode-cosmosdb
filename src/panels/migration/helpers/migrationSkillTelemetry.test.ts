@@ -340,6 +340,85 @@ describe('migration telemetry evidence', () => {
     });
     afterEach(async () => rm(workspace, { recursive: true, force: true }));
 
+    it.each(['/', '\\'])(
+        'validates artifact paths using %s separators without mutating completion state',
+        async (separator) => {
+            const state = completions();
+            const p = project();
+            const modelPath = '.cosmosdb-migration/phases/3-schema-conversion/domains/private-domain/cosmos-model.json';
+            await mkdir(path.dirname(path.join(workspace, modelPath)), { recursive: true });
+            await writeFile(
+                path.join(workspace, modelPath),
+                JSON.stringify({ containers: [{ name: 'private-container' }] }),
+            );
+            p.phases.schemaConversion = { status: 'complete', domains: ['private-domain'] };
+            state['schema-conversion'].artifacts.push({
+                path: modelPath,
+                description: 'Domain model',
+                state: 'present',
+                conditional: false,
+                canOpen: true,
+            });
+            state.preflight.artifacts.push({
+                path: '.cosmosdb-migration/phases/1-discovery/volumetrics/volumetrics.md',
+                description: 'Reviewed input',
+                state: 'present',
+                conditional: false,
+            });
+            state.provisioning.artifacts.push({
+                path: '.cosmosdb-migration/project.json#phases.targetEnvironment.verified',
+                description: 'Verified target environment',
+                state: 'present',
+                conditional: false,
+            });
+            for (const completion of Object.values(state)) {
+                for (const artifact of completion.artifacts) artifact.path = artifact.path.replaceAll('/', separator);
+            }
+            const originalState = structuredClone(state);
+            for (const invocation of [
+                { phase: 'assessment' },
+                { phase: 'schema-conversion' },
+                { phase: 'preflight', preflightStep: 'application-details' },
+                { phase: 'preflight', preflightStep: 'volumetrics' },
+                { phase: 'provisioning', provisioningStep: 'target-account' },
+            ] satisfies Partial<MigrationSkillInvocation>[]) {
+                const evidence = await collectMigrationTelemetryEvidence(
+                    { workspacePath: workspace, ...invocation },
+                    p,
+                    state,
+                );
+                expect(evidence.validation).toBe('passed');
+                expect(JSON.stringify(evidence)).not.toContain('private-');
+            }
+            expect(
+                await collectMigrationTelemetryEvidence(
+                    { workspacePath: workspace, phase: 'schema-conversion' },
+                    p,
+                    state,
+                ),
+            ).toMatchObject({ validation: 'passed', measurements: { targetContainerCount: 1 } });
+            expect(state).toEqual(originalState);
+            state.preflight.artifacts.push({
+                path: '.cosmosdb-migration/project.json#phases.discovery.applicationAnalysis'.replaceAll(
+                    '/',
+                    separator,
+                ),
+                description: 'Complete application details',
+                state: 'missing',
+                conditional: false,
+            });
+            expect(
+                (
+                    await collectMigrationTelemetryEvidence(
+                        { workspacePath: workspace, phase: 'preflight', preflightStep: 'application-details' },
+                        p,
+                        state,
+                    )
+                ).validation,
+            ).toBe('failed');
+        },
+    );
+
     it('counts actual inventory tables independently of source files', async () => {
         await writeFile(
             path.join(workspace, '.cosmosdb-migration/phases/1-discovery/preflight-manifest.json'),

@@ -14,10 +14,9 @@ import { type LogsFailureKind, type LogsOperation } from '../fetchers/logsDiagno
 // Unlike Azure Alerts + Advisor recommendations, these advisories are derived on
 // the extension host from telemetry the dashboard has already fetched (RU trends,
 // inventory metrics, partition health). No new ARM endpoints. The portal does not
-// derive these on its Overview blade, so thresholds are advisory and user-tunable
-// via `cosmosDB.accountOverview.advisories.*`. Every rule function is pure so it
-// can be unit-tested against synthetic inputs; `collectDerivedAdvisories` does the
-// fetching and calls `computeDerivedAdvisories`.
+// derive these on its Overview blade. Thresholds follow the internal CODA-governed policy, not VS Code settings.
+// Every rule function is pure so it can be unit-tested against synthetic inputs; collectDerivedAdvisories does
+// the fetching and calls computeDerivedAdvisories.
 
 /** The derived-advisory rules this engine implements (P0 + best-effort). */
 export type DerivedAdvisoryRule =

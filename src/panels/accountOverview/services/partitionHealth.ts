@@ -5,12 +5,10 @@
 
 import { type MonitorClient } from '@azure/arm-monitor';
 import { type MetricUnavailableReason } from '../metrics/contracts';
-import { DIAGNOSTIC_POLICY } from './advisories/core/thresholds';
+import { HEALTH_POLICY, OVERVIEW_DEFAULTS } from './healthPolicy';
 import {
     metricFailureReason,
     classifyUnavailable,
-    DEFAULT_PARTITION_HEADROOM_PCT,
-    DEFAULT_PARTITION_SATURATION_PCT,
     escapeODataLiteral,
     isHotPartition,
     parseMonitorTimestamp,
@@ -39,10 +37,9 @@ import {
 export type PartitionDistributionMode = 'ru' | 'storage';
 
 /**
- * Partition-distribution thresholds. These mirror the derived-advisory engine so the heatmap's hot flags line up
- * with the HotPartitionRisk / StorageSkewRisk advisories: RU keys on the same p99-saturation signal as CODA DX-006
- * (busiest partition saturated while another has headroom), storage on the same balance ratio as StorageSkewRisk.
- * Sourced from `cosmosDB.accountOverview.advisories.*` (with `partition.topN` for the ranked-list length).
+ * User-configurable partition-distribution thresholds, independent of Derived Advisory policy.
+ * The three Health controls use `cosmosDB.accountOverview.health.*` keys;
+ * `partition.topN` controls only the ranked-list length.
  */
 export interface PartitionThresholds {
     /** RU: a physical partition's p99 (% of provisioned) at or above which it is saturated. */
@@ -58,13 +55,7 @@ export interface PartitionThresholds {
     topN: number;
 }
 
-export const DEFAULT_PARTITION_THRESHOLDS: PartitionThresholds = {
-    // Kept in sync with the derived-advisory saturation/headroom/skew defaults.
-    saturationPercent: DEFAULT_PARTITION_SATURATION_PCT,
-    headroomPercent: DEFAULT_PARTITION_HEADROOM_PCT,
-    skewBalanceRatio: DIAGNOSTIC_POLICY.storageSkew.balanceRatio,
-    topN: 5,
-};
+export const DEFAULT_PARTITION_THRESHOLDS: PartitionThresholds = OVERVIEW_DEFAULTS.partition;
 
 /** Intensity bucket for a heatmap tile; 5 is the hot/`--vscode-errorForeground` level. */
 export type PartitionIntensityLevel = 1 | 2 | 3 | 4 | 5;
@@ -131,7 +122,7 @@ export function levelFromExcess(excess: number, hot: boolean): PartitionIntensit
  * Folds peak per-partition storage bytes over the chosen window into ranked heatmap tiles with shares, intensity
  * levels, and hot flags.
  * A partition is flagged when it is materially larger than the coolest sibling (balance ratio below the configured
- * floor) — not on a raw share cutoff — matching the derived StorageSkewRisk rule. Pure.
+ * floor), not on a raw share cutoff. User overrides affect these tiles, not Derived Advisories. Pure.
  */
 export function deriveStorageTiles(
     weights: Map<string, number>,
@@ -147,9 +138,9 @@ export function deriveStorageTiles(
         const value = Math.max(0, weight);
         const sharePercent = total > 0 ? (value / total) * 100 : 0;
         const tileBalance = value > 0 ? coolest / value : 1;
-        const material = value >= DIAGNOSTIC_POLICY.storageSkew.minBusiestBytes;
+        const material = value >= HEALTH_POLICY.partition.minBusiestBytes;
         const hot =
-            count >= DIAGNOSTIC_POLICY.storageSkew.minPartitions &&
+            count >= HEALTH_POLICY.partition.minPartitions &&
             material &&
             thresholds.skewBalanceRatio > 0 &&
             tileBalance < thresholds.skewBalanceRatio;
@@ -217,11 +208,11 @@ export function deriveSkewScore(matrix: Map<string, Map<number, number>>): numbe
     return worst * 100;
 }
 
-/** Computes each partition's p99 over the window from a `partitionId → (ts → value)` matrix. */
-function p99Matrix(matrix: Map<string, Map<number, number>>): Map<string, number> {
+/** Computes the requested percentile per partition over a `partitionId → (ts → value)` matrix. */
+function partitionPercentiles(matrix: Map<string, Map<number, number>>, percentileRank: number): Map<string, number> {
     const p99s = new Map<string, number>();
     for (const [partitionId, series] of matrix) {
-        const p99 = percentile([...series.values()], DIAGNOSTIC_POLICY.partitionSaturation.percentile);
+        const p99 = percentile([...series.values()], percentileRank);
         if (p99 !== undefined) {
             p99s.set(partitionId, p99);
         }
@@ -244,6 +235,7 @@ export async function getPartitionHealth(
     containerId: string,
     thresholds: PartitionThresholds,
     config: RangeConfig = RANGE_CONFIG[timeRange],
+    percentileRank: number = HEALTH_POLICY.partition.percentile,
 ): Promise<PartitionHealthResult> {
     const generatedAt = Date.now();
     const timespan = `${new Date(generatedAt - config.windowMs).toISOString()}/${new Date(generatedAt).toISOString()}`;
@@ -280,7 +272,10 @@ export async function getPartitionHealth(
         if (matrix.size === 0) {
             return { ...empty, reason: 'noData' };
         }
-        const { tiles, stats, hotPartition } = deriveRuSaturationTiles(p99Matrix(matrix), thresholds);
+        const { tiles, stats, hotPartition } = deriveRuSaturationTiles(
+            partitionPercentiles(matrix, percentileRank),
+            thresholds,
+        );
         return {
             available: true,
             mode,

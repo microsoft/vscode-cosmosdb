@@ -7,7 +7,7 @@ import { type MonitorClient } from '@azure/arm-monitor';
 import { RestError } from '@azure/core-rest-pipeline';
 import { getMetricApplicability, type MetricUnavailableReason } from '../metrics/contracts';
 import { storageObservation, type StorageMeasurement } from '../metrics/storage';
-import { DIAGNOSTIC_POLICY } from './advisories/core/thresholds';
+import { HEALTH_POLICY, OVERVIEW_DEFAULTS } from './healthPolicy';
 import {
     classifyUnavailable,
     firstValue,
@@ -45,10 +45,7 @@ export interface HealthThresholds {
     warningRuPercent: number;
 }
 
-export const DEFAULT_HEALTH_THRESHOLDS: HealthThresholds = {
-    criticalRuPercent: DIAGNOSTIC_POLICY.health.criticalRuPercent,
-    warningRuPercent: DIAGNOSTIC_POLICY.health.warningRuPercent,
-};
+export const DEFAULT_HEALTH_THRESHOLDS: HealthThresholds = OVERVIEW_DEFAULTS.health;
 
 export interface ContainerMetrics {
     databaseId: string;
@@ -126,9 +123,9 @@ export async function getInventoryMetrics(
     const normalizedRuApplicable = getMetricApplicability('normalizedRu', isServerless).status === 'applicable';
 
     const peakTimespan = `${new Date(generatedAt - peakConfig.windowMs).toISOString()}/${new Date(generatedAt).toISOString()}`;
-    const weekConfig = DIAGNOSTIC_POLICY.inventoryStorage.observation;
+    const weekConfig = HEALTH_POLICY.inventoryStorage.observation;
     const weekTimespan = `${new Date(generatedAt - weekConfig.windowMs).toISOString()}/${new Date(generatedAt).toISOString()}`;
-    const hourConfig = DIAGNOSTIC_POLICY.sustainedThrottling.observation;
+    const hourConfig = HEALTH_POLICY.sustainedThrottling.observation;
     const hourTimespan = `${new Date(generatedAt - hourConfig.windowMs).toISOString()}/${new Date(generatedAt).toISOString()}`;
 
     const [storageOutcome, ruOutcome, indexOutcome] = await Promise.allSettled([

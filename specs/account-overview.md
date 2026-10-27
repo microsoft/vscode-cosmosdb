@@ -127,6 +127,8 @@ or the freshness of every section.
 navigation revision, and preserves data filters. Generic navigation focuses the destination tab;
 metric navigation selects the metric and focuses its chart region. A replayed revision or background completion
 MUST NOT refocus the view or dismiss a dialog.
+Metric navigation MUST wait for the requested selection to commit before focusing the chart, including when
+an inapplicable metric resolves to consumed RU, so the focus event exposes the destination's name and content.
 
 ## 3. Metric calculations
 
@@ -167,7 +169,7 @@ Latency is server-side, not end-to-end latency or a latency percentile.
 Latest means the last **observed** value, not a claim that Azure has a sample for the current instant.
 
 The UI groups applicable tiles State then Activity, preserving descriptor order within each group.
-Inapplicable tiles follow in descriptor order. Family affects presentation, not applicability or health.
+Inapplicable tiles are omitted. Family affects presentation, not applicability or health.
 Formatting rounds percent/ms to integers, count/RU values compactly, and byte values with binary divisors
 1024/1024²/1024³ despite the current KB/MB/GB labels. Comparisons operate on unrounded values unless specified otherwise.
 
@@ -175,18 +177,21 @@ Formatting rounds percent/ms to integers, count/RU values compactly, and byte va
 
 Confirmed Serverless metadata makes only `normalizedRu` and `provisionedThroughput` not applicable.
 Their router returns a structured reason before Monitor-client acquisition/query.
+The UI omits their tiles, inventory throughput/normalized-RU columns and throughput-mode filter.
+The header omits the provisioned-throughput cap. Inapplicable chart links select consumed RU instead.
+If metadata removes a focused tile, focus moves to the selected applicable tile without stealing focus from another editor.
 An account throughput cap, absent metric data or failed request MUST NOT establish Serverless.
 Unknown capacity metadata yields unknown applicability, not not-applicable.
 
-| State                                 | Required interpretation                                              |
-| ------------------------------------- | -------------------------------------------------------------------- |
-| Observed zero                         | Render 0 in the metric's unit                                        |
-| `available: false`, `reason: noData`  | No usable observations/result; not evidence of good health           |
-| `applicability.status: notApplicable` | Render dash and Not applicable with the metadata-derived explanation |
-| `reason: rbac`                        | Permission-related failure                                           |
-| `reason: unsupported`                 | An explicitly unsupported source/API                                 |
-| Metric `reason: error`                | Request failed; distinct from a successful empty query               |
-| Loading                               | Pending operation; not an observation or a proof of absence          |
+| State                                 | Required interpretation                                     |
+| ------------------------------------- | ----------------------------------------------------------- |
+| Observed zero                         | Render 0 in the metric's unit                               |
+| `available: false`, `reason: noData`  | No usable observations/result; not evidence of good health  |
+| `applicability.status: notApplicable` | Omit the metric tile, table column and associated controls  |
+| `reason: rbac`                        | Permission-related failure                                  |
+| `reason: unsupported`                 | An explicitly unsupported source/API                        |
+| Metric `reason: error`                | Request failed; distinct from a successful empty query      |
+| Loading                               | Pending operation; not an observation or a proof of absence |
 
 Metric fetchers, storage components and account request-health use `metricFailureReason`: recognized 403/Forbidden/
 AuthorizationFailed becomes `rbac`, other caught failures become `error`.
@@ -361,11 +366,20 @@ A successful summary replaces it, including zero counts, which can clear old ale
 Stale adverse alerts continue to drive account and tab severity.
 Alert-list filters/results MUST NOT clear or replace the independent Fired summary.
 
-Metric row health: sustained row 429 OR peak RU >= critical threshold -> Critical;
-otherwise peak RU >= warning threshold -> Needs Attention;
-otherwise an observed RU peak -> Healthy; otherwise undefined.
+The table labels its row diagnostic **Throttling**, not overall Health, and renders internal Healthy as **Passed**.
+Provisioned metric row health: sustained row 429 OR peak RU >= critical threshold -> Critical;
+otherwise peak RU >= warning threshold -> Needs Attention; otherwise an observed RU peak -> Healthy;
+otherwise undefined. Serverless ignores normalized RU: sustained row 429 -> Critical; observed requests without
+sustained 429 -> Healthy; missing observations or a failed request read -> undefined.
 Default critical/warning thresholds are 90/80, independently configurable.
-Storage growth does not participate.
+Both modes use the sustained-throttling share/duration policy in §3.5 over the last hour.
+Observed zero Count buckets are evidence; empty/null/invalid buckets are not.
+`ContainerMetrics.throttled` is true/false only with usable per-container request observations; otherwise it is absent,
+with `throttlingReason` distinguishing noData, rbac and error. Embedded metric errors are failures, not clear checks.
+Embedded errors retain their service code for permission classification. `throttlingFallbackReason` carries the
+request-check outcome to rows absent from the metric snapshot, including when every Monitor read failed.
+The fallback is independent of storage/RU failure reasons; successful reads without request observations use noData.
+Storage growth and consumed RU do not participate.
 
 The shared `rowHealth` display fallback is intentionally more specific:
 
@@ -376,7 +390,7 @@ The shared `rowHealth` display fallback is intentionally more specific:
 | No metric object and normalized RU is not applicable | Unknown                                        |
 | No metric object otherwise                           | Inventory row's existing static `health` value |
 
-The final fallback can display a provisioned row as Healthy without observations.
+The final fallback can display a provisioned row as Passed (internal Healthy) without observations.
 This is a **known compatibility limitation**, not evidence to generalize into a missing-data policy.
 The container checklist independently counts rows with no metric health as unassessed.
 
@@ -646,7 +660,7 @@ Suggested advisory actions do not execute Azure changes automatically.
 
 Total throughput limit formatting: positive value -> RU/s; zero -> explicit 0 RU/s;
 exactly -1 -> No total throughput limit; absent/null -> Unknown.
-Serverless displays No total throughput limit with an inapplicability explanation.
+Serverless omits Total throughput limit in both the status strip and Account details.
 This cap MUST NOT drive metric applicability, utilization or health.
 
 ### Source acquisition

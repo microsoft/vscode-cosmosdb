@@ -7,6 +7,7 @@ import { ErrorResponse, type CosmosClient } from '@azure/cosmos';
 import * as l10n from '@vscode/l10n';
 import { ext } from '../extensionVariables';
 import { type AccountInfo } from '../tree/cosmosdb/AccountInfo';
+import { withAbortSignals } from '../utils/timeout';
 import { type CosmosDBCredential } from './CosmosDBCredential';
 import { getCosmosClient, type GetCosmosClientOptions } from './getCosmosClient';
 import { isNoSqlQueryConnection, type NoSqlQueryConnection } from './NoSqlQueryConnection';
@@ -28,6 +29,7 @@ async function* retryGenerator<T>(
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
         try {
+            options?.abortSignal?.throwIfAborted();
             // Using a simple yield on retry iterations ensures we break the call stack
             // This prevents MAX_CALL_STACK_SIZE_EXCEEDED errors without needing setImmediate
             if (attempt > 0) {
@@ -36,8 +38,17 @@ async function* retryGenerator<T>(
             }
 
             const client = getCosmosClient(endpoint, credentials, isEmulator, options);
-            return await callback(client);
+            try {
+                return options?.abortSignal
+                    ? await withAbortSignals([options.abortSignal], () => callback(client))
+                    : await callback(client);
+            } finally {
+                if (options?.abortSignal) {
+                    client.dispose();
+                }
+            }
         } catch (error) {
+            options?.abortSignal?.throwIfAborted();
             lastError = error;
 
             // Check for claims challenge
@@ -71,6 +82,7 @@ async function* retryGenerator<T>(
  * Some Cosmos DB write/update/delete operations may return a 401 Unauthorized error
  * since the token used to authenticate the request is not having the required claims.
  * This function handles such cases by retrying the operation with updated authentication.
+ * A client-scoped abortSignal bounds the entire callback and disposes its client when the operation settles.
  */
 export async function withClaimsChallengeHandling<T>(
     connection: NoSqlQueryConnection,

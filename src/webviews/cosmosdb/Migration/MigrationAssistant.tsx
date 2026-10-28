@@ -68,7 +68,13 @@ import * as l10n from '@vscode/l10n';
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { type MigrationAppRouter } from '../../../panels/trpc/appRouter';
 import { sanitizeCosmosDBAccountName, validateCosmosDBAccountName } from '../../../utils/cosmosDBAccountName';
-import { formatTokenCount, isAutoModel, partitionModelsByCapability } from '../../../utils/modelUtils';
+import {
+    formatTokenCount,
+    getMigrationModelAssessment,
+    MIGRATION_MODEL_TIERS,
+    type MigrationModelReason,
+    type MigrationModelTier,
+} from '../../../utils/modelUtils';
 import { CosmosDBIcon } from '../../icons/CosmosDBIcon';
 import { BaseContextProvider, type DispatchToastFn } from '../../utils/context/BaseContextProvider';
 import { ErrorBoundary } from '../../utils/ErrorBoundary';
@@ -98,7 +104,53 @@ import {
 const tooltipParagraphStyle = { margin: '0 0 8px 0' };
 const tooltipParagraphLastStyle = { margin: 0 };
 
+function migrationModelGroupLabel(tier: MigrationModelTier): string {
+    const labels: Record<MigrationModelTier, string> = {
+        preferred: l10n.t('Preferred for migration'),
+        capable: l10n.t('Other capable models'),
+        auto: l10n.t('Automatic selection'),
+        notRecommended: l10n.t('Not recommended for migration'),
+    };
+    return labels[tier];
+}
+
+function migrationModelReasonLabel(reason: MigrationModelReason): string {
+    const labels: Record<MigrationModelReason, string> = {
+        powerfulCategory: l10n.t('Provider category: powerful'),
+        versatileCategory: l10n.t('Provider category: versatile'),
+        lightweightCategory: l10n.t('Provider category: lightweight; not recommended for complex migration'),
+        noToolCalling: l10n.t('Tool calling is not supported'),
+        reasoningFamily: l10n.t('Recommended family for complex reasoning'),
+        generalPurpose: l10n.t('General-purpose model'),
+        compactFamily: l10n.t('Speed-oriented family; less suited to complex reasoning'),
+        limitedContext: l10n.t('Input capacity below the recommended 50k tokens'),
+        lightweightFamily: l10n.t('Lightweight family; not recommended for complex migration'),
+        legacyFamily: l10n.t('Older family; not recommended for complex migration'),
+        unknownFamily: l10n.t('Migration suitability has not been assessed'),
+        automatic: l10n.t('Copilot chooses the model; reasoning capability may vary'),
+    };
+    return labels[reason];
+}
+
 const useStyles = makeStyles({
+    modelDropdown: {
+        minWidth: 0,
+        '& button': { minWidth: 0, whiteSpace: 'normal', overflowWrap: 'anywhere' },
+    },
+    modelListbox: {
+        maxWidth: 'min(560px, calc(100vw - 32px))',
+    },
+    modelOption: {
+        display: 'flex',
+        flexDirection: 'column',
+        minWidth: 0,
+        whiteSpace: 'normal',
+        overflowWrap: 'anywhere',
+    },
+    modelDetails: {
+        color: 'var(--vscode-descriptionForeground)',
+        fontSize: '12px',
+    },
     diagnostics: {
         display: 'flex',
         flexDirection: 'column',
@@ -1911,43 +1963,62 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                 )}
 
                 {state.availableModels.length > 0 && (
-                    <Field required label={l10n.t('AI Model')}>
+                    <Field
+                        required
+                        label={
+                            <>
+                                {l10n.t('AI Model')}
+                                <InfoTooltipIcon
+                                    content={l10n.t(
+                                        'Migration recommendations use provider categories and tool support when available, with known model families as a fallback. Input capacity is also considered. Categories are not reasoning scores, and recommendations do not change reasoning effort.',
+                                    )}
+                                    ariaLabel={l10n.t('Model recommendation details')}
+                                    styles={styles}
+                                />
+                            </>
+                        }
+                    >
                         <Dropdown
                             data-testid="migration-model-dropdown"
+                            className={styles.modelDropdown}
+                            listbox={{ className: styles.modelListbox }}
                             disabled={isRunActive}
                             onOptionSelect={handleModelChange}
                             value={selectedModel?.name ?? ''}
                             selectedOptions={state.selectedModelId ? [state.selectedModelId] : []}
                         >
-                            {(() => {
-                                const autoModel = state.availableModels.find(isAutoModel);
-                                const { recommended, others } = partitionModelsByCapability(
-                                    state.availableModels.filter((model) => !isAutoModel(model)),
+                            {MIGRATION_MODEL_TIERS.map((tier) => {
+                                const models = state.availableModels.filter(
+                                    (model) => getMigrationModelAssessment(model).tier === tier,
                                 );
-                                const renderOption = (model: ModelInfo) => (
-                                    <Option key={model.id} value={model.id} text={model.name}>
-                                        {model.name}{' '}
-                                        <span style={{ color: 'var(--vscode-descriptionForeground)' }}>
-                                            {formatTokenCount(model.maxInputTokens)} tokens
-                                        </span>
-                                    </Option>
-                                );
+                                if (models.length === 0) return null;
                                 return (
-                                    <>
-                                        {autoModel && (
-                                            <Option value={autoModel.id} text={autoModel.name}>
-                                                {autoModel.name}
+                                    <OptionGroup key={tier} label={migrationModelGroupLabel(tier)}>
+                                        {models.map((model) => (
+                                            <Option key={model.id} value={model.id} text={model.name}>
+                                                <span className={styles.modelOption}>
+                                                    <span>{model.name}</span>
+                                                    <span className={styles.modelDetails}>
+                                                        {model.vendor}
+                                                        {tier !== 'auto' && (
+                                                            <>
+                                                                {' | '}
+                                                                {l10n.t('{tokens} input tokens', {
+                                                                    tokens: formatTokenCount(model.maxInputTokens),
+                                                                })}
+                                                            </>
+                                                        )}
+                                                        {' | '}
+                                                        {migrationModelReasonLabel(
+                                                            getMigrationModelAssessment(model).reason,
+                                                        )}
+                                                    </span>
+                                                </span>
                                             </Option>
-                                        )}
-                                        {recommended.map(renderOption)}
-                                        {others.length > 0 && (
-                                            <OptionGroup label={l10n.t('Others')}>
-                                                {others.map(renderOption)}
-                                            </OptionGroup>
-                                        )}
-                                    </>
+                                        ))}
+                                    </OptionGroup>
                                 );
-                            })()}
+                            })}
                         </Dropdown>
                     </Field>
                 )}

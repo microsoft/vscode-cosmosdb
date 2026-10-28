@@ -46,6 +46,7 @@ import {
 import { expect, test } from '../fixtures/vscode';
 import {
     closeAllEditorTabs,
+    maximizeWindow,
     resetNativeDialogStubs,
     resizeWindowViewport,
     stubMessageBoxButton,
@@ -102,7 +103,11 @@ test.describe('Migration Assistant', () => {
         await expect(frame.getByText(/Estimating tokens|Token estimate unavailable|^~.+ tokens$/)).toHaveCount(0);
     });
 
-    test('locked phases explain prerequisites on hover and keyboard focus', async ({ vscodeWindow }, testInfo) => {
+    test('locked phases explain prerequisites on hover and keyboard focus', async ({
+        vscodeWindow,
+        vscodeApp,
+    }, testInfo) => {
+        await maximizeWindow(vscodeApp);
         const frame = await openMigrationSeeded(vscodeWindow);
         await expect(
             frame
@@ -138,7 +143,8 @@ test.describe('Migration Assistant', () => {
                 .toBe(true);
             await header.press('Escape');
             await expect(frame.getByRole('tooltip')).toHaveCount(0);
-            await vscodeWindow.mouse.move(0, 0);
+            await frame.locator('body').hover({ position: { x: 8, y: 8 } });
+            await expect.poll(() => header.evaluate((element) => element.matches(':hover'))).toBe(false);
             await header.press('Tab');
             await vscodeWindow.keyboard.press('Shift+Tab');
             await expect(header).toBeFocused();
@@ -577,9 +583,10 @@ test.describe('Migration Assistant', () => {
             test(`opens ${existing ? 'existing' : 'missing'} ${subfolder} template during an active phase`, async ({
                 vscodeWindow,
             }) => {
+                const frame = await openMigrationSeeded(vscodeWindow);
+                const activity = frame.getByTestId('migration-run-activity');
                 let prompt = '';
                 try {
-                    const frame = await openMigrationSeeded(vscodeWindow);
                     const migration = new MigrationPage(frame);
                     const relativePath = `phases/1-discovery/${subfolder}/${subfolder}.md`;
                     const templatePath = path.join(
@@ -595,7 +602,6 @@ test.describe('Migration Assistant', () => {
                         rmSync(templatePath, { force: true });
                     }
                     await migration.generateSchemaButton.click();
-                    const activity = frame.getByTestId('migration-run-activity');
                     await expect(activity).toHaveAttribute('data-activity', 'running');
                     prompt = readCapturedPrompts().at(-1)?.promptText ?? '';
                     const promptCount = readCapturedPrompts().length;
@@ -620,7 +626,10 @@ test.describe('Migration Assistant', () => {
                     }
                     expect(readCapturedPrompts()).toHaveLength(promptCount);
                 } finally {
-                    if (prompt) setMockSkillRunActivity(prompt, 'cancelled');
+                    if (prompt) {
+                        setMockSkillRunActivity(prompt, 'cancelled');
+                        await expect(activity).toHaveCount(0);
+                    }
                 }
             });
         }
@@ -1263,9 +1272,13 @@ test.describe('Migration Assistant', () => {
         await expect(migration.modelDropdown).toContainText('E2E Mock Model');
         await expect(frame.getByText(/Estimating tokens|Token estimate unavailable|^~.+ tokens$/)).toHaveCount(0);
         await migration.modelDropdown.click();
-        const autoOption = frame.getByRole('option', { name: 'Auto', exact: true });
-        await expect(autoOption).toHaveText('Auto');
-        await expect(autoOption).toHaveAccessibleName('Auto');
+        const autoOption = frame
+            .getByRole('group', { name: 'Automatic selection', exact: true })
+            .getByRole('option', { name: /^Auto\b/ });
+        await expect(autoOption.getByText('Auto', { exact: true })).toBeVisible();
+        await expect(autoOption).toHaveAccessibleName(
+            'Auto copilot | Copilot chooses the model; reasoning capability may vary',
+        );
         await autoOption.click();
         const firstCount = readCapturedPrompts().length;
         await migration.generateSchemaButton.click();

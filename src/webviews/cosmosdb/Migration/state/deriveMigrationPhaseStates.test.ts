@@ -121,7 +121,7 @@ describe('migration model state', () => {
         );
         expect(result.current.state.selectedModelId).toBe('auto');
         expect(result.current.state.savedModelId).toBe('auto');
-        expect(result.current.state.availableModels.map((model) => model.id)).toEqual(['first', 'second', 'auto']);
+        expect(result.current.state.availableModels.map((model) => model.id)).toEqual(['auto', 'first', 'second']);
         act(() =>
             result.current.dispatch({
                 type: 'SET_MODELS',

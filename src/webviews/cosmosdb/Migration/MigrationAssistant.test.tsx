@@ -7,6 +7,7 @@
 
 import { FluentProvider, webLightTheme } from '@fluentui/react-components';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MigrationAssistant } from './MigrationAssistant';
 import {
@@ -161,6 +162,101 @@ beforeEach(() => {
 });
 
 describe('migration accessibility', () => {
+    function addAvailableModels() {
+        state.availableModels = ['GPT-5 nano', 'Auto', 'Custom model', 'GPT-5 mini', 'Claude Opus 4.5'].map((name) => ({
+            id: name,
+            name,
+            family: name,
+            vendor: 'copilot',
+            maxInputTokens: name === 'Auto' ? 0 : 200_000,
+        }));
+        state.selectedModelId = 'GPT-5 nano';
+    }
+
+    it('groups models by migration suitability with accessible reasons and preserves the saved selection', () => {
+        addAvailableModels();
+        render(renderAssistant());
+        const dropdown = screen.getByRole('combobox', { name: /^AI Model/ });
+        expect(dropdown).toHaveTextContent('GPT-5 nano');
+        fireEvent.click(dropdown);
+
+        const groups = screen.getAllByRole('group').filter((group) => within(group).queryAllByRole('option').length);
+        expect(groups).toHaveLength(4);
+        for (const [index, name] of [
+            'Preferred for migration',
+            'Automatic selection',
+            'Other capable models',
+            'Not recommended for migration',
+        ].entries()) {
+            expect(groups[index]).toHaveAccessibleName(name);
+        }
+
+        const options = screen.getAllByRole('option');
+        expect(options).toHaveLength(5);
+        for (const [index, name] of ['Claude Opus 4.5', 'Auto', 'GPT-5 mini', 'GPT-5 nano', 'Custom model'].entries()) {
+            expect(options[index]).toHaveTextContent(name);
+        }
+        expect(options[0]).toHaveTextContent('Claude Opus 4.5');
+        expect(options[0]).toHaveAccessibleName(/Claude Opus 4.5.*copilot.*200k input tokens.*complex reasoning/);
+        expect(options[4]).toHaveAccessibleName(/Custom model.*Migration suitability has not been assessed/);
+        expect(within(groups[3]).getByRole('option', { name: /Custom model/ })).toBe(options[4]);
+        expect(options[1]).not.toHaveTextContent('input tokens');
+        expect(options[3]).toHaveAttribute('aria-selected', 'true');
+        expect(options[3]).not.toHaveAttribute('aria-disabled', 'true');
+        expect(options[4]).not.toHaveAttribute('aria-disabled', 'true');
+
+        fireEvent.click(options[0]);
+        expect(dispatch).toHaveBeenCalledWith({ type: 'SET_SELECTED_MODEL', payload: 'Claude Opus 4.5' });
+        expect(postMessage).toHaveBeenCalledWith({
+            type: 'event',
+            name: 'command',
+            params: [{ commandName: 'setSelectedModel', params: ['Claude Opus 4.5'] }],
+        });
+    });
+
+    it('allows keyboard selection of an unassessed model in the not-recommended group', async () => {
+        addAvailableModels();
+        state.selectedModelId = 'Claude Opus 4.5';
+        const user = userEvent.setup();
+        render(renderAssistant());
+        await user.click(screen.getByRole('combobox', { name: /^AI Model/ }));
+        await user.keyboard('{End}{Enter}');
+        expect(dispatch).toHaveBeenCalledWith({ type: 'SET_SELECTED_MODEL', payload: 'Custom model' });
+    });
+
+    it('shows provider-based recommendations and explicit lack of tool support', () => {
+        state.availableModels = [
+            { id: 'powerful', name: 'New model', category: 'powerful', supportsToolCalling: true },
+            { id: 'versatile', name: 'GPT-5', category: 'versatile', supportsToolCalling: true },
+            { id: 'lightweight', name: 'Small model', category: 'lightweight', supportsToolCalling: true },
+            { id: 'no-tools', name: 'Claude Opus 4.5', category: 'powerful', supportsToolCalling: false },
+        ].map((model) => ({ ...model, family: model.name, vendor: 'copilot', maxInputTokens: 200_000 }));
+        state.selectedModelId = 'powerful';
+        render(renderAssistant());
+        fireEvent.click(screen.getByRole('combobox', { name: /^AI Model/ }));
+
+        const preferred = within(screen.getByRole('group', { name: 'Preferred for migration' }));
+        expect(preferred.getByRole('option')).toHaveAccessibleName(/New model.*Provider category: powerful/);
+        const capable = within(screen.getByRole('group', { name: 'Other capable models' }));
+        expect(capable.getByRole('option', { name: /GPT-5/ })).toHaveAccessibleName(/Provider category: versatile/);
+        expect(capable.queryByRole('option', { name: /Small model/ })).not.toBeInTheDocument();
+        const unsuitable = within(screen.getByRole('group', { name: 'Not recommended for migration' }));
+        expect(unsuitable.getByRole('option', { name: /Small model/ })).toHaveAccessibleName(
+            /Provider category: lightweight; not recommended for complex migration/,
+        );
+        expect(unsuitable.getByRole('option', { name: /Small model/ })).not.toHaveAttribute('aria-disabled', 'true');
+        expect(unsuitable.getByRole('option', { name: /Claude Opus 4.5/ })).toHaveAccessibleName(
+            /Claude Opus 4.5.*Tool calling is not supported/,
+        );
+    });
+
+    it('keeps model selection disabled during an active migration', () => {
+        addAvailableModels();
+        state.runActivity = activity('assessment', 'running');
+        render(renderAssistant());
+        expect(screen.getByRole('combobox', { name: /^AI Model/ })).toBeDisabled();
+    });
+
     it.each([
         { consentGiven: false, isAIFeaturesEnabled: true },
         { consentGiven: true, isAIFeaturesEnabled: false },

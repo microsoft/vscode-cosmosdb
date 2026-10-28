@@ -153,6 +153,10 @@ function documentContent(document) {
     return Object.fromEntries(Object.entries(document).filter(([name]) => !SYSTEM_PROPERTIES.has(name)));
 }
 
+function expectedReplacePending(observed, targetEnvironment) {
+    return targetEnvironment?.type === 'emulator' && observed === null ? null : false;
+}
+
 export function modelSha256(model) {
     return createHash('sha256').update(canonicalStringify(canonicalizeCosmosModel(model))).digest('hex');
 }
@@ -231,7 +235,11 @@ export function validateProvisioningVerification(
         }
         const keys = new Set(['mode', 'maxThroughput', 'isReplacePending']);
         if (checkObject(report.databaseThroughput, '$.databaseThroughput', keys, errors)) {
-            const expected = { mode: 'autoscale', maxThroughput: model.databaseMaxThroughput, isReplacePending: false };
+            const expected = {
+                mode: 'autoscale',
+                maxThroughput: model.databaseMaxThroughput,
+                isReplacePending: expectedReplacePending(report.databaseThroughput.isReplacePending, project.phases?.targetEnvironment),
+            };
             for (const key of keys) {
                 if (report.databaseThroughput[key] !== expected[key]) {
                     addError(errors, `$.databaseThroughput.${key}`, 'must match the accepted database autoscale maximum with no pending replacement');
@@ -312,6 +320,9 @@ export function validateProvisioningVerification(
             }
             compareConfiguration(normalized, {
                 ...expectedContainer,
+                ...(expectedContainer.isReplacePending === false ? {
+                    isReplacePending: expectedReplacePending(container.isReplacePending, project.phases?.targetEnvironment),
+                } : {}),
                 indexingPolicy: comparableIndexingPolicy(expectedContainer.indexingPolicy),
             }, containerPath, container.name, errors);
         });

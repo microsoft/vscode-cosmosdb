@@ -212,6 +212,7 @@ Reference these guidelines when:
 
 - [tooling-vscode-extension](rules/tooling-vscode-extension.md) - Use the VS Code extension for routine inspection and management
 - [tooling-emulator-setup](rules/tooling-emulator-setup.md) - Use the Emulator for local development and testing
+- [tooling-emulator-fidelity](rules/tooling-emulator-fidelity.md) - Distinguish emulator configuration and data checks from Azure runtime parity
 - [tooling-cosmosdb-shell-target](rules/tooling-cosmosdb-shell-target.md) - Verify the Cosmos DB Shell account and target before reading data
 - [tooling-cosmosdb-shell-writes](rules/tooling-cosmosdb-shell-writes.md) - Scope, preview, and confirm Cosmos DB Shell writes and deletions
 - [tooling-cosmosdb-shell-setup](rules/tooling-cosmosdb-shell-setup.md) - Diagnose Cosmos DB Shell MCP problems without changing the user's environment

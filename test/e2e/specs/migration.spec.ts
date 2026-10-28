@@ -577,9 +577,10 @@ test.describe('Migration Assistant', () => {
             test(`opens ${existing ? 'existing' : 'missing'} ${subfolder} template during an active phase`, async ({
                 vscodeWindow,
             }) => {
+                const frame = await openMigrationSeeded(vscodeWindow);
+                const activity = frame.getByTestId('migration-run-activity');
                 let prompt = '';
                 try {
-                    const frame = await openMigrationSeeded(vscodeWindow);
                     const migration = new MigrationPage(frame);
                     const relativePath = `phases/1-discovery/${subfolder}/${subfolder}.md`;
                     const templatePath = path.join(
@@ -595,7 +596,6 @@ test.describe('Migration Assistant', () => {
                         rmSync(templatePath, { force: true });
                     }
                     await migration.generateSchemaButton.click();
-                    const activity = frame.getByTestId('migration-run-activity');
                     await expect(activity).toHaveAttribute('data-activity', 'running');
                     prompt = readCapturedPrompts().at(-1)?.promptText ?? '';
                     const promptCount = readCapturedPrompts().length;
@@ -620,7 +620,10 @@ test.describe('Migration Assistant', () => {
                     }
                     expect(readCapturedPrompts()).toHaveLength(promptCount);
                 } finally {
-                    if (prompt) setMockSkillRunActivity(prompt, 'cancelled');
+                    if (prompt) {
+                        setMockSkillRunActivity(prompt, 'cancelled');
+                        await expect(activity).toHaveCount(0);
+                    }
                 }
             });
         }

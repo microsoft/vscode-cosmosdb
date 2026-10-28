@@ -4,31 +4,31 @@
 
 ### Added
 
-- Added an experimental **Cosmos DB Data Modeler** for designing document models and receiving partition key recommendations, with configuration options to enable the experience. (#3341, #3450)
-- Added a portable **relational migration Skill** for agent-guided source analysis, assessment, document-model design, authorized provisioning, and application code migration. Supports resumable project-local checkpoints, shared and hybrid throughput models, and reusable migration decisions and model snapshots. (#3403)
-- Added configurable connection timeouts for attached accounts. (#3456)
+- Added an experimental **Cosmos DB Data Modeler** for designing document models and receiving partition key recommendations, with configuration options to enable the experience. ([#3341](https://github.com/microsoft/vscode-cosmosdb/issues/3341), [#3450](https://github.com/microsoft/vscode-cosmosdb/issues/3450))
+- Added a portable **relational migration Skill** for agent-guided source analysis, assessment, document-model design, authorized provisioning, and application code migration. Supports resumable project-local checkpoints, shared and hybrid throughput models, and reusable migration decisions and model snapshots. ([#3403](https://github.com/microsoft/vscode-cosmosdb/issues/3403))
+- Added configurable connection timeouts for attached accounts. ([#3456](https://github.com/microsoft/vscode-cosmosdb/issues/3456))
 
 ### Fixed
 
-- Fixed Query Editor result ownership after connection changes, copying selected JSON text, and copying or exporting a single selected result; clarified copy and export scope labels and prevented freezes with large JSON results. (#3362, #3350, #3346, #3354, #3342)
-- Fixed NoSQL parsing of subquery collection ranges and aggregate functions, validated ranking directions, and bounded parser complexity. (#3405, #3361, #3379)
-- Fixed schema analysis of document fields, BSON values, and browser byte arrays, preserved simplified schemas, and corrected variant navigation and failed-update handling. (#3373, #3374, #3375, #3376)
-- Fixed document tab identity across resources and kept the results grid column menu accessible when closed. (#3356, #3407)
-- Fixed Cosmos DB proxy routing through VS Code, emulator connection detection and port validation, and attaching accounts from the Command Palette. (#3367, #3368, #3352)
-- Fixed Cosmos DB Shell MCP server detection to verify server identity. (#3397)
-- Fixed migration provisioning verification for emulator targets that report an unknown throughput replacement status, while retaining strict verification for Azure targets. (#3467)
-- Fixed Account Overview advisories and Log Analytics authentication, including default root ETag indexing exclusions, Serverless applicability, and partially available storage metrics. (#3410, #3428, #3429, #3443)
-- Escaped webview titles before rendering HTML, restricted URI-based attachments to Fabric, removed sensitive telemetry hashes, and scoped emulator TLS exceptions to integration clients. (#3423, #3455, #3364, #3422)
+- Fixed Query Editor result ownership after connection changes, copying selected JSON text, and copying or exporting a single selected result; clarified copy and export scope labels and prevented freezes with large JSON results. ([#3362](https://github.com/microsoft/vscode-cosmosdb/issues/3362), [#3350](https://github.com/microsoft/vscode-cosmosdb/issues/3350), [#3346](https://github.com/microsoft/vscode-cosmosdb/issues/3346), [#3354](https://github.com/microsoft/vscode-cosmosdb/issues/3354), [#3342](https://github.com/microsoft/vscode-cosmosdb/issues/3342))
+- Fixed NoSQL parsing of subquery collection ranges and aggregate functions, validated ranking directions, and bounded parser complexity. ([#3405](https://github.com/microsoft/vscode-cosmosdb/issues/3405), [#3361](https://github.com/microsoft/vscode-cosmosdb/issues/3361), [#3379](https://github.com/microsoft/vscode-cosmosdb/issues/3379))
+- Fixed schema analysis of document fields, BSON values, and browser byte arrays, preserved simplified schemas, and corrected variant navigation and failed-update handling. ([#3373](https://github.com/microsoft/vscode-cosmosdb/issues/3373), [#3374](https://github.com/microsoft/vscode-cosmosdb/issues/3374), [#3375](https://github.com/microsoft/vscode-cosmosdb/issues/3375), [#3376](https://github.com/microsoft/vscode-cosmosdb/issues/3376))
+- Fixed document tab identity across resources and kept the results grid column menu accessible when closed. ([#3356](https://github.com/microsoft/vscode-cosmosdb/issues/3356), [#3407](https://github.com/microsoft/vscode-cosmosdb/issues/3407))
+- Fixed Cosmos DB proxy routing through VS Code, emulator connection detection and port validation, and attaching accounts from the Command Palette. ([#3367](https://github.com/microsoft/vscode-cosmosdb/issues/3367), [#3368](https://github.com/microsoft/vscode-cosmosdb/issues/3368), [#3352](https://github.com/microsoft/vscode-cosmosdb/issues/3352))
+- Fixed Cosmos DB Shell MCP server detection to verify server identity. ([#3397](https://github.com/microsoft/vscode-cosmosdb/issues/3397))
+- Fixed migration provisioning verification for emulator targets that report an unknown throughput replacement status, while retaining strict verification for Azure targets. ([#3467](https://github.com/microsoft/vscode-cosmosdb/issues/3467))
+- Fixed Account Overview advisories and Log Analytics authentication, including default root ETag indexing exclusions, Serverless applicability, and partially available storage metrics. ([#3410](https://github.com/microsoft/vscode-cosmosdb/issues/3410), [#3428](https://github.com/microsoft/vscode-cosmosdb/issues/3428), [#3429](https://github.com/microsoft/vscode-cosmosdb/issues/3429), [#3443](https://github.com/microsoft/vscode-cosmosdb/issues/3443))
+- Escaped webview titles before rendering HTML, restricted URI-based attachments to Fabric, removed sensitive telemetry hashes, and scoped emulator TLS exceptions to integration clients. ([#3423](https://github.com/microsoft/vscode-cosmosdb/issues/3423), [#3455](https://github.com/microsoft/vscode-cosmosdb/issues/3455), [#3364](https://github.com/microsoft/vscode-cosmosdb/issues/3364), [#3422](https://github.com/microsoft/vscode-cosmosdb/issues/3422))
 
 ### Changed
 
-- Replaced the legacy programmatic **Migration Assistant** workflow with the relational migration Skill, including Chat model selection, phase diagnostics, source-freshness explanations, read-only Review and Fix handoffs, and improved accessibility and recovery controls. Resource provisioning and application edits require explicit authorization. (#3403)
-- Improved **Migration Assistant** model selection, including model metadata handling and automatic model selection. (#3466)
-- Improved **Account Overview** navigation, manual refresh, and account actions; added independent health and alert signals, per-period alert counts, and a shared Feedback control; improved dark-theme tooltip contrast and grouped settings with separate Derived advisory controls. (#3416, #3427, #3430, #3444, #3445, #3447, #3464)
-- Updated the bundled **Cosmos DB best-practices Skill** to upstream 1.4.0, including partition-scoped unique-key guidance, corrected counter increments, and Cosmos DB Shell setup and write-safety rules. (#3400, #3462)
-- Added emulator verification guidance that distinguishes local configuration and sample-data checks from Azure runtime behavior and production readiness. (#3467)
-- Updated NL2Query guidance and adopted shared Fluent UI and Monaco theming while preserving local overrides. (#3326, #3351)
-- Raised the minimum supported VS Code version to **1.125.0** and the development Node.js requirement to **24.15**. (#3393)
+- Replaced the legacy programmatic **Migration Assistant** workflow with the relational migration Skill, including Chat model selection, phase diagnostics, source-freshness explanations, read-only Review and Fix handoffs, and improved accessibility and recovery controls. Resource provisioning and application edits require explicit authorization. ([#3403](https://github.com/microsoft/vscode-cosmosdb/issues/3403))
+- Improved **Migration Assistant** model selection, including model metadata handling and automatic model selection. ([#3466](https://github.com/microsoft/vscode-cosmosdb/issues/3466))
+- Improved **Account Overview** navigation, manual refresh, and account actions; added independent health and alert signals, per-period alert counts, and a shared Feedback control; improved dark-theme tooltip contrast and grouped settings with separate Derived advisory controls. ([#3416](https://github.com/microsoft/vscode-cosmosdb/issues/3416), [#3427](https://github.com/microsoft/vscode-cosmosdb/issues/3427), [#3430](https://github.com/microsoft/vscode-cosmosdb/issues/3430), [#3444](https://github.com/microsoft/vscode-cosmosdb/issues/3444), [#3445](https://github.com/microsoft/vscode-cosmosdb/issues/3445), [#3447](https://github.com/microsoft/vscode-cosmosdb/issues/3447), [#3464](https://github.com/microsoft/vscode-cosmosdb/issues/3464))
+- Updated the bundled **Cosmos DB best-practices Skill** to upstream 1.4.0, including partition-scoped unique-key guidance, corrected counter increments, and Cosmos DB Shell setup and write-safety rules. ([#3400](https://github.com/microsoft/vscode-cosmosdb/issues/3400), [#3462](https://github.com/microsoft/vscode-cosmosdb/issues/3462))
+- Added emulator verification guidance that distinguishes local configuration and sample-data checks from Azure runtime behavior and production readiness. ([#3467](https://github.com/microsoft/vscode-cosmosdb/issues/3467))
+- Updated NL2Query guidance and adopted shared Fluent UI and Monaco theming while preserving local overrides. ([#3326](https://github.com/microsoft/vscode-cosmosdb/issues/3326), [#3351](https://github.com/microsoft/vscode-cosmosdb/issues/3351))
+- Raised the minimum supported VS Code version to **1.125.0** and the development Node.js requirement to **24.15**. ([#3393](https://github.com/microsoft/vscode-cosmosdb/issues/3393))
 - Improved build, release, and end-to-end test reliability.
 - Updated localization.
 - Updated dependencies.
@@ -37,30 +37,30 @@
 
 ### Fixed
 
-- Prevented command injection when opening Cosmos DB Shell at a database or container whose ID contains shell syntax or control characters. (#3313, #3315)
-- Fixed Cosmos DB Shell startup navigation across older and newer Shell versions, with compatibility guidance and consent-based update notifications that account for custom executable paths. (#3316)
-- Fixed cancelled Cosmos DB Shell install and update operations to exit silently instead of showing a misleading failure notification. (#3321)
-- Fixed Fabric artifact tree items to use the Cosmos DB product icon in light and dark themes. (#3323)
+- Prevented command injection when opening Cosmos DB Shell at a database or container whose ID contains shell syntax or control characters. ([#3313](https://github.com/microsoft/vscode-cosmosdb/issues/3313), [#3315](https://github.com/microsoft/vscode-cosmosdb/issues/3315))
+- Fixed Cosmos DB Shell startup navigation across older and newer Shell versions, with compatibility guidance and consent-based update notifications that account for custom executable paths. ([#3316](https://github.com/microsoft/vscode-cosmosdb/issues/3316))
+- Fixed cancelled Cosmos DB Shell install and update operations to exit silently instead of showing a misleading failure notification. ([#3321](https://github.com/microsoft/vscode-cosmosdb/issues/3321))
+- Fixed Fabric artifact tree items to use the Cosmos DB product icon in light and dark themes. ([#3323](https://github.com/microsoft/vscode-cosmosdb/issues/3323))
 
 ### Changed
 
-- Migrated the extension's webview transport to the published `@microsoft/vscode-ext-webview` package. (#3217)
+- Migrated the extension's webview transport to the published `@microsoft/vscode-ext-webview` package. ([#3217](https://github.com/microsoft/vscode-cosmosdb/issues/3217))
 - Updated localization.
 
 ## 0.37.1 (Preview)
 
 ### Fixed
 
-- Prevented document data loss and stale overwrites by detecting concurrent edits, preserving conflict recovery state, and cleaning up document sessions when their source disappears. (#3266, #3293)
-- Fixed external URI handling during extension activation. (#3288)
-- Fixed the Query Editor to show and refresh throughput bucket availability after the account's preview feature registration changes. (#3257, #3296)
-- Sorted tree resources case-insensitively, including resources under attached accounts. (#3235)
+- Prevented document data loss and stale overwrites by detecting concurrent edits, preserving conflict recovery state, and cleaning up document sessions when their source disappears. ([#3266](https://github.com/microsoft/vscode-cosmosdb/issues/3266), [#3293](https://github.com/microsoft/vscode-cosmosdb/issues/3293))
+- Fixed external URI handling during extension activation. ([#3288](https://github.com/microsoft/vscode-cosmosdb/issues/3288))
+- Fixed the Query Editor to show and refresh throughput bucket availability after the account's preview feature registration changes. ([#3257](https://github.com/microsoft/vscode-cosmosdb/issues/3257), [#3296](https://github.com/microsoft/vscode-cosmosdb/issues/3296))
+- Sorted tree resources case-insensitively, including resources under attached accounts. ([#3235](https://github.com/microsoft/vscode-cosmosdb/issues/3235))
 
 ### Changed
 
-- Expanded the **Account Overview dashboard** with richer metric charts, additional cost, performance, partition, and configuration advisories, partial-coverage guidance for missing Log Analytics permissions or data, RBAC-aware actions, and improved accessibility. (#3207)
-- Reduced the schema information sent to GitHub Copilot by NL2Query and schema sampling while preserving the statistics needed to generate queries. (#3261, #3297)
-- Improved Query Editor telemetry handling and removed unused query functions. (#3279)
+- Expanded the **Account Overview dashboard** with richer metric charts, additional cost, performance, partition, and configuration advisories, partial-coverage guidance for missing Log Analytics permissions or data, RBAC-aware actions, and improved accessibility. ([#3207](https://github.com/microsoft/vscode-cosmosdb/issues/3207))
+- Reduced the schema information sent to GitHub Copilot by NL2Query and schema sampling while preserving the statistics needed to generate queries. ([#3261](https://github.com/microsoft/vscode-cosmosdb/issues/3261), [#3297](https://github.com/microsoft/vscode-cosmosdb/issues/3297))
+- Improved Query Editor telemetry handling and removed unused query functions. ([#3279](https://github.com/microsoft/vscode-cosmosdb/issues/3279))
 - Hardened build and release pipelines with network isolation, pinned signing tooling, reliable status reporting, and more focused workflow triggers and test execution.
 - Updated localization.
 - Updated dependencies.
@@ -69,24 +69,24 @@
 
 ### Added
 
-- Added an **Account Overview dashboard** for Azure Cosmos DB accounts, with inventory and summary metrics, RU trends, partition health, active alerts, recommendations, and derived advisories. (#3197)
+- Added an **Account Overview dashboard** for Azure Cosmos DB accounts, with inventory and summary metrics, RU trends, partition health, active alerts, recommendations, and derived advisories. ([#3197](https://github.com/microsoft/vscode-cosmosdb/issues/3197))
 
 ## 0.36.0
 
 ### Added
 
-- Added a **Quick Start tour** for the NoSQL Query Editor, with contextual tips for query, document, schema, connection, and results actions and commands to replay or reset the tour. (#3180)
-- Added GitHub Copilot tools and skills for opening and focusing Query Editors, inspecting editor and connection context, sampling data, applying generated queries, and executing the current query. (#3206)
-- Added support for **query-enabled throughput buckets**, gated on the account's preview feature registration. (#3198)
+- Added a **Quick Start tour** for the NoSQL Query Editor, with contextual tips for query, document, schema, connection, and results actions and commands to replay or reset the tour. ([#3180](https://github.com/microsoft/vscode-cosmosdb/issues/3180))
+- Added GitHub Copilot tools and skills for opening and focusing Query Editors, inspecting editor and connection context, sampling data, applying generated queries, and executing the current query. ([#3206](https://github.com/microsoft/vscode-cosmosdb/issues/3206))
+- Added support for **query-enabled throughput buckets**, gated on the account's preview feature registration. ([#3198](https://github.com/microsoft/vscode-cosmosdb/issues/3198))
 
 ### Fixed
 
-- Improved keyboard and screen reader accessibility throughout the Migration Assistant, including focus management, status announcements, and dialog labeling. (#3234)
+- Improved keyboard and screen reader accessibility throughout the Migration Assistant, including focus management, status announcements, and dialog labeling. ([#3234](https://github.com/microsoft/vscode-cosmosdb/issues/3234))
 
 ### Changed
 
-- Reworked **Natural Language to Query (NL2Query)** to use GitHub Copilot tools and skills instead of the previous in-editor generation experience and chat participant. (#3206)
-- Expanded end-to-end coverage for NL2Query, the Learn menu, Query Editor onboarding, and the Migration Assistant; isolated migration tests from Copilot sign-in. (#3175, #3225, #3244)
+- Reworked **Natural Language to Query (NL2Query)** to use GitHub Copilot tools and skills instead of the previous in-editor generation experience and chat participant. ([#3206](https://github.com/microsoft/vscode-cosmosdb/issues/3206))
+- Expanded end-to-end coverage for NL2Query, the Learn menu, Query Editor onboarding, and the Migration Assistant; isolated migration tests from Copilot sign-in. ([#3175](https://github.com/microsoft/vscode-cosmosdb/issues/3175), [#3225](https://github.com/microsoft/vscode-cosmosdb/issues/3225), [#3244](https://github.com/microsoft/vscode-cosmosdb/issues/3244))
 - Updated localization.
 - Updated several dependencies to address vulnerabilities.
 
@@ -94,33 +94,33 @@
 
 ### Added
 
-- Added support for the official [Microsoft Fabric extension](https://marketplace.visualstudio.com/items?itemName=fabric.vscode-fabric), letting this extension act as its satellite. Cosmos DB in Fabric commands and experiences (via new tree node providers) now light up directly inside the Fabric workspace view. (#2921)
-- Added **schema generation from queries** in the NoSQL Query Editor, backed by a new `SchemaService` that provides schema simplification, cascade deletion, and telemetry. (#3074, #3079)
-- Added **Priority Level** support in the Query Editor, allowing requests to be issued with a low or high priority. (#3063)
-- Added a NoSQL diagnostic that detects and reports **`ORDER BY` used inside a subquery**, which is not supported. (#3148)
+- Added support for the official [Microsoft Fabric extension](https://marketplace.visualstudio.com/items?itemName=fabric.vscode-fabric), letting this extension act as its satellite. Cosmos DB in Fabric commands and experiences (via new tree node providers) now light up directly inside the Fabric workspace view. ([#2921](https://github.com/microsoft/vscode-cosmosdb/issues/2921))
+- Added **schema generation from queries** in the NoSQL Query Editor, backed by a new `SchemaService` that provides schema simplification, cascade deletion, and telemetry. ([#3074](https://github.com/microsoft/vscode-cosmosdb/issues/3074), [#3079](https://github.com/microsoft/vscode-cosmosdb/issues/3079))
+- Added **Priority Level** support in the Query Editor, allowing requests to be issued with a low or high priority. ([#3063](https://github.com/microsoft/vscode-cosmosdb/issues/3063))
+- Added a NoSQL diagnostic that detects and reports **`ORDER BY` used inside a subquery**, which is not supported. ([#3148](https://github.com/microsoft/vscode-cosmosdb/issues/3148))
 
 ### Fixed
 
-- Simplified the hotkey mechanism and fixed **Edit / View / Delete** actions on selected rows in the results grid. (#3168)
-- Improved error handling when generating a query with **NL2Query**. (#3078)
-- Guarded Fabric provider registration and dropped an abandoned activation call. (#3161)
-- Corrected several **Learn Microsoft** documentation URLs. (#3153, #3162)
-- Fixed the telemetry property name used for feedback direction in the Query Editor. (#3127)
-- Added explicit IDs to wizard steps to prevent mangled telemetry. (#3086)
+- Simplified the hotkey mechanism and fixed **Edit / View / Delete** actions on selected rows in the results grid. ([#3168](https://github.com/microsoft/vscode-cosmosdb/issues/3168))
+- Improved error handling when generating a query with **NL2Query**. ([#3078](https://github.com/microsoft/vscode-cosmosdb/issues/3078))
+- Guarded Fabric provider registration and dropped an abandoned activation call. ([#3161](https://github.com/microsoft/vscode-cosmosdb/issues/3161))
+- Corrected several **Learn Microsoft** documentation URLs. ([#3153](https://github.com/microsoft/vscode-cosmosdb/issues/3153), [#3162](https://github.com/microsoft/vscode-cosmosdb/issues/3162))
+- Fixed the telemetry property name used for feedback direction in the Query Editor. ([#3127](https://github.com/microsoft/vscode-cosmosdb/issues/3127))
+- Added explicit IDs to wizard steps to prevent mangled telemetry. ([#3086](https://github.com/microsoft/vscode-cosmosdb/issues/3086))
 
 ### Changed
 
-- The **Migration Assistant** is now gated behind a feature flag and clearly labeled as **Preview**. (#3176)
-- Refactored the **Azure Cosmos DB Shell** integration into split modules with centralized constants and added tests. (#3077)
-- Extracted the webview **tRPC** communication layer into dedicated packages. (#3121)
-- Removed the legacy LLM instructions deployment logic. (#3126)
-- Unified the `nosql-language-service` provider APIs and documented their options. (#3114)
-- Aligned the NoSQL query-generation prompt with the language service and removed legacy language-reference injection. (#3072)
-- Enhanced telemetry tracking and data privacy in the migration process, including correlating DDL extractor telemetry with the session and source database and stamping a baseline run index. (#3087, #3182, #3183)
-- Documented the `LOG`/`LOG10` zero-argument limitation in NoSQL. (#3149)
-- Expanded automated testing: migrated tests to **Vitest**, added **Playwright** end-to-end suites (Query Editor, webviews, relational-migration), enabled React component unit tests, and added a reusable Language Model mock and NL2Query quality test runner. (#3136, #3170, #3172, #3174, #3181, #3116, #3146, #3147, #3151)
-- Improved CI reliability by splitting the build and test workflows to run in parallel, tuning CodeQL configuration, and removing disabled workflows. (#3150, #3158, #3160)
-- Made Monaco workers load correctly in the dev server. (#3169)
+- The **Migration Assistant** is now gated behind a feature flag and clearly labeled as **Preview**. ([#3176](https://github.com/microsoft/vscode-cosmosdb/issues/3176))
+- Refactored the **Azure Cosmos DB Shell** integration into split modules with centralized constants and added tests. ([#3077](https://github.com/microsoft/vscode-cosmosdb/issues/3077))
+- Extracted the webview **tRPC** communication layer into dedicated packages. ([#3121](https://github.com/microsoft/vscode-cosmosdb/issues/3121))
+- Removed the legacy LLM instructions deployment logic. ([#3126](https://github.com/microsoft/vscode-cosmosdb/issues/3126))
+- Unified the `nosql-language-service` provider APIs and documented their options. ([#3114](https://github.com/microsoft/vscode-cosmosdb/issues/3114))
+- Aligned the NoSQL query-generation prompt with the language service and removed legacy language-reference injection. ([#3072](https://github.com/microsoft/vscode-cosmosdb/issues/3072))
+- Enhanced telemetry tracking and data privacy in the migration process, including correlating DDL extractor telemetry with the session and source database and stamping a baseline run index. ([#3087](https://github.com/microsoft/vscode-cosmosdb/issues/3087), [#3182](https://github.com/microsoft/vscode-cosmosdb/issues/3182), [#3183](https://github.com/microsoft/vscode-cosmosdb/issues/3183))
+- Documented the `LOG`/`LOG10` zero-argument limitation in NoSQL. ([#3149](https://github.com/microsoft/vscode-cosmosdb/issues/3149))
+- Expanded automated testing: migrated tests to **Vitest**, added **Playwright** end-to-end suites (Query Editor, webviews, relational-migration), enabled React component unit tests, and added a reusable Language Model mock and NL2Query quality test runner. ([#3136](https://github.com/microsoft/vscode-cosmosdb/issues/3136), [#3170](https://github.com/microsoft/vscode-cosmosdb/issues/3170), [#3172](https://github.com/microsoft/vscode-cosmosdb/issues/3172), [#3174](https://github.com/microsoft/vscode-cosmosdb/issues/3174), [#3181](https://github.com/microsoft/vscode-cosmosdb/issues/3181), [#3116](https://github.com/microsoft/vscode-cosmosdb/issues/3116), [#3146](https://github.com/microsoft/vscode-cosmosdb/issues/3146), [#3147](https://github.com/microsoft/vscode-cosmosdb/issues/3147), [#3151](https://github.com/microsoft/vscode-cosmosdb/issues/3151))
+- Improved CI reliability by splitting the build and test workflows to run in parallel, tuning CodeQL configuration, and removing disabled workflows. ([#3150](https://github.com/microsoft/vscode-cosmosdb/issues/3150), [#3158](https://github.com/microsoft/vscode-cosmosdb/issues/3158), [#3160](https://github.com/microsoft/vscode-cosmosdb/issues/3160))
+- Made Monaco workers load correctly in the dev server. ([#3169](https://github.com/microsoft/vscode-cosmosdb/issues/3169))
 - Updated localization.
 - Updated several dependencies to address vulnerabilities.
 
@@ -128,33 +128,33 @@
 
 ### Added
 
-- Added **Natural Language to Query (NL2Query)**, allowing users to generate NoSQL queries from plain-language prompts directly in the Query Editor. The feature uses the active container's sampled schema for grounding, supports follow-up refinements, and lets users send feedback on generated queries. (#2859)
-- Added **Monaco autocompletion** for the Azure Cosmos DB NoSQL query language, providing context-aware suggestions for keywords, built-in functions, and identifiers based on the connected container's schema. (#2968)
-- Added a shared **schema sampling** capability with persistence and caching of sampled container schemas. Sampling is gated by a unified consent prompt and the persisted schema is consumed by NL2Query (for prompt grounding), Monaco autocompletion (for context-aware suggestions), the Query Editor (for result schema inference), and the Migration Assistant. (#2994, #2859, #3059)
-- Added the **Migration Assistant** for AI-assisted migration from relational databases (RDBMS) to Azure Cosmos DB. Guides users through discovery of source schemas, access pattern analysis, volumetric estimation, application-details capture, and schema/DDL conversion to a Cosmos DB target model. (#2991)
-- Added integration with the **Azure Cosmos DB Shell**, a lightweight bash-like CLI for interacting with Cosmos DB accounts (separately installable as a .NET global tool from [Azure/CosmosDBShell](https://github.com/Azure/CosmosDBShell)). When the Shell is installed, the extension can launch it directly against a connected account from the tree view. The Shell supports Entra ID, connection string, and Azure CLI authentication; navigation of the account → database → container → item hierarchy with `ls`, `cd`, and `pwd`; data and management operations (`query`, `mkdb`, `mkcon`, `mkitem`, `replace`, `patch`, `rm`); pipelines and scripting with variables, loops, and functions; and an optional MCP server mode for AI-powered automation from GitHub Copilot and other MCP clients. (#2536)
-- Added a **multi-query active block gutter bar** in the Query Editor that highlights the currently selected/executing query block when the editor contains multiple statements separated by semicolons, making it clear which query will run. (#3071)
+- Added **Natural Language to Query (NL2Query)**, allowing users to generate NoSQL queries from plain-language prompts directly in the Query Editor. The feature uses the active container's sampled schema for grounding, supports follow-up refinements, and lets users send feedback on generated queries. ([#2859](https://github.com/microsoft/vscode-cosmosdb/issues/2859))
+- Added **Monaco autocompletion** for the Azure Cosmos DB NoSQL query language, providing context-aware suggestions for keywords, built-in functions, and identifiers based on the connected container's schema. ([#2968](https://github.com/microsoft/vscode-cosmosdb/issues/2968))
+- Added a shared **schema sampling** capability with persistence and caching of sampled container schemas. Sampling is gated by a unified consent prompt and the persisted schema is consumed by NL2Query (for prompt grounding), Monaco autocompletion (for context-aware suggestions), the Query Editor (for result schema inference), and the Migration Assistant. ([#2994](https://github.com/microsoft/vscode-cosmosdb/issues/2994), [#2859](https://github.com/microsoft/vscode-cosmosdb/issues/2859), [#3059](https://github.com/microsoft/vscode-cosmosdb/issues/3059))
+- Added the **Migration Assistant** for AI-assisted migration from relational databases (RDBMS) to Azure Cosmos DB. Guides users through discovery of source schemas, access pattern analysis, volumetric estimation, application-details capture, and schema/DDL conversion to a Cosmos DB target model. ([#2991](https://github.com/microsoft/vscode-cosmosdb/issues/2991))
+- Added integration with the **Azure Cosmos DB Shell**, a lightweight bash-like CLI for interacting with Cosmos DB accounts (separately installable as a .NET global tool from [Azure/CosmosDBShell](https://github.com/Azure/CosmosDBShell)). When the Shell is installed, the extension can launch it directly against a connected account from the tree view. The Shell supports Entra ID, connection string, and Azure CLI authentication; navigation of the account → database → container → item hierarchy with `ls`, `cd`, and `pwd`; data and management operations (`query`, `mkdb`, `mkcon`, `mkitem`, `replace`, `patch`, `rm`); pipelines and scripting with variables, loops, and functions; and an optional MCP server mode for AI-powered automation from GitHub Copilot and other MCP clients. ([#2536](https://github.com/microsoft/vscode-cosmosdb/issues/2536))
+- Added a **multi-query active block gutter bar** in the Query Editor that highlights the currently selected/executing query block when the editor contains multiple statements separated by semicolons, making it clear which query will run. ([#3071](https://github.com/microsoft/vscode-cosmosdb/issues/3071))
 
 ### Fixed
 
-- Fixed the Throughput Bucket menu being shown when connected to the Cosmos DB Emulator. (#3058)
-- Fixed dropdown UX in the Query Editor without swallowing telemetry. (#3036)
-- Fixed button and container styles to use VS Code theme variables for better theme compatibility. (#3035)
-- Fixed handling of absent index metrics when a query returns zero results. (#3034)
-- Refactored the Cosmos DB control-plane RBAC implementation. (#3016)
+- Fixed the Throughput Bucket menu being shown when connected to the Cosmos DB Emulator. ([#3058](https://github.com/microsoft/vscode-cosmosdb/issues/3058))
+- Fixed dropdown UX in the Query Editor without swallowing telemetry. ([#3036](https://github.com/microsoft/vscode-cosmosdb/issues/3036))
+- Fixed button and container styles to use VS Code theme variables for better theme compatibility. ([#3035](https://github.com/microsoft/vscode-cosmosdb/issues/3035))
+- Fixed handling of absent index metrics when a query returns zero results. ([#3034](https://github.com/microsoft/vscode-cosmosdb/issues/3034))
+- Refactored the Cosmos DB control-plane RBAC implementation. ([#3016](https://github.com/microsoft/vscode-cosmosdb/issues/3016))
 
 ### Changed
 
-- Updated learning resources links in the `LearnButton` component. (#3080)
-- Migrated webview–extension communication to **tRPC** and prepared the codebase for TypeScript 6. (#2982)
-- Migrated the build system from **webpack to Vite** (ESM-based) and made Vite the default; migrated tests from **Jest to Vitest**. (#2997, #2999)
-- Migrated linting from **ESLint to oxlint** and tightened the lint configuration. (#2986, #2996)
-- Replaced the `ext` namespace with an `ExtensionService` class. (#2995)
-- Updated `azext` libraries and GitHub Actions workflows for **Node.js 24** compatibility. (#3082, #2989)
-- Refactored the NoSQL AST query layer and added a SELECT query fixture suite with Cosmos DB Emulator integration tests. (#3005, #3011)
-- Enforced a stable provider name for Cosmos DB data provider telemetry and standardized the telemetry duration field. (#2972, #2976)
-- Reduced l10n key size and added validation checks for localization dictionary keys. (#2977, #2980)
-- Improved PR triggers, build summaries, and pipeline reliability. (#3001, #3030, #3046, #3003, #3004)
+- Updated learning resources links in the `LearnButton` component. ([#3080](https://github.com/microsoft/vscode-cosmosdb/issues/3080))
+- Migrated webview–extension communication to **tRPC** and prepared the codebase for TypeScript 6. ([#2982](https://github.com/microsoft/vscode-cosmosdb/issues/2982))
+- Migrated the build system from **webpack to Vite** (ESM-based) and made Vite the default; migrated tests from **Jest to Vitest**. ([#2997](https://github.com/microsoft/vscode-cosmosdb/issues/2997), [#2999](https://github.com/microsoft/vscode-cosmosdb/issues/2999))
+- Migrated linting from **ESLint to oxlint** and tightened the lint configuration. ([#2986](https://github.com/microsoft/vscode-cosmosdb/issues/2986), [#2996](https://github.com/microsoft/vscode-cosmosdb/issues/2996))
+- Replaced the `ext` namespace with an `ExtensionService` class. ([#2995](https://github.com/microsoft/vscode-cosmosdb/issues/2995))
+- Updated `azext` libraries and GitHub Actions workflows for **Node.js 24** compatibility. ([#3082](https://github.com/microsoft/vscode-cosmosdb/issues/3082), [#2989](https://github.com/microsoft/vscode-cosmosdb/issues/2989))
+- Refactored the NoSQL AST query layer and added a SELECT query fixture suite with Cosmos DB Emulator integration tests. ([#3005](https://github.com/microsoft/vscode-cosmosdb/issues/3005), [#3011](https://github.com/microsoft/vscode-cosmosdb/issues/3011))
+- Enforced a stable provider name for Cosmos DB data provider telemetry and standardized the telemetry duration field. ([#2972](https://github.com/microsoft/vscode-cosmosdb/issues/2972), [#2976](https://github.com/microsoft/vscode-cosmosdb/issues/2976))
+- Reduced l10n key size and added validation checks for localization dictionary keys. ([#2977](https://github.com/microsoft/vscode-cosmosdb/issues/2977), [#2980](https://github.com/microsoft/vscode-cosmosdb/issues/2980))
+- Improved PR triggers, build summaries, and pipeline reliability. ([#3001](https://github.com/microsoft/vscode-cosmosdb/issues/3001), [#3030](https://github.com/microsoft/vscode-cosmosdb/issues/3030), [#3046](https://github.com/microsoft/vscode-cosmosdb/issues/3046), [#3003](https://github.com/microsoft/vscode-cosmosdb/issues/3003), [#3004](https://github.com/microsoft/vscode-cosmosdb/issues/3004))
 - Updated localization.
 - Updated several dependencies to address vulnerabilities.
 
@@ -162,8 +162,8 @@
 
 ### Changed
 
-- Migrated from Slickgrid to React Data Grid to address several accessibility and theming issues. (#2960)
-- Updated Cosmos DB best practices skill including a set of supplementary rule files for different scenarios. (#2965)
+- Migrated from Slickgrid to React Data Grid to address several accessibility and theming issues. ([#2960](https://github.com/microsoft/vscode-cosmosdb/issues/2960))
+- Updated Cosmos DB best practices skill including a set of supplementary rule files for different scenarios. ([#2965](https://github.com/microsoft/vscode-cosmosdb/issues/2965))
 - Updated localization.
 - Updated several dependencies to address vulnerabilities.
 
@@ -171,13 +171,13 @@
 
 ### Fixed
 
-- Fixed an issue where the SKILL.md was not packaged correctly. (#2954)
+- Fixed an issue where the SKILL.md was not packaged correctly. ([#2954](https://github.com/microsoft/vscode-cosmosdb/issues/2954))
 
 ## 0.32.0
 
 ### Added
 
-- Added support for attaching Cosmos DB accounts to the workspace using a tenant instead of an account key. (#2620)
+- Added support for attaching Cosmos DB accounts to the workspace using a tenant instead of an account key. ([#2620](https://github.com/microsoft/vscode-cosmosdb/issues/2620))
   - The connection string now supports a `TenantId` value.
   - If only the endpoint has been provided, the extension will prompt to sign in and select a tenant.
 - Added support for the `telemetry.feedback.enabled` setting.
@@ -185,7 +185,7 @@
 ### Fixed
 
 - Fixed an issue where the contributed chat skill was not properly picked up by GitHub Copilot.
-- Fixed an issue where Keyboard shortcuts didn't work in the Query Editor. (#2949)
+- Fixed an issue where Keyboard shortcuts didn't work in the Query Editor. ([#2949](https://github.com/microsoft/vscode-cosmosdb/issues/2949))
 
 ### Changed
 
@@ -196,13 +196,13 @@
 
 ### Added
 
-- Added a `chatSkills` contribution, enabling GitHub Copilot to provide contextual Azure Cosmos DB best practices guidance, replacing the previous instructions files. The old deprecated files can be removed using the `CosmosDB AI: Remove LLM instructions from user profile folder` command. (#2937)
-- Added information about Partition Key naming restrictions with a help button and a "Learn more" link to the Partition Key prompt during Container creation. (#2920)
+- Added a `chatSkills` contribution, enabling GitHub Copilot to provide contextual Azure Cosmos DB best practices guidance, replacing the previous instructions files. The old deprecated files can be removed using the `CosmosDB AI: Remove LLM instructions from user profile folder` command. ([#2937](https://github.com/microsoft/vscode-cosmosdb/issues/2937))
+- Added information about Partition Key naming restrictions with a help button and a "Learn more" link to the Partition Key prompt during Container creation. ([#2920](https://github.com/microsoft/vscode-cosmosdb/issues/2920))
 
 ### Fixed
 
-- Fixed an issue where Document and Query session errors were neither logged nor surfaced in the UI. (#2803)
-- Improved timout handling and timeout error messages. (#2871)
+- Fixed an issue where Document and Query session errors were neither logged nor surfaced in the UI. ([#2803](https://github.com/microsoft/vscode-cosmosdb/issues/2803))
+- Improved timout handling and timeout error messages. ([#2871](https://github.com/microsoft/vscode-cosmosdb/issues/2871))
 
 ### Changed
 
@@ -213,14 +213,14 @@
 
 ### Fixed
 
-- Fixed an issue where opening a deleted Item was loading indefinitely (#2822).
-- Fixed an issue where Serverless NoSQL accounts were not loading (#2902).
-- Fixed an issue where text in Fluent UI tooltips, dropdowns and tabs was invisible for certain dark themes (e.g., Nord)(#2904).
-- Fixed an issue where LLM assets were added to all Chats without relation to Cosmos DB (#2901)
+- Fixed an issue where opening a deleted Item was loading indefinitely ([#2822](https://github.com/microsoft/vscode-cosmosdb/issues/2822)).
+- Fixed an issue where Serverless NoSQL accounts were not loading ([#2902](https://github.com/microsoft/vscode-cosmosdb/issues/2902)).
+- Fixed an issue where text in Fluent UI tooltips, dropdowns and tabs was invisible for certain dark themes (e.g., Nord)([#2904](https://github.com/microsoft/vscode-cosmosdb/issues/2904)).
+- Fixed an issue where LLM assets were added to all Chats without relation to Cosmos DB ([#2901](https://github.com/microsoft/vscode-cosmosdb/issues/2901))
 
 ### Added
 
-- Added support for connecting using Read-Only keys, if the user account doesn't have access to all account keys (#2856).
+- Added support for connecting using Read-Only keys, if the user account doesn't have access to all account keys ([#2856](https://github.com/microsoft/vscode-cosmosdb/issues/2856)).
 
 ### Removed
 
@@ -239,37 +239,37 @@
 
 - Update source map configuration for development mode (fixes debugging in VS Code).
 - Updated several dependencies to address vulnerabilities.
-- Updated the link to the privacy statement in the Readme (#2896).
+- Updated the link to the privacy statement in the Readme ([#2896](https://github.com/microsoft/vscode-cosmosdb/issues/2896)).
 
 ## 0.31.1 (Preview)
 
 ### Fixed
 
-- Fixed an issue where the Query Editor didn't resize properly with it's parent Tab (#2869).
-- Added missing translations (#2878).
+- Fixed an issue where the Query Editor didn't resize properly with it's parent Tab ([#2869](https://github.com/microsoft/vscode-cosmosdb/issues/2869)).
+- Added missing translations ([#2878](https://github.com/microsoft/vscode-cosmosdb/issues/2878)).
 
 ## 0.31.0 (Preview)
 
 ### Added
 
-- Added "Create Database" and "Create Container" nodes to NoSQL accounts and Databases (#2837).
-- Added Database/Container selection to the Query Editor toolbar and updated the Query Editor Icon (#2701).
-- Added missing filter and sort buttons to Items, Procedures, Triggers and attached Accounts (#2855).
-- Enabled Emulator support on Apple Silicon (darwin-arm64) (#2825).
-- Updated localization for 13 languages (#2860).
+- Added "Create Database" and "Create Container" nodes to NoSQL accounts and Databases ([#2837](https://github.com/microsoft/vscode-cosmosdb/issues/2837)).
+- Added Database/Container selection to the Query Editor toolbar and updated the Query Editor Icon ([#2701](https://github.com/microsoft/vscode-cosmosdb/issues/2701)).
+- Added missing filter and sort buttons to Items, Procedures, Triggers and attached Accounts ([#2855](https://github.com/microsoft/vscode-cosmosdb/issues/2855)).
+- Enabled Emulator support on Apple Silicon (darwin-arm64) ([#2825](https://github.com/microsoft/vscode-cosmosdb/issues/2825)).
+- Updated localization for 13 languages ([#2860](https://github.com/microsoft/vscode-cosmosdb/issues/2860)).
 
 ### Fixed
 
-- Fixed an issue where pasting text into the Query Editor was broken (#2843).
-- Fixed an issue where creating containers failed with default settings for serverless accounts (#1931).
-- Fixed an issue where the Extension Settings were missing in the Extensions Settings section (#2826).
+- Fixed an issue where pasting text into the Query Editor was broken ([#2843](https://github.com/microsoft/vscode-cosmosdb/issues/2843)).
+- Fixed an issue where creating containers failed with default settings for serverless accounts ([#1931](https://github.com/microsoft/vscode-cosmosdb/issues/1931)).
+- Fixed an issue where the Extension Settings were missing in the Extensions Settings section ([#2826](https://github.com/microsoft/vscode-cosmosdb/issues/2826)).
 - Updated several dependencies to address security issues.
 
 ### Changed
 
-- Updated to React 19 (#2760).
-- Improved Tooltips for single items and added tooltips showing partition keys for containers (#2835).
-- Renamed the "Create Database Server" wizard and removed MongoDB and PostgreSQL support, please use the specialized extensions instead (#2863).
+- Updated to React 19 ([#2760](https://github.com/microsoft/vscode-cosmosdb/issues/2760)).
+- Improved Tooltips for single items and added tooltips showing partition keys for containers ([#2835](https://github.com/microsoft/vscode-cosmosdb/issues/2835)).
+- Renamed the "Create Database Server" wizard and removed MongoDB and PostgreSQL support, please use the specialized extensions instead ([#2863](https://github.com/microsoft/vscode-cosmosdb/issues/2863)).
 
 ## 0.30.0
 
@@ -281,33 +281,33 @@
 
 ### Added
 
-- Cosmos DB Items inside the Resources Tree will now be opened with the new DocumentTab experience from the Query Editor fixing several issues where it was not possible to change the `id` or Partition Keys of an item (#2799).
+- Cosmos DB Items inside the Resources Tree will now be opened with the new DocumentTab experience from the Query Editor fixing several issues where it was not possible to change the `id` or Partition Keys of an item ([#2799](https://github.com/microsoft/vscode-cosmosdb/issues/2799)).
 
 ### Fixed
 
-- Fixed an issue where changing Partition Key(s) of an item led to a document validation error making Partition Key changes impossible (#2764, #2787).
-- Special Partition Key values such as `None` and `null` will be correctly shown in the Query Editor results, making it easier to identify documents stored on special system partitions (#2787).
-- Fixed authentication flow with challenge-based authentication and Azure mandatory MFA (#2748, #2749).
+- Fixed an issue where changing Partition Key(s) of an item led to a document validation error making Partition Key changes impossible ([#2764](https://github.com/microsoft/vscode-cosmosdb/issues/2764), [#2787](https://github.com/microsoft/vscode-cosmosdb/issues/2787)).
+- Special Partition Key values such as `None` and `null` will be correctly shown in the Query Editor results, making it easier to identify documents stored on special system partitions ([#2787](https://github.com/microsoft/vscode-cosmosdb/issues/2787)).
+- Fixed authentication flow with challenge-based authentication and Azure mandatory MFA ([#2748](https://github.com/microsoft/vscode-cosmosdb/issues/2748), [#2749](https://github.com/microsoft/vscode-cosmosdb/issues/2749)).
 
 ### Changed
 
-- Improved PostgreSQL deprecation scenario, selecting a PostgreSQL server from Azure Resources will now navigate to the [PostgreSQL extension](https://marketplace.visualstudio.com/items?itemName=ms-ossdata.vscode-pgsql). If the extension is not installed VS Code will ask to install it (#2800).
+- Improved PostgreSQL deprecation scenario, selecting a PostgreSQL server from Azure Resources will now navigate to the [PostgreSQL extension](https://marketplace.visualstudio.com/items?itemName=ms-ossdata.vscode-pgsql). If the extension is not installed VS Code will ask to install it ([#2800](https://github.com/microsoft/vscode-cosmosdb/issues/2800)).
 
 ### Breaking Changes
 
-- New PostgreSQL connections can not be attached to the Azure Workspace. Creating a new PostgreSQL connection will navigate to the [PostgreSQL extension](https://marketplace.visualstudio.com/items?itemName=ms-ossdata.vscode-pgsql) where the new connection can be created (#2804).
+- New PostgreSQL connections can not be attached to the Azure Workspace. Creating a new PostgreSQL connection will navigate to the [PostgreSQL extension](https://marketplace.visualstudio.com/items?itemName=ms-ossdata.vscode-pgsql) where the new connection can be created ([#2804](https://github.com/microsoft/vscode-cosmosdb/issues/2804)).
 
 ## 0.28.2
 
 ### Added
 
-- Deploy and manage [LLM instruction files](resources/llm-assets/azurecosmosdb.instructions.md) (#2758).
+- Deploy and manage [LLM instruction files](resources/llm-assets/azurecosmosdb.instructions.md) ([#2758](https://github.com/microsoft/vscode-cosmosdb/issues/2758)).
 
 ## 0.28.1
 
 ### Added
 
-- Add filtering and sorting capabilities for CosmosDB resources in the Azure Resources view (#2755).
+- Add filtering and sorting capabilities for CosmosDB resources in the Azure Resources view ([#2755](https://github.com/microsoft/vscode-cosmosdb/issues/2755)).
 
 ## 0.28.0
 
@@ -325,14 +325,14 @@
 
 ### Added
 
-- Support for Bulk Deleting selected documents from the NoSQL Query Results with confirmation and status notification (#2709).
-- Added support for different Shell environments when running the Shell (#2698)
+- Support for Bulk Deleting selected documents from the NoSQL Query Results with confirmation and status notification ([#2709](https://github.com/microsoft/vscode-cosmosdb/issues/2709)).
+- Added support for different Shell environments when running the Shell ([#2698](https://github.com/microsoft/vscode-cosmosdb/issues/2698))
 
 ### Changed
 
-- Fixed NoSQL "Index Metrics" parsing and error handling (#2724).
+- Fixed NoSQL "Index Metrics" parsing and error handling ([#2724](https://github.com/microsoft/vscode-cosmosdb/issues/2724)).
 - Fixed various accessibility issues.
-- Fixed an issue with container creation where the first partition key was carried over to the next partition key entry causing confusion (#2715)
+- Fixed an issue with container creation where the first partition key was carried over to the next partition key entry causing confusion ([#2715](https://github.com/microsoft/vscode-cosmosdb/issues/2715))
 - Minor Bugfixes, component updates and code improvements.
 
 ## 0.26.0
@@ -349,8 +349,8 @@
 
 ### Changed
 
-- Fixed "Create Database"/"Create Collection" command spelling for Mongo (#2452).
-- Fixed a bug where rendering query results failed with a "Maximum call stack size exceeded" error (#2624).
+- Fixed "Create Database"/"Create Collection" command spelling for Mongo ([#2452](https://github.com/microsoft/vscode-cosmosdb/issues/2452)).
+- Fixed a bug where rendering query results failed with a "Maximum call stack size exceeded" error ([#2624](https://github.com/microsoft/vscode-cosmosdb/issues/2624)).
 - Improved Cosmos DB Authentication logic for accounts with `databaseAccount.disableLocalAuth`.
 - Renamed "Documents" to "Items" for Cosmos DB.
 - Minor Bugfixes, component updates and code improvements.
@@ -443,21 +443,21 @@
 
 ### Changed
 
-- Updated the supported Mongo version when creating a MongoDB database server. #2223
-- Fixed a bug which blocks creating a Postgres database. #2250
+- Updated the supported Mongo version when creating a MongoDB database server. [#2223](https://github.com/microsoft/vscode-cosmosdb/issues/2223)
+- Fixed a bug which blocks creating a Postgres database. [#2250](https://github.com/microsoft/vscode-cosmosdb/issues/2250)
 
 ### Added
 
-- Added support to execute a SQL style NoSQL query in a NoSQL query editor. #2217
-- Added support to execute a NoSQL stored procedure. #2235
-- Added support to view, create or delete NoSQL triggers. #2236
-- Added support to view the offer information of a NoSQL collection. #2252
+- Added support to execute a SQL style NoSQL query in a NoSQL query editor. [#2217](https://github.com/microsoft/vscode-cosmosdb/issues/2217)
+- Added support to execute a NoSQL stored procedure. [#2235](https://github.com/microsoft/vscode-cosmosdb/issues/2235)
+- Added support to view, create or delete NoSQL triggers. [#2236](https://github.com/microsoft/vscode-cosmosdb/issues/2236)
+- Added support to view the offer information of a NoSQL collection. [#2252](https://github.com/microsoft/vscode-cosmosdb/issues/2252)
 
 ## 0.20.1
 
 ### Changed
 
-- Fixed a bug where the azure user session cannot be auto-detected for Postgres Flexible server. #2209
+- Fixed a bug where the azure user session cannot be auto-detected for Postgres Flexible server. [#2209](https://github.com/microsoft/vscode-cosmosdb/issues/2209)
 
 ## 0.20.0
 

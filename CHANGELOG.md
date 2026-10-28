@@ -1,6 +1,6 @@
 # Change Log
 
-## 0.37.3 (Preview)
+## 0.39.0 (Preview)
 
 ### Added
 
@@ -16,14 +16,17 @@
 - Fixed document tab identity across resources and kept the results grid column menu accessible when closed. (#3356, #3407)
 - Fixed Cosmos DB proxy routing through VS Code, emulator connection detection and port validation, and attaching accounts from the Command Palette. (#3367, #3368, #3352)
 - Fixed Cosmos DB Shell MCP server detection to verify server identity. (#3397)
+- Fixed migration provisioning verification for emulator targets that report an unknown throughput replacement status, while retaining strict verification for Azure targets. (#3467)
 - Fixed Account Overview advisories and Log Analytics authentication, including default root ETag indexing exclusions, Serverless applicability, and partially available storage metrics. (#3410, #3428, #3429, #3443)
 - Escaped webview titles before rendering HTML, restricted URI-based attachments to Fabric, removed sensitive telemetry hashes, and scoped emulator TLS exceptions to integration clients. (#3423, #3455, #3364, #3422)
 
 ### Changed
 
 - Replaced the legacy programmatic **Migration Assistant** workflow with the relational migration Skill, including Chat model selection, phase diagnostics, source-freshness explanations, read-only Review and Fix handoffs, and improved accessibility and recovery controls. Resource provisioning and application edits require explicit authorization. (#3403)
+- Improved **Migration Assistant** model selection, including model metadata handling and automatic model selection. (#3466)
 - Improved **Account Overview** navigation, manual refresh, and account actions; added independent health and alert signals, per-period alert counts, and a shared Feedback control; improved dark-theme tooltip contrast and grouped settings with separate Derived advisory controls. (#3416, #3427, #3430, #3444, #3445, #3447, #3464)
 - Updated the bundled **Cosmos DB best-practices Skill** to upstream 1.4.0, including partition-scoped unique-key guidance, corrected counter increments, and Cosmos DB Shell setup and write-safety rules. (#3400, #3462)
+- Added emulator verification guidance that distinguishes local configuration and sample-data checks from Azure runtime behavior and production readiness. (#3467)
 - Updated NL2Query guidance and adopted shared Fluent UI and Monaco theming while preserving local overrides. (#3326, #3351)
 - Raised the minimum supported VS Code version to **1.125.0** and the development Node.js requirement to **24.15**. (#3393)
 - Improved build, release, and end-to-end test reliability.

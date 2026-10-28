@@ -46,6 +46,7 @@ import {
 import { expect, test } from '../fixtures/vscode';
 import {
     closeAllEditorTabs,
+    maximizeWindow,
     resetNativeDialogStubs,
     resizeWindowViewport,
     stubMessageBoxButton,
@@ -102,7 +103,11 @@ test.describe('Migration Assistant', () => {
         await expect(frame.getByText(/Estimating tokens|Token estimate unavailable|^~.+ tokens$/)).toHaveCount(0);
     });
 
-    test('locked phases explain prerequisites on hover and keyboard focus', async ({ vscodeWindow }, testInfo) => {
+    test('locked phases explain prerequisites on hover and keyboard focus', async ({
+        vscodeWindow,
+        vscodeApp,
+    }, testInfo) => {
+        await maximizeWindow(vscodeApp);
         const frame = await openMigrationSeeded(vscodeWindow);
         await expect(
             frame
@@ -138,7 +143,8 @@ test.describe('Migration Assistant', () => {
                 .toBe(true);
             await header.press('Escape');
             await expect(frame.getByRole('tooltip')).toHaveCount(0);
-            await vscodeWindow.mouse.move(0, 0);
+            await frame.locator('body').hover({ position: { x: 8, y: 8 } });
+            await expect.poll(() => header.evaluate((element) => element.matches(':hover'))).toBe(false);
             await header.press('Tab');
             await vscodeWindow.keyboard.press('Shift+Tab');
             await expect(header).toBeFocused();

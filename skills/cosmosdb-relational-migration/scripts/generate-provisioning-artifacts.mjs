@@ -74,7 +74,7 @@ export function buildBicep(model, targetEnvironment) {
         '',
         'param accountName string',
         ...(createAccount ? ['param location string = resourceGroup().location'] : []),
-        `param databaseName string = '${escapeBicep(model.databaseName)}'`,
+        `param databaseName string = '${escapeBicep(targetEnvironment?.databaseName ?? model.databaseName)}'`,
         ...(createAccount ? ['param principalId string = deployer().objectId'] : []),
         '',
         `resource account 'Microsoft.DocumentDB/databaseAccounts@2024-05-15'${createAccount ? '' : ' existing'} = {`,
@@ -207,7 +207,7 @@ export function buildBicepParams(model, project) {
     const lines = ["using './main.bicep'", ''];
     lines.push(accountName ? `param accountName = '${escapeBicep(accountName)}'` : "// TODO: param accountName = '<value>'");
     if (isNewAccountTarget(target) && target.location) lines.push(`param location = '${escapeBicep(target.location)}'`);
-    lines.push(`param databaseName = '${escapeBicep(model.databaseName)}'`, '');
+    lines.push(`param databaseName = '${escapeBicep(target?.databaseName ?? model.databaseName)}'`, '');
     return lines.join('\n');
 }
 
@@ -247,7 +247,7 @@ export function buildSeedScript(model, targetEnvironment) {
     if (model.containers.some(container => container.throughputMode === 'shared')) {
         for (const container of model.containers) getProvisioningCapacity(model, container, targetEnvironment);
     }
-    const databaseName = escapeShell(model.databaseName);
+    const databaseName = escapeShell(targetEnvironment?.databaseName ?? model.databaseName);
     const seedOnly = targetEnvironment?.type !== 'emulator' || model.containers.some((container) =>
         container.fullTextPolicy !== undefined || container.uniqueKeyPolicy !== undefined || container.throughputMode === 'shared');
     let connection = 'connect $1';

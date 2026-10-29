@@ -66,6 +66,44 @@ function inputs() {
     return { model, sampleData, project };
 }
 
+test('uses selected account and database names without rewriting modeled containers or inputs', () => {
+    for (const type of ['azure', 'provision', 'emulator']) {
+        const { model, sampleData, project } = inputs();
+        project.phases.targetEnvironment.type = type;
+        const previous = buildProvisioningArtifacts(model, sampleData, project);
+        Object.assign(project.phases.targetEnvironment, { accountName: 'alternate-account', databaseName: 'alternate-db' });
+        project.phases.provisioning = { status: 'complete', databaseName: 'previous-deployment' };
+        const original = structuredClone({ model, sampleData, project });
+        const artifacts = buildProvisioningArtifacts(model, sampleData, project);
+        assert.match(artifacts['main.bicep'], /param databaseName string = 'alternate-db'/u);
+        assert.match(artifacts['main.bicep'], /name: 'Items'/u);
+        assert.match(artifacts['main.bicep'], /paths: \['\/tenantId', '\/itemId'\]/u);
+        assert.match(artifacts['main.bicepparam'], /param accountName = 'alternate-account'/u);
+        assert.match(artifacts['main.bicepparam'], /param databaseName = 'alternate-db'/u);
+        assert.match(artifacts['seed-data.csh'], /mkitem --database=alternate-db --container=\$entry.containerName --upsert/u);
+        if (type === 'emulator') {
+            assert.match(artifacts['seed-data.csh'], /^create database alternate-db$/mu);
+            assert.match(artifacts['seed-data.csh'], /^create container Items .*--database=alternate-db/mu);
+        }
+        assert.doesNotMatch(Object.values(artifacts).join('\n'), /migration-db|migration-app|previous-deployment/u);
+        assert.deepEqual(validateProvisioningArtifacts(artifacts, model, sampleData, project), []);
+        assert.deepEqual(validateProvisioningArtifacts(previous, model, sampleData, project).map(error => error.path).sort(),
+            ['$.main.bicep', '$.main.bicepparam', '$.seed-data.csh']);
+        assert.deepEqual({ model, sampleData, project }, original);
+    }
+});
+
+test('escapes target database names in both Bicep and Shell syntax', () => {
+    const { model, sampleData, project } = inputs();
+    project.phases.targetEnvironment = { type: 'emulator', databaseName: 'target\'s "database"' };
+    const artifacts = buildProvisioningArtifacts(model, sampleData, project);
+    for (const name of ['main.bicep', 'main.bicepparam']) {
+        assert(artifacts[name].includes(String.raw`'target\'s "database"'`));
+    }
+    assert(artifacts['seed-data.csh'].includes(String.raw`create database "target's \"database\""`));
+    assert(artifacts['seed-data.csh'].includes(String.raw`--database="target's \"database\""`));
+});
+
 test('places shared autoscale on the database and keeps hybrid container capacity independent', () => {
     for (const type of ['azure', 'provision', 'emulator']) {
         const { model, sampleData, project } = inputs();

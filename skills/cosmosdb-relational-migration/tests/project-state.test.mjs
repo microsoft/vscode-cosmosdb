@@ -40,6 +40,7 @@ test('summaries preserve target routing metadata without exposing unrelated fiel
         { type: 'emulator', verified: false },
         { type: 'emulator', endpoint: 'https://localhost:8081/', verified: true },
         { type: 'azure', endpoint: 'https://account.documents.azure.com/', accountName: 'account', verified: false },
+        { type: 'azure', endpoint: 'https://alternate.documents.azure.com/', accountName: 'alternate', databaseName: 'alternate-db' },
         { type: 'azure', endpoint: 'https://account.documents.azure.com/', capacityMode: 'provisioned', maxThroughput: 2000 },
         { type: 'emulator', capacityMode: 'serverless', verified: false },
         { type: 'provision', accountName: 'new-account', resourceGroup: 'group', subscriptionId: 'subscription',
@@ -161,6 +162,24 @@ test('merges scoped writes while preserving unrelated state and rejecting stale 
     assert.throws(() => updateProjectState(workspace, saved.revision, project => setProjectValue(project, '/phases/discovery/status', 'invalid')), /Invalid project/u);
     assert.equal(readProjectState(workspace).revision, saved.revision);
     assert.deepEqual(fs.readdirSync(path.dirname(saved.projectPath)), ['project.json']);
+});
+
+test('persists independent provisioning coordinates without changing upstream state', context => {
+    const workspace = fixture(context);
+    const original = readProjectState(workspace);
+    const target = { type: 'azure', accountName: 'alternate-account', databaseName: 'alternate-db',
+        endpoint: 'https://alternate-account.documents.azure.com/', verified: false };
+    updateProjectState(workspace, original.revision, project => setProjectValue(project, '/phases/targetEnvironment', target));
+    const saved = readProjectState(workspace);
+    assert.deepEqual(selectProjectState(saved, '/phases/targetEnvironment').value, target);
+    assert.equal(selectProjectState(saved).phases.targetEnvironment.databaseName, target.databaseName);
+    assert.equal(saved.project.name, original.project.name);
+    assert.deepEqual(saved.project.phases.discovery, original.project.phases.discovery);
+    assert.deepEqual(saved.project.freshness, original.project.freshness);
+    updateProjectState(workspace, saved.revision, project => setProjectValue(project, '/phases/provisioning', {
+        status: 'in-progress', databaseName: target.databaseName,
+    }));
+    assert.deepEqual(readProjectState(workspace).project.phases.targetEnvironment, target);
 });
 
 test('reads compatible optional nulls without writing and validates explicit repairs against the original revision', context => {

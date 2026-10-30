@@ -525,18 +525,53 @@ test('verifies a serverless model on provisioned Azure without changing its cano
         .some(error => error.path === '$.project.phases.targetEnvironment'));
 });
 
-test('rejects provisioned models on serverless Azure but permits the emulator test exception', () => {
+test('verifies provisioned models on serverless Azure and emulator targets', () => {
     const { model, sampleData, project, report } = inputs();
     model.capacityMode = 'provisioned';
     model.containers[0].maxThroughput = 4000;
     report.modelSha256 = modelSha256(model);
     project.phases.targetEnvironment.capacityMode = 'serverless';
-    assert(validateProvisioningVerification(model, sampleData, project, report)
-        .some(error => error.message.includes('cannot satisfy a provisioned-capacity model')));
+    assert.deepEqual(validateProvisioningVerification(model, sampleData, project, report), []);
     project.phases.targetEnvironment = { type: 'emulator', endpoint: 'https://localhost:8081/', capacityMode: 'serverless' };
     report.target = { type: 'emulator', endpoint: 'https://localhost:8081/' };
     assert.deepEqual(validateProvisioningVerification(model, sampleData, project, report), []);
     assert.equal(model.capacityMode, 'provisioned');
+    assert.equal(model.containers[0].maxThroughput, 4000);
+});
+
+test('verifies a shared model on serverless Azure without accepting provisioned allocation evidence', () => {
+    const { model, sampleData, project, report } = sharedInputs();
+    project.phases.targetEnvironment.capacityMode = 'serverless';
+    delete report.databaseThroughput;
+    delete report.containers[0].throughputMode;
+    delete report.containers[0].dedicatedThroughputPresent;
+    report.containers[0].capacityMode = 'serverless';
+    const original = structuredClone({ model, sampleData, project, report });
+    assert.deepEqual(validateProvisioningVerification(model, sampleData, project, report), []);
+    assert.deepEqual({ model, sampleData, project, report }, original);
+    for (const change of [
+        value => { value.databaseThroughput = { mode: 'autoscale', maxThroughput: 4000, isReplacePending: false }; },
+        value => { value.containers[0].throughputMode = 'shared'; },
+        value => { value.containers[0].maxThroughput = 4000; },
+        value => { value.containers[0].capacityMode = 'provisioned'; },
+    ]) {
+        const changed = structuredClone(report);
+        change(changed);
+        assert(validateProvisioningVerification(model, sampleData, project, changed).length > 0);
+    }
+});
+
+test('verifies an approved lower target maximum without accepting modeled throughput as readback', () => {
+    const { model, sampleData, project, report } = inputs();
+    model.capacityMode = 'provisioned';
+    model.containers[0].maxThroughput = 4000;
+    report.modelSha256 = modelSha256(model);
+    Object.assign(project.phases.targetEnvironment, { capacityMode: 'provisioned', maxThroughput: 1000 });
+    Object.assign(report.containers[0], { capacityMode: 'provisioned', maxThroughput: 1000 });
+    assert.deepEqual(validateProvisioningVerification(model, sampleData, project, report), []);
+    report.containers[0].maxThroughput = 4000;
+    assert(validateProvisioningVerification(model, sampleData, project, report)
+        .some(error => error.path === '$.containers[0].maxThroughput'));
     assert.equal(model.containers[0].maxThroughput, 4000);
 });
 

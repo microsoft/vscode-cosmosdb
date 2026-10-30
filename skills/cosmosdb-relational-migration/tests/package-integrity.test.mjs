@@ -48,7 +48,7 @@ test('documents phase-scoped tools without requiring every tool or Azure CLI', (
 
 test('recommends first-party Bicep MCP without replacing compilation or deployment', () => {
     const tools = fs.readFileSync(path.join(skillRoot, 'references/tooling/recommended-tools.md'), 'utf8');
-    assert.match(tools, /https:\/\/learn.microsoft.com\/en-us\/azure\/azure-resource-manager\/bicep\/bicep-mcp-server/u);
+    assert.match(tools, /https:\/\/learn\.microsoft\.com\/en-us\/azure\/azure-resource-manager\/bicep\/bicep-mcp-server/u);
     assert.match(tools, /Bicep MCP is optional, not a required peer Skill or an Azure deployment service/u);
     assert.match(tools, /multiple MCP-compatible harnesses; no editor\s+or extension UI is required/u);
     assert.match(tools, /inspect its advertised tools\s+rather than assuming every version exposes the same capabilities/u);

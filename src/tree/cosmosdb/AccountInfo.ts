@@ -12,6 +12,7 @@ import {
 } from '../../cosmosdb/cosmosDBConnectionStrings';
 import { type CosmosDBCredential, getCosmosDBCredentials } from '../../cosmosdb/CosmosDBCredential';
 import { FabricService } from '../../services/FabricService';
+import { type ResourceTreeOperationContext } from '../../utils/resourceTreeOperations';
 import { type FabricArtifact } from '../fabric/models/FabricArtifact';
 import { type CosmosDBAttachedAccountModel } from '../workspace-view/cosmosdb/CosmosDBAttachedAccountModel';
 import { type CosmosDBAccountModel } from './models/CosmosDBAccountModel';
@@ -51,6 +52,7 @@ export async function getAccountInfo(
         | CosmosDBAttachedAccountModel
         | ParsedCosmosDBConnectionString
         | FabricArtifact,
+    options?: ResourceTreeOperationContext,
 ): Promise<AccountInfo> | never {
     if (FabricService.isArtifact(accountOrConnectionString)) {
         const artifactConnectionInfo = await FabricService.getArtifactConnectionInfo(accountOrConnectionString);
@@ -60,7 +62,7 @@ export async function getAccountInfo(
     } else if (isCosmosDBConnectionString(accountOrConnectionString)) {
         return getAccountInfoForConnectionString(accountOrConnectionString);
     } else {
-        return getAccountInfoForResource(accountOrConnectionString);
+        return getAccountInfoForResource(accountOrConnectionString, options);
     }
 }
 
@@ -87,24 +89,33 @@ async function getAccountInfoForConnectionString(
     };
 }
 
-async function getAccountInfoForResource(account: CosmosDBAccountModel): Promise<AccountInfo> | never {
-    const azureMetadata = await AzureResourceMetadata.create(account);
+async function getAccountInfoForResource(
+    account: CosmosDBAccountModel,
+    options?: ResourceTreeOperationContext,
+): Promise<AccountInfo> | never {
+    const azureMetadata = await AzureResourceMetadata.create(account, options);
     if (!azureMetadata) {
         throw new Error(l10n.t('Failed to connect to Cosmos DB account'));
     }
 
-    return getAccountInfoFromMetadata(azureMetadata);
+    return getAccountInfoFromMetadata(azureMetadata, options);
 }
 
-export async function getAccountInfoFromMetadata(azureMetadata: AzureResourceMetadata): Promise<AccountInfo> {
-    const credentials = await getCosmosDBCredentials({
-        accountName: azureMetadata.accountName,
-        documentEndpoint: azureMetadata.documentEndpoint,
-        isEmulator: false,
-        tenantId: azureMetadata.subscription.tenantId,
+export async function getAccountInfoFromMetadata(
+    azureMetadata: AzureResourceMetadata,
+    options?: ResourceTreeOperationContext,
+): Promise<AccountInfo> {
+    const credentials = await getCosmosDBCredentials(
+        {
+            accountName: azureMetadata.accountName,
+            documentEndpoint: azureMetadata.documentEndpoint,
+            isEmulator: false,
+            tenantId: azureMetadata.subscription.tenantId,
 
-        arm: azureMetadata,
-    });
+            arm: azureMetadata,
+        },
+        options,
+    );
 
     return {
         azureMetadata,

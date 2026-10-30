@@ -39,13 +39,22 @@ vi.mock('@microsoft/vscode-azext-utils', () => ({
             valuesToMask: [],
             errorHandling: { issueProperties: {} },
         }),
-    UserCancelledError: class extends Error {},
+    UserCancelledError: class extends Error {
+        _isUserCancelledError = true;
+    },
+    isUserCancelledError: (error: unknown) =>
+        typeof error === 'object' &&
+        error !== null &&
+        '_isUserCancelledError' in error &&
+        error._isUserCancelledError === true,
 }));
 vi.mock('@microsoft/vscode-azext-azureutils', () => ({
     parseAzureResourceId: (rawId: string) => ({
         rawId,
         provider: 'Microsoft.DocumentDB/databaseAccounts',
         subscriptionId: 'subscription',
+        resourceGroup: rawId.split('/')[4],
+        resourceName: rawId.split('/')[8],
     }),
 }));
 vi.mock('../AzureDBExperiences', () => ({
@@ -292,10 +301,15 @@ describe('cosmosDBConnectionStrings', () => {
 
 describe('external URI connection domains', () => {
     let cancellation: vscode.CancellationTokenSource;
+    const tenantId = '22222222-2222-2222-2222-222222222222';
 
     beforeEach(() => {
         vi.clearAllMocks();
         mocks.revealWorkspaceResource.mockReset().mockResolvedValue(undefined);
+        mocks.getSelectedAzureNode.mockReset().mockResolvedValue(undefined);
+        mocks.revealAzureResource.mockReset().mockImplementation(async (id: string) => {
+            mocks.getSelectedAzureNode.mockResolvedValue(id);
+        });
         mocks.getAccountInfo.mockReset();
         cancellation = new vscode.CancellationTokenSource();
         vi.spyOn(vscode.window, 'withProgress').mockImplementation((_options, task) =>
@@ -322,7 +336,7 @@ describe('external URI connection domains', () => {
         await globalUriHandler(
             makeUri({
                 cs: connectionString,
-                tenantId: 'test-tenant',
+                tenantId,
                 database: 'database',
                 workspaceId: 'workspace',
                 artifactId: 'artifact',
@@ -334,7 +348,7 @@ describe('external URI connection domains', () => {
             'attachedAccounts',
             expect.objectContaining({
                 id: `${new URL(endpoint).hostname}:443`,
-                properties: { api: 'Core', isEmulator: false, tenantId: 'test-tenant' },
+                properties: { api: 'Core', isEmulator: false, tenantId },
                 secrets: [connectionString],
             }),
             false,
@@ -464,7 +478,7 @@ describe('external URI connection domains', () => {
             globalUriHandler(
                 makeUri({
                     cs: `AccountEndpoint=${endpoint};`,
-                    tenantId: 'test-tenant',
+                    tenantId,
                     database: 'database',
                     container: 'container',
                 }),
@@ -480,7 +494,6 @@ describe('external URI connection domains', () => {
             await globalUriHandler(
                 makeUri({
                     cs: `AccountEndpoint=${endpoint};AccountKey=unused-key;`,
-                    tenantId: 'unused-tenant',
                     subscriptionId: 'subscription',
                     resourceGroup: 'resource-group',
                 }),

@@ -186,6 +186,26 @@ Attach the Azure Cosmos DB Emulator to work with a local instance of Azure Cosmo
 
 For local setup instructions and connection details, see [Azure Cosmos DB Emulator](docs/cosmosdb-emulator.md).
 
+## Open Azure resources from a URI
+
+Open an account using `vscode://ms-azuretools.vscode-cosmosdb?resourceId=<URL-encoded-ARM-resource-ID>`.
+Add `database` and `container` parameters to open its query editor. An optional `tenantId=<tenant-GUID>`
+selects the tenant used to access the subscription, including delegated access.
+Database and container names are case-sensitive.
+
+With an Azure Resources extension exposing the result-returning reveal API, explicitly opened subscriptions
+remain visible for the current VS Code window session even when excluded by subscription or tenant filters.
+Saved filters are unchanged. If no Azure account is signed in, Azure Resources prompts you to sign in
+and then resumes opening the resource. If multiple accounts or tenants match, it prompts you to choose one.
+The editor uses the exact provider model returned for the selected identity, without an unqualified cache lookup.
+Explicit resource loading propagates cancellation and errors; ordinary background tree browsing remains unchanged.
+This includes authentication cancellation during account metadata and ARM credential initialization.
+The same policy is forwarded through decorated tree nodes and ARM client initialization for database/container listing.
+Available credentials, connection strings, and provider child identifiers are masked on the loading and URI
+telemetry contexts. These helpers do not explicitly mask Azure OII (subscription/tenant IDs, ARM resource IDs,
+account names, or resource groups); the SDK's built-in sanitization still applies.
+Older Azure Resources versions require the subscription to be visible and do not support tenant-specific reveals.
+
 ## Corporate proxies
 
 Normal Cosmos DB for NoSQL connections delegate proxy handling to VS Code. See

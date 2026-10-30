@@ -8,6 +8,7 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { getControlPlane } from '../../cosmosdb/controlPlane';
+import { type ResourceTreeOperationContext } from '../../utils/resourceTreeOperations';
 import { compareResourceIds } from '../../utils/strings';
 import { countExperienceUsageForSurvey } from '../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../utils/surveyTypes';
@@ -34,8 +35,8 @@ export abstract class CosmosDBDatabaseResourceItem
         ]);
     }
 
-    async getChildren(): Promise<TreeElement[]> {
-        const controlPlane = getControlPlane(this.model.accountInfo);
+    async getChildren(options?: ResourceTreeOperationContext): Promise<TreeElement[]> {
+        const controlPlane = getControlPlane(this.model.accountInfo, options);
         const containers = await controlPlane.listContainers(this.model.database.id);
         const sortedContainers = containers.sort((a, b) => compareResourceIds(a.id, b.id));
 

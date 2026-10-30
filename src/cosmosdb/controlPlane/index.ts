@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type AccountInfo } from '../../tree/cosmosdb/AccountInfo';
+import { type ResourceTreeOperationContext } from '../../utils/resourceTreeOperations';
 import { type NoSqlQueryConnection } from '../NoSqlQueryConnection';
 import { ArmCosmosDBControlPlane } from './ArmCosmosDBControlPlane';
 import { type CosmosDBControlPlane } from './CosmosDBControlPlane';
@@ -29,12 +30,15 @@ export { type CosmosDBControlPlane, type ThroughputResource } from './CosmosDBCo
  * to associate the attached account with an Azure subscription or extending
  * the connection-string import flow to capture that context.
  */
-export function getControlPlane(accountInfo: AccountInfo): CosmosDBControlPlane {
+export function getControlPlane(
+    accountInfo: AccountInfo,
+    options?: ResourceTreeOperationContext,
+): CosmosDBControlPlane {
     const meta = accountInfo.azureMetadata;
     // ARM requires a fully-known Azure context. Workspace-attached and emulator
     // accounts (no Azure metadata) fall back to the SDK.
     if (!accountInfo.isEmulator && meta) {
-        return new ArmCosmosDBControlPlane(meta);
+        return new ArmCosmosDBControlPlane(meta, options);
     }
     return new CosmosDBSdkControlPlane(accountInfo);
 }

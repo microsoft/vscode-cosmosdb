@@ -136,13 +136,16 @@ describe('runAccountAction without Explorer nodes', () => {
         await expect(runAccountAction(context, resource, { action: 'createDatabase' })).resolves.toEqual({
             status: 'completed',
         });
-        expect(getCosmosDBCredentials).toHaveBeenCalledExactlyOnceWith({
-            accountName: 'acct',
-            documentEndpoint: resource.documentEndpoint,
-            isEmulator: false,
-            tenantId,
-            arm: resource,
-        });
+        expect(getCosmosDBCredentials).toHaveBeenCalledExactlyOnceWith(
+            {
+                accountName: 'acct',
+                documentEndpoint: resource.documentEndpoint,
+                isEmulator: false,
+                tenantId,
+                arm: resource,
+            },
+            undefined,
+        );
         expect(createDatabase).toHaveBeenCalledExactlyOnceWith(
             context,
             {
@@ -272,13 +275,16 @@ describe('runAccountAction without Explorer nodes', () => {
         await expect(runAccountAction(context, resource, { action: 'openDataModeler' })).resolves.toEqual({
             status: 'completed',
         });
-        expect(getCosmosDBCredentials).toHaveBeenCalledExactlyOnceWith({
-            accountName: 'acct',
-            documentEndpoint: resource.documentEndpoint,
-            isEmulator: false,
-            tenantId,
-            arm: resource,
-        });
+        expect(getCosmosDBCredentials).toHaveBeenCalledExactlyOnceWith(
+            {
+                accountName: 'acct',
+                documentEndpoint: resource.documentEndpoint,
+                isEmulator: false,
+                tenantId,
+                arm: resource,
+            },
+            undefined,
+        );
         expect(openDataModelingWizard).toHaveBeenCalledExactlyOnceWith(
             context,
             expect.objectContaining({

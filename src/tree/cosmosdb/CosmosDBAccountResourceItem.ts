@@ -12,6 +12,7 @@ import { getCosmosDBEntraIdCredential } from '../../cosmosdb/CosmosDBCredential'
 import { getSignedInPrincipalIdForAccountEndpoint } from '../../cosmosdb/utils/azureSessionHelper';
 import { ensureRbacPermissionV2, isRbacException, showRbacPermissionError } from '../../cosmosdb/utils/rbacUtils';
 import { ext } from '../../extensionVariables';
+import { type ResourceTreeOperationContext } from '../../utils/resourceTreeOperations';
 import { compareResourceIds } from '../../utils/strings';
 import { CosmosDBAccountResourceItemBase } from '../azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
 import { type TreeElement } from '../TreeElement';
@@ -37,9 +38,9 @@ export abstract class CosmosDBAccountResourceItem extends CosmosDBAccountResourc
         this.contextValue = TreeElementWithContextValue.createContextValue([this.contextValue, 'hasArmMetadata']);
     }
 
-    public async getChildren(): Promise<TreeElement[]> {
-        const accountInfo = await getAccountInfo(this.account);
-        const databases = await this.getDatabases(accountInfo);
+    public async getChildren(options?: ResourceTreeOperationContext): Promise<TreeElement[]> {
+        const accountInfo = await getAccountInfo(this.account, options);
+        const databases = await this.getDatabases(accountInfo, options);
         const sortedDatabases = databases.sort((a, b) => compareResourceIds(a.id, b.id));
 
         return this.getChildrenImpl(accountInfo, sortedDatabases);
@@ -62,8 +63,11 @@ export abstract class CosmosDBAccountResourceItem extends CosmosDBAccountResourc
         }
     }
 
-    protected async getDatabases(accountInfo: AccountInfo): Promise<DatabaseResource[]> | never {
-        const controlPlane = getControlPlane(accountInfo);
+    protected async getDatabases(
+        accountInfo: AccountInfo,
+        options?: ResourceTreeOperationContext,
+    ): Promise<DatabaseResource[]> | never {
+        const controlPlane = getControlPlane(accountInfo, options);
 
         try {
             return await controlPlane.listDatabases();

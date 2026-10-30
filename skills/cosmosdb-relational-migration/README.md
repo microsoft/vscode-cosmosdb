@@ -25,6 +25,21 @@ choices and dependency requirements.
 Source analysis and model design do not require access to an Azure account. Applying
 provisioning changes requires access to the intended target and explicit authorization.
 
+### Recommended Tooling
+
+Tool requirements depend on the phase. Azure provisioning needs Bicep compilation and
+an authenticated deployment route; Azure CLI's managed Bicep compiler is sufficient,
+so a separate Bicep installation is not required. Cosmos DB Shell executes generated
+seed scripts, and a supported SDK can provide operations or readback not available in
+the selected tool. Application migration uses the application's own build/test toolchain.
+
+Microsoft's [Bicep MCP server](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/bicep-mcp-server)
+is an optional first-party aid for Bicep guidance, schemas, and diagnostics, not a
+deployment service or a required peer skill. See
+[Recommended Tools and Capabilities](./references/tooling/recommended-tools.md) for
+phase-specific requirements, alternatives, official documentation, and installation
+approval rules. There is no need to install every listed tool before starting.
+
 ## Installation
 
 1. Install the entire `cosmosdb-relational-migration` folder through your host's

@@ -63,7 +63,7 @@
   "cosmosdb.configuration.confirmation.style.word.description": "삭제를 확인하기 위해 리소스의 이름을 입력하는 입력란이 표시됩니다.",
   "cosmosdb.configuration.document.label.fields": "우선 순위에 따라 Cosmos DB 및 MongoDB 문서의 트리 뷰에 레이블로 표시할 필드 값입니다.",
   "cosmosdb.configuration.emulator.port": "CosmosDB 에뮬레이터 인스턴스에 연결할 때 사용할 포트",
-  "cosmosdb.configuration.connection.timeout": "Connection timeout for attached Cosmos DB accounts, in seconds.",
+  "cosmosdb.configuration.connection.timeout": "연결된 Cosmos DB 계정의 연결 제한 시간(초)입니다.",
   "cosmosdb.configuration.endpoint.discovery": "읽기/쓰기 작업에 따라 요청의 자동 리디렉션을 사용하거나 사용하지 않도록 설정하는 플래그입니다.",
   "cosmosdb.configuration.oauth.enable": "Cosmos DB NoSQL 계정에 연결할 때 항상 Entra ID RBAC를 사용하여 인증합니다. [RBAC 사용 및 역할 할당](https://aka.ms/cosmos-native-rbac).",
   "cosmosdb.configuration.operation.summaries": "데이터베이스 삭제, 문서 추가, 삭제 또는 유사한 이벤트와 같은 작업에 대한 메시지를 표시하는 자세한 작업 요약을 표시합니다.",
@@ -84,14 +84,14 @@
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "사용자가 할당한 관리 ID를 사용하여 Entra ID로 인증할 때 사용할 관리 ID의 클라이언트 ID입니다.",
   "cosmosdb.configuration.manage-llm-assets": "LLM 자산을 관리합니다. 확장에서 LLM 관련 파일을 업데이트된 상태로 유지하도록 허용합니다.",
   "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "이 기능을 활성화하면 스키마 생성에서 쿼리 결과도 고려하여 컨테이너 스키마를 유추합니다.",
-  "cosmosdb.configuration.accountOverview.title": "Account Overview",
+  "cosmosdb.configuration.accountOverview.title": "계정 개요",
   "cosmosdb.configuration.accountOverview.health.criticalRuPercent": "계정 개요: 컨테이너가 중요로 표시되는 기준이 되는 최대 정규화된 RU 사용량(%)입니다.",
   "cosmosdb.configuration.accountOverview.health.warningRuPercent": "계정 개요: 컨테이너가 주의 필요로 표시되는 기준이 되는 최대 정규화된 RU 사용량(%)입니다.",
   "cosmosdb.configuration.accountOverview.partition.topN": "계정 개요: 파티션 키 분포 상태 순위 목록에 표시할 물리적 파티션 수입니다.",
-  "cosmosdb.configuration.accountOverview.health.partitionSaturationPercent": "Account Overview Partition Health: per-physical-partition p99 normalized RU consumption (%) at or above which a partition counts as saturated. A saturated partition is flagged as hot only when another partition still has headroom. Does not change Derived Advisories.",
-  "cosmosdb.configuration.accountOverview.health.partitionHeadroomPercent": "Account Overview Partition Health: per-physical-partition p99 normalized RU consumption (%) below which a partition still has headroom. A saturated busiest partition alongside a cooler one is flagged as hot. Does not change Derived Advisories.",
-  "cosmosdb.configuration.accountOverview.health.storageSkewBalanceRatio": "Account Overview Partition Health: balance ratio (coolest physical-partition size divided by this partition's size) below which a partition of at least 1 GiB is flagged as storage-skewed. 1.0 is perfectly balanced. Does not change Derived Advisories.",
+  "cosmosdb.configuration.accountOverview.health.partitionSaturationPercent": "계정 개요 파티션 상태: 물리적 파티션별 p99 정규화된 RU 사용량(%), 이 값 이상이면 파티션을 포화된 상태로 간주합니다. 포화된 파티션은 다른 파티션에 아직 여유 용량이 있는 경우에만 핫으로 플래그가 지정됩니다. 파생 권고는 변경하지 않습니다.",
+  "cosmosdb.configuration.accountOverview.health.partitionHeadroomPercent": "계정 개요 파티션 상태: 물리적 파티션별 p99 정규화된 RU 사용량(%), 이 값보다 낮으면 해당 파티션에 아직 여유 용량이 있는 것으로 간주합니다. 가장 사용량이 많은 파티션이 포화 상태이고 다른 파티션의 사용량이 더 낮으면 핫 파티션으로 표시됩니다. 파생 권고는 변경하지 않습니다.",
+  "cosmosdb.configuration.accountOverview.health.storageSkewBalanceRatio": "계정 개요 파티션 상태: 균형 비율(가장 부하가 적은 물리적 파티션의 크기를 이 파티션의 크기로 나눈 값), 이 기준치 미만일 경우, 1 GiB 이상의 파티션은 스토리지 불균형 상태로 플래그가 지정됩니다. 1.0이면 완벽하게 균형 잡힌 상태입니다. 파생 권고는 변경하지 않습니다.",
   "cosmosdb.configuration.quickStart.enabled": "사용하도록 설정하면 확장의 주요 또는 부차적 업데이트 후 빠른 시작 팁이 쿼리 편집기에 표시됩니다. 다시 보기 단추를 포함하여 빠른 시작 팁을 끄려면 이 기능을 비활성화하세요.",
   "cosmosdb.configuration.experimental.migration.enabled": "(실험적) Cosmos DB 마이그레이션(미리 보기) 기능을 사용하도록 설정하세요. 이 기능을 사용하지 않도록 설정하면 Cosmos DB 마이그레이션 노드와 해당 명령이 숨겨집니다.",
-  "cosmosdb.configuration.experimental.dataModeler.enabled": "(Experimental) Enable the Data Modeler wizard. When disabled, its Command Palette entry and Account Overview promotion are hidden."
+  "cosmosdb.configuration.experimental.dataModeler.enabled": "(실험적) 데이터 모델러 마법사를 사용하도록 설정합니다. 사용하지 않도록 설정하면 명령 팔레트 항목 및 계정 개요 프로모션이 숨겨집니다."
 }

@@ -63,7 +63,7 @@
   "cosmosdb.configuration.confirmation.style.word.description": "Viene visualizzata una casella di input in cui immettere il nome della risorsa per confermare l'eliminazione.",
   "cosmosdb.configuration.document.label.fields": "Valori dei campi da visualizzare come etichette nella visualizzazione albero per i documenti di Cosmos DB e MongoDB, in ordine di priorità",
   "cosmosdb.configuration.emulator.port": "Porta da usare per la connessione a un'istanza dell'emulatore CosmosDB",
-  "cosmosdb.configuration.connection.timeout": "Connection timeout for attached Cosmos DB accounts, in seconds.",
+  "cosmosdb.configuration.connection.timeout": "Timeout della connessione per gli account Cosmos DB collegati, in secondi.",
   "cosmosdb.configuration.endpoint.discovery": "Flag per abilitare/disabilitare il reindirizzamento automatico delle richieste in base alle operazioni di lettura/scrittura.",
   "cosmosdb.configuration.oauth.enable": "Eseguire sempre l'autenticazione usando il Controllo degli accessi in base al ruolo di Entra ID quando ci si connette ad account NoSQL di Cosmos DB. [Abilitare il Controllo degli accessi in base al ruolo e assegnare ruoli](https://aka.ms/cosmos-native-rbac).",
   "cosmosdb.configuration.operation.summaries": "Mostra riepiloghi dettagliati delle operazioni, che mostrano messaggi per azioni quali eliminazioni di database, aggiunte di documenti, eliminazioni o eventi simili.",

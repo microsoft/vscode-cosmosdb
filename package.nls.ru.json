@@ -63,7 +63,7 @@
   "cosmosdb.configuration.confirmation.style.word.description": "Запрос с полем ввода, в котором нужно ввести имя ресурса для подтверждения удаления.",
   "cosmosdb.configuration.document.label.fields": "Значения полей, отображаемые в виде меток в представлении в виде дерева для документов Cosmos DB и MongoDB в порядке приоритета",
   "cosmosdb.configuration.emulator.port": "Порт для подключения к экземпляру эмулятора CosmosDB",
-  "cosmosdb.configuration.connection.timeout": "Connection timeout for attached Cosmos DB accounts, in seconds.",
+  "cosmosdb.configuration.connection.timeout": "Время ожидания подключения для подключенных учетных записей Cosmos DB в секундах.",
   "cosmosdb.configuration.endpoint.discovery": "Флаг для включения или отключения автоматического перенаправления запросов в зависимости от операций чтения или записи.",
   "cosmosdb.configuration.oauth.enable": "Всегда выполнять проверку подлинности с помощью RBAC Entra ID при подключении к учетным записям Cosmos DB NoSQL. [Включение RBAC и назначение ролей](https://aka.ms/cosmos-native-rbac).",
   "cosmosdb.configuration.operation.summaries": "Показывать подробные сводки по операциям с отображением сообщений о действиях, таких как удаления баз данных, добавления или удаления документов, и подобных событиях.",
@@ -84,14 +84,14 @@
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "Идентификатор клиента управляемого удостоверения, используемого для проверки подлинности в Entra ID с помощью управляемого удостоверения, назначаемого пользователем.",
   "cosmosdb.configuration.manage-llm-assets": "Управление ресурсами LLM. Разрешить расширению автоматически обновлять файлы, связанные с LLM.",
   "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "Если включить эту функцию, при генерировании схемы контейнера для вывода схемы также учитываются результаты запроса.",
-  "cosmosdb.configuration.accountOverview.title": "Account Overview",
+  "cosmosdb.configuration.accountOverview.title": "Обзор учетной записи",
   "cosmosdb.configuration.accountOverview.health.criticalRuPercent": "Обзор учетной записи: пиковое нормализованное потребление RU (%), при достижении или превышении которого контейнер помечается как критический.",
   "cosmosdb.configuration.accountOverview.health.warningRuPercent": "Обзор учетной записи: пиковое нормализованное потребление RU (%), при достижении или превышении которого контейнер помечается как требующий внимания.",
   "cosmosdb.configuration.accountOverview.partition.topN": "Обзор учетной записи: количество физических разделов, которые будут отображаться в списке, ранжированном по состоянию распределения ключей разделов.",
-  "cosmosdb.configuration.accountOverview.health.partitionSaturationPercent": "Account Overview Partition Health: per-physical-partition p99 normalized RU consumption (%) at or above which a partition counts as saturated. A saturated partition is flagged as hot only when another partition still has headroom. Does not change Derived Advisories.",
-  "cosmosdb.configuration.accountOverview.health.partitionHeadroomPercent": "Account Overview Partition Health: per-physical-partition p99 normalized RU consumption (%) below which a partition still has headroom. A saturated busiest partition alongside a cooler one is flagged as hot. Does not change Derived Advisories.",
-  "cosmosdb.configuration.accountOverview.health.storageSkewBalanceRatio": "Account Overview Partition Health: balance ratio (coolest physical-partition size divided by this partition's size) below which a partition of at least 1 GiB is flagged as storage-skewed. 1.0 is perfectly balanced. Does not change Derived Advisories.",
+  "cosmosdb.configuration.accountOverview.health.partitionSaturationPercent": "Обзор учетной записи. Работоспособность секции: потребление нормализованных ЕЗ p99 (%) по каждой физической секции, начиная с этого значения секция считается насыщенной. Насыщенная секция помечается как горячая, только если у другой секции еще есть запас. Не изменяет производные рекомендации.",
+  "cosmosdb.configuration.accountOverview.health.partitionHeadroomPercent": "Обзор учетной записи. Работоспособность секции: потребление нормализованных ЕЗ p99 (%) по каждой физической секции, ниже этого значения у секции еще есть запас. Самая загруженная насыщенная секция рядом с более холодной помечается как горячая. Не изменяет производные рекомендации.",
+  "cosmosdb.configuration.accountOverview.health.storageSkewBalanceRatio": "Обзор учетной записи. Работоспособность секции: коэффициент баланса (размер самой холодной физической секции, деленный на размер этой секции), ниже этого значения секция объемом не менее 1 ГиБ помечается как с перекосом хранилища. 1.0 — идеальный баланс. Не изменяет производные рекомендации.",
   "cosmosdb.configuration.quickStart.enabled": "Если этот параметр включен, советы по быстрому запуску отображаются в Редакторе запросов после крупного или небольшого обновления расширения. Отключите его, чтобы полностью выключить советы по быстрому запуску, включая кнопку повтора.",
   "cosmosdb.configuration.experimental.migration.enabled": "(Экспериментальная функция) Включите функцию миграции Cosmos DB (предварительная версия). Если она отключена, узел миграции Cosmos DB и связанные с ним команды скрыты.",
-  "cosmosdb.configuration.experimental.dataModeler.enabled": "(Experimental) Enable the Data Modeler wizard. When disabled, its Command Palette entry and Account Overview promotion are hidden."
+  "cosmosdb.configuration.experimental.dataModeler.enabled": "(экспериментальная версия) Включите мастер Data Modeler. Если отключено, его пункт палитры команд и продвижение в разделе \"Обзор учетной записи\" скрыты."
 }

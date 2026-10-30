@@ -63,7 +63,7 @@
   "cosmosdb.configuration.confirmation.style.word.description": "Zobrazí výzvu se vstupním polem, do kterého zadáte název prostředku pro potvrzení odstranění.",
   "cosmosdb.configuration.document.label.fields": "Hodnoty polí, které se mají zobrazit jako popisky ve stromovém zobrazení pro dokumenty Cosmos DB a MongoDB v pořadí podle priority",
   "cosmosdb.configuration.emulator.port": "Port, který se má použít při připojování k instanci emulátoru CosmosDB",
-  "cosmosdb.configuration.connection.timeout": "Connection timeout for attached Cosmos DB accounts, in seconds.",
+  "cosmosdb.configuration.connection.timeout": "Časový limit připojení pro připojené účty Cosmos DB v sekundách",
   "cosmosdb.configuration.endpoint.discovery": "Příznakem povolíte nebo zakážete automatické přesměrování požadavků na základě operací čtení a zápisu.",
   "cosmosdb.configuration.oauth.enable": "Při připojování k účtům Cosmos DB NoSQL vždy ověřovat pomocí Entra ID RBAC. [Povolení řízení přístupu na základě role a přiřazování rolí](https://aka.ms/cosmos-native-rbac).",
   "cosmosdb.configuration.operation.summaries": "Umožňuje zobrazit podrobné souhrny operací a zobrazit zprávy pro akce, jako jsou zrušení databáze, přidání, odstranění dokumentu nebo podobné události.",
@@ -84,14 +84,14 @@
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "ID klienta spravované identity, které se použije při ověřování s ID Entra pomocí spravované identity přiřazené uživatelem",
   "cosmosdb.configuration.manage-llm-assets": "Spravovat prostředky LLM Povolte rozšíření, aby udržovalo soubory související s LLM aktuální.",
   "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "Je-li tato možnost povolena, generování schématu zohledňuje také výsledky dotazů při odvozování schématu kontejneru.",
-  "cosmosdb.configuration.accountOverview.title": "Account Overview",
+  "cosmosdb.configuration.accountOverview.title": "Přehled účtu",
   "cosmosdb.configuration.accountOverview.health.criticalRuPercent": "Přehled účtu: špičková normalizovaná spotřeba RU (%), při které nebo nad kterou se kontejner označí jako Kritický.",
   "cosmosdb.configuration.accountOverview.health.warningRuPercent": "Přehled účtu: špičková normalizovaná spotřeba RU (%), při které nebo nad kterou se kontejner označí jako Vyžaduje pozornost.",
   "cosmosdb.configuration.accountOverview.partition.topN": "Přehled účtu: počet fyzických oddílů uvedených v seřazeném seznamu Stav distribuce klíčů oddílů.",
-  "cosmosdb.configuration.accountOverview.health.partitionSaturationPercent": "Account Overview Partition Health: per-physical-partition p99 normalized RU consumption (%) at or above which a partition counts as saturated. A saturated partition is flagged as hot only when another partition still has headroom. Does not change Derived Advisories.",
-  "cosmosdb.configuration.accountOverview.health.partitionHeadroomPercent": "Account Overview Partition Health: per-physical-partition p99 normalized RU consumption (%) below which a partition still has headroom. A saturated busiest partition alongside a cooler one is flagged as hot. Does not change Derived Advisories.",
-  "cosmosdb.configuration.accountOverview.health.storageSkewBalanceRatio": "Account Overview Partition Health: balance ratio (coolest physical-partition size divided by this partition's size) below which a partition of at least 1 GiB is flagged as storage-skewed. 1.0 is perfectly balanced. Does not change Derived Advisories.",
+  "cosmosdb.configuration.accountOverview.health.partitionSaturationPercent": "Stav oddílů v přehledu účtu: hranice normalizované spotřeby RU (p99) pro jednotlivé fyzické oddíly (%), od které se oddíl považuje za nasycený. Nasycený oddíl se označí jako přetížený jen tehdy, když má jiný oddíl stále rezervu. Nemění odvozená doporučení.",
+  "cosmosdb.configuration.accountOverview.health.partitionHeadroomPercent": "Stav oddílů v přehledu účtu: hranice normalizované spotřeby RU (p99) pro jednotlivé fyzické oddíly (%), pod kterou má oddíl ještě rezervu. Pokud je nejvytíženější oddíl nasycený a jiný má rezervu, označí se jako přetížený. Nemění odvozená doporučení.",
+  "cosmosdb.configuration.accountOverview.health.storageSkewBalanceRatio": "Stav oddílů v přehledu účtu: poměr vyvážení (velikost nejmenšího fyzického oddílu dělená velikostí tohoto oddílu), pod kterým se oddíl o velikosti aspoň 1 GiB označí za nevyvážený z hlediska úložiště. Hodnota 1.0 znamená dokonalé vyvážení. Nemění odvozená doporučení.",
   "cosmosdb.configuration.quickStart.enabled": "Když je tato možnost zapnutá, po hlavní nebo dílčí aktualizaci rozšíření se v editoru dotazů zobrazují tipy pro rychlý start. Vypnutím této možnosti zcela zakážete tipy pro rychlý start, včetně tlačítka pro opětovné přehrání.",
   "cosmosdb.configuration.experimental.migration.enabled": "(Experimentální) Povolte funkci Migrace Cosmos DB (Preview). Pokud je tato možnost zakázaná, uzel Migrace Cosmos DB a jeho příkazy jsou skryté.",
-  "cosmosdb.configuration.experimental.dataModeler.enabled": "(Experimental) Enable the Data Modeler wizard. When disabled, its Command Palette entry and Account Overview promotion are hidden."
+  "cosmosdb.configuration.experimental.dataModeler.enabled": "(Experimentální) Povolit průvodce Data Modeler. Když je vypnutý, nezobrazuje se jeho položka na paletě příkazů ani propagace v přehledu účtu."
 }

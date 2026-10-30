@@ -63,7 +63,7 @@
   "cosmosdb.configuration.confirmation.style.word.description": "削除を確認するためにリソースの名前を入力する入力ボックスが表示されます。",
   "cosmosdb.configuration.document.label.fields": "Cosmos DB および MongoDB ドキュメントのツリー ビューにラベルとして表示するフィールド値 (優先順位順)",
   "cosmosdb.configuration.emulator.port": "CosmosDB Emulator インスタンスに接続するときに使用するポート",
-  "cosmosdb.configuration.connection.timeout": "Connection timeout for attached Cosmos DB accounts, in seconds.",
+  "cosmosdb.configuration.connection.timeout": "アタッチされた Cosmos DB アカウントの接続タイムアウト (秒)。",
   "cosmosdb.configuration.endpoint.discovery": "読み取り/書き込み操作に基づいて要求を自動的にリダイレクトする機能の有効/無効を切り替えるフラグです。",
   "cosmosdb.configuration.oauth.enable": "Cosmos DB NoSQL アカウントに接続するときは、常に Entra ID RBAC を使用して認証します。[RBAC を有効にしてロールを割り当てる](https://aka.ms/cosmos-native-rbac)。",
   "cosmosdb.configuration.operation.summaries": "詳細な操作の概要を表示し、データベースの削除、ドキュメントの追加や削除などのアクションに関するメッセージを表示します。",
@@ -84,14 +84,14 @@
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "ユーザー割り当てマネージド ID を使用して Entra ID で認証するときに使用するマネージド ID のクライアント ID。",
   "cosmosdb.configuration.manage-llm-assets": "LLM 資産を管理します。拡張機能が LLM 関連ファイルを最新の状態に保つことを許可します。",
   "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "有効にすると、スキーマの生成では、コンテナー スキーマを推論するためのクエリ結果も考慮されます。",
-  "cosmosdb.configuration.accountOverview.title": "Account Overview",
+  "cosmosdb.configuration.accountOverview.title": "アカウントの概要",
   "cosmosdb.configuration.accountOverview.health.criticalRuPercent": "アカウントの概要: コンテナーが \"クリティカル\" と判定される、ピーク時の正規化 RU 消費量のしきい値 (%)。",
   "cosmosdb.configuration.accountOverview.health.warningRuPercent": "アカウントの概要: コンテナーが \"要注意\" とフラグが設定されているピーク時の正規化 RU 消費量 (%) のしきい値。",
   "cosmosdb.configuration.accountOverview.partition.topN": "アカウントの概要: パーティション キー配布の正常性ランク付けリストに一覧表示する物理パーティションの数。",
-  "cosmosdb.configuration.accountOverview.health.partitionSaturationPercent": "Account Overview Partition Health: per-physical-partition p99 normalized RU consumption (%) at or above which a partition counts as saturated. A saturated partition is flagged as hot only when another partition still has headroom. Does not change Derived Advisories.",
-  "cosmosdb.configuration.accountOverview.health.partitionHeadroomPercent": "Account Overview Partition Health: per-physical-partition p99 normalized RU consumption (%) below which a partition still has headroom. A saturated busiest partition alongside a cooler one is flagged as hot. Does not change Derived Advisories.",
-  "cosmosdb.configuration.accountOverview.health.storageSkewBalanceRatio": "Account Overview Partition Health: balance ratio (coolest physical-partition size divided by this partition's size) below which a partition of at least 1 GiB is flagged as storage-skewed. 1.0 is perfectly balanced. Does not change Derived Advisories.",
+  "cosmosdb.configuration.accountOverview.health.partitionSaturationPercent": "アカウントの概要のパーティション正常性: 物理パーティションごとの p99 正規化 RU 消費率 (%)。この値以上になると、そのパーティションは飽和状態と見なされます。別のパーティションにまだ余裕がある場合に限り、飽和状態のパーティションはホット パーティションとして検出されます。派生アドバイザリは変更されません。",
+  "cosmosdb.configuration.accountOverview.health.partitionHeadroomPercent": "アカウント概要のパーティション正常性: 物理パーティションごとの p99 正規化 RU 消費率 (%)。この値を下回っているパーティションには、まだ余裕があります。最も負荷の高いパーティションが飽和状態にあり、別のパーティションの負荷が低い場合、ホット パーティションとして検出されます。派生アドバイザリは変更されません。",
+  "cosmosdb.configuration.accountOverview.health.storageSkewBalanceRatio": "アカウントの概要のパーティション正常性: バランス比率 (最も負荷の低い物理パーティションのサイズを、このパーティションのサイズで割った値)。この値を下回ると、サイズが 1 GiB 以上のパーティションはストレージの偏りがあると判定されます。1.0 は完全にバランスが取れている状態です。派生アドバイザリは変更されません。",
   "cosmosdb.configuration.quickStart.enabled": "有効にすると、メジャーまたはマイナー拡張機能の更新後に、クエリ エディターにクイック スタートヒントが表示されます。無効にすると、再生ボタンを含むクイック スタートのヒントが完全にオフになります。",
   "cosmosdb.configuration.experimental.migration.enabled": "(試験段階) Cosmos DB 移行 (プレビュー) 機能を有効にします。無効にすると、Cosmos DB 移行ノードとそのコマンドは非表示になります。",
-  "cosmosdb.configuration.experimental.dataModeler.enabled": "(Experimental) Enable the Data Modeler wizard. When disabled, its Command Palette entry and Account Overview promotion are hidden."
+  "cosmosdb.configuration.experimental.dataModeler.enabled": "(試験的) Data Modeler ウィザードを有効にします。無効にすると、コマンド パレットのエントリとアカウントの概要のプロモーションが非表示になります。"
 }

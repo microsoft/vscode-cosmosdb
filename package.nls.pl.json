@@ -84,7 +84,7 @@
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "Identyfikator klienta tożsamości zarządzanej, który należy wykorzystać podczas uwierzytelniania w usłudze Entra ID przy użyciu tożsamości zarządzanej przypisanej przez użytkownika.",
   "cosmosdb.configuration.manage-llm-assets": "Zarządzaj zasobami modelu LLM. Zezwalaj rozszerzeniu na aktualizowanie plików związanych z modelem LLM.",
   "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "Po włączeniu generowanie schematu uwzględnia również wyniki zapytania w celu wywnioskowania schematu kontenera.",
-  "cosmosdb.configuration.accountOverview.title": "Account Overview",
+  "cosmosdb.configuration.accountOverview.title": "Przegląd konta",
   "cosmosdb.configuration.accountOverview.health.criticalRuPercent": "Omówienie konta: szczytowe znormalizowane użycie jednostek RU (w %), na poziomie którego kontener jest oflagowywany jako Krytyczny.",
   "cosmosdb.configuration.accountOverview.health.warningRuPercent": "Omówienie konta: szczytowe znormalizowane użycie jednostek RU (w %), na poziomie którego lub powyżej kontener jest oflagowywany jako Wymaga uwagi.",
   "cosmosdb.configuration.accountOverview.partition.topN": "Omówienie konta: liczba partycji fizycznych do wyświetlenia na liście sklasyfikowanej kondycji dystrybucji kluczy partycji.",

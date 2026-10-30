@@ -1172,8 +1172,9 @@ export class MigrationAssistantTab extends BaseTab {
             // Merge into the existing target environment so provision-mode fields the
             // user previously configured (e.g. `location`) survive a switch to an
             // existing account and back.
+            const existingTarget = this.project!.phases.targetEnvironment;
             this.project!.phases.targetEnvironment = {
-                ...this.project!.phases.targetEnvironment,
+                ...existingTarget,
                 type: 'azure',
                 endpoint: accountInfo.endpoint,
                 accountName: accountInfo.name,
@@ -1189,7 +1190,13 @@ export class MigrationAssistantTab extends BaseTab {
                 verified: false,
             };
             delete this.project!.phases.targetEnvironment.verifiedAt;
-            delete this.project!.phases.targetEnvironment.maxThroughput;
+            if (
+                existingTarget?.endpoint !== accountInfo.endpoint ||
+                existingTarget.capacityMode !== 'provisioned' ||
+                this.project!.phases.targetEnvironment.capacityMode !== 'provisioned'
+            ) {
+                delete this.project!.phases.targetEnvironment.maxThroughput;
+            }
             await this.saveProject();
 
             emitMigrationEvent(this.eventSink, 'accountSelected', [

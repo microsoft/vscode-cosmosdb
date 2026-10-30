@@ -761,12 +761,41 @@ test('keeps operational handoff separate without hiding required implementation 
     assert.equal([...example.matchAll(/^  - Evidence:/gmu)].length, 3);
 });
 
-test('distinguishes model capacity from compatible provisioning targets', () => {
+test('resolves target intent before account discovery', () => {
     const provisioning = fs.readFileSync(path.join(skillRoot, 'references/phases/provisioning.md'), 'utf8');
-    assert.match(provisioning, /Serverless \| Provisioned \| Compatible/u);
-    assert.match(provisioning, /Provisioned \| Serverless \| Cannot satisfy provisioned throughput requirements/u);
+    const intent = provisioning.match(/## Resolve Target Intent Before Discovery\n([\s\S]*?)\n## Target Names and Existing Data/u)?.[1];
+    assert.ok(intent, 'Target intent must be resolved before target discovery and mutation rules.');
+    assert.match(intent, /read `\/phases\/targetEnvironment` explicitly/u);
+    assert.match(intent, /before any account lookup, subscription enumeration, or target update/u);
+    assert.deepEqual([...intent.matchAll(/^\d\. \*\*(.*?)\*\*/gmu)].map(match => match[1]), [
+        'Keep the saved target.', 'Apply an explicit replacement.', 'Clarify genuine ambiguity.', 'Select a missing target.',
+    ]);
+    assert.match(intent, /The saved target is authoritative unless the user explicitly requests a target change/u);
+    assert.match(intent, /Capacity descriptions such as "the account is Serverless" describe the selected account,\s+not an account name/u);
+    assert.match(intent, /Treat obvious spelling errors in a capacity description the same way/u);
+    assert.match(intent, /Do not ask the user to select it again/u);
+    assert.match(intent, /use the account named example-account instead/u);
+    assert.match(intent, /ask one concise question first/u);
+    assert.match(intent, /Keep the saved target unchanged while awaiting the answer/u);
+    assert.match(intent, /Do not search for a guessed account\s+name or record an account-not-found blocker before clarification/u);
+    assert.match(intent, /If no target is saved, use the user's clearly identified target/u);
+    assert.match(intent, /Resolve its coordinates and persist it\s+before generating artifacts/u);
+    assert.match(intent, /An unverified or partially specified target is not a request to replace it/u);
+    assert.match(intent, /Do not infer a target change from model recommendations or historical provisioning summaries/u);
+    assert.match(provisioning, /Do not clear fresh metadata already saved for the new target/u);
+    assert.doesNotMatch(provisioning, /account picker/iu);
+});
+
+test('permits confirmed model-capacity deviations', () => {
+    const provisioning = fs.readFileSync(path.join(skillRoot, 'references/phases/provisioning.md'), 'utf8');
+    assert.match(provisioning, /Serverless \| Provisioned \| Confirm the target autoscale throughput and cost/u);
+    assert.match(provisioning, /Provisioned \| Serverless \| Confirm the loss of modeled provisioned throughput/u);
+    assert.match(provisioning, /ask for confirmation, then proceed\s+with the accepted target configuration/u);
+    assert.match(provisioning, /Record the user's decision as a warning/u);
+    assert.match(provisioning, /General provisioning permission alone is not acceptance of an undisclosed discrepancy/u);
+    assert.match(provisioning, /not make an unsupported service configuration\s+valid/u);
+    assert.match(provisioning, /For a confirmed Serverless target, omit both the shared pool and\s+dedicated throughput settings/u);
     assert.match(provisioning, /new serverless account in the\s+same resource group and subscription/u);
-    assert.match(provisioning, /offer the selected account with approved\s+autoscale throughput or a new serverless account/u);
     assert.match(provisioning, /phases.targetEnvironment.capacityMode/u);
     assert.match(provisioning, /phases.targetEnvironment.maxThroughput/u);
     assert.match(provisioning, /Neither requires a model rewrite or schema-conversion rerun/u);
@@ -777,6 +806,40 @@ test('distinguishes model capacity from compatible provisioning targets', () => 
     assert.match(provisioning, /Switch targets only after approval; a new account needs a distinct, available name/u);
     assert.match(provisioning, /review existing or shared throughput before applying changes/u);
     assert.match(provisioning, /Keep the canonical model and Azure Bicep unchanged/u);
+});
+
+test('requires unchanged compiled inputs for Azure preview and deployment across transports', () => {
+    const provisioning = fs.readFileSync(path.join(skillRoot, 'references/phases/provisioning.md'), 'utf8');
+    assert.match(provisioning, /\[Preview and Deploy Compiled Inputs\]\(#preview-and-deploy-compiled-inputs\)/u);
+    assert.match(provisioning, /compile the generated `main.bicep` and resolve\s+`main.bicepparam` with a supported Bicep compiler/u);
+    assert.match(provisioning, /Capture complete machine-readable\s+template and parameter outputs in temporary files/u);
+    assert.match(provisioning, /Use the same compiled template and resolved parameter values for incremental what-if\s+and deployment/u);
+    assert.match(provisioning, /populate its template and parameters programmatically\s+from the parsed compiler outputs/u);
+    assert.match(provisioning, /Do not hand-author, transcribe, simplify, or reconstruct the compiled ARM template/u);
+    assert.match(provisioning, /Preserve compiler-generated `dependsOn`, expressions, resource types,\s+API versions, and parameter bindings/u);
+    assert.match(provisioning, /Switching authentication or transport must not change the compiled deployment payload/u);
+    assert.match(provisioning, /repeat what-if before deployment/u);
+    assert.match(provisioning, /Compilation outputs are temporary execution inputs, not new required phase artifacts\s+or manifest fields/u);
+});
+
+test('requires independent account preservation readback without fabricating evidence', () => {
+    const provisioning = fs.readFileSync(path.join(skillRoot, 'references/phases/provisioning.md'), 'utf8');
+    const evidence = provisioning.match(/### Account Preservation Evidence\n([\s\S]*?)\n### Readback Evidence/u)?.[1];
+    assert.ok(evidence, 'Account preservation must distinguish actual pre- and post-deployment observations.');
+    assert.match(provisioning, /\[Account Preservation Evidence\]\(#account-preservation-evidence\)/u);
+    assert.match(evidence, /retain the actual pre-deployment account observation/u);
+    assert.match(evidence, /After deployment reaches terminal success, including any retries, make a fresh service\s+read of the same account/u);
+    assert.match(evidence, /Compare configuration,\s+not volatile response metadata/u);
+    assert.match(evidence, /preserved access grants require their own before-and-after reads/u);
+    assert.match(evidence, /populate each account observation from its respective service\s+response/u);
+    assert.match(evidence, /Never copy a pre-deployment snapshot, checkpoint value, template property, or\s+hardcoded setting into a post-deployment observation/u);
+    assert.match(evidence, /post-deployment read is unavailable or the pre-deployment baseline is missing/u);
+    assert.match(evidence, /report account preservation as unverified/u);
+    assert.match(evidence, /Omit unavailable observations rather than filling them with earlier or expected values/u);
+    assert.match(evidence, /do not claim the account is unchanged/u);
+    assert.match(evidence, /do not use this warning to waive their required evidence or required target\s+identity and capacity checks/u);
+    assert.match(evidence, /newly created account, compare fresh readback with the approved creation settings/u);
+    assert.match(evidence, /do not add a new required artifact, checkpoint field, or verification version/u);
 });
 
 test('requires access setup before connectivity and blocks permission denial', () => {

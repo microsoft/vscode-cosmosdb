@@ -27,12 +27,35 @@ conditional requirements in `phases.provisioning.artifactPaths`.
 - A target environment is configured or can be selected with the user.
 - Target-specific best-practice concepts are covered.
 
+## Resolve Target Intent Before Discovery
+
 Before target discovery, read `/phases/targetEnvironment` explicitly from the project,
 directly or with `project-state.mjs --workspace <workspace> --get /phases/targetEnvironment`.
+Choose the applicable case before any account lookup, subscription enumeration, or target update:
+
+1. **Keep the saved target.** The saved target is authoritative unless the user explicitly requests a target change.
+   Capacity descriptions such as "the account is Serverless" describe the selected account,
+   not an account name. Treat obvious spelling errors in a capacity description the same way.
+   Retain the saved account, endpoint, tenant, subscription, resource group, and observed capacity;
+   verify the described capacity on that account. Do not ask the user to select it again.
+2. **Apply an explicit replacement.** A request such as "use the account named example-account instead"
+   identifies a replacement. Resolve that account within the supplied or retained scope, then persist
+   the change following [Target Names and Existing Data](#target-names-and-existing-data).
+   Do not substitute another account if the requested replacement cannot be resolved.
+3. **Clarify genuine ambiguity.** If the request could reasonably identify a different account and
+   cannot be resolved as a description of the saved target, ask one concise question first.
+   Keep the saved target unchanged while awaiting the answer. Do not search for a guessed account
+   name or record an account-not-found blocker before clarification.
+4. **Select a missing target.** If no target is saved, use the user's clearly identified target;
+   otherwise ask for the target type and selection. Resolve its coordinates and persist it
+   before generating artifacts.
+
 Honor the saved `type` even when `verified` is false or the endpoint is missing.
+An unverified or partially specified target is not a request to replace it; fill only its missing details.
 For `emulator`, resolve only the emulator endpoint; do not enumerate Azure accounts.
 If no type is selected, ask for the target type before account discovery. A status-only
 summary is not evidence that target configuration is absent.
+Do not infer a target change from model recommendations or historical provisioning summaries.
 
 ## Target Names and Existing Data
 
@@ -62,9 +85,13 @@ reads are unresolved, not evidence that a name is available.
 Obtain approval for the concrete alternate target and its effects before switching;
 current-request approval need not be requested again. Then continue provisioning within
 the requested scope and its `allow-provisioning` gate, without asking for upstream renames.
-On an account change, set `verified: false` and resolve its endpoint, subscription,
-resource group, location, capacity, and access anew; never use the old account's endpoint
-or observations as evidence. For an approved absent new account, an empty endpoint is
+For an explicit account change, update the saved target, set `verified: false`, and resolve
+its endpoint, tenant, subscription, resource group, location, capacity, and access. Preserve
+coordinates explicitly selected for reuse; clear observations belonging only to the old
+account. Do not clear fresh metadata already saved for the new target.
+An endpoint-only selection may lack scope or capacity; resolve those facts as needed before
+mutation without switching accounts or treating model settings as observed facts.
+Never use the old account's endpoint or observations as evidence. For an approved absent new account, an empty endpoint is
 appropriate only after the account lookup required by
 [Account Creation and Adoption](#account-creation-and-adoption), not to force creation
 of an existing account.
@@ -74,7 +101,8 @@ target-dependent artifacts, and repeat target/resource/sample verification befor
 new provisioning freshness. Prior completion metadata and readback are historical, not
 proof for the new target. Reuse validated synthetic sample data when the model is unchanged.
 Record the decision and preserved resources in the existing provisioning summary. Only
-an actual model-design incompatibility requires revisiting schema conversion.
+changes to the document design require revisiting schema conversion; an accepted deployment
+capacity difference does not.
 
 ## Feasibility Handoff
 
@@ -95,16 +123,29 @@ For new accounts, record the approved mode and confirm it by readback.
 | Model | Selected Azure account | Action |
 | --- | --- | --- |
 | Serverless | Serverless | Omit provisioned throughput settings. |
-| Serverless | Provisioned | Compatible; use approved target autoscale throughput without changing the model. |
-| Provisioned | Provisioned | Use modeled throughput, respecting service minima. |
-| Provisioned | Serverless | Cannot satisfy provisioned throughput requirements; select or create a provisioned account. |
+| Serverless | Provisioned | Confirm the target autoscale throughput and cost, then use it without changing the model. |
+| Provisioned | Provisioned | Use modeled throughput or an approved target maximum, respecting service minima. |
+| Provisioned | Serverless | Confirm the loss of modeled provisioned throughput, then omit database and container throughput settings. |
 
-For a serverless model on provisioned Azure, offer the selected account with approved
-autoscale throughput or a new serverless account in the same resource group and subscription,
-reusing the location where supported. Neither requires a model rewrite or schema-conversion rerun.
+For model/target discrepancies, explain the difference, feasible deployment settings, and
+capacity, cost, performance, or feature implications; ask for confirmation, then proceed
+with the accepted target configuration. Do not fail provisioning solely because the account
+does not match the model's recommendations. Explicit acceptance of the disclosed difference
+in the current request is sufficient; do not ask for the same confirmation again.
+General provisioning permission alone is not acceptance of an undisclosed discrepancy.
+Record the user's decision as a warning in the existing provisioning summary, with the
+modeled recommendation, actual target settings, accepted limitations, and any production
+follow-up. Keep the canonical model unchanged and verify the effective target configuration.
+Successful provisioning does not establish that the model's original performance assumptions hold.
+
+For a serverless model on provisioned Azure, propose approved autoscale throughput on the
+selected account. Offer a new serverless account in the same resource group and subscription
+only as an alternative, reusing the location where supported; do not switch automatically.
+Neither requires a model rewrite or schema-conversion rerun.
 Store the approved per-container maximum in `phases.targetEnvironment.maxThroughput`:
-a multiple of 1,000 RU/s, at least 1,000, respecting service minima. Disclose ongoing
-cost and review existing or shared throughput before applying changes.
+a multiple of 1,000 RU/s, at least 1,000, respecting service minima. This overrides modeled
+maxima for dedicated containers only; it does not resize a shared database pool. Disclose
+ongoing cost and review existing or shared throughput before applying changes.
 
 Switch targets only after approval; a new account needs a distinct, available name.
 Preserve the existing account and resource-group/subscription coordinates, following
@@ -119,11 +160,13 @@ Record the testing-only warning in the summary: no production throughput or serv
 parity is proven, and no Azure switch is authorized. Regenerate artifacts and recheck
 capacity requirements when an Azure target is selected later.
 
-Block the affected operation on incompatibilities or unmet clearance conditions.
-Record evidence and resolutions in the existing provisioning summary. Consequential
-capacity changes need explicit approval with their post-import cost implications;
-compatible target overrides above do not require design changes. Reconcile actual
-design changes with owning domain/merge inputs, not root-only model edits.
+Confirmation can accept a design trade-off, not make an unsupported service configuration
+valid or make unsafe data operations safe. Block only the affected operation when actual
+service constraints, missing access, data-integrity requirements, or unresolved execution
+prerequisites prevent it; explain a feasible alternative. Do not turn recommendations or
+accepted target differences into additional completion gates. Record evidence and resolutions
+in the existing provisioning summary. Reconcile actual document-design changes with owning
+domain/merge inputs, not root-only model edits.
 Never silently reconfigure adopted accounts or bypass validators to make a plan fit.
 
 This phase still provisions resources and synthetic samples only. Import feasibility
@@ -133,14 +176,15 @@ prove production-import feasibility or clear those checks.
 
 ## Shared and Hybrid Throughput
 
-Dedicated autoscale remains the default. For an accepted shared/hybrid model, use the existing generated Bicep to
+Dedicated autoscale remains the default. For an accepted shared/hybrid model on a provisioned target, use the existing generated Bicep to
 provision the database pool and any dedicated containers, followed by the deterministic seed-only Shell script.
 Database autoscale comes from root `databaseMaxThroughput`; shared members omit container throughput settings.
 Do not change allocation because a selected tool lacks support. For an emulator, provision equivalent database/container
-allocation through a supported SDK before seeding; a serverless emulator cannot verify a shared-throughput design.
-The capacity-mismatch tolerance above applies only to models without shared allocation.
+allocation through a supported SDK before seeding. For a confirmed Serverless target, omit both the shared pool and
+dedicated throughput settings, preserve the modeled document layout, and record that shared allocation, isolation,
+and modeled RU/s are not deployed or verified. This is a target-capacity adaptation, not a model rewrite.
 
-Before applying changes, inspect account capacity, database throughput, current shared members, each modeled container's
+For provisioned targets, before applying changes, inspect account capacity, database throughput, current shared members, each modeled container's
 allocation and ordered keys, service-reported throughput minima, and pending scale operations. Distinguish absent resources
 from denied or failed reads. Include existing and planned shared members in the 25-container limit. If unmodeled shared
 containers consume the pool, stop for a scoped design decision; do not resize their pool using only migration-subset demand.
@@ -154,20 +198,21 @@ account changes or effects outside the authorized scope. Wait for observed provi
 a pending offer replacement is not success. Keep partial failures incomplete without destructive rollback.
 
 All provisioning verification uses `verification.version: 1` in the existing manifest. Explicit container allocation
-requires allocation-aware observations. For shared/hybrid models, record observed
+on provisioned targets requires allocation-aware observations. For shared/hybrid models on those targets, record observed
 `phases.targetEnvironment.capacityMode: "provisioned"` and the following readback, never values copied from expectations:
 
 - `databaseThroughput: { mode: "autoscale", maxThroughput, isReplacePending: false }`, matching the accepted pool maximum.
 - Each shared container: `capacityMode: "provisioned"`, `throughputMode: "shared"`, `dedicatedThroughputPresent: false`.
    Omit its `maxThroughput`, `scalingMode`, and `isReplacePending`; scaling belongs to the database.
 - Each dedicated container when the model explicitly declares allocation: `throughputMode: "dedicated"`, `dedicatedThroughputPresent: true`,
-   `scalingMode: "autoscale"`, `isReplacePending: false`, and the exact container `maxThroughput`.
+   `scalingMode: "autoscale"`, `isReplacePending: false`, and the effective container `maxThroughput`.
 
 Retain the existing target/model hash, ordered partition keys, policy comparisons, sample point reads, and empty failure
 requirements. Missing observations or allocation drift fail independently of numeric throughput drift. A failed or
 empty offer read is not proof of shared allocation. These allocation fields also apply to explicitly allocated
 dedicated-only models. Models with omitted allocation remain dedicated and use their container capacity observations;
-serverless models omit provisioned-throughput fields. Required evidence follows the model, not a separate format version.
+Serverless targets omit database-throughput and provisioned-allocation fields, even when the model recommends them.
+Required evidence follows the model and effective target configuration, not a separate format version.
 These validators check recorded evidence, not whether a remote read actually occurred. No new project checkpoint fields
 or provisioning framework are introduced.
 
@@ -293,6 +338,33 @@ from the authoritative inventory. It checks ordered composite-key reference targ
 embedded placement at `targetProperty`, embedded field shapes, and parent-child key
 consistency. Relationships absent from the canonical model and account capabilities
 remain explicit evidence checks; do not report them as structurally validated.
+
+### Preview and Deploy Compiled Inputs
+
+For Azure resource deployment, compile the generated `main.bicep` and resolve
+`main.bicepparam` with a supported Bicep compiler. Capture complete machine-readable
+template and parameter outputs in temporary files, not terminal excerpts or summaries.
+Check compiler success before using either output.
+
+Use the same compiled template and resolved parameter values for incremental what-if
+and deployment. Pass file inputs when the deployment tool supports them. For an API or
+tool that accepts JSON objects, populate its template and parameters programmatically
+from the parsed compiler outputs. Only the transport envelope, such as deployment name,
+subscription, resource group, and incremental mode, is assembled separately.
+
+Do not hand-author, transcribe, simplify, or reconstruct the compiled ARM template in
+tool arguments. Preserve compiler-generated `dependsOn`, expressions, resource types,
+API versions, and parameter bindings. A Bicep `parent` relationship must reach ARM as
+the compiler emits it; copying resource properties alone loses dependency ordering.
+Switching authentication or transport must not change the compiled deployment payload.
+If the available authenticated transport cannot submit those outputs unchanged, report
+that execution limitation rather than replacing them with agent-authored JSON.
+
+If a target, source artifact, or resolved parameter value changes after preview,
+regenerate as needed, recompile, and repeat what-if before deployment. An idempotent
+retry uses the same compiled inputs unless such a change requires a new preview.
+Compilation outputs are temporary execution inputs, not new required phase artifacts
+or manifest fields. Record the deployment outcome and any retry in the existing summary.
 
 ## Sample Data Contract
 
@@ -510,10 +582,12 @@ contract passes.
    database, containers, throughput mode, and data effects before mutation.
 2. Establish required access, then verify credentials and connection using the host's normal consent controls.
 3. Use idempotent create/update operations and item upserts.
+   For Azure deployments, follow [Preview and Deploy Compiled Inputs](#preview-and-deploy-compiled-inputs).
 4. Respect retry-after responses and do not rely on burst capacity for sustained
    work.
 5. Verify account capabilities, database, partition keys, index policies,
    throughput, container count, and sample item results.
+   For Azure accounts, collect [Account Preservation Evidence](#account-preservation-evidence).
 6. Record warnings for partial sample insertion; do not claim complete success.
 
 Set provisioning status to `complete` only after resource verification. Persist
@@ -554,7 +628,7 @@ An absent policy and the service default `{ "uniqueKeys": [] }` both mean no con
 Read the settings from the target, never copy expected configuration as evidence.
 
 Record each container's observed `capacityMode` and, for dedicated provisioned capacity, its
-autoscale `maxThroughput`. Models with explicit allocation use the allocation observations described above.
+autoscale `maxThroughput`. Models with explicit allocation on provisioned targets use the allocation observations described above.
 Match effective target settings, including selected Azure
 maxima or emulator overrides, without changing the canonical model hash. Missing or
 mismatched observations fail verification; never substitute expected capacity for readback.
@@ -566,6 +640,36 @@ Verification does not fill missing observations or change canonical model bytes 
 
 Preserve indexing-policy readback as returned. The verifier accounts for known equivalent
 service representations on both Azure and the emulator; do not normalize evidence manually.
+
+### Account Preservation Evidence
+
+For an existing Azure account, retain the actual pre-deployment account observation.
+After deployment reaches terminal success, including any retries, make a fresh service
+read of the same account in the selected subscription and resource group. Compare relevant
+account settings, including capacity/capabilities, authentication, regions and failover,
+zone redundancy, consistency, networking, and backup configuration. Compare configuration,
+not volatile response metadata such as etags, timestamps, or provisioning status.
+Claims about preserved access grants require their own before-and-after reads; an account
+resource response alone does not establish that role assignments are unchanged.
+
+Record the account identity, observation times, and comparison outcome in the existing
+provisioning summary. If the manifest includes `preMutationInspection` or
+`postMutationInspection`, populate each account observation from its respective service
+response. Never copy a pre-deployment snapshot, checkpoint value, template property, or
+hardcoded setting into a post-deployment observation. A successful child-resource deployment
+or point-read verifier does not independently prove account preservation.
+
+If the post-deployment read is unavailable or the pre-deployment baseline is missing,
+report account preservation as unverified, with the reason, in the existing summary.
+Omit unavailable observations rather than filling them with earlier or expected values;
+do not claim the account is unchanged. Keep successful container and item verification
+results, but do not use this warning to waive their required evidence or required target
+identity and capacity checks. Unexpected configuration changes must be disclosed and
+require authorization before corrective mutations; do not silently restore the account.
+
+For a newly created account, compare fresh readback with the approved creation settings,
+not with an invented pre-existing account. This check uses existing evidence and summary
+locations; do not add a new required artifact, checkpoint field, or verification version.
 
 ### Readback Evidence
 

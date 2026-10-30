@@ -227,7 +227,8 @@ export function validateProvisioningVerification(
     const errors = [...modelErrors, ...sampleErrors];
     if (errors.length > 0) return errors;
     if (!checkObject(report, '$', ROOT_KEYS, errors)) return errors;
-    const shared = model.containers.some(container => container.throughputMode === 'shared');
+    const shared = project.phases?.targetEnvironment?.capacityMode !== 'serverless' &&
+        model.containers.some(container => container.throughputMode === 'shared');
     if (report.version !== 1) addError(errors, '$.version', 'must equal 1');
     if (shared) {
         if (project.phases?.targetEnvironment?.capacityMode !== 'provisioned') {
@@ -247,7 +248,7 @@ export function validateProvisioningVerification(
             }
         }
     } else if (report.databaseThroughput !== undefined) {
-        addError(errors, '$.databaseThroughput', 'must be omitted when the model does not manage shared database throughput');
+        addError(errors, '$.databaseThroughput', 'must be omitted when the effective target does not manage shared database throughput');
     }
     if (typeof report.verifiedAt !== 'string' || !Number.isFinite(Date.parse(report.verifiedAt))) {
         addError(errors, '$.verifiedAt', 'must be an ISO date-time string');

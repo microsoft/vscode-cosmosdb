@@ -1098,6 +1098,20 @@ export class MigrationAssistantTab extends BaseTab {
         if (resetEndpoint && (endpoint === undefined || endpoint === null)) {
             delete this.project.phases.targetEnvironment.endpoint;
         }
+        const endpointChanged = endpoint !== undefined && endpoint !== null && endpoint !== existing?.endpoint;
+        if (endpointChanged || (type === 'emulator' && existing?.type !== type)) {
+            delete this.project.phases.targetEnvironment.accountName;
+            delete this.project.phases.targetEnvironment.tenantId;
+            delete this.project.phases.targetEnvironment.subscriptionId;
+            delete this.project.phases.targetEnvironment.subscriptionName;
+            delete this.project.phases.targetEnvironment.resourceGroup;
+            delete this.project.phases.targetEnvironment.location;
+            this.selectedSubscription = undefined;
+        }
+        if (endpointChanged || resetEndpoint) {
+            delete this.project.phases.targetEnvironment.capacityMode;
+            delete this.project.phases.targetEnvironment.maxThroughput;
+        }
         delete this.project.phases.targetEnvironment.verifiedAt;
         await this.saveProject();
     }
@@ -1139,7 +1153,7 @@ export class MigrationAssistantTab extends BaseTab {
 
             const accountInfo = await getAccountInfo(node.account);
             const entraIdCredential = getCosmosDBEntraIdCredential(accountInfo.credentials);
-            const tenantId = entraIdCredential?.tenantId;
+            const tenantId = accountInfo.azureMetadata?.subscription.tenantId ?? entraIdCredential?.tenantId;
 
             // Store subscription info for RBAC operations when picked from Azure
             let subscriptionId: string | undefined;
@@ -1151,6 +1165,8 @@ export class MigrationAssistantTab extends BaseTab {
                 subscriptionId = azureNode.account.subscription.subscriptionId;
                 subscriptionName = azureNode.account.subscription.name;
                 resourceGroup = azureNode.account.resourceGroup;
+            } else {
+                this.selectedSubscription = undefined;
             }
 
             // Merge into the existing target environment so provision-mode fields the
@@ -1165,8 +1181,15 @@ export class MigrationAssistantTab extends BaseTab {
                 subscriptionId,
                 subscriptionName,
                 resourceGroup,
+                capacityMode: accountInfo.azureMetadata
+                    ? accountInfo.azureMetadata.isServerless
+                        ? 'serverless'
+                        : 'provisioned'
+                    : undefined,
                 verified: false,
             };
+            delete this.project!.phases.targetEnvironment.verifiedAt;
+            delete this.project!.phases.targetEnvironment.maxThroughput;
             await this.saveProject();
 
             emitMigrationEvent(this.eventSink, 'accountSelected', [

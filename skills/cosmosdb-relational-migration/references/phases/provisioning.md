@@ -27,6 +27,10 @@ conditional requirements in `phases.provisioning.artifactPaths`.
 - A target environment is configured or can be selected with the user.
 - Target-specific best-practice concepts are covered.
 
+Select the capabilities needed for the requested operation from
+[Recommended Tools and Capabilities](../tooling/recommended-tools.md#provisioning).
+Artifact generation, Azure deployment, and emulator execution have different tool requirements.
+
 Before target discovery, read `/phases/targetEnvironment` explicitly from the project,
 directly or with `project-state.mjs --workspace <workspace> --get /phases/targetEnvironment`.
 Honor the saved `type` even when `verified` is false or the endpoint is missing.

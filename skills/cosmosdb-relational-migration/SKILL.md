@@ -38,6 +38,7 @@ identify. Do not load every reference at the start of a run.
 | [Interaction and checkpoints](./references/workflow/interaction-and-checkpoints.md) | Reviewing blockers for repair approval; handling modes, decisions, and phase handoffs. |
 | [Migration memory](./references/workflow/memory.md) | Starting any migration task, remembering findings or decisions, or preserving a model for another application. |
 | [Best-practices integration](./references/workflow/best-practices-integration.md) | Loading the required peer and selecting guidance for Cosmos DB decisions. |
+| [Recommended tools and capabilities](./references/tooling/recommended-tools.md) | Selecting tooling for the requested phase, checking availability, or considering installation and optional Microsoft Bicep MCP support. |
 | [DDL interpretation](./references/workflow/ddl-interpretation.md) | Choosing a parser and interpreting selected DDL without changing authoritative inputs. |
 | [SQLGlot DDL](./references/tooling/sqlglot-ddl.md) | Only after SQLGlot is selected: environment setup, dialect checks, AST inspection, and inventory examples. Skip for model-only interpretation. |
 | [Project state and artifacts](./references/contracts/project-state-and-artifacts.md) | Reading or updating project state, resolving inputs, or checking completion. |

@@ -28,6 +28,35 @@ test('has valid Skill frontmatter and a matching folder name', () => {
     assert.equal(path.basename(skillRoot), 'cosmosdb-relational-migration');
 });
 
+test('documents phase-scoped tools without requiring every tool or Azure CLI', () => {
+    const tools = fs.readFileSync(path.join(skillRoot, 'references/tooling/recommended-tools.md'), 'utf8');
+    for (const file of ['SKILL.md', 'README.md']) {
+        assert.match(fs.readFileSync(path.join(skillRoot, file), 'utf8'), /\]\(\.\/references\/tooling\/recommended-tools\.md\)/u);
+    }
+    assert.match(fs.readFileSync(path.join(skillRoot, 'references/phases/provisioning.md'), 'utf8'), /\]\(\.\.\/tooling\/recommended-tools\.md#provisioning\)/u);
+    assert.match(tools, /Select tools for the current phase and target/u);
+    assert.match(tools, /do not install every tool in this reference/u);
+    assert.match(tools, /Model-only interpretation needs neither dependency/u);
+    assert.match(tools, /Azure CLI is a recommended route; supported Azure SDK, REST, or Microsoft Azure MCP capabilities are alternatives/u);
+    assert.match(tools, /Azure CLI invokes the same Bicep toolchain/u);
+    assert.match(tools, /A missing standalone Bicep command does not mean Azure CLI's compiler is unavailable/u);
+    assert.match(tools, /Generating Bicep text with the bundled helper needs Node.js, not an installed Bicep\s+compiler/u);
+    assert.match(tools, /Provisioning permission does not imply installation\s+permission/u);
+    assert.match(tools, /automatically\s+download compilers, restore modules, or acquire packages on first use/u);
+    assert.match(tools, /Do not block an unrelated phase because an optional tool is absent/u);
+});
+
+test('recommends first-party Bicep MCP without replacing compilation or deployment', () => {
+    const tools = fs.readFileSync(path.join(skillRoot, 'references/tooling/recommended-tools.md'), 'utf8');
+    assert.match(tools, /https:\/\/learn.microsoft.com\/en-us\/azure\/azure-resource-manager\/bicep\/bicep-mcp-server/u);
+    assert.match(tools, /Bicep MCP is optional, not a required peer Skill or an Azure deployment service/u);
+    assert.match(tools, /multiple MCP-compatible harnesses; no editor\s+or extension UI is required/u);
+    assert.match(tools, /inspect its advertised tools\s+rather than assuming every version exposes the same capabilities/u);
+    assert.match(tools, /snapshots are local predictions, not live Azure what-if results or\s+deployable ARM templates/u);
+    assert.match(tools, /No third-party Bicep skill is required or recommended/u);
+    assert.doesNotMatch(tools, /awesome-copilot|azure-deployment-preflight/u);
+});
+
 test('documents natural migration requests without redundant workspace or host instructions', () => {
     for (const file of ['README.md', 'SKILL.md']) {
         const content = fs.readFileSync(path.join(skillRoot, file), 'utf8');

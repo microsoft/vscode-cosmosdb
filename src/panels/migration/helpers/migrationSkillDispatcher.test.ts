@@ -199,6 +199,65 @@ describe('MigrationAssistantTab settings and AI launch guards', () => {
             },
         );
 
+        it.each([
+            ['unchanged provisioned account', 'provisioned', 'provisioned', true, 1000],
+            ['different provisioned account', 'provisioned', 'provisioned', false, undefined],
+            ['capacity changed to serverless', 'provisioned', 'serverless', true, undefined],
+            ['capacity changed to provisioned', 'serverless', 'provisioned', true, undefined],
+            ['previous capacity unknown', undefined, 'provisioned', true, undefined],
+            ['selected capacity unknown', 'provisioned', undefined, true, undefined],
+            ['both capacities unknown', undefined, undefined, true, undefined],
+            ['unchanged serverless account', 'serverless', 'serverless', true, undefined],
+        ] as const)(
+            'handles approved throughput on account reselection: %s',
+            async (_scenario, previousCapacityMode, selectedCapacityMode, sameAccount, expectedMaximum) => {
+                const existing = project.phases.targetEnvironment!;
+                existing.capacityMode = previousCapacityMode;
+                existing.maxThroughput = 1000;
+                const selectedSubscription = {
+                    ...subscription,
+                    subscriptionId: existing.subscriptionId!,
+                    name: existing.subscriptionName!,
+                    tenantId: existing.tenantId!,
+                };
+                const source = selectedCapacityMode === undefined ? 'workspace' : 'azure';
+                vi.mocked(vscode.window.showQuickPick).mockResolvedValueOnce({ source } as never);
+                const node = { account: { subscription: selectedSubscription, resourceGroup: existing.resourceGroup } };
+                vi.mocked(source === 'azure' ? pickAppResource : pickWorkspaceResource).mockResolvedValueOnce(
+                    node as never,
+                );
+                const endpoint = sameAccount ? existing.endpoint! : 'https://different.documents.azure.com/';
+                const accountName = sameAccount ? existing.accountName! : 'different';
+                vi.mocked(getAccountInfo).mockResolvedValueOnce({
+                    azureMetadata:
+                        selectedCapacityMode === undefined
+                            ? undefined
+                            : ({
+                                  subscription: selectedSubscription,
+                                  isServerless: selectedCapacityMode === 'serverless',
+                              } as AccountInfo['azureMetadata']),
+                    credentials: [],
+                    endpoint,
+                    id: 'selected-id',
+                    name: accountName,
+                    isServerless: selectedCapacityMode === 'serverless',
+                    isEmulator: false,
+                });
+
+                await tab.dispatchCommand('selectAccount', []);
+
+                expect(project.phases.targetEnvironment).toMatchObject({
+                    endpoint,
+                    accountName,
+                    capacityMode: selectedCapacityMode,
+                    verified: false,
+                });
+                expect(project.phases.targetEnvironment?.maxThroughput).toBe(expectedMaximum);
+                expect(project.phases.targetEnvironment?.verifiedAt).toBeUndefined();
+                expect(save).toHaveBeenCalledWith(project);
+            },
+        );
+
         it.each(['https://manual.documents.azure.com/', ''])(
             'clears metadata for an edited endpoint: %s',
             async (endpoint) => {

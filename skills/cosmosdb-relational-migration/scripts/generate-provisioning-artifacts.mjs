@@ -19,7 +19,7 @@ function escapeBicep(value) {
 }
 
 function escapeShell(value) {
-    return /^[a-zA-Z0-9_.-]+$/u.test(value) ? value : `"${value.replace(/\\/gu, '\\\\').replace(/"/gu, '\\"')}"`;
+    return /^[a-zA-Z0-9_.][a-zA-Z0-9_.-]*$/u.test(value) ? value : `"${value.replace(/\\/gu, '\\\\').replace(/"/gu, '\\"')}"`;
 }
 
 function emitIndexingPolicy(lines, policy, indent) {

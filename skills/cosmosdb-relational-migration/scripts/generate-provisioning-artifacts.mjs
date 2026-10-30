@@ -15,7 +15,7 @@ import { readSourceInventory } from './validate-source-evidence.mjs';
 const DATA_CONTRIBUTOR_ROLE_ID = '00000000-0000-0000-0000-000000000002';
 
 function escapeBicep(value) {
-    return value.replace(/\\/gu, '\\\\').replace(/'/gu, "\\'").replace(/\r/gu, '\\r').replace(/\n/gu, '\\n');
+    return value.replace(/\\/gu, '\\\\').replace(/\$\{/gu, '\\${').replace(/'/gu, "\\'").replace(/\r/gu, '\\r').replace(/\n/gu, '\\n');
 }
 
 function escapeShell(value) {

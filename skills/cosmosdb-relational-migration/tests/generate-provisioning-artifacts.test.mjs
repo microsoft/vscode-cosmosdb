@@ -104,6 +104,23 @@ test('escapes target database names in both Bicep and Shell syntax', () => {
     assert(artifacts['seed-data.csh'].includes(String.raw`--database="target's \"database\""`));
 });
 
+test('preserves literal Bicep interpolation openers in target and modeled database names', () => {
+    for (const [databaseName, escapedName] of [
+        ['archive${year}-${month}', String.raw`archive\${year}-\${month}`],
+        ["archive's${year}", String.raw`archive\'s\${year}`],
+        ['archive$year', 'archive$year'],
+    ]) {
+        for (const override of [false, true]) {
+            const { model, sampleData, project } = inputs();
+            if (override) project.phases.targetEnvironment.databaseName = databaseName;
+            else model.databaseName = databaseName;
+            const artifacts = buildProvisioningArtifacts(model, sampleData, project);
+            assert(artifacts['main.bicep'].includes(`param databaseName string = '${escapedName}'`));
+            assert(artifacts['main.bicepparam'].includes(`param databaseName = '${escapedName}'`));
+        }
+    }
+});
+
 test('places shared autoscale on the database and keeps hybrid container capacity independent', () => {
     for (const type of ['azure', 'provision', 'emulator']) {
         const { model, sampleData, project } = inputs();

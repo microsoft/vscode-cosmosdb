@@ -8,14 +8,14 @@
 import { FluentProvider, webLightTheme } from '@fluentui/react-components';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MigrationAssistant } from './MigrationAssistant';
 import {
     type MigrationCompletionMap,
     type MigrationPhaseName,
     type MigrationRunActivity,
 } from './state/deriveMigrationPhaseStates';
-import { type MigrationState } from './state/MigrationContext';
+import { migrationReducer, type MigrationState } from './state/MigrationContext';
 
 const { state, announce, postMessage, dispatch, client } = vi.hoisted(() => ({
     state: {} as MigrationState,
@@ -37,10 +37,11 @@ vi.mock('./state/MigrationChannel', () => ({
         dispose = vi.fn();
     },
 }));
-vi.mock('./state/MigrationContext', () => ({
+vi.mock(import('./state/MigrationContext'), async (importOriginal) => ({
+    ...(await importOriginal()),
     useMigrationState: () => state,
     useMigrationDispatch: () => dispatch,
-    WithMigrationContext: ({ children }: { children: React.ReactNode }) => children,
+    WithMigrationContext: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
 }));
 
 function renderAssistant() {
@@ -159,6 +160,131 @@ beforeEach(() => {
         codeMigrationPlanPath: '',
         codeMigrationAction: 'plan',
     } satisfies MigrationState);
+});
+
+describe('migration target endpoint editing', () => {
+    beforeEach(() => {
+        state.targetAccountName = 'example';
+        state.targetSubscriptionId = 'selected-subscription';
+        state.targetSubscriptionName = 'Selected subscription';
+        state.targetResourceGroup = 'selected-group';
+        state.connectionVerified = true;
+        dispatch.mockImplementation((action: Parameters<typeof migrationReducer>[1]) => {
+            Object.assign(state, migrationReducer(state, action));
+        });
+    });
+
+    afterEach(() => dispatch.mockReset());
+
+    async function openEndpointEditor() {
+        const user = userEvent.setup();
+        render(renderAssistant());
+        await user.click(screen.getByRole('button', { name: /Phase 4: Target Provisioning/ }));
+        const input = screen.getByRole('textbox', { name: /Account Endpoint/ });
+        expect(input).toHaveAccessibleName(/Account Endpoint/);
+        postMessage.mockClear();
+        dispatch.mockClear();
+        return { user, input };
+    }
+
+    it('does not persist a transient endpoint edit that is restored before blur', async () => {
+        const { user, input } = await openEndpointEditor();
+        await user.click(input);
+        await user.type(input, 'x');
+        expect(input).toHaveValue(`${state.targetEndpoint}x`);
+        expect(postMessage).not.toHaveBeenCalled();
+        expect(dispatch).not.toHaveBeenCalled();
+        await user.keyboard('{Backspace}');
+        await user.tab();
+
+        expect(input).toHaveValue(state.targetEndpoint);
+        expect(postMessage).not.toHaveBeenCalled();
+        expect(dispatch).not.toHaveBeenCalled();
+        expect(state.targetAccountName).toBe('example');
+        expect(state.targetSubscriptionName).toBe('Selected subscription');
+        expect(screen.getByTestId('migration-connection-verified')).toBeInTheDocument();
+        expect(migrationReducer(state, { type: 'SET_TARGET_ENDPOINT', payload: state.targetEndpoint })).toBe(state);
+    });
+
+    it.each(['blur', 'Enter'])('commits an endpoint once on %s and clears stale UI metadata', async (commit) => {
+        const { user, input } = await openEndpointEditor();
+        const endpoint = 'https://changed.documents.azure.com/';
+        await user.clear(input);
+        await user.type(input, endpoint);
+        expect(postMessage).not.toHaveBeenCalled();
+        expect(dispatch).not.toHaveBeenCalled();
+
+        if (commit === 'Enter') await user.keyboard('{Enter}');
+        await user.tab();
+
+        expect(input).toHaveValue(endpoint);
+        expect(postMessage).toHaveBeenCalledExactlyOnceWith({
+            type: 'event',
+            name: 'command',
+            params: [{ commandName: 'setTargetEnvironment', params: ['azure', endpoint] }],
+        });
+        expect(state).toMatchObject({
+            targetEndpoint: endpoint,
+            targetAccountName: null,
+            targetSubscriptionId: '',
+            targetSubscriptionName: '',
+            targetResourceGroup: '',
+            targetLocation: '',
+            connectionVerified: false,
+            connectionTestState: 'available',
+            connectionTestError: null,
+            connectionTestDocumentationUrl: null,
+        });
+        expect(screen.queryByTestId('migration-connection-verified')).not.toBeInTheDocument();
+    });
+
+    it('discards an endpoint draft on Escape without resetting the selected account', async () => {
+        const { user, input } = await openEndpointEditor();
+        await user.clear(input);
+        await user.type(input, 'https://cancelled.documents.azure.com/');
+        await user.keyboard('{Escape}');
+        await user.tab();
+
+        expect(input).toHaveValue(state.targetEndpoint);
+        expect(postMessage).not.toHaveBeenCalled();
+        expect(dispatch).not.toHaveBeenCalled();
+        expect(state.targetSubscriptionName).toBe('Selected subscription');
+        expect(screen.getByTestId('migration-connection-verified')).toBeInTheDocument();
+    });
+
+    it.each([true, false])('commits a draft before testing the connection (blur: %s)', async (blur) => {
+        const { user, input } = await openEndpointEditor();
+        const endpoint = 'https://changed.documents.azure.com/';
+        await user.clear(input);
+        await user.type(input, endpoint);
+        const button = screen.getByRole('button', { name: 'Test Connection' });
+        expect(button).toHaveTextContent('Test Connection');
+        expect(button).toHaveAccessibleName('Test Connection');
+        if (blur) await user.click(button);
+        else fireEvent.click(button);
+
+        expect(postMessage.mock.calls.map(([message]) => message.params[0])).toEqual([
+            { commandName: 'setTargetEnvironment', params: ['azure', endpoint] },
+            { commandName: 'testConnection', params: ['azure', endpoint] },
+        ]);
+    });
+
+    it('disables connection testing for an empty draft and commits the clear on blur', async () => {
+        const { user, input } = await openEndpointEditor();
+        await user.clear(input);
+        expect(screen.getByRole('button', { name: 'Test Connection' })).toBeDisabled();
+        expect(postMessage).not.toHaveBeenCalled();
+        await user.tab();
+
+        expect(state.targetEndpoint).toBe('');
+        expect(state.targetSubscriptionName).toBe('');
+        expect(state.connectionVerified).toBe(false);
+        expect(postMessage).toHaveBeenCalledExactlyOnceWith({
+            type: 'event',
+            name: 'command',
+            params: [{ commandName: 'setTargetEnvironment', params: ['azure', ''] }],
+        });
+    });
 });
 
 describe('migration accessibility', () => {

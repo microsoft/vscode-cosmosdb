@@ -3,6 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { type IActionContext } from '@microsoft/vscode-azext-utils';
+import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import * as path from 'path';
@@ -10,7 +12,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
 import { ext } from '../../../extensionVariables';
 import { MigrationProjectService, type ProjectJson } from '../../../services/MigrationProjectService';
+import { getAccountInfo, type AccountInfo } from '../../../tree/cosmosdb/AccountInfo';
 import { getAvailableModelsInfo } from '../../../utils/aiUtils';
+import { pickAppResource, pickWorkspaceResource } from '../../../utils/pickItem/pickAppResource';
 import { MigrationRunTracker } from '../../../webviews/cosmosdb/Migration/state/deriveMigrationPhaseStates';
 import { MigrationAssistantTab } from '../../MigrationAssistantTab';
 import { capturePrompt, isMigrationAiMockEnabled } from './e2eMigrationAiMock';
@@ -23,16 +27,26 @@ import {
 vi.mock('../../../utils/aiUtils', () => ({ getAvailableModelsInfo: vi.fn() }));
 
 vi.mock('@microsoft/vscode-azext-azureutils', () => ({}));
-vi.mock('@microsoft/vscode-azext-utils', () => ({}));
-vi.mock('@microsoft/vscode-azureresources-api', () => ({}));
-vi.mock('../../../cosmosdb/CosmosDBCredential', () => ({}));
+vi.mock('@microsoft/vscode-azext-utils', () => ({
+    callWithTelemetryAndErrorHandling: async (_name: string, callback: (context: IActionContext) => unknown) =>
+        callback({
+            telemetry: { properties: {}, measurements: {} },
+            errorHandling: { issueProperties: {} },
+            valuesToMask: [],
+        } as unknown as IActionContext),
+}));
+vi.mock('@microsoft/vscode-azureresources-api', () => ({ AzExtResourceType: { AzureCosmosDb: 'cosmosdb' } }));
+vi.mock('../../../cosmosdb/CosmosDBCredential', () => ({ getCosmosDBEntraIdCredential: vi.fn() }));
 vi.mock('../../../extensionVariables', () => ({ ext: { isAIFeaturesEnabled: true } }));
-vi.mock('../../../tree/cosmosdb/AccountInfo', () => ({}));
+vi.mock('../../../tree/cosmosdb/AccountInfo', () => ({ getAccountInfo: vi.fn() }));
 vi.mock('../../../tree/workspace-view/migration/MigrationWorkspaceItem', () => ({
     MigrationWorkspaceItem: { addMigration: vi.fn().mockResolvedValue(undefined) },
 }));
 vi.mock('../../../utils/azureClients', () => ({}));
-vi.mock('../../../utils/pickItem/pickAppResource', () => ({}));
+vi.mock('../../../utils/pickItem/pickAppResource', () => ({
+    pickAppResource: vi.fn(),
+    pickWorkspaceResource: vi.fn(),
+}));
 vi.mock('../../BaseTab', () => ({ BaseTab: class {} }));
 vi.mock('./testConnection', () => ({}));
 vi.mock('../../trpc/appRouter', () => ({}));
@@ -49,7 +63,7 @@ vi.mock('vscode', () => ({
         executeCommand: vi.fn().mockResolvedValue(undefined),
         getCommands: vi.fn().mockResolvedValue([]),
     },
-    window: { showWarningMessage: vi.fn(), showTextDocument: vi.fn() },
+    window: { showWarningMessage: vi.fn(), showTextDocument: vi.fn(), showQuickPick: vi.fn() },
     workspace: {
         get workspaceFolders() {
             return [{ uri: { fsPath: '/workspace/shop' }, name: 'shop', index: 0 }];
@@ -58,7 +72,7 @@ vi.mock('vscode', () => ({
     },
 }));
 
-describe('MigrationAssistantTab AI launch guards', () => {
+describe('MigrationAssistantTab settings and AI launch guards', () => {
     const launchCommands = [
         { command: 'analyzeApplication', params: [] },
         { command: 'analyzeDatabaseSchema', params: [] },
@@ -82,6 +96,7 @@ describe('MigrationAssistantTab AI launch guards', () => {
     let tab: {
         dispatchCommand(commandName: string, params: unknown[]): Promise<unknown>;
         refreshFileState(): Promise<void>;
+        selectedSubscription?: AzureSubscription;
     };
 
     beforeEach(() => {
@@ -114,6 +129,183 @@ describe('MigrationAssistantTab AI launch guards', () => {
             skillTelemetry: { begin, dispatched: vi.fn(), confirmedStopped: vi.fn() },
             skillChatSession: { dispatch, openChat },
             publishRunActivity: vi.fn(),
+            eventSink: { emit: vi.fn() },
+        });
+    });
+
+    describe('target account selection', () => {
+        const subscription = {
+            subscriptionId: 'selected-subscription',
+            name: 'Selected subscription',
+            tenantId: 'selected-tenant',
+        } as AzureSubscription;
+
+        beforeEach(() => {
+            vi.mocked(vscode.window.showQuickPick).mockReset();
+            vi.mocked(getAccountInfo).mockReset();
+            project.phases.targetEnvironment = {
+                type: 'azure',
+                endpoint: 'https://previous.documents.azure.com/',
+                accountName: 'previous',
+                tenantId: 'previous-tenant',
+                subscriptionId: 'previous-subscription',
+                subscriptionName: 'Previous subscription',
+                resourceGroup: 'previous-group',
+                location: 'eastus',
+                capacityMode: 'provisioned',
+                maxThroughput: 4000,
+                verified: true,
+                verifiedAt: '2026-10-27T00:00:00.000Z',
+                databaseName: 'SelectedDatabase',
+            };
+            tab.selectedSubscription = subscription;
+        });
+
+        it.each([true, false])(
+            'refreshes picker capacity and preserves Azure scope (serverless: %s)',
+            async (isServerless) => {
+                project.phases.targetEnvironment!.capacityMode = isServerless ? 'provisioned' : 'serverless';
+                vi.mocked(vscode.window.showQuickPick).mockResolvedValueOnce({ source: 'azure' } as never);
+                const node = { account: { subscription, resourceGroup: 'selected-group' } };
+                vi.mocked(pickAppResource).mockResolvedValueOnce(node as never);
+                vi.mocked(getAccountInfo).mockResolvedValueOnce({
+                    azureMetadata: { subscription, isServerless } as AccountInfo['azureMetadata'],
+                    credentials: [],
+                    endpoint: 'https://selected.documents.azure.com/',
+                    id: 'selected-id',
+                    name: 'selected',
+                    isServerless,
+                    isEmulator: false,
+                });
+
+                await tab.dispatchCommand('selectAccount', []);
+
+                expect(getAccountInfo).toHaveBeenCalledWith(node.account);
+                expect(project.phases.targetEnvironment).toEqual({
+                    type: 'azure',
+                    endpoint: 'https://selected.documents.azure.com/',
+                    accountName: 'selected',
+                    tenantId: 'selected-tenant',
+                    subscriptionId: 'selected-subscription',
+                    subscriptionName: 'Selected subscription',
+                    resourceGroup: 'selected-group',
+                    location: 'eastus',
+                    capacityMode: isServerless ? 'serverless' : 'provisioned',
+                    databaseName: 'SelectedDatabase',
+                    verified: false,
+                });
+                expect(tab.selectedSubscription).toBe(subscription);
+                expect(save).toHaveBeenCalledWith(project);
+            },
+        );
+
+        it.each(['https://manual.documents.azure.com/', ''])(
+            'clears metadata for an edited endpoint: %s',
+            async (endpoint) => {
+                await tab.dispatchCommand('setTargetEnvironment', ['azure', endpoint]);
+
+                expect(project.phases.targetEnvironment).toEqual({
+                    type: 'azure',
+                    endpoint,
+                    databaseName: 'SelectedDatabase',
+                    verified: false,
+                });
+                expect(tab.selectedSubscription).toBeUndefined();
+                expect(getAccountInfo).not.toHaveBeenCalled();
+                expect(pickAppResource).not.toHaveBeenCalled();
+                expect(save).toHaveBeenCalledWith(project);
+            },
+        );
+
+        it('retains picker scope and capacity when the endpoint has not changed', async () => {
+            const existing = { ...project.phases.targetEnvironment };
+            delete existing.verifiedAt;
+
+            await tab.dispatchCommand('setTargetEnvironment', ['azure', existing.endpoint]);
+
+            expect(project.phases.targetEnvironment).toEqual({ ...existing, verified: false });
+            expect(tab.selectedSubscription).toBe(subscription);
+            expect(getAccountInfo).not.toHaveBeenCalled();
+        });
+
+        it('clears cloud metadata when switching to the emulator', async () => {
+            await tab.dispatchCommand('setTargetEnvironment', ['emulator']);
+
+            expect(project.phases.targetEnvironment).toEqual({
+                type: 'emulator',
+                databaseName: 'SelectedDatabase',
+                verified: false,
+            });
+            expect(tab.selectedSubscription).toBeUndefined();
+        });
+
+        it('preserves selected scope but clears observations for a new account name', async () => {
+            await tab.dispatchCommand('setTargetEnvironment', ['provision', undefined, undefined, 'new-account']);
+
+            expect(project.phases.targetEnvironment).toEqual({
+                type: 'provision',
+                accountName: 'new-account',
+                tenantId: 'previous-tenant',
+                subscriptionId: 'previous-subscription',
+                subscriptionName: 'Previous subscription',
+                resourceGroup: 'previous-group',
+                location: 'eastus',
+                databaseName: 'SelectedDatabase',
+                verified: false,
+            });
+        });
+
+        it('does not treat an attached connection default as observed provisioned capacity', async () => {
+            vi.mocked(vscode.window.showQuickPick).mockResolvedValueOnce({ source: 'workspace' } as never);
+            vi.mocked(pickWorkspaceResource).mockResolvedValueOnce({ account: {} } as never);
+            vi.mocked(getAccountInfo).mockResolvedValueOnce({
+                credentials: [],
+                endpoint: 'https://attached.documents.azure.com/',
+                id: 'attached-id',
+                name: 'attached',
+                isServerless: false,
+                isEmulator: false,
+            });
+
+            await tab.dispatchCommand('selectAccount', []);
+
+            expect(project.phases.targetEnvironment).toMatchObject({ accountName: 'attached', verified: false });
+            for (const field of [
+                'capacityMode',
+                'tenantId',
+                'subscriptionId',
+                'subscriptionName',
+                'resourceGroup',
+                'maxThroughput',
+                'verifiedAt',
+            ] as const) {
+                expect(project.phases.targetEnvironment?.[field]).toBeUndefined();
+            }
+            expect(tab.selectedSubscription).toBeUndefined();
+        });
+
+        it('leaves the selected account intact when the picker is cancelled', async () => {
+            const existing = { ...project.phases.targetEnvironment };
+            vi.mocked(vscode.window.showQuickPick).mockResolvedValueOnce(undefined);
+
+            await tab.dispatchCommand('selectAccount', []);
+
+            expect(project.phases.targetEnvironment).toEqual(existing);
+            expect(save).not.toHaveBeenCalled();
+            expect(getAccountInfo).not.toHaveBeenCalled();
+        });
+
+        it('leaves the selected account intact when fresh metadata cannot be read', async () => {
+            const existing = { ...project.phases.targetEnvironment };
+            vi.mocked(vscode.window.showQuickPick).mockResolvedValueOnce({ source: 'azure' } as never);
+            vi.mocked(pickAppResource).mockResolvedValueOnce({ account: {} } as never);
+            vi.mocked(getAccountInfo).mockRejectedValueOnce(new Error('Metadata unavailable'));
+
+            await expect(tab.dispatchCommand('selectAccount', [])).rejects.toThrow('Metadata unavailable');
+
+            expect(project.phases.targetEnvironment).toEqual(existing);
+            expect(save).not.toHaveBeenCalled();
+            expect(tab.selectedSubscription).toBe(subscription);
         });
     });
 

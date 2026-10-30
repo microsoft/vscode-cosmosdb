@@ -1666,9 +1666,6 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
     const handleEndpointChange = useCallback(
         (value: string) => {
             dispatch({ type: 'SET_TARGET_ENDPOINT', payload: value });
-            // Persist the endpoint into project.json. `setTargetEnvironment` merges
-            // undefined fields, so resource group / account name / location are not
-            // clobbered when the user edits only the endpoint.
             sendCommand('setTargetEnvironment', state.targetType, value);
         },
         [dispatch, sendCommand, state.targetType],

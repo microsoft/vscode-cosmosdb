@@ -121,6 +121,26 @@ test('preserves literal Bicep interpolation openers in target and modeled databa
     }
 });
 
+test('quotes dash-prefixed database names in Shell resource and seed commands', () => {
+    for (const databaseName of ['-archive', '--archive', '-']) {
+        for (const type of ['azure', 'provision', 'emulator']) {
+            for (const override of [false, true]) {
+                const { model, sampleData, project } = inputs();
+                project.phases.targetEnvironment.type = type;
+                if (override) project.phases.targetEnvironment.databaseName = databaseName;
+                else model.databaseName = databaseName;
+                const script = buildProvisioningArtifacts(model, sampleData, project)['seed-data.csh'];
+                assert(script.includes(`mkitem --database="${databaseName}" --container=$entry.containerName --upsert`));
+                if (type === 'emulator') {
+                    assert(script.includes(`create database "${databaseName}"`));
+                    assert(script.includes(`create container Items /tenantId,/itemId --database="${databaseName}"`));
+                    assert(script.includes(`--database="${databaseName}" --container=Items`));
+                }
+            }
+        }
+    }
+});
+
 test('places shared autoscale on the database and keeps hybrid container capacity independent', () => {
     for (const type of ['azure', 'provision', 'emulator']) {
         const { model, sampleData, project } = inputs();

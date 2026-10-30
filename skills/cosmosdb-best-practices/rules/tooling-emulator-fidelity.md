@@ -7,21 +7,22 @@ tags: tooling, emulator, testing, throughput, indexing, verification
 
 ## Distinguish Emulator Verification from Azure Runtime Parity
 
-Identify the emulator distribution and version, then check its current documented capabilities. Do not apply Linux vNext
-limitations to every emulator or assume that a successful SDK response proves Azure-equivalent behavior.
+Identify the emulator distribution and version, then check its current documented capabilities. For Linux vNext, consult
+the [feature-support table](https://learn.microsoft.com/azure/cosmos-db/emulator-linux#feature-support) and
+[documented limitations](https://learn.microsoft.com/azure/cosmos-db/emulator-linux#limitations).
+Do not apply vNext limitations to every emulator or assume that a successful SDK response proves Azure-equivalent behavior.
 
 - **Configuration is not runtime enforcement.** Linux vNext can retain throughput and index-policy metadata without
   production-equivalent RU accounting, throttling, demand-driven autoscaling, or range/composite index behavior.
   Successful queries, including sorts without the required indexes, do not validate Azure indexing requirements or performance.
-- **Usage statistics may be placeholders.** Linux vNext can return zero document/storage counts despite stored data.
-  Zero counts in resource headers or tool output do not prove
-  that data is absent. Use queries when counts are needed and verify known samples by exact ID and typed partition-key tuple,
-  comparing returned bodies without coercing dates or numeric values.
-- **Missing status is unknown, not success.** An absent offer-replacement header yields SDK `IsReplacePending: null`.
-  For emulator-only configuration verification, accept an explicitly observed null in place of false only when an independent
-  read after the change confirms the intended throughput allocation, mode, and value. Preserve null and report that scale
-  convergence is unverified; do not substitute false or rely only on the change response. A missing observation, failed read,
-  mismatched setting, or explicit pending status still blocks verification. This exception does not relax Azure verification.
+- **Short bursts do not establish throttling behavior.** Azure can temporarily exceed provisioned RU/s when
+  [burst capacity](https://learn.microsoft.com/azure/cosmos-db/burst-capacity) is enabled. A short above-budget run without
+  HTTP 429 responses alone does not prove that enforcement is missing; account for retry behavior and observation duration.
+- **Usage statistics may be placeholders or delayed.** Linux vNext has returned zero document/storage usage despite
+  stored data through both SDK and direct REST reads ([upstream issue #386](https://github.com/Azure/azure-cosmos-db-emulator-docker/issues/386)).
+  Record the build and observation interval rather than claiming that statistics never update. Zero counts alone do not
+  prove absent data or failed seeding. Use queries when counts are needed and verify known samples by exact ID and typed
+  partition-key tuple, comparing returned bodies without coercing dates or numeric values.
 - **Separate client defects from emulator gaps.** Compare an affected tool operation with the equivalent supported SDK
   operation when needed. A tool-only failure calls for a verified workaround, not a weaker data model or assumed emulator limit.
 - **Keep production checks separate.** Local configuration and document round trips do not certify RU budgets, rate-limit

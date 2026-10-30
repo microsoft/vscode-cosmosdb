@@ -253,7 +253,9 @@ export function validateProvisioningVerification(
         addError(errors, '$.verifiedAt', 'must be an ISO date-time string');
     }
     if (report.modelSha256 !== modelSha256(model)) addError(errors, '$.modelSha256', 'does not match canonical model');
-    if (report.databaseName !== model.databaseName) addError(errors, '$.databaseName', 'does not match canonical model');
+    if (report.databaseName !== (project.phases?.targetEnvironment?.databaseName ?? model.databaseName)) {
+        addError(errors, '$.databaseName', 'does not match the configured target database');
+    }
 
     if (checkObject(report.target, '$.target', TARGET_KEYS, errors)) {
         const expectedTarget = project.phases?.targetEnvironment;

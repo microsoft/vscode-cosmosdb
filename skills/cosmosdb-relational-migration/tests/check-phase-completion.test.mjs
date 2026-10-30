@@ -17,6 +17,7 @@ import { buildFreshnessManifest, fileSha256 } from '../scripts/freshness.mjs';
 import { buildProvisioningArtifacts } from '../scripts/generate-provisioning-artifacts.mjs';
 import { mergeCosmosModels } from '../scripts/merge-cosmos-models.mjs';
 import { readPhaseEvidence } from '../scripts/phase-summary.mjs';
+import { readProjectState, setProjectValue, updateProjectState } from '../scripts/project-state.mjs';
 import { modelHash } from '../scripts/validate-conversion-evidence.mjs';
 import {
     canonicalizeCosmosModel,
@@ -141,6 +142,83 @@ function prepareConversionChain(workspace, project, model, language = 'TypeScrip
         canonicalStringify(canonicalizeCosmosModel(model)),
     );
 }
+
+test('retargets provisioning without invalidating accepted upstream phases or changing model artifacts', context => {
+    let project = { version: 1, phases: {
+        targetEnvironment: { type: 'azure', accountName: 'initial-account', endpoint: 'https://initial-account.documents.azure.com/',
+            capacityMode: 'serverless', verified: true, verifiedAt: '2026-10-29T00:00:00.000Z' },
+        provisioning: { status: 'complete', databaseName: 'migration-db', containersCreated: ['Items'],
+            sampleDataInserted: true, completedAt: '2026-10-29T00:00:00.000Z' },
+    } };
+    const workspace = workspaceWithProject(project);
+    context.after(() => fs.rmSync(workspace, { recursive: true, force: true }));
+    const model = provisioningModel();
+    const root = '.cosmosdb-migration/phases';
+    prepareConversionChain(workspace, project, model);
+    const upstreamPhases = ['preflight', 'discovery', 'assessment', 'schema-conversion'];
+    const upstreamFreshness = structuredClone(project.freshness);
+    const upstreamFiles = new Map(Object.values(upstreamFreshness).flatMap(manifest => manifest.outputs)
+        .map(output => [output.path, fileSha256(path.join(workspace, output.path))]));
+    const document = { id: 'item-1', docType: 'item', itemId: '1', tenantId: 'tenant-1', pk: 'tenant-1' };
+    const sampleData = { sampleData: [{ containerName: 'Items', items: [document] }] };
+    write(workspace, `${root}/4-provisioning/sample-data.json`, JSON.stringify(sampleData));
+    const generate = () => {
+        for (const [name, content] of Object.entries(buildProvisioningArtifacts(model, sampleData, project))) {
+            write(workspace, `${root}/4-provisioning/${name}`, content);
+        }
+    };
+    generate();
+    const verification = {
+        version: 1, verifiedAt: '2026-10-29T00:00:00.000Z', modelSha256: modelSha256(model),
+        target: { type: 'azure', accountName: 'initial-account', endpoint: project.phases.targetEnvironment.endpoint },
+        databaseName: model.databaseName,
+        containers: [{ name: 'Items', partitionKeys: ['/pk'], capacityMode: 'serverless',
+            indexingPolicy: { ...model.containers[0].indexingPolicy, indexingMode: 'consistent', automatic: true } }],
+        sampleItems: [{ containerName: 'Items', id: document.id, partitionKeyValues: ['tenant-1'], found: true, document }],
+        failures: [],
+    };
+    verificationSummary(workspace, project, verification);
+    assert.equal(checkPhaseCompletion(workspace, 'provisioning').complete, true);
+    for (const change of [
+        { databaseName: 'alternate-db' },
+        { accountName: 'alternate-account', endpoint: 'https://alternate-account.documents.azure.com/' },
+        { databaseName: 'another-db', accountName: 'another-account', endpoint: 'https://another-account.documents.azure.com/' },
+    ]) {
+        const state = readProjectState(workspace);
+        updateProjectState(workspace, state.revision, current => setProjectValue(current, '/phases/targetEnvironment', change));
+        project = readProjectState(workspace).project;
+        const stale = checkPhaseCompletion(workspace, 'provisioning');
+        assert.equal(stale.complete, false);
+        assert.equal(stale.freshness, 'stale');
+        for (const phase of upstreamPhases) {
+            const completion = checkPhaseCompletion(workspace, phase);
+            assert.equal(completion.complete, true, `${phase}: ${JSON.stringify(completion)}`);
+            assert.equal(completion.freshness, 'current');
+            assert.deepEqual(project.freshness[phase], upstreamFreshness[phase]);
+        }
+        generate();
+        verificationSummary(workspace, project, verification);
+        const oldReadback = checkPhaseCompletion(workspace, 'provisioning');
+        assert.equal(oldReadback.complete, false);
+        assert.equal(oldReadback.artifacts.find(artifact => artifact.description === 'Provisioning verification manifest').state, 'invalid');
+        const target = project.phases.targetEnvironment;
+        verification.target = { type: target.type, accountName: target.accountName, endpoint: target.endpoint };
+        verification.databaseName = target.databaseName;
+        verificationSummary(workspace, project, verification);
+        if (change.databaseName) {
+            const staleMetadata = checkPhaseCompletion(workspace, 'provisioning');
+            assert.equal(staleMetadata.complete, false);
+            assert.equal(staleMetadata.artifacts.find(artifact => artifact.description === 'Provisioned database metadata').state, 'invalid');
+        }
+        project.phases.provisioning.databaseName = target.databaseName;
+        verificationSummary(workspace, project, verification);
+        const complete = checkPhaseCompletion(workspace, 'provisioning');
+        assert.equal(complete.complete, true, JSON.stringify(complete));
+        assert.equal(complete.freshness, 'current');
+        assert.equal(project.name, 'migration-app');
+        for (const [file, hash] of upstreamFiles) assert.equal(fileSha256(path.join(workspace, file)), hash, file);
+    }
+});
 
 test('completes a shared-throughput workflow only with matching allocation and database readback', () => {
     const project = { version: 1, phases: {} };

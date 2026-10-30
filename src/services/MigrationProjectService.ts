@@ -98,6 +98,7 @@ export interface ProjectJson {
             type: 'emulator' | 'azure' | 'provision';
             endpoint?: string;
             accountName?: string;
+            databaseName?: string;
             tenantId?: string;
             resourceGroup?: string;
             location?: string;

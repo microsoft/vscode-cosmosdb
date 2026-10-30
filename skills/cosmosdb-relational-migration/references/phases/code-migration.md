@@ -72,6 +72,15 @@ Access-pattern mappings and cross-partition recommendations are intentionally
 stored in the phase/domain summaries rather than canonical model JSON. Read those summaries;
 do not assume the mappings exist in `model.json`.
 
+Resolve runtime account/endpoint and database configuration from `project.json`'s
+`phases.targetEnvironment`, using its `databaseName` when present and the modeled
+database name only as a default. Never derive the deployed database from the project
+name or use an old `phases.provisioning.databaseName` after a target switch. Follow
+[provisioning target selection](./provisioning.md#target-names-and-existing-data);
+container names and document contracts still come from the accepted model. Artifact-only
+targets are configuration choices, not verified live resources. Recheck target-dependent
+configuration and tests when the target changes without regenerating upstream analysis.
+
 ## Procedure
 
 Derive the action only from the current request prompt. If it asks to create or update

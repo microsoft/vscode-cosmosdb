@@ -34,6 +34,48 @@ For `emulator`, resolve only the emulator endpoint; do not enumerate Azure accou
 If no type is selected, ask for the target type before account discovery. A status-only
 summary is not evidence that target configuration is absent.
 
+## Target Names and Existing Data
+
+Project and model names are not deployment constraints. The project `name` identifies
+the migration, and canonical `model.databaseName` is only the default database name.
+Use `phases.targetEnvironment.accountName` and `phases.targetEnvironment.databaseName`
+in `project.json` for the approved deployment target. Persist the selected database
+name before generating artifacts, even when it equals the model default. Container names,
+ordered partition keys, document mappings, and policies inside that database remain
+authoritative model requirements.
+
+A different account or database name is a provisioning decision, not a schema change.
+Do not rename the project, edit domain/root models or the conversion manifest, or rerun
+preflight, discovery, assessment, or schema conversion solely to change deployment names.
+Keep their accepted artifacts and freshness unchanged. Generate Bicep, parameters, and
+the seed script from the saved target; do not hand-edit generated files to redirect them.
+
+Before mutation, inspect the selected database and every modeled container, including
+whether existing data belongs to this migration. If the default database contains
+unrelated data or incompatible containers, preserve it and offer a distinct database
+name in the selected account, or an approved compatible account. An approved alternate
+database keeps the same modeled container names. Do not delete, recreate, rename, copy,
+or seed over unrelated resources or data. Reuse an existing database only after confirming
+its intended scope, compatible configuration, and sample-key safety. Failed or denied
+reads are unresolved, not evidence that a name is available.
+
+Obtain approval for the concrete alternate target and its effects before switching;
+current-request approval need not be requested again. Then continue provisioning within
+the requested scope and its `allow-provisioning` gate, without asking for upstream renames.
+On an account change, set `verified: false` and resolve its endpoint, subscription,
+resource group, location, capacity, and access anew; never use the old account's endpoint
+or observations as evidence. For an approved absent new account, an empty endpoint is
+appropriate only after the account lookup required by
+[Account Creation and Adoption](#account-creation-and-adoption), not to force creation
+of an existing account.
+
+After any account or database change, leave provisioning `in-progress`, regenerate its
+target-dependent artifacts, and repeat target/resource/sample verification before recording
+new provisioning freshness. Prior completion metadata and readback are historical, not
+proof for the new target. Reuse validated synthetic sample data when the model is unchanged.
+Record the decision and preserved resources in the existing provisioning summary. Only
+an actual model-design incompatibility requires revisiting schema conversion.
+
 ## Feasibility Handoff
 
 Before authorized mutations, reconcile the schema-conversion summaries' feasibility
@@ -138,7 +180,7 @@ uses a name-only Bicep `existing` account reference. Missing target intent and
 emulator targets also default to an existing reference; emulator execution uses
 the seed script, not an Azure deployment. Do not clear an endpoint to force creation.
 
-The adoption template manages only the modeled database and containers. It does not emit account
+The adoption template manages only the selected database and modeled containers. It does not emit account
 properties, a location parameter, or automatic account-wide role assignments.
 Preserve authentication, regions, failover, zone redundancy, consistency, capabilities,
 networking, backup settings, and existing access grants. Check the observed capacity
@@ -392,8 +434,9 @@ Only emulator scripts without shared throughput, container-level full-text, or u
 include resource operations. They reuse configured names, apply `index set` after
 create-if-missing, and use `--scale=auto --ru=<maxThroughput>` plus
 `throughput autoscale` for provisioned capacity. Review changes and immutable settings
-first. On a mismatch, stop for resolution; never delete/recreate containers, silently
-rename them, or run an emulator resource script against Azure.
+first. On a mismatch, resolve the target using
+[Target Names and Existing Data](#target-names-and-existing-data);
+never delete/recreate containers, silently rename them, or run an emulator resource script against Azure.
 
 Check every modeled container name and its immutable settings before the first
 mutation, not incrementally during execution. Treat failed lookups as unresolved,
@@ -403,8 +446,10 @@ Emulator models containing `fullTextPolicy` or `uniqueKeyPolicy` also use seed-o
 scripts. Provision and verify those containers through a supported SDK first;
 Shell's `--index_policy` cannot configure these container-level policies.
 For unique keys, compare every existing container's policy before mutation. Policies
-are creation-only; a mismatch requires an approved new-container and data-migration
-plan, never an in-place update or automatic deletion/recreation. Check full-text
+are creation-only; a mismatch can be avoided with an approved fresh database using the
+modeled container names. Replacing an existing container instead requires a separate
+approved new-container and data-migration plan, never an in-place update or automatic
+deletion/recreation. Check full-text
 support, including any language/array-path preview features,
 using the current [full-text documentation](https://learn.microsoft.com/en-us/azure/cosmos-db/gen-ai/full-text-search).
 If no supported provisioning route exists (including on an emulator), stop; do not
@@ -472,8 +517,11 @@ contract passes.
 6. Record warnings for partial sample insertion; do not claim complete success.
 
 Set provisioning status to `complete` only after resource verification. Persist
-database name, created containers, sample-data status, and `completedAt` in the
-existing version 1 fields.
+the actual account in `phases.targetEnvironment.accountName` for Azure targets and the
+selected database in `phases.targetEnvironment.databaseName`. Record the verified database
+name in `phases.provisioning.databaseName`, with created containers, sample-data status,
+and `completedAt` in the existing version 1 fields. The selected and verified database
+names must agree; neither needs to equal the project or modeled name.
 
 Record `verification` in the provisioning `manifest.json` after observing
 the target. After generated deployment inputs and the summary are final, record
@@ -489,7 +537,11 @@ node <skill-root>/scripts/validate-provisioning-verification.mjs \
    <workspace>/.cosmosdb-migration/phases/4-provisioning/manifest.json
 ```
 
-Set `modelSha256` to SHA-256 of canonical `model.json`. Record every observed
+Set `modelSha256` to SHA-256 of unchanged canonical `model.json`. Record the observed
+database name in `verification.databaseName`, matching the saved target database
+(or the model default when no override is saved), and the actual account/endpoint in
+`verification.target`. Readback from a previous target must not pass verification.
+Record every observed
 container's ordered partition keys, indexing policy, full-text and unique-key policies when present,
 capacity settings, and one point-read result for every expected sample key, including
 the returned document content. Keep failures structured as

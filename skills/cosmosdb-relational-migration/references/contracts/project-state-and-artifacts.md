@@ -224,7 +224,9 @@ Treat project updates as merge operations over the current file:
   `fallbackReason: "unsupported-dialect" | "unavailable"`. Omit both fallback fields
   for direct choices. Update it only for a new decision or fallback; a saved opt-out
   and effective fallback survive resume and unattended runs.
-- Preserve target-environment values and verification state.
+- Preserve target-environment values and verification state on unrelated saves. An
+  approved target change follows [provisioning target selection](../phases/provisioning.md#target-names-and-existing-data)
+  and requires new verification, not reuse of the previous target's observations.
 - Never reconstruct the whole document from an example schema.
 - Use the helper for updates, not a model-authored replacement document. Updates are
   validated and atomic, and succeed only when the expected revision still matches.
@@ -245,6 +247,16 @@ Keep defined fields in their exact types and value sets:
 - Run counts: non-negative integers.
 - Instruction, timestamp, identity, target, and source-path values: strings.
 - Include, exclude, domain-name, container-name, and artifact-path lists: string arrays.
+
+`phases.targetEnvironment.accountName` and optional `databaseName` select deployment
+coordinates independently of project `name` and canonical `model.databaseName`.
+The target database defaults to the modeled name when omitted; when present it must
+be a non-empty Cosmos DB resource name of at most 255 UTF-8 bytes, without `/`, `\`,
+`?`, `#`, or trailing spaces. Provisioning persists the selected name here before
+generation and its verified result in `phases.provisioning.databaseName`. Do not use
+previous provisioning results to override a newly selected target. A target-only
+change makes provisioning evidence stale, not discovery, assessment, or schema conversion;
+follow [Target Names and Existing Data](../phases/provisioning.md#target-names-and-existing-data).
 
 Assessment domains must use this version 1 shape; do not persist a shortened domain object:
 

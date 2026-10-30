@@ -826,7 +826,8 @@ function collectPhaseArtifacts(workspace, phase, project, checkSourcePaths, cach
             '.cosmosdb-migration/project.json#phases.provisioning.databaseName',
             'Provisioned database metadata',
             provisioning?.databaseName !== undefined,
-            typeof provisioning?.databaseName === 'string' && provisioning.databaseName === model?.databaseName,
+            typeof provisioning?.databaseName === 'string' &&
+                provisioning.databaseName === (target?.databaseName ?? model?.databaseName),
         );
         const expectedContainers = validModel ? model.containers.map((container) => container.name).sort() : undefined;
         const actualContainers = Array.isArray(provisioning?.containersCreated)

@@ -112,6 +112,26 @@ test('does not coerce invalid values or required fields during compatibility nor
     assert.equal(result.project.phases.assessment.parsedAccessPatterns[0].filterFields, 'CustomerID');
 });
 
+test('validates optional deployment database names independently of project and completed provisioning names', () => {
+    const project = compatibleProject();
+    for (const type of ['emulator', 'azure', 'provision']) {
+        for (const databaseName of ['alternate-db', 'name with spaces', 'x'.repeat(255), '\u00e9'.repeat(127)]) {
+            project.phases.targetEnvironment = { type, databaseName };
+            assert.deepEqual(validateMigrationProject(project), []);
+        }
+    }
+    for (const databaseName of [null, 42, false, {}, [], '', ' ', 'db/', 'db\\', 'db?', 'db#', 'db ',
+        'x'.repeat(256), '\u00e9'.repeat(128)]) {
+        project.phases.targetEnvironment = { type: 'azure', databaseName };
+        assert(validateMigrationProject(project).some(error => error.path === '$.phases.targetEnvironment.databaseName'),
+            JSON.stringify(databaseName));
+    }
+    delete project.phases.targetEnvironment.databaseName;
+    assert.deepEqual(validateMigrationProject(project), []);
+    assert.equal(project.name, 'migration-app');
+    assert.equal(project.phases.provisioning.databaseName, 'migration-db');
+});
+
 test('validates optional target capacity without changing the model decision', () => {
     const project = compatibleProject();
     for (const capacityMode of ['provisioned', 'serverless']) {

@@ -63,7 +63,7 @@
   "cosmosdb.configuration.confirmation.style.word.description": "提示輸入方塊，供您輸入資源名稱以確認刪除。",
   "cosmosdb.configuration.document.label.fields": "在 Cosmos DB 和 MongoDB 文件的樹狀檢視中，依優先順序顯示為標籤的欄位值",
   "cosmosdb.configuration.emulator.port": "連線至 CosmosDB Emulator 執行個體時使用的連接埠",
-  "cosmosdb.configuration.connection.timeout": "Connection timeout for attached Cosmos DB accounts, in seconds.",
+  "cosmosdb.configuration.connection.timeout": "已連結 Cosmos DB 帳戶的連線逾時，以秒為單位。",
   "cosmosdb.configuration.endpoint.discovery": "啟用/停用根據讀取/寫入作業時自動重新導向要求的旗標。",
   "cosmosdb.configuration.oauth.enable": "連線至 Cosmos DB NoSQL 帳戶時，一律使用 Entra ID RBAC 進行驗證。[啟用 RBAC 並指派角色](https://aka.ms/cosmos-native-rbac)。",
   "cosmosdb.configuration.operation.summaries": "顯示詳細的作業摘要，顯示如資料庫刪除、文件新增、刪除或類似事件的動作之訊息。",
@@ -84,14 +84,14 @@
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "使用使用者指派的受控識別驗證 Entra ID 時，所使用的受控識別的用戶端識別碼。",
   "cosmosdb.configuration.manage-llm-assets": "管理 LLM 資產。允許延伸模組持續更新 LLM 相關檔案。",
   "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "啟用後，結構描述產生也會考慮查詢結果，以推斷容器結構描述。",
-  "cosmosdb.configuration.accountOverview.title": "Account Overview",
+  "cosmosdb.configuration.accountOverview.title": "帳戶概觀",
   "cosmosdb.configuration.accountOverview.health.criticalRuPercent": "帳戶概觀: 尖峰標準化 RU 使用量 (%)，當達到或超過此閥值時，系統會將容器標幟為「危急」。",
   "cosmosdb.configuration.accountOverview.health.warningRuPercent": "帳戶概觀: 尖峰標準化 RU 使用量 (%)，當達到或超過此閥值時，系統會將容器標幟為「需要注意」。",
   "cosmosdb.configuration.accountOverview.partition.topN": "帳戶概觀: 要列入資料分割索引鍵分佈健康情況排名清單中的實體分割區數目。",
-  "cosmosdb.configuration.accountOverview.health.partitionSaturationPercent": "Account Overview Partition Health: per-physical-partition p99 normalized RU consumption (%) at or above which a partition counts as saturated. A saturated partition is flagged as hot only when another partition still has headroom. Does not change Derived Advisories.",
-  "cosmosdb.configuration.accountOverview.health.partitionHeadroomPercent": "Account Overview Partition Health: per-physical-partition p99 normalized RU consumption (%) below which a partition still has headroom. A saturated busiest partition alongside a cooler one is flagged as hot. Does not change Derived Advisories.",
-  "cosmosdb.configuration.accountOverview.health.storageSkewBalanceRatio": "Account Overview Partition Health: balance ratio (coolest physical-partition size divided by this partition's size) below which a partition of at least 1 GiB is flagged as storage-skewed. 1.0 is perfectly balanced. Does not change Derived Advisories.",
+  "cosmosdb.configuration.accountOverview.health.partitionSaturationPercent": "帳戶概觀磁碟分割健康情況: 每個實體分割區的 p99 標準化 RU 使用量 (%) 等於或高於此值時，該分割區就視為已飽和。只有在另一個磁碟分割仍有空餘空間時，才將飽和的磁碟分割標示為經常性存取。不會變更衍生建議。",
+  "cosmosdb.configuration.accountOverview.health.partitionHeadroomPercent": "帳戶概觀選擇區健康情況: 每個實體分割區的 p99 標準化 RU 使用量 (%) 低於此值時，該分割區仍有餘裕。較不常存取的磁碟分割旁邊的飽和且最忙碌的磁碟分割已標記為經常性存取。不會變更衍生建議。",
+  "cosmosdb.configuration.accountOverview.health.storageSkewBalanceRatio": "帳戶概觀磁碟分割健康情況: 平衡比率 (最不常存取的實體磁碟分割大小除以此磁碟分割的大小)，低於此比率時，至少 1 GiB 的磁碟分割會標記為儲存體偏斜。1.0 處於完美平衡狀態。不會變更衍生建議。",
   "cosmosdb.configuration.quickStart.enabled": "啟用後，快速入門提示會在主要或次要延伸模組更新後顯示在查詢編輯器中。若要完全關閉快速入門提示，包括重播按鈕，請停用此設定。",
   "cosmosdb.configuration.experimental.migration.enabled": "(實驗性) 啟用 Cosmos DB 移轉 (預覽) 功能。停用時，系統會隱藏 Cosmos DB 移轉節點及其命令。",
-  "cosmosdb.configuration.experimental.dataModeler.enabled": "(Experimental) Enable the Data Modeler wizard. When disabled, its Command Palette entry and Account Overview promotion are hidden."
+  "cosmosdb.configuration.experimental.dataModeler.enabled": "(實驗性) 啟用資料建模工具精靈。停用時，其命令選擇區項目與帳戶概觀升階會隱藏。"
 }

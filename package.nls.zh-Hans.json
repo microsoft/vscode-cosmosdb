@@ -63,7 +63,7 @@
   "cosmosdb.configuration.confirmation.style.word.description": "弹出输入框，需输入资源名称以确认删除。",
   "cosmosdb.configuration.document.label.fields": "在 Cosmos DB 和 MongoDB 文档的树视图中显示为标签的字段值(按优先级顺序)",
   "cosmosdb.configuration.emulator.port": "连接到 CosmosDB 模拟器实例时使用的端口",
-  "cosmosdb.configuration.connection.timeout": "Connection timeout for attached Cosmos DB accounts, in seconds.",
+  "cosmosdb.configuration.connection.timeout": "附加 Cosmos DB 帐户的连接超时时间(秒)。",
   "cosmosdb.configuration.endpoint.discovery": "用于启用/禁用基于读/写操作自动重定向请求的标志。",
   "cosmosdb.configuration.oauth.enable": "连接到 Cosmos DB NoSQL 帐户时，始终使用 Entra ID RBAC 进行身份验证。[启用 RBAC 并分配角色](https://aka.ms/cosmos-native-rbac)。",
   "cosmosdb.configuration.operation.summaries": "显示详细的操作摘要，展示数据库删除、文档添加、删除或类似事件的消息。",
@@ -84,14 +84,14 @@
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "使用用户分配的托管标识向 Entra ID 进行身份验证时要使用的托管标识的客户端 ID。",
   "cosmosdb.configuration.manage-llm-assets": "管理 LLM 资产。允许扩展保持 LLM 相关文件更新。",
   "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "启用后，架构生成还会考虑查询结果来推断容器架构。",
-  "cosmosdb.configuration.accountOverview.title": "Account Overview",
+  "cosmosdb.configuration.accountOverview.title": "帐户概览",
   "cosmosdb.configuration.accountOverview.health.criticalRuPercent": "帐户概述: 峰值规范化 RU 消耗(%)，达到或超出该值后将容器标记为“严重”。",
   "cosmosdb.configuration.accountOverview.health.warningRuPercent": "帐户概述: 峰值规范化 RU 消耗(T%)，达到或超出该值后将容器标记为“需要注意”。",
   "cosmosdb.configuration.accountOverview.partition.topN": "帐户概述: 要在分区键分布运行状况排名列表中列出的物理分区数。",
-  "cosmosdb.configuration.accountOverview.health.partitionSaturationPercent": "Account Overview Partition Health: per-physical-partition p99 normalized RU consumption (%) at or above which a partition counts as saturated. A saturated partition is flagged as hot only when another partition still has headroom. Does not change Derived Advisories.",
-  "cosmosdb.configuration.accountOverview.health.partitionHeadroomPercent": "Account Overview Partition Health: per-physical-partition p99 normalized RU consumption (%) below which a partition still has headroom. A saturated busiest partition alongside a cooler one is flagged as hot. Does not change Derived Advisories.",
-  "cosmosdb.configuration.accountOverview.health.storageSkewBalanceRatio": "Account Overview Partition Health: balance ratio (coolest physical-partition size divided by this partition's size) below which a partition of at least 1 GiB is flagged as storage-skewed. 1.0 is perfectly balanced. Does not change Derived Advisories.",
+  "cosmosdb.configuration.accountOverview.health.partitionSaturationPercent": "帐户概述分区运行状况: 每物理分区 p99 规范化 RU 消耗(%)，达到或超过该值时，分区将被视为已饱和。仅当另一个分区仍有空余空间时，才会将饱和分区标记为热分区。不会更改派生建议。",
+  "cosmosdb.configuration.accountOverview.health.partitionHeadroomPercent": "帐户概述分区运行状况: 每物理分区 p99 规范化 RU 消耗(%)，低于该值时，分区仍有空余空间。如果最繁忙的分区已饱和，而另一个分区负载较低时，会被标记为热分区。不会更改派生建议。",
+  "cosmosdb.configuration.accountOverview.health.storageSkewBalanceRatio": "帐户概述分区运行状况: 平衡比率(最冷物理分区的大小除以该分区大小)，低于该值时，会将大小至少为 1 GiB 的分区标记为存储倾斜。1.0 表示完全均衡。不会更改派生建议。",
   "cosmosdb.configuration.quickStart.enabled": "启用后，快速入门提示会在主要或次要扩展更新后显示在“查询编辑器”中。禁用此功能可完全关闭快速入门提示，包括重播按钮。",
   "cosmosdb.configuration.experimental.migration.enabled": "(实验性)启用 Cosmos DB 迁移(预览)功能。禁用时，将隐藏 Cosmos DB 迁移节点及其命令。",
-  "cosmosdb.configuration.experimental.dataModeler.enabled": "(Experimental) Enable the Data Modeler wizard. When disabled, its Command Palette entry and Account Overview promotion are hidden."
+  "cosmosdb.configuration.experimental.dataModeler.enabled": "(实验性)启用数据建模器向导。禁用时，其命令面板入口和帐户概述推广内容会被隐藏。"
 }

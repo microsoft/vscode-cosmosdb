@@ -63,7 +63,7 @@
   "cosmosdb.configuration.confirmation.style.word.description": "Wyświetla pole wprowadzania, w którym należy wprowadzić nazwę zasobu, aby potwierdzić usunięcie.",
   "cosmosdb.configuration.document.label.fields": "Wartości pól do wyświetlenia jako etykiety w widoku drzewa dla dokumentów usług Cosmos DB i MongoDB, w kolejności priorytetów",
   "cosmosdb.configuration.emulator.port": "Port do użycia podczas łączenia się z wystąpieniem emulatora CosmosDB",
-  "cosmosdb.configuration.connection.timeout": "Connection timeout for attached Cosmos DB accounts, in seconds.",
+  "cosmosdb.configuration.connection.timeout": "Limit czasu połączenia dla dołączonych kont usługi Cosmos DB w sekundach.",
   "cosmosdb.configuration.endpoint.discovery": "Flaga umożliwiająca włączenie/wyłączenie automatycznego przekierowywania żądań na podstawie operacji odczytu/zapisu.",
   "cosmosdb.configuration.oauth.enable": "Łącząc się z kontami Cosmos DB NoSQL, zawsze uwierzytelniaj się przy użyciu kontroli dostępu na podstawie ról dla usługi Entra ID. [Włącz kontrolę dostępu na podstawie ról i przypisz role](https://aka.ms/cosmos-native-rbac).",
   "cosmosdb.configuration.operation.summaries": "Pokaż szczegółowe podsumowania operacji, wyświetlając komunikaty o działaniach, takich jak usuwanie bazy danych, dodawanie lub usuwanie dokumentów oraz podobne zdarzenia.",
@@ -84,14 +84,14 @@
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "Identyfikator klienta tożsamości zarządzanej, który należy wykorzystać podczas uwierzytelniania w usłudze Entra ID przy użyciu tożsamości zarządzanej przypisanej przez użytkownika.",
   "cosmosdb.configuration.manage-llm-assets": "Zarządzaj zasobami modelu LLM. Zezwalaj rozszerzeniu na aktualizowanie plików związanych z modelem LLM.",
   "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "Po włączeniu generowanie schematu uwzględnia również wyniki zapytania w celu wywnioskowania schematu kontenera.",
-  "cosmosdb.configuration.accountOverview.title": "Account Overview",
+  "cosmosdb.configuration.accountOverview.title": "Przegląd konta",
   "cosmosdb.configuration.accountOverview.health.criticalRuPercent": "Omówienie konta: szczytowe znormalizowane użycie jednostek RU (w %), na poziomie którego kontener jest oflagowywany jako Krytyczny.",
   "cosmosdb.configuration.accountOverview.health.warningRuPercent": "Omówienie konta: szczytowe znormalizowane użycie jednostek RU (w %), na poziomie którego lub powyżej kontener jest oflagowywany jako Wymaga uwagi.",
   "cosmosdb.configuration.accountOverview.partition.topN": "Omówienie konta: liczba partycji fizycznych do wyświetlenia na liście sklasyfikowanej kondycji dystrybucji kluczy partycji.",
-  "cosmosdb.configuration.accountOverview.health.partitionSaturationPercent": "Account Overview Partition Health: per-physical-partition p99 normalized RU consumption (%) at or above which a partition counts as saturated. A saturated partition is flagged as hot only when another partition still has headroom. Does not change Derived Advisories.",
-  "cosmosdb.configuration.accountOverview.health.partitionHeadroomPercent": "Account Overview Partition Health: per-physical-partition p99 normalized RU consumption (%) below which a partition still has headroom. A saturated busiest partition alongside a cooler one is flagged as hot. Does not change Derived Advisories.",
-  "cosmosdb.configuration.accountOverview.health.storageSkewBalanceRatio": "Account Overview Partition Health: balance ratio (coolest physical-partition size divided by this partition's size) below which a partition of at least 1 GiB is flagged as storage-skewed. 1.0 is perfectly balanced. Does not change Derived Advisories.",
+  "cosmosdb.configuration.accountOverview.health.partitionSaturationPercent": "Kondycja partycji Przegląd konta: znormalizowane zużycie jednostek RU dla p99 na partycję fizyczną (%), przy którym lub powyżej którego partycja jest uznawana za nasyconą. Partycja nasycona jest oflagowana jako gorąca tylko wtedy, gdy inna partycja nadal ma przestrzeń. Nie zmienia ostrzeżeń pochodnych.",
+  "cosmosdb.configuration.accountOverview.health.partitionHeadroomPercent": "Kondycja partycji Omówienie konta: znormalizowane zużycie jednostek RU dla p99 na partycję fizyczną (%), poniżej którego partycja nadal ma dużą przestrzeń. Nasycona partycja o największym nasyceniu obok chłodniejszej partycji jest oflagowana jako gorąca. Nie zmienia ostrzeżeń pochodnych.",
+  "cosmosdb.configuration.accountOverview.health.storageSkewBalanceRatio": "Kondycja partycji Przegląd kondycji: współczynnik równowagi (rozmiar najchłodniejszej partycji fizycznej podzielony przez rozmiar tej partycji), poniżej którego partycja o rozmiarze co najmniej 1 GiB jest oflagowana jako magazyn niesymetryczny. 1.0 jest idealnie zrównoważone. Nie zmienia ostrzeżeń pochodnych.",
   "cosmosdb.configuration.quickStart.enabled": "Po włączeniu porady Szybki start są wyświetlane w Edytorze Power Query po większej lub mniejszej aktualizacji rozszerzenia. Wyłącz to, aby całkowicie wyłączyć porady Szybki start, w tym przycisk powtórzenia.",
   "cosmosdb.configuration.experimental.migration.enabled": "(Eksperymentalne) Włącz funkcję Migracja usługi Cosmos DB (wersja zapoznawcza). Gdy ta funkcja jest wyłączona, węzeł Migracje usługi Cosmos DB i jego polecenia są ukryte.",
-  "cosmosdb.configuration.experimental.dataModeler.enabled": "(Experimental) Enable the Data Modeler wizard. When disabled, its Command Palette entry and Account Overview promotion are hidden."
+  "cosmosdb.configuration.experimental.dataModeler.enabled": "(Eksperymentalne) Włącz kreatora modelowania danych. Po wyłączeniu wpis palety poleceń i promocja Przegląd konta są ukryte."
 }

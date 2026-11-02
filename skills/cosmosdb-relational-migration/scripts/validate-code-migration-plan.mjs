@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { validateCompatibilityReport } from './check-sdk-compatibility.mjs';
 import { requireOptionValue } from './cli-arguments.mjs';
 import { showHelp } from './cli-help.mjs';
-import { readSdkCompatibility } from './phase-summary.mjs';
+import { parseJson, readSdkCompatibility } from './phase-summary.mjs';
 import { validateMigrationProject } from './validate-migration-project.mjs';
 
 const REQUIRED_SECTIONS = {
@@ -370,11 +370,11 @@ Checks declared coverage and result consistency, not command names, execution, o
             );
             return 1;
         }
-        const project = JSON.parse(fs.readFileSync(projectPath, 'utf8'));
+        const project = parseJson(fs.readFileSync(projectPath, 'utf8'));
         const modelPath = path.join(workspace, '.cosmosdb-migration', 'phases', '3-schema-conversion', 'model.json');
         const modelContent = fs.readFileSync(modelPath, 'utf8');
         const { sdkReport, sdkReportContent } = readSdkCompatibility(sdkReportPath);
-        const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+        const manifest = parseJson(fs.readFileSync(manifestPath, 'utf8'));
         const markdown = fs.readFileSync(planPath, 'utf8');
         const errors = validateCodeMigrationPlan(markdown, manifest, {
             workspace,

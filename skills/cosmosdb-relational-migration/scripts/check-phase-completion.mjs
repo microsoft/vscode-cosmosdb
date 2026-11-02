@@ -11,7 +11,7 @@ import { validateFreshnessManifest } from './freshness.mjs';
 import { buildProvisioningArtifacts } from './generate-provisioning-artifacts.mjs';
 import { readIdentityManifest, validateIdentityManifest } from './identity-mapping.mjs';
 import { normalizePhaseName } from './phase-names.mjs';
-import { readDomainModel, readPhaseEvidence, readSdkCompatibility, validateSummary as validateMarkdownSummary } from './phase-summary.mjs';
+import { parseJson, readDomainModel, readPhaseEvidence, readSdkCompatibility, validateSummary as validateMarkdownSummary } from './phase-summary.mjs';
 import { validateCodeMigrationRecord } from './validate-code-migration-plan.mjs';
 import { validateConversionEvidence } from './validate-conversion-evidence.mjs';
 import {
@@ -45,7 +45,7 @@ function nonEmpty(filePath) {
 
 function readJson(filePath) {
     try {
-        return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        return parseJson(fs.readFileSync(filePath, 'utf8'));
     } catch {
         return undefined;
     }
@@ -902,7 +902,7 @@ function collectPhaseArtifacts(workspace, phase, project, checkSourcePaths, cach
                 (filePath) =>
                     validateCodeMigrationRecord(
                         fs.readFileSync(filePath, 'utf8'),
-                        JSON.parse(fs.readFileSync(manifestPath, 'utf8')),
+                        parseJson(fs.readFileSync(manifestPath, 'utf8')),
                         { workspace, project },
                     ),
             );

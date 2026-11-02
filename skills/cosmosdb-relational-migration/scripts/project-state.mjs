@@ -7,6 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { requireOptionValue } from './cli-arguments.mjs';
 import { showHelp } from './cli-help.mjs';
+import { parseJson } from './phase-summary.mjs';
 import { normalizeMigrationProjectCompatibility, validateMigrationProject } from './validate-migration-project.mjs';
 
 const MAX_OUTPUT_BYTES = 16384;
@@ -28,7 +29,7 @@ function readContent(projectPath) {
 export function readProjectState(workspace) {
     const projectPath = path.join(workspace, '.cosmosdb-migration/project.json');
     const content = readContent(projectPath);
-    const { project, changes } = normalizeMigrationProjectCompatibility(content === undefined ? undefined : JSON.parse(content));
+    const { project, changes } = normalizeMigrationProjectCompatibility(content === undefined ? undefined : parseJson(content));
     return { projectPath, revision: revision(content), project, ...(changes.length ? { compatibilityChanges: changes } : {}) };
 }
 

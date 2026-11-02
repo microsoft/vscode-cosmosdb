@@ -22,6 +22,7 @@ import { attachTrpc } from '@microsoft/vscode-ext-webview/host';
 import * as l10n from '@vscode/l10n';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { parseJson } from '../../skills/cosmosdb-relational-migration/scripts/phase-summary.mjs';
 import { isMigrationFeatureEnabled } from '../commands/migration/migrationFeatureFlag';
 import { getThemedIconPath } from '../constants';
 import { getCosmosDBEntraIdCredential } from '../cosmosdb/CosmosDBCredential';
@@ -576,7 +577,7 @@ export class MigrationAssistantTab extends BaseTab {
                         const raw = Buffer.from(
                             await vscode.workspace.fs.readFile(vscode.Uri.file(modelPath)),
                         ).toString('utf-8');
-                        const model = JSON.parse(raw) as { containers: { entities: unknown[] }[] };
+                        const model = parseJson(raw) as { containers: { entities: unknown[] }[] };
                         containers = model.containers.length;
                         entities = model.containers.reduce((sum, c) => sum + c.entities.length, 0);
                     } catch {

@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { showHelp } from './cli-help.mjs';
+import { parseJson } from './phase-summary.mjs';
 import { validateMigrationProject } from './validate-migration-project.mjs';
 
 function compareNames(left, right) {
@@ -69,7 +70,7 @@ Exit: 0 on success; 1 for invalid project state, missing assessment, or no quali
     }
 
     try {
-        const project = JSON.parse(fs.readFileSync(path.resolve(positional[0]), 'utf8'));
+        const project = parseJson(fs.readFileSync(path.resolve(positional[0]), 'utf8'));
         process.stdout.write(`${JSON.stringify(selectSchemaConversionDomains(project, includeUnmappedDomains), null, 2)}\n`);
         return 0;
     } catch (error) {

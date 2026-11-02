@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { requireOptionValue } from './cli-arguments.mjs';
 import { showHelp } from './cli-help.mjs';
-import { readDomainModel, readPhaseEvidence } from './phase-summary.mjs';
+import { parseJson, readDomainModel, readPhaseEvidence } from './phase-summary.mjs';
 import { reconcileCapacity, reconcileDatabasePool } from './reconcile-capacity.mjs';
 import {
     canonicalFullTextPolicy,
@@ -283,11 +283,11 @@ Exit: 0 after writing a valid model; 1 for validation, merge, or I/O failures.
         const args = parseArguments(argv);
         const domainModels = args.inputs.map(({ domainName, filePath }) => ({
             domainName,
-            model: path.basename(filePath) === 'manifest.json' ? readDomainModel(filePath) : JSON.parse(fs.readFileSync(filePath, 'utf8')),
+            model: path.basename(filePath) === 'manifest.json' ? readDomainModel(filePath) : parseJson(fs.readFileSync(filePath, 'utf8')),
         }));
         const manifest = args.manifestPath ? readPhaseEvidence(args.manifestPath) : undefined;
         if (manifest && (manifest.databaseName !== args.databaseName || manifest.capacityMode !== args.capacityMode)) throw new Error('Merge settings differ from the phase manifest');
-        const result = mergeCosmosModels(domainModels, { ...args, capacityEvidence: manifest?.capacityEvidence ?? (args.capacityPath ? JSON.parse(fs.readFileSync(args.capacityPath, 'utf8')) : undefined) });
+        const result = mergeCosmosModels(domainModels, { ...args, capacityEvidence: manifest?.capacityEvidence ?? (args.capacityPath ? parseJson(fs.readFileSync(args.capacityPath, 'utf8')) : undefined) });
         const diagnostics = result.warnings?.length ? { warnings: result.warnings } : {};
         if (!result.model) {
             const report = { valid: false, errors: result.errors, conflicts: result.conflicts, ...diagnostics };

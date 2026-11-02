@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { showHelp } from './cli-help.mjs';
-import { readJsonObject } from './phase-summary.mjs';
+import { parseJson, readJsonObject } from './phase-summary.mjs';
 import {
     canonicalStringify,
     canonicalizeCosmosModel,
@@ -133,14 +133,14 @@ Exit: 0 when resolved; 1 for unknown entities, invalid mappings, missing values,
     try {
         if (argv.length !== 4) throw new Error('Usage: identity-mapping.mjs <model.json> <container> <docType> <item.json>');
         const [modelPath, containerName, docType, itemPath] = argv;
-        const model = JSON.parse(fs.readFileSync(modelPath, 'utf8'));
+        const model = parseJson(fs.readFileSync(modelPath, 'utf8'));
         const manifest = readIdentityManifest(modelPath);
         const errors = validateIdentityManifest(model, manifest);
         if (errors.length) throw new Error(JSON.stringify(errors));
         const entity = model.containers.find(container => container.name === containerName)?.entities.find(value => value.docType === docType && value.isEmbeddedOnly !== true);
         if (!entity) throw new Error('Unknown standalone entity');
         const mapping = manifest?.mappings.find(value => value.containerName === containerName && value.docType === docType);
-        const id = resolveItemId(entity, JSON.parse(fs.readFileSync(itemPath, 'utf8')), mapping);
+        const id = resolveItemId(entity, parseJson(fs.readFileSync(itemPath, 'utf8')), mapping);
         process.stdout.write(`${JSON.stringify({ id })}\n`);
         return 0;
     } catch (error) { process.stderr.write(`${error.message}\n`); return 1; }

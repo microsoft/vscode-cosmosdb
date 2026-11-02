@@ -7,6 +7,7 @@ import * as l10n from '@vscode/l10n';
 import { createHash } from 'node:crypto';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { parseJson } from '../../skills/cosmosdb-relational-migration/scripts/phase-summary.mjs';
 import {
     readProjectState,
     updateProjectState,
@@ -255,7 +256,7 @@ export class MigrationProjectService {
         try {
             const data = await vscode.workspace.fs.readFile(MigrationProjectService.toUri(this.projectFilePath));
             this.projectRevision = createHash('sha256').update(data).digest('hex');
-            const parsed: unknown = JSON.parse(Buffer.from(data).toString('utf-8'));
+            const parsed: unknown = parseJson(Buffer.from(data).toString('utf-8'));
             const project = normalizeMigrationProject(parsed, path.basename(this.workspacePath));
             if (!project) return undefined;
             this.projectRevisions.set(project, this.projectRevision);

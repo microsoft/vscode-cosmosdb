@@ -9,7 +9,7 @@ import { requireOptionValue } from './cli-arguments.mjs';
 import { showHelp } from './cli-help.mjs';
 import { getProvisioningCapacity } from './generate-provisioning-artifacts.mjs';
 import { readIdentityManifest } from './identity-mapping.mjs';
-import { readPhaseEvidence } from './phase-summary.mjs';
+import { parseJson, readPhaseEvidence } from './phase-summary.mjs';
 import {
     canonicalStringify,
     canonicalUniqueKeyPolicy,
@@ -407,9 +407,9 @@ Outputs JSON {valid, errors}. Exit: 0 when valid; 1 for invalid/missing evidence
             );
             return 1;
         }
-        const model = JSON.parse(fs.readFileSync(options.modelPath, 'utf8'));
-        const sampleData = JSON.parse(fs.readFileSync(options.sampleDataPath, 'utf8'));
-        const project = JSON.parse(fs.readFileSync(options.projectPath, 'utf8'));
+        const model = parseJson(fs.readFileSync(options.modelPath, 'utf8'));
+        const sampleData = parseJson(fs.readFileSync(options.sampleDataPath, 'utf8'));
+        const project = parseJson(fs.readFileSync(options.projectPath, 'utf8'));
         const report = readPhaseEvidence(options.reportPath).verification;
         const workspace = path.dirname(path.dirname(options.projectPath));
         const errors = validateProvisioningVerification(

@@ -472,9 +472,10 @@ Assessment access-pattern `filterFields`, `singleOrBatch`, `sqlExample`, and
 compatibility view and reports any adjustments without rewriting the file.
 
 The TypeScript declaration companions
-[validate-migration-project.d.mts](./scripts/validate-migration-project.d.mts) and
-[project-state.d.mts](./scripts/project-state.d.mts) describe the extension-facing
-normalization and state-writer APIs. They contain no runtime logic or CLI commands.
+[validate-migration-project.d.mts](./scripts/validate-migration-project.d.mts),
+[project-state.d.mts](./scripts/project-state.d.mts), and
+[phase-summary.d.mts](./scripts/phase-summary.d.mts) describe the extension-facing
+normalization, state-writer, and JSON parsing APIs. They contain no runtime logic or CLI commands.
 
 `readProjectState` and completion checks use this same normalized view. State-read
 revisions still identify the original saved bytes. Opening the extension is read-only;

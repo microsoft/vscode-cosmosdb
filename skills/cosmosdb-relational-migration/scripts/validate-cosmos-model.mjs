@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { requireOptionValue } from './cli-arguments.mjs';
 import { showHelp } from './cli-help.mjs';
-import { readDomainModel, readPhaseEvidence } from './phase-summary.mjs';
+import { parseJson, readDomainModel, readPhaseEvidence } from './phase-summary.mjs';
 
 const ROOT_KEYS = new Set([
     'version',
@@ -949,8 +949,8 @@ Errors and warnings may go to stderr. Exit: 0 when valid; 1 on validation or I/O
     let args;
     try {
         args = parseArguments(argv);
-        const input = path.basename(args.input) === 'manifest.json' ? readDomainModel(args.input) : JSON.parse(fs.readFileSync(args.input, 'utf8'));
-        const referenceRegistry = args.referenceManifest ? readPhaseEvidence(args.referenceManifest).referenceRegistry ?? [] : args.registryPath ? JSON.parse(fs.readFileSync(args.registryPath, 'utf8')) : [];
+        const input = path.basename(args.input) === 'manifest.json' ? readDomainModel(args.input) : parseJson(fs.readFileSync(args.input, 'utf8'));
+        const referenceRegistry = args.referenceManifest ? readPhaseEvidence(args.referenceManifest).referenceRegistry ?? [] : args.registryPath ? parseJson(fs.readFileSync(args.registryPath, 'utf8')) : [];
         if (!Array.isArray(referenceRegistry)) throw new Error('Reference registry must be an array.');
         const result = validateAndCanonicalize(input, { referenceRegistry });
         const diagnostics = result.warnings.length ? { warnings: result.warnings } : {};

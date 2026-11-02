@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { requireOptionValue } from './cli-arguments.mjs';
 import { showHelp } from './cli-help.mjs';
 import { readIdentityManifest, resolveItemId, validateIdentityManifest } from './identity-mapping.mjs';
+import { parseJson } from './phase-summary.mjs';
 import { splitIndexPathParts, validateCosmosModel } from './validate-cosmos-model.mjs';
 import { createSourceResolver, readSourceInventory, resolveForeignKey } from './validate-source-evidence.mjs';
 
@@ -502,10 +503,10 @@ Exit: 0 when valid; 1 for invalid samples, evidence, arguments, or I/O errors.
             );
             return 1;
         }
-        const model = JSON.parse(fs.readFileSync(modelPath, 'utf8'));
-        const sampleData = JSON.parse(fs.readFileSync(sampleDataPath, 'utf8'));
+        const model = parseJson(fs.readFileSync(modelPath, 'utf8'));
+        const sampleData = parseJson(fs.readFileSync(sampleDataPath, 'utf8'));
         const project = workspace
-            ? JSON.parse(fs.readFileSync(path.join(workspace, '.cosmosdb-migration', 'project.json'), 'utf8'))
+            ? parseJson(fs.readFileSync(path.join(workspace, '.cosmosdb-migration', 'project.json'), 'utf8'))
             : undefined;
         const sourceInventory = project ? readSourceInventory(workspace, project) : undefined;
         const errors = validateSampleData(model, sampleData, readIdentityManifest(modelPath), sourceInventory);

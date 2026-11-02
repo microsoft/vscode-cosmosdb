@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { requireOptionValue } from './cli-arguments.mjs';
 import { showHelp } from './cli-help.mjs';
-import { readDomainModel, readPhaseEvidence } from './phase-summary.mjs';
+import { parseJson, readDomainModel, readPhaseEvidence } from './phase-summary.mjs';
 import { readSourceInventory, resolveSource } from './validate-source-evidence.mjs';
 
 const DOMAIN_SECTIONS = {
@@ -92,7 +92,7 @@ export function expectedPatternIdsForDomain(project, patterns, inventory, domain
 
 export function readExpectedPatternIdsByDomain(workspace, domainNames) {
     const migrationRoot = path.join(workspace, '.cosmosdb-migration');
-    const project = JSON.parse(fs.readFileSync(path.join(migrationRoot, 'project.json'), 'utf8'));
+    const project = parseJson(fs.readFileSync(path.join(migrationRoot, 'project.json'), 'utf8'));
     const patterns = readPhaseEvidence(
         path.join(migrationRoot, 'phases', '1-discovery', 'discovery-manifest.json'),
     ).patterns;
@@ -210,7 +210,7 @@ Outputs JSON {valid, errors}. Exit: 0 when valid; 1 for invalid summaries, argum
             return 1;
         }
                 const model = modelPath
-                        ? JSON.parse(fs.readFileSync(modelPath, 'utf8'))
+                        ? parseJson(fs.readFileSync(modelPath, 'utf8'))
                         : kind === 'domain'
                             ? readDomainModel(path.join(path.dirname(filePath), 'cosmos-model.json'))
                             : undefined;

@@ -107,6 +107,31 @@ describe('MigrationProjectService default input selections', () => {
         }
     });
 
+    it('loads BOM-prefixed UTF-8 projects read-only and saves with the original byte revision', async () => {
+        const workspace = mkdtempSync(path.join(tmpdir(), 'migration-bom-save-'));
+        const service = new MigrationProjectService(workspace);
+        try {
+            const project = service.createDefaultProject('app');
+            Object.assign(project, { futureMetadata: '\uFEFFpreserved' });
+            const projectPath = path.join(workspace, MIGRATION_FOLDER, 'project.json');
+            mkdirSync(path.dirname(projectPath));
+            const original = `\uFEFF${JSON.stringify(project)}`;
+            writeFileSync(projectPath, original);
+            vi.spyOn(vscode.workspace.fs, 'readFile').mockResolvedValue(Buffer.from(original));
+            const loaded = await service.load({ readOnly: true });
+            expect(loaded).toEqual(project);
+            expect(readFileSync(projectPath, 'utf8')).toBe(original);
+            writeFileSync(projectPath, original.slice(1));
+            await expect(service.save(loaded!)).rejects.toThrow('Project changed');
+            writeFileSync(projectPath, original);
+            await service.save(loaded!);
+            expect(JSON.parse(readFileSync(projectPath, 'utf8'))).toEqual(project);
+            expect(loaded).toHaveProperty('futureMetadata', '\uFEFFpreserved');
+        } finally {
+            rmSync(workspace, { recursive: true, force: true });
+        }
+    });
+
     it('normalizes optional nulls read-only and saves canonical fields without changing unrelated data', async () => {
         const workspace = mkdtempSync(path.join(tmpdir(), 'migration-compatible-save-'));
         const service = new MigrationProjectService(workspace);

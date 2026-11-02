@@ -419,18 +419,19 @@ describe('migration telemetry evidence', () => {
         },
     );
 
-    it('counts actual inventory tables independently of source files', async () => {
+    it.each(['', '\uFEFF'])('counts inventory tables and original UTF-8 bytes with prefix %j', async (prefix) => {
+        const content = `${prefix}${JSON.stringify({
+            sourceInventory: {
+                files: ['private-file'],
+                tables: [
+                    { name: 'private-table-a', columns: [1, 2, 3], foreignKeys: [1] },
+                    { name: 'private-table-b', columns: [1, 2], foreignKeys: [] },
+                ],
+            },
+        })}`;
         await writeFile(
             path.join(workspace, '.cosmosdb-migration/phases/1-discovery/preflight-manifest.json'),
-            JSON.stringify({
-                sourceInventory: {
-                    files: ['private-file'],
-                    tables: [
-                        { name: 'private-table-a', columns: [1, 2, 3], foreignKeys: [1] },
-                        { name: 'private-table-b', columns: [1, 2], foreignKeys: [] },
-                    ],
-                },
-            }),
+            content,
         );
         const evidence = await collectMigrationTelemetryEvidence(
             { workspacePath: workspace, phase: 'discovery' },
@@ -439,6 +440,7 @@ describe('migration telemetry evidence', () => {
         );
         expect(evidence.validation).toBe('passed');
         expect(evidence.measurements).toMatchObject({
+            artifactBytes: Buffer.byteLength(content, 'utf8'),
             schemaFileCount: 1,
             sourceInventoryTableCount: 2,
             sourceColumnCount: 5,

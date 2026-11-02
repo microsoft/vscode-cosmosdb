@@ -802,7 +802,13 @@ test('CLI refuses to overwrite a modified artifact without force', () => {
                 fs.readFileSync(path.join(root, name), 'utf8'),
             ]),
         );
+        for (const [name, value] of Object.entries({ model, sampleData, project })) {
+            fs.writeFileSync(path.join(root, `${name}.json`), `\uFEFF${JSON.stringify(value)}`);
+        }
         assert.equal(runCli(args), 0);
+        for (const [name, value] of Object.entries({ model, sampleData, project })) {
+            assert.equal(fs.readFileSync(path.join(root, `${name}.json`), 'utf8'), `\uFEFF${JSON.stringify(value)}`);
+        }
         const secondArtifacts = Object.fromEntries(
             Object.keys(firstArtifacts).map((name) => [name, fs.readFileSync(path.join(root, name), 'utf8')]),
         );

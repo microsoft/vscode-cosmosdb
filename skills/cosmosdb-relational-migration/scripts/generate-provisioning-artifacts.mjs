@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { requireOptionValue } from './cli-arguments.mjs';
 import { showHelp } from './cli-help.mjs';
 import { readIdentityManifest } from './identity-mapping.mjs';
+import { parseJson } from './phase-summary.mjs';
 import { canonicalizeCosmosModel, validateCosmosModel } from './validate-cosmos-model.mjs';
 import { validateSampleData } from './validate-sample-data.mjs';
 import { readSourceInventory } from './validate-source-evidence.mjs';
@@ -436,9 +437,9 @@ Exit: 0 on success; 1 for invalid input, mismatches, protected files, or probe f
             return errors.length === 0 ? 0 : 1;
         }
         const options = parseArguments(argv);
-        const model = JSON.parse(fs.readFileSync(options.modelPath, 'utf8'));
-        const sampleData = JSON.parse(fs.readFileSync(options.sampleDataPath, 'utf8'));
-        const project = JSON.parse(fs.readFileSync(options.projectPath, 'utf8'));
+        const model = parseJson(fs.readFileSync(options.modelPath, 'utf8'));
+        const sampleData = parseJson(fs.readFileSync(options.sampleDataPath, 'utf8'));
+        const project = parseJson(fs.readFileSync(options.projectPath, 'utf8'));
         const identityManifest = readIdentityManifest(options.modelPath);
         const workspace = path.dirname(path.dirname(options.projectPath));
         const sourceInventory = readSourceInventory(workspace, project);

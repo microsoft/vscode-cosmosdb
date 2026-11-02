@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { showHelp } from './cli-help.mjs';
 import { mergeCosmosModels } from './merge-cosmos-models.mjs';
-import { assertNoTerminalIssues, readDomainModel, readPhaseEvidence } from './phase-summary.mjs';
+import { assertNoTerminalIssues, parseJson, readDomainModel, readPhaseEvidence } from './phase-summary.mjs';
 import { selectSchemaConversionDomains } from './select-schema-conversion-domains.mjs';
 import { canonicalStringify, canonicalizeCosmosModel, classifyItemIdentity } from './validate-cosmos-model.mjs';
 import { createSourceResolver, readSourceInventory, resolveForeignKey } from './validate-source-evidence.mjs';
@@ -151,7 +151,7 @@ Outputs JSON {valid, errors}. Exit: 0 when valid; 1 for validation or I/O failur
         const workspace = path.resolve(argv[0]);
         const migrationRoot = path.join(workspace, '.cosmosdb-migration');
         const conversionRoot = path.join(migrationRoot, 'phases/3-schema-conversion');
-        const read = filePath => JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        const read = filePath => parseJson(fs.readFileSync(filePath, 'utf8'));
         const project = read(path.join(migrationRoot, 'project.json'));
         const evidence = readPhaseEvidence(path.join(conversionRoot, 'manifest.json'));
         const domains = selectSchemaConversionDomains(project, evidence.includeUnmappedDomains).selectedDomains.map(domain => {

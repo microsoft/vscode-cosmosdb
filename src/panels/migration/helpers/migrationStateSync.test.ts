@@ -474,15 +474,17 @@ describe('migrationStateSync', () => {
             const projectPath = path.join(migrationRoot, 'project.json');
             const updatedProject = JSON.parse(fs.readFileSync(projectPath, 'utf8'));
             updatedProject.phases.discovery.status = 'in-progress';
-            fs.writeFileSync(projectPath, JSON.stringify(updatedProject));
+            fs.writeFileSync(projectPath, `\uFEFF${JSON.stringify(updatedProject)}`);
             const updatedCompletion = await readMigrationPhaseCompletion(extensionPath, workspace);
             expect(updatedCompletion.discovery.status).toBe('in-progress');
             expect(completion.discovery.status).toBe('complete');
 
-            const content = JSON.stringify({ version: 1, execution });
-            fs.writeFileSync(projectPath, content);
-            expect(await readMigrationExecution(extensionPath, workspace)).toEqual(execution);
-            expect(fs.readFileSync(projectPath, 'utf8')).toBe(content);
+            for (const prefix of ['', '\uFEFF']) {
+                const content = `${prefix}${JSON.stringify({ version: 1, execution })}`;
+                fs.writeFileSync(projectPath, content);
+                expect(await readMigrationExecution(extensionPath, workspace)).toEqual(execution);
+                expect(fs.readFileSync(projectPath, 'utf8')).toBe(content);
+            }
             fs.writeFileSync(projectPath, JSON.stringify({ execution: { ...execution, activity: 'invented' } }));
             await expect(readMigrationExecution(extensionPath, workspace)).rejects.toThrow('$.execution.activity');
         } finally {

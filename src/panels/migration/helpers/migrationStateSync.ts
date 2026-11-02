@@ -8,6 +8,7 @@ import { readFile, realpath, stat } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { Worker } from 'node:worker_threads';
 import * as path from 'path';
+import { parseJson } from '../../../../skills/cosmosdb-relational-migration/scripts/phase-summary.mjs';
 import { type ProjectJson } from '../../../services/MigrationProjectService';
 import {
     getMigrationArtifactLocation,
@@ -74,7 +75,7 @@ export async function readMigrationExecution(
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
         throw error;
     }
-    const project = JSON.parse(content) as { execution?: MigrationExecution };
+    const project = parseJson(content) as { execution?: MigrationExecution };
     const validatorPath = path.join(
         extensionPath,
         'skills',

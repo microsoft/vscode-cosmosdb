@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { showHelp } from './cli-help.mjs';
+import { parseJson } from './phase-summary.mjs';
 
 function requirePositiveNumber(value, name, allowZero = false) {
     const minimumAccepted = allowZero ? 0 : Number.MIN_VALUE;
@@ -90,7 +91,7 @@ Exit: 0 on success; 1 for invalid arguments, JSON, or input values.
     }
 
     try {
-        const input = JSON.parse(fs.readFileSync(path.resolve(argv[0]), 'utf8'));
+        const input = parseJson(fs.readFileSync(path.resolve(argv[0]), 'utf8'));
         process.stdout.write(`${JSON.stringify(calculateCapacity(input), null, 2)}\n`);
         return 0;
     } catch (error) {

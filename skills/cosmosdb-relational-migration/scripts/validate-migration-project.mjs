@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { showHelp } from './cli-help.mjs';
+import { parseJson } from './phase-summary.mjs';
 
 const PHASE_STATUSES = new Set(['not-started', 'in-progress', 'complete']);
 const TARGET_TYPES = new Set(['emulator', 'azure', 'provision']);
@@ -399,7 +400,7 @@ JSON pointers. Exit: 0 when valid; 1 for invalid JSON, schema, or I/O errors.
         return 1;
     }
     try {
-        const { project, changes } = normalizeMigrationProjectCompatibility(JSON.parse(fs.readFileSync(path.resolve(filePath), 'utf8')));
+        const { project, changes } = normalizeMigrationProjectCompatibility(parseJson(fs.readFileSync(path.resolve(filePath), 'utf8')));
         const errors = validateMigrationProject(project);
         process.stdout.write(`${JSON.stringify({ valid: errors.length === 0, errors,
             ...(changes.length ? { compatibilityChanges: changes } : {}) }, null, 2)}\n`);

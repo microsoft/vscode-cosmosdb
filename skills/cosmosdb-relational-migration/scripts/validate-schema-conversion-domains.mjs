@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { requireOptionValue } from './cli-arguments.mjs';
 import { showHelp } from './cli-help.mjs';
-import { readPhaseEvidence } from './phase-summary.mjs';
+import { parseJson, readPhaseEvidence } from './phase-summary.mjs';
 import { validateCosmosModel } from './validate-cosmos-model.mjs';
 import {
     readExpectedPatternIdsByDomain,
@@ -54,7 +54,7 @@ export function validateSchemaConversionDomains(
         try {
             const modelPath = path.join(domain.directory, 'cosmos-model.json');
             const summaryPath = path.join(domain.directory, 'summary.md');
-            const model = JSON.parse(fs.readFileSync(modelPath, 'utf8'));
+            const model = parseJson(fs.readFileSync(modelPath, 'utf8'));
             const summary = fs.readFileSync(summaryPath, 'utf8');
             errors.push(
                 ...validateSchemaConversionDomain(

@@ -5,6 +5,7 @@
 
 import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
+import { parseJson } from '../../../../skills/cosmosdb-relational-migration/scripts/phase-summary.mjs';
 import { type ProjectJson } from '../../../services/MigrationProjectService';
 import { type MigrationSkillInvocation } from './migrationSkillDispatcher';
 import { type MigrationPhaseCompletion, type MigrationPhaseCompletionMap } from './migrationStateSync';
@@ -27,7 +28,7 @@ function array(value: unknown): unknown[] {
 
 async function readJson(filePath: string, measurements: Record<string, number>): Promise<Record<string, unknown>> {
     const content = await readFile(filePath, 'utf8');
-    const result = record(JSON.parse(content));
+    const result = record(parseJson(content));
     measurements.artifactBytes = (measurements.artifactBytes ?? 0) + Buffer.byteLength(content, 'utf8');
     return result;
 }

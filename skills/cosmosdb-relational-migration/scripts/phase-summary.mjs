@@ -29,8 +29,12 @@ export function validateSummary(markdown, requiredSections = []) {
     for (const section of requiredSections) if (!sections.get(section)) throw new Error(`Missing or empty report section: ${section}`);
 }
 
+export function parseJson(content) {
+    return JSON.parse(content.replace(/^\uFEFF/u, ''));
+}
+
 export function readJsonObject(filePath, description = 'Manifest') {
-    const value = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    const value = parseJson(fs.readFileSync(filePath, 'utf8'));
     if (value === null || typeof value !== 'object' || Array.isArray(value)) throw new Error(`${description} must contain an object`);
     return value;
 }

@@ -14,6 +14,7 @@ import { requireOptionValue } from './cli-arguments.mjs';
 import { showHelp } from './cli-help.mjs';
 import { fileSha256, selectedDiscoveryFiles } from './freshness.mjs';
 import { normalizePhaseName } from './phase-names.mjs';
+import { parseJson } from './phase-summary.mjs';
 import { validateMigrationProject } from './validate-migration-project.mjs';
 
 export const MAX_INSPECTION_OUTPUT_BYTES = 16 * 1024;
@@ -32,7 +33,7 @@ function readProject(workspace) {
     const projectPath = path.join(workspace, '.cosmosdb-migration', 'project.json');
     if (!fs.existsSync(projectPath)) return { projectPath, project: undefined, errors: [] };
     try {
-        const project = JSON.parse(fs.readFileSync(projectPath, 'utf8'));
+        const project = parseJson(fs.readFileSync(projectPath, 'utf8'));
         return { projectPath, project, errors: validateMigrationProject(project) };
     } catch (error) {
         return { projectPath, project: undefined, errors: [{ path: '$', message: error.message }] };

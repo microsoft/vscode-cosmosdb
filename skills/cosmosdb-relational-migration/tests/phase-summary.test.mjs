@@ -3,7 +3,46 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { assertNoTerminalIssues, readDomainModel, readPhaseEvidence, validateSummary } from '../scripts/phase-summary.mjs';
+import { assertNoTerminalIssues, parseJson, readDomainModel, readJsonObject, readPhaseEvidence, readSdkCompatibility, validateSummary } from '../scripts/phase-summary.mjs';
+
+test('reads UTF-8 BOM artifacts without changing bytes or embedded BOM characters', context => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'phase-bom-'));
+    context.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+    const filePath = path.join(directory, 'manifest.json');
+    const value = { version: 1, blockingIssues: [], label: '\uFEFFembedded\uFEFF', sdkCompatibility: { supported: true } };
+    for (const prefix of ['', '\uFEFF']) {
+        const bytes = Buffer.from(`${prefix}${JSON.stringify(value)}`, 'utf8');
+        fs.writeFileSync(filePath, bytes);
+        for (const reader of [readJsonObject, readDomainModel, readPhaseEvidence]) {
+            assert.deepEqual(reader(filePath), value);
+            assert.deepEqual(fs.readFileSync(filePath), bytes);
+        }
+        assert.deepEqual(readSdkCompatibility(filePath), {
+            sdkReport: value.sdkCompatibility,
+            sdkReportContent: `${JSON.stringify(value.sdkCompatibility, null, 2)}\n`,
+        });
+        assert.deepEqual(fs.readFileSync(filePath), bytes);
+    }
+});
+
+test('BOM handling preserves strict JSON syntax and object and evidence validation', context => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'phase-bom-invalid-'));
+    context.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+    const filePath = path.join(directory, 'manifest.json');
+    for (const content of ['\uFEFF\uFEFF{}', ' \uFEFF{}', '\uFEFF{', '\uFEFF']) {
+        fs.writeFileSync(filePath, content);
+        assert.throws(() => readJsonObject(filePath), SyntaxError);
+    }
+    for (const value of [null, [], true, 42, 'text']) {
+        fs.writeFileSync(filePath, `\uFEFF${JSON.stringify(value)}`);
+        assert.throws(() => readJsonObject(filePath), /must contain an object/u);
+    }
+    fs.writeFileSync(filePath, '\uFEFF{"version":2,"blockingIssues":[]}');
+    assert.throws(() => readPhaseEvidence(filePath), /version 1/u);
+    fs.writeFileSync(filePath, '\uFEFF{"version":1,"blockingIssues":["unclassified"]}');
+    assert.throws(() => readPhaseEvidence(filePath), /reclassify/u);
+    assert.deepEqual(parseJson('\uFEFF["\\uFEFF"]'), ['\uFEFF']);
+});
 
 test('reads machine contracts from JSON independently of user-editable summaries', () => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'phase-summary-'));

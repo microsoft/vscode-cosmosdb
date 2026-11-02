@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -17,6 +18,45 @@ function fixture(context) {
         freshness: { preflight: { version: 1, inputs: Array.from({ length: 1000 }, (_, index) => ({ id: String(index), sha256: 'a'.repeat(64) })), outputs: [] } } }));
     return workspace;
 }
+
+test('reads BOM-prefixed project state using its original byte revision and saves with that revision', context => {
+    const workspace = fixture(context);
+    const initial = readProjectState(workspace);
+    const original = fs.readFileSync(initial.projectPath);
+    const bytes = Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), original]);
+    fs.writeFileSync(initial.projectPath, bytes);
+    const state = readProjectState(workspace);
+    assert.deepEqual(state.project, initial.project);
+    assert.equal(state.revision, createHash('sha256').update(bytes).digest('hex'));
+    assert.notEqual(state.revision, initial.revision);
+    const validation = spawnSync(process.execPath, [fileURLToPath(new URL('../scripts/validate-migration-project.mjs', import.meta.url)), initial.projectPath], { encoding: 'utf8' });
+    assert.equal(validation.status, 0, validation.stderr);
+    const cliRead = spawnSync(process.execPath, [script, '--workspace', workspace, '--get', '/name'], { encoding: 'utf8' });
+    assert.equal(cliRead.status, 0, cliRead.stderr);
+    assert.equal(JSON.parse(cliRead.stdout).revision, state.revision);
+    assert.deepEqual(fs.readFileSync(initial.projectPath), bytes);
+    assert.throws(() => updateProjectState(workspace, initial.revision, project => project), /Project changed/u);
+    fs.writeFileSync(initial.projectPath, original);
+    assert.throws(() => updateProjectState(workspace, state.revision, project => project), /Project changed/u);
+    fs.writeFileSync(initial.projectPath, bytes);
+    const saved = updateProjectState(workspace, state.revision, project => project);
+    assert.deepEqual(readProjectState(workspace).project, state.project);
+    assert.equal(saved.revision, readProjectState(workspace).revision);
+    assert.equal(fs.readFileSync(initial.projectPath, 'utf8').startsWith('\uFEFF'), false);
+});
+
+test('detects BOM-only concurrent edits during a project update', context => {
+    const workspace = fixture(context);
+    const initial = readProjectState(workspace);
+    const content = fs.readFileSync(initial.projectPath, 'utf8');
+    fs.writeFileSync(initial.projectPath, `\uFEFF${content}`);
+    const state = readProjectState(workspace);
+    assert.throws(() => updateProjectState(workspace, state.revision, project => {
+        fs.writeFileSync(state.projectPath, content);
+        return project;
+    }), /changed during update/u);
+    assert.deepEqual(fs.readdirSync(path.dirname(state.projectPath)), ['project.json']);
+});
 
 test('returns compact summaries, scoped fields and bounded array pages', context => {
     const workspace = fixture(context);

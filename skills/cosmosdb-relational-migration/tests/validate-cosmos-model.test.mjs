@@ -311,6 +311,22 @@ test('rejects unsupported target types on standalone and embedded attributes', (
     }
 });
 
+test('CLI canonicalizes BOM-prefixed UTF-8 model input without changing the source', context => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'cosmos-model-bom-'));
+    context.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+    const input = path.join(directory, 'input.json');
+    const script = fileURLToPath(new URL('../scripts/validate-cosmos-model.mjs', import.meta.url));
+    const content = JSON.stringify(validModel());
+    fs.writeFileSync(input, content);
+    const plain = spawnSync(process.execPath, [script, input], { encoding: 'utf8' });
+    assert.equal(plain.status, 0, plain.stderr);
+    fs.writeFileSync(input, `\uFEFF${content}`);
+    const withBom = spawnSync(process.execPath, [script, input], { encoding: 'utf8' });
+    assert.equal(withBom.status, 0, withBom.stderr);
+    assert.equal(withBom.stdout, plain.stdout);
+    assert.equal(fs.readFileSync(input, 'utf8'), `\uFEFF${content}`);
+});
+
 test('CLI rejects unsupported target types without replacing canonical output', () => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'cosmos-target-types-'));
     try {

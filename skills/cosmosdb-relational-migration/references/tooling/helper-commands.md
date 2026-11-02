@@ -14,6 +14,9 @@ an agent/host responsibility, not a flag on these local helpers.
 ## Paths and Results
 
 - `<workspace>` is the application root, not its `.cosmosdb-migration` directory.
+- JSON artifact inputs accept UTF-8 with or without one leading BOM. Read-only helpers
+  preserve the original bytes, including the BOM, for file hashes and project revisions.
+  Generated JSON uses UTF-8 without a BOM; UTF-16 inputs must be converted to UTF-8.
 - Relative CLI file paths resolve from the current working directory, not from
   `--workspace`. Prefer absolute file paths when invoking from another directory.
 - Exceptions are explicitly named: `--artifact` and freshness `--consulted` use

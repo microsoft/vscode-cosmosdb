@@ -22,13 +22,6 @@ export function selectSchemaConversionDomains(project, includeUnmappedDomains = 
         throw new Error('No assessed domains are available for schema conversion.');
     }
 
-    const names = new Set();
-    for (const domain of domains) {
-        const normalizedName = domain.name.toLowerCase();
-        if (names.has(normalizedName)) throw new Error(`Assessment domain name is duplicated: ${domain.name}`);
-        names.add(normalizedName);
-    }
-
     const selectedDomains = domains
         .filter((domain) => includeUnmappedDomains || domain.isMapped)
         .map(({ name, tables }) => ({ name, tables: [...tables].sort() }))

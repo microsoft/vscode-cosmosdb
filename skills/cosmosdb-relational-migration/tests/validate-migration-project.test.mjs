@@ -72,6 +72,55 @@ test('accepts the complete established project shape', () => {
     assert.deepEqual(validateMigrationProject(compatibleProject()), []);
 });
 
+test('preserves portable domain names including Unicode, internal spaces, and boundary lengths', () => {
+    for (const name of ['Sales', 'Sales EU', "Customer's Orders", 'Sales.EU', '\u00c4nderungen', '\u5ba2\u6237',
+        'Order\u{10400}', 'COM0', 'COM10', 'LPT0', 'NULled', 'x'.repeat(241), '\u00e9'.repeat(120),
+        'e\u0301'.repeat(80), '\u{10400}'.repeat(60)]) {
+        const project = compatibleProject();
+        project.phases.assessment.domains[0].name = name;
+        project.phases.schemaConversion.domains = [name];
+        const original = structuredClone(project);
+        assert.deepEqual(validateMigrationProject(project), [], JSON.stringify(name));
+        assert.deepEqual(project, original);
+    }
+});
+
+test('rejects nonportable domain components on both assessment and conversion surfaces', () => {
+    const invalidNames = [null, 42, false, {}, [], '', ' ', '.', '..', '../Orders', 'Orders/Europe',
+        'Orders\\Europe', '/Orders', 'C:Orders', 'Sales:EU', 'Orders<', 'Orders>', 'Orders"', 'Orders|',
+        'Orders?', 'Orders*', 'Orders\u0000', 'Orders\u0001', 'Orders\u001f', 'Orders\u007f', 'Orders\u0085',
+        'Orders\n', 'Orders.', 'Orders ', 'Orders. ', 'CON', 'con.txt', 'CON .txt', 'PRN', 'AUX.md', 'NUL',
+        'COM1', 'com9.json', 'LPT1', 'lpt9.md', 'COM\u00b9', 'COM\u00b2.txt', 'LPT\u00b3', 'CONIN$', 'CONOUT$.txt',
+        'x'.repeat(242), '\u00e9'.repeat(121), '\u01fa'.repeat(81), '\u{10400}'.repeat(61), '\ud800', '\udfff'];
+    for (const name of invalidNames) {
+        for (const phase of ['assessment', 'schemaConversion']) {
+            const project = compatibleProject();
+            if (phase === 'assessment') project.phases.assessment.domains[0].name = name;
+            else project.phases.schemaConversion.domains = [name];
+            const original = structuredClone(project);
+            const expectedPath = `$.phases.${phase}.domains[0]${phase === 'assessment' ? '.name' : ''}`;
+            assert(validateMigrationProject(project).some(error => error.path === expectedPath), `${phase}: ${JSON.stringify(name)}`);
+            assert.deepEqual(project, original);
+        }
+    }
+});
+
+test('rejects duplicate, case-insensitive, and canonically equivalent domain names in each phase', () => {
+    for (const names of [['Sales', 'Sales'], ['Sales', 'sales'], ['\u00c9quipe', 'E\u0301QUIPE'],
+        ['\u03c3', '\u03c2'], ['\u00df', '\u1e9e'], ['\u{10400}', '\u{10428}']]) {
+        for (const phase of ['assessment', 'schemaConversion']) {
+            const project = compatibleProject();
+            if (phase === 'assessment') {
+                project.phases.assessment.domains = names.map(name => ({ ...project.phases.assessment.domains[0], name }));
+            } else project.phases.schemaConversion.domains = names;
+            const original = structuredClone(project);
+            const expectedPath = `$.phases.${phase}.domains[1]${phase === 'assessment' ? '.name' : ''}`;
+            assert(validateMigrationProject(project).some(error => error.path === expectedPath && /collides with/u.test(error.message)));
+            assert.deepEqual(project, original);
+        }
+    }
+});
+
 test('normalizes only known optional null fields without mutating project state', () => {
     const project = compatibleProject();
     const pattern = project.phases.assessment.parsedAccessPatterns[0];

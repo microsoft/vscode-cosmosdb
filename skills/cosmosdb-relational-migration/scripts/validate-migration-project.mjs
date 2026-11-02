@@ -158,10 +158,41 @@ function validateApplicationAnalysis(value, errors) {
     optionalStringArray(value, 'frameworks', pathLabel, errors);
 }
 
+export function validateDomainNames(names, pathLabel = '$.domains') {
+    const errors = [];
+    const seen = new Map();
+    for (const [index, name] of names.entries()) {
+        const namePath = `${pathLabel}[${index}]`;
+        if (!requireString(name, namePath, errors)) continue;
+        let message;
+        if (/[<>:"/\\|?*\p{Cc}]/u.test(name) || name === '.' || name === '..') {
+            message = 'must be a single portable filename component without separators, control characters, or <>:"/\\|?*';
+        } else if (/[ .]$/u.test(name)) {
+            message = 'must not end with a space or dot';
+        } else if (/^(?:con|prn|aux|nul|conin\$|conout\$|com[1-9\u00b9\u00b2\u00b3]|lpt[1-9\u00b9\u00b2\u00b3])$/iu.test(name.split('.')[0].replace(/ +$/u, ''))) {
+            message = 'must not use a Windows reserved device name, including before an extension';
+        } else if (Buffer.from(name, 'utf8').toString('utf8') !== name) {
+            message = 'must contain well-formed Unicode';
+        } else if (Buffer.byteLength(`${name}.manifest.json`, 'utf8') > 255 || `${name.normalize('NFD')}.manifest.json`.length > 255) {
+            message = 'must fit 255 UTF-8 bytes and 255 decomposed UTF-16 units, including .manifest.json';
+        }
+        if (message) {
+            addError(errors, namePath, `${message}; choose a portable domain name and explicitly repair existing references and artifacts`);
+            continue;
+        }
+        const key = name.normalize('NFC').toLowerCase().toUpperCase().normalize('NFC');
+        if (seen.has(key)) {
+            addError(errors, namePath, `collides with ${seen.get(key)} under case-insensitive Unicode-normalized comparison; choose distinct portable domain names`);
+        } else {
+            seen.set(key, namePath);
+        }
+    }
+    return errors;
+}
+
 function validateAssessmentDomain(value, index, errors) {
     const pathLabel = `$.phases.assessment.domains[${index}]`;
     if (!requireObject(value, pathLabel, errors)) return;
-    requireString(value.name, `${pathLabel}.name`, errors);
     optionalStringArray(value, 'tables', pathLabel, errors);
     if (!Array.isArray(value.tables)) addError(errors, `${pathLabel}.tables`, 'is required');
     optionalStringArray(value, 'crossDomainDependencies', pathLabel, errors);
@@ -214,7 +245,11 @@ function validateAssessment(value, errors) {
     optionalString(value, 'completedAt', pathLabel, errors);
     if (value.domains !== undefined) {
         if (!Array.isArray(value.domains)) addError(errors, `${pathLabel}.domains`, 'must be an array when present');
-        else value.domains.forEach((domain, index) => validateAssessmentDomain(domain, index, errors));
+        else {
+            errors.push(...validateDomainNames(value.domains.map(domain => domain?.name), `${pathLabel}.domains`)
+                .map(error => ({ ...error, path: `${error.path}.name` })));
+            value.domains.forEach((domain, index) => validateAssessmentDomain(domain, index, errors));
+        }
     }
     if (value.parsedAccessPatterns !== undefined) {
         if (!Array.isArray(value.parsedAccessPatterns)) {
@@ -232,6 +267,7 @@ function validateSchemaConversion(value, errors) {
     optionalString(value, 'schemaConversionInstructions', pathLabel, errors);
     optionalBoolean(value, 'thoroughAnalysis', pathLabel, errors);
     optionalStringArray(value, 'domains', pathLabel, errors);
+    if (Array.isArray(value.domains)) errors.push(...validateDomainNames(value.domains, `${pathLabel}.domains`));
     optionalString(value, 'completedAt', pathLabel, errors);
 }
 

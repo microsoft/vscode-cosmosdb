@@ -63,6 +63,27 @@ test('canonical project-value hashes ignore object key order while preserving ar
     assert.notEqual(canonicalValueSha256(['first', 'second']), canonicalValueSha256(['second', 'first']));
 });
 
+test('rejects invalid domain paths before direct freshness calls access any artifacts', () => {
+    const { workspace, project } = workspaceProject();
+    try {
+        for (const names of [['../escape'], ['CON'], ['Sales', 'sales'], ['\u00c9quipe', 'E\u0301QUIPE']]) {
+            for (const phase of ['assessment', 'schemaConversion']) {
+                const invalidProject = structuredClone(project);
+                invalidProject.phases[phase] = { domains: phase === 'assessment' ? names.map(name => ({ name })) : names };
+                for (const target of ['assessment', 'schema-conversion']) {
+                    assert.throws(() => buildFreshnessManifest(workspace, invalidProject, target), /Invalid migration domain names/u);
+                    const result = validateFreshnessManifest(workspace, invalidProject, target, { version: 1, inputs: [], outputs: [] });
+                    assert.equal(result.freshness, 'stale');
+                    assert.match(result.staleInputs[0].reason, /Invalid migration domain names/u);
+                }
+            }
+        }
+        assert.deepEqual(fs.readdirSync(workspace), []);
+    } finally {
+        fs.rmSync(workspace, { recursive: true, force: true });
+    }
+});
+
 test('selects workspace-root DDL files from legacy empty paths', () => {
     const { workspace, project } = workspaceProject();
     try {

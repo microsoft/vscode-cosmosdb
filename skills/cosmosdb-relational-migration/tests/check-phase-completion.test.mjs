@@ -50,6 +50,34 @@ function write(workspace, relativePath, content = '# artifact\n') {
     fs.writeFileSync(filePath, content);
 }
 
+test('blocks unsafe persisted domain names before artifact lookup and rejects unsafe state writes', () => {
+    for (const phase of ['assessment', 'schemaConversion']) {
+        for (const name of ['../escape', 'NUL', 'Sales:EU', 'Orders.']) {
+            const domain = { name, tables: [], crossDomainDependencies: [], estimatedTokens: 0, isMapped: true };
+            const workspace = workspaceWithProject({
+                version: 1,
+                phases: {
+                    discovery: { status: 'complete' },
+                    [phase]: { status: 'complete', domains: phase === 'assessment' ? [domain] : [name] },
+                },
+            });
+            try {
+                const state = readProjectState(workspace);
+                const before = fs.readFileSync(state.projectPath, 'utf8');
+                const result = checkPhaseCompletion(workspace, phase === 'assessment' ? 'assessment' : 'schema-conversion');
+                assert.equal(result.complete, false);
+                assert.deepEqual(result.artifacts, []);
+                assert(result.errors.some(error => error.includes(`$.phases.${phase}.domains[0]`)));
+                assert.throws(() => updateProjectState(workspace, state.revision, project => project), /Invalid project update/u);
+                assert.equal(fs.readFileSync(state.projectPath, 'utf8'), before);
+                assert.deepEqual(fs.readdirSync(path.dirname(state.projectPath)), ['project.json']);
+            } finally {
+                fs.rmSync(workspace, { recursive: true, force: true });
+            }
+        }
+    }
+});
+
 function provisioningModel() {
     return {
         version: 1,

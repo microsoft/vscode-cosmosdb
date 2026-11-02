@@ -41,7 +41,10 @@ Required:
 9. Check whether each domain has confirmed application mappings.
 10. Estimate each finalized domain's schema-conversion context and split domains
       whose estimates exceed the context policy.
-11. Write domain files and the assessment summary.
+11. Validate the finalized names against the
+   [portable domain-name contract](../contracts/project-state-and-artifacts.md#portable-domain-names)
+   before persisting domain metadata or writing domain artifacts. Then write domain
+   files and the assessment summary.
 
 ## Domain Identification Heuristics
 
@@ -139,8 +142,9 @@ and paginated; use `--offset <nextOffset>` only when another domain page is need
 ## Domain Files
 
 Write one stable PascalCase Markdown filename per domain under
-`phases/2-assessment/domains/`. Reject separators, traversal, collisions, and
-case-insensitive duplicates.
+`phases/2-assessment/domains/`. Apply the
+[portable domain-name contract](../contracts/project-state-and-artifacts.md#portable-domain-names),
+including Windows device names, filename limits, and case/Unicode collisions.
 
 Each file contains:
 

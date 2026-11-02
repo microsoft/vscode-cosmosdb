@@ -173,7 +173,7 @@ test('places shared autoscale on the database and keeps hybrid container capacit
     }
 });
 
-test('does not fall back to dedicated throughput or a serverless emulator for a shared model', () => {
+test('adapts a shared model to a confirmed serverless target without creating throughput', () => {
     const { model, sampleData, project } = inputs();
     model.databaseMaxThroughput = 4000;
     model.containers[0].throughputMode = 'shared';
@@ -181,7 +181,14 @@ test('does not fall back to dedicated throughput or a serverless emulator for a 
     for (const type of ['azure', 'provision', 'emulator']) {
         project.phases.targetEnvironment.type = type;
         project.phases.targetEnvironment.capacityMode = 'serverless';
-        assert.throws(() => buildProvisioningArtifacts(model, sampleData, project), /Shared database throughput requires a provisioned target/u);
+        const original = structuredClone({ model, sampleData, project });
+        const artifacts = buildProvisioningArtifacts(model, sampleData, project);
+        if (type === 'emulator') assert.match(artifacts['main.bicep'], /maxThroughput: 4000/u);
+        else assert.doesNotMatch(artifacts['main.bicep'], /autoscaleSettings|maxThroughput/u);
+        assert.doesNotMatch(artifacts['seed-data.csh'], /^(?:create|index|throughput)\b/mu);
+        assert.deepEqual(getProvisioningCapacity(model, model.containers[0], project.phases.targetEnvironment), { capacityMode: 'serverless' });
+        assert.deepEqual(validateProvisioningArtifacts(artifacts, model, sampleData, project), []);
+        assert.deepEqual({ model, sampleData, project }, original);
     }
     delete model.databaseMaxThroughput;
     assert.throws(() => buildProvisioningArtifacts(model, sampleData, project), /databaseMaxThroughput/u);
@@ -493,12 +500,15 @@ test('generates an approved new serverless alternative without changing the reso
     assert.deepEqual(project, original);
 });
 
-test('rejects the Azure downgrade but permits a serverless emulator without changing the model', () => {
+test('adopts serverless Azure capacity without changing the provisioned model', () => {
     const { model, sampleData, project } = inputs();
     project.phases.targetEnvironment = { type: 'azure', endpoint: 'https://existing.documents.azure.com/', capacityMode: 'serverless' };
-    assert.throws(() => buildProvisioningArtifacts(model, sampleData, project), /cannot satisfy a provisioned-capacity model/u);
-    project.phases.targetEnvironment.type = 'emulator';
     const original = structuredClone(model);
+    const azureArtifacts = buildProvisioningArtifacts(model, sampleData, project);
+    assert.doesNotMatch(azureArtifacts['main.bicep'], /autoscaleSettings|maxThroughput|EnableServerless/u);
+    assert.doesNotMatch(azureArtifacts['seed-data.csh'], /--scale|--ru|^throughput /mu);
+    assert.deepEqual(validateProvisioningArtifacts(azureArtifacts, model, sampleData, project), []);
+    project.phases.targetEnvironment.type = 'emulator';
     const artifacts = buildProvisioningArtifacts(model, sampleData, project);
     assert.deepEqual(getProvisioningCapacity(model, model.containers[0], project.phases.targetEnvironment), { capacityMode: 'serverless' });
     assert.doesNotMatch(artifacts['seed-data.csh'], /--scale|--ru|^throughput /mu);
@@ -506,12 +516,20 @@ test('rejects the Azure downgrade but permits a serverless emulator without chan
     assert.deepEqual(model, original);
 });
 
-test('does not override modeled provisioned throughput with a lower target maximum', () => {
-    const { model } = inputs();
-    const target = { type: 'azure', capacityMode: 'provisioned', maxThroughput: 1000 };
-    assert.deepEqual(getProvisioningCapacity(model, model.containers[0], target), {
-        capacityMode: 'provisioned', maxThroughput: 4000,
-    });
+test('uses an approved target maximum instead of modeled provisioned throughput', () => {
+    for (const maxThroughput of [1000, 8000]) {
+        const { model, sampleData, project } = inputs();
+        const target = { type: 'azure', capacityMode: 'provisioned', maxThroughput };
+        project.phases.targetEnvironment = target;
+        const original = structuredClone(model);
+        assert.deepEqual(getProvisioningCapacity(model, model.containers[0], target), {
+            capacityMode: 'provisioned', maxThroughput,
+        });
+        const artifacts = buildProvisioningArtifacts(model, sampleData, project);
+        assert(artifacts['main.bicep'].includes(`maxThroughput: ${maxThroughput}`));
+        assert.deepEqual(validateProvisioningArtifacts(artifacts, model, sampleData, project), []);
+        assert.deepEqual(model, original);
+    }
 });
 
 test('requires explicit valid throughput for a serverless model on provisioned Azure', () => {

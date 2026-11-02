@@ -1663,20 +1663,20 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
         [dispatch, sendCommand, state.targetAccountName, state.projectName],
     );
 
-    const handleEndpointChange = useCallback(
-        (value: string) => {
-            dispatch({ type: 'SET_TARGET_ENDPOINT', payload: value });
-            // Persist the endpoint into project.json. `setTargetEnvironment` merges
-            // undefined fields, so resource group / account name / location are not
-            // clobbered when the user edits only the endpoint.
-            sendCommand('setTargetEnvironment', state.targetType, value);
-        },
-        [dispatch, sendCommand, state.targetType],
-    );
+    const [endpointDraft, setEndpointDraft] = useState<string | undefined>(undefined);
+    const endpointValue = endpointDraft ?? state.targetEndpoint;
+    const handleEndpointCommit = useCallback(() => {
+        if (endpointValue !== state.targetEndpoint) {
+            dispatch({ type: 'SET_TARGET_ENDPOINT', payload: endpointValue });
+            sendCommand('setTargetEnvironment', state.targetType, endpointValue);
+        }
+        setEndpointDraft(undefined);
+        return endpointValue;
+    }, [dispatch, endpointValue, sendCommand, state.targetEndpoint, state.targetType]);
 
     const handleTestConnection = useCallback(
-        () => sendCommand('testConnection', state.targetType, state.targetEndpoint),
-        [sendCommand, state.targetType, state.targetEndpoint],
+        () => sendCommand('testConnection', state.targetType, handleEndpointCommit()),
+        [handleEndpointCommit, sendCommand, state.targetType],
     );
 
     const handleSelectAccount = useCallback(() => sendCommand('selectAccount'), [sendCommand]);
@@ -3033,8 +3033,19 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                                 <Input
                                                     size="small"
                                                     style={{ flex: 1 }}
-                                                    value={state.targetEndpoint}
-                                                    onChange={(_e, data) => handleEndpointChange(data.value)}
+                                                    value={endpointValue}
+                                                    onChange={(_e, data) => setEndpointDraft(data.value)}
+                                                    onBlur={handleEndpointCommit}
+                                                    onKeyDown={(event) => {
+                                                        if (event.nativeEvent.isComposing) return;
+                                                        if (event.key === 'Enter') {
+                                                            event.preventDefault();
+                                                            handleEndpointCommit();
+                                                        } else if (event.key === 'Escape') {
+                                                            event.preventDefault();
+                                                            setEndpointDraft(undefined);
+                                                        }
+                                                    }}
                                                     placeholder={l10n.t(
                                                         'https://your-account.documents.azure.com:443/',
                                                     )}
@@ -3223,7 +3234,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                                         disabled={
                                                             isPhase4Disabled ||
                                                             !state.targetType ||
-                                                            (state.targetType === 'azure' && !state.targetEndpoint)
+                                                            (state.targetType === 'azure' && !endpointValue)
                                                         }
                                                     >
                                                         {l10n.t('Test Connection')}

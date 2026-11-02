@@ -108,7 +108,7 @@ export function buildBicep(model, targetEnvironment) {
         '    resource: {',
         '      id: databaseName',
         '    }',
-        ...(model.databaseMaxThroughput === undefined ? [] : [
+        ...(capacityMode === 'serverless' || model.databaseMaxThroughput === undefined ? [] : [
             '    options: {',
             '      autoscaleSettings: {',
             `        maxThroughput: ${model.databaseMaxThroughput}`,
@@ -219,12 +219,6 @@ export function getProvisioningCapacity(model, container, targetEnvironment) {
     const emulator = targetEnvironment?.type === 'emulator';
     const capacityMode = targetEnvironment?.capacityMode ?? (emulator ? 'provisioned' : model.capacityMode);
     if (!['serverless', 'provisioned'].includes(capacityMode)) throw new Error('Target capacityMode must be serverless or provisioned.');
-    if (model.containers?.some(member => member.throughputMode === 'shared') && capacityMode !== 'provisioned') {
-        throw new Error('Shared database throughput requires a provisioned target, including emulator targets.');
-    }
-    if (model.capacityMode === 'provisioned' && capacityMode === 'serverless' && !emulator) {
-        throw new Error('A serverless Azure account cannot satisfy a provisioned-capacity model. Select or create a provisioned account.');
-    }
     if (capacityMode === 'serverless') return { capacityMode };
     if (container.throughputMode === 'shared') {
         if (model.capacityMode !== 'provisioned' || container.maxThroughput !== undefined ||
@@ -233,9 +227,9 @@ export function getProvisioningCapacity(model, container, targetEnvironment) {
         }
         return { capacityMode, throughputMode: 'shared' };
     }
-    const maxThroughput = model.capacityMode === 'provisioned'
+    const maxThroughput = targetEnvironment?.maxThroughput ?? (model.capacityMode === 'provisioned'
         ? container.maxThroughput
-        : targetEnvironment?.maxThroughput ?? (emulator ? 1000 : undefined);
+        : emulator ? 1000 : undefined);
     if (!Number.isInteger(maxThroughput) || maxThroughput < 1000 || maxThroughput % 1000 !== 0) {
         throw new Error('Select an autoscale maximum for the provisioned target: a multiple of 1000 RU/s, at least 1000.');
     }

@@ -192,10 +192,12 @@ test('runs the validation suites from a standalone Skill copy without peer or DD
         const copied = path.join(root, 'skills', 'cosmosdb-relational-migration');
         fs.cpSync(sourceSkillRoot, copied, { recursive: true });
         const tests = fs.readdirSync(path.join(copied, 'tests')).filter(name => name.endsWith('.test.mjs') && name !== 'portability.test.mjs' && name !== 'sqlglot-evaluation.test.mjs').map(name => path.join(copied, 'tests', name));
-        const environment = { ...process.env, MIGRATION_STANDALONE_CHILD: '1' };
+        const environment = { ...process.env, MIGRATION_STANDALONE_CHILD: '1', NO_COLOR: '1' };
         delete environment.COSMOSDB_MIGRATION_PARSER_WORKSPACE;
         delete environment.MIGRATION_PARSER_WORKSPACE;
         delete environment.NODE_TEST_CONTEXT;
+        // FORCE_COLOR overrides NO_COLOR; plain reporter output keeps the skip parsing below reliable.
+        delete environment.FORCE_COLOR;
         const result = spawnSync(process.execPath, ['--test', '--test-reporter=spec', ...tests], {
             cwd: root, encoding: 'utf8', timeout: 120000, maxBuffer: 1024 * 1024,
             env: environment,

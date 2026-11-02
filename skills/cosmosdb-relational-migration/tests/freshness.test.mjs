@@ -270,7 +270,7 @@ test('detects and restores direct input freshness without writing files', () => 
     }
 });
 
-test('tracks consulted workspace files and rejects symlink escapes', { skip: process.platform === 'win32' }, () => {
+test('tracks consulted workspace files and rejects symlink escapes', () => {
     const { workspace, project } = workspaceProject();
     const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'migration-freshness-outside-'));
     try {
@@ -282,9 +282,14 @@ test('tracks consulted workspace files and rejects symlink escapes', { skip: pro
         fs.writeFileSync(path.join(workspace, 'src/repository.ts'), 'changed\n');
         assert.equal(validateFreshnessManifest(workspace, project, 'preflight', manifest).freshness, 'stale');
         fs.writeFileSync(path.join(outside, 'evidence.sql'), 'outside\n');
-        fs.symlinkSync(path.join(outside, 'evidence.sql'), path.join(workspace, 'src/escape.sql'));
+        const consultedPath = process.platform === 'win32' ? 'src/escape/evidence.sql' : 'src/escape.sql';
+        if (process.platform === 'win32') {
+            fs.symlinkSync(outside, path.join(workspace, 'src/escape'), 'junction');
+        } else {
+            fs.symlinkSync(path.join(outside, 'evidence.sql'), path.join(workspace, consultedPath));
+        }
         assert.throws(
-            () => buildFreshnessManifest(workspace, project, 'preflight', ['src/escape.sql']),
+            () => buildFreshnessManifest(workspace, project, 'preflight', [consultedPath]),
             /resolves outside the workspace/u,
         );
     } finally {

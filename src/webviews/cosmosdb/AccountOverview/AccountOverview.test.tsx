@@ -21,6 +21,8 @@ import userEvent from '@testing-library/user-event';
 import { type PropsWithChildren } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getAccountMetricApplicability } from '../../../panels/accountOverview/metrics/contracts';
+import { HEALTH_POLICY } from '../../../panels/accountOverview/services/healthPolicy';
+import { HOUR } from '../../../panels/accountOverview/services/units';
 import {
     type AccountActionResult,
     type AccountHealthResult,
@@ -585,9 +587,12 @@ describe('account-wide health collection', () => {
         expect(await screen.findByText('Account health: Unknown')).toBeVisible();
         const badge = screen.getByLabelText('Unknown', { selector: `.${badgeClassNames.root}` });
         expect(badge).toHaveAttribute('tabindex', '0');
+        const window = new Intl.NumberFormat(undefined, { style: 'unit', unit: 'hour', unitDisplay: 'long' }).format(
+            HEALTH_POLICY.sustainedThrottling.observation.windowMs / HOUR,
+        );
         expect(badge).toHaveAccessibleDescription(
             expect.stringContaining(
-                `Account-wide request health over the last 1 hour could not be assessed: ${caption}.`,
+                `Account-wide request health over the last ${window} could not be assessed: ${caption}.`,
             ),
         );
         const user = userEvent.setup();

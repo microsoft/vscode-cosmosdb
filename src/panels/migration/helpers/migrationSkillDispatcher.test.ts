@@ -438,7 +438,7 @@ describe('migrationSkillDispatcher', () => {
 
     function mockArtifacts(...files: string[]): void {
         vi.mocked(vscode.workspace.fs.stat).mockImplementation(async (uri) => {
-            if (files.includes(uri.fsPath)) {
+            if (files.some((file) => path.normalize(file) === path.normalize(uri.fsPath))) {
                 return { type: vscode.FileType.File, ctime: 0, mtime: 0, size: 1 };
             }
             throw new Error('File not found');

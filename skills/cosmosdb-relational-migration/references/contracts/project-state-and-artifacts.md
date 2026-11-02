@@ -299,6 +299,32 @@ survive a rerun.
 Additional checkpoint fields are opaque data. Preserve them without allowing them
 to alter required analysis quality, artifacts, or completion.
 
+## Portable Domain Names
+
+Assessment `name` values and `phases.schemaConversion.domains` entries are artifact
+path components. Before saving state or creating artifacts, require:
+
+- Non-empty, well-formed Unicode; internal spaces are allowed. Prefer stable PascalCase.
+- No `.`, `..`, separators, control characters, `< > : " / \ | ? *`, or trailing ASCII spaces or dots.
+- No Windows device names, case-insensitively: `CON`, `PRN`, `AUX`, `NUL`, `COM1`-`COM9`,
+  `LPT1`-`LPT9`, `CONIN$`, or `CONOUT$`. Also reject COM/LPT forms with superscript
+  digits 1, 2, or 3, including device stems followed by spaces or an extension.
+- The name plus `.manifest.json` must fit 255 stored UTF-8 bytes and 255 canonically
+  decomposed UTF-16 code units, allowing at most 241 ASCII characters.
+- No duplicates within either list after NFC, locale-independent Unicode lowercase,
+  uppercase, then NFC normalization. Check independently of the filesystem; the same
+  exact name may appear in both assessment and conversion.
+
+These rules apply only to migration artifacts, not SQL identifiers or Cosmos DB names.
+Preserve accepted names exactly: never trim, normalize, slugify, or silently rename.
+Full paths may still exceed host limits; shorten the workspace root when needed.
+
+Invalid or colliding names block validation on every host. Explain the affected fields
+and require explicit, coordinated repair of checkpoint names, domain dependencies,
+selected-domain references, artifact paths, and evidence references. Never move artifacts
+or rewrite names automatically. After repair, revalidate and regenerate affected evidence
+and freshness; never edit hashes to bypass validation.
+
 ## Additional Phase Instructions
 
 When the user asks to run, resume, or continue a phase with additional

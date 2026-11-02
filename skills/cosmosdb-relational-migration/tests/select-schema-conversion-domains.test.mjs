@@ -56,7 +56,7 @@ test('blocks rather than silently widening an empty default selection', () => {
 test('rejects duplicate assessment domain names', () => {
     assert.throws(
         () => selectSchemaConversionDomains(projectWithDomains([ORDERS, { ...ORDERS }])),
-        /duplicated: Orders/u,
+        /collides with/u,
     );
 });
 
@@ -65,12 +65,22 @@ test('rejects case-insensitive assessment domain collisions in either selection 
     for (const includeUnmappedDomains of [false, true]) {
         assert.throws(
             () => selectSchemaConversionDomains(project, includeUnmappedDomains),
-            /duplicated: orders/u,
+            /collides with/u,
         );
     }
 });
 
 test('rejects case-insensitive collisions before skipping unmapped domains', () => {
     const project = projectWithDomains([ORDERS, { ...CATALOG, name: 'orders' }]);
-    assert.throws(() => selectSchemaConversionDomains(project), /duplicated: orders/u);
+    assert.throws(() => selectSchemaConversionDomains(project), /collides with/u);
+});
+
+test('rejects nonportable and Unicode-equivalent names before selecting or skipping domains', () => {
+    for (const domains of [[ORDERS, { ...CATALOG, name: 'CON' }],
+        [{ ...ORDERS, name: '\u00c9quipe' }, { ...CATALOG, name: 'E\u0301QUIPE' }]]) {
+        for (const includeUnmappedDomains of [false, true]) {
+            assert.throws(() => selectSchemaConversionDomains(projectWithDomains(domains), includeUnmappedDomains),
+                /Invalid migration project/u);
+        }
+    }
 });

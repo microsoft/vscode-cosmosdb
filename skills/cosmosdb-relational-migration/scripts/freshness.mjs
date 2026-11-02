@@ -10,6 +10,7 @@ import { requireOptionValue } from './cli-arguments.mjs';
 import { showHelp } from './cli-help.mjs';
 import { normalizePhaseName } from './phase-names.mjs';
 import { readProjectState, updateProjectState } from './project-state.mjs';
+import { validateDomainNames } from './validate-migration-project.mjs';
 
 const VOLATILE_TARGET_KEYS = new Set(['verified', 'verifiedAt']);
 
@@ -211,6 +212,11 @@ export function buildFreshnessManifest(
     const phase = normalizePhaseName(phaseInput);
     if (!phase) throw new Error(`Unknown phase: ${phaseInput}`);
     if (phase === 'code-migration') throw new Error('Code migration does not use freshness manifests.');
+    const domainErrors = [
+        ...validateDomainNames((project.phases?.assessment?.domains ?? []).map(domain => domain?.name), '$.phases.assessment.domains'),
+        ...validateDomainNames(project.phases?.schemaConversion?.domains ?? [], '$.phases.schemaConversion.domains'),
+    ];
+    if (domainErrors.length) throw new Error(`Invalid migration domain names: ${JSON.stringify(domainErrors)}`);
     const inputs = [
         ...requiredInputs(workspace, project, phase),
         ...consultedPaths.map((consultedPath, index) =>

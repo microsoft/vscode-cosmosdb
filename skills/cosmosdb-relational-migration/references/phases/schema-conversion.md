@@ -67,7 +67,10 @@ node <skill-root>/scripts/select-schema-conversion-domains.mjs \
 ```
 
 Use `selectedDomains` as the complete work list and carry `skippedDomains` into
-the root summary.
+the root summary. Keep each name unchanged and apply the
+[portable domain-name contract](../contracts/project-state-and-artifacts.md#portable-domain-names)
+before persisting selections or creating domain directories. Invalid existing names
+require explicit repair; do not invent a slug or rename artifacts automatically.
 
 ## Per-Domain Procedure
 

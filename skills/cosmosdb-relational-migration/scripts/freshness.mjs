@@ -302,6 +302,12 @@ export function recordFreshness(workspace, phaseInput, expectedRevision, consult
     const result = updateProjectState(workspace, expectedRevision, project => {
         if (!project) throw new Error('Initialize the project first.');
         manifest = buildFreshnessManifest(workspace, project, phase, consultedPaths);
+        if (phase === 'schema-conversion' && project.phases?.targetEnvironment) {
+            const modelPath = '.cosmosdb-migration/phases/3-schema-conversion/model.json';
+            const previousModelHash = project.freshness?.[phase]?.outputs?.find(output => output.path === modelPath)?.sha256;
+            const currentModelHash = manifest.outputs.find(output => output.path === modelPath)?.sha256;
+            if (previousModelHash !== currentModelHash) delete project.phases.targetEnvironment.maxThroughput;
+        }
         project.freshness = { ...project.freshness, [phase]: manifest };
         return project;
     });
@@ -323,6 +329,8 @@ Inspect input/output hashes or record them in project.json#freshness. Outputs JS
 
 Finalize artifacts and semantic project fields before recording. Hash recording does
 not regenerate outputs or prove their correctness. Writes return counts and a revision.
+Recording schema-conversion clears targetEnvironment.maxThroughput when the canonical
+model hash changes or has no recorded baseline. Select any override again during provisioning.
 Peer guidance is excluded; historical peer-file freshness entries are ignored.
 Exit: 0 when inspection/recording succeeds, including stale/unknown inspection results;
 1 for invalid arguments, I/O, or revision conflicts. Inspect freshness in the JSON.

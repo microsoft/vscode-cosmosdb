@@ -595,6 +595,12 @@ phase artifacts and semantic project fields, record `project.json#freshness["sch
 through the freshness helper, including consulted workspace evidence files but excluding
 peer guidance. Applied peer-rule paths and decision rationale remain in the summary.
 
+Recording freshness clears `phases.targetEnvironment.maxThroughput` when the canonical model
+hash changes or has no recorded baseline, preserving other target settings. An unchanged
+model retains its override. Do not restore an old override while finalizing schema conversion;
+review any new uniform maximum during provisioning under
+[Capacity Compatibility](./provisioning.md#capacity-compatibility).
+
 ## Completion
 
 Set `phases.schemaConversion.domains`, `completedAt`, and status `complete` only

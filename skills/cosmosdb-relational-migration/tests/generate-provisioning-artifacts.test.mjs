@@ -532,6 +532,29 @@ test('uses an approved target maximum instead of modeled provisioned throughput'
     }
 });
 
+test('applies one target maximum to all dedicated containers without resizing the shared pool', () => {
+    const { model } = inputs();
+    model.databaseMaxThroughput = 8000;
+    const small = { ...model.containers[0], name: 'Small', throughputMode: 'dedicated', maxThroughput: 4000 };
+    const large = { ...model.containers[0], name: 'Large', throughputMode: 'dedicated', maxThroughput: 40000 };
+    const shared = { ...model.containers[0], name: 'Shared', throughputMode: 'shared' };
+    delete shared.maxThroughput;
+    model.containers = [small, large, shared];
+    const original = structuredClone(model);
+    for (const type of ['azure', 'provision', 'emulator']) {
+        for (const maxThroughput of [undefined, 1000, 8000]) {
+            const target = { type, capacityMode: 'provisioned', maxThroughput };
+            assert.deepEqual(model.containers.map(container => getProvisioningCapacity(model, container, target)), [
+                { capacityMode: 'provisioned', maxThroughput: maxThroughput ?? 4000 },
+                { capacityMode: 'provisioned', maxThroughput: maxThroughput ?? 40000 },
+                { capacityMode: 'provisioned', throughputMode: 'shared' },
+            ]);
+            assert.equal(model.databaseMaxThroughput, 8000);
+        }
+    }
+    assert.deepEqual(model, original);
+});
+
 test('requires explicit valid throughput for a serverless model on provisioned Azure', () => {
     const { model } = inputs();
     model.capacityMode = 'serverless';

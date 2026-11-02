@@ -63,6 +63,36 @@ function inputs() {
     return { model, sampleData, project, report };
 }
 
+test('verifies an alternate target without changing model identity or accepting previous-target evidence', () => {
+    for (const type of ['azure', 'provision', 'emulator']) {
+        const { model, sampleData, project, report } = inputs();
+        const originalModel = structuredClone(model);
+        const oldTarget = structuredClone(report.target);
+        project.phases.targetEnvironment = {
+            type, accountName: 'alternate-account', databaseName: 'alternate-db', capacityMode: 'serverless',
+            endpoint: type === 'emulator' ? 'https://localhost:8081/' : 'https://alternate-account.documents.azure.com/',
+        };
+        assert(validateProvisioningVerification(model, sampleData, project, report)
+            .some(error => error.path === '$.databaseName'));
+        report.databaseName = 'alternate-db';
+        assert(validateProvisioningVerification(model, sampleData, project, report)
+            .some(error => error.path === '$.target.endpoint'));
+        const { accountName, endpoint } = project.phases.targetEnvironment;
+        report.target = { type, accountName, endpoint };
+        assert.deepEqual(validateProvisioningVerification(model, sampleData, project, report), []);
+        for (const [field, value] of Object.entries({ accountName: oldTarget.accountName, endpoint: oldTarget.endpoint })) {
+            const stale = { ...report, target: { ...report.target, [field]: value } };
+            assert(validateProvisioningVerification(model, sampleData, project, stale)
+                .some(error => error.path === `$.target.${field}`));
+        }
+        report.containers[0].name = 'RenamedItems';
+        assert(validateProvisioningVerification(model, sampleData, project, report)
+            .some(error => error.path.startsWith('$.containers')));
+        assert.equal(report.modelSha256, modelSha256(model));
+        assert.deepEqual(model, originalModel);
+    }
+});
+
 function sharedInputs() {
     const values = inputs();
     const { model, project, report } = values;

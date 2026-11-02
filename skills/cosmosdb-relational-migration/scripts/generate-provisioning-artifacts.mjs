@@ -15,11 +15,11 @@ import { readSourceInventory } from './validate-source-evidence.mjs';
 const DATA_CONTRIBUTOR_ROLE_ID = '00000000-0000-0000-0000-000000000002';
 
 function escapeBicep(value) {
-    return value.replace(/\\/gu, '\\\\').replace(/'/gu, "\\'").replace(/\r/gu, '\\r').replace(/\n/gu, '\\n');
+    return value.replace(/\\/gu, '\\\\').replace(/\$\{/gu, '\\${').replace(/'/gu, "\\'").replace(/\r/gu, '\\r').replace(/\n/gu, '\\n');
 }
 
 function escapeShell(value) {
-    return /^[a-zA-Z0-9_.-]+$/u.test(value) ? value : `"${value.replace(/\\/gu, '\\\\').replace(/"/gu, '\\"')}"`;
+    return /^[a-zA-Z0-9_.][a-zA-Z0-9_.-]*$/u.test(value) ? value : `"${value.replace(/\\/gu, '\\\\').replace(/"/gu, '\\"')}"`;
 }
 
 function emitIndexingPolicy(lines, policy, indent) {
@@ -74,7 +74,7 @@ export function buildBicep(model, targetEnvironment) {
         '',
         'param accountName string',
         ...(createAccount ? ['param location string = resourceGroup().location'] : []),
-        `param databaseName string = '${escapeBicep(model.databaseName)}'`,
+        `param databaseName string = '${escapeBicep(targetEnvironment?.databaseName ?? model.databaseName)}'`,
         ...(createAccount ? ['param principalId string = deployer().objectId'] : []),
         '',
         `resource account 'Microsoft.DocumentDB/databaseAccounts@2024-05-15'${createAccount ? '' : ' existing'} = {`,
@@ -207,7 +207,7 @@ export function buildBicepParams(model, project) {
     const lines = ["using './main.bicep'", ''];
     lines.push(accountName ? `param accountName = '${escapeBicep(accountName)}'` : "// TODO: param accountName = '<value>'");
     if (isNewAccountTarget(target) && target.location) lines.push(`param location = '${escapeBicep(target.location)}'`);
-    lines.push(`param databaseName = '${escapeBicep(model.databaseName)}'`, '');
+    lines.push(`param databaseName = '${escapeBicep(target?.databaseName ?? model.databaseName)}'`, '');
     return lines.join('\n');
 }
 
@@ -247,7 +247,7 @@ export function buildSeedScript(model, targetEnvironment) {
     if (model.containers.some(container => container.throughputMode === 'shared')) {
         for (const container of model.containers) getProvisioningCapacity(model, container, targetEnvironment);
     }
-    const databaseName = escapeShell(model.databaseName);
+    const databaseName = escapeShell(targetEnvironment?.databaseName ?? model.databaseName);
     const seedOnly = targetEnvironment?.type !== 'emulator' || model.containers.some((container) =>
         container.fullTextPolicy !== undefined || container.uniqueKeyPolicy !== undefined || container.throughputMode === 'shared');
     let connection = 'connect $1';

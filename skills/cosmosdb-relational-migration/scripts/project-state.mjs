@@ -150,6 +150,7 @@ export function selectProjectState(state, pointer, offset = 0, limit = 20, { toc
                     type: value?.type,
                     endpoint: value?.endpoint,
                     accountName: value?.accountName,
+                    databaseName: value?.databaseName,
                     resourceGroup: value?.resourceGroup,
                     subscriptionId: value?.subscriptionId,
                     location: value?.location,

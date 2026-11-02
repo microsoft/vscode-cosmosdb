@@ -101,7 +101,11 @@ describe('migrationStateSync', () => {
             async (workspace) => {
                 fs.writeFileSync(path.join(workspace, 'invalid.json'), '{');
                 fs.mkdirSync(path.join(workspace, 'scripts'));
-                fs.symlinkSync(process.cwd(), path.join(workspace, 'outside'), 'dir');
+                fs.symlinkSync(
+                    process.cwd(),
+                    path.join(workspace, 'outside'),
+                    process.platform === 'win32' ? 'junction' : 'dir',
+                );
                 const result = await readMigrationPhaseCompletion(workspace, workspace);
                 expect(result.preflight.artifacts.map((artifact) => artifact.canOpen)).toEqual([
                     true,
@@ -374,7 +378,11 @@ describe('migrationStateSync', () => {
                  }]));
              }`,
             async (extensionPath) => {
-                const workspace = path.join(extensionPath, 'workspace with spaces', '"quoted"');
+                const workspace = path.join(
+                    extensionPath,
+                    'workspace with spaces',
+                    process.platform === 'win32' ? "'quoted'" : '"quoted"',
+                );
                 fs.mkdirSync(path.join(workspace, '.cosmosdb-migration'), { recursive: true });
                 const completion = await readMigrationPhaseCompletion(extensionPath, workspace);
                 expect(Object.keys(completion)).toEqual([...migrationPhaseNames]);

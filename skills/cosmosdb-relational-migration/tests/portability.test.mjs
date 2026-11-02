@@ -192,15 +192,24 @@ test('runs the validation suites from a standalone Skill copy without peer or DD
         const copied = path.join(root, 'skills', 'cosmosdb-relational-migration');
         fs.cpSync(sourceSkillRoot, copied, { recursive: true });
         const tests = fs.readdirSync(path.join(copied, 'tests')).filter(name => name.endsWith('.test.mjs') && name !== 'portability.test.mjs' && name !== 'sqlglot-evaluation.test.mjs').map(name => path.join(copied, 'tests', name));
-        const environment = { ...process.env, MIGRATION_STANDALONE_CHILD: '1' };
+        const environment = { ...process.env, MIGRATION_STANDALONE_CHILD: '1', NO_COLOR: '1' };
         delete environment.COSMOSDB_MIGRATION_PARSER_WORKSPACE;
         delete environment.MIGRATION_PARSER_WORKSPACE;
         delete environment.NODE_TEST_CONTEXT;
+        // FORCE_COLOR overrides NO_COLOR; plain reporter output keeps the skip parsing below reliable.
+        delete environment.FORCE_COLOR;
         const result = spawnSync(process.execPath, ['--test', '--test-reporter=spec', ...tests], {
             cwd: root, encoding: 'utf8', timeout: 120000, maxBuffer: 1024 * 1024,
             env: environment,
         });
         assert.equal(result.status, 0, result.stdout + result.stderr);
-        assert.match(result.stdout, /skipped 0/u);
+        // Platform capability skips are acceptable; skips caused by missing peer or parser installations are not.
+        const capabilitySkips = new Set([
+            'tracks consulted workspace files and rejects symlink escapes',
+            'rejects output symlinks that escape the workspace',
+        ]);
+        const skipped = [...result.stdout.matchAll(/^\s*\S+ (.+?) \([\d.]+ms\) # (?!TODO\b)/gmu)].map(match => match[1]);
+        assert.equal(Number(/skipped (\d+)/u.exec(result.stdout)?.[1]), skipped.length, result.stdout);
+        assert.deepEqual(skipped.filter(title => !capabilitySkips.has(title)), []);
     } finally { fs.rmSync(root, { recursive: true }); }
 });

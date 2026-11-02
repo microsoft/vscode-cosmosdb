@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Badge, Button, Field, Input, Link, makeStyles, Text, tokens } from '@fluentui/react-components';
+import { Button, Field, Input, Link, makeStyles, Text, tokens } from '@fluentui/react-components';
 import {
     AddRegular,
     CheckmarkRegular,
@@ -25,6 +25,7 @@ import { type SetStateAction, useCallback, useEffect, useMemo, useRef, useState 
 import { validateDeploymentContainerName } from '../../../dataModeling/deploymentModel';
 import { PartitionKeyRecommendationSchema } from '../../../dataModeling/recommendationSchema';
 import { type DataModelingAppRouter, type DataModelingEvent } from '../../api/types';
+import { PreviewBadge } from '../../components/PreviewBadge';
 import {
     applyScenario,
     createBlankContainer,
@@ -87,6 +88,21 @@ const useViewportStyles = makeStyles({
 });
 
 const useStyles = makeStyles({
+    previewBadge: {
+        // Center the 32px badge on the 56px header below its 24px inset, with the same inset on the right.
+        marginTop: '36px',
+        marginRight: '36px',
+    },
+    previewRail: {
+        position: 'sticky',
+        top: 0,
+        zIndex: 10,
+        flexShrink: 0,
+        height: 0,
+        display: 'flex',
+        justifyContent: 'flex-end',
+        pointerEvents: 'none',
+    },
     fullWidthWizard: {
         display: 'flex',
         flexDirection: 'column',
@@ -961,6 +977,9 @@ const HydratedDataModelingWizard = ({
                     {addContainerError}
                 </Text>
             ) : null}
+            <div className={styles.previewRail}>
+                <PreviewBadge className={styles.previewBadge} />
+            </div>
             <div className={styles.wizardHost}>
                 <Wizard
                     activeStep={activeValue}
@@ -972,7 +991,6 @@ const HydratedDataModelingWizard = ({
                         <ContainerHeader
                             media={<DatabaseLinkRegular aria-hidden="true" focusable="false" />}
                             title={l10n.t('Workload: {name}', { name: scenarioLabel ?? l10n.t('Not selected') })}
-                            action={<Badge appearance="tint">{l10n.t('Preview')}</Badge>}
                         />
                     }
                     footer={footer}

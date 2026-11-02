@@ -235,15 +235,27 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         const title = screen.getByRole('heading', { name: /^Workload:/ });
         expect(scrollRegion).toContainElement(title);
         expect(title).toHaveAccessibleName(title.textContent);
-        const preview = screen.getByText('Preview');
+        const preview = screen.getByLabelText('Preview');
         expect(preview).toHaveClass('fui-Badge');
         expect(preview).toBeVisible();
-        expect(title.parentElement?.parentElement).toContainElement(preview);
-        expect(preview.parentElement).toHaveStyle({ marginInlineStart: 'auto', flexShrink: '0' });
+        expect(preview).toHaveTextContent('Preview');
+        expect(preview).toHaveAccessibleName('Preview');
+        expect(preview).toHaveAttribute('tabindex', '0');
+        expect(preview).toHaveStyle({ marginTop: '36px', marginRight: '36px', height: '32px' });
+        expect(scrollRegion).not.toContainElement(preview);
+        expect(preview.parentElement).toHaveStyle({
+            position: 'sticky',
+            top: '0px',
+            height: '0px',
+            justifyContent: 'flex-end',
+            flexShrink: '0',
+        });
         const titleIcon = title.parentElement?.parentElement?.querySelector('svg');
         expect(titleIcon).toBeVisible();
         expect(titleIcon).toHaveAttribute('aria-hidden', 'true');
         expect(titleIcon).toHaveAttribute('focusable', 'false');
+        expect(titleIcon?.parentElement).toHaveStyle({ height: '56px' });
+        expect(title.parentElement?.parentElement).toHaveStyle({ alignItems: 'center' });
         expect(scrollRegion).toContainElement(screen.getByRole('heading', { name: 'Partition key recommendation' }));
         expect(scrollRegion).not.toContainElement(screen.getByRole('button', { name: 'Start Over' }));
         expect(within(navigation).getByRole('button', { name: 'Result' })).toHaveAttribute('aria-current', 'step');

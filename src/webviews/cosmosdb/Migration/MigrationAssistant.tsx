@@ -75,6 +75,7 @@ import {
     type MigrationModelReason,
     type MigrationModelTier,
 } from '../../../utils/modelUtils';
+import { PreviewBadge } from '../../components/PreviewBadge';
 import { CosmosDBIcon } from '../../icons/CosmosDBIcon';
 import { BaseContextProvider, type DispatchToastFn } from '../../utils/context/BaseContextProvider';
 import { ErrorBoundary } from '../../utils/ErrorBoundary';
@@ -248,27 +249,6 @@ const useStyles = makeStyles({
         display: 'flex',
         justifyContent: 'flex-end',
         pointerEvents: 'none',
-    },
-    previewBadge: {
-        // 8px from the panel's top and right borders (the rail's origin is the panel's top-right).
-        pointerEvents: 'auto',
-        marginTop: '8px',
-        marginRight: '8px',
-        cursor: 'default',
-        height: '32px',
-        paddingLeft: '20px',
-        paddingRight: '20px',
-        borderRadius: '6px',
-        fontWeight: 600,
-        // Lighter background + subtle panel-colored border + shadow so it reads as a floating chip.
-        backgroundColor: 'var(--vscode-editorWidget-background)',
-        color: 'var(--vscode-foreground)',
-        border: '1px solid var(--vscode-panel-border)',
-        boxShadow: '0 2px 8px var(--vscode-widget-shadow)',
-        '&:focus-visible': {
-            outline: '2px solid var(--vscode-focusBorder)',
-            outlineOffset: '1px',
-        },
     },
     configSection: {
         display: 'flex',
@@ -1882,20 +1862,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
         <div className={styles.root} ref={rootRef}>
             {/* Floating Preview chip — pinned to the panel's top-right corner; stays put on scroll. */}
             <div className={styles.previewRail}>
-                <Tooltip
-                    content={l10n.t('Preview: features and behavior may change. Use with care.')}
-                    relationship="description"
-                >
-                    <Badge
-                        appearance="outline"
-                        color="informative"
-                        className={styles.previewBadge}
-                        tabIndex={0}
-                        aria-label={l10n.t('Preview')}
-                    >
-                        <span aria-hidden="true">{l10n.t('Preview')}</span>
-                    </Badge>
-                </Tooltip>
+                <PreviewBadge />
             </div>
 
             {/* Configuration Section */}

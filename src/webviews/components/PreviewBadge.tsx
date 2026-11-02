@@ -3,8 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Badge, makeStyles, mergeClasses, Tooltip } from '@fluentui/react-components';
+import { Badge, makeStyles, mergeClasses } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
+import { ThemedTooltip as Tooltip } from '../common/ThemedTooltip';
 
 const useStyles = makeStyles({
     badge: {

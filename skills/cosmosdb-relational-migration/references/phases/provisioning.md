@@ -146,10 +146,23 @@ For a serverless model on provisioned Azure, propose approved autoscale throughp
 selected account. Offer a new serverless account in the same resource group and subscription
 only as an alternative, reusing the location where supported; do not switch automatically.
 Neither requires a model rewrite or schema-conversion rerun.
-Store the approved per-container maximum in `phases.targetEnvironment.maxThroughput`:
-a multiple of 1,000 RU/s, at least 1,000, respecting service minima. This overrides modeled
-maxima for dedicated containers only; it does not resize a shared database pool. Disclose
-ongoing cost and review existing or shared throughput before applying changes.
+Store the approved uniform per-container maximum in `phases.targetEnvironment.maxThroughput`:
+a multiple of 1,000 RU/s, at least 1,000, respecting service minima. This is one value
+applied to every dedicated container, not an account-wide budget or a per-container map.
+For example, an override of 1,000 replaces both a modeled 4,000 maximum and a modeled
+40,000 maximum with 1,000 each. This applies to provisioned and serverless models on
+provisioned targets, including emulator execution; it does not resize a shared database pool.
+Disclose the affected containers, their modeled maxima, the uniform replacement, and ongoing
+cost before accepting the override, and review existing or shared throughput before applying changes.
+Omit the field to retain individual modeled maxima.
+
+An override belongs to the current canonical model and selected target. Recording
+[schema-conversion freshness](./schema-conversion.md#completion) clears it when the canonical
+model hash changes or has no recorded baseline; re-recording an unchanged model preserves it.
+After model changes, do not copy the old maximum back from a prior checkpoint or summary.
+Review the new recommendations and obtain acceptance for any new uniform override during
+provisioning. Explicit acceptance of the newly disclosed settings in the current request
+remains sufficient. No new approval marker or artifact is required.
 
 Switch targets only after approval; a new account needs a distinct, available name.
 Preserve the existing account and resource-group/subscription coordinates, following

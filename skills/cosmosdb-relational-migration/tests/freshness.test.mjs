@@ -222,6 +222,60 @@ test('records freshness atomically while excluding editable summaries', () => {
     }
 });
 
+test('scopes the target maximum to the recorded canonical model', () => {
+    for (const scenario of ['capacity changed', 'maximum changed', 'unchanged', 'missing baseline']) {
+        const { workspace, project } = workspaceProject();
+        try {
+            const root = path.join(workspace, '.cosmosdb-migration');
+            const assessment = path.join(root, 'phases/2-assessment');
+            const conversion = path.join(root, 'phases/3-schema-conversion');
+            fs.mkdirSync(assessment, { recursive: true });
+            fs.mkdirSync(conversion, { recursive: true });
+            fs.writeFileSync(path.join(assessment, 'assessment-manifest.json'), '{}');
+            fs.writeFileSync(path.join(conversion, 'manifest.json'), '{}');
+            const model = conversionModel('all');
+            if (scenario === 'maximum changed') {
+                model.capacityMode = 'provisioned';
+                model.containers[0].maxThroughput = 4000;
+            }
+            const modelPath = path.join(conversion, 'model.json');
+            fs.writeFileSync(modelPath, canonicalStringify(model));
+            project.phases.targetEnvironment = {
+                type: 'azure', endpoint: 'https://selected.documents.azure.com/',
+                capacityMode: 'provisioned', maxThroughput: 1000, databaseName: 'SelectedDatabase',
+            };
+            if (scenario !== 'missing baseline') {
+                project.freshness = { 'schema-conversion': buildFreshnessManifest(workspace, project, 'schema-conversion') };
+            }
+            const projectPath = path.join(root, 'project.json');
+            fs.writeFileSync(projectPath, JSON.stringify(project));
+            if (scenario === 'capacity changed') {
+                model.capacityMode = 'provisioned';
+                model.containers[0].maxThroughput = 4000;
+            } else if (scenario === 'maximum changed') {
+                model.containers[0].maxThroughput = 40000;
+            }
+            fs.writeFileSync(modelPath, canonicalStringify(model));
+
+            recordFreshness(workspace, 'schema-conversion', readProjectState(workspace).revision);
+
+            const updated = readProjectState(workspace).project;
+            const expectedTarget = { ...project.phases.targetEnvironment };
+            if (scenario !== 'unchanged') delete expectedTarget.maxThroughput;
+            assert.deepEqual(updated.phases.targetEnvironment, expectedTarget, scenario);
+            assert.equal(validateFreshnessManifest(workspace, updated, 'schema-conversion', updated.freshness['schema-conversion']).freshness, 'current');
+            assert.deepEqual(JSON.parse(fs.readFileSync(modelPath, 'utf8')), model);
+
+            updated.phases.targetEnvironment.maxThroughput = 2000;
+            fs.writeFileSync(projectPath, JSON.stringify(updated));
+            recordFreshness(workspace, 'schema-conversion', readProjectState(workspace).revision);
+            assert.equal(readProjectState(workspace).project.phases.targetEnvironment.maxThroughput, 2000, scenario);
+        } finally {
+            fs.rmSync(workspace, { recursive: true, force: true });
+        }
+    }
+});
+
 test('excludes code migration from freshness without generating a manifest', () => {
     assert.throws(() => buildFreshnessManifest('/missing-workspace', {}, 'code-migration'), /does not use freshness manifests/u);
     assert.deepEqual(validateFreshnessManifest('/missing-workspace', {}, 'code-migration'), {

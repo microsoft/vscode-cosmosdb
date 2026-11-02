@@ -9,8 +9,12 @@ import { markdownSections, readPhaseEvidence, validateSummary } from './phase-su
 export { selectedDdlFiles } from './freshness.mjs';
 export { markdownSections } from './phase-summary.mjs';
 
+function compareFilePaths(left, right) {
+    return left.path < right.path ? -1 : left.path > right.path ? 1 : 0;
+}
+
 export function sourceFilesHash(dialect, files) {
-    return createHash('sha256').update(JSON.stringify({ dialect, files: [...files].sort((left, right) => left.path.localeCompare(right.path)) })).digest('hex');
+    return createHash('sha256').update(JSON.stringify({ dialect, files: [...files].sort(compareFilePaths) })).digest('hex');
 }
 
 export function sourceIdentity(value, dialect) {
@@ -94,8 +98,8 @@ export function readSourceInventory(workspace, project, selectedFiles = selected
         if (inventory?.version !== 1 || inventory.parser?.method !== decision.method || !Array.isArray(inventory.errors) || inventory.errors.length) throw new Error('Source inventory must record the selected parsing method and no unresolved errors');
         if (decision.method === 'sqlglot' && (inventory.parser.name !== 'sqlglot' || typeof inventory.parser.version !== 'string' || !inventory.parser.version.trim())) throw new Error('External parsing evidence must identify SQLGlot and its version');
         if (typeof inventory.dialect !== 'string' || !inventory.dialect.trim() || !Array.isArray(inventory.files) || !selectedFiles.length) throw new Error('Source inventory requires dialect and selected source files');
-        const files = selectedFiles.map(filePath => ({ path: path.relative(workspace, filePath).split(path.sep).join('/'), sha256: createHash('sha256').update(fs.readFileSync(filePath)).digest('hex') })).sort((left, right) => left.path.localeCompare(right.path));
-        const recordedFiles = inventory.files.map(file => ({ path: file.path, sha256: file.sha256 })).sort((left, right) => left.path.localeCompare(right.path));
+        const files = selectedFiles.map(filePath => ({ path: path.relative(workspace, filePath).split(path.sep).join('/'), sha256: createHash('sha256').update(fs.readFileSync(filePath)).digest('hex') })).sort(compareFilePaths);
+        const recordedFiles = inventory.files.map(file => ({ path: file.path, sha256: file.sha256 })).sort(compareFilePaths);
         if (JSON.stringify(files) !== JSON.stringify(recordedFiles)) throw new Error('Source inventory is stale or differs from the selected source files; repeat the chosen parsing procedure');
         if (!Array.isArray(inventory.tables) || !inventory.tables.length) throw new Error('Source inventory requires at least one recorded table definition');
         const identities = new Set();

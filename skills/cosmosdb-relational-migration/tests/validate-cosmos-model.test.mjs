@@ -7,12 +7,14 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
     canonicalStringify,
+    canonicalizeCosmosModel,
     classifyItemIdentity,
     TARGET_JSON_TYPES,
     validateAndCanonicalize,
     validateCosmosModel,
     writeFileAtomic,
 } from '../scripts/validate-cosmos-model.mjs';
+import { modelSha256 } from '../scripts/validate-provisioning-verification.mjs';
 
 function validModel() {
     return {
@@ -348,6 +350,66 @@ test('canonicalization is byte stable and preserves meaningful ordering', () => 
         second.model.containers[0].indexingPolicy.compositeIndexes[0].map((entry) => entry.path),
         ['/tenantId', '/createdAt'],
     );
+});
+
+test('canonical model bytes and hashes use code-unit ordering across host locales', () => {
+    const names = ['z', '\u00e4', 'I', '\u0131'];
+    const model = validModel();
+    const container = model.containers[0];
+    const entity = container.entities[0];
+    entity.attributes.push(...names.map(name => ({
+        target: name, source: { table: 'Orders', column: name, type: 'varchar' }, type: 'string',
+    })));
+    entity.relationships = names.map(name => ({
+        ...entity.relationships[0], sourceFK: { ...entity.relationships[0].sourceFK, constraintName: name },
+    }));
+    container.entities.push(...names.map(name => ({ ...structuredClone(entity), name, docType: name })));
+    container.indexingPolicy.includedPaths.push(...names.map(name => ({ path: `/${name}/?` })));
+    container.indexingPolicy.excludedPaths.push(...names.map(name => ({ path: `/${name}Excluded/?` })));
+    container.indexingPolicy.compositeIndexes.push(...names.map(name => [
+        { path: `/${name}`, order: 'ascending' }, { path: '/tenantId', order: 'descending' },
+    ]));
+    container.indexingPolicy.fullTextIndexes = names.map(name => ({ path: `/${name}` }));
+    container.fullTextPolicy = { defaultLanguage: 'en-US', fullTextPaths: names.map(name => ({ path: `/${name}` })) };
+    container.uniqueKeyPolicy = { uniqueKeys: names.map(name => ({ paths: ['/tenantId', `/${name}`] })) };
+    model.containers = names.map(name => ({ ...structuredClone(container), name }));
+    model.accessPatterns = names.map(name => ({
+        name, source: { type: 'read', query: 'SELECT 1' },
+        target: { type: 'read', container: 'z', operation: 'query', isCrossPartition: false },
+    }));
+    model.crossPartitionQueries = names.map(name => ({
+        name, container: 'z', query: 'SELECT * FROM c', reason: 'report', estimatedRUCost: 1,
+        optimizations: [...names],
+    }));
+    const original = structuredClone(model);
+    const canonical = canonicalizeCosmosModel(model);
+    assert.deepEqual(canonical.containers.map(entry => entry.name), [...names].sort());
+    assert.deepEqual(canonical.containers[0].partitionKeys.map(entry => entry.path), ['/tenantId', '/customerId']);
+    const composite = canonical.containers[0].indexingPolicy.compositeIndexes.find(group => group[0].path === '/z');
+    assert.deepEqual(composite.map(entry => entry.path), ['/z', '/tenantId']);
+    const code = `
+        import fs from 'node:fs';
+        import { canonicalStringify, canonicalizeCosmosModel } from ${JSON.stringify(new URL('../scripts/validate-cosmos-model.mjs', import.meta.url).href)};
+        import { modelSha256 } from ${JSON.stringify(new URL('../scripts/validate-provisioning-verification.mjs', import.meta.url).href)};
+        const model = JSON.parse(fs.readFileSync(0, 'utf8'));
+        console.log(JSON.stringify({
+            collation: Math.sign('\\u00e4'.localeCompare('z')),
+            canonical: canonicalStringify(canonicalizeCosmosModel(model)), sha256: modelSha256(model),
+        }));
+    `;
+    const results = ['en_US.UTF-8', 'sv_SE.UTF-8', 'tr_TR.UTF-8'].map(locale => {
+        const result = spawnSync(process.execPath, ['--input-type=module', '-e', code], {
+            encoding: 'utf8', input: JSON.stringify(model), env: { ...process.env, LANG: locale, LC_ALL: locale },
+        });
+        assert.equal(result.status, 0, result.stderr);
+        return JSON.parse(result.stdout);
+    });
+    assert.notEqual(results[0].collation, results[1].collation);
+    for (const result of results) {
+        assert.equal(result.canonical, canonicalStringify(canonical));
+        assert.equal(result.sha256, modelSha256(model));
+    }
+    assert.deepEqual(model, original);
 });
 
 test('rejects missing identity and partition-key alignment', () => {

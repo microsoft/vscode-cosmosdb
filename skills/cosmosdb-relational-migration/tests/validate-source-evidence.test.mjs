@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -39,6 +40,57 @@ test('validates model-reviewed inventory from the preflight manifest without par
         assert.equal(readSourceInventory(workspace, project).assurance, 'sqlglot-assisted');
         fs.appendFileSync(path.join(migrationRoot, 'phases/1-discovery/schema-ddl/Schema.sql'), '\nALTER TABLE dbo.Orders ADD Total INT;');
         assert(readSourceInventory(workspace, project).errors.length);
+    } finally { fs.rmSync(workspace, { recursive: true }); }
+});
+
+test('source hashes and inventory validation are stable across host locales and file order', () => {
+    const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'locale-inventory-'));
+    try {
+        const project = { phases: { discovery: {} } };
+        sourceFixture(workspace, project);
+        const migrationRoot = path.join(workspace, '.cosmosdb-migration');
+        const schemaRoot = path.join(migrationRoot, 'phases/1-discovery/schema-ddl');
+        const manifestPath = path.join(migrationRoot, 'phases/1-discovery/preflight-manifest.json');
+        for (const name of ['z', '\u00e4', 'I', '\u0131']) {
+            fs.copyFileSync(path.join(schemaRoot, 'Schema.sql'), path.join(schemaRoot, `${name}.sql`));
+        }
+        const evidence = readPhaseEvidence(manifestPath);
+        const files = fs.readdirSync(schemaRoot).sort().map(name => ({
+            path: `.cosmosdb-migration/phases/1-discovery/schema-ddl/${name}`,
+            sha256: fileSha256(path.join(schemaRoot, name)),
+        }));
+        const expectedHash = createHash('sha256').update(JSON.stringify({ dialect: 'tsql', files })).digest('hex');
+        evidence.sourceInventory.files = [...files].reverse();
+        evidence.sourceSha256 = expectedHash;
+        fs.writeFileSync(manifestPath, JSON.stringify(evidence));
+        const original = structuredClone(files);
+        assert.equal(sourceFilesHash('tsql', files), expectedHash);
+        assert.equal(sourceFilesHash('tsql', [...files].reverse()), expectedHash);
+        assert.deepEqual(files, original);
+        const code = `
+            import fs from 'node:fs';
+            import { readSourceInventory, sourceFilesHash } from ${JSON.stringify(new URL('../scripts/validate-source-evidence.mjs', import.meta.url).href)};
+            const { workspace, project, files } = JSON.parse(fs.readFileSync(0, 'utf8'));
+            console.log(JSON.stringify({
+                collation: Math.sign('\\u00e4'.localeCompare('z')),
+                hash: sourceFilesHash('tsql', files), inventory: readSourceInventory(workspace, project),
+            }));
+        `;
+        const results = ['en_US.UTF-8', 'sv_SE.UTF-8', 'tr_TR.UTF-8'].map(locale => {
+            const result = spawnSync(process.execPath, ['--input-type=module', '-e', code], {
+                encoding: 'utf8', input: JSON.stringify({ workspace, project, files: [...files].reverse() }),
+                env: { ...process.env, LANG: locale, LC_ALL: locale },
+            });
+            assert.equal(result.status, 0, result.stderr);
+            return JSON.parse(result.stdout);
+        });
+        assert.notEqual(results[0].collation, results[1].collation);
+        for (const result of results) {
+            assert.equal(result.hash, expectedHash);
+            assert.deepEqual(result.inventory.errors, []);
+            assert.equal(result.inventory.sha256, expectedHash);
+            assert.equal(result.inventory.assurance, 'model-reviewed');
+        }
     } finally { fs.rmSync(workspace, { recursive: true }); }
 });
 

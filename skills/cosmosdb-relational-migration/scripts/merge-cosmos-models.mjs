@@ -21,6 +21,10 @@ function clone(value) {
     return structuredClone(value);
 }
 
+function compareStrings(left, right) {
+    return left < right ? -1 : left > right ? 1 : 0;
+}
+
 function stableJson(value) {
     if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
     if (value && typeof value === 'object') {
@@ -36,7 +40,7 @@ function mergeUnique(left = [], right = []) {
     const values = new Map();
     for (const value of [...left, ...right]) values.set(stableJson(value), clone(value));
     return [...values.entries()]
-        .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey))
+        .sort(([leftKey], [rightKey]) => compareStrings(leftKey, rightKey))
         .map(([, value]) => value);
 }
 
@@ -105,7 +109,7 @@ export function mergeCosmosModels(domainModels, { databaseName, capacityMode, ca
     const accessPatterns = [];
     const crossPartitionQueries = [];
 
-    const orderedDomains = [...domainModels].sort((left, right) => left.domainName.localeCompare(right.domainName));
+    const orderedDomains = [...domainModels].sort((left, right) => compareStrings(left.domainName, right.domainName));
     if (new Set(orderedDomains.map(entry => entry.domainName)).size !== orderedDomains.length) {
         return { errors: [{ path: '$.domains', message: 'duplicate domain input' }], conflicts };
     }

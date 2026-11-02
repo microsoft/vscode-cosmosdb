@@ -2,6 +2,10 @@
 
 import { calculateCapacity } from './calculate-capacity.mjs';
 
+function compareStrings(left, right) {
+    return left < right ? -1 : left > right ? 1 : 0;
+}
+
 function number(value, field) {
     if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) throw new Error(`${field} must be a non-negative finite number`);
     return value;
@@ -29,7 +33,7 @@ function reconcileOperations(evidence, domains) {
     }
     if (domains.some(domain => !covered.has(domain))) throw new Error('Capacity evidence omits a contributing domain');
     const windows = new Map();
-    for (const [, operation] of [...contributions].sort(([left], [right]) => left.localeCompare(right))) {
+    for (const [, operation] of [...contributions].sort(([left], [right]) => compareStrings(left, right))) {
         windows.set(operation.window, (windows.get(operation.window) ?? 0) + operation.ruPerOperation * operation.operationsPerSecond);
     }
     if ([...windows.values()].some(value => !Number.isFinite(value))) throw new Error('Capacity arithmetic overflow');
@@ -64,7 +68,7 @@ export function reconcileCapacity(evidence, domains, capacityMode) {
     for (const value of storage.values()) {
         if (value.kind === 'embedded' && (!storage.has(value.parent) || storage.get(value.parent).kind === 'embedded')) throw new Error('Embedded storage must name its standalone parent contribution');
     }
-    const orderedStorage = [...storage].sort(([left], [right]) => left.localeCompare(right)).map(([, value]) => value);
+    const orderedStorage = [...storage].sort(([left], [right]) => compareStrings(left, right)).map(([, value]) => value);
     const standaloneStorage = orderedStorage.filter(value => value.kind !== 'embedded');
     if (standaloneStorage.length && standaloneStorage.every(value => value.rows !== null)) {
         result.estimatedRowCount = standaloneStorage.reduce((total, value) => total + value.rows, 0);
@@ -99,7 +103,7 @@ export function reconcileDatabasePool(pool, members, evidence) {
     }
     const windows = new Map();
     let storageBytes = 0;
-    for (const { container, domains } of [...members].sort((left, right) => left.container.name.localeCompare(right.container.name))) {
+    for (const { container, domains } of [...members].sort((left, right) => compareStrings(left.container.name, right.container.name))) {
         const contribution = evidence.find(entry => entry.name === container.name);
         const storage = reconcileCapacity(contribution, domains, 'serverless');
         if (storage.estimatedStorageGB === undefined) throw new Error(`Shared container ${container.name} requires known projected storage for pool sizing`);

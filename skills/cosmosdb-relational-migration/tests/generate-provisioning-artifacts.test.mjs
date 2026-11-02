@@ -66,6 +66,81 @@ function inputs() {
     return { model, sampleData, project };
 }
 
+test('uses selected account and database names without rewriting modeled containers or inputs', () => {
+    for (const type of ['azure', 'provision', 'emulator']) {
+        const { model, sampleData, project } = inputs();
+        project.phases.targetEnvironment.type = type;
+        const previous = buildProvisioningArtifacts(model, sampleData, project);
+        Object.assign(project.phases.targetEnvironment, { accountName: 'alternate-account', databaseName: 'alternate-db' });
+        project.phases.provisioning = { status: 'complete', databaseName: 'previous-deployment' };
+        const original = structuredClone({ model, sampleData, project });
+        const artifacts = buildProvisioningArtifacts(model, sampleData, project);
+        assert.match(artifacts['main.bicep'], /param databaseName string = 'alternate-db'/u);
+        assert.match(artifacts['main.bicep'], /name: 'Items'/u);
+        assert.match(artifacts['main.bicep'], /paths: \['\/tenantId', '\/itemId'\]/u);
+        assert.match(artifacts['main.bicepparam'], /param accountName = 'alternate-account'/u);
+        assert.match(artifacts['main.bicepparam'], /param databaseName = 'alternate-db'/u);
+        assert.match(artifacts['seed-data.csh'], /mkitem --database=alternate-db --container=\$entry.containerName --upsert/u);
+        if (type === 'emulator') {
+            assert.match(artifacts['seed-data.csh'], /^create database alternate-db$/mu);
+            assert.match(artifacts['seed-data.csh'], /^create container Items .*--database=alternate-db/mu);
+        }
+        assert.doesNotMatch(Object.values(artifacts).join('\n'), /migration-db|migration-app|previous-deployment/u);
+        assert.deepEqual(validateProvisioningArtifacts(artifacts, model, sampleData, project), []);
+        assert.deepEqual(validateProvisioningArtifacts(previous, model, sampleData, project).map(error => error.path).sort(),
+            ['$.main.bicep', '$.main.bicepparam', '$.seed-data.csh']);
+        assert.deepEqual({ model, sampleData, project }, original);
+    }
+});
+
+test('escapes target database names in both Bicep and Shell syntax', () => {
+    const { model, sampleData, project } = inputs();
+    project.phases.targetEnvironment = { type: 'emulator', databaseName: 'target\'s "database"' };
+    const artifacts = buildProvisioningArtifacts(model, sampleData, project);
+    for (const name of ['main.bicep', 'main.bicepparam']) {
+        assert(artifacts[name].includes(String.raw`'target\'s "database"'`));
+    }
+    assert(artifacts['seed-data.csh'].includes(String.raw`create database "target's \"database\""`));
+    assert(artifacts['seed-data.csh'].includes(String.raw`--database="target's \"database\""`));
+});
+
+test('preserves literal Bicep interpolation openers in target and modeled database names', () => {
+    for (const [databaseName, escapedName] of [
+        ['archive${year}-${month}', String.raw`archive\${year}-\${month}`],
+        ["archive's${year}", String.raw`archive\'s\${year}`],
+        ['archive$year', 'archive$year'],
+    ]) {
+        for (const override of [false, true]) {
+            const { model, sampleData, project } = inputs();
+            if (override) project.phases.targetEnvironment.databaseName = databaseName;
+            else model.databaseName = databaseName;
+            const artifacts = buildProvisioningArtifacts(model, sampleData, project);
+            assert(artifacts['main.bicep'].includes(`param databaseName string = '${escapedName}'`));
+            assert(artifacts['main.bicepparam'].includes(`param databaseName = '${escapedName}'`));
+        }
+    }
+});
+
+test('quotes dash-prefixed database names in Shell resource and seed commands', () => {
+    for (const databaseName of ['-archive', '--archive', '-']) {
+        for (const type of ['azure', 'provision', 'emulator']) {
+            for (const override of [false, true]) {
+                const { model, sampleData, project } = inputs();
+                project.phases.targetEnvironment.type = type;
+                if (override) project.phases.targetEnvironment.databaseName = databaseName;
+                else model.databaseName = databaseName;
+                const script = buildProvisioningArtifacts(model, sampleData, project)['seed-data.csh'];
+                assert(script.includes(`mkitem --database="${databaseName}" --container=$entry.containerName --upsert`));
+                if (type === 'emulator') {
+                    assert(script.includes(`create database "${databaseName}"`));
+                    assert(script.includes(`create container Items /tenantId,/itemId --database="${databaseName}"`));
+                    assert(script.includes(`--database="${databaseName}" --container=Items`));
+                }
+            }
+        }
+    }
+});
+
 test('places shared autoscale on the database and keeps hybrid container capacity independent', () => {
     for (const type of ['azure', 'provision', 'emulator']) {
         const { model, sampleData, project } = inputs();
@@ -98,7 +173,7 @@ test('places shared autoscale on the database and keeps hybrid container capacit
     }
 });
 
-test('does not fall back to dedicated throughput or a serverless emulator for a shared model', () => {
+test('adapts a shared model to a confirmed serverless target without creating throughput', () => {
     const { model, sampleData, project } = inputs();
     model.databaseMaxThroughput = 4000;
     model.containers[0].throughputMode = 'shared';
@@ -106,7 +181,14 @@ test('does not fall back to dedicated throughput or a serverless emulator for a 
     for (const type of ['azure', 'provision', 'emulator']) {
         project.phases.targetEnvironment.type = type;
         project.phases.targetEnvironment.capacityMode = 'serverless';
-        assert.throws(() => buildProvisioningArtifacts(model, sampleData, project), /Shared database throughput requires a provisioned target/u);
+        const original = structuredClone({ model, sampleData, project });
+        const artifacts = buildProvisioningArtifacts(model, sampleData, project);
+        if (type === 'emulator') assert.match(artifacts['main.bicep'], /maxThroughput: 4000/u);
+        else assert.doesNotMatch(artifacts['main.bicep'], /autoscaleSettings|maxThroughput/u);
+        assert.doesNotMatch(artifacts['seed-data.csh'], /^(?:create|index|throughput)\b/mu);
+        assert.deepEqual(getProvisioningCapacity(model, model.containers[0], project.phases.targetEnvironment), { capacityMode: 'serverless' });
+        assert.deepEqual(validateProvisioningArtifacts(artifacts, model, sampleData, project), []);
+        assert.deepEqual({ model, sampleData, project }, original);
     }
     delete model.databaseMaxThroughput;
     assert.throws(() => buildProvisioningArtifacts(model, sampleData, project), /databaseMaxThroughput/u);
@@ -418,12 +500,15 @@ test('generates an approved new serverless alternative without changing the reso
     assert.deepEqual(project, original);
 });
 
-test('rejects the Azure downgrade but permits a serverless emulator without changing the model', () => {
+test('adopts serverless Azure capacity without changing the provisioned model', () => {
     const { model, sampleData, project } = inputs();
     project.phases.targetEnvironment = { type: 'azure', endpoint: 'https://existing.documents.azure.com/', capacityMode: 'serverless' };
-    assert.throws(() => buildProvisioningArtifacts(model, sampleData, project), /cannot satisfy a provisioned-capacity model/u);
-    project.phases.targetEnvironment.type = 'emulator';
     const original = structuredClone(model);
+    const azureArtifacts = buildProvisioningArtifacts(model, sampleData, project);
+    assert.doesNotMatch(azureArtifacts['main.bicep'], /autoscaleSettings|maxThroughput|EnableServerless/u);
+    assert.doesNotMatch(azureArtifacts['seed-data.csh'], /--scale|--ru|^throughput /mu);
+    assert.deepEqual(validateProvisioningArtifacts(azureArtifacts, model, sampleData, project), []);
+    project.phases.targetEnvironment.type = 'emulator';
     const artifacts = buildProvisioningArtifacts(model, sampleData, project);
     assert.deepEqual(getProvisioningCapacity(model, model.containers[0], project.phases.targetEnvironment), { capacityMode: 'serverless' });
     assert.doesNotMatch(artifacts['seed-data.csh'], /--scale|--ru|^throughput /mu);
@@ -431,12 +516,43 @@ test('rejects the Azure downgrade but permits a serverless emulator without chan
     assert.deepEqual(model, original);
 });
 
-test('does not override modeled provisioned throughput with a lower target maximum', () => {
+test('uses an approved target maximum instead of modeled provisioned throughput', () => {
+    for (const maxThroughput of [1000, 8000]) {
+        const { model, sampleData, project } = inputs();
+        const target = { type: 'azure', capacityMode: 'provisioned', maxThroughput };
+        project.phases.targetEnvironment = target;
+        const original = structuredClone(model);
+        assert.deepEqual(getProvisioningCapacity(model, model.containers[0], target), {
+            capacityMode: 'provisioned', maxThroughput,
+        });
+        const artifacts = buildProvisioningArtifacts(model, sampleData, project);
+        assert(artifacts['main.bicep'].includes(`maxThroughput: ${maxThroughput}`));
+        assert.deepEqual(validateProvisioningArtifacts(artifacts, model, sampleData, project), []);
+        assert.deepEqual(model, original);
+    }
+});
+
+test('applies one target maximum to all dedicated containers without resizing the shared pool', () => {
     const { model } = inputs();
-    const target = { type: 'azure', capacityMode: 'provisioned', maxThroughput: 1000 };
-    assert.deepEqual(getProvisioningCapacity(model, model.containers[0], target), {
-        capacityMode: 'provisioned', maxThroughput: 4000,
-    });
+    model.databaseMaxThroughput = 8000;
+    const small = { ...model.containers[0], name: 'Small', throughputMode: 'dedicated', maxThroughput: 4000 };
+    const large = { ...model.containers[0], name: 'Large', throughputMode: 'dedicated', maxThroughput: 40000 };
+    const shared = { ...model.containers[0], name: 'Shared', throughputMode: 'shared' };
+    delete shared.maxThroughput;
+    model.containers = [small, large, shared];
+    const original = structuredClone(model);
+    for (const type of ['azure', 'provision', 'emulator']) {
+        for (const maxThroughput of [undefined, 1000, 8000]) {
+            const target = { type, capacityMode: 'provisioned', maxThroughput };
+            assert.deepEqual(model.containers.map(container => getProvisioningCapacity(model, container, target)), [
+                { capacityMode: 'provisioned', maxThroughput: maxThroughput ?? 4000 },
+                { capacityMode: 'provisioned', maxThroughput: maxThroughput ?? 40000 },
+                { capacityMode: 'provisioned', throughputMode: 'shared' },
+            ]);
+            assert.equal(model.databaseMaxThroughput, 8000);
+        }
+    }
+    assert.deepEqual(model, original);
 });
 
 test('requires explicit valid throughput for a serverless model on provisioned Azure', () => {

@@ -251,6 +251,14 @@ function validateTargetEnvironment(value, errors) {
     ]) {
         optionalString(value, key, pathLabel, errors);
     }
+    if (value.databaseName !== undefined && requireString(value.databaseName, `${pathLabel}.databaseName`, errors)) {
+        if (Buffer.byteLength(value.databaseName, 'utf8') > 255) {
+            addError(errors, `${pathLabel}.databaseName`, 'must be at most 255 UTF-8 bytes');
+        }
+        if (/[\/\\?#]/u.test(value.databaseName) || value.databaseName.endsWith(' ')) {
+            addError(errors, `${pathLabel}.databaseName`, 'contains a forbidden resource-name character or trailing space');
+        }
+    }
     optionalBoolean(value, 'verified', pathLabel, errors);
     if (value.capacityMode !== undefined && !['serverless', 'provisioned'].includes(value.capacityMode)) {
         addError(errors, `${pathLabel}.capacityMode`, 'must be serverless or provisioned');

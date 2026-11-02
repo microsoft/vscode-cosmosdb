@@ -216,7 +216,7 @@ const initialState: MigrationState = {
     codeMigrationAction: 'plan',
 };
 
-function migrationReducer(state: MigrationState, action: MigrationAction): MigrationState {
+export function migrationReducer(state: MigrationState, action: MigrationAction): MigrationState {
     switch (action.type) {
         case 'SET_RUN_ACTIVITY':
             return { ...state, runActivity: action.payload };
@@ -276,7 +276,21 @@ function migrationReducer(state: MigrationState, action: MigrationAction): Migra
             };
         }
         case 'SET_TARGET_ENDPOINT':
-            return { ...state, targetEndpoint: action.payload };
+            if (state.targetEndpoint === action.payload) return state;
+            return {
+                ...state,
+                targetEndpoint: action.payload,
+                targetAccountName: null,
+                targetSubscriptionId: '',
+                targetSubscriptionName: '',
+                targetResourceGroup: '',
+                targetLocation: '',
+                connectionVerified: false,
+                connectionTestState: 'available',
+                connectionTestError: null,
+                connectionTestDocumentationUrl: null,
+                accountProvisioningState: action.payload ? 'complete' : 'available',
+            };
         case 'SET_TARGET_ACCOUNT_NAME': {
             const resetEndpoint =
                 state.targetType === 'provision' &&

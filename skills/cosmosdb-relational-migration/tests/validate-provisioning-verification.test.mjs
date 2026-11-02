@@ -63,6 +63,36 @@ function inputs() {
     return { model, sampleData, project, report };
 }
 
+test('verifies an alternate target without changing model identity or accepting previous-target evidence', () => {
+    for (const type of ['azure', 'provision', 'emulator']) {
+        const { model, sampleData, project, report } = inputs();
+        const originalModel = structuredClone(model);
+        const oldTarget = structuredClone(report.target);
+        project.phases.targetEnvironment = {
+            type, accountName: 'alternate-account', databaseName: 'alternate-db', capacityMode: 'serverless',
+            endpoint: type === 'emulator' ? 'https://localhost:8081/' : 'https://alternate-account.documents.azure.com/',
+        };
+        assert(validateProvisioningVerification(model, sampleData, project, report)
+            .some(error => error.path === '$.databaseName'));
+        report.databaseName = 'alternate-db';
+        assert(validateProvisioningVerification(model, sampleData, project, report)
+            .some(error => error.path === '$.target.endpoint'));
+        const { accountName, endpoint } = project.phases.targetEnvironment;
+        report.target = { type, accountName, endpoint };
+        assert.deepEqual(validateProvisioningVerification(model, sampleData, project, report), []);
+        for (const [field, value] of Object.entries({ accountName: oldTarget.accountName, endpoint: oldTarget.endpoint })) {
+            const stale = { ...report, target: { ...report.target, [field]: value } };
+            assert(validateProvisioningVerification(model, sampleData, project, stale)
+                .some(error => error.path === `$.target.${field}`));
+        }
+        report.containers[0].name = 'RenamedItems';
+        assert(validateProvisioningVerification(model, sampleData, project, report)
+            .some(error => error.path.startsWith('$.containers')));
+        assert.equal(report.modelSha256, modelSha256(model));
+        assert.deepEqual(model, originalModel);
+    }
+});
+
 function sharedInputs() {
     const values = inputs();
     const { model, project, report } = values;
@@ -495,18 +525,53 @@ test('verifies a serverless model on provisioned Azure without changing its cano
         .some(error => error.path === '$.project.phases.targetEnvironment'));
 });
 
-test('rejects provisioned models on serverless Azure but permits the emulator test exception', () => {
+test('verifies provisioned models on serverless Azure and emulator targets', () => {
     const { model, sampleData, project, report } = inputs();
     model.capacityMode = 'provisioned';
     model.containers[0].maxThroughput = 4000;
     report.modelSha256 = modelSha256(model);
     project.phases.targetEnvironment.capacityMode = 'serverless';
-    assert(validateProvisioningVerification(model, sampleData, project, report)
-        .some(error => error.message.includes('cannot satisfy a provisioned-capacity model')));
+    assert.deepEqual(validateProvisioningVerification(model, sampleData, project, report), []);
     project.phases.targetEnvironment = { type: 'emulator', endpoint: 'https://localhost:8081/', capacityMode: 'serverless' };
     report.target = { type: 'emulator', endpoint: 'https://localhost:8081/' };
     assert.deepEqual(validateProvisioningVerification(model, sampleData, project, report), []);
     assert.equal(model.capacityMode, 'provisioned');
+    assert.equal(model.containers[0].maxThroughput, 4000);
+});
+
+test('verifies a shared model on serverless Azure without accepting provisioned allocation evidence', () => {
+    const { model, sampleData, project, report } = sharedInputs();
+    project.phases.targetEnvironment.capacityMode = 'serverless';
+    delete report.databaseThroughput;
+    delete report.containers[0].throughputMode;
+    delete report.containers[0].dedicatedThroughputPresent;
+    report.containers[0].capacityMode = 'serverless';
+    const original = structuredClone({ model, sampleData, project, report });
+    assert.deepEqual(validateProvisioningVerification(model, sampleData, project, report), []);
+    assert.deepEqual({ model, sampleData, project, report }, original);
+    for (const change of [
+        value => { value.databaseThroughput = { mode: 'autoscale', maxThroughput: 4000, isReplacePending: false }; },
+        value => { value.containers[0].throughputMode = 'shared'; },
+        value => { value.containers[0].maxThroughput = 4000; },
+        value => { value.containers[0].capacityMode = 'provisioned'; },
+    ]) {
+        const changed = structuredClone(report);
+        change(changed);
+        assert(validateProvisioningVerification(model, sampleData, project, changed).length > 0);
+    }
+});
+
+test('verifies an approved lower target maximum without accepting modeled throughput as readback', () => {
+    const { model, sampleData, project, report } = inputs();
+    model.capacityMode = 'provisioned';
+    model.containers[0].maxThroughput = 4000;
+    report.modelSha256 = modelSha256(model);
+    Object.assign(project.phases.targetEnvironment, { capacityMode: 'provisioned', maxThroughput: 1000 });
+    Object.assign(report.containers[0], { capacityMode: 'provisioned', maxThroughput: 1000 });
+    assert.deepEqual(validateProvisioningVerification(model, sampleData, project, report), []);
+    report.containers[0].maxThroughput = 4000;
+    assert(validateProvisioningVerification(model, sampleData, project, report)
+        .some(error => error.path === '$.containers[0].maxThroughput'));
     assert.equal(model.containers[0].maxThroughput, 4000);
 });
 

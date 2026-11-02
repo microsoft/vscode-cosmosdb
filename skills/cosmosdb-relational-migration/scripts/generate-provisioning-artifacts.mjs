@@ -15,11 +15,11 @@ import { readSourceInventory } from './validate-source-evidence.mjs';
 const DATA_CONTRIBUTOR_ROLE_ID = '00000000-0000-0000-0000-000000000002';
 
 function escapeBicep(value) {
-    return value.replace(/\\/gu, '\\\\').replace(/'/gu, "\\'").replace(/\r/gu, '\\r').replace(/\n/gu, '\\n');
+    return value.replace(/\\/gu, '\\\\').replace(/\$\{/gu, '\\${').replace(/'/gu, "\\'").replace(/\r/gu, '\\r').replace(/\n/gu, '\\n');
 }
 
 function escapeShell(value) {
-    return /^[a-zA-Z0-9_.-]+$/u.test(value) ? value : `"${value.replace(/\\/gu, '\\\\').replace(/"/gu, '\\"')}"`;
+    return /^[a-zA-Z0-9_.][a-zA-Z0-9_.-]*$/u.test(value) ? value : `"${value.replace(/\\/gu, '\\\\').replace(/"/gu, '\\"')}"`;
 }
 
 function emitIndexingPolicy(lines, policy, indent) {
@@ -74,7 +74,7 @@ export function buildBicep(model, targetEnvironment) {
         '',
         'param accountName string',
         ...(createAccount ? ['param location string = resourceGroup().location'] : []),
-        `param databaseName string = '${escapeBicep(model.databaseName)}'`,
+        `param databaseName string = '${escapeBicep(targetEnvironment?.databaseName ?? model.databaseName)}'`,
         ...(createAccount ? ['param principalId string = deployer().objectId'] : []),
         '',
         `resource account 'Microsoft.DocumentDB/databaseAccounts@2024-05-15'${createAccount ? '' : ' existing'} = {`,
@@ -108,7 +108,7 @@ export function buildBicep(model, targetEnvironment) {
         '    resource: {',
         '      id: databaseName',
         '    }',
-        ...(model.databaseMaxThroughput === undefined ? [] : [
+        ...(capacityMode === 'serverless' || model.databaseMaxThroughput === undefined ? [] : [
             '    options: {',
             '      autoscaleSettings: {',
             `        maxThroughput: ${model.databaseMaxThroughput}`,
@@ -207,7 +207,7 @@ export function buildBicepParams(model, project) {
     const lines = ["using './main.bicep'", ''];
     lines.push(accountName ? `param accountName = '${escapeBicep(accountName)}'` : "// TODO: param accountName = '<value>'");
     if (isNewAccountTarget(target) && target.location) lines.push(`param location = '${escapeBicep(target.location)}'`);
-    lines.push(`param databaseName = '${escapeBicep(model.databaseName)}'`, '');
+    lines.push(`param databaseName = '${escapeBicep(target?.databaseName ?? model.databaseName)}'`, '');
     return lines.join('\n');
 }
 
@@ -219,12 +219,6 @@ export function getProvisioningCapacity(model, container, targetEnvironment) {
     const emulator = targetEnvironment?.type === 'emulator';
     const capacityMode = targetEnvironment?.capacityMode ?? (emulator ? 'provisioned' : model.capacityMode);
     if (!['serverless', 'provisioned'].includes(capacityMode)) throw new Error('Target capacityMode must be serverless or provisioned.');
-    if (model.containers?.some(member => member.throughputMode === 'shared') && capacityMode !== 'provisioned') {
-        throw new Error('Shared database throughput requires a provisioned target, including emulator targets.');
-    }
-    if (model.capacityMode === 'provisioned' && capacityMode === 'serverless' && !emulator) {
-        throw new Error('A serverless Azure account cannot satisfy a provisioned-capacity model. Select or create a provisioned account.');
-    }
     if (capacityMode === 'serverless') return { capacityMode };
     if (container.throughputMode === 'shared') {
         if (model.capacityMode !== 'provisioned' || container.maxThroughput !== undefined ||
@@ -233,9 +227,9 @@ export function getProvisioningCapacity(model, container, targetEnvironment) {
         }
         return { capacityMode, throughputMode: 'shared' };
     }
-    const maxThroughput = model.capacityMode === 'provisioned'
+    const maxThroughput = targetEnvironment?.maxThroughput ?? (model.capacityMode === 'provisioned'
         ? container.maxThroughput
-        : targetEnvironment?.maxThroughput ?? (emulator ? 1000 : undefined);
+        : emulator ? 1000 : undefined);
     if (!Number.isInteger(maxThroughput) || maxThroughput < 1000 || maxThroughput % 1000 !== 0) {
         throw new Error('Select an autoscale maximum for the provisioned target: a multiple of 1000 RU/s, at least 1000.');
     }
@@ -247,7 +241,7 @@ export function buildSeedScript(model, targetEnvironment) {
     if (model.containers.some(container => container.throughputMode === 'shared')) {
         for (const container of model.containers) getProvisioningCapacity(model, container, targetEnvironment);
     }
-    const databaseName = escapeShell(model.databaseName);
+    const databaseName = escapeShell(targetEnvironment?.databaseName ?? model.databaseName);
     const seedOnly = targetEnvironment?.type !== 'emulator' || model.containers.some((container) =>
         container.fullTextPolicy !== undefined || container.uniqueKeyPolicy !== undefined || container.throughputMode === 'shared');
     let connection = 'connect $1';

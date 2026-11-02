@@ -37,6 +37,11 @@ observations are excluded from semantic projections. The checkpoint itself is ne
 hashed as a file: only relevant semantic fields are hashed, avoiding self-reference
 and invalidation from unrelated workflow bookkeeping.
 
+Canonical model collections and source-file lists use UTF-16 code-unit ordering,
+not the host locale. Regenerate affected evidence when older locale-dependent
+ordering produces different hashes; do not rewrite recorded hashes to bypass validation.
+Partition-key levels and fields within each composite index retain their meaningful order.
+
 The advisory `.cosmosdb-migration/memory.md` notebook is not a consulted freshness input.
 Updating notes does not invalidate completed phases. Record materially applied reasoning
 in the phase summary instead. A preserved model under `memory-models/` that is actually

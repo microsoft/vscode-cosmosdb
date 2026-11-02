@@ -762,20 +762,26 @@ function canonicalRelationship(relationship) {
     return result;
 }
 
+function compareCanonicalStrings(left, right) {
+    return left < right ? -1 : left > right ? 1 : 0;
+}
+
 function canonicalEntity(entity) {
     const result = {
         name: entity.name,
         docType: entity.docType,
         sourceTable: entity.sourceTable,
         attributes: entity.attributes.map(canonicalAttribute).sort((left, right) =>
-            `${left.target}\0${left.source.table}\0${left.source.column}`.localeCompare(
+            compareCanonicalStrings(
+                `${left.target}\0${left.source.table}\0${left.source.column}`,
                 `${right.target}\0${right.source.table}\0${right.source.column}`,
             ),
         ),
     };
     if (entity.relationships?.length) {
         result.relationships = entity.relationships.map(canonicalRelationship).sort((left, right) =>
-            `${left.targetEntity}\0${left.sourceFK.table}\0${left.sourceFK.column}\0${left.sourceFK.constraintName ?? ''}`.localeCompare(
+            compareCanonicalStrings(
+                `${left.targetEntity}\0${left.sourceFK.table}\0${left.sourceFK.column}\0${left.sourceFK.constraintName ?? ''}`,
                 `${right.targetEntity}\0${right.sourceFK.table}\0${right.sourceFK.column}\0${right.sourceFK.constraintName ?? ''}`,
             ),
         );
@@ -789,15 +795,15 @@ function canonicalIndexingPolicy(policy) {
     const result = {};
     if (policy.indexingMode !== undefined) result.indexingMode = policy.indexingMode;
     if (policy.automatic !== undefined) result.automatic = policy.automatic;
-    result.includedPaths = [...policy.includedPaths].map(({ path: indexPath }) => ({ path: indexPath })).sort((a, b) => a.path.localeCompare(b.path));
-    result.excludedPaths = [...policy.excludedPaths].map(({ path: indexPath }) => ({ path: indexPath })).sort((a, b) => a.path.localeCompare(b.path));
+    result.includedPaths = [...policy.includedPaths].map(({ path: indexPath }) => ({ path: indexPath })).sort((a, b) => compareCanonicalStrings(a.path, b.path));
+    result.excludedPaths = [...policy.excludedPaths].map(({ path: indexPath }) => ({ path: indexPath })).sort((a, b) => compareCanonicalStrings(a.path, b.path));
     if (policy.compositeIndexes?.length) {
         result.compositeIndexes = policy.compositeIndexes
             .map((group) => group.map(({ path: indexPath, order }) => ({ path: indexPath, order })))
-            .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+            .sort((a, b) => compareCanonicalStrings(JSON.stringify(a), JSON.stringify(b)));
     }
     if (policy.fullTextIndexes?.length) {
-        result.fullTextIndexes = policy.fullTextIndexes.map(({ path: indexPath }) => ({ path: indexPath })).sort((a, b) => a.path.localeCompare(b.path));
+        result.fullTextIndexes = policy.fullTextIndexes.map(({ path: indexPath }) => ({ path: indexPath })).sort((a, b) => compareCanonicalStrings(a.path, b.path));
     }
     return result;
 }
@@ -810,7 +816,7 @@ export function canonicalFullTextPolicy(policy) {
                 path: entry.path,
                 language: entry.language ?? policy.defaultLanguage,
             }))
-            .sort((left, right) => left.path.localeCompare(right.path)),
+            .sort((left, right) => compareCanonicalStrings(left.path, right.path)),
     };
 }
 
@@ -818,7 +824,7 @@ export function canonicalUniqueKeyPolicy(policy) {
     return {
         uniqueKeys: policy.uniqueKeys
             .map(({ paths }) => ({ paths: [...paths].sort() }))
-            .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right))),
+            .sort((left, right) => compareCanonicalStrings(JSON.stringify(left), JSON.stringify(right))),
     };
 }
 
@@ -826,7 +832,7 @@ function canonicalContainer(container) {
     const result = {
         name: container.name,
         partitionKeys: container.partitionKeys.map(({ path: partitionPath }) => ({ path: partitionPath })),
-        entities: container.entities.map(canonicalEntity).sort((a, b) => a.name.localeCompare(b.name)),
+        entities: container.entities.map(canonicalEntity).sort((a, b) => compareCanonicalStrings(a.name, b.name)),
         indexingPolicy: canonicalIndexingPolicy(container.indexingPolicy),
     };
     if (container.fullTextPolicy !== undefined)
@@ -877,16 +883,16 @@ export function canonicalizeCosmosModel(model) {
     if (model.databaseMaxThroughput !== undefined) result.databaseMaxThroughput = model.databaseMaxThroughput;
     result.domain = model.domain;
     if (model.sourceType !== undefined) result.sourceType = model.sourceType;
-    result.containers = model.containers.map(canonicalContainer).sort((a, b) => a.name.localeCompare(b.name));
+    result.containers = model.containers.map(canonicalContainer).sort((a, b) => compareCanonicalStrings(a.name, b.name));
     if (model.accessPatterns?.length) {
         result.accessPatterns = model.accessPatterns
             .map(canonicalAccessPattern)
-            .sort((a, b) => a.name.localeCompare(b.name));
+            .sort((a, b) => compareCanonicalStrings(a.name, b.name));
     }
     if (model.crossPartitionQueries?.length) {
         result.crossPartitionQueries = model.crossPartitionQueries
             .map(canonicalCrossPartitionQuery)
-            .sort((a, b) => a.name.localeCompare(b.name));
+            .sort((a, b) => compareCanonicalStrings(a.name, b.name));
     }
     return result;
 }

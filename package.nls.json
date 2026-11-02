@@ -4,7 +4,7 @@
   "cosmosdb.command.account.delete": "Delete Account…",
   "cosmosdb.command.account.unsupported": "Open Unsupported Account",
   "cosmosdb.command.account.overview.open": "Open Account Overview",
-  "cosmosdb.command.account.overview.menu": "Account Overview",
+  "cosmosdb.command.account.overview.menu": "Account Overview (Preview)",
   "cosmosdb.command.account.overview.overview": "Overview",
   "cosmosdb.command.account.overview.normalizedRu": "Normalized RU",
   "cosmosdb.command.account.overview.totalRequests": "Total requests",

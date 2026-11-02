@@ -2190,6 +2190,11 @@ describe('alert monitor condition and active health', () => {
         await user.tab();
         expect(screen.getByRole('button', { name: 'Provide Feedback' })).toHaveFocus();
         await user.tab();
+        const preview = screen.getByLabelText('Preview', { selector: `.${badgeClassNames.root}` });
+        expect(preview).toHaveFocus();
+        expect(preview).toHaveAccessibleName('Preview');
+        expect(preview).toHaveAccessibleDescription('Preview: features and behavior may change. Use with care.');
+        await user.tab();
         expect(badge).toHaveFocus();
         const tooltip = await screen.findByRole('tooltip');
         const checks = within(tooltip).getAllByRole('listitem');

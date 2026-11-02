@@ -3,7 +3,7 @@
 Account Overview helps you answer three questions about an Azure Cosmos DB for NoSQL account:
 **What is happening? Which resources need attention? What should I investigate next?**
 
-In the Azure resources Explorer, open your account's **Account Overview → Overview**.
+In the Azure resources Explorer, open your account's **Account Overview (Preview) → Overview**.
 The account stays the same as you move between tabs or select a database.
 Reading the dashboard does not change Azure resources. Actions such as **Add database**, **Add container**
 and **Delete account** are separate, explicit operations with the extension's usual wizard or confirmation.

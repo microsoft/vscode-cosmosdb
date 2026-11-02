@@ -201,6 +201,13 @@ test('runs the validation suites from a standalone Skill copy without peer or DD
             env: environment,
         });
         assert.equal(result.status, 0, result.stdout + result.stderr);
-        assert.match(result.stdout, /skipped 0/u);
+        // Platform capability skips are acceptable; skips caused by missing peer or parser installations are not.
+        const capabilitySkips = new Set([
+            'tracks consulted workspace files and rejects symlink escapes',
+            'rejects output symlinks that escape the workspace',
+        ]);
+        const skipped = [...result.stdout.matchAll(/^\s*\S+ (.+?) \([\d.]+ms\) # (?!TODO\b)/gmu)].map(match => match[1]);
+        assert.equal(Number(/skipped (\d+)/u.exec(result.stdout)?.[1]), skipped.length, result.stdout);
+        assert.deepEqual(skipped.filter(title => !capabilitySkips.has(title)), []);
     } finally { fs.rmSync(root, { recursive: true }); }
 });

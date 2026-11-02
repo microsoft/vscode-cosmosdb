@@ -222,8 +222,10 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         client.dataModeling.events.subscribe.mockReturnValue({ unsubscribe: vi.fn() });
     });
 
-    it('uses the shared sticky-navigation layout and keeps the footer outside its scroll region', async () => {
-        client.dataModeling.loadState.query.mockResolvedValue(restored(4));
+    it('reserves badge space beside a wrapping title and keeps the footer outside the sticky-navigation scroll region', async () => {
+        const saved = restored(4);
+        saved.wizard.scenario = 'inventory';
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
         render(<DataModelingWizard />);
         await continueExisting();
         const navigation = screen.getByRole('navigation', { name: 'Data modeling steps' });
@@ -232,7 +234,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         const content = scrollRegion?.firstElementChild;
         expect(content).toContainElement(navigation);
         expect(content).toHaveStyle({ maxWidth: 'none', padding: '24px' });
-        const title = screen.getByRole('heading', { name: /^Workload:/ });
+        const title = screen.getByRole('heading', { name: 'Workload: Inventory & Supply Chain' });
         expect(scrollRegion).toContainElement(title);
         expect(title).toHaveAccessibleName(title.textContent);
         const preview = screen.getByLabelText('Preview');
@@ -241,15 +243,15 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(preview).toHaveTextContent('Preview');
         expect(preview).toHaveAccessibleName('Preview');
         expect(preview).toHaveAttribute('tabindex', '0');
-        expect(preview).toHaveStyle({ marginTop: '36px', marginRight: '36px', height: '32px' });
-        expect(scrollRegion).not.toContainElement(preview);
+        expect(preview).toHaveStyle({ marginTop: '0px', marginRight: '12px', height: '32px' });
+        expect(scrollRegion).toContainElement(preview);
+        expect(title.parentElement?.parentElement).toContainElement(preview);
         expect(preview.parentElement).toHaveStyle({
-            position: 'sticky',
-            top: '0px',
-            height: '0px',
-            justifyContent: 'flex-end',
+            marginInlineStart: 'auto',
             flexShrink: '0',
         });
+        expect(title.parentElement).toHaveStyle({ minWidth: '0px' });
+        expect(title.firstElementChild).toHaveStyle({ overflowWrap: 'anywhere' });
         const titleIcon = title.parentElement?.parentElement?.querySelector('svg');
         expect(titleIcon).toBeVisible();
         expect(titleIcon).toHaveAttribute('aria-hidden', 'true');

@@ -89,19 +89,12 @@ const useViewportStyles = makeStyles({
 
 const useStyles = makeStyles({
     previewBadge: {
-        // Center the 32px badge on the 56px header below its 24px inset, with the same inset on the right.
-        marginTop: '36px',
-        marginRight: '36px',
+        // The centered 32px badge has a 12px vertical inset in the 56px header; match it on the right.
+        marginTop: 0,
+        marginRight: '12px',
     },
-    previewRail: {
-        position: 'sticky',
-        top: 0,
-        zIndex: 10,
-        flexShrink: 0,
-        height: 0,
-        display: 'flex',
-        justifyContent: 'flex-end',
-        pointerEvents: 'none',
+    workloadTitle: {
+        overflowWrap: 'anywhere',
     },
     fullWidthWizard: {
         display: 'flex',
@@ -977,9 +970,6 @@ const HydratedDataModelingWizard = ({
                     {addContainerError}
                 </Text>
             ) : null}
-            <div className={styles.previewRail}>
-                <PreviewBadge className={styles.previewBadge} />
-            </div>
             <div className={styles.wizardHost}>
                 <Wizard
                     activeStep={activeValue}
@@ -990,7 +980,12 @@ const HydratedDataModelingWizard = ({
                     header={
                         <ContainerHeader
                             media={<DatabaseLinkRegular aria-hidden="true" focusable="false" />}
-                            title={l10n.t('Workload: {name}', { name: scenarioLabel ?? l10n.t('Not selected') })}
+                            title={
+                                <span className={styles.workloadTitle}>
+                                    {l10n.t('Workload: {name}', { name: scenarioLabel ?? l10n.t('Not selected') })}
+                                </span>
+                            }
+                            action={<PreviewBadge className={styles.previewBadge} />}
                         />
                     }
                     footer={footer}

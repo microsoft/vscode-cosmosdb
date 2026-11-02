@@ -12,11 +12,12 @@ import {
     dropdownClassNames,
     FluentProvider,
     optionClassNames,
+    webDarkTheme,
     webLightTheme,
 } from '@fluentui/react-components';
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { type ComponentProps, type PropsWithChildren } from 'react';
+import { type ComponentProps } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getAccountMetricApplicability } from '../../../panels/accountOverview/metrics/contracts';
 import { AccountHeader, type AccountSummary } from './AccountHeader';
@@ -44,11 +45,7 @@ const summary: AccountSummary = {
     lastRefreshedAt: 1000,
 };
 
-function Wrapper({ children }: PropsWithChildren) {
-    return <FluentProvider theme={webLightTheme}>{children}</FluentProvider>;
-}
-
-function renderHeader(overrides: Partial<HeaderProps> = {}) {
+function renderHeader(overrides: Partial<HeaderProps> = {}, theme = webLightTheme) {
     const props: HeaderProps = {
         summary,
         lastRefreshedAt: 2000,
@@ -61,7 +58,12 @@ function renderHeader(overrides: Partial<HeaderProps> = {}) {
         onAccountAction: vi.fn(),
         ...overrides,
     };
-    return { props, ...render(<AccountHeader {...props} />, { wrapper: Wrapper }) };
+    return {
+        props,
+        ...render(<AccountHeader {...props} />, {
+            wrapper: ({ children }) => <FluentProvider theme={theme}>{children}</FluentProvider>,
+        }),
+    };
 }
 
 beforeEach(() => {
@@ -86,6 +88,38 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('AccountHeader', () => {
+    it.each([
+        ['light', webLightTheme],
+        ['dark', webDarkTheme],
+    ])('shows the Preview tooltip on keyboard focus in the %s theme', async (_name, theme) => {
+        const user = userEvent.setup();
+        renderHeader({}, theme);
+        const badge = screen.getByLabelText('Preview', { selector: `.${badgeClassNames.root}` });
+        expect(badge).toHaveTextContent('Preview');
+        expect(badge).toHaveAccessibleName('Preview');
+        expect(badge).toHaveClass('focusableBadge');
+        expect(badge.querySelector('span')).toHaveAttribute('aria-hidden', 'true');
+        screen.getByRole('button', { name: 'Refresh' }).focus();
+        await user.tab();
+        expect(badge).toHaveFocus();
+        const tooltip = await screen.findByRole('tooltip');
+        expect(tooltip).toHaveTextContent('Preview: features and behavior may change. Use with care.');
+        expect(badge).toHaveAccessibleDescription('Preview: features and behavior may change. Use with care.');
+        await user.tab();
+        expect(screen.getByText(/^Total throughput limit:/)).toHaveFocus();
+    });
+
+    it('shows the exact Preview tooltip on hover without changing the visible badge label', async () => {
+        const user = userEvent.setup();
+        renderHeader();
+        const badge = screen.getByLabelText('Preview', { selector: `.${badgeClassNames.root}` });
+        await user.hover(badge);
+        const tooltip = await screen.findByRole('tooltip');
+        expect(tooltip.textContent).toBe('Preview: features and behavior may change. Use with care.');
+        expect(badge).toHaveTextContent('Preview');
+        expect(badge).toHaveAccessibleName('Preview');
+    });
+
     it('places the shared feedback menu beside Refresh and keeps it usable while metrics load', async () => {
         const user = userEvent.setup();
         const onProvideFeedback = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
@@ -467,6 +501,8 @@ describe('AccountHeader', () => {
         expect(screen.queryByRole('button', { name: 'Refresh options' })).not.toBeInTheDocument();
         expect(screen.queryByRole('switch', { name: 'Pause auto-refresh' })).not.toBeInTheDocument();
         refresh.focus();
+        await user.tab();
+        expect(screen.getByLabelText('Preview', { selector: `.${badgeClassNames.root}` })).toHaveFocus();
         await user.tab();
         expect(screen.getByText(/^Total throughput limit:/)).toHaveFocus();
         await user.tab();

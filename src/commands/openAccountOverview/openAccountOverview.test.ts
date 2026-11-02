@@ -278,7 +278,15 @@ describe('account overview contribution contract', () => {
         }
         const root = manifest.contributes.submenus.find((entry) => entry.id === 'cosmosDB.submenus.accountOverview');
         expect(root).toBeDefined();
-        expect(labelFor(root!.label)).toBe('Account Overview');
+        expect(labelFor(root!.label)).toBe('Account Overview (Preview)');
+    });
+
+    it('marks only the independent submenu label as Preview, not the Command Palette title', () => {
+        const command = contributedCommands.find((entry) => entry.command === 'cosmosDB.openAccountOverview');
+        expect(command).toBeDefined();
+        expect(command!.title).toBe('%cosmosdb.command.account.overview.open%');
+        expect(labelFor(command!.title)).toBe('Open Account Overview');
+        expect(contributedCommands.every((entry) => !labelFor(entry.title).includes('(Preview)'))).toBe(true);
     });
 
     it('gates the submenu to ARM metadata accounts in Azure Resources views', () => {

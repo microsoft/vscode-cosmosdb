@@ -8,6 +8,7 @@ import {
     AccordionHeader,
     AccordionItem,
     AccordionPanel,
+    Badge,
     Button,
     Dropdown,
     makeStyles,
@@ -116,6 +117,23 @@ const useStyles = makeStyles({
         flexWrap: 'wrap',
         minWidth: 0,
         maxWidth: '100%',
+    },
+    previewBadge: {
+        flexShrink: 0,
+        cursor: 'default',
+        height: '32px',
+        paddingLeft: '20px',
+        paddingRight: '20px',
+        borderRadius: '6px',
+        fontWeight: 600,
+        backgroundColor: 'var(--vscode-editorWidget-background)',
+        color: 'var(--vscode-foreground)',
+        border: '1px solid var(--vscode-panel-border)',
+        boxShadow: '0 2px 8px var(--vscode-widget-shadow)',
+        '&:focus-visible': {
+            outline: '2px solid var(--vscode-focusBorder)',
+            outlineOffset: '1px',
+        },
     },
     select: {
         minWidth: 0,
@@ -434,6 +452,20 @@ export const AccountHeader = ({
                         {l10n.t('Refresh')}
                     </Button>
                     {onProvideFeedback && <ProvideFeedbackButton type="button" onProvideFeedback={onProvideFeedback} />}
+                    <Tooltip
+                        content={l10n.t('Preview: features and behavior may change. Use with care.')}
+                        relationship="description"
+                    >
+                        <Badge
+                            appearance="outline"
+                            color="informative"
+                            className={mergeClasses('focusableBadge', styles.previewBadge)}
+                            tabIndex={0}
+                            aria-label={l10n.t('Preview')}
+                        >
+                            <span aria-hidden="true">{l10n.t('Preview')}</span>
+                        </Badge>
+                    </Tooltip>
                 </div>
             </div>
             <p className={styles.subtitle}>

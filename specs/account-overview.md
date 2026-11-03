@@ -688,7 +688,9 @@ Container creation validates the selected database against that account's ARM da
 With All databases selected, it asks within the current account, including empty databases; no unscoped account picker.
 Tree refresh/progress is secondary to the action, so an empty Explorer cache does not block the operation.
 
-Create wizards make Overview dimmed/inert until cancellation, failure, or successful inventory reload.
+Create wizards make Overview dimmed/inert with a centered progress spinner until cancellation, failure,
+or successful inventory reload. The existing account-action announcement supplies accessible progress feedback;
+the visual overlay is hidden from assistive technology to avoid duplicate announcements and does not take wizard focus.
 Cancellation is not a failure. Delete success leaves the dashboard in its deleted-account state.
 View Cost and View JSON stay in the account actions row alongside Add database and Add container,
 outside the collapsible Account details.

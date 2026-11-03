@@ -322,7 +322,8 @@ Azure Monitor ingestion delays and different collection windows can explain diff
 
 **Add database** and **Add container** use the existing native VS Code wizards for this account.
 With All databases selected, Add container asks you to choose a database in the same account.
-Overview is dimmed while a creation wizard runs. Cancel returns without changes; successful creation refreshes inventory.
+Overview is dimmed with a centered progress spinner while a creation wizard runs and until inventory reload finishes.
+Cancel returns without changes; successful creation refreshes inventory.
 Delete account uses the existing confirmation and requires permission to delete the resource.
 
 **View Cost** opens account-scoped Azure Portal Cost Analysis.

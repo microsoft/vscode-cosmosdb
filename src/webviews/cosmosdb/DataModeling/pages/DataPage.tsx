@@ -39,6 +39,14 @@ import { getPartitionKeyRestriction } from '../partitionKeyEligibility';
 import { getArrayUpdateOptions, nextId } from '../scenarios';
 import { useNativeConfirmation } from '../useNativeConfirmation';
 import { getRoleOptions } from '../wizardState';
+import {
+    getArrayItemsOrderMessage,
+    getCountErrorMessage,
+    MAX_ARRAY_ITEMS,
+    MAX_ATTRIBUTE_COUNT,
+    parseCountInput,
+    validateCount,
+} from '../workloadLimits';
 
 /**
  * Data tab of a container step. Self-contained editor for one container's schema:
@@ -147,6 +155,7 @@ export interface DataPageProps {
 }
 
 type DocumentSizeField = 'avgSizeKb' | 'maxSizeKb';
+type CountField = 'attributeCount' | 'avgItems' | 'maxItems';
 
 export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
     const styles = useStyles();
@@ -154,6 +163,7 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
     const [uploadInfo, setUploadInfo] = useState<string>();
     const [uploadError, setUploadError] = useState<string>();
     const [sizeErrors, setSizeErrors] = useState<Partial<Record<DocumentSizeField, string>>>({});
+    const [countErrors, setCountErrors] = useState<Partial<Record<CountField, string>>>({});
     const negativeSizeMessage = l10n.t('Document size cannot be negative.');
     const sizeLimitMessage = l10n.t('Document size cannot exceed 2 MB (2048 KB).');
     const sizeOrderMessage = l10n.t('Average document size cannot exceed maximum document size.');
@@ -305,6 +315,36 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
     const patchArrays = (patch: Partial<ContainerModel['arrays']>) =>
         updateActive((c) => ({ ...c, arrays: { ...c.arrays, ...patch } }));
 
+    const patchCount = (field: CountField, raw: string) => {
+        const value = parseCountInput(raw);
+        const max = field === 'attributeCount' ? MAX_ATTRIBUTE_COUNT : MAX_ARRAY_ITEMS;
+        const invalid = validateCount(value, max, field === 'avgItems');
+        const arrays = { ...active.arrays, [field]: value };
+        const error = invalid
+            ? getCountErrorMessage(invalid, max)
+            : field !== 'attributeCount' && arrays.avgItems > arrays.maxItems
+              ? getArrayItemsOrderMessage()
+              : undefined;
+        setCountErrors((previous) =>
+            !error && field !== 'attributeCount'
+                ? { ...previous, avgItems: undefined, maxItems: undefined }
+                : { ...previous, [field]: error },
+        );
+        if (error) {
+            return;
+        }
+        if (field === 'attributeCount') {
+            patchDocument({ attributeCount: value });
+        } else {
+            patchArrays({ [field]: value });
+        }
+    };
+
+    const countValidation = (error: string | undefined) => ({
+        validationState: error ? ('error' as const) : ('none' as const),
+        validationMessage: error ? { children: error, role: 'alert' } : undefined,
+    });
+
     if (!active) {
         return null;
     }
@@ -312,6 +352,13 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
     const existingSizeError = active.document.avgSizeKb > active.document.maxSizeKb ? sizeOrderMessage : undefined;
     const averageSizeError = sizeErrors.avgSizeKb ?? existingSizeError;
     const maximumSizeError = sizeErrors.maxSizeKb ?? existingSizeError;
+    const existingItemsError =
+        active.arrays.avgItems > active.arrays.maxItems ? getArrayItemsOrderMessage() : undefined;
+    const averageItemsError = countErrors.avgItems ?? existingItemsError;
+    const maximumItemsError = countErrors.maxItems ?? existingItemsError;
+    const attributeCountLabel = l10n.t('Total attributes per document');
+    const averageItemsLabel = l10n.t('Average items per array');
+    const maximumItemsLabel = l10n.t('Maximum items per array');
 
     return (
         <div className={styles.stack}>
@@ -481,14 +528,19 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
                 )}
             >
                 <div className={styles.kvGrid}>
-                    <Text>{l10n.t('Total attributes per document')}</Text>
-                    <Input
-                        className={styles.kvInput}
-                        type="number"
-                        aria-label={l10n.t('Total attributes per document')}
-                        value={String(active.document.attributeCount)}
-                        onChange={(_, data) => patchDocument({ attributeCount: Number(data.value) || 0 })}
-                    />
+                    <Text>{attributeCountLabel}</Text>
+                    <Field {...countValidation(countErrors.attributeCount)}>
+                        <Input
+                            className={styles.kvInput}
+                            type="number"
+                            min={0}
+                            max={MAX_ATTRIBUTE_COUNT}
+                            step={1}
+                            aria-label={attributeCountLabel}
+                            value={String(active.document.attributeCount)}
+                            onChange={(_, data) => patchCount('attributeCount', data.value)}
+                        />
+                    </Field>
                     <Text>{l10n.t('Average document size')}</Text>
                     <Field
                         validationState={averageSizeError ? 'error' : 'none'}
@@ -543,18 +595,30 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
                 />
                 {active.arrays.hasArrays ? (
                     <div className={styles.kvGrid}>
-                        <Text>{l10n.t('Average items per array')}</Text>
-                        <Input
-                            type="number"
-                            value={String(active.arrays.avgItems)}
-                            onChange={(_, data) => patchArrays({ avgItems: Number(data.value) || 0 })}
-                        />
-                        <Text>{l10n.t('Maximum items per array')}</Text>
-                        <Input
-                            type="number"
-                            value={String(active.arrays.maxItems)}
-                            onChange={(_, data) => patchArrays({ maxItems: Number(data.value) || 0 })}
-                        />
+                        <Text>{averageItemsLabel}</Text>
+                        <Field {...countValidation(averageItemsError)}>
+                            <Input
+                                type="number"
+                                min={0}
+                                max={MAX_ARRAY_ITEMS}
+                                step="any"
+                                aria-label={averageItemsLabel}
+                                value={String(active.arrays.avgItems)}
+                                onChange={(_, data) => patchCount('avgItems', data.value)}
+                            />
+                        </Field>
+                        <Text>{maximumItemsLabel}</Text>
+                        <Field {...countValidation(maximumItemsError)}>
+                            <Input
+                                type="number"
+                                min={0}
+                                max={MAX_ARRAY_ITEMS}
+                                step={1}
+                                aria-label={maximumItemsLabel}
+                                value={String(active.arrays.maxItems)}
+                                onChange={(_, data) => patchCount('maxItems', data.value)}
+                            />
+                        </Field>
                         <Text>{l10n.t('Array update pattern')}</Text>
                         <Select
                             value={active.arrays.updatePattern}

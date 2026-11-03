@@ -454,3 +454,48 @@ describe('DataPage native schema confirmation', () => {
         expect(onTelemetry).toHaveBeenCalledExactlyOnceWith({ type: 'fieldAdded' });
     });
 });
+
+describe('DataPage count limits', () => {
+    function arraysModel(): DataModel {
+        const container = createBlankContainer();
+        container.arrays = { hasArrays: true, avgItems: 10, maxItems: 100, updatePattern: 'none' };
+        return { containers: [container], activeContainerId: container.id };
+    }
+
+    it.each([
+        { label: 'Total attributes per document', invalid: '10001', valid: '10000', field: 'attributeCount' },
+        { label: 'Maximum items per array', invalid: '100001', valid: '100000', field: 'maxItems' },
+        { label: 'Maximum items per array', invalid: '20.5', valid: '20', field: 'maxItems' },
+        { label: 'Average items per array', invalid: '-1', valid: '2.5', field: 'avgItems' },
+    ] as const)('rejects $invalid for $label and accepts $valid', ({ label, invalid, valid, field }) => {
+        const onChange = vi.fn<(next: DataModel) => void>();
+        render(<DataPage model={arraysModel()} onChange={onChange} />);
+        const input = screen.getByRole('spinbutton', { name: label });
+        fireEvent.change(input, { target: { value: invalid } });
+        expect(onChange).not.toHaveBeenCalled();
+        expect(input).toHaveAttribute('aria-invalid', 'true');
+        expect(screen.getByRole('alert')).toBeInTheDocument();
+
+        fireEvent.change(input, { target: { value: valid } });
+        const next = onChange.mock.lastCall![0].containers[0];
+        expect(field === 'attributeCount' ? next.document.attributeCount : next.arrays[field]).toBe(Number(valid));
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it('rejects an average above the maximum and clears the error once the maximum is raised', () => {
+        const onChange = vi.fn<(next: DataModel) => void>();
+        const { rerender } = render(<DataPage model={arraysModel()} onChange={onChange} />);
+        const average = screen.getByRole('spinbutton', { name: 'Average items per array' });
+        fireEvent.change(average, { target: { value: '150' } });
+        expect(onChange).not.toHaveBeenCalled();
+        expect(screen.getByRole('alert')).toHaveTextContent(
+            'Average items per array cannot exceed maximum items per array.',
+        );
+
+        fireEvent.change(screen.getByRole('spinbutton', { name: 'Maximum items per array' }), {
+            target: { value: '200' },
+        });
+        rerender(<DataPage model={onChange.mock.lastCall![0]} onChange={onChange} />);
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+});

@@ -89,3 +89,71 @@ describe('wizard document size validation', () => {
         expect(result.error?.issues[0].path).toEqual(['dataModel', 'containers', 1, 'document', 'avgSizeKb']);
     });
 });
+
+describe('wizard workload limit validation', () => {
+    const wizardFor = (container: ReturnType<typeof createBlankContainer>) => ({
+        step: 1,
+        dataModel: { containers: [container], activeContainerId: container.id },
+    });
+
+    it('brings legacy out-of-range counts into range when loading a project', () => {
+        const container = createBlankContainer();
+        container.document.attributeCount = 50_000;
+        container.arrays = { hasArrays: true, avgItems: -2.5, maxItems: 250_000.4, updatePattern: 'none' };
+        container.reads[0].qps = 12.6;
+        container.writes = { insertsPerSec: -5, updatesPerSec: 5_000_000, deletesPerSec: 1.2 };
+        const loaded = ModelingAdvisorSnapshotSchema.parse({
+            wizard: wizardFor(container),
+            recommendation: { status: 'idle' },
+        }).wizard.dataModel.containers[0];
+        expect(loaded.document.attributeCount).toBe(10_000);
+        expect(loaded.arrays).toMatchObject({ avgItems: 0, maxItems: 100_000 });
+        expect(loaded.reads[0].qps).toBe(13);
+        expect(loaded.writes).toEqual({ insertsPerSec: 0, updatesPerSec: 1_000_000, deletesPerSec: 1 });
+    });
+
+    it('rejects non-finite counts', () => {
+        const container = createBlankContainer();
+        container.reads[0].qps = NaN;
+        const result = WizardStateSchema.safeParse(wizardFor(container));
+        expect(result.success).toBe(false);
+        expect(result.error?.issues[0].path).toEqual(['dataModel', 'containers', 0, 'reads', 0, 'qps']);
+    });
+
+    it('rejects average array items above the maximum only when the container has arrays', () => {
+        const container = createBlankContainer();
+        container.arrays = { hasArrays: true, avgItems: 101, maxItems: 100, updatePattern: 'none' };
+        const result = WizardStateSchema.safeParse(wizardFor(container));
+        expect(result.success).toBe(false);
+        expect(result.error?.issues[0].path).toEqual(['dataModel', 'containers', 0, 'arrays', 'avgItems']);
+        expect(
+            ModelingAdvisorSnapshotSchema.safeParse({
+                wizard: wizardFor(container),
+                recommendation: { status: 'idle' },
+            }).success,
+        ).toBe(true);
+
+        container.arrays.hasArrays = false;
+        expect(WizardStateSchema.safeParse(wizardFor(container)).success).toBe(true);
+    });
+
+    it('blocks requests for unrealistic throughput but only warns at the service limits', () => {
+        const container = createBlankContainer();
+        container.document.avgSizeKb = 10;
+        container.document.maxSizeKb = 10;
+        // 10 RU per read: 1,000,000 QPS = 10,000,000 RU/s, the inclusive ceiling.
+        container.reads[0].qps = 1_000_000;
+        container.scale.writes = 'skewed';
+        container.writes.insertsPerSec = 1_000;
+        expect(WizardStateSchema.safeParse(wizardFor(container)).success).toBe(false);
+
+        container.writes.insertsPerSec = 0;
+        expect(WizardStateSchema.safeParse(wizardFor(container)).success).toBe(true);
+
+        container.reads.push({ id: 'second', pattern: '', query: '', filters: [], qps: 1 });
+        const result = WizardStateSchema.safeParse(wizardFor(container));
+        expect(result.success).toBe(false);
+        expect(result.error?.issues[0].path).toEqual(['dataModel', 'containers', 0]);
+        expect(result.error?.issues[0].message).toContain(`${(10_000_010).toLocaleString()} RU/s`);
+    });
+});

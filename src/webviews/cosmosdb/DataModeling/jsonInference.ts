@@ -21,6 +21,7 @@ import {
     type SchemaProperty,
 } from './models';
 import { getPartitionKeyRestriction } from './partitionKeyEligibility';
+import { MAX_ATTRIBUTE_COUNT } from './workloadLimits';
 
 export class DocumentSizeLimitError extends Error {
     constructor() {
@@ -113,7 +114,7 @@ function inferDocumentShape(documents: NoSQLDocument[], attributeCount: number):
         throw new DocumentSizeLimitError();
     }
     return {
-        attributeCount,
+        attributeCount: Math.min(attributeCount, MAX_ATTRIBUTE_COUNT),
         avgSizeKb: toKilobytes(sizes.reduce((total, size) => total + size, 0) / sizes.length),
         maxSizeKb: toKilobytes(Math.max(...sizes)),
     };

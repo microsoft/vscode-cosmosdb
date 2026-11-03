@@ -693,6 +693,8 @@ Cancellation is not a failure. Delete success leaves the dashboard in its delete
 View Cost opens account-scoped portal Cost Analysis. View JSON reads the ARM resource and opens formatted JSON,
 not account keys/connection strings. Data Modeler receives this account's metadata-derived capabilities without a picker;
 it requires AI features enabled and available Copilot models, and does not refresh Overview on launch.
+The Cost Analysis ARM scope is double-encoded before `Uri.parse` so the browser receives it as one encoded route parameter.
+
 Suggested advisory actions do not execute Azure changes automatically.
 
 Total throughput limit formatting: positive value -> RU/s; zero -> explicit 0 RU/s;

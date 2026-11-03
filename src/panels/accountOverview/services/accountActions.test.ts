@@ -395,6 +395,9 @@ describe('runAccountAction without Explorer nodes', () => {
         });
         const uri = vi.mocked(vscode.env.openExternal).mock.calls[0][0];
         expect(uri).toEqual(vscode.Uri.parse(buildAccountCostsUrl('https://portal.azure.us/', tenantId, accountId)));
+        expect(uri.toString(true)).toBe(
+            `https://portal.azure.us/#@${tenantId}/view/Microsoft_Azure_CostManagement/CostAnalysis/scope/${encodeURIComponent(accountId)}`,
+        );
         expect(getCosmosDBCredentials).not.toHaveBeenCalled();
         vi.mocked(vscode.env.openExternal).mockResolvedValueOnce(false);
         await expect(runAccountAction(actionContext(), metadata(), { action: 'openCosts' })).rejects.toThrow(
@@ -411,7 +414,11 @@ describe('account action boundaries', () => {
         'https://ms.portal.azure.com',
     ])('encodes the tenant and complete ARM scope for %s', (portal) => {
         expect(buildAccountCostsUrl(portal, 'tenant/# ?@', '/subscriptions/sub/rg/a b?#%')).toBe(
-            `${portal.replace(/\/$/, '')}/#@tenant%2F%23%20%3F%40/view/Microsoft_Azure_CostManagement/CostAnalysis/scope/%2Fsubscriptions%2Fsub%2Frg%2Fa%20b%3F%23%25`,
+            `${portal.replace(/\/$/, '')}/#@tenant%2F%23%20%3F%40/view/Microsoft_Azure_CostManagement/CostAnalysis/scope/%252Fsubscriptions%252Fsub%252Frg%252Fa%2520b%253F%2523%2525`,
+        );
+        const uri = vscode.Uri.parse(buildAccountCostsUrl(portal, 'tenant', '/subscriptions/sub/rg/a b?#%'));
+        expect(uri.toString(true)).toBe(
+            `${portal.replace(/\/$/, '')}/#@tenant/view/Microsoft_Azure_CostManagement/CostAnalysis/scope/%2Fsubscriptions%2Fsub%2Frg%2Fa%20b%3F%23%25`,
         );
     });
 

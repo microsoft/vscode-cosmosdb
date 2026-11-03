@@ -107,5 +107,7 @@ export async function runAccountAction(
 }
 
 export function buildAccountCostsUrl(portalUrl: string, tenantId: string, accountId: string): string {
-    return `${portalUrl.replace(/\/$/, '')}/#@${encodeURIComponent(tenantId)}/view/Microsoft_Azure_CostManagement/CostAnalysis/scope/${encodeURIComponent(accountId)}`;
+    // Uri.parse decodes once; preserve the ARM scope as one encoded portal route parameter.
+    const encodedAccountId = encodeURIComponent(encodeURIComponent(accountId));
+    return `${portalUrl.replace(/\/$/, '')}/#@${encodeURIComponent(tenantId)}/view/Microsoft_Azure_CostManagement/CostAnalysis/scope/${encodedAccountId}`;
 }

@@ -180,7 +180,7 @@
     "@microsoft/vscode-azext-utils": "~5.0.0",
     "@microsoft/vscode-azureresources-api": "~3.1.0",
     "@microsoft/vscode-ext-webview": "~0.10.0",
-    "@microsoft/vscode-ext-webview-fluentui": "~1.1.0",
+    "@microsoft/vscode-ext-webview-fluentui": "~1.2.0",
     "@microsoft/vscode-fabric-api": "~0.35.6",
     "@monaco-editor/react": "~4.7.0",
     "@prantlf/jsonlint": "~17.0.0",

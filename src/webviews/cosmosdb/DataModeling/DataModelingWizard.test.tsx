@@ -812,6 +812,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
     );
 
     it('surfaces native input failures and allows retrying', async () => {
+        vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 280, 32));
         client.dataModeling.loadState.query.mockResolvedValue(restored());
         client.dataModeling.promptContainerName.mutate.mockRejectedValueOnce(new Error('Input unavailable'));
         render(<DataModelingWizard />);
@@ -822,6 +823,10 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             'role',
             'alert',
         );
+        expect(screen.getByText('Could not add the container. Please try again.')).toHaveStyle({
+            paddingRight: '308px',
+        });
+        expect(screen.getByLabelText('Preview')).toHaveStyle({ top: '10px', right: '20px' });
         expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
         await userEvent.click(add);
         expect(client.dataModeling.promptContainerName.mutate).toHaveBeenCalledTimes(2);
@@ -1064,6 +1069,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
     });
 
     it('keeps Data selected after a reminder failure and allows retry', async () => {
+        vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 280, 32));
         const saved = restored();
         saved.recommendation = { status: 'idle' };
         client.dataModeling.loadState.query.mockResolvedValue(saved);
@@ -1074,6 +1080,8 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         await userEvent.click(next);
         const message = 'Could not open the confirmation dialog. Please try again.';
         expect(await screen.findByText(message)).toHaveAttribute('role', 'alert');
+        expect(screen.getByText(message)).toHaveStyle({ paddingRight: '308px' });
+        expect(screen.getByLabelText('Preview')).toHaveStyle({ top: '10px', right: '20px' });
         expect(screen.getByRole('tab', { name: 'Data' })).toHaveAttribute('aria-selected', 'true');
         expect(next).toHaveFocus();
         expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();

@@ -967,12 +967,20 @@ const HydratedDataModelingWizard = ({
         <div className={styles.fullWidthWizard} aria-busy={confirming || addingContainer}>
             <PreviewBadge className={styles.previewBadge} onWidthChange={setPreviewBadgeWidth} />
             {confirmationError ? (
-                <Text role="alert" className={viewportStyles.statusRow}>
+                <Text
+                    role="alert"
+                    className={viewportStyles.statusRow}
+                    style={{ paddingRight: previewBadgeWidth + 28 }}
+                >
                     {confirmationError}
                 </Text>
             ) : null}
             {addContainerError ? (
-                <Text role="alert" className={viewportStyles.statusRow}>
+                <Text
+                    role="alert"
+                    className={viewportStyles.statusRow}
+                    style={{ paddingRight: previewBadgeWidth + 28 }}
+                >
                     {addContainerError}
                 </Text>
             ) : null}

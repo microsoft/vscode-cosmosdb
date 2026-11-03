@@ -552,6 +552,34 @@ describe('DataPage count limits', () => {
         expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 
+    it('rejects an upload above the attribute limit with a message and leaves the schema unchanged', async () => {
+        confirm.mockResolvedValue(true);
+        const container = createBlankContainer('Orders');
+        const onChange = vi.fn<(next: DataModel) => void>();
+        const onTelemetry = vi.fn();
+        const page = render(
+            <DataPage
+                model={{ containers: [container], activeContainerId: container.id }}
+                onChange={onChange}
+                onTelemetry={onTelemetry}
+            />,
+        );
+        const text = JSON.stringify(Object.fromEntries(Array.from({ length: 10_001 }, (_, index) => [`a${index}`, 1])));
+        const file = new File([text], 'wide.json', { type: 'application/json' });
+        Object.defineProperty(file, 'text', { value: vi.fn().mockResolvedValue(text) });
+        fireEvent.change(page.container.querySelector('input[type="file"]')!, { target: { files: [file] } });
+
+        await waitFor(() =>
+            expect(screen.getByRole('alert')).toHaveTextContent(
+                `wide.json contains ${(10_001).toLocaleString()} distinct attributes, more than the limit of ${(10_000).toLocaleString()}. Upload a smaller sample of documents.`,
+            ),
+        );
+        expect(onChange).not.toHaveBeenCalled();
+        expect(screen.getByRole('spinbutton', { name: 'Total attributes per document' })).toHaveValue(3);
+        expect(onTelemetry).toHaveBeenCalledWith({ type: 'schemaImport', outcome: 'error' });
+        expect(JSON.stringify(onTelemetry.mock.calls)).not.toContain('wide.json');
+    });
+
     it('clears replaced attribute errors after a successful JSON upload', async () => {
         confirm.mockResolvedValue(true);
         const model = arraysModel();

@@ -25,7 +25,7 @@ import { type ChangeEvent, type KeyboardEvent, useEffect, useRef, useState } fro
 import { type ModelingTelemetryEvent } from '../../../../dataModeling/modelingTelemetrySchema';
 import { InlineGuidance, MythBox, SubPanel } from '../components/primitives';
 import { type DataModel } from '../dataModel';
-import { DocumentSizeLimitError, inferSchemaFromJson } from '../jsonInference';
+import { AttributeCountLimitError, DocumentSizeLimitError, inferSchemaFromJson } from '../jsonInference';
 import {
     type ArrayUpdatePattern,
     type ContainerModel,
@@ -282,9 +282,18 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
             setUploadError(
                 error instanceof DocumentSizeLimitError
                     ? sizeLimitMessage
-                    : l10n.t('Could not read {file}. Make sure it is a JSON object or an array of objects.', {
-                          file: file.name,
-                      }),
+                    : error instanceof AttributeCountLimitError
+                      ? l10n.t(
+                            '{file} contains {count} distinct attributes, more than the limit of {max}. Upload a smaller sample of documents.',
+                            {
+                                file: file.name,
+                                count: error.attributeCount.toLocaleString(),
+                                max: MAX_ATTRIBUTE_COUNT.toLocaleString(),
+                            },
+                        )
+                      : l10n.t('Could not read {file}. Make sure it is a JSON object or an array of objects.', {
+                            file: file.name,
+                        }),
             );
         }
     };

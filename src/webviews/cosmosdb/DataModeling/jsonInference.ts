@@ -29,6 +29,13 @@ export class DocumentSizeLimitError extends Error {
     }
 }
 
+/** Thrown when the uploaded documents contain more distinct attributes than the wizard accepts. */
+export class AttributeCountLimitError extends Error {
+    constructor(readonly attributeCount: number) {
+        super(`Uploaded documents contain more than ${MAX_ATTRIBUTE_COUNT} attributes.`);
+    }
+}
+
 export type InferredProperty = Omit<SchemaProperty, 'id'>;
 
 export interface InferredSchema {
@@ -114,7 +121,7 @@ function inferDocumentShape(documents: NoSQLDocument[], attributeCount: number):
         throw new DocumentSizeLimitError();
     }
     return {
-        attributeCount: Math.min(attributeCount, MAX_ATTRIBUTE_COUNT),
+        attributeCount,
         avgSizeKb: toKilobytes(sizes.reduce((total, size) => total + size, 0) / sizes.length),
         maxSizeKb: toKilobytes(Math.max(...sizes)),
     };
@@ -213,6 +220,11 @@ export function inferSchemaFromJson(text: string): InferredSchema {
     }
 
     const properties = [...flattenProperties(getSchemaFromDocuments(docs)).values()];
+    // Reject rather than truncate: dropping properties could remove key and filter fields, and the count would
+    // still misdescribe the real documents.
+    if (properties.length > MAX_ATTRIBUTE_COUNT) {
+        throw new AttributeCountLimitError(properties.length);
+    }
     const pkName = pickPartitionKey(
         properties
             .filter((property) => !getPartitionKeyRestriction(property, properties))

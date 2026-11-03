@@ -58,6 +58,7 @@
   "{count} queries": "{count} queries",
   "{days} days retention": "{days} days retention",
   "{experienceName} Emulator": "{experienceName} Emulator",
+  "{file} contains {count} distinct attributes, more than the limit of {max}. Upload a smaller sample of documents.": "{file} contains {count} distinct attributes, more than the limit of {max}. Upload a smaller sample of documents.",
   "{hours} hours retention": "{hours} hours retention",
   "{label} for read {n}": "{label} for read {n}",
   "{label}: {share} share": "{label}: {share} share",

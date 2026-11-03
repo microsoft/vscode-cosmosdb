@@ -326,7 +326,7 @@ export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
             };
             const launchPromise = electron.launch({
                 ...launchOptions,
-                args: [...launchOptions.args, ...(displayLanguage ? ['--locale=en'] : [])],
+                args: [...launchOptions.args, '--locale=en'],
             });
 
             // `electron.launch` failures (startup crash, missing executable, …)

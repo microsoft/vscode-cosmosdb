@@ -138,8 +138,9 @@ extensions directory at `.vscode-test/e2e-extensions/`. Both are cached.
 ## Display-language regression
 
 `queryEditor-localization.spec.ts` runs in the `localization-de` and `localization-ja` projects.
-The `default` project continues to run the other specs without changing their language.
-Each localized worker starts in English, selects **Configure Display Language**, chooses **Deutsch** or **日本語**,
+Every worker starts with `--locale=en`, regardless of the host system's language.
+The `default` project keeps that English UI for the other specs.
+Each localized worker then selects **Configure Display Language**, chooses **Deutsch** or **日本語**,
 and confirms **Restart**. VS Code writes its own locale preference and exits; Playwright launches the replacement
 process with the same isolated profile and no `--locale` override.
 Only Electron's detached auto-relaunch is suppressed so Playwright can retain control of the new process.

@@ -4,6 +4,8 @@ Account Overview helps you answer three questions about an Azure Cosmos DB for N
 **What is happening? Which resources need attention? What should I investigate next?**
 
 In the Azure resources Explorer, open your account's **Account Overview (Preview) → Overview**.
+Alternatively, run **Cosmos DB: Open Account Overview** from the Command Palette and select an Azure account.
+Selection stops at the account; no database or container selection is required.
 The account stays the same as you move between tabs or select a database.
 Reading the dashboard does not change Azure resources. Actions such as **Add database**, **Add container**
 and **Delete account** are separate, explicit operations with the extension's usual wizard or confirmation.

@@ -144,7 +144,7 @@ describe('account overview commands', () => {
         expect(mocks.render).toHaveBeenCalledExactlyOnceWith(metadata, undefined, target);
     });
 
-    it.each(ACCOUNT_OVERVIEW_TARGETS)('uses the ARM account picker when opening %s without a node', async (target) => {
+    it.each(ACCOUNT_OVERVIEW_TARGETS)('stops at the Azure account when opening %s without a node', async (target) => {
         const context = createContext();
         const node = createNode();
         mocks.pick.mockResolvedValue(node);
@@ -152,7 +152,6 @@ describe('account overview commands', () => {
 
         expect(mocks.pick).toHaveBeenCalledExactlyOnceWith(context, {
             type: [AzExtResourceType.AzureCosmosDb],
-            expectedChildContextValue: /hasarmmetadata/i,
         });
         expect(mocks.create).toHaveBeenCalledWith(node.account);
         expect(mocks.render).toHaveBeenCalledWith(expect.any(Object), undefined, target);

@@ -72,6 +72,10 @@ nested tRPC property access can create new proxies.
 
 ### Initial state
 
+Without a tree node, Overview commands use the Azure Cosmos DB resource picker and stop at the account.
+They MUST NOT pass a child-context filter, which would add a recursive selection step inside the account.
+Commands invoked with an account tree node bypass the picker.
+
 The default tab is Monitoring unless explicit navigation requests another destination.
 Chart window defaults to `24H`; chart scope defaults to all databases.
 The alert list defaults to `1d` and `Fired`. Partition selection defaults to the first inventory row.

@@ -34,9 +34,9 @@ export async function openAccountOverviewTarget(
     node?: CosmosDBAccountResourceItem,
 ): Promise<void> {
     if (!node) {
+        // The Azure resource is already the account; a child filter would start another picker inside it.
         node = await pickAppResource<CosmosDBAccountResourceItem>(context, {
             type: [AzExtResourceType.AzureCosmosDb],
-            expectedChildContextValue: /hasarmmetadata/i,
         });
     }
 

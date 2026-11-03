@@ -47,11 +47,7 @@ export const PreviewBadge = ({
         if (!badge || !onWidthChange) {
             return;
         }
-        const measure = () => onWidthChange(badge.getBoundingClientRect().width);
-        measure();
-        const observer = new ResizeObserver(measure);
-        observer.observe(badge);
-        return () => observer.disconnect();
+        onWidthChange(badge.getBoundingClientRect().width);
     }, [onWidthChange]);
 
     return (

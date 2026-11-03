@@ -79,6 +79,9 @@ const useStyles = makeStyles({
         position: 'fixed',
         inset: 0,
         zIndex: 1000001,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
         backgroundColor: tokens.colorBackgroundOverlay,
         cursor: 'wait',
     },
@@ -986,7 +989,9 @@ export const OverviewDashboard = ({
                     aria-hidden
                     // Keep clicks on the backdrop from moving focus away from the native VS Code wizard.
                     onPointerDown={(event) => event.preventDefault()}
-                />
+                >
+                    <Spinner label={l10n.t('Account action in progress…')} labelPosition="below" />
+                </div>
             )}
         </DashboardActionsProvider>
     );

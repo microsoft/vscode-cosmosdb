@@ -96,9 +96,6 @@ const useStyles = makeStyles({
         marginTop: 0,
         marginRight: 0,
     },
-    workloadHeader: {
-        paddingRight: '112px',
-    },
     workloadTitle: {
         overflowWrap: 'anywhere',
     },
@@ -282,6 +279,7 @@ const HydratedDataModelingWizard = ({
     flush,
 }: Pick<ReturnType<typeof useModelingAdvisorPersistence>, 'snapshot' | 'setSnapshot' | 'flush'>) => {
     const styles = useStyles();
+    const [previewBadgeWidth, setPreviewBadgeWidth] = useState(0);
     const viewportStyles = useViewportStyles();
     const trpcClient = useTrpcClient<DataModelingAppRouter>();
     const report = useModelingTelemetryReporter();
@@ -967,7 +965,7 @@ const HydratedDataModelingWizard = ({
 
     return (
         <div className={styles.fullWidthWizard} aria-busy={confirming || addingContainer}>
-            <PreviewBadge className={styles.previewBadge} />
+            <PreviewBadge className={styles.previewBadge} onWidthChange={setPreviewBadgeWidth} />
             {confirmationError ? (
                 <Text role="alert" className={viewportStyles.statusRow}>
                     {confirmationError}
@@ -987,7 +985,7 @@ const HydratedDataModelingWizard = ({
                     headerBehavior="sticky-navigation"
                     header={
                         <ContainerHeader
-                            className={styles.workloadHeader}
+                            style={{ paddingRight: previewBadgeWidth + 28 }}
                             media={<DatabaseLinkRegular aria-hidden="true" focusable="false" />}
                             title={
                                 <span className={styles.workloadTitle}>

@@ -10,7 +10,7 @@ import { type EditorProps } from '@monaco-editor/react';
 import { act, fireEvent, render as renderReact, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { type ReactElement } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type DeploymentTemplateInput } from '../../../dataModeling/deploymentModel';
 import {
     ModelingAdvisorSnapshotSchema,
@@ -38,6 +38,7 @@ const client = vi.hoisted(() => ({
         events: { subscribe: vi.fn() },
     },
 }));
+afterEach(() => vi.restoreAllMocks());
 vi.mock('@microsoft/vscode-ext-webview/react', () => ({ useTrpcClient: () => client }));
 vi.mock('../../MonacoEditor', () => ({
     MonacoEditor: ({ value, options, onChange }: EditorProps) => (
@@ -223,6 +224,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
     });
 
     it('reserves badge space beside a wrapping title and keeps the footer outside the sticky-navigation scroll region', async () => {
+        vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 280, 32));
         const saved = restored(4);
         saved.wizard.scenario = 'inventory';
         client.dataModeling.loadState.query.mockResolvedValue(saved);
@@ -254,7 +256,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(scrollRegion).not.toContainElement(preview);
         expect(preview.parentElement).toHaveStyle({ position: 'relative' });
         expect(preview.parentElement).toContainElement(scrollRegion as HTMLElement);
-        expect(title.parentElement?.parentElement).toHaveStyle({ paddingRight: '112px' });
+        expect(title.parentElement?.parentElement).toHaveStyle({ paddingRight: '308px' });
         expect(title.parentElement).toHaveStyle({ minWidth: '0px' });
         expect(title.firstElementChild).toHaveStyle({ overflowWrap: 'anywhere' });
         const titleIcon = title.parentElement?.parentElement?.querySelector('svg');

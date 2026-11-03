@@ -5,6 +5,7 @@
 
 import { Badge, makeStyles, mergeClasses } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
+import { useLayoutEffect, useRef } from 'react';
 import { ThemedTooltip as Tooltip } from '../common/ThemedTooltip';
 
 const useStyles = makeStyles({
@@ -29,14 +30,34 @@ const useStyles = makeStyles({
     },
 });
 
-export const PreviewBadge = ({ className }: { className?: string }) => {
+export const PreviewBadge = ({
+    className,
+    onWidthChange,
+}: {
+    className?: string;
+    onWidthChange?: (width: number) => void;
+}) => {
     const styles = useStyles();
+    const badgeRef = useRef<HTMLDivElement>(null);
     const label = l10n.t('Preview');
     const description = l10n.t('Preview: features and behavior may change. Use with care.');
+
+    useLayoutEffect(() => {
+        const badge = badgeRef.current;
+        if (!badge || !onWidthChange) {
+            return;
+        }
+        const measure = () => onWidthChange(badge.getBoundingClientRect().width);
+        measure();
+        const observer = new ResizeObserver(measure);
+        observer.observe(badge);
+        return () => observer.disconnect();
+    }, [onWidthChange]);
 
     return (
         <Tooltip content={description} relationship="description">
             <Badge
+                ref={badgeRef}
                 appearance="outline"
                 color="informative"
                 className={mergeClasses(styles.badge, className)}

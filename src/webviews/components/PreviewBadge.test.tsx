@@ -6,12 +6,53 @@
 // @vitest-environment jsdom
 
 import { FluentProvider, webLightTheme } from '@fluentui/react-components';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PreviewBadge } from './PreviewBadge';
 
+afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+});
+
 describe('PreviewBadge', () => {
+    it('reports the rendered width initially and as the badge grows, and disconnects on unmount', () => {
+        const callbacks = new Map<Element, () => void>();
+        const disconnect = vi.fn();
+        vi.stubGlobal(
+            'ResizeObserver',
+            class {
+                private callback: ResizeObserverCallback;
+                constructor(callback: ResizeObserverCallback) {
+                    this.callback = callback;
+                }
+                observe(target: Element) {
+                    callbacks.set(target, () => this.callback([], this));
+                }
+                unobserve(target: Element) {
+                    callbacks.delete(target);
+                }
+                disconnect = disconnect;
+            },
+        );
+        const bounds = vi
+            .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+            .mockReturnValue(new DOMRect(0, 0, 84, 32));
+        const onWidthChange = vi.fn();
+        const { unmount } = render(
+            <FluentProvider theme={webLightTheme}>
+                <PreviewBadge onWidthChange={onWidthChange} />
+            </FluentProvider>,
+        );
+        expect(onWidthChange).toHaveBeenLastCalledWith(84);
+        bounds.mockReturnValue(new DOMRect(0, 0, 280, 32));
+        act(() => callbacks.get(screen.getByLabelText('Preview'))?.());
+        expect(onWidthChange).toHaveBeenLastCalledWith(280);
+        unmount();
+        expect(disconnect).toHaveBeenCalled();
+    });
+
     it('uses the floating migration chip styling and exposes its tooltip on keyboard focus', async () => {
         const user = userEvent.setup();
         render(

@@ -150,6 +150,8 @@ The fixture reopens the command palette while waiting for **Configure Display La
 so a palette opened during startup cannot remain stuck on stale search results.
 Only Electron's detached auto-relaunch is suppressed so Playwright can retain control of the new process.
 Neither VS Code's language preference nor the extension's translation bundles are injected or mocked.
+Before opening Query Editor, the localized specs resize the native Electron window to a 1920 × 1200 content area
+so Save/Open stay visible in the toolbar rather than moving into its overflow menu on narrow displays.
 
 The test verifies the restarted workbench's language, opens the real Query Editor webview, and checks
 the translated Run, Save, and Open controls, including Save's visible text and accessible name.

@@ -4,8 +4,12 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { expect, test } from '../fixtures/vscode';
-import { captureWindowScreenshot, closeAllEditorTabs } from '../fixtures/webviewHelpers';
+import { captureWindowScreenshot, closeAllEditorTabs, resizeWindowViewport } from '../fixtures/webviewHelpers';
 import { openQueryEditor } from '../fixtures/webviews';
+
+test.beforeEach(async ({ vscodeApp, vscodeWindow }) => {
+    await resizeWindowViewport(vscodeApp, vscodeWindow, { width: 1920, height: 1200 });
+});
 
 test.afterEach(async ({ vscodeWindow }) => {
     await captureWindowScreenshot(vscodeWindow);

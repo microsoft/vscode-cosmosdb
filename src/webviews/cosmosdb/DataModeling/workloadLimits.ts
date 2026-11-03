@@ -105,8 +105,9 @@ export interface ThroughputIssue {
 }
 
 /**
- * Assess a container's estimated throughput against the service limits. Concentrated writes ("skewed" or
- * "time-correlated") land on one physical partition, so their RU/s are compared with the per-partition limit.
+ * Assess a container's estimated throughput against the service limits. Skewed or time-correlated writes
+ * can overload individual physical partitions, so compare their aggregate RU/s with the per-partition limit
+ * as an advisory risk indicator, not a prediction of per-partition load.
  */
 export function assessContainerThroughput(
     container: Pick<ContainerModel, 'document' | 'reads' | 'writes' | 'scale'>,
@@ -139,7 +140,7 @@ export function getThroughputIssueMessage(issue: ThroughputIssue): string {
             );
         case 'hotPartition':
             return l10n.t(
-                'Writes are concentrated on a few partition key values. Their estimated {ru} RU/s exceeds the {max} RU/s one physical partition can serve, so requests will be throttled.',
+                'Skewed or time-correlated writes may create hot partitions. Their estimated container-wide {ru} RU/s poses a throttling risk if more than {max} RU/s reaches one physical partition.',
                 { ru, max: MAX_RU_PER_PHYSICAL_PARTITION.toLocaleString() },
             );
     }

@@ -11,6 +11,7 @@ import {
     assessContainerThroughput,
     DEFAULT_MAX_RU_PER_CONTAINER,
     estimateContainerThroughput,
+    getThroughputIssueMessage,
     MAX_ESTIMATED_RU_PER_CONTAINER,
     MAX_RU_PER_PHYSICAL_PARTITION,
     parseCountInput,
@@ -88,6 +89,18 @@ describe('assessContainerThroughput', () => {
     it('does not warn about a hot partition for evenly distributed writes', () => {
         expect(MAX_RU_PER_PHYSICAL_PARTITION).toBe(10_000);
         expect(assessContainerThroughput(container(0, 100_000, 'even'))).toEqual([]);
+    });
+
+    it('describes hot partition throttling as conditional on per-partition load', () => {
+        const message = getThroughputIssueMessage({
+            kind: 'hotPartition',
+            severity: 'warning',
+            ruPerSec: 10_002,
+        });
+        expect(message).toContain('container-wide');
+        expect(message).toContain('throttling risk if more than');
+        expect(message).toContain('reaches one physical partition');
+        expect(message).not.toContain('will be throttled');
     });
 
     it('accepts every scenario default without blocking errors', () => {

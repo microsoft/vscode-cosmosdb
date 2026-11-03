@@ -164,6 +164,7 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
     const [uploadError, setUploadError] = useState<string>();
     const [sizeErrors, setSizeErrors] = useState<Partial<Record<DocumentSizeField, string>>>({});
     const [countErrors, setCountErrors] = useState<Partial<Record<CountField, string>>>({});
+    const [countDrafts, setCountDrafts] = useState<Partial<Record<CountField, string>>>({});
     const negativeSizeMessage = l10n.t('Document size cannot be negative.');
     const sizeLimitMessage = l10n.t('Document size cannot exceed 2 MB (2048 KB).');
     const sizeOrderMessage = l10n.t('Average document size cannot exceed maximum document size.');
@@ -182,6 +183,8 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
     const active = containers.find((c) => c.id === activeContainerId) ?? containers[0];
     useEffect(() => {
         setSizeErrors({});
+        setCountErrors({});
+        setCountDrafts({});
     }, [active?.id]);
     useEffect(() => {
         const input = fileRef.current;
@@ -270,6 +273,8 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
             setUploadInfo(file.name);
             setUploadError(undefined);
             setSizeErrors({});
+            setCountErrors((previous) => ({ ...previous, attributeCount: undefined }));
+            setCountDrafts((previous) => ({ ...previous, attributeCount: undefined }));
             onTelemetry?.({ type: 'schemaImport', outcome: 'success' });
         } catch (error) {
             onTelemetry?.({ type: 'schemaImport', outcome: 'error' });
@@ -315,24 +320,31 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
     const patchArrays = (patch: Partial<ContainerModel['arrays']>) =>
         updateActive((c) => ({ ...c, arrays: { ...c.arrays, ...patch } }));
 
-    const patchCount = (field: CountField, raw: string) => {
+    const patchCount = (field: CountField, raw: string, commit = false) => {
+        setCountDrafts((previous) => ({ ...previous, [field]: commit ? undefined : raw }));
         const value = parseCountInput(raw);
         const max = field === 'attributeCount' ? MAX_ATTRIBUTE_COUNT : MAX_ARRAY_ITEMS;
         const invalid = validateCount(value, max, field === 'avgItems');
         const arrays = { ...active.arrays, [field]: value };
         const error = invalid
             ? getCountErrorMessage(invalid, max)
-            : field !== 'attributeCount' && arrays.avgItems > arrays.maxItems
+            : commit && field !== 'attributeCount' && arrays.avgItems > arrays.maxItems
               ? getArrayItemsOrderMessage()
               : undefined;
         setCountErrors((previous) =>
-            !error && field !== 'attributeCount'
-                ? { ...previous, avgItems: undefined, maxItems: undefined }
+            !error && commit && field !== 'attributeCount'
+                ? {
+                      ...previous,
+                      [field]: undefined,
+                      ...(previous.avgItems === getArrayItemsOrderMessage() ? { avgItems: undefined } : {}),
+                      ...(previous.maxItems === getArrayItemsOrderMessage() ? { maxItems: undefined } : {}),
+                  }
                 : { ...previous, [field]: error },
         );
-        if (error) {
+        if (error || (field !== 'attributeCount' && !commit)) {
             return;
         }
+        setCountDrafts((previous) => ({ ...previous, [field]: undefined }));
         if (field === 'attributeCount') {
             patchDocument({ attributeCount: value });
         } else {
@@ -537,7 +549,7 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
                             max={MAX_ATTRIBUTE_COUNT}
                             step={1}
                             aria-label={attributeCountLabel}
-                            value={String(active.document.attributeCount)}
+                            value={countDrafts.attributeCount ?? String(active.document.attributeCount)}
                             onChange={(_, data) => patchCount('attributeCount', data.value)}
                         />
                     </Field>
@@ -603,8 +615,9 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
                                 max={MAX_ARRAY_ITEMS}
                                 step="any"
                                 aria-label={averageItemsLabel}
-                                value={String(active.arrays.avgItems)}
+                                value={countDrafts.avgItems ?? String(active.arrays.avgItems)}
                                 onChange={(_, data) => patchCount('avgItems', data.value)}
+                                onBlur={(event) => patchCount('avgItems', event.target.value, true)}
                             />
                         </Field>
                         <Text>{maximumItemsLabel}</Text>
@@ -615,8 +628,9 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
                                 max={MAX_ARRAY_ITEMS}
                                 step={1}
                                 aria-label={maximumItemsLabel}
-                                value={String(active.arrays.maxItems)}
+                                value={countDrafts.maxItems ?? String(active.arrays.maxItems)}
                                 onChange={(_, data) => patchCount('maxItems', data.value)}
+                                onBlur={(event) => patchCount('maxItems', event.target.value, true)}
                             />
                         </Field>
                         <Text>{l10n.t('Array update pattern')}</Text>

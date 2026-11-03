@@ -23,6 +23,7 @@ import { useTrpcClient } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
 import { type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { validateDeploymentContainerName } from '../../../dataModeling/deploymentModel';
+import { WizardStateSchema } from '../../../dataModeling/modelingAdvisorSchema';
 import { PartitionKeyRecommendationSchema } from '../../../dataModeling/recommendationSchema';
 import { type DataModelingAppRouter, type DataModelingEvent } from '../../api/types';
 import { PreviewBadge } from '../../components/PreviewBadge';
@@ -644,8 +645,32 @@ const HydratedDataModelingWizard = ({
         });
     }, [setState]);
 
+    const workloadValidation = useMemo(() => WizardStateSchema.safeParse(snapshot.wizard), [snapshot.wizard]);
+    // Name the container each issue belongs to so users know which card to edit.
+    const workloadErrors = useMemo(
+        () =>
+            workloadValidation.success
+                ? []
+                : workloadValidation.error.issues.map((issue) => {
+                      const [scope, collection, index] = issue.path;
+                      const entity =
+                          scope === 'dataModel' && collection === 'containers' && typeof index === 'number'
+                              ? snapshot.wizard.dataModel.containers[index]?.entity
+                              : undefined;
+                      return entity ? `${entity}: ${issue.message}` : issue.message;
+                  }),
+        [workloadValidation, snapshot.wizard.dataModel.containers],
+    );
+
     // Send the finished data model to Copilot Chat and wait for the tool callback.
     const requestRecommendation = useCallback(() => {
+        if (workloadErrors.length > 0) {
+            setSnapshot((previous) => ({
+                ...previous,
+                recommendation: { status: 'error', error: workloadErrors.join('\n') },
+            }));
+            return;
+        }
         if (snapshot.recommendation.status !== 'idle') {
             report({ type: 'action', action: 'retryRecommendation' });
         }
@@ -702,7 +727,7 @@ const HydratedDataModelingWizard = ({
             }
         };
         void run();
-    }, [trpcClient, snapshot, setSnapshot, flush, report]);
+    }, [trpcClient, snapshot, setSnapshot, flush, report, workloadErrors]);
 
     const stepValues = buildStepValues(state.dataModel);
     const stepIndex = Math.min(Math.max(state.step, 1), stepValues.length);
@@ -750,7 +775,7 @@ const HydratedDataModelingWizard = ({
         }
     }, [visible, isResult, recommendationStatus, recommendation, report]);
 
-    const canAdvance = !isWorkload || !!state.scenario;
+    const canAdvance = (!isWorkload || !!state.scenario) && (!isReview || workloadErrors.length === 0);
     const nextLabel = isWorkload ? l10n.t('Start') : isReview ? l10n.t('Get Recommendation') : l10n.t('Next');
 
     const advance = () => {
@@ -1112,6 +1137,7 @@ const HydratedDataModelingWizard = ({
                         title={l10n.t('Review your inputs')}
                     >
                         <ReviewPage
+                            validationErrors={workloadErrors}
                             workloadLabel={scenarioLabel ?? l10n.t('Not selected')}
                             containers={state.dataModel.containers}
                             onEditWorkload={() => goToStep(1)}

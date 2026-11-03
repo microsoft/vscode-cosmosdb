@@ -389,10 +389,12 @@ describe('workload rate limits', () => {
         const model = singleRead(0);
         model.containers[0].writes.insertsPerSec = 4_000;
         const { rerender } = render(<QueriesPage model={model} onChange={vi.fn()} />);
-        expect(screen.queryByText(/one physical partition can serve/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/throttling risk if more than/)).not.toBeInTheDocument();
 
         model.containers[0].scale.writes = 'time';
         rerender(<QueriesPage model={structuredClone(model)} onChange={vi.fn()} />);
-        expect(screen.getByRole('status')).toHaveTextContent(/one physical partition can serve/);
+        expect(screen.getByRole('status')).toHaveTextContent(
+            /throttling risk if more than .* reaches one physical partition/,
+        );
     });
 });

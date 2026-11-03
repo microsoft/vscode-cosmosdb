@@ -255,6 +255,8 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         });
         expect(scrollRegion).not.toContainElement(preview);
         expect(preview.parentElement).toHaveStyle({ position: 'relative' });
+        expect(preview.parentElement?.style.getPropertyValue('--preview-badge-clearance')).toBe('308px');
+        expect(navigation).toHaveStyle({ marginRight: 'var(--preview-badge-clearance)' });
         expect(preview.parentElement).toContainElement(scrollRegion as HTMLElement);
         expect(title.parentElement?.parentElement).toHaveStyle({ paddingRight: '308px' });
         expect(title.parentElement).toHaveStyle({ minWidth: '0px' });

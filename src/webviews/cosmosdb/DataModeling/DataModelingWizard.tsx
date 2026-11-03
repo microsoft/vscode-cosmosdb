@@ -21,7 +21,7 @@ import {
 } from '@microsoft/vscode-ext-webview-fluentui/components';
 import { useTrpcClient } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
-import { type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { validateDeploymentContainerName } from '../../../dataModeling/deploymentModel';
 import { PartitionKeyRecommendationSchema } from '../../../dataModeling/recommendationSchema';
 import { type DataModelingAppRouter, type DataModelingEvent } from '../../api/types';
@@ -108,6 +108,9 @@ const useStyles = makeStyles({
         minWidth: 0,
         // Temporary package DOM override until Wizard exposes a content-width prop.
         '& [data-header-behavior] > div': { maxWidth: 'none' },
+        '& [data-header-behavior] nav': {
+            marginRight: 'var(--preview-badge-clearance)',
+        },
         '& [aria-current="step"]': {
             fontWeight: tokens.fontWeightBold,
         },
@@ -964,7 +967,11 @@ const HydratedDataModelingWizard = ({
         );
 
     return (
-        <div className={styles.fullWidthWizard} aria-busy={confirming || addingContainer}>
+        <div
+            className={styles.fullWidthWizard}
+            style={{ '--preview-badge-clearance': `${previewBadgeWidth + 28}px` } as CSSProperties}
+            aria-busy={confirming || addingContainer}
+        >
             <PreviewBadge className={styles.previewBadge} onWidthChange={setPreviewBadgeWidth} />
             {confirmationError ? (
                 <Text

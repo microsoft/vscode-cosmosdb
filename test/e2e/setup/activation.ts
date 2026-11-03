@@ -23,7 +23,7 @@
  *
  * What this helper does
  * ---------------------
- * 1. Waits for the Azure activity-bar entry to be contributed, then clicks it to open the sidebar.
+ * 1. Waits for the Azure activity-bar entry to be contributed, then reveals it unless it is already active and visible.
  *    This wakes Azure Resources, which pulls our extension up via the activation events above.
  * 2. Polls the workbench DOM until the `Cosmos DB Accounts` row appears
  *    in the Workspaces tree. That label is produced by
@@ -57,11 +57,8 @@ export async function waitForExtensionsActivated(
 ): Promise<void> {
     // The command palette can show unrelated matches before extensions finish registering.
     // Wait for the contributed Azure view itself rather than executing the first fuzzy command result.
-    await window
-        .locator('.part.activitybar')
-        .getByRole('tab', { name: /^Azure(?: \(|$)/ })
-        .click({ timeout: ACTIVATION_TIMEOUT_MS });
-
+    const azureTab = window.locator('.part.activitybar').getByRole('tab', { name: /^Azure(?: \(|$)/ });
+    await azureTab.waitFor({ state: 'visible', timeout: ACTIVATION_TIMEOUT_MS });
     // 2. Wait for our workspace contribution to render. Polling DOM is the
     //    most resilient signal we have without a direct bridge into the
     //    VS Code extension host.
@@ -72,12 +69,17 @@ export async function waitForExtensionsActivated(
 
     while (Date.now() < deadline) {
         try {
-            // oxlint-disable-next-line no-await-in-loop
-            const count = await nodeLocator.count();
-            if (count > 0) {
+            // A restored Azure view must not be toggled closed. Retry revealing it if VS Code ignores a rapid click.
+            if (
+                (await azureTab.getAttribute('aria-selected')) !== 'true' ||
+                !(await window.locator('.part.sidebar').isVisible())
+            ) {
+                await azureTab.click({ timeout: ACTIVATION_TIMEOUT_MS });
+            }
+            if (await nodeLocator.isVisible()) {
                 return;
             }
-            lastError = `tree item "${workspaceTreeNodeLabel}" not present (count=${count})`;
+            lastError = `tree item "${workspaceTreeNodeLabel}" not visible`;
         } catch (err) {
             lastError = (err as Error).message;
         }

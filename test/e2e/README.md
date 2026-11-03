@@ -82,6 +82,9 @@ The activation handshake waits for the contributed Azure activity-bar entry befo
 the Cosmos DB Accounts tree item. It does not use the command palette during startup: before extension registration
 finishes, a search for `View: Show Azure` can offer unrelated commands instead.
 If the tree item never appears, the report includes an `activation-failure` screenshot.
+The handshake leaves an already selected, visible Azure sidebar open rather than toggling it closed.
+This matters after a display-language restart, when VS Code restores the previous sidebar.
+The activation regressions cover both an already open sidebar and reopening a hidden one.
 
 ## Running
 
@@ -143,6 +146,8 @@ The `default` project keeps that English UI for the other specs.
 Each localized worker then selects **Configure Display Language**, chooses **Deutsch** or **日本語**,
 and confirms **Restart**. VS Code writes its own locale preference and exits; Playwright launches the replacement
 process with the same isolated profile and no `--locale` override.
+The fixture reopens the command palette while waiting for **Configure Display Language** to be registered,
+so a palette opened during startup cannot remain stuck on stale search results.
 Only Electron's detached auto-relaunch is suppressed so Playwright can retain control of the new process.
 Neither VS Code's language preference nor the extension's translation bundles are injected or mocked.
 

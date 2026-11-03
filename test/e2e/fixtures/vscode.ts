@@ -38,7 +38,7 @@
  * file should declare its own cleanup.
  */
 
-import { test as base, _electron as electron, type ElectronApplication, type Page } from '@playwright/test';
+import { test as base, _electron as electron, expect, type ElectronApplication, type Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import * as path from 'node:path';
@@ -388,10 +388,17 @@ export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
                     const page = await app.firstWindow();
                     await waitForWorkbenchReady(app, page, isolation.resultsRootDir);
                     await waitForExtensionsActivated(page);
-                    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+Shift+P' : 'Control+Shift+P');
                     const input = page.locator('.quick-input-widget input').first();
                     const rows = page.locator('.quick-input-list .monaco-list-row');
-                    await input.fill('>Configure Display Language');
+                    // Reopen the palette while waiting for late-registered commands instead of keeping stale results.
+                    await expect(async () => {
+                        await page.keyboard.press('Escape');
+                        await page.keyboard.press(process.platform === 'darwin' ? 'Meta+Shift+P' : 'Control+Shift+P');
+                        await input.fill('>Configure Display Language');
+                        await expect(rows.filter({ hasText: 'Configure Display Language' })).toBeVisible({
+                            timeout: 1_000,
+                        });
+                    }).toPass({ timeout: 30_000 });
                     await rows.filter({ hasText: 'Configure Display Language' }).click();
                     await input.fill(DISPLAY_LANGUAGES[displayLanguage].name);
                     await rows.filter({ hasText: DISPLAY_LANGUAGES[displayLanguage].name }).click();

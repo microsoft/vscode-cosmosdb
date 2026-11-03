@@ -49,10 +49,8 @@ labels, including the step-overflow button.
 The wizard header uses Fluent's decorative `DatabaseLinkRegular` icon in `ContainerHeader`'s `media` slot.
 The shared header supplies its sizing, alignment, and theme-aware accent color; the icon is hidden from screen readers.
 
-Until the package exposes a content-width prop, the Data Modeler scopes a
-`[data-header-behavior] > div { max-width: none; }` override under its own wrapper. This removes the package's
-760px content cap without changing padding or scroll behavior. The selector depends on the package's internal DOM;
-recheck it on upgrades and remove it when a public width option becomes available.
+The Data Modeler uses the package's uncapped content width by leaving `Wizard`'s `contentMaxWidth` prop unset.
+The package owns content padding and scroll behavior; no internal-DOM width override is needed.
 
 [MonacoEditor.tsx](../src/webviews/MonacoEditor.tsx) consumes `useVSCodeMonacoTheme` from the public `/monaco` entry.
 It registers the latest theme before editor creation, composes the caller's `beforeMount`, and reapplies changed

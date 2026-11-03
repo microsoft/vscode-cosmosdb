@@ -836,8 +836,6 @@ export const OverviewDashboard = ({
                                 selectedContainer={selectedContainer}
                                 onSelectContainer={handleScopeChange}
                                 databaseIds={inventory.databases}
-                                accountActionBusy={accountActionBusy}
-                                onAccountAction={(input) => void runAccountAction(input)}
                             />
                             <AccountActions
                                 isAIFeaturesEnabled={isAIFeaturesEnabled}

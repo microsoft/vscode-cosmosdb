@@ -12,7 +12,7 @@ import {
     tokens,
     typographyStyles,
 } from '@fluentui/react-components';
-import { Add16Regular, Delete16Regular } from '@fluentui/react-icons';
+import { Add16Regular, Braces16Regular, Delete16Regular, Money16Regular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { type AccountActionInput } from '../../api/types';
 import { ThemedTooltip as Tooltip } from '../../common/ThemedTooltip';
@@ -89,6 +89,24 @@ export function AccountActions({
                         {l10n.t('Add container')}
                     </Button>
                 </Tooltip>
+                <Button
+                    appearance="secondary"
+                    size="small"
+                    icon={<Money16Regular aria-hidden />}
+                    disabled={busy}
+                    onClick={() => onAction({ action: 'openCosts' })}
+                >
+                    {l10n.t('View Cost')}
+                </Button>
+                <Button
+                    appearance="secondary"
+                    size="small"
+                    icon={<Braces16Regular aria-hidden />}
+                    disabled={busy}
+                    onClick={() => onAction({ action: 'openJson' })}
+                >
+                    {l10n.t('View JSON')}
+                </Button>
                 <Button
                     appearance="secondary"
                     size="small"

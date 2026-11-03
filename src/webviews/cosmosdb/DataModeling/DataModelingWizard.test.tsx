@@ -243,13 +243,18 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(preview).toHaveTextContent('Preview');
         expect(preview).toHaveAccessibleName('Preview');
         expect(preview).toHaveAttribute('tabindex', '0');
-        expect(preview).toHaveStyle({ marginTop: '0px', marginRight: '12px', height: '32px' });
-        expect(scrollRegion).toContainElement(preview);
-        expect(title.parentElement?.parentElement).toContainElement(preview);
-        expect(preview.parentElement).toHaveStyle({
-            marginInlineStart: 'auto',
-            flexShrink: '0',
+        expect(preview).toHaveStyle({
+            position: 'absolute',
+            top: '10px',
+            right: '20px',
+            marginTop: '0px',
+            marginRight: '0px',
+            height: '32px',
         });
+        expect(scrollRegion).not.toContainElement(preview);
+        expect(preview.parentElement).toHaveStyle({ position: 'relative' });
+        expect(preview.parentElement).toContainElement(scrollRegion as HTMLElement);
+        expect(title.parentElement?.parentElement).toHaveStyle({ paddingRight: '112px' });
         expect(title.parentElement).toHaveStyle({ minWidth: '0px' });
         expect(title.firstElementChild).toHaveStyle({ overflowWrap: 'anywhere' });
         const titleIcon = title.parentElement?.parentElement?.querySelector('svg');

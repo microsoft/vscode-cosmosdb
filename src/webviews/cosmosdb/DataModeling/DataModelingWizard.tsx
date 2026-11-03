@@ -89,14 +89,21 @@ const useViewportStyles = makeStyles({
 
 const useStyles = makeStyles({
     previewBadge: {
-        // The centered 32px badge has a 12px vertical inset in the 56px header; match it on the right.
+        position: 'absolute',
+        top: '10px',
+        right: '20px',
+        zIndex: 10,
         marginTop: 0,
-        marginRight: '12px',
+        marginRight: 0,
+    },
+    workloadHeader: {
+        paddingRight: '112px',
     },
     workloadTitle: {
         overflowWrap: 'anywhere',
     },
     fullWidthWizard: {
+        position: 'relative',
         display: 'flex',
         flexDirection: 'column',
         flex: '1 1 auto',
@@ -960,6 +967,7 @@ const HydratedDataModelingWizard = ({
 
     return (
         <div className={styles.fullWidthWizard} aria-busy={confirming || addingContainer}>
+            <PreviewBadge className={styles.previewBadge} />
             {confirmationError ? (
                 <Text role="alert" className={viewportStyles.statusRow}>
                     {confirmationError}
@@ -979,13 +987,13 @@ const HydratedDataModelingWizard = ({
                     headerBehavior="sticky-navigation"
                     header={
                         <ContainerHeader
+                            className={styles.workloadHeader}
                             media={<DatabaseLinkRegular aria-hidden="true" focusable="false" />}
                             title={
                                 <span className={styles.workloadTitle}>
                                     {l10n.t('Workload: {name}', { name: scenarioLabel ?? l10n.t('Not selected') })}
                                 </span>
                             }
-                            action={<PreviewBadge className={styles.previewBadge} />}
                         />
                     }
                     footer={footer}

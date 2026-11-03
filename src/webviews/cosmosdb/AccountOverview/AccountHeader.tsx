@@ -83,6 +83,9 @@ const useStyles = makeStyles({
         gap: tokens.spacingHorizontalM,
         flexWrap: 'wrap',
     },
+    headerRow: {
+        paddingRight: '112px',
+    },
     titleBlock: {
         display: 'flex',
         flexDirection: 'column',
@@ -119,6 +122,10 @@ const useStyles = makeStyles({
         maxWidth: '100%',
     },
     previewBadge: {
+        position: 'fixed',
+        top: '10px',
+        right: '20px',
+        zIndex: 10,
         flexShrink: 0,
         marginTop: 0,
         marginRight: 0,
@@ -355,7 +362,7 @@ export const AccountHeader = ({
 
     return (
         <header className={styles.root}>
-            <div className={styles.topRow}>
+            <div className={mergeClasses(styles.topRow, styles.headerRow)}>
                 <div className={styles.identity}>
                     <img className={styles.icon} src={cosmosIcon} alt="" />
                     <div className={styles.titleBlock}>

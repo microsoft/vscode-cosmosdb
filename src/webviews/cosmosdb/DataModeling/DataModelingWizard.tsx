@@ -11,6 +11,7 @@ import {
     DeleteRegular,
     DismissRegular,
     EditRegular,
+    ErrorCircleRegular,
     SparkleRegular,
 } from '@fluentui/react-icons';
 import {
@@ -119,6 +120,25 @@ const useStyles = makeStyles({
     },
     // The footer's contentEnd is a single slot, so give its buttons and the link their own gap.
     endGroup: { display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS },
+    footer: { flexShrink: 0 },
+    containerError: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+        flexWrap: 'wrap',
+        gap: tokens.spacingHorizontalS,
+        padding: '8px 24px',
+        backgroundColor: tokens.colorPaletteRedBackground1,
+        color: tokens.colorPaletteRedForeground1,
+    },
+    containerErrorMessage: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: tokens.spacingHorizontalS,
+        minWidth: 0,
+        overflowWrap: 'anywhere',
+    },
+    containerErrorIcon: { flexShrink: 0 },
     // Fluent 9 has no built-in danger appearance; tint the destructive action red.
     dangerButton: {
         color: tokens.colorPaletteRedForeground1,
@@ -284,6 +304,7 @@ const HydratedDataModelingWizard = ({
     const queriesTabRef = useRef<HTMLButtonElement>(null);
     const [containerTab, setContainerTab] = useState<ContainerTab>('data');
     const removeButtonRef = useRef<HTMLButtonElement>(null);
+    const addButtonRef = useRef<HTMLButtonElement>(null);
     const requestGeneration = useRef(0);
     const requestId = useRef<string | undefined>(undefined);
     const deliveredRequestId = useRef<string | undefined>(undefined);
@@ -312,6 +333,13 @@ const HydratedDataModelingWizard = ({
         buildStepValues(state.dataModel).slice(0, snapshot.recommendation.value ? undefined : state.step);
     const [addingContainer, setAddingContainer] = useState(false);
     const [addContainerError, setAddContainerError] = useState('');
+    const restoreAddFocus = useRef(false);
+    useEffect(() => {
+        if (!addingContainer && restoreAddFocus.current) {
+            restoreAddFocus.current = false;
+            addButtonRef.current?.focus();
+        }
+    }, [addingContainer, addContainerError]);
     const currentDataModel = useRef(state.dataModel);
     useEffect(() => {
         currentDataModel.current = state.dataModel;
@@ -898,6 +926,7 @@ const HydratedDataModelingWizard = ({
                         {isContainerStep ? (
                             <>
                                 <Button
+                                    ref={addButtonRef}
                                     appearance="secondary"
                                     icon={<AddRegular />}
                                     disabled={addingContainer || state.dataModel.containers.length >= MAX_CONTAINERS}
@@ -965,11 +994,6 @@ const HydratedDataModelingWizard = ({
                     {confirmationError}
                 </Text>
             ) : null}
-            {addContainerError ? (
-                <Text role="alert" className={viewportStyles.statusRow}>
-                    {addContainerError}
-                </Text>
-            ) : null}
             <div className={styles.wizardHost}>
                 <Wizard
                     activeStep={activeValue}
@@ -988,7 +1012,32 @@ const HydratedDataModelingWizard = ({
                             action={<PreviewBadge className={styles.previewBadge} />}
                         />
                     }
-                    footer={footer}
+                    footer={
+                        <div className={styles.footer}>
+                            {isContainerStep && addContainerError ? (
+                                <div className={styles.containerError}>
+                                    <Text role="alert" className={styles.containerErrorMessage}>
+                                        <ErrorCircleRegular aria-hidden="true" className={styles.containerErrorIcon} />
+                                        {addContainerError}
+                                    </Text>
+                                    <Button
+                                        size="small"
+                                        disabled={
+                                            addingContainer || state.dataModel.containers.length >= MAX_CONTAINERS
+                                        }
+                                        onClick={() => {
+                                            restoreAddFocus.current = true;
+                                            addButtonRef.current?.focus();
+                                            void openAddDialog();
+                                        }}
+                                    >
+                                        {l10n.t('Retry')}
+                                    </Button>
+                                </div>
+                            ) : null}
+                            {footer}
+                        </div>
+                    }
                 >
                     <WizardStep
                         value={WORKLOAD_STEP}

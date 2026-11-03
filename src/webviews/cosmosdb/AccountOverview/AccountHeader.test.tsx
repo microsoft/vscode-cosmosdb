@@ -98,6 +98,7 @@ describe('AccountHeader', () => {
         expect(badge).toHaveTextContent('Preview');
         expect(badge).toHaveAccessibleName('Preview');
         expect(badge).toHaveClass('focusableBadge');
+        expect(badge).toHaveStyle({ marginTop: '0px', marginRight: '0px', height: '32px', flexShrink: '0' });
         expect(badge.querySelector('span')).toHaveAttribute('aria-hidden', 'true');
         screen.getByRole('button', { name: 'Refresh' }).focus();
         await user.tab();

@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Badge, Button, Field, Input, Link, makeStyles, Text, tokens } from '@fluentui/react-components';
+import { Button, Field, Input, Link, makeStyles, Text, tokens } from '@fluentui/react-components';
 import {
     AddRegular,
     CheckmarkRegular,
@@ -25,6 +25,7 @@ import { type SetStateAction, useCallback, useEffect, useMemo, useRef, useState 
 import { validateDeploymentContainerName } from '../../../dataModeling/deploymentModel';
 import { PartitionKeyRecommendationSchema } from '../../../dataModeling/recommendationSchema';
 import { type DataModelingAppRouter, type DataModelingEvent } from '../../api/types';
+import { PreviewBadge } from '../../components/PreviewBadge';
 import {
     applyScenario,
     createBlankContainer,
@@ -87,6 +88,14 @@ const useViewportStyles = makeStyles({
 });
 
 const useStyles = makeStyles({
+    previewBadge: {
+        // The centered 32px badge has a 12px vertical inset in the 56px header; match it on the right.
+        marginTop: 0,
+        marginRight: '12px',
+    },
+    workloadTitle: {
+        overflowWrap: 'anywhere',
+    },
     fullWidthWizard: {
         display: 'flex',
         flexDirection: 'column',
@@ -971,8 +980,12 @@ const HydratedDataModelingWizard = ({
                     header={
                         <ContainerHeader
                             media={<DatabaseLinkRegular aria-hidden="true" focusable="false" />}
-                            title={l10n.t('Workload: {name}', { name: scenarioLabel ?? l10n.t('Not selected') })}
-                            action={<Badge appearance="tint">{l10n.t('Preview')}</Badge>}
+                            title={
+                                <span className={styles.workloadTitle}>
+                                    {l10n.t('Workload: {name}', { name: scenarioLabel ?? l10n.t('Not selected') })}
+                                </span>
+                            }
+                            action={<PreviewBadge className={styles.previewBadge} />}
                         />
                     }
                     footer={footer}

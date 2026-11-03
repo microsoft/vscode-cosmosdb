@@ -8,7 +8,6 @@ import {
     AccordionHeader,
     AccordionItem,
     AccordionPanel,
-    Badge,
     Button,
     Dropdown,
     makeStyles,
@@ -33,6 +32,7 @@ import {
 } from '../../api/types';
 import { ProvideFeedbackButton } from '../../common/ProvideFeedbackButton';
 import { ThemedTooltip as Tooltip } from '../../common/ThemedTooltip';
+import { PreviewBadge } from '../../components/PreviewBadge';
 import { AccountHealthStatus, PROVISIONING_LABELS } from './AccountHealthStatus';
 import { type ContainerRef, type MetricScope } from './metrics/descriptors';
 
@@ -120,20 +120,8 @@ const useStyles = makeStyles({
     },
     previewBadge: {
         flexShrink: 0,
-        cursor: 'default',
-        height: '32px',
-        paddingLeft: '20px',
-        paddingRight: '20px',
-        borderRadius: '6px',
-        fontWeight: 600,
-        backgroundColor: 'var(--vscode-editorWidget-background)',
-        color: 'var(--vscode-foreground)',
-        border: '1px solid var(--vscode-panel-border)',
-        boxShadow: '0 2px 8px var(--vscode-widget-shadow)',
-        '&:focus-visible': {
-            outline: '2px solid var(--vscode-focusBorder)',
-            outlineOffset: '1px',
-        },
+        marginTop: 0,
+        marginRight: 0,
     },
     select: {
         minWidth: 0,
@@ -452,20 +440,7 @@ export const AccountHeader = ({
                         {l10n.t('Refresh')}
                     </Button>
                     {onProvideFeedback && <ProvideFeedbackButton type="button" onProvideFeedback={onProvideFeedback} />}
-                    <Tooltip
-                        content={l10n.t('Preview: features and behavior may change. Use with care.')}
-                        relationship="description"
-                    >
-                        <Badge
-                            appearance="outline"
-                            color="informative"
-                            className={mergeClasses('focusableBadge', styles.previewBadge)}
-                            tabIndex={0}
-                            aria-label={l10n.t('Preview')}
-                        >
-                            <span aria-hidden="true">{l10n.t('Preview')}</span>
-                        </Badge>
-                    </Tooltip>
+                    <PreviewBadge className={mergeClasses('focusableBadge', styles.previewBadge)} />
                 </div>
             </div>
             <p className={styles.subtitle}>

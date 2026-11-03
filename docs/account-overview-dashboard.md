@@ -20,7 +20,8 @@ This guide explains the current repository implementation. Maintainers and codin
 5. Select **Refresh** when you want a new snapshot. Overview does not update automatically.
 
 The header remains visible across the three tabs. Expand **Account details** for provisioning status,
-capacity mode, account properties, **View Cost** and **View JSON**.
+capacity mode and account properties. **View Cost** and **View JSON** are alongside **Add database**
+and **Add container** in the account actions row, even when Account details is collapsed.
 The Explorer's metric shortcuts select a chart in the same dashboard, preserving your filters.
 Use the smiley **Provide Feedback** button beside **Refresh**, then choose **Provide Feedback** in its menu,
 to open the same NoSQL survey available in Query Editor. The button respects VS Code's

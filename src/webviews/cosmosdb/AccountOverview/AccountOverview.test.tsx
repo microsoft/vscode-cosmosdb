@@ -1415,6 +1415,20 @@ describe('Account Overview account actions', () => {
         expect(screen.queryByRole('group', { name: 'Error' })).not.toBeInTheDocument();
     });
 
+    it('keeps View Cost and View JSON with account actions when Account details are collapsed', async () => {
+        const user = userEvent.setup();
+        render(<AccountOverview />, { wrapper: Wrapper });
+        await screen.findByRole('tab', { name: 'Monitoring' });
+        await user.click(screen.getByRole('button', { name: 'Account details' }));
+        const actions = within(screen.getByRole('region', { name: 'Account actions' }));
+        for (const label of ['Add database', 'Add container', 'View Cost', 'View JSON', 'Delete account']) {
+            const button = actions.getByRole('button', { name: label });
+            expect(button).toBeVisible();
+            expect(button).toHaveTextContent(label);
+            expect(button).toHaveAccessibleName(label);
+        }
+    });
+
     it('blocks duplicate and cross-toolbar actions while a mutation is pending, then unlocks on cancellation', async () => {
         const user = userEvent.setup();
         const pending = Promise.withResolvers<AccountActionResult>();

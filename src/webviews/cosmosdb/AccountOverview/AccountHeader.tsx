@@ -18,12 +18,11 @@ import {
     tokens,
     typographyStyles,
 } from '@fluentui/react-components';
-import { ArrowClockwise16Regular, Braces16Regular, Money16Regular } from '@fluentui/react-icons';
+import { ArrowClockwise16Regular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useId, useMemo, useState } from 'react';
 import { type OverviewHealthCheck } from '../../../panels/accountOverview/overviewHealthModel';
 import {
-    type AccountActionInput,
     type HealthState,
     type MetricApplicability,
     type MetricKey,
@@ -240,8 +239,6 @@ export const AccountHeader = ({
     selectedContainer,
     onSelectContainer,
     databaseIds,
-    accountActionBusy,
-    onAccountAction,
 }: {
     navigationRevision?: number;
     summary: AccountSummary;
@@ -260,8 +257,6 @@ export const AccountHeader = ({
     selectedContainer?: MetricScope;
     onSelectContainer: (scope?: MetricScope) => void;
     databaseIds?: string[];
-    accountActionBusy: boolean;
-    onAccountAction: (input: AccountActionInput) => void;
 }) => {
     const styles = useStyles();
     const id = useId();
@@ -509,24 +504,6 @@ export const AccountHeader = ({
                         >
                             <AccordionItem value="properties">
                                 <div className={styles.detailFooter}>
-                                    <Button
-                                        appearance="secondary"
-                                        size="small"
-                                        icon={<Money16Regular aria-hidden />}
-                                        disabled={accountActionBusy}
-                                        onClick={() => onAccountAction({ action: 'openCosts' })}
-                                    >
-                                        {l10n.t('View Cost')}
-                                    </Button>
-                                    <Button
-                                        appearance="secondary"
-                                        size="small"
-                                        icon={<Braces16Regular aria-hidden />}
-                                        disabled={accountActionBusy}
-                                        onClick={() => onAccountAction({ action: 'openJson' })}
-                                    >
-                                        {l10n.t('View JSON')}
-                                    </Button>
                                     <AccordionHeader
                                         as="h3"
                                         inline

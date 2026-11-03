@@ -34,15 +34,14 @@ export async function runAccountAction(
 
     try {
         if (input.action === 'openCosts') {
-            const opened = await vscode.env.openExternal(
-                vscode.Uri.parse(
-                    buildAccountCostsUrl(
-                        metadata.subscription.environment.portalUrl,
-                        metadata.subscription.tenantId,
-                        metadata.accountId,
-                    ),
-                ),
+            const url = buildAccountCostsUrl(
+                metadata.subscription.environment.portalUrl,
+                metadata.subscription.tenantId,
+                metadata.accountId,
             );
+            // Like azext-utils/openUrl, pass a string to preserve encoding through VS Code's opener.
+            // The runtime accepts strings despite the Uri-only API type; keep the boolean result for launch failures.
+            const opened = await vscode.env.openExternal(url as unknown as vscode.Uri);
             if (!opened) {
                 throw new Error(l10n.t('Unable to open account costs in the Azure portal.'));
             }
@@ -107,7 +106,6 @@ export async function runAccountAction(
 }
 
 export function buildAccountCostsUrl(portalUrl: string, tenantId: string, accountId: string): string {
-    // Uri.parse decodes once; preserve the ARM scope as one encoded portal route parameter.
-    const encodedAccountId = encodeURIComponent(encodeURIComponent(accountId));
+    const encodedAccountId = encodeURIComponent(accountId);
     return `${portalUrl.replace(/\/$/, '')}/#@${encodeURIComponent(tenantId)}/view/Microsoft_Azure_CostManagement/CostAnalysis/scope/${encodedAccountId}`;
 }

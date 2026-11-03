@@ -47,12 +47,14 @@ const ACTIVATION_POLL_INTERVAL_MS = 500;
 /**
  * Label rendered by `CosmosDBWorkspaceItem.getTreeItem()`. The exact string
  * must stay in sync with `src/tree/workspace-view/cosmosdb/CosmosDBWorkspaceItem.ts`.
- * If that label ever gets l10n'd to a non-English locale at test time, this
- * helper will need to read it from the same translation source.
+ * Localized workers supply the expected translated label instead.
  */
 const WORKSPACE_TREE_NODE_LABEL = 'Cosmos DB Accounts';
 
-export async function waitForExtensionsActivated(window: Page): Promise<void> {
+export async function waitForExtensionsActivated(
+    window: Page,
+    workspaceTreeNodeLabel = WORKSPACE_TREE_NODE_LABEL,
+): Promise<void> {
     // The command palette can show unrelated matches before extensions finish registering.
     // Wait for the contributed Azure view itself rather than executing the first fuzzy command result.
     await window
@@ -64,7 +66,7 @@ export async function waitForExtensionsActivated(window: Page): Promise<void> {
     //    most resilient signal we have without a direct bridge into the
     //    VS Code extension host.
     const deadline = Date.now() + ACTIVATION_TIMEOUT_MS;
-    const nodeLocator = window.getByRole('treeitem', { name: WORKSPACE_TREE_NODE_LABEL });
+    const nodeLocator = window.getByRole('treeitem', { name: workspaceTreeNodeLabel });
 
     let lastError: string = '(no probes yet)';
 
@@ -75,7 +77,7 @@ export async function waitForExtensionsActivated(window: Page): Promise<void> {
             if (count > 0) {
                 return;
             }
-            lastError = `tree item "${WORKSPACE_TREE_NODE_LABEL}" not present (count=${count})`;
+            lastError = `tree item "${workspaceTreeNodeLabel}" not present (count=${count})`;
         } catch (err) {
             lastError = (err as Error).message;
         }
@@ -85,7 +87,7 @@ export async function waitForExtensionsActivated(window: Page): Promise<void> {
     await captureNamedScreenshot(window, 'activation-failure');
     throw new Error(
         `Extensions did not finish activating within ${ACTIVATION_TIMEOUT_MS} ms. ` +
-            `Expected the "${WORKSPACE_TREE_NODE_LABEL}" tree item to appear after revealing the Azure sidebar. ` +
+            `Expected the "${workspaceTreeNodeLabel}" tree item to appear after revealing the Azure sidebar. ` +
             `Last probe: ${lastError}. ` +
             `Common causes: ` +
             `(a) the dependent extension "ms-azuretools.vscode-azureresourcegroups" failed to install ` +

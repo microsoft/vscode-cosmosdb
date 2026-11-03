@@ -3,8 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { defineConfig } from '@playwright/test';
+import { defineConfig, type PlaywrightTestOptions } from '@playwright/test';
 import * as path from 'node:path';
+import { type DisplayLanguage } from './test/e2e/fixtures/vscode';
 import { ensureE2eIsolationContext } from './test/e2e/helpers/e2eIsolation';
 
 const isolation = ensureE2eIsolationContext();
@@ -13,9 +14,9 @@ const isolation = ensureE2eIsolationContext();
  * Playwright config for webview e2e tests and isolated proxy/TLS tests.
  *
  * Scope: We launch a real VS Code (downloaded by `@vscode/test-electron`) via
- * Playwright's Electron API and drive only the webview iframes inside it. We
- * do **not** assert against the VS Code shell (tree view, status bar, etc.) —
- * that's the job of the Extension-Host integration tests under
+ * Playwright's Electron API and drive the webview iframes inside it. The localization spec also switches
+ * the workbench display language and restarts the isolated profile. Other shell assertions belong to
+ * the Extension-Host integration tests under
  * [`test/`](./test/) run via `npm run test`.
  * The proxy spec reuses the downloaded executable with separate test profiles, without the webview fixtures.
  *
@@ -38,7 +39,7 @@ const isolation = ensureE2eIsolationContext();
  * `test/e2e/setup/globalSetup.ts`, mirroring the NoSQL integration suite
  * under `packages/nosql-language-service/`.
  */
-export default defineConfig({
+export default defineConfig<PlaywrightTestOptions, { displayLanguage?: DisplayLanguage }>({
     testDir: './test/e2e/specs',
     globalSetup: './test/e2e/setup/globalSetup.ts',
     globalTeardown: './test/e2e/setup/globalTeardown.ts',
@@ -61,6 +62,14 @@ export default defineConfig({
         screenshot: 'only-on-failure',
     },
 
-    // No `webServer` and no `projects` — we don't need a browser. Tests use
-    // Playwright's Electron API directly (see `test/e2e/fixtures/vscode.ts`).
+    projects: [
+        { name: 'default', testIgnore: '**/queryEditor-localization.spec.ts' },
+        ...(['de', 'ja'] as const).map((displayLanguage) => ({
+            name: `localization-${displayLanguage}`,
+            testMatch: '**/queryEditor-localization.spec.ts',
+            use: { displayLanguage },
+        })),
+    ],
+
+    // No `webServer` — tests use Playwright's Electron API directly.
 });

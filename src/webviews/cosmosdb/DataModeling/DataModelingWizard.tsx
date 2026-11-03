@@ -337,7 +337,10 @@ const HydratedDataModelingWizard = ({
     useEffect(() => {
         if (!addingContainer && restoreAddFocus.current) {
             restoreAddFocus.current = false;
-            addButtonRef.current?.focus();
+            const focusTarget = [addButtonRef.current, advanceButtonRef.current].find(
+                (button) => button && !button.disabled,
+            );
+            focusTarget?.focus();
         }
     }, [addingContainer, addContainerError]);
     const currentDataModel = useRef(state.dataModel);

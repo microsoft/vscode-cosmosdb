@@ -21,6 +21,7 @@ import { type DataModelingEvent } from '../../api/types';
 import { applyScenario, createBlankContainer } from './dataModel';
 import { DataModelingWizard } from './DataModelingWizard';
 import { createInitialSnapshot } from './modelingAdvisorState';
+import { MAX_CONTAINERS } from './models';
 
 const client = vi.hoisted(() => ({
     dataModeling: {
@@ -804,12 +805,20 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         },
     );
 
-    it.each(['Add container', 'Retry'])(
-        'surfaces native input failures above the footer and retries via %s',
-        async (action) => {
+    it.each([
+        { action: 'Add container', containerCount: 1, focusTarget: 'Add container' },
+        { action: 'Retry', containerCount: 1, focusTarget: 'Add container' },
+        { action: 'Retry', containerCount: MAX_CONTAINERS - 1, focusTarget: 'Next' },
+    ])(
+        'surfaces native input failures above the footer and retries via $action with $containerCount containers',
+        async ({ action, containerCount, focusTarget }) => {
             const width = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1024);
             onTestFinished(() => width.mockRestore());
-            client.dataModeling.loadState.query.mockResolvedValue(restored());
+            const saved = restored();
+            saved.wizard.dataModel.containers.push(
+                ...Array.from({ length: containerCount - 1 }, (_, index) => createBlankContainer(`Container${index}`)),
+            );
+            client.dataModeling.loadState.query.mockResolvedValue(saved);
             client.dataModeling.promptContainerName.mutate.mockRejectedValueOnce(new Error('Input unavailable'));
             let submitName: (value: string | undefined) => void = () => {
                 throw new Error('Retry input not opened');
@@ -841,12 +850,16 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             await act(async () => submitName('Recovered'));
             await waitFor(() =>
                 expect(lastSave().wizard.dataModel.containers.map((container) => container.entity)).toEqual([
-                    'Orders',
+                    ...saved.wizard.dataModel.containers.map((container) => container.entity),
                     'Recovered',
                 ]),
             );
-            expect(add).toBeEnabled();
-            expect(add).toHaveFocus();
+            expect(add).toHaveProperty('disabled', containerCount + 1 === MAX_CONTAINERS);
+            const focusedButton = screen.getByRole('button', { name: focusTarget });
+            expect(focusedButton).toBeEnabled();
+            expect(focusedButton).toHaveTextContent(focusTarget);
+            expect(focusedButton).toHaveAccessibleName(focusTarget);
+            expect(focusedButton).toHaveFocus();
         },
     );
 

@@ -118,6 +118,10 @@ const useStyles = makeStyles({
         maxWidth: '100%',
     },
     previewBadge: {
+        position: 'fixed',
+        top: '10px',
+        right: '20px',
+        zIndex: 10,
         flexShrink: 0,
         marginTop: 0,
         marginRight: 0,
@@ -260,6 +264,7 @@ export const AccountHeader = ({
 }) => {
     const styles = useStyles();
     const id = useId();
+    const [previewBadgeWidth, setPreviewBadgeWidth] = useState(0);
     const controlsDisabled = loading || refreshDisabled;
     // Dropdown has no disabledFocusable prop. Keep the trigger focusable while its disabled state blocks interaction.
     const filterButtonProps = { disabled: false, 'aria-disabled': controlsDisabled, tabIndex: 0 };
@@ -350,7 +355,7 @@ export const AccountHeader = ({
 
     return (
         <header className={styles.root}>
-            <div className={styles.topRow}>
+            <div className={styles.topRow} style={{ paddingRight: previewBadgeWidth + 28 }}>
                 <div className={styles.identity}>
                     <img className={styles.icon} src={cosmosIcon} alt="" />
                     <div className={styles.titleBlock}>
@@ -435,7 +440,10 @@ export const AccountHeader = ({
                         {l10n.t('Refresh')}
                     </Button>
                     {onProvideFeedback && <ProvideFeedbackButton type="button" onProvideFeedback={onProvideFeedback} />}
-                    <PreviewBadge className={mergeClasses('focusableBadge', styles.previewBadge)} />
+                    <PreviewBadge
+                        className={mergeClasses('focusableBadge', styles.previewBadge)}
+                        onWidthChange={setPreviewBadgeWidth}
+                    />
                 </div>
             </div>
             <p className={styles.subtitle}>

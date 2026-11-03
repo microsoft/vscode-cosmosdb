@@ -86,6 +86,18 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('AccountHeader', () => {
+    it('reserves the rendered badge width plus the inset and gap without moving its top-right corner', () => {
+        vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 280, 32));
+        renderHeader();
+        const badge = screen.getByLabelText('Preview', { selector: `.${badgeClassNames.root}` });
+        expect(badge).toHaveStyle({ position: 'fixed', top: '10px', right: '20px' });
+        expect(
+            screen.getByRole('heading', { name: summary.accountName }).closest('header')?.firstElementChild,
+        ).toHaveStyle({
+            paddingRight: '308px',
+        });
+    });
+
     it.each([
         ['light', webLightTheme],
         ['dark', webDarkTheme],
@@ -96,6 +108,7 @@ describe('AccountHeader', () => {
         expect(badge).toHaveTextContent('Preview');
         expect(badge).toHaveAccessibleName('Preview');
         expect(badge).toHaveClass('focusableBadge');
+        expect(badge).toHaveStyle({ position: 'fixed', top: '10px', right: '20px', height: '32px' });
         expect(badge).toHaveStyle({ marginTop: '0px', marginRight: '0px', height: '32px', flexShrink: '0' });
         expect(badge.querySelector('span')).toHaveAttribute('aria-hidden', 'true');
         screen.getByRole('button', { name: 'Refresh' }).focus();

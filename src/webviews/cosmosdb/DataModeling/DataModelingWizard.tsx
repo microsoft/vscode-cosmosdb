@@ -106,8 +106,6 @@ const useStyles = makeStyles({
         flex: '1 1 auto',
         minHeight: 0,
         minWidth: 0,
-        // Temporary package DOM override until Wizard exposes a content-width prop.
-        '& [data-header-behavior] > div': { maxWidth: 'none' },
         '& [data-header-behavior] nav': {
             marginRight: 'var(--preview-badge-clearance)',
         },

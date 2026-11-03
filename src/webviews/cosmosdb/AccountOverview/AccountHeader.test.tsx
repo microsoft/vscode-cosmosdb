@@ -54,8 +54,6 @@ function renderHeader(overrides: Partial<HeaderProps> = {}, theme = webLightThem
         onTimeRangeChange: vi.fn(),
         containers: [],
         onSelectContainer: vi.fn(),
-        accountActionBusy: false,
-        onAccountAction: vi.fn(),
         ...overrides,
     };
     return {
@@ -355,13 +353,13 @@ describe('AccountHeader', () => {
 
     it('uses a keyboard-accessible Accordion for additional properties and preserves its state when details collapse', async () => {
         const user = userEvent.setup();
-        const { props } = renderHeader({ defaultEssentialsOpen: true });
+        renderHeader({ defaultEssentialsOpen: true });
         const toggle = screen.getByRole('button', { name: 'Additional account properties' });
         expect(toggle).toHaveClass(accordionHeaderClassNames.button);
         expect(toggle).toHaveTextContent('Additional account properties');
         expect(toggle).toHaveAccessibleName('Additional account properties');
         expect(toggle).toHaveAttribute('aria-expanded', 'false');
-        screen.getByRole('button', { name: 'View JSON' }).focus();
+        screen.getByRole('button', { name: 'Account details' }).focus();
         await user.tab();
         expect(toggle).toHaveFocus();
         await user.keyboard('{Enter}');
@@ -390,24 +388,24 @@ describe('AccountHeader', () => {
         expect(toggle).toHaveAttribute('aria-expanded', 'false');
         expect(panel).toHaveAttribute('inert');
         expect(toggle).toHaveFocus();
-        expect(props.onAccountAction).not.toHaveBeenCalled();
     });
 
-    it('keeps the additional-properties toggle in the same action row when expanded and closed', async () => {
+    it('keeps the additional-properties toggle in the details footer when expanded and closed', async () => {
         const user = userEvent.setup();
         renderHeader({ defaultEssentialsOpen: true });
         const toggle = screen.getByRole('button', { name: 'Additional account properties' });
-        const actions = screen.getByRole('button', { name: 'View Cost' }).parentElement!;
+        const footer = toggle.closest('h3')!.parentElement!;
         const panel = document.getElementById(toggle.getAttribute('aria-controls')!)!;
-        const rowClass = actions.className;
-        expect(actions).toContainElement(toggle);
-        expect(actions).toContainElement(screen.getByRole('button', { name: 'View JSON' }));
-        expect(actions).not.toContainElement(panel);
-        expect(actions.nextElementSibling).toBe(panel);
+        const rowClass = footer.className;
+        expect(footer).toContainElement(toggle);
+        expect(footer).not.toContainElement(panel);
+        expect(footer.nextElementSibling).toBe(panel);
+        expect(screen.queryByRole('button', { name: 'View Cost' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'View JSON' })).not.toBeInTheDocument();
         await user.click(toggle);
         expect(toggle).toHaveAttribute('aria-expanded', 'true');
-        expect(actions).toContainElement(toggle);
-        expect(actions.className).toBe(rowClass);
+        expect(footer).toContainElement(toggle);
+        expect(footer.className).toBe(rowClass);
         expect(panel).not.toHaveAttribute('inert');
         await user.click(toggle);
         expect(toggle).toHaveAttribute('aria-expanded', 'false');
@@ -450,38 +448,6 @@ describe('AccountHeader', () => {
     ] satisfies [Partial<AccountSummary>, string][])('renders optional backup metadata %j', (backup, label) => {
         renderHeader({ defaultEssentialsOpen: true, summary: { ...summary, ...backup } });
         expect(within(screen.getByText('Backup policy').parentElement!).getByText(label)).toBeVisible();
-    });
-
-    it.each([
-        ['View Cost', 'openCosts'],
-        ['View JSON', 'openJson'],
-    ] as const)('dispatches %s from its visible, keyboard-accessible label', async (label, action) => {
-        const user = userEvent.setup();
-        const { props } = renderHeader({ defaultEssentialsOpen: true });
-        const button = screen.getByRole('button', { name: label });
-        expect(button).toHaveTextContent(label);
-        expect(button).toHaveAccessibleName(label);
-        button.focus();
-        await user.keyboard('{Enter}');
-        expect(props.onAccountAction).toHaveBeenCalledExactlyOnceWith({ action });
-        expect(props.onRefresh).not.toHaveBeenCalled();
-        expect(props.onSelectContainer).not.toHaveBeenCalled();
-        expect(props.onTimeRangeChange).not.toHaveBeenCalled();
-    });
-
-    it('disables both detail actions while busy and re-enables them when complete', async () => {
-        const user = userEvent.setup();
-        const { props, rerender } = renderHeader({ defaultEssentialsOpen: true, accountActionBusy: true });
-        for (const label of ['View Cost', 'View JSON']) {
-            const button = screen.getByRole('button', { name: label });
-            expect(button).toBeDisabled();
-            await user.click(button);
-        }
-        expect(props.onAccountAction).not.toHaveBeenCalled();
-        rerender(<AccountHeader {...props} accountActionBusy={false} />);
-        for (const label of ['View Cost', 'View JSON']) {
-            expect(screen.getByRole('button', { name: label })).toBeEnabled();
-        }
     });
 
     it('calls Refresh without changing filters', async () => {

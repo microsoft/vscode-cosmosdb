@@ -79,6 +79,9 @@ const useStyles = makeStyles({
         position: 'fixed',
         inset: 0,
         zIndex: 1000001,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
         backgroundColor: tokens.colorBackgroundOverlay,
         cursor: 'wait',
     },
@@ -836,8 +839,6 @@ export const OverviewDashboard = ({
                                 selectedContainer={selectedContainer}
                                 onSelectContainer={handleScopeChange}
                                 databaseIds={inventory.databases}
-                                accountActionBusy={accountActionBusy}
-                                onAccountAction={(input) => void runAccountAction(input)}
                             />
                             <AccountActions
                                 isAIFeaturesEnabled={isAIFeaturesEnabled}
@@ -986,7 +987,9 @@ export const OverviewDashboard = ({
                     aria-hidden
                     // Keep clicks on the backdrop from moving focus away from the native VS Code wizard.
                     onPointerDown={(event) => event.preventDefault()}
-                />
+                >
+                    <Spinner label={l10n.t('Account action in progress…')} labelPosition="below" />
+                </div>
             )}
         </DashboardActionsProvider>
     );

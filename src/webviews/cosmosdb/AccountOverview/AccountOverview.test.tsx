@@ -1415,6 +1415,20 @@ describe('Account Overview account actions', () => {
         expect(screen.queryByRole('group', { name: 'Error' })).not.toBeInTheDocument();
     });
 
+    it('keeps View Cost and View JSON with account actions when Account details are collapsed', async () => {
+        const user = userEvent.setup();
+        render(<AccountOverview />, { wrapper: Wrapper });
+        await screen.findByRole('tab', { name: 'Monitoring' });
+        await user.click(screen.getByRole('button', { name: 'Account details' }));
+        const actions = within(screen.getByRole('region', { name: 'Account actions' }));
+        for (const label of ['Add database', 'Add container', 'View Cost', 'View JSON', 'Delete account']) {
+            const button = actions.getByRole('button', { name: label });
+            expect(button).toBeVisible();
+            expect(button).toHaveTextContent(label);
+            expect(button).toHaveAccessibleName(label);
+        }
+    });
+
     it('blocks duplicate and cross-toolbar actions while a mutation is pending, then unlocks on cancellation', async () => {
         const user = userEvent.setup();
         const pending = Promise.withResolvers<AccountActionResult>();
@@ -1483,14 +1497,21 @@ describe('Account Overview account actions', () => {
         }
         const overlay = dashboard.nextElementSibling!;
         expect(overlay).toHaveAttribute('aria-hidden', 'true');
-        expect(overlay).toHaveStyle({ position: 'fixed', inset: '0' });
+        expect(overlay).toHaveStyle({
+            position: 'fixed',
+            inset: '0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+        });
+        expect(overlay.querySelector('.fui-Spinner')).toBeVisible();
+        expect(overlay).toHaveTextContent('Account action in progress…');
         const pointerDown = createEvent.pointerDown(overlay, { bubbles: true, cancelable: true });
         fireEvent(overlay, pointerDown);
         expect(pointerDown.defaultPrevented).toBe(true);
         await user.click(overlay);
         expect(dashboard).toHaveAttribute('inert');
         expect(queries.accountAction).toHaveBeenCalledTimes(1);
-        expect(screen.queryByText('Account action in progress…')).not.toBeInTheDocument();
         trigger.blur();
         vi.spyOn(document, 'hasFocus').mockReturnValue(true);
         await act(async () => pending.resolve({ status: 'cancelled' }));
@@ -1689,6 +1710,8 @@ describe('Account Overview account actions', () => {
         const dashboard = screen.getByRole('tablist').closest('[inert]')!;
         expect(dashboard).toHaveAttribute('aria-busy', 'true');
         const overlay = dashboard.nextElementSibling!;
+        expect(overlay.querySelector('.fui-Spinner')).toBeVisible();
+        expect(overlay).toHaveTextContent('Account action in progress…');
         expect(screen.getByRole('button', { name: 'Add database' })).toBeDisabled();
         expect(screen.getByRole('button', { name: 'View Cost' })).toBeDisabled();
         await user.click(screen.getByRole('button', { name: 'Delete account' }));

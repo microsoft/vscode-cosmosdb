@@ -4,6 +4,8 @@ Account Overview helps you answer three questions about an Azure Cosmos DB for N
 **What is happening? Which resources need attention? What should I investigate next?**
 
 In the Azure resources Explorer, open your account's **Account Overview (Preview) → Overview**.
+Alternatively, run **Cosmos DB: Open Account Overview** from the Command Palette and select an Azure account.
+Selection stops at the account; no database or container selection is required.
 The account stays the same as you move between tabs or select a database.
 Reading the dashboard does not change Azure resources. Actions such as **Add database**, **Add container**
 and **Delete account** are separate, explicit operations with the extension's usual wizard or confirmation.
@@ -20,7 +22,8 @@ This guide explains the current repository implementation. Maintainers and codin
 5. Select **Refresh** when you want a new snapshot. Overview does not update automatically.
 
 The header remains visible across the three tabs. Expand **Account details** for provisioning status,
-capacity mode, account properties, **View Cost** and **View JSON**.
+capacity mode and account properties. **View Cost** and **View JSON** are alongside **Add database**
+and **Add container** in the account actions row, even when Account details is collapsed.
 The Explorer's metric shortcuts select a chart in the same dashboard, preserving your filters.
 Use the smiley **Provide Feedback** button beside **Refresh**, then choose **Provide Feedback** in its menu,
 to open the same NoSQL survey available in Query Editor. The button respects VS Code's
@@ -321,7 +324,8 @@ Azure Monitor ingestion delays and different collection windows can explain diff
 
 **Add database** and **Add container** use the existing native VS Code wizards for this account.
 With All databases selected, Add container asks you to choose a database in the same account.
-Overview is dimmed while a creation wizard runs. Cancel returns without changes; successful creation refreshes inventory.
+Overview is dimmed with a centered progress spinner while a creation wizard runs and until inventory reload finishes.
+Cancel returns without changes; successful creation refreshes inventory.
 Delete account uses the existing confirmation and requires permission to delete the resource.
 
 **View Cost** opens account-scoped Azure Portal Cost Analysis.

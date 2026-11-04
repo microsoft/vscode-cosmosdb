@@ -245,14 +245,14 @@ function SavedModelChoice({ onContinue, onStartNew }: { onContinue: () => void; 
     const choose = useCallback(async () => {
         setAwaitingAnswer(true);
         const result = await confirm(
-            l10n.t('Continue your data model?'),
+            l10n.t('Start a new data model?'),
             l10n.t(
-                'A saved data model was found. Choose Yes to continue where you left off, or No to start a new model and replace the saved one.',
+                'A saved data model was found. Choose Yes to start a new model and replace the saved one, or No to continue where you left off.',
             ),
             { primary: l10n.t('Yes'), secondary: l10n.t('No'), secondaryIsCloseAffordance: true },
         );
-        if (result === true) onContinue();
-        else if (result === false) onStartNew();
+        if (result === true) onStartNew();
+        else if (result === false) onContinue();
         else setAwaitingAnswer(false);
     }, [confirm, onContinue, onStartNew]);
     useEffect(() => {
@@ -269,7 +269,7 @@ function SavedModelChoice({ onContinue, onStartNew }: { onContinue: () => void; 
         <div>
             {confirmationError ? <Text role="alert">{confirmationError}</Text> : null}
             <Button ref={buttonRef} onClick={() => void choose()}>
-                {l10n.t('Continue your data model?')}
+                {l10n.t('Start a new data model?')}
             </Button>
         </div>
     );

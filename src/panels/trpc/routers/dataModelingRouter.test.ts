@@ -138,28 +138,36 @@ describe('data modeler deployment procedure', () => {
         { choice: 'Yes', result: true },
         { choice: 'No', result: false },
         { choice: 'Escape', result: false },
-    ])('offers only Yes and No for saved work (choice: $choice)', async ({ choice, result }) => {
-        vi.mocked(vscode.window.showWarningMessage).mockImplementation(async (_message, _options, ...items) =>
-            items.find((item) => (choice === 'Escape' ? item.isCloseAffordance : item.title === choice)),
-        );
-        const prompt = {
-            message: 'Continue your data model?',
-            detail: 'Continue the saved model or start a new one?',
-            buttons: { primary: 'Yes', secondary: 'No', secondaryIsCloseAffordance: true },
-        };
-        expect(await dataModelingRouterDef.createCaller(context()).confirm(prompt)).toBe(result);
-        expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
-            prompt.message,
-            { modal: true, detail: prompt.detail },
-            { title: 'Yes' },
-            { title: 'No', isCloseAffordance: true },
-        );
-    });
+        { choice: undefined, result: undefined },
+    ])(
+        'offers two buttons and requires explicit Yes to replace saved work (choice: $choice)',
+        async ({ choice, result }) => {
+            vi.mocked(vscode.window.showWarningMessage).mockImplementation(async (_message, _options, ...items) =>
+                items.find((item) => (choice === 'Escape' ? item.isCloseAffordance : item.title === choice)),
+            );
+            const prompt = {
+                message: 'Start a new data model?',
+                detail: 'Choose Yes to replace the saved model, or No to continue.',
+                buttons: { primary: 'Yes', secondary: 'No', secondaryIsCloseAffordance: true },
+            };
+            expect(await dataModelingRouterDef.createCaller(context()).confirm(prompt)).toBe(result);
+            expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
+                prompt.message,
+                { modal: true, detail: prompt.detail },
+                { title: 'Yes' },
+                { title: 'No', isCloseAffordance: true },
+            );
+        },
+    );
 
     it('propagates native confirmation failures without confirming an action', async () => {
         vi.mocked(vscode.window.showWarningMessage).mockRejectedValueOnce(new Error('Dialog unavailable'));
         await expect(
-            dataModelingRouterDef.createCaller(context()).confirm({ message: 'Continue?', detail: '' }),
+            dataModelingRouterDef.createCaller(context()).confirm({
+                message: 'Continue?',
+                detail: '',
+                buttons: { primary: 'Yes', secondary: 'No' },
+            }),
         ).rejects.toThrow('Dialog unavailable');
     });
 

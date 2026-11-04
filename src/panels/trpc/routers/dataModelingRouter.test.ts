@@ -159,7 +159,11 @@ describe('data modeler deployment procedure', () => {
     it('propagates native confirmation failures without confirming an action', async () => {
         vi.mocked(vscode.window.showWarningMessage).mockRejectedValueOnce(new Error('Dialog unavailable'));
         await expect(
-            dataModelingRouterDef.createCaller(context()).confirm({ message: 'Continue?', detail: '' }),
+            dataModelingRouterDef.createCaller(context()).confirm({
+                message: 'Continue?',
+                detail: '',
+                buttons: { primary: 'Yes', secondary: 'No' },
+            }),
         ).rejects.toThrow('Dialog unavailable');
     });
 

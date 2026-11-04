@@ -11,11 +11,13 @@ import { isDataModelerFeatureEnabled } from '../commands/dataModeling/dataModele
 import { openDataModelingWizard } from '../commands/dataModeling/openDataModelingWizard';
 import { type AzureResourceMetadata } from '../cosmosdb/AzureResourceMetadata';
 import { getControlPlane } from '../cosmosdb/controlPlane';
+import { ModelingTelemetry } from '../dataModeling/ModelingTelemetry';
 import { DataModelerProjectService } from '../services/DataModelerProjectService';
 import { getAccountInfo, type AccountInfo } from '../tree/cosmosdb/AccountInfo';
 import { type CosmosDBAccountResourceItem } from '../tree/cosmosdb/CosmosDBAccountResourceItem';
 import { ensureAIFeaturesEnabled } from '../utils/copilotUtils';
 import { pickAppResource } from '../utils/pickItem/pickAppResource';
+import { createInitialSnapshot } from '../webviews/cosmosdb/DataModeling/dataModel';
 import { DataModelingWizardTab } from './DataModelingWizardTab';
 import { type DataModelingRouterContext } from './trpc/appRouter';
 
@@ -111,6 +113,9 @@ beforeEach(() => {
     vi.mocked(isDataModelerFeatureEnabled).mockReset().mockReturnValue(true);
     vi.mocked(ensureAIFeaturesEnabled).mockReset().mockResolvedValue(undefined);
     vi.spyOn(vscode.window, 'createWebviewPanel').mockImplementation(() => panel());
+    vi.spyOn(DataModelerProjectService.prototype, 'loadState').mockResolvedValue(null);
+    vi.spyOn(DataModelerProjectService.prototype, 'saveState').mockResolvedValue(undefined);
+    vi.mocked(vscode.window.showWarningMessage).mockReset();
 });
 afterEach(() => {
     for (const tab of DataModelingWizardTab.openTabs) tab.dispose();
@@ -156,18 +161,20 @@ describe('data modeler account scope', () => {
         expect(vscode.window.createWebviewPanel).not.toHaveBeenCalled();
     });
 
-    it('reuses only the same account tab and binds each account to its own persistence service', () => {
-        const first = render(firstAccount);
+    it('reuses only the same account tab and binds each account to its own persistence service', async () => {
+        const first = await render(firstAccount);
         const firstProject = lastContext().project;
         expect(lastContext().account.endpoint).toBe(firstAccount.endpoint);
-        const second = render(secondAccount);
+        const second = await render(secondAccount);
         const secondProject = lastContext().project;
         expect(lastContext().account.endpoint).toBe(secondAccount.endpoint);
         expect(second).not.toBe(first);
         expect(firstProject).toBe(DataModelerProjectService.getInstance(firstAccount.endpoint));
         expect(secondProject).toBe(DataModelerProjectService.getInstance(secondAccount.endpoint));
         expect(firstProject.projectUri.toString()).not.toBe(secondProject.projectUri.toString());
-        expect(render({ endpoint: 'HTTPS://ACCOUNT-A.documents.azure.com:443', name: 'Renamed label' })).toBe(first);
+        expect(await render({ endpoint: 'HTTPS://ACCOUNT-A.documents.azure.com:443', name: 'Renamed label' })).toBe(
+            first,
+        );
         expect(vscode.window.createWebviewPanel).toHaveBeenCalledTimes(2);
         expect(attachTrpc).toHaveBeenCalledTimes(2);
     });
@@ -211,15 +218,15 @@ describe('data modeler account scope', () => {
         expect(account).not.toHaveProperty('credentials');
     });
 
-    it('preserves the host-only deployment capability and updates it when reopening an endpoint-only tab', () => {
-        const tab = render(firstAccount);
+    it('preserves the host-only deployment capability and updates it when reopening an endpoint-only tab', async () => {
+        const tab = await render(firstAccount);
         const context = lastContext();
         const capability = vi.fn();
         const deploymentTarget = vi.fn();
         const queryConnection = vi.fn();
         expect(context.account.getControlPlane).toBeUndefined();
         expect(
-            render({
+            await render({
                 ...firstAccount,
                 getControlPlane: capability,
                 getDeploymentTarget: deploymentTarget,
@@ -231,7 +238,7 @@ describe('data modeler account scope', () => {
         expect(context.account.getQueryConnection).toBe(queryConnection);
         context.account.getControlPlane?.();
         expect(capability).toHaveBeenCalledOnce();
-        expect(render(firstAccount)).toBe(tab);
+        expect(await render(firstAccount)).toBe(tab);
         expect(context.account.getControlPlane).toBe(capability);
         expect(context.account.getDeploymentTarget).toBe(deploymentTarget);
         expect(context.account.getQueryConnection).toBe(queryConnection);
@@ -251,6 +258,126 @@ describe('data modeler account scope', () => {
             expect.any(Object),
         );
     });
+
+    it.each(['Yes', 'No', 'Escape', undefined])(
+        'settles the saved-model choice before creating the tab (choice: %s)',
+        async (choice) => {
+            const saved = createInitialSnapshot();
+            saved.wizard.scenario = 'other';
+            vi.mocked(DataModelerProjectService.prototype.loadState).mockResolvedValue(saved);
+            const record = vi.spyOn(ModelingTelemetry.prototype, 'record');
+            let answer!: () => void;
+            vi.mocked(vscode.window.showWarningMessage).mockImplementation(
+                async (_message, _options, ...items) =>
+                    new Promise<vscode.MessageItem | undefined>((resolve) => {
+                        answer = () =>
+                            resolve(
+                                items.find((item) =>
+                                    choice === 'Escape' ? item.isCloseAffordance : item.title === choice,
+                                ),
+                            );
+                    }),
+            );
+            const opening = render(firstAccount);
+            await vi.waitFor(() => expect(vscode.window.showWarningMessage).toHaveBeenCalledOnce());
+            expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
+                'Start a new data model?',
+                {
+                    modal: true,
+                    detail: 'A saved data model was found. Choose Yes to start a new model and replace the saved one, or No to continue where you left off.',
+                },
+                { title: 'Yes' },
+                { title: 'No', isCloseAffordance: true },
+            );
+            expect(vscode.window.createWebviewPanel).not.toHaveBeenCalled();
+            expect(attachTrpc).not.toHaveBeenCalled();
+            expect(DataModelerProjectService.prototype.saveState).not.toHaveBeenCalled();
+            answer();
+            const tab = await opening;
+            expect(vscode.window.createWebviewPanel).toHaveBeenCalledOnce();
+            expect(record).toHaveBeenCalledWith({
+                type: 'sessionChoice',
+                choice: choice === 'Yes' ? 'replaced' : 'continued',
+            });
+            expect(vi.mocked(DataModelerProjectService.prototype.saveState).mock.calls).toEqual(
+                choice === 'Yes' ? [[createInitialSnapshot()]] : [],
+            );
+            expect(await render(firstAccount)).toBe(tab);
+            expect(vscode.window.showWarningMessage).toHaveBeenCalledOnce();
+            expect(DataModelerProjectService.prototype.loadState).toHaveBeenCalledOnce();
+        },
+    );
+
+    it('opens a fresh session without prompting or saving', async () => {
+        const record = vi.spyOn(ModelingTelemetry.prototype, 'record');
+        await render(firstAccount);
+        expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
+        expect(DataModelerProjectService.prototype.saveState).not.toHaveBeenCalled();
+        expect(record).toHaveBeenCalledWith({ type: 'sessionChoice', choice: 'new' });
+    });
+
+    it('waits for the explicitly requested replacement to save before creating the webview', async () => {
+        vi.mocked(DataModelerProjectService.prototype.loadState).mockResolvedValue(createInitialSnapshot());
+        vi.mocked(vscode.window.showWarningMessage).mockImplementation(
+            async (_message, _options, ...items) => items[0],
+        );
+        let finishSave!: () => void;
+        vi.mocked(DataModelerProjectService.prototype.saveState).mockImplementationOnce(
+            () =>
+                new Promise<void>((resolve) => {
+                    finishSave = resolve;
+                }),
+        );
+        const opening = render(firstAccount);
+        await vi.waitFor(() => expect(DataModelerProjectService.prototype.saveState).toHaveBeenCalledOnce());
+        expect(vscode.window.createWebviewPanel).not.toHaveBeenCalled();
+        finishSave();
+        await opening;
+        expect(vscode.window.createWebviewPanel).toHaveBeenCalledOnce();
+    });
+
+    it('shares an in-flight open without duplicating the prompt or tab', async () => {
+        let finishLoad!: (value: ReturnType<typeof createInitialSnapshot>) => void;
+        vi.mocked(DataModelerProjectService.prototype.loadState).mockImplementationOnce(
+            () =>
+                new Promise((resolve) => {
+                    finishLoad = resolve;
+                }),
+        );
+        vi.mocked(vscode.window.showWarningMessage).mockImplementation(
+            async (_message, _options, ...items) => items[1],
+        );
+        const first = render(firstAccount);
+        const capability = vi.fn();
+        const second = render({ ...firstAccount, getControlPlane: capability });
+        expect(vscode.window.createWebviewPanel).not.toHaveBeenCalled();
+        finishLoad(createInitialSnapshot());
+        expect(await second).toBe(await first);
+        expect(lastContext().account.getControlPlane).toBe(capability);
+        expect(vscode.window.showWarningMessage).toHaveBeenCalledOnce();
+        expect(vscode.window.createWebviewPanel).toHaveBeenCalledOnce();
+    });
+
+    it.each(['load', 'prompt', 'save'])(
+        'surfaces %s failures without opening a tab and allows retry',
+        async (stage) => {
+            const error = new Error('Storage or prompt unavailable');
+            vi.mocked(DataModelerProjectService.prototype.loadState).mockResolvedValue(createInitialSnapshot());
+            vi.mocked(vscode.window.showWarningMessage).mockImplementation(
+                async (_message, _options, ...items) => items[0],
+            );
+            if (stage === 'load') vi.mocked(DataModelerProjectService.prototype.loadState).mockRejectedValueOnce(error);
+            if (stage === 'prompt') vi.mocked(vscode.window.showWarningMessage).mockRejectedValueOnce(error);
+            if (stage === 'save') vi.mocked(DataModelerProjectService.prototype.saveState).mockRejectedValueOnce(error);
+            const context = actionContext();
+            await expect(open(context, firstAccount)).rejects.toThrow(error);
+            expect(context.telemetry.suppressAll).toBe(true);
+            expect(vscode.window.createWebviewPanel).not.toHaveBeenCalled();
+            expect(DataModelerProjectService.prototype.saveState).toHaveBeenCalledTimes(stage === 'save' ? 1 : 0);
+            await open(actionContext(), firstAccount);
+            expect(vscode.window.createWebviewPanel).toHaveBeenCalledOnce();
+        },
+    );
 
     it('prompts for an account when launched without context, and uses that account endpoint', async () => {
         const node = { account: { id: 'account-id', name: 'Account' } } as CosmosDBAccountResourceItem;

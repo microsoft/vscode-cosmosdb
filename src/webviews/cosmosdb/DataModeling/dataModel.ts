@@ -17,6 +17,7 @@
  * host-side seeding step.
  */
 
+import { type ModelingAdvisorSnapshot } from '../../../dataModeling/modelingAdvisorSchema';
 import { type ContainerDefault, DATA_MODEL_DEFAULTS } from './dataModelDefaults';
 import { type ContainerModel, type PartitionCandidate, type ScenarioId } from './models';
 import { getPartitionKeyRestriction } from './partitionKeyEligibility';
@@ -38,6 +39,10 @@ export interface WizardState {
     reachedSteps?: string[];
     scenario?: ScenarioId;
     dataModel: DataModel;
+}
+
+export function createInitialSnapshot(): ModelingAdvisorSnapshot {
+    return { wizard: createInitialState(), recommendation: { status: 'idle' } };
 }
 
 /** Rough cardinality guess from a property name, used to pre-fill the Scale page. */

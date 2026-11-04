@@ -200,7 +200,6 @@
   "Add read query": "Add read query",
   "Add the business/unique key identifiers and the attributes you filter queries by. Press Enter to add.": "Add the business/unique key identifiers and the attributes you filter queries by. Press Enter to add.",
   "Add the container's partition key to the query filter (or a composite index) so it targets a single logical partition.": "Add the container's partition key to the query filter (or a composite index) so it targets a single logical partition.",
-  "Additional account properties": "Additional account properties",
   "Additional Assessment Instructions": "Additional Assessment Instructions",
   "Additional assessment instructions help": "Additional assessment instructions help",
   "Additional Discovery Instructions": "Additional Discovery Instructions",

@@ -4,6 +4,7 @@
 
 ### Added
 
+- Added always-visible folding controls for nested objects and arrays in Query Results JSON, including large-result previews. ([#3299](https://github.com/microsoft/vscode-cosmosdb/issues/3299), [#3305](https://github.com/microsoft/vscode-cosmosdb/issues/3305))
 - Added an experimental **Cosmos DB Data Modeler** for designing document models and receiving partition key recommendations, with configuration options to enable the experience. ([#3341](https://github.com/microsoft/vscode-cosmosdb/issues/3341), [#3450](https://github.com/microsoft/vscode-cosmosdb/issues/3450))
 - Added a portable **relational migration Skill** for agent-guided source analysis, assessment, document-model design, authorized provisioning, and application code migration. Supports resumable project-local checkpoints, shared and hybrid throughput models, and reusable migration decisions and model snapshots. ([#3403](https://github.com/microsoft/vscode-cosmosdb/issues/3403))
 - Added configurable connection timeouts for attached accounts. ([#3456](https://github.com/microsoft/vscode-cosmosdb/issues/3456))

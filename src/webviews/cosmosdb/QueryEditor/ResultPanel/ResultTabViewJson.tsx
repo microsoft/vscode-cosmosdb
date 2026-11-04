@@ -58,14 +58,17 @@ const encoder = new TextEncoder();
 const DEFAULT_JSON_EDITOR_OPTIONS: MonacoEditorType.editor.IStandaloneEditorConstructionOptions = {
     ariaLabel: l10n.t('Query results JSON'),
     domReadOnly: true,
+    folding: true,
     readOnly: true,
+    showFoldingControls: 'always',
 };
 
 const LARGE_JSON_EDITOR_OPTIONS: MonacoEditorType.editor.IStandaloneEditorConstructionOptions = {
     ...DEFAULT_JSON_EDITOR_OPTIONS,
     bracketPairColorization: { enabled: false },
     colorDecorators: false,
-    folding: false,
+    // Use native indentation folding to avoid an extra JSON worker pass over large or truncated results.
+    foldingStrategy: 'indentation',
     guides: {
         bracketPairs: false,
         indentation: false,

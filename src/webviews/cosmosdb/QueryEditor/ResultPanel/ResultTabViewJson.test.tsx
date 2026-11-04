@@ -30,10 +30,12 @@ let hasTextSelection = false;
 
 vi.mock('../../../MonacoEditor', () => ({
     MonacoEditor: ({
+        defaultLanguage,
         defaultValue,
         options,
         onMount,
     }: {
+        defaultLanguage: string;
         defaultValue: string;
         options: Record<string, unknown>;
         onMount?: (
@@ -82,7 +84,14 @@ vi.mock('../../../MonacoEditor', () => ({
             );
         }, [onMount]);
 
-        return <div data-testid="monaco" data-value={value} data-options={JSON.stringify(options)} />;
+        return (
+            <div
+                data-testid="monaco"
+                data-language={defaultLanguage}
+                data-value={value}
+                data-options={JSON.stringify(options)}
+            />
+        );
     },
 }));
 
@@ -113,16 +122,46 @@ describe('ResultTabViewJson', () => {
         hasTextSelection = false;
     });
 
-    it('opens a small result directly with the default editor options', async () => {
-        renderJsonView(makeResult('small'));
+    it('opens nested objects and arrays directly as read-only JSON with visible folding controls', async () => {
+        const result = {
+            ...makeResult('small'),
+            documents: [{ nestedObject: { text: 'small' }, nestedArray: [{ value: 1 }, { value: 2 }] }],
+        };
+        renderJsonView(result);
 
         const editor = screen.getByTestId('monaco');
         expect(editor).toBeInTheDocument();
-        await waitFor(() => expect(editor.dataset.value).toContain('small'));
+        expect(editor.dataset.language).toBe('json');
+        await waitFor(() => expect(editor.dataset.value).toBe(JSON.stringify(result.documents, undefined, 4)));
         expect(JSON.parse(editor.dataset.options ?? '{}')).toEqual({
             ariaLabel: 'Query results JSON',
             domReadOnly: true,
+            folding: true,
             readOnly: true,
+            showFoldingControls: 'always',
+        });
+    });
+
+    it('recreates the JSON editor with folding controls when new results arrive', async () => {
+        const { rerender } = renderJsonView(makeResult('first'));
+        await waitFor(() => expect(screen.getByTestId('monaco').dataset.value).toContain('first'));
+        const firstEditor = screen.getByTestId('monaco');
+
+        rerender(
+            <FluentProvider theme={webLightTheme}>
+                <ResultTabViewJson queryResult={makeResult('second', 2)} />
+            </FluentProvider>,
+        );
+
+        const secondEditor = screen.getByTestId('monaco');
+        expect(secondEditor).not.toBe(firstEditor);
+        expect(dispose).toHaveBeenCalledOnce();
+        await waitFor(() => expect(secondEditor.dataset.value).toContain('second'));
+        expect(secondEditor.dataset.value).not.toContain('first');
+        expect(JSON.parse(secondEditor.dataset.options ?? '{}')).toMatchObject({
+            folding: true,
+            readOnly: true,
+            showFoldingControls: 'always',
         });
     });
 
@@ -184,27 +223,47 @@ describe('ResultTabViewJson', () => {
     });
 
     it('opens a bounded preview and then incrementally loads the complete result only after explicit actions', async () => {
-        renderJsonView(makeResult('x'.repeat(QUERY_RESULT_JSON_WARNING_BYTES)));
+        const result = {
+            ...makeResult('large'),
+            documents: [
+                {
+                    nestedObject: { text: 'large' },
+                    nestedArray: [{ value: 1 }, { value: 2 }],
+                    padding: 'x'.repeat(QUERY_RESULT_JSON_WARNING_BYTES),
+                },
+            ],
+        };
+        renderJsonView(result);
 
         fireEvent.click(screen.getByRole('button', { name: 'Show preview' }));
 
         const previewEditor = screen.getByTestId('monaco');
         expect(screen.getByText('Preview only')).toBeInTheDocument();
         await waitFor(() => expect(previewEditor.dataset.value).toContain('x'.repeat(1024)));
-        await waitFor(() =>
-            expect(new TextEncoder().encode(previewEditor.dataset.value).byteLength).toBeLessThanOrEqual(512 * 1024),
-        );
+        await waitFor(() => expect(screen.queryByRole('progressbar')).not.toBeInTheDocument(), { timeout: 10_000 });
+        expect(new TextEncoder().encode(previewEditor.dataset.value).byteLength).toBeLessThanOrEqual(512 * 1024);
         expect(JSON.parse(previewEditor.dataset.options ?? '{}')).toMatchObject({
+            domReadOnly: true,
             largeFileOptimizations: true,
-            folding: false,
+            folding: true,
+            foldingStrategy: 'indentation',
             links: false,
             minimap: { enabled: false },
+            readOnly: true,
+            showFoldingControls: 'always',
         });
+        expect(previewEditor.dataset.value).toContain('"nestedObject"');
+        expect(previewEditor.dataset.value).toContain('"nestedArray"');
 
         fireEvent.click(screen.getByRole('button', { name: 'Open all' }));
 
         expect(screen.queryByText('Preview only')).not.toBeInTheDocument();
         await waitFor(() => expect(screen.getByTestId('monaco').dataset.value).toContain('x'.repeat(1024)));
+        expect(JSON.parse(screen.getByTestId('monaco').dataset.options ?? '{}')).toEqual(
+            JSON.parse(previewEditor.dataset.options ?? '{}'),
+        );
+        await waitFor(() => expect(screen.queryByRole('progressbar')).not.toBeInTheDocument(), { timeout: 10_000 });
+        expect(screen.getByTestId('monaco').dataset.value).toBe(JSON.stringify(result.documents, undefined, 4));
         expect(dispose).toHaveBeenCalled();
     });
 

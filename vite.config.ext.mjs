@@ -6,6 +6,7 @@
 import { builtinModules } from 'module';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { loadEnv } from 'vite';
 import { analyzer } from 'vite-bundle-analyzer';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import { bundleReport } from './plugins/vite-plugin-bundle-report.mjs';
@@ -39,6 +40,10 @@ const supportedLanguages = [
 
 export default ({ mode }) => {
     const isDev = mode === 'development';
+    const env = isDev ? loadEnv(mode, __dirname, 'COSMOSDB_WEBVIEW_') : {};
+    if (isDev && !env.COSMOSDB_WEBVIEW_ORIGIN) {
+        throw new Error('COSMOSDB_WEBVIEW_ORIGIN must be set in the development environment.');
+    }
 
     return {
         build: {
@@ -200,6 +205,7 @@ export default ({ mode }) => {
             'process.env.NODE_ENV': JSON.stringify(mode ?? 'development'),
             'process.env.IS_BUNDLE': JSON.stringify('true'),
             'process.env.DEVSERVER': JSON.stringify(isDev ? 'true' : ''),
+            'process.env.COSMOSDB_WEBVIEW_ORIGIN': JSON.stringify(isDev ? env.COSMOSDB_WEBVIEW_ORIGIN : ''),
         },
         plugins: [
             viteStaticCopy({

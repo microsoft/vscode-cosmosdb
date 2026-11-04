@@ -25,6 +25,7 @@ import { ModelingAdvisorSnapshotSchema, WizardStateSchema } from '../../../dataM
 import { ModelingTelemetryEventSchema } from '../../../dataModeling/modelingTelemetrySchema';
 import { buildRecommendationPrompt } from '../../../dataModeling/recommendationPrompt';
 import { ensureAIFeaturesEnabled } from '../../../utils/copilotUtils';
+import { confirmChatStopped } from '../../../utils/dialogs/confirmChatStopped';
 import { openUrl } from '../../../utils/openUrl';
 import { MAX_CONTAINERS } from '../../../webviews/cosmosdb/DataModeling/models';
 import { dataModelingProcedure, dataModelingRouter } from '../trpc';
@@ -200,6 +201,12 @@ export const dataModelingRouterDef = dataModelingRouter({
                 throw error;
             }
         }),
+    stopWaitingForRecommendation: stateProcedure
+        .input(z.object({ requestId: z.string().uuid() }))
+        .mutation(async ({ input, ctx }) => {
+            if (!(await confirmChatStopped())) return false;
+            return ctx.modelingTelemetry?.stopWaiting(input.requestId) ?? true;
+        }),
     /**
      * Sends the finished data model to the general Copilot Chat with a prompt
      * asking for the best partition key. Copilot analyzes it and calls the
@@ -211,15 +218,23 @@ export const dataModelingRouterDef = dataModelingRouter({
             ctx.actionContext.valuesToMask.push(JSON.stringify(input.dataModel));
         }
 
-        ctx.modelingTelemetry?.beginRecommendation(
-            input.requestId,
-            input.dataModel.containers.map((container) => container.entity),
-            input,
-        );
+        if (
+            ctx.modelingTelemetry?.beginRecommendation(
+                input.requestId,
+                input.dataModel.containers.map((container) => container.entity),
+                input,
+            ) === false
+        ) {
+            return;
+        }
         try {
+            const query = await buildRecommendationPrompt(input, ctx.wizardTabId, input.requestId);
+            if (input.requestId && ctx.modelingTelemetry && !ctx.modelingTelemetry.acceptsResponse(input.requestId)) {
+                return;
+            }
             await vscode.commands.executeCommand('workbench.action.chat.open', {
                 mode: 'agent',
-                query: await buildRecommendationPrompt(input, ctx.wizardTabId, input.requestId),
+                query,
             });
         } catch (error) {
             ctx.modelingTelemetry?.recommendationFailed(input.requestId, 'chat');

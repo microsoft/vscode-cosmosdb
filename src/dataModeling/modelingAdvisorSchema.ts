@@ -168,7 +168,7 @@ export const ModelingAdvisorSnapshotSchema = z
         // Keep older inconsistent estimates editable; recommendation requests enforce their ordering.
         wizard: StoredWizardStateSchema,
         recommendation: z.object({
-            status: z.enum(['idle', 'waiting', 'received', 'error']),
+            status: z.enum(['idle', 'waiting', 'stopped', 'received', 'error']),
             value: PartitionKeyRecommendationSchema.optional(),
             error: z.string().optional(),
         }),

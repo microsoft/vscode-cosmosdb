@@ -316,6 +316,7 @@ const HydratedDataModelingWizard = ({
     const requestId = useRef<string | undefined>(undefined);
     const deliveredRequestId = useRef<string | undefined>(undefined);
     const requestPending = useRef(false);
+    const requireCorrelatedResponse = useRef(snapshot.recommendation.status === 'stopped');
     const containerNameRequest = useRef(0);
     const containerNamePending = useRef(false);
     useEffect(
@@ -418,6 +419,9 @@ const HydratedDataModelingWizard = ({
     useEffect(() => {
         const subscription = trpcClient.dataModeling.events.subscribe(undefined, {
             onData: (event: DataModelingEvent) => {
+                if (!event.requestId && requireCorrelatedResponse.current) {
+                    return;
+                }
                 if (event.requestId && event.requestId !== requestId.current) {
                     return;
                 }
@@ -435,7 +439,7 @@ const HydratedDataModelingWizard = ({
                 }
                 setSnapshot((previous) => {
                     // A queued event from the prior request must not undo Start Over.
-                    if (previous.recommendation.status === 'idle') {
+                    if (previous.recommendation.status === 'idle' || previous.recommendation.status === 'stopped') {
                         return previous;
                     }
                     if (event.type === 'recommendationReceived') {
@@ -765,6 +769,24 @@ const HydratedDataModelingWizard = ({
         };
         void run();
     }, [trpcClient, snapshot, setSnapshot, flush, report, workloadErrors]);
+
+    const stopWaitingForRecommendation = async () => {
+        const attemptId = requestId.current;
+        const generation = requestGeneration.current;
+        if (!attemptId || !requestPending.current) return;
+        const stopped = await trpcClient.dataModeling.stopWaitingForRecommendation.mutate({ requestId: attemptId });
+        if (!stopped || generation !== requestGeneration.current || !requestPending.current) return;
+        requestGeneration.current += 1;
+        requestId.current = undefined;
+        deliveredRequestId.current = undefined;
+        requestPending.current = false;
+        requireCorrelatedResponse.current = true;
+        setSnapshot((previous) => ({
+            ...previous,
+            recommendation: { status: 'stopped' },
+            deployment: undefined,
+        }));
+    };
 
     const stepValues = buildStepValues(state.dataModel);
     const stepIndex = Math.min(Math.max(state.step, 1), stepValues.length);
@@ -1233,6 +1255,8 @@ const HydratedDataModelingWizard = ({
                             recommendation={recommendation}
                             recommendationError={recommendationError}
                             onRetryRecommendation={requestRecommendation}
+                            onEditModel={() => onStepChange(REVIEW_STEP)}
+                            onStopWaitingRecommendation={stopWaitingForRecommendation}
                             feedback={selectedFeedback}
                             onFeedback={(vote) => {
                                 if (selectedFeedback !== vote) {

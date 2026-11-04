@@ -30,6 +30,7 @@ const client = vi.hoisted(() => ({
         loadState: { query: vi.fn() },
         saveState: { mutate: vi.fn() },
         requestRecommendation: { mutate: vi.fn() },
+        stopWaitingForRecommendation: { mutate: vi.fn() },
         recordTelemetry: { mutate: vi.fn() },
         getDeploymentOptions: { query: vi.fn() },
         generateDeploymentTemplate: { query: vi.fn() },
@@ -209,6 +210,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         client.dataModeling.promptContainerName.mutate.mockResolvedValue(undefined);
         client.dataModeling.saveState.mutate.mockResolvedValue(undefined);
         client.dataModeling.requestRecommendation.mutate.mockResolvedValue(undefined);
+        client.dataModeling.stopWaitingForRecommendation.mutate.mockReset().mockResolvedValue(true);
         client.dataModeling.recordTelemetry.mutate.mockResolvedValue(undefined);
         client.dataModeling.getDeploymentOptions.query.mockResolvedValue({
             accountName: 'source',
@@ -664,15 +666,18 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(lastSave().deployment?.result.databaseName).toBe('fresh-db');
     });
 
-    it.each(['idle', 'waiting', 'error'] as const)('does not unlock Deploy for a %s recommendation', async (status) => {
-        const saved = restored(4);
-        saved.recommendation = { status };
-        client.dataModeling.loadState.query.mockResolvedValue(saved);
-        render(<DataModelingWizard />);
-        await continueExisting();
-        expectNoActionableDeployButton();
-        expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
-    });
+    it.each(['idle', 'waiting', 'stopped', 'error'] as const)(
+        'does not unlock Deploy for a %s recommendation',
+        async (status) => {
+            const saved = restored(4);
+            saved.recommendation = { status };
+            client.dataModeling.loadState.query.mockResolvedValue(saved);
+            render(<DataModelingWizard />);
+            await continueExisting();
+            expectNoActionableDeployButton();
+            expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
+        },
+    );
 
     it('opens directly on Workload with no saved project', async () => {
         render(<DataModelingWizard />);
@@ -1198,6 +1203,201 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(await getStepControl('Result')).toHaveAttribute('aria-disabled', 'true');
     });
 
+    it.each(['stopped', 'error'] as const)(
+        'returns to Review without changing model inputs from the %s recovery actions',
+        async (status) => {
+            const saved = restored(4);
+            saved.recommendation = { status };
+            client.dataModeling.loadState.query.mockResolvedValue(saved);
+            render(<DataModelingWizard />);
+            await continueExisting();
+            const retry = screen.getByRole('button', { name: 'Retry' });
+            const edit = screen.getByRole('button', { name: 'Edit model' });
+            expect(edit.nextElementSibling).toBe(retry);
+            expect(edit).toHaveTextContent('Edit model');
+            expect(edit).toHaveAccessibleName('Edit model');
+            const primary = status === 'error' ? edit : retry;
+            const secondary = status === 'error' ? retry : edit;
+            expect(primary).toHaveStyle({ backgroundColor: tokens.colorBrandBackground });
+            expect(secondary).toHaveStyle({ backgroundColor: tokens.colorNeutralBackground1 });
+            edit.focus();
+            await userEvent.keyboard('{Enter}');
+            await waitFor(() => expect(screen.getByRole('heading', { name: 'Review your inputs' })).toHaveFocus());
+            expect(lastSave().wizard.step).toBe(3);
+            expect(lastSave().wizard.dataModel).toEqual(saved.wizard.dataModel);
+            expect(client.dataModeling.requestRecommendation.mutate).not.toHaveBeenCalled();
+        },
+    );
+
+    it('stops local waiting, preserves inputs, rejects late events, and retries with a fresh request ID', async () => {
+        const saved = restored(3);
+        saved.recommendation = { status: 'idle' };
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        render(<DataModelingWizard />);
+        await continueExisting();
+        await userEvent.click(screen.getByRole('button', { name: 'Get Recommendation' }));
+        const firstRequest = client.dataModeling.requestRecommendation.mutate.mock.calls[0][0] as { requestId: string };
+        const callbacks = client.dataModeling.events.subscribe.mock.calls[0][1] as {
+            onData: (event: DataModelingEvent) => void;
+        };
+        const stop = screen.getByRole('button', { name: 'Stop waiting' });
+        expect(stop).toHaveTextContent('Stop waiting');
+        expect(stop).toHaveAccessibleName('Stop waiting');
+        expect(stop).toHaveAccessibleDescription(
+            'This only resets local tracking; it does not stop the agent in Chat.',
+        );
+        stop.focus();
+        await userEvent.keyboard('{Enter}');
+        expect(client.dataModeling.stopWaitingForRecommendation.mutate).toHaveBeenCalledExactlyOnceWith({
+            requestId: firstRequest.requestId,
+        });
+        const retry = await screen.findByRole('button', { name: 'Retry' });
+        expect(retry).toHaveTextContent('Retry');
+        expect(retry).toHaveAccessibleName('Retry');
+        expect(retry).toHaveFocus();
+        expect(lastSave().recommendation).toEqual({ status: 'stopped' });
+        expect(lastSave().wizard.dataModel).toEqual(saved.wizard.dataModel);
+        expectNoActionableDeployButton();
+        const result = restored().recommendation.value!;
+        for (const requestId of [firstRequest.requestId, undefined]) {
+            act(() => callbacks.onData({ type: 'recommendationReceived', recommendation: result, requestId }));
+            act(() => callbacks.onData({ type: 'recommendationError', message: 'Late failure', requestId }));
+        }
+        expect(lastSave().recommendation).toEqual({ status: 'stopped' });
+        await userEvent.keyboard(' ');
+        await waitFor(() => expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledTimes(2));
+        const secondRequest = client.dataModeling.requestRecommendation.mutate.mock.calls[1][0] as {
+            requestId: string;
+        };
+        expect(secondRequest.requestId).not.toBe(firstRequest.requestId);
+        expect(screen.getByRole('button', { name: 'Stop waiting' })).toHaveFocus();
+        for (const requestId of [firstRequest.requestId, undefined]) {
+            act(() => callbacks.onData({ type: 'recommendationReceived', recommendation: result, requestId }));
+            act(() => callbacks.onData({ type: 'recommendationError', message: 'Late failure', requestId }));
+        }
+        expect(lastSave().recommendation).toEqual({ status: 'waiting' });
+        act(() =>
+            callbacks.onData({
+                type: 'recommendationReceived',
+                recommendation: result,
+                requestId: secondRequest.requestId,
+            }),
+        );
+        expect(lastSave().recommendation).toEqual({ status: 'received', value: result });
+        expect(screen.getByRole('img', { name: /100.*Orders.*\/orderId/ })).toBeVisible();
+    });
+
+    it.each(['declined', 'failed'] as const)(
+        'keeps waiting and restores focus when local-stop confirmation is %s',
+        async (outcome) => {
+            const saved = restored(3);
+            saved.recommendation = { status: 'idle' };
+            client.dataModeling.loadState.query.mockResolvedValue(saved);
+            if (outcome === 'declined')
+                client.dataModeling.stopWaitingForRecommendation.mutate.mockResolvedValueOnce(false);
+            else
+                client.dataModeling.stopWaitingForRecommendation.mutate.mockRejectedValueOnce(
+                    new Error('Confirmation unavailable'),
+                );
+            render(<DataModelingWizard />);
+            await continueExisting();
+            await userEvent.click(screen.getByRole('button', { name: 'Get Recommendation' }));
+            await userEvent.click(screen.getByRole('button', { name: 'Stop waiting' }));
+            const stop = screen.getByRole('button', { name: 'Stop waiting' });
+            await waitFor(() => expect(stop).toBeEnabled());
+            expect(stop).toHaveFocus();
+            expect(lastSave().recommendation).toEqual({ status: 'waiting' });
+            expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument();
+            expect(
+                screen.queryByText('Could not stop waiting for the recommendation. Please try again.') !== null,
+            ).toBe(outcome === 'failed');
+            await userEvent.click(stop);
+            expect(await screen.findByRole('button', { name: 'Retry' })).toBeVisible();
+        },
+    );
+
+    it('does not erase a result delivered while stop confirmation is open', async () => {
+        const saved = restored(3);
+        saved.recommendation = { status: 'idle' };
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        let confirmStop!: (confirmed: boolean) => void;
+        client.dataModeling.stopWaitingForRecommendation.mutate.mockImplementationOnce(
+            () =>
+                new Promise<boolean>((resolve) => {
+                    confirmStop = resolve;
+                }),
+        );
+        render(<DataModelingWizard />);
+        await continueExisting();
+        await userEvent.click(screen.getByRole('button', { name: 'Get Recommendation' }));
+        await userEvent.click(screen.getByRole('button', { name: 'Stop waiting' }));
+        expect(screen.getByRole('button', { name: 'Stop waiting' })).toBeDisabled();
+        const callbacks = client.dataModeling.events.subscribe.mock.calls[0][1] as {
+            onData: (event: DataModelingEvent) => void;
+        };
+        const result = restored().recommendation.value!;
+        act(() => callbacks.onData({ type: 'recommendationReceived', recommendation: result }));
+        await act(async () => confirmStop(true));
+        expect(lastSave().recommendation).toEqual({ status: 'received', value: result });
+    });
+
+    it('can stop before saving finishes without dispatching the abandoned request', async () => {
+        const saved = restored(3);
+        saved.recommendation = { status: 'idle' };
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        let finishSave!: () => void;
+        client.dataModeling.saveState.mutate.mockImplementationOnce(
+            () =>
+                new Promise<void>((resolve) => {
+                    finishSave = resolve;
+                }),
+        );
+        render(<DataModelingWizard />);
+        await continueExisting();
+        await userEvent.click(screen.getByRole('button', { name: 'Get Recommendation' }));
+        await userEvent.click(screen.getByRole('button', { name: 'Stop waiting' }));
+        expect(await screen.findByRole('button', { name: 'Retry' })).toBeVisible();
+        await act(async () => finishSave());
+        expect(client.dataModeling.requestRecommendation.mutate).not.toHaveBeenCalled();
+        expect(lastSave().recommendation).toEqual({ status: 'stopped' });
+    });
+
+    it('ignores a late launch failure after stopping while Chat dispatch is pending', async () => {
+        const saved = restored(3);
+        saved.recommendation = { status: 'idle' };
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        let failDispatch!: (reason: Error) => void;
+        client.dataModeling.requestRecommendation.mutate.mockImplementationOnce(
+            () =>
+                new Promise<void>((_resolve, reject) => {
+                    failDispatch = reject;
+                }),
+        );
+        render(<DataModelingWizard />);
+        await continueExisting();
+        await userEvent.click(screen.getByRole('button', { name: 'Get Recommendation' }));
+        await userEvent.click(screen.getByRole('button', { name: 'Stop waiting' }));
+        await act(async () => failDispatch(new Error('Late Chat failure')));
+        expect(lastSave().recommendation).toEqual({ status: 'stopped' });
+        expect(screen.getByRole('button', { name: 'Retry' })).toBeVisible();
+    });
+
+    it('restores a stopped session with retry and ignores uncorrelated abandoned results', async () => {
+        const saved = restored(4);
+        saved.recommendation = { status: 'stopped' };
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        render(<DataModelingWizard />);
+        await continueExisting();
+        await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
+        const callbacks = client.dataModeling.events.subscribe.mock.calls[0][1] as {
+            onData: (event: DataModelingEvent) => void;
+        };
+        act(() =>
+            callbacks.onData({ type: 'recommendationReceived', recommendation: restored().recommendation.value! }),
+        );
+        expect(lastSave().recommendation).toEqual({ status: 'waiting' });
+    });
+
     it('shows workload validation on Review and blocks recommendations until the workload is corrected', async () => {
         const saved = restored(3);
         saved.recommendation = { status: 'idle' };
@@ -1347,7 +1547,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(screen.getByText(message)).toBeVisible();
         expectNoActionableDeployButton();
         expect(screen.queryByRole('img', { name: /100.*Orders.*\/orderId/ })).not.toBeInTheDocument();
-        await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+        await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
         await waitFor(() => expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledTimes(2));
         expect(lastSave().recommendation).toEqual({ status: 'waiting' });
     });

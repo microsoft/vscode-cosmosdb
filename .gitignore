@@ -12,6 +12,8 @@ test/e2e/.reports/
 .playwright/
 
 # User-specific files
+.env.local
+.env.*.local
 *.suo
 *.user
 *.userosscache

@@ -201,7 +201,7 @@ export const dataModelingRouterDef = dataModelingRouter({
             }
         }),
     /**
-     * Sends the finished data model to the general Copilot Chat with a prompt
+     * Sends the finished data model to a new Copilot Chat with a prompt
      * asking for the best partition key. Copilot analyzes it and calls the
      * report tool, whose result is streamed back to the Result page.
      */
@@ -217,9 +217,11 @@ export const dataModelingRouterDef = dataModelingRouter({
             input,
         );
         try {
+            const query = await buildRecommendationPrompt(input, ctx.wizardTabId, input.requestId);
+            await vscode.commands.executeCommand('workbench.action.chat.newChat');
             await vscode.commands.executeCommand('workbench.action.chat.open', {
                 mode: 'agent',
-                query: await buildRecommendationPrompt(input, ctx.wizardTabId, input.requestId),
+                query,
             });
         } catch (error) {
             ctx.modelingTelemetry?.recommendationFailed(input.requestId, 'chat');

@@ -565,7 +565,10 @@ describe('recommendation prompt', () => {
             );
         });
         await dataModelingRouterDef.createCaller(ctx).requestRecommendation({ ...wizard, requestId });
-        expect(executeCommand.mock.calls[0][1].query).toContain(`requestId "${requestId}"`);
+        expect(executeCommand).toHaveBeenLastCalledWith(
+            'workbench.action.chat.open',
+            expect.objectContaining({ query: expect.stringContaining(`requestId "${requestId}"`) }),
+        );
         executeCommand.mockRestore();
     });
 
@@ -748,18 +751,22 @@ describe('recommendation prompt', () => {
         expect(prompt).toContain(JSON.stringify(wizard.dataModel));
     });
 
-    it('requests a recommendation from validated wizard state and retains error masking', async () => {
+    it('starts a new chat for every recommendation and retains error masking', async () => {
         const executeCommand = vi.spyOn(vscode.commands, 'executeCommand').mockResolvedValue(undefined);
         const ctx = context();
         const wizard = applyScenario(createInitialState(), 'ecommerce');
         wizard.dataModel.containers[0].entity = 'PrivateOrders';
 
-        await dataModelingRouterDef.createCaller(ctx).requestRecommendation(wizard);
-
-        expect(executeCommand).toHaveBeenCalledWith('workbench.action.chat.open', {
-            mode: 'agent',
-            query: await buildRecommendationPrompt(wizard, ctx.wizardTabId),
-        });
+        const caller = dataModelingRouterDef.createCaller(ctx);
+        for (let request = 0; request < 2; request++) {
+            await caller.requestRecommendation(wizard);
+            expect(executeCommand).toHaveBeenNthCalledWith(request * 2 + 1, 'workbench.action.chat.newChat');
+            expect(executeCommand).toHaveBeenNthCalledWith(request * 2 + 2, 'workbench.action.chat.open', {
+                mode: 'agent',
+                query: await buildRecommendationPrompt(wizard, ctx.wizardTabId),
+            });
+        }
+        expect(executeCommand).toHaveBeenCalledTimes(4);
         expect(ctx.actionContext?.valuesToMask).toContain(JSON.stringify(wizard.dataModel));
         expect(ctx.actionContext?.errorHandling.suppressDisplay).toBe(true);
         expect(ctx.actionContext?.telemetry.suppressAll).toBe(true);
@@ -777,17 +784,39 @@ describe('recommendation prompt', () => {
         executeCommand.mockRestore();
     });
 
-    it('propagates Chat opening failures for the wizard to display', async () => {
-        const executeCommand = vi
-            .spyOn(vscode.commands, 'executeCommand')
-            .mockRejectedValue(new Error('Chat unavailable'));
-        await expect(
-            dataModelingRouterDef
-                .createCaller(context())
-                .requestRecommendation(applyScenario(createInitialState(), 'chat')),
-        ).rejects.toThrow('Chat unavailable');
+    it('waits for the new chat before submitting the recommendation', async () => {
+        let finishNewChat!: () => void;
+        const newChat = new Promise<void>((resolve) => {
+            finishNewChat = resolve;
+        });
+        const executeCommand = vi.spyOn(vscode.commands, 'executeCommand').mockResolvedValue(undefined);
+        executeCommand.mockReturnValueOnce(newChat);
+        const recommendation = dataModelingRouterDef
+            .createCaller(context())
+            .requestRecommendation(applyScenario(createInitialState(), 'chat'));
+        await vi.waitFor(() => expect(executeCommand).toHaveBeenCalledExactlyOnceWith('workbench.action.chat.newChat'));
+        finishNewChat();
+        await recommendation;
+        expect(executeCommand).toHaveBeenLastCalledWith('workbench.action.chat.open', expect.anything());
         executeCommand.mockRestore();
     });
+
+    it.each(['workbench.action.chat.newChat', 'workbench.action.chat.open'])(
+        'propagates %s failures without submitting further commands',
+        async (failedCommand) => {
+            const executeCommand = vi.spyOn(vscode.commands, 'executeCommand').mockImplementation(async (command) => {
+                if (command === failedCommand) throw new Error('Chat unavailable');
+            });
+            await expect(
+                dataModelingRouterDef
+                    .createCaller(context())
+                    .requestRecommendation(applyScenario(createInitialState(), 'chat')),
+            ).rejects.toThrow('Chat unavailable');
+            expect(executeCommand).toHaveBeenCalledTimes(failedCommand === 'workbench.action.chat.newChat' ? 1 : 2);
+            expect(executeCommand.mock.lastCall?.[0]).toBe(failedCommand);
+            executeCommand.mockRestore();
+        },
+    );
 
     it('loads localized defaults at request time rather than during extension startup', async () => {
         vi.resetModules();

@@ -114,6 +114,8 @@ GitHub Copilot models and AI features enabled.
 3. Deploy selected databases and containers directly, or export editable **Bicep**, **Terraform**, or **C# SDK** code.
    Deployment requires resource-creation permissions and may incur Azure charges; it does not upload documents.
 
+Each recommendation request starts a new Copilot Chat rather than adding to your active conversation.
+
 Work is saved locally per account so you can resume later; saved sessions expire 30 days after their last save.
 To permanently clear local Data Modeler data for every account, run **Cosmos DB: Delete All Data Modeler Data**
 from the Command Palette and confirm. This closes all Data Modeler tabs and removes saved sessions, including legacy

@@ -242,6 +242,7 @@ function SavedModelChoice({ onContinue, onStartNew }: { onContinue: () => void; 
             l10n.t(
                 'A saved data model was found. Choose Yes to continue where you left off, or No to start a new model and replace the saved one.',
             ),
+            { primary: l10n.t('Yes'), secondary: l10n.t('No'), secondaryIsCloseAffordance: true },
         );
         if (result === true) onContinue();
         else if (result === false) onStartNew();

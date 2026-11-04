@@ -683,10 +683,15 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         ).toBe(false);
     });
 
-    it('keeps the saved-work choice headerless and offers reopening after dismissal', async () => {
+    it('requests only Yes and No, keeping the choice headerless and retryable if the host returns no choice', async () => {
         client.dataModeling.loadState.query.mockResolvedValue(restored(4));
         render(<DataModelingWizard />);
         await waitFor(() => expect(client.dataModeling.confirm.mutate).toHaveBeenCalledOnce());
+        expect(client.dataModeling.confirm.mutate).toHaveBeenCalledWith({
+            message: 'Continue your data model?',
+            detail: expect.any(String),
+            buttons: { primary: 'Yes', secondary: 'No', secondaryIsCloseAffordance: true },
+        });
         expect(screen.queryByRole('heading', { name: 'Data Modeler', level: 2 })).not.toBeInTheDocument();
         expect(screen.queryByRole('button')).not.toBeInTheDocument();
         expect(screen.queryByText('Preview')).not.toBeInTheDocument();

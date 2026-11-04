@@ -162,6 +162,26 @@ beforeEach(() => {
     } satisfies MigrationState);
 });
 
+describe('migration Preview badge', () => {
+    it('anchors the badge inside the top panel using a zero-height sticky rail', () => {
+        render(renderAssistant());
+        const badge = screen.getByLabelText('Preview');
+        expect(badge).toHaveTextContent('Preview');
+        expect(badge).toHaveAccessibleName('Preview');
+        expect(badge).toHaveStyle({ marginTop: '8px', marginRight: '8px', pointerEvents: 'auto' });
+        const rail = badge.parentElement;
+        expect(rail).toHaveStyle({
+            position: 'sticky',
+            top: '0px',
+            height: '0px',
+            marginBottom: '-10px',
+            justifyContent: 'flex-end',
+            pointerEvents: 'none',
+        });
+        expect(rail?.nextElementSibling).toContainElement(screen.getByText('Migration Configuration'));
+    });
+});
+
 describe('migration target endpoint editing', () => {
     beforeEach(() => {
         state.targetAccountName = 'example';

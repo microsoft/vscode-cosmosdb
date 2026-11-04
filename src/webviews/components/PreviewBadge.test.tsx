@@ -8,10 +8,34 @@
 import { FluentProvider, webLightTheme } from '@fluentui/react-components';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PreviewBadge } from './PreviewBadge';
 
+afterEach(() => {
+    vi.restoreAllMocks();
+});
+
 describe('PreviewBadge', () => {
+    it('reports the initial rendered width without measuring again on ordinary rerenders', () => {
+        const bounds = vi
+            .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+            .mockReturnValue(new DOMRect(0, 0, 280, 32));
+        const onWidthChange = vi.fn();
+        const { rerender } = render(
+            <FluentProvider theme={webLightTheme}>
+                <PreviewBadge onWidthChange={onWidthChange} />
+            </FluentProvider>,
+        );
+        expect(onWidthChange).toHaveBeenCalledExactlyOnceWith(280);
+        bounds.mockReturnValue(new DOMRect(0, 0, 320, 32));
+        rerender(
+            <FluentProvider theme={webLightTheme}>
+                <PreviewBadge className="updated" onWidthChange={onWidthChange} />
+            </FluentProvider>,
+        );
+        expect(onWidthChange).toHaveBeenCalledExactlyOnceWith(280);
+    });
+
     it('uses the floating migration chip styling and exposes its tooltip on keyboard focus', async () => {
         const user = userEvent.setup();
         render(

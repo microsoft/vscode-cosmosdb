@@ -21,7 +21,7 @@ import {
 } from '@microsoft/vscode-ext-webview-fluentui/components';
 import { useTrpcClient } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
-import { type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { validateDeploymentContainerName } from '../../../dataModeling/deploymentModel';
 import { PartitionKeyRecommendationSchema } from '../../../dataModeling/recommendationSchema';
 import { type DataModelingAppRouter, type DataModelingEvent } from '../../api/types';
@@ -89,19 +89,26 @@ const useViewportStyles = makeStyles({
 
 const useStyles = makeStyles({
     previewBadge: {
-        // The centered 32px badge has a 12px vertical inset in the 56px header; match it on the right.
+        position: 'absolute',
+        top: '10px',
+        right: '20px',
+        zIndex: 10,
         marginTop: 0,
-        marginRight: '12px',
+        marginRight: 0,
     },
     workloadTitle: {
         overflowWrap: 'anywhere',
     },
     fullWidthWizard: {
+        position: 'relative',
         display: 'flex',
         flexDirection: 'column',
         flex: '1 1 auto',
         minHeight: 0,
         minWidth: 0,
+        '& [data-header-behavior] nav': {
+            marginRight: 'var(--preview-badge-clearance)',
+        },
         '& [aria-current="step"]': {
             fontWeight: tokens.fontWeightBold,
         },
@@ -274,6 +281,7 @@ const HydratedDataModelingWizard = ({
     flush,
 }: Pick<ReturnType<typeof useModelingAdvisorPersistence>, 'snapshot' | 'setSnapshot' | 'flush'>) => {
     const styles = useStyles();
+    const [previewBadgeWidth, setPreviewBadgeWidth] = useState(0);
     const viewportStyles = useViewportStyles();
     const trpcClient = useTrpcClient<DataModelingAppRouter>();
     const report = useModelingTelemetryReporter();
@@ -958,14 +966,27 @@ const HydratedDataModelingWizard = ({
         );
 
     return (
-        <div className={styles.fullWidthWizard} aria-busy={confirming || addingContainer}>
+        <div
+            className={styles.fullWidthWizard}
+            style={{ '--preview-badge-clearance': `${previewBadgeWidth + 28}px` } as CSSProperties}
+            aria-busy={confirming || addingContainer}
+        >
+            <PreviewBadge className={styles.previewBadge} onWidthChange={setPreviewBadgeWidth} />
             {confirmationError ? (
-                <Text role="alert" className={viewportStyles.statusRow}>
+                <Text
+                    role="alert"
+                    className={viewportStyles.statusRow}
+                    style={{ paddingRight: previewBadgeWidth + 28 }}
+                >
                     {confirmationError}
                 </Text>
             ) : null}
             {addContainerError ? (
-                <Text role="alert" className={viewportStyles.statusRow}>
+                <Text
+                    role="alert"
+                    className={viewportStyles.statusRow}
+                    style={{ paddingRight: previewBadgeWidth + 28 }}
+                >
                     {addContainerError}
                 </Text>
             ) : null}
@@ -978,13 +999,13 @@ const HydratedDataModelingWizard = ({
                     headerBehavior="sticky-navigation"
                     header={
                         <ContainerHeader
+                            style={{ paddingRight: previewBadgeWidth + 28 }}
                             media={<DatabaseLinkRegular aria-hidden="true" focusable="false" />}
                             title={
                                 <span className={styles.workloadTitle}>
                                     {l10n.t('Workload: {name}', { name: scenarioLabel ?? l10n.t('Not selected') })}
                                 </span>
                             }
-                            action={<PreviewBadge className={styles.previewBadge} />}
                         />
                     }
                     footer={footer}

@@ -38,7 +38,7 @@
  * file should declare its own cleanup.
  */
 
-import { test as base, _electron as electron, type ElectronApplication, type Page } from '@playwright/test';
+import { test as base, _electron as electron, expect, type ElectronApplication, type Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import * as path from 'node:path';
@@ -53,6 +53,11 @@ import { isCoverageEnabled, startCoverage, stopAndPersistCoverage } from './cove
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, '..', '..', '..');
+const DISPLAY_LANGUAGES = {
+    de: { name: 'Deutsch', workspaceTreeNodeLabel: 'Cosmos\u00a0DB-Konten' },
+    ja: { name: '日本語', workspaceTreeNodeLabel: 'Cosmos DB アカウント' },
+};
+export type DisplayLanguage = keyof typeof DISPLAY_LANGUAGES;
 
 interface EmulatorConfig {
     endpoint: string;
@@ -86,7 +91,7 @@ export function readE2eConfig(): E2eConfig {
  * project does; each setting is here for a specific flake we want to
  * pre-empt (see comments).
  */
-function seedUserSettings(userDataDir: string): void {
+function seedUserSettings(userDataDir: string, useCustomDialogs = false): void {
     const settings: Record<string, unknown> = {
         // VS Code 1.112+ overlays a "sticky" container on tree headers that
         // intercepts pointer events — breaks hover/click on tree items.
@@ -126,6 +131,7 @@ function seedUserSettings(userDataDir: string): void {
         // exercise Quick Start itself opt back in by re-enabling this setting.
         'cosmosDB.quickStart.enabled': false,
     };
+    if (useCustomDialogs) settings['window.dialogStyle'] = 'custom';
     const settingsPath = path.join(userDataDir, 'User', 'settings.json');
     mkdirSync(path.dirname(settingsPath), { recursive: true });
     writeFileSync(settingsPath, JSON.stringify(settings, null, 4), 'utf-8');
@@ -163,6 +169,8 @@ function removeDirQuietly(dir: string): void {
 interface VsCodeFixtures {
     vscodeApp: ElectronApplication;
     vscodeWindow: Page;
+    /** Switches language through the UI and restarts the isolated profile before exposing the app. */
+    displayLanguage: DisplayLanguage | undefined;
 }
 
 interface VsCodeTestFixtures {
@@ -202,8 +210,10 @@ interface VsCodeTestFixtures {
 }
 
 export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
+    displayLanguage: [undefined, { scope: 'worker', option: true }],
+
     vscodeApp: [
-        async ({}, use) => {
+        async ({ displayLanguage }, use) => {
             const cfg = readE2eConfig();
             const isolation = ensureE2eIsolationContext();
 
@@ -247,9 +257,9 @@ export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
             process.env.COSMOSDB_E2E_WORKSPACE_DIR = workspaceDir;
             process.env.COSMOSDB_E2E_MIGRATION_CAPTURE_DIR = migrationCaptureDir;
 
-            seedUserSettings(userDataDir);
+            seedUserSettings(userDataDir, displayLanguage !== undefined);
 
-            const launchPromise = electron.launch({
+            const launchOptions = {
                 executablePath: cfg.vscodeExecutablePath,
                 args: [
                     // Disable Electron's internal sandbox so Playwright's CDP attach
@@ -313,13 +323,17 @@ export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
                           }
                         : {}),
                 },
+            };
+            const launchPromise = electron.launch({
+                ...launchOptions,
+                args: [...launchOptions.args, '--locale=en'],
             });
 
             // `electron.launch` failures (startup crash, missing executable, …)
             // skip Playwright's fixture teardown, which would leak the POSIX
             // `userDataDir` under `/tmp` (it lives outside the run-scoped temp
             // root). Clean both dirs up on early failure before rethrowing.
-            const app = await launchPromise.catch((err: unknown) => {
+            let app = await launchPromise.catch((err: unknown) => {
                 removeDirQuietly(workerDir);
                 removeDirQuietly(userDataDir);
                 throw err;
@@ -370,6 +384,39 @@ export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
             };
             try {
                 await disableNativeDialogs(app);
+                if (displayLanguage) {
+                    const page = await app.firstWindow();
+                    await waitForWorkbenchReady(app, page, isolation.resultsRootDir);
+                    await waitForExtensionsActivated(page);
+                    const input = page.locator('.quick-input-widget input').first();
+                    const rows = page.locator('.quick-input-list .monaco-list-row');
+                    // Reopen the palette while waiting for late-registered commands instead of keeping stale results.
+                    await expect(async () => {
+                        await page.keyboard.press('Escape');
+                        await page.keyboard.press(process.platform === 'darwin' ? 'Meta+Shift+P' : 'Control+Shift+P');
+                        await input.fill('>Configure Display Language');
+                        await expect(rows.filter({ hasText: 'Configure Display Language' })).toBeVisible({
+                            timeout: 1_000,
+                        });
+                    }).toPass({ timeout: 30_000 });
+                    await rows.filter({ hasText: 'Configure Display Language' }).click();
+                    await input.fill(DISPLAY_LANGUAGES[displayLanguage].name);
+                    await rows.filter({ hasText: DISPLAY_LANGUAGES[displayLanguage].name }).click();
+                    const restart = page.getByRole('dialog').getByRole('button', { name: 'Restart', exact: true });
+                    await restart.waitFor({ state: 'visible' });
+
+                    // VS Code persists the locale and quits normally; Playwright must own the replacement process.
+                    await app.evaluate(({ app }) => {
+                        app.relaunch = () => undefined;
+                    });
+                    await Promise.all([app.waitForEvent('close'), restart.click()]);
+                    app = await electron.launch(launchOptions);
+                    appClosed = false;
+                    app.once('close', () => {
+                        appClosed = true;
+                    });
+                    await disableNativeDialogs(app);
+                }
                 await use(app);
             } finally {
                 try {
@@ -388,7 +435,7 @@ export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
     ],
 
     vscodeWindow: [
-        async ({ vscodeApp }, use) => {
+        async ({ vscodeApp, displayLanguage }, use) => {
             const isolation = ensureE2eIsolationContext();
 
             // Race firstWindow() against an early "close" event so we get a
@@ -409,7 +456,10 @@ export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
             // per worker (worker-scoped fixture), so the ~2-5 s cost is paid
             // exactly once even with dozens of specs. See activation.ts for
             // the full rationale.
-            await waitForExtensionsActivated(page);
+            await waitForExtensionsActivated(
+                page,
+                displayLanguage ? DISPLAY_LANGUAGES[displayLanguage].workspaceTreeNodeLabel : undefined,
+            );
 
             await use(page);
         },

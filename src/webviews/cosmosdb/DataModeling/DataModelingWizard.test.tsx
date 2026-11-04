@@ -10,7 +10,7 @@ import { type EditorProps } from '@monaco-editor/react';
 import { act, fireEvent, render as renderReact, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { type ReactElement } from 'react';
-import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { type DeploymentTemplateInput } from '../../../dataModeling/deploymentModel';
 import {
     ModelingAdvisorSnapshotSchema,
@@ -39,6 +39,7 @@ const client = vi.hoisted(() => ({
         events: { subscribe: vi.fn() },
     },
 }));
+afterEach(() => vi.restoreAllMocks());
 vi.mock('@microsoft/vscode-ext-webview/react', () => ({ useTrpcClient: () => client }));
 vi.mock('../../MonacoEditor', () => ({
     MonacoEditor: ({ value, options, onChange }: EditorProps) => (
@@ -224,6 +225,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
     });
 
     it('reserves badge space beside a wrapping title and keeps the footer outside the sticky-navigation scroll region', async () => {
+        vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 280, 32));
         const saved = restored(4);
         saved.wizard.scenario = 'inventory';
         client.dataModeling.loadState.query.mockResolvedValue(saved);
@@ -244,13 +246,20 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(preview).toHaveTextContent('Preview');
         expect(preview).toHaveAccessibleName('Preview');
         expect(preview).toHaveAttribute('tabindex', '0');
-        expect(preview).toHaveStyle({ marginTop: '0px', marginRight: '12px', height: '32px' });
-        expect(scrollRegion).toContainElement(preview);
-        expect(title.parentElement?.parentElement).toContainElement(preview);
-        expect(preview.parentElement).toHaveStyle({
-            marginInlineStart: 'auto',
-            flexShrink: '0',
+        expect(preview).toHaveStyle({
+            position: 'absolute',
+            top: '10px',
+            right: '20px',
+            marginTop: '0px',
+            marginRight: '0px',
+            height: '32px',
         });
+        expect(scrollRegion).not.toContainElement(preview);
+        expect(preview.parentElement).toHaveStyle({ position: 'relative' });
+        expect(preview.parentElement?.style.getPropertyValue('--preview-badge-clearance')).toBe('308px');
+        expect(navigation).toHaveStyle({ marginRight: 'var(--preview-badge-clearance)' });
+        expect(preview.parentElement).toContainElement(scrollRegion as HTMLElement);
+        expect(title.parentElement?.parentElement).toHaveStyle({ paddingRight: '308px' });
         expect(title.parentElement).toHaveStyle({ minWidth: '0px' });
         expect(title.firstElementChild).toHaveStyle({ overflowWrap: 'anywhere' });
         const titleIcon = title.parentElement?.parentElement?.querySelector('svg');
@@ -835,6 +844,8 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             await userEvent.click(add);
             const error = await screen.findByText('Could not add the container. Please try again.');
             expect(error).toHaveAttribute('role', 'alert');
+            expect(screen.getAllByText('Could not add the container. Please try again.')).toHaveLength(1);
+            expect(screen.getByLabelText('Preview')).toHaveStyle({ top: '10px', right: '20px' });
             expect(error.parentElement?.nextElementSibling).toContainElement(add);
             const retry = within(error.parentElement!).getByRole('button', { name: 'Retry' });
             expect(retry).toHaveTextContent('Retry');
@@ -1099,6 +1110,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
     });
 
     it('keeps Data selected after a reminder failure and allows retry', async () => {
+        vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 280, 32));
         const saved = restored();
         saved.recommendation = { status: 'idle' };
         client.dataModeling.loadState.query.mockResolvedValue(saved);
@@ -1109,6 +1121,8 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         await userEvent.click(next);
         const message = 'Could not open the confirmation dialog. Please try again.';
         expect(await screen.findByText(message)).toHaveAttribute('role', 'alert');
+        expect(screen.getByText(message)).toHaveStyle({ paddingRight: '308px' });
+        expect(screen.getByLabelText('Preview')).toHaveStyle({ top: '10px', right: '20px' });
         expect(screen.getByRole('tab', { name: 'Data' })).toHaveAttribute('aria-selected', 'true');
         expect(next).toHaveFocus();
         expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();

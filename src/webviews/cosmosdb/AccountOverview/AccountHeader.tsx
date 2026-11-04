@@ -18,12 +18,11 @@ import {
     tokens,
     typographyStyles,
 } from '@fluentui/react-components';
-import { ArrowClockwise16Regular, Braces16Regular, Money16Regular } from '@fluentui/react-icons';
+import { ArrowClockwise16Regular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useId, useMemo, useState } from 'react';
 import { type OverviewHealthCheck } from '../../../panels/accountOverview/overviewHealthModel';
 import {
-    type AccountActionInput,
     type HealthState,
     type MetricApplicability,
     type MetricKey,
@@ -119,6 +118,10 @@ const useStyles = makeStyles({
         maxWidth: '100%',
     },
     previewBadge: {
+        position: 'fixed',
+        top: '10px',
+        right: '20px',
+        zIndex: 10,
         flexShrink: 0,
         marginTop: 0,
         marginRight: 0,
@@ -240,8 +243,6 @@ export const AccountHeader = ({
     selectedContainer,
     onSelectContainer,
     databaseIds,
-    accountActionBusy,
-    onAccountAction,
 }: {
     navigationRevision?: number;
     summary: AccountSummary;
@@ -260,11 +261,10 @@ export const AccountHeader = ({
     selectedContainer?: MetricScope;
     onSelectContainer: (scope?: MetricScope) => void;
     databaseIds?: string[];
-    accountActionBusy: boolean;
-    onAccountAction: (input: AccountActionInput) => void;
 }) => {
     const styles = useStyles();
     const id = useId();
+    const [previewBadgeWidth, setPreviewBadgeWidth] = useState(0);
     const controlsDisabled = loading || refreshDisabled;
     // Dropdown has no disabledFocusable prop. Keep the trigger focusable while its disabled state blocks interaction.
     const filterButtonProps = { disabled: false, 'aria-disabled': controlsDisabled, tabIndex: 0 };
@@ -355,7 +355,7 @@ export const AccountHeader = ({
 
     return (
         <header className={styles.root}>
-            <div className={styles.topRow}>
+            <div className={styles.topRow} style={{ paddingRight: previewBadgeWidth + 28 }}>
                 <div className={styles.identity}>
                     <img className={styles.icon} src={cosmosIcon} alt="" />
                     <div className={styles.titleBlock}>
@@ -440,7 +440,10 @@ export const AccountHeader = ({
                         {l10n.t('Refresh')}
                     </Button>
                     {onProvideFeedback && <ProvideFeedbackButton type="button" onProvideFeedback={onProvideFeedback} />}
-                    <PreviewBadge className={mergeClasses('focusableBadge', styles.previewBadge)} />
+                    <PreviewBadge
+                        className={mergeClasses('focusableBadge', styles.previewBadge)}
+                        onWidthChange={setPreviewBadgeWidth}
+                    />
                 </div>
             </div>
             <p className={styles.subtitle}>
@@ -509,24 +512,6 @@ export const AccountHeader = ({
                         >
                             <AccordionItem value="properties">
                                 <div className={styles.detailFooter}>
-                                    <Button
-                                        appearance="secondary"
-                                        size="small"
-                                        icon={<Money16Regular aria-hidden />}
-                                        disabled={accountActionBusy}
-                                        onClick={() => onAccountAction({ action: 'openCosts' })}
-                                    >
-                                        {l10n.t('View Cost')}
-                                    </Button>
-                                    <Button
-                                        appearance="secondary"
-                                        size="small"
-                                        icon={<Braces16Regular aria-hidden />}
-                                        disabled={accountActionBusy}
-                                        onClick={() => onAccountAction({ action: 'openJson' })}
-                                    >
-                                        {l10n.t('View JSON')}
-                                    </Button>
                                     <AccordionHeader
                                         as="h3"
                                         inline

@@ -72,6 +72,10 @@ nested tRPC property access can create new proxies.
 
 ### Initial state
 
+Without a tree node, Overview commands use the Azure Cosmos DB resource picker and stop at the account.
+They MUST NOT pass a child-context filter, which would add a recursive selection step inside the account.
+Commands invoked with an account tree node bypass the picker.
+
 The default tab is Monitoring unless explicit navigation requests another destination.
 Chart window defaults to `24H`; chart scope defaults to all databases.
 The alert list defaults to `1d` and `Fired`. Partition selection defaults to the first inventory row.
@@ -688,11 +692,19 @@ Container creation validates the selected database against that account's ARM da
 With All databases selected, it asks within the current account, including empty databases; no unscoped account picker.
 Tree refresh/progress is secondary to the action, so an empty Explorer cache does not block the operation.
 
-Create wizards make Overview dimmed/inert until cancellation, failure, or successful inventory reload.
+Create wizards make Overview dimmed/inert with a centered progress spinner until cancellation, failure,
+or successful inventory reload. The existing account-action announcement supplies accessible progress feedback;
+the visual overlay is hidden from assistive technology to avoid duplicate announcements and does not take wizard focus.
 Cancellation is not a failure. Delete success leaves the dashboard in its deleted-account state.
+View Cost and View JSON stay in the account actions row alongside Add database and Add container,
+outside the collapsible Account details.
+
 View Cost opens account-scoped portal Cost Analysis. View JSON reads the ARM resource and opens formatted JSON,
 not account keys/connection strings. Data Modeler receives this account's metadata-derived capabilities without a picker;
 it requires AI features enabled and available Copilot models, and does not refresh Overview on launch.
+The Cost Analysis ARM scope is encoded once and passed as a raw URL string to VS Code's opener,
+so URI serialization cannot decode its separators or double-encode its percent escapes.
+
 Suggested advisory actions do not execute Azure changes automatically.
 
 Total throughput limit formatting: positive value -> RU/s; zero -> explicit 0 RU/s;

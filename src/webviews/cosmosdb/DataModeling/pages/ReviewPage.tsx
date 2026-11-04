@@ -3,7 +3,16 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Button, Link, makeStyles, tokens, Tooltip } from '@fluentui/react-components';
+import {
+    Button,
+    Link,
+    makeStyles,
+    MessageBar,
+    MessageBarBody,
+    MessageBarTitle,
+    tokens,
+    Tooltip,
+} from '@fluentui/react-components';
 import {
     DataBarVerticalRegular,
     DocumentRegular,
@@ -57,6 +66,10 @@ const useStyles = makeStyles({
     },
     workloadLink: {
         fontSize: 'inherit',
+    },
+    validationList: {
+        margin: `${tokens.spacingVerticalXS} 0 0`,
+        paddingLeft: tokens.spacingHorizontalXL,
     },
     cards: {
         display: 'grid',
@@ -164,6 +177,7 @@ const useStyles = makeStyles({
 export interface ReviewPageProps {
     workloadLabel: string;
     containers: ContainerModel[];
+    validationErrors?: string[];
     onEditWorkload: () => void;
     onEditContainer: (containerId: string) => void;
 }
@@ -267,7 +281,13 @@ function ContainerCard({ container, onEdit }: { container: ContainerModel; onEdi
     );
 }
 
-export function ReviewPage({ workloadLabel, containers, onEditWorkload, onEditContainer }: ReviewPageProps) {
+export function ReviewPage({
+    workloadLabel,
+    containers,
+    validationErrors = [],
+    onEditWorkload,
+    onEditContainer,
+}: ReviewPageProps) {
     const styles = useStyles();
     const workloadId = useId();
     const rulesHeadingId = useId();
@@ -301,6 +321,21 @@ export function ReviewPage({ workloadLabel, containers, onEditWorkload, onEditCo
                 </p>
                 <p className={styles.hint}>{l10n.t('Click Edit to change any selection before analysis.')}</p>
             </div>
+
+            {validationErrors.length > 0 ? (
+                <MessageBar intent="error" role="alert" layout="multiline">
+                    <MessageBarBody>
+                        <MessageBarTitle>
+                            {l10n.t('Fix these issues before requesting a recommendation.')}
+                        </MessageBarTitle>
+                        <ul className={styles.validationList}>
+                            {validationErrors.map((message, index) => (
+                                <li key={index}>{message}</li>
+                            ))}
+                        </ul>
+                    </MessageBarBody>
+                </MessageBar>
+            ) : null}
 
             <ul className={styles.cards} aria-label={l10n.t('Containers')}>
                 {containers.map((container) => (

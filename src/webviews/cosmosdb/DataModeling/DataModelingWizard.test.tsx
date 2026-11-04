@@ -1191,6 +1191,40 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(await getStepControl('Result')).toHaveAttribute('aria-disabled', 'true');
     });
 
+    it('shows workload validation on Review and blocks recommendations until the workload is corrected', async () => {
+        const saved = restored(3);
+        saved.recommendation = { status: 'idle' };
+        const container = saved.wizard.dataModel.containers[0];
+        container.document.avgSizeKb = 11;
+        container.document.maxSizeKb = 11;
+        container.reads[0].qps = 1_000_000;
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        render(<DataModelingWizard />);
+        await continueExisting();
+
+        expect(
+            screen
+                .getByText(/^Orders: Estimated throughput.*Check the query and write rates\.$/)
+                .closest('[role="alert"]'),
+        ).toHaveTextContent(/^Fix these issues before requesting a recommendation\./);
+        const request = screen.getByRole('button', { name: 'Get Recommendation' });
+        expect(request).toBeDisabled();
+        await userEvent.click(request);
+        expect(client.dataModeling.requestRecommendation.mutate).not.toHaveBeenCalled();
+        expect(await getStepControl('Result')).toHaveAttribute('aria-disabled', 'true');
+
+        await userEvent.click(screen.getByRole('button', { name: 'Edit Orders' }));
+        await userEvent.click(screen.getByRole('tab', { name: 'Queries' }));
+        fireEvent.change(screen.getByRole('spinbutton', { name: 'Peak QPS for read 1' }), {
+            target: { value: '100' },
+        });
+        await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+        expect(screen.queryByText(/Estimated throughput/)).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Get Recommendation' })).toBeEnabled();
+        await userEvent.click(screen.getByRole('button', { name: 'Get Recommendation' }));
+        await waitFor(() => expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledOnce());
+    });
+
     it('waits for the input save before opening Chat', async () => {
         const saved = restored(3);
         saved.recommendation = { status: 'idle' };

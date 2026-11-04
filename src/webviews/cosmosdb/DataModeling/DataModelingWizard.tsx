@@ -830,6 +830,7 @@ const HydratedDataModelingWizard = ({
             }) +
                 ' ' +
                 removeContainerDescription,
+            { primary: l10n.t('Yes'), secondary: l10n.t('No'), secondaryIsCloseAffordance: true },
         );
         if (result === true) {
             markEdited('data');

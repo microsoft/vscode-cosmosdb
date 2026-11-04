@@ -756,6 +756,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(client.dataModeling.confirm.mutate).toHaveBeenLastCalledWith({
             message: 'Remove from model?',
             detail: `Remove the “Orders” container? This cannot be undone. ${description}`,
+            buttons: { primary: 'Yes', secondary: 'No', secondaryIsCloseAffordance: true },
         });
         expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
         await answerConfirmation('Remove from model?', response);
@@ -764,6 +765,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             response === true ? ['Users'] : ['Orders', 'Users'],
         );
         expect(remove).toHaveProperty('disabled', response === true);
+        expect(document.activeElement === remove).toBe(response !== true);
     });
 
     it('adds a validated name from the native input box without rendering a modal', async ({ onTestFinished }) => {

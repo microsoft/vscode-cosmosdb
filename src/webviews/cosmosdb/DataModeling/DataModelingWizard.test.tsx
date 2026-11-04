@@ -10,7 +10,7 @@ import { type EditorProps } from '@monaco-editor/react';
 import { act, fireEvent, render as renderReact, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { type ReactElement } from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { type DeploymentTemplateInput } from '../../../dataModeling/deploymentModel';
 import {
     ModelingAdvisorSnapshotSchema,
@@ -21,6 +21,7 @@ import { type DataModelingEvent } from '../../api/types';
 import { applyScenario, createBlankContainer } from './dataModel';
 import { DataModelingWizard } from './DataModelingWizard';
 import { createInitialSnapshot } from './modelingAdvisorState';
+import { MAX_CONTAINERS } from './models';
 
 const client = vi.hoisted(() => ({
     dataModeling: {
@@ -717,19 +718,26 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         client.dataModeling.loadState.query.mockResolvedValue(saved);
         render(<DataModelingWizard />);
         await continueExisting();
-        const remove = screen.getByRole('button', { name: 'Remove this container' });
+        const description =
+            "Removes this container from your model. Doesn't delete any container or data in your Azure account.";
+        const remove = screen.getByRole('button', { name: 'Remove from model' });
+        expect(remove).toHaveTextContent('Remove from model');
+        expect(remove).toHaveAccessibleName('Remove from model');
+        expect(remove).toHaveAccessibleDescription(description);
         await userEvent.click(remove);
         expect(client.dataModeling.confirm.mutate).toHaveBeenLastCalledWith({
-            message: 'Remove this container?',
-            detail: 'Remove the “Orders” container? This cannot be undone.',
+            message: 'Remove from model?',
+            detail: `Remove the “Orders” container? This cannot be undone. ${description}`,
+            buttons: { primary: 'Yes', secondary: 'No', secondaryIsCloseAffordance: true },
         });
         expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
-        await answerConfirmation('Remove this container?', response);
+        await answerConfirmation('Remove from model?', response);
         expect(client.dataModeling.saveState.mutate).toHaveBeenCalledTimes(response === true ? 1 : 0);
         expect((lastSave() ?? saved).wizard.dataModel.containers.map((container) => container.entity)).toEqual(
             response === true ? ['Users'] : ['Orders', 'Users'],
         );
         expect(remove).toHaveProperty('disabled', response === true);
+        expect(document.activeElement === remove).toBe(response !== true);
     });
 
     it('adds a validated name from the native input box without rendering a modal', async ({ onTestFinished }) => {
@@ -784,27 +792,65 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         },
     );
 
-    it('surfaces native input failures and allows retrying', async () => {
-        vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 280, 32));
-        client.dataModeling.loadState.query.mockResolvedValue(restored());
-        client.dataModeling.promptContainerName.mutate.mockRejectedValueOnce(new Error('Input unavailable'));
-        render(<DataModelingWizard />);
-        await continueExisting();
-        const add = screen.getByRole('button', { name: 'Add container' });
-        await userEvent.click(add);
-        expect(await screen.findByText('Could not add the container. Please try again.')).toHaveAttribute(
-            'role',
-            'alert',
-        );
-        expect(screen.getByText('Could not add the container. Please try again.')).toHaveStyle({
-            paddingRight: '308px',
-        });
-        expect(screen.getByLabelText('Preview')).toHaveStyle({ top: '10px', right: '20px' });
-        expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
-        await userEvent.click(add);
-        expect(client.dataModeling.promptContainerName.mutate).toHaveBeenCalledTimes(2);
-        expect(screen.queryByText('Could not add the container. Please try again.')).not.toBeInTheDocument();
-    });
+    it.each([
+        { action: 'Add container', containerCount: 1, focusTarget: 'Add container' },
+        { action: 'Retry', containerCount: 1, focusTarget: 'Add container' },
+        { action: 'Retry', containerCount: MAX_CONTAINERS - 1, focusTarget: 'Next' },
+    ])(
+        'surfaces native input failures above the footer and retries via $action with $containerCount containers',
+        async ({ action, containerCount, focusTarget }) => {
+            const width = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1024);
+            onTestFinished(() => width.mockRestore());
+            const saved = restored();
+            saved.wizard.dataModel.containers.push(
+                ...Array.from({ length: containerCount - 1 }, (_, index) => createBlankContainer(`Container${index}`)),
+            );
+            client.dataModeling.loadState.query.mockResolvedValue(saved);
+            client.dataModeling.promptContainerName.mutate.mockRejectedValueOnce(new Error('Input unavailable'));
+            let submitName: (value: string | undefined) => void = () => {
+                throw new Error('Retry input not opened');
+            };
+            client.dataModeling.promptContainerName.mutate.mockImplementationOnce(
+                () =>
+                    new Promise<string | undefined>((resolve) => {
+                        submitName = resolve;
+                    }),
+            );
+            render(<DataModelingWizard />);
+            await continueExisting();
+            const add = screen.getByRole('button', { name: 'Add container' });
+            await userEvent.click(add);
+            const error = await screen.findByText('Could not add the container. Please try again.');
+            expect(error).toHaveAttribute('role', 'alert');
+            expect(screen.getAllByText('Could not add the container. Please try again.')).toHaveLength(1);
+            expect(screen.getByLabelText('Preview')).toHaveStyle({ top: '10px', right: '20px' });
+            expect(error.parentElement?.nextElementSibling).toContainElement(add);
+            const retry = within(error.parentElement!).getByRole('button', { name: 'Retry' });
+            expect(retry).toHaveTextContent('Retry');
+            expect(retry).toHaveAccessibleName('Retry');
+            expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
+            await userEvent.click(action === 'Retry' ? retry : add);
+            expect(client.dataModeling.promptContainerName.mutate).toHaveBeenCalledTimes(2);
+            expect(screen.queryByText('Could not add the container. Please try again.')).not.toBeInTheDocument();
+            expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument();
+            expect(add).toBeDisabled();
+            fireEvent.click(add);
+            expect(client.dataModeling.promptContainerName.mutate).toHaveBeenCalledTimes(2);
+            await act(async () => submitName('Recovered'));
+            await waitFor(() =>
+                expect(lastSave().wizard.dataModel.containers.map((container) => container.entity)).toEqual([
+                    ...saved.wizard.dataModel.containers.map((container) => container.entity),
+                    'Recovered',
+                ]),
+            );
+            expect(add).toHaveProperty('disabled', containerCount + 1 === MAX_CONTAINERS);
+            const focusedButton = screen.getByRole('button', { name: focusTarget });
+            expect(focusedButton).toBeEnabled();
+            expect(focusedButton).toHaveTextContent(focusTarget);
+            expect(focusedButton).toHaveAccessibleName(focusTarget);
+            expect(focusedButton).toHaveFocus();
+        },
+    );
 
     it('rechecks duplicate names against model edits made while the native input is open', async () => {
         client.dataModeling.loadState.query.mockResolvedValue(restored());
@@ -1125,6 +1171,40 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(await getStepControl('Result')).toHaveAttribute('aria-disabled', 'true');
     });
 
+    it('shows workload validation on Review and blocks recommendations until the workload is corrected', async () => {
+        const saved = restored(3);
+        saved.recommendation = { status: 'idle' };
+        const container = saved.wizard.dataModel.containers[0];
+        container.document.avgSizeKb = 11;
+        container.document.maxSizeKb = 11;
+        container.reads[0].qps = 1_000_000;
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        render(<DataModelingWizard />);
+        await continueExisting();
+
+        expect(
+            screen
+                .getByText(/^Orders: Estimated throughput.*Check the query and write rates\.$/)
+                .closest('[role="alert"]'),
+        ).toHaveTextContent(/^Fix these issues before requesting a recommendation\./);
+        const request = screen.getByRole('button', { name: 'Get Recommendation' });
+        expect(request).toBeDisabled();
+        await userEvent.click(request);
+        expect(client.dataModeling.requestRecommendation.mutate).not.toHaveBeenCalled();
+        expect(await getStepControl('Result')).toHaveAttribute('aria-disabled', 'true');
+
+        await userEvent.click(screen.getByRole('button', { name: 'Edit Orders' }));
+        await userEvent.click(screen.getByRole('tab', { name: 'Queries' }));
+        fireEvent.change(screen.getByRole('spinbutton', { name: 'Peak QPS for read 1' }), {
+            target: { value: '100' },
+        });
+        await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+        expect(screen.queryByText(/Estimated throughput/)).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Get Recommendation' })).toBeEnabled();
+        await userEvent.click(screen.getByRole('button', { name: 'Get Recommendation' }));
+        await waitFor(() => expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledOnce());
+    });
+
     it('waits for the input save before opening Chat', async () => {
         const saved = restored(3);
         saved.recommendation = { status: 'idle' };
@@ -1407,7 +1487,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         { button: 'Back', control: 'footerBack', step: 2 },
         { button: 'Get Recommendation', control: 'footerGetRecommendation', step: 3 },
         { button: 'Add container', control: 'footerAddContainer', step: 2 },
-        { button: 'Remove this container', control: 'footerRemoveContainer', step: 2 },
+        { button: 'Remove from model', control: 'footerRemoveContainer', step: 2 },
         { button: 'Start Over', control: 'footerStartOver', step: 4 },
         { button: 'Deploy', control: 'footerDeploy', step: 4 },
     ])('records footer $button activation, independently of completion', async ({ button, control, step }) => {

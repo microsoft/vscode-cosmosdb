@@ -134,6 +134,28 @@ describe('data modeler deployment procedure', () => {
         );
     });
 
+    it.each([
+        { choice: 'Yes', result: true },
+        { choice: 'No', result: false },
+        { choice: undefined, result: undefined },
+    ])('offers only Yes and No for removal (choice: $choice)', async ({ choice, result }) => {
+        vi.mocked(vscode.window.showWarningMessage).mockImplementation(async (_message, _options, ...items) =>
+            items.find((item) => item.title === choice),
+        );
+        const prompt = {
+            message: 'Remove from model?',
+            detail: 'Remove Orders?',
+            buttons: { primary: 'Yes', secondary: 'No', secondaryIsCloseAffordance: true },
+        };
+        expect(await dataModelingRouterDef.createCaller(context()).confirm(prompt)).toBe(result);
+        expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
+            prompt.message,
+            { modal: true, detail: prompt.detail },
+            { title: 'Yes' },
+            { title: 'No', isCloseAffordance: true },
+        );
+    });
+
     it('propagates native confirmation failures without confirming an action', async () => {
         vi.mocked(vscode.window.showWarningMessage).mockRejectedValueOnce(new Error('Dialog unavailable'));
         await expect(

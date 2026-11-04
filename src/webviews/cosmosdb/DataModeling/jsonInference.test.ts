@@ -4,7 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { describe, expect, it } from 'vitest';
-import { DocumentSizeLimitError, inferSchemaFromJson } from './jsonInference';
+import { AttributeCountLimitError, DocumentSizeLimitError, inferSchemaFromJson } from './jsonInference';
+import { MAX_ATTRIBUTE_COUNT } from './workloadLimits';
 
 describe('inferSchemaFromJson', () => {
     it('keeps array descendants in the schema without preferring their IDs as partition keys', () => {
@@ -104,6 +105,32 @@ describe('inferSchemaFromJson', () => {
     it('measures imported document size in UTF-8 bytes rather than characters', () => {
         const document = { payload: '\u00e9'.repeat(1024 * 1024) };
         expect(() => inferSchemaFromJson(JSON.stringify(document))).toThrow(DocumentSizeLimitError);
+    });
+
+    it('accepts exactly the attribute limit and rejects one more instead of capping the count', () => {
+        const withAttributes = (count: number) =>
+            JSON.stringify(Object.fromEntries(Array.from({ length: count }, (_, index) => [`a${index}`, index])));
+        expect(inferSchemaFromJson(withAttributes(MAX_ATTRIBUTE_COUNT)).document.attributeCount).toBe(
+            MAX_ATTRIBUTE_COUNT,
+        );
+        let thrown: unknown;
+        try {
+            inferSchemaFromJson(withAttributes(MAX_ATTRIBUTE_COUNT + 1));
+        } catch (error) {
+            thrown = error;
+        }
+        expect(thrown).toBeInstanceOf(AttributeCountLimitError);
+        expect((thrown as AttributeCountLimitError).attributeCount).toBe(MAX_ATTRIBUTE_COUNT + 1);
+    });
+
+    it('counts distinct attributes across all uploaded documents against the limit', () => {
+        const half = (offset: number) =>
+            Object.fromEntries(
+                Array.from({ length: MAX_ATTRIBUTE_COUNT / 2 + 1 }, (_, index) => [`a${offset + index}`, 1]),
+            );
+        expect(() => inferSchemaFromJson(JSON.stringify([half(0), half(MAX_ATTRIBUTE_COUNT)]))).toThrow(
+            AttributeCountLimitError,
+        );
     });
 
     it('uses the shared schema analyzer to include top-level and nested object properties', () => {

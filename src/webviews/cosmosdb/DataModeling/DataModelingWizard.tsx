@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Button, Field, Input, Link, makeStyles, Text, tokens } from '@fluentui/react-components';
+import { Button, Field, Input, Link, makeStyles, Text, tokens, Tooltip } from '@fluentui/react-components';
 import {
     AddRegular,
     CheckmarkRegular,
@@ -11,6 +11,7 @@ import {
     DeleteRegular,
     DismissRegular,
     EditRegular,
+    ErrorCircleRegular,
     SparkleRegular,
 } from '@fluentui/react-icons';
 import {
@@ -23,6 +24,7 @@ import { useTrpcClient } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
 import { type CSSProperties, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { validateDeploymentContainerName } from '../../../dataModeling/deploymentModel';
+import { WizardStateSchema } from '../../../dataModeling/modelingAdvisorSchema';
 import { PartitionKeyRecommendationSchema } from '../../../dataModeling/recommendationSchema';
 import { type DataModelingAppRouter, type DataModelingEvent } from '../../api/types';
 import { PreviewBadge } from '../../components/PreviewBadge';
@@ -124,6 +126,25 @@ const useStyles = makeStyles({
     },
     // The footer's contentEnd is a single slot, so give its buttons and the link their own gap.
     endGroup: { display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS },
+    footer: { flexShrink: 0 },
+    containerError: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+        flexWrap: 'wrap',
+        gap: tokens.spacingHorizontalS,
+        padding: '8px 24px',
+        backgroundColor: tokens.colorPaletteRedBackground1,
+        color: tokens.colorPaletteRedForeground1,
+    },
+    containerErrorMessage: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: tokens.spacingHorizontalS,
+        minWidth: 0,
+        overflowWrap: 'anywhere',
+    },
+    containerErrorIcon: { flexShrink: 0 },
     // Fluent 9 has no built-in danger appearance; tint the destructive action red.
     dangerButton: {
         color: tokens.colorPaletteRedForeground1,
@@ -228,6 +249,7 @@ const HydratedDataModelingWizard = ({
     const queriesTabRef = useRef<HTMLButtonElement>(null);
     const [containerTab, setContainerTab] = useState<ContainerTab>('data');
     const removeButtonRef = useRef<HTMLButtonElement>(null);
+    const addButtonRef = useRef<HTMLButtonElement>(null);
     const requestGeneration = useRef(0);
     const requestId = useRef<string | undefined>(undefined);
     const deliveredRequestId = useRef<string | undefined>(undefined);
@@ -256,6 +278,16 @@ const HydratedDataModelingWizard = ({
         buildStepValues(state.dataModel).slice(0, snapshot.recommendation.value ? undefined : state.step);
     const [addingContainer, setAddingContainer] = useState(false);
     const [addContainerError, setAddContainerError] = useState('');
+    const restoreAddFocus = useRef(false);
+    useEffect(() => {
+        if (!addingContainer && restoreAddFocus.current) {
+            restoreAddFocus.current = false;
+            const focusTarget = [addButtonRef.current, advanceButtonRef.current].find(
+                (button) => button && !button.disabled,
+            );
+            focusTarget?.focus();
+        }
+    }, [addingContainer, addContainerError]);
     const currentDataModel = useRef(state.dataModel);
     useEffect(() => {
         currentDataModel.current = state.dataModel;
@@ -588,8 +620,32 @@ const HydratedDataModelingWizard = ({
         });
     }, [setState]);
 
+    const workloadValidation = useMemo(() => WizardStateSchema.safeParse(snapshot.wizard), [snapshot.wizard]);
+    // Name the container each issue belongs to so users know which card to edit.
+    const workloadErrors = useMemo(
+        () =>
+            workloadValidation.success
+                ? []
+                : workloadValidation.error.issues.map((issue) => {
+                      const [scope, collection, index] = issue.path;
+                      const entity =
+                          scope === 'dataModel' && collection === 'containers' && typeof index === 'number'
+                              ? snapshot.wizard.dataModel.containers[index]?.entity
+                              : undefined;
+                      return entity ? `${entity}: ${issue.message}` : issue.message;
+                  }),
+        [workloadValidation, snapshot.wizard.dataModel.containers],
+    );
+
     // Send the finished data model to Copilot Chat and wait for the tool callback.
     const requestRecommendation = useCallback(() => {
+        if (workloadErrors.length > 0) {
+            setSnapshot((previous) => ({
+                ...previous,
+                recommendation: { status: 'error', error: workloadErrors.join('\n') },
+            }));
+            return;
+        }
         if (snapshot.recommendation.status !== 'idle') {
             report({ type: 'action', action: 'retryRecommendation' });
         }
@@ -646,7 +702,7 @@ const HydratedDataModelingWizard = ({
             }
         };
         void run();
-    }, [trpcClient, snapshot, setSnapshot, flush, report]);
+    }, [trpcClient, snapshot, setSnapshot, flush, report, workloadErrors]);
 
     const stepValues = buildStepValues(state.dataModel);
     const stepIndex = Math.min(Math.max(state.step, 1), stepValues.length);
@@ -694,7 +750,7 @@ const HydratedDataModelingWizard = ({
         }
     }, [visible, isResult, recommendationStatus, recommendation, report]);
 
-    const canAdvance = !isWorkload || !!state.scenario;
+    const canAdvance = (!isWorkload || !!state.scenario) && (!isReview || workloadErrors.length === 0);
     const nextLabel = isWorkload ? l10n.t('Start') : isReview ? l10n.t('Get Recommendation') : l10n.t('Next');
 
     const advance = () => {
@@ -757,12 +813,18 @@ const HydratedDataModelingWizard = ({
         }
         advance();
     };
+    const removeContainerDescription = l10n.t(
+        "Removes this container from your model. Doesn't delete any container or data in your Azure account.",
+    );
     const onRemove = async () => {
         const result = await confirm(
-            l10n.t('Remove this container?'),
+            l10n.t('Remove from model?'),
             l10n.t('Remove the “{entity}” container? This cannot be undone.', {
                 entity: state.dataModel.containers.find((c) => containerStep(c.id) === activeValue)?.entity ?? '',
-            }),
+            }) +
+                ' ' +
+                removeContainerDescription,
+            { primary: l10n.t('Yes'), secondary: l10n.t('No'), secondaryIsCloseAffordance: true },
         );
         if (result === true) {
             markEdited('data');
@@ -842,6 +904,7 @@ const HydratedDataModelingWizard = ({
                         {isContainerStep ? (
                             <>
                                 <Button
+                                    ref={addButtonRef}
                                     appearance="secondary"
                                     icon={<AddRegular />}
                                     disabled={addingContainer || state.dataModel.containers.length >= MAX_CONTAINERS}
@@ -852,19 +915,22 @@ const HydratedDataModelingWizard = ({
                                 >
                                     {l10n.t('Add container')}
                                 </Button>
-                                <Button
-                                    ref={removeButtonRef}
-                                    appearance="secondary"
-                                    className={styles.dangerButton}
-                                    icon={<DeleteRegular />}
-                                    disabled={state.dataModel.containers.length <= 1}
-                                    onClick={() => {
-                                        report({ type: 'control', control: 'footerRemoveContainer' });
-                                        void onRemove();
-                                    }}
-                                >
-                                    {l10n.t('Remove this container')}
-                                </Button>
+                                <Tooltip content={removeContainerDescription} relationship="inaccessible">
+                                    <Button
+                                        ref={removeButtonRef}
+                                        appearance="secondary"
+                                        className={styles.dangerButton}
+                                        icon={<DeleteRegular aria-hidden />}
+                                        aria-description={removeContainerDescription}
+                                        disabled={state.dataModel.containers.length <= 1}
+                                        onClick={() => {
+                                            report({ type: 'control', control: 'footerRemoveContainer' });
+                                            void onRemove();
+                                        }}
+                                    >
+                                        {l10n.t('Remove from model')}
+                                    </Button>
+                                </Tooltip>
                             </>
                         ) : null}
                         <Link href="https://learn.microsoft.com/azure/cosmos-db/partitioning-overview" target="_blank">
@@ -918,15 +984,6 @@ const HydratedDataModelingWizard = ({
                     {confirmationError}
                 </Text>
             ) : null}
-            {addContainerError ? (
-                <Text
-                    role="alert"
-                    className={viewportStyles.statusRow}
-                    style={{ paddingRight: previewBadgeWidth + 28 }}
-                >
-                    {addContainerError}
-                </Text>
-            ) : null}
             <div className={styles.wizardHost}>
                 <Wizard
                     activeStep={activeValue}
@@ -945,7 +1002,32 @@ const HydratedDataModelingWizard = ({
                             }
                         />
                     }
-                    footer={footer}
+                    footer={
+                        <div className={styles.footer}>
+                            {isContainerStep && addContainerError ? (
+                                <div className={styles.containerError}>
+                                    <Text role="alert" className={styles.containerErrorMessage}>
+                                        <ErrorCircleRegular aria-hidden="true" className={styles.containerErrorIcon} />
+                                        {addContainerError}
+                                    </Text>
+                                    <Button
+                                        size="small"
+                                        disabled={
+                                            addingContainer || state.dataModel.containers.length >= MAX_CONTAINERS
+                                        }
+                                        onClick={() => {
+                                            restoreAddFocus.current = true;
+                                            addButtonRef.current?.focus();
+                                            void openAddDialog();
+                                        }}
+                                    >
+                                        {l10n.t('Retry')}
+                                    </Button>
+                                </div>
+                            ) : null}
+                            {footer}
+                        </div>
+                    }
                 >
                     <WizardStep
                         value={WORKLOAD_STEP}
@@ -1069,6 +1151,7 @@ const HydratedDataModelingWizard = ({
                         title={l10n.t('Review your inputs')}
                     >
                         <ReviewPage
+                            validationErrors={workloadErrors}
                             workloadLabel={scenarioLabel ?? l10n.t('Not selected')}
                             containers={state.dataModel.containers}
                             onEditWorkload={() => goToStep(1)}

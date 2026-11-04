@@ -7,6 +7,14 @@ import * as l10n from '@vscode/l10n';
 import { z } from 'zod';
 import { type WizardState } from '../webviews/cosmosdb/DataModeling/dataModel';
 import { MAX_CONTAINERS, MAX_DOCUMENT_SIZE_KB, type ContainerModel } from '../webviews/cosmosdb/DataModeling/models';
+import {
+    assessContainerThroughput,
+    getArrayItemsOrderMessage,
+    getThroughputIssueMessage,
+    MAX_ARRAY_ITEMS,
+    MAX_ATTRIBUTE_COUNT,
+    MAX_OPERATIONS_PER_SEC,
+} from '../webviews/cosmosdb/DataModeling/workloadLimits';
 import { SuccessfulDeploymentSchema } from './deploymentModel';
 import { PartitionKeyRecommendationSchema } from './recommendationSchema';
 
@@ -17,6 +25,11 @@ const DocumentSizeKbSchema = z
     .number()
     .nonnegative()
     .transform((size) => Math.min(size, MAX_DOCUMENT_SIZE_KB));
+// Projects saved before workload limits were enforced may contain negative, fractional, or huge counts.
+// Bring them into the accepted range instead of failing to load the whole project.
+const countSchema = (max: number, allowFraction = false) =>
+    z.number().transform((value) => Math.min(Math.max(allowFraction ? value : Math.round(value), 0), max));
+const OperationsPerSecSchema = countSchema(MAX_OPERATIONS_PER_SEC);
 const ContainerModelSchema: z.ZodType<ContainerModel> = z.object({
     id: z.string().min(1),
     entity: z.string(),
@@ -33,14 +46,14 @@ const ContainerModelSchema: z.ZodType<ContainerModel> = z.object({
         }),
     ),
     document: z.object({
-        attributeCount: z.number(),
+        attributeCount: countSchema(MAX_ATTRIBUTE_COUNT),
         avgSizeKb: DocumentSizeKbSchema,
         maxSizeKb: DocumentSizeKbSchema,
     }),
     arrays: z.object({
         hasArrays: z.boolean(),
-        avgItems: z.number(),
-        maxItems: z.number(),
+        avgItems: countSchema(MAX_ARRAY_ITEMS, true),
+        maxItems: countSchema(MAX_ARRAY_ITEMS),
         updatePattern: z.enum(['none', 'append', 'patch', 'replace']),
     }),
     reads: z.array(
@@ -49,10 +62,14 @@ const ContainerModelSchema: z.ZodType<ContainerModel> = z.object({
             pattern: z.string(),
             query: z.string().optional(),
             filters: z.union([z.string(), z.array(z.string())]),
-            qps: z.number(),
+            qps: OperationsPerSecSchema,
         }),
     ),
-    writes: z.object({ insertsPerSec: z.number(), updatesPerSec: z.number(), deletesPerSec: z.number() }),
+    writes: z.object({
+        insertsPerSec: OperationsPerSecSchema,
+        updatesPerSec: OperationsPerSecSchema,
+        deletesPerSec: OperationsPerSecSchema,
+    }),
     scale: z.object({
         candidates: z.array(
             z.object({
@@ -126,6 +143,22 @@ export const WizardStateSchema: z.ZodType<WizardState> = StoredWizardStateSchema
                 message: l10n.t('Average document size cannot exceed maximum document size.'),
                 path: ['dataModel', 'containers', index, 'document', 'avgSizeKb'],
             });
+        }
+        if (container.arrays.hasArrays && container.arrays.avgItems > container.arrays.maxItems) {
+            ctx.addIssue({
+                code: 'custom',
+                message: getArrayItemsOrderMessage(),
+                path: ['dataModel', 'containers', index, 'arrays', 'avgItems'],
+            });
+        }
+        for (const issue of assessContainerThroughput(container)) {
+            if (issue.severity === 'error') {
+                ctx.addIssue({
+                    code: 'custom',
+                    message: getThroughputIssueMessage(issue),
+                    path: ['dataModel', 'containers', index],
+                });
+            }
         }
     }
 });

@@ -335,3 +335,66 @@ describe('catalog query fields', () => {
         expect(filters).not.toHaveAccessibleDescription(/removed/);
     });
 });
+
+describe('workload rate limits', () => {
+    function singleRead(qps: number, avgSizeKb = 1): DataModel {
+        const container = createBlankContainer('Orders');
+        container.document.avgSizeKb = avgSizeKb;
+        container.reads = [{ id: 'read', pattern: '', query: '', filters: [], qps }];
+        return { containers: [container], activeContainerId: container.id };
+    }
+
+    it.each([
+        { value: '1000001', message: 'Value cannot exceed 1,000,000.' },
+        { value: '-1', message: 'Value cannot be negative.' },
+        { value: '2.5', message: 'Enter a whole number.' },
+    ])('rejects a peak QPS of $value', ({ value, message }) => {
+        const onChange = vi.fn<(model: DataModel) => void>();
+        render(<Editor initialModel={singleRead(10)} onChange={onChange} />);
+        const input = screen.getByRole('spinbutton', { name: 'Peak QPS for read 1' });
+        fireEvent.change(input, { target: { value } });
+        expect(onChange).not.toHaveBeenCalled();
+        expect(input).toHaveAttribute('aria-invalid', 'true');
+        expect(screen.getByRole('alert')).toHaveTextContent(message.replace('1,000,000', (1_000_000).toLocaleString()));
+
+        fireEvent.change(input, { target: { value: '1000000' } });
+        expect(onChange.mock.lastCall![0].containers[0].reads[0].qps).toBe(1_000_000);
+        expect(input).not.toHaveAttribute('aria-invalid', 'true');
+    });
+
+    it.each(['Inserts / sec', 'Updates / sec', 'Deletes / sec'])('rejects an unrealistic %s rate', (label) => {
+        const onChange = vi.fn<(model: DataModel) => void>();
+        render(<Editor initialModel={singleRead(10)} onChange={onChange} />);
+        const input = screen.getByRole('spinbutton', { name: label });
+        fireEvent.change(input, { target: { value: '2000000' } });
+        expect(onChange).not.toHaveBeenCalled();
+        expect(input).toHaveAttribute('aria-invalid', 'true');
+        fireEvent.change(input, { target: { value: '' } });
+        expect(onChange).toHaveBeenCalledOnce();
+        expect(input).not.toHaveAttribute('aria-invalid', 'true');
+    });
+
+    it('warns above the per-container limit and errors beyond the unrealistic ceiling', () => {
+        const { rerender } = render(<QueriesPage model={singleRead(1_000_000)} onChange={vi.fn()} />);
+        expect(screen.queryByText(/default limit of/)).not.toBeInTheDocument();
+
+        rerender(<QueriesPage model={singleRead(1_000_000, 2)} onChange={vi.fn()} />);
+        expect(screen.getByRole('status')).toHaveTextContent(/exceeds the default limit of .* RU\/s per container/);
+
+        rerender(<QueriesPage model={singleRead(1_000_000, 11)} onChange={vi.fn()} />);
+        expect(screen.getByRole('alert')).toHaveTextContent(/is not realistic for one container/);
+    });
+
+    it('warns about a hot partition only for concentrated writes', () => {
+        const model = singleRead(0);
+        model.containers[0].writes.insertsPerSec = 4_000;
+        const { rerender } = render(<QueriesPage model={model} onChange={vi.fn()} />);
+        expect(screen.queryByText(/throttling risk if more than/)).not.toBeInTheDocument();
+
+        model.containers[0].scale.writes = 'time';
+        rerender(<QueriesPage model={structuredClone(model)} onChange={vi.fn()} />);
+        expect(screen.getByRole('status')).toHaveTextContent(
+            /throttling risk if more than .* reaches one physical partition/,
+        );
+    });
+});

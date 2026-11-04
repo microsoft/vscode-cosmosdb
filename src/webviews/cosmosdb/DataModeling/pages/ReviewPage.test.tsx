@@ -162,4 +162,29 @@ describe('ReviewPage', () => {
         renderReview([container]);
         expect(screen.getByText('Read by id, type')).toBeVisible();
     });
+
+    it('omits the validation alert when there are no issues', () => {
+        renderReview();
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it('lists validation issues in an error alert with a title', () => {
+        const errors = ['Orders: First issue.', 'Users: Second issue.'];
+        render(
+            <ReviewPage
+                workloadLabel="Other"
+                containers={[createBlankContainer('Orders')]}
+                validationErrors={errors}
+                onEditWorkload={vi.fn()}
+                onEditContainer={vi.fn()}
+            />,
+        );
+        const alert = screen.getByRole('alert');
+        expect(alert).toHaveTextContent(/^Fix these issues before requesting a recommendation\./);
+        expect(
+            within(alert)
+                .getAllByRole('listitem')
+                .map((item) => item.textContent),
+        ).toEqual(errors);
+    });
 });

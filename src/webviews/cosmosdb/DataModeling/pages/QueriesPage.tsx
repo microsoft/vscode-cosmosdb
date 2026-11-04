@@ -3,14 +3,37 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Button, Dropdown, Field, Input, makeStyles, Option, shorthands, tokens } from '@fluentui/react-components';
+import {
+    Button,
+    Dropdown,
+    Field,
+    Input,
+    makeStyles,
+    MessageBar,
+    MessageBarBody,
+    Option,
+    shorthands,
+    tokens,
+} from '@fluentui/react-components';
 import { AddRegular, DismissRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
+import { useState } from 'react';
 import { InlineGuidance, MetricPill, PillRow, SubPanel } from '../components/primitives';
 import { getActiveContainer, getAvgDocSizeKb, updateActiveContainer, type DataModel } from '../dataModel';
 import { type ReadQuery, type WriteOps } from '../models';
 import { queryPropertyNames, readFilterProperties } from '../queryFilterProperties';
 import { nextId } from '../scenarios';
+import {
+    assessContainerThroughput,
+    estimateContainerThroughput,
+    estimateReadRu,
+    estimateWriteRu,
+    getCountErrorMessage,
+    getThroughputIssueMessage,
+    MAX_OPERATIONS_PER_SEC,
+    parseCountInput,
+    validateCount,
+} from '../workloadLimits';
 
 /**
  * Queries tab of a container step. Self-contained editor for the active container's read
@@ -105,6 +128,29 @@ export function QueriesPage({ model, onChange }: QueriesPageProps) {
     const onChangeReads = (next: ReadQuery[]) => onChange(updateActiveContainer(model, (c) => ({ ...c, reads: next })));
     const onChangeWrites = (next: WriteOps) => onChange(updateActiveContainer(model, (c) => ({ ...c, writes: next })));
 
+    // Rejected entries keep the last valid value in the model; errors are keyed per container and field.
+    const [rateErrors, setRateErrors] = useState<Record<string, string | undefined>>({});
+    const rateErrorKey = (field: string) => `${active?.id ?? ''}:${field}`;
+    const rateError = (field: string) => rateErrors[rateErrorKey(field)];
+    const applyRate = (field: string, raw: string, apply: (value: number) => void) => {
+        const value = parseCountInput(raw);
+        const error = validateCount(value, MAX_OPERATIONS_PER_SEC);
+        setRateErrors((previous) => ({
+            ...previous,
+            [rateErrorKey(field)]: error ? getCountErrorMessage(error, MAX_OPERATIONS_PER_SEC) : undefined,
+        }));
+        if (!error) {
+            apply(value);
+        }
+    };
+    const rateValidation = (field: string) => {
+        const error = rateError(field);
+        return {
+            validationState: error ? ('error' as const) : ('none' as const),
+            validationMessage: error ? { children: error, role: 'alert' } : undefined,
+        };
+    };
+
     const patchRead = (id: string, patch: Partial<ReadQuery>) =>
         onChangeReads(reads.map((r) => (r.id === id ? { ...r, ...patch } : r)));
 
@@ -114,9 +160,10 @@ export function QueriesPage({ model, onChange }: QueriesPageProps) {
     const removeRead = (id: string) => onChangeReads(reads.filter((r) => r.id !== id));
 
     const totalTps = writes.insertsPerSec + writes.updatesPerSec + writes.deletesPerSec;
-    // Rough planning-only RU estimates: ~1 RU per KB for a point read, doubled for a write.
-    const readRu = Math.max(1, Math.round(avgDocSizeKb));
-    const writeRu = Math.max(2, Math.round(avgDocSizeKb * 3));
+    const readRu = estimateReadRu(avgDocSizeKb);
+    const writeRu = estimateWriteRu(avgDocSizeKb);
+    const totalRu = active ? estimateContainerThroughput(active).totalRuPerSec : 0;
+    const throughputIssues = active ? assessContainerThroughput(active) : [];
 
     return (
         <div className={styles.stack}>
@@ -175,13 +222,19 @@ export function QueriesPage({ model, onChange }: QueriesPageProps) {
                                     label={qpsLabel}
                                     className={styles.input}
                                     hint={{ children: qpsHint, className: styles.hint, title: qpsHint }}
+                                    {...rateValidation(`read:${r.id}`)}
                                 >
                                     <Input
                                         className={styles.input}
                                         aria-label={l10n.t('{label} for read {n}', { label: qpsLabel, n: index + 1 })}
                                         type="number"
+                                        min={0}
+                                        max={MAX_OPERATIONS_PER_SEC}
+                                        step={1}
                                         value={String(r.qps)}
-                                        onChange={(_, data) => patchRead(r.id, { qps: Number(data.value) || 0 })}
+                                        onChange={(_, data) =>
+                                            applyRate(`read:${r.id}`, data.value, (qps) => patchRead(r.id, { qps }))
+                                        }
                                     />
                                 </Field>
                                 <Button
@@ -269,36 +322,29 @@ export function QueriesPage({ model, onChange }: QueriesPageProps) {
                 )}
             >
                 <div className={styles.writeGrid}>
-                    <Field className={styles.writeCell} label={l10n.t('Inserts / sec')}>
-                        <Input
-                            className={styles.input}
-                            type="number"
-                            value={String(writes.insertsPerSec)}
-                            onChange={(_, data) =>
-                                onChangeWrites({ ...writes, insertsPerSec: Number(data.value) || 0 })
-                            }
-                        />
-                    </Field>
-                    <Field className={styles.writeCell} label={l10n.t('Updates / sec')}>
-                        <Input
-                            className={styles.input}
-                            type="number"
-                            value={String(writes.updatesPerSec)}
-                            onChange={(_, data) =>
-                                onChangeWrites({ ...writes, updatesPerSec: Number(data.value) || 0 })
-                            }
-                        />
-                    </Field>
-                    <Field className={styles.writeCell} label={l10n.t('Deletes / sec')}>
-                        <Input
-                            className={styles.input}
-                            type="number"
-                            value={String(writes.deletesPerSec)}
-                            onChange={(_, data) =>
-                                onChangeWrites({ ...writes, deletesPerSec: Number(data.value) || 0 })
-                            }
-                        />
-                    </Field>
+                    {(
+                        [
+                            ['insertsPerSec', l10n.t('Inserts / sec')],
+                            ['updatesPerSec', l10n.t('Updates / sec')],
+                            ['deletesPerSec', l10n.t('Deletes / sec')],
+                        ] as const
+                    ).map(([field, label]) => (
+                        <Field key={field} className={styles.writeCell} label={label} {...rateValidation(field)}>
+                            <Input
+                                className={styles.input}
+                                type="number"
+                                min={0}
+                                max={MAX_OPERATIONS_PER_SEC}
+                                step={1}
+                                value={String(writes[field])}
+                                onChange={(_, data) =>
+                                    applyRate(field, data.value, (value) =>
+                                        onChangeWrites({ ...writes, [field]: value }),
+                                    )
+                                }
+                            />
+                        </Field>
+                    ))}
                 </div>
             </SubPanel>
 
@@ -311,7 +357,19 @@ export function QueriesPage({ model, onChange }: QueriesPageProps) {
                 <PillRow>
                     <MetricPill>{l10n.t('~{ru} RU / point read', { ru: readRu })}</MetricPill>
                     <MetricPill>{l10n.t('~{ru} RU / write', { ru: writeRu })}</MetricPill>
+                    <MetricPill>
+                        {l10n.t('~{ru} RU/s at peak', { ru: Math.round(totalRu).toLocaleString() })}
+                    </MetricPill>
                 </PillRow>
+                {throughputIssues.map((issue) => (
+                    <MessageBar
+                        key={issue.kind}
+                        intent={issue.severity}
+                        role={issue.severity === 'error' ? 'alert' : 'status'}
+                    >
+                        <MessageBarBody>{getThroughputIssueMessage(issue)}</MessageBarBody>
+                    </MessageBar>
+                ))}
             </SubPanel>
         </div>
     );

@@ -144,7 +144,20 @@ test.describe('queryEditor-result-views', { tag: '@queryEditor' }, () => {
 
         for (const mode of ['Tree', 'Table'] as const) {
             await qe.setViewMode(mode);
-            await qe.expectRow('first-object');
+            const results = qe.activeViewContainer(mode);
+            if (mode === 'Tree') {
+                await results
+                    .getByRole('row')
+                    .filter({ hasText: 'Document' })
+                    .getByRole('button', { name: 'Expand', exact: true })
+                    .click();
+                await results
+                    .getByRole('row')
+                    .filter({ hasText: 'nestedObject' })
+                    .getByRole('button', { name: 'Expand', exact: true })
+                    .click();
+            }
+            await expect(results.getByRole('gridcell').filter({ hasText: 'first-object' })).toBeVisible();
             await qe.setViewMode('JSON');
             await expect(objectMarker).toBeVisible();
             await expect(editor.locator('.alwaysShowFoldIcons.codicon-folding-expanded')).toHaveCount(5);

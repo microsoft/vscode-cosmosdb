@@ -170,20 +170,12 @@ function footerHint(value: string): string {
 export const DataModelingWizard = () => {
     const styles = useViewportStyles();
     const trpcClient = useTrpcClient<DataModelingAppRouter>();
-    const report = useModelingTelemetryReporter();
-    const choiceMade = useRef(false);
     const load = useCallback(() => trpcClient.dataModeling.loadState.query(), [trpcClient]);
     const save = useCallback(
         (snapshot: ReturnType<typeof createInitialSnapshot>) => trpcClient.dataModeling.saveState.mutate(snapshot),
         [trpcClient],
     );
     const persistence = useModelingAdvisorPersistence({ load, save });
-    useEffect(() => {
-        if (persistence.loadStatus === 'ready' && !choiceMade.current) {
-            choiceMade.current = true;
-            report({ type: 'sessionChoice', choice: 'new' });
-        }
-    }, [persistence.loadStatus, report]);
     const loadMessage = l10n.t('Loading saved modeling advisor state…');
     const loadError = l10n.t('Could not load the modeling advisor state. Retry before making changes.');
     const saveError = l10n.t('Could not save the modeling advisor state. Keep this tab open and retry.');
@@ -198,23 +190,6 @@ export const DataModelingWizard = () => {
                     <Button onClick={persistence.retryLoad}>{l10n.t('Retry loading')}</Button>
                 ) : null}
             </div>
-        );
-    }
-
-    if (persistence.loadStatus === 'choice') {
-        return (
-            <SavedModelChoice
-                onContinue={() => {
-                    choiceMade.current = true;
-                    report({ type: 'sessionChoice', choice: 'continued' });
-                    persistence.continueExisting();
-                }}
-                onStartNew={() => {
-                    choiceMade.current = true;
-                    report({ type: 'sessionChoice', choice: 'replaced' });
-                    persistence.startNew();
-                }}
-            />
         );
     }
 
@@ -236,44 +211,6 @@ export const DataModelingWizard = () => {
         </div>
     );
 };
-
-function SavedModelChoice({ onContinue, onStartNew }: { onContinue: () => void; onStartNew: () => void }) {
-    const { confirm, confirmationError } = useNativeConfirmation();
-    const prompted = useRef(false);
-    const buttonRef = useRef<HTMLButtonElement>(null);
-    const [awaitingAnswer, setAwaitingAnswer] = useState(true);
-    const choose = useCallback(async () => {
-        setAwaitingAnswer(true);
-        const result = await confirm(
-            l10n.t('Start a new data model?'),
-            l10n.t(
-                'A saved data model was found. Choose Yes to start a new model and replace the saved one, or No to continue where you left off.',
-            ),
-            { primary: l10n.t('Yes'), secondary: l10n.t('No'), secondaryIsCloseAffordance: true },
-        );
-        if (result === true) onStartNew();
-        else if (result === false) onContinue();
-        else setAwaitingAnswer(false);
-    }, [confirm, onContinue, onStartNew]);
-    useEffect(() => {
-        if (!prompted.current) {
-            prompted.current = true;
-            void choose();
-        }
-    }, [choose]);
-    useEffect(() => {
-        if (!awaitingAnswer) buttonRef.current?.focus();
-    }, [awaitingAnswer]);
-
-    return awaitingAnswer ? null : (
-        <div>
-            {confirmationError ? <Text role="alert">{confirmationError}</Text> : null}
-            <Button ref={buttonRef} onClick={() => void choose()}>
-                {l10n.t('Start a new data model?')}
-            </Button>
-        </div>
-    );
-}
 
 const HydratedDataModelingWizard = ({
     snapshot,

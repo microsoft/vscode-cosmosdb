@@ -160,7 +160,7 @@ async function getStepControl(name: string): Promise<HTMLElement> {
 }
 
 async function continueExisting() {
-    await answerConfirmation('Start a new data model?', false);
+    await screen.findByRole('navigation', { name: 'Data modeling steps' });
 }
 
 async function enterDeployStep() {
@@ -692,65 +692,23 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         ).toBe(false);
     });
 
-    it('offers only Yes and No and continues without overwriting saved work on No', async () => {
+    it('hydrates the host-selected saved model without prompting or autosaving', async () => {
         client.dataModeling.loadState.query.mockResolvedValue(restored(4));
         render(<DataModelingWizard />);
-        await waitFor(() => expect(client.dataModeling.confirm.mutate).toHaveBeenCalledOnce());
-        expect(client.dataModeling.confirm.mutate).toHaveBeenCalledWith({
-            message: 'Start a new data model?',
-            detail: 'A saved data model was found. Choose Yes to start a new model and replace the saved one, or No to continue where you left off.',
-            buttons: { primary: 'Yes', secondary: 'No', secondaryIsCloseAffordance: true },
-        });
-        expect(screen.queryByRole('heading', { name: 'Data Modeler', level: 2 })).not.toBeInTheDocument();
-        expect(screen.queryByText('Preview')).not.toBeInTheDocument();
-        expect(screen.queryByText('Workload')).not.toBeInTheDocument();
-        expect(client.dataModeling.events.subscribe).not.toHaveBeenCalled();
-        expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
         await continueExisting();
+        expect(client.dataModeling.confirm.mutate).not.toHaveBeenCalled();
         expect(await screen.findByRole('img', { name: /100.*Orders.*\/orderId/ })).toBeVisible();
         expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
         expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
     });
 
-    it('explicit Yes replaces only the saved session and keeps the Workload page', async () => {
-        client.dataModeling.loadState.query.mockResolvedValue(restored(4));
+    it('hydrates a fresh model selected by the host without saving again', async () => {
+        client.dataModeling.loadState.query.mockResolvedValue(createInitialSnapshot());
         render(<DataModelingWizard />);
-        await answerConfirmation('Start a new data model?', true);
         expect(await screen.findByRole('button', { name: 'Start' })).toBeDisabled();
-        expect(lastSave()).toEqual(createInitialSnapshot());
-        expect(client.dataModeling.saveState.mutate).toHaveBeenCalledOnce();
+        expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
+        expect(client.dataModeling.confirm.mutate).not.toHaveBeenCalled();
         expect(screen.queryByRole('img', { name: /100.*Orders.*\/orderId/ })).not.toBeInTheDocument();
-    });
-
-    it('Escape continues without autosaving through the secondary close affordance', async () => {
-        client.dataModeling.loadState.query.mockResolvedValue(restored(4));
-        client.dataModeling.confirm.mutate.mockImplementationOnce(
-            async ({ buttons }: { buttons: { secondaryIsCloseAffordance?: boolean } }) =>
-                buttons.secondaryIsCloseAffordance ? false : undefined,
-        );
-        render(<DataModelingWizard />);
-        expect(await screen.findByRole('img', { name: /100.*Orders.*\/orderId/ })).toBeVisible();
-        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
-        expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
-    });
-
-    it('keeps failed or unanswered prompts retryable without replacing saved work', async () => {
-        client.dataModeling.loadState.query.mockResolvedValue(restored(4));
-        client.dataModeling.confirm.mutate.mockRejectedValueOnce(new Error('Host unavailable'));
-        render(<DataModelingWizard />);
-        expect(await screen.findByRole('alert')).toHaveTextContent('Could not open the confirmation dialog.');
-        const retry = screen.getByRole('button', { name: 'Start a new data model?' });
-        expect(retry).toHaveTextContent('Start a new data model?');
-        expect(retry).toHaveAccessibleName('Start a new data model?');
-        await waitFor(() => expect(retry).toHaveFocus());
-        expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
-        await userEvent.click(retry);
-        await answerConfirmation('Start a new data model?', undefined);
-        expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
-        await userEvent.click(screen.getByRole('button', { name: 'Start a new data model?' }));
-        await continueExisting();
-        expect(await screen.findByRole('img', { name: /100.*Orders.*\/orderId/ })).toBeVisible();
-        expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
     });
 
     it.each([true, false, undefined])('removes a container only after native Yes (response: %s)', async (response) => {
@@ -1112,15 +1070,17 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             .mockResolvedValue(restored());
         render(<DataModelingWizard />);
         await userEvent.click(await screen.findByRole('button', { name: 'Retry loading' }));
-        await waitFor(() => expect(client.dataModeling.confirm.mutate).toHaveBeenCalledOnce());
+        await continueExisting();
+        expect(client.dataModeling.confirm.mutate).not.toHaveBeenCalled();
         expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
     });
 
-    it('surfaces a failed Start new save and retries the fresh state', async () => {
-        client.dataModeling.loadState.query.mockResolvedValue(restored());
+    it('surfaces a failed edit save and retries the updated state', async () => {
+        client.dataModeling.loadState.query.mockResolvedValue(restored(4));
         client.dataModeling.saveState.mutate.mockRejectedValueOnce(new Error('disk full'));
         render(<DataModelingWizard />);
-        await answerConfirmation('Start a new data model?', true);
+        await continueExisting();
+        await userEvent.click(screen.getByRole('button', { name: 'Start Over' }));
         const retry = await screen.findByRole('button', { name: 'Retry saving' });
         expect(screen.getByRole('alert')).toHaveTextContent('Could not save');
         // Status rows share one viewport-height column with the wizard so they cannot add a document scrollbar.

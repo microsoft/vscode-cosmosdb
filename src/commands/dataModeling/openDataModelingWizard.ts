@@ -21,7 +21,13 @@ export async function openDataModelingWizard(
     if (account) {
         await ensureAIFeaturesEnabled();
         ensureDataModelerEnabled();
-        DataModelingWizardTab.render(account);
+        try {
+            await DataModelingWizardTab.render(account);
+        } catch (error) {
+            // Storage and prompt failures can contain local paths. Keep the command's error UI, not its telemetry.
+            context.telemetry.suppressAll = true;
+            throw error;
+        }
     }
 }
 

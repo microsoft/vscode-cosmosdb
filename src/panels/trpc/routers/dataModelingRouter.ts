@@ -61,18 +61,13 @@ export const dataModelingRouterDef = dataModelingRouter({
                     .object({
                         primary: z.string().min(1),
                         secondary: z.string().min(1),
-                        secondaryIsCloseAffordance: z.boolean().optional(),
                     })
                     .optional(),
             }),
         )
         .mutation(async ({ input }) => {
             const yes = { title: input.buttons?.primary ?? l10n.t('Yes') };
-            const no = {
-                title: input.buttons?.secondary ?? l10n.t('No'),
-                // A close affordance replaces VS Code's automatic Cancel button and handles Escape.
-                isCloseAffordance: input.buttons?.secondaryIsCloseAffordance,
-            };
+            const no = { title: input.buttons?.secondary ?? l10n.t('No') };
             const choice = await vscode.window.showWarningMessage(
                 input.message,
                 { modal: true, detail: input.detail },

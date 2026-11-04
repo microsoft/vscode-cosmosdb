@@ -747,19 +747,26 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         client.dataModeling.loadState.query.mockResolvedValue(saved);
         render(<DataModelingWizard />);
         await continueExisting();
-        const remove = screen.getByRole('button', { name: 'Remove this container' });
+        const description =
+            "Removes this container from your model. Doesn't delete any container or data in your Azure account.";
+        const remove = screen.getByRole('button', { name: 'Remove from model' });
+        expect(remove).toHaveTextContent('Remove from model');
+        expect(remove).toHaveAccessibleName('Remove from model');
+        expect(remove).toHaveAccessibleDescription(description);
         await userEvent.click(remove);
         expect(client.dataModeling.confirm.mutate).toHaveBeenLastCalledWith({
-            message: 'Remove this container?',
-            detail: 'Remove the “Orders” container? This cannot be undone.',
+            message: 'Remove from model?',
+            detail: `Remove the “Orders” container? This cannot be undone. ${description}`,
+            buttons: { primary: 'Yes', secondary: 'No', secondaryIsCloseAffordance: true },
         });
         expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
-        await answerConfirmation('Remove this container?', response);
+        await answerConfirmation('Remove from model?', response);
         expect(client.dataModeling.saveState.mutate).toHaveBeenCalledTimes(response === true ? 1 : 0);
         expect((lastSave() ?? saved).wizard.dataModel.containers.map((container) => container.entity)).toEqual(
             response === true ? ['Users'] : ['Orders', 'Users'],
         );
         expect(remove).toHaveProperty('disabled', response === true);
+        expect(document.activeElement === remove).toBe(response !== true);
     });
 
     it('adds a validated name from the native input box without rendering a modal', async ({ onTestFinished }) => {
@@ -1507,7 +1514,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         { button: 'Back', control: 'footerBack', step: 2 },
         { button: 'Get Recommendation', control: 'footerGetRecommendation', step: 3 },
         { button: 'Add container', control: 'footerAddContainer', step: 2 },
-        { button: 'Remove this container', control: 'footerRemoveContainer', step: 2 },
+        { button: 'Remove from model', control: 'footerRemoveContainer', step: 2 },
         { button: 'Start Over', control: 'footerStartOver', step: 4 },
         { button: 'Deploy', control: 'footerDeploy', step: 4 },
     ])('records footer $button activation, independently of completion', async ({ button, control, step }) => {

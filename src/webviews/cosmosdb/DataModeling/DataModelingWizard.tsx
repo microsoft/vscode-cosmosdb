@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Button, Field, Input, Link, makeStyles, Text, tokens } from '@fluentui/react-components';
+import { Button, Field, Input, Link, makeStyles, Text, tokens, Tooltip } from '@fluentui/react-components';
 import {
     AddRegular,
     CheckmarkRegular,
@@ -875,12 +875,18 @@ const HydratedDataModelingWizard = ({
         }
         advance();
     };
+    const removeContainerDescription = l10n.t(
+        "Removes this container from your model. Doesn't delete any container or data in your Azure account.",
+    );
     const onRemove = async () => {
         const result = await confirm(
-            l10n.t('Remove this container?'),
+            l10n.t('Remove from model?'),
             l10n.t('Remove the “{entity}” container? This cannot be undone.', {
                 entity: state.dataModel.containers.find((c) => containerStep(c.id) === activeValue)?.entity ?? '',
-            }),
+            }) +
+                ' ' +
+                removeContainerDescription,
+            { primary: l10n.t('Yes'), secondary: l10n.t('No'), secondaryIsCloseAffordance: true },
         );
         if (result === true) {
             markEdited('data');
@@ -971,19 +977,22 @@ const HydratedDataModelingWizard = ({
                                 >
                                     {l10n.t('Add container')}
                                 </Button>
-                                <Button
-                                    ref={removeButtonRef}
-                                    appearance="secondary"
-                                    className={styles.dangerButton}
-                                    icon={<DeleteRegular />}
-                                    disabled={state.dataModel.containers.length <= 1}
-                                    onClick={() => {
-                                        report({ type: 'control', control: 'footerRemoveContainer' });
-                                        void onRemove();
-                                    }}
-                                >
-                                    {l10n.t('Remove this container')}
-                                </Button>
+                                <Tooltip content={removeContainerDescription} relationship="inaccessible">
+                                    <Button
+                                        ref={removeButtonRef}
+                                        appearance="secondary"
+                                        className={styles.dangerButton}
+                                        icon={<DeleteRegular aria-hidden />}
+                                        aria-description={removeContainerDescription}
+                                        disabled={state.dataModel.containers.length <= 1}
+                                        onClick={() => {
+                                            report({ type: 'control', control: 'footerRemoveContainer' });
+                                            void onRemove();
+                                        }}
+                                    >
+                                        {l10n.t('Remove from model')}
+                                    </Button>
+                                </Tooltip>
                             </>
                         ) : null}
                         <Link href="https://learn.microsoft.com/azure/cosmos-db/partitioning-overview" target="_blank">

@@ -57,12 +57,19 @@ export const dataModelingRouterDef = dataModelingRouter({
             z.object({
                 message: z.string().min(1),
                 detail: z.string(),
-                buttons: z.object({ primary: z.string().min(1), secondary: z.string().min(1) }).optional(),
+                buttons: z
+                    .object({
+                        primary: z.string().min(1),
+                        secondary: z.string().min(1),
+                        secondaryIsCloseAffordance: z.boolean().optional(),
+                    })
+                    .optional(),
             }),
         )
         .mutation(async ({ input }) => {
             const yes = { title: input.buttons?.primary ?? l10n.t('Yes') };
-            const no = { title: input.buttons?.secondary ?? l10n.t('No') };
+            const no: vscode.MessageItem = { title: input.buttons?.secondary ?? l10n.t('No') };
+            if (input.buttons?.secondaryIsCloseAffordance) no.isCloseAffordance = true;
             const choice = await vscode.window.showWarningMessage(
                 input.message,
                 { modal: true, detail: input.detail },

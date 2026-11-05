@@ -273,6 +273,47 @@ for (const selectionMode of ['implicit', 'explicit']) {
     });
 }
 
+for (const [output, removeDirectory] of [
+    ['phases/2-assessment/domains/Orders.md', false],
+    ['phases/2-assessment/domains/Orders.manifest.json', true],
+    ['phases/3-schema-conversion/domains/Orders/summary.md', false],
+    ['phases/3-schema-conversion/domains/Orders/cosmos-model.json', true],
+]) {
+    test(`removing selected ${output} does not invalidate source freshness`, () => {
+        const { workspace, project } = workspaceProject();
+        try {
+            const inventory = sourceFixture(workspace, project);
+            discoveryFixture(workspace, inventory, project);
+            const root = path.join(workspace, '.cosmosdb-migration');
+            const checkpoint = path.join(root, 'project.json');
+            const generated = path.join(root, output);
+            const raw = path.join(workspace, 'metadata.json');
+            fs.mkdirSync(path.dirname(generated), { recursive: true });
+            fs.writeFileSync(generated, 'generated output');
+            fs.writeFileSync(raw, '{}');
+            fs.symlinkSync(root, path.join(workspace, 'migration-alias'), 'junction');
+            const selection = { files: ['phases/1-discovery/schema-ddl/Schema.sql', output, `../migration-alias/${output}`, '../metadata.json'] };
+            project.phases.discovery.schemaInventory = selection;
+            fs.writeFileSync(checkpoint, JSON.stringify(project));
+            assert.deepEqual(selectedDiscoveryFiles(workspace, project, 'schema-evidence'), [raw]);
+            recordFreshness(workspace, 'preflight', readProjectState(workspace).revision);
+            assert.equal(checkPhaseCompletion(workspace, 'discovery').complete, true);
+            const recorded = fs.readFileSync(checkpoint, 'utf8');
+            fs.rmSync(removeDirectory ? path.dirname(generated) : generated, { recursive: removeDirectory });
+            assert.deepEqual(selectedDiscoveryFiles(workspace, project, 'schema-evidence'), [raw]);
+            assert.equal(checkPhaseCompletion(workspace, 'preflight').complete, true);
+            assert.equal(checkPhaseCompletion(workspace, 'discovery').complete, true);
+            assert.equal(fs.readFileSync(checkpoint, 'utf8'), recorded);
+            selection.files.push(path.posix.join(path.posix.dirname(output), 'raw-input.json'));
+            assert.throws(() => selectedDiscoveryFiles(workspace, project, 'schema-evidence'), /ENOENT/u);
+            fs.rmSync(raw);
+            assert.equal(checkPhaseCompletion(workspace, 'preflight').freshness, 'stale');
+        } finally {
+            fs.rmSync(workspace, { recursive: true, force: true });
+        }
+    });
+}
+
 test('schema evidence excludes managed phase outputs and aliases but retains raw inputs', () => {
     const { workspace, project } = workspaceProject();
     try {

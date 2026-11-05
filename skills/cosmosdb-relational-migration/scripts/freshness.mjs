@@ -59,6 +59,24 @@ function projectFilePath(workspace) {
     return fs.existsSync(checkpoint) ? fs.realpathSync(checkpoint) : checkpoint;
 }
 
+function isManagedDomainOutput(workspace, filePath) {
+    relativePath(workspace, filePath);
+    const root = path.resolve(workspace, '.cosmosdb-migration');
+    const realRoot = fs.existsSync(root) ? fs.realpathSync(root) : path.join(fs.realpathSync(workspace), '.cosmosdb-migration');
+    const missing = [];
+    let ancestor = path.resolve(filePath);
+    while (!fs.existsSync(ancestor)) {
+        const parent = path.dirname(ancestor);
+        if (parent === ancestor) return false;
+        missing.unshift(path.basename(ancestor));
+        ancestor = parent;
+    }
+    const resolved = path.join(fs.realpathSync(ancestor), ...missing);
+    const relative = path.relative(realRoot, resolved).split(path.sep).join('/');
+    return /^phases\/2-assessment\/domains\/[^/]+\.(?:md|manifest\.json)$/u.test(relative) ||
+        /^phases\/3-schema-conversion\/domains\/[^/]+\/(?:summary\.md|cosmos-model\.json)$/u.test(relative);
+}
+
 function managedSchemaEvidencePaths(workspace) {
     const root = path.resolve(workspace, '.cosmosdb-migration');
     const files = [
@@ -149,6 +167,7 @@ export function selectedDiscoveryFiles(workspace, project, source) {
         .filter((filePath) => path.resolve(filePath) !== template)
         .filter((filePath) => !excluded.has(path.resolve(filePath)))
         .filter(filePath => !managedOutputs?.has(path.resolve(filePath)))
+        .filter(filePath => source !== 'schema-evidence' || !isManagedDomainOutput(workspace, filePath))
         .map((filePath) => {
             relativePath(explicitFiles !== undefined ? workspace : base, filePath);
             relativePath(fs.realpathSync(workspace), fs.realpathSync(filePath));

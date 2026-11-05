@@ -270,6 +270,79 @@ describe('migration tooltip theming', () => {
     );
 });
 
+describe('migration chat action tooltips', () => {
+    it.each(['plan', 'migrate'] as const)(
+        'identifies Copilot Chat for every launch action with %s selected',
+        (action) => {
+            addGeneratedArtifacts();
+            state.codeMigrationAction = action;
+            state.selectedModelId = 'model';
+            state.targetType = 'provision';
+            state.targetAccountName = 'migration-account';
+            state.targetResourceGroup = 'migration-group';
+            vi.useFakeTimers();
+            try {
+                render(renderAssistant());
+                for (const phase of [
+                    'Phase 1: Source Discovery',
+                    'Phase 2: Domain Assessment',
+                    'Phase 3: Schema Conversion',
+                    'Phase 4: Target Provisioning',
+                ]) {
+                    const header = screen.getByRole('button', { name: new RegExp(phase) });
+                    if (header.getAttribute('aria-expanded') === 'false') fireEvent.click(header);
+                }
+                const actions = [
+                    ['Generate schema files from workspace code', 'Generate schema files from workspace code'],
+                    ['Update volumetrics template', 'Update volumetrics template'],
+                    ['Update access-patterns template', 'Update access-patterns template'],
+                    ['Re-Run Auto-Detect', 'Auto-Detect'],
+                    ['Re-Generate Report', 'Generate Discovery Report'],
+                    ['Re-Run Assessment', 'Run Assessment'],
+                    ['Re-Run Schema Conversion', 'Run Schema Conversion'],
+                    ['Provision New Account', 'Provision New Account'],
+                    ['Re-Populate Sample Data', 'Populate Sample Data'],
+                    [
+                        action === 'plan' ? 'Plan Migration' : 'Migrate Application',
+                        action === 'plan' ? 'Plan Migration' : 'Migrate Application',
+                    ],
+                ];
+                for (const [label, actionLabel] of actions) {
+                    const button = screen.getByRole('button', { name: label });
+                    const description =
+                        `${actionLabel} using Copilot Chat` +
+                        (label === 'Generate schema files from workspace code'
+                            ? '. Database Schema Files, required'
+                            : '');
+                    expect(button).toHaveAccessibleName(label);
+                    expect(button).toHaveAccessibleDescription(description);
+                    expect(button).toBeEnabled();
+                    fireEvent.pointerEnter(button);
+                    act(() => vi.advanceTimersByTime(500));
+                    expect(screen.getByRole('tooltip', { name: description })).toBeVisible();
+                    fireEvent.pointerLeave(button);
+                    act(() => vi.advanceTimersByTime(500));
+                }
+                fireEvent.click(screen.getByRole('button', { name: 'Select migration action' }));
+                expect(screen.getByRole('menuitem', { name: 'Plan Migration' })).toBeVisible();
+                expect(screen.getByRole('menuitem', { name: 'Migrate Application' })).toBeVisible();
+            } finally {
+                vi.useRealTimers();
+            }
+        },
+    );
+
+    it('keeps the Copilot Chat explanation alongside the disabled-action reason', () => {
+        state.consentGiven = false;
+        render(renderAssistant());
+        const button = screen.getByRole('button', { name: 'Update volumetrics template' });
+        expect(button).toBeDisabled();
+        expect(button).toHaveAccessibleDescription(
+            'Update volumetrics template using Copilot Chat. AI consent is required to use this action.',
+        );
+    });
+});
+
 describe('migration target endpoint editing', () => {
     beforeEach(() => {
         state.targetAccountName = 'example';

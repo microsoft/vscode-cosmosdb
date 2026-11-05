@@ -498,9 +498,12 @@ function MigrationActionButton({
                   : l10n.t('In Chat');
     const openChatLabel = l10n.t('Open Chat');
     const resetStatusLabel = l10n.t('Reset Status');
+    const actionDescription = l10n.t('{action} using Copilot Chat', { action: actionLabel });
     const statusDescription = active
         ? `${actionLabel}. ${statusLabel} ${resetStatusLabel}. ${l10n.t('This only resets local tracking; it does not stop the agent in Chat.')}${activity?.detail ? ` ${activity.detail}` : ''}`
-        : (buttonProps['aria-description'] ?? actionLabel);
+        : buttonProps['aria-description']
+          ? `${actionDescription}. ${buttonProps['aria-description']}`
+          : actionDescription;
     useEffect(() => {
         if (active) announce(`${actionLabel}. ${statusLabel}`);
     }, [active, actionLabel, statusLabel, announce]);
@@ -541,7 +544,7 @@ function MigrationActionButton({
                         : `${resetStatusLabel}. ${actionLabel}`
                     : buttonProps['aria-label']
             }
-            aria-description={active ? statusDescription : buttonProps['aria-description']}
+            aria-description={statusDescription}
         >
             {children && (
                 <span className={styles.actionLabel}>
@@ -854,6 +857,10 @@ export function MigrationPhaseDiagnostics({
             setReviewPending(false);
         }
     };
+    const reviewDescription = l10n.t(
+        '{phase}: review blockers and propose fixes using Copilot Chat. Changes require your approval.',
+        { phase: phaseLabel },
+    );
     return (
         <section
             className={styles.diagnostics}
@@ -1014,27 +1021,26 @@ export function MigrationPhaseDiagnostics({
             )}
             <div className={styles.actionGroup}>
                 {onReview && outcome && (
-                    <Button
-                        appearance="primary"
-                        size="small"
-                        icon={
-                            reviewPending ? (
-                                <Spinner size="extra-tiny" appearance="inverted" aria-hidden="true" />
-                            ) : (
-                                <SparkleRegular />
-                            )
-                        }
-                        disabled={reviewDisabled || reviewPending || isMigrationRunActive(activity)}
-                        aria-description={l10n.t(
-                            '{phase}: review blockers and propose fixes. Changes require your approval.',
-                            { phase: phaseLabel },
-                        )}
-                        onClick={() => {
-                            void startReview();
-                        }}
-                    >
-                        {l10n.t('Review and Fix')}
-                    </Button>
+                    <Tooltip content={reviewDescription} relationship="description" withArrow>
+                        <Button
+                            appearance="primary"
+                            size="small"
+                            icon={
+                                reviewPending ? (
+                                    <Spinner size="extra-tiny" appearance="inverted" aria-hidden="true" />
+                                ) : (
+                                    <SparkleRegular />
+                                )
+                            }
+                            disabled={reviewDisabled || reviewPending || isMigrationRunActive(activity)}
+                            aria-description={reviewDescription}
+                            onClick={() => {
+                                void startReview();
+                            }}
+                        >
+                            {l10n.t('Review and Fix')}
+                        </Button>
+                    </Tooltip>
                 )}
                 <Button size="small" icon={<ArrowClockwiseRegular />} onClick={onReload}>
                     {l10n.t('Refresh Status')}
@@ -1502,9 +1508,13 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
         : !state.isAIFeaturesEnabled
           ? l10n.t('GitHub Copilot must be active to use this action.')
           : undefined;
-    const generateSchemaLabel = l10n.t('Generate schema files from workspace code using AI');
-    const updateVolumetricsLabel = l10n.t('Update volumetrics template using AI');
-    const updateAccessPatternsLabel = l10n.t('Update access-patterns template using AI');
+    const generateSchemaLabel = l10n.t('Generate schema files from workspace code');
+    const updateVolumetricsLabel = l10n.t('Update volumetrics template');
+    const updateAccessPatternsLabel = l10n.t('Update access-patterns template');
+    const codeMigrationDescription =
+        state.codeMigrationAction === 'plan'
+            ? l10n.t('Plan Migration using Copilot Chat')
+            : l10n.t('Migrate Application using Copilot Chat');
     const isPhase2Disabled = isRunActive || phase1State !== 'complete' || !hasAllAnalysisFields;
     const isPhase3Disabled = isRunActive || phase2State !== 'complete';
     const isPhase4Disabled = isRunActive || phase1State !== 'complete' || !hasAllAnalysisFields;
@@ -2453,7 +2463,11 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                     </MigrationActionButton>
                                 );
                                 return autoDetectTooltip ? (
-                                    <Tooltip content={autoDetectTooltip} relationship="description" withArrow>
+                                    <Tooltip
+                                        content={`${l10n.t('Auto-Detect using Copilot Chat')}. ${autoDetectTooltip}`}
+                                        relationship="description"
+                                        withArrow
+                                    >
                                         <span>{button}</span>
                                     </Tooltip>
                                 ) : (
@@ -3340,26 +3354,29 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                         <Menu>
                             <MenuTrigger>
                                 {(triggerProps: MenuButtonProps) => (
-                                    <SplitButton
-                                        appearance="primary"
-                                        size="small"
-                                        icon={<SparkleRegular />}
-                                        disabled={!allComplete}
-                                        menuButton={{
-                                            ...triggerProps,
-                                            'aria-label': l10n.t('Select migration action'),
-                                        }}
-                                        primaryActionButton={
-                                            {
-                                                onClick: handleCodeMigration,
-                                                'data-testid': 'migration-action-button',
-                                            } as SplitButtonProps['primaryActionButton']
-                                        }
-                                    >
-                                        {state.codeMigrationAction === 'plan'
-                                            ? l10n.t('Plan Migration')
-                                            : l10n.t('Migrate Application')}
-                                    </SplitButton>
+                                    <Tooltip content={codeMigrationDescription} relationship="description" withArrow>
+                                        <SplitButton
+                                            appearance="primary"
+                                            size="small"
+                                            icon={<SparkleRegular />}
+                                            disabled={!allComplete}
+                                            menuButton={{
+                                                ...triggerProps,
+                                                'aria-label': l10n.t('Select migration action'),
+                                            }}
+                                            primaryActionButton={
+                                                {
+                                                    onClick: handleCodeMigration,
+                                                    'aria-description': codeMigrationDescription,
+                                                    'data-testid': 'migration-action-button',
+                                                } as SplitButtonProps['primaryActionButton']
+                                            }
+                                        >
+                                            {state.codeMigrationAction === 'plan'
+                                                ? l10n.t('Plan Migration')
+                                                : l10n.t('Migrate Application')}
+                                        </SplitButton>
+                                    </Tooltip>
                                 )}
                             </MenuTrigger>
                             <MenuPopover>

@@ -54,9 +54,13 @@ pay ~50 s of startup overhead; with worker scope it's ~5 s total.
 The consequence: tests **must reset editor state in their own `afterEach`**.
 The fixture-lifecycle spec intentionally exits VS Code before worker teardown and
 waits for the launched process's `exit` event, not ElectronApplication's `close`.
+It disables window-dependent automatic fixtures because no live window remains.
 Helpers can retain inherited stdio after exit; worker teardown releases those pipes
 before waiting for `close`. An exited process's PID is not used for process-tree cleanup.
-It disables window-dependent automatic fixtures because no live window remains.
+The child-process handle is captured after each Electron launch, including display-language
+restarts, because Playwright's process lookup may become unavailable before its `close` event arrives.
+Lifecycle regressions invalidate that lookup before teardown for both an exited application
+and a running application after a display-language restart.
 Use `closeAllEditorTabs(vscodeWindow)` from `fixtures/webviewHelpers.ts`.
 This helper focuses the workbench before opening the command palette, accepts the
 matching focused command with Enter rather than clicking a moving result, and waits
@@ -153,10 +157,13 @@ extensions directory at `.vscode-test/e2e-extensions/`. Both are cached.
 
 `queryEditor-localization.spec.ts` runs in the `localization-de` and `localization-ja` projects.
 Every worker starts with `--locale=en`, regardless of the host system's language.
-The `default` project keeps that English UI for the other specs.
+The `default` project keeps that English UI for the other specs, except the lifecycle restart
+regression, which explicitly requests German.
 Each localized worker then selects **Configure Display Language**, chooses **Deutsch** or **日本語**,
 and confirms **Restart**. VS Code writes its own locale preference and exits; Playwright launches the replacement
 process with the same isolated profile and no `--locale` override.
+The restart waits for process exit and releases inherited stdio through the normal cleanup
+before waiting for Electron's `close` event and launching the replacement.
 The fixture reopens the command palette while waiting for **Configure Display Language** to be registered,
 so a palette opened during startup cannot remain stuck on stale search results.
 Only Electron's detached auto-relaunch is suppressed so Playwright can retain control of the new process.

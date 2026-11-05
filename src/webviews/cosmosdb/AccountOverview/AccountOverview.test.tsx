@@ -721,14 +721,28 @@ describe('Serverless metric selection', () => {
         expect(screen.getByRole('status')).toHaveTextContent('Account health: Unknown');
     });
 
-    it('redirects a deep link to a Serverless-inapplicable metric to consumed RU', async () => {
-        initialTarget = 'provisionedThroughput';
-        queries.summary.mockResolvedValue(serverlessSummary);
-        render(<AccountOverview />, { wrapper: Wrapper });
-        const region = await screen.findByRole('region', { name: 'Total request units trend' });
-        expect(region).toHaveFocus();
-        expect(screen.getByRole('button', { name: /^Total request units/ })).toHaveAttribute('aria-pressed', 'true');
-    });
+    it.each(['immediate', 'deferred'] as const)(
+        'redirects a deep link to a Serverless-inapplicable metric to consumed RU with %s account summary',
+        async (summaryTiming) => {
+            initialTarget = 'provisionedThroughput';
+            const summaryResponse = Promise.withResolvers<AccountSummary>();
+            queries.summary.mockReturnValue(summaryResponse.promise);
+            if (summaryTiming === 'immediate') {
+                summaryResponse.resolve(serverlessSummary);
+            }
+            render(<AccountOverview />, { wrapper: Wrapper });
+            await waitFor(() => expect(queries.summary).toHaveBeenCalled());
+            if (summaryTiming === 'deferred') {
+                summaryResponse.resolve(serverlessSummary);
+            }
+            const region = await screen.findByRole('region', { name: 'Total request units trend' });
+            await waitFor(() => expect(region).toHaveFocus());
+            expect(screen.getByRole('button', { name: /^Total request units/ })).toHaveAttribute(
+                'aria-pressed',
+                'true',
+            );
+        },
+    );
 
     it.each([
         ['noData', 'No telemetry available for this selection yet.'],

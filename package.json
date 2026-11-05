@@ -844,6 +844,11 @@
       },
       {
         "category": "Cosmos DB",
+        "command": "cosmosDB.openInDatabaseHub",
+        "title": "%cosmosdb.command.account.databaseHub.open%"
+      },
+      {
+        "category": "Cosmos DB",
         "command": "cosmosDB.openAccountOverview.overview",
         "title": "%cosmosdb.command.account.overview.overview%"
       },
@@ -1168,6 +1173,11 @@
       ],
       "view/item/context": [
         {
+          "command": "cosmosDB.openInDatabaseHub",
+          "when": "view =~ /azure(ResourceGroups|FocusView)/ && viewItem =~ /hasarmmetadata/i && viewItem =~ /experience[.]core/i && viewItem =~ /supportsDatabaseHub/i",
+          "group": "9@3"
+        },
+        {
           "command": "azureDatabases.createServer",
           "when": "view == azureResourceGroups && viewItem =~ /(AzureCosmosDb)/i && viewItem =~ /azureResourceTypeGroup/i",
           "group": "1@1"
@@ -1381,6 +1391,10 @@
         }
       ],
       "commandPalette": [
+        {
+          "command": "cosmosDB.openInDatabaseHub",
+          "when": "never"
+        },
         {
           "command": "cosmosDB.dataModeling.open",
           "when": "cosmosDB.aiFeaturesEnabled && config.cosmosDB.experimental.dataModeler.enabled"

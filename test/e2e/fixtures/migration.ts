@@ -828,15 +828,15 @@ export class MigrationPage {
     }
 
     get generateSchemaButton(): Locator {
-        return this.frame.getByRole('button', { name: 'Generate schema files from workspace code using AI' });
+        return this.frame.getByRole('button', { name: 'Generate schema files from workspace code', exact: true });
     }
 
     get updateVolumetricsButton(): Locator {
-        return this.frame.getByRole('button', { name: 'Update volumetrics template using AI' });
+        return this.frame.getByRole('button', { name: 'Update volumetrics template', exact: true });
     }
 
     get updateAccessPatternsButton(): Locator {
-        return this.frame.getByRole('button', { name: 'Update access-patterns template using AI' });
+        return this.frame.getByRole('button', { name: 'Update access-patterns template', exact: true });
     }
 
     get projectNameInput(): Locator {

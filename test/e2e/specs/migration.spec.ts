@@ -337,9 +337,29 @@ test.describe('Migration Assistant', () => {
         await expect(
             frame.getByRole('button', { name: 'Select Folder…', description: schemaFilesDescription }),
         ).toHaveAccessibleDescription(schemaFilesDescription);
-        await expect(
-            frame.getByRole('button', { name: 'Generate schema files from workspace code using AI' }),
-        ).toHaveAccessibleDescription(schemaFilesDescription);
+        for (const [button, label, description] of [
+            [
+                migration.generateSchemaButton,
+                'Generate schema files from workspace code',
+                `Generate schema files from workspace code using Copilot Chat. ${schemaFilesDescription}`,
+            ],
+            [
+                migration.updateVolumetricsButton,
+                'Update volumetrics template',
+                'Update volumetrics template using Copilot Chat',
+            ],
+            [
+                migration.updateAccessPatternsButton,
+                'Update access-patterns template',
+                'Update access-patterns template using Copilot Chat',
+            ],
+        ] as const) {
+            await expect(button).toHaveText('');
+            await expect(button).toHaveAccessibleName(label);
+            await expect(button).toHaveAccessibleDescription(description);
+            await button.hover();
+            await expect(frame.getByRole('tooltip')).toHaveText(description);
+        }
         for (const description of [schemaFilesDescription, 'Volumetrics:', 'Access Patterns:']) {
             for (const name of ['Select Files…', 'Select Folder…']) {
                 const picker = frame.getByRole('button', { name, description, exact: true });
@@ -506,15 +526,21 @@ test.describe('Migration Assistant', () => {
         await expect(migration.runDiscoveryButton()).toBeDisabled();
 
         const consentDescription = 'AI consent is required to use this action.';
-        await expect(migration.generateSchemaButton).toHaveAccessibleDescription(new RegExp(consentDescription));
-        await expect(migration.updateVolumetricsButton).toHaveAccessibleDescription(consentDescription);
-        await expect(migration.updateAccessPatternsButton).toHaveAccessibleDescription(consentDescription);
-
         for (const [button, description] of [
-            [migration.generateSchemaButton, `Database Schema Files, required ${consentDescription}`],
-            [migration.updateVolumetricsButton, consentDescription],
-            [migration.updateAccessPatternsButton, consentDescription],
+            [
+                migration.generateSchemaButton,
+                `Generate schema files from workspace code using Copilot Chat. Database Schema Files, required ${consentDescription}`,
+            ],
+            [
+                migration.updateVolumetricsButton,
+                `Update volumetrics template using Copilot Chat. ${consentDescription}`,
+            ],
+            [
+                migration.updateAccessPatternsButton,
+                `Update access-patterns template using Copilot Chat. ${consentDescription}`,
+            ],
         ] as const) {
+            await expect(button).toHaveAccessibleDescription(description);
             await button.hover();
             await expect(frame.getByRole('tooltip')).toHaveText(description);
         }
@@ -812,7 +838,7 @@ test.describe('Migration Assistant', () => {
             await expect(restart).toHaveText('Review and Fix');
             await expect(restart).toHaveAccessibleName('Review and Fix');
             await expect(restart).toHaveAccessibleDescription(
-                'Preflight: review blockers and propose fixes. Changes require your approval.',
+                'Preflight: review blockers and propose fixes using Copilot Chat. Changes require your approval.',
             );
             expect(await restart.evaluate((element) => element.parentElement?.firstElementChild === element)).toBe(
                 true,
@@ -1247,7 +1273,7 @@ test.describe('Migration Assistant', () => {
         await expect(review).toBeEnabled();
         await expect(review).toHaveAccessibleName('Review and Fix');
         await expect(review).toHaveAccessibleDescription(
-            'Domain Assessment: review blockers and propose fixes. Changes require your approval.',
+            'Domain Assessment: review blockers and propose fixes using Copilot Chat. Changes require your approval.',
         );
         expect(await review.evaluate((element) => element.parentElement?.firstElementChild === element)).toBe(true);
         await diagnostics.screenshot({ path: testInfo.outputPath('historical-completion.png') });

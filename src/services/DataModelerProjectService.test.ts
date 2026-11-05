@@ -310,6 +310,14 @@ describe('DataModelerProjectService', () => {
         expect(await service.loadState()).toEqual(last);
     });
 
+    it('preserves a locally stopped recommendation and its inputs across service instances', async () => {
+        const state = snapshot();
+        state.recommendation = { status: 'stopped' };
+        await service.loadState();
+        await service.saveState(state);
+        expect(await new DataModelerProjectService(endpoint).loadState()).toEqual(state);
+    });
+
     it('restores interrupted requests as retryable errors, not permanent loading states', async () => {
         await service.loadState();
         const state = snapshot();

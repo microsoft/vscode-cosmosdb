@@ -558,7 +558,10 @@ describe('recommendation prompt', () => {
     it('preserves the ephemeral request ID through validation and the prompt, and starts tracking before Chat opens', async () => {
         const ctx = context();
         const beginRecommendation = vi.fn();
-        ctx.modelingTelemetry = { beginRecommendation } as unknown as ModelingTelemetry;
+        ctx.modelingTelemetry = {
+            beginRecommendation,
+            acceptsResponse: vi.fn().mockReturnValue(true),
+        } as unknown as ModelingTelemetry;
         const requestId = '12345678-1234-4123-8123-123456789001';
         const wizard = applyScenario(createInitialState(), 'chat');
         const executeCommand = vi.spyOn(vscode.commands, 'executeCommand').mockImplementation(async () => {
@@ -579,7 +582,11 @@ describe('recommendation prompt', () => {
     it('reports bounded chat failures and rethrows the original operation error outside telemetry', async () => {
         const ctx = context();
         const recommendationFailed = vi.fn();
-        ctx.modelingTelemetry = { beginRecommendation: vi.fn(), recommendationFailed } as unknown as ModelingTelemetry;
+        ctx.modelingTelemetry = {
+            beginRecommendation: vi.fn(),
+            acceptsResponse: vi.fn().mockReturnValue(true),
+            recommendationFailed,
+        } as unknown as ModelingTelemetry;
         const error = new Error('PRIVATE PROMPT OR RESOURCE');
         const executeCommand = vi.spyOn(vscode.commands, 'executeCommand').mockRejectedValue(error);
         const requestId = '12345678-1234-4123-8123-123456789001';
@@ -590,6 +597,46 @@ describe('recommendation prompt', () => {
             }),
         ).rejects.toMatchObject({ cause: error });
         expect(recommendationFailed).toHaveBeenCalledWith(requestId, 'chat');
+        executeCommand.mockRestore();
+    });
+
+    it.each([true, false])('only resets local tracking after native confirmation: %s', async (confirmed) => {
+        const ctx = context();
+        const stopWaiting = vi.fn().mockReturnValue(true);
+        ctx.modelingTelemetry = { stopWaiting } as unknown as ModelingTelemetry;
+        const requestId = '12345678-1234-4123-8123-123456789001';
+        vi.mocked(vscode.window.showWarningMessage).mockResolvedValueOnce(
+            confirmed ? ('Agent Has Stopped' as never) : undefined,
+        );
+        const executeCommand = vi.spyOn(vscode.commands, 'executeCommand');
+        await expect(dataModelingRouterDef.createCaller(ctx).stopWaitingForRecommendation({ requestId })).resolves.toBe(
+            confirmed,
+        );
+        expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
+            expect.stringContaining('it does not cancel Chat'),
+            { modal: true },
+            'Agent Has Stopped',
+        );
+        expect(stopWaiting.mock.calls).toEqual(confirmed ? [[requestId]] : []);
+        expect(executeCommand).not.toHaveBeenCalled();
+        executeCommand.mockRestore();
+        expect(ctx.actionContext?.telemetry.suppressAll).toBe(true);
+    });
+
+    it('does not open Chat for a request abandoned before tracking or during prompt generation', async () => {
+        const executeCommand = vi.spyOn(vscode.commands, 'executeCommand');
+        for (const began of [false, true]) {
+            const ctx = context();
+            ctx.modelingTelemetry = {
+                beginRecommendation: vi.fn().mockReturnValue(began),
+                acceptsResponse: vi.fn().mockReturnValue(false),
+            } as unknown as ModelingTelemetry;
+            await dataModelingRouterDef.createCaller(ctx).requestRecommendation({
+                ...applyScenario(createInitialState(), 'chat'),
+                requestId: '12345678-1234-4123-8123-123456789001',
+            });
+        }
+        expect(executeCommand).not.toHaveBeenCalled();
         executeCommand.mockRestore();
     });
 
@@ -802,6 +849,33 @@ describe('recommendation prompt', () => {
         finishNewChat();
         await recommendation;
         expect(executeCommand).toHaveBeenLastCalledWith('workbench.action.chat.open', expect.anything());
+        executeCommand.mockRestore();
+    });
+
+    it('does not submit a recommendation abandoned while the new chat is opening', async () => {
+        let finishNewChat!: () => void;
+        const newChat = new Promise<void>((resolve) => {
+            finishNewChat = resolve;
+        });
+        const executeCommand = vi.spyOn(vscode.commands, 'executeCommand').mockResolvedValue(undefined);
+        executeCommand.mockReturnValueOnce(newChat);
+        const acceptsResponse = vi.fn().mockReturnValue(true);
+        const ctx = context();
+        ctx.modelingTelemetry = {
+            beginRecommendation: vi.fn().mockReturnValue(true),
+            acceptsResponse,
+        } as unknown as ModelingTelemetry;
+        const requestId = '12345678-1234-4123-8123-123456789001';
+        const recommendation = dataModelingRouterDef.createCaller(ctx).requestRecommendation({
+            ...applyScenario(createInitialState(), 'chat'),
+            requestId,
+        });
+        await vi.waitFor(() => expect(executeCommand).toHaveBeenCalledExactlyOnceWith('workbench.action.chat.newChat'));
+        acceptsResponse.mockReturnValue(false);
+        finishNewChat();
+        await recommendation;
+        expect(acceptsResponse).toHaveBeenLastCalledWith(requestId);
+        expect(executeCommand).toHaveBeenCalledExactlyOnceWith('workbench.action.chat.newChat');
         executeCommand.mockRestore();
     });
 

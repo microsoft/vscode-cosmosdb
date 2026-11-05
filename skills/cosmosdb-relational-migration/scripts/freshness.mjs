@@ -9,6 +9,7 @@ import { MATRIX_VERSION } from './check-sdk-compatibility.mjs';
 import { requireOptionValue } from './cli-arguments.mjs';
 import { showHelp } from './cli-help.mjs';
 import { normalizePhaseName } from './phase-names.mjs';
+import { parseJson } from './phase-summary.mjs';
 import { readProjectState, updateProjectState } from './project-state.mjs';
 import { validateDomainNames } from './validate-migration-project.mjs';
 
@@ -70,7 +71,8 @@ function projectInput(id, value) {
 }
 
 export function selectedDiscoveryFiles(workspace, project, source) {
-    const property = { 'schema-ddl': 'schemaInventory', volumetrics: 'volumetrics', 'access-patterns': 'accessPatterns' }[source];
+    const directorySource = source === 'schema-evidence' ? 'schema-ddl' : source;
+    const property = { 'schema-ddl': 'schemaInventory', volumetrics: 'volumetrics', 'access-patterns': 'accessPatterns' }[directorySource];
     if (!property) throw new Error(`Unknown discovery source: ${source}`);
     const selection = project.phases?.discovery?.[property];
     const explicitFiles = selection?.files;
@@ -78,7 +80,7 @@ export function selectedDiscoveryFiles(workspace, project, source) {
         ? path.join(workspace, '.cosmosdb-migration')
         : selection?.path !== undefined
         ? path.resolve(workspace, selection.path)
-        : path.join(workspace, '.cosmosdb-migration/phases/1-discovery', source);
+        : path.join(workspace, '.cosmosdb-migration/phases/1-discovery', directorySource);
     relativePath(workspace, base);
     if (fs.existsSync(base)) relativePath(fs.realpathSync(workspace), fs.realpathSync(base));
     const list = (directory) =>
@@ -99,10 +101,11 @@ export function selectedDiscoveryFiles(workspace, project, source) {
         relativePath(workspace, file);
         return file;
     }));
-    const template = source === 'schema-ddl' ? undefined
+    const template = directorySource === 'schema-ddl' ? undefined
         : path.resolve(workspace, '.cosmosdb-migration/phases/1-discovery', source, `${source}.md`);
     return (included ? included.map(file => path.resolve(base, file)) : list(base))
         .filter((filePath) => source !== 'schema-ddl' || /\.(?:ddl|sql)$/iu.test(filePath))
+        .filter((filePath) => source !== 'schema-evidence' || !/\.(?:ddl|sql)$/iu.test(filePath))
         .filter((filePath) => path.resolve(filePath) !== template)
         .filter((filePath) => !excluded.has(path.resolve(filePath)))
         .map((filePath) => {
@@ -123,6 +126,19 @@ function withoutKeys(value, excluded) {
     return Object.fromEntries(Object.entries(value).filter(([key]) => !excluded.has(key)));
 }
 
+function inferredSchemaInputs(workspace) {
+    const manifestPath = path.join(workspace, '.cosmosdb-migration/phases/1-discovery/preflight-manifest.json');
+    if (!fs.existsSync(manifestPath)) return [];
+    const files = parseJson(fs.readFileSync(manifestPath, 'utf8')).sourceInventory?.files ?? [];
+    const sourcePaths = new Set(files.filter(file => file.origin === 'inferred').flatMap(file => {
+        if (!Array.isArray(file.sourcePaths) || !file.sourcePaths.length || file.sourcePaths.some(source => typeof source !== 'string' || !source.trim())) {
+            throw new Error('Inferred DDL requires supporting sourcePaths');
+        }
+        return file.sourcePaths;
+    }));
+    return [...sourcePaths].map(source => fileInput(workspace, `schema-inference:${source}`, source));
+}
+
 function requiredInputs(workspace, project, phase) {
     const root = '.cosmosdb-migration';
     const discovery = project.phases?.discovery ?? {};
@@ -138,8 +154,9 @@ function requiredInputs(workspace, project, phase) {
                         relativePath(workspace, filePath),
                     ),
                 ),
+                ...inferredSchemaInputs(workspace),
                 projectInput('schema-selection', discovery.schemaInventory ?? null),
-                ...['volumetrics', 'access-patterns'].flatMap(source =>
+                ...['schema-evidence', 'volumetrics', 'access-patterns'].flatMap(source =>
                     selectedDiscoveryFiles(workspace, project, source).map(file =>
                         fileInput(workspace, `source-${source}:${relativePath(workspace, file)}`, relativePath(workspace, file)),
                     ),

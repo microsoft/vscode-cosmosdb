@@ -557,7 +557,7 @@ describe('migration accessibility', () => {
 
     it('describes every file picker and expander without changing its visible accessible name', () => {
         render(renderAssistant());
-        const descriptions = ['Database Schema Files, required', 'Volumetrics:', 'Access Patterns:'];
+        const descriptions = ['Optional DDL or supporting schema artifacts', 'Volumetrics:', 'Access Patterns:'];
         for (const label of ['Select Files…', 'Select Folder…', '1 file(s) selected']) {
             const controls = screen.getAllByRole('button', { name: label });
             expect(controls).toHaveLength(3);
@@ -565,10 +565,26 @@ describe('migration accessibility', () => {
                 expect(control).toHaveTextContent(label);
                 expect(control).toHaveAccessibleName(label);
                 expect(control).toHaveAccessibleDescription(
-                    label === '1 file(s) selected' && index === 0 ? 'Database Schema Files:' : descriptions[index],
+                    label === '1 file(s) selected' && index === 0 ? 'Source Schema:' : descriptions[index],
                 );
             });
         }
+    });
+
+    it('offers an icon-only inference action without supplied DDL', () => {
+        state.schemaFiles = [];
+        render(renderAssistant());
+        const button = screen.getByRole('button', { name: 'Generate schema files from workspace code using AI' });
+        expect(button.textContent).toBe('');
+        expect(button).toHaveAccessibleName('Generate schema files from workspace code using AI');
+        expect(button).not.toHaveAttribute('aria-description');
+        expect(button).toBeEnabled();
+        fireEvent.click(button);
+        expect(postMessage).toHaveBeenCalledWith({
+            type: 'event',
+            name: 'command',
+            params: [{ commandName: 'analyzeDatabaseSchema', params: [] }],
+        });
     });
 
     it.each(['azure', 'emulator'] as const)(

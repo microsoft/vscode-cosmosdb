@@ -330,16 +330,19 @@ test.describe('Migration Assistant', () => {
         await expect(migration.analysisField('frameworks')).toHaveAccessibleName('Frameworks:');
         await expect(migration.analysisField('frameworks')).toHaveJSProperty('required', false);
 
-        const schemaFilesDescription = 'Database Schema Files, required';
+        const schemaFilesDescription = 'Optional DDL or supporting schema artifacts';
         await expect(
             frame.getByRole('button', { name: 'Select Files…', description: schemaFilesDescription }),
         ).toHaveAccessibleDescription(schemaFilesDescription);
         await expect(
             frame.getByRole('button', { name: 'Select Folder…', description: schemaFilesDescription }),
         ).toHaveAccessibleDescription(schemaFilesDescription);
-        await expect(
-            frame.getByRole('button', { name: 'Generate schema files from workspace code using AI' }),
-        ).toHaveAccessibleDescription(schemaFilesDescription);
+        await expect(migration.generateSchemaButton).toHaveText('');
+        await expect(migration.generateSchemaButton).toHaveAccessibleName(
+            'Generate schema files from workspace code using AI',
+        );
+        await migration.generateSchemaButton.hover();
+        await expect(frame.getByRole('tooltip')).toHaveText('Generate schema files from workspace code using AI');
         for (const description of [schemaFilesDescription, 'Volumetrics:', 'Access Patterns:']) {
             for (const name of ['Select Files…', 'Select Folder…']) {
                 const picker = frame.getByRole('button', { name, description, exact: true });
@@ -349,8 +352,8 @@ test.describe('Migration Assistant', () => {
             }
         }
         await expect(
-            frame.getByRole('button', { name: /file\(s\) selected/, description: 'Database Schema Files:' }),
-        ).toHaveAccessibleDescription('Database Schema Files:');
+            frame.getByRole('button', { name: /file\(s\) selected/, description: 'Source Schema:' }),
+        ).toHaveAccessibleDescription('Source Schema:');
 
         await frame.getByRole('button', { name: new RegExp(PHASE_HEADERS.phase4) }).click();
         await expect(frame.getByRole('radiogroup', { name: /Target Environment/ })).toHaveAttribute(
@@ -416,7 +419,7 @@ test.describe('Migration Assistant', () => {
     test('interactive help links are keyboard accessible', async ({ vscodeWindow }) => {
         const frame = await openMigrationSeeded(vscodeWindow);
         const helpLinks = [
-            ['Database schema files help', 'schema-ddl/'],
+            ['Source schema help', 'schema-ddl/'],
             ['Volumetrics help', 'volumetrics/'],
             ['Access patterns help', 'access-patterns/'],
         ] as const;
@@ -511,7 +514,7 @@ test.describe('Migration Assistant', () => {
         await expect(migration.updateAccessPatternsButton).toHaveAccessibleDescription(consentDescription);
 
         for (const [button, description] of [
-            [migration.generateSchemaButton, `Database Schema Files, required ${consentDescription}`],
+            [migration.generateSchemaButton, consentDescription],
             [migration.updateVolumetricsButton, consentDescription],
             [migration.updateAccessPatternsButton, consentDescription],
         ] as const) {
@@ -1358,7 +1361,7 @@ test.describe('Migration Assistant', () => {
                     )?.promptText ?? '',
                 { timeout: 15_000 },
             )
-            .toContain('Run only the schema-acquisition preflight step.');
+            .toContain('Infer the source schema from workspace code and selected artifacts (schema-source: infer).');
         await migration.completeSkillRun(
             readFlowPrompts().findLast(
                 (prompt) =>

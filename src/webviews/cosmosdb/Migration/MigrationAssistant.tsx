@@ -1393,7 +1393,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
     const { announce } = useAnnounce();
     const previousRunActivity = useRef(state.runActivity);
     const previousConnectionTestState = useRef(state.connectionTestState);
-    const schemaFilesDescription = l10n.t('Database Schema Files, required');
+    const schemaFilesDescription = l10n.t('Optional DDL or supporting schema artifacts');
     const volumetricsLabel = l10n.t('Volumetrics:');
     const accessPatternsLabel = l10n.t('Access Patterns:');
     useEffect(() => {
@@ -2040,7 +2040,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
 
                 <Text size={200} style={{ color: 'var(--vscode-descriptionForeground)' }}>
                     {l10n.t(
-                        'Provide your database schema files and optionally volumetric data and access pattern descriptions to improve analysis accuracy.',
+                        'Database DDL is optional. Infer the schema from code and supporting artifacts when no DDL is available.',
                     )}
                 </Text>
 
@@ -2049,14 +2049,13 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                     <div className={styles.filePickerGrid}>
                         {/* Schema Files */}
                         <Text weight="semibold" size={200}>
-                            <span id={`${analysisLabelId}-schema-files`}>{l10n.t('Database Schema Files:')}</span>{' '}
-                            <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>
+                            <span id={`${analysisLabelId}-schema-files`}>{l10n.t('Source Schema:')}</span>{' '}
                             <InfoPopoverIcon
                                 content={
                                     <>
                                         <p style={tooltipParagraphStyle}>
                                             {l10n.t(
-                                                'Provide the source database schema as one or more DDL/structure files. Supported file types: .sql, .json, .xml, .csv, .log, .out.',
+                                                'Select DDL (.sql, .ddl) or supporting artifacts such as ORM mappings, metadata exports, schema documentation, and sample data. Supporting artifacts are evidence, not authoritative DDL.',
                                             )}
                                         </p>
                                         <p style={tooltipParagraphStyle}>
@@ -2068,12 +2067,12 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                         </p>
                                         <p style={tooltipParagraphLastStyle}>
                                             {l10n.t(
-                                                "If you don't have a schema file at hand, use the AI button (sparkle icon) to reverse-engineer the schema from your workspace code: it scans entity definitions, ORM mappings, repositories, and raw SQL, then writes one consolidated .sql file per discovered domain into the schema-ddl/ folder.",
+                                                'Schema inference uses workspace code and selected artifacts to generate DDL with provenance and explicit assumptions. Supplied DDL is preserved.',
                                             )}
                                         </p>
                                     </>
                                 }
-                                ariaLabel={l10n.t('Database schema files help')}
+                                ariaLabel={l10n.t('Source schema help')}
                                 styles={styles}
                             />
                         </Text>
@@ -2104,7 +2103,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                             size="small"
                             icon={<SparkleRegular />}
                             aria-label={generateSchemaLabel}
-                            aria-description={`${l10n.t('Database Schema Files, required')}${aiActionDisabledDescription ? ` ${aiActionDisabledDescription}` : ''}`}
+                            aria-description={aiActionDisabledDescription}
                             onClick={handleAnalyzeDatabaseSchema}
                             disabled={isAiActionDisabled}
                         />

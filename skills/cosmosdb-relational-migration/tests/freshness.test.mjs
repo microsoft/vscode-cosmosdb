@@ -97,6 +97,78 @@ test('selects workspace-root DDL files from legacy empty paths', () => {
     }
 });
 
+test('resolves supporting schema evidence separately from DDL and respects exact selections and exclusions', () => {
+    const { workspace, project } = workspaceProject();
+    try {
+        const directory = path.join(workspace, '.cosmosdb-migration/phases/1-discovery/schema-ddl');
+        fs.mkdirSync(directory, { recursive: true });
+        for (const name of ['Schema.sql', 'metadata.json', 'schema.md']) fs.writeFileSync(path.join(directory, name), name);
+        assert.deepEqual(selectedDdlFiles(workspace, project), [path.join(directory, 'Schema.sql')]);
+        assert.deepEqual(selectedDiscoveryFiles(workspace, project, 'schema-evidence'), [path.join(directory, 'metadata.json'), path.join(directory, 'schema.md')]);
+        project.phases.discovery.schemaInventory = { files: ['phases/1-discovery/schema-ddl/metadata.json'] };
+        assert.deepEqual(selectedDdlFiles(workspace, project), []);
+        assert.deepEqual(selectedDiscoveryFiles(workspace, project, 'schema-evidence'), [path.join(directory, 'metadata.json')]);
+        project.phases.discovery.schemaInventory.excludedFiles = ['phases/1-discovery/schema-ddl/metadata.json'];
+        assert.deepEqual(selectedDiscoveryFiles(workspace, project, 'schema-evidence'), []);
+        project.phases.discovery.schemaInventory = { files: [] };
+        assert.deepEqual(selectedDiscoveryFiles(workspace, project, 'schema-evidence'), []);
+    } finally {
+        fs.rmSync(workspace, { recursive: true, force: true });
+    }
+});
+
+for (const sourceName of ['model.ts', 'metadata.json']) {
+    test(`completes preflight with DDL inferred from ${sourceName} and tracks its evidence automatically`, () => {
+        const { workspace, project } = workspaceProject();
+        try {
+            sourceFixture(workspace, project);
+            const sourcePath = path.join(workspace, sourceName);
+            fs.writeFileSync(sourcePath, 'source evidence');
+            const manifestPath = path.join(workspace, '.cosmosdb-migration/phases/1-discovery/preflight-manifest.json');
+            const evidence = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+            Object.assign(evidence.sourceInventory.files[0], { origin: 'inferred', sourcePaths: [sourceName] });
+            fs.writeFileSync(manifestPath, JSON.stringify(evidence));
+            const manifest = buildFreshnessManifest(workspace, project, 'preflight');
+            assert(manifest.inputs.some(input => input.id === `schema-inference:${sourceName}`));
+            project.freshness.preflight = manifest;
+            fs.writeFileSync(path.join(workspace, '.cosmosdb-migration/project.json'), JSON.stringify(project));
+            assert.equal(checkPhaseCompletion(workspace, 'preflight').complete, true);
+            fs.appendFileSync(sourcePath, ' changed');
+            assert.equal(checkPhaseCompletion(workspace, 'preflight').complete, false);
+            assert.equal(validateFreshnessManifest(workspace, project, 'preflight', manifest).freshness, 'stale');
+            fs.rmSync(sourcePath);
+            assert.equal(validateFreshnessManifest(workspace, project, 'preflight', manifest).freshness, 'stale');
+        } finally {
+            fs.rmSync(workspace, { recursive: true, force: true });
+        }
+    });
+}
+
+test('tracks selected supporting artifacts and rejects escaping inference provenance', () => {
+    const { workspace, project } = workspaceProject();
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'outside-schema-evidence-'));
+    try {
+        sourceFixture(workspace, project);
+        const artifact = path.join(workspace, '.cosmosdb-migration/phases/1-discovery/schema-ddl/schema.md');
+        fs.writeFileSync(artifact, 'schema evidence');
+        const manifest = buildFreshnessManifest(workspace, project, 'preflight');
+        assert(manifest.inputs.some(input => input.path?.endsWith('/schema.md')));
+        fs.appendFileSync(artifact, ' changed');
+        assert.equal(validateFreshnessManifest(workspace, project, 'preflight', manifest).freshness, 'stale');
+        const manifestPath = path.join(workspace, '.cosmosdb-migration/phases/1-discovery/preflight-manifest.json');
+        const evidence = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+        const externalFile = path.join(outside, 'metadata.json');
+        fs.writeFileSync(externalFile, '{}');
+        fs.symlinkSync(externalFile, path.join(workspace, 'linked.json'));
+        Object.assign(evidence.sourceInventory.files[0], { origin: 'inferred', sourcePaths: ['linked.json'] });
+        fs.writeFileSync(manifestPath, JSON.stringify(evidence));
+        assert.throws(() => buildFreshnessManifest(workspace, project, 'preflight'), /outside the workspace/u);
+    } finally {
+        fs.rmSync(workspace, { recursive: true, force: true });
+        fs.rmSync(outside, { recursive: true, force: true });
+    }
+});
+
 test('tracks raw workload files and source selections independently of curated templates', () => {
     const { workspace, project } = workspaceProject();
     try {

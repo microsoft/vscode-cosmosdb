@@ -67,10 +67,10 @@ The installation should contain two independent skill folders:
 
 ## Get Started
 
-Open the application source and, at minimum, **strongly consider supplying current
-database DDL**. DDL is the most important migration input: it establishes the source
-schema and relationships. Inferring it from code is possible, but not recommended
-because code may omit database constraints, indexes, or behavior.
+Open the application source. **Supplying DDL is optional.** Current database DDL is
+preferred when available; otherwise the agent infers it from code and supporting
+artifacts, recording provenance and uncertainty. These sources may omit deployed
+constraints, indexes, or behavior, so review the inferred schema before relying on it.
 
 Real workload measurements are the next most useful input. You do not need to fill
 in templates before starting: the agent can prefill volumetrics from supplied evidence
@@ -201,7 +201,7 @@ validation. See the [memory workflow](./references/workflow/memory.md).
 Start with the application source, prioritize current DDL, and add real workload
 evidence where available. The recommended preparation is:
 
-1. Export the current source schema as DDL.
+1. Supply current DDL when available, or identify code and artifacts for schema inference.
 2. Gather logs or comparable measurements so the agent can prefill volumetrics for review.
 3. Optionally add business access requirements; the agent prepares the access-patterns
     template automatically during preflight.
@@ -226,7 +226,7 @@ Alternatively, place raw inputs in the default folders:
 
 ```text
 .cosmosdb-migration/phases/1-discovery/
-|-- schema-ddl/        # Source schema SQL files
+|-- schema-ddl/        # DDL and supporting schema artifacts
 |-- volumetrics/       # Row-count reports, monitoring exports, workload logs
 `-- access-patterns/   # Query samples, workload descriptions, query logs
 ```
@@ -239,7 +239,7 @@ evidence in separate files. You do not need to edit checkpoint JSON yourself.
 
 ### DDL
 
-**DDL is the most important input and is highly recommended.** Supply a schema-only
+**Current DDL is preferred but not required.** Supply a schema-only
 SQL export representing the current source database, and identify
 the database engine, version, and SQL dialect when known. Include schema-qualified table
 names, columns and types, nullability, primary and foreign keys, constraints, defaults,
@@ -248,12 +248,22 @@ they define behavior the application relies on. Multiple files are supported; id
 the complete set, including referenced definitions. A data dump is not required.
 
 Selected DDL is authoritative and is not rewritten to match application code. Conflicts
-with ORM mappings or queries are reported for review. If no DDL is selected, inference
-from application models, migrations, and queries is possible, but not recommended:
-these sources may not represent the complete deployed database. Inferred DDL records
-provenance and uncertainty and needs careful human review. Incomplete or malformed
+with ORM mappings or queries are reported for review. Without DDL, use application models,
+migrations, queries, metadata exports, schema documents, or samples as evidence.
+Inferred DDL retains provenance and uncertainty across reruns; changed evidence makes it
+stale. These sources may not represent the complete deployed database. Incomplete or malformed
 supplied DDL must be corrected or deselected; it does not silently trigger code-based
 inference.
+
+In the Migration Assistant, select DDL or supporting artifacts with the existing schema
+picker, or use the schema AI action with workspace code alone. Non-DDL selections are exposed
+separately to the Skill as schema evidence. The action passes explicit inference intent;
+the Skill owns the procedure and safeguards.
+
+```text
+Run schema acquisition for this application in interactive mode.
+No DDL is available; infer the source schema from code and docs/schema.md.
+```
 
 Sample prompt:
 

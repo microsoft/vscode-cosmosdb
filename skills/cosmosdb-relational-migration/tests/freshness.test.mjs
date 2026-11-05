@@ -197,6 +197,87 @@ test('workspace schema selection excludes the checkpoint and remains current aft
     }
 });
 
+for (const selectionMode of ['implicit', 'explicit']) {
+    test(`${selectionMode} workspace schema evidence stays current when Discovery outputs are regenerated`, () => {
+        const { workspace, project } = workspaceProject();
+        try {
+            const inventory = sourceFixture(workspace, project);
+            discoveryFixture(workspace, inventory, project);
+            const root = path.join(workspace, '.cosmosdb-migration');
+            const checkpoint = path.join(root, 'project.json');
+            const metadata = path.join(workspace, 'metadata.json');
+            fs.writeFileSync(metadata, '{}');
+            const listFiles = directory => fs.readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
+                const filename = path.join(directory, entry.name);
+                return entry.isDirectory() ? listFiles(filename) : [filename];
+            });
+            project.phases.discovery.schemaInventory = selectionMode === 'implicit' ? { path: '.' }
+                : { files: listFiles(workspace).map(file => path.relative(root, file).split(path.sep).join('/')).sort() };
+            fs.writeFileSync(checkpoint, JSON.stringify(project));
+            assert.deepEqual(selectedDiscoveryFiles(workspace, project, 'schema-evidence'), [metadata]);
+            recordFreshness(workspace, 'preflight', readProjectState(workspace).revision);
+            discoveryFixture(workspace, inventory, JSON.parse(fs.readFileSync(checkpoint, 'utf8')), {
+                patterns: [{ id: 'R001', kind: 'read', tables: ['dbo.Orders'], tps: 10, evidence: 'schema-inferred', operation: 'Find an order.', sourcePaths: [] }],
+                noObservedAccess: [],
+            });
+            const report = path.join(root, 'phases/1-discovery/discovery-report.md');
+            fs.appendFileSync(report, '\nRegenerated source analysis.\n');
+            assert.equal(checkPhaseCompletion(workspace, 'preflight').complete, true);
+            assert.equal(checkPhaseCompletion(workspace, 'discovery').complete, true);
+            fs.rmSync(report);
+            assert.equal(checkPhaseCompletion(workspace, 'preflight').complete, true);
+            fs.appendFileSync(metadata, '\nchanged');
+            assert.equal(checkPhaseCompletion(workspace, 'preflight').freshness, 'stale');
+            fs.writeFileSync(metadata, '{}');
+            assert.equal(checkPhaseCompletion(workspace, 'preflight').complete, true);
+            fs.appendFileSync(path.join(root, 'phases/1-discovery/volumetrics/volumetrics.md'), '\n');
+            assert.equal(checkPhaseCompletion(workspace, 'preflight').freshness, 'stale');
+        } finally {
+            fs.rmSync(workspace, { recursive: true, force: true });
+        }
+    });
+}
+
+test('schema evidence excludes managed phase outputs and aliases but retains raw inputs', () => {
+    const { workspace, project } = workspaceProject();
+    try {
+        sourceFixture(workspace, project);
+        const root = path.join(workspace, '.cosmosdb-migration');
+        const managed = [
+            'project.json', 'code-migration-plan.md', 'code-migration-manifest.json',
+            'phases/1-discovery/preflight-summary.md', 'phases/1-discovery/preflight-manifest.json',
+            'phases/1-discovery/discovery-report.md', 'phases/1-discovery/discovery-manifest.json',
+            'phases/1-discovery/volumetrics/volumetrics.md', 'phases/1-discovery/access-patterns/access-patterns.md',
+            'phases/2-assessment/assessment-summary.md', 'phases/2-assessment/assessment-manifest.json',
+            'phases/2-assessment/domains/Orders.md', 'phases/2-assessment/domains/Orders.manifest.json',
+            'phases/3-schema-conversion/model.json', 'phases/3-schema-conversion/summary.md', 'phases/3-schema-conversion/manifest.json',
+            'phases/3-schema-conversion/domains/Orders/summary.md', 'phases/3-schema-conversion/domains/Orders/cosmos-model.json',
+            'phases/4-provisioning/main.bicep', 'phases/4-provisioning/main.bicepparam',
+            'phases/4-provisioning/sample-data.json', 'phases/4-provisioning/seed-data.csh',
+            'phases/4-provisioning/summary.md', 'phases/4-provisioning/manifest.json',
+        ];
+        const raw = [
+            'notes.md', 'phases/1-discovery/schema-ddl/metadata.json',
+            'phases/1-discovery/volumetrics/raw.csv', 'phases/1-discovery/access-patterns/raw.log',
+            'phases/2-assessment/user-evidence.json', 'phases/3-schema-conversion/domains/Orders/example.json',
+        ];
+        for (const relative of [...managed, ...raw]) {
+            const file = path.join(root, relative);
+            fs.mkdirSync(path.dirname(file), { recursive: true });
+            if (!fs.existsSync(file)) fs.writeFileSync(file, 'fixture');
+        }
+        project.phases.discovery.schemaInventory = { path: '.cosmosdb-migration' };
+        assert.deepEqual(selectedDiscoveryFiles(workspace, project, 'schema-evidence'), raw.map(file => path.join(root, file)).sort());
+        assert.deepEqual(selectedDdlFiles(workspace, project), [path.join(root, 'phases/1-discovery/schema-ddl/Schema.sql')]);
+        fs.symlinkSync(root, path.join(workspace, 'migration-alias'), 'junction');
+        const rawAlias = '../migration-alias/phases/1-discovery/schema-ddl/metadata.json';
+        project.phases.discovery.schemaInventory = { files: [...managed.map(file => `../migration-alias/${file}`), rawAlias] };
+        assert.deepEqual(selectedDiscoveryFiles(workspace, project, 'schema-evidence'), [path.resolve(root, rawAlias)]);
+    } finally {
+        fs.rmSync(workspace, { recursive: true, force: true });
+    }
+});
+
 test('checkpoint aliases cannot enter raw schema evidence or inference and consulted freshness inputs', () => {
     const { workspace, project } = workspaceProject();
     try {

@@ -5,6 +5,8 @@
 
 import { type MetricApplicability, type MetricUnavailableReason } from './metrics/contracts';
 import { type AccountHealthResult } from './services/accountHealth';
+import { getVisibleAdvisories } from './services/advisories/core/helpers';
+import { type DerivedAdvisoriesResult } from './services/advisories/core/types';
 import { type ActiveAlertSummary, type RecommendationsResult } from './services/alertsRecommendations';
 import { type InventoryContainerRow } from './services/inventory';
 import { type ContainerMetrics } from './services/inventoryMetrics';
@@ -82,7 +84,10 @@ export type OverviewHealthCheck = { outcome: HealthCheckOutcome } & (
 
 export type HealthIndicatorReason =
     | { kind: 'accountThrottling' | 'criticalAlerts' | 'warningAlerts' | 'advisor' }
-    | { kind: 'criticalContainers' | 'warningContainers'; count: number };
+    | {
+          kind: 'criticalContainers' | 'warningContainers' | 'advisorRecommendations' | 'derivedAdvisories';
+          count: number;
+      };
 
 export interface HealthIndicator {
     severity: 'Critical' | 'Needs Attention';
@@ -123,6 +128,8 @@ export function deriveOverviewHealth({
     normalizedRuApplicability,
     recommendations,
     recommendationsLoading,
+    derivedAdvisories,
+    dismissedAdvisoryIds,
 }: {
     account?: AccountHealthResult;
     accountLoading: boolean;
@@ -137,8 +144,10 @@ export function deriveOverviewHealth({
     inventoryMetrics?: { metrics: Record<string, Pick<ContainerMetrics, 'health'>> };
     inventoryMetricsLoading: boolean;
     normalizedRuApplicability?: MetricApplicability;
-    recommendations?: Pick<RecommendationsResult, 'available' | 'hasHighImpactPerfCost'>;
+    recommendations?: Pick<RecommendationsResult, 'available' | 'hasHighImpactPerfCost' | 'recommendations'>;
     recommendationsLoading: boolean;
+    derivedAdvisories?: Pick<DerivedAdvisoriesResult, 'available' | 'advisories'>;
+    dismissedAdvisoryIds?: ReadonlySet<string>;
 }): OverviewHealthModel {
     const containerHealth =
         inventory.available && inventory.supported
@@ -191,6 +200,22 @@ export function deriveOverviewHealth({
     }
     if (signals.hasHighImpactPerfCostRec) {
         advisoryReasons.push({ kind: 'advisor' });
+    }
+    const advisorCount = recommendations?.available
+        ? recommendations.recommendations.filter(
+              (recommendation) => recommendation.impact === 'High' || recommendation.impact === 'Medium',
+          ).length
+        : 0;
+    if (advisorCount > 0) {
+        advisoryReasons.push({ kind: 'advisorRecommendations', count: advisorCount });
+    }
+    const derivedCount = derivedAdvisories?.available
+        ? getVisibleAdvisories(derivedAdvisories.advisories, dismissedAdvisoryIds).filter(
+              (advisory) => advisory.severity === 'High' || advisory.severity === 'Medium',
+          ).length
+        : 0;
+    if (derivedCount > 0) {
+        advisoryReasons.push({ kind: 'derivedAdvisories', count: derivedCount });
     }
     if (advisoryReasons.length > 0) {
         indicators.advisories = {

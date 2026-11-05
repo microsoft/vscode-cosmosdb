@@ -3,20 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import {
-    Button,
-    Link,
-    MessageBar,
-    MessageBarActions,
-    MessageBarBody,
-    MessageBarTitle,
-} from '@fluentui/react-components';
+import { Button, Link } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
 import {
     READ_PERMISSIONS,
     type ReadFailure,
     type ReadSource,
 } from '../../../panels/accountOverview/accessRequirements';
+import { CollapsibleNotice } from './CollapsibleNotice';
 import { useDashboardActions } from './DashboardChrome';
 
 function sourceLabel(source: ReadSource): string {
@@ -90,42 +84,44 @@ export const ReadFailureNotice = ({ failures }: { failures: readonly ReadFailure
         return null;
     }
     return (
-        <MessageBar intent="warning" layout="multiline" politeness="polite" icon={{ 'aria-hidden': true }}>
-            <MessageBarBody>
-                <MessageBarTitle>{l10n.t('Some account data could not be loaded')}</MessageBarTitle>
-                <div>
-                    {l10n.t(
-                        'Successful checks remain available. Review the failed sources below; service diagnostics are recorded in the Azure Cosmos DB Output channel.',
-                    )}
-                </div>
-                <ul>
-                    {[...unique].map(([key, failure]) => (
-                        <li key={key}>
-                            <strong>{sourceLabel(failure.source)}</strong> {failureDescription(failure)}
-                            {failure.reason === 'rbac' && failure.kind !== 'authentication' && (
-                                <ul>
-                                    {READ_PERMISSIONS[failure.source].map((permission) => (
-                                        <li key={permission}>
-                                            <code>{permission}</code>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-                        </li>
-                    ))}
-                </ul>
-            </MessageBarBody>
-            <MessageBarActions>
-                <Button size="small" onClick={showOutput}>
-                    {l10n.t('Show Output')}
-                </Button>
-                <Link
-                    as="button"
-                    onClick={() => openUrl('https://learn.microsoft.com/azure/role-based-access-control/overview')}
-                >
-                    {l10n.t('Learn more about Azure roles')}
-                </Link>
-            </MessageBarActions>
-        </MessageBar>
+        <CollapsibleNotice
+            title={l10n.t('Some account data could not be loaded')}
+            intent="warning"
+            actions={
+                <>
+                    <Button size="small" onClick={showOutput}>
+                        {l10n.t('Show Output')}
+                    </Button>
+                    <Link
+                        as="button"
+                        onClick={() => openUrl('https://learn.microsoft.com/azure/role-based-access-control/overview')}
+                    >
+                        {l10n.t('Learn more about Azure roles')}
+                    </Link>
+                </>
+            }
+        >
+            <div>
+                {l10n.t(
+                    'Successful checks remain available. Review the failed sources below; service diagnostics are recorded in the Azure Cosmos DB Output channel.',
+                )}
+            </div>
+            <ul>
+                {[...unique].map(([key, failure]) => (
+                    <li key={key}>
+                        <strong>{sourceLabel(failure.source)}</strong> {failureDescription(failure)}
+                        {failure.reason === 'rbac' && failure.kind !== 'authentication' && (
+                            <ul>
+                                {READ_PERMISSIONS[failure.source].map((permission) => (
+                                    <li key={permission}>
+                                        <code>{permission}</code>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </li>
+                ))}
+            </ul>
+        </CollapsibleNotice>
     );
 };

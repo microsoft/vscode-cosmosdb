@@ -53,6 +53,9 @@ test('validates inference provenance without weakening supplied or generated DDL
         const file = evidence.sourceInventory.files[0];
         fs.writeFileSync(path.join(workspace, 'model.ts'), 'source evidence');
         Object.assign(file, { origin: 'inferred', sourcePaths: ['model.ts'] });
+        const expectedHash = evidence.sourceSha256;
+        evidence.sourceSha256 = sourceFilesHash(evidence.sourceInventory.dialect, evidence.sourceInventory.files);
+        assert.equal(evidence.sourceSha256, expectedHash);
         fs.writeFileSync(manifestPath, JSON.stringify(evidence));
         assert.deepEqual(readSourceInventory(workspace, project).errors, []);
         assert.equal(readSourceInventory(workspace, project).files[0].origin, 'inferred');
@@ -101,6 +104,10 @@ test('source hashes and inventory validation are stable across default string co
         assert.equal(sourceFilesHash('tsql', files), expectedHash);
         assert.equal(sourceFilesHash('tsql', [...files].reverse()), expectedHash);
         assert.deepEqual(files, original);
+        const enrichedFiles = files.map(file => ({ sourcePaths: ['model.ts'], sha256: file.sha256, origin: 'inferred', path: file.path })).reverse();
+        const originalEnriched = structuredClone(enrichedFiles);
+        assert.equal(sourceFilesHash('tsql', enrichedFiles), expectedHash);
+        assert.deepEqual(enrichedFiles, originalEnriched);
         const code = `
             import fs from 'node:fs';
             import { mockDefaultStringCollation } from ${JSON.stringify(new URL('./locale-fixtures.mjs', import.meta.url).href)};

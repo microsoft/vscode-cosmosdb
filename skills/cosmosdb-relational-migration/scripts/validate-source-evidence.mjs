@@ -14,7 +14,8 @@ function compareFilePaths(left, right) {
 }
 
 export function sourceFilesHash(dialect, files) {
-    return createHash('sha256').update(JSON.stringify({ dialect, files: [...files].sort(compareFilePaths) })).digest('hex');
+    const sourceFiles = files.map(file => ({ path: file.path, sha256: file.sha256 })).sort(compareFilePaths);
+    return createHash('sha256').update(JSON.stringify({ dialect, files: sourceFiles })).digest('hex');
 }
 
 export function sourceIdentity(value, dialect) {

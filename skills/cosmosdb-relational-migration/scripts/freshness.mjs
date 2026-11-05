@@ -54,6 +54,11 @@ function relativePath(workspace, filePath) {
     return relative.split(path.sep).join('/');
 }
 
+function projectFilePath(workspace) {
+    const checkpoint = path.resolve(workspace, '.cosmosdb-migration/project.json');
+    return fs.existsSync(checkpoint) ? fs.realpathSync(checkpoint) : checkpoint;
+}
+
 function fileInput(workspace, id, relative) {
     const absolute = path.resolve(workspace, relative);
     if (!fs.statSync(absolute).isFile()) throw new Error(`Freshness input is not a file: ${relative}`);
@@ -63,6 +68,7 @@ function fileInput(workspace, id, relative) {
     if (realRelative === '..' || realRelative.startsWith(`..${path.sep}`) || path.isAbsolute(realRelative)) {
         throw new Error(`Freshness input resolves outside the workspace: ${relative}`);
     }
+    if (realFile === projectFilePath(workspace)) throw new Error('The migration checkpoint cannot be a file freshness input; use semantic project values');
     return { id, kind: 'file', path: relativePath(workspace, absolute), sha256: fileSha256(absolute) };
 }
 
@@ -103,6 +109,7 @@ export function selectedDiscoveryFiles(workspace, project, source) {
     }));
     const template = directorySource === 'schema-ddl' ? undefined
         : path.resolve(workspace, '.cosmosdb-migration/phases/1-discovery', source, `${source}.md`);
+    const checkpoint = source === 'schema-evidence' ? projectFilePath(workspace) : undefined;
     return (included ? included.map(file => path.resolve(base, file)) : list(base))
         .filter((filePath) => source !== 'schema-ddl' || /\.(?:ddl|sql)$/iu.test(filePath))
         .filter((filePath) => source !== 'schema-evidence' || !/\.(?:ddl|sql)$/iu.test(filePath))
@@ -114,6 +121,7 @@ export function selectedDiscoveryFiles(workspace, project, source) {
             if (!fs.statSync(filePath).isFile()) throw new Error(`Discovery input is not a file: ${filePath}`);
             return filePath;
         })
+        .filter(filePath => source !== 'schema-evidence' || fs.realpathSync(filePath) !== checkpoint)
         .sort();
 }
 

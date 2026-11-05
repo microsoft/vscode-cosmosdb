@@ -172,7 +172,7 @@
     "@azure/cosmos": "~4.10.0",
     "@azure/identity": "~4.14.0",
     "@azure/monitor-query-logs": "~1.0.0",
-    "@fluentui/react-components": "~9.75.1",
+    "@fluentui/react-components": "~9.74.11",
     "@fluentui/react-icons": "~2.0.313",
     "@microsoft/vscode-azext-azureauth": "~5.1.1",
     "@microsoft/vscode-azext-azureutils": "~5.0.0",
@@ -200,6 +200,7 @@
     "zod": "~4.6.0"
   },
   "overrides": {
+    "@fluentui/react-provider": "9.22.23",
     "@prantlf/jsonlint": {
       "ajv": "~8.18.0"
     },

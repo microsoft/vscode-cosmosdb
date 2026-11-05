@@ -59,7 +59,9 @@ test('validates inference provenance without weakening supplied or generated DDL
         fs.writeFileSync(manifestPath, JSON.stringify(evidence));
         assert.deepEqual(readSourceInventory(workspace, project).errors, []);
         assert.equal(readSourceInventory(workspace, project).files[0].origin, 'inferred');
-        for (const sourcePaths of [undefined, [], [''], ['../outside'], [workspace], [file.path]]) {
+        fs.symlinkSync(path.dirname(path.join(workspace, file.path)), path.join(workspace, 'schema-alias'), 'junction');
+        for (const sourcePaths of [undefined, [], [''], ['../outside'], [workspace], [file.path],
+            [`./${file.path}`], [file.path.replace('/schema-ddl/', '/schema-ddl//')], ['schema-alias/Schema.sql']]) {
             file.sourcePaths = sourcePaths;
             fs.writeFileSync(manifestPath, JSON.stringify(evidence));
             assert.match(readSourceInventory(workspace, project).errors[0].message, /supporting sourcePaths/u);
@@ -73,6 +75,10 @@ test('validates inference provenance without weakening supplied or generated DDL
             fs.writeFileSync(manifestPath, JSON.stringify(evidence));
             assert.deepEqual(readSourceInventory(workspace, project).errors, []);
         }
+        file.origin = 'inferred';
+        fs.writeFileSync(manifestPath, JSON.stringify(evidence));
+        fs.rmSync(path.join(workspace, 'model.ts'));
+        assert.deepEqual(readSourceInventory(workspace, project).errors, []);
         fs.appendFileSync(path.join(workspace, file.path), '\n-- User edit');
         assert.match(readSourceInventory(workspace, project).errors[0].message, /stale/u);
     } finally {

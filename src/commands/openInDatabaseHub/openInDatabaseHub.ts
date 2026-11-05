@@ -33,9 +33,12 @@ export async function openInDatabaseHub(context: IActionContext, node?: TreeElem
     const url = new URL('/workloads/fdh/databaseHub/estate', 'https://app.fabric.microsoft.com');
     url.searchParams.set('databaseType', 'cosmos-db');
     url.searchParams.set('databaseResourceId', accountId);
-    context.valuesToMask.push(...getResourceMaskedValues([url.toString()]));
+    const urlString = url.toString();
+    context.valuesToMask.push(...getResourceMaskedValues([urlString]));
 
-    if (!(await vscode.env.openExternal(vscode.Uri.parse(url.toString())))) {
+    // Like accountActions, pass a string to preserve encoding through VS Code's opener.
+    // The runtime accepts strings despite the Uri-only API type.
+    if (!(await vscode.env.openExternal(urlString as unknown as vscode.Uri))) {
         throw new Error(l10n.t('Unable to open the link in your browser.'));
     }
 }

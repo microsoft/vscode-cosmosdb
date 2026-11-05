@@ -24,11 +24,9 @@ import { type CosmosDBAccountModel } from '../../tree/cosmosdb/models/CosmosDBAc
 import { NoSqlAccountResourceItem } from '../../tree/nosql/NoSqlAccountResourceItem';
 import { openInDatabaseHub } from './openInDatabaseHub';
 
-vi.mock('vscode', () => ({
+vi.mock('vscode', async (importOriginal) => ({
+    ...(await importOriginal<typeof vscode>()),
     env: { openExternal: vi.fn() },
-    Uri: { parse: vi.fn((url: string) => ({ toString: () => url })) },
-    TreeItemCollapsibleState: { None: 0, Collapsed: 1 },
-    ThemeIcon: class {},
 }));
 vi.mock('../../cosmosdb/AzureResourceMetadata', () => ({ AzureResourceMetadata: class {} }));
 vi.mock('../../constants', () => ({ getThemeAgnosticIconURI: () => new vscode.ThemeIcon('database') }));
@@ -171,8 +169,9 @@ describe('openInDatabaseHub', () => {
     it('opens the Portal estate route with only the account ARM ID and database type, masking before browser access', async () => {
         const node = createNode();
         const context = createArmTestContext();
-        vi.mocked(vscode.env.openExternal).mockImplementationOnce(async (uri) => {
-            const url = new URL(uri.toString());
+        vi.mocked(vscode.env.openExternal).mockImplementationOnce(async (target) => {
+            const browserUrl = typeof target === 'string' ? target : encodeURI(target.toString(true));
+            const url = new URL(browserUrl);
             expect(url.origin).toBe('https://app.fabric.microsoft.com');
             expect(url.pathname).toBe('/workloads/fdh/databaseHub/estate');
             expect([...url.searchParams]).toEqual([
@@ -200,14 +199,22 @@ describe('openInDatabaseHub', () => {
         expect(context.valuesToMask.every((value) => value.trim().length > 0)).toBe(true);
     });
 
-    it('safely encodes account IDs instead of allowing extra query parameters', async () => {
-        const account = { ...createAccount(), id: `${createAccount().id} &extra=value#fragment` };
-        await openInDatabaseHub(createArmTestContext(), createNode(account));
-        const url = new URL(vi.mocked(vscode.env.openExternal).mock.calls[0][0].toString());
-        expect(url.searchParams.get('databaseResourceId')).toBe(account.id);
-        expect(url.searchParams.has('extra')).toBe(false);
-        expect(url.hash).toBe('');
-    });
+    it.each([' &extra=value#fragment', '%26extra%3Dvalue', '?query=value+plus'])(
+        'preserves account IDs containing %s through browser-dispatch serialization',
+        async (suffix) => {
+            const account = { ...createAccount(), id: `${createAccount().id}${suffix}` };
+            await openInDatabaseHub(createArmTestContext(), createNode(account));
+            const target = vi.mocked(vscode.env.openExternal).mock.calls[0][0];
+            // VS Code preserves strings but serializes URI inputs with toString(true) followed by encodeURI.
+            const browserUrl = typeof target === 'string' ? target : encodeURI(target.toString(true));
+            const url = new URL(browserUrl);
+            expect([...url.searchParams]).toEqual([
+                ['databaseType', 'cosmos-db'],
+                ['databaseResourceId', account.id],
+            ]);
+            expect(url.hash).toBe('');
+        },
+    );
 
     it('rejects a missing selection instead of opening an unscoped Hub', async () => {
         await expect(openInDatabaseHub(createArmTestContext())).rejects.toThrow('NoSQL');

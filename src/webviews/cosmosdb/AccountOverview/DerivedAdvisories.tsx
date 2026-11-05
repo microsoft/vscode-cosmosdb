@@ -21,10 +21,6 @@ import {
     DialogTrigger,
     Link,
     makeStyles,
-    MessageBar,
-    MessageBarActions,
-    MessageBarBody,
-    MessageBarTitle,
     Text,
     tokens,
     typographyStyles,
@@ -33,6 +29,7 @@ import {
 import { ChevronRight16Regular, Dismiss16Regular, Sparkle16Regular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { getVisibleAdvisories } from '../../../panels/accountOverview/services/advisories/core/helpers';
 import {
     type DerivedAdvisory,
     type DerivedAdvisoryRule,
@@ -42,6 +39,7 @@ import {
 } from '../../api/types';
 import { ThemedTooltip as Tooltip } from '../../common/ThemedTooltip';
 import { AdvisoryText } from './AdvisoryText';
+import { CollapsibleNotice } from './CollapsibleNotice';
 import { DIAGNOSTIC_SETTINGS_URL, EmptyState, useDashboardActions } from './DashboardChrome';
 
 const SEVERITY_TONE: Record<DerivedAdvisorySeverity, BadgeProps['color']> = {
@@ -80,14 +78,6 @@ const useStyles = makeStyles({
     coveragePill: {
         // A focusable badge so keyboard/screen-reader users can reach the "why" tooltip (focusableBadge pattern).
         cursor: 'default',
-    },
-    notice: {
-        marginBottom: tokens.spacingVerticalS,
-    },
-    noticeActions: {
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        rowGap: tokens.spacingVerticalS,
     },
     body: {
         display: 'flex',
@@ -719,9 +709,7 @@ export const DerivedAdvisories = ({
     // Collapse the flat advisory list (worst case: tens of thousands of container-scoped findings) into one group per
     // detector. Memoized on the raw list + dismissals so a card re-render never re-buckets the whole account.
     const groups = useMemo(() => {
-        const visible = (result?.advisories ?? []).filter(
-            (advisory) => !advisory.supersededBy && !dismissedIds.has(advisory.id),
-        );
+        const visible = getVisibleAdvisories(result?.advisories ?? [], dismissedIds);
         return groupAdvisories(visible);
     }, [result?.advisories, dismissedIds]);
     const visibleCount = groups.reduce((total, group) => total + group.advisories.length, 0);
@@ -868,7 +856,6 @@ const MetricCoverageNotice = ({
     source: DerivedAdvisoriesResult['metricSource'];
     intent: 'info' | 'warning';
 }) => {
-    const styles = useStyles();
     const { showOutput } = useDashboardActions();
     const reasons: Record<UnavailableReason, string> = {
         noData: l10n.t('Metric data unavailable or incomplete'),
@@ -878,39 +865,33 @@ const MetricCoverageNotice = ({
     };
     const failures = new Map((source?.failures ?? []).map((failure) => [`${failure.rule}:${failure.reason}`, failure]));
     return (
-        <MessageBar
-            className={styles.notice}
+        <CollapsibleNotice
+            title={l10n.t('Incomplete workload analysis')}
             intent={intent}
-            layout="multiline"
-            politeness="polite"
-            icon={{ 'aria-hidden': true }}
-        >
-            <MessageBarBody>
-                <MessageBarTitle>{l10n.t('Incomplete workload analysis')}</MessageBarTitle>
-                <div>
-                    {l10n.t(
-                        'Some workload checks could not run. Missing or failed metric queries are not treated as zero usage.',
-                    ) +
-                        ' ' +
-                        l10n.t('Configuration checks and successful analyses still contribute recommendations.')}
-                </div>
-                <ul>
-                    {[...failures].map(([key, failure]) => (
-                        <li key={key}>{`${ruleMeta(failure.rule).name}: ${reasons[failure.reason]}`}</li>
-                    ))}
-                </ul>
-                <div>
-                    {l10n.t(
-                        'The Output channel lists skipped checks and any request errors. Missing metric observations do not by themselves indicate insufficient permissions.',
-                    )}
-                </div>
-            </MessageBarBody>
-            <MessageBarActions className={styles.noticeActions}>
+            actions={
                 <Button size="small" onClick={showOutput}>
                     {l10n.t('Show Output')}
                 </Button>
-            </MessageBarActions>
-        </MessageBar>
+            }
+        >
+            <div>
+                {l10n.t(
+                    'Some workload checks could not run. Missing or failed metric queries are not treated as zero usage.',
+                ) +
+                    ' ' +
+                    l10n.t('Configuration checks and successful analyses still contribute recommendations.')}
+            </div>
+            <ul>
+                {[...failures].map(([key, failure]) => (
+                    <li key={key}>{`${ruleMeta(failure.rule).name}: ${reasons[failure.reason]}`}</li>
+                ))}
+            </ul>
+            <div>
+                {l10n.t(
+                    'The Output channel lists skipped checks and any request errors. Missing metric observations do not by themselves indicate insufficient permissions.',
+                )}
+            </div>
+        </CollapsibleNotice>
     );
 };
 
@@ -919,7 +900,6 @@ const MetricCoverageNotice = ({
  * Names the failure category and links to guidance where actionable.
  */
 const PartialCoverageNotice = ({ source }: { source: DerivedAdvisoriesResult['logSource'] }) => {
-    const styles = useStyles();
     const { openUrl, showOutput } = useDashboardActions();
     const { body, linkLabel, linkUrl } = logCoverageNotice(source?.reason);
     const operations = {
@@ -943,41 +923,35 @@ const PartialCoverageNotice = ({ source }: { source: DerivedAdvisoriesResult['lo
         clientUnavailable: l10n.t('Client unavailable'),
     };
     return (
-        <MessageBar
-            className={styles.notice}
+        <CollapsibleNotice
+            title={l10n.t('Partial coverage')}
             intent="warning"
-            layout="multiline"
-            politeness="polite"
-            icon={{ 'aria-hidden': true }}
-        >
-            <MessageBarBody>
-                <MessageBarTitle>{l10n.t('Partial coverage')}</MessageBarTitle>
-                <div>{body}</div>
-                {!!source?.failures?.length && (
-                    <ul>
-                        {source.failures.map((failure) => (
-                            <li key={`${failure.operation}-${failure.kind}`}>
-                                {`${operations[failure.operation]}: ${kinds[failure.kind]}`}
-                            </li>
-                        ))}
-                    </ul>
-                )}
-                <div>
-                    {l10n.t(
-                        'See the extension Output channel for the HTTP status, service error details, and request ID.',
+            actions={
+                <>
+                    <Button size="small" onClick={showOutput}>
+                        {l10n.t('Show Output')}
+                    </Button>
+                    {linkLabel && linkUrl && (
+                        <Link as="button" onClick={() => openUrl(linkUrl)}>
+                            {linkLabel}
+                        </Link>
                     )}
-                </div>
-            </MessageBarBody>
-            <MessageBarActions className={styles.noticeActions}>
-                <Button size="small" onClick={showOutput}>
-                    {l10n.t('Show Output')}
-                </Button>
-                {linkLabel && linkUrl && (
-                    <Link as="button" onClick={() => openUrl(linkUrl)}>
-                        {linkLabel}
-                    </Link>
-                )}
-            </MessageBarActions>
-        </MessageBar>
+                </>
+            }
+        >
+            <div>{body}</div>
+            {!!source?.failures?.length && (
+                <ul>
+                    {source.failures.map((failure) => (
+                        <li key={`${failure.operation}-${failure.kind}`}>
+                            {`${operations[failure.operation]}: ${kinds[failure.kind]}`}
+                        </li>
+                    ))}
+                </ul>
+            )}
+            <div>
+                {l10n.t('See the extension Output channel for the HTTP status, service error details, and request ID.')}
+            </div>
+        </CollapsibleNotice>
     );
 };

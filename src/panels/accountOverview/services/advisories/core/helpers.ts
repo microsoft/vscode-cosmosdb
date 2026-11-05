@@ -8,6 +8,13 @@ import { type DerivedAdvisory, type DerivedAdvisorySeverity } from './types';
 
 const ADVISORY_SEVERITY_ORDER: Record<DerivedAdvisorySeverity, number> = { High: 0, Medium: 1, Low: 2 };
 
+export function getVisibleAdvisories(
+    advisories: readonly DerivedAdvisory[],
+    dismissedIds?: ReadonlySet<string>,
+): DerivedAdvisory[] {
+    return advisories.filter((advisory) => !advisory.supersededBy && !dismissedIds?.has(advisory.id));
+}
+
 /** Sorts advisories by severity (High first), then rule, then scope. Pure. */
 export function compareAdvisories(a: DerivedAdvisory, b: DerivedAdvisory): number {
     return (

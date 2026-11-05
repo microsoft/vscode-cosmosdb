@@ -74,3 +74,4 @@ export type {
 export type { QueryEditorEvent } from '../../panels/trpc/routers/queryEditorEventsRouter';
 export type { AccountOverviewNavigation, AccountOverviewTarget } from '../../panels/accountOverview/navigation';
 export type { AccountActionInput, AccountActionResult } from '../../panels/accountOverview/accountActions';
+export type { ReadDiagnosticsResult, ReadFailure, ReadSource } from '../../panels/accountOverview/accessRequirements';

@@ -17,9 +17,18 @@ import {
 } from '../../../accountOverview/services/advisories';
 import { DEFAULT_ADVISORY_THRESHOLDS } from '../../../accountOverview/services/advisories/core/thresholds';
 import { DETECTORS } from '../../../accountOverview/services/advisories/registry';
+import {
+    readRequest,
+    recordReadFailure,
+    reportMetricCoverage,
+    reportReadFailure,
+    reportUncaughtReadFailure,
+    reportUnavailableClient,
+} from '../../../accountOverview/services/readDiagnostics';
 import { classifyUnavailable, type UnavailableReason } from '../../../accountOverview/services/shared';
 import { type AccountOverviewRouterContext } from '../../appRouter';
 import { accountOverviewProcedure } from '../../trpc';
+import { readAccountData } from './readData';
 
 // ─── Zone: Client-side derived advisories ───────────────────────────────────────
 //
@@ -48,6 +57,14 @@ type AdvisoryAccountMetadata = Pick<
 export async function getDerivedAdvisoriesForAccount(
     metadata: AdvisoryAccountMetadata,
 ): Promise<DerivedAdvisoriesResult> {
+    return readAccountData(metadata, 'metrics', async () => {
+        const result = await collectForAccount(metadata);
+        reportMetricCoverage(result.metricSource);
+        return result;
+    });
+}
+
+async function collectForAccount(metadata: AdvisoryAccountMetadata): Promise<DerivedAdvisoriesResult> {
     const account = metadata.databaseAccount as DatabaseAccountGetResults;
     const fullFidelityChangeFeedEnabled = metadata.databaseAccount.enableAllVersionsAndDeletesChangeFeed;
     const api = tryGetExperience(account)?.api;
@@ -130,22 +147,25 @@ export async function getDerivedAdvisoriesForAccount(
 
     try {
         const monitorClient = await metadata.getMonitorClient();
-        const cosmosClient = await metadata.getClient();
+        const cosmosClient = await readRequest('account', 'acquireClient', () => metadata.getClient());
         if (!monitorClient || !cosmosClient) {
+            reportUnavailableClient(!monitorClient ? 'metrics' : 'account');
             return configOnly('noData');
         }
         // A failed optional log client must not suppress metric-backed or configuration checks.
         const logsClient = await metadata.getLogsQueryClient().catch((error: unknown) => {
-            ext.outputChannel.warn(
-                `[Account Overview] Log Analytics client unavailable: ${classifyUnavailable(error)}.`,
-            );
+            reportReadFailure('logs', 'logsClient', error);
             return undefined;
         });
+        const logsOutput = createLogsOutputReporter((message) => ext.outputChannel.warn(message));
         const collected = await collectDerivedAdvisories({
             monitorClient,
             cosmosClient,
             logsClient,
-            onLogsDiagnostic: createLogsOutputReporter((message) => ext.outputChannel.warn(message)),
+            onLogsDiagnostic: (diagnostic) => {
+                recordReadFailure('logs', diagnostic);
+                logsOutput(diagnostic);
+            },
             accountId: metadata.accountId,
             resourceGroup: metadata.resourceGroup,
             accountName: metadata.accountName,
@@ -163,6 +183,7 @@ export async function getDerivedAdvisoriesForAccount(
         });
         return { available: true, ...collected, generatedAt: Date.now() };
     } catch (error) {
+        reportUncaughtReadFailure('metrics', 'collection', error);
         return configOnly(classifyUnavailable(error));
     }
 }

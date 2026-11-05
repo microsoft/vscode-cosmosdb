@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { classifyLogsFailure } from './advisories/fetchers/logsDiagnostics';
 import { HEALTH_POLICY } from './healthPolicy';
 import { DAY, HOUR, MINUTE } from './units';
 
@@ -29,19 +30,14 @@ export type TimeRange = '1H' | '24H' | '7D';
 export type UnavailableReason = 'noData' | 'unsupported' | 'rbac' | 'logAnalyticsDisabled';
 
 /**
- * Classifies an Azure SDK error into an {@link UnavailableReason}. A 403 (or the
- * ARM `AuthorizationFailed`/`Forbidden` code) means the signed-in identity is
- * missing a role; everything else degrades to `noData` (transient, empty, or an
- * unsupported dimension the caller could not distinguish up front). Pure.
+ * Classifies nested SDK errors consistently with Log Analytics. Access/authentication failures use `rbac`;
+ * diagnostic details distinguish sign-in from authorization. Other failures retain their unavailable category.
  */
 export function classifyUnavailable(error: unknown): UnavailableReason {
-    if (error && typeof error === 'object') {
-        const e = error as { statusCode?: number; code?: string | number };
-        if (e.statusCode === 403 || e.code === 403 || e.code === 'AuthorizationFailed' || e.code === 'Forbidden') {
-            return 'rbac';
-        }
+    if (error && typeof error === 'object' && 'code' in error && error.code === 403) {
+        return 'rbac';
     }
-    return 'noData';
+    return classifyLogsFailure(error).reason;
 }
 
 /** Metric request failures are distinct from successful requests with no observations. */

@@ -20,6 +20,7 @@ export type LogsOperation =
 
 export type LogsFailureKind =
     | 'accessDenied'
+    | 'authentication'
     | 'missingTable'
     | 'queryError'
     | 'partialFailure'
@@ -28,8 +29,8 @@ export type LogsFailureKind =
     | 'clientUnavailable';
 
 /** Sanitized LOCAL OUTPUT ONLY. Never attach these fields to telemetry or an error sent to telemetry. */
-export interface LogsDiagnostic {
-    operation: LogsOperation;
+export interface ErrorDiagnostic<TOperation extends string = LogsOperation> {
+    operation: TOperation;
     reason: UnavailableReason;
     kind: LogsFailureKind;
     statusCode?: number;
@@ -37,6 +38,8 @@ export interface LogsDiagnostic {
     messages: string[];
     requestId?: string;
 }
+
+export type LogsDiagnostic = ErrorDiagnostic<LogsOperation>;
 
 export type LogsDiagnosticReporter = (diagnostic: LogsDiagnostic) => void;
 
@@ -136,6 +139,7 @@ function errorFields(error: unknown): { codes: string[]; messages: string[]; sta
     const statusCode =
         httpStatus(field(error, 'statusCode')) ??
         httpStatus(field(error, 'status')) ??
+        httpStatus(field(error, 'code')) ??
         httpStatus(field(response, 'status')) ??
         httpStatus(field(response, 'statusCode'));
     const requestId = field(error, 'requestId') ?? field(response, 'requestId') ?? responseRequestId(response);
@@ -169,6 +173,18 @@ function classifyFields({ codes, messages, statusCode }: ReturnType<typeof error
     const normalized = codes.map((code) => code.toLowerCase().replace(/error$/, ''));
     if (
         statusCode === 401 ||
+        normalized.some((code) =>
+            [
+                'authentication',
+                'authenticationfailed',
+                'invalidauthenticationtoken',
+                'expiredauthenticationtoken',
+            ].includes(code),
+        )
+    ) {
+        return { reason: 'rbac', kind: 'authentication' };
+    }
+    if (
         statusCode === 403 ||
         normalized.some((code) =>
             [
@@ -273,11 +289,11 @@ function sanitizeMessage(message: string, sensitiveValues: readonly string[]): s
 }
 
 /** Builds bounded, best-effort local diagnostics. No telemetry is emitted; never stringify the supplied error. */
-export function createLogsDiagnostic(
+export function createLogsDiagnostic<TOperation extends string>(
     error: unknown,
-    operation: LogsOperation,
+    operation: TOperation,
     options: LogsDiagnosticOptions = {},
-): LogsDiagnostic {
+): ErrorDiagnostic<TOperation> {
     const fields = errorFields(error);
     const classified = error instanceof LogsFetchError ? classifyLogsFailure(error) : classifyFields(fields);
     const sensitiveValues = options.sensitiveValues ?? [];
@@ -307,6 +323,24 @@ export function createLogsDiagnostic(
         messages: messages.length ? messages : ['No server error message was provided.'],
         ...(fields.requestId === undefined ? {} : { requestId: fields.requestId }),
     };
+}
+
+export function formatErrorDiagnostic(
+    diagnostic: ErrorDiagnostic<string>,
+    prefix: string,
+    scope: 'resource' | 'subscription' = 'resource',
+): string {
+    const details = [
+        `operation=${diagnostic.operation}`,
+        `scope=${scope}`,
+        `reason=${diagnostic.reason}`,
+        `kind=${diagnostic.kind}`,
+        diagnostic.statusCode === undefined ? undefined : `HTTP ${diagnostic.statusCode}`,
+        diagnostic.codes.length ? `code=${diagnostic.codes.join(' > ')}` : undefined,
+        ...diagnostic.messages,
+        diagnostic.requestId ? `requestId=${diagnostic.requestId}` : undefined,
+    ].filter((part) => part !== undefined);
+    return `${prefix} ${details.join('; ')}`;
 }
 
 /** Category-only error safe for incidental telemetry. No raw cause, SDK response, or diagnostic message is retained. */

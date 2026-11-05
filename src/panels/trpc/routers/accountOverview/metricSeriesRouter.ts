@@ -12,8 +12,10 @@ import {
 } from '../../../accountOverview/metrics/contracts';
 import { emptyMetricSeriesResult, fetchMetricSeries } from '../../../accountOverview/metrics/hostFetchers';
 import { type TimeRange } from '../../../accountOverview/services';
+import { reportUnavailableClient } from '../../../accountOverview/services/readDiagnostics';
 import { type AccountOverviewRouterContext } from '../../appRouter';
 import { accountOverviewProcedure } from '../../trpc';
+import { readAccountData } from './readData';
 
 // ─── Zone: generic metric series ────────────────────────────────────────────────
 //
@@ -47,24 +49,36 @@ export const metricSeriesProcedures = {
                 const { metadata } = ctx;
                 const applicability = getMetricApplicability(input.metric, metadata.isServerless);
                 const scope = { databaseId: input.databaseId, containerId: input.containerId };
-                if (applicability.status === 'notApplicable') {
-                    return emptyMetricSeriesResult(input.metric, scope, input.timeRange, applicability);
-                }
-                const client = await metadata.getMonitorClient();
-                if (!client) {
-                    return {
-                        ...emptyMetricSeriesResult(input.metric, scope, input.timeRange, applicability),
-                        reason: 'error',
-                    };
-                }
+                return readAccountData<MetricSeriesResult>(
+                    metadata,
+                    'metrics',
+                    async () => {
+                        if (applicability.status === 'notApplicable') {
+                            return emptyMetricSeriesResult(input.metric, scope, input.timeRange, applicability);
+                        }
+                        const client = await metadata.getMonitorClient();
+                        if (!client) {
+                            reportUnavailableClient('metrics');
+                            return {
+                                ...emptyMetricSeriesResult(input.metric, scope, input.timeRange, applicability),
+                                reason: 'error',
+                            };
+                        }
 
-                return fetchMetricSeries(
-                    input.metric,
-                    client,
-                    metadata.accountId,
-                    scope,
-                    input.timeRange,
-                    metadata.isServerless,
+                        return fetchMetricSeries(
+                            input.metric,
+                            client,
+                            metadata.accountId,
+                            scope,
+                            input.timeRange,
+                            metadata.isServerless,
+                        );
+                    },
+                    (reason) => ({
+                        ...emptyMetricSeriesResult(input.metric, scope, input.timeRange, applicability),
+                        reason,
+                    }),
+                    [input.databaseId, input.containerId],
                 );
             },
         ),

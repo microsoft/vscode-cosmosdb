@@ -8,9 +8,11 @@ import { z } from 'zod';
 import { API, tryGetExperience } from '../../../../AzureDBExperiences';
 import { unavailableStorage } from '../../../accountOverview/metrics/storage';
 import { getInventoryMetrics, type InventoryMetricsResult } from '../../../accountOverview/services/inventoryMetrics';
+import { reportUnavailableClient } from '../../../accountOverview/services/readDiagnostics';
 import { type TimeRange } from '../../../accountOverview/services/shared';
 import { type AccountOverviewRouterContext } from '../../appRouter';
 import { accountOverviewProcedure } from '../../trpc';
+import { readAccountData } from './readData';
 import { readHealthThresholds } from './thresholds';
 
 // ─── Zone: Inventory metrics + per-row health ───────────────────────────────────
@@ -31,38 +33,53 @@ export const inventoryMetricsProcedures = {
                 input: { timeRange: TimeRange };
             }): Promise<InventoryMetricsResult> => {
                 const { metadata } = ctx;
-                const experience = tryGetExperience(metadata.databaseAccount as DatabaseAccountGetResults);
+                return readAccountData<InventoryMetricsResult>(
+                    metadata,
+                    'metrics',
+                    async () => {
+                        const experience = tryGetExperience(metadata.databaseAccount as DatabaseAccountGetResults);
 
-                if (experience && experience.api !== API.Core) {
-                    return {
+                        if (experience && experience.api !== API.Core) {
+                            return {
+                                available: false,
+                                reason: 'unsupported',
+                                metrics: {},
+                                storageFallback: unavailableStorage('unsupported'),
+                                throttlingFallbackReason: 'unsupported',
+                                generatedAt: Date.now(),
+                            };
+                        }
+
+                        const client = await metadata.getMonitorClient();
+                        if (!client) {
+                            reportUnavailableClient('metrics');
+                            return {
+                                available: false,
+                                reason: 'noData',
+                                metrics: {},
+                                storageFallback: unavailableStorage('error'),
+                                throttlingFallbackReason: 'error',
+                                generatedAt: Date.now(),
+                            };
+                        }
+
+                        return getInventoryMetrics(
+                            client,
+                            metadata.accountId,
+                            input.timeRange,
+                            readHealthThresholds(),
+                            undefined,
+                            metadata.isServerless,
+                        );
+                    },
+                    (reason) => ({
                         available: false,
-                        reason: 'unsupported',
+                        reason,
                         metrics: {},
-                        storageFallback: unavailableStorage('unsupported'),
-                        throttlingFallbackReason: 'unsupported',
+                        storageFallback: unavailableStorage(reason),
+                        throttlingFallbackReason: reason,
                         generatedAt: Date.now(),
-                    };
-                }
-
-                const client = await metadata.getMonitorClient();
-                if (!client) {
-                    return {
-                        available: false,
-                        reason: 'noData',
-                        metrics: {},
-                        storageFallback: unavailableStorage('error'),
-                        throttlingFallbackReason: 'error',
-                        generatedAt: Date.now(),
-                    };
-                }
-
-                return getInventoryMetrics(
-                    client,
-                    metadata.accountId,
-                    input.timeRange,
-                    readHealthThresholds(),
-                    undefined,
-                    metadata.isServerless,
+                    }),
                 );
             },
         ),

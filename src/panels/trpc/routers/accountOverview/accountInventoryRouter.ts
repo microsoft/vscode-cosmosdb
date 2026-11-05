@@ -8,10 +8,16 @@ import * as l10n from '@vscode/l10n';
 import { API, tryGetExperience } from '../../../../AzureDBExperiences';
 import { getAccountMetricApplicability } from '../../../accountOverview/metrics/contracts';
 import { buildAccountAlertsPortalUrl } from '../../../accountOverview/services/alertsRecommendations';
-import { getInventoryResult, type InventoryContainerRow } from '../../../accountOverview/services/inventory';
+import {
+    getInventoryResult,
+    type InventoryContainerRow,
+    type InventoryResult,
+} from '../../../accountOverview/services/inventory';
+import { reportUnavailableClient } from '../../../accountOverview/services/readDiagnostics';
 import { type ProvisioningState } from '../../../accountOverview/services/shared';
 import { type AccountOverviewRouterContext } from '../../appRouter';
 import { accountOverviewProcedure } from '../../trpc';
+import { readAccountData } from './readData';
 
 // ─── Zone: Account header + static inventory ────────────────────────────────────
 //
@@ -70,33 +76,43 @@ export const accountInventoryProcedures = {
 
     getInventory: accountOverviewProcedure.query(async ({ ctx }: { ctx: AccountOverviewRouterContext }) => {
         const { metadata } = ctx;
-        const experience = tryGetExperience(metadata.databaseAccount as DatabaseAccountGetResults);
+        return readAccountData<
+            Pick<InventoryResult, 'available' | 'reason' | 'rows'> & { supported: boolean; databases?: string[] }
+        >(
+            metadata,
+            'inventory',
+            async () => {
+                const experience = tryGetExperience(metadata.databaseAccount as DatabaseAccountGetResults);
 
-        // Only the SQL (NoSQL) API is fully supported by this extension today
-        // (see `NoSqlAccountResourceItem`); other APIs get an explicit
-        // "not supported" empty-state on the webview side instead of rows.
-        if (experience && experience.api !== API.Core) {
-            return { supported: false as const, available: true as const, rows: [] as InventoryContainerRow[] };
-        }
+                // Only the SQL (NoSQL) API is fully supported by this extension today
+                // (see `NoSqlAccountResourceItem`); other APIs get an explicit
+                // "not supported" empty-state on the webview side instead of rows.
+                if (experience && experience.api !== API.Core) {
+                    return { supported: false as const, available: true as const, rows: [] as InventoryContainerRow[] };
+                }
 
-        const client = await metadata.getClient();
-        if (!client) {
-            // No management client means we could not authenticate to ARM at all; surface it as an
-            // explicit unavailable state so the table renders an empty-state instead of hanging.
-            return {
-                supported: true as const,
-                available: false as const,
-                reason: 'rbac' as const,
-                rows: [] as InventoryContainerRow[],
-            };
-        }
+                const client = await metadata.getClient();
+                if (!client) {
+                    reportUnavailableClient('inventory');
+                    // No management client means we could not authenticate to ARM at all; surface it as an
+                    // explicit unavailable state so the table renders an empty-state instead of hanging.
+                    return {
+                        supported: true as const,
+                        available: false as const,
+                        reason: 'noData' as const,
+                        rows: [] as InventoryContainerRow[],
+                    };
+                }
 
-        const result = await getInventoryResult(
-            client,
-            metadata.resourceGroup,
-            metadata.accountName,
-            metadata.isServerless,
+                const result = await getInventoryResult(
+                    client,
+                    metadata.resourceGroup,
+                    metadata.accountName,
+                    metadata.isServerless,
+                );
+                return { supported: true as const, ...result };
+            },
+            (reason) => ({ supported: true, available: false, reason, rows: [], databases: [] }),
         );
-        return { supported: true as const, ...result };
     }),
 };

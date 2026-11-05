@@ -13,6 +13,7 @@ import {
     cardClassNames,
     FluentProvider,
     messageBarClassNames,
+    tokens,
     webLightTheme,
 } from '@fluentui/react-components';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
@@ -437,6 +438,148 @@ describe('metric coverage and actionable findings', () => {
         expect(dialog).toHaveTextContent('Review requirements.');
     });
 
+    it.each([false, true])('keeps notices in normal page flow with findings=%s', (withFindings) => {
+        showCoverage(
+            { available: true },
+            {
+                metricSource: { available: false, failures: [{ rule: 'IndexingCostRisk', reason: 'noData' }] },
+                advisories: withFindings
+                    ? [
+                          {
+                              id: 'idle',
+                              rule: 'IdleContainer',
+                              severity: 'Low',
+                              title: 'Idle container',
+                              rationale: 'Almost no traffic was observed.',
+                              suggestedAction: 'Remove unused provisioned capacity.',
+                              thresholdReference: 'Peak consumption at most 50 RU.',
+                              scope: 'db/a',
+                          },
+                      ]
+                    : [],
+            },
+        );
+        const section = screen.getByLabelText('Recommendations');
+        expect(getComputedStyle(section).overflow).not.toBe('hidden');
+        let element: HTMLElement | null = within(section).getByRole('button', { name: 'Show Output' });
+        while (element && section.contains(element)) {
+            const style = getComputedStyle(element);
+            expect(['auto', 'scroll']).not.toContain(style.overflowY || style.overflow);
+            element = element.parentElement;
+        }
+        expect(within(section).getByText('Indexing cost risk: Metric data unavailable or incomplete')).toBeVisible();
+        if (withFindings) {
+            expect(within(section).getByRole('button', { name: /^Idle containers/ })).toBeVisible();
+        } else {
+            expect(within(section).getByText('No advisories from the checks that completed.')).toBeVisible();
+        }
+    });
+
+    it.each(['noData', 'unsupported'] as const)(
+        'uses an informational background for %s without read errors',
+        (reason) => {
+            showCoverage(
+                { available: true },
+                { metricSource: { available: false, failures: [{ rule: 'IdleContainer', reason }] } },
+            );
+            const notice = screen.getByRole('group', { name: 'Incomplete workload analysis' });
+            expect(notice).toHaveStyle({ backgroundColor: tokens.colorNeutralBackground3 });
+            expect(notice.querySelector(`.${messageBarClassNames.icon}`)).toHaveAttribute('aria-hidden', 'true');
+            expect(within(notice).getByRole('button', { name: 'Show Output' })).toHaveAccessibleName('Show Output');
+        },
+    );
+
+    it.each(['metrics', 'inventory', 'account', 'activityLog'] as const)(
+        'retains a warning background for a %s request error classified as noData',
+        (source) => {
+            showCoverage(
+                { available: true },
+                {
+                    metricSource: { available: false, failures: [{ rule: 'IdleContainer', reason: 'noData' }] },
+                    diagnostics: [{ source, kind: 'transient', reason: 'noData' }],
+                },
+            );
+            expect(screen.getByRole('group', { name: 'Incomplete workload analysis' })).toHaveStyle({
+                backgroundColor: tokens.colorStatusWarningBackground1,
+            });
+        },
+    );
+
+    it.each(['accessDenied', 'authentication'] as const)('retains a warning background for %s', (kind) => {
+        showCoverage(
+            { available: true },
+            {
+                metricSource: { available: false, failures: [{ rule: 'IdleContainer', reason: 'rbac' }] },
+                diagnostics: [{ source: 'metrics', kind, reason: 'rbac' }],
+            },
+        );
+        expect(screen.getByRole('group', { name: 'Incomplete workload analysis' })).toHaveStyle({
+            backgroundColor: tokens.colorStatusWarningBackground1,
+        });
+    });
+
+    it('retains a warning when empty data and denied checks are mixed', () => {
+        showCoverage(
+            { available: true },
+            {
+                metricSource: {
+                    available: false,
+                    failures: [
+                        { rule: 'IdleContainer', reason: 'noData' },
+                        { rule: 'HotPartitionRisk', reason: 'rbac' },
+                    ],
+                },
+            },
+        );
+        expect(screen.getByRole('group', { name: 'Incomplete workload analysis' })).toHaveStyle({
+            backgroundColor: tokens.colorStatusWarningBackground1,
+        });
+    });
+
+    it('keeps empty metric data informational independently of Log Analytics failures', () => {
+        showCoverage(
+            { available: false, reason: 'rbac' },
+            {
+                metricSource: { available: false, failures: [{ rule: 'IdleContainer', reason: 'noData' }] },
+                diagnostics: [{ source: 'logs', kind: 'accessDenied', reason: 'rbac' }],
+            },
+        );
+        expect(screen.getByRole('group', { name: 'Incomplete workload analysis' })).toHaveStyle({
+            backgroundColor: tokens.colorNeutralBackground3,
+        });
+        expect(screen.getByRole('group', { name: 'Partial coverage' })).toHaveStyle({
+            backgroundColor: tokens.colorStatusWarningBackground1,
+        });
+    });
+
+    it('opens Output for incomplete metric analysis even when no request diagnostic was returned', async () => {
+        const user = userEvent.setup();
+        const { showOutput } = showCoverage(
+            { available: true },
+            {
+                metricSource: {
+                    available: false,
+                    failures: [
+                        { rule: 'SustainedThrottlingInRegion', reason: 'noData' },
+                        { rule: 'HotPartitionRisk', reason: 'noData' },
+                    ],
+                },
+            },
+        );
+        const notice = screen.getByRole('group', { name: 'Incomplete workload analysis' });
+        expect(
+            within(notice).getByText('Sustained throttling: Metric data unavailable or incomplete'),
+        ).toBeInTheDocument();
+        expect(within(notice).getByText('Hot partitions: Metric data unavailable or incomplete')).toBeInTheDocument();
+        const button = within(notice).getByRole('button', { name: 'Show Output' });
+        expect(button).toHaveTextContent('Show Output');
+        expect(button).toHaveAccessibleName('Show Output');
+        button.focus();
+        await user.keyboard('{Enter}');
+        expect(showOutput).toHaveBeenCalledOnce();
+        expect(screen.queryByText(/Access denied/)).not.toBeInTheDocument();
+    });
+
     it('announces incomplete metric checks without claiming a clean result or blaming Log Analytics', () => {
         showCoverage(
             { available: true },
@@ -538,6 +681,9 @@ describe('metric coverage and actionable findings', () => {
             screen.getByRole('button', { name: `Dismiss advisory for db/${removed}` }).focus();
             await user.keyboard(key);
             const dialog = screen.getByRole('dialog');
+            const listStyle = getComputedStyle(within(dialog).getByRole('list'));
+            expect(listStyle.overflowY).toBe('auto');
+            expect(Number.parseFloat(listStyle.maxHeight)).toBeCloseTo(window.innerHeight * 0.6);
             expect(within(dialog).queryByRole('button', { name: `Dismiss advisory for db/${removed}` })).toBeNull();
             expect(within(dialog).getByRole('button', { name: `Dismiss advisory for db/${next}` })).toHaveFocus();
             expect(within(dialog).getAllByRole('listitem')).toHaveLength(2);

@@ -101,6 +101,7 @@ result is allowed; that is not SQL parsing.
 7. Record the inventory inside the preflight manifest with `parser.method: "model"`.
   Model reasoning is the parsing evidence, not independently verified SQL syntax.
 
-In both methods, selected DDL is immutable source truth. Source code may reveal
-discrepancies but cannot override it. Inference is allowed only for an empty selected
-DDL set, and inferred DDL receives the same chosen-method interpretation afterward.
+In both methods, supplied DDL is immutable source truth. Source code may reveal
+discrepancies but cannot override it. [Schema acquisition](../phases/preflight.md#2-schema-acquisition)
+owns inference and regeneration; inferred DDL receives the same interpretation afterward.
+Successful interpretation does not prove an inferred schema matches the source database.

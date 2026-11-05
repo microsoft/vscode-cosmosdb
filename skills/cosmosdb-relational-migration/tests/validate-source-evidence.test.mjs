@@ -43,6 +43,40 @@ test('validates model-reviewed inventory from the preflight manifest without par
     } finally { fs.rmSync(workspace, { recursive: true }); }
 });
 
+test('validates inference provenance without weakening supplied or generated DDL integrity', () => {
+    const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'inferred-inventory-'));
+    try {
+        const project = { phases: { discovery: {} } };
+        sourceFixture(workspace, project);
+        const manifestPath = path.join(workspace, '.cosmosdb-migration/phases/1-discovery/preflight-manifest.json');
+        const evidence = readPhaseEvidence(manifestPath);
+        const file = evidence.sourceInventory.files[0];
+        fs.writeFileSync(path.join(workspace, 'model.ts'), 'source evidence');
+        Object.assign(file, { origin: 'inferred', sourcePaths: ['model.ts'] });
+        fs.writeFileSync(manifestPath, JSON.stringify(evidence));
+        assert.deepEqual(readSourceInventory(workspace, project).errors, []);
+        assert.equal(readSourceInventory(workspace, project).files[0].origin, 'inferred');
+        for (const sourcePaths of [undefined, [], [''], ['../outside'], [workspace], [file.path]]) {
+            file.sourcePaths = sourcePaths;
+            fs.writeFileSync(manifestPath, JSON.stringify(evidence));
+            assert.match(readSourceInventory(workspace, project).errors[0].message, /supporting sourcePaths/u);
+        }
+        file.sourcePaths = ['model.ts'];
+        file.origin = 'assumed';
+        fs.writeFileSync(manifestPath, JSON.stringify(evidence));
+        assert.match(readSourceInventory(workspace, project).errors[0].message, /Invalid DDL origin/u);
+        for (const origin of ['supplied', 'inferred', undefined]) {
+            file.origin = origin;
+            fs.writeFileSync(manifestPath, JSON.stringify(evidence));
+            assert.deepEqual(readSourceInventory(workspace, project).errors, []);
+        }
+        fs.appendFileSync(path.join(workspace, file.path), '\n-- User edit');
+        assert.match(readSourceInventory(workspace, project).errors[0].message, /stale/u);
+    } finally {
+        fs.rmSync(workspace, { recursive: true, force: true });
+    }
+});
+
 test('source hashes and inventory validation are stable across default string collations and file order', () => {
     const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'locale-inventory-'));
     try {

@@ -101,6 +101,14 @@ export function readSourceInventory(workspace, project, selectedFiles = selected
         const files = selectedFiles.map(filePath => ({ path: path.relative(workspace, filePath).split(path.sep).join('/'), sha256: createHash('sha256').update(fs.readFileSync(filePath)).digest('hex') })).sort(compareFilePaths);
         const recordedFiles = inventory.files.map(file => ({ path: file.path, sha256: file.sha256 })).sort(compareFilePaths);
         if (JSON.stringify(files) !== JSON.stringify(recordedFiles)) throw new Error('Source inventory is stale or differs from the selected source files; repeat the chosen parsing procedure');
+        for (const file of inventory.files) {
+            if (file.origin !== undefined && !['supplied', 'inferred'].includes(file.origin)) throw new Error('Invalid DDL origin');
+            if (file.origin === 'inferred' && (!Array.isArray(file.sourcePaths) || !file.sourcePaths.length || file.sourcePaths.some(source =>
+                typeof source !== 'string' || !source.trim() || path.isAbsolute(source) || source.split(/[\\/]/u).includes('..') ||
+                files.some(selected => selected.path === source)))) {
+                throw new Error('Inferred DDL requires workspace-relative supporting sourcePaths, not selected DDL');
+            }
+        }
         if (!Array.isArray(inventory.tables) || !inventory.tables.length) throw new Error('Source inventory requires at least one recorded table definition');
         const identities = new Set();
         for (const table of inventory.tables) {

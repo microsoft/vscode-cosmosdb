@@ -477,6 +477,21 @@ test('Discovery prepares preflight in application-details-first order without we
     assert.match(interaction, /source discovery without asking for a separate launch/u);
 });
 
+test('allows evidence-based inference while preserving supplied DDL and user edits', () => {
+    const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
+    const preflight = fs.readFileSync(path.join(skillRoot, 'references/phases/preflight.md'), 'utf8');
+    const evidence = fs.readFileSync(path.join(skillRoot, 'references/contracts/validation-evidence.md'), 'utf8');
+    assert.match(skill, /User-supplied DDL is optional/u);
+    assert.match(skill, /`schema-source`/u);
+    assert.match(preflight, /--inputs schema-evidence/u);
+    assert.match(preflight, /joins do not prove foreign keys; samples do not prove uniqueness or nullability/u);
+    assert.match(preflight, /If a generated file was edited or a destination is untracked,\s+preserve it/u);
+    assert.match(preflight, /do not supplement it silently/u);
+    assert.match(evidence, /origin: "inferred"/u);
+    assert.match(evidence, /sourcePaths/u);
+    assert.doesNotMatch(skill + preflight, /inferred DDL.*treated\s+as supplied truth|Infer DDL from source code only when/u);
+});
+
 test('Discovery preserves source constraints and reviews their write-pattern handoff', () => {
     const discovery = fs.readFileSync(path.join(skillRoot, 'references/phases/discovery.md'), 'utf8');
     const evidence = fs.readFileSync(path.join(skillRoot, 'references/contracts/validation-evidence.md'), 'utf8');

@@ -70,6 +70,31 @@ Only when the effective choice is SQLGlot, load [SQLGlot DDL](../tooling/sqlglot
 for environment setup, dialect checks, invocation, and AST-to-inventory guidance.
 Do not load that reference for model-only interpretation; follow the procedure below.
 
+## Inferred DDL Cross-Check
+
+After generating DDL, use the effective [parser choice](#dependency-choice) and its existing
+consent and fallback rules; inference does not require a separate SQLGlot opt-in.
+
+- **SQLGlot:** Parse the generated DDL in the source dialect, inspect AST output, diagnostics,
+  and unsupported constructs, and compare the resulting inventory with the original evidence.
+  Correct generated DDL only where that evidence supports the change, then reparse and compare again.
+- **Model-only:** When permitted fresh-context delegation is available, use a read-only
+  sub-agent. Give it the generated DDL and original source artifacts, not the inference session's
+  reasoning or conclusions. Require independent checks of completeness, types, nullability,
+  keys, constraints, and relationships, with source-file/line evidence for discrepancies and
+  explicit uncertainty. The reviewer must follow the same project scope and model-only parser
+  restrictions and return findings only; it must not write files or checkpoints.
+  If fresh-context delegation is unavailable, prohibited, or fails, perform a distinct second
+  review pass against the original evidence and disclose that no fresh-context review completed.
+
+The root agent evaluates findings, makes evidence-supported corrections under the
+[preservation rules](../phases/preflight.md#inferred-ddl-branch), and rechecks affected constructs.
+Only the root agent writes DDL, inventories, and checkpoints; reviewer disagreement alone is not
+a correctness failure. Record the check performed, review coverage, unresolved findings, and any
+delegation fallback reason in the existing preflight summary. Keep `sqlglot-assisted` or
+`model-reviewed` assurance: another model can share the same errors, and neither check establishes
+source-engine validity or proves the inferred schema matches the original database.
+
 ## Model-Only DDL Interpretation
 
 Use ordinary read/search tools to inspect the selected source files yourself. Do

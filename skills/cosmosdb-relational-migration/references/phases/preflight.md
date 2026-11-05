@@ -184,8 +184,8 @@ regeneration is requested; regenerate stale inference from its underlying eviden
    paths when the selection is explicit; preserve all other selections and exclusions.
    An explicit inference request permits adding new generated paths, not restoring excluded inputs.
    Without that request, ask before adding outputs to an explicitly empty selection.
-4. Re-read generated DDL with the selected interpretation method and compare it with the
-   underlying evidence. Record [inference provenance](../contracts/validation-evidence.md#inventory-in-the-preflight-manifest)
+4. Perform the [inferred DDL cross-check](../workflow/ddl-interpretation.md#inferred-ddl-cross-check)
+   using the selected parser or model-only review. Record [inference provenance](../contracts/validation-evidence.md#inventory-in-the-preflight-manifest)
    in the existing inventory; parsing success does not establish source fidelity.
 
 Before writing, recheck the selection and prior generated-file hashes. If supplied DDL

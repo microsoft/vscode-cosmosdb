@@ -6,6 +6,7 @@
 import { parseAzureResourceId, type ParsedAzureResourceId } from '@microsoft/vscode-azext-azureutils';
 import {
     callWithTelemetryAndErrorHandling,
+    isUserCancelledError,
     UserCancelledError,
     type IActionContext,
 } from '@microsoft/vscode-azext-utils';
@@ -21,7 +22,7 @@ import {
 import { ext } from './extensionVariables';
 import { StorageNames, StorageService, type StorageItem } from './services/StorageService';
 import { getAccountInfo } from './tree/cosmosdb/AccountInfo';
-import { type TreeElement } from './tree/TreeElement';
+import { isTreeElement, type TreeElement } from './tree/TreeElement';
 import { isTreeElementWithContextValue } from './tree/TreeElementWithContextValue';
 import { isTreeElementWithExperience } from './tree/TreeElementWithExperience';
 import { WorkspaceResourceType } from './tree/workspace-api/SharedWorkspaceResourceProvider';
@@ -34,6 +35,18 @@ const supportedProviders = [
     // 'Microsoft.DBforPostgreSQL/serverGroupsv2', // uncomment once we support Cosmos DB for PostgreSQL
 ];
 const fabricEndpointDomain = 'cosmos.fabric.microsoft.com';
+
+// Optional until the Azure Resources API package publishes the result-returning reveal capability.
+interface DeepLinkResourcesApi {
+    revealAzureResourceWithResult?(
+        id: string,
+        options?: {
+            tenantId?: string;
+            includeFilteredSubscription?: boolean;
+            revealOptions?: { select?: boolean; focus?: boolean; expand?: boolean | number };
+        },
+    ): Promise<{ id: string; resource?: unknown } | undefined>;
+}
 
 /**
  * Global URI handler for processing external URIs related to Azure Cosmos DB.
@@ -84,6 +97,9 @@ export async function globalUriHandler(uri: vscode.Uri): Promise<void> {
                 },
             );
         } catch (error) {
+            if (isUserCancelledError(error) || error instanceof vscode.CancellationError) {
+                throw error;
+            }
             const errMsg = error instanceof Error ? error.message : String(error);
             throw new Error(l10n.t('Failed to process URI: {0}', errMsg), { cause: error });
         }
@@ -124,7 +140,10 @@ async function handleResourceIdRequest(
     }
     // reveal the account first, this will open the Azure Resource Groups view,
     // select the resource in the tree and expand it, forcing it to load the children
-    const resource = await revealAzureResourceInExplorer(context, resourceId, params.database, params.container);
+    const resource = await revealAzureResourceInExplorer(context, resourceId, params.database, params.container, {
+        includeFilteredSubscription: true,
+        tenantId: params.tenantId,
+    });
     if (params.database && params.container && resource) {
         await openAppropriateEditorForAzure(resource);
     }
@@ -175,7 +194,10 @@ async function handleConnectionStringRequest(
         }
         const resourceId = createAzureResourceId(params.subscriptionId, params.resourceGroup, accountName);
         context.telemetry.properties.resourceId = new vscode.TelemetryTrustedValue(resourceId.rawId);
-        const resource = await revealAzureResourceInExplorer(context, resourceId, params.database, params.container);
+        const resource = await revealAzureResourceInExplorer(context, resourceId, params.database, params.container, {
+            includeFilteredSubscription: true,
+            tenantId: params.tenantId || parsedConnection.connectionString.tenantId,
+        });
         if (params.database && params.container && resource) {
             await openAppropriateEditorForAzure(resource);
         }
@@ -256,7 +278,7 @@ export async function revealAzureResourceInExplorer(
     resourceId: ParsedAzureResourceId,
     database?: string,
     container?: string,
-    options?: { verifyAndResolve?: boolean },
+    options?: { verifyAndResolve?: boolean; includeFilteredSubscription?: boolean; tenantId?: string },
 ): Promise<TreeElement | undefined> {
     // `verifyAndResolve` drives the heavy path used by the `vscode://` URI handler: it re-reveals the
     // account, then resolves and verifies the target node via `findNodeById` (extra `getChildren` walks,
@@ -270,12 +292,15 @@ export async function revealAzureResourceInExplorer(
         fullId = `${resourceId.rawId}/${database}/${container}`;
     }
 
-    // The error paths below embed the resource id, database, and container names into thrown error
-    // messages. Those values can reach telemetry/error reporting, so mask them up front when a context
-    // is available (database and container names are user data / EUII).
+    // ARM account IDs are case-insensitive; Cosmos DB database and container IDs are case-sensitive.
+    const matchesRequestedResource = (id: string): boolean =>
+        id.slice(0, resourceId.rawId.length).toLowerCase() === resourceId.rawId.toLowerCase() &&
+        id.slice(resourceId.rawId.length) === fullId.slice(resourceId.rawId.length);
+
+    // Provider child names are user data; the ARM account identity is OII and is not explicitly masked.
     if (context) {
-        for (const value of [resourceId.rawId, database, container]) {
-            if (value) {
+        for (const value of [database, container]) {
+            if (value?.trim()) {
                 context.valuesToMask.push(value);
             }
         }
@@ -294,26 +319,52 @@ export async function revealAzureResourceInExplorer(
         return undefined;
     }
 
-    await ext.rgApiV2.resources.revealAzureResource(resourceId.rawId, {
-        select: true,
-        focus: true,
-        expand: true,
-    });
-
-    if (database && container) {
-        await ext.rgApiV2.resources.revealAzureResource(fullId, {
+    const resources = ext.rgApiV2.resources;
+    const deepLinkResources: typeof resources & DeepLinkResourcesApi = resources;
+    let revealedId: string;
+    let resource: TreeElement | undefined;
+    let useLegacyLookup = false;
+    if (deepLinkResources.revealAzureResourceWithResult) {
+        const result = await deepLinkResources.revealAzureResourceWithResult(fullId, {
+            tenantId: options?.tenantId,
+            includeFilteredSubscription: options?.includeFilteredSubscription,
+            revealOptions: { select: true, focus: true, expand: true },
+        });
+        if (result === undefined) {
+            throw new UserCancelledError();
+        }
+        revealedId = result.id;
+        resource = isTreeElement(result.resource) ? result.resource : undefined;
+    } else {
+        useLegacyLookup = true;
+        if (options?.tenantId) {
+            throw new Error(l10n.t('Update the Azure Resources extension to open resources in a specific tenant.'));
+        }
+        await resources.revealAzureResource(resourceId.rawId, {
             select: true,
             focus: true,
             expand: true,
         });
+        if (database && container) {
+            await resources.revealAzureResource(fullId, { select: true, focus: true, expand: true });
+        }
+        revealedId = (await resources.getSelectedAzureNode()) ?? '';
     }
 
-    const branchDataProvider = ext.cosmosDBBranchDataProvider;
-    const revealedId = await ext.rgApiV2.resources.getSelectedAzureNode();
-    const finalId = revealedId ? removeAzureTenantPrefix(revealedId) : fullId;
-    const resource = await branchDataProvider.findNodeById(finalId);
+    const finalId = removeAzureTenantPrefix(revealedId);
+    if (!matchesRequestedResource(finalId)) {
+        throw new Error(
+            l10n.t(
+                'Unable to reveal the requested resource. Ensure its subscription is visible, or update the Azure Resources extension.',
+            ),
+        );
+    }
 
-    if (!resource) {
+    if (useLegacyLookup) {
+        resource = await ext.cosmosDBBranchDataProvider.findNodeById(finalId);
+    }
+
+    if (!resource || (!matchesRequestedResource(resource.id) && !(database && container))) {
         throw new Error(
             l10n.t('Unable to find resource "{0}". Please ensure the resource exists and try again.', resourceId.rawId),
         );
@@ -325,8 +376,7 @@ export async function revealAzureResourceInExplorer(
             : 'unknown';
     }
 
-    // Check if the selected resource is a container if database and container were provided
-    if (database && container && !resource.id.endsWith(`/${container}`)) {
+    if (database && container && !matchesRequestedResource(resource.id)) {
         throw new Error(
             l10n.t(
                 'Unable to find database "{0}" and container "{1}" in resource "{2}". Please ensure the resource exists and try again.',
@@ -547,7 +597,7 @@ async function openAppropriateEditorForAzure(resource: TreeElement): Promise<voi
  * from the given ID string. If the input is undefined or empty, it returns an empty string.
  */
 function removeAzureTenantPrefix(id?: string): string {
-    return id?.replace(/\/accounts\/.+\/tenants\/[^/]+\//i, '/') || '';
+    return id?.replace(/^\/accounts\/[^/]+\/tenants\/[^/]+\//i, '/') || '';
 }
 
 /**
@@ -585,6 +635,7 @@ function parseConnectionString(
  * @returns An object containing the extracted parameters:
  *   - resourceId - The Azure resource ID (if present).
  *   - subscriptionId - The Azure subscription ID (if present).
+ *   - tenantId - The tenant used to resolve the Azure subscription or attached connection (if present).
  *   - resourceGroup - The Azure resource group name (if present).
  *   - connectionString - The connection string for the Cosmos DB account (if present). Extracted from 'cs' parameter.
  *   - database - The name of the database (if present).
@@ -615,6 +666,7 @@ function extractParams(query: string): {
  * Interface for URI parameters used for connecting to Azure Cosmos DB resources.
  * @property {string} [resourceId] - The Azure resource ID of the Cosmos DB account.
  * @property {string} [subscriptionId] - The Azure subscription ID.
+ * @property {string} [tenantId] - The tenant used to resolve the subscription or attached connection.
  * @property {string} [resourceGroup] - The Azure resource group name containing the Cosmos DB account.
  * @property {string} [connectionString] - The connection string to the Cosmos DB account.
  * @property {string} [database] - The name of the database in the Cosmos DB account.
@@ -652,8 +704,7 @@ function extractAndValidateParams(context: IActionContext, query: string): UriPa
             case 'connectionString':
             case 'database':
             case 'container':
-            case 'tenantId':
-                if (value !== undefined) {
+                if (value?.trim()) {
                     context.valuesToMask.push(value);
                 }
                 break;
@@ -662,6 +713,10 @@ function extractAndValidateParams(context: IActionContext, query: string): UriPa
 
     if (!params.resourceId && !params.connectionString) {
         throw new Error(l10n.t('Either resource ID or connection string is required'));
+    }
+
+    if (params.tenantId !== undefined && !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(params.tenantId)) {
+        throw new Error(l10n.t('The tenantId parameter must be a valid tenant GUID.'));
     }
 
     // Track which path we're taking

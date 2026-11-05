@@ -6,11 +6,15 @@
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import { describe, expect, it, vi } from 'vitest';
 import { type AccountInfo } from '../../tree/cosmosdb/AccountInfo';
+import { type ResourceTreeOperationContext } from '../../utils/resourceTreeOperations';
 import { type AzureResourceMetadata } from '../AzureResourceMetadata';
 import { type NoSqlQueryConnection } from '../NoSqlQueryConnection';
 
 class FakeArmControlPlane {
-    constructor(public metadata: AzureResourceMetadata) {}
+    constructor(
+        public metadata: AzureResourceMetadata,
+        public options?: ResourceTreeOperationContext,
+    ) {}
 }
 
 class FakeSdkControlPlane {
@@ -66,6 +70,14 @@ function makeConnection(overrides: Partial<NoSqlQueryConnection> = {}): NoSqlQue
 }
 
 describe('getControlPlane', () => {
+    it('scopes explicit loading options to a new ARM control-plane instance', () => {
+        const info = makeAccountInfo({ azureMetadata: makeMetadata() });
+        const options = { propagateErrors: true };
+
+        expect(getControlPlane(info, options)).toMatchObject({ options });
+        expect(getControlPlane(info)).toMatchObject({ options: undefined });
+    });
+
     it('returns ARM control plane for Azure-signed-in account with Azure metadata', () => {
         const meta = makeMetadata();
         const plane = getControlPlane(makeAccountInfo({ azureMetadata: meta }));

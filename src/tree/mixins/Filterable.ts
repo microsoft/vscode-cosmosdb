@@ -188,9 +188,12 @@ export function makeFilterable<T extends TreeElement>(
         // If getChildren is not defined, we cannot enhance it
     } else {
         // Store the original getChildren method to call it from our enhanced version
-        const originalGetChildren = enhanced.getChildren.bind(enhanced) as () => Promise<TreeElement[]>;
-        enhanced.getChildren = async function (): Promise<TreeElement[]> {
-            const children = await originalGetChildren();
+        const originalGetChildren = enhanced.getChildren.bind(enhanced);
+        enhanced.getChildren = async function (...args: Parameters<typeof originalGetChildren>) {
+            const children = await originalGetChildren(...args);
+            if (!children) {
+                return children;
+            }
 
             // Apply filtering to the children
             if (this.filterProperty && this.filterPattern) {

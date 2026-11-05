@@ -5,10 +5,11 @@
 
 import { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { RestError } from '@azure/cosmos';
-import { callWithTelemetryAndErrorHandling, parseError, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { parseError, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import { CosmosDBTimeouts } from '../constants';
 import { ext } from '../extensionVariables';
+import { callWithResourceTreeErrorHandling, type ResourceTreeOperationContext } from '../utils/resourceTreeOperations';
 import { rejectOnTimeout } from '../utils/timeout';
 import { AuthenticationMethod, getPreferredAuthenticationMethod } from './AuthenticationMethod';
 import { type AzureResourceMetadata } from './AzureResourceMetadata';
@@ -45,102 +46,110 @@ export function getCosmosDBEntraIdCredential(credentials: CosmosDBCredential[]):
 }
 
 // Common credential retrieval function with source-specific parameters
-export async function getCosmosDBCredentials(params: {
-    // Basic account information, required for all credential types
-    accountName: string;
-    documentEndpoint: string;
-    isEmulator: boolean;
+export async function getCosmosDBCredentials(
+    params: {
+        // Basic account information, required for all credential types
+        accountName: string;
+        documentEndpoint: string;
+        isEmulator: boolean;
 
-    // ARM-specific parameters
-    arm?: AzureResourceMetadata;
+        // ARM-specific parameters
+        arm?: AzureResourceMetadata;
 
-    // Connection string params
-    masterKey?: string;
-    tenantId?: string;
-}): Promise<CosmosDBCredential[]> {
-    const result = await callWithTelemetryAndErrorHandling('getCredentials', async (context: IActionContext) => {
-        const { accountName, arm, documentEndpoint, isEmulator, tenantId, masterKey } = params;
+        // Connection string params
+        masterKey?: string;
+        tenantId?: string;
+    },
+    options?: ResourceTreeOperationContext,
+): Promise<CosmosDBCredential[]> {
+    const result = await callWithResourceTreeErrorHandling(
+        'getCredentials',
+        async (context: IActionContext) => {
+            const { accountName, arm, documentEndpoint, isEmulator, tenantId, masterKey } = params;
 
-        context.telemetry.properties.attachedAccount = 'false';
+            context.telemetry.properties.attachedAccount = 'false';
 
-        // Mask PII
-        context.valuesToMask.push(accountName, documentEndpoint);
+            // Mask PII
+            context.valuesToMask.push(accountName, documentEndpoint);
 
-        if (arm?.resourceGroup) {
-            context.valuesToMask.push(arm.resourceGroup);
-        }
-
-        if (tenantId) {
-            context.valuesToMask.push(tenantId);
-        }
-
-        if (masterKey) {
-            context.valuesToMask.push(masterKey);
-        }
-
-        const preferredAuthenticationMethod = getPreferredAuthenticationMethod();
-
-        // Skip key retrieval if not preferred or not auto
-        const shouldTryKeyAuth =
-            preferredAuthenticationMethod === AuthenticationMethod.accountKey ||
-            preferredAuthenticationMethod === AuthenticationMethod.auto ||
-            isEmulator;
-
-        let keyCred: CosmosDBKeyCredential | undefined = undefined;
-
-        if (shouldTryKeyAuth) {
-            // Handle emulator separately (simplest case)
-            if (isEmulator && params.masterKey) {
-                return [
-                    {
-                        type: AuthenticationMethod.accountKey,
-                        key: params.masterKey,
-                    },
-                ] as CosmosDBCredential[];
+            if (arm?.resourceGroup) {
+                context.valuesToMask.push(arm.resourceGroup);
             }
 
-            // Try to get key credential from ARM if possible
-            const armClient = await arm?.getClient();
-            if (arm && armClient) {
-                const localAuthDisabled = arm.databaseAccount.disableLocalAuth ?? false;
-
-                keyCred = await getKeyCredentialWithARM(
-                    context,
-                    accountName,
-                    arm.resourceGroup,
-                    armClient,
-                    localAuthDisabled,
-                );
+            if (tenantId) {
+                context.valuesToMask.push(tenantId);
             }
 
-            // Otherwise try with masterKey if provided
-            else if (params.masterKey) {
-                keyCred = await getKeyCredentialWithoutARM(
-                    context,
-                    accountName,
-                    documentEndpoint,
-                    params.masterKey,
-                    isEmulator,
-                );
+            if (masterKey) {
+                context.valuesToMask.push(masterKey);
             }
-        }
 
-        const managedIdentityCred = await getManagedIdentityAuth(
-            documentEndpoint,
-            preferredAuthenticationMethod === AuthenticationMethod.managedIdentity,
-        );
+            const preferredAuthenticationMethod = getPreferredAuthenticationMethod();
 
-        // OAuth is always enabled for Cosmos DB and used as fallback
-        // TODO: we need to preserve the tenantId in the connection string, otherwise we can't use EntraId for foreign tenants
-        const entraIdCred = { type: AuthenticationMethod.entraId, tenantId: tenantId };
-        const creds = [keyCred, entraIdCred, managedIdentityCred].filter(
-            (cred) => cred !== undefined, // remove unavailable creds
-        ) as CosmosDBCredential[];
-        // Sort the creds so that the preferred method is first
-        const preferredCreds = creds.filter((cred) => cred.type === preferredAuthenticationMethod);
-        const otherCreds = creds.filter((cred) => cred.type !== preferredAuthenticationMethod);
-        return [...preferredCreds, ...otherCreds];
-    });
+            // Skip key retrieval if not preferred or not auto
+            const shouldTryKeyAuth =
+                preferredAuthenticationMethod === AuthenticationMethod.accountKey ||
+                preferredAuthenticationMethod === AuthenticationMethod.auto ||
+                isEmulator;
+
+            let keyCred: CosmosDBKeyCredential | undefined = undefined;
+
+            if (shouldTryKeyAuth) {
+                // Handle emulator separately (simplest case)
+                if (isEmulator && params.masterKey) {
+                    return [
+                        {
+                            type: AuthenticationMethod.accountKey,
+                            key: params.masterKey,
+                        },
+                    ] as CosmosDBCredential[];
+                }
+
+                // Try to get key credential from ARM if possible
+                const armClient = await arm?.getClient(options);
+                if (arm && armClient) {
+                    const localAuthDisabled = arm.databaseAccount.disableLocalAuth ?? false;
+
+                    keyCred = await getKeyCredentialWithARM(
+                        context,
+                        accountName,
+                        arm.resourceGroup,
+                        armClient,
+                        localAuthDisabled,
+                        options,
+                    );
+                }
+
+                // Otherwise try with masterKey if provided
+                else if (params.masterKey) {
+                    keyCred = await getKeyCredentialWithoutARM(
+                        context,
+                        accountName,
+                        documentEndpoint,
+                        params.masterKey,
+                        isEmulator,
+                    );
+                }
+            }
+
+            const managedIdentityCred = await getManagedIdentityAuth(
+                documentEndpoint,
+                preferredAuthenticationMethod === AuthenticationMethod.managedIdentity,
+            );
+
+            // OAuth is always enabled for Cosmos DB and used as fallback
+            // TODO: we need to preserve the tenantId in the connection string, otherwise we can't use EntraId for foreign tenants
+            const entraIdCred = { type: AuthenticationMethod.entraId, tenantId: tenantId };
+            const creds = [keyCred, entraIdCred, managedIdentityCred].filter(
+                (cred) => cred !== undefined, // remove unavailable creds
+            ) as CosmosDBCredential[];
+            // Sort the creds so that the preferred method is first
+            const preferredCreds = creds.filter((cred) => cred.type === preferredAuthenticationMethod);
+            const otherCreds = creds.filter((cred) => cred.type !== preferredAuthenticationMethod);
+            return [...preferredCreds, ...otherCreds];
+        },
+        options,
+    );
     return result ?? [];
 }
 
@@ -151,6 +160,7 @@ async function getKeyCredentialWithARM(
     resourceGroup: string,
     client: CosmosDBManagementClient,
     localAuthDisabled: boolean,
+    options?: ResourceTreeOperationContext,
 ): Promise<CosmosDBKeyCredential | undefined> {
     let keyCred: CosmosDBKeyCredential | undefined = undefined;
     try {
@@ -167,7 +177,10 @@ async function getKeyCredentialWithARM(
             type: AuthenticationMethod.accountKey,
             key: key!,
         };
-    } catch {
+    } catch (error) {
+        if (options?.propagateErrors && parseError(error).isUserCancelledError) {
+            throw error;
+        }
         logLocalAuthDisabledWarning(accountName);
     } finally {
         if (keyCred !== undefined) {

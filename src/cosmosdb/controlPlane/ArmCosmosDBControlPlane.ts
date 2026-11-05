@@ -15,6 +15,7 @@ import { PartitionKeyDefinitionVersion, PartitionKeyKind, type ContainerDefiniti
 import * as l10n from '@vscode/l10n';
 import { SchemaService } from '../../services/SchemaService';
 import { type ContainerResource, type DatabaseResource } from '../../tree/cosmosdb/models/CosmosDBTypes';
+import { type ResourceTreeOperationContext } from '../../utils/resourceTreeOperations';
 import { type AzureResourceMetadata } from '../AzureResourceMetadata';
 import { type CosmosDBControlPlane, type ThroughputResource } from './CosmosDBControlPlane';
 
@@ -29,7 +30,10 @@ import { type CosmosDBControlPlane, type ThroughputResource } from './CosmosDBCo
 export class ArmCosmosDBControlPlane implements CosmosDBControlPlane {
     private armClientPromise?: Promise<CosmosDBManagementClient>;
 
-    public constructor(private readonly metadata: AzureResourceMetadata) {}
+    public constructor(
+        private readonly metadata: AzureResourceMetadata,
+        private readonly options?: ResourceTreeOperationContext,
+    ) {}
 
     private get resourceGroup(): string {
         return this.metadata.resourceGroup;
@@ -179,7 +183,7 @@ export class ArmCosmosDBControlPlane implements CosmosDBControlPlane {
     private getArmClient(): Promise<CosmosDBManagementClient> {
         if (!this.armClientPromise) {
             this.armClientPromise = (async () => {
-                const client = await this.metadata.getClient();
+                const client = await this.metadata.getClient(this.options);
                 if (!client) {
                     throw new Error(l10n.t('Failed to connect to Cosmos DB account'));
                 }

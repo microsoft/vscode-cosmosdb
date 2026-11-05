@@ -174,9 +174,12 @@ export function makeSortable<T extends TreeElement>(
     if (enhanced.getChildren === undefined) {
         // If getChildren is not defined, we cannot enhance it
     } else {
-        const originalGetChildren = enhanced.getChildren.bind(enhanced) as () => Promise<TreeElement[]>;
-        enhanced.getChildren = async function (): Promise<TreeElement[]> {
-            const children = await originalGetChildren();
+        const originalGetChildren = enhanced.getChildren.bind(enhanced);
+        enhanced.getChildren = async function (...args: Parameters<typeof originalGetChildren>) {
+            const children = await originalGetChildren(...args);
+            if (!children) {
+                return children;
+            }
 
             // If sorting is applied, sort the children
             if (this.sortProperty) {

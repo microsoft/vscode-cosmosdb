@@ -103,11 +103,11 @@ beforeEach(() => {
 });
 
 describe('Database Hub account menu', () => {
-    it('uses the Portal label, sits after Open in Portal, and stays out of the Command Palette', () => {
+    it('uses the Portal label, sits between Open in Portal and Refresh, and stays out of the Command Palette', () => {
         const command = manifest.contributes.commands.find((entry) => entry.command === 'cosmosDB.openInDatabaseHub');
         expect(command?.title).toBe('%cosmosdb.command.account.databaseHub.open%');
         expect(labels['cosmosdb.command.account.databaseHub.open']).toBe('View in Database Hub');
-        expect(menu.group).toBe('9@3');
+        expect(menu.group).toBe('9@2.1');
         expect(
             manifest.contributes.menus.commandPalette.find((entry) => entry.command === 'cosmosDB.openInDatabaseHub'),
         ).toEqual({ command: 'cosmosDB.openInDatabaseHub', when: 'never' });

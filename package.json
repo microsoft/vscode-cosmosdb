@@ -1175,7 +1175,7 @@
         {
           "command": "cosmosDB.openInDatabaseHub",
           "when": "view =~ /azure(ResourceGroups|FocusView)/ && viewItem =~ /hasarmmetadata/i && viewItem =~ /experience[.]core/i && viewItem =~ /supportsDatabaseHub/i",
-          "group": "9@3"
+          "group": "9@2.1"
         },
         {
           "command": "azureDatabases.createServer",

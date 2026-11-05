@@ -185,6 +185,11 @@ Authorization failures include permission identifiers, example read-only roles a
 Authentication failures instead ask users to check Azure sign-in, tenant and credentials.
 Successful reads and advisory findings remain available.
 
+Read-failure and partial-coverage notices are collapsed by default. Their titles and informational/warning styling
+remain visible; expand a notice to review skipped checks, failure details and permission guidance.
+**Show Output** and guidance links remain available while details are collapsed.
+Actual advisory findings are not hidden by these diagnostic disclosures.
+
 This covers collection after the dashboard has account metadata, including Monitoring and inventory reads.
 Failures while initially opening the dashboard remain outside this table.
 

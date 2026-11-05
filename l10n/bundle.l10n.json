@@ -937,6 +937,8 @@
   "High cardinality": "High cardinality",
   "High impact": "High impact",
   "High indexing overhead in {container}": "High indexing overhead in {container}",
+  "High- or medium-impact Azure Advisor recommendations: {count}.": "High- or medium-impact Azure Advisor recommendations: {count}.",
+  "High- or medium-severity derived advisories: {count}. These findings do not escalate account health.": "High- or medium-severity derived advisories: {count}. These findings do not escalate account health.",
   "High-cardinality = better distribution": "High-cardinality = better distribution",
   "High-impact Performance or Cost recommendations make account health at least Needs Attention.": "High-impact Performance or Cost recommendations make account health at least Needs Attention.",
   "High-volume device events, sensor streams": "High-volume device events, sensor streams",

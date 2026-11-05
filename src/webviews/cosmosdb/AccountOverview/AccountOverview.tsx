@@ -801,6 +801,8 @@ export const OverviewDashboard = ({
         normalizedRuApplicability,
         recommendations,
         recommendationsLoading,
+        derivedAdvisories,
+        dismissedAdvisoryIds,
     });
 
     return (

@@ -113,6 +113,13 @@ export function offerScope(input: { databaseId: string; containerId?: string }):
     return input.containerId === undefined ? input.databaseId : `${input.databaseId}/${input.containerId}`;
 }
 
+export function getVisibleAdvisories(
+    advisories: readonly DerivedAdvisory[],
+    dismissedIds?: ReadonlySet<string>,
+): DerivedAdvisory[] {
+    return advisories.filter((advisory) => !advisory.supersededBy && !dismissedIds?.has(advisory.id));
+}
+
 /** Sorts advisories by severity (High first), then rule, then scope. Pure. */
 export function compareAdvisories(a: DerivedAdvisory, b: DerivedAdvisory): number {
     return (

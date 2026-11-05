@@ -45,6 +45,12 @@ function showCoverage(source: DerivedAdvisoriesResult['logSource'], overrides: P
     return { openUrl, showOutput, onDismiss };
 }
 
+function expandNotice(title: string) {
+    const notice = screen.getByRole('group', { name: title });
+    fireEvent.click(within(notice).getByRole('button', { name: title }));
+    return notice;
+}
+
 describe('log coverage guidance', () => {
     it('names the failed check and explains resource/workspace access instead of assuming one missing role', () => {
         const { openUrl } = showCoverage({
@@ -57,6 +63,13 @@ describe('log coverage guidance', () => {
         expect(notice).toHaveClass(messageBarClassNames.root);
         expect(notice).not.toHaveAttribute('tabindex');
         expect(notice.querySelector(`.${messageBarClassNames.icon}`)).toHaveAttribute('aria-hidden', 'true');
+        const toggle = within(notice).getByRole('button', { name: 'Partial coverage' });
+        expect(toggle).toHaveTextContent('Partial coverage');
+        expect(toggle).toHaveAccessibleName('Partial coverage');
+        expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        expect(within(notice).queryByRole('list')).not.toBeInTheDocument();
+        expandNotice('Partial coverage');
+        expect(toggle).toHaveAttribute('aria-expanded', 'true');
         expect(screen.getByText('DataPlaneRequests availability: Access denied')).toBeDefined();
         expect(
             screen.getByText(
@@ -78,6 +91,7 @@ describe('log coverage guidance', () => {
             reason: 'logAnalyticsDisabled',
             failures: [{ operation: 'probeQueryRuntime', kind: 'missingTable', reason: 'logAnalyticsDisabled' }],
         });
+        expandNotice('Partial coverage');
         expect(
             screen.getByText(
                 'Some required CDB log tables could not be queried. ' +
@@ -96,6 +110,7 @@ describe('log coverage guidance', () => {
             reason: 'noData',
             failures: [{ operation: 'crossPartition', kind: 'queryError', reason: 'noData' }],
         });
+        expandNotice('Partial coverage');
         expect(screen.getByText('Query fan-out: Query error')).toBeDefined();
         expect(
             screen.getByText(
@@ -171,6 +186,11 @@ describe('log coverage guidance', () => {
         expect(coverage).toHaveTextContent('Partial coverage');
         expect(coverage).toHaveAccessibleName('Partial coverage');
         expect(coverage).toHaveAccessibleDescription('Some analyzers could not run, so coverage is partial.');
+        await user.tab();
+        const toggle = screen.getByRole('button', { name: 'Partial coverage' });
+        expect(toggle).toHaveFocus();
+        await user.keyboard('{Enter}');
+        expect(toggle).toHaveAttribute('aria-expanded', 'true');
         await user.tab();
         expect(button).toHaveFocus();
         await user.keyboard('{Enter}');
@@ -461,6 +481,18 @@ describe('metric coverage and actionable findings', () => {
         );
         const section = screen.getByLabelText('Recommendations');
         expect(getComputedStyle(section).overflow).not.toBe('hidden');
+        const content = withFindings
+            ? within(section).getByRole('button', { name: /^Idle containers/ })
+            : within(section).getByText('No advisories from the checks that completed.');
+        expect(content).toBeVisible();
+        const notice = screen.getByRole('group', { name: 'Incomplete workload analysis' });
+        const toggle = within(notice).getByRole('button', { name: 'Incomplete workload analysis' });
+        expect(toggle).toHaveTextContent('Incomplete workload analysis');
+        expect(toggle).toHaveAccessibleName('Incomplete workload analysis');
+        expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        expect(within(notice).queryByRole('list')).not.toBeInTheDocument();
+        expandNotice('Incomplete workload analysis');
+        expect(toggle).toHaveAttribute('aria-expanded', 'true');
         let element: HTMLElement | null = within(section).getByRole('button', { name: 'Show Output' });
         while (element && section.contains(element)) {
             const style = getComputedStyle(element);
@@ -468,9 +500,9 @@ describe('metric coverage and actionable findings', () => {
             element = element.parentElement;
         }
         expect(within(section).getByText('Indexing cost risk: Metric data unavailable or incomplete')).toBeVisible();
-        const content = withFindings
-            ? within(section).getByRole('button', { name: /^Idle containers/ })
-            : within(section).getByText('No advisories from the checks that completed.');
+        fireEvent.click(toggle);
+        expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        expect(within(notice).queryByRole('list')).not.toBeInTheDocument();
         expect(content).toBeVisible();
     });
 
@@ -565,7 +597,7 @@ describe('metric coverage and actionable findings', () => {
                 },
             },
         );
-        const notice = screen.getByRole('group', { name: 'Incomplete workload analysis' });
+        const notice = expandNotice('Incomplete workload analysis');
         expect(
             within(notice).getByText('Sustained throttling: Metric data unavailable or incomplete'),
         ).toBeInTheDocument();
@@ -596,6 +628,7 @@ describe('metric coverage and actionable findings', () => {
         expect(notice).toHaveClass(messageBarClassNames.root);
         expect(notice).not.toHaveAttribute('tabindex');
         expect(notice.querySelector(`.${messageBarClassNames.icon}`)).toHaveAttribute('aria-hidden', 'true');
+        expandNotice('Incomplete workload analysis');
         expect(within(notice).getByText('Incomplete workload analysis')).toBeInTheDocument();
         expect(
             screen.getByText(

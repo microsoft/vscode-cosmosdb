@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type API } from '../../../../../AzureDBExperiences';
+import { type ReadDiagnosticsResult } from '../../../accessRequirements';
 import { type ThroughputMode } from '../../inventory';
 import { type PartitionStorageSeries } from '../../partitionHealth';
 import { type UnavailableReason } from '../../shared';
@@ -81,7 +82,7 @@ export interface MetricSourceStatus {
     failures: { rule: DerivedAdvisoryRule; scope?: string; reason: UnavailableReason }[];
 }
 
-export interface DerivedAdvisoriesResult {
+export interface DerivedAdvisoriesResult extends ReadDiagnosticsResult {
     /** False when none of the underlying telemetry was available to evaluate. */
     available: boolean;
     /** When `available` is false, why: `noData` | `unsupported` | `rbac` | `logAnalyticsDisabled`. */

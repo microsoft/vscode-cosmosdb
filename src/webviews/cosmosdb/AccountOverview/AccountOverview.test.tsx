@@ -732,7 +732,10 @@ describe('Serverless metric selection', () => {
 
     it.each([
         ['noData', 'No telemetry available for this selection yet.'],
-        ['rbac', 'Not enough permissions: your role is missing Monitoring Reader.'],
+        [
+            'rbac',
+            'Read access to this section is unavailable. Monitoring Reader is a broad role option; equivalent permissions can also work.',
+        ],
         ['error', 'Unable to load telemetry. Try refreshing.'],
     ])('keeps storage distribution visible with its real %s outcome and no mode toggle', async (reason, message) => {
         const user = userEvent.setup();

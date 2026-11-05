@@ -6,6 +6,7 @@
 import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { type AzureResourceMetadata } from '../../../../cosmosdb/AzureResourceMetadata';
+import { ext } from '../../../../extensionVariables';
 import { getInventoryResult } from '../../../accountOverview/services/inventory';
 import { type AccountOverviewRouterContext } from '../../appRouter';
 import { accountOverviewRouter } from '../../trpc';
@@ -18,6 +19,7 @@ vi.mock('../../trpc', async () => {
     return { accountOverviewProcedure: trpc.publicProcedure, accountOverviewRouter: trpc.router };
 });
 vi.mock('../../../accountOverview/services/inventory', () => ({ getInventoryResult: vi.fn() }));
+vi.mock('../../../../extensionVariables', () => ({ ext: { outputChannel: { warn: vi.fn() } } }));
 
 const router = accountOverviewRouter(accountInventoryProcedures);
 
@@ -156,6 +158,18 @@ describe('account summary procedure', () => {
 });
 
 describe('inventory procedure', () => {
+    it('preserves acquisition error diagnostics in the real RPC result and Output', async () => {
+        const { caller, metadata } = createCaller();
+        metadata.getClient.mockRejectedValue({ statusCode: 403, code: 'Forbidden', message: 'Insufficient access.' });
+        const result = await caller.getInventory();
+        expect(result).toMatchObject({
+            available: false,
+            reason: 'rbac',
+            diagnostics: [{ source: 'inventory', kind: 'accessDenied', reason: 'rbac' }],
+        });
+        expect(ext.outputChannel.warn).toHaveBeenCalledWith(expect.stringContaining('HTTP 403'));
+    });
+
     it('passes empty database names through the real procedure without synthesizing container rows', async () => {
         const { caller, metadata } = createCaller();
         const client = {} as NonNullable<Awaited<ReturnType<AzureResourceMetadata['getClient']>>>;

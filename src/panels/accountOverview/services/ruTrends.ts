@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type MonitorClient } from '@azure/arm-monitor';
+import { readMetrics } from './readDiagnostics';
 import {
     classifyUnavailable,
     containerFilter,
@@ -149,7 +150,7 @@ export async function querySeries(
     interval: string,
     filter: string | undefined,
 ): Promise<Map<number, number>> {
-    const response = await client.metrics.list(resourceUri, {
+    const response = await readMetrics(client, resourceUri, {
         metricnames: metricName,
         aggregation,
         timespan,
@@ -209,7 +210,7 @@ export async function getThrottleRate(
     const filter = containerFilter(databaseId, containerId);
     const statusFilter = filter ? `${filter} and StatusCode eq '*'` : `StatusCode eq '*'`;
 
-    const response = await client.metrics.list(resourceUri, {
+    const response = await readMetrics(client, resourceUri, {
         metricnames: 'TotalRequests',
         aggregation: 'Count',
         timespan,
@@ -272,7 +273,7 @@ export async function queryThrottlingSummary(
     filter: string | undefined,
 ): Promise<{ timestamps: Set<number>; hasObservations: boolean }> {
     const statusFilter = filter ? `${filter} and StatusCode eq '*'` : `StatusCode eq '*'`;
-    const response = await client.metrics.list(resourceUri, {
+    const response = await readMetrics(client, resourceUri, {
         metricnames: 'TotalRequests',
         aggregation: 'Count',
         timespan,

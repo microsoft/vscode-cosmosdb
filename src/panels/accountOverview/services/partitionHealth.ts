@@ -4,8 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type MonitorClient } from '@azure/arm-monitor';
+import { type ReadDiagnosticsResult } from '../accessRequirements';
 import { type MetricUnavailableReason } from '../metrics/contracts';
 import { HEALTH_POLICY, OVERVIEW_DEFAULTS } from './healthPolicy';
+import { readMetrics } from './readDiagnostics';
 import {
     metricFailureReason,
     classifyUnavailable,
@@ -71,7 +73,7 @@ export interface PartitionTile {
     hot: boolean;
 }
 
-export interface PartitionHealthResult {
+export interface PartitionHealthResult extends ReadDiagnosticsResult {
     /** False when Azure Monitor exposes no per-partition series for this API/SKU. */
     available: boolean;
     /** Missing observations, unsupported API, or the actual request failure. */
@@ -438,7 +440,7 @@ async function queryPartitionSplitSeries(
     containerId: string,
 ): Promise<Map<string, Map<number, number>>> {
     const filter = `DatabaseName eq '${escapeODataLiteral(databaseId)}' and CollectionName eq '${escapeODataLiteral(containerId)}' and ${dimension} eq '*'`;
-    const response = await client.metrics.list(resourceUri, {
+    const response = await readMetrics(client, resourceUri, {
         metricnames: metricName,
         aggregation: 'Maximum',
         timespan,

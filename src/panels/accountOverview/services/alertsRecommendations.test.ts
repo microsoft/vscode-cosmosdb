@@ -140,7 +140,7 @@ describe('Resource Graph active alert summary', () => {
         const { client } = graphClient({}, status);
         expect(await getActiveAlertSummary(client, 'sub', accountId, 'https://management.azure.com')).toMatchObject({
             available: false,
-            reason: status === 403 ? 'rbac' : 'noData',
+            reason: status === 401 || status === 403 ? 'rbac' : 'noData',
         });
     });
 

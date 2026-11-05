@@ -391,7 +391,10 @@ it('uses the same selection for an applicable eye button and omits inapplicable 
 
 it.each([
     ['noData', 'No telemetry available for this selection yet.'],
-    ['rbac', 'Not enough permissions: your role is missing Monitoring Reader.'],
+    [
+        'rbac',
+        'Read access to this section is unavailable. Monitoring Reader is a broad role option; equivalent permissions can also work.',
+    ],
     ['unsupported', 'Telemetry unavailable for this API or SKU.'],
     ['error', 'Unable to load metric data. Use Refresh to try again.'],
 ] as const)('preserves the %s chart state rather than declaring inapplicability', (reason, text) => {

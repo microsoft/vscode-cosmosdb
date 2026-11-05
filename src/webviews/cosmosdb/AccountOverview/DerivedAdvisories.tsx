@@ -62,12 +62,6 @@ const useStyles = makeStyles({
         display: 'flex',
         flexDirection: 'column',
         gap: tokens.spacingVerticalM,
-        // Fill the height the card hands down (the card grows to match the main column) and clip, so the list below
-        // owns the scroll. When the card is not height-constrained (e.g. the rail wraps under the main column on a
-        // narrow viewport), this simply grows to the content height and nothing scrolls.
-        flexGrow: 1,
-        minHeight: 0,
-        overflow: 'hidden',
     },
     provenanceRow: {
         display: 'flex',
@@ -95,10 +89,9 @@ const useStyles = makeStyles({
         flexWrap: 'wrap',
         rowGap: tokens.spacingVerticalS,
     },
-    scrollBody: {
-        flexGrow: 1,
-        minHeight: 0,
-        overflowY: 'auto',
+    body: {
+        display: 'flex',
+        flexDirection: 'column',
     },
     list: {
         display: 'flex',
@@ -742,6 +735,12 @@ export const DerivedAdvisories = ({
     const partialCoverage = !!result?.available && !!logSource && logSource.available === false;
     const coverageReason = logSource?.reason;
     const metricPartialCoverage = !!result?.available && result.metricSource?.available === false;
+    const metricCoverageIntent =
+        result?.metricSource?.failures.some(
+            (failure) => failure.reason !== 'noData' && failure.reason !== 'unsupported',
+        ) || result?.diagnostics?.some((failure) => failure.source !== 'logs')
+            ? 'warning'
+            : 'info';
 
     useEffect(() => {
         if (partialCoverage) {
@@ -789,7 +788,7 @@ export const DerivedAdvisories = ({
                     className={styles.coveragePill}
                     tabIndex={0}
                     appearance="tint"
-                    color="warning"
+                    color={partialCoverage || metricCoverageIntent === 'warning' ? 'warning' : 'informative'}
                     aria-label={coverageLabel}
                 >
                     <span aria-hidden="true">{coverageLabel}</span>
@@ -840,9 +839,11 @@ export const DerivedAdvisories = ({
                 {provenance}
                 {coverageBadge}
             </div>
-            <div className={styles.scrollBody}>
+            <div className={styles.body}>
                 {partialCoverage && <PartialCoverageNotice source={logSource} />}
-                {metricPartialCoverage && <MetricCoverageNotice source={result?.metricSource} />}
+                {metricPartialCoverage && (
+                    <MetricCoverageNotice source={result?.metricSource} intent={metricCoverageIntent} />
+                )}
                 {body}
             </div>
             <AdvisoryDetailDialog
@@ -860,8 +861,15 @@ export const DerivedAdvisories = ({
     );
 };
 
-const MetricCoverageNotice = ({ source }: { source: DerivedAdvisoriesResult['metricSource'] }) => {
+const MetricCoverageNotice = ({
+    source,
+    intent,
+}: {
+    source: DerivedAdvisoriesResult['metricSource'];
+    intent: 'info' | 'warning';
+}) => {
     const styles = useStyles();
+    const { showOutput } = useDashboardActions();
     const reasons: Record<UnavailableReason, string> = {
         noData: l10n.t('Metric data unavailable or incomplete'),
         rbac: l10n.t('Access denied'),
@@ -872,7 +880,7 @@ const MetricCoverageNotice = ({ source }: { source: DerivedAdvisoriesResult['met
     return (
         <MessageBar
             className={styles.notice}
-            intent="warning"
+            intent={intent}
             layout="multiline"
             politeness="polite"
             icon={{ 'aria-hidden': true }}
@@ -891,7 +899,17 @@ const MetricCoverageNotice = ({ source }: { source: DerivedAdvisoriesResult['met
                         <li key={key}>{`${ruleMeta(failure.rule).name}: ${reasons[failure.reason]}`}</li>
                     ))}
                 </ul>
+                <div>
+                    {l10n.t(
+                        'The Output channel lists skipped checks and any request errors. Missing metric observations do not by themselves indicate insufficient permissions.',
+                    )}
+                </div>
             </MessageBarBody>
+            <MessageBarActions className={styles.noticeActions}>
+                <Button size="small" onClick={showOutput}>
+                    {l10n.t('Show Output')}
+                </Button>
+            </MessageBarActions>
         </MessageBar>
     );
 };
@@ -916,6 +934,7 @@ const PartialCoverageNotice = ({ source }: { source: DerivedAdvisoriesResult['lo
     };
     const kinds = {
         accessDenied: l10n.t('Access denied'),
+        authentication: l10n.t('Sign-in required'),
         missingTable: l10n.t('Required table unavailable'),
         queryError: l10n.t('Query error'),
         partialFailure: l10n.t('Incomplete query result'),

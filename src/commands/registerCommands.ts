@@ -41,6 +41,7 @@ import {
     registerAccountOverviewNavigationCommands,
 } from './openAccountOverview/openAccountOverview';
 import { cosmosDBOpenItem } from './openDocument/openDocument';
+import { openInDatabaseHub } from './openInDatabaseHub/openInDatabaseHub';
 import { openNoSqlQueryEditor } from './openNoSqlQueryEditor/openNoSqlQueryEditor';
 import { cosmosDBOpenStoredProcedure } from './openStoredProcedure/openStoredProcedure';
 import { cosmosDBOpenTrigger } from './openTrigger/openTrigger';
@@ -96,6 +97,7 @@ export function registerAccountCommands() {
     registerCommandWithTreeNodeUnwrapping('cosmosDB.copyConnectionString', copyConnectionString);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.openUnsupportedAccount', openUnsupportedAccount);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.openAccountOverview', openAccountOverview);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.openInDatabaseHub', openInDatabaseHub);
     registerAccountOverviewNavigationCommands();
 }
 

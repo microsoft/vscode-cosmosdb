@@ -46,6 +46,9 @@ The Azure Cosmos DB Explorer helps you find, view, and manage your Azure Cosmos 
 
 - **Open in Azure Portal**: Open an account directly in the Azure portal for service-level configuration.
 
+- **View in Database Hub**: Right-click a NoSQL account in Azure Resources and open it in Microsoft Fabric's Database Hub,
+  next to **Open in Portal**. Available only for accounts in public Azure, not sovereign clouds or workspace connections.
+
 - **Manage Resources**: View, create, and delete databases, containers, stored procedures, triggers, and documents.
 
 - **Edit Documents and Scripts**: Open documents and stored procedures in the editor, then save changes to the service.

@@ -542,6 +542,7 @@
   "Data: {data}; indexes: {index}.": "Data: {data}; indexes: {index}.",
   "Database": "Database",
   "Database field help": "Database field help",
+  "Database Hub is only available for Azure Cosmos DB for NoSQL accounts in public Azure.": "Database Hub is only available for Azure Cosmos DB for NoSQL accounts in public Azure.",
   "Database name cannot be longer than 255 characters": "Database name cannot be longer than 255 characters",
   "Database name cannot contain control characters or \"%\", or be \".\" or \"..\".": "Database name cannot contain control characters or \"%\", or be \".\" or \"..\".",
   "Database name cannot contain the characters '\\', '/', '#', '?', '='": "Database name cannot contain the characters '\\', '/', '#', '?', '='",

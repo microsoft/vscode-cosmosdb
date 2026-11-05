@@ -43,7 +43,7 @@ test('validates model-reviewed inventory from the preflight manifest without par
     } finally { fs.rmSync(workspace, { recursive: true }); }
 });
 
-test('source hashes and inventory validation are stable across host locales and file order', () => {
+test('source hashes and inventory validation are stable across default string collations and file order', () => {
     const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'locale-inventory-'));
     try {
         const project = { phases: { discovery: {} } };
@@ -69,22 +69,23 @@ test('source hashes and inventory validation are stable across host locales and 
         assert.deepEqual(files, original);
         const code = `
             import fs from 'node:fs';
+            import { mockDefaultStringCollation } from ${JSON.stringify(new URL('./locale-fixtures.mjs', import.meta.url).href)};
             import { readSourceInventory, sourceFilesHash } from ${JSON.stringify(new URL('../scripts/validate-source-evidence.mjs', import.meta.url).href)};
-            const { workspace, project, files } = JSON.parse(fs.readFileSync(0, 'utf8'));
+            const { workspace, project, files, locale } = JSON.parse(fs.readFileSync(0, 'utf8'));
+            mockDefaultStringCollation(locale);
             console.log(JSON.stringify({
                 collation: Math.sign('\\u00e4'.localeCompare('z')),
                 hash: sourceFilesHash('tsql', files), inventory: readSourceInventory(workspace, project),
             }));
         `;
-        const results = ['en_US.UTF-8', 'sv_SE.UTF-8', 'tr_TR.UTF-8'].map(locale => {
+        const results = ['en-US', 'sv-SE', 'tr-TR'].map(locale => {
             const result = spawnSync(process.execPath, ['--input-type=module', '-e', code], {
-                encoding: 'utf8', input: JSON.stringify({ workspace, project, files: [...files].reverse() }),
-                env: { ...process.env, LANG: locale, LC_ALL: locale },
+                encoding: 'utf8', input: JSON.stringify({ workspace, project, files: [...files].reverse(), locale }),
             });
             assert.equal(result.status, 0, result.stderr);
             return JSON.parse(result.stdout);
         });
-        assert.notEqual(results[0].collation, results[1].collation);
+        assert.deepEqual(results.map(result => result.collation), [-1, 1, -1]);
         for (const result of results) {
             assert.equal(result.hash, expectedHash);
             assert.deepEqual(result.inventory.errors, []);

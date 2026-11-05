@@ -3291,6 +3291,11 @@ describe('tabbed Account Overview', () => {
         }
         expect(screen.getByRole('region', { name: 'Account details' })).toBeVisible();
         expect(screen.getByRole('button', { name: 'Account details' })).toHaveAttribute('aria-expanded', 'true');
+        const details = within(screen.getByRole('region', { name: 'Account details' }));
+        for (const label of ['API type', 'Consistency', 'Automatic failover']) {
+            expect(details.getByText(label)).toBeVisible();
+        }
+        expect(details.queryByRole('button')).not.toBeInTheDocument();
         expect(screen.getByRole('tabpanel', { name: 'Monitoring' })).toHaveAttribute(
             'id',
             monitoring.getAttribute('aria-controls'),

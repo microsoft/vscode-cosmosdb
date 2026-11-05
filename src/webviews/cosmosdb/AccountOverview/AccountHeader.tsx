@@ -179,16 +179,6 @@ const useStyles = makeStyles({
         columnGap: tokens.spacingHorizontalXL,
         rowGap: tokens.spacingVerticalM,
     },
-    detailFooter: {
-        display: 'flex',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: tokens.spacingHorizontalS,
-        marginTop: tokens.spacingVerticalM,
-    },
-    additionalPropertiesPanel: {
-        margin: `${tokens.spacingVerticalM} 0 0`,
-    },
     essentialItem: {
         display: 'flex',
         flexDirection: 'column',
@@ -274,7 +264,6 @@ export const AccountHeader = ({
           ? l10n.t('Account data is still loading.')
           : undefined;
     const [essentialsOpen, setEssentialsOpen] = useState(defaultEssentialsOpen);
-    const [additionalPropertiesOpen, setAdditionalPropertiesOpen] = useState(false);
     const databases = useMemo(
         () => [...new Set(databaseIds ?? containers.map((container) => container.databaseId))].sort(),
         [containers, databaseIds],
@@ -335,8 +324,6 @@ export const AccountHeader = ({
             value: summary.writeRegions.length ? summary.writeRegions.join(', ') : '—',
         },
         { label: l10n.t('Read locations'), value: summary.readRegions.length ? summary.readRegions.join(', ') : '—' },
-    ];
-    const additionalProperties = [
         { label: l10n.t('API type'), value: summary.apiType },
         { label: l10n.t('Consistency'), value: summary.consistencyLevel ?? l10n.t('Unknown') },
         {
@@ -505,43 +492,6 @@ export const AccountHeader = ({
                                 <EssentialField key={field.label} label={field.label} value={field.value} />
                             ))}
                         </div>
-                        <Accordion
-                            collapsible
-                            openItems={additionalPropertiesOpen ? ['properties'] : []}
-                            onToggle={(_, data) => setAdditionalPropertiesOpen(data.openItems.includes('properties'))}
-                        >
-                            <AccordionItem value="properties">
-                                <div className={styles.detailFooter}>
-                                    <AccordionHeader
-                                        as="h3"
-                                        inline
-                                        size="small"
-                                        className={styles.detailsToggle}
-                                        button={{
-                                            id: `${id}-properties-toggle`,
-                                            'aria-controls': `${id}-properties`,
-                                        }}
-                                    >
-                                        {l10n.t('Additional account properties')}
-                                    </AccordionHeader>
-                                </div>
-                                <AccordionPanel
-                                    className={mergeClasses(styles.essentialsGrid, styles.additionalPropertiesPanel)}
-                                    // AccordionPanel only supports a div root.
-                                    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
-                                    role="region"
-                                    id={`${id}-properties`}
-                                    aria-labelledby={`${id}-properties-toggle`}
-                                    collapseMotion={{
-                                        children: (Component, props) => <Component {...props} unmountOnExit={false} />,
-                                    }}
-                                >
-                                    {additionalProperties.map((field) => (
-                                        <EssentialField key={field.label} label={field.label} value={field.value} />
-                                    ))}
-                                </AccordionPanel>
-                            </AccordionItem>
-                        </Accordion>
                     </AccordionPanel>
                 </AccordionItem>
             </Accordion>

@@ -233,6 +233,9 @@ export const dataModelingRouterDef = dataModelingRouter({
                 return;
             }
             await vscode.commands.executeCommand('workbench.action.chat.newChat');
+            if (input.requestId && ctx.modelingTelemetry && !ctx.modelingTelemetry.acceptsResponse(input.requestId)) {
+                return;
+            }
             await vscode.commands.executeCommand('workbench.action.chat.open', {
                 mode: 'agent',
                 query,

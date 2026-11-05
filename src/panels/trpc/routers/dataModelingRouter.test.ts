@@ -852,6 +852,33 @@ describe('recommendation prompt', () => {
         executeCommand.mockRestore();
     });
 
+    it('does not submit a recommendation abandoned while the new chat is opening', async () => {
+        let finishNewChat!: () => void;
+        const newChat = new Promise<void>((resolve) => {
+            finishNewChat = resolve;
+        });
+        const executeCommand = vi.spyOn(vscode.commands, 'executeCommand').mockResolvedValue(undefined);
+        executeCommand.mockReturnValueOnce(newChat);
+        const acceptsResponse = vi.fn().mockReturnValue(true);
+        const ctx = context();
+        ctx.modelingTelemetry = {
+            beginRecommendation: vi.fn().mockReturnValue(true),
+            acceptsResponse,
+        } as unknown as ModelingTelemetry;
+        const requestId = '12345678-1234-4123-8123-123456789001';
+        const recommendation = dataModelingRouterDef.createCaller(ctx).requestRecommendation({
+            ...applyScenario(createInitialState(), 'chat'),
+            requestId,
+        });
+        await vi.waitFor(() => expect(executeCommand).toHaveBeenCalledExactlyOnceWith('workbench.action.chat.newChat'));
+        acceptsResponse.mockReturnValue(false);
+        finishNewChat();
+        await recommendation;
+        expect(acceptsResponse).toHaveBeenLastCalledWith(requestId);
+        expect(executeCommand).toHaveBeenCalledExactlyOnceWith('workbench.action.chat.newChat');
+        executeCommand.mockRestore();
+    });
+
     it.each(['workbench.action.chat.newChat', 'workbench.action.chat.open'])(
         'propagates %s failures without submitting further commands',
         async (failedCommand) => {

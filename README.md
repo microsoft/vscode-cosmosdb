@@ -118,6 +118,8 @@ If Copilot stops without returning a recommendation, select **Stop waiting** and
 in Chat, then select **Retry**. This reuses migration's local tracking reset; it does not cancel Chat. Late results from
 the abandoned request are ignored, and your model inputs are preserved.
 
+Each recommendation request starts a new Copilot Chat rather than adding to your active conversation.
+
 Work is saved locally per account so you can resume later; saved sessions expire 30 days after their last save.
 To permanently clear local Data Modeler data for every account, run **Cosmos DB: Delete All Data Modeler Data**
 from the Command Palette and confirm. This closes all Data Modeler tabs and removes saved sessions, including legacy

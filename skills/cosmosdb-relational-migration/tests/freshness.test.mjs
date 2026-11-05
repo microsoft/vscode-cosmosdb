@@ -197,6 +197,41 @@ test('workspace schema selection excludes the checkpoint and remains current aft
     }
 });
 
+for (const selectionMode of ['workspace', 'migration-folder', 'explicit']) {
+    test(`${selectionMode} schema selection ignores notebook edits but tracks preserved models`, () => {
+        const { workspace, project } = workspaceProject();
+        try {
+            const inventory = sourceFixture(workspace, project);
+            discoveryFixture(workspace, inventory, project);
+            const root = path.join(workspace, '.cosmosdb-migration');
+            const checkpoint = path.join(root, 'project.json');
+            const notebook = path.join(root, 'memory.md');
+            const model = path.join(root, 'memory-models/accepted.json');
+            fs.mkdirSync(path.dirname(model));
+            fs.writeFileSync(notebook, '# Advisory notes\n');
+            fs.writeFileSync(model, '{}');
+            fs.symlinkSync(root, path.join(workspace, 'migration-alias'), 'junction');
+            const selection = selectionMode === 'explicit'
+                ? { files: ['phases/1-discovery/schema-ddl/Schema.sql', 'memory.md', '../migration-alias/memory.md', 'memory-models/accepted.json'] }
+                : { path: selectionMode === 'workspace' ? '.' : '.cosmosdb-migration' };
+            project.phases.discovery.schemaInventory = selection;
+            fs.writeFileSync(checkpoint, JSON.stringify(project));
+            assert.deepEqual(selectedDiscoveryFiles(workspace, project, 'schema-evidence'), [model]);
+            recordFreshness(workspace, 'preflight', readProjectState(workspace).revision);
+            assert.equal(checkPhaseCompletion(workspace, 'discovery').complete, true);
+            fs.appendFileSync(notebook, 'A note-only update.\n');
+            assert.equal(checkPhaseCompletion(workspace, 'preflight').complete, true);
+            assert.equal(checkPhaseCompletion(workspace, 'discovery').complete, true);
+            assert.deepEqual(JSON.parse(fs.readFileSync(checkpoint, 'utf8')).phases.discovery.schemaInventory, selection);
+            fs.appendFileSync(model, ' ');
+            assert.equal(checkPhaseCompletion(workspace, 'preflight').freshness, 'stale');
+            assert.equal(checkPhaseCompletion(workspace, 'discovery').complete, false);
+        } finally {
+            fs.rmSync(workspace, { recursive: true, force: true });
+        }
+    });
+}
+
 for (const selectionMode of ['implicit', 'explicit']) {
     test(`${selectionMode} workspace schema evidence stays current when Discovery outputs are regenerated`, () => {
         const { workspace, project } = workspaceProject();

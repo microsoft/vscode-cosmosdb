@@ -62,7 +62,7 @@ function projectFilePath(workspace) {
 function managedSchemaEvidencePaths(workspace) {
     const root = path.resolve(workspace, '.cosmosdb-migration');
     const files = [
-        'project.json', 'code-migration-plan.md', 'code-migration-manifest.json',
+        'project.json', 'memory.md', 'code-migration-plan.md', 'code-migration-manifest.json',
         'phases/1-discovery/preflight-summary.md', 'phases/1-discovery/preflight-manifest.json',
         'phases/1-discovery/discovery-report.md', 'phases/1-discovery/discovery-manifest.json',
         'phases/1-discovery/volumetrics/volumetrics.md', 'phases/1-discovery/access-patterns/access-patterns.md',

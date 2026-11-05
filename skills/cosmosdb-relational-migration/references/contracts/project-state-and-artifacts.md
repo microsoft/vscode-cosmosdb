@@ -364,6 +364,8 @@ The schema selection holds both DDL and supporting artifacts. The inspector expo
 `.sql`/`.ddl` files as `schema-ddl` and all other selected files as `schema-evidence`;
 both views share the same selection and exclusions. Non-DDL artifacts are evidence,
 never authoritative SQL. Application code can also be inspected within project scope.
+The managed `project.json` and its path aliases are excluded from schema evidence;
+freshness tracks its semantic fields, never the checkpoint file itself.
 
 Both `files` and `excludedFiles` entries are relative to `.cosmosdb-migration`, using
 `/` separators. Do not write a separate `path` or `includedFiles` property. For example:

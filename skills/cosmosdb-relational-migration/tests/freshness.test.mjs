@@ -117,6 +117,62 @@ test('resolves supporting schema evidence separately from DDL and respects exact
     }
 });
 
+test('workspace schema selection excludes the checkpoint and remains current after recording freshness', () => {
+    const { workspace, project } = workspaceProject();
+    try {
+        sourceFixture(workspace, project);
+        const migrationRoot = path.join(workspace, '.cosmosdb-migration');
+        const checkpoint = path.join(migrationRoot, 'project.json');
+        const metadata = path.join(workspace, 'metadata.json');
+        fs.writeFileSync(metadata, '{"table":"Orders"}');
+        const listFiles = directory => fs.readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
+            const filename = path.join(directory, entry.name);
+            return entry.isDirectory() ? listFiles(filename) : [filename];
+        });
+        const explicit = { files: listFiles(workspace).map(file => path.relative(migrationRoot, file).split(path.sep).join('/')).sort() };
+        for (const selection of [{ path: '.' }, explicit]) {
+            project.phases.discovery.schemaInventory = selection;
+            fs.writeFileSync(checkpoint, JSON.stringify(project));
+            const inputs = selectedDiscoveryFiles(workspace, project, 'schema-evidence');
+            assert(inputs.includes(metadata));
+            assert(!inputs.includes(checkpoint));
+            recordFreshness(workspace, 'preflight', readProjectState(workspace).revision);
+            assert.equal(checkPhaseCompletion(workspace, 'preflight').complete, true);
+            assert.deepEqual(JSON.parse(fs.readFileSync(checkpoint, 'utf8')).phases.discovery.schemaInventory, selection);
+        }
+    } finally {
+        fs.rmSync(workspace, { recursive: true, force: true });
+    }
+});
+
+test('checkpoint aliases cannot enter raw schema evidence or inference and consulted freshness inputs', () => {
+    const { workspace, project } = workspaceProject();
+    try {
+        sourceFixture(workspace, project);
+        const migrationRoot = path.join(workspace, '.cosmosdb-migration');
+        fs.symlinkSync(migrationRoot, path.join(workspace, 'migration-alias'), 'junction');
+        project.phases.discovery.schemaInventory = {
+            files: ['phases/1-discovery/schema-ddl/Schema.sql', 'project.json', './project.json', '../migration-alias/project.json'],
+        };
+        assert.deepEqual(selectedDiscoveryFiles(workspace, project, 'schema-evidence'), []);
+        const checkpoint = path.join(migrationRoot, 'project.json');
+        const original = fs.readFileSync(checkpoint, 'utf8');
+        const manifestPath = path.join(migrationRoot, 'phases/1-discovery/preflight-manifest.json');
+        const evidence = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+        for (const source of ['.cosmosdb-migration/project.json', './.cosmosdb-migration/project.json', 'migration-alias/project.json']) {
+            assert.throws(() => recordFreshness(workspace, 'preflight', readProjectState(workspace).revision, [source]), /checkpoint cannot be a file freshness input/u);
+            assert.equal(fs.readFileSync(checkpoint, 'utf8'), original);
+        }
+        for (const source of ['.cosmosdb-migration/project.json', 'migration-alias/project.json']) {
+            Object.assign(evidence.sourceInventory.files[0], { origin: 'inferred', sourcePaths: [source] });
+            fs.writeFileSync(manifestPath, JSON.stringify(evidence));
+            assert.throws(() => buildFreshnessManifest(workspace, project, 'preflight'), /checkpoint cannot be a file freshness input/u);
+        }
+    } finally {
+        fs.rmSync(workspace, { recursive: true, force: true });
+    }
+});
+
 for (const sourceName of ['model.ts', 'metadata.json']) {
     test(`completes preflight with DDL inferred from ${sourceName} and tracks its evidence automatically`, () => {
         const { workspace, project } = workspaceProject();

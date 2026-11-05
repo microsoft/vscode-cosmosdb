@@ -1194,7 +1194,15 @@ test.describe('Migration Assistant', () => {
             expect(dimensions.content).toBeGreaterThan(dimensions.height);
             await list.focus();
             await expect(list).toBeFocused();
-            await list.press('PageDown');
+            await Promise.all([
+                list.evaluate(
+                    (element) =>
+                        new Promise<void>((resolve) => {
+                            element.addEventListener('scrollend', () => resolve(), { once: true });
+                        }),
+                ),
+                list.press('PageDown'),
+            ]);
             await expect.poll(() => list.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
             await list.evaluate((element) => {
                 element.scrollTop = element.scrollHeight;
@@ -1257,7 +1265,9 @@ test.describe('Migration Assistant', () => {
         );
         await expect(phase.getByTestId('migration-phase2-status-complete')).toHaveCount(0);
         await expect(diagnostics.getByText('Project validation failed', { exact: true })).toHaveCount(0);
-        await diagnostics.getByRole('button', { name: 'Compatibility adjustments (2)', exact: true }).click();
+        const compatibility = diagnostics.getByRole('button', { name: 'Compatibility adjustments (2)', exact: true });
+        await compatibility.press('Enter');
+        await expect(compatibility).toHaveAttribute('aria-expanded', 'true');
         await expect(
             diagnostics.getByRole('textbox', { name: 'Compatibility adjustments (2)', exact: true }),
         ).toHaveJSProperty('readOnly', true);

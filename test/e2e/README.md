@@ -52,16 +52,20 @@ that worker. With per-test launch (the naive approach), a 10-test file would
 pay ~50 s of startup overhead; with worker scope it's ~5 s total.
 
 The consequence: tests **must reset editor state in their own `afterEach`**.
-The fixture-lifecycle spec intentionally exits VS Code before worker teardown to
-verify that an already-closed application does not cause a shutdown timeout.
+The fixture-lifecycle spec intentionally exits VS Code before worker teardown and
+waits for the launched process's `exit` event, not ElectronApplication's `close`.
+Helpers can retain inherited stdio after exit; worker teardown releases those pipes
+before waiting for `close`. An exited process's PID is not used for process-tree cleanup.
 It disables window-dependent automatic fixtures because no live window remains.
 Use `closeAllEditorTabs(vscodeWindow)` from `fixtures/webviewHelpers.ts`.
-This helper focuses the workbench before opening the command palette and waits
+This helper focuses the workbench before opening the command palette, accepts the
+matching focused command with Enter rather than clicking a moving result, and waits
 for each editor to close. Cleanup failures fail the test rather than silently
 leaving a panel for the next test. Tests that resize the window must also restore
 the original viewport in `finally`.
 Use `resizeWindowViewport(vscodeApp, vscodeWindow, size)` for migration responsive
-checks: it resizes the native Electron window and waits for the renderer.
+checks: it resizes the native Electron window and waits for both the workbench
+and visible nested webview viewports to match their containing frames.
 Do not use `page.setViewportSize()` here; CDP device-metric overrides can leave
 the embedded webview and native window with mismatched input coordinates.
 
@@ -84,7 +88,14 @@ finishes, a search for `View: Show Azure` can offer unrelated commands instead.
 If the tree item never appears, the report includes an `activation-failure` screenshot.
 The handshake leaves an already selected, visible Azure sidebar open rather than toggling it closed.
 This matters after a display-language restart, when VS Code restores the previous sidebar.
-The activation regressions cover both an already open sidebar and reopening a hidden one.
+The activation regressions explicitly request a visible primary sidebar before each test,
+then cover both an already open sidebar and reopening a hidden one.
+
+Webview open helpers ignore hidden retained frames and wait for a mounted Fluent provider,
+not just a child under `#root` (which includes the static HTML loader).
+Migration open helpers also wait for the preflight section, which renders only after project hydration.
+Scroll-preservation assertions wait for keyboard scrolling's `scrollend` event before
+capturing a position, so an ongoing native animation cannot invalidate the comparison.
 
 ## Running
 

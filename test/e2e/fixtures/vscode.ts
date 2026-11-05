@@ -356,7 +356,7 @@ export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
                         /* Handle rejection if process cleanup throws before the normal await below. */
                     });
                     const rootPid = app.process().pid;
-                    if (rootPid !== undefined) {
+                    if (rootPid !== undefined && app.process().exitCode === null && app.process().signalCode === null) {
                         const processes = execFileSync('ps', ['-axo', 'pid=,ppid='], { encoding: 'utf8' })
                             .trim()
                             .split('\n')

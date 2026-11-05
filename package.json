@@ -200,6 +200,7 @@
     "zod": "~4.6.0"
   },
   "overrides": {
+    "@fluentui/react-provider": "9.22.23",
     "@prantlf/jsonlint": {
       "ajv": "~8.18.0"
     },

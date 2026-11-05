@@ -31,6 +31,7 @@ test('Selected workload radios keep their color on hover and show focus only on 
         await expect(card).toHaveCSS('outline-width', '2px');
         await expect.soft(radio).toHaveCSS('outline-style', 'none');
 
+        await start.hover();
         const selected = await radio.screenshot();
         await radio.hover();
         await expect(radio).toBeFocused();

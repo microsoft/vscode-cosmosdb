@@ -97,6 +97,58 @@ test('selects workspace-root DDL files from legacy empty paths', () => {
     }
 });
 
+test('implicit schema evidence skips directory symlinks while explicit selections remain strict', () => {
+    const { workspace, project } = workspaceProject();
+    try {
+        sourceFixture(workspace, project);
+        const relative = '.cosmosdb-migration/phases/1-discovery/schema-ddl';
+        const directory = path.join(workspace, relative);
+        const metadata = path.join(directory, 'metadata.json');
+        const models = path.join(workspace, 'models');
+        fs.mkdirSync(models);
+        fs.writeFileSync(path.join(models, 'model.ts'), 'source model');
+        fs.writeFileSync(metadata, '{}');
+        fs.symlinkSync(models, path.join(directory, 'models'), 'junction');
+        fs.symlinkSync(directory, path.join(directory, 'loop'), 'junction');
+        assert.deepEqual(selectedDiscoveryFiles(workspace, project, 'schema-evidence'), [metadata]);
+        const inspector = fileURLToPath(new URL('../scripts/inspect-migration-state.mjs', import.meta.url));
+        const result = spawnSync(process.execPath, [inspector, '--workspace', workspace, '--phase', 'discovery'], { encoding: 'utf8' });
+        assert.equal(result.status, 0, result.stderr);
+        assert.equal(JSON.parse(result.stdout).inputCounts['schema-evidence'], 1);
+        for (const selection of [
+            { files: ['phases/1-discovery/schema-ddl/models'] },
+            { path: relative, includedFiles: ['models'] },
+        ]) {
+            project.phases.discovery.schemaInventory = selection;
+            assert.throws(() => selectedDiscoveryFiles(workspace, project, 'schema-evidence'), /Discovery input is not a file/u);
+        }
+        project.phases.discovery.schemaInventory = { files: ['phases/1-discovery/schema-ddl/models/model.ts'] };
+        assert.deepEqual(selectedDiscoveryFiles(workspace, project, 'schema-evidence'), [path.join(directory, 'models/model.ts')]);
+    } finally {
+        fs.rmSync(workspace, { recursive: true, force: true });
+    }
+});
+
+test('implicit schema evidence still validates file symlinks', { skip: process.platform === 'win32' }, () => {
+    const { workspace, project } = workspaceProject();
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'outside-schema-link-'));
+    try {
+        sourceFixture(workspace, project);
+        const directory = path.join(workspace, '.cosmosdb-migration/phases/1-discovery/schema-ddl');
+        const metadata = path.join(workspace, 'metadata.json');
+        const linked = path.join(directory, 'linked.json');
+        fs.writeFileSync(metadata, '{}');
+        fs.symlinkSync(metadata, linked);
+        assert.deepEqual(selectedDiscoveryFiles(workspace, project, 'schema-evidence'), [linked]);
+        fs.writeFileSync(path.join(outside, 'metadata.json'), '{}');
+        fs.symlinkSync(path.join(outside, 'metadata.json'), path.join(directory, 'outside.json'));
+        assert.throws(() => selectedDiscoveryFiles(workspace, project, 'schema-evidence'), /inside the workspace/u);
+    } finally {
+        fs.rmSync(workspace, { recursive: true, force: true });
+        fs.rmSync(outside, { recursive: true, force: true });
+    }
+});
+
 test('resolves supporting schema evidence separately from DDL and respects exact selections and exclusions', () => {
     const { workspace, project } = workspaceProject();
     try {

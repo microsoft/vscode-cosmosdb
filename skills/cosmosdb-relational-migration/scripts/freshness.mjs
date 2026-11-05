@@ -94,9 +94,12 @@ export function selectedDiscoveryFiles(workspace, project, source) {
             ? []
             : fs
                   .readdirSync(directory, { withFileTypes: true })
-                  .flatMap((entry) =>
-                      entry.isDirectory() ? list(path.join(directory, entry.name)) : [path.join(directory, entry.name)],
-                  );
+                  .flatMap((entry) => {
+                      const filePath = path.join(directory, entry.name);
+                      if (entry.isDirectory()) return list(filePath);
+                      if (source === 'schema-evidence' && entry.isSymbolicLink() && fs.statSync(filePath).isDirectory()) return [];
+                      return [filePath];
+                  });
     const included = (explicitFiles ?? selection?.includedFiles)?.map((value) => path.normalize(value));
     const legacyBase = explicitFiles === undefined && (selection?.path !== undefined || selection?.includedFiles !== undefined);
     const exclusionBase = legacyBase ? base : path.join(workspace, '.cosmosdb-migration');

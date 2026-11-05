@@ -486,6 +486,73 @@ describe('getRecommendations', () => {
         expect(result.hasHighImpactPerfCost).toBe(true);
     });
 
+    it.each([
+        'https://portal.azure.com/',
+        'https://ms.portal.azure.com',
+        'https://portal.azure.us/',
+        'https://portal.azure.cn',
+    ])(
+        'links each recommendation to its type and affected resource in %s without requiring documentation',
+        async (portal) => {
+            const containerId = `${ACCOUNT}/sqlDatabases/database/containers/a b?#%2F`;
+            const typeId = 'a5f888e3-8cf4-4491-b2ba-b120e14eb7ce';
+            const learnMoreLink = 'https://learn.microsoft.com/azure/cosmos-db/nosql/autoscale-faq';
+            const { client } = mockAdvisorClient([
+                { ...makeRec(ACCOUNT, 'High', 'Cost'), recommendationTypeId: typeId },
+                {
+                    ...makeRec(containerId, 'Medium', 'Performance'),
+                    recommendationTypeId: typeId,
+                    learnMoreLink,
+                },
+            ]);
+            const result = await getRecommendations(client, 'sub1', ACCOUNT, 123, portal, 'tenant/# ?@');
+            expect(result.generatedAt).toBe(123);
+            for (const [index, resourceId] of [ACCOUNT, containerId].entries()) {
+                const url = result.recommendations[index].portalUrl;
+                expect(url).toBe(
+                    `${portal.replace(/\/$/, '')}/#@tenant%2F%23%20%3F%40/blade/Microsoft_Azure_Expert/RecommendationListBlade/recommendationTypeId/${typeId}/resourceId/${encodeURIComponent(encodeURIComponent(resourceId))}`,
+                );
+                expect(result.recommendations[index].learnMoreLink).toBe(index === 0 ? undefined : learnMoreLink);
+            }
+        },
+    );
+
+    it('uses the account resource when Advisor only supplies impactedValue', async () => {
+        const { client } = mockAdvisorClient([
+            {
+                ...makeRec(ACCOUNT, 'High', 'Cost'),
+                resourceMetadata: undefined,
+                impactedValue: ACCOUNT,
+                recommendationTypeId: 'type',
+            },
+        ]);
+        const result = await getRecommendations(client, 'sub1', ACCOUNT);
+        expect(result.recommendations[0].portalUrl).toBe(
+            `https://portal.azure.com/#blade/Microsoft_Azure_Expert/RecommendationListBlade/recommendationTypeId/type/resourceId/${encodeURIComponent(encodeURIComponent(ACCOUNT))}`,
+        );
+    });
+
+    it('opens the account recommendations page when Azure omits the recommendation type', async () => {
+        const { client } = mockAdvisorClient([makeRec(`${ACCOUNT}/sqlDatabases/db/containers/c`, 'High', 'Cost')]);
+        const result = await getRecommendations(client, 'sub1', ACCOUNT, 0, 'https://portal.azure.us/', 'tenant');
+        expect(result.recommendations[0].portalUrl).toBe(
+            `https://portal.azure.us/#@tenant/resource${ACCOUNT}/advisorRecommendations`,
+        );
+    });
+
+    it('keeps portal and tenant routing per caller when the subscription response is cached', async () => {
+        const { client, calls } = mockAdvisorClient([
+            { ...makeRec(ACCOUNT, 'High', 'Cost'), recommendationTypeId: 'type' },
+        ]);
+        const [publicCloud, governmentCloud] = await Promise.all([
+            getRecommendations(client, 'sub1', ACCOUNT, 0, 'https://portal.azure.com', 'public'),
+            getRecommendations(client, 'sub1', ACCOUNT, 0, 'https://portal.azure.us', 'government'),
+        ]);
+        expect(calls()).toBe(1);
+        expect(publicCloud.recommendations[0].portalUrl).toMatch(/^https:\/\/portal\.azure\.com\/#@public\//);
+        expect(governmentCloud.recommendations[0].portalUrl).toMatch(/^https:\/\/portal\.azure\.us\/#@government\//);
+    });
+
     it('reports hasHighImpactPerfCost: false when no qualifying rec exists', async () => {
         const { client } = mockAdvisorClient([makeRec(ACCOUNT, 'High', 'Security'), makeRec(ACCOUNT, 'Low', 'Cost')]);
         const result = await getRecommendations(client, 'sub1', ACCOUNT);

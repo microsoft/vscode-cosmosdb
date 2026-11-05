@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { type ReadDiagnosticsResult } from '../accessRequirements';
 import { type MetricAggregation, type TimeRange, type UnavailableReason } from '../services/shared';
 import { type StorageMeasurement } from './storage';
 
@@ -108,7 +109,7 @@ export interface MetricPoint {
  * Monitor failure resolves to `available: false` + a `reason` so the webview can
  * render an explicit empty-state instead of an error.
  */
-export interface MetricSeriesResult {
+export interface MetricSeriesResult extends ReadDiagnosticsResult {
     /** Which metric this series is for. */
     metric: MetricKey;
     applicability: MetricApplicability;

@@ -156,8 +156,11 @@ export const EmptyState = ({
             break;
         case 'rbac':
             message = requiredRole
-                ? l10n.t('Not enough permissions: your role is missing {0}.', requiredRole)
-                : l10n.t('Not enough permissions to load this section.');
+                ? l10n.t(
+                      'Read access to this section is unavailable. {0} is a broad role option; equivalent permissions can also work.',
+                      requiredRole,
+                  )
+                : l10n.t('Read access to this section is unavailable. Check Azure sign-in and permissions.');
             break;
         case 'logAnalyticsDisabled':
             message = l10n.t(

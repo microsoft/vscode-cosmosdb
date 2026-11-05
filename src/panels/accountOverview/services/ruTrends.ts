@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type MonitorClient } from '@azure/arm-monitor';
+import { readMetrics } from './readDiagnostics';
 import {
     classifyUnavailable,
     containerFilter,
@@ -166,7 +167,7 @@ export async function querySeries(
 ): Promise<Map<number, number>> {
     const buckets = new Map<number, number>();
     for (const scopedFilter of metricFilters(filter)) {
-        const response = await client.metrics.list(resourceUri, {
+        const response = await readMetrics(client, resourceUri, {
             metricnames: metricName,
             aggregation,
             timespan,
@@ -288,7 +289,7 @@ async function queryRequestBuckets(
 ): Promise<Map<number, { total: number; throttled: number }>> {
     const totals = new Map<number, { total: number; throttled: number }>();
     for (const scopedFilter of metricFilters(filter)) {
-        const response = await client.metrics.list(resourceUri, {
+        const response = await readMetrics(client, resourceUri, {
             metricnames: 'TotalRequests',
             aggregation: 'Count',
             timespan,

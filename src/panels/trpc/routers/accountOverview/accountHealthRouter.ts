@@ -12,6 +12,7 @@ import {
 } from '../../../accountOverview/services/accountHealth';
 import { type ProvisioningState } from '../../../accountOverview/services/shared';
 import { accountOverviewProcedure } from '../../trpc';
+import { readAccountData } from './readData';
 
 export const accountHealthProcedures = {
     getAccountHealth: accountOverviewProcedure.query(async ({ ctx }): Promise<AccountHealthResult> => {
@@ -26,6 +27,17 @@ export const accountHealthProcedures = {
                 generatedAt: Date.now(),
             };
         }
-        return getAccountHealth(await ctx.metadata.getMonitorClient(), ctx.metadata.accountId, provisioningState);
+        return readAccountData<AccountHealthResult>(
+            ctx.metadata,
+            'metrics',
+            async () =>
+                getAccountHealth(await ctx.metadata.getMonitorClient(), ctx.metadata.accountId, provisioningState),
+            (reason) => ({
+                available: false,
+                reason,
+                health: deriveAccountHealth(provisioningState, false, false),
+                generatedAt: Date.now(),
+            }),
+        );
     }),
 };

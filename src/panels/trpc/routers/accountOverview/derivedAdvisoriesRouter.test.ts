@@ -7,6 +7,7 @@ import { CosmosDBManagementClient, type DatabaseAccountGetResults } from '@azure
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
 import { API } from '../../../../AzureDBExperiences';
+import { ext } from '../../../../extensionVariables';
 import { collectDerivedAdvisories } from '../../../accountOverview/services/advisories';
 import type * as advisories from '../../../accountOverview/services/advisories';
 import { DEFAULT_ADVISORY_THRESHOLDS } from '../../../accountOverview/services/advisories/core/thresholds';
@@ -63,6 +64,42 @@ describe('account advisory acquisition', () => {
         expect(collectDerivedAdvisories).toHaveBeenCalledWith(
             expect.objectContaining({ costContext: expect.objectContaining({ multiRegionWritesEnabled: writes }) }),
         );
+    });
+
+    it('logs skipped metric checks without inventing request errors or exposing resource names', async () => {
+        const metricSource = {
+            available: false,
+            failures: [
+                { rule: 'SustainedThrottlingInRegion' as const, scope: 'private-db/first', reason: 'noData' as const },
+                { rule: 'SustainedThrottlingInRegion' as const, scope: 'private-db/second', reason: 'noData' as const },
+                { rule: 'HotPartitionRisk' as const, scope: 'private-db/first', reason: 'noData' as const },
+            ],
+        };
+        vi.mocked(collectDerivedAdvisories).mockResolvedValueOnce({
+            advisories: [],
+            logSource: { available: true },
+            metricSource,
+        });
+        const result = await getDerivedAdvisoriesForAccount(metadata());
+        expect(result.metricSource).toEqual(metricSource);
+        expect(result).not.toHaveProperty('diagnostics');
+        expect(ext.outputChannel.warn).toHaveBeenCalledTimes(2);
+        const output = vi.mocked(ext.outputChannel.warn).mock.calls.flat().join('\n');
+        expect(output).toContain('rule=SustainedThrottlingInRegion; reason=noData; skippedChecks=2');
+        expect(output).toContain('rule=HotPartitionRisk; reason=noData; skippedChecks=1');
+        expect(output).toContain('Requests can succeed with empty or incomplete data');
+        expect(output).not.toMatch(/private-db|first|second|HTTP|accessDenied/);
+    });
+
+    it('does not log skipped checks after complete successful analysis', async () => {
+        vi.mocked(collectDerivedAdvisories).mockResolvedValueOnce({
+            advisories: [],
+            logSource: { available: true },
+            metricSource: { available: true, failures: [] },
+        });
+        const result = await getDerivedAdvisoriesForAccount(metadata());
+        expect(result.metricSource?.available).toBe(true);
+        expect(ext.outputChannel.warn).not.toHaveBeenCalled();
     });
 
     it.each([
@@ -290,6 +327,7 @@ describe('account advisory acquisition', () => {
         expect(result.available).toBe(true);
         expect(result.advisories).toEqual([expect.objectContaining({ rule: 'ExpensiveConsistency' })]);
         expect(result.metricSource?.failures.every((failure) => failure.reason === 'rbac')).toBe(true);
+        expect(result.diagnostics).toEqual([{ source: 'metrics', kind: 'accessDenied', reason: 'rbac' }]);
         expect(vscode.workspace.getConfiguration).not.toHaveBeenCalled();
     });
 
@@ -298,6 +336,18 @@ describe('account advisory acquisition', () => {
         const result = await getDerivedAdvisoriesForAccount(metadata());
         expect(result.advisories).toEqual([expect.objectContaining({ rule: 'ExpensiveConsistency' })]);
         expect(result.metricSource?.available).toBe(false);
+    });
+
+    it('keeps denied Log Analytics acquisition distinct from client unavailability', async () => {
+        const input = metadata();
+        input.getLogsQueryClient.mockRejectedValue({ statusCode: 403, code: 'InsufficientAccessError' });
+        vi.mocked(collectDerivedAdvisories).mockResolvedValueOnce({
+            advisories: [],
+            metricSource: { available: true, failures: [] },
+            logSource: { available: false, reason: 'noData' },
+        });
+        const result = await getDerivedAdvisoriesForAccount(input);
+        expect(result.diagnostics).toEqual([{ source: 'logs', kind: 'accessDenied', reason: 'rbac' }]);
     });
 
     it('preserves collection coverage even when the optional log client throws', async () => {

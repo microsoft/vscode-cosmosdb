@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type MonitorClient } from '@azure/arm-monitor';
+import { readMetrics } from '../../readDiagnostics';
 import { querySeries } from '../../ruTrends';
 import {
     containerFilter,
@@ -107,7 +108,7 @@ export async function getAccountConsumedRuShape(
     resourceUri: string,
 ): Promise<AccountConsumedRuShape> {
     const observation = DIAGNOSTIC_POLICY.serverless.observation;
-    const response = await client.metrics.list(resourceUri, {
+    const response = await readMetrics(client, resourceUri, {
         metricnames: 'TotalRequestUnits',
         aggregation: 'Total',
         timespan: advisoryTimespan(observation),
@@ -275,7 +276,7 @@ export async function getAutoscaleUtilization(
     }
     const filter = `${throughputOfferFilter(databaseId, containerId)} and PhysicalPartitionId eq '*'`;
     const observation = DIAGNOSTIC_POLICY.autoscaleUtilization.observation;
-    const response = await client.metrics.list(resourceUri, {
+    const response = await readMetrics(client, resourceUri, {
         metricnames: 'AutoscaledRU',
         aggregation: 'Maximum',
         timespan: advisoryTimespan(observation),

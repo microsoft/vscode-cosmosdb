@@ -10,6 +10,7 @@ import { createHttpHeaders } from '@azure/core-rest-pipeline';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { armTestSubscription } from '../../../../cosmosdb/armTestUtils';
 import { AzureResourceMetadata } from '../../../../cosmosdb/AzureResourceMetadata';
+import { ext } from '../../../../extensionVariables';
 import {
     ALERT_MONITOR_CONDITIONS,
     ALERT_TIME_RANGES,
@@ -22,6 +23,7 @@ import { alertsRecommendationsProcedures } from './alertsRecommendationsRouter';
 
 vi.mock('@vscode/extension-telemetry', () => ({ default: class {} }));
 vi.mock('@microsoft/vscode-azureresources-api', () => ({}));
+vi.mock('../../../../extensionVariables', () => ({ ext: { outputChannel: { warn: vi.fn() } } }));
 vi.mock('../../../../utils/azureClients', () => ({}));
 vi.mock('../../trpc', async () => {
     const { initWebviewTrpc } = await import('@microsoft/vscode-ext-webview');
@@ -97,6 +99,46 @@ describe('Advisor portal routing', () => {
 });
 
 describe('alert portal routing', () => {
+    it('returns source diagnostics and writes Output when Alerts Management denies access', async () => {
+        const client = new AlertsManagementClient({ getToken: async () => null });
+        vi.spyOn(client.alerts, 'getAll').mockImplementation(() => {
+            throw Object.assign(new Error('Insufficient access.'), { statusCode: 403, code: 'AuthorizationFailed' });
+        });
+        const caller = router.createCaller({
+            webviewName: 'cosmosDbAccountOverview',
+            metadata: new TestMetadata('https://portal.azure.com', client),
+            getInitialization: () => ({ type: 'navigate', target: 'overview', revision: 0 }),
+            onNavigation: () => ({ dispose() {} }),
+        });
+        const result = await caller.getAlerts({ timeRange: '1d', monitorCondition: 'Fired' });
+        expect(result).toMatchObject({
+            available: false,
+            reason: 'rbac',
+            diagnostics: [{ source: 'alerts', kind: 'accessDenied', reason: 'rbac' }],
+        });
+        expect(ext.outputChannel.warn).toHaveBeenCalledWith(expect.stringContaining('HTTP 403'));
+    });
+
+    it('shapes client authentication failures and writes Output instead of losing their source', async () => {
+        const metadata = new TestMetadata(
+            'https://portal.azure.com',
+            new AlertsManagementClient({ getToken: async () => null }),
+        );
+        vi.spyOn(metadata, 'getAlertsClient').mockRejectedValue({
+            statusCode: 401,
+            code: 'ExpiredAuthenticationToken',
+        });
+        const caller = router.createCaller({
+            webviewName: 'cosmosDbAccountOverview',
+            metadata,
+            getInitialization: () => ({ type: 'navigate', target: 'overview', revision: 0 }),
+            onNavigation: () => ({ dispose() {} }),
+        });
+        const result = await caller.getAlerts({ timeRange: '1d', monitorCondition: 'Fired' });
+        expect(result.diagnostics).toEqual([{ source: 'alerts', kind: 'authentication', reason: 'rbac' }]);
+        expect(ext.outputChannel.warn).toHaveBeenCalledWith(expect.stringContaining('HTTP 401'));
+    });
+
     it('routes the independent active check through the existing account ARM client', async () => {
         const metadata = new TestMetadata(
             'https://portal.azure.com',

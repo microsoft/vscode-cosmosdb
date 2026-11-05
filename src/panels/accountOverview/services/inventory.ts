@@ -9,6 +9,8 @@ import {
     type SqlDatabaseGetResults,
     type ThroughputSettingsGetResults,
 } from '@azure/arm-cosmosdb';
+import { type ReadDiagnosticsResult } from '../accessRequirements';
+import { readItems, reportReadFailure } from './readDiagnostics';
 import { getSystemCreatedAt } from './resourceAge';
 import { classifyUnavailable, type UnavailableReason } from './shared';
 
@@ -107,7 +109,9 @@ export async function getSqlInventoryDetails(
     let throughputInventoryComplete = true;
 
     const databases: SqlDatabaseGetResults[] = [];
-    for await (const db of client.sqlResources.listSqlDatabases(resourceGroup, accountName)) {
+    for await (const db of readItems('inventory', 'listSqlDatabases', () =>
+        client.sqlResources.listSqlDatabases(resourceGroup, accountName),
+    )) {
         databases.push(db);
     }
 
@@ -126,6 +130,7 @@ export async function getSqlInventoryDetails(
                 }
             } catch (err) {
                 if (!isNotFound(err)) {
+                    reportReadFailure('inventory', 'getSqlDatabaseThroughput', err, [databaseId]);
                     throw err;
                 }
             }
@@ -142,7 +147,12 @@ export async function getSqlInventoryDetails(
         }
 
         const containers: SqlContainerGetResults[] = [];
-        for await (const c of client.sqlResources.listSqlContainers(resourceGroup, accountName, databaseId)) {
+        for await (const c of readItems(
+            'inventory',
+            'listSqlContainers',
+            () => client.sqlResources.listSqlContainers(resourceGroup, accountName, databaseId),
+            [databaseId],
+        )) {
             containers.push(c);
         }
 
@@ -171,6 +181,7 @@ export async function getSqlInventoryDetails(
                     );
                 } catch (err) {
                     if (!isNotFound(err)) {
+                        reportReadFailure('inventory', 'getSqlContainerThroughput', err, [databaseId, containerId]);
                         throw err;
                     }
                 }
@@ -245,7 +256,7 @@ export async function getSqlInventory(
 }
 
 /** The shaped inventory outcome the router surfaces: rows on success, or an explicit unavailable reason. */
-export interface InventoryResult {
+export interface InventoryResult extends ReadDiagnosticsResult {
     /** False when the ARM walk failed (for example a 403); pairs with {@link reason}. */
     available: boolean;
     /** When {@link available} is false, why the section could not load. See {@link UnavailableReason}. */

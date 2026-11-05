@@ -222,7 +222,7 @@ test('merges disjoint domains to byte-identical canonical output regardless of i
     assert.equal(canonicalStringify(first.model), canonicalStringify(second.model));
 });
 
-test('merged models and capacity estimates are stable across host locales', () => {
+test('merged models and capacity estimates are stable across default string collations', () => {
     const names = ['z', '\u00e4', 'I', '\u0131'];
     const domains = names.map((name, index) => ({
         domainName: name, model: domainModel(name, `Container${name}`, entity(`Item${index}`, `Source${name}`)),
@@ -239,23 +239,24 @@ test('merged models and capacity estimates are stable across host locales', () =
     };
     const code = `
         import fs from 'node:fs';
+        import { mockDefaultStringCollation } from ${JSON.stringify(new URL('./locale-fixtures.mjs', import.meta.url).href)};
         import { mergeCosmosModels } from ${JSON.stringify(new URL('../scripts/merge-cosmos-models.mjs', import.meta.url).href)};
         import { reconcileCapacity } from ${JSON.stringify(new URL('../scripts/reconcile-capacity.mjs', import.meta.url).href)};
-        const { domains, options, evidence, names } = JSON.parse(fs.readFileSync(0, 'utf8'));
+        const { domains, options, evidence, names, locale } = JSON.parse(fs.readFileSync(0, 'utf8'));
+        mockDefaultStringCollation(locale);
         console.log(JSON.stringify({
             collation: Math.sign('\\u00e4'.localeCompare('z')),
             merged: mergeCosmosModels(domains, options), capacity: reconcileCapacity(evidence, names, 'provisioned'),
         }));
     `;
-    const results = ['en_US.UTF-8', 'sv_SE.UTF-8', 'tr_TR.UTF-8'].map(locale => {
+    const results = ['en-US', 'sv-SE', 'tr-TR'].map(locale => {
         const result = spawnSync(process.execPath, ['--input-type=module', '-e', code], {
-            encoding: 'utf8', input: JSON.stringify({ domains, options: mergeOptions, evidence, names }),
-            env: { ...process.env, LANG: locale, LC_ALL: locale },
+            encoding: 'utf8', input: JSON.stringify({ domains, options: mergeOptions, evidence, names, locale }),
         });
         assert.equal(result.status, 0, result.stderr);
         return JSON.parse(result.stdout);
     });
-    assert.notEqual(results[0].collation, results[1].collation);
+    assert.deepEqual(results.map(result => result.collation), [-1, 1, -1]);
     assert.deepEqual(results[0].merged.errors, []);
     assert.deepEqual(results[0].merged.conflicts, []);
     for (const result of results) {

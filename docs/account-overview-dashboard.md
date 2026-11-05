@@ -21,8 +21,9 @@ This guide explains the current repository implementation. Maintainers and codin
 4. Open **Advisories** for suggested investigations, Azure Advisor recommendations and Azure Monitor alerts.
 5. Select **Refresh** when you want a new snapshot. Overview does not update automatically.
 
-The header remains visible across the three tabs. Expand **Account details** for provisioning status,
-capacity mode and account properties. **View Cost** and **View JSON** are alongside **Add database**
+The header remains visible across the three tabs. **Account details** is expanded by default and shows
+all account properties in one grid, including API type, consistency and automatic failover, without a nested expander.
+**View Cost** and **View JSON** are alongside **Add database**
 and **Add container** in the account actions row, even when Account details is collapsed.
 The Explorer's metric shortcuts select a chart in the same dashboard, preserving your filters.
 Use the smiley **Provide Feedback** button beside **Refresh**, then choose **Provide Feedback** in its menu,

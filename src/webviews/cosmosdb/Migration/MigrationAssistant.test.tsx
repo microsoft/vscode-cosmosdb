@@ -5,7 +5,7 @@
 
 // @vitest-environment jsdom
 
-import { FluentProvider, webLightTheme } from '@fluentui/react-components';
+import { FluentProvider, tokens, webLightTheme } from '@fluentui/react-components';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -180,6 +180,94 @@ describe('migration Preview badge', () => {
         });
         expect(rail?.nextElementSibling).toContainElement(screen.getByText('Migration Configuration'));
     });
+});
+
+describe('migration tooltip theming', () => {
+    it.each(['vscode-dark', 'vscode-light', 'vscode-high-contrast', 'vscode-high-contrast-light'])(
+        'matches the Preview tooltip for help, prerequisites and file paths in %s',
+        (kind) => {
+            const initialKind = document.body.getAttribute('data-vscode-theme-kind');
+            document.body.setAttribute('data-vscode-theme-kind', kind);
+            vi.useFakeTimers();
+            try {
+                state.schemaFiles = ['/workspace/schemas/source/schema.sql'];
+                state.excludedSchemaFiles = ['/workspace/schemas/archive/old.sql'];
+                render(renderAssistant());
+                const badge = screen.getByLabelText('Preview');
+                fireEvent.pointerEnter(badge);
+                act(() => vi.advanceTimersByTime(500));
+                const previewStyle = getComputedStyle(screen.getByRole('tooltip'));
+                const expectedBackground =
+                    kind === 'vscode-dark' ? tokens.colorNeutralBackgroundStatic : tokens.colorNeutralBackground1;
+                const expectedColor =
+                    kind === 'vscode-dark'
+                        ? tokens.colorNeutralForegroundStaticInverted
+                        : tokens.colorNeutralForeground1;
+                expect(previewStyle.backgroundColor).toBe(expectedBackground);
+                expect(previewStyle.color).toBe(expectedColor);
+                fireEvent.pointerLeave(badge);
+                act(() => vi.advanceTimersByTime(500));
+
+                fireEvent.click(screen.getAllByRole('button', { name: '1 file(s) selected' })[0]);
+                const schemaLink = screen.getByRole('button', { name: /^schemas.*schema\.sql$/ });
+                const excludedLink = screen.getByRole('button', { name: /^schemas.*old\.sql$/ });
+                expect(schemaLink).toHaveTextContent('schemas/source/schema.sql');
+                expect(schemaLink).toHaveAccessibleDescription('schemas/source/schema.sql');
+                expect(excludedLink).toHaveTextContent('schemas/archive/old.sql');
+                expect(excludedLink).toHaveAccessibleDescription('schemas/archive/old.sql');
+                expect(schemaLink.querySelector('[title]')).toBeNull();
+                expect(excludedLink.querySelector('[title]')).toBeNull();
+
+                for (const trigger of [
+                    screen.getByRole('button', { name: 'Exclude migration configuration help' }),
+                    screen.getByRole('button', { name: /Phase 3: Schema Conversion/ }),
+                    schemaLink,
+                    excludedLink,
+                ]) {
+                    act(() => trigger.focus());
+                    fireEvent.pointerEnter(trigger);
+                    act(() => vi.advanceTimersByTime(500));
+                    const tooltip = screen.getByRole('tooltip');
+                    expect(tooltip).toBeVisible();
+                    expect(getComputedStyle(tooltip).backgroundColor).toBe(expectedBackground);
+                    expect(getComputedStyle(tooltip).color).toBe(expectedColor);
+                    fireEvent.pointerLeave(trigger);
+                    act(() => trigger.blur());
+                    act(() => vi.advanceTimersByTime(500));
+                }
+                fireEvent.click(schemaLink);
+                expect(postMessage).toHaveBeenCalledWith({
+                    type: 'event',
+                    name: 'command',
+                    params: [{ commandName: 'openFile', params: [state.schemaFiles[0]] }],
+                });
+
+                for (const [label, folder] of [
+                    ['Database schema files help', 'schema-ddl/'],
+                    ['Volumetrics help', 'volumetrics/'],
+                    ['Access patterns help', 'access-patterns/'],
+                ]) {
+                    const trigger = screen.getByRole('button', { name: label });
+                    fireEvent.click(trigger);
+                    const popover = screen.getByRole('group', { name: label });
+                    expect(popover).toBeVisible();
+                    expect(getComputedStyle(popover).backgroundColor).toBe(expectedBackground);
+                    expect(getComputedStyle(popover).color).toBe(expectedColor);
+                    expect(within(popover).getByRole('button', { name: folder })).toBeEnabled();
+                    fireEvent.click(trigger);
+                    act(() => vi.advanceTimersByTime(500));
+                    expect(screen.queryByRole('group', { name: label })).not.toBeInTheDocument();
+                }
+            } finally {
+                vi.useRealTimers();
+                if (initialKind === null) {
+                    document.body.removeAttribute('data-vscode-theme-kind');
+                } else {
+                    document.body.setAttribute('data-vscode-theme-kind', initialKind);
+                }
+            }
+        },
+    );
 });
 
 describe('migration target endpoint editing', () => {

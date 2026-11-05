@@ -34,7 +34,6 @@ import {
     SplitButton,
     Text,
     Textarea,
-    Tooltip,
     useAnnounce,
     type ButtonProps,
     type MenuButtonProps,
@@ -63,6 +62,7 @@ import {
     SparkleRegular,
     WarningRegular,
 } from '@fluentui/react-icons';
+import { useActiveVSCodeThemeKind } from '@microsoft/vscode-ext-webview-fluentui';
 import { useTrpcClient } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react';
@@ -75,6 +75,7 @@ import {
     type MigrationModelReason,
     type MigrationModelTier,
 } from '../../../utils/modelUtils';
+import { ThemedTooltip as Tooltip } from '../../common/ThemedTooltip';
 import { PreviewBadge } from '../../components/PreviewBadge';
 import { CosmosDBIcon } from '../../icons/CosmosDBIcon';
 import { BaseContextProvider, type DispatchToastFn } from '../../utils/context/BaseContextProvider';
@@ -1089,7 +1090,7 @@ function FileListExpander({
         return { dir: relative.slice(0, lastSep), name: relative.slice(lastSep) };
     };
 
-    const renderPath = (absolutePath: string, extraClass?: string) => {
+    const renderFileLink = (absolutePath: string, extraClass?: string) => {
         const { dir, name } = splitPath(absolutePath);
         const cleanName = name.startsWith('/') ? name.slice(1) : name;
         const fullRelative = dir ? `${dir}/${cleanName}` : cleanName;
@@ -1107,24 +1108,22 @@ function FileListExpander({
             }
         }
         return (
-            <>
-                {dirHead && (
-                    <span className={`${styles.filePathDir}${extraClass ? ' ' + extraClass : ''}`} title={fullRelative}>
-                        {dirHead}
-                    </span>
-                )}
-                {dirTail && (
-                    <span
-                        className={`${styles.filePathDirTail}${extraClass ? ' ' + extraClass : ''}`}
-                        title={fullRelative}
-                    >
-                        {dirTail}
-                    </span>
-                )}
-                <span className={`${styles.filePathName}${extraClass ? ' ' + extraClass : ''}`} title={fullRelative}>
-                    {name}
-                </span>
-            </>
+            <Tooltip content={fullRelative} relationship="description">
+                <Link
+                    className={`${styles.fileLink}${extraClass ? ' ' + extraClass : ''}`}
+                    onClick={() => onOpenFile(absolutePath)}
+                >
+                    {dirHead && (
+                        <span className={`${styles.filePathDir}${extraClass ? ' ' + extraClass : ''}`}>{dirHead}</span>
+                    )}
+                    {dirTail && (
+                        <span className={`${styles.filePathDirTail}${extraClass ? ' ' + extraClass : ''}`}>
+                            {dirTail}
+                        </span>
+                    )}
+                    <span className={`${styles.filePathName}${extraClass ? ' ' + extraClass : ''}`}>{name}</span>
+                </Link>
+            </Tooltip>
         );
     };
 
@@ -1161,9 +1160,7 @@ function FileListExpander({
                         const name = basename(f);
                         return (
                             <div key={`a-${f}`} className={styles.fileRow}>
-                                <Link className={styles.fileLink} onClick={() => onOpenFile(f)}>
-                                    {renderPath(f)}
-                                </Link>
+                                {renderFileLink(f)}
                                 {name !== protectedFileName ? (
                                     <Tooltip content={l10n.t('Exclude file')} relationship="description" withArrow>
                                         <Button
@@ -1189,12 +1186,7 @@ function FileListExpander({
                         const name = basename(f);
                         return (
                             <div key={`x-${f}`} className={`${styles.fileRow} ${styles.fileRowExcluded}`}>
-                                <Link
-                                    className={`${styles.fileLink} ${styles.fileLinkExcluded}`}
-                                    onClick={() => onOpenFile(f)}
-                                >
-                                    {renderPath(f, styles.fileLinkExcluded)}
-                                </Link>
+                                {renderFileLink(f, styles.fileLinkExcluded)}
                                 <Tooltip content={l10n.t('Include file')} relationship="description" withArrow>
                                     <Button
                                         appearance="subtle"
@@ -1246,8 +1238,9 @@ function InfoPopoverIcon({
     ariaLabel: string;
     styles: ReturnType<typeof useStyles>;
 }) {
+    const themeKind = useActiveVSCodeThemeKind();
     return (
-        <Popover withArrow>
+        <Popover appearance={themeKind === 'vscode-dark' ? 'inverted' : undefined} withArrow>
             <PopoverTrigger>
                 <button type="button" aria-label={ariaLabel} className={styles.infoIcon}>
                     <InfoRegular />

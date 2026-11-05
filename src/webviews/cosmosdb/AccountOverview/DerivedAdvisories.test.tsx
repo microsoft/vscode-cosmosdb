@@ -175,11 +175,10 @@ describe('metric coverage and actionable findings', () => {
             element = element.parentElement;
         }
         expect(within(section).getByText('Indexing cost risk: Metric data unavailable or incomplete')).toBeVisible();
-        if (withFindings) {
-            expect(within(section).getByRole('button', { name: /^Idle containers/ })).toBeVisible();
-        } else {
-            expect(within(section).getByText('No advisories from the checks that completed.')).toBeVisible();
-        }
+        const content = withFindings
+            ? within(section).getByRole('button', { name: /^Idle containers/ })
+            : within(section).getByText('No advisories from the checks that completed.');
+        expect(content).toBeVisible();
     });
 
     it.each(['noData', 'unsupported'] as const)(

@@ -72,11 +72,15 @@ The wizard requires a description or a query for every read; either one alone is
   description and the container schema. Use them for routing and scoring. Do not write, generate, or report SQL for it;
   report the route under the user's description.
 - **Query supplied:** the SQL defines the access pattern. The description only adds context.
+- **Unfiltered reads are valid.** A read that intentionally returns every item, such as "List all products" or
+  `SELECT * FROM c` (including a bare `WHERE true`), has a known access pattern: a cross-partition full scan.
+  Route it as `cross`, weigh its QPS accordingly, and note its cost; do not reject it for lacking a filter.
 - **Reject a read** (wizard failure) only when its access pattern cannot be determined, specifically when:
   - the description is too vague to name what the read filters on and no query clarifies it, such as "Get data" or
     "Query products";
-  - the query is not a valid NoSQL `SELECT`, or its predicate is always true or cannot limit results, such as
-    `WHERE true OR c.categoryId = @categoryId`;
+  - the query is not a valid NoSQL `SELECT`;
+  - an always-true term cancels a filter the read names, such as `WHERE true OR c.categoryId = @categoryId`, so it is
+    unclear whether the read is filtered or a full scan;
   - the description and query disagree on which property is filtered or whether the read targets one value or many.
 - Do not reject a read for brevity alone or for missing optional details. When the description only omits details the
   query supplies, prefer the query and continue.
@@ -97,7 +101,7 @@ The `error` is shown to the user on the Result page so they can correct their in
 Example:
 
 ```text
-Product · Read query 1: The query "true OR categoryId = @categoryId" matches every item. Remove "true OR" or describe the intended filter.
+Product · Read query 1: The query "true OR categoryId = @categoryId" cancels its own filter. Remove "true OR", or the filter for a full scan.
 Inventory: No reads are defined. Add at least one read with a description or query.
 ```
 

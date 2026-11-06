@@ -202,6 +202,12 @@ test('lists raw inputs before templates exist and paginates without reading thei
         const route = spawnSync(process.execPath, [inspectorPath, '--workspace', workspace, '--phase', 'discovery'], { encoding: 'utf8' });
         assert.equal(route.status, 0, route.stderr);
         assert.equal(JSON.parse(route.stdout).inputCounts.volumetrics, 2);
+        const schemaRoot = '.cosmosdb-migration/phases/1-discovery/schema-ddl';
+        write(workspace, `${schemaRoot}/metadata.json`, '{"table":"Orders"}');
+        const schema = spawnSync(process.execPath, [inspectorPath, '--workspace', workspace, '--inputs', 'schema-evidence'], { encoding: 'utf8' });
+        assert.equal(schema.status, 0, schema.stderr);
+        assert.equal(JSON.parse(schema.stdout).files[0].path, `${schemaRoot}/metadata.json`);
+        assert.equal(inspectDiscoveryInputs(workspace, 'schema-ddl').total, 0);
     } finally {
         fs.rmSync(workspace, { recursive: true, force: true });
     }

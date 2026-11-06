@@ -851,12 +851,29 @@ export class MigrationAssistantTab extends BaseTab {
             mode: 'interactive',
             phase: 'preflight',
             preflightStep,
+            ...(preflightStep === 'schema-acquisition' ? { schemaSource: 'infer' as const } : {}),
         });
     }
 
     private async selectFiles(subfolder: 'schema-ddl' | 'volumetrics' | 'access-patterns'): Promise<void> {
         const filterMap: Record<string, Record<string, string[]>> = {
-            'schema-ddl': { 'Schema Files': ['sql', 'json', 'xml', 'csv', 'log', 'out'] },
+            'schema-ddl': {
+                'DDL and Schema Evidence': [
+                    'sql',
+                    'ddl',
+                    'json',
+                    'xml',
+                    'csv',
+                    'log',
+                    'out',
+                    'md',
+                    'txt',
+                    'yaml',
+                    'yml',
+                    'prisma',
+                ],
+                'All Files': ['*'],
+            },
             volumetrics: { 'Volumetric Files': ['txt', 'csv', 'json', 'html', 'xls', 'xlsx'] },
             'access-patterns': { 'Access Pattern Files': ['md', 'txt'] },
         };

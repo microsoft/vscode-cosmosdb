@@ -330,7 +330,7 @@ test.describe('Migration Assistant', () => {
         await expect(migration.analysisField('frameworks')).toHaveAccessibleName('Frameworks:');
         await expect(migration.analysisField('frameworks')).toHaveJSProperty('required', false);
 
-        const schemaFilesDescription = 'Database Schema Files, required';
+        const schemaFilesDescription = 'Optional DDL or supporting schema artifacts';
         await expect(
             frame.getByRole('button', { name: 'Select Files…', description: schemaFilesDescription }),
         ).toHaveAccessibleDescription(schemaFilesDescription);
@@ -341,7 +341,7 @@ test.describe('Migration Assistant', () => {
             [
                 migration.generateSchemaButton,
                 'Generate schema files from workspace code',
-                `Generate schema files from workspace code using Copilot Chat. ${schemaFilesDescription}`,
+                'Generate schema files from workspace code using Copilot Chat',
             ],
             [
                 migration.updateVolumetricsButton,
@@ -369,8 +369,8 @@ test.describe('Migration Assistant', () => {
             }
         }
         await expect(
-            frame.getByRole('button', { name: /file\(s\) selected/, description: 'Database Schema Files:' }),
-        ).toHaveAccessibleDescription('Database Schema Files:');
+            frame.getByRole('button', { name: /file\(s\) selected/, description: 'Source Schema:' }),
+        ).toHaveAccessibleDescription('Source Schema:');
 
         await frame.getByRole('button', { name: new RegExp(PHASE_HEADERS.phase4) }).click();
         await expect(frame.getByRole('radiogroup', { name: /Target Environment/ })).toHaveAttribute(
@@ -436,7 +436,7 @@ test.describe('Migration Assistant', () => {
     test('interactive help links are keyboard accessible', async ({ vscodeWindow }) => {
         const frame = await openMigrationSeeded(vscodeWindow);
         const helpLinks = [
-            ['Database schema files help', 'schema-ddl/'],
+            ['Source schema help', 'schema-ddl/'],
             ['Volumetrics help', 'volumetrics/'],
             ['Access patterns help', 'access-patterns/'],
         ] as const;
@@ -529,7 +529,7 @@ test.describe('Migration Assistant', () => {
         for (const [button, description] of [
             [
                 migration.generateSchemaButton,
-                `Generate schema files from workspace code using Copilot Chat. Database Schema Files, required ${consentDescription}`,
+                `Generate schema files from workspace code using Copilot Chat. ${consentDescription}`,
             ],
             [
                 migration.updateVolumetricsButton,
@@ -1384,7 +1384,7 @@ test.describe('Migration Assistant', () => {
                     )?.promptText ?? '',
                 { timeout: 15_000 },
             )
-            .toContain('Run only the schema-acquisition preflight step.');
+            .toContain('Infer the source schema from workspace code and selected artifacts (schema-source: infer).');
         await migration.completeSkillRun(
             readFlowPrompts().findLast(
                 (prompt) =>

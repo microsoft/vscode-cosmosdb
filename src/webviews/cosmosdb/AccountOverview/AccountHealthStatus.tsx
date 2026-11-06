@@ -67,6 +67,15 @@ function indicatorDescription(reason: HealthIndicatorReason): string {
             return l10n.t(
                 'High-impact Performance or Cost recommendations make account health at least Needs Attention.',
             );
+        case 'advisorRecommendations':
+            return l10n.t('High- or medium-impact Azure Advisor recommendations: {count}.', {
+                count: reason.count,
+            });
+        case 'derivedAdvisories':
+            return l10n.t(
+                'High- or medium-severity derived advisories: {count}. These findings do not escalate account health.',
+                { count: reason.count },
+            );
     }
 }
 

@@ -13,6 +13,7 @@ import {
     cardClassNames,
     FluentProvider,
     messageBarClassNames,
+    tokens,
     webLightTheme,
 } from '@fluentui/react-components';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
@@ -44,6 +45,12 @@ function showCoverage(source: DerivedAdvisoriesResult['logSource'], overrides: P
     return { openUrl, showOutput, onDismiss };
 }
 
+function expandNotice(title: string) {
+    const notice = screen.getByRole('group', { name: title });
+    fireEvent.click(within(notice).getByRole('button', { name: title }));
+    return notice;
+}
+
 describe('log coverage guidance', () => {
     it('names the failed check and explains resource/workspace access instead of assuming one missing role', () => {
         const { openUrl } = showCoverage({
@@ -56,6 +63,13 @@ describe('log coverage guidance', () => {
         expect(notice).toHaveClass(messageBarClassNames.root);
         expect(notice).not.toHaveAttribute('tabindex');
         expect(notice.querySelector(`.${messageBarClassNames.icon}`)).toHaveAttribute('aria-hidden', 'true');
+        const toggle = within(notice).getByRole('button', { name: 'Partial coverage' });
+        expect(toggle).toHaveTextContent('Partial coverage');
+        expect(toggle).toHaveAccessibleName('Partial coverage');
+        expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        expect(within(notice).queryByRole('list')).not.toBeInTheDocument();
+        expandNotice('Partial coverage');
+        expect(toggle).toHaveAttribute('aria-expanded', 'true');
         expect(screen.getByText('DataPlaneRequests availability: Access denied')).toBeDefined();
         expect(
             screen.getByText(
@@ -77,6 +91,7 @@ describe('log coverage guidance', () => {
             reason: 'logAnalyticsDisabled',
             failures: [{ operation: 'probeQueryRuntime', kind: 'missingTable', reason: 'logAnalyticsDisabled' }],
         });
+        expandNotice('Partial coverage');
         expect(
             screen.getByText(
                 'Some required CDB log tables could not be queried. ' +
@@ -95,6 +110,7 @@ describe('log coverage guidance', () => {
             reason: 'noData',
             failures: [{ operation: 'crossPartition', kind: 'queryError', reason: 'noData' }],
         });
+        expandNotice('Partial coverage');
         expect(screen.getByText('Query fan-out: Query error')).toBeDefined();
         expect(
             screen.getByText(
@@ -137,6 +153,11 @@ describe('log coverage guidance', () => {
         expect(coverage).toHaveAccessibleName('Partial coverage');
         expect(coverage).toHaveAccessibleDescription('Some analyzers could not run, so coverage is partial.');
         await user.tab();
+        const toggle = screen.getByRole('button', { name: 'Partial coverage' });
+        expect(toggle).toHaveFocus();
+        await user.keyboard('{Enter}');
+        expect(toggle).toHaveAttribute('aria-expanded', 'true');
+        await user.tab();
         expect(button).toHaveFocus();
         await user.keyboard('{Enter}');
         expect(showOutput).toHaveBeenCalledTimes(1);
@@ -144,6 +165,159 @@ describe('log coverage guidance', () => {
 });
 
 describe('metric coverage and actionable findings', () => {
+    it.each([false, true])('keeps notices in normal page flow with findings=%s', (withFindings) => {
+        showCoverage(
+            { available: true },
+            {
+                metricSource: { available: false, failures: [{ rule: 'IndexingCostRisk', reason: 'noData' }] },
+                advisories: withFindings
+                    ? [
+                          {
+                              id: 'idle',
+                              rule: 'IdleContainer',
+                              severity: 'Low',
+                              title: 'Idle container',
+                              rationale: 'Almost no traffic was observed.',
+                              suggestedAction: 'Remove unused provisioned capacity.',
+                              thresholdReference: 'Peak consumption at most 50 RU.',
+                              scope: 'db/a',
+                          },
+                      ]
+                    : [],
+            },
+        );
+        const section = screen.getByLabelText('Recommendations');
+        expect(getComputedStyle(section).overflow).not.toBe('hidden');
+        const content = withFindings
+            ? within(section).getByRole('button', { name: /^Idle containers/ })
+            : within(section).getByText('No advisories from the checks that completed.');
+        expect(content).toBeVisible();
+        const notice = screen.getByRole('group', { name: 'Incomplete workload analysis' });
+        const toggle = within(notice).getByRole('button', { name: 'Incomplete workload analysis' });
+        expect(toggle).toHaveTextContent('Incomplete workload analysis');
+        expect(toggle).toHaveAccessibleName('Incomplete workload analysis');
+        expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        expect(within(notice).queryByRole('list')).not.toBeInTheDocument();
+        expandNotice('Incomplete workload analysis');
+        expect(toggle).toHaveAttribute('aria-expanded', 'true');
+        let element: HTMLElement | null = within(section).getByRole('button', { name: 'Show Output' });
+        while (element && section.contains(element)) {
+            const style = getComputedStyle(element);
+            expect(['auto', 'scroll']).not.toContain(style.overflowY || style.overflow);
+            element = element.parentElement;
+        }
+        expect(within(section).getByText('Indexing cost risk: Metric data unavailable or incomplete')).toBeVisible();
+        fireEvent.click(toggle);
+        expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        expect(within(notice).queryByRole('list')).not.toBeInTheDocument();
+        expect(content).toBeVisible();
+    });
+
+    it.each(['noData', 'unsupported'] as const)(
+        'uses an informational background for %s without read errors',
+        (reason) => {
+            showCoverage(
+                { available: true },
+                { metricSource: { available: false, failures: [{ rule: 'IdleContainer', reason }] } },
+            );
+            const notice = screen.getByRole('group', { name: 'Incomplete workload analysis' });
+            expect(notice).toHaveStyle({ backgroundColor: tokens.colorNeutralBackground3 });
+            expect(notice.querySelector(`.${messageBarClassNames.icon}`)).toHaveAttribute('aria-hidden', 'true');
+            expect(within(notice).getByRole('button', { name: 'Show Output' })).toHaveAccessibleName('Show Output');
+        },
+    );
+
+    it.each(['metrics', 'inventory', 'account', 'activityLog'] as const)(
+        'retains a warning background for a %s request error classified as noData',
+        (source) => {
+            showCoverage(
+                { available: true },
+                {
+                    metricSource: { available: false, failures: [{ rule: 'IdleContainer', reason: 'noData' }] },
+                    diagnostics: [{ source, kind: 'transient', reason: 'noData' }],
+                },
+            );
+            expect(screen.getByRole('group', { name: 'Incomplete workload analysis' })).toHaveStyle({
+                backgroundColor: tokens.colorStatusWarningBackground1,
+            });
+        },
+    );
+
+    it.each(['accessDenied', 'authentication'] as const)('retains a warning background for %s', (kind) => {
+        showCoverage(
+            { available: true },
+            {
+                metricSource: { available: false, failures: [{ rule: 'IdleContainer', reason: 'rbac' }] },
+                diagnostics: [{ source: 'metrics', kind, reason: 'rbac' }],
+            },
+        );
+        expect(screen.getByRole('group', { name: 'Incomplete workload analysis' })).toHaveStyle({
+            backgroundColor: tokens.colorStatusWarningBackground1,
+        });
+    });
+
+    it('retains a warning when empty data and denied checks are mixed', () => {
+        showCoverage(
+            { available: true },
+            {
+                metricSource: {
+                    available: false,
+                    failures: [
+                        { rule: 'IdleContainer', reason: 'noData' },
+                        { rule: 'HotPartitionRisk', reason: 'rbac' },
+                    ],
+                },
+            },
+        );
+        expect(screen.getByRole('group', { name: 'Incomplete workload analysis' })).toHaveStyle({
+            backgroundColor: tokens.colorStatusWarningBackground1,
+        });
+    });
+
+    it('keeps empty metric data informational independently of Log Analytics failures', () => {
+        showCoverage(
+            { available: false, reason: 'rbac' },
+            {
+                metricSource: { available: false, failures: [{ rule: 'IdleContainer', reason: 'noData' }] },
+                diagnostics: [{ source: 'logs', kind: 'accessDenied', reason: 'rbac' }],
+            },
+        );
+        expect(screen.getByRole('group', { name: 'Incomplete workload analysis' })).toHaveStyle({
+            backgroundColor: tokens.colorNeutralBackground3,
+        });
+        expect(screen.getByRole('group', { name: 'Partial coverage' })).toHaveStyle({
+            backgroundColor: tokens.colorStatusWarningBackground1,
+        });
+    });
+
+    it('opens Output for incomplete metric analysis even when no request diagnostic was returned', async () => {
+        const user = userEvent.setup();
+        const { showOutput } = showCoverage(
+            { available: true },
+            {
+                metricSource: {
+                    available: false,
+                    failures: [
+                        { rule: 'SustainedThrottlingInRegion', reason: 'noData' },
+                        { rule: 'HotPartitionRisk', reason: 'noData' },
+                    ],
+                },
+            },
+        );
+        const notice = expandNotice('Incomplete workload analysis');
+        expect(
+            within(notice).getByText('Sustained throttling: Metric data unavailable or incomplete'),
+        ).toBeInTheDocument();
+        expect(within(notice).getByText('Hot partitions: Metric data unavailable or incomplete')).toBeInTheDocument();
+        const button = within(notice).getByRole('button', { name: 'Show Output' });
+        expect(button).toHaveTextContent('Show Output');
+        expect(button).toHaveAccessibleName('Show Output');
+        button.focus();
+        await user.keyboard('{Enter}');
+        expect(showOutput).toHaveBeenCalledOnce();
+        expect(screen.queryByText(/Access denied/)).not.toBeInTheDocument();
+    });
+
     it('announces incomplete metric checks without claiming a clean result or blaming Log Analytics', () => {
         showCoverage(
             { available: true },
@@ -161,6 +335,7 @@ describe('metric coverage and actionable findings', () => {
         expect(notice).toHaveClass(messageBarClassNames.root);
         expect(notice).not.toHaveAttribute('tabindex');
         expect(notice.querySelector(`.${messageBarClassNames.icon}`)).toHaveAttribute('aria-hidden', 'true');
+        expandNotice('Incomplete workload analysis');
         expect(within(notice).getByText('Incomplete workload analysis')).toBeInTheDocument();
         expect(
             screen.getByText(
@@ -228,6 +403,9 @@ describe('metric coverage and actionable findings', () => {
             screen.getByRole('button', { name: `Dismiss advisory for db/${removed}` }).focus();
             await user.keyboard(key);
             const dialog = screen.getByRole('dialog');
+            const listStyle = getComputedStyle(within(dialog).getByRole('list'));
+            expect(listStyle.overflowY).toBe('auto');
+            expect(Number.parseFloat(listStyle.maxHeight)).toBeCloseTo(window.innerHeight * 0.6);
             expect(within(dialog).queryByRole('button', { name: `Dismiss advisory for db/${removed}` })).toBeNull();
             expect(within(dialog).getByRole('button', { name: `Dismiss advisory for db/${next}` })).toHaveFocus();
             expect(within(dialog).getAllByRole('listitem')).toHaveLength(2);

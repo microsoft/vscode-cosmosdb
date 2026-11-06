@@ -56,7 +56,9 @@ export function useOverviewHealthSignals(client: HealthSignalsClient, onError: (
             if (requestId === alertsRequestSeq.current) {
                 setActiveAlertsUnavailable(!result.available);
                 // Failed checks cannot prove recovery. Retain the last known signals and mark them as stale.
-                setActiveAlerts((previous) => (result.available || !previous ? result : previous));
+                setActiveAlerts((previous) =>
+                    result.available || !previous ? result : { ...previous, diagnostics: result.diagnostics },
+                );
             }
             return result.available || result.reason === 'unsupported';
         } catch {

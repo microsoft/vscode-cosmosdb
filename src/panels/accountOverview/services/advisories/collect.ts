@@ -18,6 +18,7 @@ import {
     DEFAULT_PARTITION_THRESHOLDS,
     type PartitionStorageResult,
 } from '../partitionHealth';
+import { readRequest } from '../readDiagnostics';
 import { getContainerCreatedAt, getKnownResourceAgeDays, getSystemCreatedAt } from '../resourceAge';
 import { getRuTrends, getThrottleRate } from '../ruTrends';
 import { classifyUnavailable, containerKey } from '../shared';
@@ -203,7 +204,11 @@ async function getAccountCreatedAt(
     resourceGroup: string,
     accountName: string,
 ): Promise<string | undefined> {
-    return getSystemCreatedAt(await cosmosClient.databaseAccounts.get(resourceGroup, accountName));
+    return getSystemCreatedAt(
+        await readRequest('account', 'databaseAccounts.get', () =>
+            cosmosClient.databaseAccounts.get(resourceGroup, accountName),
+        ),
+    );
 }
 
 /**

@@ -33,6 +33,7 @@ import {
     type AlertsResult,
     type AlertTimeRange,
     type ContainerMetrics,
+    type DerivedAdvisoriesResult,
     type InventoryContainerRow,
     type MetricKey,
     type PartitionHealthResult,
@@ -549,6 +550,89 @@ describe('account-wide health collection', () => {
         },
     );
 
+    it('indicates late High Availability recommendations without escalating health or moving tab focus', async () => {
+        const pending = Promise.withResolvers<RecommendationsResult>();
+        queries.recommendations.mockReturnValueOnce(pending.promise);
+        queries.accountHealth.mockResolvedValue({ available: true, health: 'Healthy', generatedAt: 0 });
+        const user = userEvent.setup();
+        render(<AccountOverview />, { wrapper: Wrapper });
+        expect(await screen.findByText('Account health: Healthy')).toBeVisible();
+        const tab = screen.getByRole('tab', { name: 'Advisories' });
+        expect(tab).not.toHaveAccessibleDescription();
+        await user.click(tab);
+        await act(async () =>
+            pending.resolve({
+                available: true,
+                hasHighImpactPerfCost: false,
+                recommendations: [
+                    { id: 'ha', category: 'HighAvailability', impact: 'High', problem: 'Enable zone redundancy.' },
+                    { id: 'cost', category: 'Cost', impact: 'Low', problem: 'Review provisioned capacity.' },
+                ],
+                generatedAt: 1,
+            }),
+        );
+        expect(tab).toHaveFocus();
+        expect(tab).toHaveTextContent('Advisories');
+        expect(tab).toHaveAccessibleName('Advisories');
+        expect(tab).toHaveAccessibleDescription('High- or medium-impact Azure Advisor recommendations: 1.');
+        expect(tab.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+        expect(screen.getByText('Account health: Healthy')).toBeVisible();
+
+        queries.recommendations.mockResolvedValue({
+            available: true,
+            hasHighImpactPerfCost: false,
+            recommendations: [],
+            generatedAt: 2,
+        } satisfies RecommendationsResult);
+        const refresh = screen.getByRole('button', { name: 'Refresh' });
+        await waitFor(() => expect(refresh).not.toHaveAttribute('aria-disabled', 'true'));
+        await user.click(refresh);
+        await waitFor(() => expect(refresh).toHaveAttribute('aria-busy', 'false'));
+        expect(tab).not.toHaveAccessibleDescription();
+        expect(tab.querySelector('svg')).toBeNull();
+        expect(screen.getByText('Account health: Healthy')).toBeVisible();
+    });
+
+    it('clears the derived warning after dismissal while Low and superseded findings do not keep it alive', async () => {
+        const advisory = {
+            rule: 'IdleContainer',
+            severity: 'High',
+            title: 'Idle container',
+            rationale: 'Almost no traffic was observed.',
+            suggestedAction: 'Review unused capacity.',
+            thresholdReference: 'Idle threshold.',
+        } as const;
+        queries.advisories.mockResolvedValue({
+            available: true,
+            advisories: [
+                { ...advisory, id: 'high', scope: 'database/orders' },
+                { ...advisory, id: 'low', severity: 'Low', scope: 'database/products' },
+                { ...advisory, id: 'superseded', supersededBy: 'high', scope: 'database/hidden' },
+            ],
+            generatedAt: 0,
+        } satisfies DerivedAdvisoriesResult);
+        queries.accountHealth.mockResolvedValue({ available: true, health: 'Healthy', generatedAt: 0 });
+        const user = userEvent.setup();
+        render(<AccountOverview />, { wrapper: Wrapper });
+        expect(await screen.findByText('Account health: Healthy')).toBeVisible();
+        const tab = screen.getByRole('tab', { name: 'Advisories' });
+        expect(tab).toHaveAccessibleName('Advisories');
+        expect(tab).toHaveAccessibleDescription(
+            'High- or medium-severity derived advisories: 1. These findings do not escalate account health.',
+        );
+        expect(tab.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+        await user.click(tab);
+        await user.click(screen.getByRole('button', { name: /^Idle containers/ }));
+        const dialog = screen.getByRole('dialog');
+        expect(within(dialog).queryByText('database/hidden')).not.toBeInTheDocument();
+        await user.click(within(dialog).getByRole('button', { name: 'Dismiss advisory for database/orders' }));
+        expect(tab).not.toHaveAccessibleDescription();
+        expect(tab.querySelector('svg')).toBeNull();
+        expect(within(dialog).getByText('database/products')).toBeVisible();
+        await user.click(within(dialog).getByRole('button', { name: 'Close' }));
+        expect(screen.getByText('Account health: Healthy')).toBeVisible();
+    });
+
     it('clears successful evidence on a failed refresh without changing Essentials provisioning status', async () => {
         queries.accountHealth.mockResolvedValue({ available: true, health: 'Healthy', generatedAt: 0 });
         const user = userEvent.setup();
@@ -746,7 +830,10 @@ describe('Serverless metric selection', () => {
 
     it.each([
         ['noData', 'No telemetry available for this selection yet.'],
-        ['rbac', 'Not enough permissions: your role is missing Monitoring Reader.'],
+        [
+            'rbac',
+            'Read access to this section is unavailable. Monitoring Reader is a broad role option; equivalent permissions can also work.',
+        ],
         ['error', 'Unable to load telemetry. Try refreshing.'],
     ])('keeps storage distribution visible with its real %s outcome and no mode toggle', async (reason, message) => {
         const user = userEvent.setup();

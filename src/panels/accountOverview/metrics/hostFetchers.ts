@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type MonitorClient } from '@azure/arm-monitor';
+import { readMetrics } from '../services/readDiagnostics';
 import { querySeries, queryThrottlingWindows } from '../services/ruTrends';
 import {
     metricFailureReason,
@@ -345,7 +346,7 @@ function documentCountFetcher(): MetricFetcher {
 
         let response: Awaited<ReturnType<MonitorClient['metrics']['list']>>;
         try {
-            response = await client.metrics.list(resourceUri, {
+            response = await readMetrics(client, resourceUri, {
                 metricnames: spec.metricNames[0],
                 aggregation: spec.aggregation,
                 timespan,

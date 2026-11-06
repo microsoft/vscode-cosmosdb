@@ -98,10 +98,13 @@ export interface ReadQuery {
     pattern: string;
     /** Full SQL query text. Absent in models saved before the query editor field was added. */
     query?: string;
-    /** Selected property names; older models and catalog defaults may contain a filter predicate. */
-    filters: string[] | string;
     /** Peak queries per second. */
     qps: number;
+}
+
+/** A read needs a description or a SQL query to describe its access pattern. */
+export function hasReadEvidence(read: Pick<ReadQuery, 'pattern' | 'query'>): boolean {
+    return !!read.pattern.trim() || !!read.query?.trim();
 }
 
 export interface WriteOps {

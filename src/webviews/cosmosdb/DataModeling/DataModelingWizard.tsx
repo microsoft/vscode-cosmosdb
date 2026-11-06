@@ -40,7 +40,7 @@ import { MAX_CONTAINERS, type ScenarioId } from './models';
 import { ContainerPage, type ContainerTab } from './pages/ContainerPage';
 import { createDeploymentDraft, DeployPage, type DeploymentDraft } from './pages/DeployPage';
 import { ResultPage } from './pages/ResultPage';
-import { ReviewPage } from './pages/ReviewPage';
+import { ReviewPage, type ReviewValidationIssue } from './pages/ReviewPage';
 import { WorkloadPage } from './pages/WorkloadPage';
 import { getScenarioList } from './scenarios';
 import { useModelingPageVisible, useModelingTelemetryReporter, useModelingUsage } from './useModelingTelemetry';
@@ -248,6 +248,8 @@ const HydratedDataModelingWizard = ({
     const advanceButtonRef = useRef<HTMLButtonElement>(null);
     const queriesTabRef = useRef<HTMLButtonElement>(null);
     const [containerTab, setContainerTab] = useState<ContainerTab>('data');
+    const [fixTarget, setFixTarget] = useState<ReviewValidationIssue>();
+    const clearFixTarget = useCallback(() => setFixTarget(undefined), []);
     const removeButtonRef = useRef<HTMLButtonElement>(null);
     const addButtonRef = useRef<HTMLButtonElement>(null);
     const requestGeneration = useRef(0);
@@ -626,20 +628,43 @@ const HydratedDataModelingWizard = ({
 
     const workloadValidation = useMemo(() => WizardStateSchema.safeParse(snapshot.wizard), [snapshot.wizard]);
     // Name the container each issue belongs to so users know which card to edit.
-    const workloadErrors = useMemo(
+    const workloadIssues = useMemo<ReviewValidationIssue[]>(
         () =>
             workloadValidation.success
                 ? []
                 : workloadValidation.error.issues.map((issue) => {
                       const [scope, collection, index] = issue.path;
-                      const entity =
+                      const container =
                           scope === 'dataModel' && collection === 'containers' && typeof index === 'number'
-                              ? snapshot.wizard.dataModel.containers[index]?.entity
+                              ? snapshot.wizard.dataModel.containers[index]
                               : undefined;
-                      return entity ? `${entity}: ${issue.message}` : issue.message;
+                      return {
+                          message: container?.entity ? `${container.entity}: ${issue.message}` : issue.message,
+                          containerId: container?.id,
+                          path: issue.path.slice(3).map(String),
+                      };
                   }),
         [workloadValidation, snapshot.wizard.dataModel.containers],
     );
+    const workloadErrors = useMemo(() => workloadIssues.map((issue) => issue.message), [workloadIssues]);
+    const fixIssue = (issue: ReviewValidationIssue) => {
+        // Older drafts infer reached steps from the current step; preserve access to Review when jumping back.
+        setState((previous) => ({ ...previous, reachedSteps }));
+        if (!issue.containerId) {
+            goToStep(1);
+            return;
+        }
+        goToContainer(issue.containerId);
+        const section = issue.path[0];
+        setContainerTab(
+            section === 'scale'
+                ? 'scale'
+                : section === 'reads' || section === 'writes' || section === undefined
+                  ? 'queries'
+                  : 'data',
+        );
+        setFixTarget(issue);
+    };
 
     // Send the finished data model to Copilot Chat and wait for the tool callback.
     const requestRecommendation = useCallback(() => {
@@ -1156,6 +1181,8 @@ const HydratedDataModelingWizard = ({
                                 queriesTabRef={queriesTabRef}
                                 active={activeValue === containerStep(c.id)}
                                 containerId={c.id}
+                                focusPath={fixTarget?.containerId === c.id ? fixTarget.path : undefined}
+                                onFocused={clearFixTarget}
                                 onVisit={visit}
                                 onEdited={markEdited}
                                 onTelemetry={report}
@@ -1173,7 +1200,8 @@ const HydratedDataModelingWizard = ({
                         title={l10n.t('Review your inputs')}
                     >
                         <ReviewPage
-                            validationErrors={workloadErrors}
+                            validationErrors={workloadIssues}
+                            onFixIssue={fixIssue}
                             workloadLabel={scenarioLabel ?? l10n.t('Not selected')}
                             containers={state.dataModel.containers}
                             onEditWorkload={() => goToStep(1)}

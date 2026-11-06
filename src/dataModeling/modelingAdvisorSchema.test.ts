@@ -150,10 +150,52 @@ describe('wizard workload limit validation', () => {
         container.writes.insertsPerSec = 0;
         expect(WizardStateSchema.safeParse(wizardFor(container)).success).toBe(true);
 
-        container.reads.push({ id: 'second', pattern: '', query: '', filters: [], qps: 1 });
+        container.reads.push({ id: 'second', pattern: '', query: '', qps: 1 });
         const result = WizardStateSchema.safeParse(wizardFor(container));
         expect(result.success).toBe(false);
         expect(result.error?.issues[0].path).toEqual(['dataModel', 'containers', 0]);
         expect(result.error?.issues[0].message).toContain(`${(10_000_010).toLocaleString()} RU/s`);
     });
+
+    it('requires a description or query for each read in requests but still loads drafts without them', () => {
+        const container = createBlankContainer();
+        container.reads = [{ id: 'empty', pattern: ' ', query: ' ', qps: 1 }];
+        const result = WizardStateSchema.safeParse(wizardFor(container));
+        expect(result.success).toBe(false);
+        expect(result.error?.issues[0].path).toEqual(['dataModel', 'containers', 0, 'reads', 0]);
+        expect(result.error?.issues[0].message).toBe('Read query 1 needs a description or a query.');
+        expect(
+            ModelingAdvisorSnapshotSchema.safeParse({
+                wizard: wizardFor(container),
+                recommendation: { status: 'idle' },
+            }).success,
+        ).toBe(true);
+
+        for (const read of [
+            { pattern: 'Get orders for a customer', query: undefined },
+            { pattern: '', query: 'SELECT * FROM c WHERE c.customerId = @id' },
+        ]) {
+            container.reads = [{ id: 'read', qps: 1, ...read }];
+            expect(WizardStateSchema.safeParse(wizardFor(container)).success).toBe(true);
+        }
+    });
+
+    it.each([{ filters: 'removed = @value' }, { filters: ['removed'] }])(
+        'discards legacy read filters $filters from saved projects and requests',
+        ({ filters }) => {
+            const container = createBlankContainer();
+            const read = container.reads[0];
+            const legacyRead = { ...read, filters };
+            const wizard = wizardFor({ ...container, reads: [legacyRead] });
+            const loaded = ModelingAdvisorSnapshotSchema.parse({
+                wizard,
+                recommendation: { status: 'idle' },
+            }).wizard;
+            const requested = WizardStateSchema.parse(wizard);
+            expect(loaded.dataModel.containers[0].reads[0]).toEqual(read);
+            expect(requested.dataModel.containers[0].reads[0]).toEqual(read);
+            expect(loaded.dataModel.containers[0].reads[0]).not.toHaveProperty('filters');
+            expect(requested.dataModel.containers[0].reads[0]).not.toHaveProperty('filters');
+        },
+    );
 });

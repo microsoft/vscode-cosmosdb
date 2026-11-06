@@ -186,7 +186,7 @@ export const REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_INPUT_SCHEMA = {
             minLength: 1,
             pattern: '\\S',
             description:
-                'Why a recommendation cannot be provided and what information or guidance is needed. Send with wizardTabId only; omit summary and containers.',
+                'Why a recommendation cannot be provided, shown to the user: one short line per input to fix, naming the container, read query, problem, and fix. Send with wizardTabId only; omit summary and containers.',
         },
         summary: {
             type: 'string',

@@ -9,7 +9,7 @@ description: |
 license: MIT
 metadata:
   author: vscode-cosmosdb
-  version: "1.1.0"
+  version: "1.2.0"
 ---
 
 # Cosmos DB data model recommendation
@@ -40,8 +40,9 @@ This takes precedence over the default-hint preference and scoring/output requir
 Do not invent facts, arbitrary scores, or unsupported recommendations. Do not report partial success:
 identify affected containers, the blocker, and the specific information or clarification needed to proceed.
 
-- **Wizard failure:** call its report tool exactly once with only `wizardTabId` and a non-empty `error` explanation.
-  Omit `summary` and `containers`; never disguise failure as an empty recommendation.
+- **Wizard failure:** call its report tool exactly once with only `wizardTabId` and a non-empty `error` written in the
+  format under "Wizard failure message" below. Omit `summary` and `containers`; never disguise failure as an empty
+  recommendation.
 - **Chat failure:** explain why no recommendation is possible and what is needed. Never invent a wizard ID.
 - **Delivery failure:** if the report tool is unavailable or fails, say so in Chat; do not claim delivery succeeded.
 
@@ -61,6 +62,44 @@ below, and add a `guardrails` entry for each applicable unverified limit.
 Do not reject a candidate, mark it `fail`, invent score inputs, or use the error-only report shape for these omissions.
 Reject for such a constraint only when the supplied workload establishes a violation.
 The recommendation is a partition-key design judgment, not a certification of application/configuration/retention compliance.
+
+### Read inputs
+
+Each wizard read has a `pattern` (the user's description), an optional SQL `query`, `filters`, and `qps`.
+The wizard requires a description or a query for every read; either one alone is valid input.
+
+- **Description only:** infer the filtered properties, match type (equality, range, or none), and sort order from the
+  description and the container schema. Use them for routing and scoring. Do not write, generate, or report SQL for it;
+  report the route under the user's description.
+- **Query supplied:** the SQL defines the access pattern. The description and `filters` only add context.
+- **Reject a read** (wizard failure) only when its access pattern cannot be determined, specifically when:
+  - the description is too vague to name what the read filters on and no query clarifies it, such as "Get data" or
+    "Query products";
+  - the query is not a valid NoSQL `SELECT`, or its predicate is always true or cannot limit results, such as
+    `WHERE true OR c.categoryId = @categoryId`;
+  - the description and query disagree on which property is filtered or whether the read targets one value or many.
+- Do not reject a read for brevity alone, for missing optional details, or because `filters` lists properties the
+  query does not use; prefer the query and continue.
+
+### Wizard failure message
+
+The `error` is shown to the user on the Result page so they can correct their inputs. Make it short and actionable.
+
+- Write one line per problem, at most six lines, separated by newlines. Use this shape for each line:
+  `<Container> · Read query <n>: <what is wrong>. <how to fix it>.` Use the container's exact `entity` name and the
+  read's 1-based position in that container's `reads`. For container-level problems, omit `· Read query <n>`.
+- Keep each line under 30 words. Name the field the user must edit: Description, Query, Filters on, Peak QPS,
+  properties, writes, or scale. Quote the offending text only when that shows the problem, and keep quotes short.
+- Ask only for input the wizard collects. Never ask for information the user cannot enter in the wizard.
+- Report blockers only. Do not mention skill names, rule titles, this policy, the hint rule, immutability,
+  guardrails, non-blocking omissions, or what you did not invent. Add no introduction or closing summary.
+
+Example:
+
+```text
+Product · Read query 1: The query "true OR categoryId = @categoryId" matches every item. Remove "true OR" or describe the intended filter.
+Inventory: No reads are defined. Add at least one read with a description or query.
+```
 
 #### Immutability assumptions
 

@@ -1393,17 +1393,66 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(client.dataModeling.requestRecommendation.mutate).not.toHaveBeenCalled();
         expect(await getStepControl('Result')).toHaveAttribute('aria-disabled', 'true');
 
-        await userEvent.click(screen.getByRole('button', { name: 'Edit Orders' }));
-        await userEvent.click(screen.getByRole('tab', { name: 'Queries' }));
+        await userEvent.click(screen.getByRole('button', { name: 'Fix' }));
+        await waitFor(() => expect(screen.getByRole('tabpanel', { name: 'Queries' })).toHaveFocus());
         fireEvent.change(screen.getByRole('spinbutton', { name: 'Peak QPS for read 1' }), {
             target: { value: '100' },
         });
-        await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+        await userEvent.click(await getStepControl('Review'));
         expect(screen.queryByText(/Estimated throughput/)).not.toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Get Recommendation' })).toBeEnabled();
         await userEvent.click(screen.getByRole('button', { name: 'Get Recommendation' }));
         await waitFor(() => expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledOnce());
     });
+
+    it.each(['read', 'document', 'arrays'] as const)(
+        'opens the offending container and tab and focuses its %s input from Review',
+        async (kind) => {
+            const saved = restored(4);
+            saved.recommendation = { status: 'idle' };
+            const container = createBlankContainer('DeviceTelemetry');
+            saved.wizard.dataModel.containers.push(container);
+            if (kind === 'read') {
+                container.reads.push({ id: 'empty-read', pattern: '', query: '', qps: 10 });
+            } else if (kind === 'document') {
+                container.document.avgSizeKb = container.document.maxSizeKb + 1;
+            } else {
+                container.arrays = { hasArrays: true, avgItems: 5, maxItems: 2, updatePattern: 'none' };
+            }
+            const tab = kind === 'read' ? 'Queries' : 'Data';
+            const label =
+                kind === 'read'
+                    ? 'Description for read 2'
+                    : kind === 'document'
+                      ? 'Average document size'
+                      : 'Average items per array';
+            client.dataModeling.loadState.query.mockResolvedValue(saved);
+            render(<DataModelingWizard />);
+            await continueExisting();
+            expect(screen.getByRole('button', { name: 'Get Recommendation' })).toBeDisabled();
+
+            const fix = screen.getByRole('button', { name: 'Fix' });
+            expect(fix).toHaveAccessibleDescription(/^DeviceTelemetry:/);
+            fix.focus();
+            await userEvent.keyboard('{Enter}');
+            expect(screen.getByRole('tab', { name: tab })).toHaveAttribute('aria-selected', 'true');
+            const input = screen.getByRole(kind === 'read' ? 'textbox' : 'spinbutton', { name: label });
+            await waitFor(() => expect(input).toHaveFocus());
+            expect(lastSave().wizard.dataModel.activeContainerId).toBe(container.id);
+            expect(lastSave().wizard.dataModel.containers).toEqual(saved.wizard.dataModel.containers);
+            expect(client.dataModeling.requestRecommendation.mutate).not.toHaveBeenCalled();
+
+            // Returning without editing must allow the same Fix action to focus the field again.
+            await userEvent.click(await getStepControl('Review'));
+            await userEvent.click(screen.getByRole('button', { name: 'Fix' }));
+            const target = screen.getByRole(kind === 'read' ? 'textbox' : 'spinbutton', { name: label });
+            await waitFor(() => expect(target).toHaveFocus());
+            fireEvent.change(target, { target: { value: kind === 'read' ? 'Get a device by id' : '1' } });
+            await userEvent.click(await getStepControl('Review'));
+            expect(screen.queryByRole('button', { name: 'Fix' })).not.toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'Get Recommendation' })).toBeEnabled();
+        },
+    );
 
     it('waits for the input save before opening Chat', async () => {
         const saved = restored(3);

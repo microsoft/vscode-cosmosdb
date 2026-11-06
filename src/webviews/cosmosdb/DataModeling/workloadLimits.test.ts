@@ -22,7 +22,7 @@ function container(readQps: number, writesPerSec: number, writes: WriteDistribut
     const result = createBlankContainer();
     // 1 KB documents: 1 RU per read, 3 RU per write.
     result.document.avgSizeKb = 1;
-    result.reads = [{ id: 'read', pattern: '', query: '', filters: [], qps: readQps }];
+    result.reads = [{ id: 'read', pattern: '', query: '', qps: readQps }];
     result.writes = { insertsPerSec: writesPerSec, updatesPerSec: 0, deletesPerSec: 0 };
     result.scale.writes = writes;
     return result;

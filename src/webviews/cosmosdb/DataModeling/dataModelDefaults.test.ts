@@ -109,9 +109,7 @@ describe('scenario defaults', () => {
             expect(container.document.attributeCount).toBe(source.properties.length);
             expect(container.arrays).toEqual(source.arrays);
             expect(container.arrays.hasArrays).toBe(source.properties.some((field) => field.type === 'array'));
-            expect(
-                container.reads.map(({ pattern, query, filters, qps }) => ({ pattern, query, filters, qps })),
-            ).toEqual(source.reads);
+            expect(container.reads.map(({ pattern, query, qps }) => ({ pattern, query, qps }))).toEqual(source.reads);
             expect(container.reads.every((read) => read.query?.startsWith('SELECT '))).toBe(true);
             expect(container.writes).toEqual(source.writes);
             expect(container.scale).toMatchObject(source.scale);
@@ -141,7 +139,6 @@ describe('scenario defaults', () => {
         expect(movement.reads[0]).toMatchObject({
             pattern: 'Get movement history for a SKU in a bounded time range',
             query: 'SELECT * FROM c WHERE skuId = @skuId AND occurredAt >= @startDate AND occurredAt < @endDate ORDER BY c.occurredAt DESC OFFSET 0 LIMIT 100',
-            filters: 'skuId = @skuId AND occurredAt >= @startDate AND occurredAt < @endDate',
             qps: 80,
         });
         expect(
@@ -153,7 +150,6 @@ describe('scenario defaults', () => {
         expect(buildDataModel('catalog').containers[0].reads[2]).toMatchObject({
             pattern: 'List all products',
             query: 'SELECT * FROM c',
-            filters: '',
             qps: 10,
         });
     });
@@ -165,9 +161,9 @@ describe('scenario defaults', () => {
         expect(buildDataModel('analytics').containers[0].reads[2].query).toBe(
             'SELECT VALUE COUNT(1) FROM c WHERE c.eventName = @eventName',
         );
-        expect(
-            buildDataModel('gaming').containers[0].reads.find((read) => read.filters === 'season = @season')?.query,
-        ).toBe('SELECT * FROM c WHERE season = @season ORDER BY c.score DESC OFFSET 0 LIMIT 100');
+        expect(buildDataModel('gaming').containers[0].reads[2].query).toBe(
+            'SELECT * FROM c WHERE season = @season ORDER BY c.score DESC OFFSET 0 LIMIT 100',
+        );
     });
 
     it('preserves planning baselines that the catalog does not replace', () => {
@@ -213,7 +209,7 @@ describe('scenario defaults', () => {
         expect(model.containers[0]).toMatchObject({
             entity: 'Entity',
             partitionKey: '/id',
-            reads: [{ pattern: 'Describe your dominant query', filters: 'id', qps: 200 }],
+            reads: [{ pattern: 'Describe your dominant query', query: '', qps: 200 }],
         });
     });
 });

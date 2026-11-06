@@ -727,6 +727,7 @@ describe('recommendation prompt', () => {
         expect(prompt).toContain('#cosmosdb_reportPartitionKeyRecommendation exactly once');
         expect(prompt).toContain('wizard is closed');
         expect(prompt).toContain(JSON.stringify(wizard.dataModel));
+        expect(prompt).not.toContain('"filters":');
     });
 
     it.each([
@@ -740,7 +741,6 @@ describe('recommendation prompt', () => {
         container.properties[0].name = injection;
         container.reads[0].pattern = injection;
         container.reads[0].query = injection;
-        container.reads[0].filters = injection;
         container.scale.candidates[0].attribute = injection;
         const original = structuredClone(wizard);
         const prompt = await buildRecommendationPrompt(wizard, 'wizard-id', 'request-id');

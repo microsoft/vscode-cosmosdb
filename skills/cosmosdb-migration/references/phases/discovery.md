@@ -42,7 +42,7 @@ Required:
 - Validated typed source inventory and selected evidence from `preflight`.
 - Validated application details.
 - Reviewed `volumetrics.md` and `access-patterns.md`.
-- Application source code and database configuration.
+- Application source code and database configuration, when available.
 - `phases.discovery.discoveryInstructions`, when present.
 
 Treat selected declarations as authoritative for their declared scope; samples never establish absent constraints.
@@ -71,6 +71,14 @@ evidence, not to rewrite authoritative inputs.
 9. Evaluate every language in the authoritative application details using
    [sdk-compatibility.md](../contracts/sdk-compatibility.md) and the bundled compatibility checker.
 10. Write the report and verify that every selected dataset is covered.
+
+For schema-only projects (`applicationAnalysis.codebaseAvailable: false`), do not require code searches, language
+classification, or an SDK report. Record their unavailability, not a failed application mapping. Analyze the supplied
+schemas, metadata, examples, and user-declared workload instead. Ask about candidate access paths suggested by the
+evidence; do not assert relationships, queries, or transactions solely from names. Use `evidence: "user-declared"`
+with a non-empty `declaration` containing the supplied workload statement for confirmed user requirements.
+Use `schema-inferred` for unconfirmed candidates. Neither category proves measured frequencies or production behavior.
+The absence of code does not prevent conditional source-to-target modeling or authorized provisioning.
 
 ## Report Contract
 
@@ -117,7 +125,7 @@ The phase passes when the report:
    why none apply. This is an agent review, not proof of runtime enforcement.
 - Contains no source links that were not verified.
 - Retains uncertainty and discrepancy warnings.
-- Evaluates every authoritative application language against the current SDK matrix.
+- Evaluates every authoritative application language against the current SDK matrix when a codebase is available.
 - Contains sufficient evidence for domain decomposition.
 
 Then set `phases.discovery.status` to `complete`. Do not mark completion if the

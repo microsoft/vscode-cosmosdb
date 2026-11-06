@@ -1074,7 +1074,10 @@ export class MigrationAssistantTab extends BaseTab {
             workspacePath: this.workspacePath,
             mode: 'interactive',
             phase: 'schema-conversion',
-            includeUnmappedDomains,
+            includeUnmappedDomains:
+                this.project.phases.discovery.applicationAnalysis?.codebaseAvailable === false
+                    ? undefined
+                    : includeUnmappedDomains,
         });
     }
 
@@ -1442,6 +1445,17 @@ export class MigrationAssistantTab extends BaseTab {
         }
         if (isMigrationRunActive(this.runTracker.snapshot())) {
             throw new Error(l10n.t('A migration run is already active. Open Chat to finish or stop it.'));
+        }
+        if (
+            invocation.phase === 'code-migration' &&
+            invocation.intent !== 'review-and-fix' &&
+            this.project.phases.discovery.applicationAnalysis?.codebaseAvailable === false
+        ) {
+            throw new Error(
+                l10n.t(
+                    'Application code migration is unavailable until a codebase is supplied and discovery is refreshed.',
+                ),
+            );
         }
         const runId = this.skillTelemetry.begin(invocation, this.project);
         const isReview = invocation.intent === 'review-and-fix';

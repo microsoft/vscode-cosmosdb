@@ -19,7 +19,7 @@ import {
     canonicalizeCosmosModel,
     validateCosmosModel,
 } from './validate-cosmos-model.mjs';
-import { normalizeMigrationProjectCompatibility, validateMigrationProject } from './validate-migration-project.mjs';
+import { isSchemaOnlyProject, normalizeMigrationProjectCompatibility, validateMigrationProject } from './validate-migration-project.mjs';
 import { validateProvisioningVerification } from './validate-provisioning-verification.mjs';
 import { validateSampleData } from './validate-sample-data.mjs';
 import {
@@ -214,9 +214,12 @@ function validateGeneratedProvisioningArtifact(
 
 function applicationDetailsComplete(project) {
     const analysis = project.phases?.discovery?.applicationAnalysis;
+    const fields = isSchemaOnlyProject(project)
+        ? ['projectName', 'databaseType', 'completedAt']
+        : ['projectName', 'projectType', 'language', 'databaseType', 'databaseAccess', 'completedAt'];
     return (
         analysis &&
-        ['projectName', 'projectType', 'language', 'databaseType', 'databaseAccess', 'completedAt'].every(
+        fields.every(
             (key) => typeof analysis[key] === 'string' && analysis[key].trim().length > 0,
         ) &&
         (analysis.frameworks === undefined ||
@@ -315,7 +318,7 @@ function phaseCompletion(workspace, phaseInput, cache) {
     }
     if (result.phase === 'code-migration') {
         try {
-            result.ready = checkPhase(workspace, 'schema-conversion', false, cache).complete;
+            result.ready = codeMigrationPrerequisites(workspace, cache).complete;
         } catch {
             result.ready = false;
         }
@@ -324,7 +327,18 @@ function phaseCompletion(workspace, phaseInput, cache) {
 }
 
 export function checkCodeMigrationPrerequisites(workspace) {
-    return checkPhase(workspace, 'schema-conversion', false, new Map());
+    return codeMigrationPrerequisites(workspace, new Map());
+}
+
+function codeMigrationPrerequisites(workspace, cache) {
+    const result = checkPhase(workspace, 'schema-conversion', false, cache);
+    const project = cachedCheck(cache, 'project', () => readJson(path.join(workspace, '.cosmosdb-migration/project.json')));
+    if (!isSchemaOnlyProject(project)) return result;
+    const message = 'Application code is unavailable. Add the codebase and refresh application discovery before planning or executing code migration.';
+    return { ...result, complete: false, errors: [...result.errors, message], artifacts: [...result.artifacts, {
+        path: '.cosmosdb-migration/project.json#phases.discovery.applicationAnalysis.codebaseAvailable',
+        description: 'Application code availability', conditional: false, state: 'invalid', diagnostics: [message],
+    }] };
 }
 
 function cachedCheck(cache, key, check) {
@@ -609,7 +623,7 @@ function collectPhaseArtifacts(workspace, phase, project, checkSourcePaths, cach
             }
         }
     } else if (phase === 'discovery') {
-        addArtifact(
+        if (!isSchemaOnlyProject(project)) addArtifact(
             artifacts,
             workspace,
             path.join(migrationRoot, 'phases', '1-discovery', 'discovery-manifest.json'),

@@ -12,6 +12,10 @@ NoSQL, never implicitly the source-compatible API. See the [common contract](./r
 Existing version-1 projects resume through validated in-memory normalization without rewriting
 artifacts, selections, or historical execution records.
 
+Schema and examples are sufficient to start a **schema-only migration**: an application codebase is not required
+for source analysis, target modeling, or provisioning preparation. Application details and SDK integration wait
+until code is available. The agent can ask for intended access patterns and workload constraints without inventing code.
+
 This README is for people installing and using the skill. The agent's entry point
 is [SKILL.md](./SKILL.md); its linked references define the workflow. You do not need
 to repeat those procedures in your requests.
@@ -21,7 +25,7 @@ to repeat those procedures in your requests.
 - An agent host with skill support and tools for reading, searching, editing files,
   and running commands. The workflow does not require VS Code or an MCP server.
 - Node.js available to the host for the bundled helper scripts.
-- The application workspace you want to migrate.
+- A workspace containing the source evidence, with application code when available.
 - The `cosmosdb-best-practices` peer skill, which supplies Cosmos DB design guidance.
 
 SQLGlot is optional. When selected, the agent uses the latest available release and

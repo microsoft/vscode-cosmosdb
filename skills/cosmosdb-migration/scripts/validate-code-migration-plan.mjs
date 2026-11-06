@@ -9,7 +9,7 @@ import { validateCompatibilityReport } from './check-sdk-compatibility.mjs';
 import { requireOptionValue } from './cli-arguments.mjs';
 import { showHelp } from './cli-help.mjs';
 import { parseJson, readSdkCompatibility } from './phase-summary.mjs';
-import { validateMigrationProject } from './validate-migration-project.mjs';
+import { isSchemaOnlyProject, validateMigrationProject } from './validate-migration-project.mjs';
 
 const REQUIRED_SECTIONS = {
     overview: ['overview'],
@@ -151,6 +151,10 @@ function validatePlan(markdown, manifest, { workspace, project, modelContent, sd
         message: error.message,
     }));
     if (errors.length > 0) return errors;
+    if (checkCurrentFiles && isSchemaOnlyProject(project)) {
+        return [{ path: '$.project.phases.discovery.applicationAnalysis.codebaseAvailable',
+            message: 'Application code is unavailable; refresh application discovery before planning or executing code migration.' }];
+    }
     if (typeof markdown !== 'string' || markdown.trim().length === 0) {
         return [...errors, { path: '$', message: 'plan must be non-empty Markdown' }];
     }

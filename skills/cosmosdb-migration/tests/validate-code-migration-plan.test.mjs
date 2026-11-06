@@ -64,6 +64,15 @@ function options(workspace, migrationProject, sdkReport = SDK_REPORT, sdkReportC
     return { workspace, project: migrationProject, modelContent: MODEL_CONTENT, sdkReport, sdkReportContent };
 }
 
+test('schema-only scope blocks new code plans without invalidating historical records', () => {
+    const record = manifest('plan');
+    const migrationProject = project('plan');
+    migrationProject.phases.discovery.applicationAnalysis.codebaseAvailable = false;
+    const context = options(process.cwd(), migrationProject);
+    assert.match(validateCodeMigrationPlan(markdown(record), record, context)[0].message, /Application code is unavailable/u);
+    assert.deepEqual(validateCodeMigrationRecord(markdown(record), record, context), []);
+});
+
 function markdown(manifest) {
     return `# Code Migration Plan
 

@@ -92,6 +92,14 @@ Required fields:
 - `databaseType`
 - `databaseAccess`
 
+First determine whether an application codebase is actually available in the approved workspace. When only schema,
+metadata, documentation, or examples were supplied, confirm schema-only scope and record
+`applicationAnalysis.codebaseAvailable: false`. In that mode only `projectName`, `databaseType`, and `completedAt`
+are required. Preserve any supplied application details, but do not require a language, runtime, framework,
+application type, or access library merely to analyze and model the source. Never fill these with invented values
+or `N/A` to pass a gate. Missing `codebaseAvailable` retains the existing application-migration behavior.
+When code is later supplied, inspect it, set `codebaseAvailable: true`, and refresh application discovery and SDK evidence.
+
 `frameworks` is optional for every language. Record actual data-access or web frameworks
 when present, such as Entity Framework Core, Spring Boot, Django, or Flask. When none
 applies, omit the property or use an empty array. Do not invent a framework, repeat the
@@ -106,7 +114,7 @@ representation for multiple project names, types, languages, or database-access
 mechanisms; sort equivalent-priority values and place the dominant mechanism first
 when evidence establishes one. Do not use `N/A` for unknown database information.
 
-Set `completedAt` only after all required fields are non-empty and structurally
+Set `completedAt` only after the fields required for the selected scope are non-empty and structurally
 valid. This classification step does not require Cosmos DB design guidance.
 
 ## 2. Schema Acquisition
@@ -196,6 +204,11 @@ preserve it and ask before replacement. Keep inferred origin on reruns; missing 
 never grants overwrite permission. Do not remove obsolete generated files without approval.
 
 ## 3. Volumetrics
+
+No codebase does not mean there is no workload information. Ask the engineer for the highest-impact missing facts:
+primary lookups, ordered/history reads, write/update patterns, atomicity boundaries, retention, size/growth, and
+traffic distribution. Record unavailable measurements as unknown. Record supplied business requirements separately
+from observed measurements, and label schema-inferred candidates as hypotheses until confirmed.
 
 The managed checkpoint is the default `volumetrics/volumetrics.md`. Create it from
 [volumetrics-template.md](../../assets/volumetrics-template.md) when absent.

@@ -50,6 +50,9 @@ a compatible destination API; this Skill targets NoSQL only.
 - `preflight-step`: `application-details`, `schema-acquisition`, `volumetrics`, or `access-patterns`.
   Execute only the requested step and recompute shared readiness; SDK evaluation belongs to Discovery.
 - `schema-source: infer` requests inventory inference, not synthesized SQL or overwriting declarations.
+- When no application code is supplied, confirm schema-only scope and record
+  `applicationAnalysis.codebaseAvailable: false`. Do not invent application details or treat unavailable code
+  as unused data. Source analysis, modeling, and provisioning remain available; code migration waits for a codebase.
 - `ddl-parser: model | sqlglot` applies **only to selected SQL/DDL**. Follow
   [DDL interpretation](./references/workflow/ddl-interpretation.md) before external parser use.
   No-DDL evidence, including relational code inventory, needs neither Python nor SQLGlot.
@@ -93,6 +96,9 @@ rule filenames as runtime dependencies. If unavailable, perform only source clas
 provide installation guidance. No direct REST substitute for an unsupported Cosmos DB SDK.
 
 ## Checkpoint Invariants
+
+Without code, ask about intended lookups, writes, transaction scope, retention, and scale. Distinguish user-declared
+requirements and schema-inferred candidates from measured workload; do not make code availability a modeling prerequisite.
 
 The root agent alone writes shared project state. Read current state before updates; use
 `project-state.mjs` scoped reads/updates with revision checks, falling back to direct reads if needed.

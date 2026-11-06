@@ -54,6 +54,7 @@ import { ResultPage } from './pages/ResultPage';
 import { ReviewPage, type ReviewValidationIssue } from './pages/ReviewPage';
 import { WorkloadPage } from './pages/WorkloadPage';
 import { getScenarioList } from './scenarios';
+import { SchemaImportTracker } from './schemaImports';
 import { useModelingPageVisible, useModelingTelemetryReporter, useModelingUsage } from './useModelingTelemetry';
 import { useNativeConfirmation } from './useNativeConfirmation';
 
@@ -352,10 +353,16 @@ const HydratedDataModelingWizard = ({
     );
     const state = snapshot.wizard;
     const { visit, markEdited, visits } = useModelingUsage(state, report);
+    const [schemaImports] = useState(() => new SchemaImportTracker());
+    // A mounted Data page acknowledges its own committed import; this covers imports that outlived their page.
+    useEffect(() => {
+        schemaImports.acknowledge(state.dataModel).forEach(() => report({ type: 'schemaImport', outcome: 'success' }));
+    }, [schemaImports, state.dataModel, report]);
     const setState = useCallback(
         (update: SetStateAction<WizardState>) =>
             setSnapshot((previous) => {
                 const wizard = typeof update === 'function' ? update(previous.wizard) : update;
+                if (wizard === previous.wizard) return previous;
                 if (
                     wizard.scenario === previous.wizard.scenario &&
                     modelingInputsEqual(wizard.dataModel, previous.wizard.dataModel)
@@ -633,7 +640,11 @@ const HydratedDataModelingWizard = ({
     );
 
     const setDataModel = useCallback(
-        (dataModel: DataModel) => setState((prev) => ({ ...prev, dataModel })),
+        (update: SetStateAction<DataModel>) =>
+            setState((previous) => {
+                const dataModel = typeof update === 'function' ? update(previous.dataModel) : update;
+                return dataModel === previous.dataModel ? previous : { ...previous, dataModel };
+            }),
         [setState],
     );
 
@@ -671,7 +682,21 @@ const HydratedDataModelingWizard = ({
     // The Data tab changes the schema, so refresh the derived PK candidates the Scale tab
     // reads. Queries and Scale edits write their slice back unchanged.
     const onChangeData = useCallback(
-        (dataModel: DataModel) => setDataModel(withDerivedCandidates(dataModel)),
+        (update: SetStateAction<DataModel>) =>
+            setDataModel((previous) => {
+                const next = typeof update === 'function' ? update(previous) : update;
+                if (next === previous) return previous;
+                return {
+                    ...next,
+                    // An import can finish while another container is active.
+                    // Derive candidates only for changed containers without changing the current selection.
+                    containers: next.containers.map((container) =>
+                        container === previous.containers.find((c) => c.id === container.id)
+                            ? container
+                            : withDerivedCandidates({ containers: [container] }).containers[0],
+                    ),
+                };
+            }),
         [setDataModel],
     );
 
@@ -1288,6 +1313,7 @@ const HydratedDataModelingWizard = ({
                                 onEdited={markEdited}
                                 onTelemetry={report}
                                 onChangeData={onChangeData}
+                                schemaImports={schemaImports}
                                 onChange={setDataModel}
                             />
                         </WizardStep>

@@ -8,7 +8,7 @@ import { readFile, realpath, stat } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { Worker } from 'node:worker_threads';
 import * as path from 'path';
-import { parseJson } from '../../../../skills/cosmosdb-relational-migration/scripts/phase-summary.mjs';
+import { parseJson } from '../../../../skills/cosmosdb-migration/scripts/phase-summary.mjs';
 import { type ProjectJson } from '../../../services/MigrationProjectService';
 import {
     getMigrationArtifactLocation,
@@ -79,7 +79,7 @@ export async function readMigrationExecution(
     const validatorPath = path.join(
         extensionPath,
         'skills',
-        'cosmosdb-relational-migration',
+        'cosmosdb-migration',
         'scripts',
         'validate-migration-project.mjs',
     );
@@ -220,7 +220,7 @@ export async function readMigrationPhaseCompletion(
     const checkerPath = path.join(
         extensionPath,
         'skills',
-        'cosmosdb-relational-migration',
+        'cosmosdb-migration',
         'scripts',
         'check-phase-completion.mjs',
     );

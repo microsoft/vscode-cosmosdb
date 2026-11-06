@@ -7,15 +7,12 @@ import * as l10n from '@vscode/l10n';
 import { createHash } from 'node:crypto';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { parseJson } from '../../skills/cosmosdb-relational-migration/scripts/phase-summary.mjs';
-import {
-    readProjectState,
-    updateProjectState,
-} from '../../skills/cosmosdb-relational-migration/scripts/project-state.mjs';
+import { parseJson } from '../../skills/cosmosdb-migration/scripts/phase-summary.mjs';
+import { readProjectState, updateProjectState } from '../../skills/cosmosdb-migration/scripts/project-state.mjs';
 import {
     normalizeMigrationProjectCompatibility,
     validateMigrationProject,
-} from '../../skills/cosmosdb-relational-migration/scripts/validate-migration-project.mjs';
+} from '../../skills/cosmosdb-migration/scripts/validate-migration-project.mjs';
 
 export const MIGRATION_FOLDER = '.cosmosdb-migration';
 export const PROJECT_FILE = 'project.json';
@@ -31,7 +28,8 @@ export interface DiscoverySourceSelection {
 
 export interface AssessmentDomain {
     name: string;
-    tables: string[];
+    datasets?: string[];
+    tables?: string[];
     crossDomainDependencies: string[];
     estimatedTokens: number;
     isMapped: boolean;
@@ -40,7 +38,8 @@ export interface AssessmentDomain {
 export interface ParsedAccessPattern {
     name: string;
     type: string;
-    tables: string[];
+    datasets?: string[];
+    tables?: string[];
     frequency: string;
     codeReferences: string[];
     filterFields?: string;

@@ -20,9 +20,15 @@ node <skill-root>/scripts/inspect-migration-state.mjs \
 
 Use `--regenerate` when requested by the normal rerun policy. This path uses
 `checkCodeMigrationPrerequisites`: it requires accepted, structurally valid analytical
-artifacts, authoritative DDL evidence, domain ownership, and canonical root/domain
+artifacts, accepted source inventory evidence, domain ownership, and canonical root/domain
 consistency, without recursively checking live application-source freshness. Normal
 analytical and provisioning phase checks retain their freshness requirements.
+
+The application-code exception is not an evidence-file exception. Selected metadata, samples,
+DDL, and documentation must still match acceptance. Only v2 selected files already recorded as
+`kind:"code"` may evolve without invalidating handoff; legacy selected evidence has no inferred
+code exemption. Unselected application-code edits and deletions remain permitted. Changed evidence
+disables new planning/execution readiness without erasing or invalidating historical execution records.
 
 Inspect the current application, SDK/framework compatibility, migration instructions,
 and accepted model before each iteration. Reconsider an old plan when its design inputs
@@ -55,6 +61,10 @@ Production handoff items do not gate code completion or establish production rea
 ## Inputs
 
 - Canonical `phases/3-schema-conversion/model.json`.
+- Typed source identities, field mappings, executable examples, and approved behavior decisions from the
+  [source contract](../contracts/source-inventory.md). Carry native type conversion, missing/null,
+  arrays, source routing, concurrency, and transaction obligations into implementation tasks.
+  Do not implement invented foreign keys or assume source database operators map directly to NoSQL.
 - Root `schema-conversion` summary and manifest, plus each converted domain's
    `summary.md` and `cosmos-model.json`. Converted domains do not have separate manifests.
 - `assessment` domain files and the `discovery` report.

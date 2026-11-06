@@ -9,7 +9,9 @@ import { mergeCosmosModels } from './merge-cosmos-models.mjs';
 import { assertNoTerminalIssues, parseJson, readDomainModel, readPhaseEvidence } from './phase-summary.mjs';
 import { selectSchemaConversionDomains } from './select-schema-conversion-domains.mjs';
 import { canonicalStringify, canonicalizeCosmosModel, classifyItemIdentity } from './validate-cosmos-model.mjs';
-import { createSourceResolver, readSourceInventory, resolveForeignKey } from './validate-source-evidence.mjs';
+import { createSourceResolver, readSourceInventory, resolveForeignKey, validateNativeSourceInventory } from './validate-source-evidence.mjs';
+import { datasetFields, datasetKey, domainSources, entitySource, normalizeDomains, primaryFields, relationalDetails, resolvedSourceRefs } from './source-contract.mjs';
+import { validateMappingEvidence } from './mapping-examples.mjs';
 
 export function modelHash(model) {
     return createHash('sha256').update(canonicalStringify(canonicalizeCosmosModel(model))).digest('hex');
@@ -17,27 +19,28 @@ export function modelHash(model) {
 
 function preservedSourceColumns(entity, table, resolve) {
     return new Set(entity.attributes.filter(attribute =>
-        attribute.source.table !== '(generated)' &&
-        (entity.isEmbeddedOnly === true || (attribute.target !== 'id' && attribute.isId !== true)) &&
-        resolve(attribute.source.table).name === table.name,
-    ).map(attribute => attribute.source.column));
+        entity.isEmbeddedOnly === true || (attribute.target !== 'id' && attribute.isId !== true),
+    ).flatMap(attribute => resolvedSourceRefs(attribute.source, resolve)
+        .filter(reference => datasetKey(reference.dataset) === datasetKey(table))
+        .map(reference => reference.field.id)));
 }
 
 export function validateConversionEvidence(project, inventory, domainModels, root, evidence) {
     try {
-    const resolve = createSourceResolver(inventory);
+        if (inventory.version === 2) validateNativeSourceInventory(inventory);
+        const resolve = createSourceResolver(inventory);
         if (evidence?.version !== 1 || typeof evidence.includeUnmappedDomains !== 'boolean' || evidence.sourceSha256 !== inventory.sha256) throw new Error('Conversion evidence requires version, explicit selection policy and current source hash');
         assertNoTerminalIssues(evidence.blockingIssues);
-        const selected = selectSchemaConversionDomains(project, evidence.includeUnmappedDomains).selectedDomains;
+        const selected = normalizeDomains(selectSchemaConversionDomains(project, evidence.includeUnmappedDomains).selectedDomains, resolve);
         const expectedNames = selected.map(domain => domain.name).sort();
         const sameNames = values => JSON.stringify([...values].sort()) === JSON.stringify(expectedNames);
         if (!sameNames(project.phases.schemaConversion?.domains ?? []) || !sameNames(domainModels.map(entry => entry.domainName)) || !sameNames(Object.keys(evidence.domainSha256 ?? {}))) throw new Error('Selected, checkpoint and supplied conversion domains differ');
         const owners = new Map();
         for (const domain of selected) {
-            for (const source of domain.tables) {
+            for (const source of domainSources(domain)) {
                 const table = resolve(source);
-                if (owners.has(table.name)) throw new Error(`Duplicate authoritative owner: ${table.name}`);
-                owners.set(table.name, domain.name);
+                if (owners.has(datasetKey(table))) throw new Error(`Duplicate authoritative owner: ${table.name}`);
+                owners.set(datasetKey(table), domain.name);
             }
         }
         const entities = new Map(
@@ -54,8 +57,8 @@ export function validateConversionEvidence(project, inventory, domainModels, roo
         for (const { domainName, model } of domainModels) {
             if (evidence.domainSha256[domainName] !== modelHash(model)) throw new Error(`Stale domain model hash: ${domainName}`);
             for (const container of model.containers) for (const entity of container.entities) {
-                const sourceTable = resolve(entity.sourceTable);
-                const source = sourceTable.name;
+                const sourceTable = resolve(entitySource(entity));
+                const source = datasetKey(sourceTable);
                 if (!owners.has(source)) throw new Error(`Unselected source mapping: ${source}`);
                 const key = JSON.stringify([domainName, container.name, entity.name]);
                 mapped.set(key, { source, entity });
@@ -64,40 +67,49 @@ export function validateConversionEvidence(project, inventory, domainModels, roo
                     covered.set(source, entity);
                 }
                 for (const attribute of entity.attributes) {
-                    if (attribute.source.table === '(generated)') continue;
-                    const table = resolve(attribute.source.table);
-                    if (!owners.has(table.name)) throw new Error(`Attribute maps an unselected source: ${table.name}`);
-                    if (!table.columns.some(column => column.name === attribute.source.column)) throw new Error(`Attribute maps a missing source column: ${attribute.source.table}.${attribute.source.column}`);
+                    for (const { dataset, field } of resolvedSourceRefs(attribute.source, resolve)) {
+                        if (!owners.has(datasetKey(dataset))) throw new Error(`Attribute maps an unselected source: ${dataset.name}`);
+                        if (inventory.version === 2 && attribute.source.type !== undefined && !attribute.source.inputs && !field.nativeTypes.includes(attribute.source.type)) throw new Error('Attribute source type differs from inventory native type');
+                        if (inventory.version === 2 && attribute.target !== 'id' &&
+                            ((field.presence !== 'required' && !attribute.optional) || (field.nullable !== false && !attribute.nullable))) {
+                            throw new Error('Mapping must preserve missing/null/unknown distinctions');
+                        }
+                    }
                 }
                 for (const relationship of entity.relationships ?? []) {
-                    const foreignKey = resolveForeignKey(relationship.sourceFK, inventory, resolve);
-                    if (!owners.has(foreignKey.table.name) || !owners.has(foreignKey.referencedTable.name)) {
+                    const foreignKey = resolveForeignKey(relationship.sourceRelationship ?? relationship.sourceFK, inventory, resolve);
+                    if (!owners.has(datasetKey(foreignKey.table)) || !owners.has(datasetKey(foreignKey.referencedTable))) {
                         throw new Error('Relationship maps an unselected source foreign-key endpoint');
                     }
                     const targetEntity = entities.get(relationship.targetEntity.toLocaleLowerCase('en-US'));
                     const endpoints = new Set([
-                        sourceTable.name,
-                        resolve(targetEntity.sourceTable).name,
+                        datasetKey(sourceTable),
+                        datasetKey(resolve(entitySource(targetEntity))),
                     ]);
-                    if (!endpoints.has(foreignKey.table.name) || !endpoints.has(foreignKey.referencedTable.name)) {
+                    if (!endpoints.has(datasetKey(foreignKey.table)) || !endpoints.has(datasetKey(foreignKey.referencedTable))) {
                         throw new Error(
                             `Relationship foreign-key endpoints do not match ${entity.name} and ${targetEntity.name}`,
                         );
                     }
                 }
                 const preservedColumns = preservedSourceColumns(entity, sourceTable, resolve);
-                const idColumns = new Set([...(entity.idTemplate ?? '').matchAll(/\{([^{}]+)\}/gu)].map(match => match[1]));
+                const native = relationalDetails(sourceTable);
+                const idColumns = entity.identity?.fields?.filter(reference => reference.dataset === source).map(reference => reference.field) ??
+                    [...(entity.idTemplate ?? '').matchAll(/\{([^{}]+)\}/gu)].map(match =>
+                        datasetFields(sourceTable).find(field => (field.name ?? field.path?.[0]?.name) === match[1])?.id);
                 const generatedId = classifyItemIdentity(entity) === 'generated-uuid';
-                for (const column of sourceTable.primaryKey ?? []) {
+                for (const column of primaryFields(sourceTable)) {
                     if (!preservedColumns.has(column)) throw new Error(`Primary-key column is not preserved separately: ${source}.${column}`);
-                    if (entity.isEmbeddedOnly !== true && !generatedId && !idColumns.has(column)) throw new Error(`idTemplate omits source primary-key column: ${source}.${column}`);
+                    if (entity.isEmbeddedOnly !== true && !generatedId && !idColumns.includes(column)) throw new Error(`idTemplate omits source primary-key column: ${source}.${column}`);
                 }
+                if (native && entity.isEmbeddedOnly !== true && !generatedId &&
+                    JSON.stringify(idColumns.filter(column => primaryFields(sourceTable).includes(column))) !== JSON.stringify(primaryFields(sourceTable))) throw new Error('Identity must preserve composite primary-key order');
             }
         }
         if (explicitOwnership !== undefined) {
             const usedMappings = new Set();
             for (const disposition of explicitOwnership) {
-                const source = resolve(disposition.sourceTable).name;
+                const source = datasetKey(resolve(entitySource(disposition)));
                 if (covered.has(source) || owners.get(source) !== disposition.domain) throw new Error(`Duplicate or incorrect source owner: ${source}`);
                 if (!Array.isArray(disposition.targets) || !disposition.targets.length) throw new Error(`Missing target disposition: ${source}`);
                 let authoritative = 0;
@@ -106,7 +118,7 @@ export function validateConversionEvidence(project, inventory, domainModels, roo
                     const key = JSON.stringify([target.domain, target.container, target.entity]);
                     const mapping = mapped.get(key);
                     if (!mapping || !['authoritative', 'embedded', 'projection', 'consolidated'].includes(target.kind)) throw new Error(`Invalid target lineage: ${source}`);
-                    const lineage = mapping.source === source || mapping.entity.attributes.some(attribute => attribute.source.table !== '(generated)' && resolve(attribute.source.table).name === source);
+                    const lineage = mapping.source === source || mapping.entity.attributes.some(attribute => resolvedSourceRefs(attribute.source, resolve).some(reference => datasetKey(reference.dataset) === source));
                     if (!lineage) throw new Error(`Target lacks source lineage: ${source}`);
                     if (target.kind !== 'projection') {
                         if (target.domain !== disposition.domain) throw new Error(`Authoritative target belongs to a different domain: ${source}`);
@@ -125,10 +137,11 @@ export function validateConversionEvidence(project, inventory, domainModels, roo
         for (const [source, entity] of covered) {
             const table = resolve(source);
             const preservedColumns = preservedSourceColumns(entity, table, resolve);
-            for (const column of table.columns) {
-                if (!preservedColumns.has(column.name)) throw new Error(`Authoritative target omits source column: ${source}.${column.name}`);
+            for (const column of datasetFields(table)) {
+                if (!preservedColumns.has(column.id)) throw new Error(`Authoritative target omits source column: ${source}.${column.name ?? column.id}`);
             }
         }
+        if (inventory.version === 2) validateMappingEvidence(inventory, domainModels, evidence, owners);
         const expected = mergeCosmosModels(domainModels, { databaseName: evidence.databaseName, capacityMode: evidence.capacityMode, capacityEvidence: evidence.capacityEvidence });
         if (!expected.model) throw new Error(`Merge failed: ${JSON.stringify([...expected.errors, ...expected.conflicts])}`);
         if (canonicalStringify(canonicalizeCosmosModel(root)) !== canonicalStringify(expected.model)) throw new Error('Root model differs from the deterministic merge of accepted domain models');

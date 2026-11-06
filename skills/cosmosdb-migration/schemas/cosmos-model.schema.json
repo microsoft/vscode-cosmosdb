@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/microsoft/vscode-cosmosdb/schemas/cosmos-model.schema.json",
-  "title": "Azure Cosmos DB Relational Migration Model",
+  "title": "Azure Cosmos DB Migration Model",
   "type": "object",
   "additionalProperties": false,
   "required": ["version", "domain", "containers"],
@@ -91,6 +91,68 @@
       "pattern": "^[^/\\\\?#]+[^/\\\\?# ]$|^[^/\\\\?# ]$"
     },
     "source": {
+      "oneOf": [
+        { "$ref": "#/$defs/legacySource" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["dataset", "field", "type"],
+          "properties": {
+            "dataset": { "type": "string", "minLength": 1 },
+            "field": { "type": "string", "minLength": 1 },
+            "type": { "type": "string", "minLength": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["inputs", "type"],
+          "properties": {
+            "inputs": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/fieldReference" } },
+            "type": { "type": "string", "minLength": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["generated", "type"],
+          "properties": {
+            "generated": { "enum": ["uuid", "constant"] },
+            "type": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
+    },
+    "fieldReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dataset", "field"],
+      "properties": {
+        "dataset": { "type": "string", "minLength": 1 },
+        "field": { "type": "string", "minLength": 1 }
+      }
+    },
+    "identity": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "fields", "encoding"],
+          "properties": {
+            "kind": { "const": "fields" },
+            "fields": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/fieldReference" } },
+            "encoding": { "enum": ["typed-hex-v1", "native-uuid"] }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": { "kind": { "const": "generated-uuid" } }
+        }
+      ]
+    },
+    "legacySource": {
       "type": "object",
       "additionalProperties": false,
       "required": ["table", "column", "type"],
@@ -130,16 +192,20 @@
         "source": { "$ref": "#/$defs/source" },
         "type": { "enum": ["string", "number", "integer", "boolean", "object", "array", "null"] },
         "isPartitionKey": { "type": "boolean" },
-        "isId": { "type": "boolean" }
+        "isId": { "type": "boolean" },
+        "optional": { "type": "boolean" },
+        "nullable": { "type": "boolean" }
       }
     },
     "relationship": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["targetEntity", "sourceFK", "type", "strategy"],
+      "required": ["targetEntity", "type", "strategy"],
+      "oneOf": [{ "required": ["sourceFK"] }, { "required": ["sourceRelationship"] }],
       "properties": {
         "targetEntity": { "type": "string", "minLength": 1 },
         "sourceFK": { "$ref": "#/$defs/sourceFK" },
+        "sourceRelationship": { "type": "string", "minLength": 1 },
         "type": { "enum": ["one-to-one", "one-to-many", "many-to-many"] },
         "strategy": { "enum": ["embed", "reference"] },
         "targetProperty": { "type": "string", "minLength": 1 },
@@ -157,11 +223,15 @@
     "entity": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "docType", "sourceTable", "attributes"],
+      "required": ["name", "docType", "attributes"],
+      "oneOf": [{ "required": ["sourceTable"] }, { "required": ["sourceDataset"] }],
+      "not": { "required": ["idTemplate", "identity"] },
       "properties": {
         "name": { "type": "string", "minLength": 1 },
         "docType": { "type": "string", "minLength": 1 },
         "sourceTable": { "type": "string", "minLength": 1 },
+        "sourceDataset": { "type": "string", "minLength": 1 },
+        "identity": { "$ref": "#/$defs/identity" },
         "attributes": {
           "type": "array",
           "minItems": 1,

@@ -154,7 +154,7 @@ test('preserves named FK references and canonicalizes their order without changi
     assert(validateCosmosModel(model).some(error => error.path.includes('.attributes[0].source.constraintName')));
     const schema = JSON.parse(fs.readFileSync(new URL('../schemas/cosmos-model.schema.json', import.meta.url), 'utf8'));
     assert.deepEqual(schema.$defs.sourceFK.properties.constraintName, { type: 'string', minLength: 1 });
-    assert.equal(schema.$defs.source.properties.constraintName, undefined);
+    assert.equal(schema.$defs.legacySource.properties.constraintName, undefined);
 });
 
 test('preserves unique-key policies during canonicalization', () => {
@@ -278,7 +278,7 @@ test('counts shared physical containers separately from dedicated containers', (
 test('schema and runtime agree on target JSON types without restricting source database types', () => {
     const schema = JSON.parse(fs.readFileSync(new URL('../schemas/cosmos-model.schema.json', import.meta.url), 'utf8'));
     assert.deepEqual(schema.$defs.attribute.properties.type.enum, TARGET_JSON_TYPES);
-    assert.equal(schema.$defs.source.properties.type.enum, undefined);
+    assert.equal(schema.$defs.legacySource.properties.type.enum, undefined);
     for (const type of TARGET_JSON_TYPES) {
         const definition = validModel();
         definition.containers[0].entities[0].attributes.push({

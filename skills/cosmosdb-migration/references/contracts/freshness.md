@@ -50,11 +50,14 @@ no freshness requirement. See [Migration memory](../workflow/memory.md).
 
 Mandatory inputs are:
 
-- `preflight`: selected DDL, supporting schema artifacts, inferred files' `sourcePaths`,
+- `preflight`: all selected source evidence (DDL only when applicable), inferred files' `sourcePaths`,
   and raw workload paths and bytes, all three source
   selections, effective parser choice, application-analysis fields excluding `completedAt`,
   curated volumetrics/access-pattern templates, and the bundled SDK matrix version. The matrix-version hash
   does not make SDK evaluation a preflight gate.
+  Version-2 inventory adds the common source-contract version. Any real contract change requires
+  renewed semantic review, never merely refreshing hashes. Legacy v1 evidence is validated before
+  read-only normalization and is not automatically rewritten.
 - `discovery`: `preflight-manifest.json` and discovery instructions.
 - `assessment`: `discovery-manifest.json` and assessment instructions.
 - `schema-conversion`: `assessment-manifest.json`, assessed-domain manifests,
@@ -98,6 +101,10 @@ Code-migration completion instead validates a historical execution record and re
 Iteration-time validation still checks current design inputs, SDK compatibility,
 output files, and recorded repository checks.
 The accepted-model handoff deliberately does not require live application-source
-freshness. It preserves structural and cross-artifact validation without altering
+freshness. Selected v2 evidence explicitly accepted as `kind:"code"` may change or disappear;
+selected non-code evidence must remain present with its accepted hashes. V1 selected evidence
+has no typed code exemption and remains live-checked, while application code outside that
+selection may evolve. This affects current handoff readiness, not historical execution completion.
+The handoff preserves structural and cross-artifact validation without altering
 normal analytical freshness or copying source files. See
 [code-migration.md](../phases/code-migration.md) for launch, completion, and recovery behavior.

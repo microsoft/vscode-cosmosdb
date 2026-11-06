@@ -15,8 +15,8 @@ as launch conditions.
 1. Inspect current preflight completion. If it is current and complete, reuse it.
 2. Otherwise follow [preflight](./preflight.md) in this order: `application-details`,
    `schema-acquisition`, `volumetrics`, `access-patterns`. Evaluate each step, preserve
-   valid supplied inputs, and perform the work needed to satisfy its gate. Infer DDL
-   when no supplied DDL is selected; retain its origin on reruns. Preserve supplied DDL even on regeneration.
+   valid supplied inputs, and perform the work needed to satisfy its gate. Infer the source inventory
+   when declarations are unavailable; retain provenance on reruns. Preserve supplied evidence even on regeneration.
 3. Record preflight evidence and freshness, finalize its checkpoint, and require a
    successful `check-phase-completion.mjs --phase preflight` before source analysis.
    Missing, stale, or invalid evidence still blocks analysis and downstream completion.
@@ -39,13 +39,14 @@ Required:
 
 ## Inputs
 
-- Authoritative selected or inferred DDL from `preflight`.
+- Validated typed source inventory and selected evidence from `preflight`.
 - Validated application details.
 - Reviewed `volumetrics.md` and `access-patterns.md`.
 - Application source code and database configuration.
 - `phases.discovery.discoveryInstructions`, when present.
 
-Treat DDL as authoritative for source structure. Treat supplied project details and
+Treat selected declarations as authoritative for their declared scope; samples never establish absent constraints.
+Treat supplied project details and
 engineer-entered template values as authoritative observations unless interactive
 preflight recorded an approved replacement. Use source code to enrich behavior and
 evidence, not to rewrite authoritative inputs.
@@ -54,10 +55,10 @@ evidence, not to rewrite authoritative inputs.
 
 1. After preflight passes, set `phases.discovery.status` to `in-progress` and increment the discovery
    run count.
-2. Inventory every DDL schema, table, key, relationship, index, default,
-   computed field, sequence, and trigger that affects migration behavior.
+2. Inventory every native dataset, shape, identity, relationship, and behavior obligation.
+   Retain relational schemas, tables, keys, indexes, defaults, computed fields, sequences, and triggers when applicable.
 3. Read all reviewed access patterns and volumetrics.
-4. Systematically search database-access code for each DDL entity that lacks
+4. Systematically search database-access code for each inventory dataset that lacks
    confirmed evidence. Exclude `.cosmosdb-migration` and generated/build folders.
 5. Trace controller or handler to service, repository, query, and affected tables.
 6. Identify read and write operations, joins, filters, ordering, result size,
@@ -69,13 +70,13 @@ evidence, not to rewrite authoritative inputs.
    phases require. Do not make the target container or partition design here.
 9. Evaluate every language in the authoritative application details using
    [sdk-compatibility.md](../contracts/sdk-compatibility.md) and the bundled compatibility checker.
-10. Write the report and verify that every non-excluded DDL entity is covered.
+10. Write the report and verify that every selected dataset is covered.
 
 ## Report Contract
 
 Use the required headings and separate manifest contract from
 [validation-evidence.md](../contracts/validation-evidence.md). Include current source hashes,
-all source tables, structured patterns, verified source paths, and explicit
+all stable source dataset IDs, structured patterns, verified source paths, and explicit
 no-observed-access dispositions. After writing the report, record freshness in
 `project.json#freshness.discovery`, including every consulted application source file.
 The completion checker validates the report and checkpoint freshness separately.
@@ -97,7 +98,7 @@ Write `phases/1-discovery/discovery-report.md` and `discovery-manifest.json` wit
   runtime-interoperable, or unsupported classifications.
 - Applied best-practice rule identifiers and concept coverage.
 
-In `Relational Semantics`, link each write-pattern ID to applicable inventory
+In `Source Semantics` (`Relational Semantics` for resumed v1 evidence), link each write-pattern ID to applicable inventory
 constraints and their current enforcement: database, ORM, application, or unknown.
 Flag database-only protections as downstream obligations; do not choose their
 replacement implementation during Discovery.
@@ -111,7 +112,7 @@ by estimated TPS descending, then stable pattern ID.
 The phase passes when the report:
 
 - Begins with a top-level heading and is valid Markdown.
-- Covers every non-excluded DDL entity exactly by its authoritative name.
+- Covers every selected dataset exactly by its stable inventory ID.
 - Accounts for applicable source constraints for every write pattern, or explains
    why none apply. This is an agent review, not proof of runtime enforcement.
 - Contains no source links that were not verified.

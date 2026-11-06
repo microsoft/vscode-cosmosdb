@@ -1,6 +1,9 @@
 # Portable Validation Evidence
 
-The model owns DDL interpretation. Node helpers validate JSON/Markdown structure,
+The model owns source interpretation. The [common source contract](./source-inventory.md) defines
+new version-2 inventories, typed lineage, source-neutral reports, executable examples, and validated
+version-1 normalization. The legacy DDL shape below documents resumed v1 artifacts, not a mandatory
+intermediate for new projects. Node helpers validate JSON/Markdown structure,
 source hashes, and cross-artifact consistency; they do not parse or execute SQL.
 The Skill supplies no DDL parsing script, including for model-only interpretation.
 
@@ -56,7 +59,7 @@ their severity from prose. Preserve the finding and rationale in the existing su
 ## Inventory in the Preflight Manifest
 
 Record `sourceInventory` in `preflight-manifest.json`, not in a
-separate inventory file. It contains `version: 1`, `dialect`, `parser`, `files`,
+separate inventory file. Legacy inventory contains `version: 1`, `dialect`, `parser`, `files`,
 `tables`, and `errors`. `parser.method` must match the saved decision; SQLGlot mode
 also records `name: "sqlglot"` and the version actually used. Each selected file has
 its workspace-relative `path` and SHA-256 of exact bytes. Each table has its qualified
@@ -167,6 +170,10 @@ Discovery summary sections: `Source Overview`, `Read Patterns`, `Write Patterns`
 [sdk-compatibility.md](./sdk-compatibility.md) for every declared application language.
 The following excerpt illustrates its source and access-pattern fields; add the
 validated SDK report to the same manifest before completing discovery:
+
+For version-2 inventories use `Source Semantics`, `datasets` instead of `tables`,
+stable dataset IDs, and `fromDataset`/`toDataset` for assessment edges. Per-domain headings
+use `Datasets`. Legacy spellings below remain accepted only with their original meanings.
 
 ```json
 {

@@ -690,7 +690,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         client.dataModeling.loadState.query.mockResolvedValue(restored(1));
         render(<DataModelingWizard />);
         await continueExisting();
-        expect(usage().scenario).toBe('other');
+        await waitFor(() => expect(usage().scenario).toBe('other'));
         expect(
             client.dataModeling.recordTelemetry.mutate.mock.calls.some(
                 ([event]) => (event as ModelingTelemetryEvent).type === 'scenarioSelected',
@@ -1650,25 +1650,31 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         client.dataModeling.loadState.query.mockResolvedValue(restored(4));
         render(<DataModelingWizard />);
         await continueExisting();
-        expect(usage()).toMatchObject({
-            containerCount: 1,
-            dataViewedCount: 0,
-            queriesNeverViewedCount: 1,
-            scaleNeverViewedCount: 1,
-        });
-        expect(client.dataModeling.recordTelemetry.mutate).toHaveBeenCalledWith({
-            type: 'recommendationDisplayed',
-            requestId: undefined,
+        await waitFor(() => {
+            expect(usage()).toMatchObject({
+                containerCount: 1,
+                dataViewedCount: 0,
+                queriesNeverViewedCount: 1,
+                scaleNeverViewedCount: 1,
+            });
+            expect(client.dataModeling.recordTelemetry.mutate).toHaveBeenCalledWith({
+                type: 'recommendationDisplayed',
+                requestId: undefined,
+            });
         });
         await userEvent.click(await getStepControl('Container: Orders'));
-        expect(usage()).toMatchObject({ dataViewedCount: 1, dataCoverage: 1, queriesViewedCount: 0 });
+        await waitFor(() =>
+            expect(usage()).toMatchObject({ dataViewedCount: 1, dataCoverage: 1, queriesViewedCount: 0 }),
+        );
         await userEvent.click(screen.getByRole('tab', { name: 'Queries' }));
-        expect(usage()).toMatchObject({ queriesViewedCount: 1, queriesNeverViewedCount: 0, scaleViewedCount: 0 });
+        await waitFor(() =>
+            expect(usage()).toMatchObject({ queriesViewedCount: 1, queriesNeverViewedCount: 0, scaleViewedCount: 0 }),
+        );
         await userEvent.click(screen.getByRole('tab', { name: 'Data' }));
         await userEvent.click(screen.getByRole('tab', { name: 'Queries' }));
-        expect(usage().queriesViewedCount).toBe(1);
+        await waitFor(() => expect(usage().queriesViewedCount).toBe(1));
         await userEvent.click(screen.getByRole('tab', { name: 'Scale' }));
-        expect(usage()).toMatchObject({ scaleViewedCount: 1, scaleCoverage: 1 });
+        await waitFor(() => expect(usage()).toMatchObject({ scaleViewedCount: 1, scaleCoverage: 1 }));
         const payloads = JSON.stringify(client.dataModeling.recordTelemetry.mutate.mock.calls);
         expect(payloads).not.toContain('Orders');
         expect(payloads).not.toContain('/orderId');
@@ -1713,10 +1719,10 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             client.dataModeling.loadState.query.mockResolvedValue(restored(2));
             render(<DataModelingWizard />);
             await continueExisting();
-            expect(usage().dataViewedCount).toBe(0);
+            await waitFor(() => expect(usage().dataViewedCount).toBe(0));
             visibility.mockReturnValue('visible');
             act(() => document.dispatchEvent(new Event('visibilitychange')));
-            expect(usage().dataViewedCount).toBe(1);
+            await waitFor(() => expect(usage().dataViewedCount).toBe(1));
         } finally {
             visibility.mockRestore();
         }

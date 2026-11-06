@@ -351,6 +351,7 @@
   "Change page size": "Change page size",
   "Change view mode": "Change view mode",
   "Changing connection. Result actions are temporarily unavailable.": "Changing connection. Result actions are temporarily unavailable.",
+  "Changing the model will discard the current recommendation. You will need a new recommendation before deploying.": "Changing the model will discard the current recommendation. You will need a new recommendation before deploying.",
   "Charts generated at {time}": "Charts generated at {time}",
   "Chat & Sessions": "Chat & Sessions",
   "Chat sessions, AI assistants, helpdesks": "Chat sessions, AI assistants, helpdesks",

@@ -12,6 +12,7 @@ import {
     DismissRegular,
     EditRegular,
     ErrorCircleRegular,
+    InfoRegular,
     SparkleRegular,
 } from '@fluentui/react-icons';
 import {
@@ -125,6 +126,13 @@ const useStyles = makeStyles({
     },
     workloadTitle: {
         overflowWrap: 'anywhere',
+    },
+    recommendationNotice: {
+        display: 'flex',
+        alignItems: 'center',
+        columnGap: tokens.spacingHorizontalXS,
+        marginBottom: tokens.spacingVerticalS,
+        color: tokens.colorNeutralForeground3,
     },
     fullWidthWizard: {
         position: 'relative',
@@ -1234,6 +1242,14 @@ const HydratedDataModelingWizard = ({
                                       )
                             }
                         >
+                            {recommendationStatus === 'received' && recommendation ? (
+                                <Text size={200} className={styles.recommendationNotice}>
+                                    <InfoRegular aria-hidden="true" />
+                                    {l10n.t(
+                                        'Changing the model will discard the current recommendation. You will need a new recommendation before deploying.',
+                                    )}
+                                </Text>
+                            ) : null}
                             <ContainerPage
                                 model={state.dataModel}
                                 tab={containerTab}

@@ -45,6 +45,7 @@ import {
 } from '../models';
 import { getPartitionKeyRestriction } from '../partitionKeyEligibility';
 import { getArrayUpdateOptions, nextId } from '../scenarios';
+import { SchemaImportTracker } from '../schemaImports';
 import { useNativeConfirmation } from '../useNativeConfirmation';
 import { getRoleOptions } from '../wizardState';
 import {
@@ -160,18 +161,14 @@ export interface DataPageProps {
     model: DataModel;
     onChange: (next: SetStateAction<DataModel>) => void;
     onTelemetry?: (event: ModelingTelemetryEvent) => void;
+    /** Shared by the wizard so imports survive remounts; a standalone page tracks its own imports. */
+    schemaImports?: SchemaImportTracker;
 }
 
 type DocumentSizeField = 'avgSizeKb' | 'maxSizeKb';
 type CountField = 'attributeCount' | 'avgItems' | 'maxItems';
 
-interface SchemaImport {
-    fileName: string;
-    properties?: SchemaProperty[];
-    reported: boolean;
-}
-
-export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
+export function DataPage({ model, onChange, onTelemetry, schemaImports }: DataPageProps) {
     const styles = useStyles();
     const [draftTag, setDraftTag] = useState('');
     const [uploadContainerId, setUploadContainerId] = useState<string>();
@@ -192,15 +189,13 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
     const { containers, activeContainerId } = model;
 
     const currentModel = useRef(model);
-    const imports = useRef(new Map<string, SchemaImport>());
+    const [localImports] = useState(() => new SchemaImportTracker());
+    const imports = schemaImports ?? localImports;
     const confirmingImport = useRef(false);
     const mounted = useRef(false);
     useLayoutEffect(() => {
         currentModel.current = model;
-        for (const id of imports.current.keys()) {
-            if (!containers.some((container) => container.id === id)) imports.current.delete(id);
-        }
-    }, [model, containers]);
+    }, [model]);
     useEffect(() => {
         mounted.current = true;
         return () => {
@@ -217,15 +212,12 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
         setCountDrafts({});
     }, [active?.id]);
     useEffect(() => {
-        for (const [targetId, request] of imports.current) {
-            // The inferred properties retain their identity through candidate derivation.
-            // Only acknowledge imports present in the committed model, never a preview of an updater.
-            if (request.reported || !request.properties) continue;
-            if (containers.find((c) => c.id === targetId)?.properties !== request.properties) continue;
-            request.reported = true;
+        // The inferred properties retain their identity through candidate derivation.
+        // Only acknowledge imports present in the committed model, never a preview of an updater.
+        for (const request of imports.acknowledge(model)) {
             onTelemetry?.({ type: 'schemaImport', outcome: 'success' });
-            if (active?.id !== targetId) continue;
-            setUploadContainerId(targetId);
+            if (active?.id !== request.containerId) continue;
+            setUploadContainerId(request.containerId);
             setUploadInfo(request.fileName);
             setUploadError(undefined);
             setSizeErrors({});
@@ -233,7 +225,7 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
             setCountDrafts((previous) => ({ ...previous, attributeCount: undefined }));
             uploadButtonRef.current?.focus();
         }
-    }, [containers, active?.id, onTelemetry]);
+    }, [model, imports, active?.id, onTelemetry]);
     useEffect(() => {
         const input = fileRef.current;
         const onCancel = () => onTelemetry?.({ type: 'schemaImport', outcome: 'cancelled' });
@@ -302,10 +294,9 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
         // Keep the original target through confirmation and reading, even if this page unmounts.
         // A newer selection for this container supersedes this request, even if the older read finishes last.
         const targetId = active.id;
-        const request: SchemaImport = { fileName: file.name, reported: false };
-        imports.current.set(targetId, request);
+        const request = imports.start(targetId, file.name);
         const isCurrent = () =>
-            imports.current.get(targetId) === request && currentModel.current.containers.some((c) => c.id === targetId);
+            imports.isCurrent(request) && currentModel.current.containers.some((c) => c.id === targetId);
         const isVisible = () => {
             const latest = currentModel.current;
             const visible = latest.containers.find((c) => c.id === latest.activeContainerId) ?? latest.containers[0];
@@ -352,11 +343,6 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
                     ),
                 };
             });
-            // Navigation may have unmounted this page, so it cannot observe the commit. Acknowledge the import now.
-            if (!mounted.current) {
-                request.reported = true;
-                onTelemetry?.({ type: 'schemaImport', outcome: 'success' });
-            }
         } catch (error) {
             if (!isCurrent()) return;
             onTelemetry?.({ type: 'schemaImport', outcome: 'error' });

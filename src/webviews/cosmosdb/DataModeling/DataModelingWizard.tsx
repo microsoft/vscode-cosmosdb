@@ -54,6 +54,7 @@ import { ResultPage } from './pages/ResultPage';
 import { ReviewPage } from './pages/ReviewPage';
 import { WorkloadPage } from './pages/WorkloadPage';
 import { getScenarioList } from './scenarios';
+import { SchemaImportTracker } from './schemaImports';
 import { useModelingPageVisible, useModelingTelemetryReporter, useModelingUsage } from './useModelingTelemetry';
 import { useNativeConfirmation } from './useNativeConfirmation';
 
@@ -346,6 +347,11 @@ const HydratedDataModelingWizard = ({
     );
     const state = snapshot.wizard;
     const { visit, markEdited, visits } = useModelingUsage(state, report);
+    const [schemaImports] = useState(() => new SchemaImportTracker());
+    // A mounted Data page acknowledges its own committed import; this covers imports that outlived their page.
+    useEffect(() => {
+        schemaImports.acknowledge(state.dataModel).forEach(() => report({ type: 'schemaImport', outcome: 'success' }));
+    }, [schemaImports, state.dataModel, report]);
     const setState = useCallback(
         (update: SetStateAction<WizardState>) =>
             setSnapshot((previous) => {
@@ -1280,6 +1286,7 @@ const HydratedDataModelingWizard = ({
                                 onEdited={markEdited}
                                 onTelemetry={report}
                                 onChangeData={onChangeData}
+                                schemaImports={schemaImports}
                                 onChange={setDataModel}
                             />
                         </WizardStep>

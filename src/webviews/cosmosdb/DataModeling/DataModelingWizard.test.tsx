@@ -180,6 +180,12 @@ function selectDelayedSchemaFile(container: HTMLElement) {
     return { read, finishRead: (text: string) => resolveRead!(text) };
 }
 
+function schemaImportSuccessCount(): number {
+    return client.dataModeling.recordTelemetry.mutate.mock.calls
+        .map(([event]) => event as ModelingTelemetryEvent)
+        .filter((event) => event.type === 'schemaImport' && event.outcome === 'success').length;
+}
+
 async function enterDeployStep() {
     const button = screen.getAllByRole('button', { name: 'Deploy' }).find((element) => !element.closest('nav'));
     if (!button) {
@@ -1007,6 +1013,31 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(lastSave().wizard.dataModel.containers).toEqual(expected);
         expect(client.dataModeling.saveState.mutate).toHaveBeenCalledTimes(saves);
         expect(screen.queryByRole('button', { name: 'Edit Orders' })).not.toBeInTheDocument();
+        expect(schemaImportSuccessCount()).toBe(0);
+    });
+
+    it('keeps a newer import when an older read finishes after the Data tab is reopened', async () => {
+        const saved = restored();
+        saved.recommendation = { status: 'idle' };
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        const page = render(<DataModelingWizard />);
+        await continueExisting();
+        const older = selectDelayedSchemaFile(page.container);
+        await answerConfirmation('Replace schema?', true);
+        expect(older.read).toHaveBeenCalledOnce();
+        await userEvent.click(screen.getByRole('tab', { name: 'Queries' }));
+        await userEvent.click(screen.getByRole('tab', { name: 'Data' }));
+        const newer = selectDelayedSchemaFile(page.container);
+        await answerConfirmation('Replace schema?', true);
+        await act(async () => newer.finishRead('{"newest":true}'));
+        await waitFor(() =>
+            expect(lastSave().wizard.dataModel.containers[0].properties.map((p) => p.name)).toEqual(['newest']),
+        );
+        const saves = client.dataModeling.saveState.mutate.mock.calls.length;
+        await act(async () => older.finishRead('{"older":true}'));
+        expect(lastSave().wizard.dataModel.containers[0].properties.map((p) => p.name)).toEqual(['newest']);
+        expect(client.dataModeling.saveState.mutate).toHaveBeenCalledTimes(saves);
+        expect(schemaImportSuccessCount()).toBe(1);
     });
 
     it('validates container renaming on both Save and Enter and allows the unchanged name', async () => {

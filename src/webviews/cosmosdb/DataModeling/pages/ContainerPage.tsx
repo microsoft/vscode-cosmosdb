@@ -9,6 +9,7 @@ import { type Ref, type SetStateAction, useEffect, useId } from 'react';
 import { modelingInputsEqual } from '../../../../dataModeling/modelingTelemetryMetrics';
 import { type ModelingSection, type ModelingTelemetryEvent } from '../../../../dataModeling/modelingTelemetrySchema';
 import { type DataModel } from '../dataModel';
+import { type SchemaImportTracker } from '../schemaImports';
 import { useModelingPageVisible } from '../useModelingTelemetry';
 import { DataPage } from './DataPage';
 import { QueriesPage } from './QueriesPage';
@@ -48,6 +49,8 @@ export interface ContainerPageProps {
     onVisit?: (containerId: string, section: ModelingSection) => void;
     onEdited?: (section: ModelingSection) => void;
     onTelemetry?: (event: ModelingTelemetryEvent) => void;
+    /** Survives Data-tab remounts so a pending import is never mistaken for the latest one. */
+    schemaImports?: SchemaImportTracker;
 }
 
 export function ContainerPage({
@@ -62,6 +65,7 @@ export function ContainerPage({
     onVisit,
     onEdited,
     onTelemetry,
+    schemaImports,
 }: ContainerPageProps) {
     const styles = useStyles();
     const id = useId();
@@ -121,7 +125,14 @@ export function ContainerPage({
                 hidden={tab !== 'data'}
                 tabIndex={0}
             >
-                {tab === 'data' ? <DataPage model={model} onChange={changeData} onTelemetry={onTelemetry} /> : null}
+                {tab === 'data' ? (
+                    <DataPage
+                        model={model}
+                        onChange={changeData}
+                        onTelemetry={onTelemetry}
+                        schemaImports={schemaImports}
+                    />
+                ) : null}
             </div>
             <div
                 role="tabpanel"

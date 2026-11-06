@@ -68,6 +68,32 @@ describe('read evidence', () => {
         });
         expect(within(describe).queryByRole('status')).not.toBeInTheDocument();
     });
+
+    it('explains input precedence from an accessible info button next to each read legend', async () => {
+        const user = userEvent.setup();
+        const model = buildDataModel('multitenant');
+        render(<QueriesPage model={model} onChange={vi.fn()} />);
+        const groups = screen.getAllByRole('group', { name: /^Read query \d+$/ });
+        expect(groups).toHaveLength(model.containers[0].reads.length);
+        for (const [index, group] of groups.entries()) {
+            expect(group).toHaveAccessibleName(`Read query ${index + 1}`);
+            const button = within(group).getByRole('button', { name: `How Copilot uses read query ${index + 1}` });
+            expect(group.querySelector('legend')).toContainElement(button);
+        }
+
+        const info = screen.getByRole('button', { name: 'How Copilot uses read query 1' });
+        expect(info).toHaveAttribute('aria-expanded', 'false');
+        await user.click(info);
+        expect(info).toHaveAttribute('aria-expanded', 'true');
+        const surface = await screen.findByLabelText('How Copilot uses read query 1', { selector: 'div' });
+        expect(surface).toHaveTextContent('A description alone is enough');
+        expect(surface).toHaveTextContent('Copilot does not generate a query from it');
+        expect(surface).toHaveTextContent('the query defines the access pattern and the description adds context');
+        expect(surface).toHaveTextContent('Copilot asks you to fix the read instead of guessing');
+
+        await user.keyboard('{Escape}');
+        expect(info).toHaveAttribute('aria-expanded', 'false');
+    });
 });
 
 describe('catalog query fields', () => {

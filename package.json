@@ -443,7 +443,7 @@
                               "items": {
                                 "type": "string"
                               },
-                              "description": "Property names from the matching read in the Queries tab, e.g. [\"customerId\", \"status\"]. Use [] for no filters. Do not include SQL predicates, operators, parameter names, or values."
+                              "description": "Property names the read filters on, taken from its query or inferred from its description, e.g. [\"customerId\", \"status\"]. Use [] for no filters. Do not include SQL predicates, operators, parameter names, or values."
                             },
                             "qps": {
                               "type": "string",

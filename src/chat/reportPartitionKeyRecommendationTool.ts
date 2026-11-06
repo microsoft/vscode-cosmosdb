@@ -292,7 +292,7 @@ export const REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_INPUT_SCHEMA = {
                                             type: 'array',
                                             items: { type: 'string' },
                                             description:
-                                                'Property names from the matching read in the Queries tab, e.g. ["customerId", "status"]. Use [] for no filters. Do not include SQL predicates, operators, parameter names, or values.',
+                                                'Property names the read filters on, taken from its query or inferred from its description, e.g. ["customerId", "status"]. Use [] for no filters. Do not include SQL predicates, operators, parameter names, or values.',
                                         },
                                         qps: { type: 'string', description: 'Peak QPS as displayed, e.g. "200/s".' },
                                         routing: {

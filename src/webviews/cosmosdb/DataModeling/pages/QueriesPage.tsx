@@ -17,7 +17,7 @@ import {
 import { AddRegular, DismissRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useId, useState } from 'react';
-import { InlineGuidance, MetricPill, PillRow, SubPanel } from '../components/primitives';
+import { InfoButton, InlineGuidance, MetricPill, PillRow, SubPanel } from '../components/primitives';
 import { getActiveContainer, getAvgDocSizeKb, updateActiveContainer, type DataModel } from '../dataModel';
 import { hasReadEvidence, type ReadQuery, type WriteOps } from '../models';
 import { nextId } from '../scenarios';
@@ -49,6 +49,10 @@ const useStyles = makeStyles({
         backgroundColor: tokens.colorNeutralBackground1,
     },
     readLegend: {
+        display: 'inline-flex',
+        // An icon-only button has no text baseline, so its bottom edge sits on the legend text's baseline.
+        alignItems: 'baseline',
+        gap: tokens.spacingHorizontalS,
         paddingInline: tokens.spacingHorizontalXS,
         fontWeight: tokens.fontWeightSemibold,
     },
@@ -115,6 +119,11 @@ const useStyles = makeStyles({
         minWidth: 0,
         gap: tokens.spacingVerticalM,
     },
+    infoText: {
+        marginTop: 0,
+        marginBottom: tokens.spacingVerticalS,
+        ':last-child': { marginBottom: 0 },
+    },
 });
 
 export interface QueriesPageProps {
@@ -132,6 +141,26 @@ export function QueriesPage({ model, onChange }: QueriesPageProps) {
     const patternHint = l10n.t('What this read retrieves.');
     const queryHint = l10n.t('Full NoSQL SELECT query.');
     const qpsHint = l10n.t('Peak queries/sec, all users.');
+    const readInputsInfo = (
+        <>
+            <p className={styles.infoText}>
+                {l10n.t(
+                    "Copilot uses each read's description, query, and peak QPS, together with the container's schema, writes, and scale, to recommend a partition key.",
+                )}
+            </p>
+            <p className={styles.infoText}>
+                {l10n.t(
+                    'Enter a description, a query, or both. A description alone is enough: Copilot infers which properties the read filters on from it and the schema. Copilot does not generate a query from it, so you do not need to write SQL.',
+                )}
+            </p>
+            <p className={styles.infoText}>
+                {l10n.t(
+                    'If you enter both, the query defines the access pattern and the description adds context. If they disagree, for example on which property is filtered, Copilot asks you to fix the read instead of guessing.',
+                )}
+            </p>
+            <p className={styles.infoText}>{l10n.t('Queries are never run against your account.')}</p>
+        </>
+    );
 
     // Queries are per-container: edit the active container's reads and write rates.
     const active = getActiveContainer(model);
@@ -225,9 +254,15 @@ export function QueriesPage({ model, onChange }: QueriesPageProps) {
                             />
                         </Field>
                     );
+                    const legendId = `${readId}-${index}-legend`;
                     return (
-                        <fieldset key={r.id} className={styles.readGroup}>
-                            <legend className={styles.readLegend}>{l10n.t('Read query {n}', { n: index + 1 })}</legend>
+                        <fieldset key={r.id} className={styles.readGroup} aria-labelledby={legendId}>
+                            <legend className={styles.readLegend}>
+                                <span id={legendId}>{l10n.t('Read query {n}', { n: index + 1 })}</span>
+                                <InfoButton label={l10n.t('How Copilot uses read query {n}', { n: index + 1 })}>
+                                    {readInputsInfo}
+                                </InfoButton>
+                            </legend>
                             <div className={styles.readRow}>
                                 <fieldset
                                     className={mergeClasses(

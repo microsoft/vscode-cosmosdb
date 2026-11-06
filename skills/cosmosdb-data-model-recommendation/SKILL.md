@@ -65,21 +65,21 @@ The recommendation is a partition-key design judgment, not a certification of ap
 
 ### Read inputs
 
-Each wizard read has a `pattern` (the user's description), an optional SQL `query`, `filters`, and `qps`.
+Each wizard read has a `pattern` (the user's description), an optional SQL `query`, and `qps`.
 The wizard requires a description or a query for every read; either one alone is valid input.
 
 - **Description only:** infer the filtered properties, match type (equality, range, or none), and sort order from the
   description and the container schema. Use them for routing and scoring. Do not write, generate, or report SQL for it;
   report the route under the user's description.
-- **Query supplied:** the SQL defines the access pattern. The description and `filters` only add context.
+- **Query supplied:** the SQL defines the access pattern. The description only adds context.
 - **Reject a read** (wizard failure) only when its access pattern cannot be determined, specifically when:
   - the description is too vague to name what the read filters on and no query clarifies it, such as "Get data" or
     "Query products";
   - the query is not a valid NoSQL `SELECT`, or its predicate is always true or cannot limit results, such as
     `WHERE true OR c.categoryId = @categoryId`;
   - the description and query disagree on which property is filtered or whether the read targets one value or many.
-- Do not reject a read for brevity alone, for missing optional details, or because `filters` lists properties the
-  query does not use; prefer the query and continue.
+- Do not reject a read for brevity alone or for missing optional details. When the description only omits details the
+  query supplies, prefer the query and continue.
 
 ### Wizard failure message
 
@@ -88,8 +88,8 @@ The `error` is shown to the user on the Result page so they can correct their in
 - Write one line per problem, at most six lines, separated by newlines. Use this shape for each line:
   `<Container> · Read query <n>: <what is wrong>. <how to fix it>.` Use the container's exact `entity` name and the
   read's 1-based position in that container's `reads`. For container-level problems, omit `· Read query <n>`.
-- Keep each line under 30 words. Name the field the user must edit: Description, Query, Filters on, Peak QPS,
-  properties, writes, or scale. Quote the offending text only when that shows the problem, and keep quotes short.
+- Keep each line under 30 words. Name the field the user must edit: Description, Query, Peak QPS, properties,
+  writes, or scale. Quote the offending text only when that shows the problem, and keep quotes short.
 - Ask only for input the wizard collects. Never ask for information the user cannot enter in the wizard.
 - Report blockers only. Do not mention skill names, rule titles, this policy, the hint rule, immutability,
   guardrails, non-blocking omissions, or what you did not invent. Add no introduction or closing summary.
@@ -259,6 +259,7 @@ Only after every container succeeds, provide a concise overall summary and these
 - Optional `hotPartitionRisk` comparisons: risk bands and numeric `pct` per row, distinguishing estimates from measurements.
   If percentages cannot be justified, omit the section and describe qualitative risks in assessments.
 - `queryRouting`: headline, one route per read pattern with filters/QPS/routing/estimated cost, and source-grounded analysis.
+  Route `filters` are the property names the read filters on, taken from its query or inferred from its description.
   Evaluate every route using the container's recommended `partitionKey`, not an alternative or the original input key.
   Map findings to the tool's `single`/`cross` enum; use `analysis` for qualifications the enum cannot express.
   Keep the headline to one short sentence. Use an empty `analysis` unless it adds a qualification missing from the table;

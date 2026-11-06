@@ -721,14 +721,28 @@ describe('Serverless metric selection', () => {
         expect(screen.getByRole('status')).toHaveTextContent('Account health: Unknown');
     });
 
-    it('redirects a deep link to a Serverless-inapplicable metric to consumed RU', async () => {
-        initialTarget = 'provisionedThroughput';
-        queries.summary.mockResolvedValue(serverlessSummary);
-        render(<AccountOverview />, { wrapper: Wrapper });
-        const region = await screen.findByRole('region', { name: 'Total request units trend' });
-        expect(region).toHaveFocus();
-        expect(screen.getByRole('button', { name: /^Total request units/ })).toHaveAttribute('aria-pressed', 'true');
-    });
+    it.each(['immediate', 'deferred'] as const)(
+        'redirects a deep link to a Serverless-inapplicable metric to consumed RU with %s account summary',
+        async (summaryTiming) => {
+            initialTarget = 'provisionedThroughput';
+            const summaryResponse = Promise.withResolvers<AccountSummary>();
+            queries.summary.mockReturnValue(summaryResponse.promise);
+            if (summaryTiming === 'immediate') {
+                summaryResponse.resolve(serverlessSummary);
+            }
+            render(<AccountOverview />, { wrapper: Wrapper });
+            await waitFor(() => expect(queries.summary).toHaveBeenCalled());
+            if (summaryTiming === 'deferred') {
+                summaryResponse.resolve(serverlessSummary);
+            }
+            const region = await screen.findByRole('region', { name: 'Total request units trend' });
+            await waitFor(() => expect(region).toHaveFocus());
+            expect(screen.getByRole('button', { name: /^Total request units/ })).toHaveAttribute(
+                'aria-pressed',
+                'true',
+            );
+        },
+    );
 
     it.each([
         ['noData', 'No telemetry available for this selection yet.'],
@@ -2944,7 +2958,7 @@ describe('local result announcements', () => {
 });
 
 describe('Advisor recommendation accessibility', () => {
-    it('describes each Learn more action with its visible recommendation and opens the matching URL', async () => {
+    it('describes documentation and portal links with their recommendation and opens the matching URL', async () => {
         const user = userEvent.setup();
         const recommendations: RecommendationsResult['recommendations'] = [
             {
@@ -2952,6 +2966,8 @@ describe('Advisor recommendation accessibility', () => {
                 category: 'Cost',
                 impact: 'High',
                 problem: 'Review provisioned capacity',
+                portalUrl:
+                    'https://portal.azure.com/#blade/Microsoft_Azure_Expert/RecommendationListBlade/recommendationTypeId/capacity',
                 learnMoreLink: 'https://example.invalid/capacity',
             },
             {
@@ -2959,9 +2975,19 @@ describe('Advisor recommendation accessibility', () => {
                 category: 'Performance',
                 impact: 'Medium',
                 problem: 'Review indexing policy',
+                portalUrl:
+                    'https://portal.azure.com/#blade/Microsoft_Azure_Expert/RecommendationListBlade/recommendationTypeId/indexing',
                 learnMoreLink: 'https://example.invalid/indexing',
             },
-            { id: 'no-link', category: 'Cost', impact: 'Low', problem: 'Recommendation without documentation' },
+            {
+                id: 'portal-only',
+                category: 'Performance',
+                impact: 'Low',
+                problem: 'Recommendation without documentation',
+                portalUrl:
+                    'https://portal.azure.com/#blade/Microsoft_Azure_Expert/RecommendationListBlade/recommendationTypeId/portal-only',
+            },
+            { id: 'no-link', category: 'Cost', impact: 'Low', problem: 'Recommendation without links' },
         ];
         queries.recommendations.mockResolvedValue({
             available: true,
@@ -2987,6 +3013,38 @@ describe('Advisor recommendation accessibility', () => {
         }
         expect(queries.openUrl).toHaveBeenCalledTimes(2);
         expect(screen.getByText('Recommendation without documentation')).toBeVisible();
+        const portalLinks = screen.getAllByRole('link', { name: 'View in Azure portal' });
+        expect(portalLinks).toHaveLength(3);
+        queries.openUrl.mockClear();
+        queries.reportEvent.mockClear();
+        for (const [index, link] of portalLinks.entries()) {
+            const recommendation = recommendations[index];
+            const problem = screen.getByText(recommendation.problem);
+            expect(link).toBeVisible();
+            expect(link).toHaveTextContent('View in Azure portal');
+            expect(link).toHaveAccessibleName('View in Azure portal');
+            expect(link).toHaveAccessibleDescription(recommendation.problem);
+            expect(link).toHaveAttribute('aria-describedby', problem.id);
+            expect(link).toHaveAttribute('href', recommendation.portalUrl);
+            link.focus();
+            if (index === 0) {
+                await user.keyboard('{Enter}');
+            } else {
+                await user.click(link);
+            }
+            expect(queries.openUrl).toHaveBeenNthCalledWith(index + 1, { url: recommendation.portalUrl });
+        }
+        expect(queries.openUrl).toHaveBeenCalledTimes(3);
+        expect(queries.reportEvent.mock.calls).toEqual(
+            recommendations.slice(0, 3).map((recommendation) => [
+                {
+                    eventName: 'recommendationClicked',
+                    properties: { source: 'advisor', impact: recommendation.impact },
+                    measurements: undefined,
+                },
+            ]),
+        );
+        expect(screen.getByText('Recommendation without links')).toBeVisible();
     });
 });
 

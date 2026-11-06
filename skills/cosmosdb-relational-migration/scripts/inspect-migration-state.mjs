@@ -240,7 +240,8 @@ Read-only workflow routing with embedded phase completion. Outputs bounded JSON.
     --offset <n>             Diagnostic offset; default 0.
     --limit <n>              Page size from 1 to 100; default ${DEFAULT_COMPLETION_PAGE_SIZE}.
     --artifact <path>        Workspace-relative artifact diagnostic filter, not validation scope.
-    --inputs <source>        List selected raw inputs: schema-ddl, volumetrics, or access-patterns.
+    --inputs <source>        List selected raw inputs: schema-ddl, schema-evidence, volumetrics,
+                            or access-patterns. Schema evidence is the non-DDL schema selection.
                             Separate from phase routing; supports --offset and --limit.
                             Returns paths, byte counts, SHA-256 hashes, and nextOffset, not contents.
 
@@ -258,7 +259,7 @@ Exit: 0 for a routing result; 1 when blocked or arguments/inspection fail.
         const result = inspectMigrationState(workspace, phase, regenerate, completionOptions);
         if (['preflight', 'discovery'].includes(result.phase) && result.action !== 'blocked') {
             const { project } = readProject(workspace);
-            result.inputCounts = Object.fromEntries(['schema-ddl', 'volumetrics', 'access-patterns'].map(source =>
+            result.inputCounts = Object.fromEntries(['schema-ddl', 'schema-evidence', 'volumetrics', 'access-patterns'].map(source =>
                 [source, selectedDiscoveryFiles(workspace, project ?? {}, source).length],
             ));
         }

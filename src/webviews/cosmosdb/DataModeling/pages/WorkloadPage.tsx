@@ -89,6 +89,7 @@ const useStyles = makeStyles({
     },
     // An unstyled button around the same Badge the cards use, so an unselected chip looks exactly like a card badge.
     chip: {
+        position: 'relative',
         display: 'inline-flex',
         margin: 0,
         padding: 0,

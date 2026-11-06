@@ -9,9 +9,9 @@ import { FluentProvider, tokens, webLightTheme } from '@fluentui/react-component
 import { type EditorProps } from '@monaco-editor/react';
 import { act, fireEvent, render as renderReact, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { type ReactElement } from 'react';
+import { type ReactElement, StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
-import { type DeploymentTemplateInput } from '../../../dataModeling/deploymentModel';
+import { type DeploymentTemplateInput, type ModelDeploymentResult } from '../../../dataModeling/deploymentModel';
 import {
     ModelingAdvisorSnapshotSchema,
     type ModelingAdvisorSnapshot,
@@ -1193,7 +1193,10 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             const secondary = status === 'error' ? retry : edit;
             expect(primary).toHaveStyle({ backgroundColor: tokens.colorBrandBackground });
             expect(secondary).toHaveStyle({ backgroundColor: tokens.colorNeutralBackground1 });
+            // Restored stopped state focuses Retry in a passive effect; flush it before moving focus to Edit.
+            await act(async () => {});
             edit.focus();
+            expect(edit).toHaveFocus();
             await userEvent.keyboard('{Enter}');
             await waitFor(() => expect(screen.getByRole('heading', { name: 'Review your inputs' })).toHaveFocus());
             expect(lastSave().wizard.step).toBe(3);
@@ -1849,5 +1852,504 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             requestId: request.requestId,
         });
         expect(JSON.stringify(lastSave())).not.toContain(request.requestId);
+    });
+    describe('recommendation input invalidation', () => {
+        const changedMessage = 'The model has changed. Get a new recommendation before deploying.';
+        const callbacks = () =>
+            client.dataModeling.events.subscribe.mock.calls.at(-1)![1] as {
+                onData: (event: DataModelingEvent) => void;
+            };
+        const latestRequest = () =>
+            client.dataModeling.requestRecommendation.mutate.mock.calls.at(
+                -1,
+            )![0] as ModelingAdvisorSnapshot['wizard'] & { requestId: string };
+        const resultFor = (entity: string) => {
+            const result = restored().recommendation.value!;
+            result.containers[0].entity = entity;
+            return result;
+        };
+        const deliver = (entity: string, requestId = latestRequest().requestId) =>
+            act(() =>
+                callbacks().onData({ type: 'recommendationReceived', requestId, recommendation: resultFor(entity) }),
+            );
+        const rename = async () => {
+            await userEvent.click(await getStepControl('Container: Orders'));
+            await userEvent.click(screen.getByRole('button', { name: 'Edit Orders' }));
+            fireEvent.change(screen.getByRole('textbox', { name: 'Container name' }), {
+                target: { value: 'RenamedOrders' },
+            });
+            await userEvent.click(screen.getByRole('button', { name: 'Save container name' }));
+        };
+        const start = async () => {
+            const saved = restored(3);
+            saved.recommendation = { status: 'idle' };
+            client.dataModeling.loadState.query.mockResolvedValue(saved);
+            const mounted = render(
+                <StrictMode>
+                    <DataModelingWizard />
+                </StrictMode>,
+            );
+            await continueExisting();
+            await userEvent.click(screen.getByRole('button', { name: 'Get Recommendation' }));
+            return mounted;
+        };
+
+        it('requires regeneration after renaming, clears the draft, and allows a fresh deployment', async () => {
+            await start();
+            deliver('Orders');
+            await enterDeployStep();
+            fireEvent.change(screen.getByRole('textbox', { name: 'New database name' }), {
+                target: { value: 'old-draft' },
+            });
+            await rename();
+            expect(lastSave().recommendation).toEqual({ status: 'error', error: changedMessage });
+            expect(lastSave().deployment).toBeUndefined();
+            const deployStep = await getStepControl('Deploy');
+            expect(deployStep).toHaveAttribute('aria-disabled', 'true');
+            await userEvent.click(deployStep);
+            expect(screen.queryByRole('region', { name: 'Deploy data model' })).not.toBeInTheDocument();
+            expect(client.dataModeling.deploy.mutate).not.toHaveBeenCalled();
+            await userEvent.click(await getStepControl('Result'));
+            expect(screen.getByText(changedMessage)).toBeVisible();
+            expect(screen.getByText(changedMessage).closest('[aria-live]')).toHaveAttribute('aria-live', 'polite');
+            expectNoActionableDeployButton();
+            await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
+            expect(latestRequest().dataModel.containers[0].entity).toBe('RenamedOrders');
+            deliver('RenamedOrders');
+            await enterDeployStep();
+            expect(screen.getByRole('textbox', { name: 'New database name' })).toHaveValue('');
+            fireEvent.change(screen.getByRole('textbox', { name: 'New database name' }), {
+                target: { value: 'fresh-db' },
+            });
+            client.dataModeling.deploy.mutate.mockResolvedValueOnce({
+                status: 'deployed',
+                databaseName: 'fresh-db',
+                createdCount: 1,
+                existingCount: 0,
+            });
+            const deploy = within(screen.getByRole('region', { name: 'Deploy data model' })).getByRole('button', {
+                name: 'Deploy',
+            });
+            expect(deploy).toHaveTextContent('Deploy');
+            expect(deploy).toHaveAccessibleName('Deploy');
+            await waitFor(() => expect(deploy).toBeEnabled());
+            await userEvent.click(deploy);
+            await confirmDeployment();
+            expect(await screen.findByRole('region', { name: 'Deployment successful' })).toBeVisible();
+            expect(client.dataModeling.deploy.mutate).toHaveBeenCalledExactlyOnceWith({
+                databaseMode: 'new',
+                databaseName: 'fresh-db',
+                containers: [{ entity: 'RenamedOrders', partitionKey: '/orderId' }],
+            });
+            const completed = lastSave();
+            // Duplicate delivery must not clear a legitimate deployment's completion.
+            deliver('RenamedOrders');
+            expect(lastSave()).toBe(completed);
+            expect(completed.deployment?.input.containers[0].entity).toBe('RenamedOrders');
+        });
+
+        it('persists invalidation of a completed deployment through the saved schema and reload', async () => {
+            client.dataModeling.loadState.query.mockResolvedValue(deployedSnapshot());
+            const mounted = render(<DataModelingWizard />);
+            await continueExisting();
+            expect(await screen.findByRole('region', { name: 'Deployment successful' })).toBeVisible();
+            await rename();
+            const saved = ModelingAdvisorSnapshotSchema.parse(JSON.parse(JSON.stringify(lastSave())));
+            expect(saved.recommendation).toEqual({ status: 'error', error: changedMessage });
+            expect(saved.deployment).toBeUndefined();
+            mounted.unmount();
+            client.dataModeling.loadState.query.mockResolvedValue(saved);
+            render(<DataModelingWizard />);
+            await continueExisting();
+            expect(await getStepControl('Deploy')).toHaveAttribute('aria-disabled', 'true');
+            expect(screen.queryByRole('button', { name: 'Open in Data Explorer' })).not.toBeInTheDocument();
+            await userEvent.click(await getStepControl('Result'));
+            await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
+            act(() => callbacks().onData({ type: 'recommendationReceived', recommendation: resultFor('Orders') }));
+            expect(lastSave().recommendation.status).toBe('waiting');
+            deliver('RenamedOrders');
+            await enterDeployStep();
+            expect(screen.queryByRole('region', { name: 'Deployment successful' })).not.toBeInTheDocument();
+            expect(screen.getByRole('textbox', { name: 'New database name' })).toHaveValue('');
+        });
+
+        it.each(['schema', 'document', 'arrays', 'query', 'scale', 'workload', 'add', 'remove'] as const)(
+            'invalidates a recommendation after a %s input edit',
+            async (edit) => {
+                // Match the existing add-container test's layout stub for Fluent's overflow measurement.
+                vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1024);
+                const saved = restored(2);
+                if (edit === 'remove') saved.wizard.dataModel.containers.push(createBlankContainer('Users'));
+                client.dataModeling.loadState.query.mockResolvedValue(saved);
+                render(<DataModelingWizard />);
+                await continueExisting();
+                switch (edit) {
+                    case 'schema':
+                        fireEvent.change(screen.getByRole('combobox', { name: 'Type for id' }), {
+                            target: { value: 'number' },
+                        });
+                        break;
+                    case 'document':
+                        fireEvent.change(screen.getByRole('spinbutton', { name: 'Average document size' }), {
+                            target: { value: '2' },
+                        });
+                        break;
+                    case 'arrays':
+                        await userEvent.click(
+                            screen.getByRole('checkbox', { name: 'This container has arrays / nested collections' }),
+                        );
+                        break;
+                    case 'query':
+                        await userEvent.click(screen.getByRole('tab', { name: 'Queries' }));
+                        fireEvent.change(
+                            screen.getByPlaceholderText('SELECT * FROM c WHERE customerId = @customerId'),
+                            { target: { value: 'SELECT * FROM c WHERE c.id = @id' } },
+                        );
+                        break;
+                    case 'scale':
+                        await userEvent.click(screen.getByRole('tab', { name: 'Scale' }));
+                        fireEvent.change(screen.getByRole('combobox', { name: 'Estimated distinct values for id' }), {
+                            target: { value: '500000' },
+                        });
+                        break;
+                    case 'workload':
+                        await userEvent.click(await getStepControl('Workload'));
+                        await userEvent.click(screen.getByRole('radio', { name: /Chat & Sessions/ }));
+                        break;
+                    case 'add':
+                        client.dataModeling.promptContainerName.mutate.mockResolvedValueOnce('Users');
+                        await userEvent.click(screen.getByRole('button', { name: 'Add container' }));
+                        break;
+                    case 'remove':
+                        await userEvent.click(screen.getByRole('button', { name: 'Remove from model' }));
+                        await answerConfirmation('Remove from model?', true);
+                        break;
+                }
+                expect(lastSave().recommendation).toEqual({ status: 'error', error: changedMessage });
+                expect(await getStepControl('Deploy')).toHaveAttribute('aria-disabled', 'true');
+                expect(client.dataModeling.requestRecommendation.mutate).not.toHaveBeenCalled();
+            },
+        );
+
+        it('preserves results through active-container navigation, tabs, and no-op schema and name edits', async () => {
+            const saved = restored(2);
+            saved.wizard.dataModel.containers.push(createBlankContainer('Users'));
+            client.dataModeling.loadState.query.mockResolvedValue(saved);
+            render(
+                <StrictMode>
+                    <DataModelingWizard />
+                </StrictMode>,
+            );
+            await continueExisting();
+            await userEvent.click(screen.getByRole('button', { name: 'Edit Orders' }));
+            await userEvent.click(screen.getByRole('button', { name: 'Save container name' }));
+            fireEvent.change(screen.getByRole('combobox', { name: 'Type for id' }), { target: { value: 'string' } });
+            for (const tab of ['Queries', 'Scale', 'Data']) {
+                await userEvent.click(screen.getByRole('tab', { name: tab }));
+            }
+            await userEvent.click(await getStepControl('Container: Users'));
+            expect(lastSave().wizard.dataModel.activeContainerId).toBe(saved.wizard.dataModel.containers[1].id);
+            await userEvent.click(await getStepControl('Result'));
+            expect(lastSave().recommendation).toEqual(saved.recommendation);
+            await enterDeployStep();
+            expect(screen.getByRole('region', { name: 'Deploy data model' })).toBeVisible();
+            expect(client.dataModeling.requestRecommendation.mutate).not.toHaveBeenCalled();
+        });
+
+        it.each([
+            'save resolves',
+            'save rejects',
+            'start resolves',
+            'start rejects',
+            'stop resolves',
+            'stop rejects',
+        ] as const)('fences stale events and async work when %s after an edit and a new request', async (boundary) => {
+            let resolve!: (value?: boolean) => void;
+            let reject!: (error: Error) => void;
+            const pending = new Promise<boolean | undefined>((done, fail) => {
+                resolve = done;
+                reject = fail;
+            });
+            const route = boundary.startsWith('save')
+                ? client.dataModeling.saveState
+                : boundary.startsWith('start')
+                  ? client.dataModeling.requestRecommendation
+                  : client.dataModeling.stopWaitingForRecommendation;
+            route.mutate.mockImplementationOnce(() => pending);
+            await start();
+            const firstId = client.dataModeling.requestRecommendation.mutate.mock.calls.at(-1)?.[0].requestId;
+            if (boundary.startsWith('stop')) {
+                await userEvent.click(screen.getByRole('button', { name: 'Stop waiting' }));
+            }
+            await rename();
+            expect(lastSave().recommendation.value).toBeUndefined();
+            await userEvent.click(await getStepControl('Result'));
+            await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
+            const current = latestRequest();
+            expect(current.dataModel.containers[0].entity).toBe('RenamedOrders');
+            expect(current.requestId).not.toBe(firstId);
+            for (const requestId of [firstId, undefined]) {
+                act(() => {
+                    callbacks().onData({
+                        type: 'recommendationReceived',
+                        requestId,
+                        recommendation: resultFor('Orders'),
+                    });
+                    callbacks().onData({ type: 'recommendationError', requestId, message: 'Old failure' });
+                });
+            }
+            await act(async () => {
+                if (boundary.endsWith('rejects')) reject(new Error('Old request failed'));
+                else resolve(true);
+            });
+            expect(lastSave().recommendation).toEqual({ status: 'waiting' });
+            expectNoActionableDeployButton();
+            expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledTimes(
+                boundary.startsWith('save') ? 1 : 2,
+            );
+            deliver('RenamedOrders');
+            expect(lastSave().recommendation.value?.containers[0].entity).toBe('RenamedOrders');
+        });
+
+        it.each(['separate', 'same'] as const)(
+            'blocks an old deployment confirmation when a container prompt changes inputs in a %s batch',
+            async (batch) => {
+                vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1024);
+                client.dataModeling.loadState.query.mockResolvedValue(restored(2));
+                let finishAdd!: (name: string) => void;
+                client.dataModeling.promptContainerName.mutate.mockImplementationOnce(
+                    () =>
+                        new Promise<string>((resolve) => {
+                            finishAdd = resolve;
+                        }),
+                );
+                render(<DataModelingWizard />);
+                await continueExisting();
+                await userEvent.click(screen.getByRole('button', { name: 'Add container' }));
+                await userEvent.click(await getStepControl('Deploy'));
+                fireEvent.change(screen.getByRole('textbox', { name: 'New database name' }), {
+                    target: { value: 'fresh-db' },
+                });
+                const deploy = within(screen.getByRole('region', { name: 'Deploy data model' })).getByRole('button', {
+                    name: 'Deploy',
+                });
+                await waitFor(() => expect(deploy).toBeEnabled());
+                await userEvent.click(deploy);
+                expect(respondToConfirmation).toBeTypeOf('function');
+                if (batch === 'same') {
+                    await act(async () => {
+                        finishAdd('Users');
+                        respondToConfirmation!(true);
+                    });
+                } else {
+                    await act(async () => finishAdd('Users'));
+                    await confirmDeployment();
+                }
+                expect(client.dataModeling.deploy.mutate).not.toHaveBeenCalled();
+                expect(lastSave().recommendation).toEqual({ status: 'error', error: changedMessage });
+                expect(lastSave().deployment).toBeUndefined();
+                expect(await getStepControl('Deploy')).toHaveAttribute('aria-disabled', 'true');
+            },
+        );
+
+        it.each(['resolves', 'rejects'] as const)(
+            'retires a pending save that %s in the same batch as a native container prompt',
+            async (outcome) => {
+                vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1024);
+                const saved = restored(2);
+                saved.recommendation = { status: 'idle' };
+                saved.wizard.reachedSteps = [
+                    'workload',
+                    `container:${saved.wizard.dataModel.containers[0].id}`,
+                    'review',
+                    'result',
+                ];
+                client.dataModeling.loadState.query.mockResolvedValue(saved);
+                let finishAdd!: (name: string) => void;
+                client.dataModeling.promptContainerName.mutate.mockImplementationOnce(
+                    () =>
+                        new Promise<string>((resolve) => {
+                            finishAdd = resolve;
+                        }),
+                );
+                render(<DataModelingWizard />);
+                await continueExisting();
+                await userEvent.click(screen.getByRole('button', { name: 'Add container' }));
+                await userEvent.click(await getStepControl('Result'));
+                let finishSave!: () => void;
+                let failSave!: (error: Error) => void;
+                client.dataModeling.saveState.mutate.mockImplementationOnce(
+                    () =>
+                        new Promise<void>((resolve, reject) => {
+                            finishSave = resolve;
+                            failSave = reject;
+                        }),
+                );
+                await userEvent.click(screen.getByRole('button', { name: 'Get Recommendation' }));
+                await act(async () => {
+                    finishAdd('Users');
+                    if (outcome === 'resolves') finishSave();
+                    else failSave(new Error('Old save failed'));
+                });
+                expect(lastSave().wizard.dataModel.containers.map((container) => container.entity)).toEqual([
+                    'Orders',
+                    'Users',
+                ]);
+                expect(lastSave().recommendation).toEqual({ status: 'error', error: changedMessage });
+                expect(client.dataModeling.requestRecommendation.mutate).not.toHaveBeenCalled();
+                await userEvent.click(await getStepControl('Result'));
+                await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
+                expect(latestRequest().dataModel.containers.map((container) => container.entity)).toEqual([
+                    'Orders',
+                    'Users',
+                ]);
+                deliver('Users');
+                expect(lastSave().recommendation.value?.containers[0].entity).toBe('Users');
+            },
+        );
+
+        it.each(['cancelled', 'deployed', 'rejected'] as const)(
+            'keeps a new deployment busy when the invalidated deployment finishes as %s',
+            async (outcome) => {
+                vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1024);
+                client.dataModeling.loadState.query.mockResolvedValue(restored(2));
+                let finishAdd!: (name: string) => void;
+                client.dataModeling.promptContainerName.mutate.mockImplementationOnce(
+                    () =>
+                        new Promise<string>((resolve) => {
+                            finishAdd = resolve;
+                        }),
+                );
+                let finishOldDeploy!: (value: ModelDeploymentResult) => void;
+                let failOldDeploy!: (error: Error) => void;
+                client.dataModeling.deploy.mutate.mockImplementationOnce(
+                    () =>
+                        new Promise<ModelDeploymentResult>((resolve, reject) => {
+                            finishOldDeploy = resolve;
+                            failOldDeploy = reject;
+                        }),
+                );
+                render(<DataModelingWizard />);
+                await continueExisting();
+                await userEvent.click(screen.getByRole('button', { name: 'Add container' }));
+                await userEvent.click(await getStepControl('Deploy'));
+                const openDeploy = async (databaseName: string) => {
+                    fireEvent.change(screen.getByRole('textbox', { name: 'New database name' }), {
+                        target: { value: databaseName },
+                    });
+                    const button = within(screen.getByRole('region', { name: 'Deploy data model' })).getByRole(
+                        'button',
+                        {
+                            name: 'Deploy',
+                        },
+                    );
+                    await waitFor(() => expect(button).toBeEnabled());
+                    await userEvent.click(button);
+                    await confirmDeployment();
+                };
+                await openDeploy('old-db');
+                await act(async () => finishAdd('Users'));
+                await userEvent.click(await getStepControl('Result'));
+                await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
+                deliver('Users');
+                await enterDeployStep();
+                let finishNewDeploy!: (value: ModelDeploymentResult) => void;
+                client.dataModeling.deploy.mutate.mockImplementationOnce(
+                    () =>
+                        new Promise<ModelDeploymentResult>((resolve) => {
+                            finishNewDeploy = resolve;
+                        }),
+                );
+                await openDeploy('new-db');
+                expect(await getStepControl('Workload')).toHaveAttribute('aria-disabled', 'true');
+                await act(async () => {
+                    if (outcome === 'rejected') failOldDeploy(new Error('Old deployment failed'));
+                    else if (outcome === 'cancelled') finishOldDeploy({ status: 'cancelled' });
+                    else {
+                        finishOldDeploy({
+                            status: 'deployed',
+                            databaseName: 'old-db',
+                            createdCount: 1,
+                            existingCount: 0,
+                        });
+                    }
+                });
+                const workload = await getStepControl('Workload');
+                await userEvent.click(workload);
+                expect(screen.queryByRole('button', { name: 'Start' })).not.toBeInTheDocument();
+                expect(workload).toHaveAttribute('aria-disabled', 'true');
+                expect(lastSave().deployment).toBeUndefined();
+                expect(lastSave().recommendation.value?.containers[0].entity).toBe('Users');
+                expect(screen.queryByText(/Old deployment failed/)).not.toBeInTheDocument();
+                await act(async () => {
+                    finishNewDeploy({ status: 'deployed', databaseName: 'new-db', createdCount: 1, existingCount: 0 });
+                });
+                expect(await screen.findByRole('region', { name: 'Deployment successful' })).toBeVisible();
+                expect(lastSave().deployment?.input.databaseName).toBe('new-db');
+                expect(await getStepControl('Workload')).not.toHaveAttribute('aria-disabled', 'true');
+            },
+        );
+
+        it.each([false, true])(
+            'retires a save after same-batch schema edits in StrictMode (rollback=%s)',
+            async (rollback) => {
+                let finishSave!: () => void;
+                client.dataModeling.saveState.mutate.mockImplementationOnce(
+                    () =>
+                        new Promise<void>((resolve) => {
+                            finishSave = resolve;
+                        }),
+                );
+                await start();
+                await userEvent.click(await getStepControl('Container: Orders'));
+                const field = screen.getByRole('combobox', { name: 'Type for id' });
+                await act(async () => {
+                    fireEvent.change(field, { target: { value: 'number' } });
+                    if (rollback) fireEvent.change(field, { target: { value: 'string' } });
+                    finishSave();
+                });
+                expect(lastSave().recommendation).toEqual({ status: 'error', error: changedMessage });
+                expect(client.dataModeling.requestRecommendation.mutate).not.toHaveBeenCalled();
+            },
+        );
+
+        it('rejects a result queued in the same batch as an input edit', async () => {
+            await start();
+            const requestId = latestRequest().requestId;
+            await userEvent.click(await getStepControl('Container: Orders'));
+            await userEvent.click(screen.getByRole('button', { name: 'Edit Orders' }));
+            fireEvent.change(screen.getByRole('textbox', { name: 'Container name' }), {
+                target: { value: 'RenamedOrders' },
+            });
+            act(() => {
+                fireEvent.click(screen.getByRole('button', { name: 'Save container name' }));
+                callbacks().onData({ type: 'recommendationReceived', requestId, recommendation: resultFor('Orders') });
+            });
+            expect(lastSave().recommendation).toEqual({ status: 'error', error: changedMessage });
+            expect(await getStepControl('Deploy')).toHaveAttribute('aria-disabled', 'true');
+        });
+
+        it.each(['reset', 'unmount'] as const)('retires a pending save on %s', async (action) => {
+            let finishSave!: () => void;
+            client.dataModeling.saveState.mutate.mockImplementationOnce(
+                () =>
+                    new Promise<void>((resolve) => {
+                        finishSave = resolve;
+                    }),
+            );
+            const mounted = await start();
+            const oldCallbacks = callbacks();
+            if (action === 'reset') await userEvent.click(screen.getByRole('button', { name: 'Start Over' }));
+            else mounted.unmount();
+            const saveCount = client.dataModeling.saveState.mutate.mock.calls.length;
+            const expectedSnapshot = action === 'reset' ? createInitialSnapshot() : lastSave();
+            await act(async () => {
+                finishSave();
+                oldCallbacks.onData({ type: 'recommendationReceived', recommendation: resultFor('Orders') });
+            });
+            expect(client.dataModeling.requestRecommendation.mutate).not.toHaveBeenCalled();
+            expect(client.dataModeling.saveState.mutate).toHaveBeenCalledTimes(saveCount);
+            expect(lastSave()).toEqual(expectedSnapshot);
+        });
     });
 });

@@ -3,13 +3,18 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { AdvisorManagementClient } from '@azure/arm-advisor';
 import { AlertsManagementClient } from '@azure/arm-alertsmanagement';
 import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { createHttpHeaders } from '@azure/core-rest-pipeline';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { armTestSubscription } from '../../../../cosmosdb/armTestUtils';
 import { AzureResourceMetadata } from '../../../../cosmosdb/AzureResourceMetadata';
-import { ALERT_MONITOR_CONDITIONS, ALERT_TIME_RANGES } from '../../../accountOverview/services/alertsRecommendations';
+import {
+    ALERT_MONITOR_CONDITIONS,
+    ALERT_TIME_RANGES,
+    __resetAdvisorCache,
+} from '../../../accountOverview/services/alertsRecommendations';
 import { pagedItems } from '../../../accountOverview/services/testFixtures';
 import { type AccountOverviewRouterContext } from '../../appRouter';
 import { accountOverviewRouter } from '../../trpc';
@@ -51,7 +56,45 @@ class TestMetadata extends AzureResourceMetadata {
     }
 }
 
-beforeEach(() => vi.restoreAllMocks());
+beforeEach(() => {
+    vi.restoreAllMocks();
+    __resetAdvisorCache();
+});
+
+describe('Advisor portal routing', () => {
+    it.each([
+        'https://portal.azure.com',
+        'https://ms.portal.azure.com/',
+        'https://portal.azure.us',
+        'https://portal.azure.cn/',
+    ])('passes the subscription portal %s and tenant through the router', async (portalUrl) => {
+        const metadata = new TestMetadata(portalUrl, new AlertsManagementClient({ getToken: async () => null }));
+        const client = new AdvisorManagementClient({ getToken: async () => null }, 'sub-1');
+        vi.spyOn(metadata, 'getAdvisorClient').mockResolvedValue(client);
+        vi.spyOn(client.recommendations, 'list').mockReturnValue(
+            pagedItems([
+                {
+                    id: 'recommendation',
+                    recommendationTypeId: 'type',
+                    resourceMetadata: { resourceId: accountId },
+                    shortDescription: { problem: 'Review provisioned capacity' },
+                },
+            ]),
+        );
+        const caller = router.createCaller({
+            webviewName: 'cosmosDbAccountOverview',
+            metadata,
+            getInitialization: () => ({ type: 'navigate', target: 'overview', revision: 0 }),
+            onNavigation: () => ({ dispose() {} }),
+        });
+        const result = await caller.getRecommendations();
+        expect(result.available).toBe(true);
+        expect(result.recommendations[0].portalUrl).toBe(
+            `${portalUrl.replace(/\/$/, '')}/#@tenant-1/blade/Microsoft_Azure_Expert/RecommendationListBlade/recommendationTypeId/type/resourceId/${encodeURIComponent(encodeURIComponent(accountId))}`,
+        );
+        expect(result.recommendations[0].learnMoreLink).toBeUndefined();
+    });
+});
 
 describe('alert portal routing', () => {
     it('routes the independent active check through the existing account ARM client', async () => {

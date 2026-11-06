@@ -88,6 +88,10 @@ The activation regressions cover both an already open sidebar and reopening a hi
 
 ## Running
 
+CI preserves successful exit status when tests pass on retry, but lists flaky tests with their project,
+source location, and attempt count in the job summary and the existing E2E PR comment.
+The JSON report is uploaded alongside the HTML report and failure artifacts for diagnosis.
+
 ```bash
 # Run all e2e specs (auto-builds dist/ if stale, starts the emulator,
 # seeds the test DB, runs Playwright, then tears the emulator down)

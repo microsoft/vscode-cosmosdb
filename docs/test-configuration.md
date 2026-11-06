@@ -73,6 +73,8 @@ Instead, we drive `@vitest/runner.startTests()` directly from a small entry scri
   because the source is bundled by Vite into `dist/main.mjs` and lives in a different
   module instance than the compiled test code.
 - Run with `npm test`.
+- CI retries the extension-host suite up to three times. If it passes only after retrying, the integration
+  job summary and PR comment include a warning; the workflow still succeeds.
 
 ### End-to-end tests (`test/e2e/specs/**/*.spec.ts`)
 

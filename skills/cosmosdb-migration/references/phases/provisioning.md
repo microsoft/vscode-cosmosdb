@@ -350,8 +350,8 @@ Oversized values block artifact generation without truncation or identity change
 These sample checks do not establish that every source row or future write fits, nor
 do they establish the limits of existing containers.
 
-For modeled relationships, the validator resolves the complete source foreign key
-from the authoritative inventory. It checks ordered composite-key reference targets,
+For modeled relationships, the validator resolves the typed source relationship (or exact legacy foreign key)
+from the authoritative inventory. It checks ordered composite-key/reference targets,
 embedded placement at `targetProperty`, embedded field shapes, and parent-child key
 consistency. Relationships absent from the canonical model and account capabilities
 remain explicit evidence checks; do not report them as structurally validated.
@@ -399,7 +399,7 @@ or manifest fields. Record the deployment outcome and any retry in the existing 
    and missing mapped fields still fail. A string representation of a precise decimal
    or large integer must remain a string with its exact digits. Identity and partition-key
    requirements remain unchanged; explicit null support does not relax them.
-- Resolve each `id` from its `idTemplate` and the selected identity mapping.
+- Resolve each `id` from its typed `identity` or legacy `idTemplate` and the selected identity mapping.
    Preserve the corresponding source-key values in their separate mapped fields.
    For `{uuid}` fallback entities, generate a valid UUID once and persist it directly
    as the synthetic document's `id` in `sample-data.json`; validation and seeding reuse
@@ -414,7 +414,7 @@ or manifest fields. Record the deployment outcome and any retry in the existing 
    in the mapped foreign-key field, not the target's derived Cosmos `id`. For
    example, an order's `customerId: 101` matches a customer with `customerId: 101`
    and `id: "customer-101"`. Resolve the actual source FK and referenced key from
-   the authoritative DDL, attribute mappings, and summaries; target field names
+   the authoritative inventory, attribute mappings, and summaries; target field names
    need not be identical. Match every component and JSON type of composite keys.
 - When the accepted model separately defines document-ID reference fields,
    populate them with the target's resolved `id` and supply the routing values

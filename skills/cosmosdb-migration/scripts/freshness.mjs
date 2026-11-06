@@ -124,8 +124,19 @@ function projectInput(id, value) {
     return { id, kind: 'project-value', sha256: canonicalValueSha256(value) };
 }
 
-export function selectedDiscoveryFiles(workspace, project, source) {
-    const directorySource = source === 'schema-evidence' ? 'schema-ddl' : source;
+export function selectedDiscoveryFiles(workspace, project, source, { historicalCodeFiles = [] } = {}) {
+    if (historicalCodeFiles.length && source !== 'source-evidence') throw new Error('Historical code exemptions apply only to accepted source evidence');
+    const historicalPaths = new Set(historicalCodeFiles.map(file => {
+        const absolute = path.resolve(workspace, file);
+        relativePath(workspace, absolute);
+        if (fs.existsSync(absolute)) {
+            relativePath(fs.realpathSync(workspace), fs.realpathSync(absolute));
+            if (!fs.statSync(absolute).isFile()) throw new Error(`Accepted code input is not a file: ${file}`);
+        }
+        return absolute;
+    }));
+    const schemaEvidence = ['schema-evidence', 'source-evidence'].includes(source);
+    const directorySource = schemaEvidence ? 'schema-ddl' : source;
     const property = { 'schema-ddl': 'schemaInventory', volumetrics: 'volumetrics', 'access-patterns': 'accessPatterns' }[directorySource];
     if (!property) throw new Error(`Unknown discovery source: ${source}`);
     const selection = project.phases?.discovery?.[property];
@@ -144,8 +155,9 @@ export function selectedDiscoveryFiles(workspace, project, source) {
                   .readdirSync(directory, { withFileTypes: true })
                   .flatMap((entry) => {
                       const filePath = path.join(directory, entry.name);
+                      if (historicalPaths.has(path.resolve(filePath))) return [];
                       if (entry.isDirectory()) return list(filePath);
-                      if (source === 'schema-evidence' && entry.isSymbolicLink() && fs.statSync(filePath).isDirectory()) return [];
+                      if (schemaEvidence && entry.isSymbolicLink() && fs.statSync(filePath).isDirectory()) return [];
                       return [filePath];
                   });
     const included = (explicitFiles ?? selection?.includedFiles)?.map((value) => path.normalize(value));
@@ -160,14 +172,15 @@ export function selectedDiscoveryFiles(workspace, project, source) {
     }));
     const template = directorySource === 'schema-ddl' ? undefined
         : path.resolve(workspace, '.cosmosdb-migration/phases/1-discovery', source, `${source}.md`);
-    const managedOutputs = source === 'schema-evidence' ? managedSchemaEvidencePaths(workspace) : undefined;
+    const managedOutputs = schemaEvidence ? managedSchemaEvidencePaths(workspace) : undefined;
     return (included ? included.map(file => path.resolve(base, file)) : list(base))
         .filter((filePath) => source !== 'schema-ddl' || /\.(?:ddl|sql)$/iu.test(filePath))
         .filter((filePath) => source !== 'schema-evidence' || !/\.(?:ddl|sql)$/iu.test(filePath))
         .filter((filePath) => path.resolve(filePath) !== template)
         .filter((filePath) => !excluded.has(path.resolve(filePath)))
+        .filter((filePath) => !historicalPaths.has(path.resolve(filePath)))
         .filter(filePath => !managedOutputs?.has(path.resolve(filePath)))
-        .filter(filePath => source !== 'schema-evidence' || !isManagedDomainOutput(workspace, filePath))
+        .filter(filePath => !schemaEvidence || !isManagedDomainOutput(workspace, filePath))
         .map((filePath) => {
             relativePath(explicitFiles !== undefined ? workspace : base, filePath);
             relativePath(fs.realpathSync(workspace), fs.realpathSync(filePath));
@@ -180,6 +193,10 @@ export function selectedDiscoveryFiles(workspace, project, source) {
 
 export function selectedDdlFiles(workspace, project) {
     return selectedDiscoveryFiles(workspace, project, 'schema-ddl');
+}
+
+export function selectedSourceFiles(workspace, project, options) {
+    return selectedDiscoveryFiles(workspace, project, 'source-evidence', options);
 }
 
 function withoutKeys(value, excluded) {
@@ -208,6 +225,7 @@ function requiredInputs(workspace, project, phase) {
     switch (phase) {
         case 'preflight':
             return [
+                ...(sourceContractVersion(workspace) === 2 ? [projectInput('source-contract-version', 2)] : []),
                 ...selectedDdlFiles(workspace, project).map((filePath) =>
                     fileInput(
                         workspace,
@@ -253,7 +271,7 @@ function requiredInputs(workspace, project, phase) {
                 projectInput('schema-conversion-instructions', conversion.schemaConversionInstructions ?? null),
                 projectInput(
                     'assessment-domain-selection',
-                    (assessment.domains ?? []).map(({ name, tables, isMapped }) => ({ name, tables, isMapped })),
+                    (assessment.domains ?? []).map(({ name, tables, datasets, isMapped }) => ({ name, tables, ...(datasets ? { datasets } : {}), isMapped })),
                 ),
                 ...((conversion.domains ?? []).map((domainName) =>
                     fileInput(
@@ -281,6 +299,11 @@ function requiredInputs(workspace, project, phase) {
     }
 }
 
+function sourceContractVersion(workspace) {
+    const manifest = path.join(workspace, '.cosmosdb-migration/phases/1-discovery/preflight-manifest.json');
+    return fs.existsSync(manifest) ? parseJson(fs.readFileSync(manifest, 'utf8')).sourceInventory?.version : undefined;
+}
+
 export function buildFreshnessManifest(
     workspace,
     project,
@@ -302,8 +325,13 @@ export function buildFreshnessManifest(
         ),
     ].sort((left, right) => left.id.localeCompare(right.id));
     if (new Set(inputs.map((input) => input.id)).size !== inputs.length) throw new Error('Freshness input IDs must be unique');
+    const outputs = phaseOutputPaths(project, phase).map(outputPath => fileInput(workspace, `output:${outputPath}`, outputPath));
+    return { version: 1, inputs, outputs };
+}
+
+function phaseOutputPaths(project, phase) {
     const root = '.cosmosdb-migration/phases';
-    const outputPaths = {
+    return {
         preflight: [`${root}/1-discovery/preflight-manifest.json`],
         discovery: [`${root}/1-discovery/discovery-manifest.json`],
         assessment: [
@@ -312,9 +340,25 @@ export function buildFreshnessManifest(
         ],
         'schema-conversion': [`${root}/3-schema-conversion/manifest.json`, `${root}/3-schema-conversion/model.json`],
         provisioning: [`${root}/4-provisioning/manifest.json`],
-    };
-    const outputs = outputPaths[phase].map(outputPath => fileInput(workspace, `output:${outputPath}`, outputPath));
-    return { version: 1, inputs, outputs };
+    }[phase];
+}
+
+export function validateAcceptedPhaseArtifacts(workspace, project, phase) {
+    try {
+        const recorded = project.freshness?.[phase];
+        if (recorded?.version !== 1 || !Array.isArray(recorded.inputs)) throw new Error('Accepted analytical artifact hashes are missing');
+        const expected = phaseOutputPaths(project, phase).map(output => fileInput(workspace, `output:${output}`, output));
+        if (JSON.stringify(recorded.outputs) !== JSON.stringify(expected)) throw new Error('Accepted analytical outputs changed; review and finalize the affected phase');
+        if (phase !== 'preflight') {
+            for (const input of requiredInputs(workspace, project, phase)) {
+                if (input.kind === 'project-value' && input.id.endsWith('-instructions')) continue;
+                if (JSON.stringify(recorded.inputs.find(entry => entry.id === input.id)) !== JSON.stringify(input)) throw new Error(`Accepted analytical input changed: ${input.id}`);
+            }
+        }
+        return [];
+    } catch (error) {
+        return [{ path: `project.json#freshness.${phase}`, message: error.message }];
+    }
 }
 
 export function validateFreshnessManifest(

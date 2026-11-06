@@ -4,6 +4,11 @@
 then produces the canonical deployment model. This is the strict deterministic
 output boundary.
 
+Read the [common source contract](../contracts/source-inventory.md) for version-2 lineage,
+typed identities, optional/null values, ownership, executable mapping examples, and behavior decisions.
+The relational examples below remain applicable to resumed legacy models and relational datasets;
+they are not requirements to fabricate tables, DDL, or foreign keys for other sources.
+
 ## Expected Output Artifacts
 
 Required:
@@ -35,7 +40,7 @@ complexity requires them; call count and decomposition are implementation detail
 ## Prerequisites
 
 - `phases.assessment.status` is `complete`.
-- Assessment domain files and authoritative DDL are available.
+- Assessment domain files and validated source inventory/evidence are available.
 - The `cosmosdb-best-practices` peer Skill is loaded.
 - `phases.schemaConversion.schemaConversionInstructions`, when present.
 - The bundled model validator is available. If it is not yet installed with the
@@ -91,9 +96,9 @@ Process domains in stable name order. For each domain:
 
 1. Resolve guidance for container and identity design.
 2. Apply the multi-`docType` strategy below to design containers and map every
-  domain table to exactly one entity.
+  domain dataset to one authoritative target disposition.
 3. Require `version: 1`, domain, source type, stable derived `id`, preserved
-   natural source keys, and `idTemplate` for each standalone entity.
+   natural source keys, and typed `identity` (legacy `idTemplate` remains supported) for each standalone entity.
 4. Resolve partition-key guidance and evaluate cardinality, skew, query routing,
    write distribution, growth, hierarchical keys, and synthetic alternatives.
 5. Resolve embedding/reference guidance and evaluate cardinality, bounded size,
@@ -175,11 +180,11 @@ the design but are not another copy of the model.
 
 ## Model Requirements
 
-- Every selected source table has exactly one authoritative domain owner and target
+- Every selected source dataset has exactly one authoritative domain owner and target
   disposition. Explicitly declare consolidated mappings and projections in conversion
   evidence; duplicate authoritative owners and unaccounted source tables are errors.
 - Every standalone entity has one string `id` attribute deterministically derived
-  from its source primary key and a matching `idTemplate`.
+  from its evidenced source identity and matching typed `identity` or legacy `idTemplate`.
 - Default IDs prefix the entity name and include every primary-key component. A
   single-column GUID/UUID primary key may use its source value directly when it is
   unique across all standalone entity types sharing the same container and complete
@@ -227,12 +232,12 @@ type in `attributes[].source.type`, for example `bigint`, `decimal(38,18)`, or
 
 `number` requires a finite JSON number; `integer` additionally requires an integral
 value. `object` excludes arrays and null. `null` means only the JSON null value,
-not a nullable modifier for another type. Missing attributes do not satisfy any type,
-including `null`. Version 1 does not express nullable unions or optional attributes;
-do not use labels such as `string?` or arrays such as `["string", "null"]`. For nullable
-source columns, use representative non-null samples of the selected target type and
-record application null handling in the summary. Do not replace real source nulls
-or declare a field null-only just to pass validation.
+not a nullable modifier for another type. Use `nullable:true` to permit null and
+`optional:true` to permit missing properties; these are distinct semantics. Do not use
+labels such as `string?` or arrays such as `["string", "null"]`. Preserve heterogeneous native
+variants through explicit lossless JSON envelopes or conversions and executable examples.
+Identity and partition-key attributes remain required and non-null. Do not replace source nulls
+or declare a field null-only merely to pass validation.
 
 Choose a lossless representation explicitly. Dates and UUIDs serialized as text use
 `string`; large integers and exact decimals may also require strings, following current

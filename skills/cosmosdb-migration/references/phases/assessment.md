@@ -18,7 +18,7 @@ Required:
 
 - `preflight` readiness passes.
 - `phases.discovery.status` is `complete`.
-- `phases/1-discovery/discovery-report.md` and `discovery-manifest.json` exist and cover all DDL entities.
+- `phases/1-discovery/discovery-report.md` and `discovery-manifest.json` exist and cover all source datasets.
 - `phases.assessment.assessmentInstructions`, when present.
 
 ## Procedure
@@ -27,11 +27,11 @@ Required:
    the assessment run count.
 2. Parse all discovery access patterns into structured working data. Preserve
    names, entities, TPS, filter fields, batch scope, examples, and references.
-3. Build a dependency graph from authoritative DDL.
+3. Build a dependency graph from typed inventory relationships and evidenced behavior, not inferred foreign keys.
 4. Identify bounded contexts using the Domain Identification Heuristics below.
-5. Assign every non-excluded table to exactly one domain. Validate this
+5. Assign every selected dataset to exactly one domain by stable ID. Validate this
    programmatically; do not rely on the model's assertion.
-6. Associate access patterns by table overlap and record patterns spanning domains.
+6. Associate access patterns by dataset overlap and record patterns spanning domains.
 7. Split a domain only for business cohesion or agent context limits. A domain is
    not a Cosmos DB logical partition; do not split it solely because of service
    logical-partition limits.
@@ -150,7 +150,7 @@ Each file contains:
 
 - Domain purpose and rationale.
 - Aggregate root.
-- Authoritative table list.
+- Authoritative `Datasets` list using inventory IDs.
 - Assigned read and write patterns with source links.
 - Cross-domain dependencies and proposed handling.
 - Preliminary migration recommendations and applied rule provenance.
@@ -168,9 +168,13 @@ and relative links. After finalizing all phase artifacts and checkpoint domains,
 record `project.json#freshness.assessment` through the freshness helper, including
 every consulted workspace evidence file.
 
-Persist `phases.assessment.domains` with name, tables, cross-domain dependencies,
+Persist `phases.assessment.domains` with name, datasets, cross-domain dependencies,
 estimated tokens, and mapping status. Persist parsed access patterns and
 `completedAt` according to the version 1 format.
+
+Use `datasets` for new metadata and report manifests; legacy `tables` are resolved only through the
+validated inventory boundary. Never guess a stable ID from a display label. Preserve one authoritative owner
+even for sampled, unfamiliar, or unmapped sources; missing application access does not authorize exclusion.
 
 Use the exact domain and parsed-access-pattern property types in
 [project-state-and-artifacts.md](../contracts/project-state-and-artifacts.md); phase validation and subsequent analysis

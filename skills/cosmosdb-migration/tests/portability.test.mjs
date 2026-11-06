@@ -147,7 +147,7 @@ test('every executable helper has complete, side-effect-free help without depend
 test('isolated Skill helpers accept historical peer entries without any peer installation', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'migration-skill-portability-'));
     try {
-        const copiedSkillRoot = path.join(root, 'installed', 'cosmosdb-relational-migration');
+        const copiedSkillRoot = path.join(root, 'installed', 'cosmosdb-migration');
         fs.mkdirSync(path.dirname(copiedSkillRoot), { recursive: true });
         fs.cpSync(sourceSkillRoot, copiedSkillRoot, { recursive: true });
         const workspace = path.join(root, 'workspace');
@@ -189,7 +189,7 @@ test('isolated Skill helpers accept historical peer entries without any peer ins
 test('runs the validation suites from a standalone Skill copy without peer or DDL parser installations', { skip: process.env.MIGRATION_STANDALONE_CHILD === '1' }, () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'migration-complete-portability-'));
     try {
-        const copied = path.join(root, 'skills', 'cosmosdb-relational-migration');
+        const copied = path.join(root, 'skills', 'cosmosdb-migration');
         fs.cpSync(sourceSkillRoot, copied, { recursive: true });
         const tests = fs.readdirSync(path.join(copied, 'tests')).filter(name => name.endsWith('.test.mjs') && name !== 'portability.test.mjs' && name !== 'sqlglot-evaluation.test.mjs').map(name => path.join(copied, 'tests', name));
         const environment = { ...process.env, MIGRATION_STANDALONE_CHILD: '1', NO_COLOR: '1' };

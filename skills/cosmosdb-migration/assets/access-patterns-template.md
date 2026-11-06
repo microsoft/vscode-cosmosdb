@@ -7,12 +7,12 @@
 
 ## Read Patterns
 
-| # | Pattern Name | Tables / Entities | Filter / Lookup Fields | Frequency (TPS) | Latency Requirement | Notes |
+| # | Pattern Name | Datasets | Filter / Lookup Fields | Frequency (TPS) | Latency Requirement | Notes |
 |---:|---|---|---|---:|---|---|
 
 ## Write Patterns
 
-| # | Pattern Name | Tables / Entities | Single / Batch | Frequency (TPS) | Latency Requirement | Notes |
+| # | Pattern Name | Datasets | Single / Batch | Frequency (TPS) | Latency Requirement | Notes |
 |---:|---|---|---|---:|---|---|
 
 ## Additional Notes

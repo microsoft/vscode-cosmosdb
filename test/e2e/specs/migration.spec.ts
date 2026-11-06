@@ -330,7 +330,7 @@ test.describe('Migration Assistant', () => {
         await expect(migration.analysisField('frameworks')).toHaveAccessibleName('Frameworks:');
         await expect(migration.analysisField('frameworks')).toHaveJSProperty('required', false);
 
-        const schemaFilesDescription = 'Optional DDL or supporting schema artifacts';
+        const schemaFilesDescription = 'Source definitions, metadata, code, documentation, or samples';
         await expect(
             frame.getByRole('button', { name: 'Select Files…', description: schemaFilesDescription }),
         ).toHaveAccessibleDescription(schemaFilesDescription);
@@ -340,8 +340,8 @@ test.describe('Migration Assistant', () => {
         for (const [button, label, description] of [
             [
                 migration.generateSchemaButton,
-                'Generate schema files from workspace code',
-                'Generate schema files from workspace code using Copilot Chat',
+                'Infer source inventory from workspace code',
+                'Infer source inventory from workspace code using Copilot Chat',
             ],
             [
                 migration.updateVolumetricsButton,
@@ -369,8 +369,8 @@ test.describe('Migration Assistant', () => {
             }
         }
         await expect(
-            frame.getByRole('button', { name: /file\(s\) selected/, description: 'Source Schema:' }),
-        ).toHaveAccessibleDescription('Source Schema:');
+            frame.getByRole('button', { name: /file\(s\) selected/, description: 'Source Evidence:' }),
+        ).toHaveAccessibleDescription('Source Evidence:');
 
         await frame.getByRole('button', { name: new RegExp(PHASE_HEADERS.phase4) }).click();
         await expect(frame.getByRole('radiogroup', { name: /Target Environment/ })).toHaveAttribute(
@@ -436,7 +436,7 @@ test.describe('Migration Assistant', () => {
     test('interactive help links are keyboard accessible', async ({ vscodeWindow }) => {
         const frame = await openMigrationSeeded(vscodeWindow);
         const helpLinks = [
-            ['Source schema help', 'schema-ddl/'],
+            ['Source evidence help', 'schema-ddl/'],
             ['Volumetrics help', 'volumetrics/'],
             ['Access patterns help', 'access-patterns/'],
         ] as const;
@@ -529,7 +529,7 @@ test.describe('Migration Assistant', () => {
         for (const [button, description] of [
             [
                 migration.generateSchemaButton,
-                `Generate schema files from workspace code using Copilot Chat. ${consentDescription}`,
+                `Infer source inventory from workspace code using Copilot Chat. ${consentDescription}`,
             ],
             [
                 migration.updateVolumetricsButton,
@@ -675,7 +675,7 @@ test.describe('Migration Assistant', () => {
             const promptCount = readCapturedPrompts().length;
             const checkpoint = readMigrationArtifact('project.json');
             const resetButton = activity.getByRole('button');
-            await expect(resetButton).toHaveAccessibleName(/Reset Status.*Generate schema/);
+            await expect(resetButton).toHaveAccessibleName(/Reset Status.*Infer source inventory/);
             await expect(resetButton).toHaveAccessibleDescription(/does not stop the agent in Chat/);
             await stubMessageBoxButton(vscodeApp, 'Agent Has Stopped');
             await resetButton.click();
@@ -721,7 +721,7 @@ test.describe('Migration Assistant', () => {
             await expect(migration.modelDropdown).toBeDisabled();
             const resetStatus = frame.getByTestId('migration-run-activity').getByRole('button');
             await expect(resetStatus).toHaveText('');
-            await expect(resetStatus).toHaveAccessibleName(/Reset Status.*Generate schema/);
+            await expect(resetStatus).toHaveAccessibleName(/Reset Status.*Infer source inventory/);
             await expect(resetStatus).toHaveAccessibleDescription(/Running/);
             const activeBounds = await resetStatus.boundingBox();
             expect(activeBounds?.width).toBe(originalBounds?.width);
@@ -808,17 +808,17 @@ test.describe('Migration Assistant', () => {
             await expect(diagnostics.getByText('Source schema needs review.', { exact: true })).toBeVisible();
             const inventoryFailure = diagnostics
                 .getByTestId('migration-diagnostic-failure')
-                .filter({ hasText: 'Recorded source inventory evidence' });
+                .filter({ hasText: 'Source inventory' });
             const inventoryToggle = inventoryFailure.getByRole('button', {
-                name: 'Recorded source inventory evidence Invalid',
+                name: 'Source inventory Invalid',
                 exact: true,
             });
             await expect(inventoryToggle).toHaveAttribute('aria-expanded', 'false');
-            await expect(inventoryToggle).toHaveAccessibleName('Recorded source inventory evidence Invalid');
+            await expect(inventoryToggle).toHaveAccessibleName('Source inventory Invalid');
             await inventoryToggle.focus();
             await inventoryToggle.press('Enter');
             await expect(inventoryToggle).toHaveAttribute('aria-expanded', 'true');
-            await expect(inventoryFailure.getByText(/Choose and persist a DDL parsing method/)).toBeVisible();
+            await expect(inventoryFailure.getByRole('listitem')).toContainText('ENOENT');
             const schemaFailure = diagnostics
                 .getByTestId('migration-diagnostic-failure')
                 .filter({ hasText: 'Authoritative schema DDL' });
@@ -888,8 +888,8 @@ test.describe('Migration Assistant', () => {
                 const discoveryBounds =
                     phase === 'discovery' ? await migration.runDiscoveryButton().boundingBox() : undefined;
                 prompt = [
-                    `Run the ${phase.replaceAll('-', ' ')} phase of a relational database migration to Azure Cosmos DB.`,
-                    'Use the cosmosdb-relational-migration skill.',
+                    `Run the ${phase.replaceAll('-', ' ')} phase of a database migration to Azure Cosmos DB for NoSQL.`,
+                    'Use the cosmosdb-migration skill.',
                     ...(step ? [`Run only the ${step} ${phase} step.`] : []),
                     `Run ID: inline-${phase}-${step ?? 'phase'}`,
                 ].join('\n');
@@ -989,11 +989,9 @@ test.describe('Migration Assistant', () => {
         try {
             await openMigrationSeeded(vscodeWindow);
             const fixtures = pathToFileURL(
-                path.resolve('skills/cosmosdb-relational-migration/tests/source-evidence-fixtures.mjs'),
+                path.resolve('skills/cosmosdb-migration/tests/source-evidence-fixtures.mjs'),
             ).href;
-            const freshness = pathToFileURL(
-                path.resolve('skills/cosmosdb-relational-migration/scripts/freshness.mjs'),
-            ).href;
+            const freshness = pathToFileURL(path.resolve('skills/cosmosdb-migration/scripts/freshness.mjs')).href;
             execFileSync(
                 process.execPath,
                 [
@@ -1377,6 +1375,62 @@ test.describe('Migration Assistant', () => {
         await expect(frame.getByTestId('migration-run-activity')).toHaveCount(0);
     });
 
+    for (const engine of ['ExampleDocumentStore', 'UnfamiliarEventStore']) {
+        test(`resumes source-neutral ${engine} evidence and routes code planning without selected DDL`, async ({
+            vscodeWindow,
+        }) => {
+            await openMigrationSeeded(vscodeWindow);
+            await closeAllEditorTabs(vscodeWindow);
+            const fixtures = pathToFileURL(
+                path.resolve('skills/cosmosdb-migration/tests/source-evidence-fixtures.mjs'),
+            ).href;
+            execFileSync(
+                process.execPath,
+                [
+                    '--input-type=module',
+                    '--eval',
+                    `
+                    import { createSourceNeutralFixture, writeSourceNeutralAnalysis } from ${JSON.stringify(fixtures)};
+                    const workspace = process.env.COSMOSDB_E2E_WORKSPACE_DIR;
+                    const fixture = createSourceNeutralFixture(workspace, ${JSON.stringify(engine)});
+                    fixture.project.consentGiven = true;
+                    writeSourceNeutralAnalysis(workspace, fixture);
+                    `,
+                ],
+                { env: process.env },
+            );
+            const source = readApplicationFile('source.json');
+            const suppliedDdl = readMigrationArtifact('phases/1-discovery/schema-ddl/schema.sql');
+            let frame = await openMigrationAssistant(vscodeWindow);
+            let migration = new MigrationPage(frame);
+            for (const phase of ['preflight', 'discovery', 'assessment', 'schema-conversion'] as const) {
+                expect(checkMockSkillPhaseCompletion(phase)).toMatchObject({ complete: true, errors: [] });
+            }
+            expect(checkMockSkillPhaseCompletion('code-migration')).toMatchObject({ ready: true });
+            await expect(migration.migrationActionButton).toBeEnabled();
+            await migration.expandPhase(PHASE_HEADERS.phase2);
+            await expect(migration.phase2DomainTable.getByRole('columnheader', { name: 'Datasets' })).toBeVisible();
+            const captureStart = readCapturedPrompts().length;
+            await migration.migrationActionButton.click();
+            await expect.poll(() => readCapturedPrompts().length).toBeGreaterThan(captureStart);
+            const prompt = readCapturedPrompts().at(-1)!.promptText;
+            expect(prompt).toContain('Use the cosmosdb-migration skill.');
+            expect(prompt).toContain('Create the application code migration plan.');
+            expect(prompt).not.toContain('Allow provisioning');
+            setMockSkillRunActivity(prompt, 'cancelled');
+
+            await closeAllEditorTabs(vscodeWindow);
+            frame = await openMigrationAssistant(vscodeWindow);
+            migration = new MigrationPage(frame);
+            await expect(migration.migrationActionButton).toBeEnabled();
+            expect(readApplicationFile('source.json')).toBe(source);
+            expect(readMigrationArtifact('phases/1-discovery/schema-ddl/schema.sql')).toBe(suppliedDdl);
+            appendFileSync(path.join(process.env.COSMOSDB_E2E_WORKSPACE_DIR!, 'source.json'), '\n');
+            await expect.poll(() => checkMockSkillPhaseCompletion('code-migration').ready).toBe(false);
+            await expect(migration.migrationActionButton).toBeDisabled();
+        });
+    }
+
     test('drives Skill-first preflight through code migration with a mocked agent', async ({ vscodeWindow }) => {
         const captureStart = readCapturedPrompts().length;
         const readFlowPrompts = () => readCapturedPrompts().slice(captureStart);
@@ -1400,7 +1454,7 @@ test.describe('Migration Assistant', () => {
                     )?.promptText ?? '',
                 { timeout: 15_000 },
             )
-            .toContain('Infer the source schema from workspace code and selected artifacts (schema-source: infer).');
+            .toContain('Infer the source inventory from workspace code and selected artifacts (schema-source: infer).');
         await migration.completeSkillRun(
             readFlowPrompts().findLast(
                 (prompt) =>
@@ -1480,7 +1534,7 @@ test.describe('Migration Assistant', () => {
             })
             .toContain('Run the discovery phase');
         const discoveryPrompt = readFlowPrompts().findLast((prompt) => prompt.route === 'skill-discovery');
-        expect(discoveryPrompt?.promptText).toContain('Use the cosmosdb-relational-migration skill.');
+        expect(discoveryPrompt?.promptText).toContain('Use the cosmosdb-migration skill.');
         expect(discoveryPrompt?.promptText).not.toContain('This host supports interaction.');
         expect(discoveryPrompt?.promptText).not.toContain('Run in interactive mode.');
         expect(discoveryPrompt?.promptText).toContain('Run the discovery phase');
@@ -1586,7 +1640,7 @@ test.describe('Migration Assistant', () => {
 
         runMockSkillAgent(
             [
-                'Run the provisioning phase of a relational database migration to Azure Cosmos DB.',
+                'Run the provisioning phase of a database migration to Azure Cosmos DB for NoSQL.',
                 'Run ID: prepare-provisioning',
             ].join('\n'),
         );

@@ -1,6 +1,7 @@
 # Volumetrics
 
-> Fill in the table below with volumetric data for each table or entity in your database.
+> Fill in the table below with volumetric data for each dataset in the validated inventory.
+> Dataset contains its stable inventory ID; Namespace retains native display context.
 > This information helps the migration assistant estimate request unit (RU) consumption
 > and choose optimal partition keys for Azure Cosmos DB.
 >
@@ -8,7 +9,7 @@
 >
 > **TPS** = Transactions Per Second under normal load.
 
-| # | Schema | Table | Est. Row Count | Avg Row Size (KB) | Growth Rate (month) | Read TPS | Write TPS | Notes |
+| # | Namespace | Dataset | Est. Record Count | Avg Record Size (KB) | Growth Rate (month) | Read TPS | Write TPS | Notes |
 |---:|---|---|---:|---:|---|---:|---:|---|
 
 ## Workload Notes (optional)

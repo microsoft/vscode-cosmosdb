@@ -7,22 +7,22 @@
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { checkPhaseCompletion } from '../../../skills/cosmosdb-relational-migration/scripts/check-phase-completion.mjs';
-import { buildFreshnessManifest } from '../../../skills/cosmosdb-relational-migration/scripts/freshness.mjs';
-import { mergeCosmosModels } from '../../../skills/cosmosdb-relational-migration/scripts/merge-cosmos-models.mjs';
-import { modelHash } from '../../../skills/cosmosdb-relational-migration/scripts/validate-conversion-evidence.mjs';
+import { checkPhaseCompletion } from '../../../skills/cosmosdb-migration/scripts/check-phase-completion.mjs';
+import { buildFreshnessManifest } from '../../../skills/cosmosdb-migration/scripts/freshness.mjs';
+import { mergeCosmosModels } from '../../../skills/cosmosdb-migration/scripts/merge-cosmos-models.mjs';
+import { modelHash } from '../../../skills/cosmosdb-migration/scripts/validate-conversion-evidence.mjs';
 import {
     canonicalizeCosmosModel,
     canonicalStringify,
-} from '../../../skills/cosmosdb-relational-migration/scripts/validate-cosmos-model.mjs';
-import { sourceFilesHash } from '../../../skills/cosmosdb-relational-migration/scripts/validate-source-evidence.mjs';
+} from '../../../skills/cosmosdb-migration/scripts/validate-cosmos-model.mjs';
+import { sourceFilesHash } from '../../../skills/cosmosdb-migration/scripts/validate-source-evidence.mjs';
 import {
     assessmentFixture,
     discoveryFixture,
     evidenceReport,
     verificationSummary,
     writeFixture,
-} from '../../../skills/cosmosdb-relational-migration/tests/source-evidence-fixtures.mjs';
+} from '../../../skills/cosmosdb-migration/tests/source-evidence-fixtures.mjs';
 
 const [workspace, phase] = process.argv.slice(2);
 if (!workspace || !phase) throw new Error('Usage: migration-evidence.mjs <workspace> <phase>');

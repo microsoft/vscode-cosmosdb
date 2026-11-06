@@ -600,7 +600,39 @@ describe('migration telemetry evidence', () => {
         expect(provisioned.measurements.containersCreated).toBeUndefined();
     });
 
-    it('requires a nonempty validated schema selection for schema acquisition', async () => {
+    it('counts source-neutral evidence without emitting native names, types, paths, or engine strings', async () => {
+        await writeFile(
+            path.join(workspace, '.cosmosdb-migration/phases/1-discovery/preflight-manifest.json'),
+            JSON.stringify({
+                sourceInventory: {
+                    version: 2,
+                    source: { engine: 'private-custom-engine' },
+                    files: [{ path: 'private-source.ejson' }],
+                    datasets: [
+                        { id: 'private-stream', fields: [{ id: 'private-key' }, { id: 'private-array' }] },
+                        { id: 'private-collection', fields: [{ id: 'private-native-type' }] },
+                    ],
+                    relationships: [{ id: 'private-reference' }],
+                },
+            }),
+        );
+        const evidence = await collectMigrationTelemetryEvidence(
+            { workspacePath: workspace, phase: 'discovery' },
+            project(),
+            completions(),
+        );
+        expect(evidence.validation).toBe('passed');
+        expect(evidence.measurements).toMatchObject({
+            schemaFileCount: 1,
+            sourceDatasetCount: 2,
+            sourceFieldCount: 3,
+            sourceRelationshipCount: 1,
+        });
+        expect(evidence.measurements.sourceInventoryTableCount).toBeUndefined();
+        expect(JSON.stringify(evidence)).not.toContain('private-');
+    });
+
+    it('requires a validated source inventory rather than the presence of DDL for source acquisition', async () => {
         const state = completions();
         const invocation: MigrationSkillInvocation = {
             workspacePath: workspace,
@@ -611,6 +643,13 @@ describe('migration telemetry evidence', () => {
         state.preflight.artifacts.push({
             path: 'private.sql',
             description: 'Authoritative schema DDL',
+            state: 'present',
+            conditional: false,
+        });
+        expect((await collectMigrationTelemetryEvidence(invocation, project(), state)).validation).toBe('failed');
+        state.preflight.artifacts.push({
+            path: '.cosmosdb-migration/phases/1-discovery/preflight-manifest.json#sourceInventory',
+            description: 'Source inventory',
             state: 'present',
             conditional: false,
         });

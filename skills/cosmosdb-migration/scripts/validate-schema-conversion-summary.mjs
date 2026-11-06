@@ -8,6 +8,7 @@ import { requireOptionValue } from './cli-arguments.mjs';
 import { showHelp } from './cli-help.mjs';
 import { parseJson, readDomainModel, readPhaseEvidence } from './phase-summary.mjs';
 import { readSourceInventory, resolveSource } from './validate-source-evidence.mjs';
+import { datasetKey, domainSources } from './source-contract.mjs';
 
 const DOMAIN_SECTIONS = {
     overview: ['overview'],
@@ -71,19 +72,19 @@ function containsIdentifier(content, identifier) {
 
 export function expectedPatternIdsForDomain(project, patterns, inventory, domainName) {
     const domain = project.phases?.assessment?.domains?.find(candidate => candidate.name === domainName);
-    if (!domain || !Array.isArray(domain.tables)) {
+    if (!domain || !Array.isArray(domainSources(domain))) {
         throw new Error(`Assessment metadata is missing for schema-conversion domain ${domainName}.`);
     }
     if (!Array.isArray(patterns)) throw new Error('Discovery evidence does not contain an access-pattern array.');
     if (inventory?.errors?.length) throw new Error('Source inventory is invalid; access-pattern coverage cannot be resolved.');
 
-    const domainTables = new Set(domain.tables.map(table => resolveSource(table, inventory).name));
+    const domainTables = new Set(domainSources(domain).map(table => datasetKey(resolveSource(table, inventory))));
     const identifiers = new Set();
     for (const pattern of patterns) {
-        if (typeof pattern?.id !== 'string' || !Array.isArray(pattern.tables)) {
+        if (typeof pattern?.id !== 'string' || !Array.isArray(domainSources(pattern))) {
             throw new Error('Discovery evidence contains an invalid access pattern.');
         }
-        if (pattern.tables.some(table => domainTables.has(resolveSource(table, inventory).name))) {
+        if (domainSources(pattern).some(table => domainTables.has(datasetKey(resolveSource(table, inventory))))) {
             identifiers.add(pattern.id);
         }
     }

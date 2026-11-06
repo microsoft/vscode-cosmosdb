@@ -339,7 +339,7 @@ test('batch completion matches individual results with one checkpoint read and f
             consultedReads = 0;
             assert.deepEqual(checkPhaseCompletions(workspace, order), expected);
             assert.equal(checkpointReads, 1);
-            assert.equal(assessmentManifestReads, 1);
+            assert.equal(assessmentManifestReads, 2);
             assert.equal(consultedReads, 1);
         }
     } finally {
@@ -1270,6 +1270,8 @@ test('preserves code-migration history independently of current application and 
             coverage: 'Compiles the data-access layer and exercises partition-routed reads.', status: 'passed', exitCode: 0 }],
     };
     const project = JSON.parse(fs.readFileSync(path.join(workspace, '.cosmosdb-migration/project.json'), 'utf8'));
+    const supplementalEvidence = '.cosmosdb-migration/phases/1-discovery/schema-ddl/source-notes.md';
+    write(workspace, supplementalEvidence, 'Selected native source documentation.\n');
     prepareConversionChain(workspace, project, model);
     write(
         workspace,
@@ -1301,6 +1303,24 @@ None.
     write(workspace, '.cosmosdb-migration/code-migration-manifest.json', JSON.stringify(codeMigrationManifest));
     assert.equal(checkPhaseCompletion(workspace, 'code-migration').complete, true);
     assert.equal(checkPhaseCompletion(workspace, 'code-migration').freshness, 'not-applicable');
+    const selectedDdl = readPhaseEvidence(path.join(workspace, '.cosmosdb-migration/phases/1-discovery/preflight-manifest.json')).sourceInventory.files[0].path;
+    const executionPath = path.join(workspace, '.cosmosdb-migration/code-migration-manifest.json');
+    const executionBytes = fs.readFileSync(executionPath);
+    for (const relative of [selectedDdl, supplementalEvidence]) {
+        const filePath = path.join(workspace, relative);
+        const original = fs.readFileSync(filePath);
+        assert.equal(checkPhaseCompletion(workspace, 'code-migration').ready, true);
+        fs.appendFileSync(filePath, '\n');
+        const changed = checkPhaseCompletion(workspace, 'code-migration');
+        assert.equal(changed.complete, true);
+        assert.equal(changed.ready, false);
+        fs.rmSync(filePath);
+        const removed = checkPhaseCompletion(workspace, 'code-migration');
+        assert.equal(removed.complete, true);
+        assert.equal(removed.ready, false);
+        assert.deepEqual(fs.readFileSync(executionPath), executionBytes);
+        fs.writeFileSync(filePath, original);
+    }
     for (const validation of [
         [],
         [{ command: 'echo ok', status: 'passed', exitCode: 0 }],

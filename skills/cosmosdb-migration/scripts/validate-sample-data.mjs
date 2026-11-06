@@ -10,6 +10,7 @@ import { readIdentityManifest, resolveItemId, validateIdentityManifest } from '.
 import { parseJson } from './phase-summary.mjs';
 import { splitIndexPathParts, validateCosmosModel } from './validate-cosmos-model.mjs';
 import { createSourceResolver, readSourceInventory, resolveForeignKey } from './validate-source-evidence.mjs';
+import { datasetKey, entitySource, sourceRefs, resolveField } from './source-contract.mjs';
 
 const ROOT_KEYS = new Set(['sampleData']);
 const ENTRY_KEYS = new Set(['containerName', 'items']);
@@ -82,11 +83,12 @@ function validateId(item, entity, jsonPath, errors, mapping) {
 }
 
 function attributeForSource(entity, table, column, resolve) {
+    const field = resolveField(table, column, table.legacy === true || !table.fields);
     const matches = entity.attributes.filter(attribute =>
         attribute.isId !== true &&
-        attribute.source.table !== '(generated)' &&
-        resolve(attribute.source.table).name === table.name &&
-        attribute.source.column === column,
+        sourceRefs(attribute.source).some(reference =>
+            datasetKey(resolve(reference.dataset)) === datasetKey(table) &&
+            (attribute.source.table !== undefined ? reference.field === column : reference.field === field.id)),
     );
     if (matches.length !== 1) {
         throw new Error(`Entity ${entity.name} must map ${table.name}.${column} to exactly one natural-key field.`);
@@ -103,16 +105,16 @@ function sameValues(left, right) {
 }
 
 function relationshipEndpoints(owner, target, foreignKey, resolve) {
-    const ownerTable = resolve(owner.sourceTable);
-    const targetTable = resolve(target.sourceTable);
-    const sourceEntity = foreignKey.table.name === ownerTable.name
+    const ownerTable = resolve(entitySource(owner));
+    const targetTable = resolve(entitySource(target));
+    const sourceEntity = datasetKey(foreignKey.table) === datasetKey(ownerTable)
         ? owner
-        : foreignKey.table.name === targetTable.name
+        : datasetKey(foreignKey.table) === datasetKey(targetTable)
           ? target
           : undefined;
-    const referencedEntity = foreignKey.referencedTable.name === ownerTable.name
+    const referencedEntity = datasetKey(foreignKey.referencedTable) === datasetKey(ownerTable)
         ? owner
-        : foreignKey.referencedTable.name === targetTable.name
+        : datasetKey(foreignKey.referencedTable) === datasetKey(targetTable)
           ? target
           : undefined;
     if (!sourceEntity || !referencedEntity) {
@@ -133,8 +135,8 @@ function validateEmbeddedDocument(document, entity, jsonPath, errors) {
     for (const attribute of entity.attributes) {
         const attributePath = `${jsonPath}.${attribute.target}`;
         if (!Object.hasOwn(document, attribute.target)) {
-            addError(errors, attributePath, 'is required by the embedded entity model');
-        } else if (!matchesJsonType(document[attribute.target], attribute.type)) {
+            if (!attribute.optional) addError(errors, attributePath, 'is required by the embedded entity model');
+        } else if (!(attribute.nullable && document[attribute.target] === null) && !matchesJsonType(document[attribute.target], attribute.type)) {
             addError(errors, attributePath, `must have JSON type ${attribute.type}`);
         }
     }
@@ -291,7 +293,8 @@ function validateRelationships(model, samplesByEntity, errors, inventory) {
     for (const { owner, relationship } of relationships) {
         try {
             const target = entities.get(relationship.targetEntity.toLocaleLowerCase('en-US'));
-            const foreignKey = resolveForeignKey(relationship.sourceFK, inventory, resolve);
+            const foreignKey = resolveForeignKey(relationship.sourceRelationship ?? relationship.sourceFK, inventory, resolve);
+            if (foreignKey.kind === 'containment' && relationship.strategy !== 'embed') throw new Error('Containment without explicit reference keys requires embedding');
             if (relationship.strategy === 'reference') {
                 validateReferenceRelationship(
                     relationship,
@@ -360,8 +363,8 @@ function validateItem(item, container, entityByDocType, jsonPath, uniqueKeys, co
     for (const attribute of entity.attributes) {
         const attributePath = `${jsonPath}.${attribute.target}`;
         if (!Object.hasOwn(item, attribute.target)) {
-            addError(errors, attributePath, 'is required by the canonical model');
-        } else if (!matchesJsonType(item[attribute.target], attribute.type)) {
+            if (!attribute.optional) addError(errors, attributePath, 'is required by the canonical model');
+        } else if (!(attribute.nullable && item[attribute.target] === null) && !matchesJsonType(item[attribute.target], attribute.type)) {
             addError(errors, attributePath, `must have JSON type ${attribute.type}`);
         }
     }

@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { requireOptionValue } from './cli-arguments.mjs';
 import { showHelp } from './cli-help.mjs';
 import { parseJson, readDomainModel, readPhaseEvidence } from './phase-summary.mjs';
+import { sourceRefs } from './source-contract.mjs';
 
 const ROOT_KEYS = new Set([
     'version',
@@ -35,15 +36,18 @@ const ENTITY_KEYS = new Set([
     'name',
     'docType',
     'sourceTable',
+    'sourceDataset',
+    'identity',
     'attributes',
     'relationships',
     'isEmbeddedOnly',
     'idTemplate',
 ]);
-const ATTRIBUTE_KEYS = new Set(['target', 'source', 'type', 'isPartitionKey', 'isId']);
+const ATTRIBUTE_KEYS = new Set(['target', 'source', 'type', 'isPartitionKey', 'isId', 'optional', 'nullable']);
 const RELATIONSHIP_KEYS = new Set([
     'targetEntity',
     'sourceFK',
+    'sourceRelationship',
     'type',
     'strategy',
     'targetProperty',
@@ -125,11 +129,30 @@ function checkResourceName(value, jsonPath, errors) {
 }
 
 function checkSource(value, jsonPath, errors, { typeRequired = true, constraintNameAllowed = false } = {}) {
+    if (!constraintNameAllowed && isObject(value) && (value.dataset !== undefined || value.inputs !== undefined || value.generated !== undefined)) {
+        checkObject(value, jsonPath, new Set(['dataset', 'field', 'inputs', 'generated', 'type']), errors);
+        const kinds = [value.dataset, value.inputs, value.generated].filter(entry => entry !== undefined);
+        if (kinds.length !== 1) addError(errors, jsonPath, 'use exactly one field, multi-input, or generated source');
+        checkString(value.type, `${jsonPath}.type`, errors);
+        if (value.dataset !== undefined) checkFieldReference(value, jsonPath, errors, true);
+        else if (value.field !== undefined) addError(errors, jsonPath, 'field requires dataset');
+        if (value.inputs !== undefined && checkArray(value.inputs, `${jsonPath}.inputs`, errors, { min: 1 })) {
+            value.inputs.forEach((reference, index) => checkFieldReference(reference, `${jsonPath}.inputs[${index}]`, errors));
+        }
+        if (value.generated !== undefined && !['uuid', 'constant'].includes(value.generated)) addError(errors, jsonPath, 'unsupported generated value');
+        return;
+    }
     if (!checkObject(value, jsonPath, constraintNameAllowed ? SOURCE_FK_KEYS : SOURCE_KEYS, errors)) return;
     checkString(value.table, `${jsonPath}.table`, errors);
     checkString(value.column, `${jsonPath}.column`, errors);
     checkString(value.type, `${jsonPath}.type`, errors, { optional: !typeRequired });
     if (constraintNameAllowed) checkString(value.constraintName, `${jsonPath}.constraintName`, errors, { optional: true });
+}
+
+function checkFieldReference(reference, jsonPath, errors, withType = false) {
+    if (!checkObject(reference, jsonPath, new Set(['dataset', 'field', ...(withType ? ['type'] : [])]), errors)) return;
+    checkString(reference.dataset, `${jsonPath}.dataset`, errors);
+    checkString(reference.field, `${jsonPath}.field`, errors);
 }
 
 function checkPartitionPath(value, jsonPath, errors) {
@@ -248,7 +271,7 @@ function checkAttribute(attribute, jsonPath, errors) {
     if (!TARGET_JSON_TYPES.includes(attribute.type)) {
         addError(errors, `${jsonPath}.type`, `must be a supported target JSON type: ${TARGET_JSON_TYPES.join(', ')}`);
     }
-    for (const key of ['isId', 'isPartitionKey']) {
+    for (const key of ['isId', 'isPartitionKey', 'optional', 'nullable']) {
         if (attribute[key] !== undefined && typeof attribute[key] !== 'boolean') {
             addError(errors, `${jsonPath}.${key}`, 'must be a boolean');
         }
@@ -261,7 +284,10 @@ function checkRelationship(relationship, jsonPath, entityNames, errors) {
     if (typeof relationship.targetEntity === 'string' && !entityNames.has(relationship.targetEntity.toLowerCase())) {
         addError(errors, `${jsonPath}.targetEntity`, 'must reference an entity in the model');
     }
-    checkSource(relationship.sourceFK, `${jsonPath}.sourceFK`, errors, { typeRequired: false, constraintNameAllowed: true });
+    if (relationship.sourceRelationship !== undefined) {
+        checkString(relationship.sourceRelationship, `${jsonPath}.sourceRelationship`, errors);
+        if (relationship.sourceFK !== undefined) addError(errors, jsonPath, 'sourceRelationship and sourceFK are mutually exclusive');
+    } else checkSource(relationship.sourceFK, `${jsonPath}.sourceFK`, errors, { typeRequired: false, constraintNameAllowed: true });
     if (!RELATIONSHIP_TYPES.has(relationship.type)) {
         addError(errors, `${jsonPath}.type`, 'must be one-to-one, one-to-many, or many-to-many');
     }
@@ -306,6 +332,8 @@ export function isUuidSourceType(sourceType) {
 }
 
 export function classifyItemIdentity(entity) {
+    if (entity?.identity) return entity.identity.kind === 'generated-uuid' ? 'generated-uuid'
+        : entity.identity.encoding === 'native-uuid' ? 'native-uuid' : 'derived';
     const template = typeof entity?.idTemplate === 'string' ? entity.idTemplate : '';
     const idSource = entity?.attributes?.find(attribute => attribute?.isId === true)?.source;
     const generatedSource = idSource?.table === '(generated)' || idSource?.column === '(uuid)';
@@ -323,6 +351,33 @@ export function classifyItemIdentity(entity) {
 
 function checkIdTemplate(entity, jsonPath, errors) {
     if (entity.isEmbeddedOnly === true) return;
+    if (entity.identity !== undefined) {
+        if (entity.idTemplate !== undefined) addError(errors, jsonPath, 'identity and legacy idTemplate are mutually exclusive');
+        const identity = entity.identity;
+        if (!checkObject(identity, `${jsonPath}.identity`, new Set(['kind', 'fields', 'encoding']), errors)) return;
+        if (identity.kind === 'generated-uuid') {
+            if (identity.fields !== undefined || identity.encoding !== undefined) addError(errors, jsonPath, 'generated UUID has no input fields or encoding');
+            if (entity.attributes.find(attribute => attribute.isId)?.source?.generated !== 'uuid') addError(errors, jsonPath, 'generated UUID requires a generated uuid id attribute');
+            return;
+        }
+        if (identity.kind !== 'fields' || !['typed-hex-v1', 'native-uuid'].includes(identity.encoding)) addError(errors, jsonPath, 'identity requires fields and a supported lossless encoding');
+        if (checkArray(identity.fields, `${jsonPath}.identity.fields`, errors, { min: 1 })) {
+            if (identity.encoding === 'native-uuid' && identity.fields.length !== 1) addError(errors, jsonPath, 'native UUID requires one field');
+            checkUnique(identity.fields.map(reference => JSON.stringify([reference?.dataset, reference?.field])), jsonPath, 'identity field', errors, true);
+            const idRefs = sourceRefs(entity.attributes.find(attribute => attribute.isId)?.source);
+            if (JSON.stringify(idRefs.map(reference => [reference.dataset, reference.field])) !==
+                JSON.stringify(identity.fields.map(reference => [reference?.dataset, reference?.field]))) {
+                addError(errors, jsonPath, 'id attribute lineage must match ordered identity inputs');
+            }
+            for (const reference of identity.fields) {
+                checkFieldReference(reference, jsonPath, errors);
+                const matches = entity.attributes.filter(attribute => attribute.target !== 'id' && attribute.source?.dataset === reference.dataset && attribute.source?.field === reference.field);
+                if (matches.length !== 1 || matches[0].optional || matches[0].nullable) addError(errors, jsonPath, 'identity inputs require one separate non-null required natural-key attribute');
+                if (identity.encoding === 'native-uuid' && !isUuidSourceType(matches[0]?.source?.type)) addError(errors, jsonPath, 'native UUID requires a UUID source type');
+            }
+        }
+        return;
+    }
     if (!checkString(entity.idTemplate, `${jsonPath}.idTemplate`, errors)) return;
     const placeholders = [...entity.idTemplate.matchAll(/\{([^{}]+)\}/gu)].map((match) => match[1]);
     if (placeholders.length === 0) {
@@ -382,7 +437,8 @@ function checkEntity(entity, jsonPath, partitionPaths, entityNames, errors) {
     if (!checkObject(entity, jsonPath, ENTITY_KEYS, errors)) return;
     checkString(entity.name, `${jsonPath}.name`, errors);
     checkString(entity.docType, `${jsonPath}.docType`, errors);
-    checkString(entity.sourceTable, `${jsonPath}.sourceTable`, errors);
+    checkString(entity.sourceDataset ?? entity.sourceTable, `${jsonPath}.sourceDataset`, errors);
+    if (entity.sourceDataset !== undefined && entity.sourceTable !== undefined) addError(errors, jsonPath, 'sourceDataset and sourceTable are mutually exclusive');
     if (entity.isEmbeddedOnly !== undefined && typeof entity.isEmbeddedOnly !== 'boolean') {
         addError(errors, `${jsonPath}.isEmbeddedOnly`, 'must be a boolean');
     }
@@ -402,6 +458,7 @@ function checkEntity(entity, jsonPath, partitionPaths, entityNames, errors) {
         else {
             if (idAttributes[0].target !== 'id') addError(errors, `${jsonPath}.attributes`, 'the isId=true attribute target must be "id"');
             if (idAttributes[0].type !== 'string') addError(errors, `${jsonPath}.attributes`, 'the id attribute type must be "string"');
+            if (idAttributes[0].optional || idAttributes[0].nullable) addError(errors, `${jsonPath}.attributes`, 'id must be required and non-null');
         }
         for (const partitionPath of partitionPaths) {
             const target = partitionPath.slice(1);
@@ -410,6 +467,8 @@ function checkEntity(entity, jsonPath, partitionPaths, entityNames, errors) {
             );
             if (matches.length !== 1) {
                 addError(errors, `${jsonPath}.attributes`, `must contain one isPartitionKey=true attribute for "${partitionPath}"`);
+            } else if (matches[0].optional || matches[0].nullable) {
+                addError(errors, `${jsonPath}.attributes`, 'partition routing must be required and non-null');
             }
         }
     }
@@ -715,8 +774,9 @@ export function validateCosmosModel(model, { referenceRegistry = [], warnings = 
         const external = referenceRegistry.filter((entry) => entry?.domain !== model.domain);
         for (const [index, entry] of external.entries()) {
             const registryPath = `$.referenceRegistry[${index}]`;
-            if (!checkObject(entry, registryPath, new Set(['domain', 'name', 'sourceTable']), errors)) continue;
-            for (const key of ['domain', 'name', 'sourceTable']) checkString(entry[key], `${registryPath}.${key}`, errors);
+            if (!checkObject(entry, registryPath, new Set(['domain', 'name', 'sourceTable', 'sourceDataset']), errors)) continue;
+            for (const key of ['domain', 'name']) checkString(entry[key], `${registryPath}.${key}`, errors);
+            checkString(entry.sourceDataset ?? entry.sourceTable, registryPath, errors);
             if (typeof entry.name === 'string') {
                 const key = entry.name.toLowerCase();
                 if (entityNames.has(key)) addError(errors, registryPath, 'ambiguous entity identity; assign distinct model entity names');
@@ -736,6 +796,9 @@ export function validateCosmosModel(model, { referenceRegistry = [], warnings = 
 }
 
 function canonicalSource(source) {
+    if (source.dataset !== undefined) return { dataset: source.dataset, field: source.field, type: source.type };
+    if (source.inputs !== undefined) return { inputs: source.inputs.map(({ dataset, field }) => ({ dataset, field })), type: source.type };
+    if (source.generated !== undefined) return { generated: source.generated, type: source.type };
     const result = { table: source.table, column: source.column };
     if (source.type !== undefined) result.type = source.type;
     return result;
@@ -745,17 +808,19 @@ function canonicalAttribute(attribute) {
     const result = { target: attribute.target, source: canonicalSource(attribute.source), type: attribute.type };
     if (attribute.isPartitionKey === true) result.isPartitionKey = true;
     if (attribute.isId === true) result.isId = true;
+    if (attribute.optional !== undefined) result.optional = attribute.optional;
+    if (attribute.nullable !== undefined) result.nullable = attribute.nullable;
     return result;
 }
 
 function canonicalRelationship(relationship) {
     const result = {
         targetEntity: relationship.targetEntity,
-        sourceFK: canonicalSource(relationship.sourceFK),
+        ...(relationship.sourceRelationship !== undefined ? { sourceRelationship: relationship.sourceRelationship } : { sourceFK: canonicalSource(relationship.sourceFK) }),
         type: relationship.type,
         strategy: relationship.strategy,
     };
-    if (relationship.sourceFK.constraintName !== undefined) {
+    if (relationship.sourceFK?.constraintName !== undefined) {
         result.sourceFK.constraintName = relationship.sourceFK.constraintName;
     }
     if (relationship.targetProperty !== undefined) result.targetProperty = relationship.targetProperty;
@@ -770,7 +835,7 @@ function canonicalEntity(entity) {
     const result = {
         name: entity.name,
         docType: entity.docType,
-        sourceTable: entity.sourceTable,
+        ...(entity.sourceDataset !== undefined ? { sourceDataset: entity.sourceDataset } : { sourceTable: entity.sourceTable }),
         attributes: entity.attributes.map(canonicalAttribute).sort((left, right) =>
             compareCanonicalStrings(
                 `${left.target}\0${left.source.table}\0${left.source.column}`,
@@ -781,13 +846,14 @@ function canonicalEntity(entity) {
     if (entity.relationships?.length) {
         result.relationships = entity.relationships.map(canonicalRelationship).sort((left, right) =>
             compareCanonicalStrings(
-                `${left.targetEntity}\0${left.sourceFK.table}\0${left.sourceFK.column}\0${left.sourceFK.constraintName ?? ''}`,
-                `${right.targetEntity}\0${right.sourceFK.table}\0${right.sourceFK.column}\0${right.sourceFK.constraintName ?? ''}`,
+                `${left.targetEntity}\0${left.sourceRelationship ?? ''}\0${left.sourceFK?.table}\0${left.sourceFK?.column}\0${left.sourceFK?.constraintName ?? ''}`,
+                `${right.targetEntity}\0${right.sourceRelationship ?? ''}\0${right.sourceFK?.table}\0${right.sourceFK?.column}\0${right.sourceFK?.constraintName ?? ''}`,
             ),
         );
     }
     if (entity.isEmbeddedOnly !== undefined) result.isEmbeddedOnly = entity.isEmbeddedOnly;
     if (entity.idTemplate !== undefined) result.idTemplate = entity.idTemplate;
+    if (entity.identity !== undefined) result.identity = structuredClone(entity.identity);
     return result;
 }
 

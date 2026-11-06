@@ -49,7 +49,7 @@ function checkIdByteLength(id) {
 }
 
 export function resolveItemId(entity, item, mapping) {
-    const placeholders = [...entity.idTemplate.matchAll(/\{([^{}]+)\}/gu)];
+    const placeholders = [...(entity.idTemplate ?? '').matchAll(/\{([^{}]+)\}/gu)];
     const identityKind = classifyItemIdentity(entity);
     if (identityKind === 'generated-uuid') {
         if (mapping !== undefined) {
@@ -63,6 +63,22 @@ export function resolveItemId(entity, item, mapping) {
     }
     if (mapping?.encoding === 'typed-hex-v1' && identityKind === 'native-uuid') {
         throw new Error('Native UUID identity must preserve its source value.');
+    }
+    if (entity.identity?.kind === 'fields') {
+        if (mapping !== undefined) throw new Error('Typed identity cannot use a legacy identity mapping');
+        const components = entity.identity.fields.map(reference => {
+            const attributes = entity.attributes.filter(attribute => attribute.target !== 'id' &&
+                attribute.source?.dataset === reference.dataset && attribute.source?.field === reference.field);
+            if (attributes.length !== 1 || !Object.hasOwn(item, attributes[0].target)) throw new Error('Identity source key is missing or ambiguous');
+            const value = item[attributes[0].target];
+            typedValue(value);
+            return value;
+        });
+        const id = entity.identity.encoding === 'native-uuid' ? components[0]
+            : `v1-${typedValue(entity.sourceDataset)}-${typedValue(entity.name)}-${components.map(typedValue).join('-')}`;
+        if (entity.identity.encoding === 'native-uuid' && (typeof id !== 'string' || !UUID_PATTERN.test(id))) throw new Error('Native identity must be a UUID');
+        checkIdByteLength(id);
+        return id;
     }
     const components = placeholders.map(match => {
         const attributes = entity.attributes.filter(attribute => attribute.target !== 'id' && attribute.source?.column === match[1]);

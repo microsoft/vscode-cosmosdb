@@ -79,6 +79,14 @@ observe the running state before writing completion: prompt capture happens
 before the launch-state update reaches the webview.
 `MigrationPage.completeSkillRun()` waits for both the running state and the
 completion update before the test can launch the next phase.
+Tests that finish by starting a run must also wait for its active control to render
+before teardown. Prompt capture alone can precede that render, causing count-based
+cleanup to miss the run. Reseeding the project on disk does not clear the workspace's
+in-memory run tracker, so the next test would inherit the active state.
+Focus-retention checks establish keyboard focus before activating a control, then
+assert that focus remains on it after the action.
+Diagnostic disclosure checks use keyboard activation so nested-webview scrolling
+during expansion cannot move the header away from a captured pointer location.
 
 During a test, use `closeEditorTab(vscodeWindow, name)` to close a specific tab rather than whichever editor has focus.
 This helper requires a unique matching tab and waits for that tab to disappear; failures are not swallowed.

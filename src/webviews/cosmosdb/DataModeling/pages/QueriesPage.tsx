@@ -302,7 +302,7 @@ export function QueriesPage({ model, onChange }: QueriesPageProps) {
                                                 n: index + 1,
                                             })}
                                             value={r.query ?? ''}
-                                            placeholder="SELECT * FROM c WHERE customerId = @customerId"
+                                            placeholder="SELECT * FROM c WHERE c.customerId = @customerId"
                                             onChange={(_, data) => patchRead(r.id, { query: data.value })}
                                         />
                                     </Field>

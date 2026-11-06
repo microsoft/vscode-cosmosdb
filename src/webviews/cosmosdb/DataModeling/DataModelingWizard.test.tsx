@@ -2008,7 +2008,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
                     case 'query':
                         await userEvent.click(screen.getByRole('tab', { name: 'Queries' }));
                         fireEvent.change(
-                            screen.getByPlaceholderText('SELECT * FROM c WHERE customerId = @customerId'),
+                            screen.getByPlaceholderText('SELECT * FROM c WHERE c.customerId = @customerId'),
                             { target: { value: 'SELECT c.id FROM c WHERE c.id = @id' } },
                         );
                         break;

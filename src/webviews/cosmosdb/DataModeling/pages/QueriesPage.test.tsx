@@ -108,7 +108,7 @@ describe('catalog query fields', () => {
             },
             {
                 label: 'Query',
-                value: 'SELECT * FROM c WHERE tenantId = @tenantId',
+                value: 'SELECT * FROM c WHERE c.tenantId = @tenantId',
                 role: 'textbox',
                 hint: 'Full NoSQL SELECT query.',
             },

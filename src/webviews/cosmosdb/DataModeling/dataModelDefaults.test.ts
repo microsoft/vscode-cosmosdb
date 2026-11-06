@@ -138,7 +138,7 @@ describe('scenario defaults', () => {
         expect(getPartitionKeyPaths(movement.partitionKey)).toEqual(['/skuId', '/movementId']);
         expect(movement.reads[0]).toMatchObject({
             pattern: 'Get movement history for a SKU in a bounded time range',
-            query: 'SELECT * FROM c WHERE skuId = @skuId AND occurredAt >= @startDate AND occurredAt < @endDate ORDER BY c.occurredAt DESC OFFSET 0 LIMIT 100',
+            query: 'SELECT * FROM c WHERE c.skuId = @skuId AND c.occurredAt >= @startDate AND c.occurredAt < @endDate ORDER BY c.occurredAt DESC OFFSET 0 LIMIT 100',
             qps: 80,
         });
         expect(
@@ -156,14 +156,26 @@ describe('scenario defaults', () => {
 
     it('preserves projections, aggregates, and ordering independently of filter predicates', () => {
         expect(buildDataModel('social').containers[2].reads[1].query).toBe(
-            'SELECT c.lastMessageId FROM c WHERE conversationId = @conversationId',
+            'SELECT c.lastMessageId FROM c WHERE c.conversationId = @conversationId',
         );
         expect(buildDataModel('analytics').containers[0].reads[2].query).toBe(
             'SELECT VALUE COUNT(1) FROM c WHERE c.eventName = @eventName',
         );
         expect(buildDataModel('gaming').containers[0].reads[2].query).toBe(
-            'SELECT * FROM c WHERE season = @season ORDER BY c.score DESC OFFSET 0 LIMIT 100',
+            'SELECT * FROM c WHERE c.season = @season ORDER BY c.score DESC OFFSET 0 LIMIT 100',
         );
+    });
+
+    it('qualifies every filtered property with the root alias so default queries are valid NoSQL', () => {
+        const queries = Object.values(DATA_MODEL_DEFAULTS).flatMap(({ containers }) =>
+            containers.flatMap(({ reads }) => reads.map(({ query }) => query)),
+        );
+        expect(queries.every((query) => query.startsWith('SELECT '))).toBe(true);
+        const comparison = /([\w.]+)\s*(?:>=|<=|=|<|>)\s*@\w+/g;
+        const unqualified = queries.flatMap((query) =>
+            [...query.matchAll(comparison)].filter(([, property]) => !/^c\.\w+$/.test(property)).map(() => query),
+        );
+        expect(unqualified).toEqual([]);
     });
 
     it('preserves planning baselines that the catalog does not replace', () => {
@@ -209,7 +221,7 @@ describe('scenario defaults', () => {
         expect(model.containers[0]).toMatchObject({
             entity: 'Entity',
             partitionKey: '/id',
-            reads: [{ pattern: 'Describe your dominant query', query: '', qps: 200 }],
+            reads: [{ pattern: 'Get an item by id', query: 'SELECT * FROM c WHERE c.id = @id', qps: 200 }],
         });
     });
 });

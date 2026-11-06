@@ -102,24 +102,34 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run l10n:check
 
+      - name: 🧪 Test external skill verification
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: node --test scripts/verify-external-skills.test.mjs
+
       - name: 🔍 Verify External Skills
         id: skills
-        # Warning-only: this step never fails the workflow. It emits a ::warning:: when the committed skills/
-        # drift from the pinned commit, but committed-skill drift should not block a PR.
+        # Download failures and committed-skill drift are warning-only. Fetch into an isolated copy so failures
+        # cannot modify the checkout or leave backup files for subsequent analyzers to scan.
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         shell: bash
         run: |
-          cp -r skills/ skills-backup/
-          npm run fetch-skill
+          check_dir=$(mktemp -d "${RUNNER_TEMP}/external-skills.XXXXXX")
+          trap 'rm -rf "$check_dir"' EXIT
+          mkdir "$check_dir/scripts"
+          cp scripts/fetch-skill.mjs "$check_dir/scripts/"
+          cp package.json "$check_dir/"
+          cp -r skills "$check_dir/skills"
+          if ! node "$check_dir/scripts/fetch-skill.mjs"; then
+              echo "::warning::Unable to verify external skills because the download failed. Committed skills were left unchanged. See the fetch errors above and rerun the job."
+              exit 0
+          fi
           # Use --strip-trailing-cr -B -b to ignore line ending, blank line, and whitespace differences
-          if ! diff -rq --strip-trailing-cr -B -b skills/ skills-backup/ > /dev/null 2>&1; then
+          if ! diff -rq --strip-trailing-cr -B -b "$check_dir/skills/" skills/ > /dev/null 2>&1; then
               echo "::warning::Committed skills/ does not match the pinned commit in package.json. If you have local skill changes, submit them to the upstream skill repository first, then update the pinned commit in package.json and run 'npm run fetch-skill' to pull the latest version."
-              diff -r --strip-trailing-cr -B -b skills/ skills-backup/ || true
+              diff -r --strip-trailing-cr -B -b "$check_dir/skills/" skills/ || true
           else
               echo "✅ External skills are up to date."
           fi
-          rm -rf skills/
-          mv skills-backup/ skills/
 
       - name: 🧹 Lint
         id: lint

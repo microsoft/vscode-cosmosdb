@@ -1805,6 +1805,7 @@
   "The migration has been removed from your workspace.": "The migration has been removed from your workspace.",
   "The migration project is located in '{path}', which isn't part of the current workspace.": "The migration project is located in '{path}', which isn't part of the current workspace.",
   "The minimum specified character length should not exceed the maximum specified character length.": "The minimum specified character length should not exceed the maximum specified character length.",
+  "The model has changed. Get a new recommendation before deploying.": "The model has changed. Get a new recommendation before deploying.",
   "The most frequent offender averages `{fanout} partitions` per run. Anonymized shape: {shape}": "The most frequent offender averages `{fanout} partitions` per run. Anonymized shape: {shape}",
   "The name can only contain alphanumeric characters or the symbols ._-()": "The name can only contain alphanumeric characters or the symbols ._-()",
   "The name can only contain lowercase letters and numbers.": "The name can only contain lowercase letters and numbers.",

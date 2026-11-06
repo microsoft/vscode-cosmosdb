@@ -21,7 +21,15 @@ import {
 } from '@fluentui/react-components';
 import { ArrowUploadRegular, DismissRegular, WarningRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { type ChangeEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react';
+import {
+    type ChangeEvent,
+    type KeyboardEvent,
+    type SetStateAction,
+    useEffect,
+    useLayoutEffect,
+    useRef,
+    useState,
+} from 'react';
 import { type ModelingTelemetryEvent } from '../../../../dataModeling/modelingTelemetrySchema';
 import { InlineGuidance, MythBox, SubPanel } from '../components/primitives';
 import { type DataModel } from '../dataModel';
@@ -150,16 +158,23 @@ const useStyles = makeStyles({
 
 export interface DataPageProps {
     model: DataModel;
-    onChange: (next: DataModel) => void;
+    onChange: (next: SetStateAction<DataModel>) => void;
     onTelemetry?: (event: ModelingTelemetryEvent) => void;
 }
 
 type DocumentSizeField = 'avgSizeKb' | 'maxSizeKb';
 type CountField = 'attributeCount' | 'avgItems' | 'maxItems';
 
+interface SchemaImport {
+    fileName: string;
+    properties?: SchemaProperty[];
+    reported: boolean;
+}
+
 export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
     const styles = useStyles();
     const [draftTag, setDraftTag] = useState('');
+    const [uploadContainerId, setUploadContainerId] = useState<string>();
     const [uploadInfo, setUploadInfo] = useState<string>();
     const [uploadError, setUploadError] = useState<string>();
     const [sizeErrors, setSizeErrors] = useState<Partial<Record<DocumentSizeField, string>>>({});
@@ -176,16 +191,51 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
 
     const { containers, activeContainerId } = model;
 
-    // Local adapter keeps the rest of the page working on containers while writing back the
-    // whole DataModel. The wizard re-derives PK candidates from the updated schema.
-    const onChangeContainers = (next: ContainerModel[]) => onChange({ ...model, containers: next });
+    const currentModel = useRef(model);
+    const imports = useRef(new Map<string, SchemaImport>());
+    const confirmingImport = useRef(false);
+    const mounted = useRef(false);
+    useLayoutEffect(() => {
+        currentModel.current = model;
+        for (const id of imports.current.keys()) {
+            if (!containers.some((container) => container.id === id)) imports.current.delete(id);
+        }
+    }, [model, containers]);
+    useEffect(() => {
+        mounted.current = true;
+        const pendingImports = imports.current;
+        return () => {
+            mounted.current = false;
+            pendingImports.clear();
+        };
+    }, []);
 
     const active = containers.find((c) => c.id === activeContainerId) ?? containers[0];
     useEffect(() => {
+        setUploadInfo(undefined);
+        setUploadError(undefined);
         setSizeErrors({});
         setCountErrors({});
         setCountDrafts({});
     }, [active?.id]);
+    useEffect(() => {
+        for (const [targetId, request] of imports.current) {
+            // The inferred properties retain their identity through candidate derivation. Only
+            // acknowledge imports present in the committed model, never a preview of an updater.
+            if (request.reported || !request.properties) continue;
+            if (containers.find((c) => c.id === targetId)?.properties !== request.properties) continue;
+            request.reported = true;
+            onTelemetry?.({ type: 'schemaImport', outcome: 'success' });
+            if (active?.id !== targetId) continue;
+            setUploadContainerId(targetId);
+            setUploadInfo(request.fileName);
+            setUploadError(undefined);
+            setSizeErrors({});
+            setCountErrors((previous) => ({ ...previous, attributeCount: undefined }));
+            setCountDrafts((previous) => ({ ...previous, attributeCount: undefined }));
+            uploadButtonRef.current?.focus();
+        }
+    }, [containers, active?.id, onTelemetry]);
     useEffect(() => {
         const input = fileRef.current;
         const onCancel = () => onTelemetry?.({ type: 'schemaImport', outcome: 'cancelled' });
@@ -194,7 +244,12 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
     }, [active?.id, onTelemetry]);
 
     const updateActive = (updater: (c: ContainerModel) => ContainerModel) => {
-        onChangeContainers(containers.map((c) => (c.id === active?.id ? updater(c) : c)));
+        const targetId = active?.id;
+        onChange((previous) =>
+            previous.containers.some((c) => c.id === targetId)
+                ? { ...previous, containers: previous.containers.map((c) => (c.id === targetId ? updater(c) : c)) }
+                : previous,
+        );
     };
 
     const addProperty = (name: string) => {
@@ -203,17 +258,17 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
             return;
         }
         const willAdd = active && !active.properties.some((p) => p.name.toLowerCase() === trimmed.toLowerCase());
+        const prop: SchemaProperty = {
+            id: nextId('prop'),
+            name: trimmed,
+            type: 'string',
+            role: 'payload',
+            pkCandidate: false,
+        };
         updateActive((c) => {
             if (c.properties.some((p) => p.name.toLowerCase() === trimmed.toLowerCase())) {
                 return c;
             }
-            const prop: SchemaProperty = {
-                id: nextId('prop'),
-                name: trimmed,
-                type: 'string',
-                role: 'payload',
-                pkCandidate: false,
-            };
             return { ...c, properties: [...c.properties, prop] };
         });
         if (willAdd) onTelemetry?.({ type: 'fieldAdded' });
@@ -243,10 +298,26 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
         const file = e.target.files?.[0];
         // Reset so selecting the same file again re-triggers change.
         e.target.value = '';
-        if (!file || !active) {
+        if (!file || !active || confirmingImport.current) {
             return;
         }
+        // Keep the original target through both confirmation and reading. A newer selection for
+        // this container supersedes this request, even if the older read finishes last.
+        const targetId = active.id;
+        const request: SchemaImport = { fileName: file.name, reported: false };
+        imports.current.set(targetId, request);
+        const isCurrent = () =>
+            mounted.current &&
+            imports.current.get(targetId) === request &&
+            currentModel.current.containers.some((c) => c.id === targetId);
+        const isVisible = () => {
+            const latest = currentModel.current;
+            const visible = latest.containers.find((c) => c.id === latest.activeContainerId) ?? latest.containers[0];
+            return visible?.id === targetId;
+        };
+        setUploadContainerId(targetId);
         setUploadError(undefined);
+        confirmingImport.current = true;
         const result = await confirm(
             l10n.t('Replace schema?'),
             l10n.t('Replace the properties of “{entity}” with the schema inferred from {file}?', {
@@ -254,30 +325,42 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
                 file: file.name,
             }),
         );
-        if (result === true) await applyUpload(file);
-        else onTelemetry?.({ type: 'schemaImport', outcome: 'cancelled' });
-        uploadButtonRef.current?.focus();
-    };
+        confirmingImport.current = false;
+        if (!isCurrent()) return;
+        if (result !== true) {
+            onTelemetry?.({ type: 'schemaImport', outcome: 'cancelled' });
+            if (isVisible()) uploadButtonRef.current?.focus();
+            return;
+        }
 
-    const applyUpload = async (file: File) => {
         try {
             const text = await file.text();
+            if (!isCurrent()) return;
             const schema = inferSchemaFromJson(text);
-            updateActive((c) => ({
-                ...c,
-                properties: schema.properties.map((p) => ({ id: nextId('prop'), ...p })),
-                partitionKey: schema.partitionKey,
-                document: schema.document,
-                arrays: { ...c.arrays, hasArrays: schema.hasNestedCollections },
-            }));
-            setUploadInfo(file.name);
-            setUploadError(undefined);
-            setSizeErrors({});
-            setCountErrors((previous) => ({ ...previous, attributeCount: undefined }));
-            setCountDrafts((previous) => ({ ...previous, attributeCount: undefined }));
-            onTelemetry?.({ type: 'schemaImport', outcome: 'success' });
+            const properties = schema.properties.map((p) => ({ id: nextId('prop'), ...p }));
+            request.properties = properties;
+            onChange((previous) => {
+                if (!isCurrent() || !previous.containers.some((c) => c.id === targetId)) return previous;
+                return {
+                    ...previous,
+                    containers: previous.containers.map((c) =>
+                        c.id === targetId
+                            ? {
+                                  ...c,
+                                  properties,
+                                  partitionKey: schema.partitionKey,
+                                  document: schema.document,
+                                  arrays: { ...c.arrays, hasArrays: schema.hasNestedCollections },
+                              }
+                            : c,
+                    ),
+                };
+            });
         } catch (error) {
+            if (!isCurrent()) return;
             onTelemetry?.({ type: 'schemaImport', outcome: 'error' });
+            if (!isVisible()) return;
+            setUploadContainerId(targetId);
             setUploadInfo(undefined);
             setUploadError(
                 error instanceof DocumentSizeLimitError
@@ -295,6 +378,7 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
                             file: file.name,
                         }),
             );
+            uploadButtonRef.current?.focus();
         }
     };
 
@@ -439,19 +523,21 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
                         onChange={(event) => void onFileSelected(event)}
                     />
                 </div>
-                {uploadInfo ? (
+                {uploadContainerId === active.id && uploadInfo ? (
                     <MythBox icon="📄">
                         {l10n.t('Inferred schema from {file}. Review the properties below and edit as needed.', {
                             file: uploadInfo,
                         })}
                     </MythBox>
                 ) : null}
-                {uploadError ? (
+                {uploadContainerId === active.id && uploadError ? (
                     <Text className={styles.uploadError} role="alert">
                         {uploadError}
                     </Text>
                 ) : null}
-                {confirmationError ? <Text role="alert">{confirmationError}</Text> : null}
+                {uploadContainerId === active.id && confirmationError ? (
+                    <Text role="alert">{confirmationError}</Text>
+                ) : null}
 
                 <div className={styles.tableWrap}>
                     <Table size="small" aria-label={l10n.t('Schema properties')}>

@@ -10,7 +10,22 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createBlankContainer, type DataModel, withDerivedCandidates } from '../dataModel';
 import { inferSchemaFromJson } from '../jsonInference';
-import { DataPage } from './DataPage';
+import { DataPage as StatefulDataPage, type DataPageProps } from './DataPage';
+
+// These field-level tests inspect each emitted model. Import race tests exercise React state and the parent adapters.
+function DataPage({
+    model,
+    onChange,
+    ...props
+}: Omit<DataPageProps, 'onChange'> & { onChange: (next: DataModel) => void }) {
+    return (
+        <StatefulDataPage
+            {...props}
+            model={model}
+            onChange={(update) => onChange(typeof update === 'function' ? update(model) : update)}
+        />
+    );
+}
 
 const confirm = vi.hoisted(() => vi.fn());
 vi.mock('@microsoft/vscode-ext-webview/react', () => ({
@@ -371,6 +386,13 @@ describe('DataPage native schema confirmation', () => {
         expect(onChange).toHaveBeenCalledTimes(response === true ? 1 : 0);
         expect(onChange.mock.calls[0]?.[0].containers[0].properties.map((p) => p.name)).toEqual(
             response === true ? ['id', 'amount'] : undefined,
+        );
+        expect(onTelemetry.mock.calls.map(([event]) => event)).toEqual(
+            response === true ? [] : [{ type: 'schemaImport', outcome: 'cancelled' }],
+        );
+        // A callback alone is not an accepted import: the parent must commit the emitted model.
+        page.rerender(
+            <DataPage model={onChange.mock.calls[0]?.[0] ?? model} onChange={onChange} onTelemetry={onTelemetry} />,
         );
         expect(screen.getByRole('button', { name: 'Upload JSON' })).toHaveFocus();
         expect(onTelemetry).toHaveBeenCalledExactlyOnceWith({

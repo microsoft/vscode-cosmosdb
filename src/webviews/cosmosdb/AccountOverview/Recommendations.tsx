@@ -14,6 +14,7 @@ import {
     tokens,
     typographyStyles,
 } from '@fluentui/react-components';
+import { Open16Regular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { type ReactNode, useId } from 'react';
 import { type RecommendationImpact, type RecommendationItem, type RecommendationsResult } from '../../api/types';
@@ -64,6 +65,14 @@ const useStyles = makeStyles({
     },
     link: {
         ...typographyStyles.body1,
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: tokens.spacingHorizontalXS,
+    },
+    actions: {
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: tokens.spacingHorizontalM,
     },
     emptyState: {
         padding: tokens.spacingVerticalL,
@@ -90,13 +99,14 @@ function impactLabel(impact: RecommendationImpact): string {
 
 const RecommendationRow = ({
     recommendation,
-    onLearnMore,
+    onOpenLink,
 }: {
     recommendation: RecommendationItem;
-    onLearnMore: (recommendation: RecommendationItem) => void;
+    onOpenLink: (recommendation: RecommendationItem, url: string) => void;
 }) => {
     const styles = useStyles();
     const problemId = useId();
+    const { portalUrl, learnMoreLink } = recommendation;
     return (
         <Card className={styles.item} appearance="outline" focusMode="off">
             <div className={styles.titleRow}>
@@ -114,17 +124,35 @@ const RecommendationRow = ({
                     {l10n.t('Potential benefit: {benefit}', { benefit: recommendation.potentialBenefit })}
                 </Text>
             )}
-            {recommendation.learnMoreLink && (
-                <Link
-                    className={styles.link}
-                    as="button"
-                    aria-describedby={problemId}
-                    onClick={() => {
-                        onLearnMore(recommendation);
-                    }}
-                >
-                    {l10n.t('Learn more')}
-                </Link>
+            {(portalUrl || learnMoreLink) && (
+                <div className={styles.actions}>
+                    {portalUrl && (
+                        <Link
+                            className={styles.link}
+                            href={portalUrl}
+                            aria-describedby={problemId}
+                            onClick={(event) => {
+                                event.preventDefault();
+                                onOpenLink(recommendation, portalUrl);
+                            }}
+                        >
+                            <Open16Regular aria-hidden />
+                            {l10n.t('View in Azure portal')}
+                        </Link>
+                    )}
+                    {learnMoreLink && (
+                        <Link
+                            className={styles.link}
+                            as="button"
+                            aria-describedby={problemId}
+                            onClick={() => {
+                                onOpenLink(recommendation, learnMoreLink);
+                            }}
+                        >
+                            {l10n.t('Learn more')}
+                        </Link>
+                    )}
+                </div>
             )}
         </Card>
     );
@@ -142,11 +170,9 @@ export const Recommendations = ({
     const styles = useStyles();
     const { reportEvent } = useDashboardActions();
 
-    const handleLearnMore = (recommendation: RecommendationItem) => {
+    const handleOpenLink = (recommendation: RecommendationItem, url: string) => {
         reportEvent('recommendationClicked', { source: 'advisor', impact: recommendation.impact });
-        if (recommendation.learnMoreLink) {
-            onOpenUrl(recommendation.learnMoreLink);
-        }
+        onOpenUrl(url);
     };
 
     let body: ReactNode;
@@ -164,7 +190,7 @@ export const Recommendations = ({
         body = (
             <div className={styles.list}>
                 {result.recommendations.map((rec) => (
-                    <RecommendationRow key={rec.id} recommendation={rec} onLearnMore={handleLearnMore} />
+                    <RecommendationRow key={rec.id} recommendation={rec} onOpenLink={handleOpenLink} />
                 ))}
             </div>
         );

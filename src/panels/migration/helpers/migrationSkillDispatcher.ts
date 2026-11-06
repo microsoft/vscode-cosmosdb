@@ -36,6 +36,7 @@ export interface MigrationSkillInvocation {
     mode?: MigrationSkillExecutionMode;
     phase?: MigrationSkillPhase;
     preflightStep?: MigrationPreflightStep;
+    schemaSource?: 'auto' | 'infer';
     provisioningStep?: MigrationProvisioningStep;
     includeUnmappedDomains?: boolean;
     allowProvisioning?: boolean;
@@ -110,6 +111,7 @@ export function buildMigrationSkillPrompt(invocation: MigrationSkillInvocation, 
             invocation.mode === 'autonomous' ||
             invocation.allowProvisioning === true ||
             invocation.preflightStep !== undefined ||
+            invocation.schemaSource !== undefined ||
             invocation.provisioningStep !== undefined ||
             invocation.codeMigrationAction !== undefined
         ) {
@@ -129,6 +131,13 @@ export function buildMigrationSkillPrompt(invocation: MigrationSkillInvocation, 
             'Do not change files or resources before explicit approval.',
             ...(invocation.runId === undefined ? [] : [`Run ID: ${invocation.runId}`]),
         ].join('\n');
+    }
+    if (
+        invocation.schemaSource !== undefined &&
+        ((invocation.phase !== undefined && !['preflight', 'discovery'].includes(invocation.phase)) ||
+            (invocation.preflightStep !== undefined && invocation.preflightStep !== 'schema-acquisition'))
+    ) {
+        throw new Error('schemaSource requires schema acquisition or discovery');
     }
     if (invocation.provisioningStep !== undefined && invocation.phase !== 'provisioning') {
         throw new Error('provisioningStep requires phase provisioning');
@@ -153,6 +162,9 @@ export function buildMigrationSkillPrompt(invocation: MigrationSkillInvocation, 
         ...(isWorkspaceRoot ? [] : [`Workspace: ${JSON.stringify(path.resolve(invocation.workspacePath))}`]),
         ...(invocation.mode === 'autonomous' ? ['Run in autonomous mode.'] : []),
         ...(invocation.preflightStep === undefined ? [] : [`Run only the ${invocation.preflightStep} preflight step.`]),
+        ...(invocation.schemaSource === 'infer'
+            ? ['Infer the source schema from workspace code and selected artifacts (schema-source: infer).']
+            : []),
         ...(invocation.includeUnmappedDomains === undefined
             ? []
             : [invocation.includeUnmappedDomains ? 'Include unmapped domains.' : 'Do not include unmapped domains.']),

@@ -128,7 +128,14 @@ export const alertsRecommendationsProcedures = {
                 return unavailable('noData');
             }
 
-            return getRecommendations(client, metadata.subscription.subscriptionId, metadata.accountId);
+            return getRecommendations(
+                client,
+                metadata.subscription.subscriptionId,
+                metadata.accountId,
+                undefined,
+                metadata.subscription.environment.portalUrl,
+                metadata.subscription.tenantId,
+            );
         },
     ),
 };

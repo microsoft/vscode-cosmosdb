@@ -412,6 +412,10 @@ test('batch completion preserves live source checks without contaminating histor
     try {
         prepareConversionChain(workspace, project, provisioningModel());
         write(workspace, 'app.ts', 'export const item = 1;');
+        const preflightPath = '.cosmosdb-migration/phases/1-discovery/preflight-manifest.json';
+        const preflight = readPhaseEvidence(path.join(workspace, preflightPath));
+        for (const file of preflight.sourceInventory.files) Object.assign(file, { origin: 'inferred', sourcePaths: ['app.ts'] });
+        write(workspace, preflightPath, JSON.stringify(preflight));
         const manifestPath = '.cosmosdb-migration/phases/1-discovery/discovery-manifest.json';
         const manifest = readPhaseEvidence(path.join(workspace, manifestPath));
         manifest.patterns = [{
@@ -420,7 +424,7 @@ test('batch completion preserves live source checks without contaminating histor
         }];
         manifest.noObservedAccess = [];
         write(workspace, manifestPath, JSON.stringify(manifest));
-        for (const phase of ['discovery', 'assessment', 'schema-conversion']) {
+        for (const phase of ['preflight', 'discovery', 'assessment', 'schema-conversion']) {
             project.freshness[phase] = buildFreshnessManifest(workspace, project, phase);
         }
         write(workspace, '.cosmosdb-migration/project.json', JSON.stringify(project));

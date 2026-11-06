@@ -71,6 +71,7 @@ jobs:
         run: |
           exit_code=1
           for i in 1 2 3; do
+              echo "attempts=$i" >> "$GITHUB_OUTPUT"
               if xvfb-run -a npm test; then
                   exit_code=0
                   break
@@ -87,6 +88,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           INTEGRATION_TEST_RESULT: ${{ steps.integration-tests.outcome }}
+          INTEGRATION_TEST_ATTEMPTS: ${{ steps.integration-tests.outputs.attempts }}
           SHELL_MCP_TEST_RESULT: ${{ steps.shell-mcp-tests.outcome }}
           REPO: ${{ github.repository }}
           EVENT_NAME: ${{ github.event_name }}
@@ -143,6 +145,16 @@ jobs:
           - **Shell MCP Integration Tests:** ${shell_icon} ${SHELL_MCP_TEST_RESULT}
           - **Integration Tests (extension host):** ${int_icon} ${INTEGRATION_TEST_RESULT}
           SUMMARY_EOF
+
+          if [ "$INTEGRATION_TEST_RESULT" = "success" ] && [ "${INTEGRATION_TEST_ATTEMPTS:-0}" -gt 1 ]; then
+              echo "::warning::Extension-host integration tests passed only after retrying the suite."
+              cat >> "$GITHUB_STEP_SUMMARY" << SUMMARY_EOF
+
+          ## ⚠️ Retry warning
+          The extension-host integration suite passed on attempt ${INTEGRATION_TEST_ATTEMPTS} after an earlier failed run.
+          Check the logs for test failures or infrastructure issues from previous attempts.
+          SUMMARY_EOF
+          fi
 
           comment_meaningful=false
           for r in "$INTEGRATION_TEST_RESULT" "$SHELL_MCP_TEST_RESULT"; do
